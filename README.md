@@ -22,4 +22,4 @@ MIPSter is a tiny Turing-complete subset of the MIPS32 instruction set. It only 
 
 The emulator implements minimal operating system support that is meant to be extended by students, first as part of the emulator, and then ported to run on top of it, similar to an actual operating system or virtual machine monitor. The fact that the emulator can execute itself helps exposing the self-referential nature of that challenge.
 
-Selfie is the result of many years of teaching systems engineering inspired by the work of Professor Niklaus Wirth from ETH Zurich.
+Selfie is the result of many years of teaching systems engineering. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich.
