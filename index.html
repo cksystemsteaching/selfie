@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Selfie by cksystemsteaching</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Selfie</h1>
+        <p>An educational software system of a tiny self-compiling C compiler and a tiny self-executing MIPS emulator</p>
+
+        <p class="view"><a href="https://github.com/cksystemsteaching/selfie">View the Project on GitHub <small>cksystemsteaching/selfie</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/cksystemsteaching/selfie/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/cksystemsteaching/selfie/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/cksystemsteaching/selfie">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="selfie" class="anchor" href="#selfie" aria-hidden="true"><span class="octicon octicon-link"></span></a>Selfie</h1>
+
+<p>Selfie is a project of the <a href="http://www.cs.uni-salzburg.at/%7Eck">Computational Systems Group</a> at the Department of Computer Sciences of the University of Salzburg in Austria.</p>
+
+<p>The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and even virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.</p>
+
+<p>Selfie is a fully self-referential 4k-line C implementation of:</p>
+
+<ol>
+<li>a self-compiling compiler called cstarc that compiles a tiny but powerful subset of C called C Star (C*) to a tiny but powerful subset of MIPS32 called MIPSter,</li>
+<li>a self-executing emulator called mipster that executes MIPSter code including itself when compiled with cstarc, and</li>
+<li>a tiny C* library called libcstar utilized by cstarc and mipster.</li>
+</ol>
+
+<p>Selfie is kept minimal for simplicity and implemented in a single file. There is no linker, assembler, or debugger. However, there is minimal operating system support in the form of MIPS32 o32 system calls built into the emulator. Selfie is meant to be extended in numerous ways.</p>
+
+<p>C* is a tiny Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, Boolean expressions, and many other features. There are only signed 32-bit integers and pointers, and character constants for constructing word-aligned strings manually. This choice turns out to be helpful for students to understand the true role of composite data structures such as arrays and records. Bitwise operations are implemented in libcstar using signed integer arithmetics helping students gain true understanding of two's complement. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C* can be taught in around two weeks of classes depending on student background.</p>
+
+<p>The compiler can readily be extended to compile features missing in C* and to improve performance of the generated code. The compiler generates MIPSter executables that can directly be executed by the emulator or written to a file in a simple, custom-defined format. Support of standard MIPS32 ELF binaries should be easy but remains future work.</p>
+
+<p>MIPSter is a tiny Turing-complete subset of the MIPS32 instruction set. It only features arithmetic, memory, and control-flow instructions but neither bitwise nor byte-level instructions. MIPSter can be properly explained in a single week of classes.</p>
+
+<p>The emulator implements minimal operating system support that is meant to be extended by students, first as part of the emulator, and then ported to run on top of it, similar to an actual operating system or virtual machine monitor. The fact that the emulator can execute itself helps exposing the self-referential nature of that challenge.</p>
+
+<p>Selfie is the result of many years of teaching systems engineering. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/cksystemsteaching">cksystemsteaching</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-3827654-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
