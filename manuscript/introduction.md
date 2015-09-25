@@ -40,4 +40,4 @@ There are also plans for other chapters on data structures, memory management, a
 
 Acknowledgements:
 
-The ideas presented here are the result of many years of teaching and working with students and colleagues around the world. I am grateful to my group of students and faculty in Salzburg who helped me over the years with refining and deepening my understanding of computer science. I am also particularly grateful to my colleague Professor Raja Sengupta at UC Berkeley who challenged me to the point that made me discover what has now become the Selfie Project.
+The ideas presented here are the result of many years of teaching and working with students and colleagues around the world. I am grateful to my group of students and faculty in Salzburg who helped me over the years with refining and deepening my understanding of computer science. I am also particularly grateful to my colleague Professor Raja Sengupta at UC Berkeley who challenged me to the point that made me discover what has now become the Selfie Project. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich.
