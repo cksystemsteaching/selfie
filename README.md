@@ -4,6 +4,8 @@ Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzb
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and even virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
+There is also a free [book](http://leanpub.com/selfie) in early draft form using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
+
 Selfie is a fully self-referential 4k-line C implementation of:
 
 1. a self-compiling compiler called cstarc that compiles a tiny but powerful subset of C called C Star (C*) to a tiny but powerful subset of MIPS32 called MIPSter,
