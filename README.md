@@ -24,7 +24,8 @@ The emulator implements minimal operating system support that is meant to be ext
 
 Selfie is the result of many years of teaching systems engineering. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich.
 
-### selfie on Linux (32bit)
+### On Linux (32bit)
+
 Requirements: Ubuntu GNU/Linux 32bit, Linux, gcc 4.8. The 
 first step is to produce a binary that is compatible with your 
 computer: To do that, use 'gcc' and compile selfie.c with it.
@@ -45,6 +46,7 @@ $ mv out selfie.mips
 ```
 
 #### Self-compilation
+
 This is a complete example for testing self-compilation:
 ```
 $ gcc selfie.c -o selfie
@@ -57,6 +59,7 @@ Files selfie.mips2 and selfie.mips are identical
 ```
 
 #### Self-execution
+
 To test self-execution, you can use the following commands.
 It is important to always specify the amount of memory to be
 assigned to each emulator instance:
@@ -72,7 +75,8 @@ $ cat my-source.c | ./selfie -m 128 selfie.mips -c
 $ mv out cstarbinary
 $ ./selfie -m 128 selfie.mips -m 64 cstarbinary
 ```
-#### Debugging 
+#### Debugging
+
 By default, the boot prompt shows the amount of memory used
 by the emulator instance and how the binary file terminated
 (exit code).
@@ -86,7 +90,8 @@ You can enable verbose debugging with variables in selfie.c:
 
 Output may be very long.
 
-### selfie on Mac OS X / Linux (64bit)
+### On Mac OS X / Linux (64bit)
+
 On Mac OS X and Linux 64 bit, you may use the following command to
 compile your selfie file:
 ```
@@ -94,6 +99,3 @@ clang -m32 -D'main(a, b)=main(int argc, char **argv)' -w selfie.c
 ```
 After that, you can proceed with the same commands as for Ubuntu 32
 bit.
-
-
-
