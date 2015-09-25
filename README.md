@@ -24,19 +24,24 @@ The emulator implements minimal operating system support that is meant to be ext
 
 Selfie is the result of many years of teaching systems engineering. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich.
 
-### On Linux (32bit)
+## Build Instructions
 
-Requirements: Ubuntu GNU/Linux 32bit, Linux, gcc 4.8. The 
-first step is to produce a binary that is compatible with your 
-computer: To do that, use 'gcc' and compile selfie.c with it.
+### On 32-bit Linux
+
+Requirements: 32-bit Ubuntu GNU/Linux, Linux, gcc 4.8.
+
+The first step is to produce a binary that is compatible with your 
+computer:
+
+To do that, use 'gcc' and compile selfie.c with it.
 ```
-$ gcc selfie.c -o selfie
+$ gcc -o selfie selfie.c
 ```
 You can use the output either as emulator or compiler:
 ```
 selfie [-c | -m <memory size in MB> <binary> ]
 ```
-To compile selfie.c for mips, use the following commands.  Be aware
+To compile selfie.c for mips, use the following commands. Be aware
 that the compiler requires an empty file 'out' inside the current
 execution directory to write its output into it.
 ```
@@ -68,7 +73,7 @@ $ ./selfie.x86 -m 128 selfie.mips <binary>
 $ ./selfie.x86 -m 128 selfie.mips -m 64 selfie.mips -m 32 <binary>
 ```
 It is possible to compile any C* source either with "selfie"
-(on i386 computers), or "selfie.mips" on top of the emulator:
+(on x86 computers), or "selfie.mips" on top of the emulator:
 ```
 $ touch out
 $ cat my-source.c | ./selfie -m 128 selfie.mips -c
@@ -90,12 +95,15 @@ You can enable verbose debugging with variables in selfie.c:
 
 Output may be very long.
 
-### On Mac OS X / Linux (64bit)
+### On Mac OS X / 64-bit Linux
 
-On Mac OS X and Linux 64 bit, you may use the following command to
-compile your selfie file:
+On Mac OS X and 64-bit Linux, you may use the following command to
+compile selfie.c:
+
 ```
-clang -m32 -D'main(a, b)=main(int argc, char **argv)' -w selfie.c
+clang -w -m32 -D'main(a, b)=main(int argc, char **argv)' -o selfie selfie.c
 ```
-After that, you can proceed with the same commands as for Ubuntu 32
-bit.
+
+After that, you can proceed with the same commands as for 32-bit Ubuntu.
+
+The -w option suppresses warnings that can be ignored for now. The -m32 option makes the compiler generate a 32-bit executable. Selfie only supports 32-bit architectures right now. The -D option is needed to bootstrap the main function declaration since the char data type is not supported by selfie. The -o option directs the compiler to call the executable selfie.
