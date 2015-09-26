@@ -34,7 +34,7 @@ The first step is to produce a binary that runs on your computer. To do that, us
 $ gcc -o selfie selfie.c
 ```
 
-This produces an executable called `selfie` as directed by the -o option. The executable contains both the C\* compiler as well as the MIPSter emulator.
+This produces an executable called `selfie` as directed by the `-o` option. The executable contains both the C\* compiler as well as the MIPSter emulator.
 
 Selfie may be invoked as follows:
 
@@ -42,7 +42,7 @@ Selfie may be invoked as follows:
 ./selfie [ -c | -m <memory size in MB> <binary> ]
 ```
 
-When using `selfie` with the -c option or without any arguments the compiler is invoked. With the -m option the emulator is invoked and configured to create a machine instance with \<memory size in MB\> that loads and executes \<binary\>.
+When using `selfie` with the `-c` option or without any arguments the compiler is invoked. With the `-m` option the emulator is invoked and configured to create a machine instance with \<memory size in MB\> that loads and executes \<binary\>.
 
 To compile `selfie.c` for MIPSter, use the following commands. Be aware that the compiler requires an empty file called `out` in the current execution directory to write its output to it.
 
@@ -112,7 +112,7 @@ You can enable verbose debugging with variables set in `selfie.c`:
 
  - debug_diassemble: Print disassemble output on the screen
  - debug_registers: Print register content
- - debug_syscalls: Print debugging information on every syscall
+ - debug_syscalls: Print debugging information on every system call
  - debug_load: Print hex code of what the emulator loaded
 
 ### On Mac OS X / 64-bit Linux
@@ -125,4 +125,4 @@ clang -w -m32 -D'main(a, b)=main(int argc, char **argv)' -o selfie selfie.c
 
 After that, you can proceed with the same commands as for 32-bit Linux.
 
-The -w option suppresses warnings that can be ignored for now. The -m32 option makes the compiler generate a 32-bit executable. Selfie only supports 32-bit architectures right now. The -D option is needed to bootstrap the main function declaration. The char data type is not available in C\* but required by `clang`.
+The `-w` option suppresses warnings that can be ignored for now. The `-m32` option makes the compiler generate a 32-bit executable. Selfie only supports 32-bit architectures right now. The `-D` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but required by `clang`.
