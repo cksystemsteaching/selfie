@@ -34,7 +34,9 @@ The first step is to produce a binary that runs on your computer. To do that, us
 $ gcc -o selfie selfie.c
 ```
 
-This produces an executable called `selfie` which contains both the C\* compiler as well as the MIPSter emulator. Selfie may be invoked as follows:
+This produces an executable called `selfie` as directed by the -o option. The executable contains both the C\* compiler as well as the MIPSter emulator.
+
+Selfie may be invoked as follows:
 
 ```bash
 ./selfie [ -c | -m <memory size in MB> <binary> ]
@@ -123,4 +125,4 @@ clang -w -m32 -D'main(a, b)=main(int argc, char **argv)' -o selfie selfie.c
 
 After that, you can proceed with the same commands as for 32-bit Linux.
 
-The -w option suppresses warnings that can be ignored for now. The -m32 option makes the compiler generate a 32-bit executable. Selfie only supports 32-bit architectures right now. The -D option is needed to bootstrap the main function declaration since the char data type is not supported by selfie. The -o option directs the compiler to call the executable selfie.
+The -w option suppresses warnings that can be ignored for now. The -m32 option makes the compiler generate a 32-bit executable. Selfie only supports 32-bit architectures right now. The -D option is needed to bootstrap the main function declaration since the char data type is not supported by selfie.
