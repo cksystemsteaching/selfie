@@ -8,15 +8,15 @@ There is a free [book](http://leanpub.com/selfie) in early draft form using self
 
 Selfie is a fully self-referential 4k-line C implementation of:
 
-1. a self-compiling compiler called cstarc that compiles a tiny but powerful subset of C called C Star (C*) to a tiny but powerful subset of MIPS32 called MIPSter,
+1. a self-compiling compiler called cstarc that compiles a tiny but powerful subset of C called C Star (C\*) to a tiny but powerful subset of MIPS32 called MIPSter,
 2. a self-executing emulator called mipster that executes MIPSter code including itself when compiled with cstarc, and
-3. a tiny C* library called libcstar utilized by cstarc and mipster.
- 
+3. a tiny C\* library called libcstar utilized by cstarc and mipster.
+
 Selfie is kept minimal for simplicity and implemented in a single file. There is no linker, assembler, or debugger. However, there is minimal operating system support in the form of MIPS32 o32 system calls built into the emulator. Selfie is meant to be extended in numerous ways.
 
-C* is a tiny Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, Boolean expressions, and many other features. There are only signed 32-bit integers and pointers, and character constants for constructing word-aligned strings manually. This choice turns out to be helpful for students to understand the true role of composite data structures such as arrays and records. Bitwise operations are implemented in libcstar using signed integer arithmetics helping students gain true understanding of two's complement. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C* can be taught in around two weeks of classes depending on student background.
+C\* is a tiny Turing-complete subset of C that includes dereferencing (the \* operator) but excludes data structures, Boolean expressions, and many other features. There are only signed 32-bit integers and pointers, and character constants for constructing word-aligned strings manually. This choice turns out to be helpful for students to understand the true role of composite data structures such as arrays and records. Bitwise operations are implemented in libcstar using signed integer arithmetics helping students gain true understanding of two's complement. C\* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C\* can be taught in around two weeks of classes depending on student background.
 
-The compiler can readily be extended to compile features missing in C* and to improve performance of the generated code. The compiler generates MIPSter executables that can directly be executed by the emulator or written to a file in a simple, custom-defined format. Support of standard MIPS32 ELF binaries should be easy but remains future work.
+The compiler can readily be extended to compile features missing in C\* and to improve performance of the generated code. The compiler generates MIPSter executables that can directly be executed by the emulator or written to a file in a simple, custom-defined format. Support of standard MIPS32 ELF binaries should be easy but remains future work.
 
 MIPSter is a tiny Turing-complete subset of the MIPS32 instruction set. It only features arithmetic, memory, and control-flow instructions but neither bitwise nor byte-level instructions. MIPSter can be properly explained in a single week of classes.
 
@@ -28,82 +28,99 @@ Selfie is the result of many years of teaching systems engineering. The design o
 
 ### On 32-bit Linux
 
-Requirements: 32-bit Ubuntu GNU/Linux, Linux, gcc 4.8.
+The first step is to produce a binary that runs on your computer. To do that, use `gcc` in a terminal to compile `selfie.c`:
 
-The first step is to produce a binary that is compatible with your 
-computer:
-
-To do that, use 'gcc' and compile selfie.c with it.
-```
+```bash
 $ gcc -o selfie selfie.c
 ```
-You can use the output either as emulator or compiler:
+
+This produces an executable called `selfie` which contains both the C\* compiler as well as the MIPSter emulator. Selfie may be invoked as follows:
+
+```bash
+./selfie [ -c | -m <memory size in MB> <binary> ]
 ```
-selfie [-c | -m <memory size in MB> <binary> ]
-```
-To compile selfie.c for mips, use the following commands. Be aware
-that the compiler requires an empty file 'out' inside the current
-execution directory to write its output into it.
-```
+
+When using `selfie` with the -c option or without any arguments the compiler is invoked. With the -m option the emulator is invoked and configured to create a machine instance with \<memory size in MB\> that loads and executes \<binary\>.
+
+To compile `selfie.c` for MIPSter, use the following commands. Be aware that the compiler requires an empty file called `out` in the current execution directory to write its output to it.
+
+```bash
+$ gcc -o selfie selfie.c
 $ touch out
-$ cat selfie.c | ./selfie -c
+$ ./selfie < selfie.c
 $ mv out selfie.mips
 ```
 
-#### Self-compilation
+### Self-compilation
 
-This is a complete example for testing self-compilation:
-```
-$ gcc selfie.c -o selfie
-$ cat selfie.c | ./selfie -c
+Here is an example of how to test self-compilation of `selfie.c`:
+
+```bash
+$ gcc -o selfie selfie.c
+$ touch out
+$ ./selfie -c < selfie.c
 $ mv out selfie.mips1
-$ cat selfie.c | ./selfie -m 128 selfie.mips1 -c
+$ touch out
+$ ./selfie -m 32 selfie.mips1 < selfie.c
 $ mv out selfie.mips2
 $ diff -s selfie.mips1 selfie.mips2
-Files selfie.mips2 and selfie.mips are identical
+Files selfie.mips1 and selfie.mips2 are identical
 ```
 
-#### Self-execution
+### Self-execution
 
-To test self-execution, you can use the following commands.
-It is important to always specify the amount of memory to be
-assigned to each emulator instance:
-```
-$ ./selfie.x86 -m 128 selfie.mips <binary>
-$ ./selfie.x86 -m 128 selfie.mips -m 64 selfie.mips -m 32 <binary>
-```
-It is possible to compile any C* source either with "selfie"
-(on x86 computers), or "selfie.mips" on top of the emulator:
-```
+The following example shows how to test self-execution of `selfie.c`. In this case we invoke the emulator to invoke itself which then invokes the compiler to compile itself:
+
+```bash
+$ gcc -o selfie selfie.c
 $ touch out
-$ cat my-source.c | ./selfie -m 128 selfie.mips -c
-$ mv out cstarbinary
-$ ./selfie -m 128 selfie.mips -m 64 cstarbinary
+$ ./selfie < selfie.c
+$ mv out selfie.mips1
+$ touch out
+$ ./selfie -m 64 selfie.mips1 -m 32 selfie.mips1 < selfie.c
+$ mv out selfie.mips2
+$ diff -s selfie.mips1 selfie.mips2
+Files selfie.mips1 and selfie.mips2 are identical
 ```
+
+### Work Flow
+
+To compile any C\* source you may use `selfie` directly or `selfie.mips` on top of the emulator. Both generate identical MIPSter binaries:
+
+```bash
+$ gcc -o selfie selfie.c
+$ touch out
+$ ./selfie < selfie.c
+$ mv out selfie.mips
+$ touch out
+$ ./selfie < any-cstar-file.c
+$ mv out any-cstar-file.mips1
+$ touch out
+$ ./selfie -m 32 selfie.mips < any-cstar-file.c
+$ mv out any-cstar-file.mips2
+$ diff -s any-cstar-file.mips1 any-cstar-file.mips2
+Files any-cstar-file.mips1 and any-cstar-file.mips2 are identical
+```
+
 #### Debugging
 
-By default, the boot prompt shows the amount of memory used
-by the emulator instance and how the binary file terminated
-(exit code).
+By default, the boot prompt shows the amount of memory used by the emulator instance and how execution of the binary file terminated (exit code).
 
-You can enable verbose debugging with variables in selfie.c:
+You can enable verbose debugging with variables set in `selfie.c`:
 
- - debug_diassemble: Put a disassemble output on the screen
+ - debug_diassemble: Print disassemble output on the screen
  - debug_registers: Print register content
  - debug_syscalls: Print debugging information on every syscall
- - debug_load: Print hex code what selfie loaded
-
-Output may be very long.
+ - debug_load: Print hex code of what the emulator loaded
 
 ### On Mac OS X / 64-bit Linux
 
-On Mac OS X and 64-bit Linux, you may use the following command to
-compile selfie.c:
+On Mac OS X and 64-bit Linux, you may use the following command to compile `selfie.c`:
 
-```
+```bash
 clang -w -m32 -D'main(a, b)=main(int argc, char **argv)' -o selfie selfie.c
 ```
 
-After that, you can proceed with the same commands as for 32-bit Ubuntu.
+After that, you can proceed with the same commands as for 32-bit Linux.
 
 The -w option suppresses warnings that can be ignored for now. The -m32 option makes the compiler generate a 32-bit executable. Selfie only supports 32-bit architectures right now. The -D option is needed to bootstrap the main function declaration since the char data type is not supported by selfie. The -o option directs the compiler to call the executable selfie.
