@@ -736,20 +736,20 @@ void initSyscalls();
 void emitExit();
 void syscall_exit();
 
-void syscall_read();
 void emitRead();
+void syscall_read();
 
-void syscall_write();
 void emitWrite();
+void syscall_write();
 
-void syscall_open();
 void emitOpen();
+void syscall_open();
 
-void syscall_malloc();
 void emitMalloc();
+void syscall_malloc();
 
-void syscall_getchar();
 void emitGetchar();
+void syscall_getchar();
 
 void emitPutchar();
 
