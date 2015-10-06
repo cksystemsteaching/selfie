@@ -2271,8 +2271,7 @@ int gr_expression() {
     return ltype;
 }
 
-void
-gr_while() {
+void gr_while() {
     int brBackToWhile;
     int brForwardToEnd;
 
