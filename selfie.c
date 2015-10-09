@@ -80,7 +80,7 @@ int leftShift(int n, int b);
 int rightShift(int n, int b);
 
 int  stringLength(int *s);
-void reverseString(int *s);
+void stringReverse(int *s);
 int  stringCompare(int *s, int *t);
 int  atoi(int *s);
 int* itoa(int n, int *s, int b, int a);
@@ -140,7 +140,7 @@ void initLibrary() {
     CHAR_LF  = 10; // ASCII code 10 = linefeed
     CHAR_CR  = 13; // ASCII code 13 = carriage return
 
-    string_buffer = malloc(33*4);
+    string_buffer = malloc(33);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -197,6 +197,7 @@ int SYM_GEQ;            // >=
 int SYM_NOTEQ;          // !=
 int SYM_MOD;            // %
 int SYM_CHARACTER;      // char value
+int SYM_STRING;         // string
 
 int maxIdentifierLength; // maximum number of characters in an identifier
 int maxIntegerLength;    // maximum number of characters in an integer
@@ -276,11 +277,12 @@ void initScanner () {
     SYM_NOTEQ            = 24;  // !=
     SYM_MOD              = 25;  // %
     SYM_CHARACTER        = 26;  // character value
+    SYM_STRING           = 27;  // string
 
     maxIdentifierLength = 64;
     maxIntegerLength    = 10;
 
-    ERR_EOF                        = 40;    //keep this b/c -1 is no valid array index
+    ERR_EOF                        = 40;
     ERR_UNKNOWN                    = 41;
     ERR_EXPRESSION                 = 42;
     ERR_TYPE                       = 43;
@@ -319,97 +321,97 @@ void initScanner () {
 
     // -------------------- ERROR TOKENS --------------------
 
-    stringArray = (int*)malloc(4*70);
+    stringArray = malloc(4*70);
 
     // ------------ "unknown" ------------
-    *(stringArray + ERR_UNKNOWN) = (int)createString('u','n','k','n','o','w','n',0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_UNKNOWN) = (int) createString('u','n','k','n','o','w','n',0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "expression" ------------
-    *(stringArray + ERR_EXPRESSION) = (int)createString('e','x','p','r','e','s','s','i','o','n',0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_EXPRESSION) = (int) createString('e','x','p','r','e','s','s','i','o','n',0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "while" ------------
-    *(stringArray + SYM_WHILE) = (int)createString('w','h','i','l','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_WHILE) = (int) createString('w','h','i','l','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "if" ------------
-    *(stringArray + SYM_IF) = (int)createString('i','f',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_IF) = (int) createString('i','f',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "return" ------------
-    *(stringArray + SYM_RETURN) = (int)createString('r','e','t','u','r','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_RETURN) = (int) createString('r','e','t','u','r','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "type" ------------
-    *(stringArray + ERR_TYPE) = (int)createString('t','y','p','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_TYPE) = (int) createString('t','y','p','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "(" ------------
-    *(stringArray + SYM_LPARENTHESIS) = (int)createString('(',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_LPARENTHESIS) = (int) createString('(',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ ")" ------------
-    *(stringArray + SYM_RPARENTHESIS) = (int)createString(')',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_RPARENTHESIS) = (int) createString(')',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "{" ------------
-    *(stringArray + SYM_LBRACE) = (int)createString('{',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_LBRACE) = (int) createString('{',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "}" ------------
-    *(stringArray + SYM_RBRACE) = (int)createString('}',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_RBRACE) = (int) createString('}',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ ";" ------------
-    *(stringArray + SYM_SEMICOLON) = (int)createString(';',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_SEMICOLON) = (int) createString(';',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "ident or (" ------------
-    *(stringArray + ERR_IDENTIFIER_OR_LPARENTHESIS) = (int)createString('i','d','e','n','t',' ','o','r',' ','(',0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_IDENTIFIER_OR_LPARENTHESIS) = (int) createString('i','d','e','n','t',' ','o','r',' ','(',0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "identifier" ------------
-    *(stringArray + ERR_IDENTIFIER) = (int)createString('i','d','e','n','t','i','f','i','e','r',0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_IDENTIFIER) = (int) createString('i','d','e','n','t','i','f','i','e','r',0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "assign" ------------
-    *(stringArray + ERR_ASSIGN) = (int)createString('a','s','s','i','g','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_ASSIGN) = (int) createString('a','s','s','i','g','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "ident or assign" ------------
-    *(stringArray + ERR_IDENTIFIER_OR_ASSIGN) = (int)createString('i','d','e','n','t',' ','o','r',' ','a','s','s','i','g','n',0,0,0,0,0);
+    *(stringArray + ERR_IDENTIFIER_OR_ASSIGN) = (int) createString('i','d','e','n','t',' ','o','r',' ','a','s','s','i','g','n',0,0,0,0,0);
 
     // ------------ "ident, const or exp" ------------
-    *(stringArray + ERR_IDENT_OR_CONST_OR_EXP) = (int)createString('i','d','e','n','t',',',' ','c','o','n','s','t',' ','o','r',' ','e','x','p',0);
+    *(stringArray + ERR_IDENT_OR_CONST_OR_EXP) = (int) createString('i','d','e','n','t',',',' ','c','o','n','s','t',' ','o','r',' ','e','x','p',0);
 
     // ------------ "( or ;" ------------
-    *(stringArray + ERR_LBRACE_OR_SEMICOLON) = (int)createString('(',' ','o','r',' ',';',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_LBRACE_OR_SEMICOLON) = (int) createString('(',' ','o','r',' ',';',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "procedure or var"------------
-    *(stringArray + ERR_PROCEDURE_OR_VARIABLE) = (int)createString('p','r','o','c','e','d','u','r','e',' ','o','r',' ','v','a','r',0,0,0,0);
+    *(stringArray + ERR_PROCEDURE_OR_VARIABLE) = (int) createString('p','r','o','c','e','d','u','r','e',' ','o','r',' ','v','a','r',0,0,0,0);
 
     // ------------ "eof" ------------
-    *(stringArray + ERR_EOF) = (int)createString('e','o','f',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_EOF) = (int) createString('e','o','f',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "undeclared var"------------
-    *(stringArray + ERR_UNDECLARED_VARIABLE) = (int)createString('u','n','d','e','c','l','a','r','e','d',' ','v','a','r',0,0,0,0,0,0);
+    *(stringArray + ERR_UNDECLARED_VARIABLE) = (int) createString('u','n','d','e','c','l','a','r','e','d',' ','v','a','r',0,0,0,0,0,0);
 
     // ------------ "type mismatch" ------------
-    *(stringArray + ERR_TYPE_MISMATCH) = (int)createString('t','y','p','e',' ','m','i','s','m','a','t','c','h',0,0,0,0,0,0,0);
+    *(stringArray + ERR_TYPE_MISMATCH) = (int) createString('t','y','p','e',' ','m','i','s','m','a','t','c','h',0,0,0,0,0,0,0);
 
     // ------------ "wrong return type" ------------
-    *(stringArray + ERR_WRONG_RETURNTYPE) = (int)createString('w','r','o','n','g',' ','r','e','t','u','r','n',' ','t','y','p','e',0,0,0);
+    *(stringArray + ERR_WRONG_RETURNTYPE) = (int) createString('w','r','o','n','g',' ','r','e','t','u','r','n',' ','t','y','p','e',0,0,0);
 
     // ------------ "statement" ------------
-    *(stringArray + ERR_STATEMENT) = (int)createString('s','t','a','t','e','m','e','n','t',0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_STATEMENT) = (int) createString('s','t','a','t','e','m','e','n','t',0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "wraparound" ------------
-    *(stringArray + ERR_WRAPAROUND) = (int)createString('w','r','a','p','a','r','o','u','n','d',0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + ERR_WRAPAROUND) = (int) createString('w','r','a','p','a','r','o','u','n','d',0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "maxcodelength" ------------
-    *(stringArray + ERR_MAXCODELENGTH) = (int)createString('m','a','x','c','o','d','e','l','e','n','g','t','h',0,0,0,0,0,0,0);
+    *(stringArray + ERR_MAXCODELENGTH) = (int) createString('m','a','x','c','o','d','e','l','e','n','g','t','h',0,0,0,0,0,0,0);
 
     // ------------ "maxidentlength" ------------
-    *(stringArray + ERR_MAXIDENTIFIERLENGTH) = (int)createString('m','a','x','i','d','e','n','t','l','e','n','g','t','h',0,0,0,0,0,0);
+    *(stringArray + ERR_MAXIDENTIFIERLENGTH) = (int) createString('m','a','x','i','d','e','n','t','l','e','n','g','t','h',0,0,0,0,0,0);
 
     // ------------ "file not found" ------------
-    *(stringArray + ERR_FILE_NOT_FOUND) = (int)createString('f','i','l','e',' ','n','o','t',' ','f','o','u','n','d',0,0,0,0,0,0);
+    *(stringArray + ERR_FILE_NOT_FOUND) = (int) createString('f','i','l','e',' ','n','o','t',' ','f','o','u','n','d',0,0,0,0,0,0);
 
     // ------------ "else" ------------
-    *(stringArray + SYM_ELSE) = (int)createString('e','l','s','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_ELSE) = (int) createString('e','l','s','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "void" ------------
-    *(stringArray + SYM_VOID) = (int)createString('v','o','i','d',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_VOID) = (int) createString('v','o','i','d',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     // ------------ "int" ------------
-    *(stringArray + SYM_INT) = (int)createString('i','n','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(stringArray + SYM_INT) = (int) createString('i','n','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     lineNumber = 1;
     character  = getchar();
@@ -430,10 +432,10 @@ void initScanner () {
 void initSymbolTable();
 
 void createSymbolTableEntry(int which_symbol_table, int *ident, int data, int class, int type);
-int  *getSymbolTableEntry(int *ident, int *symbol_table);
+int* getSymbolTableEntry(int *ident, int *symbol_table);
 
-int  *getNext(int *entry);
-int  *getIdentifier(int *entry);
+int* getNext(int *entry);
+int* getIdentifier(int *entry);
 int  getData(int *entry);
 int  getClass(int *entry);
 int  getType(int *entry);
@@ -821,13 +823,13 @@ void execute();
 void run();
 
 void debug_boot(int memorySize);
-int* parse_args(int argc, int *argv, int *cstar_argv);
+int* parse_args(int argc, int *argv);
 void up_push(int value);
 int  up_malloc(int size);
-int  up_copyCString(int *s);
+int  up_copyString(int *s);
 void up_copyArguments(int argc, int *argv);
 
-int main_emulator(int argc, int *argv, int *cstar_argv);
+int main_emulator(int argc, int *argv);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -860,64 +862,64 @@ int reg_lo; // lo register for multiplication/division
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-    register_strings = (int*)malloc(4*32);
-    op_strings       = (int*)malloc(4*64);
-    fct_strings      = (int*)malloc(4*64);
+    register_strings = malloc(4*32);
+    op_strings       = malloc(4*64);
+    fct_strings      = malloc(4*64);
 
-    *(register_strings + 0)  = (int)createString('z','e','r','o',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 1)  = (int)createString('a','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 2)  = (int)createString('v','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 3)  = (int)createString('v','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 4)  = (int)createString('a','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 5)  = (int)createString('a','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 6)  = (int)createString('a','2',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 7)  = (int)createString('a','3',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 8)  = (int)createString('t','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 9)  = (int)createString('t','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 10) = (int)createString('t','2',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 11) = (int)createString('t','3',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 12) = (int)createString('t','4',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 13) = (int)createString('t','5',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 14) = (int)createString('t','6',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 15) = (int)createString('t','7',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 16) = (int)createString('s','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 17) = (int)createString('s','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 18) = (int)createString('s','2',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 19) = (int)createString('s','3',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 20) = (int)createString('s','4',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 21) = (int)createString('s','5',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 22) = (int)createString('s','6',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 23) = (int)createString('s','7',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 24) = (int)createString('t','8',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 25) = (int)createString('t','9',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 26) = (int)createString('k','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 27) = (int)createString('k','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 28) = (int)createString('g','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 29) = (int)createString('s','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 30) = (int)createString('f','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(register_strings + 31) = (int)createString('r','a',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 0)  = (int) createString('z','e','r','o',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 1)  = (int) createString('a','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 2)  = (int) createString('v','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 3)  = (int) createString('v','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 4)  = (int) createString('a','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 5)  = (int) createString('a','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 6)  = (int) createString('a','2',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 7)  = (int) createString('a','3',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 8)  = (int) createString('t','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 9)  = (int) createString('t','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 10) = (int) createString('t','2',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 11) = (int) createString('t','3',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 12) = (int) createString('t','4',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 13) = (int) createString('t','5',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 14) = (int) createString('t','6',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 15) = (int) createString('t','7',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 16) = (int) createString('s','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 17) = (int) createString('s','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 18) = (int) createString('s','2',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 19) = (int) createString('s','3',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 20) = (int) createString('s','4',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 21) = (int) createString('s','5',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 22) = (int) createString('s','6',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 23) = (int) createString('s','7',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 24) = (int) createString('t','8',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 25) = (int) createString('t','9',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 26) = (int) createString('k','0',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 27) = (int) createString('k','1',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 28) = (int) createString('g','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 29) = (int) createString('s','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 30) = (int) createString('f','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(register_strings + 31) = (int) createString('r','a',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    *(fct_strings + 0) = (int)createString('n','o','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 8) = (int)createString('j','r',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 12) = (int)createString('s','y','s','c','a','l','l',0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 16) = (int)createString('m','f','h','i',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 18) = (int)createString('m','f','l','o',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 25) = (int)createString('m','u','l','t','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 27) = (int)createString('d','i','v','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 33) = (int)createString('a','d','d','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 35) = (int)createString('s','u','b','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 42) =  (int)createString('s','l','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(fct_strings + 52) =  (int)createString('t','e','q',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 0) = (int) createString('n','o','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 8) = (int) createString('j','r',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 12) = (int) createString('s','y','s','c','a','l','l',0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 16) = (int) createString('m','f','h','i',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 18) = (int) createString('m','f','l','o',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 25) = (int) createString('m','u','l','t','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 27) = (int) createString('d','i','v','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 33) = (int) createString('a','d','d','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 35) = (int) createString('s','u','b','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 42) = (int) createString('s','l','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(fct_strings + 52) = (int) createString('t','e','q',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    *(op_strings + 0) = (int)createString('n','o','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 3) = (int)createString('j','a','l',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 2) = (int)createString('j',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 4) = (int)createString('b','e','q',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 5) = (int)createString('b','n','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 9) = (int)createString('a','d','d','i','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 15) = (int)createString('l','u','i',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 35) = (int)createString('l','w',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-    *(op_strings + 43) =  (int)createString('s','w',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 0) = (int) createString('n','o','p',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 3) = (int) createString('j','a','l',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 2) = (int) createString('j',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 4) = (int) createString('b','e','q',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 5) = (int) createString('b','n','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 9) = (int) createString('a','d','d','i','u',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 15) = (int) createString('l','u','i',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 35) = (int) createString('l','w',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    *(op_strings + 43) = (int) createString('s','w',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     debug_registers   = 0;
     debug_syscalls    = 0;
@@ -931,7 +933,7 @@ void initInterpreter() {
     EXCEPTION_UNKNOWNSYSCALL     = 5;
     EXCEPTION_UNKNOWNFUNCTION    = 6;
 
-    registers = (int*)malloc(32*4);
+    registers = malloc(32*4);
 
     pc = 0;
     ir = 0;
@@ -977,56 +979,83 @@ int rightShift(int n, int b) {
             (INT_MAX / twoToThePowerOf(b) + 1);
 }
 
+int getCharacter(int *s, int i) {
+    int a;
+
+    a = i / 4;
+
+    return rightShift(leftShift(*(s + a), 24 - (i % 4) * 8), 24);
+}
+
+int* putCharacter(int *s, int i, int c) {
+    int a;
+
+    a = i / 4;
+
+    *(s + a) = (*(s + a) - leftShift(getCharacter(s, i), (i % 4) * 8)) + leftShift(c, (i % 4) * 8);
+    
+    return s;
+}
+
 int stringLength(int *s) {
     int i;
 
     i = 0;
 
-    while (*(s+i) != 0)
+    while (getCharacter(s, i) != 0)
         i = i + 1;
 
     return i;
 }
 
-void reverseString(int *s) {
-    int tmp;
+void stringReverse(int *s) {
     int i;
     int j;
+    int tmp;
 
     i = 0;
     j = stringLength(s) - 1;
 
     while (i < j) {
-        tmp = *(s+i);
-        *(s+i) = *(s+j);
-        *(s+j) = tmp;
+        tmp = getCharacter(s, i);
+        
+        putCharacter(s, i, getCharacter(s, j));
+        putCharacter(s, j, tmp);
+
         i = i + 1;
         j = j - 1;
     }
 }
 
-int stringCompare(int* s, int* t) {
+int stringCompare(int *s, int *t) {
+    int i;
+
+    i = 0;
+
     while (1)
-        if (*s == 0)
-            if (*t == 0)
+        if (getCharacter(s, i) == 0)
+            if (getCharacter(t, i) == 0)
                 return 1;
             else
                 return 0;
-        else if (*s == *t) {
-            s = s + 1;
-            t = t + 1;
-        } else
+        else if (getCharacter(s, i) == getCharacter(t, i))
+            i = i + 1;
+        else
             return 0;
 }
 
-int atoi(int* s) {
+int atoi(int *s) {
+    int i;
     int n;
+
+    i = 0;
 
     n = 0;
 
-    while (*s != 0) {
-        n = n * 10 + *s - '0';
-        s = s + 1;
+    while (getCharacter(s, i) != 0) {
+        n = n * 10 + getCharacter(s, i) - '0';
+        
+        i = i + 1;
     }
 
     return n;
@@ -1043,7 +1072,7 @@ int* itoa(int n, int *s, int b, int a) {
     sign = 0;
 
     if (n == 0) {
-        *s = '0';
+        putCharacter(s, 0, '0');
 
         i = 1;
     } else if (n < 0) {
@@ -1051,7 +1080,8 @@ int* itoa(int n, int *s, int b, int a) {
 
         if (b == 10) {
             if (n == INT_MIN) {
-                *s = '8'; // rightmost decimal digit of 32-bit INT_MIN
+                // rightmost decimal digit of 32-bit INT_MIN
+                putCharacter(s, 0, '8');
 
                 n = -(n / 10);
                 i = i + 1;
@@ -1059,7 +1089,8 @@ int* itoa(int n, int *s, int b, int a) {
                 n = -n;
         } else {
             if (n == INT_MIN) {
-                *s = '0'; // rightmost non-decimal digit of INT_MIN
+                // rightmost non-decimal digit of INT_MIN
+                putCharacter(s, 0, '0');
 
                 n = (rightShift(INT_MIN, 1) / b) * 2;
                 i = i + 1;
@@ -1069,12 +1100,10 @@ int* itoa(int n, int *s, int b, int a) {
     }
 
     while (n != 0) {
-        *(s+i) = n % b;
-
-        if (*(s+i) > 9)
-            *(s+i) = *(s+i) - 10 + 'A';
+        if (n % b > 9)
+            putCharacter(s, i, n % b - 10 + 'A');
         else
-            *(s+i) = *(s+i) + '0';
+            putCharacter(s, i, n % b + '0');
 
         n = n / b;
         i = i + 1;
@@ -1089,27 +1118,32 @@ int* itoa(int n, int *s, int b, int a) {
 
     if (b != 10) {
         while (i < a) {
-            *(s+i) = '0'; // align with zeros
+            putCharacter(s, i, '0'); // align with zeros
 
             i = i + 1;
         }
     } else if (sign) {
-        *(s+i) = '-';
+        putCharacter(s, i, '-');
 
         i = i + 1;
     }
 
-    *(s+i) = 0; // null terminated string
+    putCharacter(s, i, 0); // null terminated string
 
-    reverseString(s);
+    stringReverse(s);
 
     return s;
 }
 
 void print(int *s) {
-    while (*s != 0) {
-        putchar(*s);
-        s = s + 1;
+    int i;
+
+    i = 0;
+
+    while (getCharacter(s, i) != 0) {
+        putchar(getCharacter(s, i));
+
+        i = i + 1;
     }
 }
 
@@ -1118,20 +1152,37 @@ void assignString(int *s, int c0, int c1, int c2, int c3, int c4,
         int c10, int c11, int c12, int c13, int c14,
         int c15, int c16, int c17, int c18, int c19) {
 
-    *(s+0) = c0; *(s+1) = c1; *(s+2) = c2; *(s+3) = c3; *(s+4) = c4;
-    *(s+5) = c5; *(s+6) = c6; *(s+7) = c7; *(s+8) = c8; *(s+9) = c9;
-    *(s+10) = c10; *(s+11) = c11; *(s+12) = c12; *(s+13) = c13; *(s+14) = c14;
-    *(s+15) = c15; *(s+16) = c16; *(s+17) = c17; *(s+18) = c18; *(s+19) = c19;
-    *(s+20) = 0;
+    putCharacter(s, 0, c0);
+    putCharacter(s, 1, c1);
+    putCharacter(s, 2, c2);
+    putCharacter(s, 3, c3);
+    putCharacter(s, 4, c4);
+    putCharacter(s, 5, c5);
+    putCharacter(s, 6, c6);
+    putCharacter(s, 7, c7);
+    putCharacter(s, 8, c8);
+    putCharacter(s, 9, c9);
+    putCharacter(s, 10, c10);
+    putCharacter(s, 11, c11);
+    putCharacter(s, 12, c12);
+    putCharacter(s, 13, c13);
+    putCharacter(s, 14, c14);
+    putCharacter(s, 15, c15);
+    putCharacter(s, 16, c16);
+    putCharacter(s, 17, c17);
+    putCharacter(s, 18, c18);
+    putCharacter(s, 19, c19);
+
+    putCharacter(s, 20, 0);
 }
 
 int* createString(int c0, int c1, int c2, int c3, int c4,
         int c5, int c6, int c7, int c8, int c9,
         int c10, int c11, int c12, int c13, int c14,
         int c15, int c16, int c17, int c18, int c19) {
-    int* s;
+    int *s;
 
-    s = (int*)malloc(21*4);
+    s = malloc(21);
     assignString(s, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9,
                  c10, c11, c12, c13, c14, c15, c16, c17, c18, c19);
     return s;
@@ -1257,7 +1308,7 @@ int isCharacterLetter() {
 }
 
 int identifierStringMatch(int stringIndex) {
-    return stringCompare(identifier, (int*)(*(stringArray + stringIndex)));
+    return stringCompare(identifier, (int*) *(stringArray + stringIndex));
 }
 
 int identifierOrKeyword() {
@@ -1289,37 +1340,47 @@ int getSymbol() {
         return SYM_DIV;
 
     if (isCharacterLetter()) {
-        identifier = (int*)malloc((maxIdentifierLength+1) * 4);
+        identifier = malloc(maxIdentifierLength + 1);
+
         i = 0;
 
         while (isCharacterLetterOrDigitOrUnderscore()) {
-            if (i+1 > maxIdentifierLength) {
+            if (i >= maxIdentifierLength) {
                 syntaxError(ERR_MAXIDENTIFIERLENGTH); // identifier too long
                 exit(-1);
             }
-            *(identifier+i) = character;
+
+            putCharacter(identifier, i, character);
+
             i = i + 1;
+
             character = getchar();
         }
 
-        *(identifier+i) = 0; // null terminated string
+        putCharacter(identifier, i, 0); // null terminated string
+
         symbol = identifierOrKeyword();
 
     } else if (isCharacterDigit()) {
-        integer = (int*)malloc((maxIntegerLength+1) * 4);
+        integer = malloc(maxIntegerLength + 1);
+
         i = 0;
 
         while (isCharacterDigit()) {
-            if (i+1 > maxIntegerLength) {
+            if (i >= maxIntegerLength) {
                 syntaxError(ERR_WRAPAROUND); // integer too long
                 exit(-1);
             }
-            *(integer+i) = character;
+
+            putCharacter(integer, i, character);
+
             i = i + 1;
+            
             character = getchar();
         }
 
-        *(integer+i) = 0; // null terminated string
+        putCharacter(integer, i, 0); // null terminated string
+
         ivalue = atoi(integer);
 
         if (ivalue < 0) {
@@ -1428,11 +1489,11 @@ int getSymbol() {
 void syntaxWarn(int errCode) {
     int *numberBuffer;
 
-    numberBuffer = (int*)malloc(4*10);
+    numberBuffer = malloc(maxIntegerLength + 1);
 
     print(warning);
 
-    print((int*)(*(stringArray+errCode)));
+    print((int*) *(stringArray+errCode));
 
     print(errLine);
     print(itoa(lineNumber, numberBuffer, 10, 0));
@@ -1446,11 +1507,11 @@ void syntaxWarn(int errCode) {
 void syntaxError(int errCode) {
     int *numberBuffer;
 
-    numberBuffer = (int*)malloc(4*10);
+    numberBuffer = malloc(maxIntegerLength + 1);
 
     print(error);
 
-    print((int*)(*(stringArray+errCode)));
+    print((int*) *(stringArray+errCode));
 
     print(errLine);
     print(itoa(lineNumber, numberBuffer, 10, 0));
@@ -1468,7 +1529,7 @@ void syntaxError(int errCode) {
 // -----------------------------------------------------------------
 
 void createSymbolTableEntry(int which_symbol_table, int *ident, int data, int class, int type) {
-    int* newEntry;
+    int *newEntry;
 
     // symbolTable:
     // +----+------------+
@@ -1480,7 +1541,7 @@ void createSymbolTableEntry(int which_symbol_table, int *ident, int data, int cl
     // |  5 | register   |
     // +----+------------+
 
-    newEntry = (int*)malloc(6 * 4);
+    newEntry = malloc(6 * 4);
 
     // store pointer to identifier
     // cast only works if size of int and int* is equivalent
@@ -1503,7 +1564,7 @@ void createSymbolTableEntry(int which_symbol_table, int *ident, int data, int cl
 }
 
 int* getSymbolTableEntry(int *ident, int *symbol_table) {
-    while ((int)symbol_table != 0) {
+    while ((int) symbol_table != 0) {
         if (stringCompare(ident, getIdentifier(symbol_table)))
             return symbol_table;
         else
@@ -1685,14 +1746,14 @@ void restore_registers(int numberOfRegisters) {
 }
 
 int* getVariable(int *variable) {
-    int* entry;
+    int *entry;
 
     entry = getSymbolTableEntry(variable, local_symbol_table);
 
-    if ((int)entry == 0) {
+    if ((int) entry == 0) {
         entry = getSymbolTableEntry(variable, global_symbol_table);
 
-        if ((int)entry == 0)
+        if ((int) entry == 0)
             syntaxError(ERR_UNDECLARED_VARIABLE);
     }
 
@@ -1762,7 +1823,7 @@ int help_call_codegen(int *entry, int *procedure) {
 
     type = UNKNOWN;
 
-    if ((int)entry == 0) {
+    if ((int) entry == 0) {
         // CASE 1: function call, no definition, no declaration.
         createSymbolTableEntry(GLOBAL_TABLE, procedure, codeLength, FUNCTION, INT_T);
         emitJFormat(OP_JAL, 0);
@@ -2664,7 +2725,7 @@ void gr_procedure(int *procedure, int returnType) {
     if (symbol == SYM_SEMICOLON) {
         entry = getSymbolTableEntry(currentFuncName, global_symbol_table);
 
-        if ((int)entry == 0)
+        if ((int) entry == 0)
             createSymbolTableEntry(GLOBAL_TABLE, currentFuncName, 0, FUNCTION, returnType);
 
         getSymbol();
@@ -2677,7 +2738,7 @@ void gr_procedure(int *procedure, int returnType) {
 
         entry = getSymbolTableEntry(currentFuncName, global_symbol_table);
 
-        if ((int)entry == 0) {
+        if ((int) entry == 0) {
             createSymbolTableEntry(GLOBAL_TABLE, currentFuncName, codeLength, FUNCTION, returnType);
         } else {
             if (getData(entry) != 0)
@@ -2816,7 +2877,7 @@ void emitMainEntry() {
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // null page
 
     // "main": entry point
-    label = (int*)createString('m','a','i','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+    label = (int*) createString('m','a','i','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
     createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
 
@@ -3019,7 +3080,7 @@ void decodeJFormat() {
 // -----------------------------------------------------------------
 
 void allocateMachineMemory(int size) {
-    memory = (int*)malloc(size);
+    memory = malloc(size);
 }
 
 // -----------------------------------------------------------------
@@ -3108,7 +3169,7 @@ void emitBinary() {
         i = i + 1;
     }
 
-    filename = (int*)malloc(4*4);
+    filename = malloc(4*4);
     *filename = 7632239; //filename: out
 
     // assumption: file with name "out" exists prior to execution of compiler
@@ -3144,12 +3205,13 @@ int loadBinary(int *filename) {
         ret = read(fd, memory + i, 4);
 
         if (debug_load) {
-            memset(string_buffer, 33, 0);
+            // 9 = 32 characters / 4 bytes + 1 word for terminal zero
+            memset(string_buffer, 9, 0);
             print(itoa(i * 4, string_buffer, 16, 4));
             putchar(' ');
             putchar('#');
             putchar(' ');
-            memset(string_buffer, 33, 0);
+            memset(string_buffer, 9, 0);
             print(itoa(*(memory+i), string_buffer, 16, 8));
             putchar(CHAR_LF);
         }
@@ -3249,8 +3311,8 @@ void syscall_read() {
 
         print(itoa(fd, string_buffer, 10, 0));
         putchar(' ');
-        memset(string_buffer, 33, 0);
-        print(itoa((int)buffer, string_buffer, 16, 8));
+        memset(string_buffer, 9, 0);
+        print(itoa((int) buffer, string_buffer, 16, 8));
         putchar(' ');
         print(itoa(size, string_buffer, 10, 0));
         putchar(CHAR_LF);
@@ -3465,7 +3527,7 @@ void emitPutchar() {
 
 void fct_syscall() {
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
         putchar(CHAR_LF);
     }
 
@@ -3492,7 +3554,7 @@ void fct_nop() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
         putchar(CHAR_LF);
     }
 }
@@ -3505,10 +3567,10 @@ void op_jal() {
     // TODO: execute delay slot
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
-        memset(string_buffer, 33, 0);
+        memset(string_buffer, 9, 0);
         print(itoa(instr_index, string_buffer, 16, 8));
         putchar(CHAR_LF);
     }
@@ -3520,10 +3582,10 @@ void op_j() {
     // TODO: execute delay slot
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
-        memset(string_buffer, 33, 0);
+        memset(string_buffer, 9, 0);
         print(itoa(instr_index, string_buffer, 16, 8));
         putchar(CHAR_LF);
     }
@@ -3538,12 +3600,12 @@ void op_beq() {
     }
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
 
@@ -3560,12 +3622,12 @@ void op_bne() {
     }
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
 
@@ -3581,12 +3643,12 @@ void op_addiu() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(',');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
 
@@ -3598,10 +3660,10 @@ void fct_jr() {
     pc = *(registers+rs) / 4;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
 
         putchar(CHAR_LF);
     }
@@ -3613,11 +3675,11 @@ void op_lui() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
 
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
 
@@ -3631,10 +3693,10 @@ void fct_mfhi() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rd)));
+        print((int*) *(register_strings+rd));
 
         putchar(CHAR_LF);
     }
@@ -3646,10 +3708,10 @@ void fct_mflo() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rd)));
+        print((int*) *(register_strings+rd));
 
         putchar(CHAR_LF);
     }
@@ -3662,12 +3724,12 @@ void fct_multu() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
 
         putchar(CHAR_LF);
     }
@@ -3680,12 +3742,12 @@ void fct_divu() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
 
         putchar(CHAR_LF);
     }
@@ -3697,14 +3759,14 @@ void fct_addu() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rd)));
+        print((int*) *(register_strings+rd));
         putchar(',');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(CHAR_LF);
     }
 }
@@ -3715,14 +3777,14 @@ void fct_subu() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rd)));
+        print((int*) *(register_strings+rd));
         putchar(',');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(CHAR_LF);
 
     }
@@ -3741,15 +3803,15 @@ void op_lw() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
 
         putchar('(');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(')');
 
         putchar(CHAR_LF);
@@ -3765,14 +3827,14 @@ void fct_slt() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(fct_strings+function)));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rd)));
+        print((int*) *(register_strings+rd));
         putchar(',');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
 
         putchar(CHAR_LF);
     }
@@ -3792,15 +3854,15 @@ void op_sw() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)(*(op_strings+opcode)));
+        print((int*) *(op_strings+opcode));
 
         putchar(' ');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
 
         putchar('(');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(')');
 
         putchar(CHAR_LF);
@@ -3814,12 +3876,12 @@ void fct_teq() {
     pc = pc + 1;
 
     if (debug_disassemble) {
-        print((int*)*(fct_strings+function));
+        print((int*) *(fct_strings+function));
 
         putchar(' ');
-        print((int*)(*(register_strings+rs)));
+        print((int*) *(register_strings+rs));
         putchar(',');
-        print((int*)(*(register_strings+rt)));
+        print((int*) *(register_strings+rt));
 
         putchar(CHAR_LF);
     }
@@ -3854,7 +3916,7 @@ int addressTranslation(int vaddr) {
 
 void pre_debug() {
     if (debug_disassemble) {
-        memset(string_buffer, 33, 0);           // print current PC
+        memset(string_buffer, 9, 0);           // print current PC
         print(itoa(4 * pc, string_buffer, 16, 4));
         putchar(CHAR_TAB);
     }
@@ -3867,9 +3929,9 @@ void post_debug() {
 
         while (i < 32) {
             if (*(registers+i) != 0) {
-                print((int*)*(register_strings+i));
+                print((int*) *(register_strings+i));
                 putchar(CHAR_TAB);
-                memset(string_buffer, 33, 0);
+                memset(string_buffer, 9, 0);
                 print(itoa(*(registers+i), string_buffer, 16, 8));
 
                 putchar(CHAR_LF);
@@ -3949,11 +4011,11 @@ void debug_boot(int memorySize) {
     printString('M','B',CHAR_LF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 }
 
-int* parse_args(int argc, int *argv, int *cstar_argv) {
+int* parse_args(int argc, int *argv) {
     // assert: ./selfie -m size executable {-m size executable}
     int memorySize;
 
-    memorySize = atoi((int*)*(cstar_argv+2)) * 1024 * 1024 / 4;
+    memorySize = atoi((int*) *(argv+2)) * 1024 * 1024 / 4;
 
     allocateMachineMemory(memorySize*4);
 
@@ -3963,7 +4025,7 @@ int* parse_args(int argc, int *argv, int *cstar_argv) {
     debug_boot(memorySize);
 
     // return executable file name
-    return (int*)*(argv+3);
+    return (int*) *(argv+3);
 }
 
 void up_push(int value) {
@@ -3987,27 +4049,12 @@ int up_malloc(int size) {
     return *(registers+REG_V0);
 }
 
-int CStringLength(int* s) {
-    int l;
-
-    l = 0;
-
-    while (rightShift(leftShift(*s, 24 - (l % 4) * 8), 24) != 0) {
-        l = l + 1;
-
-        if (l % 4 == 0)
-            s = s + 1;
-    }
-
-    return l;
-}
-
-int up_copyCString(int *s) {
+int up_copyString(int *s) {
     int l;
     int r;
     int a;
 
-    l = CStringLength(s);
+    l = stringLength(s);
 
     r = up_malloc(l+1);
 
@@ -4035,7 +4082,7 @@ void up_copyArguments(int argc, int *argv) {
     c_argv = c_argv / 4;
 
     while (argc > 0) {
-        *(memory + c_argv) = up_copyCString((int*)*argv);
+        *(memory + c_argv) = up_copyString((int*) *argv);
 
         c_argv = c_argv + 1;
         argv = argv + 1;
@@ -4044,10 +4091,10 @@ void up_copyArguments(int argc, int *argv) {
     }
 }
 
-int main_emulator(int argc, int *argv, int *cstar_argv) {
+int main_emulator(int argc, int *argv) {
     initInterpreter();
 
-    *(registers+REG_GP) = loadBinary(parse_args(argc, argv, cstar_argv));
+    *(registers+REG_GP) = loadBinary(parse_args(argc, argv));
 
     *(registers+REG_K1) = *(registers+REG_GP);
 
@@ -4062,50 +4109,7 @@ int main_emulator(int argc, int *argv, int *cstar_argv) {
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
-int* copyC2CStarString(int* s) {
-    int l;
-    int *r;
-    int i;
-
-    l = CStringLength(s);
-
-    r = malloc((l + 1) * 4);
-
-    i = 0;
-
-    while (i <= l) {
-        *(r+i) = rightShift(leftShift(*s, 24 - (i % 4) * 8), 24);
-
-        i = i + 1;
-
-        if (i % 4 == 0)
-            s = s + 1;
-    }
-
-    return r;
-}
-
-int* copyC2CStarArguments(int argc, int *argv) {
-    int *cstar_argv;
-    int *cursor;
-
-    cstar_argv = malloc(argc * 4);
-
-    cursor = cstar_argv;
-
-    while (argc > 0) {
-        *cursor = (int)copyC2CStarString((int*)*argv);
-
-        argv = argv + 1;
-        cursor = cursor + 1;
-        argc = argc - 1;
-    }
-
-    return cstar_argv;
-}
-
 int main(int argc, int *argv) {
-    int *cstar_argv;
     int *firstParameter;
 
     initLibrary();
@@ -4114,17 +4118,15 @@ int main(int argc, int *argv) {
     initDecoder();
     initSyscalls();
 
-    cstar_argv = copyC2CStarArguments(argc, argv);
-
     if (argc > 1) {
-        firstParameter = (int*) (*(cstar_argv+1));
+        firstParameter = (int*) *(argv+1);
 
-        if (*firstParameter == '-') {
-            if (*(firstParameter+1) == 'c')
+        if (getCharacter(firstParameter, 0) == '-') {
+            if (getCharacter(firstParameter, 1) == 'c')
                 main_compiler();
-            else if (*(firstParameter+1) == 'm') {
+            else if (getCharacter(firstParameter, 1) == 'm') {
                 if (argc > 3)
-                    main_emulator(argc, argv, cstar_argv);
+                    main_emulator(argc, argv);
                 else
                     exit(-1);
             }
