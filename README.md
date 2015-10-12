@@ -97,7 +97,7 @@ You can enable verbose debugging with variables set in `selfie.c`:
 
 ### On Mac OS X / 64-bit Linux
 
-On Mac OS X as well as on 64-bit Linux (requires gcc-multiarch), you may use the following command to compile `selfie.c`:
+On Mac OS X as well as on 64-bit Linux (requires gcc-multiarch. On Ubuntu, install gcc-multilib), you may use the following command to compile `selfie.c`:
 
 ```bash
 clang -w -m32 -D'main(a, b)=main(int argc, char **argv)' -o selfie selfie.c
