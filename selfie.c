@@ -109,6 +109,7 @@ int *power_of_two_table;
 int INT_MAX; // maximum numerical value of an integer
 int INT_MIN; // minimum numerical value of an integer
 
+int CHAR_EOF;
 int CHAR_TAB;
 int CHAR_LF;
 int CHAR_CR;
@@ -136,6 +137,7 @@ void initLibrary() {
     INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
     INT_MIN = -INT_MAX - 1;
 
+    CHAR_EOF = -1; // end of file
     CHAR_TAB = 9;  // ASCII code 9  = tabulator
     CHAR_LF  = 10; // ASCII code 10 = linefeed
     CHAR_CR  = 13; // ASCII code 13 = carriage return
@@ -155,11 +157,12 @@ void initLibrary() {
 
 void initScanner();
 
-int findNextCharacter();
 int isCharacterWhitespace();
-int isCharacterLetterOrDigitOrUnderscore();
-int isCharacterDigit();
+int findNextCharacter();
 int isCharacterLetter();
+int isCharacterDigit();
+int isCharacterLetterOrDigitOrUnderscore();
+int isNotDoubleQuoteOrEOF();
 int identifierStringMatch(int stringIndex);
 int identifierOrKeyword();
 int getSymbol();
@@ -201,6 +204,7 @@ int SYM_STRING;         // string
 
 int maxIdentifierLength; // maximum number of characters in an identifier
 int maxIntegerLength;    // maximum number of characters in an integer
+int maxStringLength;     // maximum number of characters in a string
 
 // Error-Token declaration
 int ERR_EOF;
@@ -220,6 +224,10 @@ int ERR_WRONG_RETURNTYPE;
 int ERR_MAXCODELENGTH;
 int ERR_MAXIDENTIFIERLENGTH;
 int ERR_WRAPAROUND;
+int ERR_MAXSTRINGLENGTH;
+int ERR_MISSINGDOUBLEQUOTE;
+int ERR_MISSINGSINGLEQUOTE;
+int ERR_MISSINGEQUALSIGN;
 int ERR_STATEMENT;
 int ERR_FILE_NOT_FOUND;
 int ERR_ILLEGAL_DEREF;
@@ -241,6 +249,7 @@ int symbol;      // most recently recognized symbol
 
 int *identifier; // stores scanned identifier
 int *integer;    // stores scanned integer as string
+int *string;     // stores scanned string
 
 int ivalue; // stores numerical value of scanned integer string
 
@@ -281,6 +290,7 @@ void initScanner () {
 
     maxIdentifierLength = 64;
     maxIntegerLength    = 10;
+    maxStringLength     = 64;
 
     ERR_EOF                        = 40;
     ERR_UNKNOWN                    = 41;
@@ -299,10 +309,14 @@ void initScanner () {
     ERR_MAXCODELENGTH              = 54;
     ERR_MAXIDENTIFIERLENGTH        = 55;
     ERR_WRAPAROUND                 = 56;
-    ERR_STATEMENT                  = 57;
-    ERR_FILE_NOT_FOUND             = 58;
-    ERR_ILLEGAL_DEREF              = 59;
-    ERR_IDENTIFIER_OR_INTEGER      = 60;
+    ERR_MAXSTRINGLENGTH            = 57;
+    ERR_MISSINGDOUBLEQUOTE         = 58;
+    ERR_MISSINGSINGLEQUOTE         = 59;
+    ERR_MISSINGEQUALSIGN           = 60;
+    ERR_STATEMENT                  = 61;
+    ERR_FILE_NOT_FOUND             = 62;
+    ERR_ILLEGAL_DEREF              = 63;
+    ERR_IDENTIFIER_OR_INTEGER      = 64;
 
     // ------------ "ERROR: " ------------
     error = createString('E','R','R','O','R',':',' ',0,0,0,0,0,0,0,0,0,0,0,0,0);
@@ -395,6 +409,18 @@ void initScanner () {
     // ------------ "wraparound" ------------
     *(stringArray + ERR_WRAPAROUND) = (int) createString('w','r','a','p','a','r','o','u','n','d',0,0,0,0,0,0,0,0,0,0);
 
+    // ------------ "maxstringlength" ------------
+    *(stringArray + ERR_MAXSTRINGLENGTH) = (int) createString('m','a','x','s','t','r','i','n','g','l','e','n','g','t','h',0,0,0,0,0);
+
+    // ------------ "missingdoublequote" ------------
+    *(stringArray + ERR_MISSINGDOUBLEQUOTE) = (int) createString('m','i','s','s','i','n','g','d','o','u','b','l','e','q','u','o','t','e',0,0);
+
+    // ------------ "missingsinglequote" ------------
+    *(stringArray + ERR_MISSINGSINGLEQUOTE) = (int) createString('m','i','s','s','i','n','g','s','i','n','g','l','e','q','u','o','t','e',0,0);
+
+    // ------------ "missingequalsign" ------------
+    *(stringArray + ERR_MISSINGEQUALSIGN) = (int) createString('m','i','s','s','i','n','g','e','q','u','a','l','s','i','g','n',0,0,0,0);
+
     // ------------ "maxcodelength" ------------
     *(stringArray + ERR_MAXCODELENGTH) = (int) createString('m','a','x','c','o','d','e','l','e','n','g','t','h',0,0,0,0,0,0,0);
 
@@ -419,6 +445,7 @@ void initScanner () {
 
     identifier  = 0;
     integer     = 0;
+    string      = 0;
 
     ivalue = 0;
 
@@ -988,6 +1015,7 @@ int getCharacter(int *s, int i) {
 }
 
 int* putCharacter(int *s, int i, int c) {
+    // assert: all characters are 7-bit
     int a;
 
     a = i / 4;
@@ -1216,6 +1244,19 @@ void memset(int *a, int size, int v) {
 // ---------------------------- SCANNER ----------------------------
 // -----------------------------------------------------------------
 
+int isCharacterWhitespace() {
+    if (character == ' ')
+        return 1;
+    else if (character == CHAR_TAB)
+        return 1;
+    else if (character == CHAR_LF)
+        return 1;
+    else if (character == CHAR_CR)
+        return 1;
+    else
+        return 0;
+}
+
 int findNextCharacter() {
     int inComment;
 
@@ -1229,7 +1270,7 @@ int findNextCharacter() {
                 inComment = 0;
             else if (character == CHAR_CR)
                 inComment = 0;
-            else if (character == SYM_EOF)
+            else if (character == CHAR_EOF)
                 return character;
 
         } else if (isCharacterWhitespace()) {
@@ -1258,26 +1299,17 @@ int findNextCharacter() {
     }
 }
 
-int isCharacterWhitespace() {
-    if (character == ' ')
-        return 1;
-    else if (character == CHAR_TAB)
-        return 1;
-    else if (character == CHAR_LF)
-        return 1;
-    else if (character == CHAR_CR)
-        return 1;
-    else
-        return 0;
-}
-
-int isCharacterLetterOrDigitOrUnderscore() {
-    if (isCharacterLetter())
-        return 1;
-    else if(isCharacterDigit())
-        return 1;
-    else if(character == '_')
-        return 1;
+int isCharacterLetter() {
+    if (character >= 'a')
+        if (character <= 'z')
+            return 1;
+        else
+            return 0;
+    else if (character >= 'A')
+        if (character <= 'Z')
+            return 1;
+        else
+            return 0;
     else
         return 0;
 }
@@ -1292,19 +1324,24 @@ int isCharacterDigit() {
         return 0;
 }
 
-int isCharacterLetter() {
-    if (character >= 'a')
-        if (character <= 'z')
-            return 1;
-        else
-            return 0;
-    else if (character >= 'A')
-        if (character <= 'Z')
-            return 1;
-        else
-            return 0;
+int isCharacterLetterOrDigitOrUnderscore() {
+    if (isCharacterLetter())
+        return 1;
+    else if (isCharacterDigit())
+        return 1;
+    else if (character == '_')
+        return 1;
     else
         return 0;
+}
+
+int isNotDoubleQuoteOrEOF() {
+    if (character == '"')
+        return 0;
+    else if (character == CHAR_EOF)
+        return 0;
+    else
+        return 1;
 }
 
 int identifierStringMatch(int stringIndex) {
@@ -1333,7 +1370,7 @@ int getSymbol() {
 
     symbol = SYM_EOF;
 
-    if (findNextCharacter() == SYM_EOF)
+    if (findNextCharacter() == CHAR_EOF)
         return SYM_EOF;
     else if (symbol == SYM_DIV)
         // check here because / was recognized instead of //
@@ -1397,6 +1434,54 @@ int getSymbol() {
 
         symbol = SYM_INTEGER;
 
+    } else if (character == '"') {
+        character = getchar();
+
+        string = malloc(maxStringLength + 1);
+
+        i = 0;
+
+        while (isNotDoubleQuoteOrEOF()) {
+            if (i >= maxStringLength) {
+                syntaxError(ERR_MAXSTRINGLENGTH); // string too long
+                exit(-1);
+            }
+
+            putCharacter(string, i, character);
+
+            i = i + 1;
+            
+            character = getchar();
+        }
+
+        if (character == '"')
+            character = getchar();
+        else
+            syntaxError(ERR_MISSINGDOUBLEQUOTE);
+
+        putCharacter(string, i, 0);
+
+        symbol = SYM_STRING;
+
+    } else if (character == 39) { // '
+        character = getchar();
+
+        ivalue = 0;
+
+        if (character == CHAR_EOF)
+            syntaxError(ERR_MISSINGSINGLEQUOTE);
+        else
+            ivalue = character; // any ascii character
+
+        character = getchar();
+
+        if (character == 39) // '
+            character = getchar();
+        else
+            syntaxError(ERR_MISSINGSINGLEQUOTE);
+
+        symbol = SYM_CHARACTER;
+
     } else if (character == ';') {
         character = getchar();
         symbol = SYM_SEMICOLON;
@@ -1459,25 +1544,17 @@ int getSymbol() {
 
     } else if (character == '!') {
         character = getchar();
-        if (character == '=') {
+        if (character == '=')
             character = getchar();
-            symbol = SYM_NOTEQ;
-        } else
-            syntaxError(ERR_UNKNOWN);
+        else
+            syntaxError(ERR_MISSINGEQUALSIGN);
+
+        symbol = SYM_NOTEQ;
 
     } else if (character == '%') {
         character = getchar();
         symbol = SYM_MOD;
 
-    } else if (character == 39) {     // '
-        character = getchar();
-        ivalue    = character;        // any ascii character
-        character = getchar();
-        if (character == 39) {        // '
-            character = getchar();
-            symbol    = SYM_CHARACTER;
-        } else
-            syntaxError(ERR_UNKNOWN);
     } else {
         syntaxError(ERR_UNKNOWN);
         exit(-1); // unknown character
