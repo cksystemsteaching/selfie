@@ -739,6 +739,7 @@ void allocateMachineMemory(int size);
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 int *memory; // machine memory
+int memory_size;
 
 // -----------------------------------------------------------------
 // ---------------------------- BINARY -----------------------------
@@ -837,6 +838,7 @@ void op_teq();
 // -----------------------------------------------------------------
 
 void initInterpreter();
+void initMemory();
 
 void exception_handler(int enumber);
 
@@ -967,6 +969,12 @@ void initInterpreter() {
 
     reg_hi = 0;
     reg_lo = 0;
+}
+
+void initMemory() {
+    //assert memory_size already set in e.g. parseArgs
+    
+    allocateMachineMemory(memory_size);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -4083,23 +4091,16 @@ void run() {
 void debug_boot(int memorySize) {
     printString('m','e','m',' ',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    print(itoa(memorySize/1024/1024*4, string_buffer, 10, 0));
+    print(itoa(memorySize/1024/1024, string_buffer, 10, 0));
 
     printString('M','B',CHAR_LF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 }
 
 int* parse_args(int argc, int *argv) {
     // assert: ./selfie -m size executable {-m size executable}
-    int memorySize;
-
-    memorySize = atoi((int*) *(argv+2)) * 1024 * 1024 / 4;
-
-    allocateMachineMemory(memorySize*4);
-
-    // initialize stack pointer
-    *(registers+REG_SP) = (memorySize - 1) * 4;
-
-    debug_boot(memorySize);
+    // TODO: support general parameter list
+    memory_size = atoi((int*) *(argv+2)) * 1024 * 1024;
+    debug_boot(memory_size);
 
     // return executable file name
     return (int*) *(argv+3);
@@ -4169,11 +4170,16 @@ void up_copyArguments(int argc, int *argv) {
 }
 
 int main_emulator(int argc, int *argv) {
+    int *file_name;
+    
     initInterpreter();
+    file_name = parse_args(argc, argv);
+    initMemory();
 
-    *(registers+REG_GP) = loadBinary(parse_args(argc, argv));
-
+    *(registers+REG_GP) = loadBinary(file_name);
     *(registers+REG_K1) = *(registers+REG_GP);
+    // initialize stack pointer
+    *(registers+REG_SP) = memory_size - 4;
 
     up_copyArguments(argc-3, argv+3);
 
