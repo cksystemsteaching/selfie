@@ -3928,8 +3928,7 @@ void fct_slt() {
 void op_sw() {
     int vaddr;
     int paddr;
-    int tmp;
-
+    
     vaddr = *(registers+rs) + signExtend(immediate);
 
     paddr = addressTranslation(vaddr) / 4;
