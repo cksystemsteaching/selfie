@@ -29,6 +29,7 @@ factor           = [ cast ]
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
                       integer |
+                      """ { ascii_character } """ |
                       "'" ascii_character "'" ) .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .

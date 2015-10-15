@@ -458,18 +458,18 @@ void initScanner () {
 
 void initSymbolTable();
 
-void createSymbolTableEntry(int which_symbol_table, int *ident, int data, int class, int type);
-int* getSymbolTableEntry(int *ident, int *symbol_table);
+void createSymbolTableEntry(int which, int *string, int data, int class, int type);
+int* getSymbolTableEntry(int *string, int class, int *symbol_table);
 
 int* getNext(int *entry);
-int* getIdentifier(int *entry);
+int* getString(int *entry);
 int  getData(int *entry);
 int  getClass(int *entry);
 int  getType(int *entry);
 int  getRegister(int *entry);
 
 void setNext(int *entry, int *next);
-void setIdentifier(int *entry, int *identifier);
+void setString(int *entry, int *identifier);
 void setData(int *entry, int data);
 void setClass(int *entry, int class);
 void setType(int *entry, int type);
@@ -482,6 +482,7 @@ int UNKNOWN;  // 0
 int CONSTANT; // 1
 int VARIABLE; // 2
 int FUNCTION; // 3
+int STRING;   // 4
 
 // types
 int INT_T;     // 1
@@ -506,6 +507,7 @@ void initSymbolTable() {
     CONSTANT = 1;
     VARIABLE = 2;
     FUNCTION = 3;
+    STRING   = 4;
 
     // types
     INT_T     = 1;
@@ -516,7 +518,7 @@ void initSymbolTable() {
     GLOBAL_TABLE = 1;
     LOCAL_TABLE  = 2;
 
-    // table pointer
+    // table pointers
     global_symbol_table = 0;
     local_symbol_table  = 0;
 }
@@ -567,10 +569,9 @@ int maxCodeLength;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int allocatedRegisters;       // number of allocated registers
-int allocatedGlobalVariables; // number of global variables
+int allocatedRegisters; // number of allocated registers
+int allocatedMemory;    // number of words for global variables and strings
 
-int  codeLength;
 int  returnBranches;
 int *currentFuncName; // holds the name of currently parsed function
 
@@ -581,11 +582,10 @@ initParser() {
     // set maximum code length for emitting code
     maxCodeLength = 32000;
 
-    allocatedRegisters       = 0;
-    allocatedGlobalVariables = 0;
+    allocatedRegisters = 0;
+    allocatedMemory    = 0;
 
-    codeLength = 0;
-    returnBranches = 0;
+    returnBranches  = 0;
     currentFuncName = 0;
 }
 
@@ -738,7 +738,8 @@ void allocateMachineMemory(int size);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int *memory; // machine memory
+int *memory;       // machine memory
+int  binaryLength;
 
 // -----------------------------------------------------------------
 // ---------------------------- BINARY -----------------------------
@@ -752,6 +753,8 @@ void emitJFormat(int opcode, int instr_index);
 void fixup_relative(int fromAddress);
 void fixup_absolute(int fromAddress, int toAddress);
 void fixlink_absolute(int fromAddress, int toAddress);
+
+int copyStringToMemory(int *s, int a);
 
 void emitBinary();
 int  loadBinary(int *filename);
@@ -853,7 +856,6 @@ void debug_boot(int memorySize);
 int* parse_args(int argc, int *argv);
 void up_push(int value);
 int  up_malloc(int size);
-int  up_copyString(int *s);
 void up_copyArguments(int argc, int *argv);
 
 int main_emulator(int argc, int *argv);
@@ -1007,6 +1009,7 @@ int rightShift(int n, int b) {
 }
 
 int getCharacter(int *s, int i) {
+    // assert: i >= 0
     int a;
 
     a = i / 4;
@@ -1015,7 +1018,7 @@ int getCharacter(int *s, int i) {
 }
 
 int* putCharacter(int *s, int i, int c) {
-    // assert: all characters are 7-bit
+    // assert: i >= 0, all characters are 7-bit
     int a;
 
     a = i / 4;
@@ -1605,31 +1608,28 @@ void syntaxError(int errCode) {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(int which_symbol_table, int *ident, int data, int class, int type) {
+void createSymbolTableEntry(int which, int *string, int data, int class, int type) {
     int *newEntry;
 
-    // symbolTable:
-    // +----+------------+
-    // |  0 | ptr to next|
-    // |  1 | identifier |
-    // |  2 | data       |  VARIABLE: offset/FUNCTION: code address
-    // |  3 | class      |
-    // |  4 | type       |
-    // |  5 | register   |
-    // +----+------------+
+    // symbol table entry:
+    // +----+----------+
+    // |  0 | next     | pointer to next entry
+    // |  1 | string   | identifier string, string constant
+    // |  2 | data     | VARIABLE: offset, FUNCTION: address, STRING: offset
+    // |  3 | class    | VARIABLE, FUNCTION, STRING
+    // |  4 | type     | INT_T, INTSTAR_T
+    // |  5 | register | REG_GP, REG_FP
+    // +----+----------+
 
     newEntry = malloc(6 * 4);
 
-    // store pointer to identifier
-    // cast only works if size of int and int* is equivalent
-    setIdentifier(newEntry, ident);
+    setString(newEntry, string);
     setData(newEntry, data);
     setClass(newEntry, class);
     setType(newEntry, type);
 
     // create entry at head of symbol table
-    // cast only works if size of int and int* is equivalent
-    if (which_symbol_table == GLOBAL_TABLE) {
+    if (which == GLOBAL_TABLE) {
         setRegister(newEntry, REG_GP);
         setNext(newEntry, global_symbol_table);
         global_symbol_table = newEntry;
@@ -1640,24 +1640,26 @@ void createSymbolTableEntry(int which_symbol_table, int *ident, int data, int cl
     }
 }
 
-int* getSymbolTableEntry(int *ident, int *symbol_table) {
+int* getSymbolTableEntry(int *string, int class, int *symbol_table) {
     while ((int) symbol_table != 0) {
-        if (stringCompare(ident, getIdentifier(symbol_table)))
-            return symbol_table;
-        else
-            // keep looking
-            // cast only works if size of int and int* is equivalent
-            symbol_table = getNext(symbol_table);
+        if (stringCompare(string, getString(symbol_table)))
+            if (class == getClass(symbol_table))
+                return symbol_table;
+        
+        // keep looking
+        symbol_table = getNext(symbol_table);
     }
 
     return 0;
 }
 
 int* getNext(int *entry) {
+    // cast only works if size of int and int* is equivalent
     return (int*) *entry;
 }
 
-int* getIdentifier(int *entry) {
+int* getString(int *entry) {
+    // cast only works if size of int and int* is equivalent
     return (int*) *(entry + 1);
 }
 
@@ -1678,10 +1680,12 @@ int getRegister(int *entry) {
 }
 
 void setNext(int *entry, int *next) {
+    // cast only works if size of int and int* is equivalent
     *entry = (int) next;
 }
 
-void setIdentifier(int *entry, int *identifier) {
+void setString(int *entry, int *identifier) {
+    // cast only works if size of int and int* is equivalent
     *(entry + 1) = (int) identifier;
 }
 
@@ -1733,6 +1737,8 @@ int isExpression() {
     else if (symbol == SYM_INTEGER)
         return 1;
     else if (symbol == SYM_ASTERISK)
+        return 1;
+    else if (symbol == SYM_STRING)
         return 1;
     else if (symbol == SYM_CHARACTER)
         return 1;
@@ -1795,6 +1801,8 @@ int waitForFactor() {
         return 0;
     else if (symbol == SYM_INTEGER)
         return 0;
+    else if (symbol == SYM_STRING)
+        return 0;
     else if (symbol == SYM_CHARACTER)
         return 0;
     else if (symbol == SYM_EOF)
@@ -1825,10 +1833,10 @@ void restore_registers(int numberOfRegisters) {
 int* getVariable(int *variable) {
     int *entry;
 
-    entry = getSymbolTableEntry(variable, local_symbol_table);
+    entry = getSymbolTableEntry(variable, VARIABLE, local_symbol_table);
 
     if ((int) entry == 0) {
-        entry = getSymbolTableEntry(variable, global_symbol_table);
+        entry = getSymbolTableEntry(variable, VARIABLE, global_symbol_table);
 
         if ((int) entry == 0)
             syntaxError(ERR_UNDECLARED_VARIABLE);
@@ -1895,6 +1903,25 @@ void load_integer() {
     getSymbol();
 }
 
+void load_string() {
+    int l;
+
+    l = stringLength(string) + 1;
+
+    allocatedMemory = allocatedMemory + l / 4;
+
+    if (l % 4 != 0)
+        allocatedMemory = allocatedMemory + 1;
+
+    createSymbolTableEntry(GLOBAL_TABLE, string, allocatedMemory, STRING, INTSTAR_T);
+
+    allocatedRegisters = allocatedRegisters + 1;
+
+    emitIFormat(OP_ADDIU, REG_GP, allocatedRegisters, allocatedMemory);
+
+    getSymbol();
+}
+
 int help_call_codegen(int *entry, int *procedure) {
     int type;
 
@@ -1902,7 +1929,7 @@ int help_call_codegen(int *entry, int *procedure) {
 
     if ((int) entry == 0) {
         // CASE 1: function call, no definition, no declaration.
-        createSymbolTableEntry(GLOBAL_TABLE, procedure, codeLength, FUNCTION, INT_T);
+        createSymbolTableEntry(GLOBAL_TABLE, procedure, binaryLength, FUNCTION, INT_T);
         emitJFormat(OP_JAL, 0);
         type = INT_T; //assume default return type 'int'
 
@@ -1911,12 +1938,12 @@ int help_call_codegen(int *entry, int *procedure) {
 
         if (getData(entry) == 0) {
             // CASE 2: function call, no definition, but declared.
-            setData(entry, codeLength);
+            setData(entry, binaryLength);
             emitJFormat(OP_JAL, 0);
         } else if (getOpcode(*(memory + getData(entry))) == OP_JAL) {
             // CASE 3: function call, no declaration
             emitJFormat(OP_JAL, getData(entry));
-            setData(entry, codeLength - 2);
+            setData(entry, binaryLength - 2);
         } else
             // CASE 4: function defined, use the address
             emitJFormat(OP_JAL, getData(entry));
@@ -1926,34 +1953,41 @@ int help_call_codegen(int *entry, int *procedure) {
 }
 
 void help_procedure_prologue(int localVariables) {
-    // save return address
+    // allocate space for return address
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -4);
+
+    // save return address
     emitIFormat(OP_SW, REG_SP, REG_LINK, 0);
 
-    // save caller's frame
+    // allocate space for caller's frame pointer
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -4);
+
+    // save caller's frame pointer
     emitIFormat(OP_SW, REG_SP, REG_FP, 0);
 
-    // allocate callee's frame
+    // set callee's frame pointer
     emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
 
-    // allocate callee's local variables
-    if (localVariables != 0) {
-        emitIFormat(OP_ADDIU, REG_SP, REG_SP, localVariables * (-4));
-    }
+    // allocate space for callee's local variables
+    if (localVariables != 0)
+        emitIFormat(OP_ADDIU, REG_SP, REG_SP, -4 * localVariables);
 }
 
 void help_procedure_epilogue(int parameters, int functionStart, int functionType) {
-    // deallocate callee's frame and local variables
+    // deallocate space for callee's frame pointer and local variables
     emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
 
-    // restore caller's frame
+    // restore caller's frame pointer
     emitIFormat(OP_LW, REG_SP, REG_FP, 0);
+
+    // deallocate space for caller's frame pointer
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, 4);
 
-    // restore return address and deallocate parameters
+    // restore return address
     emitIFormat(OP_LW, REG_SP, REG_LINK, 0);
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, ((parameters+1)*4));
+
+    // deallocate space for return address and parameters
+    emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * 4);
 
     // return
     emitRFormat(OP_SPECIAL, REG_LINK, 0, 0, FCT_JR);
@@ -1966,7 +2000,7 @@ int gr_call(int *procedure) {
 
     // assert: n = allocatedRegisters
 
-    entry = getSymbolTableEntry(procedure, global_symbol_table);
+    entry = getSymbolTableEntry(procedure, FUNCTION, global_symbol_table);
 
     numberOfRegisters = allocatedRegisters;
 
@@ -2094,12 +2128,10 @@ int gr_factor() {
         // dereference
         emitIFormat(OP_LW, allocatedRegisters, allocatedRegisters, 0);
 
-        if (cast == 0) {
-            if (type != INTSTAR_T)
-                syntaxWarn(ERR_ILLEGAL_DEREF);
+        if (type != INTSTAR_T)
+            syntaxWarn(ERR_ILLEGAL_DEREF);
 
-            type = INT_T;
-        }
+        type = INT_T;
 
     // identifier?
     } else if (symbol == SYM_IDENTIFIER) {
@@ -2125,7 +2157,14 @@ int gr_factor() {
     // integer?
     } else if (symbol == SYM_INTEGER) {
         load_integer();
+
         type = INT_T;
+
+    // string?
+    } else if (symbol == SYM_STRING) {
+        load_string();
+
+        type = INTSTAR_T;
 
     // character?
     } else if (symbol == SYM_CHARACTER) {
@@ -2136,12 +2175,15 @@ int gr_factor() {
         emitIFormat(OP_ADDIU, REG_ZR, allocatedRegisters, ivalue);
 
         getSymbol();
+
         type = INT_T;
 
     //  "(" expression ")"
     } else if (symbol == SYM_LPARENTHESIS) {
         mayBeINTMINConstant = 0;
+        
         getSymbol();
+
         type = gr_expression();
 
         if (symbol == SYM_RPARENTHESIS)
@@ -2415,7 +2457,7 @@ void gr_while() {
 
     // assert: allocatedRegisters == 0
 
-    brBackToWhile = codeLength;
+    brBackToWhile = binaryLength;
 
     // while ( expression )
     if (symbol == SYM_WHILE) {
@@ -2425,7 +2467,7 @@ void gr_while() {
             gr_expression();
 
             //don't know where to branch, fixup later
-            brForwardToEnd = codeLength;
+            brForwardToEnd = binaryLength;
             emitIFormat(OP_BEQ, REG_ZR, allocatedRegisters, 0);
             allocatedRegisters = allocatedRegisters - 1;
 
@@ -2453,7 +2495,7 @@ void gr_while() {
         syntaxError(SYM_WHILE);
 
     // unconditional branch to beginning of while
-    emitIFormat(OP_BEQ, 0, 0, brBackToWhile - codeLength - 1);
+    emitIFormat(OP_BEQ, 0, 0, brBackToWhile - binaryLength - 1);
 
     // first instr after loop comes here, now we have
     // our address for the conditional jump from above
@@ -2476,7 +2518,7 @@ void gr_if() {
             gr_expression();
 
             // if the "if" case is not true, we jump to "else" (if provided)
-            brForwardToElseOrEnd = codeLength;
+            brForwardToElseOrEnd = binaryLength;
             emitIFormat(OP_BEQ, REG_ZR, allocatedRegisters, 0);
             allocatedRegisters = allocatedRegisters - 1;
 
@@ -2503,7 +2545,7 @@ void gr_if() {
                     getSymbol();
 
                     // if the "if" case was true, we jump to the end
-                    brForwardToEnd = codeLength;
+                    brForwardToEnd = binaryLength;
                     emitIFormat(OP_BEQ, 0, 0, 0);
 
                     // if the "if" case was not true, we jump here
@@ -2565,7 +2607,7 @@ void gr_return(int returnType) {
     emitJFormat(OP_J, returnBranches);
 
     // new head of fixup chain
-    returnBranches = codeLength-2;
+    returnBranches = binaryLength - 2;
 
     // assert: allocatedRegisters == 0
 }
@@ -2702,7 +2744,7 @@ void gr_statement() {
     }
     // return statement?
     else if (symbol == SYM_RETURN) {
-        entry = getSymbolTableEntry(currentFuncName, global_symbol_table);
+        entry = getSymbolTableEntry(currentFuncName, FUNCTION, global_symbol_table);
 
         gr_return(getType(entry));
 
@@ -2741,8 +2783,8 @@ int gr_variable() {
 }
 
 void gr_procedure(int *procedure, int returnType) {
+    int numberOfParameters;
     int parameters;
-    int oparam;
     int offset;
     int localVariables;
     int type;
@@ -2751,13 +2793,11 @@ void gr_procedure(int *procedure, int returnType) {
 
     currentFuncName = procedure;
 
-    oparam = 0;
+    numberOfParameters = 0;
 
     // ( variable , variable ) ;
     if (symbol == SYM_LPARENTHESIS) {
         getSymbol();
-
-        parameters = 0;
 
         if (symbol != SYM_RPARENTHESIS) {
             type = gr_variable();
@@ -2766,7 +2806,7 @@ void gr_procedure(int *procedure, int returnType) {
 
             getSymbol();
 
-            parameters = 1;
+            numberOfParameters = 1;
 
             while (symbol == SYM_COMMA) {
                 getSymbol();
@@ -2777,14 +2817,18 @@ void gr_procedure(int *procedure, int returnType) {
 
                 getSymbol();
 
-                parameters = parameters + 1;
+                numberOfParameters = numberOfParameters + 1;
             }
 
-            oparam = parameters;
+            parameters = numberOfParameters;
+
             entry = local_symbol_table;
-            offset = 8;                  // skip fp and link
+
+            offset = 8; // skip frame pointer and link
+
             while (parameters > 0) {
                 setData(entry, offset);
+
                 parameters = parameters - 1;
                 offset     = offset + 4;
                 entry      = getNext(entry);
@@ -2800,7 +2844,7 @@ void gr_procedure(int *procedure, int returnType) {
         syntaxError(SYM_LPARENTHESIS);
 
     if (symbol == SYM_SEMICOLON) {
-        entry = getSymbolTableEntry(currentFuncName, global_symbol_table);
+        entry = getSymbolTableEntry(currentFuncName, FUNCTION, global_symbol_table);
 
         if ((int) entry == 0)
             createSymbolTableEntry(GLOBAL_TABLE, currentFuncName, 0, FUNCTION, returnType);
@@ -2809,14 +2853,14 @@ void gr_procedure(int *procedure, int returnType) {
 
     // ( variable, variable ) { variable; variable; statement }
     } else if (symbol == SYM_LBRACE) {
-        functionStart = codeLength;
+        functionStart = binaryLength;
+        
         getSymbol();
-        localVariables = 0;
 
-        entry = getSymbolTableEntry(currentFuncName, global_symbol_table);
+        entry = getSymbolTableEntry(currentFuncName, FUNCTION, global_symbol_table);
 
         if ((int) entry == 0) {
-            createSymbolTableEntry(GLOBAL_TABLE, currentFuncName, codeLength, FUNCTION, returnType);
+            createSymbolTableEntry(GLOBAL_TABLE, currentFuncName, binaryLength, FUNCTION, returnType);
         } else {
             if (getData(entry) != 0)
                 if (getOpcode(*(memory + getData(entry))) == OP_JAL)
@@ -2828,6 +2872,8 @@ void gr_procedure(int *procedure, int returnType) {
             // TODO: check type of declaration and definition
             setType(entry, returnType);
         }
+
+        localVariables = 0;
 
         while (symbol == SYM_INT) {
             type = gr_variable();
@@ -2857,11 +2903,11 @@ void gr_procedure(int *procedure, int returnType) {
         else
             syntaxWarn(SYM_RBRACE);
 
-        fixlink_absolute(returnBranches, codeLength);
+        fixlink_absolute(returnBranches, binaryLength);
 
         returnBranches = 0;
 
-        help_procedure_epilogue(oparam, functionStart, returnType);
+        help_procedure_epilogue(numberOfParameters, functionStart, returnType);
 
     } else
         syntaxError(ERR_LBRACE_OR_SEMICOLON);
@@ -2872,7 +2918,6 @@ void gr_procedure(int *procedure, int returnType) {
 }
 
 void gr_cstar() {
-    int offset;
     int type;
     int *variableOrProcedureName;
 
@@ -2895,17 +2940,15 @@ void gr_cstar() {
 
                 getSymbol();
 
-                // type identifier, this means it is a global variable
+                // type identifier; this means it is a global variable
                 if (symbol == SYM_SEMICOLON) {
                     getSymbol();
 
-                    offset = allocatedGlobalVariables * (-4);
+                    allocatedMemory = allocatedMemory + 1;
 
-                    createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, offset, VARIABLE, type);
-
-                    allocatedGlobalVariables = allocatedGlobalVariables + 1;
+                    createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, -4 * allocatedMemory, VARIABLE, type);
                 }
-                // type identifier procedure
+                // type identifier( this means it is a procedure
                 else
                     gr_procedure(variableOrProcedureName, type);
             } else
@@ -2956,7 +2999,7 @@ void emitMainEntry() {
     // "main": entry point
     label = (int*) createString('m','a','i','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
 
     emitJFormat(OP_JAL, 0);
 }
@@ -3158,6 +3201,8 @@ void decodeJFormat() {
 
 void allocateMachineMemory(int size) {
     memory = malloc(size);
+
+    binaryLength = 0;
 }
 
 // -----------------------------------------------------------------
@@ -3165,12 +3210,13 @@ void allocateMachineMemory(int size) {
 // -----------------------------------------------------------------
 
 void emitInstruction(int instruction) {
-    if (codeLength >= maxCodeLength) {
+    if (binaryLength >= maxCodeLength) {
         syntaxError(ERR_MAXCODELENGTH);
         exit(-1);
     } else {
-        *(memory + codeLength) = instruction;
-        codeLength = codeLength + 1;
+        *(memory + binaryLength) = instruction;
+        
+        binaryLength = binaryLength + 1;
     }
 }
 
@@ -3212,7 +3258,7 @@ void fixup_relative(int fromAddress) {
         getOpcode(*(memory + fromAddress)),
         getRS(*(memory + fromAddress)),
         getRT(*(memory + fromAddress)),
-        codeLength - fromAddress - 1);
+        binaryLength - fromAddress - 1);
 }
 
 void fixup_absolute(int fromAddress, int toAddress) {
@@ -3230,23 +3276,48 @@ void fixlink_absolute(int fromAddress, int toAddress) {
     }
 }
 
+int copyStringToMemory(int *s, int a) {
+    int l;
+    int w;
+
+    l = stringLength(s) + 1;
+
+    w = a + l / 4;
+
+    if (l % 4 != 0)
+        w = w + 1;
+
+    while (a < w) {
+        *(memory + a) = *s;
+
+        s = s + 1;
+        a = a + 1;
+    }
+
+    return w;
+}
+
 void emitBinary() {
-    int i;
+    int *entry;
     int *filename;
     int fd;
 
-    i = 0;
+    entry = global_symbol_table;
 
-    // put global variables as 0 at end of codearray
-    while (i < allocatedGlobalVariables) {
-        *(memory + codeLength) = 0;
+    // allocate space for global variables and copy strings
+    while ((int) entry != 0) {
+        if (getClass(entry) == VARIABLE) {
+            *(memory + binaryLength) = 0;
 
-        codeLength = codeLength + 1;
+            binaryLength = binaryLength + 1;
+        } else if (getClass(entry) == STRING)
+            binaryLength = copyStringToMemory(getString(entry), binaryLength);
 
-        i = i + 1;
+        entry = getNext(entry);
     }
 
-    filename = malloc(4*4);
+    filename = malloc(4);
+
     *filename = 7632239; //filename: out
 
     // assumption: file with name "out" exists prior to execution of compiler
@@ -3261,43 +3332,40 @@ void emitBinary() {
     // The syscall uses the 'write' system call of the underlying operating
     // system and the compiler (gcc/x86).  The write system call of our Linux uses
     // Little Endian byte ordering.
-    write(fd, memory, codeLength*4);
+    write(fd, memory, binaryLength * 4);
 }
 
 int loadBinary(int *filename) {
     int fd;
-    int i;
-    int ret;
+    int numberOfReadBytes;
 
     fd = open(filename, 0);
 
     if (fd < 0)
         exit(-1);
 
-    i = 0;
+    numberOfReadBytes = 4;
 
-    ret = 4;
-
-    while (ret == 4) {
-        ret = read(fd, memory + i, 4);
+    while (numberOfReadBytes == 4) {
+        numberOfReadBytes = read(fd, memory + binaryLength, 4);
 
         if (debug_load) {
             // 9 = 32 characters / 4 bytes + 1 word for terminal zero
             memset(string_buffer, 9, 0);
-            print(itoa(i * 4, string_buffer, 16, 4));
+            print(itoa(binaryLength * 4, string_buffer, 16, 4));
             putchar(' ');
             putchar('#');
             putchar(' ');
             memset(string_buffer, 9, 0);
-            print(itoa(*(memory+i), string_buffer, 16, 8));
+            print(itoa(*(memory+binaryLength), string_buffer, 16, 8));
             putchar(CHAR_LF);
         }
 
-        i = i + 1;
+        binaryLength = binaryLength + 1;
     }
 
     // Return global pointer and bump pointer for malloc
-    return i * 4;
+    return binaryLength * 4;
 }
 
 // -----------------------------------------------------------------
@@ -3310,7 +3378,7 @@ void emitExit() {
     // "exit"
     label = createString('e','x','i','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3345,7 +3413,7 @@ void emitRead() {
     // "read"
     label = createString('r','e','a','d',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
 
@@ -3402,7 +3470,7 @@ void emitWrite() {
     // "write"
     label = createString('w','r','i','t','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
 
@@ -3449,7 +3517,7 @@ void emitOpen() {
     // "open"
     label = createString('o','p','e','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3497,7 +3565,7 @@ void emitMalloc() {
     // "malloc"
     label = createString('m','a','l','l','o','c',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INTSTAR_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INTSTAR_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3547,7 +3615,7 @@ void emitGetchar() {
     // "getchar"
     label = createString('g','e','t','c','h','a','r',0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3575,7 +3643,7 @@ void emitPutchar() {
     // "putchar"
     label = createString('p','u','t','c','h','a','r',0,0,0,0,0,0,0,0,0,0,0,0,0);
 
-    createSymbolTableEntry(GLOBAL_TABLE, label, codeLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
 
@@ -4126,44 +4194,25 @@ int up_malloc(int size) {
     return *(registers+REG_V0);
 }
 
-int up_copyString(int *s) {
-    int l;
-    int r;
-    int a;
-
-    l = stringLength(s);
-
-    r = up_malloc(l+1);
-
-    a = r / 4;
-
-    while (a * 4 < r + l + 1) {
-        *(memory + a) = *s;
-
-        s = s + 1;
-        a = a + 1;
-    }
-
-    return r;
-}
-
 void up_copyArguments(int argc, int *argv) {
-    int c_argv;
-    
+    int address;
+
     up_push(argc);
 
-    c_argv = up_malloc(argc*4);
+    address = up_malloc(argc * 4);
 
-    up_push(c_argv);
+    up_push(address);
 
-    c_argv = c_argv / 4;
+    address = address / 4;
 
     while (argc > 0) {
-        *(memory + c_argv) = up_copyString((int*) *argv);
+        *(memory + address) = up_malloc(stringLength((int*) *argv) + 1);
 
-        c_argv = c_argv + 1;
+        copyStringToMemory((int*) *argv, *(memory + address));
+
+        address = address + 1;
+
         argv = argv + 1;
-
         argc = argc - 1;
     }
 }
