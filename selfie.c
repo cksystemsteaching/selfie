@@ -86,15 +86,13 @@ int  atoi(int *s);
 int* itoa(int n, int *s, int b, int a);
 void print(int *s);
 void println();
+void printCharacter(int character);
+void printString(int *s);
 void assignString(int *s, int c0, int c1, int c2, int c3, int c4,
     int c5, int c6, int c7, int c8, int c9,
     int c10, int c11, int c12, int c13, int c14,
     int c15, int c16, int c17, int c18, int c19);
 int* createString(int c0, int c1, int c2, int c3, int c4,
-    int c5, int c6, int c7, int c8, int c9,
-    int c10, int c11, int c12, int c13, int c14,
-    int c15, int c16, int c17, int c18, int c19);
-void printString(int c0, int c1, int c2, int c3, int c4,
     int c5, int c6, int c7, int c8, int c9,
     int c10, int c11, int c12, int c13, int c14,
     int c15, int c16, int c17, int c18, int c19);
@@ -160,7 +158,7 @@ void initLibrary() {
 
     CHAR_EOF          = -1; // end of file
     CHAR_TAB          = 9;  // ASCII code 9  = tabulator
-    CHAR_LF           = 10; // ASCII code 10 = linefeed
+    CHAR_LF           = 10; // ASCII code 10 = line feed
     CHAR_CR           = 13; // ASCII code 13 = carriage return
     CHAR_SPACE        = ' ';
     CHAR_SEMICOLON    = ';';
@@ -183,6 +181,7 @@ void initLibrary() {
     CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
     CHAR_DOUBLEQUOTE  = '"';
 
+    // accommodate 32-bit numbers for itoa
     string_buffer = malloc(33);
 }
 
@@ -198,8 +197,7 @@ void initLibrary() {
 
 void initScanner();
 
-int* putSymbol(int symbol);
-
+void printSymbol(int symbol);
 void printLineNumber(int* message);
 
 void syntaxErrorMessage(int *message);
@@ -475,7 +473,8 @@ int maxBinaryLength;
 int allocatedRegisters; // number of allocated registers
 int allocatedMemory;    // number of words for global variables and strings
 
-int  returnBranches;
+int mainJumpAddress;
+int returnBranches;
 
 int *currentProcedureName; // holds the name of currently parsed procedure
 
@@ -489,6 +488,7 @@ initParser() {
     allocatedRegisters = 0;
     allocatedMemory    = 0;
 
+    mainJumpAddress = 0;
     returnBranches  = 0;
 
     currentProcedureName = (int*) 0;
@@ -639,12 +639,25 @@ void initDecoder() {
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-void allocateMachineMemory(int size);
+void initMemory(int size, int* name);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int *memory;       // machine memory
+int *memory;
+int  memorySize;
+
+int *binaryName;
 int  binaryLength;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void initMemory(int size, int *name) {
+    memory     = malloc(size);
+    memorySize = size;
+
+    binaryName   = name;
+    binaryLength = 0;
+}
 
 // -----------------------------------------------------------------
 // ---------------------------- BINARY -----------------------------
@@ -662,7 +675,7 @@ void fixlink_absolute(int fromAddress, int toAddress);
 int copyStringToMemory(int *s, int a);
 
 void emitBinary();
-int  loadBinary(int *filename);
+void loadBinary();
 
 // -----------------------------------------------------------------
 // --------------------------- SYSCALLS ----------------------------
@@ -757,8 +770,8 @@ void fetch();
 void execute();
 void run();
 
-void debug_boot(int memorySize);
-int* parse_args(int argc, int *argv);
+void parse_args(int argc, int *argv);
+
 void up_push(int value);
 int  up_malloc(int size);
 void up_copyArguments(int argc, int *argv);
@@ -771,9 +784,15 @@ int *register_strings; // static strings for register names
 int *op_strings;       // static strings for debug_disassemble
 int *fct_strings;
 
-int debug_registers;
-int debug_syscalls;
 int debug_load;
+
+int debug_read;
+int debug_write;
+int debug_open;
+int debug_malloc;
+int debug_getchar;
+
+int debug_registers;
 int debug_disassemble;
 
 int EXCEPTION_SIGNAL;
@@ -855,9 +874,15 @@ void initInterpreter() {
     *(op_strings + 35) = (int) createString('l','w',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
     *(op_strings + 43) = (int) createString('s','w',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
 
+    debug_load = 0;
+    
+    debug_read    = 0;
+    debug_write   = 0;
+    debug_open    = 0;
+    debug_malloc  = 0;
+    debug_getchar = 0;
+
     debug_registers   = 0;
-    debug_syscalls    = 0;
-    debug_load        = 0;
     debug_disassemble = 0;
 
     EXCEPTION_SIGNAL             = 1;
@@ -1058,6 +1083,13 @@ int* itoa(int n, int *s, int b, int a) {
 
             i = i + 1;
         }
+
+        if (b == 16) {
+            putCharacter(s, i, 'x');
+            putCharacter(s, i + 1, '0');
+
+            i = i + 2;
+        }
     } else if (sign) {
         putCharacter(s, i, '-');
 
@@ -1085,6 +1117,31 @@ void print(int *s) {
 
 void println() {
     putchar(CHAR_LF);
+}
+
+void printCharacter(int character) {
+    putchar(CHAR_SINGLEQUOTE);
+
+    if (character == CHAR_EOF)
+        print((int*) "end of file");
+    else if (character == CHAR_TAB)
+        print((int*) "tabulator");
+    else if (character == CHAR_LF)
+        print((int*) "line feed");
+    else if (character == CHAR_CR)
+        print((int*) "carriage return");
+    else
+        putchar(character);
+
+    putchar(CHAR_SINGLEQUOTE);
+}
+
+void printString(int *s) {
+    putchar(CHAR_DOUBLEQUOTE);
+
+    print(s);
+    
+    putchar(CHAR_DOUBLEQUOTE);
 }
 
 void assignString(int *s, int c0, int c1, int c2, int c3, int c4,
@@ -1128,17 +1185,6 @@ int* createString(int c0, int c1, int c2, int c3, int c4,
     return s;
 }
 
-void printString(int c0, int c1, int c2, int c3, int c4,
-        int c5, int c6, int c7, int c8, int c9,
-        int c10, int c11, int c12, int c13, int c14,
-        int c15, int c16, int c17, int c18, int c19) {
-
-    assignString(string_buffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9,
-                 c10, c11, c12, c13, c14, c15, c16, c17, c18, c19);
-
-    print(string_buffer);
-}
-
 void memset(int *a, int size, int v) {
     while (size > 0) {
         size = size - 1;
@@ -1156,17 +1202,22 @@ void memset(int *a, int size, int v) {
 // ---------------------------- SCANNER ----------------------------
 // -----------------------------------------------------------------
 
-int* putSymbol(int symbol) {
+void printSymbol(int symbol) {
+    putchar(CHAR_DOUBLEQUOTE);
+
     if (symbol == SYM_EOF)
-        return (int*) "end of file";
+        print((int*) "end of file");
     else
-        return (int*) *(SYMBOL + symbol);
+        print((int*) *(SYMBOL + symbol));
+
+    putchar(CHAR_DOUBLEQUOTE);
 }
 
 void printLineNumber(int* message) {
+    print((int*) "cstarc: ");
     print(message);
     print((int*) " in line ");
-    print(itoa(lineNumber, malloc(maxIntegerLength + 1), 10, 0));
+    print(itoa(lineNumber, string_buffer, 10, 0));
     print((int*) ": ");
 }
 
@@ -1181,21 +1232,10 @@ void syntaxErrorMessage(int *message) {
 void syntaxErrorCharacter(int expected) {
     printLineNumber((int*) "error");
 
-    putchar(expected);
-
+    printCharacter(expected);
     print((int*) " expected but ");
 
-    if (character == CHAR_EOF)
-        print((int*) "end of file");
-    else if (character == CHAR_TAB)
-        print((int*) "tabulator");
-    else if (character == CHAR_LF)
-        print((int*) "line feed");
-    else if (character == CHAR_CR)
-        print((int*) "carriage return");
-    else
-        putchar(character);
-
+    printCharacter(character);
     print((int*) " found");
 
     println();
@@ -1523,13 +1563,9 @@ int getSymbol() {
 
     } else {
         printLineNumber((int*) "error");
-
         print((int*) "found unknown character ");
-
-        putchar(CHAR_SINGLEQUOTE);
-        putchar(character);
-        putchar(CHAR_SINGLEQUOTE);
-
+        printCharacter(character);
+        
         println();
 
         exit(-1);
@@ -1784,16 +1820,10 @@ void restore_registers(int numberOfRegisters) {
 void syntaxErrorSymbol(int expected) {
     printLineNumber((int*) "error");
 
-    putchar(CHAR_DOUBLEQUOTE);
-    print(putSymbol(expected));
-    putchar(CHAR_DOUBLEQUOTE);
-
+    printSymbol(expected);
     print((int*) " expected but ");
 
-    putchar(CHAR_DOUBLEQUOTE);
-    print(putSymbol(symbol));
-    putchar(CHAR_DOUBLEQUOTE);
-
+    printSymbol(symbol);
     print((int*) " found");
 
     println();
@@ -1803,11 +1833,7 @@ void syntaxErrorUnexpected() {
     printLineNumber((int*) "error");
 
     print((int*) "unexpected symbol ");
-
-    putchar(CHAR_DOUBLEQUOTE);
-    print(putSymbol(symbol));
-    putchar(CHAR_DOUBLEQUOTE);
-
+    printSymbol(symbol);
     print((int*) " found");
 
     println();
@@ -3032,14 +3058,12 @@ void emitLeftShiftBy(int b) {
 }
 
 void emitMainEntry() {
-    int *label;
+    // instruction at address zero cannot be fixed up
+    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
 
-    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // null page
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", binaryLength, FUNCTION, INT_T);
 
-    // "main": entry point
-    label = (int*) createString('m','a','i','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
+    mainJumpAddress = binaryLength;
 
     emitJFormat(OP_JAL, 0);
 }
@@ -3053,16 +3077,18 @@ int main_compiler() {
     initSymbolTable();
     initParser();
 
-    allocateMachineMemory(maxBinaryLength*4);
+    // memory in bytes and executable file name "out"
+    initMemory(maxBinaryLength * 4, (int*) "out");
 
     getSymbol();
 
+    // jump to main
     emitMainEntry();
 
-    // Library functions:
-    emitExit();      // first library function because this marks
-                     // also 'default'-exit when programmer hasn't
-                     // inserted exit() call in main
+    // library:
+    // exit must be first to exit main
+    // if exit call in main is missing
+    emitExit();
     emitRead();
     emitWrite();
     emitOpen();
@@ -3070,8 +3096,15 @@ int main_compiler() {
     emitGetchar();
     emitPutchar();
 
-    gr_cstar();     // invoke compiler
-    emitBinary();
+    // parser
+    gr_cstar();
+
+    if (getInstrIndex(*(memory + mainJumpAddress)) != 0)
+        emitBinary();
+    else {
+        print((int*) "cstarc: main function missing");
+        println();
+    }
 
     exit(0);
 }
@@ -3236,16 +3269,6 @@ void decodeJFormat() {
 }
 
 // -----------------------------------------------------------------
-// ---------------------------- MEMORY -----------------------------
-// -----------------------------------------------------------------
-
-void allocateMachineMemory(int size) {
-    memory = malloc(size);
-
-    binaryLength = 0;
-}
-
-// -----------------------------------------------------------------
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
 
@@ -3339,7 +3362,6 @@ int copyStringToMemory(int *s, int a) {
 
 void emitBinary() {
     int *entry;
-    int *filename;
     int fd;
 
     entry = global_symbol_table;
@@ -3356,30 +3378,25 @@ void emitBinary() {
         entry = getNext(entry);
     }
 
-    filename = malloc(4);
-
-    *filename = 7632239; // filename: out
-
-    // assert: file with name "out" exists prior to execution of compiler
-    fd = open(filename, 1); // 1 = O_WRONLY
+    // assert: file with name binaryName exists prior to execution of compiler
+    fd = open(binaryName, 1); // 1 = O_WRONLY
 
     if (fd < 0) {
         syntaxErrorMessage((int*) "output file not found");
         exit(-1);
     }
 
-    // The mipster_sycall 4004 writes the code array into a binary called 'out'.
-    // The syscall uses the 'write' system call of the underlying operating
-    // system and the compiler (gcc/x86).  The write system call of our Linux uses
-    // Little Endian byte ordering.
+    // The mipster_syscall 4004 writes the code array into a file.
+    // The syscall uses the "write" system call of the OS and compiler.
+    // The write system call of our Linux uses little endian byte ordering.
     write(fd, memory, binaryLength * 4);
 }
 
-int loadBinary(int *filename) {
+void loadBinary() {
     int fd;
     int numberOfReadBytes;
 
-    fd = open(filename, 0);
+    fd = open(binaryName, 0); // 0 = O_RDONLY
 
     if (fd < 0)
         exit(-1);
@@ -3390,13 +3407,10 @@ int loadBinary(int *filename) {
         numberOfReadBytes = read(fd, memory + binaryLength, 4);
 
         if (debug_load) {
-            // 9 = 32 characters / 4 bytes + 1 word for terminal zero
-            memset(string_buffer, 9, 0);
-            print(itoa(binaryLength * 4, string_buffer, 16, 4));
-            putchar(' ');
-            putchar('#');
-            putchar(' ');
-            memset(string_buffer, 9, 0);
+            print(binaryName);
+            print((int*) ": ");
+            print(itoa(binaryLength * 4, string_buffer, 16, 8));
+            print((int*) ": ");
             print(itoa(*(memory+binaryLength), string_buffer, 16, 8));
             println();
         }
@@ -3404,9 +3418,6 @@ int loadBinary(int *filename) {
         if (numberOfReadBytes == 4)
             binaryLength = binaryLength + 1;
     }
-
-    // Return global pointer and bump pointer for malloc
-    return binaryLength * 4;
 }
 
 // -----------------------------------------------------------------
@@ -3414,12 +3425,7 @@ int loadBinary(int *filename) {
 // -----------------------------------------------------------------
 
 void emitExit() {
-    int *label;
-
-    // "exit"
-    label = createString('e','x','i','t',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "exit", binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3437,11 +3443,10 @@ void syscall_exit() {
 
     exitCode = *(registers+REG_A0);
 
-    printString('[','O','S',']',' ','T', 'e', 'r','m','i','n','a','t','e','d',' ','w','i','t','h');
-    putchar(' ');
-
     *(registers+REG_V0) = exitCode;
 
+    print(binaryName);
+    print((int*) ": exiting with error code ");
     print(itoa(exitCode, string_buffer, 10, 0));
     println();
 
@@ -3449,12 +3454,7 @@ void syscall_exit() {
 }
 
 void emitRead() {
-    int *label;
-
-    // "read"
-    label = createString('r','e','a','d',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "read", binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
 
@@ -3492,26 +3492,20 @@ void syscall_read() {
 
     *(registers+REG_V0) = size;
 
-    if (debug_syscalls) {
-        printString('[','O','S',']',' ','c', 'a', 'l','l',' ','r','e','a','d',' ',CHAR_TAB,0,0,0,0);
-
-        print(itoa(fd, string_buffer, 10, 0));
-        putchar(' ');
-        memset(string_buffer, 9, 0);
-        print(itoa((int) buffer, string_buffer, 16, 8));
-        putchar(' ');
+    if (debug_read) {
+        print(binaryName);
+        print((int*) ": read ");
         print(itoa(size, string_buffer, 10, 0));
+        print((int*) " bytes from file with descriptor ");
+        print(itoa(fd, string_buffer, 10, 0));
+        print((int*) " into buffer at address ");
+        print(itoa((int) buffer, string_buffer, 16, 8));
         println();
     }
 }
 
 void emitWrite() {
-    int *label;
-
-    // "write"
-    label = createString('w','r','i','t','e',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "write", binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
 
@@ -3548,17 +3542,20 @@ void syscall_write() {
 
     *(registers+REG_V0) = size;
 
-    if (debug_syscalls)
-        printString('[','O','S',']',' ','c', 'a', 'l','l',' ','w','r','i','t','e',CHAR_LF,0,0,0,0);
+    if (debug_write) {
+        print(binaryName);
+        print((int*) ": wrote ");
+        print(itoa(size, string_buffer, 10, 0));
+        print((int*) " bytes from buffer at address ");
+        print(itoa((int) buffer, string_buffer, 16, 8));
+        print((int*) " into file with descriptor ");
+        print(itoa(fd, string_buffer, 10, 0));
+        println();
+    }
 }
 
 void emitOpen() {
-    int *label;
-
-    // "open"
-    label = createString('o','p','e','n',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "open", binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3592,21 +3589,20 @@ void syscall_open() {
 
     *(registers+REG_V0) = fd;
 
-    if (debug_syscalls) {
-        printString('[','O','S',']',' ','c', 'a', 'l','l',' ','o','p','e','n',' ',CHAR_TAB,0,0,0,0);
-
+    if (debug_open) {
+        print(binaryName);
+        print((int*) ": opened file ");
+        printString(filename);
+        print((int*) " with flags ");
+        print(itoa(flags, string_buffer, 10, 0));
+        print((int*) " returning file descriptor ");
         print(itoa(fd, string_buffer, 10, 0));
         println();
     }
 }
 
 void emitMalloc() {
-    int *label;
-
-    // "malloc"
-    label = createString('m','a','l','l','o','c',0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INTSTAR_T);
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "malloc", binaryLength, FUNCTION, INTSTAR_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3646,17 +3642,18 @@ void syscall_malloc() {
     *(registers+REG_K1) = bump + size;
     *(registers+REG_V0) = bump;
 
-    if (debug_syscalls)
-        printString('[','O','S',']',' ','c', 'a', 'l','l',' ','m','a','l','l','o','c',CHAR_LF,0,0,0);
+    if (debug_malloc) {
+        print(binaryName);
+        print((int*) ": malloc ");
+        print(itoa(size, string_buffer, 10, 0));
+        print((int*) " bytes returning address ");
+        print(itoa(bump, string_buffer, 16, 8));
+        println();
+    }
 }
 
 void emitGetchar() {
-    int *label;
-
-    // "getchar"
-    label = createString('g','e','t','c','h','a','r',0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "getchar", binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
@@ -3672,19 +3669,22 @@ void emitGetchar() {
 }
 
 void syscall_getchar() {
-    *(registers+REG_V0) = getchar();
+    int c;
 
-    if (debug_syscalls)
-        printString('[','O','S',']',' ','c', 'a', 'l','l',' ','g','e','t','c','h','a','r',CHAR_LF,0,0);
+    c = getchar();
+
+    *(registers+REG_V0) = c;
+
+    if (debug_getchar) {
+        print(binaryName);
+        print((int*) ": getchar ");
+        printCharacter(c);
+        println();
+    }
 }
 
 void emitPutchar() {
-    int *label;
-
-    // "putchar"
-    label = createString('p','u','t','c','h','a','r',0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    createSymbolTableEntry(GLOBAL_TABLE, label, binaryLength, FUNCTION, INT_T);
+    createSymbolTableEntry(GLOBAL_TABLE, (int*) "putchar", binaryLength, FUNCTION, INT_T);
 
     emitIFormat(OP_ADDIU, REG_ZR, REG_A3, 0);
 
@@ -3755,7 +3755,7 @@ void op_jal() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
         memset(string_buffer, 9, 0);
         print(itoa(instr_index, string_buffer, 16, 8));
         println();
@@ -3770,7 +3770,7 @@ void op_j() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
         memset(string_buffer, 9, 0);
         print(itoa(instr_index, string_buffer, 16, 8));
         println();
@@ -3788,7 +3788,7 @@ void op_beq() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rs));
         putchar(',');
         print((int*) *(register_strings+rt));
@@ -3810,7 +3810,7 @@ void op_bne() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rs));
         putchar(',');
         print((int*) *(register_strings+rt));
@@ -3831,7 +3831,7 @@ void op_addiu() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rt));
         putchar(',');
         print((int*) *(register_strings+rs));
@@ -3848,7 +3848,7 @@ void fct_jr() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rs));
 
         println();
@@ -3863,7 +3863,7 @@ void op_lui() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
 
         print((int*) *(register_strings+rt));
         putchar(',');
@@ -3881,7 +3881,7 @@ void fct_mfhi() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rd));
 
         println();
@@ -3896,7 +3896,7 @@ void fct_mflo() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rd));
 
         println();
@@ -3912,7 +3912,7 @@ void fct_multu() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rs));
         putchar(',');
         print((int*) *(register_strings+rt));
@@ -3930,7 +3930,7 @@ void fct_divu() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rs));
         putchar(',');
         print((int*) *(register_strings+rt));
@@ -3947,7 +3947,7 @@ void fct_addu() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rd));
         putchar(',');
         print((int*) *(register_strings+rs));
@@ -3965,7 +3965,7 @@ void fct_subu() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rd));
         putchar(',');
         print((int*) *(register_strings+rs));
@@ -3991,7 +3991,7 @@ void op_lw() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rt));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
@@ -4015,7 +4015,7 @@ void fct_slt() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rd));
         putchar(',');
         print((int*) *(register_strings+rs));
@@ -4042,7 +4042,7 @@ void op_sw() {
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rt));
         putchar(',');
         print(itoa(signExtend(immediate), string_buffer, 10, 0));
@@ -4064,7 +4064,7 @@ void fct_teq() {
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
 
-        putchar(' ');
+        print((int*) " ");
         print((int*) *(register_strings+rs));
         putchar(',');
         print((int*) *(register_strings+rt));
@@ -4103,7 +4103,7 @@ int addressTranslation(int vaddr) {
 void pre_debug() {
     if (debug_disassemble) {
         memset(string_buffer, 9, 0);           // print current PC
-        print(itoa(4 * pc, string_buffer, 16, 4));
+        print(itoa(4 * pc, string_buffer, 16, 8));
         putchar(CHAR_TAB);
     }
 }
@@ -4189,29 +4189,20 @@ void run() {
     }
 }
 
-void debug_boot(int memorySize) {
-    printString('m','e','m',' ',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-
-    print(itoa(memorySize/1024/1024*4, string_buffer, 10, 0));
-
-    printString('M','B',CHAR_LF,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-}
-
-int* parse_args(int argc, int *argv) {
+void parse_args(int argc, int *argv) {
     // assert: ./selfie -m size executable {-m size executable}
-    int memorySize;
 
-    memorySize = atoi((int*) *(argv+2)) * 1024 * 1024 / 4;
-
-    allocateMachineMemory(memorySize*4);
+    // memory size in bytes and executable file name
+    initMemory(atoi((int*) *(argv+2)) * 1024 * 1024, (int*) *(argv+3));
 
     // initialize stack pointer
-    *(registers+REG_SP) = (memorySize - 1) * 4;
+    *(registers+REG_SP) = memorySize - 4;
 
-    debug_boot(memorySize);
-
-    // return executable file name
-    return (int*) *(argv+3);
+    print(binaryName);
+    print((int*) ": memory size ");
+    print(itoa(memorySize / 1024 / 1024, string_buffer, 10, 0));
+    print((int*) "MB");
+    println();
 }
 
 void up_push(int value) {
@@ -4261,7 +4252,11 @@ void up_copyArguments(int argc, int *argv) {
 int main_emulator(int argc, int *argv) {
     initInterpreter();
 
-    *(registers+REG_GP) = loadBinary(parse_args(argc, argv));
+    parse_args(argc, argv);
+
+    loadBinary();
+
+    *(registers+REG_GP) = binaryLength * 4;
 
     *(registers+REG_K1) = *(registers+REG_GP);
 
