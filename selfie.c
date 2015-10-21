@@ -449,7 +449,7 @@ void load_string();
 
 int  help_call_codegen(int *entry, int *procedure);
 void help_procedure_prologue(int localVariables);
-void help_procedure_epilogue(int parameters, int functionStart, int functionType);
+void help_procedure_epilogue(int parameters);
 
 int  gr_call(int *procedure);
 int  gr_factor();
@@ -482,8 +482,8 @@ int *currentProcedureName; // holds the name of currently parsed procedure
 
 void
 initParser() {
-    // set maximum code length for emitting code
-    maxBinaryLength = 32768;
+    // set maximum code length in bytes for emitting code
+    maxBinaryLength = 131072;
 
     allocatedRegisters = 0;
     allocatedMemory    = 0;
@@ -641,6 +641,11 @@ void initDecoder() {
 
 void initMemory(int size, int* name);
 
+int tlb(int vaddr);
+
+int  loadMemory(int vaddr);
+void storeMemory(int vaddr, int data);
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 int *memory;
@@ -760,8 +765,6 @@ void op_teq();
 void initInterpreter();
 
 void exception_handler(int enumber);
-
-int addressTranslation(int vaddr);
 
 void pre_debug();
 void post_debug();
@@ -1984,13 +1987,13 @@ int help_call_codegen(int *entry, int *procedure) {
             // CASE 2: function call, no definition, but declared.
             setData(entry, binaryLength);
             emitJFormat(OP_JAL, 0);
-        } else if (getOpcode(*(memory + getData(entry))) == OP_JAL) {
+        } else if (getOpcode(loadMemory(getData(entry))) == OP_JAL) {
             // CASE 3: function call, no declaration
-            emitJFormat(OP_JAL, getData(entry));
-            setData(entry, binaryLength - 2);
+            emitJFormat(OP_JAL, getData(entry) / 4);
+            setData(entry, binaryLength - 8);
         } else
             // CASE 4: function defined, use the address
-            emitJFormat(OP_JAL, getData(entry));
+            emitJFormat(OP_JAL, getData(entry) / 4);
     }
 
     return type;
@@ -2017,7 +2020,7 @@ void help_procedure_prologue(int localVariables) {
         emitIFormat(OP_ADDIU, REG_SP, REG_SP, -4 * localVariables);
 }
 
-void help_procedure_epilogue(int parameters, int functionStart, int functionType) {
+void help_procedure_epilogue(int parameters) {
     // deallocate space for callee's frame pointer and local variables
     emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
 
@@ -2507,7 +2510,7 @@ void gr_while() {
         syntaxErrorSymbol(SYM_WHILE);
 
     // unconditional branch to beginning of while
-    emitIFormat(OP_BEQ, 0, 0, brBackToWhile - binaryLength - 1);
+    emitIFormat(OP_BEQ, 0, 0, (brBackToWhile - binaryLength - 4) / 4);
 
     // first instr after loop comes here, now we have
     // our address for the conditional jump from above
@@ -2632,10 +2635,11 @@ void gr_return(int returnType) {
 
     // unconditional branch to procedure epilogue
     // maintain fixup chain for later fixup
-    emitJFormat(OP_J, returnBranches);
+    emitJFormat(OP_J, returnBranches / 4);
 
-    // new head of fixup chain, offest is 2 because of delay slot NOP
-    returnBranches = binaryLength - 2;
+    // new head of fixup chain
+    // offest is 8 rather than 4 bytes because of delay slot NOP
+    returnBranches = binaryLength - 8;
 
     // assert: allocatedRegisters == 0
 }
@@ -2690,67 +2694,39 @@ void gr_statement() {
             else
                 syntaxErrorSymbol(SYM_SEMICOLON);
 
-        // "*" "(" identifier [ "+" integer ]
+        // "*" "(" expression ")"
         } else if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
 
-            if (symbol == SYM_IDENTIFIER) {
-                ltype = load_variable(identifier);
+            ltype = gr_expression();
 
-                if (ltype != INTSTAR_T)
-                    typeWarning(INTSTAR_T, ltype);
+            if (ltype != INTSTAR_T)
+                typeWarning(INTSTAR_T, ltype);
 
+            if (symbol == SYM_RPARENTHESIS) {
                 getSymbol();
 
-                if (symbol == SYM_PLUS) {
+                // "*" "(" expression ")" "="
+                if (symbol == SYM_ASSIGN) {
                     getSymbol();
 
-                    if (symbol == SYM_IDENTIFIER) {
-                        rtype = load_variable(identifier);
+                    rtype = gr_expression();
 
-                        if (rtype != INT_T)
-                            typeWarning(INT_T, rtype);
+                    if (rtype != INT_T)
+                        typeWarning(INT_T, rtype);
 
-                        getSymbol();
-                    } else if (symbol == SYM_INTEGER)
-                        load_integer();
-                    else
-                        syntaxErrorUnexpected();
+                    emitIFormat(OP_SW, allocatedRegisters-1, allocatedRegisters, 0);
 
-                    // pointer arithmetic: factor of 2^2 of integer operand
-                    emitLeftShiftBy(2);
-
-                    emitRFormat(OP_SPECIAL, allocatedRegisters-1, allocatedRegisters, allocatedRegisters-1, FCT_ADDU);
-
-                    allocatedRegisters = allocatedRegisters - 1;
-                }
-
-                if (symbol == SYM_RPARENTHESIS) {
-                    getSymbol();
-
-                    // "*" "(" identifier ["+" integer] ")" ="
-                    if (symbol == SYM_ASSIGN) {
-                        getSymbol();
-
-                        rtype = gr_expression();
-
-                        if (rtype != INT_T)
-                            typeWarning(INT_T, rtype);
-
-                        emitIFormat(OP_SW, allocatedRegisters-1, allocatedRegisters, 0);
-
-                        allocatedRegisters = allocatedRegisters - 2;
-                    } else
-                        syntaxErrorSymbol(SYM_ASSIGN);
-
-                    if (symbol == SYM_SEMICOLON)
-                        getSymbol();
-                    else
-                        syntaxErrorSymbol(SYM_SEMICOLON);
+                    allocatedRegisters = allocatedRegisters - 2;
                 } else
-                    syntaxErrorSymbol(SYM_RPARENTHESIS);
+                    syntaxErrorSymbol(SYM_ASSIGN);
+
+                if (symbol == SYM_SEMICOLON)
+                    getSymbol();
+                else
+                    syntaxErrorSymbol(SYM_SEMICOLON);
             } else
-                syntaxErrorSymbol(SYM_IDENTIFIER);
+                syntaxErrorSymbol(SYM_RPARENTHESIS);
         } else
             syntaxErrorSymbol(SYM_LPARENTHESIS);
     }
@@ -2921,7 +2897,7 @@ void gr_procedure(int *procedure, int returnType) {
             createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, binaryLength, FUNCTION, returnType);
         else {
             if (getData(entry) != 0) {
-                if (getOpcode(*(memory + getData(entry))) == OP_JAL)
+                if (getOpcode(loadMemory(getData(entry))) == OP_JAL)
                     fixlink_absolute(getData(entry), functionStart);
                 else {
                     printLineNumber((int*) "error");
@@ -2975,7 +2951,7 @@ void gr_procedure(int *procedure, int returnType) {
 
         returnBranches = 0;
 
-        help_procedure_epilogue(numberOfParameters, functionStart, returnType);
+        help_procedure_epilogue(numberOfParameters);
 
     } else
         syntaxErrorUnexpected();
@@ -3078,7 +3054,7 @@ int main_compiler() {
     initParser();
 
     // memory in bytes and executable file name "out"
-    initMemory(maxBinaryLength * 4, (int*) "out");
+    initMemory(maxBinaryLength, (int*) "out");
 
     getSymbol();
 
@@ -3099,7 +3075,7 @@ int main_compiler() {
     // parser
     gr_cstar();
 
-    if (getInstrIndex(*(memory + mainJumpAddress)) != 0)
+    if (getInstrIndex(loadMemory(mainJumpAddress)) != 0)
         emitBinary();
     else {
         print((int*) "cstarc: main function missing");
@@ -3269,6 +3245,26 @@ void decodeJFormat() {
 }
 
 // -----------------------------------------------------------------
+// ---------------------------- MEMORY -----------------------------
+// -----------------------------------------------------------------
+
+int tlb(int vaddr) {
+    if (vaddr % 4 != 0)
+        exception_handler(EXCEPTION_ADDRESSERROR);
+
+    // physical memory is word-addressed for lack of byte-sized data type
+    return vaddr / 4;
+}
+
+int loadMemory(int vaddr) {
+    return *(memory + tlb(vaddr));
+}
+
+void storeMemory(int vaddr, int data) {
+    *(memory + tlb(vaddr)) = data;
+}
+
+// -----------------------------------------------------------------
 // ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
 
@@ -3277,9 +3273,9 @@ void emitInstruction(int instruction) {
         syntaxErrorMessage((int*) "exceeded maximum binary length");
         exit(-1);
     } else {
-        *(memory + binaryLength) = instruction;
+        storeMemory(binaryLength, instruction);
         
-        binaryLength = binaryLength + 1;
+        binaryLength = binaryLength + 4;
     }
 }
 
@@ -3317,23 +3313,27 @@ void emitJFormat(int opcode, int instr_index) {
 }
 
 void fixup_relative(int fromAddress) {
-    *(memory + fromAddress) = encodeIFormat(
-        getOpcode(*(memory + fromAddress)),
-        getRS(*(memory + fromAddress)),
-        getRT(*(memory + fromAddress)),
-        binaryLength - fromAddress - 1);
+    int instruction;
+
+    instruction = loadMemory(fromAddress);
+
+    storeMemory(fromAddress,
+        encodeIFormat(getOpcode(instruction),
+            getRS(instruction),
+            getRT(instruction),
+            (binaryLength - fromAddress - 4) / 4));
 }
 
 void fixup_absolute(int fromAddress, int toAddress) {
-    *(memory + fromAddress) =
-        encodeJFormat(getOpcode(*(memory + fromAddress)), toAddress);
+    storeMemory(fromAddress,
+        encodeJFormat(getOpcode(loadMemory(fromAddress)), toAddress / 4));
 }
 
 void fixlink_absolute(int fromAddress, int toAddress) {
     int previousAddress;
 
     while (fromAddress != 0) {
-        previousAddress = getInstrIndex(*(memory + fromAddress));
+        previousAddress = getInstrIndex(loadMemory(fromAddress)) * 4;
         fixup_absolute(fromAddress, toAddress);
         fromAddress = previousAddress;
     }
@@ -3345,16 +3345,16 @@ int copyStringToMemory(int *s, int a) {
 
     l = stringLength(s) + 1;
 
-    w = a + l / 4;
+    w = a + l;
 
     if (l % 4 != 0)
-        w = w + 1;
+        w = w + 4 - l % 4;
 
     while (a < w) {
-        *(memory + a) = *s;
+        storeMemory(a, *s);
 
         s = s + 1;
-        a = a + 1;
+        a = a + 4;
     }
 
     return w;
@@ -3369,9 +3369,9 @@ void emitBinary() {
     // allocate space for global variables and copy strings
     while ((int) entry != 0) {
         if (getClass(entry) == VARIABLE) {
-            *(memory + binaryLength) = 0;
+            storeMemory(binaryLength, 0);
 
-            binaryLength = binaryLength + 1;
+            binaryLength = binaryLength + 4;
         } else if (getClass(entry) == STRING)
             binaryLength = copyStringToMemory(getString(entry), binaryLength);
 
@@ -3389,7 +3389,7 @@ void emitBinary() {
     // The mipster_syscall 4004 writes the code array into a file.
     // The syscall uses the "write" system call of the OS and compiler.
     // The write system call of our Linux uses little endian byte ordering.
-    write(fd, memory, binaryLength * 4);
+    write(fd, memory, binaryLength);
 }
 
 void loadBinary() {
@@ -3404,19 +3404,19 @@ void loadBinary() {
     numberOfReadBytes = 4;
 
     while (numberOfReadBytes == 4) {
-        numberOfReadBytes = read(fd, memory + binaryLength, 4);
+        numberOfReadBytes = read(fd, memory + tlb(binaryLength), 4);
 
         if (debug_load) {
             print(binaryName);
             print((int*) ": ");
-            print(itoa(binaryLength * 4, string_buffer, 16, 8));
+            print(itoa(binaryLength, string_buffer, 16, 8));
             print((int*) ": ");
-            print(itoa(*(memory+binaryLength), string_buffer, 16, 8));
+            print(itoa(loadMemory(binaryLength), string_buffer, 16, 8));
             println();
         }
 
         if (numberOfReadBytes == 4)
-            binaryLength = binaryLength + 1;
+            binaryLength = binaryLength + 4;
     }
 }
 
@@ -3477,16 +3477,16 @@ void emitRead() {
 
 void syscall_read() {
     int count;
-    int address;
+    int vaddr;
     int fd;
     int *buffer;
     int size;
 
-    count   = *(registers+REG_A2);
-    address = *(registers+REG_A1) / 4;
-    fd      = *(registers+REG_A0);
+    count = *(registers+REG_A2);
+    vaddr = *(registers+REG_A1);
+    fd    = *(registers+REG_A0);
 
-    buffer = memory + address;
+    buffer = memory + tlb(vaddr);
 
     size = read(fd, buffer, count);
 
@@ -3528,15 +3528,15 @@ void emitWrite() {
 
 void syscall_write() {
     int size;
-    int address;
+    int vaddr;
     int fd;
     int *buffer;
 
-    size    = *(registers+REG_A2);
-    address = *(registers+REG_A1) / 4;
-    fd      = *(registers+REG_A0);
+    size  = *(registers+REG_A2);
+    vaddr = *(registers+REG_A1);
+    fd    = *(registers+REG_A0);
 
-    buffer = memory + address;
+    buffer = memory + tlb(vaddr);
 
     size = write(fd, buffer, size);
 
@@ -3576,14 +3576,14 @@ void emitOpen() {
 
 void syscall_open() {
     int flags;
-    int address;
+    int vaddr;
     int *filename;
     int fd;
 
-    flags   = *(registers+REG_A1);
-    address = *(registers+REG_A0) / 4;
+    flags = *(registers+REG_A1);
+    vaddr = *(registers+REG_A0);
 
-    filename = memory + address;
+    filename = memory + tlb(vaddr);
 
     fd = open(filename, flags);
 
@@ -3733,11 +3733,11 @@ void fct_syscall() {
         exception_handler(EXCEPTION_UNKNOWNSYSCALL);
     }
 
-    pc = pc + 1;
+    pc = pc + 4;
 }
 
 void fct_nop() {
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3746,9 +3746,9 @@ void fct_nop() {
 }
 
 void op_jal() {
-    *(registers+REG_LINK) = pc * 4 + 8;
+    *(registers+REG_LINK) = pc + 8;
 
-    pc = instr_index;
+    pc = instr_index * 4;
 
     // TODO: execute delay slot
 
@@ -3763,7 +3763,7 @@ void op_jal() {
 }
 
 void op_j() {
-    pc = instr_index;
+    pc = instr_index * 4;
 
     // TODO: execute delay slot
 
@@ -3778,10 +3778,10 @@ void op_j() {
 }
 
 void op_beq() {
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (*(registers+rs) == *(registers+rt)) {
-        pc = pc + signExtend(immediate);
+        pc = pc + signExtend(immediate) * 4;
         // TODO: execute delay slot
     }
 
@@ -3800,10 +3800,10 @@ void op_beq() {
 }
 
 void op_bne() {
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (*(registers+rs) != *(registers+rt)) {
-        pc = pc + signExtend(immediate);
+        pc = pc + signExtend(immediate) * 4;
         // TODO: execute delay slot
     }
 
@@ -3826,7 +3826,7 @@ void op_addiu() {
 
     // TODO: check for overflow
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
@@ -3843,7 +3843,7 @@ void op_addiu() {
 }
 
 void fct_jr() {
-    pc = *(registers+rs) / 4;
+    pc = *(registers+rs);
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3858,7 +3858,7 @@ void fct_jr() {
 void op_lui() {
     *(registers+rt) = leftShift(immediate, 16);
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
@@ -3876,7 +3876,7 @@ void op_lui() {
 void fct_mfhi() {
     *(registers+rd) = reg_hi;
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3891,7 +3891,7 @@ void fct_mfhi() {
 void fct_mflo() {
     *(registers+rd) = reg_lo;
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3907,7 +3907,7 @@ void fct_multu() {
     // TODO: 64-bit resolution currently not supported
     reg_lo = *(registers+rs) * *(registers+rt);
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3925,7 +3925,7 @@ void fct_divu() {
     reg_lo = *(registers+rs) / *(registers+rt);
     reg_hi = *(registers+rs) % *(registers+rt);
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3942,7 +3942,7 @@ void fct_divu() {
 void fct_addu() {
     *(registers+rd) = *(registers+rs) + *(registers+rt);
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3960,7 +3960,7 @@ void fct_addu() {
 void fct_subu() {
     *(registers+rd) = *(registers+rs) - *(registers+rt);
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -3978,15 +3978,12 @@ void fct_subu() {
 
 void op_lw() {
     int vaddr;
-    int paddr;
 
     vaddr = *(registers+rs) + signExtend(immediate);
 
-    paddr = addressTranslation(vaddr) / 4;
+    *(registers+rt) = loadMemory(vaddr);
 
-    *(registers+rt) = *(memory+paddr);
-
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
@@ -4010,7 +4007,7 @@ void fct_slt() {
     else
         *(registers+rd) = 0;
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -4028,16 +4025,12 @@ void fct_slt() {
 
 void op_sw() {
     int vaddr;
-    int paddr;
-    int tmp;
 
     vaddr = *(registers+rs) + signExtend(immediate);
 
-    paddr = addressTranslation(vaddr) / 4;
+    storeMemory(vaddr, *(registers+rt));
 
-    *(memory+paddr) = *(registers+rt);
-
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(op_strings+opcode));
@@ -4059,7 +4052,7 @@ void fct_teq() {
     if (*(registers+rs) == *(registers+rt))
         exception_handler(EXCEPTION_SIGNAL);
 
-    pc = pc + 1;
+    pc = pc + 4;
 
     if (debug_disassemble) {
         print((int*) *(fct_strings+function));
@@ -4093,17 +4086,10 @@ void exception_handler(int enumber) {
     }
 }
 
-int addressTranslation(int vaddr) {
-    if (vaddr % 4 != 0)
-        exception_handler(EXCEPTION_ADDRESSERROR);
-
-    return vaddr;
-}
-
 void pre_debug() {
     if (debug_disassemble) {
         memset(string_buffer, 9, 0);           // print current PC
-        print(itoa(4 * pc, string_buffer, 16, 8));
+        print(itoa(pc, string_buffer, 16, 8));
         putchar(CHAR_TAB);
     }
 }
@@ -4129,7 +4115,7 @@ void post_debug() {
 }
 
 void fetch() {
-    ir = *(memory+pc);
+    ir = loadMemory(pc);
 }
 
 void execute() {
@@ -4206,16 +4192,16 @@ void parse_args(int argc, int *argv) {
 }
 
 void up_push(int value) {
-    int address;
+    int vaddr;
 
     // allocate space for one value on the stack
     *(registers+REG_SP) = *(registers+REG_SP) - 4;
 
     // compute address
-    address = *(registers+REG_SP) / 4;
+    vaddr = *(registers+REG_SP);
 
     // store value
-    *(memory + address) = value;
+    storeMemory(vaddr, value);
 }
 
 int up_malloc(int size) {
@@ -4227,22 +4213,20 @@ int up_malloc(int size) {
 }
 
 void up_copyArguments(int argc, int *argv) {
-    int address;
+    int vaddr;
 
     up_push(argc);
 
-    address = up_malloc(argc * 4);
+    vaddr = up_malloc(argc * 4);
 
-    up_push(address);
-
-    address = address / 4;
+    up_push(vaddr);
 
     while (argc > 0) {
-        *(memory + address) = up_malloc(stringLength((int*) *argv) + 1);
+        storeMemory(vaddr, up_malloc(stringLength((int*) *argv) + 1));
 
-        copyStringToMemory((int*) *argv, *(memory + address) / 4);
+        copyStringToMemory((int*) *argv, loadMemory(vaddr));
 
-        address = address + 1;
+        vaddr = vaddr + 4;
 
         argv = argv + 1;
         argc = argc - 1;
@@ -4256,7 +4240,7 @@ int main_emulator(int argc, int *argv) {
 
     loadBinary();
 
-    *(registers+REG_GP) = binaryLength * 4;
+    *(registers+REG_GP) = binaryLength;
 
     *(registers+REG_K1) = *(registers+REG_GP);
 
