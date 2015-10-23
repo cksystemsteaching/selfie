@@ -4273,7 +4273,7 @@ int main_emulator(int argc, int *argv) {
     *(registers+REG_GP) = binaryLength;
 
     *(registers+REG_K1) = *(registers+REG_GP);
-    
+
     up_copyArguments(argc-3, argv+3);
 
     run();
