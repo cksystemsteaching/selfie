@@ -872,7 +872,6 @@ void op_teq();
 // -----------------------------------------------------------------
 
 void initInterpreter();
-void initMemory();
 
 void printException(int enumber);
 
