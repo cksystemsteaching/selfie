@@ -29,6 +29,7 @@ factor           = [ cast ]
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
                       integer |
+                      """ { ascii_character } """ |
                       "'" ascii_character "'" ) .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .
@@ -50,8 +51,8 @@ if               = "if" "(" expression ")"
 
 return           = "return" [ expression ] .
 
-statement        = ( [ "*" ] identifier |
-                     "*" "(" identifier [ "+" ( integer | identifier ) ] ")" ) "=" expression ";" |
+statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "="
+                      expression ";" |
                     call ";" | 
                     while | 
                     if | 
