@@ -31,9 +31,9 @@
 // into the emulator. Selfie is meant to be extended in numerous ways.
 //
 // C* is a tiny Turing-complete subset of C that includes dereferencing
-// (the * operator) but excludes data structures, Boolean expressions, and
-// many other features. There are only signed 32-bit integers and pointers,
-// and character constants for constructing word-aligned strings manually.
+// (the * operator) but excludes data structures, bitwise and Boolean
+// operators, and many other features. There are only signed 32-bit
+// integers and pointers as well as character and string constants.
 // This choice turns out to be helpful for students to understand the
 // true role of composite data structures such as arrays and records.
 // Bitwise operations are implemented in libcstar using signed integer
