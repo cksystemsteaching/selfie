@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/github-light.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width">
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
@@ -44,7 +44,7 @@
 
 <p>Selfie is kept minimal for simplicity and implemented in a single file. There is no linker, assembler, or debugger. However, there is minimal operating system support in the form of MIPS32 o32 system calls built into the emulator. Selfie is meant to be extended in numerous ways.</p>
 
-<p>C* is a tiny Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, Boolean expressions, and many other features. There are only signed 32-bit integers and pointers, and character constants for constructing word-aligned strings manually. This choice turns out to be helpful for students to understand the true role of composite data structures such as arrays and records. Bitwise operations are implemented in libcstar using signed integer arithmetics helping students gain true understanding of two's complement. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C* can be taught in around two weeks of classes depending on student background.</p>
+<p>C* is a tiny Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, bitwise and Boolean operators, and many other features. There are only signed 32-bit integers and pointers as well as character and string constants. This choice turns out to be helpful for students to understand the true role of composite data structures such as arrays and records. Bitwise operations are implemented in libcstar using signed integer arithmetics helping students gain true understanding of two's complement. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C* can be taught in around two weeks of classes depending on student background.</p>
 
 <p>The compiler can readily be extended to compile features missing in C* and to improve performance of the generated code. The compiler generates MIPSter executables that can directly be executed by the emulator or written to a file in a simple, custom-defined format. Support of standard MIPS32 ELF binaries should be easy but remains future work.</p>
 
