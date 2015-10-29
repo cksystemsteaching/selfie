@@ -33,7 +33,7 @@ $ ./selfie -c selfie.c -o selfie.mips
 
 This produces a MIPSter binary file called `selfie.mips` that implements selfie.
 
-To execute `selfie.mips` by mipster use the following commands:
+To execute `selfie.mips` by mipster use the following command:
 
 ```bash
 $ ./selfie -l selfie.mips -m 64
