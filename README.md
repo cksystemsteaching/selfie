@@ -36,7 +36,7 @@ This produces a MIPSter binary file called `selfie.mips` that implements selfie.
 To execute `selfie.mips` by mipster use the following command:
 
 ```bash
-$ ./selfie -l selfie.mips -m 64
+$ ./selfie -l selfie.mips -m 32
 ```
 
 This is semantically equivalent to executing `selfie` without any arguments:
@@ -67,7 +67,7 @@ $ diff -s selfie1.mips selfie2.mips
 Files selfie1.mips and selfie2.mips are identical
 ```
 
-Note that the example may take several hours to complete.
+Note that the example may take several hours to complete. Also, a machine instance A running a machine instance B needs more memory than B, say, 64MB rather than 32MB in the example here.
 
 ### Work Flow
 
