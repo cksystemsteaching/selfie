@@ -69,7 +69,7 @@ Files selfie1.mips and selfie2.mips are identical
 
 Note that the example may take several hours to complete. Also, a machine instance A running a machine instance B needs more memory than B, say, 64MB rather than 32MB in the example here.
 
-### Work Flow
+### Workflow
 
 To compile any C\* source you may use `selfie` directly or on top of the emulator. Both generate identical MIPSter binaries:
 

@@ -715,7 +715,6 @@ void op_beq();
 void op_bne();
 void op_addiu();
 void fct_jr();
-void op_lui();
 void fct_mfhi();
 void fct_mflo();
 void fct_multu();
@@ -3106,7 +3105,12 @@ void emitMainEntry() {
 
     mainJumpAddress = binaryLength;
 
+    // jump and link to main, will return here only if there is no exit call
     emitJFormat(OP_JAL, 0);
+
+    // we exit cleanly with error code 0 pushed onto the stack
+    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -4);
+    emitIFormat(OP_SW, REG_SP, REG_ZR, 0);
 }
 
 // -----------------------------------------------------------------
@@ -3943,21 +3947,6 @@ void fct_jr() {
         printFunction(function);
         print((int*) " ");
         printRegister(rs);
-        println();
-    }
-}
-
-void op_lui() {
-    *(registers+rt) = leftShift(immediate, 16);
-
-    pc = pc + 4;
-
-    if (debug_disassemble) {
-        printOpcode(opcode);
-        print((int*) " ");
-        printRegister(rt);
-        putchar(',');
-        print(itoa(signExtend(immediate), string_buffer, 10, 0));
         println();
     }
 }
