@@ -86,7 +86,7 @@ void stringReverse(int *s);
 int  stringCompare(int *s, int *t);
 
 int  atoi(int *s);
-int* itoa(int n, int *s, int b, int a);
+int* itoa(int n, int *s, int b, int a, int p);
 
 void print(int *s);
 void println();
@@ -613,6 +613,8 @@ void initDecoder() {
 int  loadBinary(int addr);
 void storeBinary(int addr, int instruction);
 
+void storeInstruction(int addr, int instruction);
+
 void emitInstruction(int instruction);
 void emitRFormat(int opcode, int rs, int rt, int rd, int function);
 void emitIFormat(int opcode, int rs, int rt, int immediate);
@@ -637,7 +639,10 @@ int maxBinaryLength = 131072; // 128KB
 
 int *binary       = (int*) 0;
 int  binaryLength = 0;
+
 int *binaryName   = (int*) 0;
+
+int *sourceLineNumber = (int*) 0;
 
 // -----------------------------------------------------------------
 // --------------------------- SYSCALLS ----------------------------
@@ -667,7 +672,6 @@ int SYSCALL_READ    = 4003;
 int SYSCALL_WRITE   = 4004;
 int SYSCALL_OPEN    = 4005;
 int SYSCALL_MALLOC  = 5001;
-int SYSCALL_GETCHAR = 5002;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -688,8 +692,8 @@ void storeMemory(int vaddr, int data);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int  memorySize;
-int *memory;
+int  memorySize = 0;
+int *memory     = (int*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -755,6 +759,12 @@ void up_copyArguments(int argc, int *argv);
 
 void copyBinaryToMemory();
 
+int addressWithMaxCounter(int *counters, int max);
+int fixedPointRatio(int a, int b);
+
+int  printCounters(int total, int *counters, int max);
+void printProfile(int *message, int total, int *counters);
+
 void emulate(int argc, int *argv);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -788,6 +798,20 @@ int ir = 0; // instruction record
 int reg_hi = 0; // hi register for multiplication/division
 int reg_lo = 0; // lo register for multiplication/division
 
+int halt = 0; // flag for halting mipster
+
+int calls            = 0;
+int *callsPerAddress = (int*) 0;
+
+int loops            = 0;
+int *loopsPerAddress = (int*) 0;
+
+int loads            = 0;
+int *loadsPerAddress = (int*) 0;
+
+int stores            = 0;
+int *storesPerAddress = (int*) 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
@@ -808,7 +832,20 @@ void resetInterpreter() {
 
     reg_hi = 0;
     reg_lo = 0;
+
+    calls           = 0;
+    callsPerAddress = malloc(maxBinaryLength);
+
+    loops           = 0;
+    loopsPerAddress = malloc(maxBinaryLength);
+
+    loads           = 0;
+    loadsPerAddress = malloc(maxBinaryLength);
+
+    stores           = 0;
+    storesPerAddress = malloc(maxBinaryLength);
 }
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------     L I B R A R Y     ---------------------
@@ -949,15 +986,18 @@ int atoi(int *s) {
     return n;
 }
 
-int* itoa(int n, int *s, int b, int a) {
+int* itoa(int n, int *s, int b, int a, int p) {
     // assert: b in {2,4,8,10,16}
 
     int i;
     int sign;
+    int msb;
 
     i = 0;
 
     sign = 0;
+
+    msb = 0;
 
     if (n == 0) {
         storeCharacter(s, 0, '0');
@@ -972,7 +1012,7 @@ int* itoa(int n, int *s, int b, int a) {
                 storeCharacter(s, 0, '8');
 
                 n = -(n / 10);
-                i = i + 1;
+                i = 1;
             } else
                 n = -n;
         } else {
@@ -981,13 +1021,23 @@ int* itoa(int n, int *s, int b, int a) {
                 storeCharacter(s, 0, '0');
 
                 n = (rightShift(INT_MIN, 1) / b) * 2;
-                i = i + 1;
-            } else
-                n = rightShift(leftShift(n, 1), 1);
+                i = 1;
+            } else {
+                n   = rightShift(leftShift(n, 1), 1);
+                msb = 1;
+            }
         }
     }
 
     while (n != 0) {
+        if (p > 0)
+            if (i == p) {
+                storeCharacter(s, i, '.');
+
+                i = i + 1;
+                p = 0;
+            }
+
         if (n % b > 9)
             storeCharacter(s, i, n % b - 10 + 'A');
         else
@@ -996,15 +1046,39 @@ int* itoa(int n, int *s, int b, int a) {
         n = n / b;
         i = i + 1;
 
-        if (i == 1) {
-            if (sign) {
-                if (b != 10)
-                    n = n + (rightShift(INT_MIN, 1) / b) * 2;
-            }
+        if (msb == 1) {
+            n   = n + (rightShift(INT_MIN, 1) / b) * 2;
+            msb = 0;
         }
     }
 
-    if (b != 10) {
+    if (p > 0) {
+        while (i < p) {
+            storeCharacter(s, i, '0');
+
+            i = i + 1;
+        }
+
+        storeCharacter(s, i, '.');
+        storeCharacter(s, i + 1, '0');
+
+        i = i + 2;
+        p = 0;
+    }
+
+    if (b == 10) {
+        if (sign) {
+            storeCharacter(s, i, '-');
+
+            i = i + 1;
+        }
+
+        while (i < a) {
+            storeCharacter(s, i, ' '); // align with spaces
+
+            i = i + 1;
+        }
+    } else {
         while (i < a) {
             storeCharacter(s, i, '0'); // align with zeros
 
@@ -1022,12 +1096,8 @@ int* itoa(int n, int *s, int b, int a) {
 
             i = i + 2;
         }
-    } else if (sign) {
-        storeCharacter(s, i, '-');
-
-        i = i + 1;
     }
-
+    
     storeCharacter(s, i, 0); // null terminated string
 
     stringReverse(s);
@@ -1104,7 +1174,7 @@ void printLineNumber(int* message) {
     print((int*) " in ");
     print(sourceName);
     print((int*) " in line ");
-    print(itoa(lineNumber, string_buffer, 10, 0));
+    print(itoa(lineNumber, string_buffer, 10, 0, 0));
     print((int*) ": ");
 }
 
@@ -2500,7 +2570,7 @@ void gr_while() {
         syntaxErrorSymbol(SYM_WHILE);
 
     // unconditional branch to beginning of while
-    emitIFormat(OP_BEQ, 0, 0, (brBackToWhile - binaryLength - 4) / 4);
+    emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - 4) / 4);
 
     if (brForwardToEnd != 0)
         // first instruction after loop comes here
@@ -2560,7 +2630,7 @@ void gr_if() {
 
                     // if the "if" case was true, we jump to the end
                     brForwardToEnd = binaryLength;
-                    emitIFormat(OP_BEQ, 0, 0, 0);
+                    emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
 
                     // if the "if" case was not true, we jump here
                     fixup_relative(brForwardToElseOrEnd);
@@ -3144,6 +3214,9 @@ void compile() {
     binary       = malloc(maxBinaryLength);
     binaryLength = 0;
 
+    // allocate space for storing source code line numbers
+    sourceLineNumber = malloc(maxBinaryLength);
+
     // jump to main
     emitMainEntry();
 
@@ -3360,12 +3433,18 @@ void storeBinary(int addr, int instruction) {
     *(binary + addr / 4) = instruction;
 }
 
+void storeInstruction(int addr, int instruction) {
+    *(sourceLineNumber + addr / 4) = lineNumber;
+
+    storeBinary(addr, instruction);
+}
+
 void emitInstruction(int instruction) {
     if (binaryLength >= maxBinaryLength) {
         syntaxErrorMessage((int*) "exceeded maximum binary length");
         exit(-1);
     } else {
-        storeBinary(binaryLength, instruction);
+        storeInstruction(binaryLength, instruction);
         
         binaryLength = binaryLength + 4;
     }
@@ -3518,6 +3597,8 @@ void load() {
     binary       = malloc(maxBinaryLength);
     binaryLength = 0;
 
+    sourceLineNumber = (int*) 0;
+
     numberOfReadBytes = 4;
 
     print(selfieName);
@@ -3531,9 +3612,9 @@ void load() {
         if (debug_load) {
             print(binaryName);
             print((int*) ": ");
-            print(itoa(binaryLength, string_buffer, 16, 8));
+            print(itoa(binaryLength, string_buffer, 16, 8, 0));
             print((int*) ": ");
-            print(itoa(loadBinary(binaryLength), string_buffer, 16, 8));
+            print(itoa(loadBinary(binaryLength), string_buffer, 16, 8, 0));
             println();
         }
 
@@ -3569,10 +3650,10 @@ void syscall_exit() {
 
     print(binaryName);
     print((int*) ": exiting with error code ");
-    print(itoa(exitCode, string_buffer, 10, 0));
+    print(itoa(exitCode, string_buffer, 10, 0, 0));
     println();
 
-    exit(0);
+    halt = 1;
 }
 
 void emitRead() {
@@ -3615,11 +3696,11 @@ void syscall_read() {
     if (debug_read) {
         print(binaryName);
         print((int*) ": read ");
-        print(itoa(size, string_buffer, 10, 0));
+        print(itoa(size, string_buffer, 10, 0, 0));
         print((int*) " bytes from file with descriptor ");
-        print(itoa(fd, string_buffer, 10, 0));
+        print(itoa(fd, string_buffer, 10, 0, 0));
         print((int*) " into buffer at address ");
-        print(itoa((int) buffer, string_buffer, 16, 8));
+        print(itoa((int) buffer, string_buffer, 16, 8, 0));
         println();
     }
 }
@@ -3663,11 +3744,11 @@ void syscall_write() {
     if (debug_write) {
         print(binaryName);
         print((int*) ": wrote ");
-        print(itoa(size, string_buffer, 10, 0));
+        print(itoa(size, string_buffer, 10, 0, 0));
         print((int*) " bytes from buffer at address ");
-        print(itoa((int) buffer, string_buffer, 16, 8));
+        print(itoa((int) buffer, string_buffer, 16, 8, 0));
         print((int*) " into file with descriptor ");
-        print(itoa(fd, string_buffer, 10, 0));
+        print(itoa(fd, string_buffer, 10, 0, 0));
         println();
     }
 }
@@ -3714,11 +3795,11 @@ void syscall_open() {
         print((int*) ": opened file ");
         printString(filename);
         print((int*) " with flags ");
-        print(itoa(flags, string_buffer, 16, 0));
+        print(itoa(flags, string_buffer, 16, 0, 0));
         print((int*) " and mode ");
-        print(itoa(mode, string_buffer, 8, 0));
+        print(itoa(mode, string_buffer, 8, 0, 0));
         print((int*) " returning file descriptor ");
-        print(itoa(fd, string_buffer, 10, 0));
+        print(itoa(fd, string_buffer, 10, 0, 0));
         println();
     }
 }
@@ -3764,9 +3845,9 @@ void syscall_malloc() {
     if (debug_malloc) {
         print(binaryName);
         print((int*) ": malloc ");
-        print(itoa(size, string_buffer, 10, 0));
+        print(itoa(size, string_buffer, 10, 0, 0));
         print((int*) " bytes returning address ");
-        print(itoa(bump, string_buffer, 16, 8));
+        print(itoa(bump, string_buffer, 16, 8, 0));
         println();
     }
 }
@@ -3808,11 +3889,19 @@ int tlb(int vaddr) {
 }
 
 int loadMemory(int vaddr) {
-    return *(memory + tlb(vaddr));
+    int paddr;
+
+    paddr = tlb(vaddr);
+
+    return *(memory + paddr);
 }
 
 void storeMemory(int vaddr, int data) {
-    *(memory + tlb(vaddr)) = data;
+    int paddr;
+
+    paddr = tlb(vaddr);
+
+    *(memory + paddr) = data;
 }
 
 // -----------------------------------------------------------------
@@ -3856,12 +3945,17 @@ void op_jal() {
 
     pc = instr_index * 4;
 
+    // keep track of number of procedure calls
+    calls = calls + 1;
+
+    *(callsPerAddress + pc / 4) = *(callsPerAddress + pc / 4) + 1;
+
     // TODO: execute delay slot
 
     if (debug_disassemble) {
         printOpcode(opcode);
         print((int*) " ");
-        print(itoa(instr_index, string_buffer, 16, 8));
+        print(itoa(instr_index, string_buffer, 16, 8, 0));
         println();
     }
 }
@@ -3874,7 +3968,7 @@ void op_j() {
     if (debug_disassemble) {
         printOpcode(opcode);
         print((int*) " ");
-        print(itoa(instr_index, string_buffer, 16, 8));
+        print(itoa(instr_index, string_buffer, 16, 8, 0));
         println();
     }
 }
@@ -3884,6 +3978,13 @@ void op_beq() {
 
     if (*(registers+rs) == *(registers+rt)) {
         pc = pc + signExtend(immediate) * 4;
+
+        if (signExtend(immediate) < 0) {
+            // keep track of number of loop iterations
+            loops = loops + 1;
+
+            *(loopsPerAddress + pc / 4) = *(loopsPerAddress + pc / 4) + 1;
+        }
 
         // TODO: execute delay slot
     }
@@ -3895,7 +3996,7 @@ void op_beq() {
         putchar(',');
         printRegister(rt);
         putchar(',');
-        print(itoa(signExtend(immediate), string_buffer, 10, 0));
+        print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
         println();
     }
 }
@@ -3916,7 +4017,7 @@ void op_bne() {
         putchar(',');
         printRegister(rt);
         putchar(',');
-        print(itoa(signExtend(immediate), string_buffer, 10, 0));
+        print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
         println();
     }
 }
@@ -3935,7 +4036,7 @@ void op_addiu() {
         putchar(',');
         printRegister(rs);
         putchar(',');
-        print(itoa(signExtend(immediate), string_buffer, 10, 0));
+        print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
         println();
     }
 }
@@ -4050,6 +4151,11 @@ void op_lw() {
 
     *(registers+rt) = loadMemory(vaddr);
 
+    // keep track of number of loads
+    loads = loads + 1;
+
+    *(loadsPerAddress + pc / 4) = *(loadsPerAddress + pc / 4) + 1;
+
     pc = pc + 4;
 
     if (debug_disassemble) {
@@ -4057,7 +4163,7 @@ void op_lw() {
         print((int*) " ");
         printRegister(rt);
         putchar(',');
-        print(itoa(signExtend(immediate), string_buffer, 10, 0));
+        print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
         putchar('(');
         printRegister(rs);
         putchar(')');
@@ -4092,6 +4198,11 @@ void op_sw() {
 
     storeMemory(vaddr, *(registers+rt));
 
+    // keep track of number of stores
+    stores = stores + 1;
+
+    *(storesPerAddress + pc / 4) = *(storesPerAddress + pc / 4) + 1;
+
     pc = pc + 4;
 
     if (debug_disassemble) {
@@ -4099,7 +4210,7 @@ void op_sw() {
         print((int*) " ");
         printRegister(rt);
         putchar(',');
-        print(itoa(signExtend(immediate), string_buffer, 10, 0));
+        print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
         putchar('(');
         printRegister(rs);
         putchar(')');
@@ -4144,7 +4255,7 @@ void pre_debug() {
     if (debug_disassemble) {
         print(binaryName);
         print((int*) ": $pc=");
-        print(itoa(pc, string_buffer, 16, 8));
+        print(itoa(pc, string_buffer, 16, 8, 0));
         print((int*) ": ");
     }
 }
@@ -4160,7 +4271,7 @@ void post_debug() {
                 print((int*) ": ");
                 printRegister(i);
                 putchar(CHAR_EQUAL);
-                print(itoa(*(registers+i), string_buffer, 16, 8));
+                print(itoa(*(registers+i), string_buffer, 16, 8, 0));
                 println();
             }
             i = i + 1;
@@ -4220,13 +4331,17 @@ void execute() {
 }
 
 void run() {
-    while (1) {
+    halt = 0;
+
+    while (halt == 0) {
         fetch();
         decode();
         pre_debug();
         execute();
         post_debug();
     }
+
+    halt = 0;
 }
 
 // -----------------------------------------------------------------
@@ -4312,12 +4427,102 @@ void copyBinaryToMemory() {
     }
 }
 
+int addressWithMaxCounter(int *counters, int max) {
+    int a;
+    int n;
+    int i;
+    int c;
+
+    a = -1;
+
+    n = 0;
+
+    i = 0;
+
+    while (i < maxBinaryLength / 4) {
+        c = *(counters + i);
+
+        if (n < c)
+            if (c < max) {
+                n = c;
+                a = i * 4;
+            }
+
+        i = i + 1;
+    }
+
+    return a;
+}
+
+int fixedPointRatio(int a, int b) {
+    int r;
+
+    r = 0;
+    
+    if (a <= INT_MAX / 100) {
+        if (b != 0)
+            r = a * 100 / b;
+    } else if (a <= INT_MAX / 10) {
+        if (b / 10 != 0)
+            r = a * 10 / (b / 10);
+    } else {
+        if (b / 100 != 0)
+            r = a / (b / 100);
+    }
+
+    if (r != 0)
+        return 1000000 / r;
+    else
+        return 0;
+}
+
+int printCounters(int total, int *counters, int max) {
+    int a;
+
+    a = addressWithMaxCounter(counters, max);
+
+    print(itoa(*(counters + a / 4), string_buffer, 10, 0, 0));
+    
+    print((int*) "(");
+    print(itoa(fixedPointRatio(total, *(counters + a / 4)), string_buffer, 10, 0, 2));
+    print((int*) "%)");
+    
+    if (*(counters + a / 4) != 0) {
+        print((int*) "@");
+        print(itoa(a, string_buffer, 16, 8, 0));
+        if (sourceLineNumber != (int*) 0){
+            print((int*) "(~");
+            print(itoa(*(sourceLineNumber + a / 4), string_buffer, 10, 0, 0));
+            print((int*) ")");
+        }
+    }
+
+    return a;
+}
+
+void printProfile(int *message, int total, int *counters) {
+    int a;
+
+    if (total > 0) {
+        print(selfieName);
+        print(message);
+        print(itoa(total, string_buffer, 10, 0, 0));
+        print((int*) ",");
+        a = printCounters(total, counters, INT_MAX);
+        print((int*) ",");
+        a = printCounters(total, counters, *(counters + a / 4));
+        print((int*) ",");
+        a = printCounters(total, counters, *(counters + a / 4));
+        println();
+    }
+}
+
 void emulate(int argc, int *argv) {
     print(selfieName);
     print((int*) ": this is selfie's mipster executing ");
     print(binaryName);
     print((int*) " with ");
-    print(itoa(memorySize / 1024 / 1024, string_buffer, 10, 0));
+    print(itoa(memorySize / 1024 / 1024, string_buffer, 10, 0, 0));
     print((int*) "MB of memory");
     println();
 
@@ -4332,6 +4537,19 @@ void emulate(int argc, int *argv) {
     up_copyArguments(argc, argv);
 
     run();
+
+    print(selfieName);
+    print((int*) ": this is selfie's mipster terminating ");
+    print(binaryName);
+    println();
+
+    print(selfieName);
+    print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
+    println();
+    printProfile((int*) ": calls: ", calls, callsPerAddress);
+    printProfile((int*) ": loops: ", loops, loopsPerAddress);
+    printProfile((int*) ": loads: ", loads, loadsPerAddress);
+    printProfile((int*) ": stores: ", stores, storesPerAddress);
 }
 
 // -----------------------------------------------------------------
