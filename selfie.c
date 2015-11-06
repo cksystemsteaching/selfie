@@ -637,12 +637,13 @@ int maxBinaryLength = 131072; // 128KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int *binary       = (int*) 0;
-int  binaryLength = 0;
+int *binary = (int*) 0; // binary of emitted instructions
 
-int *binaryName   = (int*) 0;
+int binaryLength = 0; // length of binary in bytes incl. globals & strings
 
-int *sourceLineNumber = (int*) 0;
+int *binaryName   = (int*) 0; // file name of binary
+
+int *sourceLineNumber = (int*) 0; // source line number per emitted instruction
 
 // -----------------------------------------------------------------
 // --------------------------- SYSCALLS ----------------------------
@@ -667,11 +668,11 @@ void emitPutchar();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int SYSCALL_EXIT    = 4001;
-int SYSCALL_READ    = 4003;
-int SYSCALL_WRITE   = 4004;
-int SYSCALL_OPEN    = 4005;
-int SYSCALL_MALLOC  = 5001;
+int SYSCALL_EXIT   = 4001;
+int SYSCALL_READ   = 4003;
+int SYSCALL_WRITE  = 4004;
+int SYSCALL_OPEN   = 4005;
+int SYSCALL_MALLOC = 5001;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -692,8 +693,9 @@ void storeMemory(int vaddr, int data);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int  memorySize = 0;
-int *memory     = (int*) 0;
+int memorySize = 0; // size of memory in bytes
+
+int *memory = (int*) 0; // mipster memory
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -800,17 +802,17 @@ int reg_lo = 0; // lo register for multiplication/division
 
 int halt = 0; // flag for halting mipster
 
-int calls            = 0;
-int *callsPerAddress = (int*) 0;
+int calls            = 0;        // total number of executed procedure calls
+int *callsPerAddress = (int*) 0; // number of executed calls of each procedure
 
-int loops            = 0;
-int *loopsPerAddress = (int*) 0;
+int loops            = 0;        // total number of executed loop iterations
+int *loopsPerAddress = (int*) 0; // number of executed iterations of each loop
 
-int loads            = 0;
-int *loadsPerAddress = (int*) 0;
+int loads            = 0;        // total number of executed memory loads
+int *loadsPerAddress = (int*) 0; // number of executed loads per load operation
 
-int stores            = 0;
-int *storesPerAddress = (int*) 0;
+int stores            = 0;        // total number of executed memory stores
+int *storesPerAddress = (int*) 0; // number of executed stores per store operation
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -878,7 +880,8 @@ int rightShift(int n, int b) {
     else if (n >= 0)
         return n / twoToThePowerOf(b);
     else
-        // works even if n == INT_MIN
+        // works even if n == INT_MIN:
+        // shift right n with msb reset and then restore msb
         return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
             (INT_MAX / twoToThePowerOf(b) + 1);
 }
@@ -1011,6 +1014,7 @@ int* itoa(int n, int *s, int b, int a, int p) {
                 // rightmost decimal digit of 32-bit INT_MIN
                 storeCharacter(s, 0, '8');
 
+                // avoids overflow
                 n = -(n / 10);
                 i = 1;
             } else
@@ -1020,19 +1024,23 @@ int* itoa(int n, int *s, int b, int a, int p) {
                 // rightmost non-decimal digit of INT_MIN
                 storeCharacter(s, 0, '0');
 
+                // avoids setting n to 0
                 n = (rightShift(INT_MIN, 1) / b) * 2;
                 i = 1;
             } else {
+                // reset msb, restore below
                 n   = rightShift(leftShift(n, 1), 1);
                 msb = 1;
             }
         }
+
+        // assert: n > 0
     }
 
     while (n != 0) {
         if (p > 0)
             if (i == p) {
-                storeCharacter(s, i, '.');
+                storeCharacter(s, i, '.'); // set point of fixed point number
 
                 i = i + 1;
                 p = 0;
@@ -1047,6 +1055,7 @@ int* itoa(int n, int *s, int b, int a, int p) {
         i = i + 1;
 
         if (msb == 1) {
+            // restore msb from above
             n   = n + (rightShift(INT_MIN, 1) / b) * 2;
             msb = 0;
         }
@@ -1054,13 +1063,13 @@ int* itoa(int n, int *s, int b, int a, int p) {
 
     if (p > 0) {
         while (i < p) {
-            storeCharacter(s, i, '0');
+            storeCharacter(s, i, '0'); // no point yet, fill with 0s
 
             i = i + 1;
         }
 
-        storeCharacter(s, i, '.');
-        storeCharacter(s, i + 1, '0');
+        storeCharacter(s, i, '.');     // set point
+        storeCharacter(s, i + 1, '0'); // leading 0
 
         i = i + 2;
         p = 0;
@@ -1068,7 +1077,7 @@ int* itoa(int n, int *s, int b, int a, int p) {
 
     if (b == 10) {
         if (sign) {
-            storeCharacter(s, i, '-');
+            storeCharacter(s, i, '-'); // negative decimal numbers start with -
 
             i = i + 1;
         }
@@ -1080,18 +1089,18 @@ int* itoa(int n, int *s, int b, int a, int p) {
         }
     } else {
         while (i < a) {
-            storeCharacter(s, i, '0'); // align with zeros
+            storeCharacter(s, i, '0'); // align with 0s
 
             i = i + 1;
         }
 
         if (b == 8) {
-            storeCharacter(s, i, '0');
+            storeCharacter(s, i, '0');     // octal numbers start with 00
             storeCharacter(s, i + 1, '0');
 
             i = i + 2;
         } else if (b == 16) {
-            storeCharacter(s, i, 'x');
+            storeCharacter(s, i, 'x');     // hexadecimal numbers start with 0x
             storeCharacter(s, i + 1, '0');
 
             i = i + 2;
@@ -1860,6 +1869,7 @@ void tfree(int numberOfTemporaries) {
 
 void save_temporaries() {
     while (allocatedTemporaries > 0) {
+        // push temporary onto stack
         emitIFormat(OP_ADDIU, REG_SP, REG_SP, -4);
         emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
@@ -1871,6 +1881,7 @@ void restore_temporaries(int numberOfTemporaries) {
     while (allocatedTemporaries < numberOfTemporaries) {
         talloc();
 
+        // restore temporary from stack
         emitIFormat(OP_LW, REG_SP, currentTemporary(), 0);
         emitIFormat(OP_ADDIU, REG_SP, REG_SP, 4);
     }
@@ -3168,7 +3179,7 @@ void emitLeftShiftBy(int b) {
 }
 
 void emitMainEntry() {
-    // instruction at address zero cannot be fixed up
+    // instruction at address zero cannot be fixed up, so just put a NOP there
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
 
     createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", binaryLength, FUNCTION, INT_T, 0);
@@ -3519,6 +3530,7 @@ int copyStringToBinary(int *s, int a) {
     w = a + l;
 
     if (l % 4 != 0)
+        // making sure w is a multiple of 4 bytes
         w = w + 4 - l % 4;
 
     while (a < w) {
@@ -3634,11 +3646,17 @@ void emitExit() {
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A1, 0);
 
+    // load argument for exit
     emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
+
+    // remove the argument from the stack
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, 4);
 
+    // load the correct syscall number and invoke syscall
     emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_EXIT);
     emitRFormat(0, 0, 0, 0, FCT_SYSCALL);
+
+    // never returns here
 }
 
 void syscall_exit() {
@@ -3673,6 +3691,7 @@ void emitRead() {
     emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_READ);
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
+    // jump back to caller, return value is in REG_V0
     emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
@@ -3811,17 +3830,12 @@ void emitMalloc() {
     emitIFormat(OP_ADDIU, REG_ZR, REG_A2, 0);
     emitIFormat(OP_ADDIU, REG_ZR, REG_A1, 0);
 
-    // load argument for malloc (size)
     emitIFormat(OP_LW, REG_SP, REG_A0, 0);
-
-    // remove the argument from the stack
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, 4);
 
-    // load the correct syscall number and invoke syscall
     emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MALLOC);
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-    // jump back to caller, return value is in REG_V0
     emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
@@ -4382,6 +4396,7 @@ int up_copyString(int *s) {
     w = a + l;
 
     if (l % 4 != 0)
+        // making sure w is a multiple of 4 bytes
         w = w + 4 - l % 4;
 
     t = a;
@@ -4455,10 +4470,15 @@ int addressWithMaxCounter(int *counters, int max) {
 }
 
 int fixedPointRatio(int a, int b) {
+    // assert: a >= b
     int r;
 
+    // compute fixed point ratio r with 2 fractional digits
+    
     r = 0;
     
+    // multiply a/b with 100 but avoid overflow
+
     if (a <= INT_MAX / 100) {
         if (b != 0)
             r = a * 100 / b;
@@ -4469,6 +4489,9 @@ int fixedPointRatio(int a, int b) {
         if (b / 100 != 0)
             r = a / (b / 100);
     }
+
+    // compute a/b in percent
+    // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
 
     if (r != 0)
         return 1000000 / r;
@@ -4508,11 +4531,11 @@ void printProfile(int *message, int total, int *counters) {
         print(message);
         print(itoa(total, string_buffer, 10, 0, 0));
         print((int*) ",");
-        a = printCounters(total, counters, INT_MAX);
+        a = printCounters(total, counters, INT_MAX); // max counter
         print((int*) ",");
-        a = printCounters(total, counters, *(counters + a / 4));
+        a = printCounters(total, counters, *(counters + a / 4)); // 2nd max
         print((int*) ",");
-        a = printCounters(total, counters, *(counters + a / 4));
+        a = printCounters(total, counters, *(counters + a / 4)); // 3rd max
         println();
     }
 }
@@ -4530,9 +4553,11 @@ void emulate(int argc, int *argv) {
 
     resetInterpreter();
 
-    *(registers+REG_SP) = memorySize - 4;
-    *(registers+REG_GP) = binaryLength;
-    *(registers+REG_K1) = *(registers+REG_GP);
+    *(registers+REG_SP) = memorySize - 4; // initialize stack pointer
+
+    *(registers+REG_GP) = binaryLength; // initialize global pointer
+
+    *(registers+REG_K1) = *(registers+REG_GP); // initialize bump pointer
 
     up_copyArguments(argc, argv);
 
