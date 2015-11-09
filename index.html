@@ -34,7 +34,7 @@
 
 <p>There is a free book in early draft form called <a href="http://leanpub.com/selfie">Selfie: Computer Science for Everyone</a> using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.</p>
 
-<p>Selfie is a fully self-referential 4k-line C implementation of:</p>
+<p>Selfie is a fully self-referential 5k-line C implementation of:</p>
 
 <ol>
 <li>a self-compiling compiler called cstarc that compiles a tiny but powerful subset of C called C Star (C*) to a tiny but powerful subset of MIPS32 called MIPSter,</li>
@@ -42,7 +42,7 @@
 <li>a tiny C* library called libcstar utilized by cstarc and mipster.</li>
 </ol>
 
-<p>Selfie is kept minimal for simplicity and implemented in a single file. There is no linker, assembler, or debugger. However, there is minimal operating system support in the form of MIPS32 o32 system calls built into the emulator. Selfie is meant to be extended in numerous ways.</p>
+<p>Selfie is kept minimal for simplicity and implemented in a single file. There is neither a linker nor an assembler. However, there is a simple profiler and disassembler and even a simple debugger as well as minimal operating system support in the form of MIPS32 o32 system calls built into the emulator.</p>
 
 <p>C* is a tiny Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, bitwise and Boolean operators, and many other features. There are only signed 32-bit integers and pointers as well as character and string constants. This choice turns out to be helpful for students to understand the true role of composite data structures such as arrays and records. Bitwise operations are implemented in libcstar using signed integer arithmetics helping students gain true understanding of two's complement. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C* can be taught in around two weeks of classes depending on student background.</p>
 
