@@ -28,11 +28,11 @@ The `-c` option invokes the C\* compiler on the given `source` file producing MI
 
 The `-o` option writes MIPSter code produced by the most recent compiler invocation to the given `binary` file.
 
-The `-s` option writes MIPSter assembly of the MIPSter code produced by the most recent compiler invocation to the given `assembly` file.
+The `-s` option writes MIPSter assembly of the MIPSter code produced by the most recent compiler invocation including approximate source line numbers to the given `assembly` file.
 
-The `-l` option loads MIPSter code from the given `binary` file.
+The `-l` option loads MIPSter code from the given `binary` file. The `-o` and `-s` options can also be used after the `-l` option. However, in this case the `-s` option does not generate approximate source line numbers.
 
-The `-m` option invokes the mipster emulator to execute MIPSter code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `size` MB of memory. The `source` or `binary` name of the MIPSter code and any remaining `...` arguments are passed to the main function of the code. The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction and the relevant machine state.
+The `-m` option invokes the mipster emulator to execute MIPSter code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `size` MB of memory. The `source` or `binary` name of the MIPSter code and any remaining `...` arguments are passed to the main function of the code. The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state.
 
 The `-k` option is not yet supported.
 
