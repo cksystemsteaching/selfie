@@ -29,7 +29,7 @@
 // There is neither a linker nor an assembler. However, there is a simple
 // profiler and disassembler and even a simple debugger as well as minimal
 // operating system support in the form of MIPS32 o32 system calls built
-// into the emulator. Selfie is meant to be extended in numerous ways.
+// into the emulator.
 //
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes data structures, bitwise and Boolean
