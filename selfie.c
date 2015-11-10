@@ -136,6 +136,15 @@ int *character_buffer; // buffer for reading and writing characters
 
 int *string_buffer; // buffer for printing
 
+// 0 = O_RDONLY (0x0000)
+int O_RDONLY = 0;
+
+// 577 = 0x0241 = O_CREAT (0x0040) | O_WRONLY (0x0001) | O_TRUNC (0x0200)
+int O_CREAT_WRONLY_TRUNC = 577; // flags for opening write-only files
+
+// 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
+int S_IRUSR_IWUSR_IRGRP_IROTH = 420; // flags for rw-r--r-- file permissions
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 int *outputName = (int*) 0;
@@ -3238,7 +3247,7 @@ void compile() {
     print(sourceName);
     println();
 
-    sourceFD = open(sourceName, 0, 0); // 0 = O_RDONLY
+    sourceFD = open(sourceName, O_RDONLY, 0);
 
     if (sourceFD < 0) {
         print(selfieName);
@@ -3610,10 +3619,8 @@ void emitGlobalsStrings() {
 
 void emit() {
     int fd;
-
-    // 1537 = 0x0601 = O_CREAT (0x0200) | O_WRONLY (0x0001) | O_TRUNC (0x0400)
-    // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
-    fd = open(binaryName, 1537, 420);
+    
+    fd = open(binaryName, O_CREAT_WRONLY_TRUNC, S_IRUSR_IWUSR_IRGRP_IROTH);
 
     if (fd < 0) {
         print(selfieName);
@@ -3636,7 +3643,7 @@ void load() {
     int fd;
     int numberOfReadBytes;
 
-    fd = open(binaryName, 0, 0); // 0 = O_RDONLY
+    fd = open(binaryName, O_RDONLY, 0);
 
     if (fd < 0) {
         print(selfieName);
@@ -4913,9 +4920,7 @@ void printProfile(int *message, int total, int *counters) {
 }
 
 void disassemble() {
-    // 1537 = 0x0601 = O_CREAT (0x0200) | O_WRONLY (0x0001) | O_TRUNC (0x0400)
-    // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
-    assemblyFD = open(assemblyName, 1537, 420);
+    assemblyFD = open(assemblyName, O_CREAT_WRONLY_TRUNC, S_IRUSR_IWUSR_IRGRP_IROTH);
 
     if (assemblyFD < 0) {
         print(selfieName);
