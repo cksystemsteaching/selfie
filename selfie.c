@@ -1860,8 +1860,8 @@ int lookForType() {
 }
 
 void talloc() {
-    // we use registers REG_T0-REG_T9 and REG_S0-REG_S7 for temporaries
-    if (allocatedTemporaries < REG_T9 - REG_A3)
+    // we use registers REG_T0-REG_T7 for temporaries
+    if (allocatedTemporaries < REG_T7 - REG_A3)
         allocatedTemporaries = allocatedTemporaries + 1;
     else {
         syntaxErrorMessage((int*) "out of registers");
@@ -1891,7 +1891,7 @@ int previousTemporary() {
 }
 
 int nextTemporary() {
-    if (allocatedTemporaries < REG_T9 - REG_A3)
+    if (allocatedTemporaries < REG_T7 - REG_A3)
         return currentTemporary() + 1;
     else {
         syntaxErrorMessage((int*) "out of registers");
