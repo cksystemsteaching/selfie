@@ -16,7 +16,7 @@
     <div class="wrapper">
       <header>
         <h1>Selfie</h1>
-        <p>An educational software system of a tiny self-compiling C compiler and a tiny self-executing MIPS emulator</p>
+        <p>An educational software system of a tiny self-compiling C compiler, a tiny self-executing MIPS emulator, and a tiny self-hosting MIPS hypervisor.</p>
 
         <p class="view"><a href="https://github.com/cksystemsteaching/selfie">View the Project on GitHub <small>cksystemsteaching/selfie</small></a></p>
 
@@ -34,12 +34,13 @@
 
 <p>There is a free book in early draft form called <a href="http://leanpub.com/selfie">Selfie: Computer Science for Everyone</a> using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.</p>
 
-<p>Selfie is a fully self-referential 5k-line C implementation of:</p>
+<p>Selfie is a fully self-referential 6k-line C implementation of:</p>
 
 <ol>
 <li>a self-compiling compiler called cstarc that compiles a tiny but powerful subset of C called C Star (C*) to a tiny but powerful subset of MIPS32 called MIPSter,</li>
-<li>a self-executing emulator called mipster that executes MIPSter code including itself when compiled with cstarc, and</li>
-<li>a tiny C* library called libcstar utilized by cstarc and mipster.</li>
+<li>a self-executing emulator called mipster that executes MIPSter code including itself when compiled with cstarc,</li>
+<li>a self-hosting hypervisor called hypster which is based on a tiny microkernel implemented in mipster and provides MIPSter virtual machines that can host all of selfie, that is, cstarc, mipster, and hypster itself, and</li>
+<li>a tiny C* library called libcstar utilized by selfie.</li>
 </ol>
 
 <p>Selfie is kept minimal for simplicity and implemented in a single file. There is neither a linker nor an assembler. However, there is a simple profiler and disassembler and even a simple debugger as well as minimal operating system support in the form of MIPS32 o32 system calls built into the emulator.</p>
@@ -50,9 +51,9 @@
 
 <p>MIPSter is a tiny Turing-complete subset of the MIPS32 instruction set. It only features arithmetic, memory, and control-flow instructions but neither bitwise nor byte-level instructions. MIPSter can be properly explained in a single week of classes.</p>
 
-<p>The emulator implements minimal operating system support that is meant to be extended by students, first as part of the emulator, and then ported to run on top of it, similar to an actual operating system or virtual machine monitor. The fact that the emulator can execute itself helps exposing the self-referential nature of that challenge.</p>
+<p>The emulator implements minimal operating system support that is meant to be extended by students, first as part of the emulator, and then ported to run on top of it, similar to an actual operating system or virtual machine monitor. The fact that the emulator can execute itself helps exposing the self-referential nature of that challenge. In fact, selfie goes one step further by implementing microkernel functionality as part of the emulator and a hypervisor that can run as part of the emulator as well as on top of it, all with the same code.</p>
 
-<p>Selfie is the result of many years of teaching systems engineering. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich.</p>
+<p>Selfie is the result of many years of teaching systems engineering. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich. The design of the selfie microkernel is inspired by microkernels of Professor Jochen Liedtke from University of Karlsruhe.</p>
       </section>
       <footer>
         <p>This project is maintained by <a href="https://github.com/cksystemsteaching">cksystemsteaching</a></p>
