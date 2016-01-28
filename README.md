@@ -14,12 +14,12 @@ The first step is to produce a binary that runs on your computer. To do that use
 $ gcc selfie.c -o selfie
 ```
 
-This produces from `selfie.c` an executable called `selfie` as directed by the `-o` option. The executable contains both the C\* compiler as well as the mipster emulator.
+This produces from `selfie.c` an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor.
 
 Selfie may be invoked as follows:
 
 ```bash
-./selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -k size ... ]
+./selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ]
 ```
 
 The order in which the options are provided matters for taking full advantage of self-referentiality.
@@ -34,21 +34,21 @@ The `-l` option loads MIPSter code from the given `binary` file. The `-o` and `-
 
 The `-m` option invokes the mipster emulator to execute MIPSter code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `size` MB of memory. The `source` or `binary` name of the MIPSter code and any remaining `...` arguments are passed to the main function of the code. The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state.
 
-The `-k` option is not yet supported.
+The `-y` option invokes the hypster hypervisor to execute MIPSter code similar to the mipster emulator. The difference to mipster is that hypster creates MIPSter virtual machines rather than a MIPSter emulator to execute the code.
 
-To compile `selfie.c` for mipster use the following commands:
+To compile `selfie.c` for mipster and hypster use the following commands:
 
 ```bash
 $ gcc selfie.c -o selfie
-$ ./selfie -c selfie.c -o selfie.mips
+$ ./selfie -c selfie.c -o selfie.m
 ```
 
-This produces a MIPSter binary file called `selfie.mips` that implements selfie.
+This produces a MIPSter binary file called `selfie.m` that implements selfie.
 
-To execute `selfie.mips` by mipster use the following command:
+To execute `selfie.m` by mipster use the following command:
 
 ```bash
-$ ./selfie -l selfie.mips -m 32
+$ ./selfie -l selfie.m -m 1
 ```
 
 This is semantically equivalent to executing `selfie` without any arguments:
@@ -57,16 +57,26 @@ This is semantically equivalent to executing `selfie` without any arguments:
 $ ./selfie
 ```
 
+To execute `selfie.m` by hypster use the following command:
+
+```bash
+$ ./selfie -l selfie.m -y 1
+```
+
+This is semantically equivalent to executing `selfie.m` by mipster and thus `selfie` without any arguments. There is a difference in output though since mipster reports code execution profiles whereas hypster does not.
+
 ### Self-compilation
 
 Here is an example of how to perform self-compilation of `selfie.c`:
 
 ```bash
 $ gcc selfie.c -o selfie
-$ ./selfie -c selfie.c -o selfie1.mips -m 32 -c selfie.c -o selfie2.mips
-$ diff -s selfie1.mips selfie2.mips
-Files selfie1.mips and selfie2.mips are identical
+$ ./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m
+$ diff -s selfie1.m selfie2.m
+Files selfie1.m and selfie2.m are identical
 ```
+
+Note that at least 2MB of memory is required.
 
 ### Self-execution
 
@@ -74,12 +84,32 @@ The following example shows how to perform self-execution of `selfie.c`. In this
 
 ```bash
 $ gcc selfie.c -o selfie
-$ ./selfie -c selfie.c -o selfie1.mips -m 64 -l selfie1.mips -m 32 -c selfie.c -o selfie2.mips
-$ diff -s selfie1.mips selfie2.mips
-Files selfie1.mips and selfie2.mips are identical
+$ ./selfie -c selfie.c -o selfie1.m -m 4 -l selfie1.m -m 2 -c selfie.c -o selfie2.m
+$ diff -s selfie1.m selfie2.m
+Files selfie1.m and selfie2.m are identical
 ```
 
-Note that the example may take several hours to complete. Also, a machine instance A running a machine instance B needs more memory than B, say, 64MB rather than 32MB in the example here.
+Note that the example may take several hours to complete. Also, an emulator instance A running an emulator instance B needs more memory than B, say, 4MB rather than 2MB in the example here.
+
+### Self-hosting
+
+The previous example can also be done by running hypster on mipster. This is significantly faster since hypster does not create a second emulator instance on top of the first emulator instance. Instead, hypster creates a virtual machine to execute selfie that runs concurrently to hypster on the first emulator instance:
+
+```bash
+$ gcc selfie.c -o selfie
+$ ./selfie -c selfie.c -o selfie1.m -m 4 -l selfie1.m -y 2 -c selfie.c -o selfie2.m
+$ diff -s selfie1.m selfie2.m
+Files selfie1.m and selfie2.m are identical
+```
+
+We may even run hypster on hypster on mipster which is still reasonably fast since there is still only one emulator instance involved and hypster itself does not add much overhead:
+
+```bash
+$ gcc selfie.c -o selfie
+$ ./selfie -c selfie.c -o selfie1.m -m 8 -l selfie1.m -y 4 -l selfie1.m -y 2 -c selfie.c -o selfie2.m
+$ diff -s selfie1.m selfie2.m
+Files selfie1.m and selfie2.m are identical
+```
 
 ### Workflow
 
@@ -87,30 +117,30 @@ To compile any C\* source you may use `selfie` directly or on top of the emulato
 
 ```bash
 $ gcc selfie.c -o selfie
-$ ./selfie -c any-cstar-file.c -o any-cstar-file1.mips
-$ ./selfie -c selfie.c -o selfie.mips
-$ ./selfie -l selfie.mips -m 32 -c any-cstar-file.c -o any-cstar-file2.mips
-$ diff -s any-cstar-file1.mips any-cstar-file2.mips
-Files any-cstar-file1.mips and any-cstar-file2.mips are identical
+$ ./selfie -c any-cstar-file.c -o any-cstar-file1.m
+$ ./selfie -c selfie.c -o selfie.m
+$ ./selfie -l selfie.m -m 1 -c any-cstar-file.c -o any-cstar-file2.m
+$ diff -s any-cstar-file1.m any-cstar-file2.m
+Files any-cstar-file1.m and any-cstar-file2.m are identical
 ```
 
-The same can also be done without producing a `selfie.mips` binary file:
+The same can also be done without producing a `selfie.m` binary file:
 
 ```bash
 $ gcc selfie.c -o selfie
-$ ./selfie -c any-cstar-file.c -o any-cstar-file1.mips
-$ ./selfie -c selfie.c -m 32 -c any-cstar-file.c -o any-cstar-file2.mips
-$ diff -s any-cstar-file1.mips any-cstar-file2.mips
-Files any-cstar-file1.mips and any-cstar-file2.mips are identical
+$ ./selfie -c any-cstar-file.c -o any-cstar-file1.m
+$ ./selfie -c selfie.c -m 1 -c any-cstar-file.c -o any-cstar-file2.m
+$ diff -s any-cstar-file1.m any-cstar-file2.m
+Files any-cstar-file1.m and any-cstar-file2.m are identical
 ```
 
 And even with a single invocation of `selfie`:
 
 ```bash
 $ gcc selfie.c -o selfie
-$ ./selfie -c any-cstar-file.c -o any-cstar-file1.mips -c selfie.c -m 32 -c any-cstar-file.c -o any-cstar-file2.mips
-$ diff -s any-cstar-file1.mips any-cstar-file2.mips
-Files any-cstar-file1.mips and any-cstar-file2.mips are identical
+$ ./selfie -c any-cstar-file.c -o any-cstar-file1.m -c selfie.c -m 1 -c any-cstar-file.c -o any-cstar-file2.m
+$ diff -s any-cstar-file1.m any-cstar-file2.m
+Files any-cstar-file1.m and any-cstar-file2.m are identical
 ```
 
 #### Debugging
@@ -130,7 +160,7 @@ Verbose debugging information is printed with the `-d` option, for example:
 
 ```bash
 $ gcc selfie.c -o selfie
-$ ./selfie -c selfie.c -d 32
+$ ./selfie -c selfie.c -d 1
 ```
 
 Similarly, if the executed binary is generated by the compiler (and not loaded from a file) approximate source line numbers are included in the debug information.
