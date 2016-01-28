@@ -24,7 +24,7 @@
 // 2. a self-executing emulator called mipster that executes
 //    MIPSter code including itself when compiled with cstarc,
 // 3. a self-hosting hypervisor called hypster which is based on
-//    on a tiny microkernel implemented in mipster and provides
+//    a tiny microkernel implemented in mipster and provides
 //    MIPSter virtual machines that can host all of selfie,
 //    that is, cstarc, mipster, and hypster itself, and
 // 4. a tiny C* library called libcstar utilized by selfie.
