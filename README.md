@@ -8,7 +8,7 @@ For further information and support please refer to http://selfie.cs.uni-salzbur
 
 ### On 32-bit Linux
 
-The first step is to produce a binary that runs on your computer. To do that use `gcc` in a terminal to compile `selfie.c`:
+The first step is to produce a binary that runs on your computer. To do that on a 32-bit Linux system use `gcc` in a terminal to compile `selfie.c` (see below for instructions on how to compile selfie on 64-bit Linux and Mac OS X systems):
 
 ```bash
 $ gcc selfie.c -o selfie
