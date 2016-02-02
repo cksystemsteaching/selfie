@@ -1,4 +1,4 @@
-CC-Summer-2015
+CC-Summer-2016
 ==============
 
-Introduction to Compiler Construction 2015
+Introduction to Compiler Construction 2016
