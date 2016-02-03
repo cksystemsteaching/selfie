@@ -111,8 +111,8 @@ void printString(int *s);
 
 int roundUp(int n, int m);
 
-void exit(int code);
 int* malloc(int size);
+void exit(int code);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
