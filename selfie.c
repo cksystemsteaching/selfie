@@ -38,7 +38,7 @@
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes data structures, bitwise and Boolean
 // operators, and many other features. There are only signed 32-bit
-// integers and pointers as well as character and string constants.
+// integers and pointers as well as character and string literals.
 // This choice turns out to be helpful for students to understand the
 // true role of composite data structures such as arrays and records.
 // Bitwise operations are implemented in libcstar using signed integer
@@ -284,12 +284,12 @@ int *identifier = (int*) 0; // stores scanned identifier as string
 int *integer    = (int*) 0; // stores scanned integer as string
 int *string     = (int*) 0; // stores scanned string
 
-int constant = 0; // stores numerical value of scanned integer or character
+int literal = 0; // stores numerical value of scanned integer or character
 
 int initialValue = 0; // stores initial value of variable definitions
 
-int mayBeINTMINConstant = 0; // support INT_MIN constant
-int isINTMINConstant    = 0;
+int mayBeINTMIN = 0; // support INT_MIN
+int isINTMIN    = 0;
 
 int character; // most recently read character
 int symbol;    // most recently recognized symbol
@@ -358,11 +358,11 @@ int reportUndefinedProcedures();
 // symbol table entry:
 // +----+---------+
 // |  0 | next    | pointer to next entry
-// |  1 | string  | identifier string, string constant
+// |  1 | string  | identifier string, string literal
 // |  2 | line#   | source line number
 // |  3 | class   | VARIABLE, PROCEDURE, STRING
 // |  4 | type    | INT_T, INTSTAR_T, VOID_T
-// |  5 | value   | VARIABLE: constant value
+// |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset
 // |  7 | scope   | REG_GP, REG_FP
 // +----+---------+
@@ -423,6 +423,7 @@ void resetSymbolTables() {
 
 int isNotRbraceOrEOF();
 int isExpression();
+int isLiteral();
 int isStarOrDivOrModulo();
 int isPlusOrMinus();
 int isComparison();
@@ -441,7 +442,7 @@ void typeWarning(int expected, int found);
 
 int* getVariable(int *variable);
 int  load_variable(int *variable);
-void load_integer(int constant);
+void load_integer(int value);
 void load_string(int *string);
 
 int  help_call_codegen(int *entry, int *procedure);
@@ -849,6 +850,7 @@ int VIRTUALMEMORYSIZE = 67108864; // 64MB of virtual memory
 int WORDSIZE = 4; // must be the same as SIZEOFINT and SIZEOFINTSTAR
 
 int PAGESIZE = 4096; // we use standard 4KB pages
+int PAGEBITS = 12;   // 2^12 == 4096
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1474,8 +1476,10 @@ void printString(int *s) {
 int roundUp(int n, int m) {
     if (n % m == 0)
         return n;
-    else
+    else if (n >= 0)
         return n + m - n % m;
+    else
+        return n - n % m;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1729,12 +1733,12 @@ int getSymbol() {
 
         storeCharacter(integer, i, 0); // null terminated string
 
-        constant = atoi(integer);
+        literal = atoi(integer);
 
-        if (constant < 0) {
-            if (constant == INT_MIN) {
-                if (mayBeINTMINConstant)
-                    isINTMINConstant = 1;
+        if (literal < 0) {
+            if (literal == INT_MIN) {
+                if (mayBeINTMIN)
+                    isINTMIN = 1;
                 else {
                     syntaxErrorMessage((int*) "integer out of bound");
                     
@@ -1752,14 +1756,14 @@ int getSymbol() {
     } else if (character == CHAR_SINGLEQUOTE) {
         getCharacter();
 
-        constant = 0;
+        literal = 0;
 
         if (character == CHAR_EOF) {
-            syntaxErrorMessage((int*) "reached end of file looking for a character constant");
+            syntaxErrorMessage((int*) "reached end of file looking for a character literal");
 
             exit(-1);
         } else
-            constant = character;
+            literal = character;
 
         getCharacter();
 
@@ -2046,7 +2050,7 @@ int isExpression() {
         return 0;
 }
 
-int isConstant() {
+int isLiteral() {
     if (symbol == SYM_INTEGER)
         return 1;
     else if (symbol == SYM_CHARACTER)
@@ -2288,37 +2292,37 @@ int load_variable(int *variable) {
     return getType(entry);
 }
 
-void load_integer(int constant) {
-    // assert: constant >= 0 or constant == INT_MIN
+void load_integer(int value) {
+    // assert: value >= 0 or value == INT_MIN
 
     talloc();
 
-    if (constant >= 0) {
-        if (constant < twoToThePowerOf(15))
+    if (value >= 0) {
+        if (value < twoToThePowerOf(15))
             // ADDIU can only load numbers < 2^15 without sign extension
-            emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), constant);
-        else if (constant < twoToThePowerOf(28)) {
+            emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), value);
+        else if (value < twoToThePowerOf(28)) {
             // load 14 msbs of a 28-bit number first
-            emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(constant, 14));
+            emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 14));
 
             // shift left by 14 bits
             emitLeftShiftBy(14);
 
             // and finally add 14 lsbs
-            emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(constant, 18), 18));
+            emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 18), 18));
         } else {
             // load 14 msbs of a 31-bit number first
-            emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(constant, 17));
+            emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 17));
 
             emitLeftShiftBy(14);
 
             // then add the next 14 msbs
-            emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(constant, 15), 18));
+            emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 15), 18));
 
             emitLeftShiftBy(3);
 
             // and finally add the remaining 3 lsbs
-            emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(constant, 29), 29));
+            emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 29), 29));
         }
     } else {
         // load largest positive 16-bit number with a single bit set: 2^14
@@ -2590,7 +2594,7 @@ int gr_factor() {
 
     // integer?
     } else if (symbol == SYM_INTEGER) {
-        load_integer(constant);
+        load_integer(literal);
 
         getSymbol();
 
@@ -2600,7 +2604,7 @@ int gr_factor() {
     } else if (symbol == SYM_CHARACTER) {
         talloc();
 
-        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), constant);
+        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
 
         getSymbol();
     
@@ -2692,15 +2696,15 @@ int gr_simpleExpression() {
     if (symbol == SYM_MINUS) {
         sign = 1;
 
-        mayBeINTMINConstant = 1;
-        isINTMINConstant    = 0;
+        mayBeINTMIN = 1;
+        isINTMIN    = 0;
 
         getSymbol();
 
-        mayBeINTMINConstant = 0;
+        mayBeINTMIN = 0;
 
-        if (isINTMINConstant) {
-            isINTMINConstant = 0;
+        if (isINTMIN) {
+            isINTMIN = 0;
             
             // avoids 0-INT_MIN overflow when bootstrapping
             // even though 0-INT_MIN == INT_MIN
@@ -3251,15 +3255,15 @@ void gr_initialization(int *name, int offset, int type) {
         if (symbol == SYM_MINUS) {
             sign = 1;
 
-            mayBeINTMINConstant = 1;
-            isINTMINConstant    = 0;
+            mayBeINTMIN = 1;
+            isINTMIN    = 0;
 
             getSymbol();
 
-            mayBeINTMINConstant = 0;
+            mayBeINTMIN = 0;
 
-            if (isINTMINConstant) {
-                isINTMINConstant = 0;
+            if (isINTMIN) {
+                isINTMIN = 0;
             
                 // avoids 0-INT_MIN overflow when bootstrapping
                 // even though 0-INT_MIN == INT_MIN
@@ -3268,8 +3272,8 @@ void gr_initialization(int *name, int offset, int type) {
         } else
             sign = 0;
 
-        if (isConstant()) {
-            initialValue = constant;
+        if (isLiteral()) {
+            initialValue = literal;
 
             getSymbol();
 
@@ -4900,7 +4904,7 @@ void mapAndStoreVirtualMemory(int *table, int vaddr, int data) {
     // assert: isValidVirtualAddress(vaddr) == 1
 
     if (isVirtualAddressMapped(table, vaddr) == 0)
-        mapPage(table, vaddr / PAGESIZE, ((int) palloc()) / PAGESIZE);
+        mapPage(table, vaddr / PAGESIZE, rightShift((int) palloc(), PAGEBITS));
     
     storeVirtualMemory(table, vaddr, data);
 }
@@ -5761,7 +5765,7 @@ void runUntilExit() {
                 // TODO: only return if all contexts have exited
                 return;
             else if (exceptionNumber == EXCEPTION_PAGEFAULT) {
-                frame = ((int) palloc()) / PAGESIZE;
+                frame = rightShift((int) palloc(), PAGEBITS);
 
                 // TODO: use this table to unmap and reuse frames
                 mapPage(getPT(fromContext), exceptionParameter, frame);
@@ -6150,6 +6154,7 @@ void mapPage(int *table, int page, int frame) {
 // -----------------------------------------------------------------
 
 int* palloc() {
+    // CAUTION: on boot level zero palloc may return frame addresses < 0
     int block;
     int frame;
 
@@ -6161,16 +6166,6 @@ int* palloc() {
 
         if (usedMemory + freePageFrame <= frameMemorySize) {
             block = (int) malloc(freePageFrame);
-
-            if (block < 0) {
-                // only potentially possible at boot level zero
-                // TODO: deal with negative integers as addresses
-                print(selfieName);
-                print((int*) ": palloc address error");
-                println();
-
-                exit(-1);
-            }
 
             usedMemory = usedMemory + freePageFrame;
 
@@ -6189,16 +6184,6 @@ int* palloc() {
     }
 
     frame = nextPageFrame;
-
-    if (frame < 0) {
-        // only potentially possible at boot level zero
-        // TODO: deal with negative integers as addresses
-        print(selfieName);
-        print((int*) ": palloc address error");
-        println();
-
-        exit(-1);
-    }
 
     nextPageFrame = nextPageFrame + PAGESIZE;
     freePageFrame = freePageFrame - PAGESIZE;
