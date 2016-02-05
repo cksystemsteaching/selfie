@@ -843,6 +843,8 @@ void mapAndStoreVirtualMemory(int *table, int vaddr, int data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+int debug_tlb = 0;
+
 int MEGABYTE = 1048576;
 
 int VIRTUALMEMORYSIZE = 67108864; // 64MB of virtual memory
@@ -4875,6 +4877,7 @@ int isVirtualAddressMapped(int *table, int vaddr) {
 int* tlb(int *table, int vaddr) {
     int page;
     int frame;
+    int paddr;
 
     // assert: isValidVirtualAddress(vaddr) == 1
     // assert: isVirtualAddressMapped(table, vaddr) == 1
@@ -4883,7 +4886,27 @@ int* tlb(int *table, int vaddr) {
 
     frame = getFrameForPage(table, page);
 
-    return (int*) (vaddr - page * PAGESIZE + frame * PAGESIZE);
+    paddr = (vaddr - page * PAGESIZE) + frame * PAGESIZE;
+
+    if (debug_tlb) {
+        print(binaryName);
+        print((int*) ": tlb access:");
+        println();
+        print((int*) " vaddr: ");
+        print(itoa(vaddr, string_buffer, 2, 32, 0));
+        println();
+        print((int*) " page:  ");
+        print(itoa(page * PAGESIZE, string_buffer, 2, 32, 0));
+        println();
+        print((int*) " frame: ");
+        print(itoa(frame * PAGESIZE, string_buffer, 2, 32, 0));
+        println();
+        print((int*) " paddr: ");
+        print(itoa(paddr, string_buffer, 2, 32, 0));
+        println();
+    }
+
+    return (int*) paddr;
 }
 
 int loadVirtualMemory(int *table, int vaddr) {
