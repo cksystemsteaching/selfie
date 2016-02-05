@@ -1127,8 +1127,8 @@ void resetMicrokernel() {
 // --------------------------- HYPSTER -----------------------------
 // -----------------------------------------------------------------
 
-int* palloc();
-void pfree(int *block);
+int  palloc();
+void pfree(int frame);
 
 void down_mapPageTable(int *context);
 
@@ -3990,25 +3990,25 @@ int* touch(int *memory, int length) {
 
     if (length > 0)
         // touch memory at beginning
-        n = *memory;
+        n = *m;
 
     while (length > PAGESIZE) {
         length = length - PAGESIZE;
 
-        memory = memory + PAGESIZE / WORDSIZE;
+        m = m + PAGESIZE / WORDSIZE;
 
         // touch every following page
-        n = *memory;
+        n = *m;
     }
 
     if (length > 0) {
-        memory = memory + (length - 1) / WORDSIZE;
+        m = m + (length - 1) / WORDSIZE;
 
         // touch at end
-        n = *memory;
+        n = *m;
     }
 
-    return m;
+    return memory;
 }
 
 void selfie_load() {
@@ -4783,7 +4783,7 @@ void doMap(int ID, int page, int frame) {
             parentContext = findContext(getParent(mapContext), activeContexts);
 
             if (parentContext != (int*) 0)
-                frame = getFrameForPage(getPT(parentContext), frame);
+                frame = getFrameForPage(getPT(parentContext), frame / PAGESIZE);
             else if (debug_map) {
                 print(binaryName);
                 print((int*) ": selfie_map parent context ");
@@ -4802,7 +4802,7 @@ void doMap(int ID, int page, int frame) {
             print((int*) ": selfie_map page ");
             print(itoa(page, string_buffer, 16, 4, 0));
             print((int*) " to frame ");
-            print(itoa(frame, string_buffer, 16, 4, 0));
+            print(itoa(frame, string_buffer, 16, 8, 0));
             print((int*) " for context ");
             print(itoa(ID, string_buffer, 10, 0, 0));
             println();
@@ -4886,7 +4886,7 @@ int* tlb(int *table, int vaddr) {
 
     frame = getFrameForPage(table, page);
 
-    paddr = (vaddr - page * PAGESIZE) + frame * PAGESIZE;
+    paddr = (vaddr - page * PAGESIZE) + frame;
 
     if (debug_tlb) {
         print(binaryName);
@@ -4899,7 +4899,7 @@ int* tlb(int *table, int vaddr) {
         print(itoa(page * PAGESIZE, string_buffer, 2, 32, 0));
         println();
         print((int*) " frame: ");
-        print(itoa(frame * PAGESIZE, string_buffer, 2, 32, 0));
+        print(itoa(frame, string_buffer, 2, 32, 0));
         println();
         print((int*) " paddr: ");
         print(itoa(paddr, string_buffer, 2, 32, 0));
@@ -4927,7 +4927,7 @@ void mapAndStoreVirtualMemory(int *table, int vaddr, int data) {
     // assert: isValidVirtualAddress(vaddr) == 1
 
     if (isVirtualAddressMapped(table, vaddr) == 0)
-        mapPage(table, vaddr / PAGESIZE, rightShift((int) palloc(), PAGEBITS));
+        mapPage(table, vaddr / PAGESIZE, palloc());
     
     storeVirtualMemory(table, vaddr, data);
 }
@@ -5788,7 +5788,7 @@ void runUntilExit() {
                 // TODO: only return if all contexts have exited
                 return;
             else if (exceptionNumber == EXCEPTION_PAGEFAULT) {
-                frame = rightShift((int) palloc(), PAGEBITS);
+                frame = palloc();
 
                 // TODO: use this table to unmap and reuse frames
                 mapPage(getPT(fromContext), exceptionParameter, frame);
@@ -6176,7 +6176,7 @@ void mapPage(int *table, int page, int frame) {
 // --------------------------- HYPSTER -----------------------------
 // -----------------------------------------------------------------
 
-int* palloc() {
+int palloc() {
     // CAUTION: on boot level zero palloc may return frame addresses < 0
     int block;
     int frame;
@@ -6212,10 +6212,12 @@ int* palloc() {
     freePageFrame = freePageFrame - PAGESIZE;
 
     // strictly, touching is only necessary on boot levels higher than zero
-    return touch((int*) frame, PAGESIZE);
+    touch((int*) frame, PAGESIZE);
+
+    return frame;
 }
 
-void pfree(int *block) {
+void pfree(int frame) {
     // TODO: implement free list of page frames
 }
 
