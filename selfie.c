@@ -1127,8 +1127,8 @@ void resetMicrokernel() {
 // --------------------------- HYPSTER -----------------------------
 // -----------------------------------------------------------------
 
-int  palloc();
-void pfree(int frame);
+int* palloc();
+void pfree(int *frame);
 
 void down_mapPageTable(int *context);
 
@@ -4640,7 +4640,16 @@ void implementSwitch() {
 }
 
 int mipster_switch(int toID) {
-    *(registers+REG_V1) = doSwitch(toID);
+    int fromID;
+
+    // CAUTION: registers is 0 upon first call to mipster_switch and
+    // only set to the registers of the toID context in doSwitch(toID)
+    // but some compilers dereference the lvalue *(registers+REG_V1)
+    // before evaluating the rvalue doSwitch(toID)
+
+    fromID = doSwitch(toID);
+
+    *(registers+REG_V1) = fromID;
 
     runUntilException();
 
@@ -4783,6 +4792,7 @@ void doMap(int ID, int page, int frame) {
             parentContext = findContext(getParent(mapContext), activeContexts);
 
             if (parentContext != (int*) 0)
+                // assert: 0 <= frame < VIRTUALMEMORYSIZE
                 frame = getFrameForPage(getPT(parentContext), frame / PAGESIZE);
             else if (debug_map) {
                 print(binaryName);
@@ -4795,6 +4805,7 @@ void doMap(int ID, int page, int frame) {
             }
         }
 
+        // on boot level zero frame may be any signed integer
         mapPage(getPT(mapContext), page, frame);
 
         if (debug_map) {
@@ -4927,7 +4938,7 @@ void mapAndStoreVirtualMemory(int *table, int vaddr, int data) {
     // assert: isValidVirtualAddress(vaddr) == 1
 
     if (isVirtualAddressMapped(table, vaddr) == 0)
-        mapPage(table, vaddr / PAGESIZE, palloc());
+        mapPage(table, vaddr / PAGESIZE, (int) palloc());
     
     storeVirtualMemory(table, vaddr, data);
 }
@@ -5788,7 +5799,7 @@ void runUntilExit() {
                 // TODO: only return if all contexts have exited
                 return;
             else if (exceptionNumber == EXCEPTION_PAGEFAULT) {
-                frame = palloc();
+                frame = (int) palloc();
 
                 // TODO: use this table to unmap and reuse frames
                 mapPage(getPT(fromContext), exceptionParameter, frame);
@@ -6176,7 +6187,7 @@ void mapPage(int *table, int page, int frame) {
 // --------------------------- HYPSTER -----------------------------
 // -----------------------------------------------------------------
 
-int palloc() {
+int* palloc() {
     // CAUTION: on boot level zero palloc may return frame addresses < 0
     int block;
     int frame;
@@ -6212,12 +6223,10 @@ int palloc() {
     freePageFrame = freePageFrame - PAGESIZE;
 
     // strictly, touching is only necessary on boot levels higher than zero
-    touch((int*) frame, PAGESIZE);
-
-    return frame;
+    return touch((int*) frame, PAGESIZE);
 }
 
-void pfree(int frame) {
+void pfree(int *frame) {
     // TODO: implement free list of page frames
 }
 
