@@ -18,15 +18,15 @@
 //
 // Selfie is a fully self-referential 6k-line C implementation of:
 //
-// 1. a self-compiling compiler called cstarc that compiles
+// 1. a self-compiling compiler called starc that compiles
 //    a tiny but powerful subset of C called C Star (C*) to
 //    a tiny but powerful subset of MIPS32 called MIPSter,
 // 2. a self-executing emulator called mipster that executes
-//    MIPSter code including itself when compiled with cstarc,
+//    MIPSter code including itself when compiled with starc,
 // 3. a self-hosting hypervisor called hypster which is based on
 //    a tiny microkernel implemented in mipster and provides
 //    MIPSter virtual machines that can host all of selfie,
-//    that is, cstarc, mipster, and hypster itself, and
+//    that is, starc, mipster, and hypster itself, and
 // 4. a tiny C* library called libcstar utilized by selfie.
 //
 // Selfie is kept minimal for simplicity and implemented in a single file.
@@ -3574,7 +3574,7 @@ void fixRegisterInitialization() {
 
 void selfie_compile() {
     print(selfieName);
-    print((int*) ": this is selfie's cstarc compiling ");
+    print((int*) ": this is selfie's starc compiling ");
     print(sourceName);
     println();
 
