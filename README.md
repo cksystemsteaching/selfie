@@ -1,4 +1,4 @@
-CC-Summer-2016
-==============
+Assignments
+===========
 
-Introduction to Compiler Construction 2016
+TBA
