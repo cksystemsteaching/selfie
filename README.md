@@ -20,7 +20,7 @@ General Requirements
 All homework solutions:
 
 * must be implemented in C* in the selfie.c file,
-* must compile and execute with selfie,
+* must compile without warnings and execute with selfie,
 * must not break any existing selfie functionality, and
 * must be ready for presentation on your machine in class.
 
