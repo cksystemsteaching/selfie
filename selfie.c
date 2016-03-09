@@ -2589,7 +2589,11 @@ int gr_factor() {
 
             talloc();
 
+            // retrieve return value
             emitIFormat(OP_ADDIU, REG_V0, currentTemporary(), 0);
+
+            // reset return register
+            emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
         } else
             // variable access: identifier
             type = load_variable(variableOrProcedureName);
@@ -3139,6 +3143,9 @@ void gr_statement() {
 
             gr_call(variableOrProcedureName);
 
+            // reset return register
+            emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+
             if (symbol == SYM_SEMICOLON)
                 getSymbol();
             else
@@ -3528,9 +3535,11 @@ void emitMainEntry() {
     // jump and link to main, will return here only if there is no exit call
     emitJFormat(OP_JAL, 0);
 
-    // we exit cleanly with error code 0 pushed onto the stack
+    // we exit with error code in return register pushed onto the stack
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-    emitIFormat(OP_SW, REG_SP, REG_ZR, 0);
+    emitIFormat(OP_SW, REG_SP, REG_V0, 0);
+
+    // no need to reset return register here
 }
 
 void fixRegisterInitialization() {
@@ -4007,6 +4016,9 @@ int* touch(int *memory, int length) {
         // touch at end
         n = *m;
     }
+
+    // avoids unused warning for n
+    n = 0; n = n + 1;
 
     return memory;
 }
@@ -6427,4 +6439,6 @@ int main(int argc, int *argv) {
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
         println();
     }
+
+    return 0;
 }
