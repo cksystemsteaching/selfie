@@ -636,6 +636,11 @@ int FCT_ADDU    = 33;
 int FCT_SUBU    = 35;
 int FCT_SLT     = 42;
 
+int FCT_SLL     = FCT_NOP;
+int FCT_SRL     = 2;
+int FCT_SLLV    = 4;
+int FCT_SRLV    = 6;
+
 int *FUNCTIONS; // array of strings representing MIPS functions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -5622,7 +5627,30 @@ void op_sw() {
 
 int sll(){
 
-    if (debug) {}
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        print((int*) "shamt");
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            print((int*) "shamt");
+            print((int*) "=");
+            print(number????);//print the number
+        }
+
+    }
     
     if(interpret){
         *(registers+rd) = leftShift(*(registers+rt), shamt);//shamt?
@@ -5631,7 +5659,12 @@ int sll(){
     }
     
     if (debug) {
-        if (interpret) {}
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
         println();
     }
     
@@ -5647,38 +5680,117 @@ int srl(){
         // shift right n with msb reset
       //  return ((n + 1) + INT_MAX) / twoToThePowerOf(b);
     
-    if (debug) {}
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        print((int*) "shamt");
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            print((int*) "shamt");
+            print((int*) "=");
+            print(number????);//print the number
+        }
+
+    }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), shamt);//shamt?
+        *(registers+rd) = rightShift(*(registers+rt), shamt);//shamt and should be logical!!!?
         
         pc = pc + WORDSIZE;
     }
     
     if (debug) {
-        if (interpret) {}
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
         println();
     }
 }
 
 int sllv(){
-    if (debug) {}
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        printRegister(rs);
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rs);
+            print((int*) "=");
+            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+        }
+
+    }
     
     if(interpret){
-        *(registers+rd) = sll(*(registers+rt), *(registers+rs));
+        *(registers+rd) = sll(*(registers+rt), *(registers+rs));//shamt and should be logical!!!?
         
         pc = pc + WORDSIZE;
     }
     
     if (debug) {
-        if (interpret) {}
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
         println();
     }
 }
 
 int srlv(){
     
-    if (debug) {}
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        printRegister(rs);
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rs);
+            print((int*) "=");
+             print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+        }
+
+    }
     
     if(interpret){
         *(registers+rd) = srl(*(registers+rt), *(registers+rs));
@@ -5687,7 +5799,12 @@ int srlv(){
     }
     
     if (debug) {
-        if (interpret) {}
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
         println();
     }
 }
