@@ -90,10 +90,6 @@ void initLibrary();
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
-int sll(int n, int b);
-int srl(int n, int b);
-int sllv(int n, int b);
-int srlv(int n, int b);
 
 int  loadCharacter(int *s, int i);
 int* storeCharacter(int *s, int i, int c);
@@ -895,6 +891,12 @@ void op_lw();
 void fct_slt();
 void op_sw();
 
+void sll();
+void srl();
+void sllv();
+void srlv();
+
+
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
@@ -1187,34 +1189,6 @@ int rightShift(int n, int b) {
         // shift right n with msb reset and then restore msb
         return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
             (INT_MAX / twoToThePowerOf(b) + 1);
-}
-
-int sll(int n, int b){
-    // assert: b >= 0
-    return leftShift(n, b);
-    
-}
-
-int srl(int n, int b){
-    // assert: b >= 0
-    if (b > 30)
-        return 0;
-    else if (n >= 0)
-        return n / twoToThePowerOf(b);
-    else
-        // works even if n == INT_MIN:
-        // shift right n with msb reset
-        return ((n + 1) + INT_MAX) / twoToThePowerOf(b);
-}
-
-int sllv(int n, int *s){
-    // assert: b >= 0
-    return leftShift(n, s);
-}
-
-int srlv(int n, int *s){
-    // assert: b >= 0
-    srl(n, s);
 }
 
 int loadCharacter(int *s, int i) {
@@ -5644,6 +5618,79 @@ void op_sw() {
         println();
     }
 }
+
+int sll(){
+
+    if (debug) {}
+    
+    if(interpret){
+        *(registers+rd) = leftShift(*(registers+rt), shamt);//shamt?
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {}
+        println();
+    }
+    
+}
+
+int srl(){
+   // if (b > 30)
+   //     return 0;
+   // else if (n >= 0)
+    //     n / twoToThePowerOf(b);
+   // else
+        // works even if n == INT_MIN:
+        // shift right n with msb reset
+      //  return ((n + 1) + INT_MAX) / twoToThePowerOf(b);
+    
+    if (debug) {}
+    
+    if(interpret){
+        *(registers+rd) = rightShift(*(registers+rt), shamt);//shamt?
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {}
+        println();
+    }
+}
+
+int sllv(){
+    if (debug) {}
+    
+    if(interpret){
+        *(registers+rd) = sll(*(registers+rt), *(registers+rs));
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {}
+        println();
+    }
+}
+
+int srlv(){
+    
+    if (debug) {}
+    
+    if(interpret){
+        *(registers+rd) = srl(*(registers+rt), *(registers+rs));
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {}
+        println();
+    }
+}
+
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
