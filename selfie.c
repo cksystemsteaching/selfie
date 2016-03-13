@@ -680,6 +680,11 @@ void initDecoder() {
     *(FUNCTIONS + FCT_ADDU)    = (int) "addu";
     *(FUNCTIONS + FCT_SUBU)    = (int) "subu";
     *(FUNCTIONS + FCT_SLT)     = (int) "slt";
+   
+    *(FUNCTIONS + FCT_SLL)     = (int) "sll";
+    *(FUNCTIONS + FCT_SRL)     = (int) "srl";
+    *(FUNCTIONS + FCT_SLLV)     = (int) "sllv";
+    *(FUNCTIONS + FCT_SRLV)     = (int) "srlv";
 }
 
 // -----------------------------------------------------------------
@@ -897,10 +902,10 @@ void fct_subu();
 void op_lw();
 void fct_slt();
 void op_sw();
-void sll();
-void srl();
-void sllv();
-void srlv();
+void fct_sll();
+void fct_srl();
+void fct_sllv();
+void fct_srlv();
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -5629,7 +5634,7 @@ void op_sw() {
     }
 }
 
-int sll(){
+int fct_sll(){
 
     if (debug) {
         printFunction(function);
@@ -5674,7 +5679,7 @@ int sll(){
     
 }
 
-int srl(){
+int fct_srl(){
    // if (b > 30)
    //     return 0;
    // else if (n >= 0)
@@ -5726,7 +5731,7 @@ int srl(){
     }
 }
 
-int sllv(){
+int fct_sllv(){
     if (debug) {
         printFunction(function);
         print((int*) " ");
@@ -5769,7 +5774,7 @@ int sllv(){
     }
 }
 
-int srlv(){
+int fct_srlv(){
     
     if (debug) {
         printFunction(function);
@@ -5925,6 +5930,14 @@ void execute() {
             fct_jr();
         else if (function == FCT_SYSCALL)
             fct_syscall();
+        else if (function == FCT_SLL)//for the 4 shift funktions:
+            fct_sll();
+        else if (function == FCT_SRL)
+            fct_srl();
+        else if (function == FCT_SLLV)
+            fct_sllv();
+        else if (function == FCT_SRLV)
+            fct_srlv();
         else
             throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
     } else if (opcode == OP_ADDIU)
