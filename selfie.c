@@ -91,7 +91,6 @@ int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
 
-
 int  loadCharacter(int *s, int i);
 int* storeCharacter(int *s, int i, int c);
 
@@ -593,6 +592,7 @@ int getOpcode(int instruction);
 int getRS(int instruction);
 int getRT(int instruction);
 int getRD(int instruction);
+int getShamt(int instruction);
 int getFunction(int instruction);
 int getImmediate(int instruction);
 int getInstrIndex(int instruction);
@@ -644,6 +644,7 @@ int opcode      = 0;
 int rs          = 0;
 int rt          = 0;
 int rd          = 0;
+int shamt		= 0;
 int immediate   = 0;
 int function    = 0;
 int instr_index = 0;
@@ -891,12 +892,6 @@ void fct_subu();
 void op_lw();
 void fct_slt();
 void op_sw();
-
-void sll();
-void srl();
-void sllv();
-void srlv();
-
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -3741,6 +3736,10 @@ int getRD(int instruction) {
     return rightShift(leftShift(instruction, 16), 27);
 }
 
+int getShamt(int instruction) {
+    return rightShift(leftShift(instruction, 21), 27);
+}
+
 int getFunction(int instruction) {
     return rightShift(leftShift(instruction, 26), 26);
 }
@@ -3797,6 +3796,7 @@ void decodeRFormat() {
     rs          = getRS(ir);
     rt          = getRT(ir);
     rd          = getRD(ir);
+    shamt		= getShamt(ir);
     immediate   = 0;
     function    = getFunction(ir);
     instr_index = 0;
@@ -5620,79 +5620,6 @@ void op_sw() {
     }
 }
 
-int sll(){
-
-    if (debug) {}
-    
-    if(interpret){
-        *(registers+rd) = leftShift(*(registers+rt), shamt);//shamt?
-        
-        pc = pc + WORDSIZE;
-    }
-    
-    if (debug) {
-        if (interpret) {}
-        println();
-    }
-    
-}
-
-int srl(){
-   // if (b > 30)
-   //     return 0;
-   // else if (n >= 0)
-    //     n / twoToThePowerOf(b);
-   // else
-        // works even if n == INT_MIN:
-        // shift right n with msb reset
-      //  return ((n + 1) + INT_MAX) / twoToThePowerOf(b);
-    
-    if (debug) {}
-    
-    if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), shamt);//shamt?
-        
-        pc = pc + WORDSIZE;
-    }
-    
-    if (debug) {
-        if (interpret) {}
-        println();
-    }
-}
-
-int sllv(){
-    if (debug) {}
-    
-    if(interpret){
-        *(registers+rd) = sll(*(registers+rt), *(registers+rs));
-        
-        pc = pc + WORDSIZE;
-    }
-    
-    if (debug) {
-        if (interpret) {}
-        println();
-    }
-}
-
-int srlv(){
-    
-    if (debug) {}
-    
-    if(interpret){
-        *(registers+rd) = srl(*(registers+rt), *(registers+rs));
-        
-        pc = pc + WORDSIZE;
-    }
-    
-    if (debug) {
-        if (interpret) {}
-        println();
-    }
-}
-
-
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
@@ -5874,7 +5801,7 @@ void runUntilExit() {
 
         fromContext = findContext(fromID, readyContexts);
 
-        if (fromContext == (int*) 0) {
+d        if (fromContext == (int*) 0) {
             // assert: context with fromID must be in activeContexts
             fromContext = findContext(fromID, activeContexts);
 
