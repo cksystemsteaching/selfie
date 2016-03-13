@@ -636,6 +636,11 @@ int FCT_ADDU    = 33;
 int FCT_SUBU    = 35;
 int FCT_SLT     = 42;
 
+int FCT_SLL     = FCT_NOP;
+int FCT_SRL     = 2;
+int FCT_SLLV    = 4;
+int FCT_SRLV    = 6;
+
 int *FUNCTIONS; // array of strings representing MIPS functions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -892,6 +897,10 @@ void fct_subu();
 void op_lw();
 void fct_slt();
 void op_sw();
+void sll();
+void srl();
+void sllv();
+void srlv();
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -5620,6 +5629,191 @@ void op_sw() {
     }
 }
 
+int sll(){
+
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        print((int*) "shamt");
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            print((int*) "shamt");
+            print((int*) "=");
+            print(number????);//print the number
+        }
+
+    }
+    
+    if(interpret){
+        *(registers+rd) = leftShift(*(registers+rt), shamt);//shamt?
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
+        println();
+    }
+    
+}
+
+int srl(){
+   // if (b > 30)
+   //     return 0;
+   // else if (n >= 0)
+    //     n / twoToThePowerOf(b);
+   // else
+        // works even if n == INT_MIN:
+        // shift right n with msb reset
+      //  return ((n + 1) + INT_MAX) / twoToThePowerOf(b);
+    
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        print((int*) "shamt");
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            print((int*) "shamt");
+            print((int*) "=");
+            print(number????);//print the number
+        }
+
+    }
+    
+    if(interpret){
+        *(registers+rd) = rightShift(*(registers+rt), shamt);//shamt and should be logical!!!?
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
+        println();
+    }
+}
+
+int sllv(){
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        printRegister(rs);
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rs);
+            print((int*) "=");
+            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+        }
+
+    }
+    
+    if(interpret){
+        *(registers+rd) = sll(*(registers+rt), *(registers+rs));//shamt and should be logical!!!?
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
+        println();
+    }
+}
+
+int srlv(){
+    
+    if (debug) {
+        printFunction(function);
+        print((int*) " ");
+        printRegister(rd);
+        print((int*) ",");
+        printRegister(rt);
+        print((int*) ",");
+        printRegister(rs);
+        if (interpret) {
+            print((int*) ": ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rt);
+            print((int*) "=");
+            print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+            print((int*) ",");
+            printRegister(rs);
+            print((int*) "=");
+             print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+        }
+
+    }
+    
+    if(interpret){
+        *(registers+rd) = srl(*(registers+rt), *(registers+rs));
+        
+        pc = pc + WORDSIZE;
+    }
+    
+    if (debug) {
+        if (interpret) {
+            print((int*) " -> ");
+            printRegister(rd);
+            print((int*) "=");
+            print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+        }
+        println();
+    }
+}
+
+
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
@@ -5801,7 +5995,7 @@ void runUntilExit() {
 
         fromContext = findContext(fromID, readyContexts);
 
-d        if (fromContext == (int*) 0) {
+        if (fromContext == (int*) 0) {
             // assert: context with fromID must be in activeContexts
             fromContext = findContext(fromID, activeContexts);
 
