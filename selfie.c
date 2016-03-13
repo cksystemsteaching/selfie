@@ -91,6 +91,7 @@ int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
 
+
 int  loadCharacter(int *s, int i);
 int* storeCharacter(int *s, int i, int c);
 
