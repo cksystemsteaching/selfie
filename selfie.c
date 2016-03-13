@@ -5656,13 +5656,13 @@ int fct_sll(){
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
-            print(number????);//print the number
+            print(shamt);
         }
 
     }
     
     if(interpret){
-        *(registers+rd) = leftShift(*(registers+rt), shamt);//shamt?
+        *(registers+rd) = leftShift(*(registers+rt), shamt);
         
         pc = pc + WORDSIZE;
     }
@@ -5701,12 +5701,12 @@ int fct_srl(){
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
-            print(number????);//print the number
+            print(shamt);
         }
     }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), shamt) - (INT_MAX / twoToThePowerOf(shamt) + 1);;//shamt?
+        *(registers+rd) = rightShift(*(registers+rt), shamt) - (INT_MAX / twoToThePowerOf(shamt) + 1);
         
         pc = pc + WORDSIZE;
     }
