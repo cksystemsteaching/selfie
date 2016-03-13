@@ -5680,14 +5680,6 @@ int fct_sll(){
 }
 
 int fct_srl(){
-   // if (b > 30)
-   //     return 0;
-   // else if (n >= 0)
-    //     n / twoToThePowerOf(b);
-   // else
-        // works even if n == INT_MIN:
-        // shift right n with msb reset
-      //  return ((n + 1) + INT_MAX) / twoToThePowerOf(b);
     
     if (debug) {
         printFunction(function);
@@ -5711,11 +5703,10 @@ int fct_srl(){
             print((int*) "=");
             print(number????);//print the number
         }
-
     }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), shamt);//shamt and should be logical!!!?
+        *(registers+rd) = rightShift(*(registers+rt), shamt) - (INT_MAX / twoToThePowerOf(shamt) + 1);;//shamt?
         
         pc = pc + WORDSIZE;
     }
@@ -5758,7 +5749,7 @@ int fct_sllv(){
     }
     
     if(interpret){
-        *(registers+rd) = sll(*(registers+rt), *(registers+rs));//shamt and should be logical!!!?
+        *(registers+rd) = fct_sll(*(registers+rt), *(registers+rs));
         
         pc = pc + WORDSIZE;
     }
@@ -5802,7 +5793,7 @@ int fct_srlv(){
     }
     
     if(interpret){
-        *(registers+rd) = srl(*(registers+rt), *(registers+rs));
+        *(registers+rd) = fct_srl(*(registers+rt), *(registers+rs));
         
         pc = pc + WORDSIZE;
     }
