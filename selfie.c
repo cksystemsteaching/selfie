@@ -1220,13 +1220,13 @@ int srl(int n, int b){
 
 //Shift left logical variable.
 int sllv(int n, int *s){
-    // assert: b >= 0
+    // assert: s >= 0
     return leftShift(n, s);
 }
 
 //Shift right logical variable.
 int srlv(int n, int *s){
-    // assert: b >= 0
+    // assert: s >= 0
     srl(n, s);
 }
 
