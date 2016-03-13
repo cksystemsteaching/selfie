@@ -1189,12 +1189,22 @@ int rightShift(int n, int b) {
             (INT_MAX / twoToThePowerOf(b) + 1);
 }
 
+
+//A shift left logical of one position moves each bit to the left by one. 
+//The low-order bit (the right-most bit) is replaced by a zero bit and the high-order bit (the left-most bit) is discarded.
+//The ALU (arithmetic/logic unit) which does the operation pays no attention to what the bits mean. 
+//If the bits represent an unsigned integer, then a left shift is equivalent to multiplying the integer by two.
+
+//shift n left by b positions. 
 int sll(int n, int b){
     // assert: b >= 0
     return leftShift(n, b);
     
 }
 
+//shift right logical. It moves bits to the right by a number of positions less than 32. 
+//If the bit pattern is regarded as an unsigned integer, or a positive two's comp. integer, then a right shift of one bit position performs an integer divide by two. 
+//A right shift by N positions performs an integer divide by 2^N.
 int srl(int n, int b){
     // assert: b >= 0
     if (b > 30)
@@ -1207,11 +1217,14 @@ int srl(int n, int b){
         return ((n + 1) + INT_MAX) / twoToThePowerOf(b);
 }
 
+
+//Shift left logical variable.
 int sllv(int n, int *s){
     // assert: b >= 0
     return leftShift(n, s);
 }
 
+//Shift right logical variable.
 int srlv(int n, int *s){
     // assert: b >= 0
     srl(n, s);
