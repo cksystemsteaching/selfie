@@ -5921,7 +5921,7 @@ void execute() {
             fct_jr();
         else if (function == FCT_SYSCALL)
             fct_syscall();
-        else if (function == FCT_SLL)//for the 4 shift funkctions:
+        else if (function == FCT_SLL)//for the 4 shift functions:
             fct_sll();
         else if (function == FCT_SRL)
             fct_srl();
