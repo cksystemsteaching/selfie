@@ -5701,7 +5701,7 @@ int fct_srl(){
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
-            print(shamt);
+            print(shamt); //TODO check how printing shamt works.
         }
     }
     
@@ -5921,7 +5921,7 @@ void execute() {
             fct_jr();
         else if (function == FCT_SYSCALL)
             fct_syscall();
-        else if (function == FCT_SLL)//for the 4 shift funktions:
+        else if (function == FCT_SLL)//for the 4 shift funkctions:
             fct_sll();
         else if (function == FCT_SRL)
             fct_srl();
