@@ -636,7 +636,7 @@ int FCT_ADDU    = 33;
 int FCT_SUBU    = 35;
 int FCT_SLT     = 42;
 
-int FCT_SLL     = FCT_NOP;
+int FCT_SLL     = 0;
 int FCT_SRL     = 2;
 int FCT_SLLV    = 4;
 int FCT_SRLV    = 6;
@@ -670,7 +670,7 @@ void initDecoder() {
 
     FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
 
-    *(FUNCTIONS + FCT_NOP)     = (int) "nop";
+//    *(FUNCTIONS + FCT_NOP)     = (int) "nop";
     *(FUNCTIONS + FCT_JR)      = (int) "jr";
     *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
     *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
@@ -3803,7 +3803,7 @@ void decode() {
 // 32 bit
 //
 // +------+-----+-----+-----+-----+------+
-// |opcode|  rs |  rt |  rd |00000|fction|
+// |opcode|  rs |  rt |  rd |shamt|fction|
 // +------+-----+-----+-----+-----+------+
 //    6      5     5     5     5     6
 void decodeRFormat() {
@@ -5021,7 +5021,8 @@ void fct_syscall() {
 
 void fct_nop() {
     if (debug) {
-        printFunction(function);
+        printOpcode(opcode);
+//        printFunction(function);
         println();
     }
 
@@ -5634,8 +5635,7 @@ void op_sw() {
     }
 }
 
-int fct_sll(){
-
+void fct_sll(){
     if (debug) {
         printFunction(function);
         print((int*) " ");
@@ -5656,7 +5656,7 @@ int fct_sll(){
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
-            print((int*) shamt);
+            print(itoa(shamt, string_buffer, 10, 0, 0));
         }
 
     }
@@ -5679,7 +5679,7 @@ int fct_sll(){
     
 }
 
-int fct_srl(){
+void fct_srl(){
     
     if (debug) {
         printFunction(function);
@@ -5701,7 +5701,7 @@ int fct_srl(){
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
-            print((int*) shamt);
+            print(itoa(shamt, string_buffer, 10, 0, 0)); //TODO check how printing shamt works.
         }
     }
     
@@ -5722,7 +5722,7 @@ int fct_srl(){
     }
 }
 
-int fct_sllv(){
+void fct_sllv(){
     if (debug) {
         printFunction(function);
         print((int*) " ");
@@ -5749,7 +5749,7 @@ int fct_sllv(){
     }
     
     if(interpret){
-        *(registers+rd) = fct_sll(*(registers+rt), *(registers+rs));
+        *(registers+rd) = leftShift(*(registers+rt), *(registers+rs));
         
         pc = pc + WORDSIZE;
     }
@@ -5765,7 +5765,7 @@ int fct_sllv(){
     }
 }
 
-int fct_srlv(){
+void fct_srlv(){
     
     if (debug) {
         printFunction(function);
@@ -5787,13 +5787,13 @@ int fct_srlv(){
             print((int*) ",");
             printRegister(rs);
             print((int*) "=");
-             print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+            print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
         }
 
     }
     
     if(interpret){
-        *(registers+rd) = fct_srl(*(registers+rt), *(registers+rs));
+        *(registers+rd) = rightShift(*(registers+rt), *(registers+rs)) - (INT_MAX / twoToThePowerOf(*(registers+rs)) + 1);
         
         pc = pc + WORDSIZE;
     }
@@ -5901,9 +5901,10 @@ void execute() {
     }
 
     if (opcode == OP_SPECIAL) {
-        if (function == FCT_NOP)
-            fct_nop();
-        else if (function == FCT_ADDU)
+//        if (function == FCT_NOP)
+//            fct_nop();
+//        else
+        if (function == FCT_ADDU)
             fct_addu();
         else if (function == FCT_SUBU)
             fct_subu();
@@ -5921,7 +5922,7 @@ void execute() {
             fct_jr();
         else if (function == FCT_SYSCALL)
             fct_syscall();
-        else if (function == FCT_SLL)//for the 4 shift funktions:
+        else if (function == FCT_SLL)//for the 4 shift functions:
             fct_sll();
         else if (function == FCT_SRL)
             fct_srl();
