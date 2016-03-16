@@ -5656,7 +5656,7 @@ int fct_sll(){
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
-            print(shamt);
+            print((int*) shamt);
         }
 
     }
@@ -5701,7 +5701,7 @@ int fct_srl(){
             print((int*) ",");
             print((int*) "shamt");
             print((int*) "=");
-            print(shamt);
+            print((int*) shamt);
         }
     }
     
