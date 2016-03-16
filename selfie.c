@@ -636,7 +636,7 @@ int FCT_ADDU    = 33;
 int FCT_SUBU    = 35;
 int FCT_SLT     = 42;
 
-int FCT_SLL     = FCT_NOP;
+int FCT_SLL     = 0;
 int FCT_SRL     = 2;
 int FCT_SLLV    = 4;
 int FCT_SRLV    = 6;
@@ -5635,7 +5635,7 @@ void op_sw() {
     }
 }
 
-int fct_sll(){
+void fct_sll(){
     if (debug) {
         printFunction(function);
         print((int*) " ");
@@ -5679,7 +5679,7 @@ int fct_sll(){
     
 }
 
-int fct_srl(){
+void fct_srl(){
     
     if (debug) {
         printFunction(function);
@@ -5722,7 +5722,7 @@ int fct_srl(){
     }
 }
 
-int fct_sllv(){
+void fct_sllv(){
     if (debug) {
         printFunction(function);
         print((int*) " ");
@@ -5765,7 +5765,7 @@ int fct_sllv(){
     }
 }
 
-int fct_srlv(){
+void fct_srlv(){
     
     if (debug) {
         printFunction(function);
