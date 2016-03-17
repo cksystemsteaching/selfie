@@ -38,7 +38,7 @@
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes composite data types, bitwise and Boolean
 // operators, and many other features. There are only signed 32-bit
-// integers and pointers as well as character and string literals.
+// integers and 32-bit pointers as well as character and string literals.
 // This choice turns out to be helpful for students to understand the
 // true role of composite data types such as arrays and records.
 // Bitwise operations are implemented in libcstar using signed integer
