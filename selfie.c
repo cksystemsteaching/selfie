@@ -5706,7 +5706,7 @@ void fct_srl(){
     }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), shamt) - (INT_MAX / twoToThePowerOf(shamt) + 1);
+        *(registers+rd) = rightShift(*(registers+rt), shamt);
         
         pc = pc + WORDSIZE;
     }
@@ -5793,7 +5793,7 @@ void fct_srlv(){
     }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), *(registers+rs)) - (INT_MAX / twoToThePowerOf(*(registers+rs)) + 1);
+        *(registers+rd) = rightShift(*(registers+rt), *(registers+rs));
         
         pc = pc + WORDSIZE;
     }
