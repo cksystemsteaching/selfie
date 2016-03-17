@@ -432,6 +432,7 @@ int isLiteral();
 int isStarOrDivOrModulo();
 int isPlusOrMinus();
 int isComparison();
+int isShift();
 
 int lookForFactor();
 int lookForStatement();
@@ -2126,6 +2127,15 @@ int isComparison() {
         return 0;
 }
 
+int isShift() {
+    if (symbol == SYM_LEFT_SHIFT)
+        return 1;
+    else if (symbol == SYM_RIGHT_SHIFT)
+        return 1;
+    else
+        return 0;
+}
+
 int lookForFactor() {
     if (symbol == SYM_LPARENTHESIS)
         return 0;
@@ -2795,6 +2805,7 @@ int gr_simpleExpression() {
 
     return ltype;
 }
+
 
 int gr_expression() {
     int ltype;
