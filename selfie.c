@@ -1896,6 +1896,10 @@ int getSymbol() {
             getCharacter();
 
             symbol = SYM_LEQ;
+        }else if(character == CHAR_LT){
+            getCharacter();
+            
+            symbol = SYM_LEFT_SHIFT;
         } else
             symbol = SYM_LT;
 
@@ -1906,7 +1910,11 @@ int getSymbol() {
             getCharacter();
 
             symbol = SYM_GEQ;
-        } else
+        }else if(character == CHAR_GT){
+            getCharacter();
+            
+            symbol = SYM_RIGHT_SHIFT;
+        }else
             symbol = SYM_GT;
 
     } else if (character == CHAR_EXCLAMATION) {
@@ -1923,8 +1931,7 @@ int getSymbol() {
         getCharacter();
 
         symbol = SYM_MOD;
-
-    } else {
+    }else {
         printLineNumber((int*) "error", lineNumber);
         print((int*) "found unknown character ");
         printCharacter(character);
