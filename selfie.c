@@ -269,6 +269,9 @@ int SYM_NOTEQ        = 24; // !=
 int SYM_MOD          = 25; // %
 int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
+int SYM_LEFT_SHIFT   = 28; // <<
+int SYM_RIGHT_SHIFT  = 29; // >>
+
 
 int *SYMBOLS; // array of strings representing symbols
 
@@ -330,6 +333,8 @@ void initScanner () {
     *(SYMBOLS + SYM_MOD)          = (int) "%";
     *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
     *(SYMBOLS + SYM_STRING)       = (int) "string";
+    *(SYMBOLS + SYM_LEFT_SHIFT)   = (int) "<<";
+    *(SYMBOLS + SYM_LEFT_SHIFT)   = (int) ">>";
 
     character = CHAR_EOF;
     symbol    = SYM_EOF;
@@ -1891,6 +1896,10 @@ int getSymbol() {
             getCharacter();
 
             symbol = SYM_LEQ;
+        }else if(character == CHAR_LT){
+            getCharacter();
+            
+            symbol = SYM_LEFT_SHIFT;
         } else
             symbol = SYM_LT;
 
@@ -1901,7 +1910,11 @@ int getSymbol() {
             getCharacter();
 
             symbol = SYM_GEQ;
-        } else
+        }else if(character == CHAR_GT){
+            getCharacter();
+            
+            symbol = SYM_RIGHT_SHIFT;
+        }else
             symbol = SYM_GT;
 
     } else if (character == CHAR_EXCLAMATION) {
@@ -1918,8 +1931,7 @@ int getSymbol() {
         getCharacter();
 
         symbol = SYM_MOD;
-
-    } else {
+    }else {
         printLineNumber((int*) "error", lineNumber);
         print((int*) "found unknown character ");
         printCharacter(character);
@@ -5706,7 +5718,7 @@ void fct_srl(){
     }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), shamt) - (INT_MAX / twoToThePowerOf(shamt) + 1);
+        *(registers+rd) = rightShift(*(registers+rt), shamt);
         
         pc = pc + WORDSIZE;
     }
@@ -5793,7 +5805,7 @@ void fct_srlv(){
     }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), *(registers+rs)) - (INT_MAX / twoToThePowerOf(*(registers+rs)) + 1);
+        *(registers+rd) = rightShift(*(registers+rt), *(registers+rs));
         
         pc = pc + WORDSIZE;
     }
