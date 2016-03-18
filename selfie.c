@@ -1172,25 +1172,25 @@ int leftShift(int n, int b) {
 }
 
 int rightShift(int n, int b) {
-    // assert: b >= 0            
+    // assert: b >= 0
 
     if (n >= 0)
-        if (b > 30)
-            return 0;
-        else
+        if (b < 31)
             return n / twoToThePowerOf(b);
-    else      
-        if (b > 31)
-            return 0;
-        // in case we shift a negative signed integer by 31 bits:
-        // we can't use below routine since twoToThePowerOf(31) is out of range
-        if (b == 31)
-            return 1;
         else
+            return 0;
+    else
+        if (b < 31)
             // works even if n == INT_MIN:
             // shift right n with msb reset and then restore msb
             return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
                 (INT_MAX / twoToThePowerOf(b) + 1);
+        else if (b == 31)
+            // in case we shift a negative signed integer by 31 bits:
+            // we can't use preceding routine since twoToThePowerOf(31) is out of range
+            return 1;
+        else
+            return 0;
 }
 
 int loadCharacter(int *s, int i) {
