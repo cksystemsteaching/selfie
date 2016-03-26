@@ -146,8 +146,11 @@ int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
 
 int *power_of_two_table;
 
-int INT_MAX; // maximum numerical value of an integer
-int INT_MIN; // minimum numerical value of an integer
+int INT_MAX; // maximum numerical value of a signed 32-bit integer
+int INT_MIN; // minimum numerical value of a signed 32-bit integer
+
+int INT16_MAX; // maximum numerical value of a signed 16-bit integer
+int INT16_MIN; // minimum numerical value of a signed 16-bit integer
 
 int maxFilenameLength = 128;
 
@@ -190,6 +193,9 @@ void initLibrary() {
     // computing INT_MAX and INT_MIN without overflows
     INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
     INT_MIN = -INT_MAX - 1;
+
+    INT16_MAX = twoToThePowerOf(15) - 1;
+    INT16_MIN = -INT16_MAX - 1;
 
     // allocate and touch to make sure memory is mapped for read calls
     character_buffer  = malloc(1);
@@ -3542,7 +3548,7 @@ void emitMainEntry() {
     // jump and link to main, will return here only if there is no exit call
     emitJFormat(OP_JAL, 0);
 
-    // we exit with error code in return register pushed onto the stack
+    // we exit with exit code in return register pushed onto the stack
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
     emitIFormat(OP_SW, REG_SP, REG_V0, 0);
 
@@ -4114,10 +4120,20 @@ void emitExit() {
 }
 
 void implementExit() {
-    throwException(EXCEPTION_EXIT, *(registers+REG_A0)); // exit code
+    int exitCode;
+
+    exitCode = *(registers+REG_A0);
+
+    // exit code must be signed 16-bit integer
+    if (exitCode > INT16_MAX)
+        exitCode = INT16_MAX;
+    else if (exitCode < INT16_MIN)
+        exitCode = INT16_MIN;
+
+    throwException(EXCEPTION_EXIT, exitCode);
 
     print(binaryName);
-    print((int*) ": exiting with error code ");
+    print((int*) ": exiting with exit code ");
     print(itoa(*(registers+REG_A0), string_buffer, 10, 0, 0));
     println();
 }
