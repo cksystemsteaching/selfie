@@ -5531,8 +5531,8 @@ void op_lw() {
             printRegister(rt);
             print((int*) "=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
-            print((int*) "=memory[vaddr=");
-            print(itoa(vaddr, string_buffer, 16, 8, 0));
+            print((int*) "=memory[");
+            print(itoa(vaddr, string_buffer, 16, 0, 0));
             print((int*) "]");
         }
         println();
@@ -5625,8 +5625,8 @@ void op_sw() {
 
     if (debug) {
         if (interpret) {
-            print((int*) " -> memory[vaddr=");
-            print(itoa(vaddr, string_buffer, 16, 8, 0));
+            print((int*) " -> memory[");
+            print(itoa(vaddr, string_buffer, 16, 0, 0));
             print((int*) "]=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
             print((int*) "=");
@@ -5717,7 +5717,7 @@ void execute() {
             print((int*) "$pc=");
 
     if (debug) {
-        print(itoa(pc, string_buffer, 16, 8, 0));
+        print(itoa(pc, string_buffer, 16, 0, 0));
         if (sourceLineNumber != (int*) 0) {
             print((int*) "(~");
             print(itoa(*(sourceLineNumber + pc / WORDSIZE), string_buffer, 10, 0, 0));
@@ -6004,7 +6004,7 @@ int printCounters(int total, int *counters, int max) {
     
     if (*(counters + a / WORDSIZE) != 0) {
         print((int*) "@");
-        print(itoa(a, string_buffer, 16, 8, 0));
+        print(itoa(a, string_buffer, 16, 0, 0));
         if (sourceLineNumber != (int*) 0) {
             print((int*) "(~");
             print(itoa(*(sourceLineNumber + a / WORDSIZE), string_buffer, 10, 0, 0));
