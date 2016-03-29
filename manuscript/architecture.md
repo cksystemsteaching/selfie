@@ -8,7 +8,7 @@
 
 <<(code/iteration.c)
 
-{line-numbers=off,lang=llvm}
+{line-numbers=off,lang=text}
 
 <<(code/iteration.s)
 
