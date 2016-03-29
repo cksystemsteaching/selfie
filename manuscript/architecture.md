@@ -8,7 +8,7 @@
 
 <<(code/iteration.c)
 
-{line-numbers=off,lang=asm}
+{line-numbers=off,lang=c-objdump}
 
 <<(code/iteration.s)
 
