@@ -8,7 +8,7 @@
 
 <<(code/iteration.c)
 
-{line-numbers=off,lang=c-objdump}
+{line-numbers=off,lang=llvm}
 
 <<(code/iteration.s)
 
