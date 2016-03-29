@@ -10,5 +10,5 @@
 {line-numbers=off, lang=asm}
 <<[MIPS Assembly](code/iteration.s)
 
-{line-numbers=off, lang=text}
+{line-numbers=off, lang=asm}
 <<[Code Execution](code/iteration.d)
