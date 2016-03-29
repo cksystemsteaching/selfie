@@ -4,12 +4,14 @@
 
 ![Von Neumann Architecture](images/von-neumann-architecture.jpg "Von Neumann Architecture")
 
-{line-numbers=on,lang=c}
+{line-numbers=on, lang=c}
 
-<<(code/iteration.c)
+<<[Assignment, Conditional, Loop](code/iteration.c)
 
-{line-numbers=off,lang=text}
+{line-numbers=off, lang=c}
 
-<<(code/iteration.s)
+<<[MIPS Assembly](code/iteration.s)
 
-<<(code/iteration.d)
+{line-numbers=off, lang=c}
+
+<<[Code Execution](code/iteration.d)
