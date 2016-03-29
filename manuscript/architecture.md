@@ -7,7 +7,7 @@
 {line-numbers=on, lang=c}
 <<[Assignment, Conditional, Loop](code/iteration.c)
 
-{line-numbers=off, lang=text}
+{line-numbers=off, lang=asm}
 <<[MIPS Assembly](code/iteration.s)
 
 {line-numbers=off, lang=text}
