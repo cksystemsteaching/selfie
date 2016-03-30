@@ -8,7 +8,7 @@ int main() {    // this is a global function declaration
   if (x == 1)   // this is an if statement with
     x = x + 1;  // an assignment statement in the true case and
   else
-  	x = x - 1;  // an assignment statement in the false case
+    x = x - 1;  // an assignment statement in the false case
 
   while (x > 0) // this is a while statement with
     x = x - 1;  // an assignment statement in the true case

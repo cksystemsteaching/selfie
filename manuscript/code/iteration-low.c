@@ -17,7 +17,7 @@ int main() {    // this declares a globally visible function called main
 
   if (x == 1)   // this checks if the value of x is 1 and, if true,
     x = x + 1;  // increases the value of x by 1,
-  else          // and, if false,
+  else          // or else, if false,
     x = x - 1;  // decreases the value of x by 1
 
   // here the value of x is 2
