@@ -5,10 +5,16 @@
 ![Von Neumann Architecture](images/von-neumann-architecture.jpg "Von Neumann Architecture")
 
 {line-numbers=on, lang=c}
-<<[Assignment, Conditional, Loop](code/iteration.c)
+<<[A Simple C* Program](code/iteration.c)
+
+{line-numbers=on, lang=c}
+<<[Semantics of the Simple C* Program](code/iteration-low.c)
+
+{line-numbers=on, lang=c}
+<<[Language Elements of the Simple C* Program](code/iteration-high.c)
 
 {line-numbers=off, lang=asm}
-<<[MIPS Assembly](code/iteration.s)
+<<[MIPS Assembly for the Simple C* Program](code/iteration.s)
 
 {line-numbers=off, lang=asm}
-<<[Code Execution](code/iteration.d)
+<<[Execution of the MIPS Assembly for the Simple C* Program](code/iteration.d)
