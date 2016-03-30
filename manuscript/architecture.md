@@ -14,7 +14,7 @@
 <<[Language Elements of the Simple C* Program](code/iteration-high.c)
 
 {line-numbers=off, lang=asm}
-<<[Formal Semantics of the Simple C* Program in MIPS Assembly with Source Line Numbers](code/iteration.s)
+<<[Formal Semantics of the Simple C* Program in MIPS Assembly with Approximate Line Numbers](code/iteration.s)
 
 {line-numbers=off, lang=asm}
-<<[Execution of the MIPS Assembly for the Simple C* Program with Approximate Line Numbers and Profile Summary](code/iteration.d)
+<<[Execution of the MIPS Assembly for the Simple C* Program with Approximate Line Numbers and Profile](code/iteration.d)
