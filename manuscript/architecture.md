@@ -18,3 +18,9 @@
 
 {line-numbers=off, lang=asm}
 <<[Execution of the MIPS Assembly for the Simple C* Program with Approximate Line Numbers and Profile](code/iteration.d)
+
+{line-numbers=on, lang=c}
+<<[A C* Program Equivalent to the Simple C* Program](code/procedure.c)
+
+{line-numbers=off, lang=asm}
+<<[Formal Semantics of the Equivalent C* Program in MIPS Assembly with Approximate Line Numbers](code/procedure.s)
