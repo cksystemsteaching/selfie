@@ -1,7 +1,7 @@
 0x0(~1): 0x24080278: addiu $t0,$zero,632   // the instructions @ 0x0 to 0x44
 0x4(~1): 0x251C0000: addiu $gp,$t0,0       // initialize the global pointer
 0x8(~1): 0x24080FFF: addiu $t0,$zero,4095  // $gp and the stack pointer $sp,
-0xC(~1): 0x24094000: addiu $t1,$zero,16384 // and invoke the main function:
+0xC(~1): 0x24094000: addiu $t1,$zero,16384 // and invoke the main procedure:
 0x10(~1): 0x01090019: multu $t0,$t1        // $gp=632[0x278] which represents
 0x14(~1): 0x00004012: mflo $t0             // the program break, that is,
 0x18(~1): 0x00000000: nop                  // the first address after code,
@@ -15,14 +15,14 @@
 0x48(~1): 0x27BDFFFC: addiu $sp,$sp,-4 // push the result of main stored in $v0
 0x4C(~1): 0xAFA20000: sw $v0,0($sp)    // onto the stack as argument for exit.
 -------------------------------------------------------------------------------
-0x50(~1): 0x8FA40000: lw $a0,0($sp)        // the exit function:
+0x50(~1): 0x8FA40000: lw $a0,0($sp)        // the exit procedure:
 0x54(~1): 0x27BD0004: addiu $sp,$sp,4      // pop argument from the stack into
 0x58(~1): 0x24020FA1: addiu $v0,$zero,4001 // $a0 as argument for exit system
 0x5C(~1): 0x0000000C: syscall              // call identified by 4001.
 -------------------------------------------------------------------------------
 ........: unused library code removed
 -------------------------------------------------------------------------------
-0x19C(~4): 0x27BDFFFC: addiu $sp,$sp,-4 // the prologue of the main function:
+0x19C(~4): 0x27BDFFFC: addiu $sp,$sp,-4 // the prologue of the main procedure:
 0x1A0(~4): 0xAFBF0000: sw $ra,0($sp)    // save the link register containing
 0x1A4(~4): 0x27BDFFFC: addiu $sp,$sp,-4 // the return address on the stack;
 0x1A8(~4): 0xAFBE0000: sw $fp,0($sp)    // save the frame pointer on the stack;
@@ -80,7 +80,7 @@
 0x250(~16): 0x08000096: j 0x96[0x258]      // the return register $v0 and
 0x254(~16): 0x00000000: nop                // jump to epilogue after nop.
 -------------------------------------------------------------------------------
-0x258(~17): 0x27DD0000: addiu $sp,$fp,0 // the epilogue of the main function:
+0x258(~17): 0x27DD0000: addiu $sp,$fp,0 // the epilogue of the main procedure:
 0x25C(~17): 0x8FBE0000: lw $fp,0($sp)   // deallocate local variables;
 0x260(~17): 0x27BD0004: addiu $sp,$sp,4 // restore frame pointer from stack;
 0x264(~17): 0x8FBF0000: lw $ra,0($sp)   // restore link register from stack;
