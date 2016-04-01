@@ -16,7 +16,7 @@
 -------------------------------------------------------------------------------
 0x50(~1)-0x5C(~1): unchanged exit procedure
 -------------------------------------------------------------------------------
-........: unused library code removed
+0x60(~1)-0x198(~1): unused library code removed
 -------------------------------------------------------------------------------
 0x19C(~4): 0x27BDFFFC: addiu $sp,$sp,-4 // the prologue of the procedure p,
 0x1A0(~4): 0xAFBF0000: sw $ra,0($sp)    // just like the prologue of main.
@@ -58,6 +58,7 @@
 0x280(~18): 0x24020000: addiu $v0,$zero,0 // code of p is; reset register $v0.
 -------------------------------------------------------------------------------
 0x284(~20): 0x8F88FFFC: lw $t0,-4($gp)     // the return statement:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 0x288(~20): 0x00081021: addu $v0,$zero,$t0 // the only difference here is the
 0x28C(~20): 0x080000A5: j 0xA5[0x294]      // address of the epilogue is now
 0x290(~20): 0x00000000: nop                // 0x294 rather than 0x258.

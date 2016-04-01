@@ -24,3 +24,9 @@
 
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Equivalent C* Program in MIPS Assembly with Approximate Line Numbers](code/procedure.s)
+
+{line-numbers=on, lang=c}
+<<[A C* Program Equivalent to the Simple C* Program Using a Function](code/function.c)
+
+{line-numbers=off, lang=asm}
+<<[Formal Semantics of the Equivalent C* Program Using a Function in MIPS Assembly with Approximate Line Numbers](code/function.s)

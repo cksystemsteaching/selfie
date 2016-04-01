@@ -20,7 +20,7 @@
 0x58(~1): 0x24020FA1: addiu $v0,$zero,4001 // $a0 as argument for exit system
 0x5C(~1): 0x0000000C: syscall              // call identified by 4001.
 -------------------------------------------------------------------------------
-........: unused library code removed
+0x60(~1)-0x198(~1): unused library code removed
 -------------------------------------------------------------------------------
 0x19C(~4): 0x27BDFFFC: addiu $sp,$sp,-4 // the prologue of the main procedure:
 0x1A0(~4): 0xAFBF0000: sw $ra,0($sp)    // save the link register containing
@@ -76,6 +76,7 @@
 0x244(~16): 0x00000000: nop                        // after executing the nop.
 -------------------------------------------------------------------------------
 0x248(~16): 0x8F88FFFC: lw $t0,-4($gp)     // the return statement:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 0x24C(~16): 0x00081021: addu $v0,$zero,$t0 // copy x from memory into the
 0x250(~16): 0x08000096: j 0x96[0x258]      // the return register $v0 and
 0x254(~16): 0x00000000: nop                // jump to epilogue after nop.
