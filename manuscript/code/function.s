@@ -1,22 +1,4 @@
-0x0(~1): 0x240802D0: addiu $t0,$zero,720   // again, the initialization works
-0x4(~1): 0x251C0000: addiu $gp,$t0,0       // like before, this time setting
-0x8(~1): 0x24080FFF: addiu $t0,$zero,4095  // $gp to 720[0x2D0] and jumping
-0xC(~1): 0x24094000: addiu $t1,$zero,16384 // to 0x208 where main is.
-0x10(~1): 0x01090019: multu $t0,$t1
-0x14(~1): 0x00004012: mflo $t0
-0x18(~1): 0x00000000: nop
-0x1C(~1): 0x00000000: nop
-0x20(~1): 0x25083FFC: addiu $t0,$t0,16380
-0x24(~1): 0x8D1D0000: lw $sp,0($t0)
-........: nop instructions removed
-0x40(~1): 0x0C000082: jal 0x82[0x208]
-0x44(~1): 0x00000000: nop
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-0x48(~1)-0x4C(~1): unchanged exit code handling
--------------------------------------------------------------------------------
-0x50(~1)-0x5C(~1): unchanged exit procedure
--------------------------------------------------------------------------------
-0x60(~1)-0x198(~1): unused library code removed
+0x0(~1)-0x198(~1): initialization and library code removed
 -------------------------------------------------------------------------------
 0x19C(~4)-0x1AC(~4): prologue of f unchanged from p
 -------------------------------------------------------------------------------
