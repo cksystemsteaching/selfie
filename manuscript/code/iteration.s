@@ -32,13 +32,13 @@
 0x1B4(~4): 0xAF88FFFC: sw $t0,-4($gp)    // store 0 where x is in memory.
 -------------------------------------------------------------------------------
 0x1B8(~6): 0x8F88FFFC: lw $t0,-4($gp)    // the x = x + 1 assignment:
-0x1BC(~6): 0x24090001: addiu $t1,$zero,1 // load x from memory,
-0x1C0(~6): 0x01094021: addu $t0,$t0,$t1  // add 1 to it, and
-0x1C4(~6): 0xAF88FFFC: sw $t0,-4($gp)    // store the result in memory.
+0x1BC(~6): 0x24090001: addiu $t1,$zero,1 // load the value of x from memory,
+0x1C0(~6): 0x01094021: addu $t0,$t0,$t1  // add 1 to it, and store the result
+0x1C4(~6): 0xAF88FFFC: sw $t0,-4($gp)    // in memory where the value of x is.
 -------------------------------------------------------------------------------
 0x1C8(~8): 0x8F88FFFC: lw $t0,-4($gp)         // the if statement:
 0x1CC(~8): 0x24090001: addiu $t1,$zero,1      // check if x == 1 by subtracting
-0x1D0(~8): 0x01094023: subu $t0,$t0,$t1       // 1 from x loaded from memory;
+0x1D0(~8): 0x01094023: subu $t0,$t0,$t1       // 1 from the value of x;
 0x1D4(~8): 0x10080004: beq $zero,$t0,4[0x1E8] // after nop, if true, branch to
 0x1D8(~8): 0x00000000: nop                    // true case, or else, continue
 0x1DC(~8): 0x24080000: addiu $t0,$zero,0      // and load 0 into register $t0

@@ -24,14 +24,14 @@
 0x1A8(~4): 0xAFBE0000: sw $fp,0($sp)
 0x1AC(~4): 0x27BE0000: addiu $fp,$sp,0
 -------------------------------------------------------------------------------
-0x1B0(~4): 0x8F88FFFC: lw $t0,-4($gp)         // the while statement:
+0x1B0(~4): 0x8F88FFFC: lw $t0,-4($gp)         // the while statement in p:
 0x1B4(~4): 0x24090000: addiu $t1,$zero,0      // this is the exact same code
 0x1B8(~4): 0x0128402A: slt $t0,$t1,$t0        // as before except that the
 0x1BC(~4): 0x10080007: beq $zero,$t0,7[0x1DC] // branch goes to 0x1DC rather
 0x1C0(~4): 0x00000000: nop                    // than 0x248.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 0x1C4(~5): 0x8F88FFFC: lw $t0,-4($gp)             // the true case of the
-0x1C8(~5): 0x24090001: addiu $t1,$zero,1          // while statement:
+0x1C8(~5): 0x24090001: addiu $t1,$zero,1          // while statement in p:
 0x1CC(~5): 0x01094023: subu $t0,$t0,$t1           // again, this is the exact
 0x1D0(~5): 0xAF88FFFC: sw $t0,-4($gp)             // same code as before except
 0x1D4(~6): 0x1000FFF6: beq $zero,$zero,-10[0x1B0] // that the branch goes to
