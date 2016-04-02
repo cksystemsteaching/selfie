@@ -30,3 +30,9 @@
 
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Equivalent C* Program Using a Function](code/function.s)
+
+{line-numbers=on, lang=c}
+<<[A C* Program Equivalent to the Simple C* Program Using Just Functions](code/local.c)
+
+{line-numbers=off, lang=asm}
+<<[Formal Semantics of the Equivalent C* Program Using Just Functions](code/local.s)
