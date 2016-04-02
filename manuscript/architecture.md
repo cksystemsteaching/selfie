@@ -1,4 +1,4 @@
-# 3. Architecture
+# 3. Architecture and Language
 
 ## Von Neumann Architecture
 
