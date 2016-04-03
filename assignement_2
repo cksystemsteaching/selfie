@@ -1,0 +1,6 @@
+[x] scanning << and >>
+[ ] parsing << and >> 
+[ ] invent unique token for << and >>
+[ ] make scanner distinguish < from << and > from >>
+[ ] add newproduction rule for the new symbols to the C* grammar (in the grammar.md file) such that their precedence is between + and <  see: https://en.wikipedia.org/wiki/Operators_in_C_and_C%2B%2B
+[ ] add a procedure for parsing the new symbols to starc according to the new production rule (hint: use a copy of the procedure for parsing simple expressions as template). Test your implementation on syntactically correct as well as syntactically incorrect C* programs using the two shift operators.
