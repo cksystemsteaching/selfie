@@ -1,4 +1,4 @@
-[ ] scanning << and >>
+[x] scanning << and >>
 [ ] parsing << and >> 
 [ ] invent unique token for << and >>
 [ ] make scanner distinguish < from << and > from >>

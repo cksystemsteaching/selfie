@@ -704,6 +704,7 @@ void storeBinary(int baddr, int instruction);
 void storeInstruction(int baddr, int instruction);
 
 void emitInstruction(int instruction);
+// when using sll or srl with emitRFormat: instead of shamt we use register s
 void emitRFormat(int opcode, int rs, int rt, int rd, int function);
 void emitIFormat(int opcode, int rs, int rt, int immediate);
 void emitJFormat(int opcode, int instr_index);
@@ -2840,11 +2841,11 @@ int  gr_shiftExpression(){
         // assert: allocatedTemporaries == n + 2
         
         if (operatorSymbol == SYM_LEFT_SHIFT) {
-            if (ltype == INTSTAR_T) {//???????
-                if (rtype == INT_T)//???????
+            if (ltype == INTSTAR_T) {//??????? TODO
+                if (rtype == INT_T)//???????  TODO
                     // pointer arithmetic: factor of 2^2 of integer operand
                     emitLeftShiftBy(2);
-            } else if (rtype == INTSTAR_T)//???????
+            } else if (rtype == INTSTAR_T)//??????? TODO
                 typeWarning(ltype, rtype);
             
             emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SSL); //?????FCT_SSL????OR FCT_SLLV??
@@ -3779,6 +3780,20 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
     // assert: 0 <= rt < 2^5
     // assert: 0 <= rd < 2^5
     // assert: 0 <= function < 2^6
+    
+    //when using SLL or SRL emit the following style. (rs becomes SHAMT)
+    //         unused            SHAMT
+    // +------+-----+-----+-----+-----+------+
+    // |opcode|00000|  rt |  rd |  rs |fction|
+    // +------+-----+-----+-----+-----+------+
+    //    6      5     5     5     5     6
+    
+    if (function == FCT_SLL)
+        return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
+        
+        else if (function = FCT_SRL)
+            return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
+    else
     return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
 }
 
