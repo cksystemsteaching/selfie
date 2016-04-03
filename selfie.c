@@ -2830,7 +2830,7 @@ int  gr_shiftExpression(){
         // assert: allocatedTemporaries == n + 2
         
         if (operatorSymbol == SYM_LEFT_SHIFT) {
-            if (rtype |= ltype) 
+            if (rtype != ltype) 
                 typeWarning(ltype, rtype);
             
             emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SSL); //?????FCT_SSL????OR FCT_SLLV??
