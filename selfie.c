@@ -2808,7 +2808,6 @@ int gr_simpleExpression() {
 }
 
 int  gr_shiftExpression(){
-    int sign;
     int ltype;
     int operatorSymbol;
     int rtype;
@@ -2818,16 +2817,6 @@ int  gr_shiftExpression(){
     ltype = gr_simpleExpression();//
     
     // assert: allocatedTemporaries == n + 1
-    
-    if (sign) {
-        if (ltype != INT_T) {
-            typeWarning(INT_T, ltype);
-            
-            ltype = INT_T;
-        }
-        
-        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
-    }
     
     // is it a shift operand?
     while (isShift()) {
@@ -2840,11 +2829,7 @@ int  gr_shiftExpression(){
         // assert: allocatedTemporaries == n + 2
         
         if (operatorSymbol == SYM_LEFT_SHIFT) {
-            if (ltype == INTSTAR_T) {//???????
-                if (rtype == INT_T)//???????
-                    // pointer arithmetic: factor of 2^2 of integer operand
-                    emitLeftShiftBy(2);
-            } else if (rtype == INTSTAR_T)//???????
+            if (rtype |= ltype) 
                 typeWarning(ltype, rtype);
             
             emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SSL); //?????FCT_SSL????OR FCT_SLLV??
