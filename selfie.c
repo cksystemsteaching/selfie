@@ -2832,13 +2832,13 @@ int  gr_shiftExpression(){
             if (rtype |= ltype) 
                 typeWarning(ltype, rtype);
             
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SSL); //?????FCT_SSL????OR FCT_SLLV??
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SSLV); 
             
         } else if (operatorSymbol == SYM_RIGHT_SHIFT) {
             if (ltype != rtype)
                 typeWarning(ltype, rtype);
             
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRL);
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
         }
         
         tfree(1);
