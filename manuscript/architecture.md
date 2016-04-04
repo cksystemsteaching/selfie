@@ -36,3 +36,6 @@
 
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Equivalent C* Program Using Just Functions](code/local.s)
+
+{line-numbers=on, lang=c}
+<<[A C* Program with Iteration and Equivalent Recursions from Basics Chapter](code/recursion.c)
