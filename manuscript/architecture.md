@@ -39,3 +39,9 @@
 
 {line-numbers=on, lang=c}
 <<[A C* Program with Iteration and Equivalent Recursions from Basics Chapter](code/recursion.c)
+
+{line-numbers=on, lang=c}
+<<[A C* Program with Pointers](code/pointer.c)
+
+{line-numbers=off, lang=asm}
+<<[Formal Semantics of the C* Program with Pointers](code/pointer.s)
