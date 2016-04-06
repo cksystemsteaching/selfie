@@ -2833,7 +2833,7 @@ int  gr_shiftExpression(){
             if (rtype != ltype) 
                 typeWarning(ltype, rtype);
             
-            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SSLV); 
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV );
             
         } else if (operatorSymbol == SYM_RIGHT_SHIFT) {
             if (ltype != rtype)
@@ -3776,7 +3776,7 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
     if (function == FCT_SLL)
         return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
         
-        else if (function = FCT_SRL)
+        else if (function == FCT_SRL)
             return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
     else
     return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
@@ -6728,6 +6728,10 @@ int main(int argc, int *argv) {
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
         println();
     }
+    
+    print((int *)"Testing the correct version:");
+    println();
+    int a;
 
     return 0;
 }
