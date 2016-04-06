@@ -2815,7 +2815,7 @@ int  gr_shiftExpression(){
     
     // assert: n = allocatedTemporaries
     
-    ltype = gr_simpleExpression();//
+    ltype = gr_simpleExpression();
     
     // assert: allocatedTemporaries == n + 1
     
@@ -2835,7 +2835,7 @@ int  gr_shiftExpression(){
         
         getSymbol();
         
-        rtype = gr_simpleExpression();//
+        rtype = gr_simpleExpression();
         
         // assert: allocatedTemporaries == n + 2
         
@@ -2847,7 +2847,7 @@ int  gr_shiftExpression(){
             } else if (rtype == INTSTAR_T)//???????
                 typeWarning(ltype, rtype);
             
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SSL); //?????FCT_SSL????OR FCT_SLLV??
+            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLL); //?????FCT_SLL????OR FCT_SLLV??
             
         } else if (operatorSymbol == SYM_RIGHT_SHIFT) {
             if (ltype != rtype)
@@ -6728,6 +6728,18 @@ int main(int argc, int *argv) {
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
         println();
     }
+    
+    //Testing the implementtion
+    print((int *)"Testing the correct version: ");
+    println();
+    int a;
+    //a = 10;
+   // print((int *)a);
+   // a = a << 2;
+   // print((int *) a);
+   // a = 10;
+   // a = a >> 2;
+   // print((int *) a);
 
     return 0;
 }
