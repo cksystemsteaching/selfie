@@ -704,6 +704,7 @@ void storeBinary(int baddr, int instruction);
 void storeInstruction(int baddr, int instruction);
 
 void emitInstruction(int instruction);
+// when using sll or srl with emitRFormat: instead of shamt we use register s
 void emitRFormat(int opcode, int rs, int rt, int rd, int function);
 void emitIFormat(int opcode, int rs, int rt, int immediate);
 void emitJFormat(int opcode, int instr_index);
@@ -2808,26 +2809,15 @@ int gr_simpleExpression() {
 }
 
 int  gr_shiftExpression(){
-    int sign;
     int ltype;
     int operatorSymbol;
     int rtype;
     
     // assert: n = allocatedTemporaries
     
-    ltype = gr_simpleExpression();
+    ltype = gr_simpleExpression();//
     
     // assert: allocatedTemporaries == n + 1
-    
-    if (sign) {
-        if (ltype != INT_T) {
-            typeWarning(INT_T, ltype);
-            
-            ltype = INT_T;
-        }
-        
-        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
-    }
     
     // is it a shift operand?
     while (isShift()) {
@@ -2835,25 +2825,21 @@ int  gr_shiftExpression(){
         
         getSymbol();
         
-        rtype = gr_simpleExpression();
+        rtype = gr_simpleExpression();//
         
         // assert: allocatedTemporaries == n + 2
         
         if (operatorSymbol == SYM_LEFT_SHIFT) {
-            if (ltype == INTSTAR_T) {//???????
-                if (rtype == INT_T)//???????
-                    // pointer arithmetic: factor of 2^2 of integer operand
-                    emitLeftShiftBy(2);
-            } else if (rtype == INTSTAR_T)//???????
+            if (rtype != ltype) 
                 typeWarning(ltype, rtype);
             
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLL); //?????FCT_SLL????OR FCT_SLLV??
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SSLV); 
             
         } else if (operatorSymbol == SYM_RIGHT_SHIFT) {
             if (ltype != rtype)
                 typeWarning(ltype, rtype);
             
-            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SRL);
+            emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
         }
         
         tfree(1);
@@ -3779,6 +3765,20 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
     // assert: 0 <= rt < 2^5
     // assert: 0 <= rd < 2^5
     // assert: 0 <= function < 2^6
+    
+    //when using SLL or SRL emit the following style. (rs becomes SHAMT)
+    //         unused            SHAMT
+    // +------+-----+-----+-----+-----+------+
+    // |opcode|00000|  rt |  rd |  rs |fction|
+    // +------+-----+-----+-----+-----+------+
+    //    6      5     5     5     5     6
+    
+    if (function == FCT_SLL)
+        return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
+        
+        else if (function = FCT_SRL)
+            return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
+    else
     return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
 }
 
@@ -6728,18 +6728,6 @@ int main(int argc, int *argv) {
         print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
         println();
     }
-    
-    //Testing the implementtion
-    print((int *)"Testing the correct version: ");
-    println();
-    int a;
-    //a = 10;
-   // print((int *)a);
-   // a = a << 2;
-   // print((int *) a);
-   // a = 10;
-   // a = a >> 2;
-   // print((int *) a);
 
     return 0;
 }

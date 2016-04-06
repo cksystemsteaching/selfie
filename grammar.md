@@ -10,6 +10,11 @@ C* is a small Turing-complete subset of C that includes dereferencing (the * ope
 
 Keywords: int, while, if, else, return, void
 
+| = or
+{} = zero or more of it
+[] = zero or one of it
+
+
 ```
 digit            = "0" | ... | "9" .
 
@@ -37,7 +42,7 @@ term             = factor { ( "*" | "/" | "%" ) factor } .
 
 simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
 
-shiftExpression  = simpleExpression { ( ">>" | "<<" ) simpleExpression} .
+shiftExpression  = simpleExpression { ( ">>" | "<<" ) simpleExpression } .
 
 expression       = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ] .
 
