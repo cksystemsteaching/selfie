@@ -2870,7 +2870,7 @@ int gr_expression() {
 
     // assert: n = allocatedTemporaries
 
-    ltype = gr_simpleExpression();
+    ltype = gr_shiftExpression();
 
     // assert: allocatedTemporaries == n + 1
 
@@ -2880,7 +2880,7 @@ int gr_expression() {
 
         getSymbol();
 
-        rtype = gr_simpleExpression();
+        rtype = gr_shiftExpression();
 
         // assert: allocatedTemporaries == n + 2
 
