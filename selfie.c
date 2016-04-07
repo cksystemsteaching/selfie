@@ -38,7 +38,7 @@
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes composite data types, bitwise and Boolean
 // operators, and many other features. There are only signed 32-bit
-// integers and pointers as well as character and string literals.
+// integers and 32-bit pointers as well as character and string literals.
 // This choice turns out to be helpful for students to understand the
 // true role of composite data types such as arrays and records.
 // Bitwise operations are implemented in libcstar using signed integer
@@ -146,8 +146,11 @@ int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
 
 int *power_of_two_table;
 
-int INT_MAX; // maximum numerical value of an integer
-int INT_MIN; // minimum numerical value of an integer
+int INT_MAX; // maximum numerical value of a signed 32-bit integer
+int INT_MIN; // minimum numerical value of a signed 32-bit integer
+
+int INT16_MAX; // maximum numerical value of a signed 16-bit integer
+int INT16_MIN; // minimum numerical value of a signed 16-bit integer
 
 int maxFilenameLength = 128;
 
@@ -190,6 +193,9 @@ void initLibrary() {
     // computing INT_MAX and INT_MIN without overflows
     INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
     INT_MIN = -INT_MAX - 1;
+
+    INT16_MAX = twoToThePowerOf(15) - 1;
+    INT16_MIN = -INT16_MAX - 1;
 
     // allocate and touch to make sure memory is mapped for read calls
     character_buffer  = malloc(1);
@@ -1190,24 +1196,31 @@ int twoToThePowerOf(int p) {
 int leftShift(int n, int b) {
     // assert: b >= 0;
 
-    if (b > 30)
-        return 0;
-    else
+    if (b < 31)
         return n * twoToThePowerOf(b);
+    else if (b == 31)
+        return n * twoToThePowerOf(30) * 2;
+    else
+        return 0;
 }
 
 int rightShift(int n, int b) {
     // assert: b >= 0
 
-    if (b > 30)
-        return 0;
-    else if (n >= 0)
-        return n / twoToThePowerOf(b);
-    else
+    if (n >= 0) {
+        if (b < 31)
+            return n / twoToThePowerOf(b);
+        else
+            return 0;
+    } else if (b < 31)
         // works even if n == INT_MIN:
         // shift right n with msb reset and then restore msb
         return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
             (INT_MAX / twoToThePowerOf(b) + 1);
+    else if (b == 31)
+        return 1;
+    else
+        return 0;
 }
 
 int loadCharacter(int *s, int i) {
@@ -3616,7 +3629,7 @@ void emitMainEntry() {
     // jump and link to main, will return here only if there is no exit call
     emitJFormat(OP_JAL, 0);
 
-    // we exit with error code in return register pushed onto the stack
+    // we exit with exit code in return register pushed onto the stack
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
     emitIFormat(OP_SW, REG_SP, REG_V0, 0);
 
@@ -4208,10 +4221,20 @@ void emitExit() {
 }
 
 void implementExit() {
-    throwException(EXCEPTION_EXIT, *(registers+REG_A0)); // exit code
+    int exitCode;
+
+    exitCode = *(registers+REG_A0);
+
+    // exit code must be signed 16-bit integer
+    if (exitCode > INT16_MAX)
+        exitCode = INT16_MAX;
+    else if (exitCode < INT16_MIN)
+        exitCode = INT16_MIN;
+
+    throwException(EXCEPTION_EXIT, exitCode);
 
     print(binaryName);
-    print((int*) ": exiting with error code ");
+    print((int*) ": exiting with exit code ");
     print(itoa(*(registers+REG_A0), string_buffer, 10, 0, 0));
     println();
 }
@@ -5614,8 +5637,8 @@ void op_lw() {
             printRegister(rt);
             print((int*) "=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
-            print((int*) "=memory[vaddr=");
-            print(itoa(vaddr, string_buffer, 16, 8, 0));
+            print((int*) "=memory[");
+            print(itoa(vaddr, string_buffer, 16, 0, 0));
             print((int*) "]");
         }
         println();
@@ -5708,8 +5731,8 @@ void op_sw() {
 
     if (debug) {
         if (interpret) {
-            print((int*) " -> memory[vaddr=");
-            print(itoa(vaddr, string_buffer, 16, 8, 0));
+            print((int*) " -> memory[");
+            print(itoa(vaddr, string_buffer, 16, 0, 0));
             print((int*) "]=");
             print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
             print((int*) "=");
@@ -5973,12 +5996,14 @@ void execute() {
             print((int*) "$pc=");
 
     if (debug) {
-        print(itoa(pc, string_buffer, 16, 8, 0));
+        print(itoa(pc, string_buffer, 16, 0, 0));
         if (sourceLineNumber != (int*) 0) {
             print((int*) "(~");
             print(itoa(*(sourceLineNumber + pc / WORDSIZE), string_buffer, 10, 0, 0));
             print((int*) ")");
         }
+        print((int*) ": ");
+        print(itoa(ir, string_buffer, 16, 8, 0));
         print((int*) ": ");
     }
 
@@ -6268,7 +6293,7 @@ int printCounters(int total, int *counters, int max) {
     
     if (*(counters + a / WORDSIZE) != 0) {
         print((int*) "@");
-        print(itoa(a, string_buffer, 16, 8, 0));
+        print(itoa(a, string_buffer, 16, 0, 0));
         if (sourceLineNumber != (int*) 0) {
             print((int*) "(~");
             print(itoa(*(sourceLineNumber + a / WORDSIZE), string_buffer, 10, 0, 0));

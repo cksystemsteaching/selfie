@@ -1,3 +1,4 @@
 license.md
 introduction.md
 basics.md
+architecture.md
