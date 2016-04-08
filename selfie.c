@@ -748,8 +748,6 @@ void implementOpen();
 void emitMalloc();
 void implementMalloc();
 
-void emitPutchar();
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int debug_read   = 0;
@@ -1427,23 +1425,21 @@ int* itoa(int n, int *s, int b, int a, int p) {
 }
 
 void putCharacter(int character) {
-    if (outputFD == 1)
-        putchar(character);
-    else {
-        *character_buffer = character;
+    *character_buffer = character;
 
-        // assert: character_buffer is mapped
+    // assert: character_buffer is mapped
 
-        if (write(outputFD, character_buffer, 1) != 1) {
+    if (write(outputFD, character_buffer, 1) != 1) {
+        if (outputFD != 1) {
             outputFD = 1;
 
             print(selfieName);
             print((int*) ": could not write character to output file ");
             print(outputName);
             println();
-
-            exit(-1);
         }
+
+        exit(-1);
     }
 }
 
@@ -3640,7 +3636,6 @@ void selfie_compile() {
     emitWrite();
     emitOpen();
     emitMalloc();
-    emitPutchar();
 
     emitID();
     emitCreate();
@@ -4523,26 +4518,9 @@ void implementMalloc() {
     }
 }
 
-void emitPutchar() {
-    createSymbolTableEntry(LIBRARY_TABLE, (int*) "putchar", 0, PROCEDURE, INT_T, 0, binaryLength);
-
-    emitIFormat(OP_ADDIU, REG_ZR, REG_A2, WORDSIZE); // write one word
-
-    emitIFormat(OP_ADDIU, REG_SP, REG_A1, 0); // pointer to character
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
-
-    emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 1); // stdout file descriptor
-
-    emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_WRITE);
-    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
-
-    emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
-}
-
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
-
 
 void emitID() {
     createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength);
