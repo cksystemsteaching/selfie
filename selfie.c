@@ -1193,32 +1193,32 @@ int twoToThePowerOf(int p) {
 
 int leftShift(int n, int b) {
     // assert: b >= 0;
-
-    if (b < 31)
-        return n * twoToThePowerOf(b);
-    else if (b == 31)
-        return n * twoToThePowerOf(30) * 2;
-    else
-        return 0;
+    return n << b;
+//    if (b < 31)
+//        return n * twoToThePowerOf(b);
+//    else if (b == 31)
+//        return n * twoToThePowerOf(30) * 2;
+//    else
+//        return 0;
 }
 
 int rightShift(int n, int b) {
     // assert: b >= 0
-
-    if (n >= 0) {
-        if (b < 31)
-            return n / twoToThePowerOf(b);
-        else
-            return 0;
-    } else if (b < 31)
-        // works even if n == INT_MIN:
-        // shift right n with msb reset and then restore msb
-        return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
-            (INT_MAX / twoToThePowerOf(b) + 1);
-    else if (b == 31)
-        return 1;
-    else
-        return 0;
+    return n >> b;
+//    if (n >= 0) {
+//        if (b < 31)
+//            return n / twoToThePowerOf(b);
+//        else
+//            return 0;
+//    } else if (b < 31)
+//        // works even if n == INT_MIN:
+//        // shift right n with msb reset and then restore msb
+//        return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
+//            (INT_MAX / twoToThePowerOf(b) + 1);
+//    else if (b == 31)
+//        return 1;
+//    else
+//        return 0;
 }
 
 int loadCharacter(int *s, int i) {
@@ -5748,7 +5748,7 @@ void fct_sll(){
         print((int*) ",");
         printRegister(rt);
         print((int*) ",");
-        print(itoa(immediate, string_buffer, 10, 0, 0));
+        print(itoa(shamt, string_buffer, 10, 0, 0));
         
         if (interpret) {
             print((int*) ": ");
@@ -5765,7 +5765,7 @@ void fct_sll(){
     }
     
     if(interpret){
-        *(registers+rd) = leftShift(*(registers+rt), immediate);
+        *(registers+rd) = leftShift(*(registers+rt), shamt);
         
         pc = pc + WORDSIZE;
     }
@@ -5791,7 +5791,7 @@ void fct_srl(){
         print((int*) ",");
         printRegister(rt);
         print((int*) ",");
-        print(itoa(immediate, string_buffer, 10, 0, 0));
+        print(itoa(shamt, string_buffer, 10, 0, 0));
         
         if (interpret) {
             print((int*) ": ");
@@ -5806,8 +5806,8 @@ void fct_srl(){
     }
     
     if(interpret){
-        *(registers+rd) = rightShift(*(registers+rt), immediate);
-        
+        *(registers+rd) = rightShift(*(registers+rt), shamt);
+    
         pc = pc + WORDSIZE;
     }
     
