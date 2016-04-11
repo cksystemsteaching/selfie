@@ -404,7 +404,6 @@ int PROCEDURE = 2;
 int STRING    = 3;
 
 // types
-int NO_TYPE   = 0;
 int INT_T     = 1;
 int INTSTAR_T = 2;
 int VOID_T    = 3;
@@ -650,11 +649,10 @@ int FCT_ADDU    = 33;
 int FCT_SUBU    = 35;
 int FCT_SLT     = 42;
 
-//int FCT_SLL     = 0;
+int FCT_SLL     = 0;
 int FCT_SRL     = 2;
-int FCT_SLLV    = 3;//4???
-int FCT_SRLV    = 4;//6;???
-
+int FCT_SLLV    = 4;
+int FCT_SRLV    = 6;
 int *FUNCTIONS; // array of strings representing MIPS functions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -663,7 +661,7 @@ int opcode      = 0;
 int rs          = 0;
 int rt          = 0;
 int rd          = 0;
-//int shamt		= 0;
+int shamt		= 0;
 int immediate   = 0;
 int function    = 0;
 int instr_index = 0;
@@ -673,7 +671,7 @@ int instr_index = 0;
 void initDecoder() {
     OPCODES = malloc(44 * SIZEOFINTSTAR);
 
-    *(OPCODES + OP_SPECIAL) = (int) "sll";
+    *(OPCODES + OP_SPECIAL) = (int) "nop";
     *(OPCODES + OP_J)       = (int) "j";
     *(OPCODES + OP_JAL)     = (int) "jal";
     *(OPCODES + OP_BEQ)     = (int) "beq";
@@ -684,7 +682,7 @@ void initDecoder() {
 
     FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
 
-    *(FUNCTIONS + FCT_NOP)     = (int) "sll";
+//    *(FUNCTIONS + FCT_NOP)     = (int) "sll";
     *(FUNCTIONS + FCT_JR)      = (int) "jr";
     *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
     *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
@@ -695,7 +693,7 @@ void initDecoder() {
     *(FUNCTIONS + FCT_SUBU)    = (int) "subu";
     *(FUNCTIONS + FCT_SLT)     = (int) "slt";
    
-    //*(FUNCTIONS + FCT_SLL)     = (int) "sll";
+    *(FUNCTIONS + FCT_SLL)     = (int) "sll";
     *(FUNCTIONS + FCT_SRL)     = (int) "srl";
     *(FUNCTIONS + FCT_SLLV)     = (int) "sllv";
     *(FUNCTIONS + FCT_SRLV)     = (int) "srlv";
@@ -711,7 +709,7 @@ void storeBinary(int baddr, int instruction);
 void storeInstruction(int baddr, int instruction);
 
 void emitInstruction(int instruction);
-// when using sll or srl with emitRFormat: instead of shamt we use register s
+// when using sll or srl with emitRFormat: shamt is passed in the parameter rs
 void emitRFormat(int opcode, int rs, int rt, int rd, int function);
 void emitIFormat(int opcode, int rs, int rt, int immediate);
 void emitJFormat(int opcode, int instr_index);
@@ -2845,8 +2843,8 @@ int  gr_shiftExpression(){
         
         // assert: allocatedTemporaries == n + 2
         
-        if (rtype != ltype){
-            typeWarning(ltype, rtype);
+        if (rtype == INTSTAR_T){
+            typeWarning(INT_T, rtype);
         }else{
             if (operatorSymbol == SYM_LEFT_SHIFT){
                 emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
@@ -3293,9 +3291,8 @@ void gr_statement() {
 
 int gr_type() {
     int type;
-    type = NO_TYPE;
+    type = INT_T;
     if (symbol == SYM_INT) {
-        type = INT_T;
         getSymbol();
 
         if (symbol == SYM_ASTERISK) {
@@ -3784,14 +3781,17 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
     // |opcode|00000|  rt |  rd |  rs |fction|
     // +------+-----+-----+-----+-----+------+
     //    6      5     5     5     5     6
-    
-   // if (function == FCT_SLL)
-       // return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
-        
-       // else if (function == FCT_SRL)
-       //     return leftShift(leftShift(leftShift(leftShift(opcode, 10) + rt, 5) + rd, 5) + rs, 6) + function;
-  //  else
-    return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
+    int shamt;
+    shamt = 0;
+    if (function == FCT_SLL) {
+        shamt = rs;
+        rs = 0;
+    } else if(function == FCT_SRL) {
+        shamt = rs;
+        rs = 0;
+    }
+    return leftShift(leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 5) + shamt, 6) + function;
+//    return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
 }
 
 // -----------------------------------------------------------------
@@ -3902,9 +3902,7 @@ void decodeRFormat() {
     rs          = getRS(ir);
     rt          = getRT(ir);
     rd          = getRD(ir);
-    //shamt		= getShamt(ir);
-    //immediate = 0;
-    immediate   = getShamt(ir);
+    shamt		= getShamt(ir);
     function    = getFunction(ir);
     instr_index = 0;
 }
@@ -6008,9 +6006,7 @@ void execute() {
     }
 
     if (opcode == OP_SPECIAL) {
-        if (function == FCT_NOP)
-            fct_nop();
-        else if (function == FCT_ADDU)
+        if (function == FCT_ADDU)
             fct_addu();
         else if (function == FCT_SUBU)
             fct_subu();
@@ -6028,8 +6024,8 @@ void execute() {
             fct_jr();
         else if (function == FCT_SYSCALL)
             fct_syscall();
-        //else if (function == FCT_SLL)//for the 4 shift functions:
-          //  fct_sll();
+        else if (function == FCT_SLL)//for the 4 shift functions:
+            fct_sll();
         else if (function == FCT_SRL)
             fct_srl();
         else if (function == FCT_SLLV)
