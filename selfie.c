@@ -1210,7 +1210,7 @@ int rightShift(int n, int b) {
         return n >> b + ((INT_MAX >> b) + 1);
     } else if (b == 31) {
         return 1;
-    { else {
+    } else {
         return 0;
     }
 //    if (n >= 0) {
