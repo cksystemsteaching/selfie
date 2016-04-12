@@ -1207,7 +1207,7 @@ int rightShift(int n, int b) {
     if (n >= 0 ) {
         return n >> b;
     } else if (b < 31) { //TODO negative numbers need special care
-        
+        return n >> b + ((INT_MAX >> b) + 1);
     } else if (b == 31) {
         return 1;
     { else {
