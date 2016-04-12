@@ -1204,7 +1204,15 @@ int leftShift(int n, int b) {
 
 int rightShift(int n, int b) {
     // assert: b >= 0
-    return n >> b;
+    if (n >= 0 ) {
+        return n >> b;
+    } else if (b < 31) { //TODO negative numbers need special care
+        
+    } else if (b == 31) {
+        return 1;
+    { else {
+        return 0;
+    }
 //    if (n >= 0) {
 //        if (b < 31)
 //            return n / twoToThePowerOf(b);
