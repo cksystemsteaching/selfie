@@ -1206,8 +1206,9 @@ int rightShift(int n, int b) {
     // assert: b >= 0
     if (n >= 0 ) {
         return n >> b;
-    } else if (b < 31) { //TODO negative numbers need special care
-        return n >> b + ((INT_MAX >> b) + 1);
+    } else if (b < 31) { 
+        return ((n + 1) + INT_MAX) >> b + (INT_MAX >> b + 1);
+      //return ((n + 1) + INT_MAX) / twoToThePowerOf(b) + (INT_MAX / twoToThePowerOf(b) + 1);
     } else if (b == 31) {
         return 1;
     } else {
@@ -6750,6 +6751,37 @@ int main(int argc, int *argv) {
     argc = argc - 1;
     argv = argv + 1;
     
+    int a = 1;
+    if(rightShift(4,1) == 2){
+        print((int *) "RightShift Works for 4");
+        println();
+
+    }
+    if(rightShift(5,1) == 2){
+        print((int *) "RightShift Works for 5");
+        println();
+        
+    }
+    
+    if(rightShift(6,1) == 3){
+        print((int *) "RightShift Works for 6");
+        println();
+        
+    }
+    
+    if(rightShift(-1,1) == 2147483647){
+        print((int *) "RightShift Works for -1");
+        println();
+        
+    }
+    print(itoa(a, string_buffer, 10, 0, 0));
+    
+
+
+    a = rightShift(-1,1);
+
+    //print(itoa(a, string_buffer, 10, 0, 0));
+
     print((int *) "This is Coup_Triole Selfie");
     println();
 
