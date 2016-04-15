@@ -73,7 +73,7 @@
 // microkernel is inspired by microkernels of Professor Jochen Liedtke
 // from University of Karlsruhe.
 
-int *selfieName = (int*) 0;
+int* selfieName = (int*) 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -91,23 +91,23 @@ int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
 
-int  loadCharacter(int *s, int i);
-int* storeCharacter(int *s, int i, int c);
+int  loadCharacter(int* s, int i);
+int* storeCharacter(int* s, int i, int c);
 
-int  stringLength(int *s);
-void stringReverse(int *s);
-int  stringCompare(int *s, int *t);
+int  stringLength(int* s);
+void stringReverse(int* s);
+int  stringCompare(int* s, int* t);
 
-int  atoi(int *s);
-int* itoa(int n, int *s, int b, int a, int p);
+int  atoi(int* s);
+int* itoa(int n, int* s, int b, int a, int p);
 
 void putCharacter(int character);
 
-void print(int *s);
+void print(int* s);
 void println();
 
 void printCharacter(int character);
-void printString(int *s);
+void printString(int* s);
 
 int roundUp(int n, int m);
 
@@ -144,7 +144,7 @@ int CHAR_DOUBLEQUOTE  = '"';
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
 
-int *power_of_two_table;
+int* power_of_two_table;
 
 int INT_MAX; // maximum numerical value of a signed 32-bit integer
 int INT_MIN; // minimum numerical value of a signed 32-bit integer
@@ -154,10 +154,10 @@ int INT16_MIN; // minimum numerical value of a signed 16-bit integer
 
 int maxFilenameLength = 128;
 
-int *character_buffer; // buffer for reading and writing characters
-int *string_buffer;    // buffer for string output
-int *filename_buffer;  // buffer for filenames
-int *io_buffer;        // buffer for binary I/O
+int* character_buffer; // buffer for reading and writing characters
+int* string_buffer;    // buffer for string output
+int* filename_buffer;  // buffer for filenames
+int* io_buffer;        // buffer for binary I/O
 
 // 0 = O_RDONLY (0x0000)
 int O_RDONLY = 0;
@@ -170,8 +170,8 @@ int S_IRUSR_IWUSR_IRGRP_IROTH = 420; // flags for rw-r--r-- file permissions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int *outputName = (int*) 0;
-int outputFD    = 1;
+int* outputName = (int*) 0;
+int  outputFD   = 1;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -228,7 +228,7 @@ void resetScanner();
 void printSymbol(int symbol);
 void printLineNumber(int* message, int line);
 
-void syntaxErrorMessage(int *message);
+void syntaxErrorMessage(int* message);
 void syntaxErrorCharacter(int character);
 
 void getCharacter();
@@ -276,7 +276,7 @@ int SYM_MOD          = 25; // %
 int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
 
-int *SYMBOLS; // array of strings representing symbols
+int* SYMBOLS; // array of strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -286,9 +286,9 @@ int maxStringLength     = 128; // maximum number of characters in a string
 
 int lineNumber = 1; // current Line Number for error reporting
 
-int *identifier = (int*) 0; // stores scanned identifier as string
-int *integer    = (int*) 0; // stores scanned integer as string
-int *string     = (int*) 0; // stores scanned string
+int* identifier = (int*) 0; // stores scanned identifier as string
+int* integer    = (int*) 0; // stores scanned integer as string
+int* string     = (int*) 0; // stores scanned string
 
 int literal = 0; // stores numerical value of scanned integer or character
 
@@ -300,8 +300,8 @@ int isINTMIN    = 0;
 int character; // most recently read character
 int symbol;    // most recently recognized symbol
 
-int *sourceName = (int*) 0; // name of source file
-int sourceFD    = 0;        // file descriptor of open source file
+int* sourceName = (int*) 0; // name of source file
+int  sourceFD   = 0;        // file descriptor of open source file
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -354,11 +354,11 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-void createSymbolTableEntry(int which, int *string, int line, int class, int type, int value, int address);
-int* searchSymbolTable(int *entry, int *string, int class);
-int* getSymbolTableEntry(int *string, int class);
+void createSymbolTableEntry(int which, int* string, int line, int class, int type, int value, int address);
+int* searchSymbolTable(int* entry, int* string, int class);
+int* getSymbolTableEntry(int* string, int class);
 
-int isUndefinedProcedure(int *entry);
+int isUndefinedProcedure(int* entry);
 int reportUndefinedProcedures();
 
 // symbol table entry:
@@ -373,23 +373,23 @@ int reportUndefinedProcedures();
 // |  7 | scope   | REG_GP, REG_FP
 // +----+---------+
 
-int* getNextEntry(int *entry) { return (int*) *entry; }
-int* getString(int *entry)    { return (int*) *(entry + 1); }
-int  getLineNumber(int *entry) { return *(entry + 2); }
-int  getClass(int *entry)      { return *(entry + 3); }
-int  getType(int *entry)       { return *(entry + 4); }
-int  getValue(int *entry)      { return *(entry + 5); }
-int  getAddress(int *entry)    { return *(entry + 6); }
-int  getScope(int *entry)      { return *(entry + 7); }
+int* getNextEntry(int* entry)  { return (int*) *entry; }
+int* getString(int* entry)     { return (int*) *(entry + 1); }
+int  getLineNumber(int* entry) { return *(entry + 2); }
+int  getClass(int* entry)      { return *(entry + 3); }
+int  getType(int* entry)       { return *(entry + 4); }
+int  getValue(int* entry)      { return *(entry + 5); }
+int  getAddress(int* entry)    { return *(entry + 6); }
+int  getScope(int* entry)      { return *(entry + 7); }
 
-void setNextEntry(int *entry, int *next)    { *entry       = (int) next; }
-void setString(int *entry, int *identifier) { *(entry + 1) = (int) identifier; }
-void setLineNumber(int *entry, int line)    { *(entry + 2) = line; }
-void setClass(int *entry, int class)        { *(entry + 3) = class; }
-void setType(int *entry, int type)          { *(entry + 4) = type; }
-void setValue(int *entry, int value)        { *(entry + 5) = value; }
-void setAddress(int *entry, int address)    { *(entry + 6) = address; }
-void setScope(int *entry, int scope)        { *(entry + 7) = scope; }
+void setNextEntry(int* entry, int* next)    { *entry       = (int) next; }
+void setString(int* entry, int* identifier) { *(entry + 1) = (int) identifier; }
+void setLineNumber(int* entry, int line)    { *(entry + 2) = line; }
+void setClass(int* entry, int class)        { *(entry + 3) = class; }
+void setType(int* entry, int type)          { *(entry + 4) = type; }
+void setValue(int* entry, int value)        { *(entry + 5) = value; }
+void setAddress(int* entry, int address)    { *(entry + 6) = address; }
+void setScope(int* entry, int scope)        { *(entry + 7) = scope; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -411,9 +411,9 @@ int LIBRARY_TABLE = 3;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 // table pointers
-int *global_symbol_table  = (int*) 0;
-int *local_symbol_table   = (int*) 0;
-int *library_symbol_table = (int*) 0;
+int* global_symbol_table  = (int*) 0;
+int* local_symbol_table   = (int*) 0;
+int* library_symbol_table = (int*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -446,16 +446,16 @@ void syntaxErrorUnexpected();
 int* putType(int type);
 void typeWarning(int expected, int found);
 
-int* getVariable(int *variable);
-int  load_variable(int *variable);
+int* getVariable(int* variable);
+int  load_variable(int* variable);
 void load_integer(int value);
-void load_string(int *string);
+void load_string(int* string);
 
-int  help_call_codegen(int *entry, int *procedure);
+int  help_call_codegen(int* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
-int  gr_call(int *procedure);
+int  gr_call(int* procedure);
 int  gr_factor();
 int  gr_term();
 int  gr_simpleExpression();
@@ -466,8 +466,8 @@ void gr_return(int returnType);
 void gr_statement();
 int  gr_type();
 void gr_variable(int offset);
-void gr_initialization(int *name, int offset, int type);
-void gr_procedure(int *procedure, int returnType);
+void gr_initialization(int* name, int offset, int type);
+void gr_procedure(int* procedure, int returnType);
 void gr_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -478,7 +478,7 @@ int allocatedMemory = 0; // number of bytes for global variables and strings
 
 int returnBranches  = 0; // fixup chain for return statements
 
-int *currentProcedureName = (int*) 0; // name of currently parsed procedure
+int* currentProcedureName = (int*) 0; // name of currently parsed procedure
 
 // -----------------------------------------------------------------
 // ---------------------- MACHINE CODE LIBRARY ---------------------
@@ -545,7 +545,7 @@ int REG_SP = 29;
 int REG_FP = 30;
 int REG_RA = 31;
 
-int *REGISTERS; // array of strings representing registers
+int* REGISTERS; // array of strings representing registers
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -627,8 +627,8 @@ int OP_BNE     = 5;
 int OP_ADDIU   = 9;
 int OP_LW      = 35;
 int OP_SW      = 43;
-    
-int *OPCODES; // array of strings representing MIPS opcodes
+
+int* OPCODES; // array of strings representing MIPS opcodes
 
 int FCT_NOP     = 0;
 int FCT_JR      = 8;
@@ -641,7 +641,7 @@ int FCT_ADDU    = 33;
 int FCT_SUBU    = 35;
 int FCT_SLT     = 42;
 
-int *FUNCTIONS; // array of strings representing MIPS functions
+int* FUNCTIONS; // array of strings representing MIPS functions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -699,13 +699,13 @@ void fixup_relative(int fromAddress);
 void fixup_absolute(int fromAddress, int toAddress);
 void fixlink_absolute(int fromAddress, int toAddress);
 
-int copyStringToBinary(int *s, int a);
+int copyStringToBinary(int* s, int a);
 
 void emitGlobalsStrings();
 
 void selfie_emit();
 
-int* touch(int *memory, int length);
+int* touch(int* memory, int length);
 
 void selfie_load();
 
@@ -715,18 +715,18 @@ int maxBinaryLength = 131072; // 128KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int *binary = (int*) 0; // binary of emitted instructions
+int* binary = (int*) 0; // binary of emitted instructions
 
 int binaryLength = 0; // length of binary in bytes incl. globals & strings
 
 int codeLength = 0; // length of code portion of binary in bytes
 
-int *binaryName = (int*) 0; // file name of binary
+int* binaryName = (int*) 0; // file name of binary
 
-int *sourceLineNumber = (int*) 0; // source line number per emitted instruction
+int* sourceLineNumber = (int*) 0; // source line number per emitted instruction
 
-int *assemblyName = (int*) 0; // name of assembly file
-int assemblyFD    = 0;        // file descriptor of open assembly file
+int* assemblyName = (int*) 0; // name of assembly file
+int  assemblyFD   = 0;        // file descriptor of open assembly file
 
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
@@ -742,7 +742,7 @@ void emitWrite();
 void implementWrite();
 
 void emitOpen();
-int  down_loadString(int *table, int vaddr, int *s);
+int  down_loadString(int* table, int vaddr, int* s);
 void implementOpen();
 
 void emitMalloc();
@@ -829,21 +829,21 @@ int SYSCALL_MAP    = 4906;
 
 void initMemory(int bytes);
 
-int  loadPhysicalMemory(int *paddr);
-void storePhysicalMemory(int *paddr, int data);
+int  loadPhysicalMemory(int* paddr);
+void storePhysicalMemory(int* paddr, int data);
 
 int isValidVirtualAddress(int vaddr);
 
-int getFrameForPage(int *table, int page);
+int getFrameForPage(int* table, int page);
 
-int isVirtualAddressMapped(int *table, int vaddr);
+int isVirtualAddressMapped(int* table, int vaddr);
 
-int* tlb(int *table, int vaddr);
+int* tlb(int* table, int vaddr);
 
-int  loadVirtualMemory(int *table, int vaddr);
-void storeVirtualMemory(int *table, int vaddr, int data);
+int  loadVirtualMemory(int* table, int vaddr);
+void storeVirtualMemory(int* table, int vaddr, int data);
 
-void mapAndStoreVirtualMemory(int *table, int vaddr, int data);
+void mapAndStoreVirtualMemory(int* table, int vaddr, int data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -919,18 +919,18 @@ void interrupt();
 void runUntilException();
 void runUntilExit();
 
-int  up_loadString(int *table, int *s, int SP);
-void up_loadArguments(int *table, int argc, int *argv);
-void up_loadBinary(int *table);
+int  up_loadString(int* table, int* s, int SP);
+void up_loadArguments(int* table, int argc, int* argv);
+void up_loadBinary(int* table);
 
-int addressWithMaxCounter(int *counters, int max);
+int addressWithMaxCounter(int* counters, int max);
 int fixedPointRatio(int a, int b);
 
-int  printCounters(int total, int *counters, int max);
-void printProfile(int *message, int total, int *counters);
+int  printCounters(int total, int* counters, int max);
+void printProfile(int* message, int total, int* counters);
 
-void selfie_disassemble(int argc, int *argv);
-void selfie_run(int argc, int *argv);
+void selfie_disassemble(int argc, int* argv);
+void selfie_run(int argc, int* argv);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -943,7 +943,7 @@ int EXCEPTION_EXIT               = 5;
 int EXCEPTION_INTERRUPT          = 6;
 int EXCEPTION_PAGEFAULT          = 7;
 
-int *EXCEPTIONS; // array of strings representing exceptions
+int* EXCEPTIONS; // array of strings representing exceptions
 
 int debug_exception = 0;
 
@@ -954,7 +954,7 @@ int TIMESLICE = 10000000;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int *registers = (int*) 0; // general purpose registers
+int* registers = (int*) 0; // general purpose registers
 
 int pc = 0; // program counter
 int ir = 0; // instruction record
@@ -962,7 +962,7 @@ int ir = 0; // instruction record
 int reg_hi = 0; // hi register for multiplication/division
 int reg_lo = 0; // lo register for multiplication/division
 
-int *pt = (int*) 0; // page table
+int* pt = (int*) 0; // page table
 
 int brk = 0; // break between code, data, and heap
 
@@ -980,17 +980,17 @@ int interpret = 0; // flag for executing or disassembling code
 
 int debug = 0; // flag for logging code execution
 
-int calls            = 0;        // total number of executed procedure calls
-int *callsPerAddress = (int*) 0; // number of executed calls of each procedure
+int  calls           = 0;        // total number of executed procedure calls
+int* callsPerAddress = (int*) 0; // number of executed calls of each procedure
 
-int loops            = 0;        // total number of executed loop iterations
-int *loopsPerAddress = (int*) 0; // number of executed iterations of each loop
+int  loops           = 0;        // total number of executed loop iterations
+int* loopsPerAddress = (int*) 0; // number of executed iterations of each loop
 
-int loads            = 0;        // total number of executed memory loads
-int *loadsPerAddress = (int*) 0; // number of executed loads per load operation
+int  loads           = 0;        // total number of executed memory loads
+int* loadsPerAddress = (int*) 0; // number of executed loads per load operation
 
-int stores            = 0;        // total number of executed memory stores
-int *storesPerAddress = (int*) 0; // number of executed stores per store operation
+int  stores           = 0;        // total number of executed memory stores
+int* storesPerAddress = (int*) 0; // number of executed stores per store operation
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1050,16 +1050,16 @@ void resetInterpreter() {
 int createID(int seed);
 
 int* allocateContext(int ID, int parentID);
-int* createContext(int ID, int parentID, int *in);
+int* createContext(int ID, int parentID, int* in);
 
-int* findContext(int ID, int *in);
+int* findContext(int ID, int* in);
 
-void switchContext(int *from, int *to);
+void switchContext(int* from, int* to);
 
-void freeContext(int *context);
-int* deleteContext(int *context, int *from);
+void freeContext(int* context);
+int* deleteContext(int* context, int* from);
 
-void mapPage(int *table, int page, int frame);
+void mapPage(int* table, int page, int frame);
 
 // context struct:
 // +---+--------+
@@ -1075,27 +1075,27 @@ void mapPage(int *table, int page, int frame);
 // | 9 | parent | ID of context that created this context
 // +---+--------+
 
-int* getNextContext(int *context) { return (int*) *context; }
-int* getPrevContext(int *context) { return (int*) *(context + 1); }
-int  getID(int *context)          { return        *(context + 2); }
-int  getPC(int *context)          { return        *(context + 3); }
-int* getRegs(int *context)        { return (int*) *(context + 4); }
-int  getRegHi(int *context)       { return        *(context + 5); }
-int  getRegLo(int *context)       { return        *(context + 6); }
-int* getPT(int *context)          { return (int*) *(context + 7); }
-int  getBreak(int *context)       { return        *(context + 8); }
-int  getParent(int *context)      { return        *(context + 9); }
+int* getNextContext(int* context) { return (int*) *context; }
+int* getPrevContext(int* context) { return (int*) *(context + 1); }
+int  getID(int* context)          { return        *(context + 2); }
+int  getPC(int* context)          { return        *(context + 3); }
+int* getRegs(int* context)        { return (int*) *(context + 4); }
+int  getRegHi(int* context)       { return        *(context + 5); }
+int  getRegLo(int* context)       { return        *(context + 6); }
+int* getPT(int* context)          { return (int*) *(context + 7); }
+int  getBreak(int* context)       { return        *(context + 8); }
+int  getParent(int* context)      { return        *(context + 9); }
 
-void setNextContext(int *context, int *next) { *context       = (int) next; }
-void setPrevContext(int *context, int *prev) { *(context + 1) = (int) prev; }
-void setID(int *context, int id)             { *(context + 2) = id; }
-void setPC(int *context, int pc)             { *(context + 3) = pc; }
-void setRegs(int *context, int *regs)        { *(context + 4) = (int) regs; }
-void setRegHi(int *context, int reg_hi)      { *(context + 5) = reg_hi; }
-void setRegLo(int *context, int reg_lo)      { *(context + 6) = reg_lo; }
-void setPT(int *context, int *pt)            { *(context + 7) = (int) pt; }
-void setBreak(int *context, int brk)         { *(context + 8) = brk; }
-void setParent(int *context, int id)         { *(context + 9) = id; }
+void setNextContext(int* context, int* next) { *context       = (int) next; }
+void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
+void setID(int* context, int id)             { *(context + 2) = id; }
+void setPC(int* context, int pc)             { *(context + 3) = pc; }
+void setRegs(int* context, int* regs)        { *(context + 4) = (int) regs; }
+void setRegHi(int* context, int reg_hi)      { *(context + 5) = reg_hi; }
+void setRegLo(int* context, int reg_lo)      { *(context + 6) = reg_lo; }
+void setPT(int* context, int* pt)            { *(context + 7) = (int) pt; }
+void setBreak(int* context, int brk)         { *(context + 8) = brk; }
+void setParent(int* context, int id)         { *(context + 9) = id; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1111,10 +1111,10 @@ int NO_ID = -1;
 
 int bumpID; // counter for generating unique context IDs
 
-int *currentContext  = (int*) 0; // context currently running
+int* currentContext = (int*) 0; // context currently running
 
-int *activeContexts = (int*) 0; // doubly-linked list of active contexts
-int *freeContexts   = (int*) 0; // singly-linked list of free contexts
+int* activeContexts = (int*) 0; // doubly-linked list of active contexts
+int* freeContexts   = (int*) 0; // singly-linked list of free contexts
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1132,19 +1132,19 @@ void resetMicrokernel() {
 // -----------------------------------------------------------------
 
 int* palloc();
-void pfree(int *frame);
+void pfree(int* frame);
 
-void down_mapPageTable(int *context);
+void down_mapPageTable(int* context);
 
-void boot(int argc, int *argv);
+void boot(int argc, int* argv);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 int initID = 0;
 
-int *readyContexts = (int*) 0;
+int* readyContexts = (int*) 0;
 
-int *initContext = (int*) 0;
+int* initContext = (int*) 0;
 
 int usedMemory = 0;
 
@@ -1196,7 +1196,7 @@ int rightShift(int n, int b) {
         return 0;
 }
 
-int loadCharacter(int *s, int i) {
+int loadCharacter(int* s, int i) {
     // assert: i >= 0
     int a;
 
@@ -1205,18 +1205,18 @@ int loadCharacter(int *s, int i) {
     return rightShift(leftShift(*(s + a), ((SIZEOFINT - 1) - (i % SIZEOFINT)) * 8), (SIZEOFINT - 1) * 8);
 }
 
-int* storeCharacter(int *s, int i, int c) {
+int* storeCharacter(int* s, int i, int c) {
     // assert: i >= 0, all characters are 7-bit
     int a;
 
     a = i / SIZEOFINT;
 
     *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFINT) * 8)) + leftShift(c, (i % SIZEOFINT) * 8);
-    
+
     return s;
 }
 
-int stringLength(int *s) {
+int stringLength(int* s) {
     int i;
 
     i = 0;
@@ -1227,7 +1227,7 @@ int stringLength(int *s) {
     return i;
 }
 
-void stringReverse(int *s) {
+void stringReverse(int* s) {
     int i;
     int j;
     int tmp;
@@ -1237,7 +1237,7 @@ void stringReverse(int *s) {
 
     while (i < j) {
         tmp = loadCharacter(s, i);
-        
+
         storeCharacter(s, i, loadCharacter(s, j));
         storeCharacter(s, j, tmp);
 
@@ -1246,7 +1246,7 @@ void stringReverse(int *s) {
     }
 }
 
-int stringCompare(int *s, int *t) {
+int stringCompare(int* s, int* t) {
     int i;
 
     i = 0;
@@ -1263,7 +1263,7 @@ int stringCompare(int *s, int *t) {
             return 0;
 }
 
-int atoi(int *s) {
+int atoi(int* s) {
     int i;
     int n;
     int c;
@@ -1283,7 +1283,7 @@ int atoi(int *s) {
             return -1;
 
         n = n * 10 + c;
-        
+
         i = i + 1;
 
         c = loadCharacter(s, i);
@@ -1299,7 +1299,7 @@ int atoi(int *s) {
     return n;
 }
 
-int* itoa(int n, int *s, int b, int a, int p) {
+int* itoa(int n, int* s, int b, int a, int p) {
     // assert: b in {2,4,8,10,16}
 
     int i;
@@ -1416,7 +1416,7 @@ int* itoa(int n, int *s, int b, int a, int p) {
             i = i + 2;
         }
     }
-    
+
     storeCharacter(s, i, 0); // null terminated string
 
     stringReverse(s);
@@ -1443,7 +1443,7 @@ void putCharacter(int character) {
     }
 }
 
-void print(int *s) {
+void print(int* s) {
     int i;
 
     i = 0;
@@ -1476,11 +1476,11 @@ void printCharacter(int character) {
     putCharacter(CHAR_SINGLEQUOTE);
 }
 
-void printString(int *s) {
+void printString(int* s) {
     putCharacter(CHAR_DOUBLEQUOTE);
 
     print(s);
-    
+
     putCharacter(CHAR_DOUBLEQUOTE);
 }
 
@@ -1525,11 +1525,11 @@ void printLineNumber(int* message, int line) {
     print((int*) ": ");
 }
 
-void syntaxErrorMessage(int *message) {
+void syntaxErrorMessage(int* message) {
     printLineNumber((int*) "error", lineNumber);
 
     print(message);
-    
+
     println();
 }
 
@@ -1731,14 +1731,14 @@ int getSymbol() {
         while (isCharacterDigit()) {
             if (i >= maxIntegerLength) {
                 syntaxErrorMessage((int*) "integer out of bound");
-                
+
                 exit(-1);
             }
 
             storeCharacter(integer, i, character);
 
             i = i + 1;
-            
+
             getCharacter();
         }
 
@@ -1752,12 +1752,12 @@ int getSymbol() {
                     isINTMIN = 1;
                 else {
                     syntaxErrorMessage((int*) "integer out of bound");
-                    
+
                     exit(-1);
                 }
             } else {
                 syntaxErrorMessage((int*) "integer out of bound");
-                
+
                 exit(-1);
             }
         }
@@ -1799,14 +1799,14 @@ int getSymbol() {
         while (isNotDoubleQuoteOrEOF()) {
             if (i >= maxStringLength) {
                 syntaxErrorMessage((int*) "string too long");
-                
+
                 exit(-1);
             }
 
             storeCharacter(string, i, character);
 
             i = i + 1;
-            
+
             getCharacter();
         }
 
@@ -1916,7 +1916,7 @@ int getSymbol() {
         printLineNumber((int*) "error", lineNumber);
         print((int*) "found unknown character ");
         printCharacter(character);
-        
+
         println();
 
         exit(-1);
@@ -1929,8 +1929,8 @@ int getSymbol() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(int whichTable, int *string, int line, int class, int type, int value, int address) {
-    int *newEntry;
+void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address) {
+    int* newEntry;
 
     newEntry = malloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
 
@@ -1940,7 +1940,7 @@ void createSymbolTableEntry(int whichTable, int *string, int line, int class, in
     setType(newEntry, type);
     setValue(newEntry, value);
     setAddress(newEntry, address);
-    
+
     // create entry at head of symbol table
     if (whichTable == GLOBAL_TABLE) {
         setScope(newEntry, REG_GP);
@@ -1958,12 +1958,12 @@ void createSymbolTableEntry(int whichTable, int *string, int line, int class, in
     }
 }
 
-int* searchSymbolTable(int *entry, int *string, int class) {
+int* searchSymbolTable(int* entry, int* string, int class) {
     while (entry != (int*) 0) {
         if (stringCompare(string, getString(entry)))
             if (class == getClass(entry))
                 return entry;
-        
+
         // keep looking
         entry = getNextEntry(entry);
     }
@@ -1971,8 +1971,8 @@ int* searchSymbolTable(int *entry, int *string, int class) {
     return (int*) 0;
 }
 
-int* getSymbolTableEntry(int *string, int class) {
-    int *entry;
+int* getSymbolTableEntry(int* string, int class) {
+    int* entry;
 
     if (class == VARIABLE) {
         // local variables override global variables
@@ -1981,12 +1981,12 @@ int* getSymbolTableEntry(int *string, int class) {
         if (entry != (int*) 0)
             return entry;
     }
-    
+
     return searchSymbolTable(global_symbol_table, string, class);
 }
 
-int isUndefinedProcedure(int *entry) {
-    int *libraryEntry;
+int isUndefinedProcedure(int* entry) {
+    int* libraryEntry;
 
     if (getClass(entry) == PROCEDURE) {
         // library procedures override regular procedures for bootstrapping
@@ -2000,13 +2000,13 @@ int isUndefinedProcedure(int *entry) {
         else if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL)
             return 1;
     }
-    
+
     return 0;
 }
 
 int reportUndefinedProcedures() {
     int undefined;
-    int *entry;
+    int* entry;
 
     undefined = 0;
 
@@ -2274,8 +2274,8 @@ void typeWarning(int expected, int found) {
     println();
 }
 
-int* getVariable(int *variable) {
-    int *entry;
+int* getVariable(int* variable) {
+    int* entry;
 
     entry = getSymbolTableEntry(variable, VARIABLE);
 
@@ -2291,8 +2291,8 @@ int* getVariable(int *variable) {
     return entry;
 }
 
-int load_variable(int *variable) {
-    int *entry;
+int load_variable(int* variable) {
+    int* entry;
 
     entry = getVariable(variable);
 
@@ -2345,7 +2345,7 @@ void load_integer(int value) {
     }
 }
 
-void load_string(int *string) {
+void load_string(int* string) {
     int length;
 
     length = stringLength(string) + 1;
@@ -2359,7 +2359,7 @@ void load_string(int *string) {
     emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
 }
 
-int help_call_codegen(int *entry, int *procedure) {
+int help_call_codegen(int* entry, int* procedure) {
     int type;
 
     if (entry == (int*) 0) {
@@ -2432,8 +2432,8 @@ void help_procedure_epilogue(int parameters) {
     emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int gr_call(int *procedure) {
-    int *entry;
+int gr_call(int* procedure) {
+    int* entry;
     int numberOfTemporaries;
     int type;
 
@@ -2455,7 +2455,7 @@ int gr_call(int *procedure) {
         gr_expression();
 
         // TODO: check if types/number of parameters is correct
-        
+
         // push first parameter onto stack
         emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
         emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
@@ -2476,7 +2476,7 @@ int gr_call(int *procedure) {
 
         if (symbol == SYM_RPARENTHESIS) {
             getSymbol();
-            
+
             type = help_call_codegen(entry, procedure);
         } else {
             syntaxErrorSymbol(SYM_RPARENTHESIS);
@@ -2506,7 +2506,7 @@ int gr_factor() {
     int cast;
     int type;
 
-    int *variableOrProcedureName;
+    int* variableOrProcedureName;
 
     // assert: n = allocatedTemporaries
 
@@ -2622,9 +2622,9 @@ int gr_factor() {
         emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
 
         getSymbol();
-    
+
         type = INT_T;
-        
+
     // string?
     } else if (symbol == SYM_STRING) {
         load_string(string);
@@ -2674,7 +2674,7 @@ int gr_term() {
         rtype = gr_factor();
 
         // assert: allocatedTemporaries == n + 2
-        
+
         if (ltype != rtype)
             typeWarning(ltype, rtype);
 
@@ -2720,7 +2720,7 @@ int gr_simpleExpression() {
 
         if (isINTMIN) {
             isINTMIN = 0;
-            
+
             // avoids 0-INT_MIN overflow when bootstrapping
             // even though 0-INT_MIN == INT_MIN
             sign = 0;
@@ -2858,7 +2858,7 @@ int gr_expression() {
             emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
         }
     }
-    
+
     // assert: allocatedTemporaries == n + 1
 
     return ltype;
@@ -3039,7 +3039,7 @@ void gr_return(int returnType) {
 
         // save value of expression in return register
         emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_V0, FCT_ADDU);
-        
+
         tfree(1);
     }
 
@@ -3057,8 +3057,8 @@ void gr_return(int returnType) {
 void gr_statement() {
     int ltype;
     int rtype;
-    int *variableOrProcedureName;
-    int *entry;
+    int* variableOrProcedureName;
+    int* entry;
 
     // assert: allocatedTemporaries == 0;
 
@@ -3209,7 +3209,7 @@ int gr_type() {
     int type;
 
     type = INT_T;
-    
+
     if (symbol == SYM_INT) {
         getSymbol();
 
@@ -3240,7 +3240,7 @@ void gr_variable(int offset) {
     }
 }
 
-void gr_initialization(int *name, int offset, int type) {
+void gr_initialization(int* name, int offset, int type) {
     int actualLineNumber;
     int hasCast;
     int cast;
@@ -3282,7 +3282,7 @@ void gr_initialization(int *name, int offset, int type) {
 
             if (isINTMIN) {
                 isINTMIN = 0;
-            
+
                 // avoids 0-INT_MIN overflow when bootstrapping
                 // even though 0-INT_MIN == INT_MIN
                 sign = 0;
@@ -3316,12 +3316,12 @@ void gr_initialization(int *name, int offset, int type) {
     createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset);
 }
 
-void gr_procedure(int *procedure, int returnType) {
+void gr_procedure(int* procedure, int returnType) {
     int numberOfParameters;
     int parameters;
     int localVariables;
     int functionStart;
-    int *entry;
+    int* entry;
 
     currentProcedureName = procedure;
 
@@ -3376,7 +3376,7 @@ void gr_procedure(int *procedure, int returnType) {
     // ( variable, variable ) { variable; variable; statement }
     } else if (symbol == SYM_LBRACE) {
         functionStart = binaryLength;
-        
+
         entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
         if (entry == (int*) 0)
@@ -3449,7 +3449,7 @@ void gr_procedure(int *procedure, int returnType) {
 
 void gr_cstar() {
     int type;
-    int *variableOrProcedureName;
+    int* variableOrProcedureName;
 
     while (symbol != SYM_EOF) {
         while (lookForType()) {
@@ -3529,7 +3529,7 @@ void emitMainEntry() {
     // when binaryLength is known
 
     i = 0;
-    
+
     // 8 NOPs per register is enough for initialization
     // since we load positive integers < 2^28 which take
     // no more than 8 instructions each, see load_integer
@@ -3860,7 +3860,7 @@ void emitInstruction(int instruction) {
         exit(-1);
     } else {
         storeInstruction(binaryLength, instruction);
-        
+
         binaryLength = binaryLength + WORDSIZE;
     }
 }
@@ -3925,7 +3925,7 @@ void fixlink_absolute(int fromAddress, int toAddress) {
     }
 }
 
-int copyStringToBinary(int *s, int baddr) {
+int copyStringToBinary(int* s, int baddr) {
     int next;
 
     next = baddr + roundUp(stringLength(s) + 1, WORDSIZE);
@@ -3942,7 +3942,7 @@ int copyStringToBinary(int *s, int baddr) {
 }
 
 void emitGlobalsStrings() {
-    int *entry;
+    int* entry;
 
     entry = global_symbol_table;
 
@@ -3967,7 +3967,7 @@ void emitGlobalsStrings() {
 
 void selfie_emit() {
     int fd;
-    
+
     // assert: binaryName is mapped and not longer than maxFilenameLength
 
     fd = open(binaryName, O_CREAT_WRONLY_TRUNC, S_IRUSR_IWUSR_IRGRP_IROTH);
@@ -3999,8 +3999,8 @@ void selfie_emit() {
     write(fd, binary, binaryLength);
 }
 
-int* touch(int *memory, int length) {
-    int *m;
+int* touch(int* memory, int length) {
+    int* m;
     int n;
 
     m = memory;
@@ -4069,7 +4069,7 @@ void selfie_load() {
 
     if (numberOfReadBytes == WORDSIZE) {
         codeLength = *io_buffer;
-        
+
         if (codeLength <= maxBinaryLength) {
             // assert: binary is mapped
 
@@ -4085,7 +4085,7 @@ void selfie_load() {
             }
         }
     }
-    
+
     print(selfieName);
     print((int*) ": failed to load code from input file ");
     print(binaryName);
@@ -4158,7 +4158,7 @@ void implementRead() {
     int fd;
     int readTotal;
     int bytesToRead;
-    int *buffer;
+    int* buffer;
     int actuallyRead;
     int failed;
 
@@ -4274,7 +4274,7 @@ void implementWrite() {
     int fd;
     int writtenTotal;
     int bytesToWrite;
-    int *buffer;
+    int* buffer;
     int actuallyWritten;
     int failed;
 
@@ -4304,7 +4304,7 @@ void implementWrite() {
         if (isValidVirtualAddress(vaddr)) {
             if (isVirtualAddressMapped(pt, vaddr)) {
                 buffer = tlb(pt, vaddr);
-        
+
                 if (size < bytesToWrite)
                     bytesToWrite = size;
 
@@ -4384,9 +4384,9 @@ void emitOpen() {
     emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int down_loadString(int *table, int vaddr, int *s) {
+int down_loadString(int* table, int vaddr, int* s) {
     int i;
-    int *paddr;
+    int* paddr;
 
     i = 0;
 
@@ -4407,7 +4407,7 @@ int down_loadString(int *table, int vaddr, int *s) {
                     return 1;
 
                 vaddr = vaddr + WORDSIZE;
-                                
+
                 i = i + 1;
             } else {
                 if (debug_open) {
@@ -4617,7 +4617,7 @@ void emitSwitch() {
 
 int doSwitch(int toID) {
     int fromID;
-    int *toContext;
+    int* toContext;
 
     fromID = getID(currentContext);
 
@@ -4737,7 +4737,7 @@ void emitDelete() {
 }
 
 void doDelete(int ID) {
-    int *context;
+    int* context;
 
     context = findContext(ID, activeContexts);
 
@@ -4795,8 +4795,8 @@ void emitMap() {
 }
 
 void doMap(int ID, int page, int frame) {
-    int *mapContext;
-    int *parentContext;
+    int* mapContext;
+    int* parentContext;
 
     mapContext = findContext(ID, activeContexts);
 
@@ -4867,11 +4867,11 @@ void selfie_map(int ID, int page, int frame) {
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-int loadPhysicalMemory(int *paddr) {
+int loadPhysicalMemory(int* paddr) {
     return *paddr;
 }
 
-void storePhysicalMemory(int *paddr, int data) {
+void storePhysicalMemory(int* paddr, int data) {
     *paddr = data;
 }
 
@@ -4881,24 +4881,24 @@ int isValidVirtualAddress(int vaddr) {
             // memory must be word-addressed for lack of byte-sized data type
             if (vaddr % WORDSIZE == 0)
                 return 1;
-    
+
     return 0;
 }
 
-int getFrameForPage(int *table, int page) {
+int getFrameForPage(int* table, int page) {
     return *(table + page);
 }
 
-int isVirtualAddressMapped(int *table, int vaddr) {
+int isVirtualAddressMapped(int* table, int vaddr) {
     // assert: isValidVirtualAddress(vaddr) == 1
-    
+
     if (getFrameForPage(table, vaddr / PAGESIZE) != 0)
         return 1;
     else
         return 0;
 }
 
-int* tlb(int *table, int vaddr) {
+int* tlb(int* table, int vaddr) {
     int page;
     int frame;
     int paddr;
@@ -4933,26 +4933,26 @@ int* tlb(int *table, int vaddr) {
     return (int*) paddr;
 }
 
-int loadVirtualMemory(int *table, int vaddr) {
+int loadVirtualMemory(int* table, int vaddr) {
     // assert: isValidVirtualAddress(vaddr) == 1
     // assert: isVirtualAddressMapped(table, vaddr) == 1
 
     return loadPhysicalMemory(tlb(table, vaddr));
 }
 
-void storeVirtualMemory(int *table, int vaddr, int data) {
+void storeVirtualMemory(int* table, int vaddr, int data) {
     // assert: isValidVirtualAddress(vaddr) == 1
     // assert: isVirtualAddressMapped(table, vaddr) == 1
 
     storePhysicalMemory(tlb(table, vaddr), data);
 }
 
-void mapAndStoreVirtualMemory(int *table, int vaddr, int data) {
+void mapAndStoreVirtualMemory(int* table, int vaddr, int data) {
     // assert: isValidVirtualAddress(vaddr) == 1
 
     if (isVirtualAddressMapped(table, vaddr) == 0)
         mapPage(table, vaddr / PAGESIZE, (int) palloc());
-    
+
     storeVirtualMemory(table, vaddr, data);
 }
 
@@ -5784,7 +5784,7 @@ void runUntilException() {
 void runUntilExit() {
     int toID;
     int fromID;
-    int *fromContext;
+    int* fromContext;
     int savedStatus;
     int exceptionNumber;
     int exceptionParameter;
@@ -5822,14 +5822,14 @@ void runUntilExit() {
                 // page table on microkernel boot level
                 selfie_map(fromID, exceptionParameter, frame);
             }
-        
+
             // TODO: scheduler should go here
             toID = fromID;
         }
     }
 }
 
-int up_loadString(int *table, int *s, int SP) {
+int up_loadString(int* table, int* s, int SP) {
     int bytes;
     int i;
 
@@ -5851,7 +5851,7 @@ int up_loadString(int *table, int *s, int SP) {
     return SP;
 }
 
-void up_loadArguments(int *table, int argc, int *argv) {
+void up_loadArguments(int* table, int argc, int* argv) {
     int SP;
     int vargv;
     int i_argc;
@@ -5901,7 +5901,7 @@ void up_loadArguments(int *table, int argc, int *argv) {
     mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
 }
 
-void up_loadBinary(int *table) {
+void up_loadBinary(int* table) {
     int vaddr;
 
     // binaries start at lowest virtual address
@@ -5914,7 +5914,7 @@ void up_loadBinary(int *table) {
     }
 }
 
-int addressWithMaxCounter(int *counters, int max) {
+int addressWithMaxCounter(int* counters, int max) {
     int a;
     int n;
     int i;
@@ -5946,9 +5946,9 @@ int fixedPointRatio(int a, int b) {
     int r;
 
     // compute fixed point ratio r with 2 fractional digits
-    
+
     r = 0;
-    
+
     // multiply a/b with 100 but avoid overflow
 
     if (a <= INT_MAX / 100) {
@@ -5971,17 +5971,17 @@ int fixedPointRatio(int a, int b) {
         return 0;
 }
 
-int printCounters(int total, int *counters, int max) {
+int printCounters(int total, int* counters, int max) {
     int a;
 
     a = addressWithMaxCounter(counters, max);
 
     print(itoa(*(counters + a / WORDSIZE), string_buffer, 10, 0, 0));
-    
+
     print((int*) "(");
     print(itoa(fixedPointRatio(total, *(counters + a / WORDSIZE)), string_buffer, 10, 0, 2));
     print((int*) "%)");
-    
+
     if (*(counters + a / WORDSIZE) != 0) {
         print((int*) "@");
         print(itoa(a, string_buffer, 16, 0, 0));
@@ -5995,7 +5995,7 @@ int printCounters(int total, int *counters, int max) {
     return a;
 }
 
-void printProfile(int *message, int total, int *counters) {
+void printProfile(int* message, int total, int* counters) {
     int a;
 
     if (total > 0) {
@@ -6012,7 +6012,7 @@ void printProfile(int *message, int total, int *counters) {
     }
 }
 
-void selfie_disassemble(int argc, int *argv) {
+void selfie_disassemble(int argc, int* argv) {
     // assert: assemblyName is mapped and not longer than maxFilenameLength
 
     assemblyFD = open(assemblyName, O_CREAT_WRONLY_TRUNC, S_IRUSR_IWUSR_IRGRP_IROTH);
@@ -6036,7 +6036,7 @@ void selfie_disassemble(int argc, int *argv) {
 
     mipster = 1;
     debug   = 1;
-    
+
     // argc and argv are not needed here
     boot(argc, argv);
 
@@ -6047,7 +6047,7 @@ void selfie_disassemble(int argc, int *argv) {
     outputFD   = 1;
 }
 
-void selfie_run(int argc, int *argv) {
+void selfie_run(int argc, int* argv) {
     print(selfieName);
     print((int*) ": this is selfie's ");
     if (mipster) print((int*) "mipster"); else print((int*) "hypster");
@@ -6092,8 +6092,8 @@ int createID(int seed) {
 }
 
 int* allocateContext(int ID, int parentID) {
-    int *context;
-    
+    int* context;
+
     if (freeContexts == (int*) 0)
         context = malloc(4 * SIZEOFINTSTAR + 6 * SIZEOFINT);
     else {
@@ -6128,21 +6128,21 @@ int* allocateContext(int ID, int parentID) {
     return context;
 }
 
-int* createContext(int ID, int parentID, int *in) {
-    int *context;
+int* createContext(int ID, int parentID, int* in) {
+    int* context;
 
     context = allocateContext(ID, parentID);
 
     setNextContext(context, in);
-    
+
     if (in != (int*) 0)
         setPrevContext(in, context);
 
     return context;
 }
 
-int* findContext(int ID, int *in) {
-    int *context;
+int* findContext(int ID, int* in) {
+    int* context;
 
     context = in;
 
@@ -6156,7 +6156,7 @@ int* findContext(int ID, int *in) {
     return (int*) 0;
 }
 
-void switchContext(int *from, int *to) {
+void switchContext(int* from, int* to) {
     // save machine state
     setPC(from, pc);
     setRegHi(from, reg_hi);
@@ -6172,13 +6172,13 @@ void switchContext(int *from, int *to) {
     brk       = getBreak(to);
 }
 
-void freeContext(int *context) {
+void freeContext(int* context) {
     setNextContext(context, freeContexts);
 
     freeContexts = context;
 }
 
-int* deleteContext(int *context, int *from) {
+int* deleteContext(int* context, int* from) {
     if (getNextContext(context) != (int*) 0)
         setPrevContext(getNextContext(context), getPrevContext(context));
 
@@ -6193,7 +6193,7 @@ int* deleteContext(int *context, int *from) {
     return from;
 }
 
-void mapPage(int *table, int page, int frame) {
+void mapPage(int* table, int page, int frame) {
     // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
     *(table + page) = frame;
 }
@@ -6241,11 +6241,11 @@ int* palloc() {
     return touch((int*) frame, PAGESIZE);
 }
 
-void pfree(int *frame) {
+void pfree(int* frame) {
     // TODO: implement free list of page frames
 }
 
-void down_mapPageTable(int *context) {
+void down_mapPageTable(int* context) {
     int page;
 
     // assert: context page table is only mapped from beginning up and end down
@@ -6267,7 +6267,7 @@ void down_mapPageTable(int *context) {
     }
 }
 
-void boot(int argc, int *argv) {
+void boot(int argc, int* argv) {
     // resetting is only necessary for mipster to run
     resetInterpreter();
     resetMicrokernel();
@@ -6315,7 +6315,7 @@ int selfie(int argc, int* argv) {
 
                 if (binaryLength > 0)
                     selfie_emit();
-                else {                    
+                else {
                     print(selfieName);
                     print((int*) ": nothing to emit to output file ");
                     print(binaryName);
@@ -6422,14 +6422,14 @@ int selfie(int argc, int* argv) {
     return 0;
 }
 
-int main(int argc, int *argv) {
+int main(int argc, int* argv) {
     initLibrary();
 
     initScanner();
-    
+
     initRegister();
     initDecoder();
-    
+
     initInterpreter();
 
     selfieName = (int*) *argv;
