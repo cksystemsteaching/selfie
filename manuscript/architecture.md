@@ -10,7 +10,7 @@ Q> What is the difference between natural languages and programming languages?
 Q>
 Q> Programming languages are formalisms, not languages!
 
-Another potentially misleading term is architecture which in computer science circles refers to the architecture of digital processors, not buildings. The title of this chapter is obviously meant in the sense of computer science, that is, architecture means computers and languages means programming languages which are not really languages. How confusing is that?
+Another potentially misleading term is architecture which in computer science circles refers to the architecture of digital processors, not buildings. The title of this chapter is obviously meant in the sense of computer science, that is, architecture means computers and language means programming languages which are not really languages. How confusing is that?
 
 ## Von Neumann Architecture
 
