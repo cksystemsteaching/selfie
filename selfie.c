@@ -396,6 +396,25 @@ void setValue(int *entry, int value)        { *(entry + 5) = value; }
 void setAddress(int *entry, int address)    { *(entry + 6) = address; }
 void setScope(int *entry, int scope)        { *(entry + 7) = scope; }
 
+// -----------------------------------------------------------------
+// ------------------------- Attribute TABLE --------------------------
+// -----------------------------------------------------------------
+
+int* createAttribute() { return malloc(2 * SIZEOFINT); }
+
+
+// symbol table entry:
+// +----+---------+
+// |  0 | Type    | Constant or not, for constant folding
+// |  1 | value   | the calculated value the constant(s) has(ve)
+// +----+---------+
+
+int* getAttributeType(int *attribute)       { return (int*) *attribute; }
+int* getAttributeValue(int *attribute)      { return (int*) *(attribute + 1); }
+
+void setAttributeType(int *attribute, int *type)    { *attribute       = (int) type; }
+void setAttributeValue(int *attribute, int *value) { *(attribute + 1) = (int) value; }
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // classes
@@ -407,6 +426,10 @@ int STRING    = 3;
 int INT_T     = 1;
 int INTSTAR_T = 2;
 int VOID_T    = 3;
+
+//Attribute Types
+int ATT_CONSTANT = 0;
+int ATT_NOT      = 1;
 
 // symbol tables
 int GLOBAL_TABLE  = 1;
@@ -2051,6 +2074,9 @@ int reportUndefinedProcedures() {
 
     return undefined;
 }
+
+
+
 
 // -----------------------------------------------------------------
 // ---------------------------- PARSER -----------------------------
@@ -6714,7 +6740,7 @@ int selfie(int argc, int* argv) {
 
     return 0;
 }
-
+int a;
 int main(int argc, int *argv) {
     initLibrary();
 
@@ -6730,7 +6756,7 @@ int main(int argc, int *argv) {
     argc = argc - 1;
     argv = argv + 1;
     
-    int a = 1;
+    a = 1;
     if(rightShift(4,1) == 2){
         print((int *) "RightShift Works for 4");
         println();
