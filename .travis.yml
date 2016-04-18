@@ -10,7 +10,8 @@ addons:
   apt:
     packages:
     - gcc-multilib
-script:
-  make test
+script: make test
 notifications:
   email: false
+  slack:
+    secure: M/wdXNcY3tyBVV+dbJDcWDbcQbl2cHmi4jASCtUb7Ok9LuLR9Id0UlTqUaqmjGIENDZof71Ng1xPlBNc23XzuolbjlKJIrHonbw5PKzddnBU5M1GUfVyel5tg07jR6hSyRn7d4a9bwg7aWCHNv9XEgbuS3INg9nvq0zaAPjuGtA/m1x2qjPLbaUX0MHheHO85AOz8/v9jFOjNRTRmFg30vVA+270VA4SMpCcnuNo+GfYN/XRiaT8OggNADsPFIXMdnmhwDgpBFg5Ip1KMc45GkGeC/88Ec8AArBo5rV4EiAqiY4b40sm/GSVuRBorrqeUxHqpf0MLA5zW+9hTAgz+JLwJZa68/vwv5Q8iiuIBeikrX9k8+UOv+YU5uVmTsTN0QSwMomOzyMHeFuylVAhiRrmujAF5P4Zi584HBU15dneku79f7MjqImJJ0OQULRHCZDcYmaZdAO8q1Dldjg7yS6l1x2aLzTjjSX0Mds8+uzpZuoAXqIs5TjrqzFwRV0kv/vxVMjlCehkqooPd5v3R//g9FzZikBjXgcIyHR+MVdbVIqpG9JGWJC4QFaxnSpx2J0GzZUca/YfbHoVfR2m8GPhtIaElGGJqlIiZ1Q46oKcsB1a5ycucdrRCzhk40nlvzg/v+l7GsuBcMfJKrSpvGiwYmZB/MquFQNb87O9hF0=
