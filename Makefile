@@ -1,6 +1,3 @@
-# We do not specify which C compiler to use
-CC = cc
-
 # Compiler flags
 CFLAGS := -w -m32 -D'main(a,b)=main(a,char**argv)'
 
