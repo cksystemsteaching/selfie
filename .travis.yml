@@ -6,6 +6,10 @@ os:
 compiler:
 - clang
 - gcc
+addons:
+  apt:
+    packages:
+    - gcc-multilib
 script:
   make test
 notifications:
