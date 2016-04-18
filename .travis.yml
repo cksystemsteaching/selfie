@@ -6,5 +6,7 @@ os:
 compiler:
 - clang
 - gcc
+script:
+  make test
 notifications:
   email: false
