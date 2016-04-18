@@ -1,0 +1,10 @@
+language:
+- c
+os:
+- osx
+- linux
+compiler:
+- clang
+- gcc
+notifications:
+  email: false
