@@ -5687,17 +5687,11 @@ void fetch() {
 }
 
 void execute() {
-  if (debug)
-    if (sourceLineNumber != (int*) 0) {
-      print(binaryName);
-      print((int*) ": ");
-    }
-
-  if (interpret)
-    if (debug)
-      print((int*) "$pc=");
-
   if (debug) {
+    if (interpret) {
+      print(binaryName);
+      print((int*) ": $pc=");
+    }
     print(itoa(pc, string_buffer, 16, 0, 0));
     if (sourceLineNumber != (int*) 0) {
       print((int*) "(~");
