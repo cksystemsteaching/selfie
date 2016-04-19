@@ -3616,7 +3616,7 @@ void selfie_compile() {
   resetSymbolTables();
 
   // allocate space for storing binary
-  binary     = malloc(maxBinaryLength);
+  binary       = malloc(maxBinaryLength);
   binaryLength = 0;
 
   // reset code length
