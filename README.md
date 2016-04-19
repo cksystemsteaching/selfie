@@ -1,4 +1,4 @@
-# Selfie [![Build Status](https://travis-ci.org/cksystemsteaching/CC-Summer-2016.svg?branch=master)](https://travis-ci.org/cksystemsteaching/CC-Summer-2016)
+# Selfie [![Build Status](https://travis-ci.org/cksystemsteaching/CC-Summer-2016.svg?branch=selfie-master)](https://travis-ci.org/cksystemsteaching/CC-Summer-2016)
 
 Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
 
