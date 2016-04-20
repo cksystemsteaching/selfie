@@ -415,12 +415,7 @@ int* getAttributeValue(int *attribute)       { return (int*) *(attribute + 1); }
 void setAttributeType(int *attribute, int *type)     { *attribute       = (int) type;   }
 void setAttributeValue(int *attribute, int *value)   { *(attribute + 1) = (int) value;  }
 
-void loadLiteralBeforeNonConstant(int* attribute) {
-    if (getAttributeType == ATT_CONSTANT) {
-        load_integer(getAttributeValue(attribute));
-        setAttributeType(attribute, ATT_NOT);
-    }
-}
+void loadLiteralBeforeNonConstant(int* attribute);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2088,6 +2083,13 @@ int reportUndefinedProcedures() {
 // -----------------------------------------------------------------
 // ---------------------------- PARSER -----------------------------
 // -----------------------------------------------------------------
+
+void loadLiteralBeforeNonConstant(int* attribute) {
+    if (getAttributeType == ATT_CONSTANT) {
+        load_integer(getAttributeValue(attribute));
+        setAttributeType(attribute, ATT_NOT);
+    }
+}
 
 int isNotRbraceOrEOF() {
     if (symbol == SYM_RBRACE)
