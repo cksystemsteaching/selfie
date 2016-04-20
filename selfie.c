@@ -2796,7 +2796,7 @@ int gr_term(int* attribute) {
     return ltype;
 }
 
-int gr_simpleExpression(*attribute) {
+int gr_simpleExpression(int *attribute) {
     int sign;
     int ltype;
     int operatorSymbol;
@@ -2874,7 +2874,7 @@ int gr_simpleExpression(*attribute) {
     return ltype;
 }
 
-int  gr_shiftExpression(*attribute){
+int  gr_shiftExpression(int *attribute){
     int ltype;
     int operatorSymbol;
     int rtype;
@@ -2913,7 +2913,7 @@ int  gr_shiftExpression(*attribute){
     return ltype;
 }
 
-int gr_expression(*attribute) {
+int gr_expression(int *attribute) {
     int ltype;
     int operatorSymbol;
     int rtype;
@@ -3000,7 +3000,7 @@ int gr_expression(*attribute) {
     return ltype;
 }
 
-void gr_while(*attribute) {
+void gr_while(int *attribute) {
     int brBackToWhile;
     int brForwardToEnd;
 
@@ -3017,7 +3017,7 @@ void gr_while(*attribute) {
         if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
 
-            gr_expression(*attribute);
+            gr_expression(attribute);
 
             // do not know where to branch, fixup later
             brForwardToEnd = binaryLength;
@@ -3065,7 +3065,7 @@ void gr_while(*attribute) {
     // assert: allocatedTemporaries == 0
 }
 
-void gr_if(*attribute) {
+void gr_if(int *attribute) {
     int brForwardToElseOrEnd;
     int brForwardToEnd;
 
@@ -3154,7 +3154,7 @@ void gr_if(*attribute) {
     // assert: allocatedTemporaries == 0
 }
 
-void gr_return(int returnType, *attribute) {
+void gr_return(int returnType, int *attribute) {
     int type;
 
     // assert: allocatedTemporaries == 0
@@ -3190,7 +3190,7 @@ void gr_return(int returnType, *attribute) {
     // assert: allocatedTemporaries == 0
 }
 
-void gr_statement(*attribute) {
+void gr_statement(int *attribute) {
     int ltype;
     int rtype;
     int *variableOrProcedureName;
@@ -3224,7 +3224,7 @@ void gr_statement(*attribute) {
             if (symbol == SYM_ASSIGN) {
                 getSymbol();
 
-                rtype = gr_expression(*attribute);
+                rtype = gr_expression(attribute);
 
                 if (rtype != INT_T)
                     typeWarning(INT_T, rtype);
@@ -3244,7 +3244,7 @@ void gr_statement(*attribute) {
         } else if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
 
-            ltype = gr_expression(*attribute);
+            ltype = gr_expression(attribute);
 
             if (ltype != INTSTAR_T)
                 typeWarning(INTSTAR_T, ltype);
@@ -3256,7 +3256,7 @@ void gr_statement(*attribute) {
                 if (symbol == SYM_ASSIGN) {
                     getSymbol();
 
-                    rtype = gr_expression(*attribute);
+                    rtype = gr_expression(attribute);
 
                     if (rtype != INT_T)
                         typeWarning(INT_T, rtype);
@@ -3304,7 +3304,7 @@ void gr_statement(*attribute) {
 
             getSymbol();
 
-            rtype = gr_expression(*attribute);
+            rtype = gr_expression(attribute);
 
             if (ltype != rtype)
                 typeWarning(ltype, rtype);
@@ -3341,7 +3341,7 @@ void gr_statement(*attribute) {
     }
 }
 
-int gr_type(*attribute) {
+int gr_type(int *attribute) {
     int type;
     type = INT_T;
     if (symbol == SYM_INT) {
@@ -3358,7 +3358,7 @@ int gr_type(*attribute) {
     return type;
 }
 
-void gr_variable(int offset, *attribute) {
+void gr_variable(int offset, int *attribute) {
     int type;
 
     type = gr_type(attribute);
