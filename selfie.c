@@ -396,31 +396,6 @@ void setValue(int *entry, int value)        { *(entry + 5) = value; }
 void setAddress(int *entry, int address)    { *(entry + 6) = address; }
 void setScope(int *entry, int scope)        { *(entry + 7) = scope; }
 
-// -----------------------------------------------------------------
-// ------------------------- Attribute TABLE --------------------------
-// -----------------------------------------------------------------
-
-int* createAttribute() { return malloc(2 * SIZEOFINT); }
-
-
-// symbol table entry:
-// +----+---------+
-// |  0 | Type    | Constant or not, for constant folding
-// |  1 | value   | the calculated value the constant(s) has(ve)
-// +----+---------+
-
-int* getAttributeType(int *attribute)        { return (int*) *attribute;       }
-int* getAttributeValue(int *attribute)       { return (int*) *(attribute + 1); }
-
-void setAttributeType(int *attribute, int *type)     { *attribute       = (int) type;   }
-void setAttributeValue(int *attribute, int *value)   { *(attribute + 1) = (int) value;  }
-
-void loadLiteralBeforeNonConstant(int* attribute) {
-    if (getAttributeType == ATT_CONSTANT) {
-        load_integer(getAttributeValue(attribute));
-        setAttributeType(attribute, ATT_NOT);
-    }
-}
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -449,6 +424,33 @@ int LIBRARY_TABLE = 3;
 int *global_symbol_table  = (int*) 0;
 int *local_symbol_table   = (int*) 0;
 int *library_symbol_table = (int*) 0;
+
+// -----------------------------------------------------------------
+// ------------------------- Attribute TABLE --------------------------
+// -----------------------------------------------------------------
+
+int* createAttribute() { return malloc(2 * SIZEOFINT); }
+
+
+// symbol table entry:
+// +----+---------+
+// |  0 | Type    | Constant or not, for constant folding
+// |  1 | value   | the calculated value the constant(s) has(ve)
+// +----+---------+
+
+int* getAttributeType(int *attribute)        { return (int*) *attribute;       }
+int* getAttributeValue(int *attribute)       { return (int*) *(attribute + 1); }
+
+void setAttributeType(int *attribute, int *type)     { *attribute       = (int) type;   }
+void setAttributeValue(int *attribute, int *value)   { *(attribute + 1) = (int) value;  }
+
+void loadLiteralBeforeNonConstant(int* attribute) {
+    if (getAttributeType == ATT_CONSTANT) {
+        load_integer(getAttributeValue(attribute));
+        setAttributeType(attribute, ATT_NOT);
+    }
+}
+
 
 // ------------------------- INITIALIZATION ------------------------
 
