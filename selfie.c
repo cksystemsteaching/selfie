@@ -477,8 +477,8 @@ void gr_while(int* attribute);
 void gr_if(int* attribute);
 void gr_return(int returnType, int* attribute);
 void gr_statement(int* attribute);
-int  gr_type(int* attribute);
-void gr_variable(int offset, int* attribute);
+int  gr_type();
+void gr_variable(int offset);
 void gr_initialization(int *name, int offset, int type, int* attribute);
 void gr_procedure(int *procedure, int returnType, int* attribute);
 void gr_cstar();
@@ -2574,7 +2574,7 @@ int gr_factor(int* attribute) {
     int type;
 
     int *variableOrProcedureName;
-
+    setAttributeValue(attribute);
     // assert: n = allocatedTemporaries
 
     hasCast = 0;
@@ -2598,7 +2598,7 @@ int gr_factor(int* attribute) {
         if (symbol == SYM_INT) {
             hasCast = 1;
 
-            cast = gr_type(attribute);
+            cast = gr_type();
 
             if (symbol == SYM_RPARENTHESIS)
                 getSymbol();
@@ -2654,7 +2654,6 @@ int gr_factor(int* attribute) {
 
     // identifier?
     } else if (symbol == SYM_IDENTIFIER) {
-        setAttributeType(attribute, ATT_NOT);
         variableOrProcedureName = identifier;
 
         getSymbol();
@@ -2679,7 +2678,7 @@ int gr_factor(int* attribute) {
     // integer?
     } else if (symbol == SYM_INTEGER) {
 //        load_integer(literal);
-        setAttributeType(attribute, ATT_CONSTANT);
+        setAttributeType(attribute);
         setAttributeValue(attribute, literal);
         getSymbol();
 
@@ -2687,11 +2686,10 @@ int gr_factor(int* attribute) {
 
     // character?
     } else if (symbol == SYM_CHARACTER) {
-//        talloc();
-//        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
+       talloc();       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
 
-        setAttributeType(attribute, ATT_CONSTANT);
-        setAttributeValue(attribute, literal);
+    //    setAttributeType(attribute, ATT_CONSTANT);
+    //    setAttributeValue(attribute, literal);
 
         getSymbol();
 
@@ -3587,7 +3585,7 @@ void gr_cstar() {
     int type;
     int *variableOrProcedureName;
     int *attribute;
-    
+
     attribute = malloc(2 * SIZEOFINT);
 
     while (symbol != SYM_EOF) {
