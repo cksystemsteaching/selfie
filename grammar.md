@@ -30,12 +30,12 @@ cast             = "(" type ")" .
 
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
-constant         = integer | "'" ascii_character "'" .
+literal          = integer | "'" ascii_character "'" .
 
 factor           = [ cast ] 
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
-                      constant |
+                      literal |
                       """ { ascii_character } """ ) .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .
@@ -71,6 +71,6 @@ variable         = type identifier .
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
-cstar            = { type identifier [ "=" [ cast ] [ "-" ] constant ] ";" |
+cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
                    ( "void" | type ) identifier procedure } .
 ```
