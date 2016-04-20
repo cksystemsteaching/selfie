@@ -1,4 +1,4 @@
-# Selfie
+# Selfie [![Build Status](https://travis-ci.org/cksystemsteaching/CC-Summer-2016.svg?branch=selfie-master)](https://travis-ci.org/cksystemsteaching/CC-Summer-2016)
 
 Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
 
@@ -6,13 +6,13 @@ For further information and support please refer to http://selfie.cs.uni-salzbur
 
 ## Build Instructions
 
-The first step is to produce a binary that runs on your computer. To do that on a Linux or Mac OS X system use `gcc` in a terminal to compile `selfie.c`:
+The first step is to produce a binary that runs on your computer. To do that on a Linux or Mac OS X system type `make` in a terminal. This will invoke the default C compiler:
 
 ```bash
-gcc -w -m32 -D'main(a, b)=main(int argc, char **argv)' selfie.c -o selfie
+cc -w -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
 ```
 
-This produces from `selfie.c` an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored for now. The `-m32` option makes the compiler generate a 32-bit executable (which may require installing gcc-multiarch or gcc-multilib, depending on your system). Selfie only supports 32-bit architectures. The `-D` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but required by `gcc`.
+and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-m32` option makes the compiler generate a 32-bit executable (which may require installing gcc-multiarch or gcc-multilib, depending on your system). Selfie only supports 32-bit architectures. The `-D` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but may be required by the compiler.
 
 We have not tested selfie on Windows systems ourselves but users have reported success. Since the only unusual requirement is to have a C compiler installed that supports generating 32-bit binaries, compiling selfie on Windows should be straightforward to do.
 
