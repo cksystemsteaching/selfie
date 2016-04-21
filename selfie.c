@@ -467,16 +467,16 @@ int  help_call_codegen(int *entry, int *procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
-int  gr_call(int *procedure, int* attribute);
+int  gr_call(int *procedure);
 int  gr_factor(int* attribute);
 int  gr_term(int* attribute);
 int  gr_simpleExpression(int* attribute);
 int  gr_shiftExpression(int* attribute);
-int  gr_expression(int* attribute);
-void gr_while(int* attribute);
-void gr_if(int* attribute);
-void gr_return(int returnType, int* attribute);
-void gr_statement(int* attribute);
+int  gr_expression();
+void gr_while();
+void gr_if();
+void gr_return(int returnType);
+void gr_statement();
 int  gr_type();
 void gr_variable(int offset);
 void gr_initialization(int *name, int offset, int type, int* attribute);
@@ -1023,35 +1023,7 @@ int *loadsPerAddress = (int*) 0; // number of executed loads per load operation
 int stores            = 0;        // total number of executed memory stores
 int *storesPerAddress = (int*) 0; // number of executed stores per store operation
 
-// -----------------------------------------------------------------
-// ------------------------- Attribute TABLE --------------------------
-// -----------------------------------------------------------------
 
-int* createAttribute() { return malloc(2 * SIZEOFINT); }
-
-
-// symbol table entry:
-// +----+---------+
-// |  0 | Type    | Constant or not, for constant folding
-// |  1 | value   | the calculated value the constant(s) has(ve)
-// +----+---------+
-
-int getAttributeType(int *attribute)        { return (int) *attribute;       }
-int getAttributeValue(int *attribute)       { return (int) *(attribute + 1); }
-
-void setAttributeType(int *attribute, int type)     { *attribute       = (int) type;   }
-void setAttributeValue(int *attribute, int value)   { *(attribute + 1) = (int) value;  }
-
-// Loads the previous literal into a temporary register and marks attribute as non constant
-// That way theconstant and non constant are properly in t registers for use by
-// the callers
-// ONLY LOADS IF IT IS INDEED A CONSTANT TO BE LOADED
-void loadLiteralBeforeNonConstant(int* attribute) {
-    if (getAttributeType == ATT_CONSTANT) {
-        load_integer(getAttributeValue(attribute));
-        setAttributeType(attribute, ATT_NOT);
-    }
-}
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2578,7 +2550,6 @@ int gr_factor(int* attribute) {
     int type;
 
     int *variableOrProcedureName;
-    setAttributeValue(attribute);
     // assert: n = allocatedTemporaries
 
     hasCast = 0;
@@ -2602,7 +2573,7 @@ int gr_factor(int* attribute) {
         if (symbol == SYM_INT) {
             hasCast = 1;
 
-            cast = gr_type(attribute); // TODO This probably doesnt need attribute
+            cast = gr_type();
 
             if (symbol == SYM_RPARENTHESIS)
                 getSymbol();
@@ -2611,7 +2582,7 @@ int gr_factor(int* attribute) {
 
         // not a cast: "(" expression ")"
         } else {
-            type = gr_expression(attribute); //TODO Attribute sould be passed here maybe
+            type = gr_expression();
 
             if (symbol == SYM_RPARENTHESIS)
                 getSymbol();
@@ -2640,7 +2611,7 @@ int gr_factor(int* attribute) {
         } else if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
             //Theoretically here, if there is a non constant in "expresion" it is the job of a expression to laodLiteral
-            type = gr_expression(attribute); //TODO still needs thinking, does a non constant need handling here?
+            type = gr_expression();
 
             if (symbol == SYM_RPARENTHESIS)
                 getSymbol();
@@ -2660,8 +2631,6 @@ int gr_factor(int* attribute) {
 
     // identifier?
     } else if (symbol == SYM_IDENTIFIER) {
-        //again variable means folding ends and the literal should be loaded
-        loadLiteralBeforeNonConstant(attribute);
         variableOrProcedureName = identifier;
 
         getSymbol();
@@ -2670,7 +2639,7 @@ int gr_factor(int* attribute) {
             getSymbol();
 
             // function call: identifier "(" ... ")"
-            type = gr_call(variableOrProcedureName, attribute); // TODO can a call be constantly follded, or should it auto end the fold
+            type = gr_call(variableOrProcedureName);
 
             talloc();
 
@@ -2680,25 +2649,25 @@ int gr_factor(int* attribute) {
             // reset return register
             emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
         } else
-            // variable access: identifier
-            type = load_variable(variableOrProcedureName);
+          //type = load_variable(variableOrProcedureName);
+          *(attribute) = 2;
+          *(attribute + 1) = variableOrProcedureName;
+
 
     // integer?
+      }
     } else if (symbol == SYM_INTEGER) {
 //        load_integer(literal);
-        setAttributeType(attribute, ATT_CONSTANT);
-        setAttributeValue(attribute, literal);
+      *(attribute) = 1;
+      *(attribute + 1) = literal;
         getSymbol();
 
         type = INT_T;
 
     // character?
     } else if (symbol == SYM_CHARACTER) {
-//        talloc();
-//        emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
-
-        setAttributeType(attribute, ATT_CONSTANT);
-        setAttributeValue(attribute, literal);
+       talloc();
+       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
 
         getSymbol();
 
@@ -2706,7 +2675,6 @@ int gr_factor(int* attribute) {
 
     // string?
     } else if (symbol == SYM_STRING) {
-        loadLiteralBeforeNonConstant(attribute);
         load_string(string);
 
         getSymbol();
@@ -2717,7 +2685,7 @@ int gr_factor(int* attribute) {
     } else if (symbol == SYM_LPARENTHESIS) {
         getSymbol();
 
-        type = gr_expression(attribute); //TODO
+        type = gr_expression();
 
         if (symbol == SYM_RPARENTHESIS)
             getSymbol();
@@ -2738,17 +2706,33 @@ int gr_term(int* attribute) {
     int ltype;
     int operatorSymbol;
     int rtype;
-    int att_type;
-    int att_value;
 
-    // assert: n = allocatedTemporaries
+  int constantTemp;
+  int prevSymbol;
+  int isEmit;
+  int addTalloc;
+
+  constantTemp = 0;
+  isEmit = 0;
+  addTalloc = 0;
+
 
     ltype = gr_factor(attribute);
-    //save attribute from left side
-    att_type = getAttributeType(attribute);
-    att_value = getAttributeValue(attribute);
-    // assert no longer holds actually since the constant could be here
+    if (*(attribute) == 1) {
+    // constant
+    constantTemp = *(attribute + 1);
+    *(attribute) = 0;
+    prevSymbol = 1;
+    isEmit = 0;
+  } else if (*(attribute) == 2) {
+    // variable
+    load_variable(*(attribute + 1));
+    prevSymbol = 2;
+    isEmit = 1;
+    addTalloc = 1;
     // assert: allocatedTemporaries == n + 1
+  }
+
 
     // * / or % ?
     while (isStarOrDivOrModulo()) {
@@ -2762,46 +2746,137 @@ int gr_term(int* attribute) {
         if (ltype != rtype)
             typeWarning(ltype, rtype);
 
-        if (att_type == ATT_CONSTANT) { //left side is constant
-            if (getAttributeType(attribute) == ATT_NOT) { // and right side is not
-                att_type = ATT_NOT; // overall not
-            } // else remains constant and con be folded
-        } else if (getAttributeType(attribute) == ATT_CONSTANT) { // left side non constant, but right is, cant wait to fold because order of ops
-            loadLiteralBeforeNonConstant(attribute);
-        }
+            if (*(attribute) == 1) {
+            if (prevSymbol == 2) {
+              // variable * constant
 
-        if (operatorSymbol == SYM_ASTERISK) {
-            if (att_type == ATT_CONSTANT) { // perform fold and store
-                setAttributeValue(attribute, att_value * getAttributeValue(attribute));
-            } else {
-                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-                emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-            }
-        } else if (operatorSymbol == SYM_DIV) {
-            if (att_type == ATT_CONSTANT) { // perform fold and store
-                setAttributeValue(attribute, att_value / getAttributeValue(attribute));
-            } else {
-                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-                emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
-            }
-        } else if (operatorSymbol == SYM_MOD) {
-            if (att_type == ATT_CONSTANT) { // perform fold and store
-                setAttributeValue(attribute, att_value % getAttributeValue(attribute));
-            } else {
-                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-                emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
-            }
-        }
+              constantTemp = *(attribute + 1);
 
-        if (att_type == ATT_NOT) { // Then there was code output and no fold in progress
-            tfree(1);
-        } else { // otherwise still constant so save attribute before right side is called again
-            //save attribute from left side
-            att_type = getAttributeType(attribute);
-            att_value = getAttributeValue(attribute);
-        }
+            } else if (prevSymbol == 1) {
+              // constant * constant
+
+                      if (operatorSymbol == SYM_ASTERISK) {
+                        constantTemp = constantTemp * *(attribute + 1);
+                      } else if (operatorSymbol == SYM_DIV) {
+                        constantTemp = constantTemp / *(attribute + 1);
+                      } else if (operatorSymbol == SYM_MOD) {
+                        constantTemp = constantTemp % *(attribute + 1);
+                      }
+                    }
+
+                    isEmit = 0;
+                  } else if (*(attribute) == 2) {
+                    if (prevSymbol == 2) {
+                      // var*var
+                      load_variable(*(attribute + 1));
+                    } else if (prevSymbol == 1) {
+                      // const*var
+                      load_integer(constantTemp);
+                      load_variable(*(attribute + 1));
+                      // assert: allocatedTemporaries == n + 2
+                    }
+
+                    if (operatorSymbol == SYM_ASTERISK) {
+                    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+                    emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+                  } else if (operatorSymbol == SYM_DIV) {
+                    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+                    emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+                  } else if (operatorSymbol == SYM_MOD) {
+                    emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+                    emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+                  }
+
+                  if (prevSymbol == 1) {
+                    tfree(2);
+                  } else {
+                    tfree(1);
+                  }
+
+                  isEmit = 1;
+
+                }
+                prevSymbol = *(if (operatorSymbol == SYM_ASTERISK) {
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      } else if (operatorSymbol == SYM_DIV) {
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      } else if (operatorSymbol == SYM_MOD) {
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+      }
+
+      if (prevSymbol == 1) {
+        tfree(2);
+      } else {
+        tfree(1);
+      }
+
+      isEmit = 1;
+
     }
+    prevSymbol = *(if (operatorSymbol == SYM_ASTERISK) {
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      } else if (operatorSymbol == SYM_DIV) {
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      } else if (operatorSymbol == SYM_MOD) {
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+        emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+      }
 
+      if (prevSymbol == 1) {
+        tfree(2);
+      } else {
+        tfree(1);
+      }
+
+      isEmit = 1;
+
+    }
+    prevSymbol = *(attribute);
+
+
+
+  }
+  if (addTalloc == 1) {
+    tfree(1);
+  }
+
+  if (isEmit == 1) {
+    *(attribute) = 0;
+    *(attribute + 1) = 0;
+  } else {
+    *(attribute) = 1;
+    *(attribute + 1) = constantTemp;
+  });
+
+  }
+  if (addTalloc == 1) {
+    tfree(1);
+  }
+
+  if (isEmit == 1) {
+    *(attribute) = 0;
+    *(attribute + 1) = 0;
+  } else {
+    *(attribute) = 1;
+    *(attribute + 1) = constantTemp;
+  });
+}
+    if (addTalloc == 1) {
+        tfree(1);
+              }
+
+              if (isEmit == 1) {
+                *(attribute) = 0;
+                *(attribute + 1) = 0;
+              } else {
+                *(attribute) = 1;
+                *(attribute + 1) = constantTemp;
+              }
     // assert: allocatedTemporaries == n + 1
 
     return ltype;
@@ -2815,184 +2890,321 @@ int gr_simpleExpression(int *attribute) {
     int att_type;
     int att_value;
 
-    // assert: n = allocatedTemporaries
+  int constantTemp;
+  int prevSymbol;
+  int isEmit;
+  int addTalloc;
 
-    // optional: -
-    if (symbol == SYM_MINUS) {
-        sign = 1;
+  constantTemp = 0;
+  isEmit = 0;
+  addTalloc = 0;
+  // assert: n = allocatedTemporaries
 
-        mayBeINTMIN = 1;
-        isINTMIN    = 0;
+  // optional: -
+  if (symbol == SYM_MINUS) {
+    sign = 1;
 
-        getSymbol();
+    mayBeINTMIN = 1;
+    isINTMIN    = 0;
 
-        mayBeINTMIN = 0;
+    getSymbol();
 
-        if (isINTMIN) {
-            isINTMIN = 0;
+    mayBeINTMIN = 0;
 
-            // avoids 0-INT_MIN overflow when bootstrapping
-            // even though 0-INT_MIN == INT_MIN
-            sign = 0;
-        }
-    } else
-        sign = 0;
+    if (isINTMIN) {
+      isINTMIN = 0;
 
-    ltype = gr_term(attribute);
-    //save attribute from left side
-    att_type = getAttributeType(attribute);
-    att_value = getAttributeValue(attribute);
-    // assert: allocatedTemporaries == n + 1
+      // avoids 0-INT_MIN overflow when bootstrapping
+      // even though 0-INT_MIN == INT_MIN
+      sign = 0;
+    }
+  } else
+    sign = 0;
+
+  ltype = gr_term(attribute);
+
+  if (*(attribute) == 1) {
+    // constant
+    if (sign) {
+      if (ltype != INT_T) {
+        typeWarning(INT_T, ltype);
+
+        ltype = INT_T;
+      }
+
+      constantTemp = - *(attribute + 1);
+    } else {
+      constantTemp = *(attribute + 1);
+
+
+    }
+
+    *(attribute) = 0;
+    prevSymbol = 1;
+    isEmit = 0;
+  } else if (*(attribute) == 2) {
+    // variable
+    load_variable(*(attribute + 1));
+    prevSymbol = 2;
+    isEmit = 1;
+    addTalloc = 1;
 
     if (sign) {
-        if (ltype != INT_T) {
-            typeWarning(INT_T, ltype);
+      if (ltype != INT_T) {
+        typeWarning(INT_T, ltype);
 
-            ltype = INT_T;
-        }
-        if(att_type == ATT_CONSTANT) { // constant is negative
-            att_value = 0 - att_value;
-        } else { // non constant converted to negative
-            emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
-        }
+        ltype = INT_T;
+      }
+
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
     }
+     // assert: allocatedTemporaries == n + 1
+  }
 
-    // + or -?
-    while (isPlusOrMinus()) {
-        operatorSymbol = symbol;
+  // + or -?
+ while (isPlusOrMinus()) {
+   operatorSymbol = symbol;
 
-        getSymbol();
+   getSymbol();
 
-        rtype = gr_term(attribute);
+   rtype = gr_term(attribute);
 
-        // assert: allocatedTemporaries == n + 2
 
-        if (att_type == ATT_CONSTANT) { //left side is constant
-            if (getAttributeType(attribute) == ATT_NOT) { // and right side is not
-                att_type = ATT_NOT; // overall not
-            } // else remains constant and con be folded
-        } else if (getAttributeType(attribute) == ATT_CONSTANT) { // left side non constant, but right is, cant wait to fold because order of ops
-            loadLiteralBeforeNonConstant(attribute);
-        }
+   if (*(attribute) == 1) {
+     if (prevSymbol == 2) {
+       // x+1
 
-        if (operatorSymbol == SYM_PLUS) {
-            if (ltype == INTSTAR_T) {
-                loadLiteralBeforeNonConstant(attribute); // TODO could probably be folded but for sake of time, no
-                if (rtype == INT_T)
-                    // pointer arithmetic: factor of 2^2 of integer operand
-                    emitLeftShiftBy(2);
-            } else if (rtype == INTSTAR_T) {
-                typeWarning(ltype, rtype);
-            }
-            if (att_type == ATT_CONSTANT) { // perform fold and store
-                setAttributeValue(attribute, att_value + getAttributeValue(attribute));
-            } else {
-                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
-            }
+       constantTemp = *(attribute + 1);
+     } else if (prevSymbol == 1) {
+       // 1+1
 
-        } else if (operatorSymbol == SYM_MINUS) {
-            if (ltype != rtype)
-                typeWarning(ltype, rtype);
+       if (operatorSymbol == SYM_PLUS) {
+         if (ltype == INTSTAR_T) {
+           if (rtype == INT_T)
+             // pointer arithmetic: factor of 2^2 of integer operand
+             emitLeftShiftBy(2);
+         } else if (rtype == INTSTAR_T)
+           typeWarning(ltype, rtype);
 
-            if (att_type == ATT_CONSTANT) { // perform fold and store
-                setAttributeValue(attribute, att_value - getAttributeValue(attribute));
-            } else {
-                emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
-            }
-        }
+         constantTemp = constantTemp + *(attribute + 1);
 
-        if (att_type == ATT_NOT) { // Then there was code output and no fold in progress
-            tfree(1);
-        } else { // otherwise still constant so save attribute before right side is called again
-            //save attribute from left side
-            att_type = getAttributeType(attribute);
-            att_value = getAttributeValue(attribute);
-        }
-    }
+       } else if (operatorSymbol == SYM_MINUS) {
+         if (ltype != rtype)
+           typeWarning(ltype, rtype);
 
-    // assert: allocatedTemporaries == n + 1
-        return ltype;
+         constantTemp = constantTemp - *(attribute + 1);
+
+       }
+     }
+
+     isEmit = 0;
+   } else if (*(attribute) == 2) {
+     if (prevSymbol == 2) {
+       // x+x
+       load_variable(*(attribute + 1));
+     } else if (prevSymbol == 1) {
+       // 1+x
+       load_integer(constantTemp);
+       load_variable(*(attribute + 1));
+       // assert: allocatedTemporaries == n + 2
+     }
+
+
+     if (operatorSymbol == SYM_PLUS) {
+       if (ltype == INTSTAR_T) {
+         if (rtype == INT_T)
+           // pointer arithmetic: factor of 2^2 of integer operand
+           emitLeftShiftBy(2);
+       } else if (rtype == INTSTAR_T)
+         typeWarning(ltype, rtype);
+
+       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+
+     } else if (operatorSymbol == SYM_MINUS) {
+       if (ltype != rtype)
+         typeWarning(ltype, rtype);
+
+       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+
+     }
+
+     if (prevSymbol == 1) {
+       tfree(2);
+     } else {
+       tfree(1);
+     }
+
+     isEmit = 1;
+
+   }
+
+   prevSymbol = *(attribute);
+
+ }
+
+ if (addTalloc == 1) {
+   tfree(1);
+ }
+ if (isEmit == 1) {
+   *(attribute) = 0;
+   *(attribute + 1) = 0;
+ } else {
+   *(attribute) = 1;
+   *(attribute + 1) = constantTemp;
+ }
+
+ // assert: allocatedTemporaries == n + 1
+
+ return ltype;
 }
 
 int  gr_shiftExpression(int *attribute){
     int ltype;
     int operatorSymbol;
     int rtype;
-    int att_type;
-    int att_value;
+    int constantTemp;
+    int prevSymbol;
+    int isEmit;
+    int addTalloc;
+
+    constantTemp = 0;
+    isEmit = 0;
+    addTalloc = 0
     // assert: n = allocatedTemporaries
 
     ltype = gr_simpleExpression(attribute);//
-    //save attribute from left side
-    att_type = getAttributeType(attribute);
-    att_value = getAttributeValue(attribute);
+    if (*(attribute) == 1) {
+    // constant
+    constantTemp = *(constantVal + 1);
+    *(attribute) = 0;
+    prevSymbol = 1;
+    isEmit = 0;
+  } else if (*(attribute) == 2) {
+    // variable
+    load_variable(*(attribute + 1));
+    prevSymbol = 2;
+    isEmit = 1;
+    addTalloc = 1;
     // assert: allocatedTemporaries == n + 1
+  }
+
+  // assert: allocatedTemporaries == n + 1
+
 
 
 
     // is it a shift operand?
     while (isShift()) {
-        operatorSymbol = symbol;
+    operatorSymbol = symbol;
 
-        getSymbol();
+    getSymbol();
 
-        rtype = gr_simpleExpression(attribute);
+    rtype = gr_simpleExpression(attribute);
 
+    // assert: allocatedTemporaries == n + 2
+
+    if (*(attribute) == 1) {
+      if (prevSymbol == 2) {
+        // x << or >> 1
+
+        constantTemp = *(attribute + 1);
+      } else if (prevSymbol == 1) {
+        // 1 << or >> 1
+
+        if (operatorSymbol == SYM_SL) {
+          constantTemp = constantTemp << *(attribute + 1);
+        } else if (operatorSymbol == SYM_SR) {
+          constantTemp = constantTemp >> *(attribute + 1);
+        }
+
+      }
+
+      isEmit = 0;
+    } else if (*(attribute) == 2) {
+      if (prevSymbol == 2) {
+        // x << or >> x
+        load_variable(*(attribute + 1));
+      } else if (prevSymbol == 1) {
+        // 1 << or >> x
+        load_integer(constantTemp);
+        load_variable(*(attribute + 1));
         // assert: allocatedTemporaries == n + 2
+      }
 
-        if (att_type == ATT_CONSTANT) { //left side is constant
-            if (getAttributeType(attribute) == ATT_NOT) { // and right side is not
-                att_type = ATT_NOT; // overall not, the constant should have already been loaded
-            } // else remains constant and con be folded
-        } else if (getAttributeType(attribute) == ATT_CONSTANT) { // left side non constant, but right is, cant wait to fold because order of ops
-            loadLiteralBeforeNonConstant(attribute);
-        }
 
-        if (rtype == INTSTAR_T){
-            typeWarning(INT_T, rtype);
-        } else {
-            if (operatorSymbol == SYM_LEFT_SHIFT){
-                if (att_type == ATT_CONSTANT) { // perform fold and store
-                    setAttributeValue(attribute, att_value << getAttributeValue(attribute));
-                } else {
-                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
-                }
-            }else if(operatorSymbol == SYM_RIGHT_SHIFT){
-                if (att_type == ATT_CONSTANT) { // perform fold and store
-                    setAttributeValue(attribute, att_value >> getAttributeValue(attribute));
-                } else {
-                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
-                }
-            }
-        }
+      if (operatorSymbol == SYM_SL) {
+        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
+      } else if (operatorSymbol == SYM_SR) {
+        emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
+      }
 
-        if (att_type == ATT_NOT) { // Then there was code output and no fold in progress
-            tfree(1);
-        } else { // otherwise still constant so save attribute before right side is called again
-            //save attribute from left side
-            att_type = getAttributeType(attribute);
-            att_value = getAttributeValue(attribute);
-        }
+      if (prevSymbol == 1) {
+        tfree(2);
+      } else {
+        tfree(1);
+      }
+
+      isEmit = 1;
+
     }
 
-    // assert: allocatedTemporaries == n + 1
+    prevSymbol = *(attribute);
+
+
+
+  }
+
+  if (addTalloc == 1) {
+    tfree(1);
+  }
+  if (isEmit == 1) {
+    *(attribute) = 0;
+    *(attribute + 1) = 0;
+  } else {
+    *(attribute) = 1;
+    *(attribute + 1) = constantTemp;
+  }
+
+  // assert: allocatedTemporaries == n + 1
 
     return ltype;
 }
 
-int gr_expression(int *attribute) {
+int gr_expression() {
     int ltype;
     int operatorSymbol;
     int rtype;
-    int att_type;
-    int att_value;
-    // assert: n = allocatedTemporaries
+    int constantTemp;
+    int prevSymbol;
+    int isEmit;
+    int addTalloc;
+
+    constantTemp = 0;
+    isEmit = 0;
+    addTalloc = 0;
+
+    int* attribute;
+    attribute = malloc(2 * SIZEOFINT);
+
 
     ltype = gr_shiftExpression(attribute);
-    //save attribute from left side
-    att_type = getAttributeType(attribute);
-    att_value = getAttributeValue(attribute);
-    // assert: allocatedTemporaries == n + 1
+    if (*(attribute) == 1) {
+    // constant
+
+    if (*(attribute + 1) < 0) {
+      load_integer(*(attribute + 1) * (-1));
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    } else {
+      load_integer(*(attribute + 1));
+    }
+
+    addTalloc = 1;
+  } else if (*(attribute) == 2) {
+    // variable
+    load_variable(*(attribute + 1));
+    addTalloc = 1;
+  }
+
 
     //optional: ==, !=, <, >, <=, >= simpleExpression
     if (isComparison()) {
@@ -3002,15 +3214,14 @@ int gr_expression(int *attribute) {
 
         rtype = gr_shiftExpression(attribute);
 
-        if (att_type == ATT_CONSTANT) { //left side is constant
-            if (getAttributeType(attribute) == ATT_NOT) { // and right side is not
-                att_type = ATT_NOT; // overall not
-            } // else remains constant and con be folded
-        } else if (getAttributeType(attribute) == ATT_CONSTANT) { // left side non constant, but right is, cant wait to fold because order of ops
-            loadLiteralBeforeNonConstant(attribute);
-        }
+        if (*(attribute) == 1) {
+      // constant
+      load_integer(*(attribute + 1));
+    } else if (*(attribute) == 2) {
+      // variable
+      load_variable(*(attribute + 1));
+    }
 
-        // assert: allocatedTemporaries == n + 2
 
         if (ltype != rtype)
             typeWarning(ltype, rtype);
@@ -3142,7 +3353,7 @@ void gr_while(int *attribute) { // TODO probably doesnt need this passed, could 
         if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
 
-            gr_expression(attribute);
+            gr_expression();
 
             // do not know where to branch, fixup later
             brForwardToEnd = binaryLength;
@@ -3159,7 +3370,7 @@ void gr_while(int *attribute) { // TODO probably doesnt need this passed, could 
                     getSymbol();
 
                     while (isNotRbraceOrEOF())
-                        gr_statement(attribute);
+                        gr_statement();
 
                     if (symbol == SYM_RBRACE)
                         getSymbol();
@@ -3171,7 +3382,7 @@ void gr_while(int *attribute) { // TODO probably doesnt need this passed, could 
                 }
                 // only one statement without {}
                 else
-                    gr_statement(attribute);
+                    gr_statement();
             } else
                 syntaxErrorSymbol(SYM_RPARENTHESIS);
         } else
@@ -3190,7 +3401,7 @@ void gr_while(int *attribute) { // TODO probably doesnt need this passed, could 
     // assert: allocatedTemporaries == 0
 }
 
-void gr_if(int *attribute) {
+void gr_if() {
     int brForwardToElseOrEnd;
     int brForwardToEnd;
 
@@ -3203,7 +3414,7 @@ void gr_if(int *attribute) {
         if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
 
-            gr_expression(attribute);
+            gr_expression();
 
             // if the "if" case is not true, we jump to "else" (if provided)
             brForwardToElseOrEnd = binaryLength;
@@ -3220,7 +3431,7 @@ void gr_if(int *attribute) {
                     getSymbol();
 
                     while (isNotRbraceOrEOF())
-                        gr_statement(attribute);
+                        gr_statement();
 
                     if (symbol == SYM_RBRACE)
                         getSymbol();
@@ -3232,7 +3443,7 @@ void gr_if(int *attribute) {
                 }
                 // only one statement without {}
                 else
-                    gr_statement(attribute);
+                    gr_statement();
 
                 //optional: else
                 if (symbol == SYM_ELSE) {
@@ -3250,7 +3461,7 @@ void gr_if(int *attribute) {
                         getSymbol();
 
                         while (isNotRbraceOrEOF())
-                            gr_statement(attribute);
+                            gr_statement();
 
                         if (symbol == SYM_RBRACE)
                             getSymbol();
@@ -3262,7 +3473,7 @@ void gr_if(int *attribute) {
 
                     // only one statement without {}
                     } else
-                        gr_statement(attribute);
+                        gr_statement();
 
                     // if the "if" case was true, we jump here
                     fixup_relative(brForwardToEnd);
@@ -3279,7 +3490,7 @@ void gr_if(int *attribute) {
     // assert: allocatedTemporaries == 0
 }
 
-void gr_return(int returnType, int *attribute) {
+void gr_return(int returnType) {
     int type;
 
     // assert: allocatedTemporaries == 0
@@ -3291,7 +3502,7 @@ void gr_return(int returnType, int *attribute) {
 
     // optional: expression
     if (symbol != SYM_SEMICOLON) {
-        type = gr_expression(attribute);
+        type = gr_expression();
 
         if (returnType == VOID_T)
             typeWarning(type, returnType);
@@ -3315,7 +3526,7 @@ void gr_return(int returnType, int *attribute) {
     // assert: allocatedTemporaries == 0
 }
 
-void gr_statement(int *attribute) {
+void gr_statement() {
     int ltype;
     int rtype;
     int *variableOrProcedureName;
@@ -3349,7 +3560,7 @@ void gr_statement(int *attribute) {
             if (symbol == SYM_ASSIGN) {
                 getSymbol();
 
-                rtype = gr_expression(attribute);
+                rtype = gr_expression();
 
                 if (rtype != INT_T)
                     typeWarning(INT_T, rtype);
@@ -3369,7 +3580,7 @@ void gr_statement(int *attribute) {
         } else if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
 
-            ltype = gr_expression(attribute);
+            ltype = gr_expression();
 
             if (ltype != INTSTAR_T)
                 typeWarning(INTSTAR_T, ltype);
@@ -3381,7 +3592,7 @@ void gr_statement(int *attribute) {
                 if (symbol == SYM_ASSIGN) {
                     getSymbol();
 
-                    rtype = gr_expression(attribute);
+                    rtype = gr_expression();
 
                     if (rtype != INT_T)
                         typeWarning(INT_T, rtype);
@@ -3411,7 +3622,7 @@ void gr_statement(int *attribute) {
         if (symbol == SYM_LPARENTHESIS) {
             getSymbol();
 
-            gr_call(variableOrProcedureName, attribute);
+            gr_call(variableOrProcedureName);
 
             // reset return register
             emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
@@ -3429,7 +3640,7 @@ void gr_statement(int *attribute) {
 
             getSymbol();
 
-            rtype = gr_expression(attribute);
+            rtype = gr_expression();
 
             if (ltype != rtype)
                 typeWarning(ltype, rtype);
@@ -3447,17 +3658,17 @@ void gr_statement(int *attribute) {
     }
     // while statement?
     else if (symbol == SYM_WHILE) {
-        gr_while(attribute);
+        gr_while();
     }
     // if statement?
     else if (symbol == SYM_IF) {
-        gr_if(attribute);
+        gr_if();
     }
     // return statement?
     else if (symbol == SYM_RETURN) {
         entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
-        gr_return(getType(entry), attribute);
+        gr_return(getType(entry));
 
         if (symbol == SYM_SEMICOLON)
             getSymbol();
@@ -3466,7 +3677,7 @@ void gr_statement(int *attribute) {
     }
 }
 
-int gr_type(int *attribute) {
+int gr_type() {
     int type;
     type = INT_T;
     if (symbol == SYM_INT) {
@@ -3483,10 +3694,10 @@ int gr_type(int *attribute) {
     return type;
 }
 
-void gr_variable(int offset, int *attribute) {
+void gr_variable(int offset) {
     int type;
 
-    type = gr_type(attribute);
+    type = gr_type();
 
     if (symbol == SYM_IDENTIFIER) {
         createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
@@ -3499,7 +3710,7 @@ void gr_variable(int offset, int *attribute) {
     }
 }
 
-void gr_initialization(int *name, int offset, int type, int *attribute) {
+void gr_initialization(int *name, int offset, int type) {
     int actualLineNumber;
     int hasCast;
     int cast;
@@ -3575,7 +3786,7 @@ void gr_initialization(int *name, int offset, int type, int *attribute) {
     createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset);
 }
 
-void gr_procedure(int *procedure, int returnType, int *attribute) {
+void gr_procedure(int *procedure, int returnType) {
     int numberOfParameters;
     int parameters;
     int localVariables;
@@ -3591,14 +3802,14 @@ void gr_procedure(int *procedure, int returnType, int *attribute) {
         getSymbol();
 
         if (symbol != SYM_RPARENTHESIS) {
-            gr_variable(0, attribute);
+            gr_variable(0);
 
             numberOfParameters = 1;
 
             while (symbol == SYM_COMMA) {
                 getSymbol();
 
-                gr_variable(0, attribute);
+                gr_variable(0);
 
                 numberOfParameters = numberOfParameters + 1;
             }
@@ -3668,7 +3879,7 @@ void gr_procedure(int *procedure, int returnType, int *attribute) {
         while (symbol == SYM_INT) {
             localVariables = localVariables + 1;
 
-            gr_variable(-localVariables * WORDSIZE, attribute);
+            gr_variable(-localVariables * WORDSIZE);
 
             if (symbol == SYM_SEMICOLON)
                 getSymbol();
@@ -3682,7 +3893,7 @@ void gr_procedure(int *procedure, int returnType, int *attribute) {
         returnBranches = 0;
 
         while (isNotRbraceOrEOF())
-            gr_statement(attribute);
+            gr_statement();
 
         if (symbol == SYM_RBRACE)
             getSymbol();
@@ -3734,11 +3945,11 @@ void gr_cstar() {
 
                 getSymbol();
 
-                gr_procedure(variableOrProcedureName, type, attribute);
+                gr_procedure(variableOrProcedureName, type);
             } else
                 syntaxErrorSymbol(SYM_IDENTIFIER);
         } else {
-            type = gr_type(attribute);
+            type = gr_type();
 
             if (symbol == SYM_IDENTIFIER) {
                 variableOrProcedureName = identifier;
@@ -3747,7 +3958,7 @@ void gr_cstar() {
 
                 // type identifier "(" procedure declaration or definition
                 if (symbol == SYM_LPARENTHESIS)
-                    gr_procedure(variableOrProcedureName, type, attribute);
+                    gr_procedure(variableOrProcedureName, type);
                 else {
                     allocatedMemory = allocatedMemory + WORDSIZE;
 
@@ -3759,7 +3970,7 @@ void gr_cstar() {
 
                     // type identifier "=" global variable definition
                     } else
-                        gr_initialization(variableOrProcedureName, -allocatedMemory, type, attribute);
+                        gr_initialization(variableOrProcedureName, -allocatedMemory, type);
                 }
             } else
                 syntaxErrorSymbol(SYM_IDENTIFIER);
