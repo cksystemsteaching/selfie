@@ -488,11 +488,11 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure);
-int  gr_factor();
-int  gr_term();
-int  gr_simpleExpression();
-int  gr_shiftExpression();
-int  gr_expression(*attribute);
+int  gr_factor(int *attribute);
+int  gr_term(int *attribute);
+int  gr_simpleExpression(int *attribute);
+int  gr_shiftExpression(int *attribute);
+int  gr_expression(int *attribute);
 void gr_while();
 void gr_if();
 void gr_return(int returnType);
