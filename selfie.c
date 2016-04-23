@@ -2596,7 +2596,7 @@ int gr_factor(int *attribute) {
 
     // not a cast: "(" expression ")"
     } else {
-      type = gr_expression();
+      type = gr_expression(attribute);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
