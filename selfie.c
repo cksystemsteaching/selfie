@@ -2556,11 +2556,11 @@ int gr_call(int* procedure) {
   return type;
 }
 
-int gr_factor(*attribute) {
+int gr_factor(int *attribute) {
   int hasCast;
   int cast;
   int type;
-  
+
 
   int* variableOrProcedureName;
 
@@ -2710,7 +2710,7 @@ int gr_factor(*attribute) {
     return type;
 }
 
-int gr_term(*attribute) {
+int gr_term(int* attribute) {
   int ltype;
   int operatorSymbol;
   int rtype;
@@ -2720,12 +2720,12 @@ int gr_term(*attribute) {
   // assert: n = allocatedTemporaries
 
   ltype = gr_factor(attribute);
-  
+
   //if constant save the current value, not constant means values have been loaded
     latt_type = getAttributeType(attribute);
     latt_value = getAttributeValue(attribute);
-  
-  
+
+
   // assert: allocatedTemporaries == n + 1
 
   // * / or % ?
@@ -2740,7 +2740,7 @@ int gr_term(*attribute) {
 
     if (ltype != rtype)
       typeWarning(ltype, rtype);
-    
+
     if (latt_type == ATT_CONSTANT){
       if (getAttributeType(attribute) == ATT_NOT) {
         //if right side is not a constant mark left side as non constant too.
@@ -2750,9 +2750,9 @@ int gr_term(*attribute) {
       //when left side is no constant load right side integer into register
       loadConstantBeforeNonConstant(attribute);
     }
-    
+
     //TODO implement if both are integers. add them and write them to register.
-    
+
     if (operatorSymbol == SYM_ASTERISK) {
 
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
@@ -2775,7 +2775,7 @@ int gr_term(*attribute) {
   return ltype;
 }
 
-int gr_simpleExpression(*attribute) {
+int gr_simpleExpression(int* attribute) {
   int sign;
   int ltype;
   int operatorSymbol;
@@ -2853,7 +2853,7 @@ int gr_simpleExpression(*attribute) {
   return ltype;
 }
 
-int  gr_shiftExpression(*attribute){
+int  gr_shiftExpression(int* attribute){
     int ltype;
     int operatorSymbol;
     int rtype;
@@ -2892,7 +2892,7 @@ int  gr_shiftExpression(*attribute){
     return ltype;
 }
 
-int gr_expression(*attribute) {
+int gr_expression(int* attribute) {
   int ltype;
   int operatorSymbol;
   int rtype;
@@ -3175,7 +3175,7 @@ void gr_statement() {
   int* variableOrProcedureName;
   int* entry;
   int* attribute = createAttribute();
-  
+
   // assert: allocatedTemporaries == 0;
 
   while (lookForStatement()) {
@@ -3284,7 +3284,7 @@ void gr_statement() {
 
       getSymbol();
 
-      rtype = gr_expression();
+      rtype = gr_expression(attribute);
 
       if (ltype != rtype)
         typeWarning(ltype, rtype);
