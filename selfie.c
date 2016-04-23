@@ -1188,13 +1188,13 @@ int twoToThePowerOf(int p) {
 
 int leftShift(int n, int b) {
     // assert: b >= 0;
-    //  return n << b;
-   if (b < 31)
-       return n * twoToThePowerOf(b);
-   else if (b == 31)
-       return n * twoToThePowerOf(30) * 2;
-   else
-       return 0;
+    return n << b;
+   // if (b < 31)
+   //     return n * twoToThePowerOf(b);
+   // else if (b == 31)
+   //     return n * twoToThePowerOf(30) * 2;
+   // else
+   //     return 0;
 }
 
 int rightShift(int n, int b) {
