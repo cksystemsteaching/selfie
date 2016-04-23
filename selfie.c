@@ -2475,7 +2475,7 @@ void help_procedure_epilogue(int parameters) {
     emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int gr_call(int *procedure, int* attribute) {
+int gr_call(int *procedure) {
     int *entry;
     int numberOfTemporaries;
     int type;
@@ -2495,7 +2495,7 @@ int gr_call(int *procedure, int* attribute) {
     // assert: allocatedTemporaries == 0
 
     if (isExpression()) {
-        gr_expression(attribute);
+        gr_expression();
 
         // TODO: check if types/number of parameters is correct
 
@@ -2508,7 +2508,7 @@ int gr_call(int *procedure, int* attribute) {
         while (symbol == SYM_COMMA) {
             getSymbol();
 
-            gr_expression(attribute);
+            gr_expression();
 
             // push more parameters onto stack
             emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
@@ -2648,7 +2648,7 @@ int gr_factor(int* attribute) {
 
             // reset return register
             emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
-        } else
+        } else{
           //type = load_variable(variableOrProcedureName);
           *(attribute) = 2;
           *(attribute + 1) = variableOrProcedureName;
@@ -2796,7 +2796,7 @@ int gr_term(int* attribute) {
                   isEmit = 1;
 
                 }
-                prevSymbol = *(if (operatorSymbol == SYM_ASTERISK) {
+        if (operatorSymbol == SYM_ASTERISK){
         emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
         emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
       } else if (operatorSymbol == SYM_DIV) {
@@ -2816,7 +2816,7 @@ int gr_term(int* attribute) {
       isEmit = 1;
 
     }
-    prevSymbol = *(if (operatorSymbol == SYM_ASTERISK) {
+      if (operatorSymbol == SYM_ASTERISK){
         emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
         emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
       } else if (operatorSymbol == SYM_DIV) {
@@ -2851,7 +2851,7 @@ int gr_term(int* attribute) {
   } else {
     *(attribute) = 1;
     *(attribute + 1) = constantTemp;
-  });
+  }
 
   }
   if (addTalloc == 1) {
@@ -2864,7 +2864,7 @@ int gr_term(int* attribute) {
   } else {
     *(attribute) = 1;
     *(attribute + 1) = constantTemp;
-  });
+  }
 }
     if (addTalloc == 1) {
         tfree(1);
@@ -3069,13 +3069,13 @@ int  gr_shiftExpression(int *attribute){
 
     constantTemp = 0;
     isEmit = 0;
-    addTalloc = 0
+    addTalloc = 0;
     // assert: n = allocatedTemporaries
 
     ltype = gr_simpleExpression(attribute);//
     if (*(attribute) == 1) {
     // constant
-    constantTemp = *(constantVal + 1);
+    constantTemp = *(attribute + 1);
     *(attribute) = 0;
     prevSymbol = 1;
     isEmit = 0;
@@ -3336,7 +3336,7 @@ int gr_expression() {
     return ltype;
 }
 
-void gr_while(int *attribute) { // TODO probably doesnt need this passed, could create attribute on its own... as while really cant be folded...
+void gr_while() { // TODO probably doesnt need this passed, could create attribute on its own... as while really cant be folded...
     int brBackToWhile;
     int brForwardToEnd;
 
