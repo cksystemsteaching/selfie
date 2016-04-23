@@ -487,15 +487,15 @@ int  help_call_codegen(int* entry, int* procedure);
 void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
-int  gr_call(int* procedure);
+int  gr_call(int* procedure, int* attribute);
 int  gr_factor(int *attribute);
 int  gr_term(int *attribute);
 int  gr_simpleExpression(int *attribute);
 int  gr_shiftExpression(int *attribute);
 int  gr_expression(int *attribute);
-void gr_while();
-void gr_if();
-void gr_return(int returnType);
+void gr_while(int* attribute);
+void gr_if(int* attribute);
+void gr_return(int returnType, int* attribute);
 void gr_statement();
 int  gr_type();
 void gr_variable(int offset);
@@ -2487,7 +2487,7 @@ void help_procedure_epilogue(int parameters) {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int gr_call(int* procedure) {
+int gr_call(int* procedure, int* attribute) {
   int* entry;
   int numberOfTemporaries;
   int type;
@@ -2507,7 +2507,7 @@ int gr_call(int* procedure) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
-    gr_expression();
+    gr_expression(attribute);
 
     // TODO: check if types/number of parameters is correct
 
@@ -2520,7 +2520,7 @@ int gr_call(int* procedure) {
     while (symbol == SYM_COMMA) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(attribute);
 
       // push more parameters onto stack
       emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
@@ -2623,7 +2623,7 @@ int gr_factor(int *attribute) {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      type = gr_expression();
+      type = gr_expression(attribute);
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -2650,7 +2650,7 @@ int gr_factor(int *attribute) {
       getSymbol();
 
       // function call: identifier "(" ... ")"
-      type = gr_call(variableOrProcedureName);
+      type = gr_call(variableOrProcedureName, attribute);
 
       talloc();
 
@@ -2693,7 +2693,7 @@ int gr_factor(int *attribute) {
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
-    type = gr_expression();
+    type = gr_expression(attribute);
 
     if (symbol == SYM_RPARENTHESIS)
       getSymbol();
@@ -2979,7 +2979,7 @@ int gr_expression(int* attribute) {
   return ltype;
 }
 
-void gr_while() {
+void gr_while(int* attribute) {
   int brBackToWhile;
   int brForwardToEnd;
 
@@ -2996,7 +2996,7 @@ void gr_while() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(attribute);
 
       // do not know where to branch, fixup later
       brForwardToEnd = binaryLength;
@@ -3044,7 +3044,7 @@ void gr_while() {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_if() {
+void gr_if(int* attribute) {
   int brForwardToElseOrEnd;
   int brForwardToEnd;
 
@@ -3057,7 +3057,7 @@ void gr_if() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      gr_expression(attribute);
 
       // if the "if" case is not true, we jump to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
@@ -3133,7 +3133,7 @@ void gr_if() {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_return(int returnType) {
+void gr_return(int returnType,int* attribute) {
   int type;
 
   // assert: allocatedTemporaries == 0
@@ -3145,7 +3145,7 @@ void gr_return(int returnType) {
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
-    type = gr_expression();
+    type = gr_expression(attribute);
 
     if (returnType == VOID_T)
       typeWarning(type, returnType);
@@ -3266,7 +3266,7 @@ void gr_statement() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_call(variableOrProcedureName);
+      gr_call(variableOrProcedureName, attribute);
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
@@ -3302,17 +3302,17 @@ void gr_statement() {
   }
   // while statement?
   else if (symbol == SYM_WHILE) {
-    gr_while();
+    gr_while(attribute);
   }
   // if statement?
   else if (symbol == SYM_IF) {
-    gr_if();
+    gr_if(attribute);
   }
   // return statement?
   else if (symbol == SYM_RETURN) {
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
-    gr_return(getType(entry));
+    gr_return(getType(entry), attribute);
 
     if (symbol == SYM_SEMICOLON)
       getSymbol();
