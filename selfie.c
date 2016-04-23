@@ -1188,43 +1188,43 @@ int twoToThePowerOf(int p) {
 
 int leftShift(int n, int b) {
     // assert: b >= 0;
-     return n << b;
-   // if (b < 31)
-   //     return n * twoToThePowerOf(b);
-   // else if (b == 31)
-   //     return n * twoToThePowerOf(30) * 2;
-   // else
-   //     return 0;
+    //  return n << b;
+   if (b < 31)
+       return n * twoToThePowerOf(b);
+   else if (b == 31)
+       return n * twoToThePowerOf(30) * 2;
+   else
+       return 0;
 }
 
 int rightShift(int n, int b) {
     // assert: b >= 0
-    if (n >= 0 ) {
-        return n >> b;
-    } else if (b < 31) {
-        // return (((n + 1) + INT_MAX) >> b) + (INT_MAX >> (b + 1));
-        return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
-                (INT_MAX / twoToThePowerOf(b) + 1);
-    } else if (b == 31) {
-        return 1;
-    } else {
-        return 0;
-    }
+    // if (n >= 0 ) {
+    //     return n >> b;
+    // } else if (b < 31) {
+    //     // return (((n + 1) + INT_MAX) >> b) + (INT_MAX >> (b + 1));
+    //     return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
+    //             (INT_MAX / twoToThePowerOf(b) + 1);
+    // } else if (b == 31) {
+    //     return 1;
+    // } else {
+    //     return 0;
+    // }
 
-   // if (n >= 0) {
-   //     if (b < 31)
-   //         return n / twoToThePowerOf(b);
-   //     else
-   //         return 0;
-   // } else if (b < 31)
-   //     // works even if n == INT_MIN:
-   //     // shift right n with msb reset and then restore msb
-   //     return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
-   //         (INT_MAX / twoToThePowerOf(b) + 1);
-   // else if (b == 31)
-   //     return 1;
-   // else
-   //     return 0;
+   if (n >= 0) {
+       if (b < 31)
+           return n / twoToThePowerOf(b);
+       else
+           return 0;
+   } else if (b < 31)
+       // works even if n == INT_MIN:
+       // shift right n with msb reset and then restore msb
+       return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
+           (INT_MAX / twoToThePowerOf(b) + 1);
+   else if (b == 31)
+       return 1;
+   else
+       return 0;
 }
 
 int loadCharacter(int* s, int i) {
@@ -2828,7 +2828,7 @@ int  gr_shiftExpression(){
 
     // assert: n = allocatedTemporaries
 
-    ltype = gr_simpleExpression();//
+    ltype = gr_simpleExpression();
 
     // assert: allocatedTemporaries == n + 1
 
@@ -2844,7 +2844,7 @@ int  gr_shiftExpression(){
 
         if (rtype == INTSTAR_T){
             typeWarning(INT_T, rtype);
-        }else{
+        } else {
             if (operatorSymbol == SYM_LEFT_SHIFT){
                 emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
             }else if(operatorSymbol == SYM_RIGHT_SHIFT){
@@ -3308,19 +3308,19 @@ int gr_type() {
 }
 
 void gr_variable(int offset) {
-  int type;
+     int type;
 
-  type = gr_type();
+     type = gr_type();
 
-  if (symbol == SYM_IDENTIFIER) {
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
+     if (symbol == SYM_IDENTIFIER) {
+         createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
 
-    getSymbol();
-  } else {
-    syntaxErrorSymbol(SYM_IDENTIFIER);
+         getSymbol();
+     } else {
+         syntaxErrorSymbol(SYM_IDENTIFIER);
 
-    createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset);
-  }
+         createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset);
+     }
 }
 
 void gr_initialization(int* name, int offset, int type) {
