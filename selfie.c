@@ -492,7 +492,7 @@ int  gr_factor();
 int  gr_term();
 int  gr_simpleExpression();
 int  gr_shiftExpression();
-int  gr_expression();
+int  gr_expression(*attribute);
 void gr_while();
 void gr_if();
 void gr_return(int returnType);
@@ -2556,10 +2556,11 @@ int gr_call(int* procedure) {
   return type;
 }
 
-int gr_factor() {
+int gr_factor(*attribute) {
   int hasCast;
   int cast;
   int type;
+  
 
   int* variableOrProcedureName;
 
@@ -2709,15 +2710,22 @@ int gr_factor() {
     return type;
 }
 
-int gr_term() {
+int gr_term(*attribute) {
   int ltype;
   int operatorSymbol;
   int rtype;
+  int latt_type;
+  int latt_value;
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_factor();
-
+  ltype = gr_factor(attribute);
+  
+  //if constant save the current value, not constant means values have been loaded
+    latt_type = getAttributeType(attribute);
+    latt_value = getAttributeValue(attribute);
+  
+  
   // assert: allocatedTemporaries == n + 1
 
   // * / or % ?
@@ -2726,14 +2734,27 @@ int gr_term() {
 
     getSymbol();
 
-    rtype = gr_factor();
+    rtype = gr_factor(attribute);
 
     // assert: allocatedTemporaries == n + 2
 
     if (ltype != rtype)
       typeWarning(ltype, rtype);
-
+    
+    if (latt_type == ATT_CONSTANT){
+      if (getAttributeType(attribute) == ATT_NOT) {
+        //if right side is not a constant mark left side as non constant too.
+        latt_type = ATT_NOT;
+      }
+    } else {
+      //when left side is no constant load right side integer into register
+      loadConstantBeforeNonConstant(attribute);
+    }
+    
+    //TODO implement if both are integers. add them and write them to register.
+    
     if (operatorSymbol == SYM_ASTERISK) {
+
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
       emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
@@ -2754,7 +2775,7 @@ int gr_term() {
   return ltype;
 }
 
-int gr_simpleExpression() {
+int gr_simpleExpression(*attribute) {
   int sign;
   int ltype;
   int operatorSymbol;
@@ -2783,7 +2804,7 @@ int gr_simpleExpression() {
   } else
     sign = 0;
 
-  ltype = gr_term();
+  ltype = gr_term(attribute);
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2803,7 +2824,7 @@ int gr_simpleExpression() {
 
     getSymbol();
 
-    rtype = gr_term();
+    rtype = gr_term(attribute);
 
     // assert: allocatedTemporaries == n + 2
 
@@ -2832,14 +2853,14 @@ int gr_simpleExpression() {
   return ltype;
 }
 
-int  gr_shiftExpression(){
+int  gr_shiftExpression(*attribute){
     int ltype;
     int operatorSymbol;
     int rtype;
 
     // assert: n = allocatedTemporaries
 
-    ltype = gr_simpleExpression();
+    ltype = gr_simpleExpression(attribute);
 
     // assert: allocatedTemporaries == n + 1
 
@@ -2849,7 +2870,7 @@ int  gr_shiftExpression(){
 
         getSymbol();
 
-        rtype = gr_simpleExpression();
+        rtype = gr_simpleExpression(attribute);
 
         // assert: allocatedTemporaries == n + 2
 
@@ -2871,14 +2892,14 @@ int  gr_shiftExpression(){
     return ltype;
 }
 
-int gr_expression() {
+int gr_expression(*attribute) {
   int ltype;
   int operatorSymbol;
   int rtype;
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_shiftExpression();
+  ltype = gr_shiftExpression(attribute);
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2888,7 +2909,7 @@ int gr_expression() {
 
     getSymbol();
 
-    rtype = gr_shiftExpression();
+    rtype = gr_shiftExpression(attribute);
 
     // assert: allocatedTemporaries == n + 2
 
@@ -3153,7 +3174,8 @@ void gr_statement() {
   int rtype;
   int* variableOrProcedureName;
   int* entry;
-
+  int* attribute = createAttribute();
+  
   // assert: allocatedTemporaries == 0;
 
   while (lookForStatement()) {
@@ -3182,7 +3204,7 @@ void gr_statement() {
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_expression();
+        rtype = gr_expression(attribute);
 
         if (rtype != INT_T)
           typeWarning(INT_T, rtype);
@@ -3202,7 +3224,7 @@ void gr_statement() {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      ltype = gr_expression();
+      ltype = gr_expression(attribute);
 
       if (ltype != INTSTAR_T)
         typeWarning(INTSTAR_T, ltype);
@@ -3214,7 +3236,7 @@ void gr_statement() {
         if (symbol == SYM_ASSIGN) {
           getSymbol();
 
-          rtype = gr_expression();
+          rtype = gr_expression(attribute);
 
           if (rtype != INT_T)
             typeWarning(INT_T, rtype);
