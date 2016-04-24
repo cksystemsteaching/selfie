@@ -400,7 +400,7 @@ void setScope(int* entry, int scope)        { *(entry + 7) = scope; }
 // ------------------------- Attribute TABLE --------------------------
 // -----------------------------------------------------------------
 
-int* createAttribute() { return malloc(2 * SIZEOFINT); }
+int* createAttribute() {return malloc(2 * SIZEOFINT);}
 
 
 // symbol table entry:
@@ -430,8 +430,8 @@ int VOID_T    = 3;
 
 
 //Attribute Types
-int ATT_CONSTANT = 0;
-int ATT_NOT      = 1;
+int ATT_CONSTANT = 1;
+int ATT_NOT      = 0;
 
 
 // symbol tables
@@ -488,11 +488,11 @@ void help_procedure_prologue(int localVariables);
 void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure, int* attribute);
-int  gr_factor(int *attribute);
-int  gr_term(int *attribute);
-int  gr_simpleExpression(int *attribute);
-int  gr_shiftExpression(int *attribute);
-int  gr_expression(int *attribute);
+int  gr_factor(int* attribute);
+int  gr_term(int* attribute);
+int  gr_simpleExpression(int* attribute);
+int  gr_shiftExpression(int* attribute);
+int  gr_expression(int* attribute);
 void gr_while(int* attribute);
 void gr_if(int* attribute);
 void gr_return(int returnType, int* attribute);
@@ -1208,12 +1208,12 @@ int freePageFrame = 0;
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 // -----------------------------------------------------------------
 
-void loadConstantBeforeNonConstant(int* attribute) {
-    if (getAttributeType(attribute) == ATT_CONSTANT) {
-        load_integer(getAttributeValue(attribute));
-        setAttributeType(attribute, ATT_NOT);
-    }
-}
+//void loadConstantBeforeNonConstant(int* attribute) {
+//    if (getAttributeType(attribute) == ATT_CONSTANT) {
+//        load_integer(getAttributeValue(attribute));
+//        setAttributeType(attribute, ATT_NOT);
+//    }
+//}
 
 int twoToThePowerOf(int p) {
   // assert: 0 <= p < 31
@@ -2487,7 +2487,7 @@ void help_procedure_epilogue(int parameters) {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int gr_call(int* procedure, int* attribute) {
+int gr_call(int* procedure,  int* attribute) {
   int* entry;
   int numberOfTemporaries;
   int type;
@@ -2556,7 +2556,7 @@ int gr_call(int* procedure, int* attribute) {
   return type;
 }
 
-int gr_factor(int *attribute) {
+int gr_factor(int* attribute){
   int hasCast;
   int cast;
   int type;
@@ -2578,6 +2578,11 @@ int gr_factor(int *attribute) {
     else
       getSymbol();
   }
+    if(isLiteral()){
+      setAttributeValue(attribute, literal );
+      setAttributeType(attribute, ATT_CONSTANT);
+    }
+
 
   // optional cast: [ cast ]
   if (symbol == SYM_LPARENTHESIS) {
@@ -2666,7 +2671,6 @@ int gr_factor(int *attribute) {
   // integer?
   } else if (symbol == SYM_INTEGER) {
     load_integer(literal);
-
     getSymbol();
 
     type = INT_T;
@@ -2714,17 +2718,22 @@ int gr_term(int* attribute) {
   int ltype;
   int operatorSymbol;
   int rtype;
+
   int latt_type;
   int latt_value;
+  int ratt_type;
+  int ratt_value;
 
   // assert: n = allocatedTemporaries
 
   ltype = gr_factor(attribute);
-
   //if constant save the current value, not constant means values have been loaded
-    latt_type = getAttributeType(attribute);
-    latt_value = getAttributeValue(attribute);
+   latt_type = getAttributeType(attribute);
+   latt_value = getAttributeValue(attribute);
+    //if(latt_type == ATT_CONSTANT){
 
+
+    //}
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2735,21 +2744,23 @@ int gr_term(int* attribute) {
     getSymbol();
 
     rtype = gr_factor(attribute);
+    ratt_type = getAttributeType(attribute);
+    ratt_value = getAttributeValue(attribute);
 
     // assert: allocatedTemporaries == n + 2
 
     if (ltype != rtype)
       typeWarning(ltype, rtype);
 
-    if (latt_type == ATT_CONSTANT){
-      if (getAttributeType(attribute) == ATT_NOT) {
-        //if right side is not a constant mark left side as non constant too.
-        latt_type = ATT_NOT;
-      }
-    } else {
+  //  if (latt_type == ATT_CONSTANT){
+    //  if (getAttributeType(attribute) == ATT_NOT) {
+        //if right side is not a constant, mark left side as non constant too.
+    //    latt_type = ATT_NOT;
+    //  }
+    //} else {
       //when left side is no constant load right side integer into register
-      loadConstantBeforeNonConstant(attribute);
-    }
+    //  loadConstantBeforeNonConstant(attribute);
+  //  }
 
     //TODO implement if both are integers. add them and write them to register.
 
@@ -2986,7 +2997,6 @@ void gr_while(int* attribute) {
   // assert: allocatedTemporaries == 0
 
   brBackToWhile = binaryLength;
-
   brForwardToEnd = 0;
 
   // while ( expression )
@@ -3049,7 +3059,6 @@ void gr_if(int* attribute) {
   int brForwardToEnd;
 
   // assert: allocatedTemporaries == 0
-
   // if ( expression )
   if (symbol == SYM_IF) {
     getSymbol();
@@ -3133,7 +3142,7 @@ void gr_if(int* attribute) {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_return(int returnType,int* attribute) {
+void gr_return(int returnType, int* attribute) {
   int type;
 
   // assert: allocatedTemporaries == 0
@@ -3174,7 +3183,10 @@ void gr_statement() {
   int rtype;
   int* variableOrProcedureName;
   int* entry;
-  int* attribute = createAttribute();
+  int* attribute;
+  attribute = createAttribute();
+
+
 
   // assert: allocatedTemporaries == 0;
 
@@ -6732,6 +6744,7 @@ int selfie(int argc, int* argv) {
 
   return 0;
 }
+
 
 int main(int argc, int* argv) {
   initLibrary();
