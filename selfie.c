@@ -395,27 +395,6 @@ void setValue(int* entry, int value)        { *(entry + 5) = value; }
 void setAddress(int* entry, int address)    { *(entry + 6) = address; }
 void setScope(int* entry, int scope)        { *(entry + 7) = scope; }
 
-
-// -----------------------------------------------------------------
-// ------------------------- Attribute TABLE --------------------------
-// -----------------------------------------------------------------
-
-int* createAttribute() {return malloc(2 * SIZEOFINT);}
-
-
-// symbol table entry:
-// +----+---------+
-// |  0 | Type    | Constant or not, for constant folding
-// |  1 | value   | the calculated value the constant(s) has(ve)
-// +----+---------+
-
-int getAttributeType(int *attribute)        { return *attribute;       }
-int getAttributeValue(int *attribute)       { return *(attribute + 1); }
-
-void setAttributeType(int *attribute, int type)     { *attribute       = (int) type;   }
-void setAttributeValue(int *attribute, int value)   { *(attribute + 1) = (int) value;  }
-
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // classes
@@ -452,6 +431,29 @@ void resetSymbolTables() {
   global_symbol_table  = (int*) 0;
   local_symbol_table   = (int*) 0;
   library_symbol_table = (int*) 0;
+}
+
+// -----------------------------------------------------------------
+// ------------------------- Attribute TABLE --------------------------
+// -----------------------------------------------------------------
+
+// symbol table entry:
+// +----+---------+
+// |  0 | Type    | Constant or not, for constant folding
+// |  1 | value   | the calculated value the constant(s) has(ve)
+// +----+---------+
+
+int getAttributeType(int *attribute)        { return *attribute;       }
+int getAttributeValue(int *attribute)       { return *(attribute + 1); }
+
+void setAttributeType(int *attribute, int type)     { *attribute       = (int) type;   }
+void setAttributeValue(int *attribute, int value)   { *(attribute + 1) = (int) value;  }
+
+
+int* createAttribute() {
+    int* attribute = malloc(2 * SIZEOFINT);
+    setAttributeType(attribute, ATT_NOT);
+    return attribute;
 }
 
 // -----------------------------------------------------------------
@@ -1208,12 +1210,16 @@ int freePageFrame = 0;
 // ----------------------- LIBRARY FUNCTIONS -----------------------
 // -----------------------------------------------------------------
 
-//void loadConstantBeforeNonConstant(int* attribute) {
-//    if (getAttributeType(attribute) == ATT_CONSTANT) {
-//        load_integer(getAttributeValue(attribute));
-//        setAttributeType(attribute, ATT_NOT);
-//    }
-//}
+void loadConstantBeforeNonConstant(int* attribute) {
+   if (getAttributeType(attribute) == ATT_CONSTANT) {
+       load_integer(getAttributeValue(attribute));
+       setAttributeType(attribute, ATT_NOT);
+       printLineNumber((int*) "Loaded constant -  ", lineNumber);
+    //    print((int*)  "Loaded constant -  ");
+       print((int*) itoa(getAttributeValue(attribute),  string_buffer, 10, 0, 0) );
+       print((int*)  "\n");
+   }
+}
 
 int twoToThePowerOf(int p) {
   // assert: 0 <= p < 31
@@ -2561,13 +2567,10 @@ int gr_factor(int* attribute){
   int cast;
   int type;
 
-
   int* variableOrProcedureName;
 
   // assert: n = allocatedTemporaries
-
   hasCast = 0;
-
   type = INT_T;
 
   while (lookForFactor()) {
@@ -2578,11 +2581,11 @@ int gr_factor(int* attribute){
     else
       getSymbol();
   }
-    if(isLiteral()){
-      setAttributeValue(attribute, literal );
-      setAttributeType(attribute, ATT_CONSTANT);
+    // if(isLiteral()){
+    if(symbol == SYM_INTEGER){
+        setAttributeValue(attribute, literal);
+        setAttributeType(attribute, ATT_CONSTANT);
     }
-
 
   // optional cast: [ cast ]
   if (symbol == SYM_LPARENTHESIS) {
@@ -2601,12 +2604,12 @@ int gr_factor(int* attribute){
 
     // not a cast: "(" expression ")"
     } else {
-      type = gr_expression(attribute);
+          type = gr_expression(attribute);
 
-      if (symbol == SYM_RPARENTHESIS)
-        getSymbol();
-      else
-        syntaxErrorSymbol(SYM_RPARENTHESIS);
+          if (symbol == SYM_RPARENTHESIS)
+            getSymbol();
+          else
+            syntaxErrorSymbol(SYM_RPARENTHESIS);
 
       // assert: allocatedTemporaries == n + 1
 
@@ -2620,25 +2623,26 @@ int gr_factor(int* attribute){
 
     // ["*"] identifier
     if (symbol == SYM_IDENTIFIER) {
-      type = load_variable(identifier);
+        loadConstantBeforeNonConstant(attribute);
+        type = load_variable(identifier);
 
-      getSymbol();
+        getSymbol();
 
     // * "(" expression ")"
     } else if (symbol == SYM_LPARENTHESIS) {
-      getSymbol();
-
-      type = gr_expression(attribute);
-
-      if (symbol == SYM_RPARENTHESIS)
         getSymbol();
-      else
-        syntaxErrorSymbol(SYM_RPARENTHESIS);
+
+        type = gr_expression(attribute);
+
+        if (symbol == SYM_RPARENTHESIS)
+            getSymbol();
+        else
+            syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
-      syntaxErrorUnexpected();
+        syntaxErrorUnexpected();
 
     if (type != INTSTAR_T)
-      typeWarning(INTSTAR_T, type);
+        typeWarning(INTSTAR_T, type);
 
     // dereference
     emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
@@ -2664,39 +2668,34 @@ int gr_factor(int* attribute){
 
       // reset return register
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
-    } else
-      // variable access: identifier
-      type = load_variable(variableOrProcedureName);
-
+  } else {
+        // variable access: identifier
+        loadConstantBeforeNonConstant(attribute);
+        type = load_variable(variableOrProcedureName);
+    }
   // integer?
   } else if (symbol == SYM_INTEGER) {
-    load_integer(literal);
+    // load_integer(literal);
     getSymbol();
-
     type = INT_T;
 
   // character?
   } else if (symbol == SYM_CHARACTER) {
     talloc();
-
     emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
-
     getSymbol();
-
     type = INT_T;
 
   // string?
   } else if (symbol == SYM_STRING) {
-    load_string(string);
-
-    getSymbol();
-
-    type = INTSTAR_T;
+      loadConstantBeforeNonConstant(attribute);
+      load_string(string);
+      getSymbol();
+      type = INTSTAR_T;
 
   //  "(" expression ")"
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
-
     type = gr_expression(attribute);
 
     if (symbol == SYM_RPARENTHESIS)
@@ -2707,7 +2706,6 @@ int gr_factor(int* attribute){
     syntaxErrorUnexpected();
 
   // assert: allocatedTemporaries == n + 1
-
   if (hasCast)
     return cast;
   else
@@ -2730,10 +2728,7 @@ int gr_term(int* attribute) {
   //if constant save the current value, not constant means values have been loaded
    latt_type = getAttributeType(attribute);
    latt_value = getAttributeValue(attribute);
-    //if(latt_type == ATT_CONSTANT){
-
-
-    //}
+   loadConstantBeforeNonConstant(attribute); //TODO check if still compiles
 
   // assert: allocatedTemporaries == n + 1
 
@@ -2746,6 +2741,7 @@ int gr_term(int* attribute) {
     rtype = gr_factor(attribute);
     ratt_type = getAttributeType(attribute);
     ratt_value = getAttributeValue(attribute);
+    loadConstantBeforeNonConstant(attribute);  //TODO check if still compiles
 
     // assert: allocatedTemporaries == n + 2
 
@@ -2762,7 +2758,7 @@ int gr_term(int* attribute) {
     //  loadConstantBeforeNonConstant(attribute);
   //  }
 
-    //TODO implement if both are integers. add them and write them to register.
+    //TODO implement if both are integers. perform operation on them them and write them to register.
 
     if (operatorSymbol == SYM_ASTERISK) {
 
