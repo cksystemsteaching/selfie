@@ -31,7 +31,7 @@ cast             = "(" type ")" .
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
 literal          = integer | "'" ascii_character "'" .
-
+--------attribute start -----------
 factor           = [ cast ] 
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
@@ -43,7 +43,7 @@ term             = factor { ( "*" | "/" | "%" ) factor } .
 simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
 
 shiftExpression  = simpleExpression { ( ">>" | "<<" ) simpleExpression } .
-
+--------attribute end   -----------
 expression       = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ] .
 
 while            = "while" "(" expression ")" 
