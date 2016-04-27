@@ -2627,13 +2627,8 @@ int gr_factor(int* attribute) {
       
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
-        loadConstantBeforeNonConstant(attribute);
-        type = gr_expression();
-
-        if (symbol == SYM_RPARENTHESIS)
-            getSymbol();
-        else
-            syntaxErrorSymbol(SYM_RPARENTHESIS);
+      else
+        syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
       syntaxErrorUnexpected();
     
