@@ -16,6 +16,12 @@ Another potentially misleading term is architecture which in computer science ci
 
 ![Von Neumann Architecture](images/von-neumann-architecture.jpg "Von Neumann Architecture")
 
+## Low-Level Programming
+
+## High-Level Programming
+
+## A Simple C\* Program
+
 {line-numbers=on, lang=c}
 <<[A Simple C* Program](code/iteration.c)
 
@@ -31,11 +37,15 @@ Another potentially misleading term is architecture which in computer science ci
 {line-numbers=off, lang=asm}
 <<[Execution of the MIPS Assembly for the Simple C* Program with Approximate Line Numbers and Profile](code/iteration.d)
 
+## Another Simple C\* Program
+
 {line-numbers=on, lang=c}
 <<[A C* Program Equivalent to the Simple C* Program](code/procedure.c)
 
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Equivalent C* Program](code/procedure.s)
+
+## Functions versus Procedures
 
 {line-numbers=on, lang=c}
 <<[A C* Program Equivalent to the Simple C* Program Using a Function](code/function.c)
@@ -43,14 +53,20 @@ Another potentially misleading term is architecture which in computer science ci
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Equivalent C* Program Using a Function](code/function.s)
 
+## Functions Only
+
 {line-numbers=on, lang=c}
 <<[A C* Program Equivalent to the Simple C* Program Using Just Functions](code/local.c)
 
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Equivalent C* Program Using Just Functions](code/local.s)
 
+## Recursion
+
 {line-numbers=on, lang=c}
 <<[A C* Program with Iteration and Equivalent Recursions from Basics Chapter](code/recursion.c)
+
+## Memory
 
 {line-numbers=on, lang=c}
 <<[A C* Program with Pointers](code/pointer.c)
@@ -70,5 +86,28 @@ Another potentially misleading term is architecture which in computer science ci
 
 [mips]: https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS Architecture"
 
+[isa]: https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture"
 [machinecode]: https://en.wikipedia.org/wiki/Machine_code "Machine Code"
+[opcode]: https://en.wikipedia.org/wiki/Opcode "Opcode"
 [assembly]: https://en.wikipedia.org/wiki/Assembly_language "Assembly Language"
+[mnemonic]: https://en.wikipedia.org/wiki/Mnemonic "Mnemonic"
+
+[addressingmodes]: https://en.wikipedia.org/wiki/Addressing_mode "Addressing Modes"
+[branch]: https://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
+
+[highlevelprogramming]: https://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming"
+[c]: https://en.wikipedia.org/wiki/C_(programming_language) "C"
+[declaration]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration"
+[globalvariable]: https://en.wikipedia.org/wiki/Global_variable "Global Variable"
+[scope]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Scope"
+[subroutine]: https://en.wikipedia.org/wiki/Subroutine "Subroutine"
+[localvariable]: https://en.wikipedia.org/wiki/Local_variable "Local Variable"
+
+[imperative]: https://en.wikipedia.org/wiki/Imperative_programming "Imperative Programming"
+[statement]: https://en.wikipedia.org/wiki/Statement_(computer_science) "Statement"
+[declarative]: https://en.wikipedia.org/wiki/Declarative_programming "Declarative Programming"
+[assignment]: https://en.wikipedia.org/wiki/Assignment_(computer_science) "Assignment"
+[expression]: https://en.wikipedia.org/wiki/Expression_(computer_science) "Expression"
+[conditional]: https://en.wikipedia.org/wiki/Conditional_(computer_programming) "Conditional"
+[while]: https://en.wikipedia.org/wiki/While_loop "While Loop"
+[return]: https://en.wikipedia.org/wiki/Return_statement "Return Statement"
