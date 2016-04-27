@@ -2666,7 +2666,7 @@ int gr_factor(int* attribute){
   // integer?
   } else if (symbol == SYM_INTEGER) {
     //before - load integer into register
-    //load_integer(literal);  //commented out for constant folding
+    load_integer(literal);  //TODO comment out for constant folding
     //TODO Do not forget to write constant to register if it is not folded!
     //instead - create attribute that is foldable
     setAttributeValue(attribute, literal);
