@@ -400,7 +400,7 @@ void setScope(int* entry, int scope)        { *(entry + 7) = scope; }
 // ------------------------- Attribute TABLE --------------------------
 // -----------------------------------------------------------------
 
-int* createAttribute() {return malloc(2 * SIZEOFINT);}
+int* createAttribute() {return malloc(2 * SIZEOFINT); }
 
 
 // symbol table entry:
@@ -409,11 +409,11 @@ int* createAttribute() {return malloc(2 * SIZEOFINT);}
 // |  1 | value   | the calculated value the constant(s) has(ve)
 // +----+---------+
 
-int getAttributeType(int *attribute)        { return *attribute;       }
-int getAttributeValue(int *attribute)       { return *(attribute + 1); }
+int getAttributeType(int* attribute)        { return  * attribute; }
+int getAttributeValue(int* attribute)       { return  * (attribute + 1); }
 
-void setAttributeType(int *attribute, int type)     { *attribute       = (int) type;   }
-void setAttributeValue(int *attribute, int value)   { *(attribute + 1) = (int) value;  }
+void setAttributeType(int* attribute, int type)     { * attribute       = (int) type; }
+void setAttributeValue(int* attribute, int value)   { * (attribute + 1) = (int) value; }
 
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -2665,10 +2665,12 @@ int gr_factor(int* attribute){
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
-    //before - load integer into register TODO COMMENT OUT
-    load_integer(literal);
+    //before - load integer into register
+    //load_integer(literal);  //commented out for constant folding
+    //TODO Do not forget to write constant to register if it is not folded!
     //instead - create attribute that is foldable
-    
+    setAttributeValue(attribute, literal);
+    setAttributeType(attribute, ATT_CONSTANT);
 
     getSymbol();
 
@@ -2718,17 +2720,17 @@ int gr_term(int* attribute) {
   int operatorSymbol;
   int rtype;
 
-  int latt_type;
-  int latt_value;
-  int ratt_type;
-  int ratt_value;
+//  int latt_type;
+//  int latt_value;
+//  int ratt_type;
+//  int ratt_value;
 
   // assert: n = allocatedTemporaries
 
   ltype = gr_factor(attribute);
   //if constant save the current value, not constant means values have been loaded
-   latt_type = getAttributeType(attribute);
-   latt_value = getAttributeValue(attribute);
+   //latt_type = getAttributeType(attribute);
+   //latt_value = getAttributeValue(attribute);
     //if(latt_type == ATT_CONSTANT){
 
 
@@ -2743,8 +2745,8 @@ int gr_term(int* attribute) {
     getSymbol();
 
     rtype = gr_factor(attribute);
-    ratt_type = getAttributeType(attribute);
-    ratt_value = getAttributeValue(attribute);
+    //ratt_type = getAttributeType(attribute);
+    //ratt_value = getAttributeValue(attribute);
 
     // assert: allocatedTemporaries == n + 2
 
