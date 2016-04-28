@@ -492,7 +492,7 @@ void help_procedure_epilogue(int parameters);
 int  gr_call(int* procedure);
 int  gr_factor(int* attribute);
 int  gr_term(int* attribute);
-int  gr_simpleExpression();
+int  gr_simpleExpression(int* attribute);
 int  gr_shiftExpression();
 int  gr_expression();
 void gr_while();
@@ -2790,7 +2790,7 @@ int gr_term(int* attribute) {
   return ltype;
 }
 
-int gr_simpleExpression() {
+int gr_simpleExpression(int* attribute) {
   int sign;
   int ltype;
   int operatorSymbol;
@@ -2801,10 +2801,8 @@ int gr_simpleExpression() {
   int ratt_value;
   int toFold;
 
-int* attribute;
-
   // assert: n = allocatedTemporaries
-  attribute = createAttribute();
+
   // optional: -
   if (symbol == SYM_MINUS) {
     sign = 1;
@@ -2899,19 +2897,27 @@ int* attribute;
   }
 
   // assert: allocatedTemporaries == n + 1
-  loadConstantBeforeNonConstant(attribute);
-  return ltype;
+    return ltype;
 }
 
 int  gr_shiftExpression(){
     int ltype;
     int operatorSymbol;
     int rtype;
+    int latt_type;
+    int latt_value;
+    int ratt_type;
+    int ratt_value;
+    int toFold;
 
+    int* attribute;
+      attribute = createAttribute();
     // assert: n = allocatedTemporaries
 
-    ltype = gr_simpleExpression();
-
+    ltype = gr_simpleExpression(attribute);
+    //save left side attribute
+    latt_type = getAttributeType(attribute);
+    latt_value = getAttributeValue(attribute);
     // assert: allocatedTemporaries == n + 1
 
     // is it a shift operand?
@@ -2920,25 +2926,48 @@ int  gr_shiftExpression(){
 
         getSymbol();
 
-        rtype = gr_simpleExpression();
-
+        rtype = gr_simpleExpression(attribute);
+        ratt_type = getAttributeType(attribute);
+        ratt_value = getAttributeValue(attribute);
         // assert: allocatedTemporaries == n + 2
-
+        if(latt_type == ATT_CONSTANT) {
+            if(ratt_type == ATT_CONSTANT) { // both constants fold
+                toFold = 1;
+            } else {
+                toFold = 0;
+            }
+        } else  { // left non constant so right must be loaded too, negative is taken care of in this case in the first time
+            loadConstantBeforeNonConstant(attribute);
+            toFold = 0;
+        }
         if (rtype == INTSTAR_T){
             typeWarning(INT_T, rtype);
         } else {
             if (operatorSymbol == SYM_LEFT_SHIFT){
-                emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
+                if(toFold == 1) {
+                    setAttributeValue(attribute, latt_value << ratt_value);
+                } else {
+                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLLV);
+                }
             }else if(operatorSymbol == SYM_RIGHT_SHIFT){
-                emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
+                if(toFold == 1) {
+                    setAttributeValue(attribute, latt_value >> ratt_value);
+                } else {
+                    emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SRLV);
+                }
             }
         }
 
-        tfree(1);
+        if(toFold == 0) { // if not constantly folded free one register,
+                tfree(1);
+        }
+        //save new left side before loop
+        latt_type = getAttributeType(attribute);
+        latt_value = getAttributeValue(attribute);
     }
 
     // assert: allocatedTemporaries == n + 1
-
+    loadConstantBeforeNonConstant(attribute); // needed unless the method that calls this one handles attributes
     return ltype;
 }
 
