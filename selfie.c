@@ -491,7 +491,7 @@ void help_procedure_epilogue(int parameters);
 
 int  gr_call(int* procedure);
 int  gr_factor(int* attribute);
-int  gr_term();
+int  gr_term(int* attribute);
 int  gr_simpleExpression();
 int  gr_shiftExpression();
 int  gr_expression();
@@ -2715,18 +2715,16 @@ int gr_factor(int* attribute) {
     return type;
 }
 
-int gr_term() {
+int gr_term(int* attribute) {
   int ltype;
   int operatorSymbol;
   int rtype;
-  int* attribute;
   int latt_type;
   int latt_value;
   int ratt_type;
   int ratt_value;
   int toFold;
 
-  attribute = createAttribute();
   // assert: n = allocatedTemporaries
 
   ltype = gr_factor(attribute);
@@ -2789,7 +2787,6 @@ int gr_term() {
     latt_value = getAttributeValue(attribute);
   }
   // assert: allocatedTemporaries == n + 1
-  loadConstantBeforeNonConstant(attribute);
   return ltype;
 }
 
@@ -2798,18 +2795,23 @@ int gr_simpleExpression() {
   int ltype;
   int operatorSymbol;
   int rtype;
+  int latt_type;
+  int latt_value;
+  int ratt_type;
+  int ratt_value;
+  int toFold;
+
+int* attribute;
 
   // assert: n = allocatedTemporaries
-
+  attribute = createAttribute();
   // optional: -
   if (symbol == SYM_MINUS) {
     sign = 1;
 
     mayBeINTMIN = 1;
     isINTMIN  = 0;
-
     getSymbol();
-
     mayBeINTMIN = 0;
 
     if (isINTMIN) {
@@ -2822,18 +2824,19 @@ int gr_simpleExpression() {
   } else
     sign = 0;
 
-  ltype = gr_term();
-
+  ltype = gr_term(attribute);
+  //save left side attribute
+  latt_type = getAttributeType(attribute);
+  latt_value = getAttributeValue(attribute);
   // assert: allocatedTemporaries == n + 1
-
-  if (sign) {
-    if (ltype != INT_T) {
-      typeWarning(INT_T, ltype);
-
-      ltype = INT_T;
-    }
-
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+  if(latt_type == ATT_NOT) {
+      if (sign) {
+        if (ltype != INT_T) {
+          typeWarning(INT_T, ltype);
+          ltype = INT_T;
+        }
+        emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+      }
   }
 
   // + or -?
@@ -2842,32 +2845,61 @@ int gr_simpleExpression() {
 
     getSymbol();
 
-    rtype = gr_term();
-
+    rtype = gr_term(attribute);
+    ratt_type = getAttributeType(attribute);
+    ratt_value = getAttributeValue(attribute);
     // assert: allocatedTemporaries == n + 2
+
+    if(latt_type == ATT_CONSTANT) {
+        if(ratt_type == ATT_CONSTANT) { // both constants fold
+            toFold = 1;
+        } else {
+            toFold = 0;
+            if (sign) { // delayed negative load
+              if (ltype != INT_T) {
+                typeWarning(INT_T, ltype);
+                ltype = INT_T;
+              }
+              emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+            }
+        }
+    } else  { // left non constant so right must be loaded too, negative is taken care of in this case in the first time
+        loadConstantBeforeNonConstant(attribute);
+        toFold = 0;
+    }
 
     if (operatorSymbol == SYM_PLUS) {
       if (ltype == INTSTAR_T) {
         if (rtype == INT_T)
           // pointer arithmetic: factor of 2^2 of integer operand
+          loadConstantBeforeNonConstant(attribute); // no constant folding on pointers since usually they will not be constant
           emitLeftShiftBy(2);
       } else if (rtype == INTSTAR_T)
         typeWarning(ltype, rtype);
-
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
-
+        if(toFold == 1) {
+            setAttributeValue(attribute, latt_value + ratt_value);
+        } else {
+            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+        }
     } else if (operatorSymbol == SYM_MINUS) {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
-
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+        if(toFold == 1) {
+            setAttributeValue(attribute, latt_value - ratt_value);
+        } else {
+            emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+        }
     }
-
-    tfree(1);
+    if(toFold == 0) { // if not constantly folded free one register,
+            tfree(1);
+    }
+    //save new left side before loop
+    latt_type = getAttributeType(attribute);
+    latt_value = getAttributeValue(attribute);
   }
 
   // assert: allocatedTemporaries == n + 1
-
+  loadConstantBeforeNonConstant(attribute);
   return ltype;
 }
 
