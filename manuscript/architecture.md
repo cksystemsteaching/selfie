@@ -1,5 +1,10 @@
 # 3. Architecture and Language
 
+The idea of this chapter is to explain how computers work and how to program them using a set of simple examples. The focus is on understanding the relationship of computer (architecture) and programming (language) as early as possible. This is in contrast to the traditional approach of teaching both topics in separate classes, or even just teaching programming without ever explaining how the machine works. We believe that knowing how computers work in principle is important for programming. Gladly, figuring out how they work is not that hard.
+
+[Computer Architecture][]
+: A set of rules and methods that describe the functionality, organization, and implementation of computer systems.
+
 Imagine you are taking a class to learn a foreign language. One particularly interesting type of class is when the language is taught by speaking in that language without using any other language. This means that as soon as the class starts the teacher exclusively speaks in the language that everyone would like to learn but does not understand. This approach anyway works because the teacher may use means of communication other than spoken language such as gestures, facial expressions, and even body language. Questions may be asked in a language that everyone understands but answers are always given in the foreign language. Students are anyway encouraged to use the foreign language as soon as possible and eventually even ask questions in that language.
 
 We do something similar here. We explain how a computer works using examples written in the language that the computer *speaks* but we do not yet understand. That language is called machine code. However, we use elementary and Boolean algebra that everyone is familiar with as *body language* to clarify the meaning of machine code. Hard to believe but machine code is so simple that elementary and Boolean algebra is enough. The only problem is that machine code is not really a language that anyone but a few computer engineers enjoy. Most code these days is actually written in higher-level programming languages. We therefore introduce in a number of examples a simple high-level programming language called C\*, pronounced *see star*. The meaning of C\* is explained using machine code as another type of body language. Interestingly, our understanding of machine code and how a computer works will also improve as a result.
@@ -10,11 +15,45 @@ Q> What is the difference between natural languages and programming languages?
 Q>
 Q> Programming languages are formalisms, not languages!
 
-Another potentially misleading term is architecture which in computer science circles refers to the architecture of digital processors, not buildings. The title of this chapter is obviously meant in the sense of computer science, that is, architecture means computers and language means programming languages which are not really languages. How confusing is that?
+[Programming Language][]
+: A formal constructed language designed to communicate instructions to a machine, particularly a computer.
 
 ## Von Neumann Architecture
 
 ![Von Neumann Architecture](images/von-neumann-architecture.jpg "Von Neumann Architecture")
+
+[Von Neumann Architecture][]
+: A computer architecture introduced in 1945 by the mathematician and physicist John von Neumann and others.
+
+[Central Processing Unit (CPU)][]
+: A digital electronic circuit within a computer that carries out the instructions of a computer program by performing the basic arithmetic, logical, control and input/output (I/O) operations specified by the instructions.
+
+[Arithmetic Logic Unit (ALU)][]
+: A digital electronic circuit that performs arithmetic and logical operations on integer binary numbers.
+
+[Register][]
+: A quickly accessible location available to a computer's central processing unit (CPU).
+
+[Control Unit][]
+: A component of a computer's central processing unit (CPU) that directs operation of the processor.
+
+[Program Counter (pc)][]
+: A register that indicates where a computer is in its program sequence.
+
+[Instruction Register (ir)][]
+: The part of a control unit that stores the instruction currently being executed or decoded.
+
+[Memory][]
+: Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
+
+[Input/Output (I/O)][]
+: The communication between an information processing system, such as a computer, and the outside world, possibly a human or another information processing system.
+
+[Instruction Set Architecture (ISA)][]
+: The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and input/output (I/O).
+
+[Microprocessor without Interlocked Pipeline Stages (MIPS)][]
+: An instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.).
 
 ## Low-Level Programming
 
@@ -74,34 +113,36 @@ Another potentially misleading term is architecture which in computer science ci
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the C* Program with Pointers](code/pointer.s)
 
-[vonneumann]: https://en.wikipedia.org/wiki/Von_Neumann_architecture "von Neumann Architecture"
-[cpu]: https://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit"
-[alu]: https://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit"
+[computer architecture]: https://en.wikipedia.org/wiki/Computer_architecture "Computer Architecture"
+[programming language]:
+[programming language]: https://en.wikipedia.org/wiki/Programming_language "Programming Language"
+
+[von neumann architecture]: https://en.wikipedia.org/wiki/Von_Neumann_architecture "Von Neumann Architecture"
+[central processing unit (cpu)]: https://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit"
+[arithmetic logic unit (alu)]: https://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit"
 [register]: https://en.wikipedia.org/wiki/Processor_register "Processor Register"
-[controlunit]: https://en.wikipedia.org/wiki/Control_unit "Control Unit"
-[pc]: https://en.wikipedia.org/wiki/Program_counter "Program Counter"
-[ir]: https://en.wikipedia.org/wiki/Program_counter "Instruction Register"
+[control unit]: https://en.wikipedia.org/wiki/Control_unit "Control Unit"
+[program counter (pc)]: https://en.wikipedia.org/wiki/Program_counter "Program Counter"
+[instruction register (ir)]: https://en.wikipedia.org/wiki/Instruction_register "Instruction Register"
 [memory]: https://en.wikipedia.org/wiki/Computer_memory "Computer Memory"
-[io]: https://en.wikipedia.org/wiki/Input/output "Input/Output"
+[input/output (i/o)]: https://en.wikipedia.org/wiki/Input/output "Input/Output"
+[instruction set architecture (isa)]: https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture"
+[microprocessor without interlocked pipeline stages (mips)]: https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS"
 
-[mips]: https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS Architecture"
-
-[isa]: https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture"
-[machinecode]: https://en.wikipedia.org/wiki/Machine_code "Machine Code"
+[machine code]: https://en.wikipedia.org/wiki/Machine_code "Machine Code"
 [opcode]: https://en.wikipedia.org/wiki/Opcode "Opcode"
 [assembly]: https://en.wikipedia.org/wiki/Assembly_language "Assembly Language"
 [mnemonic]: https://en.wikipedia.org/wiki/Mnemonic "Mnemonic"
-
-[addressingmodes]: https://en.wikipedia.org/wiki/Addressing_mode "Addressing Modes"
+[addressing modes]: https://en.wikipedia.org/wiki/Addressing_mode "Addressing Modes"
 [branch]: https://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
 
-[highlevelprogramming]: https://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming"
+[high-level programming]: https://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming"
 [c]: https://en.wikipedia.org/wiki/C_(programming_language) "C"
 [declaration]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration"
-[globalvariable]: https://en.wikipedia.org/wiki/Global_variable "Global Variable"
+[global variable]: https://en.wikipedia.org/wiki/Global_variable "Global Variable"
 [scope]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Scope"
 [subroutine]: https://en.wikipedia.org/wiki/Subroutine "Subroutine"
-[localvariable]: https://en.wikipedia.org/wiki/Local_variable "Local Variable"
+[local variable]: https://en.wikipedia.org/wiki/Local_variable "Local Variable"
 
 [imperative]: https://en.wikipedia.org/wiki/Imperative_programming "Imperative Programming"
 [statement]: https://en.wikipedia.org/wiki/Statement_(computer_science) "Statement"
