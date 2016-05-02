@@ -24,11 +24,37 @@ Q> Programming languages are formalisms, not languages!
 
 ![Von Neumann Architecture](images/von-neumann-architecture.jpg "Von Neumann Architecture")
 
+Most computers including smart phones and tablets are at their core based on a computer architecture that has not changed in a long time. It is known as the *von Neumann Architecture*.
+
 [Von Neumann Architecture][]
 : A computer architecture introduced in 1945 by the mathematician and physicist John von Neumann and others.
 
+The idea is very simple. There is a *central processing unit* called a CPU that executes instructions of a computer program stored as machine code in so-called *main memory* or *memory* for short. The purpose of the program is to direct the CPU to compute something and use main memory not occupied by code for storing data. In particular, the CPU fetches instructions from memory and executes them. During code execution the CPU is directed by the instructions to read data from memory, compute something, write data to memory, and even communicate with the outside world.
+
 [Central Processing Unit (CPU)][]
 : A digital electronic circuit within a computer that carries out the instructions of a computer program by performing the basic arithmetic, logical, control and input/output (I/O) operations specified by the instructions.
+
+The key innovation of the von Neumann Architecture is that code and data are both stored in main memory. In fact, since code and data are just bits there is no difference in representation either.
+
+[Memory][]
+: Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
+
+Since code can be seen as data and vice versa, code is really just pure information known as *software* clearly distinct from physical hardware. The von Neumann Architecture is thus a machine model for executing software.
+
+[Software][]
+: That part of a computer system that consists of encoded information or computer instructions, in contrast to the physical hardware from which the system is built.
+
+Now, how does code and data get into a computer, and out? This is done through so-called *input/output* (I/O) devices such as keyboards and screens but also network and storage adapters, for example. Storage adapters are usually connected to "secondary storage" which is non-volatile storage containing code and data. In contrast, main memory is typically volatile meaning it loses its content when power is cut. However, volatility of memory is a property not relevant in the von Neumann Architecture.
+
+[Input/Output (I/O)][]
+: The communication between an information processing system, such as a computer, and the outside world, possibly a human or another information processing system.
+
+But how does a computer with empty memory load code into memory to execute it? In other words, how does the CPU know what to do if there are no instructions on what to do? This is a typical computer science paradox called *bootstrapping* derived from the phrase "to pull oneself up by one's bootstraps". Even more amusingly, there is also the related story of the Baron Munchausen who pulled himself (and his horse) out of a swamp by his pigtail.
+
+Well, in most computers there is a special program called a *bootloader* stored in special non-volatile memory from which the CPU fetches instructions and executes them if main memory is empty (initially or after a loss of memory). The bootloader directs the CPU to load code into main memory from some I/O device such as the network or storage adapter. Once this is done control is turned over to main memory and the CPU from then on fetches and executes the code loaded into main memory.
+
+[Booting][]
+: The initialization of a computerized system.
 
 [Arithmetic Logic Unit (ALU)][]
 : A digital electronic circuit that performs arithmetic and logical operations on integer binary numbers.
@@ -44,12 +70,6 @@ Q> Programming languages are formalisms, not languages!
 
 [Instruction Register (ir)][]
 : The part of a control unit that stores the instruction currently being executed or decoded.
-
-[Memory][]
-: Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
-
-[Input/Output (I/O)][]
-: The communication between an information processing system, such as a computer, and the outside world, possibly a human or another information processing system.
 
 [Instruction Set Architecture (ISA)][]
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and input/output (I/O).
@@ -121,13 +141,15 @@ Q> Programming languages are formalisms, not languages!
 
 [von neumann architecture]: https://en.wikipedia.org/wiki/Von_Neumann_architecture "Von Neumann Architecture"
 [central processing unit (cpu)]: https://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit"
+[memory]: https://en.wikipedia.org/wiki/Computer_memory "Computer Memory"
+[software]: https://en.wikipedia.org/wiki/Software "Software"
+[input/output (i/o)]: https://en.wikipedia.org/wiki/Input/output "Input/Output"
+[booting]: https://en.wikipedia.org/wiki/Booting "Booting"
 [arithmetic logic unit (alu)]: https://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit"
 [register]: https://en.wikipedia.org/wiki/Processor_register "Processor Register"
 [control unit]: https://en.wikipedia.org/wiki/Control_unit "Control Unit"
 [program counter (pc)]: https://en.wikipedia.org/wiki/Program_counter "Program Counter"
 [instruction register (ir)]: https://en.wikipedia.org/wiki/Instruction_register "Instruction Register"
-[memory]: https://en.wikipedia.org/wiki/Computer_memory "Computer Memory"
-[input/output (i/o)]: https://en.wikipedia.org/wiki/Input/output "Input/Output"
 [instruction set architecture (isa)]: https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture"
 [microprocessor without interlocked pipeline stages (mips)]: https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS"
 
