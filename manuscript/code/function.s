@@ -21,7 +21,13 @@
 0x1C4(~7): 0x08000073: j 0x73[0x1CC]      // statement in main is that the
 0x1C8(~7): 0x00000000: nop                // value of x is on the stack.
 -------------------------------------------------------------------------------
-0x1CC(~10)-0x1E4(~10): epilogue of f unchanged from p
+0x1CC(~10): 0x27DD0000: addiu $sp,$fp,0 // the epilogue of the procedure f,
+0x1D0(~10): 0x8FBE0000: lw $fp,0($sp)   // just like the epilogue of p except
+0x1D4(~10): 0x27BD0004: addiu $sp,$sp,4 // that the space for the value of the
+0x1D8(~10): 0x8FBF0000: lw $ra,0($sp)   // parameter x on the stack is
+0x1DC(~10): 0x27BD0008: addiu $sp,$sp,8 // deallocated here before returning to
+0x1E0(~10): 0x03E00008: jr $ra          // the procedure main.
+0x1E4(~10): 0x00000000: nop
 -------------------------------------------------------------------------------
 0x1E8(~11)-0x1F8(~11): unchanged prologue of main
 -------------------------------------------------------------------------------
