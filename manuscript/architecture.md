@@ -49,35 +49,51 @@ Now, how does code and data get into a computer, and out? This is done through s
 [Input/Output (I/O)][]
 : The communication between an information processing system, such as a computer, and the outside world, possibly a human or another information processing system.
 
-But how does a computer with empty memory load code into memory to execute it? In other words, how does the CPU know what to do if there are no instructions on what to do? This is a typical computer science paradox called *bootstrapping* derived from the phrase "to pull oneself up by one's bootstraps". Even more amusingly, there is also the related story of the Baron Munchausen who pulled himself (and his horse) out of a swamp by his pigtail.
+But how does a computer with empty memory load code into memory to execute it? In other words, how does the CPU know what to do if there are no instructions on what to do? Keep in mind that when turning on a computer the only thing the CPU can do is to follow the instructions of a computer program. This is a typical paradox in computer science called *bootstrapping* derived from the phrase "to pull oneself up by one's bootstraps". Even more amusingly, there is also the related story of the Baron Munchausen who pulled himself (and his horse) out of a swamp by his pigtail.
 
-Well, in most computers there is a special program called a *bootloader* stored in special non-volatile memory from which the CPU fetches instructions and executes them if main memory is empty (initially or after a loss of memory). The bootloader directs the CPU to load code into main memory from some I/O device such as the network or storage adapter. Once this is done control is turned over to main memory and the CPU from then on fetches and executes the code loaded into main memory.
+Well, in most computers there is a special program called a *bootloader* stored in special non-volatile memory from which the CPU fetches instructions and executes them if main memory is empty (initially or after a loss of memory). The bootloader contains instructions that direct the CPU to load code into main memory from some I/O device such as the network or storage adapter. Once this is done control is turned over to main memory and the CPU from then on fetches and executes the instructions loaded into main memory.
 
 [Booting][]
 : The initialization of a computerized system.
 
-[Arithmetic Logic Unit (ALU)][]
-: A digital electronic circuit that performs arithmetic and logical operations on integer binary numbers.
-
-[Register][]
-: A quickly accessible location available to a computer's central processing unit (CPU).
+The arguably most important piece of information a CPU needs to remember is which instruction it is currently executing and where it finds the next instruction to execute. For this purpose a CPU maintains an *instruction register* (IR) which contains the currently executed instruction and a so-called *program counter* (PC) which identifies the location of the next instruction the CPU is supposed to execute. Both IR and PC are part of the *control unit* of a CPU.
 
 [Control Unit][]
 : A component of a computer's central processing unit (CPU) that directs operation of the processor.
 
-[Program Counter (pc)][]
+When a CPU is done executing an instruction it fetches the next instruction from the location identified by the PC and stores that instruction in the IR. Then the CPU decodes the instruction to find out what it is supposed to do. Lastly, the CPU executes the instruction accordingly which includes changing the PC to the location of the instruction the current instruction wants the CPU to execute next. Once the CPU is done with executing the current instruction and in particular changing the PC it fetches the next instruction identified by the PC and so on ad infinitum or until power is turned off.
+
+[Instruction Register (IR)][]
+: The part of a control unit that stores the instruction currently being executed or decoded.
+
+Here it is important to understand that in principle a CPU really just executes one instruction after another, nothing else, but does that incredibly fast.
+
+[Program Counter (PC)][]
 : A register that indicates where a computer is in its program sequence.
 
-[Instruction Register (ir)][]
-: The part of a control unit that stores the instruction currently being executed or decoded.
+Each individual instruction represents a tiny step in any computation so in the end it is only the speed of execution that enables computers to do interesting work in reasonable amounts of time. This implies that understanding how a computer works only requires knowing what these instructions do. To facilitate fast execution a CPU typically features a number of *registers* that can be accessed much faster than main memory.
+
+[Register][]
+: A quickly accessible memory location available to a computer's central processing unit (CPU).
+
+In fact, the IR and PC are such registers but there are also others. Registers are the fastest memory of a computer, much faster than main memory. However, because of technical and economical limitations a CPU usually features only a small amount of registers compared to main memory. An important problem is therefore to write programs that make efficient use of registers and main memory by keeping frequently needed data in registers and the rest in memory.
+
+In addition to the control unit with the IR and the PC, a CPU also features an *arithmetic logic unit* (ALU) with its own set of registers for performing actual computation. For example, an ALU may add the values stored in two registers and save the result in a third register for further computation.
+
+[Arithmetic Logic Unit (ALU)][]
+: A digital electronic circuit that performs arithmetic and logical operations on integer binary numbers.
+
+To summarize, the von Neumann Architecture is a machine model consisting of a CPU connected to main memory for storing code and data and connected to I/O devices for communication. A CPU consists of a control unit for executing instructions and an arithmetic logic unit for actual computation. The typical workflow of a computer is to bootstrap first by loading code from secondary storage into main memory and then execute the loaded code. Typically, that code directs the CPU to retrieve data from the outside world through some I/O communication, perform some computation, and eventually send data back to the outside world. Data needed for computation is kept in main memory and copied into registers for actual computation.
+
+A fundamental performance limitation of the von Neumann Architecture is the connection of the CPU and memory also known as the von Neumann Bottleneck. To perform computation the involved data as well as the involved code need to pass through that connection. However, for now we can safely ignore that limitation and rather focus on a widely used example of the von Neumann Architecture.
+
+## Low-Level Programming
 
 [Instruction Set Architecture (ISA)][]
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and input/output (I/O).
 
 [Microprocessor without Interlocked Pipeline Stages (MIPS)][]
 : An instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.).
-
-## Low-Level Programming
 
 ## High-Level Programming
 
