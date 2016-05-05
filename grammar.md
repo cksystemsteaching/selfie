@@ -28,7 +28,7 @@ type             = "int" [ "*" ] .
 
 array            =  identifier "[" index "]" .
 
-index      = expression . 
+index      = shiftExpression . 
 
 cast             = "(" type ")" .
 
@@ -68,7 +68,7 @@ statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "="
                     if | 
                     return ";" .
 
-variable         = type identifier | array .
+variable         = type (identifier | array) .
 
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .

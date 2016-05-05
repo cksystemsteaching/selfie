@@ -3445,11 +3445,10 @@ void gr_variable(int offset) {
   int arrayType;
   int size;
   int* attribute;
-  int a;
 
-
-  attribute = createAttribute();
-  //loadConstantBeforeNonConstant(attribute);
+  print((int*) "entering variable"); println();
+  //TODOtrio commenting the following lines in  makes it not pass make test.
+  //attribute = (createAttribute());
 
   size = 0;
 
@@ -3457,39 +3456,42 @@ void gr_variable(int offset) {
   type = gr_type();
   //array or variable name
   if (symbol == SYM_IDENTIFIER) {
-
     getSymbol();
 
-    //if there is a LBRACKET: array start
-    if(symbol == SYM_LBRACKET){
-
-      getSymbol();
-
-      if(type == INT_T){
-        type = INTARRAY_T;
-      } else {
-        type = INTSTARARRAY_T;
-      }
-
-      //calculate expression inside array brackets
-      arrayType = gr_shiftExpression(attribute);
-      //check if array size is Constant or not
-      if(arrayType == INT_T){
-        if(getAttributeType(attribute) == ATT_CONSTANT){
-
-          size = getAttributeValue(attribute) + 1;
-
-        }
-
-        if (symbol == SYM_RBRACKET){
-          getSymbol();
-        }
-
-        offset = offset - (size * SIZEOFINT);
-      }
-
-    }
     createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
+    //if there is a LBRACKET: array start
+//    if(symbol == SYM_LBRACKET){
+//      print((int*) "LBRACKET FOUND"); println();
+//      getSymbol();
+//      if(type == INT_T){
+//        type = INTARRAY_T;
+//      } else {
+//        type = INTSTARARRAY_T;
+//      }
+//      //calculate expression inside array brackets
+//      if(isExpression()){
+//        arrayType = gr_simpleExpression(attribute);
+//      } else {
+//        syntaxErrorUnexpected();
+//      }
+//      //check if array size is Constant or not
+//      if(arrayType == INT_T){
+//
+//        if (getAttributeType(attribute) == ATT_CONSTANT){
+//
+//          size = getAttributeValue(attribute) + 1;
+//        }
+//      }
+//      if (symbol == SYM_RBRACKET){
+//        getSymbol();
+//      } else {
+//        syntaxErrorSymbol(SYM_RBRACKET);
+//      }
+//      offset = offset - (size * SIZEOFINT);
+//    }
+
+
+    //createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
 
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
@@ -3497,7 +3499,6 @@ void gr_variable(int offset) {
     createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 0);
   }
 }
-
 
 void gr_initialization(int* name, int offset, int type) {
   int actualLineNumber;
