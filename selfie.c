@@ -1226,9 +1226,9 @@ void loadConstantBeforeNonConstant(int* attribute) {
   if (getAttributeType(attribute) == ATT_CONSTANT) {
     load_integer(getAttributeValue(attribute));
     setAttributeType(attribute, ATT_NOT);
-    printLineNumber((int*) "LoadConstant - ", lineNumber);
-    print(itoa(getAttributeValue(attribute), string_buffer, 10, 0, 0));
-    println();
+    // printLineNumber((int*) "LoadConstant - ", lineNumber);
+    // print(itoa(getAttributeValue(attribute), string_buffer, 10, 0, 0));
+    // println();
   }
 }
 
@@ -3446,7 +3446,6 @@ void gr_variable(int offset) {
   int size;
   int* attribute;
 
-  print((int*) "entering variable"); println();
   //TODOtrio commenting the following lines in  makes it not pass make test.
   //attribute = (createAttribute());
 
@@ -3458,40 +3457,33 @@ void gr_variable(int offset) {
   if (symbol == SYM_IDENTIFIER) {
     getSymbol();
 
+    //if there is a LBRACKET array start
+   if(symbol == SYM_LBRACKET){
+     getSymbol();
+     //calculate expression inside array brackets
+       //arraySizeType = gr_simpleExpression(attribute);
+       //TODOtrio
+       //implement array folding
+       //check if array size is Constant or not
+      if(isLiteral()){
+          size = literal;
+          getSymbol();
+       } else {
+         syntaxErrorSymbol(SYM_INTEGER);
+       }
+
+
+     if (symbol == SYM_RBRACKET){
+       getSymbol();
+     } else {
+       syntaxErrorSymbol(SYM_RBRACKET);
+     }
+   }
+     //type = INTARRAY_T;
+
+
+
     createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
-    //if there is a LBRACKET: array start
-//    if(symbol == SYM_LBRACKET){
-//      print((int*) "LBRACKET FOUND"); println();
-//      getSymbol();
-//      if(type == INT_T){
-//        type = INTARRAY_T;
-//      } else {
-//        type = INTSTARARRAY_T;
-//      }
-//      //calculate expression inside array brackets
-//      if(isExpression()){
-//        arrayType = gr_simpleExpression(attribute);
-//      } else {
-//        syntaxErrorUnexpected();
-//      }
-//      //check if array size is Constant or not
-//      if(arrayType == INT_T){
-//
-//        if (getAttributeType(attribute) == ATT_CONSTANT){
-//
-//          size = getAttributeValue(attribute) + 1;
-//        }
-//      }
-//      if (symbol == SYM_RBRACKET){
-//        getSymbol();
-//      } else {
-//        syntaxErrorSymbol(SYM_RBRACKET);
-//      }
-//      offset = offset - (size * SIZEOFINT);
-//    }
-
-
-    //createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
 
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
