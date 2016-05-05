@@ -140,6 +140,8 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
+int CHAR_LBRACKET     = '[';
+int CHAR_RBRACKET     = ']';
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -277,6 +279,8 @@ int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
 int SYM_LEFT_SHIFT   = 28; // <<
 int SYM_RIGHT_SHIFT  = 29; // >>
+int SYM_LBRACKET     = 30; // [
+int SYM_RBRACKET     = 31; // ]
 
 int* SYMBOLS; // array of strings representing symbols
 
@@ -308,7 +312,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = malloc(30 * SIZEOFINTSTAR);
+  SYMBOLS = malloc(32 * SIZEOFINTSTAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -339,7 +343,9 @@ void initScanner () {
   *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
   *(SYMBOLS + SYM_STRING)       = (int) "string";
   *(SYMBOLS + SYM_LEFT_SHIFT)   = (int) "<<";
-  *(SYMBOLS + SYM_RIGHT_SHIFT)   = (int) ">>";
+  *(SYMBOLS + SYM_RIGHT_SHIFT)  = (int) ">>";
+  *(SYMBOLS + SYM_LBRACKET)     = (int) "[";
+  *(SYMBOLS + SYM_RBRACKET)     = (int) "]";
 
   character = CHAR_EOF;
   symbol  = SYM_EOF;
@@ -375,6 +381,7 @@ int reportUndefinedProcedures();
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset
 // |  7 | scope   | REG_GP, REG_FP
+// |  8 | arraylength |
 // +----+---------+
 
 int* getNextEntry(int* entry)  { return (int*) *entry; }
@@ -385,6 +392,7 @@ int  getType(int* entry)       { return        *(entry + 4); }
 int  getValue(int* entry)      { return        *(entry + 5); }
 int  getAddress(int* entry)    { return        *(entry + 6); }
 int  getScope(int* entry)      { return        *(entry + 7); }
+int  getArrayLength(int* entry){ return        *(entry + 8); }
 
 void setNextEntry(int* entry, int* next)    { *entry       = (int) next; }
 void setString(int* entry, int* identifier) { *(entry + 1) = (int) identifier; }
@@ -394,6 +402,8 @@ void setType(int* entry, int type)          { *(entry + 4) = type; }
 void setValue(int* entry, int value)        { *(entry + 5) = value; }
 void setAddress(int* entry, int address)    { *(entry + 6) = address; }
 void setScope(int* entry, int scope)        { *(entry + 7) = scope; }
+int  setArrayLength(int* entry, int arraylength){*(entry + 8) = arraylength; }
+
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1908,6 +1918,15 @@ int getSymbol() {
     getCharacter();
 
     symbol = SYM_RPARENTHESIS;
+  } else if (character == CHAR_LBRACKET)  {
+    getCharacter();
+
+    symbol = SYM_LBRACKET;
+
+  } else if (character == CHAR_RBRACKET)  {
+    getCharacter();
+
+    symbol = SYM_RBRACKET;
 
   } else if (character == CHAR_LBRACE) {
     getCharacter();
@@ -1983,7 +2002,7 @@ int getSymbol() {
 void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address) {
   int* newEntry;
 
-  newEntry = malloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+  newEntry = malloc(2 * SIZEOFINTSTAR + 7 * SIZEOFINT);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -3424,6 +3443,7 @@ void gr_variable(int offset) {
      type = gr_type();
 
      if (symbol == SYM_IDENTIFIER) {
+
          createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
 
          getSymbol();
