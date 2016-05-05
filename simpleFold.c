@@ -1,4 +1,8 @@
 
+
+
 int main(int argc, int* argv) {
-  int a[2];
+  int a;
+  a = 19 + 10;
+  int b;
 }
