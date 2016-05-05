@@ -5,6 +5,7 @@ CFLAGS := -w -m32 -D'main(a,b)=main(a,char**argv)'
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
+
 # Consider these targets as targets, not files
 .PHONY : test clean
 
