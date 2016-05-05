@@ -1922,7 +1922,6 @@ int getSymbol() {
     symbol = SYM_RPARENTHESIS;
   } else if (character == CHAR_LBRACKET)  {
     getCharacter();
-
     symbol = SYM_LBRACKET;
 
   } else if (character == CHAR_RBRACKET)  {
@@ -3445,6 +3444,7 @@ void gr_variable(int offset) {
      int arrayType;
      int* attribute;
      int size;
+     print((int*) "entering variable"); println();
 
      attribute = createAttribute();
      size = 0;
@@ -3453,9 +3453,11 @@ void gr_variable(int offset) {
      type = gr_type();
      //array or variable name
      if (symbol == SYM_IDENTIFIER) {
+       print((int*) "IDENTIFIER FOUND"); println();
        getSymbol();
        //if there is a LBRACKET: array start
        if(symbol == SYM_LBRACKET){
+         print((int*) "LBRACKET FOUND"); println();
          getSymbol();
          if(type == INT_T){
            type = INTARRAY_T;
@@ -3470,8 +3472,11 @@ void gr_variable(int offset) {
          }
          //check if array size is Constant or not
          if(arrayType == INT_T){
-           if (getAttributeType(*attribute) == ATT_CONSTANT)
-            size = getAttributeValue(*attribute) + 1;
+
+           if (getAttributeType(attribute) == ATT_CONSTANT){
+
+            size = getAttributeValue(attribute) + 1;
+          }
          }
          if (symbol == SYM_RBRACKET){
            getSymbol();
@@ -3709,7 +3714,6 @@ void gr_cstar() {
   while (symbol != SYM_EOF) {
     while (lookForType()) {
       syntaxErrorUnexpected();
-
       if (symbol == SYM_EOF)
         exit(-1);
       else
@@ -6882,7 +6886,6 @@ int main(int argc, int* argv) {
   initInterpreter();
 
   selfieName = (int*) *argv;
-
   argc = argc - 1;
   argv = argv + 1;
 

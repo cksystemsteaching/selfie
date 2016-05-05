@@ -26,7 +26,7 @@ identifier       = letter { letter | digit | "_" } .
 
 type             = "int" [ "*" ] .
 
-array            = ["int"] identifier "[" index "]" .
+array            =  identifier "[" index "]" .
 
 index      = expression . 
 
