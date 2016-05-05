@@ -26,9 +26,9 @@ identifier       = letter { letter | digit | "_" } .
 
 type             = "int" [ "*" ] .
 
-array            = "int" "[" arraylength "]" .
+array            = ["int"] identifier "[" index "]" .
 
-arraylength      = expression . 
+index      = expression . 
 
 cast             = "(" type ")" .
 
