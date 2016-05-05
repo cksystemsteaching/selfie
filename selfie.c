@@ -3440,16 +3440,15 @@ int gr_type() {
   return type;
 }
 
-
 void gr_variable(int offset) {
   int type;
   int expressionType;
   int size;
-  //int* attribute;
+  int* attribute;
 
-  //print((int*) "entering variable"); println();
+  print((int*) "entering variable"); println();
   //TODOtrio commenting the following lines in  makes it not pass make test.
-//  attribute = createAttribute();
+  //attribute = (createAttribute());
 
   size = 0;
 
@@ -3459,35 +3458,40 @@ void gr_variable(int offset) {
   if (symbol == SYM_IDENTIFIER) {
     getSymbol();
 
+    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
     //if there is a LBRACKET: array start
-   if(symbol == SYM_LBRACKET){
-  //    printLineNumber((int*) "error", lineNumber);
-        getSymbol();
+//    if(symbol == SYM_LBRACKET){
+//      print((int*) "LBRACKET FOUND"); println();
+//      getSymbol();
+//      if(type == INT_T){
+//        type = INTARRAY_T;
+//      } else {
+//        type = INTSTARARRAY_T;
+//      }
+//      //calculate expression inside array brackets
+//      if(isExpression()){
+//        arrayType = gr_simpleExpression(attribute);
+//      } else {
+//        syntaxErrorUnexpected();
+//      }
+//      //check if array size is Constant or not
+//      if(arrayType == INT_T){
+//
+//        if (getAttributeType(attribute) == ATT_CONSTANT){
+//
+//          size = getAttributeValue(attribute) + 1;
+//        }
+//      }
+//      if (symbol == SYM_RBRACKET){
+//        getSymbol();
+//      } else {
+//        syntaxErrorSymbol(SYM_RBRACKET);
+//      }
+//      offset = offset - (size * SIZEOFINT);
+//    }
 
-      //calculate expression inside array brackets
-  //    if(isExpression()){
-  //      expressionType = gr_simpleExpression(attribute);
-  //    } else {
-  //      syntaxErrorUnexpected();
-  //    }
-     //check if array size is Constant or not
-  //    if(expressionType == INT_T){
 
-    //    if (getAttributeType(attribute) == ATT_CONSTANT){
-
-    //      size = getAttributeValue(attribute);
-    //     }
-    //   }
-    //  if (symbol == SYM_RBRACKET){
-    //     getSymbol();
-    //  } else {
-    //     syntaxErrorSymbol(SYM_RBRACKET);
-    //   }
-    //   offset = offset - (size * SIZEOFINT);
-     }
-
-
-   createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
+    //createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
 
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
