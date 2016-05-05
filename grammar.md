@@ -26,12 +26,15 @@ identifier       = letter { letter | digit | "_" } .
 
 type             = "int" [ "*" ] .
 
+array            = "int" "[" arraylength "]" .
+
+arraylength      = expression . 
+
 cast             = "(" type ")" .
 
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
 literal          = integer | "'" ascii_character "'" .
---------attribute start -----------
 factor           = [ cast ] 
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
@@ -43,7 +46,6 @@ term             = factor { ( "*" | "/" | "%" ) factor } .
 simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
 
 shiftExpression  = simpleExpression { ( ">>" | "<<" ) simpleExpression } .
---------attribute end   -----------
 expression       = shiftExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) shiftExpression ] .
 
 while            = "while" "(" expression ")" 
@@ -66,7 +68,7 @@ statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "="
                     if | 
                     return ";" .
 
-variable         = type identifier .
+variable         = type identifier | array .
 
 procedure        = "(" [ variable { "," variable } ] ")" 
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
