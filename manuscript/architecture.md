@@ -24,27 +24,27 @@ Q> Programming languages are formalisms, not languages!
 
 ![Von Neumann Architecture](images/von-neumann-architecture.jpg "Von Neumann Architecture")
 
-Most computers including smart phones and tablets are at their core based on a computer architecture that has not changed in a long time. It is known as the *von Neumann Architecture*.
+Most computers including smart phones and tablets are at their core based on a computer architecture that has not changed in a long time. It is known as the *von Neumann architecture*.
 
 [Von Neumann Architecture][]
 : A computer architecture introduced in 1945 by the mathematician and physicist John von Neumann and others.
 
-The idea is very simple. There is a *central processing unit* called a CPU that executes instructions of a computer program stored as machine code in so-called *main memory* or *memory* for short. The purpose of the program is to direct the CPU to compute something and use main memory not occupied by code for storing data. In particular, the CPU fetches instructions from memory and executes them. During code execution the CPU is directed by the instructions to read data from memory, compute something, write data to memory, and even communicate with the outside world.
+The idea is very simple. There is a *central processing unit* (CPU), also called a *processor*, that executes instructions of a computer program stored as machine code in so-called *main memory* or *memory* for short. The purpose of the program is to direct the CPU to compute something and use main memory not occupied by code for storing data. In particular, the CPU fetches instructions from memory and executes them. During code execution the CPU is directed by the instructions to read data from memory, compute something, write data to memory, and even communicate with the outside world.
 
 [Central Processing Unit (CPU)][]
 : A digital electronic circuit within a computer that carries out the instructions of a computer program by performing the basic arithmetic, logical, control and input/output (I/O) operations specified by the instructions.
 
-The key innovation of the von Neumann Architecture is that code and data are both stored in main memory. In fact, since code and data are just bits there is no difference in representation either.
+The key innovation of the von Neumann architecture is that code and data are both stored in main memory. In fact, since code and data are just bits there is no difference in representation either.
 
 [Memory][]
 : Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
 
-Since code can be seen as data and vice versa, code is really just pure information known as *software* clearly distinct from physical hardware. The von Neumann Architecture is thus a machine model for executing software.
+Since code can be seen as data and vice versa, code is really just pure information known as *software* clearly distinct from physical hardware. The von Neumann architecture is thus a machine model for executing software.
 
 [Software][]
 : That part of a computer system that consists of encoded information or computer instructions, in contrast to the physical hardware from which the system is built.
 
-Now, how does code and data get into a computer, and out? This is done through so-called *input/output* (I/O) devices such as keyboards and screens but also network and storage adapters, for example. Storage adapters are usually connected to "secondary storage" which is non-volatile storage containing code and data. In contrast, main memory is typically volatile meaning it loses its content when power is cut. However, volatility of memory is a property not relevant in the von Neumann Architecture.
+Now, how does code and data get into a computer, and out? This is done through so-called *input/output* (I/O) devices such as keyboards and screens but also network and storage adapters, for example. Storage adapters are usually connected to "secondary storage" which is non-volatile storage containing code and data. In contrast, main memory is typically volatile meaning it loses its content when power is cut. However, volatility of memory is a property not relevant in the von Neumann architecture. We can thus ignore it.
 
 [Input/Output (I/O)][]
 : The communication between an information processing system, such as a computer, and the outside world, possibly a human or another information processing system.
@@ -71,7 +71,9 @@ Here it is important to understand that in principle a CPU really just executes 
 [Program Counter (PC)][]
 : A register that indicates where a computer is in its program sequence.
 
-Each individual instruction represents a tiny step in any computation so in the end it is only the speed of execution that enables computers to do interesting work in reasonable amounts of time. This implies that understanding how a computer works only requires knowing what these instructions do. To facilitate fast execution a CPU typically features a number of *registers* that can be accessed much faster than main memory.
+Each individual instruction represents a tiny step in any computation so in the end it is only the speed of execution that enables computers to do interesting work in reasonable amounts of time. This implies that understanding how a computer works only requires knowing what these instructions do.
+
+To facilitate fast execution a CPU typically features a number of *registers* that can be accessed much faster than main memory.
 
 [Register][]
 : A quickly accessible memory location available to a computer's central processing unit (CPU).
@@ -83,17 +85,23 @@ In addition to the control unit with the IR and the PC, a CPU also features an *
 [Arithmetic Logic Unit (ALU)][]
 : A digital electronic circuit that performs arithmetic and logical operations on integer binary numbers.
 
-To summarize, the von Neumann Architecture is a machine model consisting of a CPU connected to main memory for storing code and data and connected to I/O devices for communication. A CPU consists of a control unit for executing instructions and an arithmetic logic unit for actual computation. The typical workflow of a computer is to bootstrap first by loading code from secondary storage into main memory and then execute the loaded code. Typically, that code directs the CPU to retrieve data from the outside world through some I/O communication, perform some computation, and eventually send data back to the outside world. Data needed for computation is kept in main memory and copied into registers for actual computation.
+To summarize, the von Neumann architecture is a machine model consisting of a CPU connected to main memory for storing code and data and to I/O devices for communication. A CPU consists of a control unit for executing instructions and an arithmetic logic unit for actual computation. The typical workflow of a computer is to bootstrap first by loading code from secondary storage into main memory and then execute the loaded code. Typically, that code directs the CPU to retrieve data from the outside world through some I/O communication, perform some computation, and eventually send data back to the outside world. Data needed for computation is kept in main memory and copied into registers for actual computation.
 
-A fundamental performance limitation of the von Neumann Architecture is the connection of the CPU and memory also known as the von Neumann Bottleneck. To perform computation the involved data as well as the involved code need to pass through that connection. However, for now we can safely ignore that limitation and rather focus on a widely used example of the von Neumann Architecture.
+A fundamental performance limitation of the von Neumann architecture is the connection of the CPU and memory also known as the *von Neumann bottleneck*. To perform computation the involved data as well as the involved code need to pass through that connection. However, for now we can safely ignore that limitation and rather focus on a widely used example of the von Neumann architecture.
 
 ## Low-Level Programming
+
+In order to understand how a computer works we need to know how to program it in the language that the machine *understands*. This may sound very ambitious and difficult to do but is in fact not all that hard. The language of a computer, also called machine language, is defined by the *instruction set architecture* (ISA) of the machine's processor. There are many different processors with different ISAs but luckily they are all based on similar principles.
 
 [Instruction Set Architecture (ISA)][]
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and input/output (I/O).
 
+Programming a computer in machine language is considered low-level programming in the sense of a *low level of abstraction* close to the machine rather than any of its applications. Honestly, machine language is not at all meant to be used as formalism in which software is developed. It is rather designed to be efficiently executable and otherwise a target of tools that automatically translate software written on higher levels of abstraction more appropriate for humans. However, there are very simple and beautiful ISAs that are not only widely used in real processors but also for teaching computer architecture. One such ISA is *MIPS*.
+
 [Microprocessor without Interlocked Pipeline Stages (MIPS)][]
 : An instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.).
+
+MIPS is so simple it is actually fun to learn it, never mind the interlocked pipeline stages. To make things even simpler we decided to focus on the 32-bit version of MIPS called *MIPS32* where everything happens at the granularity of 32 bits. There are newer versions of MIPS with support of more bits for better performance. We can safely ignore them. Also, out of the 43 available MIPS32 instructions we only use a subset of 17 instructions that we call *MIPSter*.
 
 ## High-Level Programming
 
@@ -161,11 +169,12 @@ A fundamental performance limitation of the von Neumann Architecture is the conn
 [software]: https://en.wikipedia.org/wiki/Software "Software"
 [input/output (i/o)]: https://en.wikipedia.org/wiki/Input/output "Input/Output"
 [booting]: https://en.wikipedia.org/wiki/Booting "Booting"
-[arithmetic logic unit (alu)]: https://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit"
-[register]: https://en.wikipedia.org/wiki/Processor_register "Processor Register"
 [control unit]: https://en.wikipedia.org/wiki/Control_unit "Control Unit"
-[program counter (pc)]: https://en.wikipedia.org/wiki/Program_counter "Program Counter"
 [instruction register (ir)]: https://en.wikipedia.org/wiki/Instruction_register "Instruction Register"
+[program counter (pc)]: https://en.wikipedia.org/wiki/Program_counter "Program Counter"
+[register]: https://en.wikipedia.org/wiki/Processor_register "Processor Register"
+[arithmetic logic unit (alu)]: https://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit"
+
 [instruction set architecture (isa)]: https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture"
 [microprocessor without interlocked pipeline stages (mips)]: https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS"
 
