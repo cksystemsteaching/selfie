@@ -124,7 +124,7 @@ TODO: introduce MIPSter instructions.
 
 You may ask yourself how we can ever run MIPSter code and see what happens. Fortunately, we do not need a real MIPS processor to run MIPSter code. Computers have this fascinating ability to imitate each other and many other things. A computer or software running on a computer that imitates another computer (or even the same computer) is called an *emulator* which is exactly what we use here.
 
-[emulator][]
+[Emulator][]
 : Hardware or software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
 If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie][]. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented below is obtained with mipster.
