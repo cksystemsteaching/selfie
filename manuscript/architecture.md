@@ -111,7 +111,7 @@ MIPSter memory like most main memory today is *byte-addressed*. This means that 
 
 Why is it done like that? Simple. Accessing memory in larger chunks is faster and can easily be done through parallelization. To access 32 rather than 8 bits in one step we only need 32 rather than 8 wires between CPU and memory. There is of course also a price to pay which is space for the wires and energy for using them but that is a story for another day.
 
-Now, let us do a quick calculation here. With 36 registers times 32 bits a MIPSter CPU can store 1,152 bits in total. Each bit can either be zero or one. As a result, a MIPSter CPU can be in [2^1152^](http://www.wolframalpha.com/input/?i=2%5E1152) different *states* which is a number with 347 decimal digits, and this does not even include main memory yet. MIPSter memory can store 2^29^ equal to 536,870,912 bits and thus be in [2^536870912^](http://www.wolframalpha.com/input/?source=nav&i=2%5E536870912) different states which is a number with 161,614,249 decimal digits, seriously. In case you are wondering how to compute such numbers check out [Wolfram Alpha](http://www.wolframalpha.com "Wolfram Alpha").
+Now, let us do a quick calculation here. With 36 registers times 32 bits a MIPSter CPU can store 1,152 bits in total. Each bit can either be zero or one. As a result, a MIPSter CPU can be in 2^1152^ different *states* which is a number with [347 decimal digits](http://www.wolframalpha.com/input/?i=2%5E1152), and this does not even include main memory yet. MIPSter memory can store 2^29^ equal to 536,870,912 bits and thus be in 2^536870912^ different states which is a number with [161,614,249 decimal digits](http://www.wolframalpha.com/input/?i=2%5E536870912), seriously. In case you are wondering how to compute such numbers check out [Wolfram Alpha](http://www.wolframalpha.com "Wolfram Alpha").
 
 [State][]
 : A technical term for all the stored information, at a given instant in time, to which a digital circuit or computer program has access. The output of a circuit or program at any time is completely determined by its current inputs and its state.
@@ -124,7 +124,7 @@ TODO: introduce MIPSter instructions.
 
 You may ask yourself how we can ever run MIPSter code and see what happens. Fortunately, we do not need a real MIPS processor to run MIPSter code. Computers have this fascinating ability to imitate each other and many other things. A computer or software running on a computer that imitates another computer (or even the same computer) is called an *emulator* which is exactly what we use here.
 
-[Emulator][]
+[emulator][]
 : Hardware or software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
 If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie][]. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented below is obtained with mipster.
