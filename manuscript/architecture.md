@@ -127,7 +127,7 @@ You may ask yourself how we can ever run MIPSter code and see what happens. Fort
 [Emulator][]
 : Hardware or software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
-If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in selfie. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented below is obtained with mipster.
+If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie][]. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented below is obtained with mipster.
 
 ## High-Level Programming
 
@@ -186,7 +186,6 @@ If you are interested in the exact specification of MIPSter or would even like t
 <<[Formal Semantics of the C* Program with Pointers](code/pointer.s)
 
 [computer architecture]: https://en.wikipedia.org/wiki/Computer_architecture "Computer Architecture"
-[programming language]:
 [programming language]: https://en.wikipedia.org/wiki/Programming_language "Programming Language"
 
 [von neumann architecture]: https://en.wikipedia.org/wiki/Von_Neumann_architecture "Von Neumann Architecture"
@@ -231,3 +230,5 @@ If you are interested in the exact specification of MIPSter or would even like t
 [conditional]: https://en.wikipedia.org/wiki/Conditional_(computer_programming) "Conditional"
 [while]: https://en.wikipedia.org/wiki/While_loop "While Loop"
 [return]: https://en.wikipedia.org/wiki/Return_statement "Return Statement"
+
+[selfie]: http://selfie.cs.uni-salzburg.at "Selfie"
