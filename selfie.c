@@ -283,6 +283,7 @@ int SYM_LBRACKET     = 30; // [
 int SYM_RBRACKET     = 31; // ]
 
 int* SYMBOLS; // array of strings representing symbols
+//int SYMBOLS[32];
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -505,7 +506,7 @@ int  gr_call(int* procedure);
 int  gr_factor(int* attribute);
 int  gr_term(int* attribute);
 int  gr_simpleExpression(int* attribute);
-int  gr_shiftExpression();
+int  gr_shiftExpression(int * attribute);
 int  gr_expression();
 void gr_while();
 void gr_if();
@@ -2434,12 +2435,13 @@ void load_string(int* string) {
 
   allocatedMemory = allocatedMemory + roundUp(length, WORDSIZE);
 
-  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory, 0);
+  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory, length);
 
   talloc();
 
   emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
 }
+
 
 int help_call_codegen(int* entry, int* procedure) {
   int type;
@@ -2922,7 +2924,7 @@ int gr_simpleExpression(int* attribute) {
   return ltype;
 }
 
-int  gr_shiftExpression(){
+int  gr_shiftExpression(int* attribute){
   int ltype;
   int operatorSymbol;
   int rtype;
@@ -2932,8 +2934,8 @@ int  gr_shiftExpression(){
   int ratt_value;
   int toFold;
 
-  int* attribute;
-  attribute = createAttribute();
+  //int* attribute;
+  //attribute = createAttribute();
   // assert: n = allocatedTemporaries
 
   ltype = gr_simpleExpression(attribute);
@@ -3000,7 +3002,7 @@ int gr_expression() {
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_shiftExpression();
+  ltype = gr_shiftExpression(createAttribute());
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3010,7 +3012,7 @@ int gr_expression() {
 
     getSymbol();
 
-    rtype = gr_shiftExpression();
+    rtype = gr_shiftExpression(createAttribute());
 
     // assert: allocatedTemporaries == n + 2
 
@@ -3448,7 +3450,7 @@ void gr_variable(int offset) {
 
   print((int*) "entering variable"); println();
   //TODOtrio commenting the following lines in  makes it not pass make test.
-  //attribute = (createAttribute());
+  attribute = createAttribute();
 
   size = 0;
 
@@ -3458,7 +3460,38 @@ void gr_variable(int offset) {
   if (symbol == SYM_IDENTIFIER) {
     getSymbol();
 
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
+          if(symbol == SYM_LBRACKET){ print((int*) "in identifier [ "); println();
+            getSymbol();
+             //shiftExpression
+             if(isExpression()){
+                  expressionType = gr_shiftExpression(attribute);
+                  size = getAttributeValue(attribute);
+                    print((int*) "SIZE = ");print(itoa(getAttributeValue(attribute),string_buffer,10,0,0));  println();
+
+              } else {
+                  syntaxErrorUnexpected();
+              }
+
+
+
+             if(symbol == SYM_RBRACKET){ print((int*) "int array [expression]"); println();
+                getSymbol();
+                    if(type == INT_T){
+                          type = INTARRAY_T;
+                    }else if(type == INTSTAR_T){
+                          type = INTSTARARRAY_T;
+               }else {
+                       syntaxErrorSymbol(SYM_RBRACKET);
+                }
+             }
+             offset = offset - (size * SIZEOFINT);
+
+           }
+
+createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     //if there is a LBRACKET: array start
 //    if(symbol == SYM_LBRACKET){
 //      print((int*) "LBRACKET FOUND"); println();
@@ -3489,9 +3522,6 @@ void gr_variable(int offset) {
 //      }
 //      offset = offset - (size * SIZEOFINT);
 //    }
-
-
-    //createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, size);
 
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
@@ -6896,6 +6926,7 @@ int main(int argc, int* argv) {
     print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
     println();
   }
+
 
   return 0;
 }
