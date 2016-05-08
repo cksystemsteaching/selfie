@@ -125,7 +125,7 @@ X> If we would like to read the first byte in memory at address 0 we would have 
 X>
 X> Moreover, if we would like to read, say, the sixth byte in memory at address 5 we would have to read the second word in memory at address 4 containing the bytes at addresses 4, 5, 6, and 7. In other words, memory access can only be done at addresses that are multiples of four.
 
-Why is it done like that? Simple. Accessing memory in larger chunks is faster and can easily be done through parallelization. To access 32 rather than 8 bits in one step we only need 32 rather than 8 wires between CPU and memory. There is of course also a price to pay which is space for the wires and energy for using them but that is a story for another day.
+Why is it done like that? Simple. Accessing memory in larger chunks is faster and can easily be done through parallelization. To access 32 rather than 8 bits in one step we only need 32 rather than 8 wires in parallel between CPU and memory. There is of course also a price to pay which is space for the wires and energy for using them but that is a story for another day.
 
 Now, to get a better idea of how much memory we have in our machine let us do a quick calculation.
 
@@ -144,7 +144,42 @@ Turning a computer off and then on again in hope of getting the machine to work 
 
 In order to avoid that routine we could distinguish good from bad behavior by  partitioning the set of all machine states into *safe* and *unsafe* states and then check before running a program if the program will ever take the machine to an unsafe state. Computer scientists and increasingly also programmers are actually doing that with the help of advanced software development tools. However, the ongoing challenge is to handle the enormous amounts of machine states. So far only relatively small programs can be sanitized this way. Buggy software will therefore be with us in the foreseeable future.
 
-TODO: introduce MIPSter instructions.
+Now, let us write our first MIPSter program.
+
+```
+0x00000000: 0x2408002A: addiu $t0,$zero,42
+```
+
+Seriously? I am afraid, yes. But you will get used to it.
+
+First of all this program contains only one instruction which directs the CPU to load the decimal number [42][] into the ALU's general-purpose register called `$t0`. That's it. To see how this works let's walk through the example step by step.
+
+The leftmost hexadecimal number `0x00000000` is the address in main memory where the instruction is supposed to be stored. The hexadecimal number `0x2408002A` next to the address is in fact the instruction in *machine code*. That number really is the whole program. The rest is just there to make us feel better, I mean make it more readable for us.
+
+[Machine Code][]
+:
+
+So, what is `addiu $t0,$zero,42`? It is *assembly* which is meant to provide a human-readable version of machine code, in this case of `0x2408002A`. Despite their different appearance they are semantically equivalent.
+
+[Assembly][]
+:
+
+However, even `0x2408002A` is already a more compact representation of what the machine really sees which is the following 32-bit binary number:
+
+```
+00100100000010000000000000101010
+```
+
+That number is the real machine code. Both `0x2408002A` and `addiu $t0,$zero,42` are just different representations of that code.
+
+Assembly uses *mnemonic* to help us remember what machine code means. Here, `addiu`
+
+[Mnemonic][]
+:
+
+The `addiu` instruction stands for "add immediate unsigned".
+
+TODO: introduce other MIPSter instructions.
 
 You may ask yourself how we can ever run MIPSter code and see what happens. Fortunately, we do not need a real MIPS processor to run MIPSter code. Computers have this fascinating ability to imitate each other and many other things. A computer or software running on a computer that imitates another computer (or even the same computer) is called an *emulator* which is exactly what we use here.
 
@@ -228,7 +263,7 @@ If you are interested in the exact specification of MIPSter or would even like t
 [microprocessor without interlocked pipeline stages (mips)]: http://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS"
 
 [state]: http://en.wikipedia.org/wiki/State_(computer_science) "State"
-
+[42]: https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42"
 [emulator]: http://en.wikipedia.org/wiki/Emulator "Emulator"
 
 [machine code]: http://en.wikipedia.org/wiki/Machine_code "Machine Code"
