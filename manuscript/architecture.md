@@ -103,22 +103,46 @@ Programming a computer in machine language is considered low-level programming i
 
 MIPS is so simple it is actually fun to learn it, never mind the interlocked pipeline stages. To make things even simpler we decided to focus on the 32-bit version of MIPS called *MIPS32* where everything happens at the granularity of 32 bits. There are newer versions of MIPS with support of more bits for better performance. We can safely ignore them. Also, out of the 43 available MIPS32 instructions we only use a subset of 17 instructions that we call *MIPSter*. Most importantly, MIPSter is a proper subset of MIPS32, that is, all MIPSter code runs on MIPS32 machines but not vice versa.
 
-Before going through the list of MIPSter instructions, we need to know the registers and memory architecture of our MIPSter processor. Similar to the instructions, the registers are also just a subset of the registers of a real MIPS32 processor. All MIPSter registers including the IR and the PC are 32-bit each. This means that each register contains exactly 32 bits.  In addition to the 32-bit IR and the 32-bit PC there are, yes, 32 general-purpose 32-bit registers in the ALU plus two more special-purpose 32-bit registers called the *hi* and the *lo* register. This gives us a total of 36 32-bit registers in the CPU. In a real MIPS processor there are a few more registers but we can again safely ignore them.
+Before going through the list of MIPSter instructions, we need to know the registers and memory architecture of our MIPSter processor. Similar to the instructions, the registers are also just a subset of the registers of a real MIPS32 processor.
 
-The only missing piece is memory. Our MIPSter machine features 64MB of main memory, that is, 2^26^ bytes or 8 times 2^26^ equal to 2^29^ bits. The size of memory could be less or more but is ultimately determined by the capabilities of the processor. We have chosen 64MB because memory of that size can directly be accessed by all MIPSter instructions.
+T> All MIPSter registers including the IR and the PC are 32-bit each. This means that each register contains exactly 32 bits.
+T>
+T> In addition to the 32-bit IR and the 32-bit PC there are, yes, 32 general-purpose 32-bit registers in the ALU plus two more special-purpose 32-bit registers called the *hi* and the *lo* register.
+T>
+T> This gives us a total of 36 32-bit registers in the CPU.
 
-MIPSter memory like most main memory today is *byte-addressed*. This means that each byte in memory has its own address with the first byte being at address 0, the next at address 1, and so on. However, MIPSter memory, again like most main memory, is also *word-aligned*. Unsurprisingly, the word size in MIPSter is four bytes, that is, well, 32 bits. This means we can only access memory in chunks of four bytes or 32 bits and we can only do so at word boundaries. For example, if we would like to read the first byte in memory at address 0 we would have to read the whole first word in memory at address 0 containing not just the first byte but also the bytes at addresses 1, 2, and 3. Moreover, if we would like to read, say, the sixth byte in memory at address 5 we would have to read the second word in memory at address 4 containing the bytes at addresses 4, 5, 6, and 7. In other words, memory access can only be done at addresses that are multiples of four.
+In a real MIPS processor there are a few more registers but we can again safely ignore them. Now, the only missing piece is memory.
+
+T> Our MIPSter machine features 64MB of main memory, that is, 2^26^ bytes or 8 times 2^26^ equal to 2^29^ bits.
+
+The size of memory could be less or more but is ultimately determined by the capabilities of the processor. We have chosen 64MB because memory of that size can directly be accessed by all MIPSter instructions.
+
+MIPSter memory like most main memory today is *byte-addressed*. This means that each byte in memory has its own address with the first byte being at address 0, the next at address 1, and so on. However, MIPSter memory, again like most main memory, is also *word-aligned*. Unsurprisingly, the word size in MIPSter is four bytes, that is, well, 32 bits. This means we can only access memory in chunks of four bytes or 32 bits and we can only do so at word boundaries.
+
+Consider the following example.
+
+X> If we would like to read the first byte in memory at address 0 we would have to read the whole first word in memory at address 0 containing not just the first byte but also the bytes at addresses 1, 2, and 3.
+X>
+X> Moreover, if we would like to read, say, the sixth byte in memory at address 5 we would have to read the second word in memory at address 4 containing the bytes at addresses 4, 5, 6, and 7. In other words, memory access can only be done at addresses that are multiples of four.
 
 Why is it done like that? Simple. Accessing memory in larger chunks is faster and can easily be done through parallelization. To access 32 rather than 8 bits in one step we only need 32 rather than 8 wires between CPU and memory. There is of course also a price to pay which is space for the wires and energy for using them but that is a story for another day.
 
-Now, let us do a quick calculation here. With 36 registers times 32 bits a MIPSter CPU can store 1,152 bits in total. Each bit can either be zero or one. As a result, a MIPSter CPU can be in 2^1152^ different *states* which is a number with [347 decimal digits](http://www.wolframalpha.com/input/?i=2%5E1152), and this does not even include main memory yet. MIPSter memory can store 2^29^ equal to 536,870,912 bits and thus be in 2^536870912^ different states which is a number with [161,614,249 decimal digits](http://www.wolframalpha.com/input/?i=2%5E536870912), seriously. In case you are wondering how to compute such numbers check out [Wolfram Alpha](http://www.wolframalpha.com "Wolfram Alpha").
+Now, to get a better idea of how much memory we have in our machine let us do a quick calculation.
+
+T> With 36 registers times 32 bits a MIPSter CPU can store 1,152 bits in total. Each bit can either be zero or one. As a result, a MIPSter CPU can be in 2^1152^ different *states* of zeroes and ones which is a number with [347 decimal digits](http://www.wolframalpha.com/input/?i=2%5E1152), and this does not even include main memory yet.
+T>
+T> MIPSter memory can store 2^29^ equal to 536,870,912 bits and thus be in 2^536870912^ (!) different states which is a number with [161,614,249 decimal digits](http://www.wolframalpha.com/input/?i=2%5E536870912), seriously.
+
+In case you are wondering how to compute such large numbers check out [Wolfram Alpha](http://www.wolframalpha.com "Wolfram Alpha").
 
 [State][]
 : A technical term for all the stored information, at a given instant in time, to which a digital circuit or computer program has access. The output of a circuit or program at any time is completely determined by its current inputs and its state.
 
 We mention the notion of state here because it is important to realize that a computer is really just a machine that can distinguish a very large but still finite number of different states. If we had a way to store the state somewhere we could stop the machine and then reload the state ten years later to have the machine continue exactly where it left off. Well, closing the lid of a laptop putting it to sleep and then opening the lid again waking the machine up is exactly that, except maybe for the ten years. This can in principle be done with any digital circuit.
 
-Turning a computer off and then on again in hope of getting the machine to work again is also related to state. It is essentially a way to set the machine to the state with all bits zero, also called the initial state. That state is assumed to be *safe* in the sense that the machine should be able to go from there to other *safe* states that are useful. How does the machine go there? Well, it goes there by executing a program. The only problem is that the program may also direct the machine to go to undesirable or *unsafe* states. This happens when the program contains bugs. So, in order to distinguish good from bad behavior we could partition the set of all machine states into *safe* and *unsafe* states and then check if a program ever takes the machine to an unsafe state. Computer scientists and increasingly also programmers are actually doing that with the help of advanced software development tools. However, the ongoing challenge is to handle the enormous amounts of machine states. Buggy software will therefore be with us in the foreseeable future.
+Turning a computer off and then on again in hope of getting the machine to work again is also related to state. It is essentially a way to set the machine to the state with all bits zero, also called the initial state. That state is assumed to be *safe* in the sense that the machine should be able to go from there to other *safe* states that are useful. How does the machine go there? Well, it goes there by loading and executing a program. The only problem is that the program may also direct the machine to go to undesirable or *unsafe* states. This happens when the program contains bugs which then make us power cycle the machine again and so on.
+
+In order to avoid that routine we could distinguish good from bad behavior by  partitioning the set of all machine states into *safe* and *unsafe* states and then check before running a program if the program will ever take the machine to an unsafe state. Computer scientists and increasingly also programmers are actually doing that with the help of advanced software development tools. However, the ongoing challenge is to handle the enormous amounts of machine states. So far only relatively small programs can be sanitized this way. Buggy software will therefore be with us in the foreseeable future.
 
 TODO: introduce MIPSter instructions.
 
