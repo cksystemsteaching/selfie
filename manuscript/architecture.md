@@ -157,27 +157,45 @@ First of all this program contains only one instruction which directs the CPU to
 The leftmost hexadecimal number `0x00000000` is the address in main memory where the instruction is supposed to be stored. The hexadecimal number `0x2408002A` next to the address is in fact the instruction in *machine code*. That number really is the whole program. The rest is just there to make us feel better, I mean make it more readable for us.
 
 [Machine Code][]
-:
+: A sequence of instructions executed directly by a computer's central processing unit (CPU).
 
-So, what is `addiu $t0,$zero,42`? It is *assembly* which is meant to provide a human-readable version of machine code, in this case of `0x2408002A`. Despite their different appearance they are semantically equivalent.
+So, what is `addiu $t0,$zero,42`? It is *assembly* which is meant to provide a human-readable version of machine code, in this case of `0x2408002A`. Despite their different appearance they are in fact semantically equivalent.
 
 [Assembly][]
-:
+: A low-level programming language for a computer, or other programmable device, in which there is a very strong (generally one-to-one) correspondence between the language and the architecture's machine code instructions.
 
-However, even `0x2408002A` is already a more compact representation of what the machine really sees which is the following 32-bit binary number:
+However, even `0x2408002A` is already a more compact representation of what is physically stored in memory which is the following 32-bit binary number:
 
 ```
 00100100000010000000000000101010
 ```
 
-That number is the real machine code. Both `0x2408002A` and `addiu $t0,$zero,42` are just different representations of that code.
+That number is equal to `0x2408002A` in binary. Both `0x2408002A` and `addiu $t0,$zero,42` are just different representations of that number.
 
-Assembly uses *mnemonic* to help us remember what machine code means. Here, `addiu`
+T> Imagine we programmed computers in their native machine languages using binary code. There were times when people actually did that. Going from binary code to hexadecimal code and then assembly is therefore already a significant advancement over the lowest level of programming. People still program in assembly to this day.
+T>
+T> However, programming in assembly already requires *assembling* the binary code for each instruction either manually, like I did for a [Z80][] machine when I was fourteen, or using a software tool called an *assembler*. Unfortunately, [selfie][] does not feature an assembler but it does include a *disassembler* which produces the assembly representation of MIPSter binary code.
+
+Assembly uses *mnemonic* to help us remember what machine code means.
 
 [Mnemonic][]
-:
+: Any learning technique that aids information retention in the human memory.
 
-The `addiu` instruction stands for "add immediate unsigned".
+In our example, the `addiu` string stands for "add immediate unsigned" and represents the so-called *opcode* of the instruction.
+
+[Opcode][]
+: The portion of a machine language instruction that specifies the operation to be performed.
+
+The opcode of a MIPSter instruction is encoded in the six most significant bits of the 32-bit machine code. In other words, `addiu` represents `001001` in binary. We repeat the above 32-bit binary number here with the one-to-one correspondence to the assembly representation:
+
+```
+addiu  $zero   $t0               42
+001001 00000 01000 0000000000101010
+```
+
+The remaining 26 bits encode the, in this case, three arguments of the instruction which are `$t0`, `$zero`, and `42`. The second argument `$zero` refers to the first general-purpose register of the CPU and is encoded in the five bits `00000` next to the opcode. The first argument `$t0` refers to the eighth general-purpose register of the CPU and is encoded in the five bits `01000` next to the bits representing the second argument. Note that `01000` is binary for eight. Lastly, the third argument `42` is an integer encoded by the remaining sixteen bits `0000000000101010` which is binary for forty-two.
+
+TODO: more on encoding and semantics of the example.
 
 TODO: introduce other MIPSter instructions.
 
@@ -263,15 +281,15 @@ If you are interested in the exact specification of MIPSter or would even like t
 [microprocessor without interlocked pipeline stages (mips)]: http://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS"
 
 [state]: http://en.wikipedia.org/wiki/State_(computer_science) "State"
-[42]: https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42"
-[emulator]: http://en.wikipedia.org/wiki/Emulator "Emulator"
-
 [machine code]: http://en.wikipedia.org/wiki/Machine_code "Machine Code"
-[opcode]: http://en.wikipedia.org/wiki/Opcode "Opcode"
 [assembly]: http://en.wikipedia.org/wiki/Assembly_language "Assembly Language"
 [mnemonic]: http://en.wikipedia.org/wiki/Mnemonic "Mnemonic"
+[opcode]: http://en.wikipedia.org/wiki/Opcode "Opcode"
+
 [addressing modes]: http://en.wikipedia.org/wiki/Addressing_mode "Addressing Modes"
 [branch]: http://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
+
+[emulator]: http://en.wikipedia.org/wiki/Emulator "Emulator"
 
 [high-level programming]: http://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming"
 [c]: http://en.wikipedia.org/wiki/C_(programming_language) "C"
@@ -291,3 +309,5 @@ If you are interested in the exact specification of MIPSter or would even like t
 [return]: http://en.wikipedia.org/wiki/Return_statement "Return Statement"
 
 [selfie]: http://selfie.cs.uni-salzburg.at "Selfie"
+[42]: https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42"
+[Z80]: https://en.wikipedia.org/wiki/Zilog_Z80 "Zilog Z80"
