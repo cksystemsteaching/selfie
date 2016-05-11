@@ -220,14 +220,26 @@ You may nevertheless already ask yourself how you can run MIPSter code and see w
 [Emulator][]
 : Hardware or software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
-If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie][]. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented in the examples below is obtained with mipster.
+If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie][]. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented in the example below is obtained with mipster.
 
 ## High-Level Programming
 
-## A Simple C\* Program
+Most software is not written in machine code or assembly but in programming languages that are designed to describe computation on levels of abstraction much higher than CPU registers and main memory.
+
+[High-level Programming Language][]
+: A programming language with strong abstraction from the details of the computer. In comparison to low-level programming languages, it may use natural language elements, be easier to use, or may automate (or even hide entirely) significant areas of computing systems (e.g. memory management), making the process of developing a program simpler and more understandable relative to a lower-level language. The amount of abstraction provided defines how "high-level" a programming language is.
+
+But which language should we learn and then use? There are so many already and then there are new ones being developed all the time. I think it is so bad, we should just give up and go home. Just kidding. No, the solution to this problem, in our opinion, is to develop a strong sense for semantics and awareness of your own understanding. Consider the following program:
 
 {line-numbers=on, lang=c}
 <<[A Simple C* Program](code/iteration.c)
+
+The program is written in C which is a programming language that was developed in the late 1960s to early 1970s.
+
+[C][]
+: A general-purpose, imperative computer programming language, supporting structured programming, lexical variable scope and recursion, while a static type system prevents many unintended operations.
+
+TODO: continue introducing the example.
 
 {line-numbers=on, lang=c}
 <<[Informal Semantics of the Simple C* Program](code/iteration-low.c)
@@ -235,13 +247,15 @@ If you are interested in the exact specification of MIPSter or would even like t
 {line-numbers=on, lang=c}
 <<[Language Elements of the Simple C* Program](code/iteration-high.c)
 
+## Semantics
+
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Simple C* Program in MIPS Assembly with Approximate Line Numbers](code/iteration.s)
 
 {line-numbers=off, lang=asm}
 <<[Execution of the MIPS Assembly for the Simple C* Program with Approximate Line Numbers and Profile](code/iteration.d)
 
-## Another Simple C\* Program
+## Procedures
 
 {line-numbers=on, lang=c}
 <<[A C* Program Equivalent to the Simple C* Program](code/procedure.c)
@@ -302,12 +316,9 @@ If you are interested in the exact specification of MIPSter or would even like t
 [mnemonic]: http://en.wikipedia.org/wiki/Mnemonic "Mnemonic"
 [opcode]: http://en.wikipedia.org/wiki/Opcode "Opcode"
 [addressing mode]: http://en.wikipedia.org/wiki/Addressing_mode "Addressing Mode"
-
-[branch]: http://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
-
 [emulator]: http://en.wikipedia.org/wiki/Emulator "Emulator"
 
-[high-level programming]: http://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming"
+[high-level programming language]: http://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming Language"
 [c]: http://en.wikipedia.org/wiki/C_(programming_language) "C"
 [declaration]: http://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration"
 [global variable]: http://en.wikipedia.org/wiki/Global_variable "Global Variable"
@@ -323,6 +334,8 @@ If you are interested in the exact specification of MIPSter or would even like t
 [conditional]: http://en.wikipedia.org/wiki/Conditional_(computer_programming) "Conditional"
 [while]: http://en.wikipedia.org/wiki/While_loop "While Loop"
 [return]: http://en.wikipedia.org/wiki/Return_statement "Return Statement"
+
+[branch]: http://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
 
 [selfie]: http://selfie.cs.uni-salzburg.at "Selfie"
 [42]: https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42"
