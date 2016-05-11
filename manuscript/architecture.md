@@ -188,14 +188,26 @@ In our example, the `addiu` string stands for "add immediate unsigned" and repre
 
 The opcode of a MIPSter instruction is encoded in the six most significant bits of the 32-bit machine code. In other words, `addiu` represents `001001` in binary. We repeat the above 32-bit binary number here with the one-to-one correspondence to the assembly representation:
 
+{line-numbers=off}
 ```
 addiu  $zero   $t0               42
 001001 00000 01000 0000000000101010
 ```
 
-The remaining 26 bits encode the, in this case, three arguments of the instruction which are `$t0`, `$zero`, and `42`. The second argument `$zero` refers to the first general-purpose register of the CPU and is encoded in the five bits `00000` next to the opcode. The first argument `$t0` refers to the eighth general-purpose register of the CPU and is encoded in the five bits `01000` next to the bits representing the second argument. Note that `01000` is binary for eight. Lastly, the third argument `42` is an integer encoded by the remaining sixteen bits `0000000000101010` which is binary for forty-two.
+The remaining 26 bits encode the, in this case, three *operands* of the instruction which are `$t0`, `$zero`, and `42`. The second operand `$zero` refers to the first general-purpose register of the CPU and is encoded in the five bits `00000` next to the opcode. The first operand `$t0` refers to the eighth general-purpose register of the CPU and is encoded in the five bits `01000` next to the bits representing the second operand. Note that `01000` is binary for eight. Lastly, the third operand `42` is an integer encoded by the remaining sixteen bits `0000000000101010` which is binary for forty-two.
 
-TODO: more on encoding and semantics of the example.
+This all seems to make sense but what is now the semantics of this instruction? How does it work? This is after all what really matters. The `addiu` instruction makes the CPU take the sixteen least significant bits and add them as integer value to the value of the register identified by the five bits next to the opcode bits, that is, in our example the value of the register `$zero`. The result of that binary addition is stored in the register identified by the five bits next to the five bits identifying `$zero`, that is, in our example the register `$t0`. However, there is still two problems with our example and also one important assumption made here. The assumption first:
+
+T> Register `$zero` is assumed to contain zero at all times which means that the value in register `$t0` will be `42` after executing the instruction. In other words, using `addiu` on `$zero` is not meant to perform binary addition. It is rather meant to load an integer value into a register. This is so typical for anything computer-related. What it says on the box and what it is intended to do can be very different things. I apologize on behalf of all computer scientists.
+T>
+T> But there is also this problem of adding a 16-bit number to a 32-bit register. How does that work? The CPU actually takes the 16-bit number and *sign-extends* it to 32 bits before performing the addition. This means that the CPU treats the 16 bits as signed integer representation in two's complement and preserves the sign in the extension to 32 bits. We may therefore use signed integers from -2^15^ to 2^15^-1 as third operand of `addiu`.
+T>
+T> But what happens if there is an overflow, that is, the result of the addition does not fit into 32 bits? This could be a serious problem. Well, in that case the CPU wraps the result around to stay within the 32 bits. Be aware of that!
+
+The fact that the CPU performs wrap-arounds when executing `addiu` is emphasized by the `u` in `addiu` which stands for `unsigned`, obviously another unfortunate misnomer, my apologies. The behavior of the CPU treating an operand as value is called *immediate addressing* which explains the `i` in `addiu`. In general, CPUs support different addressing modes of which immediate addressing is one example. We point out others as we encounter them.
+
+[Addressing Mode][]
+: Specifies how to calculate the effective memory address of an operand by using information held in registers and/or constants contained within a machine instruction or elsewhere.
 
 TODO: introduce other MIPSter instructions.
 
@@ -285,8 +297,8 @@ If you are interested in the exact specification of MIPSter or would even like t
 [assembly]: http://en.wikipedia.org/wiki/Assembly_language "Assembly Language"
 [mnemonic]: http://en.wikipedia.org/wiki/Mnemonic "Mnemonic"
 [opcode]: http://en.wikipedia.org/wiki/Opcode "Opcode"
+[addressing mode]: http://en.wikipedia.org/wiki/Addressing_mode "Addressing Mode"
 
-[addressing modes]: http://en.wikipedia.org/wiki/Addressing_mode "Addressing Modes"
 [branch]: http://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
 
 [emulator]: http://en.wikipedia.org/wiki/Emulator "Emulator"
