@@ -5,7 +5,7 @@ The idea of this chapter is to explain how computers work in principle and how t
 [Computer Architecture][]
 : A set of rules and methods that describe the functionality, organization, and implementation of computer systems.
 
-Programming, on the other hand, is more difficult and can get very messy since software can grow arbitrarily complex. We believe the key to becoming a good programmer is to develop a deep sense for semantics. What is the true meaning of a piece of code? Have I truly understood what happens when the machine executes that code? There is of course also the right choice of programming languages and the professional use of software development tools but it all begins with truly understanding the meaning of code.
+Programming, on the other hand, is more difficult and can get very messy since software can grow arbitrarily complex. We believe the key to becoming a good programmer is to develop a deep sense for semantics. What is the true meaning of a piece of code? Have I really understood what happens when the machine executes that code? There is of course also the right choice of programming languages and the professional use of software development tools but it all begins with truly understanding the meaning of code.
 
 Imagine you are taking a class to learn a foreign language. One particularly interesting type of class is when the language is taught by speaking in that language without using any other language. This means that as soon as the class starts the teacher exclusively speaks in the language that everyone would like to learn but does not understand. This approach anyway works because the teacher may use means of communication other than spoken language such as gestures, facial expressions, and even body language. Questions may be asked in a language that everyone understands but answers are always given in the foreign language. Students are anyway encouraged to use the foreign language as soon as possible and eventually even ask questions in that language.
 
@@ -146,6 +146,7 @@ In order to avoid that routine we could distinguish good from bad behavior by  p
 
 Now, let us write our first MIPSter program.
 
+{line-numbers=off}
 ```
 0x00000000: 0x2408002A: addiu $t0,$zero,42
 ```
@@ -166,6 +167,7 @@ So, what is `addiu $t0,$zero,42`? It is *assembly* which is meant to provide a h
 
 However, even `0x2408002A` is already a more compact representation of what is physically stored in memory which is the following 32-bit binary number:
 
+{line-numbers=off}
 ```
 00100100000010000000000000101010
 ```
@@ -202,21 +204,23 @@ T> Register `$zero` is assumed to contain zero at all times which means that the
 T>
 T> But there is also this problem of adding a 16-bit number to a 32-bit register. How does that work? The CPU actually takes the 16-bit number and *sign-extends* it to 32 bits before performing the addition. This means that the CPU treats the 16 bits as signed integer representation in two's complement and preserves the sign in the extension to 32 bits. We may therefore use signed integers from -2^15^ to 2^15^-1 as third operand of `addiu`.
 T>
-T> But what happens if there is an overflow, that is, the result of the addition does not fit into 32 bits? This could be a serious problem. Well, in that case the CPU wraps the result around to stay within the 32 bits. Be aware of that!
+T> But what happens if there is an overflow, that is, the result of the addition does not fit into 32 bits? This could be a serious problem. Well, in that case the CPU wraps the result around to stay within the 32 bits. This is fine but does not correspond to regular arithmetic so be aware of that!
 
-The fact that the CPU performs wrap-arounds when executing `addiu` is emphasized by the `u` in `addiu` which stands for `unsigned`, obviously another unfortunate misnomer, my apologies. The behavior of the CPU treating an operand as value is called *immediate addressing* which explains the `i` in `addiu`. In general, CPUs support different addressing modes of which immediate addressing is one example. We point out others as we encounter them.
+The fact that the CPU performs wrap-arounds upon overflows when executing `addiu` is emphasized by the `u` in `addiu` which stands for `unsigned`, obviously another unfortunate misnomer, my apologies. The behavior of the CPU treating an operand as value is called *immediate addressing* which explains the `i` in `addiu`. In general, CPUs support different *addressing modes* of which immediate addressing is only one example (even though there is no real addressing going on here).
 
 [Addressing Mode][]
 : Specifies how to calculate the effective memory address of an operand by using information held in registers and/or constants contained within a machine instruction or elsewhere.
 
-TODO: introduce other MIPSter instructions.
+The addressing mode of the two other operands of `addiu` is called *register addressing* since the operands identify registers. Note that the five bits of these operands can distinguish 2^5^, that is, 32 registers which non-coincidentally happens to be the number of general-purpose registers of our processor. Nice!
 
-You may ask yourself how we can ever run MIPSter code and see what happens. Fortunately, we do not need a real MIPS processor to run MIPSter code. Computers have this fascinating ability to imitate each other and many other things. A computer or software running on a computer that imitates another computer (or even the same computer) is called an *emulator* which is exactly what we use here.
+There are more addressing modes with other instructions which we discuss as we encounter them. However, instead of introducing the remaining 16 MIPSter instructions one by one here we do something different. Since low-level programming is obviously a tedious endeavor we move on and present a high-level form of programming next. This hopefully keeps us sufficiently motivated before eventually returning to machine code and how it relates to high-level programs.
+
+You may nevertheless already ask yourself how you can run MIPSter code and see what happens. Fortunately, we do not need a real MIPS processor to run MIPSter code. Computers have this fascinating ability to imitate each other and many other things. A computer or software running on a computer that imitates another computer (or even the same computer) is called an *emulator* which is exactly what we suggest to use here.
 
 [Emulator][]
 : Hardware or software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
-If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie][]. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented below is obtained with mipster.
+If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie][]. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented in the examples below is obtained with mipster.
 
 ## High-Level Programming
 
