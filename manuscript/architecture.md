@@ -1,5 +1,7 @@
 # 3. Architecture and Language
 
+{#architecture}
+
 The idea of this chapter is to explain how computers work in principle and how to program them using a set of simple examples. The focus is on understanding the relationship of computer (architecture) and programming (language) as early as possible. This is in contrast to the traditional approach of teaching both topics in separate classes, or even just teaching programming without ever explaining how the machine works. We believe that knowing how computers work in principle is important for programming. Gladly, it is not that hard to figure out how they work. The principles of *computer architecture* still remain relatively simple since the physics of a digital computer can be completely hidden by Boolean logic. To us the machine is just handling bits, true and false, nothing else. I still remember the computer architecture class that I took as freshman. I liked it a lot because everything was clean and simple.
 
 [Computer Architecture][]
@@ -31,7 +33,7 @@ Most computers including smart phones and tablets are at their core based on a c
 
 The idea is very simple. There is a *central processing unit* (CPU), also called a *processor*, that executes instructions of a computer program stored as machine code in so-called *main memory* or *memory* for short. The purpose of the program is to direct the CPU to compute something and use main memory not occupied by code for storing data. In particular, the CPU fetches instructions from memory and executes them. During code execution the CPU is directed by the instructions to read data from memory, compute something, write data to memory, and even communicate with the outside world.
 
-[Central Processing Unit (CPU)][]
+[Central Processing Unit (CPU)][cpu]
 : A digital electronic circuit within a computer that carries out the instructions of a computer program by performing the basic arithmetic, logical, control and input/output (I/O) operations specified by the instructions.
 
 The key innovation of the von Neumann architecture is that code and data are both stored in main memory. In fact, since code and data are just bits there is no difference in representation either.
@@ -46,7 +48,7 @@ Since code can be seen as data and vice versa, code is really just pure informat
 
 Now, how does code and data get into a computer, and out? This is done through so-called *input/output* (I/O) devices such as keyboards and screens but also network and storage adapters, for example. Storage adapters are usually connected to "secondary storage" which is non-volatile storage containing code and data. In contrast, main memory is typically volatile meaning it loses its content when power is cut. However, volatility of memory is a property not relevant in the von Neumann architecture. We can thus ignore it.
 
-[Input/Output (I/O)][]
+[Input/Output (I/O)][io]
 : The communication between an information processing system, such as a computer, and the outside world, possibly a human or another information processing system.
 
 But how does a computer with empty memory load code into memory to execute it? In other words, how does the CPU know what to do if there are no instructions on what to do? Keep in mind that when turning on a computer the only thing the CPU can do is to follow the instructions of a computer program. This is a typical paradox in computer science called *bootstrapping* derived from the phrase "to pull oneself up by one's bootstraps". Even more amusingly, there is also the related story of the Baron Munchausen who pulled himself (and his horse) out of a swamp by his pigtail.
@@ -63,12 +65,12 @@ The arguably most important piece of information a CPU needs to remember is whic
 
 When a CPU is done executing an instruction it fetches the next instruction from the location identified by the PC and stores that instruction in the IR. Then the CPU decodes the instruction to find out what it is supposed to do. Lastly, the CPU executes the instruction accordingly which includes changing the PC to the location of the instruction the current instruction wants the CPU to execute next. Once the CPU is done with executing the current instruction and in particular changing the PC it fetches the next instruction identified by the PC and so on ad infinitum or until power is turned off.
 
-[Instruction Register (IR)][]
+[Instruction Register (IR)][ir]
 : The part of a control unit that stores the instruction currently being executed or decoded.
 
 Here it is important to understand that in principle a CPU really just executes one instruction after another, nothing else, but does that incredibly fast.
 
-[Program Counter (PC)][]
+[Program Counter (PC)][pc]
 : A register that indicates where a computer is in its program sequence.
 
 Each individual instruction represents a tiny step in any computation so in the end it is only the speed of execution that enables computers to do interesting work in reasonable amounts of time. This implies that understanding how a computer works only requires knowing what these instructions do.
@@ -82,7 +84,7 @@ In fact, the IR and PC are such registers but there are also others. Registers a
 
 In addition to the control unit with the IR and the PC, a CPU also features an *arithmetic logic unit* (ALU) with its own set of registers for performing actual computation. For example, an ALU may add the values stored in two registers and save the result in a third register for further computation.
 
-[Arithmetic Logic Unit (ALU)][]
+[Arithmetic Logic Unit (ALU)][alu]
 : A digital electronic circuit that performs arithmetic and logical operations on integer binary numbers.
 
 To summarize, the von Neumann architecture is a machine model consisting of a CPU connected to main memory for storing code and data and to I/O devices for communication. A CPU consists of a control unit for executing instructions and an arithmetic logic unit for actual computation. The typical workflow of a computer is to bootstrap first by loading code from secondary storage into main memory and then execute the loaded code. Typically, that code directs the CPU to retrieve data from the outside world through some I/O communication, perform some computation, and eventually send data back to the outside world. Data needed for computation is kept in main memory and copied into registers for actual computation.
@@ -93,12 +95,12 @@ A fundamental performance limitation of the von Neumann architecture is the conn
 
 In order to understand how a computer works we need to know how to program it in the language that the machine *understands*. This may sound very ambitious and difficult to do but is in fact not all that hard. The language of a computer, also called machine language, is defined by the *instruction set architecture* (ISA) of the machine's processor. There are many different processors with different ISAs but luckily they are all based on similar principles.
 
-[Instruction Set Architecture (ISA)][]
+[Instruction Set Architecture (ISA)][isa]
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and input/output (I/O).
 
 Programming a computer in machine language is considered low-level programming in the sense of a *low level of abstraction* close to the machine rather than any of its applications. Honestly, machine language is not at all meant to be used as formalism in which software is developed. It is rather designed to be efficiently executable and otherwise a target of software development tools that automatically translate software written on higher levels of abstraction more appropriate for humans. However, there are very simple and beautiful ISAs that are not only widely used in real processors but also for teaching computer architecture. One such ISA is *MIPS*.
 
-[Microprocessor without Interlocked Pipeline Stages (MIPS)][]
+[Microprocessor without Interlocked Pipeline Stages (MIPS)][mips]
 : An instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.).
 
 MIPS is so simple it is actually fun to learn it, never mind the interlocked pipeline stages. To make things even simpler we decided to focus on the 32-bit version of MIPS called *MIPS32* where everything happens at the granularity of 32 bits. There are newer versions of MIPS with support of more bits for better performance. We can safely ignore them. Also, out of the 43 available MIPS32 instructions we only use a subset of 17 instructions that we call *MIPSter*. Most importantly, MIPSter is a proper subset of MIPS32, that is, all MIPSter code runs on MIPS32 machines but not vice versa.
@@ -296,19 +298,19 @@ TODO: continue introducing the example.
 [programming language]: http://en.wikipedia.org/wiki/Programming_language "Programming Language"
 
 [von neumann architecture]: http://en.wikipedia.org/wiki/Von_Neumann_architecture "Von Neumann Architecture"
-[central processing unit (cpu)]: http://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit"
+[cpu]: http://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit (CPU)"
 [memory]: http://en.wikipedia.org/wiki/Computer_memory "Computer Memory"
 [software]: http://en.wikipedia.org/wiki/Software "Software"
-[input/output (i/o)]: http://en.wikipedia.org/wiki/Input/output "Input/Output"
+[io]: http://en.wikipedia.org/wiki/Input/output "Input/Output (I/O)"
 [booting]: http://en.wikipedia.org/wiki/Booting "Booting"
 [control unit]: http://en.wikipedia.org/wiki/Control_unit "Control Unit"
-[instruction register (ir)]: http://en.wikipedia.org/wiki/Instruction_register "Instruction Register"
-[program counter (pc)]: http://en.wikipedia.org/wiki/Program_counter "Program Counter"
+[ir]: http://en.wikipedia.org/wiki/Instruction_register "Instruction Register (IR)"
+[pc]: http://en.wikipedia.org/wiki/Program_counter "Program Counter (PC)"
 [register]: http://en.wikipedia.org/wiki/Processor_register "Processor Register"
-[arithmetic logic unit (alu)]: http://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit"
+[alu]: http://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit (ALU)"
 
-[instruction set architecture (isa)]: http://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture"
-[microprocessor without interlocked pipeline stages (mips)]: http://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS"
+[isa]: http://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)"
+[mips]: http://en.wikipedia.org/wiki/MIPS_instruction_set "Microprocessor without Interlocked Pipeline Stages (MIPS)"
 
 [state]: http://en.wikipedia.org/wiki/State_(computer_science) "State"
 [machine code]: http://en.wikipedia.org/wiki/Machine_code "Machine Code"

@@ -4,14 +4,6 @@
 
 {#introduction}
 
----
-
-Disclaimer:
-
-This is work in progress. Only two chapters are done with a third getting ready in Fall 2015. Others exist in draft form but will take more time to be done.
-
----
-
 Computer science is a mystery to so many and yet more and more people use computers every day in one form or another. There are increasingly many people with all kinds of backgrounds other than computer science that even develop software, sometimes without even knowing it. At colleges and universities around the world there is hardly anyone left who is not confronted with the machine and its code. The way this often works is by searching for a solution of a given problem on the Internet and then adapt the solution to the actual application. All this is typically done with only a vague understanding of what the code actually means and how the machine performs when running it. The consequences of that are well-known and too numerous and boring to list here.
 
 While a book about computer science for everyone may sound appealing it actually requires serious commitment to understand the material even though we tried very hard to simplify everything as much as possible. The reason is that computers and software are so expressive that it is unlikely that any other computational machine in the future will be more expressive. Anything that can be computed can be computed now, if you have enough time.
@@ -35,9 +27,3 @@ C\* is, however, still sufficiently expressive to do something incredibly cool: 
 The final step of this book for which there exists a draft chapter is to explain concurrency, that is, how a computer appears to be doing many things at the same time even though logically at its core it is a sequential machine that can only take one step at a time. For this purpose we enhance mipster such that it can emulate many copies of itself by executing one copy for a while and then switching to the next and so on. This is at the lowest level what an operating system does. Since mipster can execute itself we can then show how that switching logic and other operating systems functionality can be executed by mipster rather than by being part of mipster. By making that step explicit self-referentiality of operating system software is fully exposed and true understanding of the matter, which is traditionally very hard to obtain, becomes possible even for a larger audience.
 
 There are also plans for other chapters on data structures, memory management, and how a computer handles input and output. These topics are important and will eventually be covered.
-
----
-
-Acknowledgements:
-
-The ideas presented here are the result of many years of teaching and working with students and colleagues around the world. I am grateful to my group of students and faculty in Salzburg who helped me over the years with refining and deepening my understanding of computer science. I am also particularly grateful to my colleague Professor Raja Sengupta at UC Berkeley who challenged me to the point that made me discover what has now become the Selfie Project. The design of the compiler is inspired by the Oberon compiler of Professor Niklaus Wirth from ETH Zurich.

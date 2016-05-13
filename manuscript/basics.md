@@ -1,5 +1,7 @@
 # 2. Basics
 
+{#basics}
+
 There are a few things to clarify before going into more detail. Digital computers encode everything, data as well as code, in bits. A key insight to understanding how they work is that all the bits stored in a computer's memory and on a computer's storage device and even all the bits communicated across a network of computers have no a-priori meaning whatsoever. They are just bits. It is only the operations with and on them that give them meaning. We even need to tell a computer which bits are actually meant to be treated as code rather than data and should thus be loaded into its processor and be executed. That code directs the processor to manipulate the remaining bits (and sometimes even the code bits themselves if they represent so-called self-modifying code) to perform a computation. The behavior of the code is ultimately determined by the construction of the processor and the system in which it is embedded. However, in the end a computer does nothing but manipulating impressive amounts of bits.
 
 Since everything is encoded in bits, computer science is on a very abstract level all about *strings*, sequences of characters, which may be sequences of bits but also, for convenience and performance, but not necessity, sequences of any kind of symbols. The text you are reading here is just that, a sequence of so-called *ASCII* characters. ASCII is a standard that maps 7-bit sequences to characters so that computers, which store the text you are reading here in such 7-bit sequences, can be programmed to map them to human readable characters for showing them on a screen. Conversely, when pressing a key on a keyboard the 7-bit sequence for the character represented by that key is generated for further processing. By the way, 7 bits can encode 128 different sequences enabling 128 different ASCII characters. This used to be enough but has long been advanced to many other standards with UTF-8 the most popular right now. Newer standards support more characters (emojis!) yet without changing the principle. In particular, any such standard is unnecessary for the machine. It is just for our convenience and performance. If we could read bit strings naturally these standards would be unnecessary and our keyboards only had two keys. The same is also true for other human-machine interfaces such as touch screens and audio speakers. They dramatically increase the performance of human-machine interaction but ultimately do not change what can in principle be computed.
@@ -53,7 +55,7 @@ T> The only thing we did is that we wrote down a mapping from bit strings to cha
 [Character][]
 : A unit of information that roughly corresponds to a grapheme, grapheme-like unit, or symbol, such as in an alphabet or syllabary in the written form of a natural language. Examples of characters include *letters*, numerical *digits*, common *punctuation marks* (such as "." or "-"), and *whitespace*. The concept also includes *control characters*, which do not correspond to symbols in a particular natural language, but rather to other bits of information used to process text in one or more languages. Examples of control characters include *carriage return* or *tab*, as well as instructions to printers or other devices that display or otherwise process text.
 
-American Standard Code for Information Interchange ([ASCII][])
+[American Standard Code for Information Interchange (ASCII)][ascii]
 : 7-bit encoding scheme for 128 characters: numbers 0 to 9, lowercase letters a to z, uppercase letters A to Z, basic punctuation symbols, control codes that originated with Teletype machines, and a space.
 
 [UTF-8][]
@@ -87,7 +89,7 @@ The fundamental reason for the difference in size between different notations is
 | [Hexadecimal][] | {0,1,2,3,4,5,6,7,8,9, | 16 | {$$}\lceil\frac{log(n)}{log(16)}\rceil{/$$} | {$$}16^n{/$$} |
 | | A,B,C,D,E,F} | | | |
 
-Once again note that 01010101 may stand for the (decimal) number 85 or the letter U or any other object. It is only the operations on 01010101 that define its semantics. 
+Once again note that 01010101 may stand for the (decimal) number 85 or the letter U or any other object. It is only the operations on 01010101 that define its semantics.
 
 T> Some programming languages feature certain prefixes that determine if a number is meant to be interpreted as binary, octal, decimal, or hexadecimal.
 T>
@@ -107,13 +109,13 @@ X> Adding both numbers in hexadecimal, that is, 0x55 and 0xAA, works similarly, 
 
 In binary numbers the leftmost and rightmost bits have a meaning similar to the leftmost and rightmost digits in decimal numbers. The rightmost bit, also called *least significant bit*, determines if the number is even or odd. For example, 01010101 represents an odd number whereas 10101010 an even number. The leftmost bit, also called *most significant bit*, represents the greatest value. Thus 10101010 stands for a number larger than 01010101.
 
-Least Significant Bit ([LSB][])
+[Least Significant Bit (LSB)][lsb]
 : The bit in a binary number that appears rightmost and determines if the number is even (0) or odd (1).
 
-Most Significant Bit ([MSB][])
+[Most Significant Bit (MSB)][msb]
 : The bit in a binary number that appears leftmost and has the greatest value.
 
-Now, what happens if we try to add two numbers where the result exceeds the number of digits necessary to represent them individually? For example, what if we compute 255+1=256 in binary? In this case, that is, 11111111+00000001, the result is 100000000, a binary number with 9 bits rather than the 8 bits representing 255. This is not a problem if we have more than 8 bits. However, with computers everything is finite, in particular memory. Moreover, arithmetic operations are on most machines implemented for bit strings with a fixed size such as 8 bits. On such machines adding 11111111 and 00000001 results in what is called *arithmetic overflow*. 
+Now, what happens if we try to add two numbers where the result exceeds the number of digits necessary to represent them individually? For example, what if we compute 255+1=256 in binary? In this case, that is, 11111111+00000001, the result is 100000000, a binary number with 9 bits rather than the 8 bits representing 255. This is not a problem if we have more than 8 bits. However, with computers everything is finite, in particular memory. Moreover, arithmetic operations are on most machines implemented for bit strings with a fixed size such as 8 bits. On such machines adding 11111111 and 00000001 results in what is called *arithmetic overflow*.
 
 [Arithmetic Overflow][]
 : Occurs when an arithmetic operation attempts to create a numeric value that is too large to be represented within the available storage space.
@@ -132,7 +134,7 @@ Arithmetic overflow nevertheless is the cause of numerous software bugs and even
 Now, what about subtraction and negative numbers? Ideally, we would like our bit strings to represent not just *positive* but also *negative* numbers, also called *integers*, with elementary arithmetics on them still intact. Obviously, one bit, or more generally one digit, is enough to encode the *sign* of a number, that is, distinguish positive from negative numbers. Fortunately, however, there is an overall encoding scheme that works without changing elementary arithmetics such as addition. In fact, subtraction will work by using addition, as previously discussed, with negative numbers.
 
 [Integer][]
-: A number that can be written without a fractional component. For example, 21, 4, 0, and −2048 are integers, while 9.75 and 5.5 are not. The set of integers consists of zero (0), the natural numbers (1, 2, 3, ...), also called whole, counting, or positive numbers, and their additive inverses (the negative numbers, that is −1, −2, −3, ...). 
+: A number that can be written without a fractional component. For example, 21, 4, 0, and −2048 are integers, while 9.75 and 5.5 are not. The set of integers consists of zero (0), the natural numbers (1, 2, 3, ...), also called whole, counting, or positive numbers, and their additive inverses (the negative numbers, that is −1, −2, −3, ...).
 
 T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers.
 
@@ -146,7 +148,7 @@ X> Then, we exploit that 127-85 can be written as (127+(10^3^-85))-10^3^ which s
 X>
 X> So, supporting, say, 4-digit numbers works in just the same way, that is, by ignoring the fifth rather than the fourth digit: 127-85=(127+(10^4^-85))-10^4^=(127+(10000-85))-10000=(127+9915)-10000=10042-10000=42.
 
-You may still ask how computing 1000-85 is any easier than computing 127-85 directly. Well, it is not but the radix complement of a number happens to be equal to the so-called *diminished radix complement* of that number plus one, which is in fact easier to compute than the radix complement. 
+You may still ask how computing 1000-85 is any easier than computing 127-85 directly. Well, it is not but the radix complement of a number happens to be equal to the so-called *diminished radix complement* of that number plus one, which is in fact easier to compute than the radix complement.
 
 X> The diminished radix (nines') complement of 85 for, say, again 3-digit numbers is (10^3^-1)-85=(1000-1)-85=999-85=914.
 X>
@@ -192,7 +194,7 @@ Using two's complement for representing negative numbers a byte can in total rep
 [Two's Complement][]
 : Given an n-bit number i with -2^n^/2-1 = -2^n-1^-1 < i < 2^n-1^ = 2^n^/2, the complement of i with respect to 2^n^, that is, 2^n^-i which is equal to the ones' complement of i plus one.
 
-Most Significant Bit ([MSB][])
+[Most Significant Bit (MSB)][msb]
 : The bit in a binary number that appears leftmost and has the greatest value or, if the number represents a signed integer in two's complement, determines if the integer is positive (0) or negative (1).
 
 T> In sum, subtraction of signed integers that are represented in binary code using two's complement for negative numbers works as follows:
@@ -322,12 +324,12 @@ There are many other ways to express computation on higher levels of abstraction
 
 Suppose we would like to collect objects without duplicates and do not care about any object ordering. The natural representation of such a collection is a *set*. Similar to other representations, the operations on a set such as membership, union, intersection, and so on define the semantics of a set. In particular, an object is either an element of a set or not and there is no ordering of elements of a set.
 
-[Set][set in mathematics] (in Mathematics)
+[Set (in Mathematics)][set in mathematics]
 : A collection of distinct objects, considered as an object in its own right.
 
 Similar to integers, a computer representation of a set may only approximate the original. Moreover, in contrast to the semantics or *logic* of a set in the mathematical sense, temporal and spatial performance of the *implementation* of a set plays an important role. For example, how long does it take to find out if an object is an element of a set and how much memory do we need to store a set?
 
-[Set][set in computer science] (in Computer Science)
+[Set (in Computer Science)][set in computer science]
 : A collection that can store certain values, without any particular order, and no repeated values. It is a computer implementation of the mathematical concept of a finite set.
 
 No matter the actual application, being able to distinguish between logic and implementation and reason on both levels is key to understanding computer science. Many students are good at only one of the two. The best know both. In class we usually ask students to describe the *logic* of a computational artifact first and only then go into the details of its *implementation*. Most students have a hard time doing that. For most it appears to be much simpler to reason on lower, more mechanical levels of abstraction. Others prefer to stay away from those. The truth, however, is in the relation between logic and implementation. Does the implementation really implement the logic or specification we have in mind? And, just as important, is the implementation sufficiently efficient for our purposes? Let us now have a closer look at performance.
@@ -379,7 +381,7 @@ Energy is quantified in Joule and power consumption in Watt, that is, the amount
 |             | MIPS/watt |
 |             | FLOPS/watt |
 
-Measuring computational performance in terms of time, space, and energy allows comparing different solutions of a given problem but only on a finite set of instances of the problem. Consider, for example, the problem of sorting numbers. We may directly compare the performance of different sorting algorithms by running them one after another on a given instance of the problem, for example, on a set of ten numbers. However, the relative performance of the algorithms may be very different when they are applied to, say, a set of a thousand numbers. This is because the relation between the size of a problem instance and the performance of an algorithm for solving the problem may not be linear. Beyond measuring performance we are therefore also interested in studying what is called algorithmic complexity, that is, how performance of an algorithm relates to the size of its input. Typical examples relevant in practice are constant, logarithmic, linear, quadratic, cubic, and exponential complexity. 
+Measuring computational performance in terms of time, space, and energy allows comparing different solutions of a given problem but only on a finite set of instances of the problem. Consider, for example, the problem of sorting numbers. We may directly compare the performance of different sorting algorithms by running them one after another on a given instance of the problem, for example, on a set of ten numbers. However, the relative performance of the algorithms may be very different when they are applied to, say, a set of a thousand numbers. This is because the relation between the size of a problem instance and the performance of an algorithm for solving the problem may not be linear. Beyond measuring performance we are therefore also interested in studying what is called algorithmic complexity, that is, how performance of an algorithm relates to the size of its input. Typical examples relevant in practice are constant, logarithmic, linear, quadratic, cubic, and exponential complexity.
 
 | Growth Rate     | Function        | Comment                         |
 | --------------- | --------------- | ------------------------------- |
@@ -410,7 +412,7 @@ Before we finish this chapter let us point out that algorithmic complexity may a
 
 [character]: http://en.wikipedia.org/wiki/Character_(computing) "Character"
 
-[ASCII]: http://en.wikipedia.org/wiki/ASCII "ASCII"
+[ascii]: http://en.wikipedia.org/wiki/ASCII "American Standard Code for Information Interchange (ASCII)"
 [UTF-8]: http://en.wikipedia.org/wiki/UTF-8 "UTF-8"
 
 [number]: http://en.wikipedia.org/wiki/Number "Number"
@@ -421,8 +423,8 @@ Before we finish this chapter let us point out that algorithmic complexity may a
 [decimal]: http://en.wikipedia.org/wiki/Decimal "Decimal"
 [hexadecimal]: http://en.wikipedia.org/wiki/Hexadecimal "Hexadecimal"
 
-[lsb]: http://en.wikipedia.org/wiki/Least_significant_bit "LSB"
-[msb]: http://en.wikipedia.org/wiki/Most_significant_bit "MSB"
+[lsb]: http://en.wikipedia.org/wiki/Least_significant_bit "Least Significant Bit (LSB)"
+[msb]: http://en.wikipedia.org/wiki/Most_significant_bit "Most Significant Bit (MSB)"
 
 [arithmetic overflow]: http://en.wikipedia.org/wiki/Arithmetic_overflow "Arithmetic Overflow"
 
@@ -438,8 +440,8 @@ Before we finish this chapter let us point out that algorithmic complexity may a
 [iteration]: http://en.wikipedia.org/wiki/Iteration "Iteration"
 [recursion]: http://en.wikipedia.org/wiki/Recursion_(computer_science) "Recursion"
 [stack]: http://en.wikipedia.org/wiki/Stack_(abstract_data_type) "Stack"
-[set in mathematics]: http://en.wikipedia.org/wiki/Set_(mathematics) "Set"
-[set in computer science]: http://en.wikipedia.org/wiki/Set_(abstract_data_type) "Set"
+[set in mathematics]: http://en.wikipedia.org/wiki/Set_(mathematics) "Set (in Mathematics)"
+[set in computer science]: http://en.wikipedia.org/wiki/Set_(abstract_data_type) "Set (in Computer Science)"
 
 [order of magnitude]: http://en.wikipedia.org/wiki/Orders_of_magnitude_(data) "Order of Magnitude"
 
