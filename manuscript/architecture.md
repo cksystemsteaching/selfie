@@ -4,7 +4,7 @@
 
 The idea of this chapter is to explain how computers work in principle and how to program them using a set of simple examples. The focus is on understanding the relationship of computer (architecture) and programming (language) as early as possible. This is in contrast to the traditional approach of teaching both topics in separate classes, or even just teaching programming without ever explaining how the machine works. We believe that knowing how computers work in principle is important for programming. Gladly, it is not that hard to figure out how they work. The principles of *computer architecture* still remain relatively simple since the physics of a digital computer can be completely hidden by Boolean logic. To us the machine is just handling bits, true and false, nothing else. I still remember the computer architecture class that I took as freshman. I liked it a lot because everything was clean and simple.
 
-[Computer Architecture]()
+[Computer Architecture](https://en.wikipedia.org/wiki/Computer_architecture "Computer Architecture")
 : A set of rules and methods that describe the functionality, organization, and implementation of computer systems.
 
 Programming, on the other hand, is more difficult and can get very messy since software can grow arbitrarily complex. We believe the key to becoming a good programmer is to develop a deep sense for semantics. What is the true meaning of a piece of code? Have I really understood what happens when the machine executes that code? There is of course also the right choice of programming languages and the professional use of software development tools but it all begins with truly understanding the meaning of code.
@@ -19,7 +19,7 @@ Q> What is the difference between natural languages and programming languages?
 Q>
 Q> Programming languages are formalisms, not languages!
 
-[Programming Language]()
+[Programming Language](https://en.wikipedia.org/wiki/Programming_language "Programming Language")
 : A formal constructed language designed to communicate instructions to a machine, particularly a computer.
 
 ## Von Neumann Architecture
@@ -28,63 +28,63 @@ Q> Programming languages are formalisms, not languages!
 
 Most computers including smart phones and tablets are at their core based on a computer architecture that has not changed in a long time. It is known as the *von Neumann architecture*.
 
-[Von Neumann Architecture]()
+[Von Neumann Architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture "Von Neumann Architecture")
 : A computer architecture introduced in 1945 by the mathematician and physicist John von Neumann and others.
 
 The idea is very simple. There is a *central processing unit* (CPU), also called a *processor*, that executes instructions of a computer program stored as machine code in so-called *main memory* or *memory* for short. The purpose of the program is to direct the CPU to compute something and use main memory not occupied by code for storing data. In particular, the CPU fetches instructions from memory and executes them. During code execution the CPU is directed by the instructions to read data from memory, compute something, write data to memory, and even communicate with the outside world.
 
-[Central Processing Unit (CPU)](cpu)
+[Central Processing Unit (CPU)](https://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit (CPU)")
 : A digital electronic circuit within a computer that carries out the instructions of a computer program by performing the basic arithmetic, logical, control and input/output (I/O) operations specified by the instructions.
 
 The key innovation of the von Neumann architecture is that code and data are both stored in main memory. In fact, since code and data are just bits there is no difference in representation either.
 
-[Memory]()
+[Memory](https://en.wikipedia.org/wiki/Computer_memory "Memory")
 : Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
 
 Since code can be seen as data and vice versa, code is really just pure information known as *software* clearly distinct from physical hardware. The von Neumann architecture is thus a machine model for executing software.
 
-[Software]()
+[Software](https://en.wikipedia.org/wiki/Software "Software")
 : That part of a computer system that consists of encoded information or computer instructions, in contrast to the physical hardware from which the system is built.
 
 Now, how does code and data get into a computer, and out? This is done through so-called *input/output* (I/O) devices such as keyboards and screens but also network and storage adapters, for example. Storage adapters are usually connected to "secondary storage" which is non-volatile storage containing code and data. In contrast, main memory is typically volatile meaning it loses its content when power is cut. However, volatility of memory is a property not relevant in the von Neumann architecture. We can thus ignore it.
 
-[Input/Output (I/O)](io)
+[Input/Output (I/O)](https://en.wikipedia.org/wiki/Input/output "Input/Output (I/O)")
 : The communication between an information processing system, such as a computer, and the outside world, possibly a human or another information processing system.
 
 But how does a computer with empty memory load code into memory to execute it? In other words, how does the CPU know what to do if there are no instructions on what to do? Keep in mind that when turning on a computer the only thing the CPU can do is to follow the instructions of a computer program. This is a typical paradox in computer science called *bootstrapping* derived from the phrase "to pull oneself up by one's bootstraps". Even more amusingly, there is also the related story of the Baron Munchausen who pulled himself (and his horse) out of a swamp by his pigtail.
 
 Well, in most computers there is a special program called a *bootloader* stored in special non-volatile memory from which the CPU fetches instructions and executes them if main memory is empty (initially or after a loss of memory). The bootloader contains instructions that direct the CPU to load code into main memory from some I/O device such as the network or storage adapter. Once this is done control is turned over to main memory and the CPU from then on fetches and executes the instructions loaded into main memory.
 
-[Booting]()
+[Booting](https://en.wikipedia.org/wiki/Booting "Booting")
 : The initialization of a computerized system.
 
 The arguably most important piece of information a CPU needs to remember is which instruction it is currently executing and where it finds the next instruction to execute. For this purpose a CPU maintains an *instruction register* (IR) which contains the currently executed instruction and a so-called *program counter* (PC) which identifies the location of the next instruction the CPU is supposed to execute. Both IR and PC are part of the *control unit* of a CPU.
 
-[Control Unit]()
+[Control Unit](https://en.wikipedia.org/wiki/Control_unit "Control Unit")
 : A component of a computer's central processing unit (CPU) that directs operation of the processor.
 
 When a CPU is done executing an instruction it fetches the next instruction from the location identified by the PC and stores that instruction in the IR. Then the CPU decodes the instruction to find out what it is supposed to do. Lastly, the CPU executes the instruction accordingly which includes changing the PC to the location of the instruction the current instruction wants the CPU to execute next. Once the CPU is done with executing the current instruction and in particular changing the PC it fetches the next instruction identified by the PC and so on ad infinitum or until power is turned off.
 
-[Instruction Register (IR)](ir)
+[Instruction Register (IR)](https://en.wikipedia.org/wiki/Instruction_register "Instruction Register (IR)")
 : The part of a control unit that stores the instruction currently being executed or decoded.
 
 Here it is important to understand that in principle a CPU really just executes one instruction after another, nothing else, but does that incredibly fast.
 
-[Program Counter (PC)](pc)
+[Program Counter (PC)](https://en.wikipedia.org/wiki/Program_counter "Program Counter (PC)")
 : A register that indicates where a computer is in its program sequence.
 
 Each individual instruction represents a tiny step in any computation so in the end it is only the speed of execution that enables computers to do interesting work in reasonable amounts of time. This implies that understanding how a computer works only requires knowing what these instructions do.
 
 To facilitate fast execution a CPU typically features a number of *registers* that can be accessed much faster than main memory.
 
-[Register]()
+[Register](https://en.wikipedia.org/wiki/Processor_register "Processor Register")
 : A quickly accessible memory location available to a computer's central processing unit (CPU).
 
 In fact, the IR and PC are such registers but there are also others. Registers are the fastest memory of a computer, much faster than main memory. However, because of technical and economical limitations a CPU usually features only a small amount of registers compared to main memory. An important problem is therefore to write programs that make efficient use of registers and main memory by keeping frequently needed data in registers and the rest in memory.
 
 In addition to the control unit with the IR and the PC, a CPU also features an *arithmetic logic unit* (ALU) with its own set of registers for performing actual computation. For example, an ALU may add the values stored in two registers and save the result in a third register for further computation.
 
-[Arithmetic Logic Unit (ALU)](alu)
+[Arithmetic Logic Unit (ALU)](https://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit (ALU)")
 : A digital electronic circuit that performs arithmetic and logical operations on integer binary numbers.
 
 To summarize, the von Neumann architecture is a machine model consisting of a CPU connected to main memory for storing code and data and to I/O devices for communication. A CPU consists of a control unit for executing instructions and an arithmetic logic unit for actual computation. The typical workflow of a computer is to bootstrap first by loading code from secondary storage into main memory and then execute the loaded code. Typically, that code directs the CPU to retrieve data from the outside world through some I/O communication, perform some computation, and eventually send data back to the outside world. Data needed for computation is kept in main memory and copied into registers for actual computation.
@@ -95,12 +95,12 @@ A fundamental performance limitation of the von Neumann architecture is the conn
 
 In order to understand how a computer works we need to know how to program it in the language that the machine *understands*. This may sound very ambitious and difficult to do but is in fact not all that hard. The language of a computer, also called machine language, is defined by the *instruction set architecture* (ISA) of the machine's processor. There are many different processors with different ISAs but luckily they are all based on similar principles.
 
-[Instruction Set Architecture (ISA)](isa)
+[Instruction Set Architecture (ISA)](https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)")
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and input/output (I/O).
 
 Programming a computer in machine language is considered low-level programming in the sense of a *low level of abstraction* close to the machine rather than any of its applications. Honestly, machine language is not at all meant to be used as formalism in which software is developed. It is rather designed to be efficiently executable and otherwise a target of software development tools that automatically translate software written on higher levels of abstraction more appropriate for humans. However, there are very simple and beautiful ISAs that are not only widely used in real processors but also for teaching computer architecture. One such ISA is *MIPS*.
 
-[Microprocessor without Interlocked Pipeline Stages (MIPS)](mips)
+[Microprocessor without Interlocked Pipeline Stages (MIPS)](https://en.wikipedia.org/wiki/MIPS_instruction_set "Microprocessor without Interlocked Pipeline Stages (MIPS)")
 : An instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.).
 
 MIPS is so simple it is actually fun to learn it, never mind the interlocked pipeline stages. To make things even simpler we decided to focus on the 32-bit version of MIPS called *MIPS32* where everything happens at the granularity of 32 bits. There are newer versions of MIPS with support of more bits for better performance. We can safely ignore them. Also, out of the 43 available MIPS32 instructions we only use a subset of 17 instructions that we call *MIPSter*. Most importantly, MIPSter is a proper subset of MIPS32, that is, all MIPSter code runs on MIPS32 machines but not vice versa.
@@ -137,7 +137,7 @@ T> MIPSter memory can store 2^29^ equal to 536,870,912 bits and thus be in 2^536
 
 In case you are wondering how to compute such large numbers check out [Wolfram Alpha](http://www.wolframalpha.com "Wolfram Alpha").
 
-[State]()
+[State](https://en.wikipedia.org/wiki/State_(computer_science) "State")
 : A technical term for all the stored information, at a given instant in time, to which a digital circuit or computer program has access. The output of a circuit or program at any time is completely determined by its current inputs and its state.
 
 We mention the notion of state here because it is important to realize that a computer is really just a machine that can distinguish a very large but still finite number of different states. If we had a way to store the state somewhere we could stop the machine and then reload the state ten years later to have the machine continue exactly where it left off. Well, closing the lid of a laptop putting it to sleep and then opening the lid again waking the machine up is exactly that, except maybe for the ten years. This can in principle be done with any digital circuit.
@@ -155,16 +155,16 @@ Now, let us write our first MIPSter program.
 
 Seriously? I am afraid, yes. But you will get used to it.
 
-First of all this program contains only one instruction which directs the CPU to load the decimal number [42]() into the ALU's general-purpose register called `$t0`. That's it. To see how this works let's walk through the example step by step.
+First of all this program contains only one instruction which directs the CPU to load the decimal number [42](https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42") into the ALU's general-purpose register called `$t0`. That's it. To see how this works let's walk through the example step by step.
 
 The leftmost hexadecimal number `0x00000000` is the address in main memory where the instruction is supposed to be stored. The hexadecimal number `0x2408002A` next to the address is in fact the instruction in *machine code*. That number really is the whole program. The rest is just there to make us feel better, I mean make it more readable for us.
 
-[Machine Code]()
+[Machine Code](https://en.wikipedia.org/wiki/Machine_code "Machine Code")
 : A sequence of instructions executed directly by a computer's central processing unit (CPU).
 
 So, what is `addiu $t0,$zero,42`? It is *assembly* which is meant to provide a human-readable version of machine code, in this case of `0x2408002A`. Despite their different appearance they are in fact semantically equivalent.
 
-[Assembly]()
+[Assembly](https://en.wikipedia.org/wiki/Assembly_language "Assembly Language")
 : A low-level programming language for a computer, or other programmable device, in which there is a very strong (generally one-to-one) correspondence between the language and the architecture's machine code instructions.
 
 However, even `0x2408002A` is already a more compact representation of what is physically stored in memory which is the following 32-bit binary number:
@@ -178,16 +178,16 @@ That number is equal to `0x2408002A` in binary. Both `0x2408002A` and `addiu $t0
 
 T> Imagine we programmed computers in their native machine languages using binary code. There were times when people actually did that. Going from binary code to hexadecimal code and then assembly is therefore already a significant advancement over the lowest level of programming. People still program in assembly to this day.
 T>
-T> However, programming in assembly already requires *assembling* the binary code for each instruction either manually, like I did for a [Z80]() machine when I was fourteen, or using a software tool called an *assembler*. Unfortunately, [selfie]() does not feature an assembler but it does include a *disassembler* which produces the assembly representation of MIPSter binary code.
+T> However, programming in assembly already requires *assembling* the binary code for each instruction either manually, like I did for a [Z80](https://en.wikipedia.org/wiki/Zilog_Z80 "Z80") machine when I was fourteen, or using a software tool called an *assembler*. Unfortunately, [Selfie](http://selfie.cs.uni-salzburg.at "Selfie") does not feature an assembler but it does include a *disassembler* which produces the assembly representation of MIPSter binary code.
 
 Assembly uses *mnemonic* to help us remember what machine code means.
 
-[Mnemonic]()
+[Mnemonic](https://en.wikipedia.org/wiki/Mnemonic "Mnemonic")
 : Any learning technique that aids information retention in the human memory.
 
 In our example, the `addiu` string stands for "add immediate unsigned" and represents the so-called *opcode* of the instruction.
 
-[Opcode]()
+[Opcode](https://en.wikipedia.org/wiki/Opcode "Opcode")
 : The portion of a machine language instruction that specifies the operation to be performed.
 
 The opcode of a MIPSter instruction is encoded in the six most significant bits of the 32-bit machine code. In other words, `addiu` represents `001001` in binary. We repeat the above 32-bit binary number here with the one-to-one correspondence to the assembly representation:
@@ -210,7 +210,7 @@ T> But what happens if there is an overflow, that is, the result of the addition
 
 The fact that the CPU performs wrap-arounds upon overflows when executing `addiu` is emphasized by the `u` in `addiu` which stands for `unsigned`, obviously another unfortunate misnomer, my apologies. The behavior of the CPU treating an operand as value is called *immediate addressing* which explains the `i` in `addiu`. In general, CPUs support different *addressing modes* of which immediate addressing is only one example (even though there is no real addressing going on here).
 
-[Addressing Mode]()
+[Addressing Mode](https://en.wikipedia.org/wiki/Addressing_mode "Addressing Mode")
 : Specifies how to calculate the effective memory address of an operand by using information held in registers and/or constants contained within a machine instruction or elsewhere.
 
 The addressing mode of the two other operands of `addiu` is called *register addressing* since the operands identify registers. Note that the five bits of these operands can distinguish 2^5^, that is, 32 registers which non-coincidentally happens to be the number of general-purpose registers of our processor. Nice!
@@ -219,16 +219,16 @@ There are more addressing modes with other instructions which we discuss as we e
 
 You may nevertheless already ask yourself how you can run MIPSter code and see what happens. Fortunately, we do not need a real MIPS processor to run MIPSter code. Computers have this fascinating ability to imitate each other and many other things. A computer or software running on a computer that imitates another computer (or even the same computer) is called an *emulator* which is exactly what we suggest to use here.
 
-[Emulator]()
+[Emulator](https://en.wikipedia.org/wiki/Emulator "Emulator")
 : Hardware or software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
-If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [selfie](). The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented in the example below is obtained with mipster.
+If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [Selfie](http://selfie.cs.uni-salzburg.at "Selfie"). The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented in the example below is obtained with mipster.
 
 ## High-Level Programming
 
 Most software is not written in machine code or assembly but in programming languages that are designed to describe computation on levels of abstraction much higher than CPU registers and main memory.
 
-[High-level Programming Language]()
+[High-level Programming Language](https://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming Language")
 : A programming language with strong abstraction from the details of the computer. In comparison to low-level programming languages, it may use natural language elements, be easier to use, or may automate (or even hide entirely) significant areas of computing systems (e.g. memory management), making the process of developing a program simpler and more understandable relative to a lower-level language. The amount of abstraction provided defines how "high-level" a programming language is.
 
 But which language should we learn and then use? There are so many already and then there are new ones being developed all the time. I think it is so bad, we should just give up and go home. Just kidding. No, the solution to this problem, in our opinion, is to develop a strong sense for semantics and awareness of your own understanding. Consider the following program:
@@ -238,7 +238,7 @@ But which language should we learn and then use? There are so many already and t
 
 The program is written in C which is a programming language that was developed in the late 1960s to early 1970s. C has influenced the design of numerous other languages, has been standardized over the years, is supported by many tools, and is still one of the most widely used programming languages.
 
-[C]()
+[C](https://en.wikipedia.org/wiki/C_(programming_language) "C")
 : A general-purpose, imperative computer programming language, supporting structured programming, lexical variable scope and recursion, while a static type system prevents many unintended operations.
 
 C has also been criticized for being difficult to use and the source of many errors in software.
@@ -296,51 +296,19 @@ TODO: continue introducing the example.
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the C* Program with Pointers](code/pointer.s)
 
-[computer architecture]: http://en.wikipedia.org/wiki/Computer_architecture "Computer Architecture"
-[programming language]: http://en.wikipedia.org/wiki/Programming_language "Programming Language"
+[declaration]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration"
+[global variable]: https://en.wikipedia.org/wiki/Global_variable "Global Variable"
+[scope]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Scope"
+[subroutine]: https://en.wikipedia.org/wiki/Subroutine "Subroutine"
+[local variable]: https://en.wikipedia.org/wiki/Local_variable "Local Variable"
 
-[von neumann architecture]: http://en.wikipedia.org/wiki/Von_Neumann_architecture "Von Neumann Architecture"
-[cpu]: http://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit (CPU)"
-[memory]: http://en.wikipedia.org/wiki/Computer_memory "Computer Memory"
-[software]: http://en.wikipedia.org/wiki/Software "Software"
-[io]: http://en.wikipedia.org/wiki/Input/output "Input/Output (I/O)"
-[booting]: http://en.wikipedia.org/wiki/Booting "Booting"
-[control unit]: http://en.wikipedia.org/wiki/Control_unit "Control Unit"
-[ir]: http://en.wikipedia.org/wiki/Instruction_register "Instruction Register (IR)"
-[pc]: http://en.wikipedia.org/wiki/Program_counter "Program Counter (PC)"
-[register]: http://en.wikipedia.org/wiki/Processor_register "Processor Register"
-[alu]: http://en.wikipedia.org/wiki/Arithmetic_logic_unit "Arithmetic Logic Unit (ALU)"
+[imperative]: https://en.wikipedia.org/wiki/Imperative_programming "Imperative Programming"
+[statement]: https://en.wikipedia.org/wiki/Statement_(computer_science) "Statement"
+[declarative]: https://en.wikipedia.org/wiki/Declarative_programming "Declarative Programming"
+[assignment]: https://en.wikipedia.org/wiki/Assignment_(computer_science) "Assignment"
+[expression]: https://en.wikipedia.org/wiki/Expression_(computer_science) "Expression"
+[conditional]: https://en.wikipedia.org/wiki/Conditional_(computer_programming) "Conditional"
+[while]: https://en.wikipedia.org/wiki/While_loop "While Loop"
+[return]: https://en.wikipedia.org/wiki/Return_statement "Return Statement"
 
-[isa]: http://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)"
-[mips]: http://en.wikipedia.org/wiki/MIPS_instruction_set "Microprocessor without Interlocked Pipeline Stages (MIPS)"
-
-[state]: http://en.wikipedia.org/wiki/State_(computer_science) "State"
-[machine code]: http://en.wikipedia.org/wiki/Machine_code "Machine Code"
-[assembly]: http://en.wikipedia.org/wiki/Assembly_language "Assembly Language"
-[mnemonic]: http://en.wikipedia.org/wiki/Mnemonic "Mnemonic"
-[opcode]: http://en.wikipedia.org/wiki/Opcode "Opcode"
-[addressing mode]: http://en.wikipedia.org/wiki/Addressing_mode "Addressing Mode"
-[emulator]: http://en.wikipedia.org/wiki/Emulator "Emulator"
-
-[high-level programming language]: http://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming Language"
-[c]: http://en.wikipedia.org/wiki/C_(programming_language) "C"
-[declaration]: http://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration"
-[global variable]: http://en.wikipedia.org/wiki/Global_variable "Global Variable"
-[scope]: http://en.wikipedia.org/wiki/Declaration_(computer_programming) "Scope"
-[subroutine]: http://en.wikipedia.org/wiki/Subroutine "Subroutine"
-[local variable]: http://en.wikipedia.org/wiki/Local_variable "Local Variable"
-
-[imperative]: http://en.wikipedia.org/wiki/Imperative_programming "Imperative Programming"
-[statement]: http://en.wikipedia.org/wiki/Statement_(computer_science) "Statement"
-[declarative]: http://en.wikipedia.org/wiki/Declarative_programming "Declarative Programming"
-[assignment]: http://en.wikipedia.org/wiki/Assignment_(computer_science) "Assignment"
-[expression]: http://en.wikipedia.org/wiki/Expression_(computer_science) "Expression"
-[conditional]: http://en.wikipedia.org/wiki/Conditional_(computer_programming) "Conditional"
-[while]: http://en.wikipedia.org/wiki/While_loop "While Loop"
-[return]: http://en.wikipedia.org/wiki/Return_statement "Return Statement"
-
-[branch]: http://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
-
-[selfie]: http://selfie.cs.uni-salzburg.at "Selfie"
-[42]: https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42"
-[Z80]: https://en.wikipedia.org/wiki/Zilog_Z80 "Zilog Z80"
+[branch]: https://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
