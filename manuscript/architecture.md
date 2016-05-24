@@ -295,20 +295,3 @@ TODO: continue introducing the example.
 
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the C* Program with Pointers](code/pointer.s)
-
-[declaration]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration"
-[global variable]: https://en.wikipedia.org/wiki/Global_variable "Global Variable"
-[scope]: https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Scope"
-[subroutine]: https://en.wikipedia.org/wiki/Subroutine "Subroutine"
-[local variable]: https://en.wikipedia.org/wiki/Local_variable "Local Variable"
-
-[imperative]: https://en.wikipedia.org/wiki/Imperative_programming "Imperative Programming"
-[statement]: https://en.wikipedia.org/wiki/Statement_(computer_science) "Statement"
-[declarative]: https://en.wikipedia.org/wiki/Declarative_programming "Declarative Programming"
-[assignment]: https://en.wikipedia.org/wiki/Assignment_(computer_science) "Assignment"
-[expression]: https://en.wikipedia.org/wiki/Expression_(computer_science) "Expression"
-[conditional]: https://en.wikipedia.org/wiki/Conditional_(computer_programming) "Conditional"
-[while]: https://en.wikipedia.org/wiki/While_loop "While Loop"
-[return]: https://en.wikipedia.org/wiki/Return_statement "Return Statement"
-
-[branch]: https://en.wikipedia.org/wiki/Branch_(computer_science) "Branch"
