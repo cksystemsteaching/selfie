@@ -28,20 +28,20 @@ Q> Mathematics is about numbers (among other things), computer science is about 
 
 X> We will use the following 8-bit bit string as running example: 01010101
 
-[String][]
+[String]()
 : A finite sequence of characters taken from some finite alphabet.
 
-[Bit][]
+[Bit]()
 : The basic unit of information in computing and digital communications. A bit can have only one of two values which are most commonly represented as either a 0 or 1. The term bit is a portmanteau of binary digit.
 
 In principle, a computer could operate on the level of individual bits. However, processing information in larger chunks in parallel generally increases performance. For example, some early computers were able to operate on the level of *bytes*, eight bits, at once. Nowadays computers process information on the level of *words*, that is, two (16 bits), four (32 bits), eight (64 bits), or even sixteen bytes (128 bits), at once. Unless stated otherwise, we use the term word, in the context of machine models, to denote four bytes (32 bits).
 
 X> Since 01010101 contains 8 bits it is also an example of a byte.
 
-[Byte][]
+[Byte]()
 : A unit of digital information in computing and telecommunications that most commonly consists of eight bits.
 
-[Word][]
+[Word]()
 : A term for the natural unit of data used by a particular processor design. A word is basically a fixed-sized group of digits that are handled as a unit by the instruction set or the hardware of the processor. The number of digits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
 
 Now, how do we actually encode *characters* other than 0 and 1 using, well, 0s and 1s? Easy. We only need to write down the characters we would like to encode and then define a (surjective) mapping from bit strings to characters. The first such definition was ASCII which is actually bijective for 7-bit strings. Since bytes became later the norm as the unit of data in many computers ASCII was extended to eight bits. For example, the most recent extension is the UTF-8 standard, which is the most popular such standard today.
@@ -52,20 +52,20 @@ T> The first lesson to learn here is that for a computer 01010101 is still just 
 T>
 T> The only thing we did is that we wrote down a mapping from bit strings to characters, something a computer is not aware of. Only if we program the computer to, say, draw the shape of the letter U on a screen that mapping also exists for the computer. However, even then there is no semantics yet. Read on for that.
 
-[Character][]
+[Character]()
 : A unit of information that roughly corresponds to a grapheme, grapheme-like unit, or symbol, such as in an alphabet or syllabary in the written form of a natural language. Examples of characters include *letters*, numerical *digits*, common *punctuation marks* (such as "." or "-"), and *whitespace*. The concept also includes *control characters*, which do not correspond to symbols in a particular natural language, but rather to other bits of information used to process text in one or more languages. Examples of control characters include *carriage return* or *tab*, as well as instructions to printers or other devices that display or otherwise process text.
 
-[American Standard Code for Information Interchange (ASCII)][ascii]
+[American Standard Code for Information Interchange (ASCII)](ascii)
 : 7-bit encoding scheme for 128 characters: numbers 0 to 9, lowercase letters a to z, uppercase letters A to Z, basic punctuation symbols, control codes that originated with Teletype machines, and a space.
 
-[UTF-8][]
+[UTF-8]()
 : (Universal Character Set Transformation Format - 8-bit) A character encoding capable of encoding all possible characters (called code points) in Unicode. The encoding is variable-length and uses 8-bit code units. It is designed for backward compatibility with ASCII.
 
 ## Numbers
 
 Let us now focus on *numbers*. Arithmetics defines the semantics of natural numbers. Since virtually all modern processors feature arithmetic instructions for, say, the elementary operations addition, subtraction, multiplication, and division of (bounded versions of) natural numbers computers can be thought of "knowing" what numbers are, even if they have no code to run. The semantics is already implemented by the silicon of the processor. Important for us is to understand how numbers are represented by bit strings and other notational systems.
 
-[Number][]
+[Number]()
 : A mathematical object used to count, measure, and label. The original examples are the *natural numbers* 1, 2, 3, and so forth.
 
 Before worrying about how to represent numbers using bit strings we step back for a moment and look at the arguably most naive way of representing numbers. Say, we would like to represent the (decimal) number 10. We could just write ten 1s, that is, 1111111111. This scheme has actually been around for a long time and is called *unary* code. It only uses a single digit hence the name.
@@ -82,11 +82,11 @@ The fundamental reason for the difference in size between different notations is
 
 | Encoding | Alphabet | Base (Radix, Size of Alphabet) | # Digits in Values {$$}n>1{/$$} | # Values in Digits {$$}n>0{/$$} |
 | - | - | -: | -: | -: |
-| [Unary][] | {1} | 1 | {$$}n{/$$} | {$$}n{/$$} |
-| [Binary][] | {0,1} | 2 | {$$}\lceil\frac{log(n)}{log(2)}\rceil{/$$} | {$$}2^n{/$$} |
-| [Octal][] | {0,1,2,3,4,5,6,7} | 8 | {$$}\lceil\frac{log(n)}{log(8)}\rceil{/$$} | {$$}8^n{/$$} |
-| [Decimal][] | {0,1,2,3,4,5,6,7,8,9} | 10 | {$$}\lceil\frac{log(n)}{log(10)}\rceil{/$$} | {$$}10^n{/$$} |
-| [Hexadecimal][] | {0,1,2,3,4,5,6,7,8,9, | 16 | {$$}\lceil\frac{log(n)}{log(16)}\rceil{/$$} | {$$}16^n{/$$} |
+| [Unary]() | {1} | 1 | {$$}n{/$$} | {$$}n{/$$} |
+| [Binary]() | {0,1} | 2 | {$$}\lceil\frac{log(n)}{log(2)}\rceil{/$$} | {$$}2^n{/$$} |
+| [Octal]() | {0,1,2,3,4,5,6,7} | 8 | {$$}\lceil\frac{log(n)}{log(8)}\rceil{/$$} | {$$}8^n{/$$} |
+| [Decimal]() | {0,1,2,3,4,5,6,7,8,9} | 10 | {$$}\lceil\frac{log(n)}{log(10)}\rceil{/$$} | {$$}10^n{/$$} |
+| [Hexadecimal]() | {0,1,2,3,4,5,6,7,8,9, | 16 | {$$}\lceil\frac{log(n)}{log(16)}\rceil{/$$} | {$$}16^n{/$$} |
 | | A,B,C,D,E,F} | | | |
 
 Once again note that 01010101 may stand for the (decimal) number 85 or the letter U or any other object. It is only the operations on 01010101 that define its semantics.
@@ -109,15 +109,15 @@ X> Adding both numbers in hexadecimal, that is, 0x55 and 0xAA, works similarly, 
 
 In binary numbers the leftmost and rightmost bits have a meaning similar to the leftmost and rightmost digits in decimal numbers. The rightmost bit, also called *least significant bit*, determines if the number is even or odd. For example, 01010101 represents an odd number whereas 10101010 an even number. The leftmost bit, also called *most significant bit*, represents the greatest value. Thus 10101010 stands for a number larger than 01010101.
 
-[Least Significant Bit (LSB)][lsb]
+[Least Significant Bit (LSB)](lsb)
 : The bit in a binary number that appears rightmost and determines if the number is even (0) or odd (1).
 
-[Most Significant Bit (MSB)][msb]
+[Most Significant Bit (MSB)](msb)
 : The bit in a binary number that appears leftmost and has the greatest value.
 
 Now, what happens if we try to add two numbers where the result exceeds the number of digits necessary to represent them individually? For example, what if we compute 255+1=256 in binary? In this case, that is, 11111111+00000001, the result is 100000000, a binary number with 9 bits rather than the 8 bits representing 255. This is not a problem if we have more than 8 bits. However, with computers everything is finite, in particular memory. Moreover, arithmetic operations are on most machines implemented for bit strings with a fixed size such as 8 bits. On such machines adding 11111111 and 00000001 results in what is called *arithmetic overflow*.
 
-[Arithmetic Overflow][]
+[Arithmetic Overflow]()
 : Occurs when an arithmetic operation attempts to create a numeric value that is too large to be represented within the available storage space.
 
 How can we deal with arithmetic overflow? There are two approaches that can be combined: detection and semantics. If the occurrence of an arithmetic overflow can be detected one can discard the computation and do something else. For this purpose most processors feature a so-called *carry bit* or *carry flag* which is set if an arithmetic operation causes an overflow indicated by a *carry out of the most significant bits*. In our example, the 9-th bit in 100000000 is that carry bit.
@@ -133,7 +133,7 @@ Arithmetic overflow nevertheless is the cause of numerous software bugs and even
 
 Now, what about subtraction and negative numbers? Ideally, we would like our bit strings to represent not just *positive* but also *negative* numbers, also called *integers*, with elementary arithmetics on them still intact. Obviously, one bit, or more generally one digit, is enough to encode the *sign* of a number, that is, distinguish positive from negative numbers. Fortunately, however, there is an overall encoding scheme that works without changing elementary arithmetics such as addition. In fact, subtraction will work by using addition, as previously discussed, with negative numbers.
 
-[Integer][]
+[Integer]()
 : A number that can be written without a fractional component. For example, 21, 4, 0, and −2048 are integers, while 9.75 and 5.5 are not. The set of integers consists of zero (0), the natural numbers (1, 2, 3, ...), also called whole, counting, or positive numbers, and their additive inverses (the negative numbers, that is −1, −2, −3, ...).
 
 T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers.
@@ -188,13 +188,13 @@ X> To compute 85-127 we compute 01010101+10000001=11010110, which is binary for 
 
 Using two's complement for representing negative numbers a byte can in total represent signed integers i from -128 to 127, that is, with -2^8^/2-1 = -2^7^-1 = -129 < i < 128 = 2^7^ = 2^8^/2. Our running example fits these constraints. Moreover, the most significant bit has taken over a different role than before. It indicates if a number is positive or negative. For example, 01111111 represents a positive number whereas 10000000 stands for a negative number.
 
-[Ones' Complement][]
+[Ones' Complement]()
 : All bits of the number inverted, that is, 0s swapped for 1s and vice versa.
 
-[Two's Complement][]
+[Two's Complement]()
 : Given an n-bit number i with -2^n^/2-1 = -2^n-1^-1 < i < 2^n-1^ = 2^n^/2, the complement of i with respect to 2^n^, that is, 2^n^-i which is equal to the ones' complement of i plus one.
 
-[Most Significant Bit (MSB)][msb]
+[Most Significant Bit (MSB)](msb)
 : The bit in a binary number that appears leftmost and has the greatest value or, if the number represents a signed integer in two's complement, determines if the integer is positive (0) or negative (1).
 
 T> In sum, subtraction of signed integers that are represented in binary code using two's complement for negative numbers works as follows:
@@ -223,7 +223,7 @@ T> Most important for you is to be aware of the issue and know what your choice 
 
 From a purely computational point of view, a computer just computes functions from bit strings to bit strings. The original definition of a *function* is nevertheless mathematical and thus neither concerned with how to represent input and output, ultimately in terms of bit strings, nor how to compute the output from the input.
 
-[Function][]
+[Function]()
 : A relation between a set of inputs and a set of permissible outputs with the property that each input is related to exactly one output.
 
 However, many applications can in fact be written down using mathematical functions. In fact, many application areas have their own way of writing which may be mathematical or not but is typically different from how computer scientists express themselves. We try to close that gap here.
@@ -255,10 +255,10 @@ X> 4. go back to 1.
 
 This is our first *program*, a sequence of four instructions, which, as we mentioned before, could even be represented by bit strings (rather than a sentence in English). The process of incrementing x and decrementing y until y is 0 is an instance of what is called an *iteration*.
 
-[Program][]
+[Program]()
 : A sequence of instructions, written to perform a specified task with a computer.
 
-[Iteration][]
+[Iteration]()
 : The act of repeating a process with the aim of approaching a desired goal, target or result. Each repetition of the process is also called an "iteration", and the results of one iteration are used as the starting point for the next iteration.
 
 Since we are using 8 bits for x and y the program produces the correct result as long as the sum of x and y is less than 2^8^=256. This is interesting because the computer may only find out if it can produce the correct result by trying to compute it and see if there is an overflow or not. However, there are always two sides to correctness: there is the program that should be correct but also a *specification* that states what is actually correct. In other words, a program, just like any other artifact, can only be correct with respect to a specification that states what is required to be correct.
@@ -285,7 +285,7 @@ T> Developing programs requires primarily a background in computer science. Deve
 
 Suppose we could actually write down our intentions in a way that would be natural to us (for example, mathematical) but also computable by a machine (that is, executable). In this case, the problem of matching specification and program would disappear. Well, there are ways to do that, at least to some extent. An important example is *recursion* which is a technique to define a function using the same function but repeatedly applied to smaller and smaller versions of its original inputs until a solution is known.
 
-[Recursion][]
+[Recursion]()
 : A method where the solution to a problem depends on solutions to smaller instances of the same problem (as opposed to iteration).
 
 X> Consider the example of a recursive function g defined as follows:
@@ -307,7 +307,7 @@ X> Step by step, we replace g(1,2) by its definition, that is, by g(1,2-1)+1. We
 
 The term (1+1)+1 of the example is interesting. It represents all the work that is still left to do to complete the computation after satisfying the termination condition. Understanding how to remember that work and later complete it is the key to understanding recursion. Intuitively, the work that still needs to be done must be completed in the *reverse* order in which it was remembered. One way to remember that is to organize the information in a so-called *stack*. We will show in detail how this is done in later chapters.
 
-[Stack][]
+[Stack]()
 : A collection of elements, with two principal operations: *push* adds an element to the collection and *pop* removes the last element that was added.
 
 X> In our example, the term (1+1)+1 represents the work that is still to be done. In particular, the left + needs to be done first because it was remembered last, followed by the right +.
@@ -324,12 +324,12 @@ There are many other ways to express computation on higher levels of abstraction
 
 Suppose we would like to collect objects without duplicates and do not care about any object ordering. The natural representation of such a collection is a *set*. Similar to other representations, the operations on a set such as membership, union, intersection, and so on define the semantics of a set. In particular, an object is either an element of a set or not and there is no ordering of elements of a set.
 
-[Set (in Mathematics)][set in mathematics]
+[Set (in Mathematics)](set in mathematics)
 : A collection of distinct objects, considered as an object in its own right.
 
 Similar to integers, a computer representation of a set may only approximate the original. Moreover, in contrast to the semantics or *logic* of a set in the mathematical sense, temporal and spatial performance of the *implementation* of a set plays an important role. For example, how long does it take to find out if an object is an element of a set and how much memory do we need to store a set?
 
-[Set (in Computer Science)][set in computer science]
+[Set (in Computer Science)](set in computer science)
 : A collection that can store certain values, without any particular order, and no repeated values. It is a computer implementation of the mathematical concept of a finite set.
 
 No matter the actual application, being able to distinguish between logic and implementation and reason on both levels is key to understanding computer science. Many students are good at only one of the two. The best know both. In class we usually ask students to describe the *logic* of a computational artifact first and only then go into the details of its *implementation*. Most students have a hard time doing that. For most it appears to be much simpler to reason on lower, more mechanical levels of abstraction. Others prefer to stay away from those. The truth, however, is in the relation between logic and implementation. Does the implementation really implement the logic or specification we have in mind? And, just as important, is the implementation sufficiently efficient for our purposes? Let us now have a closer look at performance.
@@ -338,12 +338,12 @@ No matter the actual application, being able to distinguish between logic and im
 
 Computational performance is typically measured in terms of time and space and, more recently, even in terms of energy. How much time does a computation take, how much memory does it need, and how much energy does it consume? Before looking at the most common metrics, we emphasize that in computer science the notion of order of magnitude may be used with its standard meaning as it is common in other disciplines or with a meaning rather unique to the field. Traditionally, something is an order of magnitude bigger or smaller if it is bigger or smaller by a factor of ten. However, in computer science, because of the widespread use of binary codes, an order of magnitude may also refer to a factor of two.
 
-[Order of Magnitude][]
+[Order of Magnitude]()
 : A factor with base 10 (decimal) or with base 2 (binary).
 
 As a consequence and even more confusing is the fact that commonly used prefixes such as kilo, mega, giga, and tera may either refer to factors of 10^3^=1000 or 2^10^=1024 depending on context and metric. Only recently new binary prefixes for kilo, mega, giga, tera, and so on, called kibi, mebi, gibi, tebi, respectively, have been introduced. Adoption is nevertheless slow. We try our best to use the new prefixes properly.
 
-| [Decimal Prefix][] | Value           | [Binary Prefix][] | Value           |
+| [Decimal Prefix]() | Value           | [Binary Prefix]() | Value           |
 | ------------------ | --------------- | ----------------- | --------------- |
 | nano (n)           | 10^-9^=1000^-3^ |
 | micro (u)          | 10^-6^=1000^-2^ |
@@ -357,26 +357,26 @@ Memory storage is typically quantified in bytes with base 2, for example, in gig
 
 Speed is generally characterized in terms of throughput, the amount of work done per unit of time, and latency, the amount of time to do some work, in particular before some other work can be done. The difference is usually explained with a simple example. Imagine a fiber optic cable connecting, say, New York City and San Francisco and a truck loaded with DVDs driving from New York City to San Francisco. Which one provides higher throughput and which one lower latency? Surprisingly, it may very well be possible that the truck provides higher throughput. However, delivering just a single bit by truck may take days. Thus the truck clearly provides terrible latency not suitable to host, say, a skype call. Got it?
 
-[Throughput][]
+[Throughput]()
 : Amount of work performed per unit of time.
 
-[Latency][]
+[Latency]()
 : Amount of time (or delay) to perform work.
 
 Energy is quantified in Joule and power consumption in Watt, that is, the amount of energy consumed per second. Interestingly, we can also quantify the efficiency of, say, computation, for example, in number of operations performed by that computation per Joule, or even in MIPS or FLOPS per Watt. Energy efficiency plays an increasingly important role, not just in mobile computing but also in large-scale data center computing.
 
 | Performance | Unit |
 | ----------- | ---- |
-| memory      | bit (b), [kilobit][] (kb), megabit (mb), gigabit (gb), terabit (tb) with decimal prefix |
-|             | byte (B), [kilobyte][] (kB), megabyte (MB), gigabyte (GB), terabyte (TB) with decimal prefix |
-|             | byte (B), [kibibyte][] (KB,KiB), mebibyte (MB,MiB), gibibyte (GB,GiB), tebibyte (TiB) with binary prefix |
+| memory      | bit (b), [kilobit]() (kb), megabit (mb), gigabit (gb), terabit (tb) with decimal prefix |
+|             | byte (B), [kilobyte]() (kB), megabyte (MB), gigabyte (GB), terabyte (TB) with decimal prefix |
+|             | byte (B), [kibibyte]() (KB,KiB), mebibyte (MB,MiB), gibibyte (GB,GiB), tebibyte (TiB) with binary prefix |
 | latency     | nanoseconds (ns), microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h) |
-| throughput  | million instructions per second ([MIPS][]) |
-|             | floating point operations per second ([FLOPS][]) |
-|             | bytes/second, [kB/s][data rate units], MB/s, GB/s, TB/s |
-|             | bits/second, [kbps][data rate units], mbps, gbps, tbps |
-| energy      | [joule][] |
-| power       | joule/second ([watt][]) |
+| throughput  | million instructions per second ([MIPS]()) |
+|             | floating point operations per second ([FLOPS]()) |
+|             | bytes/second, [kB/s](data rate units), MB/s, GB/s, TB/s |
+|             | bits/second, [kbps](data rate units), mbps, gbps, tbps |
+| energy      | [joule]() |
+| power       | joule/second ([watt]()) |
 | efficiency  | operations/joule |
 |             | MIPS/watt |
 |             | FLOPS/watt |
@@ -386,11 +386,11 @@ Measuring computational performance in terms of time, space, and energy allows c
 | Growth Rate     | Function        | Comment                         |
 | --------------- | --------------- | ------------------------------- |
 | constant        | {$$}c{/$$}      | no growth                       |
-| [logarithmic][] | {$$}log(n){/$$} | {$$}log_b(n)=log(n)/log(b){/$$} |
-| [linear][]      | {$$}n{/$$}      | polynomial                      |
-| [quadratic][]   | {$$}n^2{/$$}    | polynomial                      |
+| [logarithmic]() | {$$}log(n){/$$} | {$$}log_b(n)=log(n)/log(b){/$$} |
+| [linear]()      | {$$}n{/$$}      | polynomial                      |
+| [quadratic]()   | {$$}n^2{/$$}    | polynomial                      |
 | cubic           | {$$}n^3{/$$}    | polynomial                      |
-| [exponential][] | {$$}2^n{/$$}    | {$$}b^n=10^(n*log(b)){/$$}      |
+| [exponential]() | {$$}2^n{/$$}    | {$$}b^n=10^(n*log(b)){/$$}      |
 
 Constant complexity means that the performance of an algorithm remains the same for any input. Non-constant complexity means that performance is a non-constant function of the input size. Determining that function requires, as prerequisite, defining a performance metric and a metric on input size. For example, we could define the number of steps taken in the computation of the addition function f(x,y) that we introduced earlier. In fact, this is usually done for studying temporal performance formally since the time to execute an algorithm is a linear function of the number of steps taken by that algorithm as long as each step can be performed by a constant number of machine instructions and the execution time of each machine instruction is indeed constant or at least bounded by a constant. The former can be ensured by properly defining, as in our example, what a step of a computation is. The latter is anyway true on most modern hardware.
 
