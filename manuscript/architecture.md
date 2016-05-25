@@ -236,14 +236,21 @@ But which language should we learn and then use? There are so many already and t
 {line-numbers=on, lang=c}
 <<[A Simple C* Program](code/iteration.c)
 
-The program is written in C which is a programming language that was developed in the late 1960s to early 1970s. C has influenced the design of numerous other languages, has been standardized over the years, is supported by many tools, and is still one of the most widely used programming languages.
+The program is *source code* written in *C* which is a programming language that was developed in the late 1960s to early 1970s. Essentially, the program takes the integer value `0`, increments it two times to `2`, then decrements it two times to `0` again, and then returns that `0`. Not very exciting but good enough for our purpose here.
+
+[Source Code](https://en.wikipedia.org/wiki/Source_code "Source Code")
+: Any collection of computer instructions (possibly with comments) written using some human-readable computer language, usually as text.
+
+C has influenced the design of numerous other languages, has been standardized over the years, is supported by many tools, and is still one of the most widely used programming languages.
 
 [C](https://en.wikipedia.org/wiki/C_(programming_language) "C")
 : A general-purpose, imperative computer programming language, supporting structured programming, lexical variable scope and recursion, while a static type system prevents many unintended operations.
 
-Unless you are reading this on paper, it is likely that the system you are reading this on has to a large extent been programmed in some flavor of C. However, C has also been criticized for being difficult to use and the source of many errors in software written in C. Computer scientists tend to enjoy discussing the pros and cons of programming languages at great length. We try to avoid that here and instead make two key observations that hopefully justify our choice. Firstly, many newer programming languages have adopted the look and feel of some parts of C which, secondly, happen to be surprisingly simple. We have tried to identify some of that over the course of a few years of teaching computer science classes. The outcome is a tiny subset of C that we call C\* and use throughout the book. Not just the above example is written in C\* but all other examples as well. Even [Selfie](http://selfie.cs.uni-salzburg.at "Selfie") is written entirely in C\*. An important advantage of using a proper subset of a widely used programming language such as C is that all programs written in the subset readily work with all tools that exist for the original language.
+Unless you are reading this on paper, it is likely that the system you are reading this on has to a large extent been programmed in some flavor of C. However, C has also been criticized for being difficult to use and the source of many errors in software written in C.
 
-TODO: continue introducing the example.
+Programmers tend to enjoy discussing the pros and cons of programming languages at great length. We nevertheless try to avoid that here and instead make two key observations that hopefully justify our choice. Firstly, many programming languages newer than C have adopted the look and feel of some parts of C which, secondly, happen to be surprisingly simple. We have tried to identify some of that over the course of a few years of teaching computer science classes. The outcome is a tiny subset of C that we call C\* and use throughout the book. Not just the above example is written in C\* but all other examples as well. Even [Selfie](http://selfie.cs.uni-salzburg.at "Selfie") is written entirely in C\*. An important advantage of using a proper subset of a widely used programming language such as C is that all programs written in the subset readily work with all tools that exist for the superset.
+
+Let us now take a closer look at the above example which we repeat here with comments on what each line actually means. Note that each comment starts with '//' which instructs tools that process such source code to ignore the text to the right of `//` until the end of the line. In other words, a comment in source code is meaningless to the machine but hopefully not to us.
 
 {line-numbers=on, lang=c}
 <<[Informal Semantics of the Simple C* Program](code/iteration-low.c)
