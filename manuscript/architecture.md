@@ -231,7 +231,7 @@ Most software is not written in machine code or assembly but in programming lang
 [High-level Programming Language](https://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming Language")
 : A programming language with strong abstraction from the details of the computer. In comparison to low-level programming languages, it may use natural language elements, be easier to use, or may automate (or even hide entirely) significant areas of computing systems (e.g. memory management), making the process of developing a program simpler and more understandable relative to a lower-level language. The amount of abstraction provided defines how "high-level" a programming language is.
 
-But which language should we learn and then use? There are so many already and then there are new ones being developed all the time. I think it is so bad, we should just give up and go home. Just kidding. No, the solution to this problem, in our opinion, is to develop a strong sense for semantics and awareness of your own understanding. Consider the following program:
+But which language should we learn and then use? There are so many already and then there are new ones being developed all the time. The solution to this problem, in our opinion, is to develop a strong sense for semantics and awareness of your own understanding. Consider the following program:
 
 {line-numbers=on, lang=c}
 <<[A Simple C* Program](code/iteration.c)
@@ -241,7 +241,7 @@ The program is written in C which is a programming language that was developed i
 [C](https://en.wikipedia.org/wiki/C_(programming_language) "C")
 : A general-purpose, imperative computer programming language, supporting structured programming, lexical variable scope and recursion, while a static type system prevents many unintended operations.
 
-C has also been criticized for being difficult to use and the source of many errors in software.
+Unless you are reading this on paper, it is likely that the system you are reading this on has to a large extent been programmed in some flavor of C. However, C has also been criticized for being difficult to use and the source of many errors in software written in C. Computer scientists tend to enjoy discussing the pros and cons of programming languages at great length. We try to avoid that here and instead make two key observations that hopefully justify our choice. Firstly, many newer programming languages have adopted the look and feel of some parts of C which, secondly, happen to be surprisingly simple. We have tried to identify some of that over the course of a few years of teaching computer science classes. The outcome is a tiny subset of C that we call C\* and use throughout the book. Not just the above example is written in C\* but all other examples as well. Even [Selfie](http://selfie.cs.uni-salzburg.at "Selfie") is written entirely in C\*. An important advantage of using a proper subset of a widely used programming language such as C is that all programs written in the subset readily work with all tools that exist for the original language.
 
 TODO: continue introducing the example.
 

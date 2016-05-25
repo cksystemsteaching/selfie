@@ -1,8 +1,8 @@
 int x;          // this declares a globally visible variable called x
                 // that represents a signed 32-bit integer value
 
-int main() {    // this declares a globally visible function called main
-                // that returns a signed 32-bit integer value
+int main() {    // this declares a globally visible function called main that
+                // has no inputs and returns a signed 32-bit integer value
 
   // here the value of x is undefined
 
