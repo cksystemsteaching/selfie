@@ -1,5 +1,6 @@
 acknowledgements.md
 license.md
 introduction.md
-basics.md
+logic.md
+computation.md
 architecture.md
