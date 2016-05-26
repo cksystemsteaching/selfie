@@ -24,7 +24,7 @@ Q> Programming languages are formalisms, not languages!
 
 ## Von Neumann Architecture
 
-![Von Neumann Architecture](images/von-neumann-architecture.jpg "Von Neumann Architecture")
+![Von Neumann Architecture](images/von-neumann-architecture.png "Von Neumann Architecture")
 
 Most computers including smart phones and tablets are at their core based on a computer architecture that has not changed in a long time. It is known as the *von Neumann architecture*.
 
@@ -250,7 +250,7 @@ Unless you are reading this on paper, it is likely that the system you are readi
 
 Programmers tend to enjoy discussing the pros and cons of programming languages at great length. We nevertheless try to avoid that here and instead make two key observations that hopefully justify our choice. Firstly, many programming languages newer than C have adopted the look and feel of some parts of C which, secondly, happen to be surprisingly simple. We have tried to identify some of that over the course of a few years of teaching computer science classes. The outcome is a tiny subset of C that we call C\* and use throughout the book. Not just the above example is written in C\* but all other examples as well. Even [Selfie](http://selfie.cs.uni-salzburg.at "Selfie") is written entirely in C\*. An important advantage of using a proper subset of a widely used programming language such as C is that all programs written in the subset readily work with all tools that exist for the superset.
 
-Let us now take a closer look at the above example which we repeat here with comments on what each line actually means. Note that each comment starts with '//' which instructs tools that process such source code to ignore the text to the right of `//` until the end of the line. In other words, a comment in source code is meaningless to the machine but hopefully not to us.
+Let's now take a closer look at the above example which we repeat here with comments on what each line actually means. Note that each comment starts with '//' which instructs tools that process such source code to ignore the text to the right of `//` until the end of the line. In other words, a comment in source code is meaningless to the machine but hopefully not to us.
 
 {line-numbers=on, lang=c}
 <<[Informal Semantics of the Simple C* Program](code/iteration-low.c)
