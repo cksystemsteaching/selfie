@@ -178,7 +178,7 @@ That number is equal to `0x2408002A` in binary. Both `0x2408002A` and `addiu $t0
 
 T> Imagine we programmed computers in their native machine languages using binary code. There were times when people actually did that. Going from binary code to hexadecimal code and then assembly is therefore already a significant advancement over the lowest level of programming. People still program in assembly to this day.
 T>
-T> However, programming in assembly already requires *assembling* the binary code for each instruction either manually, like I did for a [Z80](https://en.wikipedia.org/wiki/Zilog_Z80 "Z80") machine when I was fourteen, or using a software tool called an *assembler*. Unfortunately, [Selfie](http://selfie.cs.uni-salzburg.at "Selfie") does not feature an assembler but it does include a *disassembler* which produces the assembly representation of MIPSter binary code.
+T> However, programming in assembly already requires *assembling* the binary code for each instruction either manually, like I did for a [Z80](https://en.wikipedia.org/wiki/Zilog_Z80 "Z80") machine when I was fourteen, or using a software tool called an *assembler*. Unfortunately, Selfie does not feature an assembler but it does include a *disassembler* which produces the assembly representation of MIPSter binary code.
 
 Assembly uses *mnemonic* to help us remember what machine code means.
 
@@ -222,7 +222,7 @@ You may nevertheless already ask yourself how you can run MIPSter code and see w
 [Emulator](https://en.wikipedia.org/wiki/Emulator "Emulator")
 : Hardware or software that enables one computer system (called the host) to behave like another computer system (called the guest).
 
-If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in [Selfie](http://selfie.cs.uni-salzburg.at "Selfie"). The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented in the example below is obtained with mipster.
+If you are interested in the exact specification of MIPSter or would even like to run MIPSter code there is a MIPSter emulator called mipster implemented in Selfie. The mipster emulator is able to execute MIPSter code and even output the code it executes as well as the involved machine state. The code execution output presented in the example below is obtained with mipster.
 
 ## High-Level Programming
 
@@ -231,7 +231,7 @@ Most software is not written in machine code or assembly but in programming lang
 [High-level Programming Language](https://en.wikipedia.org/wiki/High-level_programming_language "High-Level Programming Language")
 : A programming language with strong abstraction from the details of the computer. In comparison to low-level programming languages, it may use natural language elements, be easier to use, or may automate (or even hide entirely) significant areas of computing systems (e.g. memory management), making the process of developing a program simpler and more understandable relative to a lower-level language. The amount of abstraction provided defines how "high-level" a programming language is.
 
-But which language should we learn and then use? There are so many already and then there are new ones being developed all the time. The solution to this problem, in our opinion, is to develop a strong sense for semantics and awareness of your own understanding. Consider the following program:
+But which language should we learn and then use? There are so many already and then there are new ones being developed all the time. The solution to this problem, in our opinion, is to develop a strong sense for principles and semantics, and awareness of your own understanding. If you know the principles and you know what you don't know about the details, you can pick up any programming language you like. Consider the following program:
 
 {line-numbers=on, lang=c}
 <<[A Simple C* Program](code/iteration.c)
@@ -248,15 +248,49 @@ C has influenced the design of numerous other languages, has been standardized o
 
 Unless you are reading this on paper, it is likely that the system you are reading this on has to a large extent been programmed in some flavor of C. However, C has also been criticized for being difficult to use and the source of many errors in software written in C.
 
-Programmers tend to enjoy discussing the pros and cons of programming languages at great length. We nevertheless try to avoid that here and instead make two key observations that hopefully justify our choice. Firstly, many programming languages newer than C have adopted the look and feel of some parts of C which, secondly, happen to be surprisingly simple. We have tried to identify some of that over the course of a few years of teaching computer science classes. The outcome is a tiny subset of C that we call C\* and use throughout the book. Not just the above example is written in C\* but all other examples as well. Even [Selfie](http://selfie.cs.uni-salzburg.at "Selfie") is written entirely in C\*. An important advantage of using a proper subset of a widely used programming language such as C is that all programs written in the subset readily work with all tools that exist for the superset.
+Programmers tend to enjoy discussing the pros and cons of programming languages at great length. We nevertheless try to avoid that here and instead make two key observations that hopefully justify our choice. Firstly, many programming languages newer than C have adopted the look and feel of some parts of C which, secondly, happen to be surprisingly simple. We have tried to identify some of that over the course of a few years of teaching computer science classes. The outcome is a tiny subset of C that we call C\* and use throughout the book. Not just the above example is written in C\* but all other examples as well. Even Selfie is written entirely in C\*. An important advantage of using a proper subset of a widely used programming language such as C is that all programs written in the subset readily work with all tools that exist for the superset.
 
-Let's now take a closer look at the above example which we repeat here with comments on what each line actually means. Note that each comment starts with '//' which instructs tools that process such source code to ignore the text to the right of `//` until the end of the line. In other words, a comment in source code is meaningless to the machine but hopefully not to us.
-
-{line-numbers=on, lang=c}
-<<[Informal Semantics of the Simple C* Program](code/iteration-low.c)
+Let's now take a closer look at the above example which we repeat here with comments on which language elements are actually used in each line. Note that each comment starts with `//` which instructs tools that process such source code to ignore the text to the right of `//` until the end of the line. In other words, a comment in source code is meaningless to the machine but hopefully not to us.
 
 {line-numbers=on, lang=c}
 <<[Language Elements of the Simple C* Program](code/iteration-high.c)
+
+The first line is the *declaration* of a *variable* `x` of *type* `int`.
+
+[Declaration](https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration")
+: Specifies properties of an identifier, that is, declares what the identifier means. Declarations are most commonly used for functions, variables, and constants.
+
+A declaration introduces a name or *identifier* for an entity and declares what the entity is. In this case, the identifier is `x` and the entity is memory that can store a signed 32-bit integer as stated by the `int` type which is a C standard. This means in particular that no matter on which machine you run the program, `x` always refers to a signed 32-bit integer. Very cool!
+
+[Type](https://en.wikipedia.org/wiki/Data_type "Type")
+: A classification identifying one of various types of data, such as real, integer or Boolean, that determines the possible values for that type; the operations that can be done on values of that type; the meaning of the data; and the way values of that type can be stored.
+
+Here, the identifier `x` refers to what is commonly called a program variable or just variable.
+
+[Variable (in Computer Science)](https://en.wikipedia.org/wiki/Variable_(computer_science) "Variable (in Computer Science)")
+: A storage location paired with an associated symbolic name (an identifier), which contains some known or unknown quantity of information referred to as a value. The variable name is the usual way to reference the stored value; this separation of name and content allows the name to be used independently of the exact information it represents.
+
+This is basically how memory in C programs is introduced. Instead of registers and machine memory, C programs "talk" about such variables. However, `x` is not a variable in the sense of mathematics.
+
+[Variable (in Mathematics)](https://en.wikipedia.org/wiki/Variable_(mathematics) "Variable (in Mathematics)")
+: An alphabetic character representing a number, called the value of the variable, which is either arbitrary or not fully specified or unknown.
+
+In other words, a program variable like `x` only approximates the mathematical notion of a variable but can never replace it because of the bounded size of  memory. That distinction is very important to understand. In fact, calling `x` something other than a variable would be even better but it's probably too late for that.
+
+The next interesting line in our example is Line 3. This is again a declaration but this time of a *subroutine* rather than a variable.
+
+[Subroutine](https://en.wikipedia.org/wiki/Subroutine "Subroutine")
+: A sequence of program instructions that perform a specific task, packaged as a unit. This unit can then be used in programs wherever that particular task should be performed.
+
+The subroutine is referred to by the identifier `main`, has no inputs as indicated by the empty pair of parentheses `()` but has a single output which is a signed 32-bit integer as indicated by the preceding `int` type, and consists of the sequence of *statements* in Lines 4-16 enclosed by the pair of braces `{}`. The `main` identifier thus stands for that sequence of statements.
+
+[Statement](https://en.wikipedia.org/wiki/Statement_(computer_science) "Statement")
+: The smallest standalone element of a programming language that expresses some action to be carried out. It is an instruction written in a high-level language that commands the computer to perform a specified action. A program written in such a language is formed by a sequence of one or more statements.
+
+Subroutines are more commonly called *procedures* or *functions* even though they are obviously not functions in a mathematical sense. After variables this is another example of terminology that is different from mathematics. In the sequel we generally speak of subroutines as procedures, and as functions in special cases.
+
+{line-numbers=on, lang=c}
+<<[Informal Semantics of the Simple C* Program](code/iteration-low.c)
 
 ## Semantics
 
@@ -278,6 +312,12 @@ Let's now take a closer look at the above example which we repeat here with comm
 
 {line-numbers=on, lang=c}
 <<[A C* Program Equivalent to the Simple C* Program Using a Function](code/function.c)
+
+[Global Variable](https://en.wikipedia.org/wiki/Global_variable "Global Variable")
+
+[Scope](https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Scope")
+
+[Local Variable](https://en.wikipedia.org/wiki/Local_variable "Local Variable")
 
 {line-numbers=off, lang=asm}
 <<[Formal Semantics of the Equivalent C* Program Using a Function](code/function.s)

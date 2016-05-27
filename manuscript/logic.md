@@ -123,7 +123,7 @@ X> Remember from school? Starting from the right we find that 5+0=5. Thus the ri
 X>
 X> Let us now add both numbers in binary, that is, 01010101 for 85 and 10101010, which is binary for 170. It works in just the same way.
 X>
-X> Since 1+0=1 there is no overflow here. Thus the result of 11111111, which is binary for 255, can easily be obtained by just adding the individual digits. In general though, one adds two binary numbers just like decimal numbers, digit by digit from right to left, while carrying any overflow to the left.
+X> Since 1+0=1 there is no overflow here. Thus the result of 11111111, which is binary for 255, can easily be obtained by just adding the individual digits. In general though, one adds two binary numbers just like decimal numbers, digit by digit from right to left, while carrying any overflow to the left. In hardware this is done by a so-called *adder* which consists of a combination of Boolean conjunction and exclusive disjunction.
 X>
 X> Adding both numbers in hexadecimal, that is, 0x55 and 0xAA, works similarly, in this case also without overflow. With 5+A=F the result is 0xFF, which is hexadecimal for 255.
 
@@ -188,7 +188,7 @@ X> Seems to work fine. However, in this case there is no overflow since 85+873=9
 
 Using the ten's complement for representing negative numbers really means that the leftmost digit represents the sign. In the decimal system, an even leftmost digit indicates that we are dealing with a positive number. Conversely, an odd leftmost digit such as the 9 in 958 means that the number is actually meant to be negative. This implies that with n digits and the ten's complement for negative numbers we can represent signed integers i with -10^n^/2-1 < i < 10^n^/2. For example, in a 3-digit system we can represent signed integers i with -501 < i < 500. In other words, we can still represent 1000 numbers with 3 digits but offset by 500 into the negative numbers.
 
-Now back to bit strings. How does a computer represent negative numbers? The short answer: the exact same way as in the decimal system, just in binary. In other words, a negative number may be represented in binary by its two's complement (remember binary has base 2). Just like before, the two's complement of a number is computed by taking the ones' complement of that number and adding one to it. This time, however, computing the diminished radix complement, that is, the ones' complement is particularly easy. It is done by simply inverting the bits.
+Now back to bit strings. How does a computer represent negative numbers? The short answer: the exact same way as in the decimal system, just in binary. In other words, a negative number may be represented in binary by its two's complement (remember binary has base 2). Just like before, the two's complement of a number is computed by taking the ones' complement of that number and adding one to it. This time, however, computing the diminished radix complement, that is, the ones' complement is particularly easy. It is done by simply inverting the bits using Boolean negation.
 
 X> Let us assume that we are still dealing with bytes, that is, 8 bits for each number. We are interested in computing 127-85 where both numbers are represented in binary.
 X>
@@ -238,3 +238,5 @@ In the first case, the MSBs of the two numbers are zero, since both represent po
 T> There are many other ways to do elementary arithmetics on computers including the handling of overflows! What you have seen here is just the arguably most prevalent choice.
 T>
 T> Most important for you is to be aware of the issue and know what your choice of system actually does when it comes to numbers.
+
+This concludes the first chapter. There is of course also multiplication and division of integers which are missing here. We nevertheless believe that it is not necessary to know exactly how these operations work. If you still remember from school how to multiply and divide numbers manually than you pretty much know what a computer does. It works the same way, just on binary numbers in two's complement.
