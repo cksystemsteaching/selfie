@@ -289,6 +289,40 @@ The subroutine is referred to by the identifier `main`, has no inputs as indicat
 
 Subroutines are more commonly called *procedures* or *functions* even though they are obviously not functions in a mathematical sense. After variables this is another example of terminology that is different from mathematics. In the sequel we generally speak of subroutines as procedures, and as functions in special cases.
 
+Let's consider the first statement of the `main` procedure in Line 4. It is an *assignment* as indicated by the equality sign `=`. It takes the value of the *right hand side* of `=`, in this case the numberical value 0, and assigns it to the *left hand side* of `=`, in this case `x`, that is, it stores 0 as signed 32-bit integer in the memory location identified by `x`.
+
+[Assignment](https://en.wikipedia.org/wiki/Assignment_(computer_science) "Assignment")
+: Sets and/or re-sets the value stored in the storage location denoted by a variable name; in other words, it copies a value into the variable.
+
+At the expense of sounding pedantic, note that we distinguish the symbol `0` from the numerical value 0 that the symbol represents. However, recall that the same numerical value can have very different representations, for example, unary, binary, octal, decimal, and hexadecimal. This distinction even justifies introducing, for symbols like `0`, a specific term called *literal*.
+
+[Literal](https://en.wikipedia.org/wiki/Literal_(computer_programming) "Literal")
+: A notation for representing a fixed value in source code.
+
+In C and many other programming languages, statements are concluded with a semicolon sign `;` which indicates the end of a statement but also, potentially, the beginning of the next statement. Here, the program continues in Line 6 with another assignment. That assignment is interesting because it features, on the right hand side, an *expression* `x + 1`, rather than just a literal, which is *evaluated* to the value of `x` added to the numerical value 1.
+
+[Expression](https://en.wikipedia.org/wiki/Expression_(computer_science) "Expression")
+: A combination of one or more explicit values, variables, operators, and functions that the programming language interprets (according to its particular rules of precedence and of association) and computes to produce another value. This process, as for mathematical expressions, is called evaluation.
+
+In C, expressions may involve any number of variables and literals combined with addition `+`, subtraction `-`, multiplication `*`, division `/`, and even modulo `%` operators.
+
+The next statement after the assignment in Line 6 is an `if` statement in Lines 8-11. An `if` statement consists of a *Boolean condition* between parentheses `(x == 0)`, a true case which is here an assignment that is executed if the condition evaluates to true, and a false case which is here another assignment that is executed if the condition evaluates to false. Instead of a single statement per case we could also write a whole sequence of statements enclosed in braces `{}`.  In the condition of the `if` statement we use a double equality sign `==` rather than a single equality sign `=` to distinguish checking from assigning values. In particular, rather than assigning a value we are interested in checking if the value stored in the memory location identified by `x` is the numerical value 0 or not.
+
+An `if` statement is a widely used form of a *conditional*.
+
+[Conditional](https://en.wikipedia.org/wiki/Conditional_(computer_programming) "Conditional")
+: Performs different computations or actions depending on whether a programmer-specified Boolean condition evaluates to true or false.
+
+After the `if` statement there is a `while` statement or `while` loop in Lines 13-14. A `while` statement consists of a Boolean condition between parentheses `(x > 0)` and a true case which is here an assignment that is executed repeatedly as long as the condition evaluates to true.
+
+[While Loop](https://en.wikipedia.org/wiki/While_loop "While Loop")
+: A statement that allows code to be executed repeatedly based on a given Boolean condition. The while loop can be thought of as a repeating if statement.
+
+The last statement of the `main` procedure is a `return` statement in Line 16. A `return` statement terminates the execution of the procedure and optionally determines an output value for the procedure which is here the value of `x`.
+
+[Return](https://en.wikipedia.org/wiki/Return_statement "Return Statement")
+: A statement that causes execution to leave the current subroutine and resume at the point in the code immediately after where the subroutine was called, known as its return address.
+
 {line-numbers=on, lang=c}
 <<[Informal Semantics of the Simple C* Program](code/iteration-low.c)
 
