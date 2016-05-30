@@ -326,6 +326,10 @@ The last statement of the `main` procedure is a `return` statement in Line 16. A
 {line-numbers=on, lang=c}
 <<[Informal Semantics of the Simple C* Program](code/iteration-low.c)
 
+[Imperative Programming](https://en.wikipedia.org/wiki/Imperative_programming "Imperative Programming")
+
+[Declarative Programming](https://en.wikipedia.org/wiki/Declarative_programming "Declarative Programming")
+
 ## Semantics
 
 {line-numbers=off, lang=asm}

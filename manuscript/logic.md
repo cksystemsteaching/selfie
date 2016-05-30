@@ -2,7 +2,7 @@
 
 {#logic}
 
-Digital computers encode everything, data as well as code, in bits. A key insight to understanding how they work is that all the bits stored in a computer's memory and on a computer's storage device and even all the bits communicated across a network of computers have no a-priori meaning whatsoever. They are just bits. It is only the operations with and on them that give them meaning. We even need to tell a computer which bits are actually meant to be treated as code rather than data and should thus be loaded into its processor and be executed. That code directs the processor to manipulate bits to perform a computation. Without code the processor would not know what to do. The behavior of the code is ultimately determined by the construction of the processor and the system in which it is embedded. However, in the end a computer does nothing but manipulating impressive amounts of bits.
+Digital computers encode everything, data as well as code, in bits. A key insight to understanding how they work is that all the bits stored in a computer's memory and on a computer's storage device and even all the bits communicated across a network of computers have no a-priori meaning whatsoever. They are just bits. It is only the operations with and on them that give them meaning. We even need to tell a computer which bits are actually meant to be treated as code rather than data and should thus be loaded into its processor and be executed. That code directs the processor to manipulate the remaining bits to perform a computation. Without code the processor would not know what to do. The behavior of the code is ultimately determined by the construction of the processor and the system in which it is embedded. However, in the end a computer does nothing but manipulating impressive amounts of bits.
 
 Since everything is encoded in bits, computer science is on a very abstract level all about *strings*, sequences of characters, which may be sequences of bits but also, for convenience and performance, but not necessity, sequences of any kind of symbols. The text you are reading here is just that, a sequence of so-called *ASCII* characters. ASCII is a standard that maps 7-bit sequences to characters so that computers, which store the text you are reading here in such 7-bit sequences, can be programmed to map them to human readable characters for showing them on a screen. Conversely, when pressing a key on a keyboard the 7-bit sequence for the character represented by that key is generated for further processing. By the way, 7 bits can encode 128 different sequences enabling 128 different ASCII characters. This used to be enough but has long been advanced to many other standards with UTF-8 the most popular right now.
 
@@ -61,25 +61,34 @@ T> The only thing we did is that we wrote down a mapping from bit strings to cha
 
 ## Boolean Logic
 
-Imagine you can only say things that are *true* or *false*, nothing else. This is the world of *Boolean logic*. Surprisingly, we can still do a lot with that, in fact, everything.
+Imagine you can only say things that are *true* or *false*, nothing else. This is the world of *Boolean logic*. Surprisingly, we can still do a lot with that.
 
 [Boolean Logic](https://en.wikipedia.org/wiki/Boolean_algebra "Boolean Logic")
-: A branch of mathematical logic in which there are only the values *true* and *false*. Moreover, instead of arithmetics where values are numbers, and the main operations are addition, subtraction, multiplication, and division, the main operations of Boolean logic are conjunction (AND), disjunction (OR), and negation (NOT).
+: A branch of mathematical logic in which there are only the Boolean values *true* and *false*. Moreover, instead of arithmetics where values are numbers, and the main operations are addition, subtraction, multiplication, and division, the main operations of Boolean logic are conjunction (AND), disjunction (OR), and negation (NOT).
 
-Boolean logic is a formalism for describing logical relations in a way that arithmetics describes numerical relations. The semantics of Boolean logic is easily defined using so-called *truth tables*. We include one particularly useful operation called *exclusive disjunction* (XOR) here for completeness:
+The semantics of Boolean logic is easily defined using so-called *truth tables*:
 
-| x     | y     | x AND y | x OR y | x XOR y | NOT x |
-| ----- | ----- | ------- | ------ | ------- | ----- |
-| false | false | false   | false  | false   | true  |
-| false | true  | false   | true   | true    | true  |
-| true  | false | false   | true   | true    | false |
-| true  | true  | true    | true   | false   | false |
+| x     | y     | AND(x, y) | OR(x, y) | NOT(x) |
+| ----- | ----- | --------- | -------- | ------ |
+| false | false | false     | false    | true   |
+| false | true  | false     | true     | true   |
+| true  | false | false     | true     | false  |
+| true  | true  | true      | true     | false  |
+
+Note that we could say the same using 0 for false and 1 for true, that is, we only need two different symbols to distinguish the two Boolean values but which symbols we actually use is not relevant. Moreover, using [De Morgan's Laws](https://en.wikipedia.org/wiki/De_Morgan%27s_laws "De Morgan's Laws") we can get rid of AND (or, alternatively, OR) since AND(x, y) is equal to NOT(OR(NOT(x), NOT(y))). Also, other useful operations can be constructed by combining AND, OR, and NOT such as *exclusive disjunction* (XOR), for example, where XOR(x, y) is equal to AND(OR(x, y), NOT(AND(x, y))):
+
+| x     | y     | XOR(x, y) |
+| ----- | ----- | --------- |
+| false | false | false     |
+| false | true  | true      |
+| true  | false | true      |
+| true  | true  | false     |
 
 T> There are two things to remember:
 T>
 T> 1. Boolean logic is efficiently implemented by digital hardware. We do not need to know how but we do need to know that this is what digital hardware does.
 T>
-T> 2. Boolean logic efficiently and effectively implements arithmetics on numbers encoded in bits. We also do not need to know exactly how but should still be aware of the fact. Hint: addition, for example, is done by properly combining three XOR with two AND.
+T> 2. Boolean logic efficiently and effectively implements arithmetics on numbers encoded in bits. We also do not need to know exactly how but should still be aware of the fact. Hint: addition, for example, is done by properly combining AND, OR, and XOR.
 
 ## Natural Numbers
 
