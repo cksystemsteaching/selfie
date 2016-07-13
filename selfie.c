@@ -6161,12 +6161,12 @@ void switchContext(int* from, int* to) {
   setBreak(from, brk);
 
   // restore machine state
-  pc    = getPC(to);
+  pc        = getPC(to);
   registers = getRegs(to);
-  reg_hi  = getRegHi(to);
-  reg_lo  = getRegLo(to);
-  pt    = getPT(to);
-  brk     = getBreak(to);
+  reg_hi    = getRegHi(to);
+  reg_lo    = getRegLo(to);
+  pt        = getPT(to);
+  brk       = getBreak(to);
 }
 
 void freeContext(int* context) {
