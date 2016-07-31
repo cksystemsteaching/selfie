@@ -43,10 +43,10 @@ On machine level, each character is thus represented by seven bits. What we see 
 {line-numbers=off}
 ```
 > wc -m selfie.c
-    158772 selfie.c
+  158772 selfie.c
 ```
 
-The output means that `selfie.c` at the time of invoking the command consisted of 158,772 characters. However, we should mention that the characters in `selfie.c` are actually encoded according to the newer UTF-8 standard which uses eight rather than seven bits per character.
+The output means that `selfie.c` at the time of invoking the command consisted of 158,772 characters. By the way, the `-m` part of the command is called an option that directs, in this case, `wc` to output the number of characters. However, we should mention that the characters in `selfie.c` are actually encoded according to the newer UTF-8 standard which uses eight rather than seven bits per character.
 
 [UTF-8](https://en.wikipedia.org/wiki/UTF-8 "UTF-8")
 : (Universal Character Set Transformation Format - 8-bit) A character encoding capable of encoding all possible characters (called code points) in Unicode. The encoding is variable-length and uses 8-bit code units. It is designed for backward compatibility with ASCII.
@@ -58,18 +58,44 @@ Since a unit of eight bits is very common in computer systems there is a well-kn
 [Byte](https://en.wikipedia.org/wiki/Byte "Byte")
 : A unit of digital information in computing and telecommunications that most commonly consists of eight bits.
 
-We can easily verify that `selfie.c` consists of the same number of bytes than characters by using the command `wc -c selfie.c` which reports the number of bytes in `selfie.c`:
+We can easily verify that `selfie.c` consists of the same number of bytes than characters by using the command `wc -c selfie.c` with the `-c` option which directs `wc` to report the number of bytes in `selfie.c`:
 
 {line-numbers=off}
 ```
 > wc -c selfie.c
-    158772 selfie.c
+  158772 selfie.c
 ```
 
 In other words, for a computer `selfie.c` is in fact a sequence of eight times 158,772 bits, that is, 1,270,176 bits. The key question addressed by this book is where the meaning of these bits comes from.
 
 Q> Where does semantics come from and how do we create it on a machine?
 
-One of the great achievements of computer science is the efficient and effective creation of increasingly complex machine behavior using just bits. Read on to find out how this is done.
+The source code of selfie is ultimately a sequence of bits. How do they get their meaning? Bits, as is, have no meaning, they are just bits. Characters, by the way, are no different. Characters, as is, have no meaning either, they are just symbols, and can anyway be encoded in bits. Meaning is created by the person reading or writing them. But when it comes to a machine the meaning of bits and thus characters or any kind of symbol has to be created mechanically. The key insight is that the meaning of bits is in the process of changing bits, not in the bits themselves.
 
-The source code of selfie is ultimately a sequence of bits.
+X> Let us take two numbers, say 7 and 42, and then add 7 to 42. What we obviously get is 49.
+
+The process of adding 7 to 42, according to the rules of elementary arithmetic, makes 7 and 42 represent numbers rather than something else. But if we just look at 7 and 42 they could mean anything. In this example, elementary arithmetic provides meaning, namely the semantics of natural numbers. This is why it is so important to learn elementary arithmetic in school. It tells us what numbers are, not just how to add, subtract, multiply, and divide them!
+
+[Elementary Arithmetic](https://en.wikipedia.org/wiki/Elementary_arithmetic "Elementary Arithmetic")
+: The simplified portion of arithmetic that includes the operations of addition, subtraction, multiplication, and division.
+
+Virtually all modern computers include circuitry for performing elementary arithmetic but they do so with binary rather than decimal numbers since computers only handle bits.
+
+X> Our example of 7 and 42 in binary is just as simple. The number 7 in binary is 111. The number 42 in binary is 101010. Adding 111 to 101010 works in exactly the same way than adding 7 to 42. The result is 110001 which is binary for 49.
+
+Again, adding one to the other makes 111 and 101010 represent numbers while they could otherwise represent anything. More on encoding numbers in binary can be found in the [next chapter](#encoding).
+
+[Binary Number](https://en.wikipedia.org/wiki/Binary_number "Binary Number")
+: A number expressed in the binary numeral system or base-2 numeral system which represents numeric values using two different symbols: typically 0 (zero) and 1 (one).
+
+It may be hard to believe but knowing elementary arithmetic is enough to understand this book. The source code of selfie, that is, the around one hundred and fifty thousand characters of `selfie.c` represented by around one million bits get their meaning in pretty much the same way than having bits represent numbers: by changing them. The only difference is that the process of change is a bit more involved than elementary arithmetic.
+
+T> Semantics of bits on a machine is created by changing bits!
+
+Let us have a closer look at how this works with selfie. Try the `make` command:
+
+{line-numbers=off}
+```
+> make
+  cc -w -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
+```
