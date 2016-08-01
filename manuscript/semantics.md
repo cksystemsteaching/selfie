@@ -146,6 +146,7 @@ The reason why starc targets a different machine than cc is because it makes sta
 
 We execute `selfie.m` by first loading it using the `-l` option and then running it by invoking mipster using the `-m` option:
 
+{line-numbers=off}
 ```
 > ./selfie -l selfie.m -m 1
   ./selfie: loading code from input file selfie.m
