@@ -6070,7 +6070,10 @@ void selfie_run(int argc, int* argv) {
 
   if (mipster) {
     print(selfieName);
-    print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
+    if (sourceLineNumber != (int*) 0)
+      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
+    else
+      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
     println();
     printProfile((int*) ": calls: ", calls, callsPerAddress);
     printProfile((int*) ": loops: ", loops, loopsPerAddress);
