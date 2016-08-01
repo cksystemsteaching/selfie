@@ -43,10 +43,10 @@ On machine level, each character is thus represented by seven bits. What we see 
 {line-numbers=off}
 ```
 > wc -m selfie.c
-  158772 selfie.c
+  158914 selfie.c
 ```
 
-The output means that `selfie.c` at the time of invoking the command consisted of 158,772 characters. By the way, the `-m` part of the command is called an option that directs, in this case, `wc` to output the number of characters. However, we should mention that the characters in `selfie.c` are actually encoded according to the newer UTF-8 standard which uses eight rather than seven bits per character.
+The output means that `selfie.c` at the time of invoking the command consisted of 158,914 characters. By the way, the `-m` part of the command is called an option that directs, in this case, `wc` to output the number of characters. However, we should mention that the characters in `selfie.c` are actually encoded according to the newer UTF-8 standard which uses eight rather than seven bits per character.
 
 [UTF-8](https://en.wikipedia.org/wiki/UTF-8 "UTF-8")
 : (Universal Character Set Transformation Format - 8-bit) A character encoding capable of encoding all possible characters (called code points) in Unicode. The encoding is variable-length and uses 8-bit code units. It is designed for backward compatibility with ASCII.
@@ -63,10 +63,10 @@ We can easily verify that `selfie.c` consists of the same number of bytes than c
 {line-numbers=off}
 ```
 > wc -c selfie.c
-  158772 selfie.c
+  158914 selfie.c
 ```
 
-In other words, for a computer `selfie.c` is in fact a sequence of eight times 158,772 bits, that is, 1,270,176 bits. The key question addressed by this book is where the meaning of these bits comes from.
+In other words, for a computer `selfie.c` is in fact a sequence of eight times 158,914 bits, that is, 1,271,312 bits. The key question addressed by this book is where the meaning of these bits comes from.
 
 Q> Where does semantics come from and how do we create it on a machine?
 
@@ -100,17 +100,17 @@ Let us have a closer look at how this works with selfie. Try the `make` command:
   cc -w -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
 ```
 
-The `make` command invokes the `cc` command which *compiles* the file `selfie.c` into a file called `selfie` (without the `.c` extension) as directed by the `-o` option, ignoring the other options for simplicity. In other words, the sequence of bits representing `selfie.c` is changed into another sequence of bits representing `selfie`. The difference between the two sequences is that the former represents source code whereas the latter represents machine code.
+The `make` command invokes the `cc` command which *compiles* the file `selfie.c` into a file called `selfie` (without the `.c` extension) as directed by the `-o` option, ignoring the other options for clarity. In other words, the sequence of bits representing `selfie.c` is changed into another sequence of bits representing `selfie`. The difference between the two sequences is that the former represents source code whereas the latter represents machine code.
 
 [Machine Code](https://en.wikipedia.org/wiki/Machine_code "Machine Code")
 : A sequence of instructions executed directly by a computer's central processing unit (CPU).
 
-The idea is that both sequences are supposed to have the same semantics. However, `selfie` is executable by a machine whereas `selfie.c` is not, at least not purposefully, yet `selfie.c` is human-readable and writable in particular. The process of changing `selfie.c` into `selfie` is called compilation which is done by a compiler such as the above cc compiler.
+The key idea is that both sequences are supposed to have the same semantics. However, `selfie` is executable by a machine whereas `selfie.c` is not, at least not purposefully, yet `selfie.c` is human-readable and writable in particular. The process of changing `selfie.c` into `selfie` is called compilation which is done by a compiler such as the above cc compiler.
 
 [Compiler](https://en.wikipedia.org/wiki/Compiler "Compiler")
 : A computer program that transforms source code written in a programming language (the source language) into another computer language (the target language), with the latter often having a binary form known as object or machine code. The most common reason for converting source code is to create an executable program.
 
-This means that we now have an executable version of selfie! Let us try and run selfie using the command `./selfie`:
+This means that we now have a version of selfie that we can run on our machine! Let us try and run selfie using the command `./selfie`:
 
 {line-numbers=off}
 ```
@@ -137,9 +137,9 @@ After compiling `selfie.c` starc only stores the machine code internally but doe
   ./selfie: writing code into output file selfie.m
 ```
 
-Now, we have a file called `selfie.m` that contains machine code compiled from `selfie.c` using the starc compiler in `selfie` rather than the cc compiler. This means that we now have three different sequences of bits in `selfie.c`, `selfie`, and `selfie.m` that are all supposed to have the same semantics. The only difference between `selfie` and `selfie.m` is that `selfie` is executable on our computer whereas `selfie.m` is executable on a computer that we do not have. This is not the end of the story though.
+This produces a file called `selfie.m` that contains machine code compiled from `selfie.c` using the starc compiler in `selfie` rather than the cc compiler. This means that by now we have three different sequences of bits in `selfie.c`, `selfie`, and `selfie.m` that are all supposed to have the same semantics. The only difference between `selfie` and `selfie.m` is that `selfie` is executable on our computer whereas `selfie.m` is executable on a computer that we do not have. This is not the end of the story though.
 
-The reason why starc targets a different machine than cc is because it makes starc a lot simpler. But how do we execute `selfie.m`? Selfie not only includes the starc compiler, it also includes mipster, which is an emulator of the computer that can execute `selfie.m` and any other machine code generated by starc. That computer is so simple that everyone can understand it even though it corresponds to parts of a real machine.
+The reason why starc targets a different machine than cc is because it makes starc a lot simpler. But how do we execute `selfie.m`? Well, selfie not only includes the starc compiler, it also includes mipster, which is an emulator of the computer that can execute `selfie.m` and any other machine code generated by starc. That computer is so simple that everyone can understand it in a short time even though it corresponds to parts of a real machine.
 
 [Emulator](https://en.wikipedia.org/wiki/Emulator "Emulator")
 : Software that enables one computer system (called the host) to behave like another computer system (called the guest).
@@ -163,7 +163,10 @@ We execute `selfie.m` by first loading it using the `-l` option and then running
 
 After loading `selfie.m` the `-m 1` option directs mipster to emulate a computer with 1MB of memory for executing `selfie.m`. Since `selfie.m` is invoked without any options, which could appear after the `-m 1` option, it responds just like before with its usage pattern and then terminates. Then mipster terminates and outputs a summary of its builtin performance profiler.
 
-Now, let us try something cool. Since mipster is part of selfie we can even have mipster execute machine code for selfie generated by starc without writing the code into a file:
+[Profiling](https://en.wikipedia.org/wiki/Profiling_(computer_programming) "Profiling")
+: A form of dynamic program analysis that measures, for example, the space (memory) or time complexity of a program, the usage of particular instructions, or the frequency and duration of function calls. Most commonly, profiling information serves to aid program optimization.
+
+We later use profiling to explain performance-related issues of selfie. But now, let us try something cool. Since mipster is part of selfie we can even have mipster execute machine code for selfie generated by starc without writing the code into a file:
 
 {line-numbers=off}
 ```
@@ -180,7 +183,7 @@ Now, let us try something cool. Since mipster is part of selfie we can even have
   ./selfie: stores: 6261,486(7.76%)@0x22A4(~1166),242(3.86%)@0x2304(~1172),122(1.94%)@0x391C(~1451)
 ```
 
-The output is just like before except for the approximate source code line numbers in the profile. Those are only available if executing machine code generated in the same run rather than loading it. Never mind if you do not understand what this means. It will become clear later.
+The output is just like before except for the approximate source code line numbers in the profile. Those are only available if executing machine code generated in the same run rather than loading machine code. Never mind if you do not understand what this means. It will become clear later.
 
 Let us maintain our momentum and do something even cooler than before. We now compile `selfie.c` with starc and then execute the generated code on mipster only to have the generated code compile `selfie.c` again, all in the same run. This requires 2MB rather than 1MB for mipster and will take starc a few minutes to complete depending on the speed of our machine because executing starc on mipster is slower than executing starc directly on our machine. However, it does work and this is what counts here:
 
@@ -226,7 +229,12 @@ Both files generated by starc are indeed identical. To verify that try the `diff
   Files selfie1.m and selfie2.m are identical
 ```
 
-This is called the fixed point of a self-compiling compiler. If we continue generating machine code for starc using starc the machine code will remain the same.
+This is called the fixed point of a self-compiling compiler. If we continue generating machine code for starc using starc the machine code will remain the same. So, we still have only three different sequences of bits in `selfie.c`, `selfie`, and `selfie.m` that are supposed to have the same semantics. In particular, if we run `selfie.m` on mipster to compile `selfie.c` the result will again be an exact copy of `selfie.m`. However, there is a fourth sequence with the same semantics that we can generate with selfie. It represents a human-readable version of the machine code in `selfie.m` written in what is called assembly.
+
+[Assembly](https://en.wikipedia.org/wiki/Assembly_language "Assembly Language")
+: A low-level programming language for a computer, or other programmable device, in which there is a very strong (generally one-to-one) correspondence between the language and the architecture's machine code instructions.
+
+Try the `-s` option to have selfie generate assembly as follows:
 
 {line-numbers=off}
 ```
