@@ -72,7 +72,7 @@ Q> Where does semantics come from and how do we create it on a machine?
 
 The source code of selfie is ultimately a sequence of bits. How do they get their meaning? Bits, as is, have no meaning, they are just bits. Characters, by the way, are no different. Characters, as is, have no meaning either, they are just symbols, and can anyway be encoded in bits. Meaning is created by the person reading or writing them. But when it comes to a machine the meaning of bits and thus characters or any kind of symbol has to be created mechanically. The key insight is that the meaning of bits is in the process of changing bits, not in the bits themselves.
 
-X> Let us take two numbers, say 7 and 42, and then add 7 to 42. What we obviously get is 49 transforming 7 and 42 into 49.
+X> Let us take two numbers, say 7 and [42](https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42"), and then add 7 to 42. What we obviously get is 49 transforming 7 and 42 into 49.
 
 The process of adding 7 to 42, according to the rules of elementary arithmetic, makes 7 and 42 represent numbers rather than something else. But if we just look at 7 and 42 they could mean anything. In this example, elementary arithmetic provides meaning, namely the semantics of natural numbers. This is why it is so important to learn elementary arithmetic in school. It tells us what numbers are, not just how to add, subtract, multiply, and divide them!
 
@@ -100,11 +100,25 @@ Let us have a closer look at how this works with selfie. Try the `make` command:
   cc -w -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
 ```
 
+The `make` command invokes the `cc` command which *compiles* the file `selfie.c` into a file called `selfie` (without the `.c` extension) as directed by the `-o` option, ignoring the other options for simplicity. In other words, the sequence of bits representing `selfie.c` is changed into another sequence of bits representing `selfie`. The difference between the two sequences is that the former represents source code whereas the latter represents machine code.
+
+[Machine Code](https://en.wikipedia.org/wiki/Machine_code "Machine Code")
+: A sequence of instructions executed directly by a computer's central processing unit (CPU).
+
+The idea is that both sequences have the same semantics. However, `selfie` is executable by a machine whereas `selfie.c` is not, at least not necessarily, yet `selfie.c` is human-readable and writable in particular. The process of changing `selfie.c` into `selfie` is called compilation which is done by a compiler such as `cc`.
+
+[Compiler](https://en.wikipedia.org/wiki/Compiler "Compiler")
+: A computer program that transforms source code written in a programming language (the source language) into another computer language (the target language), with the latter often having a binary form known as object or machine code. The most common reason for converting source code is to create an executable program.
+
+Let us now try and execute `selfie` using the command `./selfie`:
+
 {line-numbers=off}
 ```
 > ./selfie
   ./selfie: usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ]
 ```
+
+Selfie requires using at least one option to do anything useful and therefore responds with the valid usage pattern.
 
 {line-numbers=off}
 ```
