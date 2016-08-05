@@ -439,18 +439,18 @@ T> Change determines semantics!
 
 In particular, the meaning of bits or characters or any symbols comes from change over time, by being changed (data) and by changing others (code). Let us have another look at our earlier example of adding 7 to 42.
 
-X> The sum of 7 to 42 is usually denoted 7 + 42 with the process of adding 7 to 42 making both 7 and 42 actually represent numbers.
+X> The sum of 7 and 42 is usually denoted by 7 + 42 and evaluates to 49 making 7, 42, and 49 actually represent numbers.
 X>
 X> However, the + sign or in fact the bits encoding the + sign represent the operation of adding one number to another. Thus + has meaning as well when directing a machine to add one of its operands to the other.
 X>
-X> In other words, during the process of adding 7 to 42 both 7 and 42 are being changed and therefore considered data while + changes them and is therefore considered code.
+X> In other words, during the process of addition, 7, 42, and 49 are being changed and therefore considered data while + changes them and is therefore considered code.
 
 Bits represent data such as an integer value at the time when they are used as operand of an integer operation. Bits represent code such as an integer operation at the time when they direct a machine to perform an integer operation. At all other times, their meaning could be anything. This also means that bits can sometimes be data and sometimes be code. Selfie is a non-trivial example of that phenomenon.
 
 X> When compiling `selfie.c` into `selfie` using the cc compiler `selfie.c` and `selfie` are data while the cc compiler is code.
 X>
-X> However, when self-compiling `selfie.c` into `selfie.m` using the starc compiler of `selfie` suddenly makes `selfie` be code.
+X> However, self-compiling `selfie.c` into `selfie.m` using the starc compiler of `selfie` suddenly makes `selfie` be code.
 X>
-X> Moreover, when executing or hosting `selfie.m` on mipster or hypster makes `selfie.m` be code.
+X> Moreover, executing or hosting `selfie.m` on mipster or hypster suddenly makes `selfie.m` be code.
 
-For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Our next step is to look at how basic information such as numbers is encoded in bits.
+For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Our next step towards understanding selfie is to look at how basic information such as numbers is encoded in bits.
