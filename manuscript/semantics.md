@@ -76,20 +76,20 @@ In other words, for a computer `selfie.c` is in fact a sequence of eight times 1
 
 Q> Where does semantics come from and how do we create it on a machine?
 
-The source code of selfie is ultimately a sequence of bits. How do they get their meaning? Bits, as is, have no meaning, they are just bits. Characters, by the way, are no different. Characters, as is, have no meaning either, they are just symbols, and can anyway be encoded in bits. Meaning is created by the person reading or writing them. But when it comes to a machine the meaning of bits and thus characters or any kind of symbol has to be created mechanically. The key insight is that the meaning of bits is in the process of changing bits, not in the bits themselves.
+The source code of selfie is ultimately a sequence of bits. How do they get their meaning? Bits, as is, have no meaning, they are just bits. Characters, by the way, are no different. Characters, as is, have no meaning either, they are just symbols, and can anyway be encoded in bits. When it comes to a machine the meaning of bits and thus characters or any kind of symbol has to be created mechanically. The key insight is that the meaning of bits is in the process of changing bits, not in the bits themselves.
 
 X> Let us take two numbers, say 7 and [42](https://en.wikipedia.org/wiki/Phrases_from_The_Hitchhiker%27s_Guide_to_the_Galaxy "42"), and then add 7 to 42. What we obviously get is 49 transforming 7 and 42 into 49.
 
-The process of adding 7 to 42, according to the rules of elementary arithmetic, makes 7 and 42 represent numbers rather than something else. But if we just look at 7 and 42 they could mean anything. In this example, elementary arithmetic provides meaning, namely the semantics of natural numbers. This is why it is so important to learn elementary arithmetic in school. It tells us what numbers are, not just how to add, subtract, multiply, and divide them!
+The process of adding 7 to 42, according to the rules of elementary arithmetic, makes 7, 42, and 49 represent numbers rather than something else. But if we just look at 7, 42, and 49 they could mean anything. In this example, elementary arithmetic provides meaning, namely the semantics of natural numbers. This is why it is so important to learn elementary arithmetic in school. It tells us what numbers are, not just how to add, subtract, multiply, and divide them!
 
 [Elementary Arithmetic](https://en.wikipedia.org/wiki/Elementary_arithmetic "Elementary Arithmetic")
 : The simplified portion of arithmetic that includes the operations of addition, subtraction, multiplication, and division.
 
-Virtually all modern computers include circuitry for performing elementary arithmetic but they do so with binary rather than decimal numbers since computers only handle bits. Our example of 7 and 42 in binary is just as simple.
+Virtually all modern computers include circuitry for performing elementary arithmetic but they do so with binary rather than decimal numbers since computers only handle bits. Our example of 7, 42, and 49 in binary is just as simple.
 
 X> The number 7 in binary is 111. The number 42 in binary is 101010. Adding 111 to 101010 works in exactly the same way than adding 7 to 42. The result is 110001 which is binary for 49.
 
-Again, adding 111 to 101010 makes 111 and 101010 represent numbers while they could otherwise represent anything. More on encoding numbers in binary can be found in the [next chapter](#encoding).
+Again, adding 111 to 101010 makes 111, 101010, and 110001 represent numbers while they could otherwise represent anything. More on encoding numbers in binary can be found in the [next chapter](#encoding).
 
 [Binary Number](https://en.wikipedia.org/wiki/Binary_number "Binary Number")
 : A number expressed in the binary numeral system or base-2 numeral system which represents numeric values using two different symbols: typically 0 (zero) and 1 (one).
@@ -113,7 +113,7 @@ The `make` command invokes the `cc` command which *compiles* the file `selfie.c`
 [Machine Code](https://en.wikipedia.org/wiki/Machine_code "Machine Code")
 : A sequence of instructions executed directly by a computer's central processing unit (CPU).
 
-The key idea is that both sequences are supposed to have the same semantics. However, `selfie` is executable by a computer whereas `selfie.c` does not, at least not purposefully, yet `selfie.c` is human-readable and writable in particular. The process of changing `selfie.c` into `selfie` is called compilation which is done by a compiler such as the above cc compiler.
+The key idea is that both sequences are supposed to have the same semantics. However, `selfie` is executable by a computer whereas `selfie.c` is not, at least not purposefully, yet `selfie.c` is human-readable and writable in particular. The process of changing `selfie.c` into `selfie` is called compilation which is done by a compiler such as the above cc compiler.
 
 [Compiler](https://en.wikipedia.org/wiki/Compiler "Compiler")
 : A computer program that transforms source code written in a programming language (the source language) into another computer language (the target language), with the latter often having a binary form known as object or machine code. The most common reason for converting source code is to create an executable program.
@@ -367,7 +367,12 @@ Now, we could have starc compile `selfie.c` while running on top of two mipsters
 [Virtualization](https://en.wikipedia.org/wiki/Virtualization "Virtualization")
 : The act of creating a virtual (rather than actual) version of something, including virtual computer hardware platforms, operating systems, storage devices, and computer network resources.
 
-With selfie, instead of having mipster execute mipster execute starc, we can also have mipster execute hypster execute starc. Hypster is just like mipster except that it does not execute any machine code but instead asks the mipster on which it runs to execute the machine code on its behalf. For the machine code there is no difference except that it runs much faster. We can try that by using the same command as above for running starc on mipster but this time running starc on hypster, using the `-y` option, running on top of mipster, which now needs 1MB more to accommodate hypster:
+With selfie, instead of having mipster execute mipster execute starc, we can also have mipster execute hypster execute starc. Hypster is a hypervisor that mimicks mipster without executing any machine code itself but instead asks the mipster on which it runs to execute the machine code on its behalf. For the machine code there is no difference except that it runs much faster.
+
+[Hypervisor](https://en.wikipedia.org/wiki/Hypervisor "Hypervisor")
+: A piece of computer software, firmware or hardware that creates and runs virtual machines. A computer on which a hypervisor runs one or more virtual machines is called a host machine, and each virtual machine is called a guest machine.
+
+Let us try using the same command as above for running starc on mipster but this time running starc on hypster, using the `-y` option, running on top of mipster, which now needs 1MB more to accommodate hypster:
 
 {line-numbers=off}
 ```
@@ -427,3 +432,25 @@ Again, `selfie3.m` and `selfie4.m` are identical and equal to `selfie.m`, `selfi
 ```
 
 ## Principle
+
+Selfie is code that includes a compiler, an emulator, and a hypervisor. Selfie can compile itself, emulate itself, and host itself. Understanding selfie is an efficient and effective way to gain true understanding of computer science. This chapter is the first step towards understanding selfie by observing that:
+
+T> Change determines semantics!
+
+In particular, the meaning of bits or characters or any symbols comes from change over time, by being changed (data) and by changing others (code). Let us have another look at our earlier example of adding 7 to 42.
+
+X> The sum of 7 to 42 is usually denoted 7 + 42 with the process of adding 7 to 42 making both 7 and 42 actually represent numbers.
+X>
+X> However, the + sign or in fact the bits encoding the + sign represent the operation of adding one number to another. Thus + has meaning as well when directing a machine to add one of its operands to the other.
+X>
+X> In other words, during the process of adding 7 to 42 both 7 and 42 are being changed and therefore considered data while + changes them and is therefore considered code.
+
+Bits represent data such as an integer value at the time when they are used as operand of an integer operation. Bits represent code such as an integer operation at the time when they direct a machine to perform an integer operation. At all other times, their meaning could be anything. This also means that bits can sometimes be data and sometimes be code. Selfie is a non-trivial example of that phenomenon.
+
+X> When compiling `selfie.c` into `selfie` using the cc compiler `selfie.c` and `selfie` are data while the cc compiler is code.
+X>
+X> However, when self-compiling `selfie.c` into `selfie.m` using the starc compiler of `selfie` suddenly makes `selfie` be code.
+X>
+X> Moreover, when executing or hosting `selfie.m` on mipster or hypster makes `selfie.m` be code.
+
+For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Our next step is to look at how basic information such as numbers is encoded in bits.
