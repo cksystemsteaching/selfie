@@ -19,13 +19,19 @@ You may see for yourself by using the `less` command:
 > less selfie.c
 ```
 
-For example, the first three lines of `selfie.c` are:
+For example, the first few lines of `selfie.c` are:
 
 {line-numbers=off}
 ```
 // Copyright (c) 2015-2016, the Selfie Project authors. All rights reserved.
 // Please see the AUTHORS file for details. Use of this source code is
 // governed by a BSD license that can be found in the LICENSE file.
+//
+// Selfie is a project of the Computational Systems Group at the
+// Department of Computer Sciences of the University of Salzburg
+// in Austria. For further information and code please refer to:
+//
+// http://selfie.cs.uni-salzburg.at
 ```
 
 What you see here is called source code where the first few lines are in fact comments that will be ignored by the machine.
@@ -258,6 +264,30 @@ Since assembly is human-readable let us check it out:
 > less selfie.s
 ```
 
+For example, the first few lines of `selfie.s` are:
+
+{line-numbers=off}
+```
+0x0(~76): 0x24080007: addiu $t0,$zero,7
+0x4(~76): 0x24094000: addiu $t1,$zero,16384
+0x8(~76): 0x01090019: multu $t0,$t1
+0xC(~76): 0x00004012: mflo $t0
+0x10(~76): 0x00000000: nop
+0x14(~76): 0x00000000: nop
+0x18(~76): 0x250818D8: addiu $t0,$t0,6360
+0x1C(~76): 0x251C0000: addiu $gp,$t0,0
+0x20(~76): 0x24080FFF: addiu $t0,$zero,4095
+0x24(~76): 0x24094000: addiu $t1,$zero,16384
+0x28(~76): 0x01090019: multu $t0,$t1
+0x2C(~76): 0x00004012: mflo $t0
+0x30(~76): 0x00000000: nop
+0x34(~76): 0x00000000: nop
+0x38(~76): 0x25083FFC: addiu $t0,$t0,16380
+0x3C(~76): 0x8D1D0000: lw $sp,0($t0)
+0x40(~76): 0x0C007067: jal 0x7067[0x1C19C]
+0x44(~76): 0x00000000: nop
+```
+
 What you see is a human-readable version of the machine code in `selfie.m`. The purpose of `selfie.s` is here to study `selfie.m` and eventually understand its semantics. Selfie can even show the assembly code as it is being executed by mipster which helps debugging the machine code.
 
 [Debugging](https://en.wikipedia.org/wiki/Debugging "Debugging")
@@ -396,4 +426,4 @@ Again, `selfie3.m` and `selfie4.m` are identical and equal to `selfie.m`, `selfi
   ./selfie: stores: 197940908,15299790(7.73%)@0x22A4(~1166),7774006(3.92%)@0x2304(~1172),7515297(3.79%)@0x2440(~1183)
 ```
 
-## Summary
+## Principle
