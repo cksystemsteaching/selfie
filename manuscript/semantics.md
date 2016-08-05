@@ -399,6 +399,7 @@ Let us try using the same command as above for running starc on mipster but this
 
 Again, `selfie3.m` and `selfie4.m` are identical and equal to `selfie.m`, `selfie1.m`, and `selfie2.m`. Since hypster can run on top of hypster, which is why we call hypster self-hosting, we could now run starc on two or in fact any number of hypsters and mipsters on at least one mipster and get the same result. Try four hypsters on one mipster and see for yourself that it will not take years but in fact just a few minutes, not much longer than using just one mipster:
 
+{line-numbers=off}
 ```
 > ./selfie -c selfie.c -o selfie5.m -m 6 -l selfie5.m -y 5 -l selfie5.m -y 4 -l selfie5.m -y 3 -l selfie5.m -y 2 -c selfie.c -o selfie6.m
   ./selfie: this is selfie's starc compiling selfie.c
