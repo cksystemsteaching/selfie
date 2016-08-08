@@ -7,12 +7,12 @@ When it comes to computers a *bit* is the first thing we may want to know about 
 
 There are two fundamental reasons why computers use bits and nothing else. The first reason is that the two values of a bit can readily be distinguished by electronic circuits using different levels of voltage, say, low voltage for 0 and high voltage for 1. Distinguishing more values is possible and would be exciting to see but has largely not yet happened for technological reasons. The second reason is that whatever you can say using any number of values per digit greater than two you can also say using two values with only an insignificant difference in the number of digits you need to say the same thing. More on that in the [next chapter](#encoding).
 
-Selfie is a program written in some programming language. We eventually explain what that means but before doing so we first look at selfie as we and the machine see it. Selfie is fully contained in a single file called `selfie.c` which currently consists of around one hundred and fifty thousand characters.
+Selfie is a program written in some programming language. We eventually explain what that means but before doing so we first look at selfie as we and the machine see it. Selfie is fully contained in a single file called [`selfie.c`](https://github.com/cksystemsteaching/selfie/blob/master/selfie.c "selfie.c") which currently consists of around one hundred and fifty thousand characters.
 
 [Character](https://en.wikipedia.org/wiki/Character_(computing) "Character")
 : A unit of information that roughly corresponds to a grapheme, grapheme-like unit, or symbol, such as in an alphabet or syllabary in the written form of a natural language. Examples of characters include *letters*, numerical *digits*, common *punctuation marks* (such as "." or "-"), and *whitespace*. The concept also includes *control characters*, which do not correspond to symbols in a particular natural language, but rather to other bits of information used to process text in one or more languages. Examples of control characters include *carriage return*, *line feed*, and *tab*, as well as instructions to printers or other devices that display or otherwise process text.
 
-You may see for yourself by using the `less` command:
+You may also see for yourself by downloading [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip "selfie") and then using the `less` command in your terminal (use the `cd` command first to go into the top folder of selfie which is where you unzipped it on your machine):
 
 {line-numbers=off}
 ```
@@ -44,7 +44,7 @@ The characters of source code like `selfie.c` are usually encoded in bits accord
 [American Standard Code for Information Interchange (ASCII)](https://en.wikipedia.org/wiki/ASCII "American Standard Code for Information Interchange (ASCII)")
 : 7-bit encoding scheme for 128 characters: numbers 0 to 9, lowercase letters a to z, uppercase letters A to Z, basic punctuation symbols, control codes that originated with Teletype machines, and a space.
 
-On machine level, each character is thus represented by seven bits. What we see when we invoke `less` is merely a human-readable version of these bits. To get a better feel of the size of `selfie.c` run in a terminal the command `wc -m selfie.c` which counts the characters in `selfie.c`:
+On machine level, each character is thus represented by seven bits. What we see when we invoke `less` is merely a human-readable version of these bits. To get a better feel of the size of `selfie.c` run the command `wc -m selfie.c` which counts the characters in `selfie.c`:
 
 {line-numbers=off}
 ```
@@ -94,7 +94,7 @@ Again, adding 111 to 101010 makes 111, 101010, and 110001 represent numbers whil
 [Binary Number](https://en.wikipedia.org/wiki/Binary_number "Binary Number")
 : A number expressed in the binary numeral system or base-2 numeral system which represents numeric values using two different symbols: typically 0 (zero) and 1 (one).
 
-It may be hard to believe but knowing elementary arithmetic is enough to understand this book. The source code of selfie, that is, the around one hundred and fifty thousand characters of `selfie.c` represented by around one million bits get their meaning in pretty much the same way than having bits represent numbers: by changing them. The only difference is that the process of change is a bit more involved than elementary arithmetic.
+It may be hard to believe but determination and knowing elementary arithmetic is enough to understand this book. The source code of selfie, that is, the around one hundred and fifty thousand characters of `selfie.c` represented by around one million bits get their meaning in pretty much the same way than having bits represent numbers: by changing them. The only difference is that the process of change is a *bit* more involved than elementary arithmetic.
 
 T> The semantics of bits on a machine is created by changing these bits!
 
@@ -134,7 +134,7 @@ Selfie requires using at least one option to do anything useful and therefore re
 ./selfie: this is selfie's starc compiling selfie.c
 ```
 
-Now, things are taking off. Selfie includes a compiler, just like the cc compiler, that we call starc and invoke with the `-c` option. The starc compiler is capable of compiling all of selfie including itself. By now you realize why selfie is called selfie but the story continues.
+Now, things are taking off. Selfie includes a compiler, just like the cc compiler, that we call starc and invoke with the `-c` option. The starc compiler is capable of compiling all of selfie including itself. By now we all know why selfie is called selfie but the story continues.
 
 After compiling `selfie.c` starc only stores the machine code internally but does not write it to a file. To do that we need to use the `-o` option:
 
@@ -367,7 +367,7 @@ Now, we could have starc compile `selfie.c` while running on top of two mipsters
 [Virtualization](https://en.wikipedia.org/wiki/Virtualization "Virtualization")
 : The act of creating a virtual (rather than actual) version of something, including virtual computer hardware platforms, operating systems, storage devices, and computer network resources.
 
-With selfie, instead of having mipster execute mipster to execute starc, we can also have mipster execute hypster to *host* starc rather than to execute starc. Hypster is a hypervisor that mimicks mipster without executing any machine code itself but instead asks the mipster on which it runs to execute the machine code on its behalf. For the machine code there is no difference except that it runs much faster.
+With selfie, instead of having mipster execute mipster to execute starc, we can also have mipster execute hypster to *host* starc rather than to execute starc. Hypster is a hypervisor that mimics mipster without executing any machine code itself but instead asks the mipster on which it runs to execute the machine code on its behalf. For the machine code there is no difference except that it runs much faster.
 
 [Hypervisor](https://en.wikipedia.org/wiki/Hypervisor "Hypervisor")
 : A piece of computer software, firmware or hardware that creates and runs virtual machines. A computer on which a hypervisor runs one or more virtual machines is called a host machine, and each virtual machine is called a guest machine.
