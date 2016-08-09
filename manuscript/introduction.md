@@ -15,3 +15,7 @@ Selfie is software that can translate itself to code that can be executed by a c
 Why is the *self* so important? Because it shows how meaning is created systematically on a machine. Selfie is software written in some programming language. However, selfie defines the meaning of that language which implies that selfie defines its own meaning. This is very similar to an English dictionary written in English. The only difference is that selfie defines meaning formally in such a way that a machine can run selfie and thus any software written in the language in which selfie is written.
 
 The book works by explaining selfie step by step while focusing on the basic principles that are necessary to understand each step. In order to follow the book you will need to download and run [selfie](https://github.com/cksystemsteaching/selfie "selfie"). This requires, yes, a terminal and a C compiler. If you have a Mac or a Linux box, terminal and compiler are already there, and easy to get for a Windows machine.
+
+The [next chapter](#semantics) introduces selfie and how to use it. The focus is on developing an idea of the problem of semantics. Computer scientists have developed all these formalisms for coding and many other things. We show how selfie can help to understand the relevant aspects of the problem.
+
+The [following chapter](#encoding) is an introduction to encoding and decoding basic information such as characters and numbers in binary form. We use selfie to show examples and how their encoding and decoding is actually done.
