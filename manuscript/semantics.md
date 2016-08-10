@@ -57,7 +57,7 @@ The output means that `selfie.c` at the time of invoking the command consisted o
 [UTF-8](https://en.wikipedia.org/wiki/UTF-8 "UTF-8")
 : (Universal Character Set Transformation Format - 8-bit) A character encoding capable of encoding all possible characters (called code points) in Unicode. The encoding is variable-length and uses 8-bit code units. It is designed for backward compatibility with ASCII.
 
-When it comes to selfie we nevertheless speak of ASCII-encoded characters because of that backward compatibility. Here this means that the UTF-8 encoding of a given character is exactly the ASCII encoding of that character when simply ignoring the eighth bit. More on encoding characters can be found in the [next chapter](#encoding).
+When it comes to selfie we nevertheless speak of ASCII characters because of that backward compatibility. Here this means that the UTF-8 encoding of a given character is exactly the ASCII encoding of that character when simply ignoring the eighth bit. More on encoding characters can be found in the [next chapter](#encoding).
 
 Since a unit of eight bits is very common in computer systems there is a well-known term for that unit called a byte.
 
