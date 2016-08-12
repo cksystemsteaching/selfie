@@ -2923,7 +2923,7 @@ void gr_while() {
 
   if (brForwardToEnd != 0)
     // first instruction after loop comes here
-    // now we have our address for the conditional jump from above
+    // now we have our address for the conditional branch from above
     fixup_relative(brForwardToEnd);
 
   // assert: allocatedTemporaries == 0
@@ -2944,7 +2944,7 @@ void gr_if() {
 
       gr_expression();
 
-      // if the "if" case is not true, we jump to "else" (if provided)
+      // if the "if" case is not true, we branch to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
 
       emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
@@ -2977,11 +2977,11 @@ void gr_if() {
         if (symbol == SYM_ELSE) {
           getSymbol();
 
-          // if the "if" case was true, we jump to the end
+          // if the "if" case was true, we branch to the end
           brForwardToEnd = binaryLength;
           emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
 
-          // if the "if" case was not true, we jump here
+          // if the "if" case was not true, we branch here
           fixup_relative(brForwardToElseOrEnd);
 
           // zero or more statements: { statement }
@@ -3003,10 +3003,10 @@ void gr_if() {
           } else
             gr_statement();
 
-          // if the "if" case was true, we jump here
+          // if the "if" case was true, we branch here
           fixup_relative(brForwardToEnd);
         } else
-          // if the "if" case was not true, we jump here
+          // if the "if" case was not true, we branch here
           fixup_relative(brForwardToElseOrEnd);
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
@@ -3625,7 +3625,7 @@ void selfie_compile() {
   // allocate space for storing source code line numbers
   sourceLineNumber = malloc(maxBinaryLength);
 
-  // jump to main
+  // jump and link to main
   emitMainEntry();
 
   // library:
