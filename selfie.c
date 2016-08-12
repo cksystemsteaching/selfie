@@ -1268,30 +1268,44 @@ int atoi(int* s) {
   int n;
   int c;
 
+  // the conversion of the ASCII string in s to its numerical value n
+  // begins with the leftmost digit in s
   i = 0;
 
+  // and the numerical value 0 for n
   n = 0;
 
   c = loadCharacter(s, i);
 
+  // loop until s is terminated
   while (c != 0) {
+    // the numerical value of ASCII-encoded decimal digits
+    // is offset by the ASCII code of '0' (which is 48)
     c = c - '0';
 
     if (c < 0)
+      // c was not a decimal digit
       return -1;
     else if (c > 9)
+      // c was not a decimal digit
       return -1;
 
+    // assert: s contains a decimal number, that is, with base 10
     n = n * 10 + c;
 
+    // go to the next digit
     i = i + 1;
 
     c = loadCharacter(s, i);
 
     if (n < 0) {
+      // the only negative number for n allowed here is INT_MIN
       if (n != INT_MIN)
+        // but n is not INT_MIN which may happen because of an earlier
+        // integer overflow if the number in s is larger than INT_MAX
         return -1;
       else if (c != 0)
+        // n is INT_MIN but s is not terminated yet
         return -1;
     }
   }
@@ -1306,10 +1320,15 @@ int* itoa(int n, int* s, int b, int a, int p) {
   int sign;
   int msb;
 
+  // the conversion of the integer n to an ASCII string in s
+  // with base b, alignment a, and fixed point p
+  // begins with the leftmost digit in s
   i = 0;
 
+  // for now assuming n is positive
   sign = 0;
 
+  // and msb not set
   msb = 0;
 
   if (n == 0) {
@@ -1317,6 +1336,7 @@ int* itoa(int n, int* s, int b, int a, int p) {
 
     i = 1;
   } else if (n < 0) {
+    // convert n to a positive number but remember the sign
     sign = 1;
 
     if (b == 10) {
@@ -1352,16 +1372,25 @@ int* itoa(int n, int* s, int b, int a, int p) {
       if (i == p) {
         storeCharacter(s, i, '.'); // set point of fixed point number
 
+        // go to the next digit
         i = i + 1;
+
+        // we are done with the fixed point
         p = 0;
       }
 
     if (n % b > 9)
+      // the ASCII code of hexadecimal digits larger than 9
+      // is offset by the ASCII code of 'A' (which is 65)
       storeCharacter(s, i, n % b - 10 + 'A');
     else
+      // the ASCII code of digits less than or equal to 9
+      // is offset by the ASCII code of '0' (which is 48)
       storeCharacter(s, i, n % b + '0');
 
+    // convert n by dividing n with base b
     n = n / b;
+
     i = i + 1;
 
     if (msb) {
@@ -1378,10 +1407,13 @@ int* itoa(int n, int* s, int b, int a, int p) {
       i = i + 1;
     }
 
-    storeCharacter(s, i, '.');   // set point
+    storeCharacter(s, i, '.'); // set point
     storeCharacter(s, i + 1, '0'); // leading 0
 
+    // go to the second next digit
     i = i + 2;
+
+    // we are done with the fixed point
     p = 0;
   }
 
@@ -1419,6 +1451,9 @@ int* itoa(int n, int* s, int b, int a, int p) {
 
   storeCharacter(s, i, 0); // null terminated string
 
+  // our numeral system is positional hindu-arabic, that is,
+  // the weight of digits increases right to left, which means
+  // that we need to reverse the string we computed above
   stringReverse(s);
 
   return s;
@@ -1429,8 +1464,13 @@ void putCharacter(int character) {
 
   // assert: character_buffer is mapped
 
+  // try to write 1 character from character_buffer
+  // into file with outputFD file descriptor
   if (write(outputFD, character_buffer, 1) != 1) {
+    // write failed
     if (outputFD != 1) {
+      // failed write was not to the console (which has file descriptor 1),
+      // to report the error we may thus still write to the console via print
       outputFD = 1;
 
       print(selfieName);
@@ -1550,11 +1590,15 @@ void getCharacter() {
 
   // assert: character_buffer is mapped
 
+  // try to read 1 character into character_buffer
+  // from file with sourceFD file descriptor
   numberOfReadBytes = read(sourceFD, character_buffer, 1);
 
   if (numberOfReadBytes == 1)
+    // store the read character in the global variable called character
     character = *character_buffer;
   else if (numberOfReadBytes == 0)
+    // reached end of file
     character = CHAR_EOF;
   else {
     print(selfieName);
