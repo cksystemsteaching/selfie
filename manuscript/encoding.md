@@ -20,9 +20,28 @@ All the characters that selfie reads from files including `selfie.c` are [read](
 
 For further details please refer to the comments in the code. In general, we only provide links to code with comments so that text explaining code is not duplicated here. In other words, reading code is part of the experience of reading this book and actually a lot of fun! Just be patient. Things will clear up after a while. The code is written for everyone to understand.
 
-### Comments
+#### Comments
 
-Now, what is a comment in code anyway? A comment is text that the machine ignores completely. It is only there for people to read and understand the code. Technically, a comment is simply all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/d93e9661904c1eb109ef2a488fa623bc75967795/selfie.c#L76) that means something to the machine and is not a comment. In other words, if we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine.
+Now, what is a comment in code anyway? A comment is text that the machine ignores completely. It is only there for people to read and understand the code. Technically, a comment is simply all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/0d76fc92d8a79db612973153d133f14eb35efae6/selfie.c#L76) that means something to the machine and is not a comment.
+
+If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we could safely remove even more characters called whitespace without changing any semantics.
+
+#### Whitespace
+
+Whitespace characters are invisible but still important for formatting source code yet not for semantics. By the way, this is true for many programming languages including the language in which selfie is written but not for all. This is important to check when learning new programming languages.
+
+The starc compiler considers the space, the tabulator, the line feed, and the carriage return characters whitespace and ignores them when reading source code:
+
+{line-numbers=off}
+```
+> ./selfie -c selfie.c
+./selfie: this is selfie's starc compiling selfie.c
+./selfie: 166707 characters read in 6652 lines and 864 comments
+./selfie: with 94033(56.49%) characters in 29064 actual symbols
+...
+```
+
+Out of the 166,707 characters in `selfie.c` only a little more than half of the characters, that is, 94,033 characters are actually considered as code. The rest is whitespace and characters in a total of 864 comments.
 
 ### Identifiers
 
