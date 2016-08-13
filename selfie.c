@@ -300,13 +300,13 @@ int isINTMIN    = 0; // flag to indicate that INT_MIN was scanned
 
 int character; // most recently read character
 
-int numberOfReadCharacters = 0; // number of read characters
+int numberOfReadCharacters = 0;
 
 int symbol; // most recently recognized symbol
 
-int numberOfIgnoredCharacters = 0; // number of ignored characters
-int numberOfComments          = 0; // number of comments
-int numberOfScannedSymbols    = 0; // number of scanned symbols
+int numberOfIgnoredCharacters = 0;
+int numberOfComments          = 0;
+int numberOfScannedSymbols    = 0;
 
 int* sourceName = (int*) 0; // name of source file
 int  sourceFD   = 0;        // file descriptor of open source file
@@ -502,6 +502,22 @@ int allocatedMemory = 0; // number of bytes for global variables and strings
 int returnBranches = 0; // fixup chain for return statements
 
 int* currentProcedureName = (int*) 0; // name of currently parsed procedure
+
+int numberOfCalls       = 0;
+int numberOfAssignments = 0;
+int numberOfWhile       = 0;
+int numberOfIf          = 0;
+int numberOfReturn      = 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void resetParser() {
+  numberOfCalls       = 0;
+  numberOfAssignments = 0;
+  numberOfWhile       = 0;
+  numberOfIf          = 0;
+  numberOfReturn      = 0;
+}
 
 // -----------------------------------------------------------------
 // ---------------------- MACHINE CODE LIBRARY ---------------------
@@ -2606,6 +2622,8 @@ int gr_call(int* procedure) {
 
   restore_temporaries(numberOfTemporaries);
 
+  numberOfCalls = numberOfCalls + 1;
+
   // assert: allocatedTemporaries == n
   return type;
 }
@@ -3036,6 +3054,8 @@ void gr_while() {
     fixup_relative(brForwardToEnd);
 
   // assert: allocatedTemporaries == 0
+
+  numberOfWhile = numberOfWhile + 1;
 }
 
 void gr_if() {
@@ -3125,6 +3145,8 @@ void gr_if() {
     syntaxErrorSymbol(SYM_IF);
 
   // assert: allocatedTemporaries == 0
+
+  numberOfIf = numberOfIf + 1;
 }
 
 void gr_return(int returnType) {
@@ -3161,6 +3183,8 @@ void gr_return(int returnType) {
   returnBranches = binaryLength - 2 * WORDSIZE;
 
   // assert: allocatedTemporaries == 0
+
+  numberOfReturn = numberOfReturn + 1;
 }
 
 void gr_statement() {
@@ -3205,6 +3229,8 @@ void gr_statement() {
         emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
         tfree(2);
+
+        numberOfAssignments = numberOfAssignments + 1;
       } else {
         syntaxErrorSymbol(SYM_ASSIGN);
 
@@ -3240,6 +3266,8 @@ void gr_statement() {
           emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
           tfree(2);
+
+          numberOfAssignments = numberOfAssignments + 1;
         } else {
           syntaxErrorSymbol(SYM_ASSIGN);
 
@@ -3291,6 +3319,8 @@ void gr_statement() {
       emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
 
       tfree(1);
+
+      numberOfAssignments = numberOfAssignments + 1;
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3730,6 +3760,9 @@ void selfie_compile() {
   // reset symbol tables
   resetSymbolTables();
 
+  // reset parser
+  resetParser();
+
   // allocate space for storing binary
   binary       = malloc(maxBinaryLength);
   binaryLength = 0;
@@ -3799,6 +3832,20 @@ void selfie_compile() {
   print((int*) " procedures, ");
   print(itoa(numberOfStrings, string_buffer, 10, 0, 0));
   print((int*) " string literals");
+  println();
+
+  print(selfieName);
+  print((int*) ": ");
+  print(itoa(numberOfCalls, string_buffer, 10, 0, 0));
+  print((int*) " calls, ");
+  print(itoa(numberOfAssignments, string_buffer, 10, 0, 0));
+  print((int*) " assignments, ");
+  print(itoa(numberOfWhile, string_buffer, 10, 0, 0));
+  print((int*) " while, ");
+  print(itoa(numberOfIf, string_buffer, 10, 0, 0));
+  print((int*) " if, ");
+  print(itoa(numberOfReturn, string_buffer, 10, 0, 0));
+  print((int*) " return");
   println();
 
   print(selfieName);
