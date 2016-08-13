@@ -41,7 +41,7 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 ...
 ```
 
-Out of the 166,707 characters in `selfie.c` only a little more than half of the characters, that is, 94,033 characters are actually considered as code. The rest is whitespace and characters in a total of 864 comments.
+Out of the 166,707 characters in `selfie.c` only a little more than half of the characters, that is, 94,033 characters are actually considered as code. The rest is whitespace and characters in a total of 864 comments. The [code](http://github.com/cksystemsteaching/selfie/blob/949642c1ffb7a70633be551cf42f5ff83735eeb9/selfie.c#L1710-L1756) in `selfie.c` that starc uses to ignore whitespace and comments may look mysterious but not for long.
 
 ### Identifiers
 
