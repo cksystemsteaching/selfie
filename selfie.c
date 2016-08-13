@@ -3205,8 +3205,11 @@ void gr_statement() {
         emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
         tfree(2);
-      } else
+      } else {
         syntaxErrorSymbol(SYM_ASSIGN);
+
+        tfree(1);
+      }
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3237,8 +3240,11 @@ void gr_statement() {
           emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
           tfree(2);
-        } else
+        } else {
           syntaxErrorSymbol(SYM_ASSIGN);
+
+          tfree(1);
+        }
 
         if (symbol == SYM_SEMICOLON)
           getSymbol();
