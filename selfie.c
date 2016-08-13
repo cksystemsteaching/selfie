@@ -430,12 +430,20 @@ int* global_symbol_table  = (int*) 0;
 int* local_symbol_table   = (int*) 0;
 int* library_symbol_table = (int*) 0;
 
+int numberOfGlobalVariables = 0;
+int numberOfProcedures      = 0;
+int numberOfStrings         = 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void resetSymbolTables() {
   global_symbol_table  = (int*) 0;
   local_symbol_table   = (int*) 0;
   library_symbol_table = (int*) 0;
+
+  numberOfGlobalVariables = 0;
+  numberOfProcedures      = 0;
+  numberOfStrings         = 0;
 }
 
 // -----------------------------------------------------------------
@@ -2040,6 +2048,13 @@ void createSymbolTableEntry(int whichTable, int* string, int line, int class, in
     setScope(newEntry, REG_GP);
     setNextEntry(newEntry, global_symbol_table);
     global_symbol_table = newEntry;
+
+    if (class == VARIABLE)
+      numberOfGlobalVariables = numberOfGlobalVariables + 1;
+    else if (class == PROCEDURE)
+      numberOfProcedures = numberOfProcedures + 1;
+    else if (class == STRING)
+      numberOfStrings = numberOfStrings + 1;
   } else if (whichTable == LOCAL_TABLE) {
     setScope(newEntry, REG_FP);
     setNextEntry(newEntry, local_symbol_table);
@@ -3770,6 +3785,24 @@ void selfie_compile() {
   print((int*) " actual symbols");
   println();
 
+  print(selfieName);
+  print((int*) ": ");
+  print(itoa(numberOfGlobalVariables, string_buffer, 10, 0, 0));
+  print((int*) " global variables, ");
+  print(itoa(numberOfProcedures, string_buffer, 10, 0, 0));
+  print((int*) " procedures, ");
+  print(itoa(numberOfStrings, string_buffer, 10, 0, 0));
+  print((int*) " string literals");
+  println();
+
+  print(selfieName);
+  print((int*) ": ");
+  print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
+  print((int*) " bytes generated for ");
+  print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+  print((int*) " instructions");
+  println();
+
   if (reportUndefinedProcedures())
     exit(-1);
 }
@@ -4098,11 +4131,6 @@ void selfie_emit() {
     exit(-1);
   }
 
-  print(selfieName);
-  print((int*) ": writing code into output file ");
-  print(binaryName);
-  println();
-
   *io_buffer = codeLength;
 
   // assert: io_buffer is mapped
@@ -4114,6 +4142,15 @@ void selfie_emit() {
 
   // then write binary
   write(fd, binary, binaryLength);
+
+  print(selfieName);
+  print((int*) ": ");
+  print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
+  print((int*) " bytes with ");
+  print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+  print((int*) " instructions written into ");
+  print(binaryName);
+  println();
 }
 
 int* touch(int* memory, int length) {
@@ -4174,11 +4211,6 @@ void selfie_load() {
   // no source line numbers in binaries
   sourceLineNumber = (int*) 0;
 
-  print(selfieName);
-  print((int*) ": loading code from input file ");
-  print(binaryName);
-  println();
-
   // assert: io_buffer is mapped
 
   // read code length first
@@ -4197,8 +4229,18 @@ void selfie_load() {
         binaryLength = numberOfReadBytes;
 
         // check if we are really at EOF
-        if (read(fd, io_buffer, WORDSIZE) == 0)
+        if (read(fd, io_buffer, WORDSIZE) == 0) {
+          print(selfieName);
+          print((int*) ": ");
+          print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
+          print((int*) " bytes with ");
+          print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+          print((int*) " instructions loaded from ");
+          print(binaryName);
+          println();
+
           return;
+        }
       }
     }
   }
