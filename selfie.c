@@ -86,6 +86,7 @@ int* selfieName = (int*) 0;
 // -----------------------------------------------------------------
 
 void initLibrary();
+void resetLibrary();
 
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
@@ -171,6 +172,8 @@ int S_IRUSR_IWUSR_IRGRP_IROTH = 420; // flags for rw-r--r-- file permissions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+int numberOfWrittenCharacters = 0;
+
 int* outputName = (int*) 0;
 int  outputFD   = 1;
 
@@ -211,6 +214,10 @@ void initLibrary() {
   // allocate and touch to make sure memory is mapped for read calls
   io_buffer  = malloc(SIZEOFINT);
   *io_buffer = 0;
+}
+
+void resetLibrary() {
+  numberOfWrittenCharacters = 0;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -449,6 +456,8 @@ void resetSymbolTables() {
 // -----------------------------------------------------------------
 // ---------------------------- PARSER -----------------------------
 // -----------------------------------------------------------------
+
+void resetParser();
 
 int isNotRbraceOrEOF();
 int isExpression();
@@ -1534,10 +1543,15 @@ void putCharacter(int character) {
 
   // try to write 1 character from character_buffer
   // into file with outputFD file descriptor
-  if (write(outputFD, character_buffer, 1) != 1) {
+  if (write(outputFD, character_buffer, 1) == 1) {
+    if (outputFD != 1)
+      // count number of characters written to a file,
+      // not the console which has file descriptor 1
+      numberOfWrittenCharacters = numberOfWrittenCharacters + 1;
+  } else {
     // write failed
     if (outputFD != 1) {
-      // failed write was not to the console (which has file descriptor 1),
+      // failed write was not to the console which has file descriptor 1
       // to report the error we may thus still write to the console via print
       outputFD = 1;
 
@@ -3851,9 +3865,11 @@ void selfie_compile() {
   print(selfieName);
   print((int*) ": ");
   print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
-  print((int*) " bytes generated for ");
+  print((int*) " bytes generated with ");
   print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
-  print((int*) " instructions");
+  print((int*) " instructions and ");
+  print(itoa(binaryLength - codeLength + WORDSIZE, string_buffer, 10, 0, 0));
+  print((int*) " bytes of data");
   println();
 
   if (reportUndefinedProcedures())
@@ -4177,7 +4193,7 @@ void selfie_emit() {
 
   if (fd < 0) {
     print(selfieName);
-    print((int*) ": could not create output file ");
+    print((int*) ": could not create binary output file ");
     print(binaryName);
     println();
 
@@ -4201,7 +4217,9 @@ void selfie_emit() {
   print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
   print((int*) " bytes with ");
   print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
-  print((int*) " instructions written into ");
+  print((int*) " instructions and ");
+  print(itoa(binaryLength - codeLength + WORDSIZE, string_buffer, 10, 0, 0));
+  print((int*) " bytes of data written into ");
   print(binaryName);
   println();
 }
@@ -4288,7 +4306,9 @@ void selfie_load() {
           print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
           print((int*) " bytes with ");
           print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
-          print((int*) " instructions loaded from ");
+          print((int*) " instructions and ");
+          print(itoa(binaryLength - codeLength + WORDSIZE, string_buffer, 10, 0, 0));
+          print((int*) " bytes of data loaded from ");
           print(binaryName);
           println();
 
@@ -6202,11 +6222,6 @@ void selfie_disassemble(int argc, int* argv) {
     exit(-1);
   }
 
-  print(selfieName);
-  print((int*) ": writing assembly into output file ");
-  print(assemblyName);
-  println();
-
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
@@ -6221,6 +6236,15 @@ void selfie_disassemble(int argc, int* argv) {
 
   outputName = (int*) 0;
   outputFD   = 1;
+
+  print(selfieName);
+  print((int*) ": ");
+  print(itoa(numberOfWrittenCharacters, string_buffer, 10, 0, 0));
+  print((int*) " characters of assembly with ");
+  print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+  print((int*) " instructions written into ");
+  print(assemblyName);
+  println();
 }
 
 void selfie_run(int argc, int* argv) {
@@ -6447,7 +6471,10 @@ void down_mapPageTable(int* context) {
 }
 
 void boot(int argc, int* argv) {
-  // resetting is only necessary for mipster to run
+  // resetting library is only necessary for disassembler
+  resetLibrary();
+
+  // resetting this is only necessary for mipster
   resetInterpreter();
   resetMicrokernel();
 
@@ -6506,7 +6533,7 @@ int selfie(int argc, int* argv) {
         argc = argc - 2;
         argv = argv + 2;
 
-        if (binaryLength > 0) {
+        if (codeLength > 0) {
           initMemory(MEGABYTE);
 
           selfie_disassemble(argc, argv);
