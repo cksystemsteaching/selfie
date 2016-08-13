@@ -101,6 +101,8 @@ int  stringCompare(int* s, int* t);
 int  atoi(int* s);
 int* itoa(int n, int* s, int b, int a, int p);
 
+int fixedPointRatio(int a, int b);
+
 void putCharacter(int character);
 
 void print(int* s);
@@ -125,7 +127,6 @@ int CHAR_SEMICOLON    = ';';
 int CHAR_PLUS         = '+';
 int CHAR_DASH         = '-';
 int CHAR_ASTERISK     = '*';
-int CHAR_HASH         = '#';
 int CHAR_SLASH        = '/';
 int CHAR_UNDERSCORE   = '_';
 int CHAR_EQUAL        = '=';
@@ -242,7 +243,7 @@ int isNotDoubleQuoteOrEOF();
 int identifierStringMatch(int stringIndex);
 int identifierOrKeyword();
 
-int getSymbol();
+void getSymbol();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -284,7 +285,7 @@ int maxStringLength     = 128; // maximum number of characters in a string
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int lineNumber = 1; // current Line Number for error reporting
+int lineNumber = 1; // current line number for error reporting
 
 int* identifier = (int*) 0; // stores scanned identifier as string
 int* integer    = (int*) 0; // stores scanned integer as string
@@ -294,11 +295,18 @@ int literal = 0; // stores numerical value of scanned integer or character
 
 int initialValue = 0; // stores initial value of variable definitions
 
-int mayBeINTMIN = 0; // support INT_MIN
-int isINTMIN    = 0;
+int mayBeINTMIN = 0; // allow INT_MIN if '-' was scanned before
+int isINTMIN    = 0; // flag to indicate that INT_MIN was scanned
 
 int character; // most recently read character
-int symbol;    // most recently recognized symbol
+
+int numberOfReadCharacters = 0; // number of read characters
+
+int symbol; // most recently recognized symbol
+
+int numberOfIgnoredCharacters = 0; // number of ignored characters
+int numberOfComments          = 0; // number of comments
+int numberOfScannedSymbols    = 0; // number of scanned symbols
 
 int* sourceName = (int*) 0; // name of source file
 int  sourceFD   = 0;        // file descriptor of open source file
@@ -338,13 +346,20 @@ void initScanner () {
   *(SYMBOLS + SYM_STRING)       = (int) "string";
 
   character = CHAR_EOF;
-  symbol  = SYM_EOF;
+  symbol    = SYM_EOF;
 }
 
 void resetScanner() {
   lineNumber = 1;
 
+  numberOfReadCharacters = 0;
+
   getCharacter();
+
+  numberOfIgnoredCharacters = 0;
+  numberOfComments          = 0;
+  numberOfScannedSymbols    = 0;
+
   getSymbol();
 }
 
@@ -924,7 +939,6 @@ void up_loadArguments(int* table, int argc, int* argv);
 void up_loadBinary(int* table);
 
 int addressWithMaxCounter(int* counters, int max);
-int fixedPointRatio(int a, int b);
 
 int  printCounters(int total, int* counters, int max);
 void printProfile(int* message, int total, int* counters);
@@ -1459,6 +1473,36 @@ int* itoa(int n, int* s, int b, int a, int p) {
   return s;
 }
 
+int fixedPointRatio(int a, int b) {
+  // assert: a >= b
+  int r;
+
+  // compute fixed point ratio r with 2 fractional digits
+
+  r = 0;
+
+  // multiply a/b with 100 but avoid overflow
+
+  if (a <= INT_MAX / 100) {
+    if (b != 0)
+      r = a * 100 / b;
+  } else if (a <= INT_MAX / 10) {
+    if (b / 10 != 0)
+      r = a * 10 / (b / 10);
+  } else {
+    if (b / 100 != 0)
+      r = a / (b / 100);
+  }
+
+  // compute a/b in percent
+  // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
+
+  if (r != 0)
+    return 1000000 / r;
+  else
+    return 0;
+}
+
 void putCharacter(int character) {
   *character_buffer = character;
 
@@ -1594,10 +1638,12 @@ void getCharacter() {
   // from file with sourceFD file descriptor
   numberOfReadBytes = read(sourceFD, character_buffer, 1);
 
-  if (numberOfReadBytes == 1)
+  if (numberOfReadBytes == 1) {
     // store the read character in the global variable called character
     character = *character_buffer;
-  else if (numberOfReadBytes == 0)
+
+    numberOfReadCharacters = numberOfReadCharacters + 1;
+  } else if (numberOfReadBytes == 0)
     // reached end of file
     character = CHAR_EOF;
   else {
@@ -1639,26 +1685,30 @@ int findNextCharacter() {
       else if (character == CHAR_EOF)
         return character;
 
+      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+
     } else if (isCharacterWhitespace()) {
       if (character == CHAR_LF)
         lineNumber = lineNumber + 1;
       else if (character == CHAR_CR)
         lineNumber = lineNumber + 1;
 
-      getCharacter();
+      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
-    } else if (character == CHAR_HASH) {
       getCharacter();
-
-      inComment = 1;
 
     } else if (character == CHAR_SLASH) {
       getCharacter();
 
-      if (character == CHAR_SLASH)
+      if (character == CHAR_SLASH) {
         inComment = 1;
-      else {
+
+        numberOfIgnoredCharacters = numberOfIgnoredCharacters + 2;
+
+        numberOfComments = numberOfComments + 1;
+      } else {
         symbol = SYM_DIV;
+
         return character;
       }
 
@@ -1733,240 +1783,240 @@ int identifierOrKeyword() {
     return SYM_IDENTIFIER;
 }
 
-int getSymbol() {
+void getSymbol() {
   int i;
 
+  // reset previously scanned symbol
   symbol = SYM_EOF;
 
-  if (findNextCharacter() == CHAR_EOF)
-    return SYM_EOF;
-  else if (symbol == SYM_DIV)
-    // check here because / was recognized instead of //
-    return SYM_DIV;
+  if (findNextCharacter() != CHAR_EOF) {
+    if (symbol != SYM_DIV)
+      // '/' may have already been recognized
+      // while looking for whitespace and "//"
+      if (isCharacterLetter()) {
+        identifier = malloc(maxIdentifierLength + 1);
 
-  if (isCharacterLetter()) {
-    identifier = malloc(maxIdentifierLength + 1);
+        i = 0;
 
-    i = 0;
+        while (isCharacterLetterOrDigitOrUnderscore()) {
+          if (i >= maxIdentifierLength) {
+            syntaxErrorMessage((int*) "identifier too long");
 
-    while (isCharacterLetterOrDigitOrUnderscore()) {
-      if (i >= maxIdentifierLength) {
-        syntaxErrorMessage((int*) "identifier too long");
+            exit(-1);
+          }
 
-        exit(-1);
-      }
+          storeCharacter(identifier, i, character);
 
-      storeCharacter(identifier, i, character);
+          i = i + 1;
 
-      i = i + 1;
+          getCharacter();
+        }
 
-      getCharacter();
-    }
+        storeCharacter(identifier, i, 0); // null terminated string
 
-    storeCharacter(identifier, i, 0); // null terminated string
+        symbol = identifierOrKeyword();
 
-    symbol = identifierOrKeyword();
+      } else if (isCharacterDigit()) {
+        integer = malloc(maxIntegerLength + 1);
 
-  } else if (isCharacterDigit()) {
-    integer = malloc(maxIntegerLength + 1);
+        i = 0;
 
-    i = 0;
+        while (isCharacterDigit()) {
+          if (i >= maxIntegerLength) {
+            syntaxErrorMessage((int*) "integer out of bound");
 
-    while (isCharacterDigit()) {
-      if (i >= maxIntegerLength) {
-        syntaxErrorMessage((int*) "integer out of bound");
+            exit(-1);
+          }
 
-        exit(-1);
-      }
+          storeCharacter(integer, i, character);
 
-      storeCharacter(integer, i, character);
+          i = i + 1;
 
-      i = i + 1;
+          getCharacter();
+        }
 
-      getCharacter();
-    }
+        storeCharacter(integer, i, 0); // null terminated string
 
-    storeCharacter(integer, i, 0); // null terminated string
+        literal = atoi(integer);
 
-    literal = atoi(integer);
+        if (literal < 0) {
+          if (literal == INT_MIN) {
+            if (mayBeINTMIN)
+              isINTMIN = 1;
+            else {
+              syntaxErrorMessage((int*) "integer out of bound");
 
-    if (literal < 0) {
-      if (literal == INT_MIN) {
-        if (mayBeINTMIN)
-          isINTMIN = 1;
+              exit(-1);
+            }
+          } else {
+            syntaxErrorMessage((int*) "integer out of bound");
+
+            exit(-1);
+          }
+        }
+
+        symbol = SYM_INTEGER;
+
+      } else if (character == CHAR_SINGLEQUOTE) {
+        getCharacter();
+
+        literal = 0;
+
+        if (character == CHAR_EOF) {
+          syntaxErrorMessage((int*) "reached end of file looking for a character literal");
+
+          exit(-1);
+        } else
+          literal = character;
+
+        getCharacter();
+
+        if (character == CHAR_SINGLEQUOTE)
+          getCharacter();
+        else if (character == CHAR_EOF) {
+          syntaxErrorCharacter(CHAR_SINGLEQUOTE);
+
+          exit(-1);
+        } else
+          syntaxErrorCharacter(CHAR_SINGLEQUOTE);
+
+        symbol = SYM_CHARACTER;
+
+      } else if (character == CHAR_DOUBLEQUOTE) {
+        getCharacter();
+
+        string = malloc(maxStringLength + 1);
+
+        i = 0;
+
+        while (isNotDoubleQuoteOrEOF()) {
+          if (i >= maxStringLength) {
+            syntaxErrorMessage((int*) "string too long");
+
+            exit(-1);
+          }
+
+          storeCharacter(string, i, character);
+
+          i = i + 1;
+
+          getCharacter();
+        }
+
+        if (character == CHAR_DOUBLEQUOTE)
+          getCharacter();
         else {
-          syntaxErrorMessage((int*) "integer out of bound");
+          syntaxErrorCharacter(CHAR_DOUBLEQUOTE);
 
           exit(-1);
         }
+
+        storeCharacter(string, i, 0); // null terminated string
+
+        symbol = SYM_STRING;
+
+      } else if (character == CHAR_SEMICOLON) {
+        getCharacter();
+
+        symbol = SYM_SEMICOLON;
+
+      } else if (character == CHAR_PLUS) {
+        getCharacter();
+
+        symbol = SYM_PLUS;
+
+      } else if (character == CHAR_DASH) {
+        getCharacter();
+
+        symbol = SYM_MINUS;
+
+      } else if (character == CHAR_ASTERISK) {
+        getCharacter();
+
+        symbol = SYM_ASTERISK;
+
+      } else if (character == CHAR_EQUAL) {
+        getCharacter();
+
+        if (character == CHAR_EQUAL) {
+          getCharacter();
+
+          symbol = SYM_EQUALITY;
+        } else
+          symbol = SYM_ASSIGN;
+
+      } else if (character == CHAR_LPARENTHESIS) {
+        getCharacter();
+
+        symbol = SYM_LPARENTHESIS;
+
+      } else if (character == CHAR_RPARENTHESIS) {
+        getCharacter();
+
+        symbol = SYM_RPARENTHESIS;
+
+      } else if (character == CHAR_LBRACE) {
+        getCharacter();
+
+        symbol = SYM_LBRACE;
+
+      } else if (character == CHAR_RBRACE) {
+        getCharacter();
+
+        symbol = SYM_RBRACE;
+
+      } else if (character == CHAR_COMMA) {
+        getCharacter();
+
+        symbol = SYM_COMMA;
+
+      } else if (character == CHAR_LT) {
+        getCharacter();
+
+        if (character == CHAR_EQUAL) {
+          getCharacter();
+
+          symbol = SYM_LEQ;
+        } else
+          symbol = SYM_LT;
+
+      } else if (character == CHAR_GT) {
+        getCharacter();
+
+        if (character == CHAR_EQUAL) {
+          getCharacter();
+
+          symbol = SYM_GEQ;
+        } else
+          symbol = SYM_GT;
+
+      } else if (character == CHAR_EXCLAMATION) {
+        getCharacter();
+
+        if (character == CHAR_EQUAL)
+          getCharacter();
+        else
+          syntaxErrorCharacter(CHAR_EQUAL);
+
+        symbol = SYM_NOTEQ;
+
+      } else if (character == CHAR_PERCENTAGE) {
+        getCharacter();
+
+        symbol = SYM_MOD;
+
       } else {
-        syntaxErrorMessage((int*) "integer out of bound");
+        printLineNumber((int*) "error", lineNumber);
+        print((int*) "found unknown character ");
+        printCharacter(character);
 
-        exit(-1);
-      }
-    }
-
-    symbol = SYM_INTEGER;
-
-  } else if (character == CHAR_SINGLEQUOTE) {
-    getCharacter();
-
-    literal = 0;
-
-    if (character == CHAR_EOF) {
-      syntaxErrorMessage((int*) "reached end of file looking for a character literal");
-
-      exit(-1);
-    } else
-      literal = character;
-
-    getCharacter();
-
-    if (character == CHAR_SINGLEQUOTE)
-      getCharacter();
-    else if (character == CHAR_EOF) {
-      syntaxErrorCharacter(CHAR_SINGLEQUOTE);
-
-      exit(-1);
-    } else
-      syntaxErrorCharacter(CHAR_SINGLEQUOTE);
-
-    symbol = SYM_CHARACTER;
-
-  } else if (character == CHAR_DOUBLEQUOTE) {
-    getCharacter();
-
-    string = malloc(maxStringLength + 1);
-
-    i = 0;
-
-    while (isNotDoubleQuoteOrEOF()) {
-      if (i >= maxStringLength) {
-        syntaxErrorMessage((int*) "string too long");
+        println();
 
         exit(-1);
       }
 
-      storeCharacter(string, i, character);
-
-      i = i + 1;
-
-      getCharacter();
-    }
-
-    if (character == CHAR_DOUBLEQUOTE)
-      getCharacter();
-    else {
-      syntaxErrorCharacter(CHAR_DOUBLEQUOTE);
-
-      exit(-1);
-    }
-
-    storeCharacter(string, i, 0); // null terminated string
-
-    symbol = SYM_STRING;
-
-  } else if (character == CHAR_SEMICOLON) {
-    getCharacter();
-
-    symbol = SYM_SEMICOLON;
-
-  } else if (character == CHAR_PLUS) {
-    getCharacter();
-
-    symbol = SYM_PLUS;
-
-  } else if (character == CHAR_DASH) {
-    getCharacter();
-
-    symbol = SYM_MINUS;
-
-  } else if (character == CHAR_ASTERISK) {
-    getCharacter();
-
-    symbol = SYM_ASTERISK;
-
-  } else if (character == CHAR_EQUAL) {
-    getCharacter();
-
-    if (character == CHAR_EQUAL) {
-      getCharacter();
-
-      symbol = SYM_EQUALITY;
-    } else
-      symbol = SYM_ASSIGN;
-
-  } else if (character == CHAR_LPARENTHESIS) {
-    getCharacter();
-
-    symbol = SYM_LPARENTHESIS;
-
-  } else if (character == CHAR_RPARENTHESIS) {
-    getCharacter();
-
-    symbol = SYM_RPARENTHESIS;
-
-  } else if (character == CHAR_LBRACE) {
-    getCharacter();
-
-    symbol = SYM_LBRACE;
-
-  } else if (character == CHAR_RBRACE) {
-    getCharacter();
-
-    symbol = SYM_RBRACE;
-
-  } else if (character == CHAR_COMMA) {
-    getCharacter();
-
-    symbol = SYM_COMMA;
-
-  } else if (character == CHAR_LT) {
-    getCharacter();
-
-    if (character == CHAR_EQUAL) {
-      getCharacter();
-
-      symbol = SYM_LEQ;
-    } else
-      symbol = SYM_LT;
-
-  } else if (character == CHAR_GT) {
-    getCharacter();
-
-    if (character == CHAR_EQUAL) {
-      getCharacter();
-
-      symbol = SYM_GEQ;
-    } else
-      symbol = SYM_GT;
-
-  } else if (character == CHAR_EXCLAMATION) {
-    getCharacter();
-
-    if (character == CHAR_EQUAL)
-      getCharacter();
-    else
-      syntaxErrorCharacter(CHAR_EQUAL);
-
-    symbol = SYM_NOTEQ;
-
-  } else if (character == CHAR_PERCENTAGE) {
-    getCharacter();
-
-    symbol = SYM_MOD;
-
-  } else {
-    printLineNumber((int*) "error", lineNumber);
-    print((int*) "found unknown character ");
-    printCharacter(character);
-
-    println();
-
-    exit(-1);
+      numberOfScannedSymbols = numberOfScannedSymbols + 1;
   }
-
-  return symbol;
 }
 
 // -----------------------------------------------------------------
@@ -2080,7 +2130,7 @@ int reportUndefinedProcedures() {
 int isNotRbraceOrEOF() {
   if (symbol == SYM_RBRACE)
     return 0;
-  else if(symbol == SYM_EOF)
+  else if (symbol == SYM_EOF)
     return 0;
   else
     return 1;
@@ -2412,7 +2462,7 @@ int help_call_codegen(int* entry, int* procedure) {
 
     emitJFormat(OP_JAL, 0);
 
-    type = INT_T; //assume default return type 'int'
+    type = INT_T; //assume default return type "int"
 
   } else {
     type = getType(entry);
@@ -2756,7 +2806,7 @@ int gr_simpleExpression() {
     sign = 1;
 
     mayBeINTMIN = 1;
-    isINTMIN  = 0;
+    isINTMIN    = 0;
 
     getSymbol();
 
@@ -3318,7 +3368,7 @@ void gr_initialization(int* name, int offset, int type) {
       sign = 1;
 
       mayBeINTMIN = 1;
-      isINTMIN  = 0;
+      isINTMIN    = 0;
 
       getSymbol();
 
@@ -3699,6 +3749,26 @@ void selfie_compile() {
 
   // fix register initialization code
   fixRegisterInitialization();
+
+  print(selfieName);
+  print((int*) ": ");
+  print(itoa(numberOfReadCharacters, string_buffer, 10, 0, 0));
+  print((int*) " characters read in ");
+  print(itoa(lineNumber - 1, string_buffer, 10, 0, 0));
+  print((int*) " lines and ");
+  print(itoa(numberOfComments, string_buffer, 10, 0, 0));
+  print((int*) " comments");
+  println();
+
+  print(selfieName);
+  print((int*) ": with ");
+  print(itoa(numberOfReadCharacters - numberOfIgnoredCharacters, string_buffer, 10, 0, 0));
+  print((int*) "(");
+  print(itoa(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters), string_buffer, 10, 0, 2));
+  print((int*) "%) characters in ");
+  print(itoa(numberOfScannedSymbols, string_buffer, 10, 0, 0));
+  print((int*) " actual symbols");
+  println();
 
   if (reportUndefinedProcedures())
     exit(-1);
@@ -5980,36 +6050,6 @@ int addressWithMaxCounter(int* counters, int max) {
   }
 
   return a;
-}
-
-int fixedPointRatio(int a, int b) {
-  // assert: a >= b
-  int r;
-
-  // compute fixed point ratio r with 2 fractional digits
-
-  r = 0;
-
-  // multiply a/b with 100 but avoid overflow
-
-  if (a <= INT_MAX / 100) {
-    if (b != 0)
-      r = a * 100 / b;
-  } else if (a <= INT_MAX / 10) {
-    if (b / 10 != 0)
-      r = a * 10 / (b / 10);
-  } else {
-    if (b / 100 != 0)
-      r = a / (b / 100);
-  }
-
-  // compute a/b in percent
-  // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
-
-  if (r != 0)
-    return 1000000 / r;
-  else
-    return 0;
 }
 
 int printCounters(int total, int* counters, int max) {

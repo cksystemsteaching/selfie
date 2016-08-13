@@ -16,9 +16,13 @@ X> The bit sequence `01010101` is also binary for the decimal number 85.
 
 So what is it now, 'U' or 85? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws 'U' for `01010101` on the screen then `01010101` stands for 'U' in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent 85.
 
-All the characters that selfie reads from files including `selfie.c` are [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) in a single line of code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) in another line of code in `selfie.c`.
+All the characters that selfie reads from files including `selfie.c` are [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) in a single line of code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) in just one line of code in `selfie.c`.
 
-For further details please refer to the comments in the code. In general, we only provide links to code with comments so that text explaining code is not duplicated here. In other words, reading code is part of the experience of reading this book and actually a lot of fun! Just be patient. Things will become clear after a while. The code is written for everyone to understand.
+For further details please refer to the comments in the code. In general, we only provide links to code with comments so that text explaining code is not duplicated here. In other words, reading code is part of the experience of reading this book and actually a lot of fun! Just be patient. Things will clear up after a while. The code is written for everyone to understand.
+
+### Comments
+
+Now, what is a comment in code anyway? A comment is text that the machine ignores completely. It is only there for people to read and understand the code. Technically, a comment is simply all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/d93e9661904c1eb109ef2a488fa623bc75967795/selfie.c#L76) that means something to the machine and is not a comment. In other words, if we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine.
 
 ### Identifiers
 
