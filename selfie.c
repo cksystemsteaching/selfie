@@ -1514,7 +1514,7 @@ int* itoa(int n, int* s, int b, int a, int p) {
     }
   }
 
-  storeCharacter(s, i, 0); // null terminated string
+  storeCharacter(s, i, 0); // 0-terminated string
 
   // our numeral system is positional hindu-arabic, that is,
   // the weight of digits increases right to left, which means
@@ -1788,6 +1788,7 @@ int findNextCharacter() {
 }
 
 int isCharacterLetter() {
+  // ASCII codes for lower- and uppercase letters are in contiguous intervals
   if (character >= 'a')
     if (character <= 'z')
       return 1;
@@ -1803,6 +1804,7 @@ int isCharacterLetter() {
 }
 
 int isCharacterDigit() {
+  // ASCII codes for digits are in a contiguous interval
   if (character >= '0')
     if (character <= '9')
       return 1;
@@ -1864,6 +1866,7 @@ void getSymbol() {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
       if (isCharacterLetter()) {
+        // accommodate identifier and 0 for termination
         identifier = malloc(maxIdentifierLength + 1);
 
         i = 0;
@@ -1882,11 +1885,12 @@ void getSymbol() {
           getCharacter();
         }
 
-        storeCharacter(identifier, i, 0); // null terminated string
+        storeCharacter(identifier, i, 0); // 0-terminated string
 
         symbol = identifierOrKeyword();
 
       } else if (isCharacterDigit()) {
+        // accommodate integer and 0 for termination
         integer = malloc(maxIntegerLength + 1);
 
         i = 0;
@@ -1905,7 +1909,7 @@ void getSymbol() {
           getCharacter();
         }
 
-        storeCharacter(integer, i, 0); // null terminated string
+        storeCharacter(integer, i, 0); // 0-terminated string
 
         literal = atoi(integer);
 
@@ -1955,6 +1959,7 @@ void getSymbol() {
       } else if (character == CHAR_DOUBLEQUOTE) {
         getCharacter();
 
+        // accommodate string and 0 for termination
         string = malloc(maxStringLength + 1);
 
         i = 0;
@@ -1981,7 +1986,7 @@ void getSymbol() {
           exit(-1);
         }
 
-        storeCharacter(string, i, 0); // null terminated string
+        storeCharacter(string, i, 0); // 0-terminated string
 
         symbol = SYM_STRING;
 
