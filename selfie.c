@@ -182,19 +182,22 @@ int  outputFD   = 1;
 void initLibrary() {
   int i;
 
+  // powers of two table with 31 entries for 2^0 to 2^30
+  // avoiding overflow for 2^31 and larger numbers with 32-bit signed integers
   power_of_two_table = malloc(31 * SIZEOFINT);
 
-  *power_of_two_table = 1; // 2^0
+  *power_of_two_table = 1; // 2^0 == 1
 
   i = 1;
 
   while (i < 31) {
+    // compute powers of two incrementally using this recurrence relation
     *(power_of_two_table + i) = *(power_of_two_table + (i - 1)) * 2;
 
     i = i + 1;
   }
 
-  // computing INT_MAX and INT_MIN without overflows
+  // compute INT_MAX and INT_MIN without integer overflows
   INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
   INT_MIN = -INT_MAX - 1;
 
@@ -284,7 +287,7 @@ int SYM_MOD          = 25; // %
 int SYM_CHARACTER    = 26; // character
 int SYM_STRING       = 27; // string
 
-int* SYMBOLS; // array of strings representing symbols
+int* SYMBOLS; // strings representing symbols
 
 int maxIdentifierLength = 64; // maximum number of characters in an identifier
 int maxIntegerLength    = 10; // maximum number of characters in an integer
@@ -593,7 +596,7 @@ int REG_SP = 29;
 int REG_FP = 30;
 int REG_RA = 31;
 
-int* REGISTERS; // array of strings representing registers
+int* REGISTERS; // strings representing registers
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -676,7 +679,7 @@ int OP_ADDIU   = 9;
 int OP_LW      = 35;
 int OP_SW      = 43;
 
-int* OPCODES; // array of strings representing MIPS opcodes
+int* OPCODES; // strings representing MIPS opcodes
 
 int FCT_NOP     = 0;
 int FCT_JR      = 8;
@@ -689,7 +692,7 @@ int FCT_ADDU    = 33;
 int FCT_SUBU    = 35;
 int FCT_SLT     = 42;
 
-int* FUNCTIONS; // array of strings representing MIPS functions
+int* FUNCTIONS; // strings representing MIPS functions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -990,7 +993,7 @@ int EXCEPTION_EXIT               = 5;
 int EXCEPTION_INTERRUPT          = 6;
 int EXCEPTION_PAGEFAULT          = 7;
 
-int* EXCEPTIONS; // array of strings representing exceptions
+int* EXCEPTIONS; // strings representing exceptions
 
 int debug_exception = 0;
 
@@ -1004,7 +1007,7 @@ int TIMESLICE = 10000000;
 int* registers = (int*) 0; // general purpose registers
 
 int pc = 0; // program counter
-int ir = 0; // instruction record
+int ir = 0; // instruction register
 
 int reg_hi = 0; // hi register for multiplication/division
 int reg_lo = 0; // lo register for multiplication/division
@@ -1217,10 +1220,13 @@ int leftShift(int n, int b) {
   // assert: b >= 0;
 
   if (b < 31)
+    // left shift of integers works by multiplication with powers of two
     return n * twoToThePowerOf(b);
   else if (b == 31)
+    // twoToThePowerOf(b) only works for b < 31
     return n * twoToThePowerOf(30) * 2;
   else
+    // left shift of a 32-bit integer by more than 31 bits is always 0
     return 0;
 }
 
@@ -1229,17 +1235,22 @@ int rightShift(int n, int b) {
 
   if (n >= 0) {
     if (b < 31)
+      // right shift of positive integers works by division with powers of two
       return n / twoToThePowerOf(b);
     else
+      // right shift of a 32-bit integer by more than 31 bits is always 0
       return 0;
   } else if (b < 31)
-    // works even if n == INT_MIN:
-    // shift right n with msb reset and then restore msb
+    // right shift of negative integers requires resetting the sign bit first,
+    // then dividing with powers of two, and finally restoring the sign bit
+    // but b bits to the right; this works even if n == INT_MIN
     return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
       (INT_MAX / twoToThePowerOf(b) + 1);
   else if (b == 31)
+    // right shift of a negative 32-bit integer by 31 bits is 1 (the sign bit)
     return 1;
   else
+    // right shift of a 32-bit integer by more than 31 bits is always 0
     return 0;
 }
 
@@ -1247,8 +1258,11 @@ int loadCharacter(int* s, int i) {
   // assert: i >= 0
   int a;
 
+  // a is the index of the word where the to-be-loaded i-th character in s is
   a = i / SIZEOFINT;
 
+  // shift to-be-loaded character to the left resetting all bits to the left
+  // then shift to-be-loaded character all the way to the right and return
   return rightShift(leftShift(*(s + a), ((SIZEOFINT - 1) - (i % SIZEOFINT)) * 8), (SIZEOFINT - 1) * 8);
 }
 
@@ -1256,8 +1270,12 @@ int* storeCharacter(int* s, int i, int c) {
   // assert: i >= 0, all characters are 7-bit
   int a;
 
+  // a is the index of the word where the with c
+  // to-be-overwritten i-th character in s is
   a = i / SIZEOFINT;
 
+  // subtract the to-be-overwritten character resetting its bits in s
+  // then add c setting its bits at the i-th position in s
   *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFINT) * 8)) + leftShift(c, (i % SIZEOFINT) * 8);
 
   return s;
