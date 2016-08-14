@@ -1710,27 +1710,36 @@ int isCharacterWhitespace() {
 int findNextCharacter() {
   int inComment;
 
+  // assuming we are not in a comment
   inComment = 0;
 
+  // read and discard all whitespace and comments until a character is found
+  // that is not whitespace and does not occur in a comment, or the file ends
   while (1) {
     if (inComment) {
       getCharacter();
 
       if (character == CHAR_LF)
+        // comments end with line feed
         inComment = 0;
       else if (character == CHAR_CR)
+        // and carriage return
         inComment = 0;
       else if (character == CHAR_EOF)
         return character;
-
-      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+      else
+        // count the characters in comments as ignored characters
+        // line feed and carriage return are counted below
+        numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
     } else if (isCharacterWhitespace()) {
+      // keep track of line numbers for error reporting and code annotation
       if (character == CHAR_LF)
         lineNumber = lineNumber + 1;
       else if (character == CHAR_CR)
         lineNumber = lineNumber + 1;
 
+      // count line feed and carriage return as ignored characters
       numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
       getCharacter();
@@ -1739,18 +1748,23 @@ int findNextCharacter() {
       getCharacter();
 
       if (character == CHAR_SLASH) {
+        // "//" begins a comment
         inComment = 1;
 
+        // count both slashes as ignored characters as well
         numberOfIgnoredCharacters = numberOfIgnoredCharacters + 2;
 
+        // count the number of comments
         numberOfComments = numberOfComments + 1;
       } else {
+        // while looking for "//" we actually found '/'
         symbol = SYM_DIV;
 
         return character;
       }
 
     } else
+      // character found that is not whitespace and not occurring in a comment
       return character;
   }
 }

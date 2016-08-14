@@ -41,13 +41,13 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 ...
 ```
 
-Out of the 166,707 characters in `selfie.c` only a little more than half of the characters, that is, 94,033 characters are actually considered as code. The rest is whitespace and characters in a total of 864 comments. The [code](http://github.com/cksystemsteaching/selfie/blob/949642c1ffb7a70633be551cf42f5ff83735eeb9/selfie.c#L1710-L1756) in `selfie.c` that starc uses to ignore whitespace and comments may look mysterious but not for long.
+Out of the all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The [code](http://github.com/cksystemsteaching/selfie/blob/1de4c78a109a13e384aa2e4b8b126227b08f0e9a/selfie.c#L1710-L1770) in `selfie.c` that starc uses to ignore whitespace and comments works by reading one character after the other and discard them until a character is found that is not whitespace and not occurring in a comment. Of course, depending on content, this may also continue without finding such a character until the end of the file is reached. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
 
 ### Identifiers
 
 ### Integers
 
-[integer](http://github.com/cksystemsteaching/selfie/blob/fa735a8561db58718cb58015bba8220a058c1c28/selfie.c#L1726-L1767 "integer")
+[Integer](http://github.com/cksystemsteaching/selfie/blob/fa735a8561db58718cb58015bba8220a058c1c28/selfie.c#L1726-L1767 "Integer")
 
 ### Strings
 

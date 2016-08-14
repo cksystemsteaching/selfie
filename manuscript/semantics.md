@@ -12,7 +12,7 @@ Selfie is a program written in some programming language. We eventually explain 
 [Character](https://en.wikipedia.org/wiki/Character_(computing) "Character")
 : A unit of information that roughly corresponds to a grapheme, grapheme-like unit, or symbol, such as in an alphabet or syllabary in the written form of a natural language. Examples of characters include *letters*, numerical *digits*, common *punctuation marks* (such as "." or "-"), and *whitespace*. The concept also includes *control characters*, which do not correspond to symbols in a particular natural language, but rather to other bits of information used to process text in one or more languages. Examples of control characters include *carriage return*, *line feed*, and *tab*, as well as instructions to printers or other devices that display or otherwise process text.
 
-You may also see for yourself by downloading [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip "selfie") and then using the `less` command in your terminal (use the `cd` command first to go into the top folder of selfie which is where you unzipped it on your machine):
+You may also see for yourself by downloading [selfie](https://github.com/cksystemsteaching/selfie "selfie") and then using the `less` command in your terminal (use the `cd` command first to go into the top folder of selfie which is where you unzipped it on your machine):
 
 {line-numbers=off}
 ```
@@ -52,7 +52,9 @@ On machine level, each character is thus represented by seven bits. What we see 
 166707 selfie.c
 ```
 
-The output means that `selfie.c` at the time of invoking the command consisted of 166,707 characters. By the way, the `-m` part of the command is called an option that directs, in this case, `wc` to output the number of characters. However, we should mention that the characters in `selfie.c` are actually encoded according to the newer UTF-8 standard which uses eight rather than seven bits per character.
+The output means that `selfie.c` at the time of invoking the command consisted of 166,707 characters. Your output may not be exactly the same number of characters depending on which version of selfie you have. The same is true for other statistical data shown below. However, the order of magnitude of that data is likely to be the same here and in your version.
+
+The `-m` part of the command is called an option that directs, in this case, `wc` to output the number of characters. However, we should mention that the characters in `selfie.c` are actually encoded according to the newer UTF-8 standard which uses eight rather than seven bits per character.
 
 [UTF-8](https://en.wikipedia.org/wiki/UTF-8 "UTF-8")
 : (Universal Character Set Transformation Format - 8-bit) A character encoding capable of encoding all possible characters (called code points) in Unicode. The encoding is variable-length and uses 8-bit code units. It is designed for backward compatibility with ASCII.
