@@ -1,0 +1,1 @@
+int*main(){int*x;x="Hello World!";while(*x!=0){write(1,x,4);x=x+1;}}
