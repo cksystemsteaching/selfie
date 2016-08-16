@@ -16,9 +16,14 @@ X> The bit sequence `01010101` is also binary for the decimal number 85.
 
 So what is it now, 'U' or 85? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws 'U' for `01010101` on the screen then `01010101` stands for 'U' in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent 85.
 
-All the characters that selfie reads from files including `selfie.c` are [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) in a single line of code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) in just one line of code in `selfie.c`.
+All the characters that selfie reads from files including `selfie.c` are [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) in a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) in just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code. In general, we only provide links to code with comments so that text explaining code is not duplicated here.
 
-For further details please refer to the comments in the code. In general, we only provide links to code with comments so that text explaining code is not duplicated here. In other words, reading code is part of the experience of reading this book and actually a lot of fun! Just be patient. Things will clear up after a while. The code is written for everyone to understand.
+Selfie, that is, `selfie.c` is written in the widely used programming language C, hence the extension `.c` in the name of the file.
+
+[C](https://en.wikipedia.org/wiki/C_(programming_language) "C")
+: A general-purpose, imperative computer programming language, supporting structured programming, lexical variable scope and recursion, while a static type system prevents many unintended operations.
+
+What all of this really means is not so important right now. You only need to know that `selfie.c` is written in a tiny subset of C called C\* which is much easier to learn than all of C. This is similar to using only a tiny subset of the vocabulary of a foreign language. We designed C\* to make everything as simple as possible but still realistic. You should start reading the code in `selfie.c` as if it was some sort of mechanical English. There are a lot of comments whenever the code is not sufficiently self-explanatory. In other words, reading code and comments is part of the experience of reading this book!
 
 #### Comments
 

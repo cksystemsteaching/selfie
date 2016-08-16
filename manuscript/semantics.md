@@ -424,13 +424,13 @@ selfie5.m: exiting with exit code 0
 ...
 ```
 
-## Principle
+## Summary
 
-Selfie is code that includes a compiler, an emulator, and a hypervisor. Selfie can compile itself, emulate itself, and host itself. Understanding selfie is an efficient and effective way to gain true understanding of computer science. This chapter is the first step towards understanding selfie by observing that:
+Let us summarize what we have seen so far and prepare for the next chapter. Selfie is a program that includes a compiler, an emulator, and a hypervisor. Selfie can compile itself, emulate itself, and host itself. Understanding selfie is an efficient and effective way to gain true understanding of computer science. This chapter is the first step towards understanding selfie by observing that:
 
 T> Change determines semantics!
 
-In particular, the meaning of bits or characters or any symbols comes from change over time, by being changed (data) and by changing others (code). Let us have another look at our earlier example of adding 7 to 42.
+In particular, the meaning of bits or characters or any symbols comes from change over time, by being changed (making them data) and by changing others (making them code). Let us have another look at our earlier example of adding 7 to 42.
 
 X> The sum of 7 and 42 is usually denoted by 7 + 42 and evaluates to 49 making 7, 42, and 49 actually represent numbers.
 X>
@@ -446,4 +446,4 @@ X> However, self-compiling `selfie.c` into `selfie.m` using the starc compiler o
 X>
 X> Moreover, executing or hosting `selfie.m` on mipster or hypster suddenly makes `selfie.m` be code.
 
-For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Our next step towards understanding selfie is to look at how basic information such as numbers is encoded in bits.
+For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Our next step towards understanding selfie is to look at how basic information such as characters and numbers are encoded in bits.
