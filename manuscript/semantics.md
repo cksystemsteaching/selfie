@@ -446,4 +446,13 @@ X> However, self-compiling `selfie.c` into `selfie.m` using the starc compiler o
 X>
 X> Moreover, executing or hosting `selfie.m` on mipster or hypster suddenly makes `selfie.m` be code.
 
-For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Our next step towards understanding selfie is to look at how basic information such as characters and numbers are encoded in bits.
+For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Compilers are particularly interesting examples because in source code they can be data when being compiled and in machine code they can be code when being executed. Even more interesting, the source code of self-compiling compilers such as the starc compiler is written in the programming language that they compile. For example, `selfie.c` is written in C\* which is a tiny subset of the widely used programming language C hence the extension `.c` in the name of the file.
+
+[C](https://en.wikipedia.org/wiki/C_(programming_language) "C")
+: A general-purpose, imperative computer programming language, supporting structured programming, lexical variable scope and recursion, while a static type system prevents many unintended operations.
+
+C\* is much easier to learn than all of C. We designed C\* to make everything as simple as possible but still realistic. This is similar to using only a tiny but useful subset of the full vocabulary of a foreign language. It also means that all C\* programs are C programs but not the other way around.
+
+The starc compiler is part of selfie and thus written in C\* but starc not only compiles selfie and in particular itself but all C\* programs hence the name starc. In other words, starc is a C\* compiler written in C\*. We do not need to know in which programming language the cc compiler is written (likely C) but we do know that it compiles all C programs hence the name cc. Since C\* is a subset of C the cc compiler also compiles selfie.
+
+We conclude this chapter by pointing out that there was a time when there was no compiler for C and in fact no compiler for any programming language. The [first compilers](https://en.wikipedia.org/wiki/History_of_compiler_construction) were therefore written in machine code or in some programming language and then compiled into machine code by hand. Thus even selfie's origins go back to that time!
