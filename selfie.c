@@ -244,12 +244,16 @@ void syntaxErrorCharacter(int character);
 
 void getCharacter();
 
+int isCharacterNewLine();
 int isCharacterWhitespace();
+
 int findNextCharacter();
+
 int isCharacterLetter();
 int isCharacterDigit();
 int isCharacterLetterOrDigitOrUnderscore();
-int isNotDoubleQuoteOrEOF();
+int isCharacterNotDoubleQuoteOrNewLineOrEOF();
+
 int identifierStringMatch(int stringIndex);
 int identifierOrKeyword();
 
@@ -1712,17 +1716,22 @@ void getCharacter() {
   }
 }
 
-int isCharacterWhitespace() {
-  if (character == CHAR_SPACE)
-    return 1;
-  else if (character == CHAR_TAB)
-    return 1;
-  else if (character == CHAR_LF)
+int isCharacterNewLine() {
+  if (character == CHAR_LF)
     return 1;
   else if (character == CHAR_CR)
     return 1;
   else
     return 0;
+}
+
+int isCharacterWhitespace() {
+  if (character == CHAR_SPACE)
+    return 1;
+  else if (character == CHAR_TAB)
+    return 1;
+  else
+    return isCharacterNewLine();
 }
 
 int findNextCharacter() {
@@ -1737,11 +1746,8 @@ int findNextCharacter() {
     if (inComment) {
       getCharacter();
 
-      if (character == CHAR_LF)
-        // comments end with line feed
-        inComment = 0;
-      else if (character == CHAR_CR)
-        // and carriage return
+      if (isCharacterNewLine())
+        // comments end with new line
         inComment = 0;
       else if (character == CHAR_EOF)
         return character;
@@ -1752,9 +1758,7 @@ int findNextCharacter() {
 
     } else if (isCharacterWhitespace()) {
       // keep track of line numbers for error reporting and code annotation
-      if (character == CHAR_LF)
-        lineNumber = lineNumber + 1;
-      else if (character == CHAR_CR)
+      if (isCharacterNewLine())
         lineNumber = lineNumber + 1;
 
       // count line feed and carriage return as ignored characters
@@ -1825,8 +1829,10 @@ int isCharacterLetterOrDigitOrUnderscore() {
     return 0;
 }
 
-int isNotDoubleQuoteOrEOF() {
+int isCharacterNotDoubleQuoteOrNewLineOrEOF() {
   if (character == CHAR_DOUBLEQUOTE)
+    return 0;
+  else if (isCharacterNewLine())
     return 0;
   else if (character == CHAR_EOF)
     return 0;
@@ -1964,7 +1970,7 @@ void getSymbol() {
 
         i = 0;
 
-        while (isNotDoubleQuoteOrEOF()) {
+        while (isCharacterNotDoubleQuoteOrNewLineOrEOF()) {
           if (i >= maxStringLength) {
             syntaxErrorMessage((int*) "string too long");
 
