@@ -6362,6 +6362,7 @@ int* allocateContext(int ID, int parentID) {
 
   setRegHi(context, 0);
   setRegLo(context, 0);
+  *(getRegs(context)+REG_ZR) = 0;
 
   // allocate and initialize memory for page table
   // TODO: save and reuse memory for page table
