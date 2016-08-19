@@ -6339,6 +6339,8 @@ int createID(int seed) {
 
 int* allocateContext(int ID, int parentID) {
   int* context;
+  int page;
+  int reg;
 
   if (freeContexts == (int*) 0)
     context = malloc(4 * SIZEOFINTSTAR + 6 * SIZEOFINT);
@@ -6361,10 +6363,22 @@ int* allocateContext(int ID, int parentID) {
 
   setRegHi(context, 0);
   setRegLo(context, 0);
+  reg = 0;
+  while (reg < NUMBEROFREGISTERS)
+  {
+    *(getRegs(context)+reg) = 0;
+    reg = reg + 1;
+  }
 
-  // allocate memory for page table
+  // allocate and initialize memory for page table
   // TODO: save and reuse memory for page table
   setPT(context, malloc(VIRTUALMEMORYSIZE / PAGESIZE * WORDSIZE));
+  page = 0;
+  while (page < VIRTUALMEMORYSIZE / PAGESIZE)
+  {
+      *(getPT(context) + page) = 0;
+      page = page + 1;
+  }
 
   // heap starts where it is safe to start
   setBreak(context, maxBinaryLength);
