@@ -456,7 +456,7 @@ X> Moreover, executing or hosting `selfie.m` on mipster or hypster suddenly make
 
 For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others.
 
-## Outlook
+## Selfie
 
 Selfie includes a compiler, an emulator, and a hypervisor. Selfie can compile itself, emulate itself, and host itself. The self-referential nature of selfie is particularly interesting because selfie in source code can be data when being compiled and selfie in machine code can be code when being executed or hosted. Furthermore, the source code of self-compiling compilers such as the starc compiler is written in the programming language that they compile. For example, `selfie.c` is written in C\* which is a tiny subset of the widely used programming language C hence the extension `.c` in the name of the file.
 

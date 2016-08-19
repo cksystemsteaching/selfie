@@ -4,13 +4,15 @@ int* main() {
   // print the following string on the console
   x = "Hello World!";
 
-  // printing is done in chunks of 4 characters,
-  // that is, "Hell", "o Wo", and "rld!" showing
-  // how the data is encoded and stored in memory
+  // characters are stored in chunks of 4 in memory,
+  // that is, as "Hell", "o Wo", and "rld!" which
+  // means that we can print them in chunks of 4
 
+  // as long as there are characters print them
   while (*x != 0) {
-    // write 4 characters at a time to the console
-    // which is identified by the first parameter 1
+    // 1 means that we print to the console,
+    // x contains the 4 characters, and
+    // 4 means that we print 4 characters
     write(1, x, 4);
 
     // go to the next 4 characters
