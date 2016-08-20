@@ -4,13 +4,13 @@ Selfie is a project of the Computational Systems Group at the Department of Comp
 
 http://selfie.cs.uni-salzburg.at
 
-This is the grammar of the C Star (C*) programming language.
+This is the grammar of the C Star (C\*) programming language.
 
-C* is a small Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, bitwise and Boolean operators, and many other features. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler.
+C\* is a small Turing-complete subset of C that includes dereferencing (the `*` operator) but excludes data structures, bitwise and Boolean operators, and many other features. C\* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler.
 
-Keywords: `int`, `while`, `if`, `else`, `return`, `void`
+C\* Keywords: `int`, `while`, `if`, `else`, `return`, `void`
 
-Symbols: `;`, `+`, `-`, `*`, `/`, `%`, `==`, `=`, `(`, `)`, `{`, `}`, `,`, `<`, `<=`, `>`, `>=`, `!=`, integer, identifier, character, string
+C\* Symbols: `;`, `+`, `-`, `*`, `/`, `%`, `==`, `=`, `(`, `)`, `{`, `}`, `,`, `<`, `<=`, `>`, `>=`, `!=`, integer, identifier, character, string
 
 with:
 
@@ -32,28 +32,40 @@ digit  = "0" | ... | "9" .
 letter = "a" | ... | "z" | "A" | ... | "Z" .
 ```
 
-Grammar:
+C\* Grammar:
 
 ```
+cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
+                   ( "void" | type ) identifier procedure } .
+
 type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
+literal          = integer | character .
+
+procedure        = "(" [ variable { "," variable } ] ")"
+                    ( ";" | "{" { variable ";" } { statement } "}" ) .
+
+variable         = type identifier .
+
+statement        = call ";" | while | if | return ";" |
+                   ( [ "*" ] identifier | "*" "(" expression ")" )
+                     "=" expression ";" .
+
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
-literal          = integer | character .
+expression       = simpleExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simpleExpression ] .
+
+simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
+
+term             = factor { ( "*" | "/" | "%" ) factor } .
 
 factor           = [ cast ]
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
                       literal |
                       string ) .
-
-term             = factor { ( "*" | "/" | "%" ) factor } .
-
-simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
-
-expression       = simpleExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simpleExpression ] .
 
 while            = "while" "(" expression ")"
                              ( statement |
@@ -67,19 +79,4 @@ if               = "if" "(" expression ")"
                                "{" { statement } "}" ) ] .
 
 return           = "return" [ expression ] .
-
-statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "="
-                      expression ";" |
-                    call ";" |
-                    while |
-                    if |
-                    return ";" .
-
-variable         = type identifier .
-
-procedure        = "(" [ variable { "," variable } ] ")"
-                    ( ";" | "{" { variable ";" } { statement } "}" ) .
-
-cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
-                   ( "void" | type ) identifier procedure } .
 ```
