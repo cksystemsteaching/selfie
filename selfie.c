@@ -4776,6 +4776,10 @@ void implementOpen() {
 void emitMalloc() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
+  // on boot levels higher than zero, zalloc falls back to malloc
+  // assuming that page frames are zeroed on boot level zero
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "zalloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
+
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
@@ -6486,7 +6490,8 @@ int* palloc() {
     freePageFrame = MEGABYTE;
 
     if (usedMemory + freePageFrame <= frameMemorySize) {
-      block = (int) malloc(freePageFrame);
+      // on boot level zero allocate zeroed memory
+      block = (int) zalloc(freePageFrame);
 
       usedMemory = usedMemory + freePageFrame;
 
