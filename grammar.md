@@ -8,30 +8,46 @@ This is the grammar of the C Star (C*) programming language.
 
 C* is a small Turing-complete subset of C that includes dereferencing (the * operator) but excludes data structures, bitwise and Boolean operators, and many other features. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler.
 
-Keywords: int, while, if, else, return, void
+Keywords: `int`, `while`, `if`, `else`, `return`, `void`
+
+Symbols: `;`, `+`, `-`, `*`, `/`, `%`, `==`, `=`, `(`, `)`, `{`, `}`, `,`, `<`, `<=`, `>`, `>=`, `!=`, integer, identifier, character, string
+
+with:
 
 ```
-digit            = "0" | ... | "9" .
+integer    = digit { digit } .
 
-integer          = digit { digit } .
+identifier = letter { letter | digit | "_" } .
 
-letter           = "a" | ... | "z" | "A" | ... | "Z" .
+character  = "'" printable_character "'" .
 
-identifier       = letter { letter | digit | "_" } .
+string     = """ { printable_character } """ .
+```
 
+and:
+
+```
+digit  = "0" | ... | "9" .
+
+letter = "a" | ... | "z" | "A" | ... | "Z" .
+```
+
+Grammar:
+
+```
 type             = "int" [ "*" ] .
 
 cast             = "(" type ")" .
 
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
-literal          = integer | "'" ascii_character "'" .
+literal          = integer | character .
 
-factor           = [ cast ] 
+factor           = [ cast ]
                     ( [ "*" ] ( identifier | "(" expression ")" ) |
                       call |
                       literal |
-                      """ { ascii_character } """ ) .
+                      string ) .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .
 
@@ -39,13 +55,13 @@ simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
 
 expression       = simpleExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simpleExpression ] .
 
-while            = "while" "(" expression ")" 
+while            = "while" "(" expression ")"
                              ( statement |
                                "{" { statement } "}" ) .
 
-if               = "if" "(" expression ")" 
-                             ( statement | 
-                               "{" { statement } "}" ) 
+if               = "if" "(" expression ")"
+                             ( statement |
+                               "{" { statement } "}" )
                          [ "else"
                              ( statement |
                                "{" { statement } "}" ) ] .
@@ -54,14 +70,14 @@ return           = "return" [ expression ] .
 
 statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "="
                       expression ";" |
-                    call ";" | 
-                    while | 
-                    if | 
+                    call ";" |
+                    while |
+                    if |
                     return ";" .
 
 variable         = type identifier .
 
-procedure        = "(" [ variable { "," variable } ] ")" 
+procedure        = "(" [ variable { "," variable } ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
