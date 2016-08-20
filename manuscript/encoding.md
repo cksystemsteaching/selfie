@@ -44,12 +44,12 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 ...
 ```
 
-Out of all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The [code](http://github.com/cksystemsteaching/selfie/blob/1de4c78a109a13e384aa2e4b8b126227b08f0e9a/selfie.c#L1710-L1770) in `selfie.c` that starc uses to ignore whitespace and comments works by reading one character after the other and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
+Out of all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The [code](http://github.com/cksystemsteaching/selfie/blob/1de4c78a109a13e384aa2e4b8b126227b08f0e9a/selfie.c#L1710-L1770) in `selfie.c` that starc uses to ignore whitespace and comments works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
 
 Let us have a look at the following ["Hello World!" program](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program) written in C\*:
 
 {line-numbers=on, lang=c}
-<<[A Hello World Program](code/hello-world.c)
+<<[A "Hello World!" Program](code/hello-world.c)
 
 and run the code as follows (ignoring the compiler warning):
 
@@ -74,10 +74,11 @@ There is a lot of whitespace for increasing the readability of the code as well 
 Removing all whitespace and comments, also called minification, results in the following version:
 
 {line-numbers=on, lang=c}
-<<[Minified Hello World Program](code/hello-world-minified.c)
+<<[Minified "Hello World!" Program](code/hello-world-minified.c)
 
-with this output when running:
+with this output when running it:
 
+{line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world-minified.c -m 1
 ./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
@@ -119,17 +120,58 @@ and then check that both files are indeed identical:
 Files hello-world.m and hello-world-minified.m are identical
 ```
 
-## Identifiers
-
-## Integers
-
-[Integer](http://github.com/cksystemsteaching/selfie/blob/fa735a8561db58718cb58015bba8220a058c1c28/selfie.c#L1726-L1767 "Integer")
-
 ## Strings
+
+You may have noticed in the comments of the "Hello World!" program that the characters "Hello World!" are actually stored in chunks of four characters and printed accordingly. We can even see that by slowing down selfie, as before, by running in this case three mipsters on top of each other. Give it a few seconds and you will see for yourself:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1 -l hello-world.m -m 1
+./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+...
+./selfie: 600 bytes with 145 instructions and 20 bytes of data written into hello-world.m
+./selfie: this is selfie's starc compiling selfie.c
+...
+./selfie: 125948 bytes with 29970 instructions and 6068 bytes of data written into selfie.m
+./selfie: this is selfie's mipster executing selfie.m with 2MB of memory
+selfie.m: 125948 bytes with 29970 instructions and 6068 bytes of data loaded from selfie.m
+selfie.m: this is selfie's mipster executing selfie.m with 1MB of memory
+selfie.m: 600 bytes with 145 instructions and 20 bytes of data loaded from hello-world.m
+selfie.m: this is selfie's mipster executing hello-world.m with 1MB of memory
+Hello World!hello-world.m: exiting with exit code 0
+selfie.m: this is selfie's mipster terminating hello-world.m
+...
+selfie.m: exiting with exit code 0
+selfie.m: this is selfie's mipster terminating selfie.m
+...
+selfie.m: exiting with exit code 0
+./selfie: this is selfie's mipster terminating selfie.m
+...
+```
+
+In computer science sequences of characters such as "Hello World!" or in fact sequences of any kind of symbols are called *strings*.
 
 [String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
 : A finite sequence of characters taken from some finite alphabet.
 
-In other words, `selfie.c` is a string of 158,772 characters whose alphabet is in fact ASCII characters UTF-8-encoded in eight bits.
+For example, "Hello World!" is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits per character. However, the question is how such strings are stored in the memory of a computer.
+
+
+
+[String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
+: The representation of a string value within the source code of a computer program.
+
+[Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
+: The representation of a character value within the source code of a computer program.
+
+## Identifiers
+
+[Identifier](https://en.wikipedia.org/wiki/Identifier "Identifier")
+: Token (also called symbol) which names a language entity. Some of the kinds of entities an identifier might denote include variables, types, labels, subroutines, and packages.
+
+## Integers
+
+[Integer](https://en.wikipedia.org/wiki/Integer "Integer")
+: A number that can be written without a fractional component (from the Latin integer meaning "whole").
 
 ## Instructions
