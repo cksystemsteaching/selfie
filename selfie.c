@@ -115,6 +115,8 @@ void printString(int* s);
 int roundUp(int n, int m);
 
 int* malloc(int size);
+int* zalloc(int size);
+
 void exit(int code);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1084,16 +1086,16 @@ void resetInterpreter() {
 
   if (interpret) {
     calls           = 0;
-    callsPerAddress = malloc(maxBinaryLength);
+    callsPerAddress = zalloc(maxBinaryLength);
 
     loops           = 0;
-    loopsPerAddress = malloc(maxBinaryLength);
+    loopsPerAddress = zalloc(maxBinaryLength);
 
     loads           = 0;
-    loadsPerAddress = malloc(maxBinaryLength);
+    loadsPerAddress = zalloc(maxBinaryLength);
 
     stores           = 0;
-    storesPerAddress = malloc(maxBinaryLength);
+    storesPerAddress = zalloc(maxBinaryLength);
   }
 }
 
@@ -1635,6 +1637,29 @@ int roundUp(int n, int m) {
     return n + m - n % m;
   else
     return n - n % m;
+}
+
+int* zalloc(int size) {
+  // similar to calloc but called zalloc to avoid redeclaring calloc
+  int* memory;
+  int  i;
+
+  size = roundUp(size, WORDSIZE);
+
+  memory = malloc(size);
+
+  size = size / WORDSIZE;
+
+  i = 0;
+
+  while (i < size) {
+    // erase memory by setting it to 0
+    *(memory + i) = 0;
+
+    i = i + 1;
+  }
+
+  return memory;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -6339,8 +6364,6 @@ int createID(int seed) {
 
 int* allocateContext(int ID, int parentID) {
   int* context;
-  int page;
-  int reg;
 
   if (freeContexts == (int*) 0)
     context = malloc(4 * SIZEOFINTSTAR + 6 * SIZEOFINT);
@@ -6357,28 +6380,16 @@ int* allocateContext(int ID, int parentID) {
 
   setPC(context, 0);
 
-  // allocate memory for general purpose registers
+  // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  setRegs(context, malloc(NUMBEROFREGISTERS * WORDSIZE));
+  setRegs(context, zalloc(NUMBEROFREGISTERS * WORDSIZE));
 
   setRegHi(context, 0);
   setRegLo(context, 0);
-  reg = 0;
-  while (reg < NUMBEROFREGISTERS)
-  {
-    *(getRegs(context)+reg) = 0;
-    reg = reg + 1;
-  }
 
-  // allocate and initialize memory for page table
+  // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, malloc(VIRTUALMEMORYSIZE / PAGESIZE * WORDSIZE));
-  page = 0;
-  while (page < VIRTUALMEMORYSIZE / PAGESIZE)
-  {
-      *(getPT(context) + page) = 0;
-      page = page + 1;
-  }
+  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * WORDSIZE));
 
   // heap starts where it is safe to start
   setBreak(context, maxBinaryLength);
