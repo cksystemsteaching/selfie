@@ -1893,7 +1893,7 @@ void getSymbol() {
   symbol = SYM_EOF;
 
   if (findNextCharacter() != CHAR_EOF) {
-    if (symbol != SYM_DIV)
+    if (symbol != SYM_DIV) {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
       if (isCharacterLetter()) {
@@ -2120,8 +2120,9 @@ void getSymbol() {
 
         exit(-1);
       }
+    }
 
-      numberOfScannedSymbols = numberOfScannedSymbols + 1;
+    numberOfScannedSymbols = numberOfScannedSymbols + 1;
   }
 }
 
