@@ -569,38 +569,41 @@ void printRegister(int reg);
 
 int NUMBEROFREGISTERS = 32;
 
+int* temporary_registers = (int*) 0; // mapping for registers T0 - T7
+
 int REG_ZR = 0;
-int REG_AT = 1;
-int REG_V0 = 2;
-int REG_V1 = 3;
-int REG_A0 = 4;
-int REG_A1 = 5;
-int REG_A2 = 6;
-int REG_A3 = 7;
-int REG_T0 = 8;
-int REG_T1 = 9;
-int REG_T2 = 10;
-int REG_T3 = 11;
-int REG_T4 = 12;
-int REG_T5 = 13;
-int REG_T6 = 14;
-int REG_T7 = 15;
-int REG_S0 = 16;
-int REG_S1 = 17;
+int REG_RA = 1;
+int REG_SP = 2;
+int REG_GP = 3;
+int REG_TP = 4;
+int REG_T0 = 5;
+int REG_T1 = 6;
+int REG_T2 = 7;
+int REG_FP = 8;
+int REG_S1 = 9;
+int REG_A0 = 10;
+int REG_A1 = 11;
+int REG_A2 = 12;
+int REG_A3 = 13;
+int REG_A4 = 14;
+int REG_A5 = 15;
+int REG_A6 = 16;
+int REG_A7 = 17;
 int REG_S2 = 18;
 int REG_S3 = 19;
 int REG_S4 = 20;
 int REG_S5 = 21;
 int REG_S6 = 22;
 int REG_S7 = 23;
-int REG_T8 = 24;
-int REG_T9 = 25;
-int REG_K0 = 26;
-int REG_K1 = 27;
-int REG_GP = 28;
-int REG_SP = 29;
-int REG_FP = 30;
-int REG_RA = 31;
+int REG_S8 = 24;
+int REG_S9 = 25;
+int REG_S10= 26;
+int REG_S11= 27;
+int REG_T3 = 28;
+int REG_T4 = 29;
+int REG_T5 = 30;
+int REG_T6 = 31;
+
 
 int* REGISTERS; // strings representing registers
 
@@ -608,39 +611,49 @@ int* REGISTERS; // strings representing registers
 
 void initRegister() {
   REGISTERS = malloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
-
   *(REGISTERS + REG_ZR) = (int) "$zero";
-  *(REGISTERS + REG_AT) = (int) "$at";
-  *(REGISTERS + REG_V0) = (int) "$v0";
-  *(REGISTERS + REG_V1) = (int) "$v1";
+  *(REGISTERS + REG_RA) = (int) "$ra";
+  *(REGISTERS + REG_SP) = (int) "$sp";
+  *(REGISTERS + REG_GP) = (int) "$gp";
+  *(REGISTERS + REG_TP) = (int) "$tp";
+  *(REGISTERS + REG_T0) = (int) "$t0";
+  *(REGISTERS + REG_T1) = (int) "$t1";
+  *(REGISTERS + REG_T2) = (int) "$t2";
+  *(REGISTERS + REG_FP) = (int) "$fp";
+  *(REGISTERS + REG_S1) = (int) "$s1";
   *(REGISTERS + REG_A0) = (int) "$a0";
   *(REGISTERS + REG_A1) = (int) "$a1";
   *(REGISTERS + REG_A2) = (int) "$a2";
   *(REGISTERS + REG_A3) = (int) "$a3";
-  *(REGISTERS + REG_T0) = (int) "$t0";
-  *(REGISTERS + REG_T1) = (int) "$t1";
-  *(REGISTERS + REG_T2) = (int) "$t2";
-  *(REGISTERS + REG_T3) = (int) "$t3";
-  *(REGISTERS + REG_T4) = (int) "$t4";
-  *(REGISTERS + REG_T5) = (int) "$t5";
-  *(REGISTERS + REG_T6) = (int) "$t6";
-  *(REGISTERS + REG_T7) = (int) "$t7";
-  *(REGISTERS + REG_S0) = (int) "$s0";
-  *(REGISTERS + REG_S1) = (int) "$s1";
+  *(REGISTERS + REG_A4) = (int) "$a4";
+  *(REGISTERS + REG_A5) = (int) "$a5";
+  *(REGISTERS + REG_A6) = (int) "$a6";
+  *(REGISTERS + REG_A7) = (int) "$a7";
   *(REGISTERS + REG_S2) = (int) "$s2";
   *(REGISTERS + REG_S3) = (int) "$s3";
   *(REGISTERS + REG_S4) = (int) "$s4";
   *(REGISTERS + REG_S5) = (int) "$s5";
   *(REGISTERS + REG_S6) = (int) "$s6";
   *(REGISTERS + REG_S7) = (int) "$s7";
-  *(REGISTERS + REG_T8) = (int) "$t8";
-  *(REGISTERS + REG_T9) = (int) "$t9";
-  *(REGISTERS + REG_K0) = (int) "$k0";
-  *(REGISTERS + REG_K1) = (int) "$k1";
-  *(REGISTERS + REG_GP) = (int) "$gp";
-  *(REGISTERS + REG_SP) = (int) "$sp";
-  *(REGISTERS + REG_FP) = (int) "$fp";
-  *(REGISTERS + REG_RA) = (int) "$ra";
+  *(REGISTERS + REG_S8) = (int) "$s8";
+  *(REGISTERS + REG_S9) = (int) "$s9";
+  *(REGISTERS + REG_S10)= (int) "$s10";
+  *(REGISTERS + REG_S11)= (int) "$s11";
+  *(REGISTERS + REG_T3) = (int) "$t3";
+  *(REGISTERS + REG_T4) = (int) "$t4";
+  *(REGISTERS + REG_T5) = (int) "$t5";
+  *(REGISTERS + REG_T6) = (int) "$t6";
+
+
+  temporary_registers = malloc(((REG_T2-REG_TP) + (REG_T6 - REG_S11)) * SIZEOFINT);
+
+  *(temporary_registers + 0) = REG_T0;
+  *(temporary_registers + 1) = REG_T1;
+  *(temporary_registers + 2) = REG_T2;
+  *(temporary_registers + 3) = REG_T3;
+  *(temporary_registers + 4) = REG_T4;
+  *(temporary_registers + 5) = REG_T5;
+  *(temporary_registers + 6) = REG_T6;
 }
 
 // -----------------------------------------------------------------
@@ -2363,8 +2376,8 @@ int lookForType() {
 }
 
 void talloc() {
-  // we use registers REG_T0-REG_T7 for temporaries
-  if (allocatedTemporaries < REG_T7 - REG_A3)
+  // we use registers REG_T0-REG_T2 or REG_T3-REG_T6 for temporaries
+  if (allocatedTemporaries < (REG_T2 - REG_TP) + (REG_T6 - REG_S11))
     allocatedTemporaries = allocatedTemporaries + 1;
   else {
     syntaxErrorMessage((int*) "out of registers");
@@ -2374,9 +2387,9 @@ void talloc() {
 }
 
 int currentTemporary() {
-  if (allocatedTemporaries > 0)
-    return allocatedTemporaries + REG_A3;
-  else {
+  if (allocatedTemporaries > 0) {
+    return *(temporary_registers + (allocatedTemporaries-1));
+  } else {
     syntaxErrorMessage((int*) "illegal register access");
 
     exit(-1);
@@ -2385,7 +2398,7 @@ int currentTemporary() {
 
 int previousTemporary() {
   if (allocatedTemporaries > 1)
-    return currentTemporary() - 1;
+    return *(temporary_registers + (allocatedTemporaries - 2));
   else {
     syntaxErrorMessage((int*) "illegal register access");
 
@@ -2394,8 +2407,9 @@ int previousTemporary() {
 }
 
 int nextTemporary() {
-  if (allocatedTemporaries < REG_T7 - REG_A3)
-    return currentTemporary() + 1;
+  // we use registers REG_T0-REG_T2 or REG_T3-REG_T6 for temporaries
+  if (allocatedTemporaries < ((REG_T2 - REG_TP) + (REG_T6 - REG_S11)))
+    return *(temporary_registers + (allocatedTemporaries));
   else {
     syntaxErrorMessage((int*) "out of registers");
 
@@ -2809,10 +2823,10 @@ int gr_factor() {
       talloc();
 
       // retrieve return value
-      emitIFormat(OP_ADDIU, REG_V0, currentTemporary(), 0);
+      emitIFormat(OP_ADDIU, REG_A0, currentTemporary(), 0);
 
       // reset return register
-      emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+      emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
     } else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
@@ -3252,7 +3266,7 @@ void gr_return(int returnType) {
       typeWarning(returnType, type);
 
     // save value of expression in return register
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_V0, FCT_ADDU);
+    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_A0, FCT_ADDU);
 
     tfree(1);
   }
@@ -3379,7 +3393,7 @@ void gr_statement() {
       gr_call(variableOrProcedureName);
 
       // reset return register
-      emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+      emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3774,7 +3788,7 @@ void emitMainEntry() {
 
   // we exit with exit code in return register pushed onto the stack
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-  emitIFormat(OP_SW, REG_SP, REG_V0, 0);
+  emitIFormat(OP_SW, REG_SP, REG_A0, 0);
 
   // no need to reset return register here
 }
@@ -4409,7 +4423,7 @@ void emitExit() {
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   // load the correct syscall number and invoke syscall
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_EXIT);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_EXIT);
   emitRFormat(0, 0, 0, 0, FCT_SYSCALL);
 
   // never returns here
@@ -4446,10 +4460,10 @@ void emitRead() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_READ);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_READ);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  // jump back to caller, return value is in REG_V0
+  // jump back to caller, return value is in REG_A0
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
@@ -4537,9 +4551,9 @@ void implementRead() {
   }
 
   if (failed == 0)
-    *(registers+REG_V0) = readTotal;
+    *(registers+REG_A0) = readTotal;
   else
-    *(registers+REG_V0) = -1;
+    *(registers+REG_A0) = -1;
 
   if (debug_read) {
     print(binaryName);
@@ -4563,7 +4577,7 @@ void emitWrite() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_WRITE);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_WRITE);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -4653,9 +4667,9 @@ void implementWrite() {
   }
 
   if (failed == 0)
-    *(registers+REG_V0) = writtenTotal;
+    *(registers+REG_A0) = writtenTotal;
   else
-    *(registers+REG_V0) = -1;
+    *(registers+REG_A0) = -1;
 
   if (debug_write) {
     print(binaryName);
@@ -4679,7 +4693,7 @@ void emitOpen() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // filename
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_OPEN);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_OPEN);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -4746,7 +4760,7 @@ void implementOpen() {
   if (down_loadString(pt, vaddr, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
-    *(registers+REG_V0) = fd;
+    *(registers+REG_A0) = fd;
 
     if (debug_open) {
       print(binaryName);
@@ -4761,7 +4775,7 @@ void implementOpen() {
       println();
     }
   } else {
-    *(registers+REG_V0) = -1;
+    *(registers+REG_A0) = -1;
 
     if (debug_open) {
       print(binaryName);
@@ -4783,7 +4797,7 @@ void emitMalloc() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MALLOC);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MALLOC);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -4808,7 +4822,7 @@ void implementMalloc() {
   if (bump + size >= *(registers+REG_SP))
     throwException(EXCEPTION_HEAPOVERFLOW, 0);
   else {
-    *(registers+REG_V0) = bump;
+    *(registers+REG_A0) = bump;
 
     brk = bump + size;
 
@@ -4830,7 +4844,7 @@ void implementMalloc() {
 void emitID() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_ID);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_ID);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -4838,7 +4852,7 @@ void emitID() {
 
 void implementID() {
   // this procedure is executed at boot levels higher than zero
-  *(registers+REG_V0) = getID(currentContext);
+  *(registers+REG_A0) = getID(currentContext);
 }
 
 int hypster_ID() {
@@ -4856,7 +4870,7 @@ int selfie_ID() {
 void emitCreate() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_CREATE);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_CREATE);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -4890,7 +4904,7 @@ int doCreate(int parentID) {
 
 void implementCreate() {
   // this procedure is executed at boot levels higher than zero
-  *(registers+REG_V0) = doCreate(getID(currentContext));
+  *(registers+REG_A0) = doCreate(getID(currentContext));
 }
 
 int hypster_create() {
@@ -4911,11 +4925,11 @@ void emitSwitch() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_SWITCH);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_SWITCH);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   // save ID of context from which we are switching here in return register
-  emitRFormat(OP_SPECIAL, REG_ZR, REG_V1, REG_V0, FCT_ADDU);
+  emitRFormat(OP_SPECIAL, REG_ZR, REG_S1, REG_A0, FCT_ADDU);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
@@ -4954,7 +4968,7 @@ int doSwitch(int toID) {
 
 void implementSwitch() {
   // this procedure is executed at boot levels higher than zero
-  *(registers+REG_V1) = doSwitch(*(registers+REG_A0));
+  *(registers+REG_S1) = doSwitch(*(registers+REG_A0));
 }
 
 int mipster_switch(int toID) {
@@ -4962,12 +4976,12 @@ int mipster_switch(int toID) {
 
   // CAUTION: registers is 0 upon first call to mipster_switch and
   // only set to the registers of the toID context in doSwitch(toID)
-  // but some compilers dereference the lvalue *(registers+REG_V1)
+  // but some compilers dereference the lvalue *(registers+REG_S1)
   // before evaluating the rvalue doSwitch(toID)
 
   fromID = doSwitch(toID);
 
-  *(registers+REG_V1) = fromID;
+  *(registers+REG_S1) = fromID;
 
   runUntilException();
 
@@ -4989,7 +5003,7 @@ int selfie_switch(int toID) {
 void emitStatus() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_STATUS);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_STATUS);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -5014,7 +5028,7 @@ int doStatus() {
 
 void implementStatus() {
   // this procedure is executed at boot levels higher than zero
-  *(registers+REG_V0) = doStatus();
+  *(registers+REG_A0) = doStatus();
 }
 
 int hypster_status() {
@@ -5035,7 +5049,7 @@ void emitDelete() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_DELETE);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_DELETE);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -5093,7 +5107,7 @@ void emitMap() {
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MAP);
+  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MAP);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -5274,27 +5288,27 @@ void fct_syscall() {
   if (interpret) {
     pc = pc + WORDSIZE;
 
-    if (*(registers+REG_V0) == SYSCALL_EXIT)
+    if (*(registers+REG_A7) == SYSCALL_EXIT)
       implementExit();
-    else if (*(registers+REG_V0) == SYSCALL_READ)
+    else if (*(registers+REG_A7) == SYSCALL_READ)
       implementRead();
-    else if (*(registers+REG_V0) == SYSCALL_WRITE)
+    else if (*(registers+REG_A7) == SYSCALL_WRITE)
       implementWrite();
-    else if (*(registers+REG_V0) == SYSCALL_OPEN)
+    else if (*(registers+REG_A7) == SYSCALL_OPEN)
       implementOpen();
-    else if (*(registers+REG_V0) == SYSCALL_MALLOC)
+    else if (*(registers+REG_A7) == SYSCALL_MALLOC)
       implementMalloc();
-    else if (*(registers+REG_V0) == SYSCALL_ID)
+    else if (*(registers+REG_A7) == SYSCALL_ID)
       implementID();
-    else if (*(registers+REG_V0) == SYSCALL_CREATE)
+    else if (*(registers+REG_A7) == SYSCALL_CREATE)
       implementCreate();
-    else if (*(registers+REG_V0) == SYSCALL_SWITCH)
+    else if (*(registers+REG_A7) == SYSCALL_SWITCH)
       implementSwitch();
-    else if (*(registers+REG_V0) == SYSCALL_STATUS)
+    else if (*(registers+REG_A7) == SYSCALL_STATUS)
       implementStatus();
-    else if (*(registers+REG_V0) == SYSCALL_DELETE)
+    else if (*(registers+REG_A7) == SYSCALL_DELETE)
       implementDelete();
-    else if (*(registers+REG_V0) == SYSCALL_MAP)
+    else if (*(registers+REG_A7) == SYSCALL_MAP)
       implementMap();
     else {
       pc = pc - WORDSIZE;
