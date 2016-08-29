@@ -700,7 +700,6 @@ int OP_SW      = 43;
 
 int* OPCODES; // strings representing MIPS opcodes
 
-int FCT_NOP     = 0;
 int FCT_JR      = 8;
 int FCT_SYSCALL = 12;
 int FCT_MFHI    = 16;
@@ -728,7 +727,6 @@ int instr_index = 0;
 void initDecoder() {
   OPCODES = malloc(44 * SIZEOFINTSTAR);
 
-  *(OPCODES + OP_SPECIAL) = (int) "nop";
   *(OPCODES + OP_J)       = (int) "j";
   *(OPCODES + OP_JAL)     = (int) "jal";
   *(OPCODES + OP_BEQ)     = (int) "beq";
@@ -739,7 +737,6 @@ void initDecoder() {
 
   FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
 
-  *(FUNCTIONS + FCT_NOP)     = (int) "nop";
   *(FUNCTIONS + FCT_JR)      = (int) "jr";
   *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
   *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
@@ -948,7 +945,6 @@ void initMemory(int bytes) {
 // -----------------------------------------------------------------
 
 void fct_syscall();
-void fct_nop();
 void op_jal();
 void op_j();
 void op_beq();
@@ -2604,7 +2600,7 @@ int help_call_codegen(int* entry, int* procedure) {
       // CASE 3: function call, no declaration
       emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
 
-      setAddress(entry, binaryLength - 2 * WORDSIZE);
+      setAddress(entry, binaryLength - WORDSIZE);
     } else
       // CASE 4: function defined, use the address
       emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
@@ -3031,9 +3027,9 @@ int gr_expression() {
 
       tfree(1);
 
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
       emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
@@ -3042,9 +3038,9 @@ int gr_expression() {
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
+      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_LT) {
@@ -3065,9 +3061,9 @@ int gr_expression() {
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
+      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 
     } else if (operatorSymbol == SYM_GEQ) {
@@ -3076,9 +3072,9 @@ int gr_expression() {
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
+      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
     }
   }
@@ -3276,8 +3272,7 @@ void gr_return(int returnType) {
   emitJFormat(OP_J, returnBranches / WORDSIZE);
 
   // new head of fixup chain
-  // offest is two words rather than one because of delay slot NOP
-  returnBranches = binaryLength - 2 * WORDSIZE;
+  returnBranches = binaryLength - WORDSIZE;
 
   // assert: allocatedTemporaries == 0
 
@@ -3766,7 +3761,7 @@ void emitMainEntry() {
   // the instruction at address zero cannot be fixed up
   // we therefore need at least one not-to-be-fixed-up instruction here
 
-  // we generate NOPs to accommodate GP and SP register
+  // we generate NOPs (ADDUIs) to accommodate GP and SP register
   // initialization code that overwrites the NOPs later
   // when binaryLength is known
 
@@ -3776,7 +3771,7 @@ void emitMainEntry() {
   // since we load positive integers < 2^28 which take
   // no more than 8 instructions each, see load_integer
   while (i < 16) {
-    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
+    emitIFormat(OP_ADDIU, REG_ZR, REG_ZR, 0);
 
     i = i + 1;
   }
@@ -4167,35 +4162,14 @@ void emitInstruction(int instruction) {
 
 void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
   emitInstruction(encodeRFormat(opcode, rs, rt, rd, function));
-
-  if (opcode == OP_SPECIAL) {
-    if (function == FCT_JR)
-      emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
-    else if (function == FCT_MFLO) {
-      // In MIPS I-III two instructions after MFLO/MFHI
-      // must not modify the LO/HI registers
-      emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // pipeline delay
-      emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // pipeline delay
-    } else if (function == FCT_MFHI) {
-      emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // pipeline delay
-      emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // pipeline delay
-    }
-  }
 }
 
 void emitIFormat(int opcode, int rs, int rt, int immediate) {
   emitInstruction(encodeIFormat(opcode, rs, rt, immediate));
-
-  if (opcode == OP_BEQ)
-    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
-  else if (opcode == OP_BNE)
-    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
 }
 
 void emitJFormat(int opcode, int instr_index) {
   emitInstruction(encodeJFormat(opcode, instr_index));
-
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
 }
 
 void fixup_relative(int fromAddress) {
@@ -5318,16 +5292,6 @@ void fct_syscall() {
   }
 }
 
-void fct_nop() {
-  if (debug) {
-    printFunction(function);
-    println();
-  }
-
-  if (interpret)
-    pc = pc + WORDSIZE;
-}
-
 void op_jal() {
   if (debug) {
     printOpcode(opcode);
@@ -5345,7 +5309,7 @@ void op_jal() {
   }
 
   if (interpret) {
-    *(registers+REG_RA) = pc + 8;
+    *(registers+REG_RA) = pc + 4;
 
     pc = instr_index * WORDSIZE;
 
@@ -6020,9 +5984,7 @@ void execute() {
   }
 
   if (opcode == OP_SPECIAL) {
-    if (function == FCT_NOP)
-      fct_nop();
-    else if (function == FCT_ADDU)
+    if (function == FCT_ADDU)
       fct_addu();
     else if (function == FCT_SUBU)
       fct_subu();
