@@ -2,7 +2,7 @@
 
 Information, whatever it is, needs to be encoded in bits for a computer to handle it. Since `selfie.c` is a sequence of characters let us first look at how characters are encoded.
 
-### Characters
+## Characters
 
 We mention in the [previous chapter](#semantics) that the characters in `selfie.c` are [ASCII](https://en.wikipedia.org/wiki/ASCII "ASCII") characters encoded in eight bits or one byte according to the [UTF-8](https://en.wikipedia.org/wiki/UTF-8 "UTF-8") standard.
 
@@ -16,22 +16,22 @@ X> The bit sequence `01010101` is also binary for the decimal number 85.
 
 So what is it now, 'U' or 85? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws 'U' for `01010101` on the screen then `01010101` stands for 'U' in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent 85.
 
-All the characters that selfie reads from files including `selfie.c` are [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) in a single line of code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) in just one line of code in `selfie.c`.
+All the characters that selfie reads from files including `selfie.c` are [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) in a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) in just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
 
-For further details please refer to the comments in the code. In general, we only provide links to code with comments so that text explaining code is not duplicated here. In other words, reading code is part of the experience of reading this book and actually a lot of fun! Just be patient. Things will clear up after a while. The code is written for everyone to understand.
+In general, we only provide links to code with comments so that text explaining code is not duplicated here. You may want read the code in `selfie.c` as if it was some sort of mechanical English. There are a lot of comments whenever the code is not sufficiently self-explanatory. In other words, reading code and comments is part of the experience of reading this book!
 
-#### Comments
+## Comments
 
-Now, what is a comment in code anyway? A comment is text that the machine ignores completely. It is only there for people to read and understand the code. With selfie, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/0d76fc92d8a79db612973153d133f14eb35efae6/selfie.c#L76) that means something to the machine and is not a comment.
+Now, what is a comment in code anyway? A comment is text that the machine ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/0d76fc92d8a79db612973153d133f14eb35efae6/selfie.c#L76) that means something to the machine and is not a comment.
 
 If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we could safely remove even more characters called whitespace without changing any semantics.
 
-#### Whitespace
+## Whitespace
 
 [Whitespace Character](https://en.wikipedia.org/wiki/Whitespace_character "Whitespace Character")
 : Any character or series of characters that represent horizontal or vertical space in typography. When rendered, a whitespace character does not correspond to a visible mark, but typically does occupy an area on a page.
 
-Whitespace characters are invisible but still important for formatting source code yet they are typically irrelevant in terms of semantics. While this is true for many programming languages including the language in which selfie is written it is not true in general. There are programming languages in which whitespace does make a semantical difference. This is important to check when learning new programming languages.
+Whitespace characters are invisible but still important for formatting source code yet they are typically irrelevant in terms of semantics. While this is true for many programming languages including C and C\* it is not true in general. There are programming languages in which whitespace does make a semantical difference. This is important to check when learning new programming languages.
 
 The starc compiler considers the space, the tabulator, the line feed, and the carriage return characters whitespace and ignores them when reading source code:
 
@@ -44,28 +44,134 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 ...
 ```
 
-Out of the all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The [code](http://github.com/cksystemsteaching/selfie/blob/1de4c78a109a13e384aa2e4b8b126227b08f0e9a/selfie.c#L1710-L1770) in `selfie.c` that starc uses to ignore whitespace and comments works by reading one character after the other and discarding them until a character is found that is not whitespace and not occurring in a comment. Of course, depending on content, this may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
+Out of all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The [code](http://github.com/cksystemsteaching/selfie/blob/1de4c78a109a13e384aa2e4b8b126227b08f0e9a/selfie.c#L1710-L1770) in `selfie.c` that starc uses to ignore whitespace and comments works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
+
+Let us have a look at the following ["Hello World!" program](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program) written in C\*:
+
+{line-numbers=on, lang=c}
+<<[A "Hello World!" Program](code/hello-world.c)
+
+and run the code as follows (ignoring the compiler warning):
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world.c -m 1
+./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+./selfie: warning in manuscript/code/hello-world.c in line 1: type mismatch, int expected but int* found
+./selfie: 519 characters read in 20 lines and 9 comments
+./selfie: with 68(13.10%) characters in 39 actual symbols
+./selfie: 0 global variables, 1 procedures, 1 string literals
+./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
+./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
+./selfie: this is selfie's mipster executing manuscript/code/hello-world.c with 1MB of memory
+Hello World!manuscript/code/hello-world.c: exiting with exit code 0
+./selfie: this is selfie's mipster terminating manuscript/code/hello-world.c
+...
+```
+
+There is a lot of whitespace for increasing the readability of the code as well as comments for explaining what the code does. In fact, only a little more than ten percent of the characters are actual code. Note that "Hello World!" is printed on the console right before the program exits.
+
+Removing all whitespace and comments, also called minification, results in the following version:
+
+{line-numbers=on, lang=c}
+<<[Minified "Hello World!" Program](code/hello-world-minified.c)
+
+with this output when running it:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world-minified.c -m 1
+./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
+./selfie: warning in manuscript/code/hello-world-minified.c in line 1: type mismatch, int expected but int* found
+./selfie: 68 characters read in 0 lines and 0 comments
+./selfie: with 68(100.00%) characters in 39 actual symbols
+./selfie: 0 global variables, 1 procedures, 1 string literals
+./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
+./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
+./selfie: this is selfie's mipster executing manuscript/code/hello-world-minified.c with 1MB of memory
+Hello World!manuscript/code/hello-world-minified.c: exiting with exit code 0
+./selfie: this is selfie's mipster terminating manuscript/code/hello-world-minified.c
+...
+```
+
+This time all characters are actual code but otherwise the behavior is the same with "Hello World!" appearing on the console just like before.
 
 [Minification](https://en.wikipedia.org/wiki/Minification_(programming) "Minification")
 : The process of removing all unnecessary characters from source code without changing its functionality. These unnecessary characters usually include white space characters, new line characters, and comments, which are used to add readability to the code but are not required for it to execute.
 
-{line-numbers=on, lang=c}
-<<[A Hello World Program](code/hello-world.c)
+Minification is useful for improving performance and saving bandwidth when communicating source code among machines. We only mention it here to show that whitespace and comments have typically no meaning for machines. In fact, both versions of the code are semantically equivalent. How can we check that? We can have selfie generate machine code for both as follows:
 
-{line-numbers=on, lang=c}
-<<[Minified Hello World Program](code/hello-world-minified.c)
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c manuscript/code/hello-world-minified.c -o hello-world-minified.m
+./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+...
+./selfie: 600 bytes with 145 instructions and 20 bytes of data written into hello-world.m
+./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
+...
+./selfie: 600 bytes with 145 instructions and 20 bytes of data written into hello-world-minified.m
+```
 
-### Identifiers
+and then check that both files are indeed identical:
 
-### Integers
+{line-numbers=off}
+```
+> diff -s hello-world.m hello-world-minified.m
+Files hello-world.m and hello-world-minified.m are identical
+```
 
-[Integer](http://github.com/cksystemsteaching/selfie/blob/fa735a8561db58718cb58015bba8220a058c1c28/selfie.c#L1726-L1767 "Integer")
+## Strings
 
-### Strings
+You may have noticed in the comments of the "Hello World!" program that the characters "Hello World!" are actually stored in chunks of four characters and printed accordingly. We can even see that by slowing down selfie, as before, by running in this case three mipsters on top of each other. Give it a few seconds and you will see for yourself:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1 -l hello-world.m -m 1
+./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+...
+./selfie: 600 bytes with 145 instructions and 20 bytes of data written into hello-world.m
+./selfie: this is selfie's starc compiling selfie.c
+...
+./selfie: 125948 bytes with 29970 instructions and 6068 bytes of data written into selfie.m
+./selfie: this is selfie's mipster executing selfie.m with 2MB of memory
+selfie.m: 125948 bytes with 29970 instructions and 6068 bytes of data loaded from selfie.m
+selfie.m: this is selfie's mipster executing selfie.m with 1MB of memory
+selfie.m: 600 bytes with 145 instructions and 20 bytes of data loaded from hello-world.m
+selfie.m: this is selfie's mipster executing hello-world.m with 1MB of memory
+Hello World!hello-world.m: exiting with exit code 0
+selfie.m: this is selfie's mipster terminating hello-world.m
+...
+selfie.m: exiting with exit code 0
+selfie.m: this is selfie's mipster terminating selfie.m
+...
+selfie.m: exiting with exit code 0
+./selfie: this is selfie's mipster terminating selfie.m
+...
+```
+
+In computer science sequences of characters such as "Hello World!" or in fact sequences of any kind of symbols are called *strings*.
 
 [String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
 : A finite sequence of characters taken from some finite alphabet.
 
-In other words, `selfie.c` is a string of 158,772 characters whose alphabet is in fact ASCII characters UTF-8-encoded in eight bits.
+For example, "Hello World!" is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits per character. However, the question is how such strings are stored in the memory of a computer.
 
-### Instructions
+
+
+[String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
+: The representation of a string value within the source code of a computer program.
+
+[Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
+: The representation of a character value within the source code of a computer program.
+
+## Identifiers
+
+[Identifier](https://en.wikipedia.org/wiki/Identifier "Identifier")
+: Token (also called symbol) which names a language entity. Some of the kinds of entities an identifier might denote include variables, types, labels, subroutines, and packages.
+
+## Integers
+
+[Integer](https://en.wikipedia.org/wiki/Integer "Integer")
+: A number that can be written without a fractional component (from the Latin integer meaning "whole").
+
+## Instructions

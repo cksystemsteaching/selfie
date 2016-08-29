@@ -18,4 +18,4 @@ The book works by explaining selfie step by step while focusing on the basic pri
 
 The [next chapter](#semantics) introduces selfie and how to use it. The focus is on developing an idea of the problem of semantics. Computer scientists have developed all these formalisms for coding and many other things. We show how selfie can help to understand the relevant aspects of the problem.
 
-The [following chapter](#encoding) is an introduction to encoding and decoding basic information such as characters and numbers in binary form. We use selfie to show examples and how their encoding and decoding is actually done.
+[Chapter 3](#encoding) is an introduction to encoding and decoding basic information such as characters and numbers in binary form. We use selfie to show examples and how their encoding and decoding is actually done.
