@@ -1520,7 +1520,7 @@ int* itoa(int n, int* s, int b, int a, int p) {
     }
   }
 
-  storeCharacter(s, i, 0); // 0-terminated string
+  storeCharacter(s, i, 0); // null-terminated string
 
   // our numeral system is positional hindu-arabic, that is,
   // the weight of digits increases right to left, which means
@@ -1916,7 +1916,7 @@ void getSymbol() {
           getCharacter();
         }
 
-        storeCharacter(identifier, i, 0); // 0-terminated string
+        storeCharacter(identifier, i, 0); // null-terminated string
 
         symbol = identifierOrKeyword();
 
@@ -1940,7 +1940,7 @@ void getSymbol() {
           getCharacter();
         }
 
-        storeCharacter(integer, i, 0); // 0-terminated string
+        storeCharacter(integer, i, 0); // null-terminated string
 
         literal = atoi(integer);
 
@@ -2017,7 +2017,7 @@ void getSymbol() {
           exit(-1);
         }
 
-        storeCharacter(string, i, 0); // 0-terminated string
+        storeCharacter(string, i, 0); // null-terminated string
 
         symbol = SYM_STRING;
 

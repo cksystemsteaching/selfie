@@ -24,7 +24,7 @@ In general, we only provide links to code with comments so that text explaining 
 
 Now, what is a comment in code anyway? A comment is text that the machine ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/0d76fc92d8a79db612973153d133f14eb35efae6/selfie.c#L76) that means something to the machine and is not a comment.
 
-If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we could safely remove even more characters called whitespace without changing any semantics.
+If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we can safely remove even more characters called whitespace without changing any semantics.
 
 ## Whitespace
 
@@ -149,12 +149,32 @@ selfie.m: exiting with exit code 0
 ...
 ```
 
+The string "Hell" appears first on the console. Then, after a while, the string "o Wo" appears. Finally, the string "rld!" appears and selfie terminates, slowly.
+
 In computer science sequences of characters such as "Hello World!" or in fact sequences of any kind of symbols are called *strings*.
 
 [String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
 : A finite sequence of characters taken from some finite alphabet.
 
-For example, "Hello World!" is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits per character. However, the question is how such strings are stored in the memory of a computer.
+For example, in selfie "Hello World!" is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits, that is, one byte per character. However, the question is how such strings are handled and in particular stored in the memory of a computer.
+
+[Memory](https://en.wikipedia.org/wiki/Computer_memory "Memory")
+: Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
+
+Logically, memory is *storage* for bits as well as *addresses* for identifying those bits. Memory addresses are usually natural numbers from zero or some positive number to some larger positive number. To save addresses and increase speed of access, most memory is *byte-addressed*, that is, each address refers to a whole byte and not just a single bit. The size of byte-addressed memory, that is, the number of bytes that can be stored is the difference between the smallest and largest address plus one. The number of bits that can be stored is therefore eight times that value.
+
+X> The obvious way of storing UTF-8-encoded strings such as our "Hello World!" string in byte-addressed memory is by identifying an address in memory, say, 42 and then storing the ASCII code of the first character there. Then, the next character is stored at address 43 and so on. Finally, the last character is stored at address 53 since there are 12 characters in "Hello World!". In other words, the string is stored *contiguously* in memory.
+X>
+X> But how does the machine know where the string ends? Simple. Right after the last character, at address 53, we store the value 0, also called *null*, which is the ASCII code not used for anything else but indicating the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
+
+What are the alternatives? We could store the number of characters in a string in front of the string, or the address of the last character. Some systems do that but not selfie. Also, more exotically, we could store the characters non-contiguously in memory but would then need to remember where they are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. Important for us here is to know that there is a choice. With selfie, however, strings are stored contiguously in memory and null-terminated.
+
+
+
+The machine that the mipster emulator in selfie emulates handles everything, code and data, in chunks of 32 bits, that is, four bytes. Such a chunk is called a *machine word* or just a *word*.
+
+[Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
+: A term for the natural unit of data used by a particular processor design. A word is basically a fixed-sized group of digits that are handled as a unit by the instruction set or the hardware of the processor. The number of digits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
 
 
 
