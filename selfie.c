@@ -2811,7 +2811,8 @@ int gr_factor() {
       // retrieve return value
       emitIFormat(OP_ADDIU, REG_V0, currentTemporary(), 0);
 
-      // reset return register
+      // reset return register to initial return value
+      // for missing return expressions
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
     } else
       // variable access: identifier
@@ -3378,7 +3379,8 @@ void gr_statement() {
 
       gr_call(variableOrProcedureName);
 
-      // reset return register
+      // reset return register to initial return value
+      // for missing return expressions
       emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
 
       if (symbol == SYM_SEMICOLON)
@@ -4837,7 +4839,6 @@ void emitID() {
 }
 
 void implementID() {
-  // this procedure is executed at boot levels higher than zero
   *(registers+REG_V0) = getID(currentContext);
 }
 
@@ -4889,7 +4890,6 @@ int doCreate(int parentID) {
 }
 
 void implementCreate() {
-  // this procedure is executed at boot levels higher than zero
   *(registers+REG_V0) = doCreate(getID(currentContext));
 }
 
@@ -4953,20 +4953,28 @@ int doSwitch(int toID) {
 }
 
 void implementSwitch() {
-  // this procedure is executed at boot levels higher than zero
-  *(registers+REG_V1) = doSwitch(*(registers+REG_A0));
+  int fromID;
+
+  // CAUTION: doSwitch() modifies the global variable registers
+  // but some compilers dereference the lvalue *(registers+REG_V1)
+  // before evaluating the rvalue doSwitch()
+
+  fromID = doSwitch(*(registers+REG_A0));
+
+  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
+  *(registers+REG_V1) = fromID;
 }
 
 int mipster_switch(int toID) {
   int fromID;
 
-  // CAUTION: registers is 0 upon first call to mipster_switch and
-  // only set to the registers of the toID context in doSwitch(toID)
+  // CAUTION: doSwitch() modifies the global variable registers
   // but some compilers dereference the lvalue *(registers+REG_V1)
-  // before evaluating the rvalue doSwitch(toID)
+  // before evaluating the rvalue doSwitch()
 
   fromID = doSwitch(toID);
 
+  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
   *(registers+REG_V1) = fromID;
 
   runUntilException();
@@ -5013,7 +5021,6 @@ int doStatus() {
 }
 
 void implementStatus() {
-  // this procedure is executed at boot levels higher than zero
   *(registers+REG_V0) = doStatus();
 }
 
@@ -5065,7 +5072,6 @@ void doDelete(int ID) {
 }
 
 void implementDelete() {
-  // this procedure is executed at boot levels higher than zero
   doDelete(*(registers+REG_A0));
 }
 
@@ -5146,7 +5152,6 @@ void doMap(int ID, int page, int frame) {
 }
 
 void implementMap() {
-  // this procedure is executed at boot levels higher than zero
   doMap(*(registers+REG_A0), *(registers+REG_A1), *(registers+REG_A2));
 }
 
