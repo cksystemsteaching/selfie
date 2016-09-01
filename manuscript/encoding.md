@@ -4,9 +4,9 @@ Information, whatever it is, needs to be encoded in bits for a computer to handl
 
 ## Characters
 
-We mention in the [previous chapter](#semantics) that the characters in `selfie.c` are [ASCII](https://en.wikipedia.org/wiki/ASCII "ASCII") characters encoded in eight bits or one byte according to the [UTF-8](https://en.wikipedia.org/wiki/UTF-8 "UTF-8") standard.
+We mention in the [previous chapter](#semantics) that the characters in `selfie.c` are [ASCII](https://en.wikipedia.org/wiki/ASCII "ASCII") characters encoded in eight bits, that is, one byte according to the [UTF-8](https://en.wikipedia.org/wiki/UTF-8 "UTF-8") standard.
 
-X> According to UTF-8 (and ASCII), the uppercase letter 'U', for example, is encoded in the 8-bit sequence `01010101`.
+X> According to UTF-8 (and ASCII), the uppercase letter `U`, for example, is encoded in the 8-bit sequence `01010101`.
 
 Both ASCII and UTF-8 are essentially one-to-one mappings from bits to characters written down in a table. Each 8-bit sequence is associated with exactly one character. For a computer that table is only relevant when the machine receives characters from a keyboard and sends characters to a screen. Then, the machine needs to know the ASCII code for each key on the keyboard to remember which key was pressed and it needs to know which shape of character to draw on the screen for each bit sequence. Internally, however, characters are just 8-bit sequences, with selfie and a lot of other software as well.
 
@@ -14,9 +14,9 @@ Let us pause for a moment and reflect about this. The above bit sequence could r
 
 X> The bit sequence `01010101` is also binary for the decimal number 85.
 
-So what is it now, 'U' or 85? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws 'U' for `01010101` on the screen then `01010101` stands for 'U' in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent 85.
+So what is it now, `U` or 85? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws `U` for `01010101` on the screen then `01010101` stands for `U` in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent 85.
 
-All the characters that selfie reads from files including `selfie.c` are [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) in a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) in just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
+But how does selfie actually read characters from files such as `selfie.c`? It turns out that selfie does [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) all characters using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
 
 In general, we only provide links to code with comments so that text explaining code is not duplicated here. You may want read the code in `selfie.c` as if it was some sort of mechanical English. There are a lot of comments whenever the code is not sufficiently self-explanatory. In other words, reading code and comments is part of the experience of reading this book!
 
@@ -69,7 +69,7 @@ Hello World!manuscript/code/hello-world.c: exiting with exit code 0
 ...
 ```
 
-There is a lot of whitespace for increasing the readability of the code as well as comments for explaining what the code does. In fact, only a little more than ten percent of the characters are actual code. Note that "Hello World!" is printed on the console right before the program exits.
+There is a lot of whitespace for increasing the readability of the code as well as comments for explaining what the code does. In fact, only a little more than ten percent of the characters are actual code. Note that `"Hello World!"` is printed on the console right before the program exits.
 
 Removing all whitespace and comments, also called minification, results in the following version:
 
@@ -94,7 +94,7 @@ Hello World!manuscript/code/hello-world-minified.c: exiting with exit code 0
 ...
 ```
 
-This time all characters are actual code but otherwise the behavior is the same with "Hello World!" appearing on the console just like before.
+This time all characters are actual code but otherwise the behavior is the same with `"Hello World!"` appearing on the console just like before.
 
 [Minification](https://en.wikipedia.org/wiki/Minification_(programming) "Minification")
 : The process of removing all unnecessary characters from source code without changing its functionality. These unnecessary characters usually include white space characters, new line characters, and comments, which are used to add readability to the code but are not required for it to execute.
@@ -122,7 +122,7 @@ Files hello-world.m and hello-world-minified.m are identical
 
 ## Strings
 
-You may have noticed in the comments of the "Hello World!" program that the characters "Hello World!" are actually stored in chunks of four characters and printed accordingly. We can even see that by slowing down selfie, as before, by running in this case three mipsters on top of each other. Give it a few seconds and you will see for yourself:
+You may have noticed in the comments of the "Hello World!" program that the characters `"Hello World!"` are actually stored in chunks of four characters and printed accordingly. We can even see that by slowing down selfie, as before, by running in this case three mipsters on top of each other. Give it a few seconds and you will see for yourself:
 
 {line-numbers=off}
 ```
@@ -149,34 +149,30 @@ selfie.m: exiting with exit code 0
 ...
 ```
 
-The string "Hell" appears first on the console. Then, after a while, the string "o Wo" appears. Finally, the string "rld!" appears and selfie terminates, slowly.
+The string `"Hell"` appears first on the console. Then, after a while, the string `"o Wo"` appears. Finally, the string `"rld!"` appears and selfie terminates, slowly.
 
-In computer science sequences of characters such as "Hello World!" or in fact sequences of any kind of symbols are called *strings*.
+In computer science sequences of characters such as `"Hello World!"` or in fact sequences of any kind of symbols are called *strings*.
 
 [String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
 : A finite sequence of characters taken from some finite alphabet.
 
-For example, in selfie "Hello World!" is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits, that is, one byte per character. However, the question is how such strings are handled and in particular stored in the memory of a computer.
+For example, in selfie `"Hello World!"` is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits, that is, one byte per character. However, the question is how such strings are handled and in particular stored in the memory of a computer.
 
 [Memory](https://en.wikipedia.org/wiki/Computer_memory "Memory")
 : Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
 
 Logically, memory is *storage* for bits as well as *addresses* for identifying those bits. Memory addresses are usually natural numbers from zero or some positive number to some larger positive number. To save addresses and increase speed of access, most memory is *byte-addressed*, that is, each address refers to a whole byte and not just a single bit. The size of byte-addressed memory, that is, the number of bytes that can be stored is the difference between the smallest and largest address plus one. The number of bits that can be stored is therefore eight times that value.
 
-X> The obvious way of storing UTF-8-encoded strings such as our "Hello World!" string in byte-addressed memory is by identifying an address in memory, say, 42 and then storing the ASCII code of the first character there. Then, the next character is stored at address 43 and so on. Finally, the last character is stored at address 53 since there are 12 characters in "Hello World!". In other words, the string is stored *contiguously* in memory.
+X> The obvious way of storing UTF-8-encoded strings such as our `"Hello World!"` string in byte-addressed memory is by identifying an address in memory, say, 42 and then storing the ASCII code of the first character `H` there. Then, the next character `e` is stored at address 43 and so on. Finally, the last character `!` is stored at address 53 since there are 12 characters in `"Hello World!"`. In other words, the string is stored *contiguously* in memory.
 X>
-X> But how does the machine know where the string ends? Simple. Right after the last character, at address 53, we store the value 0, also called *null*, which is the ASCII code not used for anything else but indicating the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
+X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 53, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but indicating the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
 
-What are the alternatives? We could store the number of characters in a string in front of the string, or the address of the last character. Some systems do that but not selfie. Also, more exotically, we could store the characters non-contiguously in memory but would then need to remember where they are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. Important for us here is to know that there is a choice. With selfie, however, strings are stored contiguously in memory and null-terminated.
-
-
+With selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L1990-L2018) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L2020) but what are the alternatives? We could store the number of characters in a string in front of the string, or the address of the last character. Some systems do that but not selfie. Also, more exotically, we could store the characters non-contiguously in memory but would then need to remember where they are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
 
 The machine that the mipster emulator in selfie emulates handles everything, code and data, in chunks of 32 bits, that is, four bytes. Such a chunk is called a *machine word* or just a *word*.
 
 [Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
 : A term for the natural unit of data used by a particular processor design. A word is basically a fixed-sized group of digits that are handled as a unit by the instruction set or the hardware of the processor. The number of digits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
-
-
 
 [String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
 : The representation of a string value within the source code of a computer program.
