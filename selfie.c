@@ -1991,7 +1991,9 @@ void getSymbol() {
         getCharacter();
 
         // accommodate string and 0 for termination
-        string = malloc(maxStringLength + 1);
+        // allocate zeroed memory since strings are emitted
+        // in whole words but may end non-word-aligned
+        string = zalloc(maxStringLength + 1);
 
         i = 0;
 
@@ -2600,13 +2602,13 @@ int help_call_codegen(int* entry, int* procedure) {
 }
 
 void help_procedure_prologue(int localVariables) {
-  // allocate space for return address
+  // allocate memory for return address
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
   // save return address
   emitIFormat(OP_SW, REG_SP, REG_RA, 0);
 
-  // allocate space for caller's frame pointer
+  // allocate memory for caller's frame pointer
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
   // save caller's frame pointer
@@ -2615,25 +2617,25 @@ void help_procedure_prologue(int localVariables) {
   // set callee's frame pointer
   emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
 
-  // allocate space for callee's local variables
+  // allocate memory for callee's local variables
   if (localVariables != 0)
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * WORDSIZE);
 }
 
 void help_procedure_epilogue(int parameters) {
-  // deallocate space for callee's frame pointer and local variables
+  // deallocate memory for callee's frame pointer and local variables
   emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
 
   // restore caller's frame pointer
   emitIFormat(OP_LW, REG_SP, REG_FP, 0);
 
-  // deallocate space for caller's frame pointer
+  // deallocate memory for caller's frame pointer
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   // restore return address
   emitIFormat(OP_LW, REG_SP, REG_RA, 0);
 
-  // deallocate space for return address and parameters
+  // deallocate memory for return address and parameters
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * WORDSIZE);
 
   // return
@@ -3848,15 +3850,15 @@ void selfie_compile() {
   // reset parser
   resetParser();
 
-  // allocate space for storing binary
+  // allocate memory for storing binary
   binary       = malloc(maxBinaryLength);
   binaryLength = 0;
 
   // reset code length
   codeLength = 0;
 
-  // allocate space for storing source code line numbers
-  sourceLineNumber = malloc(maxBinaryLength);
+  // allocate zeroed memory for storing source code line numbers
+  sourceLineNumber = zalloc(maxBinaryLength);
 
   // jump and link to main
   emitMainEntry();
@@ -6139,7 +6141,7 @@ int up_loadString(int* table, int* s, int SP) {
 
   bytes = roundUp(stringLength(s) + 1, WORDSIZE);
 
-  // allocate space for storing string
+  // allocate memory for storing string
   SP = SP - bytes;
 
   i = 0;
@@ -6164,10 +6166,10 @@ void up_loadArguments(int* table, int argc, int* argv) {
   // arguments are pushed onto stack which starts at highest virtual address
   SP = VIRTUALMEMORYSIZE - WORDSIZE;
 
-  // allocate space for storing stack pointer later
+  // allocate memory for storing stack pointer later
   SP = SP - WORDSIZE;
 
-  // allocate space for storing *argv array
+  // allocate memory for storing *argv array
   SP = SP - argc * WORDSIZE;
 
   // assert: argc > 0
@@ -6189,13 +6191,13 @@ void up_loadArguments(int* table, int argc, int* argv) {
     i_argc = i_argc - 1;
   }
 
-  // allocate space for one word on the stack
+  // allocate memory for one word on the stack
   SP = SP - WORDSIZE;
 
   // push argc
   mapAndStoreVirtualMemory(table, SP, argc);
 
-  // allocate space for one word on the stack
+  // allocate memory for one word on the stack
   SP = SP - WORDSIZE;
 
   // push virtual argv
