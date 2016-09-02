@@ -58,8 +58,8 @@ and run the code as follows (ignoring the compiler warning):
 > ./selfie -c manuscript/code/hello-world.c -m 1
 ./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
 ./selfie: warning in manuscript/code/hello-world.c in line 1: type mismatch, int expected but int* found
-./selfie: 519 characters read in 20 lines and 9 comments
-./selfie: with 68(13.10%) characters in 39 actual symbols
+./selfie: 595 characters read in 20 lines and 9 comments
+./selfie: with 80(13.45%) characters in 39 actual symbols
 ./selfie: 0 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
 ./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
@@ -83,8 +83,8 @@ with this output when running it:
 > ./selfie -c manuscript/code/hello-world-minified.c -m 1
 ./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
 ./selfie: warning in manuscript/code/hello-world-minified.c in line 1: type mismatch, int expected but int* found
-./selfie: 68 characters read in 0 lines and 0 comments
-./selfie: with 68(100.00%) characters in 39 actual symbols
+./selfie: 80 characters read in 0 lines and 0 comments
+./selfie: with 80(100.00%) characters in 39 actual symbols
 ./selfie: 0 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
 ./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
@@ -122,6 +122,56 @@ Files hello-world.m and hello-world-minified.m are identical
 
 ## Strings
 
+In computer science sequences of characters such as `"Hello World!"` or in fact sequences of any kind of symbols are called *strings*.
+
+[String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
+: A finite sequence of characters taken from some finite alphabet.
+
+In selfie, for example, `"Hello World!"` is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits, that is, one byte per character. However, the question is how such strings are handled and in particular encoded and stored in the memory of a computer.
+
+[Memory](https://en.wikipedia.org/wiki/Computer_memory "Memory")
+: Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
+
+Logically, memory is *storage* for bits as well as *addresses* for identifying those bits. Memory addresses are usually natural numbers from zero or some positive number to some larger positive number. To save addresses and increase speed of access, most memory is *byte-addressed*, that is, each address refers to a whole byte and not just a single bit. The size of byte-addressed memory, that is, the number of bytes that can be stored is the difference between the smallest and largest address plus one. The number of bits that can be stored is therefore eight times that value.
+
+X> The obvious way of storing UTF-8-encoded strings such as our `"Hello World!"` string in byte-addressed memory is by identifying an address in memory, say, 42 and then storing the ASCII code of the first character `H` there. Then, the next character `e` is stored at address 43 and so on. Finally, the last character `!` is stored at address 53 since there are 12 characters in `"Hello World!"`. In other words, the string is stored *contiguously* at *increasing* addresses in memory.
+X>
+X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 53, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but indicating the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
+
+With selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L1990-L2018) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L2020) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
+
+You may have noticed the double quotes around the `"Hello World!"` string in the "Hello World!" program. There are other sequences of characters in the program such as [`foo`](https://en.wikipedia.org/wiki/Foobar), for example, that also look like strings but are not enclosed with double quotes. The difference is that the `"Hello World!"` string is meant to be *literally* `Hello World!` whereas `foo` is an *identifier* that provides a name for something. If we were to change `foo` consistently in the whole program to `bar`, for example, the program would be semantically equivalent to the original version with `foo`. Try it!
+
+[String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
+: The representation of a string value within the source code of a computer program.
+
+String literals such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/2613856aba61735e89ff42d98964d69637cb3111/selfie.c#L335-L362) as just one example.
+
+There is also the notion of *character literals* which we use in `selfie.c` in a number of situations, for example, for identifying [characters that represent letters](http://github.com/cksystemsteaching/selfie/blob/2613856aba61735e89ff42d98964d69637cb3111/selfie.c#L1821-L1827).
+
+[Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
+: The representation of a character value within the source code of a computer program.
+
+A character literal in source code such as `'a'`, for example, is a single character `a` enclosed with single quotes. However, character literals are actually quite different from string literals. A character literal represents the ASCII code of the enclosed character whereas a string literal is a sequence of characters which may contain any number of characters including just one or even none denoted by `""`.  This also means that `''` is meaningless.
+
+X> So, what is the difference between, say, `'a'` and `"a"`?
+X>
+X> The character literal `'a'` is the *ASCII code* of the character `a` whereas the string literal `"a"` is an *address* in memory where the ASCII code of `a` followed by null is stored.
+
+## Identifiers
+
+[Identifier](https://en.wikipedia.org/wiki/Identifier "Identifier")
+: Token (also called symbol) which names a language entity. Some of the kinds of entities an identifier might denote include variables, types, labels, subroutines, and packages.
+
+## Integers
+
+[Integer](https://en.wikipedia.org/wiki/Integer "Integer")
+: A number that can be written without a fractional component (from the Latin integer meaning "whole").
+
+## Symbols
+
+## Words
+
 You may have noticed in the comments of the "Hello World!" program that the characters `"Hello World!"` are actually stored in chunks of four characters and printed accordingly. We can even see that by slowing down selfie, as before, by running in this case three mipsters on top of each other. Give it a few seconds and you will see for yourself:
 
 {line-numbers=off}
@@ -151,43 +201,11 @@ selfie.m: exiting with exit code 0
 
 The string `"Hell"` appears first on the console. Then, after a while, the string `"o Wo"` appears. Finally, the string `"rld!"` appears and selfie terminates, slowly.
 
-In computer science sequences of characters such as `"Hello World!"` or in fact sequences of any kind of symbols are called *strings*.
 
-[String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
-: A finite sequence of characters taken from some finite alphabet.
-
-For example, in selfie `"Hello World!"` is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits, that is, one byte per character. However, the question is how such strings are handled and in particular stored in the memory of a computer.
-
-[Memory](https://en.wikipedia.org/wiki/Computer_memory "Memory")
-: Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
-
-Logically, memory is *storage* for bits as well as *addresses* for identifying those bits. Memory addresses are usually natural numbers from zero or some positive number to some larger positive number. To save addresses and increase speed of access, most memory is *byte-addressed*, that is, each address refers to a whole byte and not just a single bit. The size of byte-addressed memory, that is, the number of bytes that can be stored is the difference between the smallest and largest address plus one. The number of bits that can be stored is therefore eight times that value.
-
-X> The obvious way of storing UTF-8-encoded strings such as our `"Hello World!"` string in byte-addressed memory is by identifying an address in memory, say, 42 and then storing the ASCII code of the first character `H` there. Then, the next character `e` is stored at address 43 and so on. Finally, the last character `!` is stored at address 53 since there are 12 characters in `"Hello World!"`. In other words, the string is stored *contiguously* in memory.
-X>
-X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 53, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but indicating the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
-
-With selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L1990-L2018) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L2020) but what are the alternatives? We could store the number of characters in a string in front of the string, or the address of the last character. Some systems do that but not selfie. Also, more exotically, we could store the characters non-contiguously in memory but would then need to remember where they are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
 
 The machine that the mipster emulator in selfie emulates handles everything, code and data, in chunks of 32 bits, that is, four bytes. Such a chunk is called a *machine word* or just a *word*.
 
 [Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
 : A term for the natural unit of data used by a particular processor design. A word is basically a fixed-sized group of digits that are handled as a unit by the instruction set or the hardware of the processor. The number of digits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
-
-[String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
-: The representation of a string value within the source code of a computer program.
-
-[Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
-: The representation of a character value within the source code of a computer program.
-
-## Identifiers
-
-[Identifier](https://en.wikipedia.org/wiki/Identifier "Identifier")
-: Token (also called symbol) which names a language entity. Some of the kinds of entities an identifier might denote include variables, types, labels, subroutines, and packages.
-
-## Integers
-
-[Integer](https://en.wikipedia.org/wiki/Integer "Integer")
-: A number that can be written without a fractional component (from the Latin integer meaning "whole").
 
 ## Instructions
