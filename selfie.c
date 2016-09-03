@@ -164,17 +164,22 @@ int* filename_buffer;  // buffer for filenames
 int* io_buffer;        // buffer for binary I/O
 
 // flags for opening read-only files
-// UNIX: 0     = O_RDONLY (0x0000)
-// WIN : 32768 = 0x8000 = _O_BINARY (0x8000) | _O_RDONLY (0x0000)
-int O_RDONLY = 0; //~ Platform-specific
+// LINUX/MAC:   0 = 0x0000 = O_RDONLY (0x0000)
+// WINDOWS: 32768 = 0x8000 = _O_BINARY (0x8000) | _O_RDONLY (0x0000)
+// since LINUX/MAC do not seem to mind about _O_BINARY set
+// we use the WINDOWS flags as default
+int O_RDONLY = 32768;
 
 // flags for opening write-only files
-// UNIX: 577   = 0x0241 = O_CREAT (0x0040) | O_WRONLY (0x0001) | O_TRUNC (0x0200)
-// WIN : 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_WRONLY (0x0001) | _O_TRUNC (0x0200)
-int O_CREAT_WRONLY_TRUNC = 577; //~ Platform-specific
+// LINUX/MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
+// WINDOWS:  33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
+// since LINUX/MAC do not seem to mind about _O_BINARY and _O_CREAT set
+// as well as O_TRUNC not set we use the WINDOWS flags as default
+int O_CREAT_TRUNC_WRONLY = 33537;
 
 // flags for rw-r--r-- file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
+// these flags seem to be working for LINUX/MAC and WINDOWS
 int S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -4267,7 +4272,7 @@ void selfie_emit() {
 
   // assert: binaryName is mapped and not longer than maxFilenameLength
 
-  fd = open(binaryName, O_CREAT_WRONLY_TRUNC, S_IRUSR_IWUSR_IRGRP_IROTH);
+  fd = open(binaryName, O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
 
   if (fd < 0) {
     print(selfieName);
@@ -6296,7 +6301,7 @@ void printProfile(int* message, int total, int* counters) {
 void selfie_disassemble(int argc, int* argv) {
   // assert: assemblyName is mapped and not longer than maxFilenameLength
 
-  assemblyFD = open(assemblyName, O_CREAT_WRONLY_TRUNC, S_IRUSR_IWUSR_IRGRP_IROTH);
+  assemblyFD = open(assemblyName, O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
 
   if (assemblyFD < 0) {
     print(selfieName);
