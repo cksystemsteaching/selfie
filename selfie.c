@@ -164,22 +164,24 @@ int* filename_buffer;  // buffer for filenames
 int* io_buffer;        // buffer for binary I/O
 
 // flags for opening read-only files
-// LINUX/MAC:   0 = 0x0000 = O_RDONLY (0x0000)
+// LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
+// MAC:         0 = 0x0000 = O_RDONLY (0x0000)
 // WINDOWS: 32768 = 0x8000 = _O_BINARY (0x8000) | _O_RDONLY (0x0000)
 // since LINUX/MAC do not seem to mind about _O_BINARY set
 // we use the WINDOWS flags as default
 int O_RDONLY = 32768;
 
 // flags for opening write-only files
-// LINUX/MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
-// WINDOWS:  33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
-// since LINUX minds about some of these WINDOWS flags set
-// we use the LINUX/MAC flags as default
-int O_CREAT_TRUNC_WRONLY = 1537; // on WINDOWS replace 1537 with 33537
+// LINUX:    4353 = 0x1101 = O_CREAT (0x0100) | O_TRUNC (0x1000) | O_WRONLY (0x0001)
+// MAC:      1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
+// WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
+// because of conflicting configurations we use the following combination
+// 33281 = 0x8201 = _O_BINARY (0x8000) | O_CREAT (0x0200) | O_WRONLY (0x0001)
+int O_CREAT_TRUNC_WRONLY = 33281; // on WINDOWS replace 1537 with 33537
 
 // flags for rw-r--r-- file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
-// these flags seem to be working for LINUX/MAC and WINDOWS
+// these flags seem to be working for LINUX, MAC, and WINDOWS
 int S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
