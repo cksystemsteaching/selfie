@@ -136,7 +136,7 @@ Logically, memory is *storage* for bits as well as *addresses* for identifying t
 
 X> The obvious way of storing UTF-8-encoded strings such as our `"Hello World!"` string in byte-addressed memory is by identifying an address in memory, say, 42 and then storing the ASCII code of the first character `H` there. Then, the next character `e` is stored at address 43 and so on. Finally, the last character `!` is stored at address 53 since there are 12 characters in `"Hello World!"`. In other words, the string is stored *contiguously* at *increasing* addresses in memory.
 X>
-X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 53, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but indicating the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
+X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 53, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but to indicate the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
 
 With selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L1990-L2018) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L2020) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
 
@@ -157,6 +157,10 @@ A character literal in source code such as `'a'`, for example, is a single chara
 X> So, what is the difference between, say, `'a'` and `"a"`?
 X>
 X> The character literal `'a'` is the *ASCII code* of the character `a` whereas the string literal `"a"` is an *address* in memory where the ASCII code of `a` followed by null is stored.
+
+The code in `selfie.c` that identifies [relevant characters other than letters and digits](http://github.com/cksystemsteaching/selfie/blob/2067b468a2ce5df91afb9e9b3a476be85fefe95a/selfie.c#L124-L147) is another example which explains what character literals are. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
+
+
 
 ## Identifiers
 
