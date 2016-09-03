@@ -176,8 +176,8 @@ int O_RDONLY = 32768;
 // MAC:      1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
 // WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
 // because of conflicting configurations we use the following combination
-// 33281 = 0x8201 = _O_BINARY (0x8000) | O_CREAT (0x0200) | O_WRONLY (0x0001)
-int O_CREAT_TRUNC_WRONLY = 33281; // on WINDOWS replace 1537 with 33537
+// 37633 = 0x9301 = _O_BINARY (0x8000) | O_TRUNC (0x1000) | O_CREAT (0x0200) | _O_CREAT (0x0100) | O_WRONLY (0x0001)
+int O_CREAT_TRUNC_WRONLY = 37633;
 
 // flags for rw-r--r-- file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
