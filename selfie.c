@@ -173,9 +173,9 @@ int O_RDONLY = 32768;
 // flags for opening write-only files
 // LINUX/MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
 // WINDOWS:  33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
-// since LINUX/MAC do not seem to mind about _O_BINARY and _O_CREAT set
-// as well as O_TRUNC not set we use the WINDOWS flags as default
-int O_CREAT_TRUNC_WRONLY = 33537;
+// since LINUX minds about some of these WINDOWS flags set
+// we use the LINUX/MAC flags as default
+int O_CREAT_TRUNC_WRONLY = 1537; // on WINDOWS replace 1537 with 33537
 
 // flags for rw-r--r-- file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
