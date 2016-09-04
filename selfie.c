@@ -764,8 +764,6 @@ void initDecoder() {
 int  loadBinary(int baddr);
 void storeBinary(int baddr, int instruction);
 
-void storeInstruction(int baddr, int instruction);
-
 void emitInstruction(int instruction);
 void emitRFormat(int opcode, int rs, int rt, int rd, int function);
 void emitIFormat(int opcode, int rs, int rt, int immediate);
@@ -4285,20 +4283,16 @@ void storeBinary(int baddr, int instruction) {
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
-void storeInstruction(int baddr, int instruction) {
-  if (*(sourceLineNumber + baddr / WORDSIZE) == 0)
-    *(sourceLineNumber + baddr / WORDSIZE) = lineNumber;
-
-  storeBinary(baddr, instruction);
-}
-
 void emitInstruction(int instruction) {
   if (binaryLength >= maxBinaryLength) {
     syntaxErrorMessage((int*) "exceeded maximum binary length");
 
     exit(-1);
   } else {
-    storeInstruction(binaryLength, instruction);
+    if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
+      *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
+
+    storeBinary(binaryLength, instruction);
 
     binaryLength = binaryLength + WORDSIZE;
   }
