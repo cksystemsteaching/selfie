@@ -501,7 +501,7 @@ void restore_temporaries(int numberOfTemporaries);
 
 void syntaxErrorSymbol(int expected);
 void syntaxErrorUnexpected();
-int* putType(int type);
+void printType(int type);
 void typeWarning(int expected, int found);
 
 int* getVariable(int* variable);
@@ -2533,15 +2533,15 @@ void syntaxErrorUnexpected() {
   println();
 }
 
-int* putType(int type) {
+void printType(int type) {
   if (type == INT_T)
-    return (int*) "int";
+    print((int*) "int");
   else if (type == INTSTAR_T)
-    return (int*) "int*";
+    print((int*) "int*");
   else if (type == VOID_T)
-    return (int*) "void";
+    print((int*) "void");
   else
-    return (int*) "unknown";
+    print((int*) "unknown");
 }
 
 void typeWarning(int expected, int found) {
@@ -2549,11 +2549,11 @@ void typeWarning(int expected, int found) {
 
   print((int*) "type mismatch, ");
 
-  print(putType(expected));
+  printType(expected);
 
   print((int*) " expected but ");
 
-  print(putType(found));
+  printType(found);
 
   print((int*) " found");
 
