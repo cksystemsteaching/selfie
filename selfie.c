@@ -779,7 +779,7 @@ void emitGlobalsStrings();
 
 int openWriteOnly(int* name);
 
-void selfie_emit();
+void selfie_output();
 
 int* touch(int* memory, int length);
 
@@ -4421,7 +4421,7 @@ int openWriteOnly(int* name) {
   return fd;
 }
 
-void selfie_emit() {
+void selfie_output() {
   int fd;
 
   binaryName = getArgument();
@@ -6843,7 +6843,7 @@ int selfie() {
         // remaining options have at least one argument
         return -1;
       else if (stringCompare(option, (int*) "-o"))
-        selfie_emit();
+        selfie_output();
       else if (stringCompare(option, (int*) "-s"))
         selfie_disassemble();
       else if (stringCompare(option, (int*) "-l"))
