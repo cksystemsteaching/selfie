@@ -6231,13 +6231,6 @@ void execute() {
     op_j();
   else
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-
-  if (interpret == 0) {
-    if (pc == codeLength - WORDSIZE)
-      throwException(EXCEPTION_EXIT, 0);
-    else
-      pc = pc + WORDSIZE;
-  }
 }
 
 void interrupt() {
@@ -6469,6 +6462,8 @@ void printProfile(int* message, int total, int* counters) {
 }
 
 void selfie_disassemble() {
+  int i;
+
   assemblyName = getArgument();
 
   if (codeLength == 0) {
@@ -6498,13 +6493,20 @@ void selfie_disassemble() {
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
-  mipster = 1;
-  debug   = 1;
+  debug = 1;
 
-  boot(0, (int*) 0);
+  resetLibrary();
 
-  mipster = 0;
-  debug   = 0;
+  i = 0;
+
+  while(i < codeLength - WORDSIZE) {
+    ir = loadBinary(i);
+    decode();
+    execute();
+    i = i + WORDSIZE;
+  }
+
+  debug = 0;
 
   outputName = (int*) 0;
   outputFD   = 1;
@@ -6769,9 +6771,6 @@ void down_mapPageTable(int* context) {
 }
 
 void boot(int argc, int* argv) {
-  // resetting library is only necessary for disassembler
-  resetLibrary();
-
   // resetting this is only necessary for mipster
   resetInterpreter();
   resetMicrokernel();
