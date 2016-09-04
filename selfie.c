@@ -118,10 +118,12 @@ void printBinary(int n, int a);
 
 int roundUp(int n, int m);
 
+void exit(int code);
+int read(int fd, int* buffer, int bytesToRead);
+int write(int fd, int* buffer, int bytesToWrite);
+int open(int* filename, int flags, int mode);
 int* malloc(int size);
 int* zalloc(int size);
-
-void exit(int code);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
