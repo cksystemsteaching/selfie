@@ -172,12 +172,14 @@ int* io_buffer;        // buffer for binary I/O
 int O_RDONLY = 32768;
 
 // flags for opening write-only files
-// LINUX:    4353 = 0x1101 = O_CREAT (0x0100) | O_TRUNC (0x1000) | O_WRONLY (0x0001)
-// MAC:      1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
+// MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
+int MAC_O_CREAT_TRUNC_WRONLY = 1537;
+
+// LINUX: 4353 = 0x1101 = O_CREAT (0x0100) | O_TRUNC (0x1000) | O_WRONLY (0x0001)
+int LINUX_O_CREAT_TRUNC_WRONLY = 4353;
+
 // WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
-// because of conflicting configurations we use the following combination
-// 33345 = 0x8241 = _O_BINARY (0x8000) | O_CREAT (0x0200) | 0x0040 | O_WRONLY (0x0001)
-int O_CREAT_TRUNC_WRONLY = 33345;
+int WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 
 // flags for rw-r--r-- file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
@@ -771,6 +773,8 @@ void fixlink_absolute(int fromAddress, int toAddress);
 int copyStringToBinary(int* s, int a);
 
 void emitGlobalsStrings();
+
+int openWriteOnly(int* name);
 
 void selfie_emit();
 
@@ -4269,12 +4273,33 @@ void emitGlobalsStrings() {
   allocatedMemory = 0;
 }
 
+int openWriteOnly(int* name) {
+  // we try opening write-only files using platform-specific flags
+  // to make selfie platform-independent, this may nevertheless
+  // not always work and require intervention
+  int fd;
+
+  // try Mac flags
+  fd = open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+  if (fd < 0) {
+    // try Linux flags
+    fd = open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+    if (fd < 0)
+      // try Windows flags
+      fd = open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+  }
+
+  return fd;
+}
+
 void selfie_emit() {
   int fd;
 
   // assert: binaryName is mapped and not longer than maxFilenameLength
 
-  fd = open(binaryName, O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+  fd = openWriteOnly(binaryName);
 
   if (fd < 0) {
     print(selfieName);
@@ -6303,7 +6328,7 @@ void printProfile(int* message, int total, int* counters) {
 void selfie_disassemble(int argc, int* argv) {
   // assert: assemblyName is mapped and not longer than maxFilenameLength
 
-  assemblyFD = open(assemblyName, O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+  assemblyFD = openWriteOnly(assemblyName);
 
   if (assemblyFD < 0) {
     print(selfieName);
