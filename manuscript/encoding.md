@@ -138,23 +138,27 @@ X> The obvious way of storing UTF-8-encoded strings such as our `Hello World!` s
 X>
 X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 54, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but to indicate the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
 
-With selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L1990-L2018) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L2020) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
+In selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L1990-L2018) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L2020) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
 
-You may have noticed the double quotes enclosing the `Hello World!` string in the "Hello World!" program. There are other sequences of characters in the program such as [`foo`](https://en.wikipedia.org/wiki/Foobar), for example, that also look like strings but are not enclosed with double quotes. The difference is that `"Hello World!"` is meant to be *literally* `Hello World!` whereas `foo` is an *identifier* that provides a name for something. If we were to change `foo` consistently in the whole program to `bar`, for example, the program would be semantically equivalent to the original version with `foo`. Try it!
+## String Literals
+
+You may have noticed the double quotes enclosing the `Hello World!` string in the "Hello World!" program. There are other sequences of characters in the program such as [`foo`](https://en.wikipedia.org/wiki/Foobar), for example, that also look like strings but are not enclosed with double quotes. The difference is that `"Hello World!"` is meant to be *literally* `Hello World!` whereas `foo` is an *identifier* that provides a name for something. If we were to change `foo` consistently in the whole program to an unused identifier such as `bar`, for example, the program would be semantically equivalent to the original version with `foo`. Changing `"Hello World!"` on the other hand would really change the output of the program. Try it!
 
 [String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
 : The representation of a string value within the source code of a computer program.
 
-String literals such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/2613856aba61735e89ff42d98964d69637cb3111/selfie.c#L335-L362) as just one example.
+String literals in C\* such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/2613856aba61735e89ff42d98964d69637cb3111/selfie.c#L335-L362) as just one example.
 
 The code in `selfie.c` that actually [recognizes a string literal](http://github.com/cksystemsteaching/selfie/blob/38cf8f87dd0e0ae12216ddb6b368f2ed3a35e55e/selfie.c#L2006-L2041) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals are handled.
 
-There is also the notion of *character literals* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](http://github.com/cksystemsteaching/selfie/blob/2613856aba61735e89ff42d98964d69637cb3111/selfie.c#L1821-L1827).
+## Character Literals
+
+There is also the notion of *character literals* in C\* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1835-L1850) and for [identifying characters that represent digits](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1851-L1860).
 
 [Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
 : The representation of a character value within the source code of a computer program.
 
-A character literal in source code such as `'a'`, for example, is a single character `a` enclosed with single quotes. However, character literals are actually quite different from string literals. A character literal represents the ASCII code of the enclosed character whereas a string literal is a sequence of characters which may contain any number of characters including just one or even none denoted by `""`. Note that `''`, on the other hand, is meaningless.
+A character literal in C\* such as `'a'`, for example, is a single character `a` enclosed with single quotes. However, character literals are actually quite different from string literals. A character literal represents the ASCII code of the enclosed character whereas a string literal is a sequence of characters which may contain any number of characters including just one or even none denoted by `""`. Note that `''`, on the other hand, is meaningless.
 
 X> So, what is the difference between, say, `'a'` and `"a"`?
 X>
@@ -166,8 +170,23 @@ The code in `selfie.c` that [recognizes a character literal](http://github.com/c
 
 ## Identifiers
 
+Let us now go back to the notion of identifiers and our example of the identifier `foo` in the "Hello World!" program. An identifier like `foo` is just a name of something.
+
 [Identifier](https://en.wikipedia.org/wiki/Identifier "Identifier")
 : Token (also called symbol) which names a language entity. Some of the kinds of entities an identifier might denote include variables, types, labels, subroutines, and packages.
+
+Identifiers in C\* can indeed denote different kinds of entities. But, for now, we only need to know that, unlike string literals, identifiers in C\* always begin with a letter. After that there may appear letters, digits, and underscores `_` in any order but no other characters. Why is that? Because this is how the machine knows when an identifier begins and ends. Remember, identifiers are not enclosed by any special characters like double quotes, for example.
+
+The code in `selfie.c` that [recognizes an identifier](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1915-L1938) in source code, after reading a letter outside of a comment, first allocates memory not used by anyone to store the identifier, just like a string. Then it reads one character at a time and stores the characters contiguously in memory until it reads a character that is neither a letter nor a digit nor an underscore. It then stores a null to terminate the identifier. However, before deciding whether it has just recognized an identifier the code checks if it has actually recognized a *reserved identifier* or *keyword*.
+
+## Keywords
+
+C\* features a number of keywords with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
+
+[Keyword](https://en.wikipedia.org/wiki/Keyword_(computer_programming) "Keyword")
+: In a computer language, a reserved word (also known as a reserved identifier) is a word that cannot be used as an identifier, such as the name of a variable, function, or label – it is "reserved from use". This is a syntactic definition, and a reserved word may have no meaning. A closely related and often conflated notion is a keyword which is a word with special meaning in a particular context. This is a semantic definition. The terms "reserved word" and "keyword" are often used interchangeably – one may say that a reserved word is "reserved for use as a keyword".
+
+Since the keywords in C\* all begin with a letter they should not be mistaken for identifiers. The code in `selfie.c` that [distinguishes keywords from identifiers](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1888-L1903) compares potential identifiers with all keywords to implement that distinction.
 
 ## Integers
 
