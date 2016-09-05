@@ -1913,7 +1913,7 @@ void getSymbol() {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
       if (isCharacterLetter()) {
-        // accommodate identifier and 0 for termination
+        // accommodate identifier and null for termination
         identifier = malloc(maxIdentifierLength + 1);
 
         i = 0;
@@ -1937,7 +1937,7 @@ void getSymbol() {
         symbol = identifierOrKeyword();
 
       } else if (isCharacterDigit()) {
-        // accommodate integer and 0 for termination
+        // accommodate integer and null for termination
         integer = malloc(maxIntegerLength + 1);
 
         i = 0;
@@ -2006,7 +2006,7 @@ void getSymbol() {
       } else if (character == CHAR_DOUBLEQUOTE) {
         getCharacter();
 
-        // accommodate string and 0 for termination
+        // accommodate string and null for termination
         // allocate zeroed memory since strings are emitted
         // in whole words but may end non-word-aligned
         string = zalloc(maxStringLength + 1);
