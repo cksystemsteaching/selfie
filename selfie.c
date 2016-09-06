@@ -404,7 +404,7 @@ int* searchSymbolTable(int* entry, int* string, int class);
 int* getSymbolTableEntry(int* string, int class);
 
 int isUndefinedProcedure(int* entry);
-int reportUndefinedProcedures();
+void reportUndefinedProcedures();
 
 // symbol table entry:
 // +----+---------+
@@ -563,7 +563,7 @@ void fixRegisterInitialization();
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile();
+int selfie_compile(int argc, int* argv);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -793,6 +793,8 @@ int* binary = (int*) 0; // binary of emitted instructions
 int binaryLength = 0; // length of binary in bytes incl. globals & strings
 
 int codeLength = 0; // length of code portion of binary in bytes
+
+int mainAddress = 0;
 
 int* binaryName = (int*) 0; // file name of binary
 
@@ -2233,18 +2235,13 @@ int isUndefinedProcedure(int* entry) {
   return 0;
 }
 
-int reportUndefinedProcedures() {
-  int undefined;
+void reportUndefinedProcedures() {
   int* entry;
-
-  undefined = 0;
 
   entry = global_symbol_table;
 
   while (entry != (int*) 0) {
     if (isUndefinedProcedure(entry)) {
-      undefined = 1;
-
       printLineNumber((int*) "error", getLineNumber(entry));
       print(getString(entry));
       print((int*) " undefined");
@@ -2254,8 +2251,6 @@ int reportUndefinedProcedures() {
     // keep looking
     entry = getNextEntry(entry);
   }
-
-  return undefined;
 }
 
 // -----------------------------------------------------------------
@@ -3571,14 +3566,13 @@ void gr_procedure(int* procedure, int returnType) {
   int numberOfParameters;
   int parameters;
   int localVariables;
-  int functionStart;
   int* entry;
 
   currentProcedureName = procedure;
 
   numberOfParameters = 0;
 
-  // ( variable , variable ) ;
+  // try parsing formal parameters
   if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
@@ -3617,40 +3611,59 @@ void gr_procedure(int* procedure, int returnType) {
     syntaxErrorSymbol(SYM_LPARENTHESIS);
 
   if (symbol == SYM_SEMICOLON) {
+    // this is a procedure declaration
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
     if (entry == (int*) 0)
+      // procedure never called nor declared nor defined
       createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, 0);
+    else if (getType(entry) != returnType)
+      // procedure already called, declared, or even defined
+      // check return type but otherwise ignore
+      typeWarning(getType(entry), returnType);
 
     getSymbol();
 
-  // ( variable, variable ) { variable; variable; statement }
   } else if (symbol == SYM_LBRACE) {
-    functionStart = binaryLength;
-
+    // this is a procedure definition
     entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
 
     if (entry == (int*) 0)
+      // procedure never called nor declared nor defined
       createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, binaryLength);
-    else {
-      if (getAddress(entry) != 0) {
-        if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL)
-          fixlink_absolute(getAddress(entry), functionStart);
-        else {
-          printLineNumber((int*) "error", lineNumber);
-          print((int*) "multiple definitions of ");
-          print(currentProcedureName);
-          println();
-        }
+    else if (getAddress(entry) == 0) {
+      // procedure already declared but not called or defined
+      setAddress(entry, binaryLength);
+
+      setLineNumber(entry, lineNumber);
+
+      if (getType(entry) != returnType)
+       typeWarning(getType(entry), returnType);
+
+      setType(entry, returnType);
+    } else if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL) {
+      // procedure already called but not defined
+      if (stringCompare(currentProcedureName, (int*) "main"))
+        // "main" overwrites "main", fix up later
+        mainAddress = binaryLength;
+      else {
+        fixlink_absolute(getAddress(entry), binaryLength);
+
+        setAddress(entry, binaryLength);
       }
 
       setLineNumber(entry, lineNumber);
-      setAddress(entry, functionStart);
 
       if (getType(entry) != returnType)
-        typeWarning(getType(entry), returnType);
+       typeWarning(getType(entry), returnType);
 
       setType(entry, returnType);
+    } else {
+      // procedure already defined
+      printLineNumber((int*) "error", lineNumber);
+      print((int*) "multiple definitions of ");
+      print(currentProcedureName);
+      println();
     }
 
     getSymbol();
@@ -3837,37 +3850,36 @@ void fixRegisterInitialization() {
   binaryLength = savedBinaryLength;
 }
 
+void fixMainProcedure () {
+  int* mainEntry;
+  int mainJump;
+
+  mainEntry = getSymbolTableEntry((int*) "main", PROCEDURE);
+
+  mainJump = getAddress(mainEntry);
+
+  if (mainAddress == 0)
+    mainAddress = mainJump + 8;
+
+  fixlink_absolute(mainJump, mainAddress);
+
+  setAddress(mainEntry, mainAddress);
+
+  mainAddress = 0;
+}
+
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
 
-void selfie_compile() {
-  print(selfieName);
-  print((int*) ": this is selfie's starc compiling ");
-  print(sourceName);
-  println();
+int selfie_compile(int argc, int* argv) {
+  int numberOfSourceFiles;
 
-  // assert: sourceName is mapped and not longer than maxFilenameLength
+  numberOfSourceFiles = 0;
 
-  sourceFD = open(sourceName, O_RDONLY, 0);
+  sourceName = (int*) "library";
 
-  if (sourceFD < 0) {
-    print(selfieName);
-    print((int*) ": could not open input file ");
-    print(sourceName);
-    println();
-
-    exit(-1);
-  }
-
-  // reset scanner
-  resetScanner();
-
-  // reset symbol tables
-  resetSymbolTables();
-
-  // reset parser
-  resetParser();
+  binaryName = sourceName;
 
   // allocate memory for storing binary
   binary       = malloc(maxBinaryLength);
@@ -3876,8 +3888,13 @@ void selfie_compile() {
   // reset code length
   codeLength = 0;
 
+  // reset main address
+  mainAddress = 0;
+
   // allocate zeroed memory for storing source code line numbers
   sourceLineNumber = zalloc(maxBinaryLength);
+
+  resetSymbolTables();
 
   // jump and link to main
   emitMainEntry();
@@ -3898,61 +3915,99 @@ void selfie_compile() {
   emitDelete();
   emitMap();
 
-  // parser
-  gr_cstar();
+  while (argc > 0) {
+    if (loadCharacter((int*) *argv, 0) == '-')
+      argc = 0;
+    else {
+      sourceName = (int*) *argv;
 
-  // set code length
+      binaryName = sourceName;
+      
+      numberOfSourceFiles = numberOfSourceFiles + 1;
+
+      argc = argc - 1;
+      argv = argv + 1;
+
+      print(selfieName);
+      print((int*) ": this is selfie's starc compiling ");
+      print(sourceName);
+      println();
+
+      // assert: sourceName is mapped and not longer than maxFilenameLength
+
+      sourceFD = open(sourceName, O_RDONLY, 0);
+
+      if (sourceFD < 0) {
+        print(selfieName);
+        print((int*) ": could not open input file ");
+        print(sourceName);
+        println();
+
+        exit(-1);
+      }
+
+      resetScanner();
+
+      resetParser();
+
+      // compile
+      gr_cstar();
+
+      print(selfieName);
+      print((int*) ": ");
+      print(itoa(numberOfReadCharacters, string_buffer, 10, 0, 0));
+      print((int*) " characters read in ");
+      print(itoa(lineNumber - 1, string_buffer, 10, 0, 0));
+      print((int*) " lines and ");
+      print(itoa(numberOfComments, string_buffer, 10, 0, 0));
+      print((int*) " comments");
+      println();
+
+      print(selfieName);
+      print((int*) ": with ");
+      print(itoa(numberOfReadCharacters - numberOfIgnoredCharacters, string_buffer, 10, 0, 0));
+      print((int*) "(");
+      print(itoa(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters), string_buffer, 10, 0, 2));
+      print((int*) "%) characters in ");
+      print(itoa(numberOfScannedSymbols, string_buffer, 10, 0, 0));
+      print((int*) " actual symbols");
+      println();
+
+      print(selfieName);
+      print((int*) ": ");
+      print(itoa(numberOfGlobalVariables, string_buffer, 10, 0, 0));
+      print((int*) " global variables, ");
+      print(itoa(numberOfProcedures, string_buffer, 10, 0, 0));
+      print((int*) " procedures, ");
+      print(itoa(numberOfStrings, string_buffer, 10, 0, 0));
+      print((int*) " string literals");
+      println();
+
+      print(selfieName);
+      print((int*) ": ");
+      print(itoa(numberOfCalls, string_buffer, 10, 0, 0));
+      print((int*) " calls, ");
+      print(itoa(numberOfAssignments, string_buffer, 10, 0, 0));
+      print((int*) " assignments, ");
+      print(itoa(numberOfWhile, string_buffer, 10, 0, 0));
+      print((int*) " while, ");
+      print(itoa(numberOfIf, string_buffer, 10, 0, 0));
+      print((int*) " if, ");
+      print(itoa(numberOfReturn, string_buffer, 10, 0, 0));
+      print((int*) " return");
+      println();
+    }
+  }
+
   codeLength = binaryLength;
 
-  // emit global variables and strings
   emitGlobalsStrings();
 
-  // fix register initialization code
   fixRegisterInitialization();
 
-  print(selfieName);
-  print((int*) ": ");
-  print(itoa(numberOfReadCharacters, string_buffer, 10, 0, 0));
-  print((int*) " characters read in ");
-  print(itoa(lineNumber - 1, string_buffer, 10, 0, 0));
-  print((int*) " lines and ");
-  print(itoa(numberOfComments, string_buffer, 10, 0, 0));
-  print((int*) " comments");
-  println();
+  fixMainProcedure();
 
-  print(selfieName);
-  print((int*) ": with ");
-  print(itoa(numberOfReadCharacters - numberOfIgnoredCharacters, string_buffer, 10, 0, 0));
-  print((int*) "(");
-  print(itoa(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters), string_buffer, 10, 0, 2));
-  print((int*) "%) characters in ");
-  print(itoa(numberOfScannedSymbols, string_buffer, 10, 0, 0));
-  print((int*) " actual symbols");
-  println();
-
-  print(selfieName);
-  print((int*) ": ");
-  print(itoa(numberOfGlobalVariables, string_buffer, 10, 0, 0));
-  print((int*) " global variables, ");
-  print(itoa(numberOfProcedures, string_buffer, 10, 0, 0));
-  print((int*) " procedures, ");
-  print(itoa(numberOfStrings, string_buffer, 10, 0, 0));
-  print((int*) " string literals");
-  println();
-
-  print(selfieName);
-  print((int*) ": ");
-  print(itoa(numberOfCalls, string_buffer, 10, 0, 0));
-  print((int*) " calls, ");
-  print(itoa(numberOfAssignments, string_buffer, 10, 0, 0));
-  print((int*) " assignments, ");
-  print(itoa(numberOfWhile, string_buffer, 10, 0, 0));
-  print((int*) " while, ");
-  print(itoa(numberOfIf, string_buffer, 10, 0, 0));
-  print((int*) " if, ");
-  print(itoa(numberOfReturn, string_buffer, 10, 0, 0));
-  print((int*) " return");
-  println();
+  reportUndefinedProcedures();
 
   print(selfieName);
   print((int*) ": ");
@@ -3964,8 +4019,7 @@ void selfie_compile() {
   print((int*) " bytes of data");
   println();
 
-  if (reportUndefinedProcedures())
-    exit(-1);
+  return numberOfSourceFiles;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -6622,18 +6676,26 @@ void boot(int argc, int* argv) {
 // -----------------------------------------------------------------
 
 int selfie(int argc, int* argv) {
+  int numberOfSourceFiles;
+
   if (argc < 2)
     return -1;
   else {
     while (argc >= 2) {
       if (stringCompare((int*) *argv, (int*) "-c")) {
-        sourceName = (int*) *(argv+1);
-        binaryName = sourceName;
+        argc = argc - 1;
+        argv = argv + 1;
 
-        argc = argc - 2;
-        argv = argv + 2;
+        numberOfSourceFiles = selfie_compile(argc, argv);
 
-        selfie_compile();
+        if (numberOfSourceFiles > 0) {
+          argc = argc - numberOfSourceFiles;
+          argv = argv + numberOfSourceFiles;
+        } else {
+          print(selfieName);
+          print((int*) ": nothing to compile, only library generated");
+          println();
+        }
       } else if (stringCompare((int*) *argv, (int*) "-o")) {
         binaryName = (int*) *(argv+1);
 
@@ -6766,7 +6828,7 @@ int main(int argc, int* argv) {
 
   if (selfie(argc, (int*) argv) != 0) {
     print(selfieName);
-    print((int*) ": usage: selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
+    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
     println();
   }
 
