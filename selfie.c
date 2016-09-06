@@ -1656,7 +1656,10 @@ int roundUp(int n, int m) {
 }
 
 int* zalloc(int size) {
-  // similar to calloc but called zalloc to avoid redeclaring calloc
+  // this procedure is only executed at boot level zero
+  // zalloc allocates size bytes rounded up to word size
+  // and then zeroes that memory, similar to calloc, but
+  // called zalloc to avoid redeclaring calloc
   int* memory;
   int  i;
 
