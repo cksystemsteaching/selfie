@@ -1,6 +1,6 @@
 # 3. Encoding {#encoding}
 
-Information, whatever it is, needs to be encoded in bits for a computer to handle it. Since `selfie.c` is a sequence of characters let us first look at how characters are encoded.
+Information, whatever it is, needs to be encoded in bits for a computer to handle it. Since `selfie.c` is a sequence of characters let us first look at how characters are encoded. After that we explain how sequences of characters form larger constructs such as strings, identifiers, and even whole numbers and machine instructions and how they are encoded and also decoded on the machine.
 
 ## Characters
 
@@ -16,13 +16,13 @@ X> The bit sequence `01010101` is also binary for the decimal number 85.
 
 So what is it now, `U` or 85? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws `U` for `01010101` on the screen then `01010101` stands for `U` in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent 85.
 
-But how does selfie actually read characters from files such as `selfie.c`? It turns out that selfie does [read](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) all characters using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
+But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
 
 In general, we only provide links to code with comments so that text explaining code is not duplicated here. You may want read the code in `selfie.c` as if it was some sort of mechanical English. There are a lot of comments whenever the code is not sufficiently self-explanatory. In other words, reading code and comments is part of the experience of reading this book!
 
 ## Comments
 
-Now, what is a comment in code anyway? A comment is text that the machine ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/0d76fc92d8a79db612973153d133f14eb35efae6/selfie.c#L76) that means something to the machine and is not a comment.
+Now, what is a comment in code anyway? A comment is text that the compiler ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/0d76fc92d8a79db612973153d133f14eb35efae6/selfie.c#L76) that means something to the machine and is not a comment.
 
 If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we can safely remove even more characters called whitespace without changing any semantics.
 
@@ -149,7 +149,7 @@ You may have noticed the double quotes enclosing the `Hello World!` string in th
 
 String literals in C\* such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/2613856aba61735e89ff42d98964d69637cb3111/selfie.c#L335-L362) as just one example.
 
-The code in `selfie.c` that actually [recognizes a string literal](http://github.com/cksystemsteaching/selfie/blob/38cf8f87dd0e0ae12216ddb6b368f2ed3a35e55e/selfie.c#L2006-L2041) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals are handled.
+The code in `selfie.c` that actually [recognizes a string literal](http://github.com/cksystemsteaching/selfie/blob/38cf8f87dd0e0ae12216ddb6b368f2ed3a35e55e/selfie.c#L2006-L2041) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals in C\* are handled.
 
 ## Character Literals
 
@@ -166,7 +166,7 @@ X> The character literal `'a'` is the *ASCII code* of the character `a` whereas 
 
 The code in `selfie.c` that [identifies characters other than letters and digits](http://github.com/cksystemsteaching/selfie/blob/2067b468a2ce5df91afb9e9b3a476be85fefe95a/selfie.c#L124-L147) is another example which shows how character literals are used. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
 
-The code in `selfie.c` that [recognizes a character literal](http://github.com/cksystemsteaching/selfie/blob/38cf8f87dd0e0ae12216ddb6b368f2ed3a35e55e/selfie.c#L1981-L2005) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals are handled.
+The code in `selfie.c` that [recognizes a character literal](http://github.com/cksystemsteaching/selfie/blob/38cf8f87dd0e0ae12216ddb6b368f2ed3a35e55e/selfie.c#L1981-L2005) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals in C\* are handled.
 
 ## Identifiers
 
@@ -181,7 +181,7 @@ The code in `selfie.c` that [recognizes an identifier](http://github.com/cksyste
 
 ## Keywords
 
-C\* features a number of keywords with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
+C\* features a number of [keywords](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/grammar.md#L11) with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
 
 [Keyword](https://en.wikipedia.org/wiki/Keyword_(computer_programming) "Keyword")
 : In a computer language, a reserved word (also known as a reserved identifier) is a word that cannot be used as an identifier, such as the name of a variable, function, or label – it is "reserved from use". This is a syntactic definition, and a reserved word may have no meaning. A closely related and often conflated notion is a keyword which is a word with special meaning in a particular context. This is a semantic definition. The terms "reserved word" and "keyword" are often used interchangeably – one may say that a reserved word is "reserved for use as a keyword".
@@ -190,8 +190,25 @@ Since the keywords in C\* all begin with a letter they should not be mistaken fo
 
 ## Integers
 
+Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in memory. Numbers in selfie are *signed integers*, that is, whole numbers, positive or negative.
+
 [Integer](https://en.wikipedia.org/wiki/Integer "Integer")
 : A number that can be written without a fractional component (from the Latin integer meaning "whole").
+
+Beyond that there is no support of, say, fixed-point or even floating-point numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profile information that [computes the fixed-point ratio of two integers](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/selfie.c#L1549-L1578) with up to two fractional digits.
+
+Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number 85.
+
+X> The decimal number 85 in binary is the bit sequence 101010.
+
+
+
+## Integer Literal
+
+[Integer Literal](https://en.wikipedia.org/wiki/Integer_literal "Integer Literal")
+: An integer whose value is directly represented in source code.
+
+Actually, there is another reason why identifiers start with a letter. It is because knowing upon reading the first character whether we are dealing with an identifier (or keyword) or a number makes the code that does this much simpler.
 
 ## Symbols
 
