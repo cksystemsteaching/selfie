@@ -30,10 +30,9 @@
 // 4. a tiny C* library called libcstar utilized by selfie.
 //
 // Selfie is kept minimal for simplicity and implemented in a single file.
-// There is neither a linker nor an assembler. However, there is a simple
-// profiler and disassembler and even a simple debugger as well as minimal
-// operating system support in the form of MIPS32 o32 system calls built
-// into the emulator.
+// There is a simple linker, disassembler, profiler, and debugger as well as
+// minimal operating system support in the form of MIPS32 o32 system calls
+// built into the emulator.
 //
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes composite data types, bitwise and Boolean
