@@ -323,8 +323,6 @@ int* string     = (int*) 0; // stores scanned string
 
 int literal = 0; // stores numerical value of scanned integer or character
 
-int initialValue = 0; // stores initial value of variable definitions
-
 int mayBeINTMIN = 0; // allow INT_MIN if '-' was scanned before
 int isINTMIN    = 0; // flag to indicate that INT_MIN was scanned
 
@@ -400,8 +398,9 @@ void resetScanner() {
 void resetSymbolTables();
 
 void createSymbolTableEntry(int which, int* string, int line, int class, int type, int value, int address);
+
 int* searchSymbolTable(int* entry, int* string, int class);
-int* getSymbolTableEntry(int* string, int class);
+int* getScopedSymbolTableEntry(int* string, int class);
 
 int isUndefinedProcedure(int* entry);
 void reportUndefinedProcedures();
@@ -517,12 +516,12 @@ int  gr_simpleExpression();
 int  gr_expression();
 void gr_while();
 void gr_if();
-void gr_return(int returnType);
+void gr_return();
 void gr_statement();
 int  gr_type();
 void gr_variable(int offset);
-void gr_initialization(int* name, int offset, int type);
-void gr_procedure(int* procedure, int returnType);
+int  gr_initialization(int type);
+void gr_procedure(int* procedure, int type);
 void gr_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -533,7 +532,7 @@ int allocatedMemory = 0; // number of bytes for global variables and strings
 
 int returnBranches = 0; // fixup chain for return statements
 
-int* currentProcedureName = (int*) 0; // name of currently parsed procedure
+int returnType = 0; // return type of currently parsed procedure
 
 int mainJump = 0; // address where JAL instruction to main procedure is
 
@@ -1231,7 +1230,7 @@ int freePageFrame = 0;
 
 void initSelfie(int argc, int* argv);
 
-int numberOfArguments();
+int numberOfRemainingArguments();
 int* remainingArguments();
 
 int* peekArgument();
@@ -2229,33 +2228,39 @@ int* searchSymbolTable(int* entry, int* string, int class) {
   return (int*) 0;
 }
 
-int* getSymbolTableEntry(int* string, int class) {
+int* getScopedSymbolTableEntry(int* string, int class) {
   int* entry;
 
-  if (class == VARIABLE) {
+  if (class == VARIABLE)
     // local variables override global variables
-    entry = searchSymbolTable(local_symbol_table, string, class);
+    entry = searchSymbolTable(local_symbol_table, string, VARIABLE);
+  else if (class == PROCEDURE)
+    // library procedures override declared or defined procedures
+    entry = searchSymbolTable(library_symbol_table, string, PROCEDURE);
+  else
+    entry = (int*) 0;
 
-    if (entry != (int*) 0)
-      return entry;
-  }
-
-  return searchSymbolTable(global_symbol_table, string, class);
+  if (entry == (int*) 0)
+    return searchSymbolTable(global_symbol_table, string, class);
+  else
+    return entry;
 }
 
 int isUndefinedProcedure(int* entry) {
   int* libraryEntry;
 
   if (getClass(entry) == PROCEDURE) {
-    // library procedures override regular procedures for bootstrapping
+    // library procedures override declared or defined procedures
     libraryEntry = searchSymbolTable(library_symbol_table, getString(entry), PROCEDURE);
 
     if (libraryEntry != (int*) 0)
-      entry = libraryEntry;
-
-    if (getAddress(entry) == 0)
+      // procedure is library procedure
+      return 0;
+    else if (getAddress(entry) == 0)
+      // procedure declared but not defined
       return 1;
     else if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL)
+      // procedure called but not defined
       return 1;
   }
 
@@ -2270,6 +2275,7 @@ void reportUndefinedProcedures() {
   while (entry != (int*) 0) {
     if (isUndefinedProcedure(entry)) {
       printLineNumber((int*) "error", getLineNumber(entry));
+      print((int*) "procedure ");
       print(getString(entry));
       print((int*) " undefined");
       println();
@@ -2528,7 +2534,7 @@ void typeWarning(int expected, int found) {
 int* getVariable(int* variable) {
   int* entry;
 
-  entry = getSymbolTableEntry(variable, VARIABLE);
+  entry = getScopedSymbolTableEntry(variable, VARIABLE);
 
   if (entry == (int*) 0) {
     printLineNumber((int*) "error", lineNumber);
@@ -2693,11 +2699,7 @@ int gr_call(int* procedure) {
 
   // assert: n = allocatedTemporaries
 
-  // library procedures override regular procedures for bootstrapping
-  entry = searchSymbolTable(library_symbol_table, procedure, PROCEDURE);
-
-  if (entry == (int*) 0)
-    entry = getSymbolTableEntry(procedure, PROCEDURE);
+  entry = getScopedSymbolTableEntry(procedure, PROCEDURE);
 
   numberOfTemporaries = allocatedTemporaries;
 
@@ -2754,6 +2756,7 @@ int gr_call(int* procedure) {
   numberOfCalls = numberOfCalls + 1;
 
   // assert: allocatedTemporaries == n
+
   return type;
 }
 
@@ -3279,7 +3282,7 @@ void gr_if() {
   numberOfIf = numberOfIf + 1;
 }
 
-void gr_return(int returnType) {
+void gr_return() {
   int type;
 
   // assert: allocatedTemporaries == 0
@@ -3293,16 +3296,15 @@ void gr_return(int returnType) {
   if (symbol != SYM_SEMICOLON) {
     type = gr_expression();
 
-    if (returnType == VOID_T)
-      typeWarning(type, returnType);
-    else if (type != returnType)
+    if (type != returnType)
       typeWarning(returnType, type);
 
     // save value of expression in return register
     emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_V0, FCT_ADDU);
 
     tfree(1);
-  }
+  } else if (returnType != VOID_T)
+    typeWarning(returnType, VOID_T);
 
   // unconditional branch to procedure epilogue
   // maintain fixup chain for later fixup
@@ -3470,9 +3472,7 @@ void gr_statement() {
   }
   // return statement?
   else if (symbol == SYM_RETURN) {
-    entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
-
-    gr_return(getType(entry));
+    gr_return();
 
     if (symbol == SYM_SEMICOLON)
       getSymbol();
@@ -3506,6 +3506,7 @@ void gr_variable(int offset) {
   type = gr_type();
 
   if (symbol == SYM_IDENTIFIER) {
+    // TODO: check if identifier has already been declared
     createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
 
     getSymbol();
@@ -3516,13 +3517,11 @@ void gr_variable(int offset) {
   }
 }
 
-void gr_initialization(int* name, int offset, int type) {
-  int actualLineNumber;
+int gr_initialization(int type) {
+  int initialValue;
   int hasCast;
   int cast;
   int sign;
-
-  actualLineNumber = lineNumber;
 
   initialValue = 0;
 
@@ -3589,17 +3588,15 @@ void gr_initialization(int* name, int offset, int type) {
   } else if (type != INT_T)
     typeWarning(type, INT_T);
 
-  createSymbolTableEntry(GLOBAL_TABLE, name, actualLineNumber, VARIABLE, type, initialValue, offset);
+  return initialValue;
 }
 
-void gr_procedure(int* procedure, int returnType) {
+void gr_procedure(int* procedure, int type) {
   int isUndefined;
   int numberOfParameters;
   int parameters;
   int localVariables;
   int* entry;
-
-  currentProcedureName = procedure;
 
   // assuming procedure is undefined
   isUndefined = 1;
@@ -3645,17 +3642,17 @@ void gr_procedure(int* procedure, int returnType) {
   } else
     syntaxErrorSymbol(SYM_LPARENTHESIS);
 
-  entry = getSymbolTableEntry(currentProcedureName, PROCEDURE);
+  entry = searchSymbolTable(global_symbol_table, procedure, PROCEDURE);
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
     if (entry == (int*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, 0);
-    else if (getType(entry) != returnType)
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, 0);
+    else if (getType(entry) != type)
       // procedure already called, declared, or even defined
       // check return type but otherwise ignore
-      typeWarning(getType(entry), returnType);
+      typeWarning(getType(entry), type);
 
     getSymbol();
 
@@ -3663,7 +3660,7 @@ void gr_procedure(int* procedure, int returnType) {
     // this is a procedure definition
     if (entry == (int*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, currentProcedureName, lineNumber, PROCEDURE, returnType, 0, binaryLength);
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
     else {
       // procedure already called or declared or defined
       if (getAddress(entry) != 0) {
@@ -3672,7 +3669,7 @@ void gr_procedure(int* procedure, int returnType) {
           // procedure already called but not defined
           fixlink_absolute(getAddress(entry), binaryLength);
 
-          if (stringCompare(currentProcedureName, (int*) "main")) {
+          if (stringCompare(procedure, (int*) "main")) {
             mainJump = 0;
 
             // first source containing "main" provides binary name
@@ -3687,16 +3684,16 @@ void gr_procedure(int* procedure, int returnType) {
         // procedure already called or declared but not defined
         setLineNumber(entry, lineNumber);
 
-        if (getType(entry) != returnType)
-          typeWarning(getType(entry), returnType);
+        if (getType(entry) != type)
+          typeWarning(getType(entry), type);
 
-        setType(entry, returnType);
+        setType(entry, type);
         setAddress(entry, binaryLength);
       } else {
         // procedure already defined
         printLineNumber((int*) "warning", lineNumber);
-        print((int*) "redefinition of ");
-        print(currentProcedureName);
+        print((int*) "redefinition of procedure ");
+        print(procedure);
         print((int*) " ignored");
         println();
       }
@@ -3722,8 +3719,12 @@ void gr_procedure(int* procedure, int returnType) {
     // create a fixup chain for return statements
     returnBranches = 0;
 
+    returnType = type;
+
     while (isNotRbraceOrEOF())
       gr_statement();
+
+    returnType = 0;
 
     if (symbol == SYM_RBRACE)
       getSymbol();
@@ -3750,6 +3751,9 @@ void gr_procedure(int* procedure, int returnType) {
 void gr_cstar() {
   int type;
   int* variableOrProcedureName;
+  int currentLineNumber;
+  int initialValue;
+  int* entry;
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -3761,8 +3765,9 @@ void gr_cstar() {
         getSymbol();
     }
 
-    // void identifier procedure
     if (symbol == SYM_VOID) {
+      // void identifier ...
+      // procedure declaration or definition
       type = VOID_T;
 
       getSymbol();
@@ -3771,6 +3776,7 @@ void gr_cstar() {
         variableOrProcedureName = identifier;
 
         getSymbol();
+
 
         gr_procedure(variableOrProcedureName, type);
       } else
@@ -3783,21 +3789,38 @@ void gr_cstar() {
 
         getSymbol();
 
-        // type identifier "(" procedure declaration or definition
         if (symbol == SYM_LPARENTHESIS)
+          // type identifier "(" ...
+          // procedure declaration or definition
           gr_procedure(variableOrProcedureName, type);
         else {
-          allocatedMemory = allocatedMemory + WORDSIZE;
+          currentLineNumber = lineNumber;
 
-          // type identifier ";" global variable declaration
           if (symbol == SYM_SEMICOLON) {
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, lineNumber, VARIABLE, type, 0, -allocatedMemory);
-
+            // type identifier ";" ...
+            // global variable declaration
             getSymbol();
 
-          // type identifier "=" global variable definition
+            initialValue = 0;
           } else
-            gr_initialization(variableOrProcedureName, -allocatedMemory, type);
+            // type identifier "=" ...
+            // global variable definition
+            initialValue = gr_initialization(type);
+
+          entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE);
+
+          if (entry == (int*) 0) {
+            allocatedMemory = allocatedMemory + WORDSIZE;
+
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
+          } else {
+            // global variable already declared or defined
+            printLineNumber((int*) "warning", currentLineNumber);
+            print((int*) "redefinition of global variable ");
+            print(variableOrProcedureName);
+            print((int*) " ignored");
+            println();
+          }
         }
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
@@ -3944,7 +3967,7 @@ void selfie_compile() {
   emitMap();
 
   while (link) {
-    if (peekArgument() == (int*) 0)
+    if (numberOfRemainingArguments() == 0)
       link = 0;
     else if (loadCharacter(peekArgument(), 0) == '-')
       link = 0;
@@ -5472,6 +5495,7 @@ void op_jal() {
   }
 
   if (interpret) {
+    // skip over delay slot
     *(registers+REG_RA) = pc + 8;
 
     pc = instr_index * WORDSIZE;
@@ -6508,7 +6532,7 @@ void selfie_run() {
 
   interpret = 1;
 
-  boot(numberOfArguments(), remainingArguments());
+  boot(numberOfRemainingArguments(), remainingArguments());
 
   interpret = 0;
 
@@ -6752,7 +6776,7 @@ void boot(int argc, int* argv) {
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
-int numberOfArguments() {
+int numberOfRemainingArguments() {
   return selfie_argc;
 }
 
@@ -6761,7 +6785,7 @@ int* remainingArguments() {
 }
 
 int* peekArgument() {
-  if (numberOfArguments() > 0)
+  if (numberOfRemainingArguments() > 0)
     return (int*) *selfie_argv;
   else
     return (int*) 0;
@@ -6772,7 +6796,7 @@ int* getArgument() {
 
   argument = peekArgument();
 
-  if (numberOfArguments() > 0) {
+  if (numberOfRemainingArguments() > 0) {
     selfie_argc = selfie_argc - 1;
     selfie_argv = selfie_argv + 1;
   }
@@ -6787,15 +6811,15 @@ void setArgument(int* argv) {
 int selfie() {
   int* option;
 
-  if (numberOfArguments() == 0)
+  if (numberOfRemainingArguments() == 0)
     return -1;
   else
-    while (numberOfArguments() > 0) {
+    while (numberOfRemainingArguments() > 0) {
       option = getArgument();
 
       if (stringCompare(option, (int*) "-c"))
         selfie_compile();
-      else if (numberOfArguments() == 0)
+      else if (numberOfRemainingArguments() == 0)
         // remaining options have at least one argument
         return -1;
       else if (stringCompare(option, (int*) "-o"))
