@@ -402,7 +402,7 @@ int* searchSymbolTable(int* entry, int* string, int class);
 int* getScopedSymbolTableEntry(int* string, int class);
 
 int isUndefinedProcedure(int* entry);
-void reportUndefinedProcedures();
+int reportUndefinedProcedures();
 
 // symbol table entry:
 // +----+---------+
@@ -2266,13 +2266,18 @@ int isUndefinedProcedure(int* entry) {
   return 0;
 }
 
-void reportUndefinedProcedures() {
+int reportUndefinedProcedures() {
+  int undefined;
   int* entry;
+
+  undefined = 0;
 
   entry = global_symbol_table;
 
   while (entry != (int*) 0) {
     if (isUndefinedProcedure(entry)) {
+      undefined = 1;
+
       printLineNumber((int*) "error", getLineNumber(entry));
       print((int*) "procedure ");
       print(getString(entry));
@@ -2283,6 +2288,8 @@ void reportUndefinedProcedures() {
     // keep looking
     entry = getNextEntry(entry);
   }
+
+  return undefined;
 }
 
 // -----------------------------------------------------------------
@@ -3668,12 +3675,9 @@ void gr_procedure(int* procedure, int type) {
           // procedure already called but not defined
           fixlink_absolute(getAddress(entry), binaryLength);
 
-          if (stringCompare(procedure, (int*) "main")) {
-            mainJump = 0;
-
-            // first source containing "main" provides binary name
+          if (stringCompare(procedure, (int*) "main"))
+            // first source containing main procedure provides binary name
             binaryName = sourceName;
-          }
         } else
           // procedure already defined
           isUndefined = 0;
@@ -3909,12 +3913,12 @@ void bootstrapCode() {
 
   binaryLength = savedBinaryLength;
 
-  if (mainJump > 0) {
+  if (reportUndefinedProcedures())
+    // rather than jump and link to the main procedure
     // exit by continuing to the next instruction (with delay slot)
-    fixlink_absolute(mainJump, mainJump + 8);
+    fixup_absolute(mainJump, mainJump + 8);
 
-    mainJump = 0;
-  }
+  mainJump = 0;
 }
 
 // -----------------------------------------------------------------
@@ -4057,8 +4061,6 @@ void selfie_compile() {
   emitGlobalsStrings();
 
   bootstrapCode();
-
-  reportUndefinedProcedures();
 
   print(selfieName);
   print((int*) ": ");
