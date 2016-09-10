@@ -110,6 +110,11 @@ void println();
 
 void printCharacter(int character);
 void printString(int* s);
+void printInteger(int n);
+void printFixedPoint(int a, int b);
+void printHexadecimal(int n, int a);
+void printOctal(int n, int a);
+void printBinary(int n, int a);
 
 int roundUp(int n, int m);
 
@@ -1673,6 +1678,26 @@ void printString(int* s) {
   putCharacter(CHAR_DOUBLEQUOTE);
 }
 
+void printInteger(int n) {
+  print(itoa(n, string_buffer, 10, 0, 0));
+}
+
+void printFixedPoint(int a, int b) {
+  print(itoa(fixedPointRatio(a, b), string_buffer, 10, 0, 2));
+}
+
+void printHexadecimal(int n, int a) {
+  print(itoa(n, string_buffer, 16, a, 0));
+}
+
+void printOctal(int n, int a) {
+  print(itoa(n, string_buffer, 8, a, 0));
+}
+
+void printBinary(int n, int a) {
+  print(itoa(n, string_buffer, 2, a, 0));
+}
+
 int roundUp(int n, int m) {
   if (n % m == 0)
     return n;
@@ -1736,7 +1761,7 @@ void printLineNumber(int* message, int line) {
   print((int*) " in ");
   print(sourceName);
   print((int*) " in line ");
-  print(itoa(line, string_buffer, 10, 0, 0));
+  printInteger(line);
   print((int*) ": ");
 }
 
@@ -4006,45 +4031,45 @@ void selfie_compile() {
 
       print(selfieName);
       print((int*) ": ");
-      print(itoa(numberOfReadCharacters, string_buffer, 10, 0, 0));
+      printInteger(numberOfReadCharacters);
       print((int*) " characters read in ");
-      print(itoa(lineNumber - 1, string_buffer, 10, 0, 0));
+      printInteger(lineNumber - 1);
       print((int*) " lines and ");
-      print(itoa(numberOfComments, string_buffer, 10, 0, 0));
+      printInteger(numberOfComments);
       print((int*) " comments");
       println();
 
       print(selfieName);
       print((int*) ": with ");
-      print(itoa(numberOfReadCharacters - numberOfIgnoredCharacters, string_buffer, 10, 0, 0));
+      printInteger(numberOfReadCharacters - numberOfIgnoredCharacters);
       print((int*) "(");
-      print(itoa(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters), string_buffer, 10, 0, 2));
+      printFixedPoint(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
       print((int*) "%) characters in ");
-      print(itoa(numberOfScannedSymbols, string_buffer, 10, 0, 0));
+      printInteger(numberOfScannedSymbols);
       print((int*) " actual symbols");
       println();
 
       print(selfieName);
       print((int*) ": ");
-      print(itoa(numberOfGlobalVariables, string_buffer, 10, 0, 0));
+      printInteger(numberOfGlobalVariables);
       print((int*) " global variables, ");
-      print(itoa(numberOfProcedures, string_buffer, 10, 0, 0));
+      printInteger(numberOfProcedures);
       print((int*) " procedures, ");
-      print(itoa(numberOfStrings, string_buffer, 10, 0, 0));
+      printInteger(numberOfStrings);
       print((int*) " string literals");
       println();
 
       print(selfieName);
       print((int*) ": ");
-      print(itoa(numberOfCalls, string_buffer, 10, 0, 0));
+      printInteger(numberOfCalls);
       print((int*) " calls, ");
-      print(itoa(numberOfAssignments, string_buffer, 10, 0, 0));
+      printInteger(numberOfAssignments);
       print((int*) " assignments, ");
-      print(itoa(numberOfWhile, string_buffer, 10, 0, 0));
+      printInteger(numberOfWhile);
       print((int*) " while, ");
-      print(itoa(numberOfIf, string_buffer, 10, 0, 0));
+      printInteger(numberOfIf);
       print((int*) " if, ");
-      print(itoa(numberOfReturn, string_buffer, 10, 0, 0));
+      printInteger(numberOfReturn);
       print((int*) " return");
       println();
     }
@@ -4064,11 +4089,11 @@ void selfie_compile() {
 
   print(selfieName);
   print((int*) ": ");
-  print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
+  printInteger(binaryLength + WORDSIZE);
   print((int*) " bytes generated with ");
-  print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+  printInteger(codeLength / WORDSIZE);
   print((int*) " instructions and ");
-  print(itoa(binaryLength - codeLength + WORDSIZE, string_buffer, 10, 0, 0));
+  printInteger(binaryLength - codeLength + WORDSIZE);
   print((int*) " bytes of data");
   println();
 }
@@ -4443,11 +4468,11 @@ void selfie_emit() {
 
   print(selfieName);
   print((int*) ": ");
-  print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
+  printInteger(binaryLength + WORDSIZE);
   print((int*) " bytes with ");
-  print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+  printInteger(codeLength / WORDSIZE);
   print((int*) " instructions and ");
-  print(itoa(binaryLength - codeLength + WORDSIZE, string_buffer, 10, 0, 0));
+  printInteger(binaryLength - codeLength + WORDSIZE);
   print((int*) " bytes of data written into ");
   print(binaryName);
   println();
@@ -4534,11 +4559,11 @@ void selfie_load() {
         if (read(fd, io_buffer, WORDSIZE) == 0) {
           print(selfieName);
           print((int*) ": ");
-          print(itoa(binaryLength + WORDSIZE, string_buffer, 10, 0, 0));
+          printInteger(binaryLength + WORDSIZE);
           print((int*) " bytes with ");
-          print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+          printInteger(codeLength / WORDSIZE);
           print((int*) " instructions and ");
-          print(itoa(binaryLength - codeLength + WORDSIZE, string_buffer, 10, 0, 0));
+          printInteger(binaryLength - codeLength + WORDSIZE);
           print((int*) " bytes of data loaded from ");
           print(binaryName);
           println();
@@ -4592,7 +4617,7 @@ void implementExit() {
 
   print(binaryName);
   print((int*) ": exiting with exit code ");
-  print(itoa(*(registers+REG_A0), string_buffer, 10, 0, 0));
+  printInteger(*(registers+REG_A0));
   println();
 }
 
@@ -4634,11 +4659,11 @@ void implementRead() {
   if (debug_read) {
     print(binaryName);
     print((int*) ": trying to read ");
-    print(itoa(size, string_buffer, 10, 0, 0));
+    printInteger(size);
     print((int*) " bytes from file with descriptor ");
-    print(itoa(fd, string_buffer, 10, 0, 0));
+    printInteger(fd);
     print((int*) " into buffer at virtual address ");
-    print(itoa(vaddr, string_buffer, 16, 8, 0));
+    printHexadecimal(vaddr, 8);
     println();
   }
 
@@ -4678,7 +4703,7 @@ void implementRead() {
         if (debug_read) {
           print(binaryName);
           print((int*) ": reading into virtual address ");
-          print(itoa(vaddr, string_buffer, 16, 8, 0));
+          printHexadecimal(vaddr, 8);
           print((int*) " failed because the address is unmapped");
           println();
         }
@@ -4691,7 +4716,7 @@ void implementRead() {
       if (debug_read) {
         print(binaryName);
         print((int*) ": reading into virtual address ");
-        print(itoa(vaddr, string_buffer, 16, 8, 0));
+        printHexadecimal(vaddr, 8);
         print((int*) " failed because the address is invalid");
         println();
       }
@@ -4706,9 +4731,9 @@ void implementRead() {
   if (debug_read) {
     print(binaryName);
     print((int*) ": actually read ");
-    print(itoa(readTotal, string_buffer, 10, 0, 0));
+    printInteger(readTotal);
     print((int*) " bytes from file with descriptor ");
-    print(itoa(fd, string_buffer, 10, 0, 0));
+    printInteger(fd);
     println();
   }
 }
@@ -4750,11 +4775,11 @@ void implementWrite() {
   if (debug_write) {
     print(binaryName);
     print((int*) ": trying to write ");
-    print(itoa(size, string_buffer, 10, 0, 0));
+    printInteger(size);
     print((int*) " bytes from buffer at virtual address ");
-    print(itoa(vaddr, string_buffer, 16, 8, 0));
+    printHexadecimal(vaddr, 8);
     print((int*) " into file with descriptor ");
-    print(itoa(fd, string_buffer, 10, 0, 0));
+    printInteger(fd);
     println();
   }
 
@@ -4794,7 +4819,7 @@ void implementWrite() {
         if (debug_write) {
           print(binaryName);
           print((int*) ": writing into virtual address ");
-          print(itoa(vaddr, string_buffer, 16, 8, 0));
+          printHexadecimal(vaddr, 8);
           print((int*) " failed because the address is unmapped");
           println();
         }
@@ -4807,7 +4832,7 @@ void implementWrite() {
       if (debug_write) {
         print(binaryName);
         print((int*) ": writing into virtual address ");
-        print(itoa(vaddr, string_buffer, 16, 8, 0));
+        printHexadecimal(vaddr, 8);
         print((int*) " failed because the address is invalid");
         println();
       }
@@ -4822,9 +4847,9 @@ void implementWrite() {
   if (debug_write) {
     print(binaryName);
     print((int*) ": actually wrote ");
-    print(itoa(writtenTotal, string_buffer, 10, 0, 0));
+    printInteger(writtenTotal);
     print((int*) " bytes into file with descriptor ");
-    print(itoa(fd, string_buffer, 10, 0, 0));
+    printInteger(fd);
     println();
   }
 }
@@ -4876,7 +4901,7 @@ int down_loadString(int* table, int vaddr, int* s) {
         if (debug_open) {
           print(binaryName);
           print((int*) ": opening file with name at virtual address ");
-          print(itoa(vaddr, string_buffer, 16, 8, 0));
+          printHexadecimal(vaddr, 8);
           print((int*) " failed because the address is unmapped");
           println();
         }
@@ -4885,7 +4910,7 @@ int down_loadString(int* table, int vaddr, int* s) {
       if (debug_open) {
         print(binaryName);
         print((int*) ": opening file with name at virtual address ");
-        print(itoa(vaddr, string_buffer, 16, 8, 0));
+        printHexadecimal(vaddr, 8);
         print((int*) " failed because the address is invalid");
         println();
       }
@@ -4915,11 +4940,11 @@ void implementOpen() {
       print((int*) ": opened file ");
       printString(filename_buffer);
       print((int*) " with flags ");
-      print(itoa(flags, string_buffer, 16, 0, 0));
+      printHexadecimal(flags, 0);
       print((int*) " and mode ");
-      print(itoa(mode, string_buffer, 8, 0, 0));
+      printOctal(mode, 0);
       print((int*) " returning file descriptor ");
-      print(itoa(fd, string_buffer, 10, 0, 0));
+      printInteger(fd);
       println();
     }
   } else {
@@ -4928,7 +4953,7 @@ void implementOpen() {
     if (debug_open) {
       print(binaryName);
       print((int*) ": opening file with name at virtual address ");
-      print(itoa(vaddr, string_buffer, 16, 8, 0));
+      printHexadecimal(vaddr, 8);
       print((int*) " failed because the name is too long");
       println();
     }
@@ -4958,7 +4983,7 @@ void implementMalloc() {
   if (debug_malloc) {
     print(binaryName);
     print((int*) ": trying to malloc ");
-    print(itoa(*(registers+REG_A0), string_buffer, 10, 0, 0));
+    printInteger(*(registers+REG_A0));
     print((int*) " bytes");
     println();
   }
@@ -4977,9 +5002,9 @@ void implementMalloc() {
     if (debug_malloc) {
       print(binaryName);
       print((int*) ": actually mallocating ");
-      print(itoa(size, string_buffer, 10, 0, 0));
+      printInteger(size);
       print((int*) " bytes at virtual address ");
-      print(itoa(bump, string_buffer, 16, 8, 0));
+      printHexadecimal(bump, 8);
       println();
     }
   }
@@ -5035,7 +5060,7 @@ int doCreate(int parentID) {
     if (debug_create) {
       print(binaryName);
       print((int*) ": selfie_create context ");
-      print(itoa(bumpID, string_buffer, 10, 0, 0));
+      printInteger(bumpID);
       println();
     }
 
@@ -5096,15 +5121,15 @@ int doSwitch(int toID) {
     if (debug_switch) {
       print(binaryName);
       print((int*) ": selfie_switch from context ");
-      print(itoa(fromID, string_buffer, 10, 0, 0));
+      printInteger(fromID);
       print((int*) " to context ");
-      print(itoa(toID, string_buffer, 10, 0, 0));
+      printInteger(toID);
       println();
     }
   } else if (debug_switch) {
     print(binaryName);
     print((int*) ": selfie_switch context ");
-    print(itoa(toID, string_buffer, 10, 0, 0));
+    printInteger(toID);
     print((int*) " not found");
     println();
   }
@@ -5219,13 +5244,13 @@ void doDelete(int ID) {
     if (debug_delete) {
       print(binaryName);
       print((int*) ": selfie_delete context ");
-      print(itoa(ID, string_buffer, 10, 0, 0));
+      printInteger(ID);
       println();
     }
   } else if (debug_delete) {
     print(binaryName);
     print((int*) ": selfie_delete context ");
-    print(itoa(ID, string_buffer, 10, 0, 0));
+    printInteger(ID);
     print((int*) " not found");
     println();
   }
@@ -5281,9 +5306,9 @@ void doMap(int ID, int page, int frame) {
       else if (debug_map) {
         print(binaryName);
         print((int*) ": selfie_map parent context ");
-        print(itoa(getParent(mapContext), string_buffer, 10, 0, 0));
+        printInteger(getParent(mapContext));
         print((int*) " of context ");
-        print(itoa(ID, string_buffer, 10, 0, 0));
+        printInteger(ID);
         print((int*) " not found");
         println();
       }
@@ -5295,17 +5320,17 @@ void doMap(int ID, int page, int frame) {
     if (debug_map) {
       print(binaryName);
       print((int*) ": selfie_map page ");
-      print(itoa(page, string_buffer, 16, 4, 0));
+      printHexadecimal(page, 4);
       print((int*) " to frame ");
-      print(itoa(frame, string_buffer, 16, 8, 0));
+      printHexadecimal(frame, 8);
       print((int*) " for context ");
-      print(itoa(ID, string_buffer, 10, 0, 0));
+      printInteger(ID);
       println();
     }
   } else if (debug_map) {
     print(binaryName);
     print((int*) ": selfie_map context ");
-    print(itoa(ID, string_buffer, 10, 0, 0));
+    printInteger(ID);
     print((int*) " not found");
     println();
   }
@@ -5387,16 +5412,16 @@ int* tlb(int* table, int vaddr) {
     print((int*) ": tlb access:");
     println();
     print((int*) " vaddr: ");
-    print(itoa(vaddr, string_buffer, 2, 32, 0));
+    printBinary(vaddr, 32);
     println();
     print((int*) " page:  ");
-    print(itoa(page * PAGESIZE, string_buffer, 2, 32, 0));
+    printBinary(page * PAGESIZE, 32);
     println();
     print((int*) " frame: ");
-    print(itoa(frame, string_buffer, 2, 32, 0));
+    printBinary(frame, 32);
     println();
     print((int*) " paddr: ");
-    print(itoa(paddr, string_buffer, 2, 32, 0));
+    printBinary(paddr, 32);
     println();
   }
 
@@ -5483,15 +5508,15 @@ void op_jal() {
   if (debug) {
     printOpcode(opcode);
     print((int*) " ");
-    print(itoa(instr_index, string_buffer, 16, 0, 0));
+    printHexadecimal(instr_index, 0);
     print((int*) "[");
-    print(itoa(instr_index * WORDSIZE, string_buffer, 16, 0, 0));
+    printHexadecimal(instr_index * WORDSIZE, 0);
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
       printRegister(REG_RA);
       print((int*) "=");
-      print(itoa(*(registers+REG_RA), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+REG_RA), 0);
     }
   }
 
@@ -5514,9 +5539,9 @@ void op_jal() {
       print((int*) " -> ");
       printRegister(REG_RA);
       print((int*) "=");
-      print(itoa(*(registers+REG_RA), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+REG_RA), 0);
       print((int*) ",$pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5526,9 +5551,9 @@ void op_j() {
   if (debug) {
     printOpcode(opcode);
     print((int*) " ");
-    print(itoa(instr_index, string_buffer, 16, 0, 0));
+    printHexadecimal(instr_index, 0);
     print((int*) "[");
-    print(itoa(instr_index * WORDSIZE, string_buffer, 16, 0, 0));
+    printHexadecimal(instr_index * WORDSIZE, 0);
     print((int*) "]");
   }
 
@@ -5541,7 +5566,7 @@ void op_j() {
   if (debug) {
     if (interpret) {
       print((int*) ": -> $pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5555,19 +5580,19 @@ void op_beq() {
     print((int*) ",");
     printRegister(rt);
     print((int*) ",");
-    print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate));
     print((int*) "[");
-    print(itoa(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, string_buffer, 16, 0, 0));
+    printHexadecimal(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, 0);
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
     }
   }
 
@@ -5591,7 +5616,7 @@ void op_beq() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5605,19 +5630,19 @@ void op_bne() {
     print((int*) ",");
     printRegister(rt);
     print((int*) ",");
-    print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate));
     print((int*) "[");
-    print(itoa(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, string_buffer, 16, 0, 0));
+    printHexadecimal(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, 0);
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
     }
   }
 
@@ -5634,7 +5659,7 @@ void op_bne() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5648,16 +5673,16 @@ void op_addiu() {
     print((int*) ",");
     printRegister(rs);
     print((int*) ",");
-    print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate));
     if (interpret) {
       print((int*) ": ");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
     }
   }
 
@@ -5674,7 +5699,7 @@ void op_addiu() {
       print((int*) " -> ");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
     }
     println();
   }
@@ -5689,7 +5714,7 @@ void fct_jr() {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rs), 0);
     }
   }
 
@@ -5699,7 +5724,7 @@ void fct_jr() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5714,9 +5739,9 @@ void fct_mfhi() {
       print((int*) ":");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",$hi=");
-      print(itoa(reg_hi, string_buffer, 10, 0, 0));
+      printInteger(reg_hi);
     }
   }
 
@@ -5731,7 +5756,7 @@ void fct_mfhi() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -5746,9 +5771,9 @@ void fct_mflo() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",$lo=");
-      print(itoa(reg_lo, string_buffer, 10, 0, 0));
+      printInteger(reg_lo);
     }
   }
 
@@ -5763,7 +5788,7 @@ void fct_mflo() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -5780,13 +5805,13 @@ void fct_multu() {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
       print((int*) ",$lo=");
-      print(itoa(reg_lo, string_buffer, 10, 0, 0));
+      printInteger(reg_lo);
     }
   }
 
@@ -5800,7 +5825,7 @@ void fct_multu() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $lo=");
-      print(itoa(reg_lo, string_buffer, 10, 0, 0));
+      printInteger(reg_lo);
     }
     println();
   }
@@ -5817,15 +5842,15 @@ void fct_divu() {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
       print((int*) ",$lo=");
-      print(itoa(reg_lo, string_buffer, 10, 0, 0));
+      printInteger(reg_lo);
       print((int*) ",$hi=");
-      print(itoa(reg_hi, string_buffer, 10, 0, 0));
+      printInteger(reg_hi);
     }
   }
 
@@ -5839,9 +5864,9 @@ void fct_divu() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $lo=");
-      print(itoa(reg_lo, string_buffer, 10, 0, 0));
+      printInteger(reg_lo);
       print((int*) ",$hi=");
-      print(itoa(reg_hi, string_buffer, 10, 0, 0));
+      printInteger(reg_hi);
     }
     println();
   }
@@ -5860,15 +5885,15 @@ void fct_addu() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
     }
   }
 
@@ -5883,7 +5908,7 @@ void fct_addu() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -5902,15 +5927,15 @@ void fct_subu() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
     }
   }
 
@@ -5925,7 +5950,7 @@ void fct_subu() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -5939,7 +5964,7 @@ void op_lw() {
     print((int*) " ");
     printRegister(rt);
     print((int*) ",");
-    print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate));
     print((int*) "(");
     printRegister(rs);
     print((int*) ")");
@@ -5947,11 +5972,11 @@ void op_lw() {
       print((int*) ": ");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rs), 0);
     }
   }
 
@@ -5979,9 +6004,9 @@ void op_lw() {
       print((int*) " -> ");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
       print((int*) "=memory[");
-      print(itoa(vaddr, string_buffer, 16, 0, 0));
+      printHexadecimal(vaddr, 0);
       print((int*) "]");
     }
     println();
@@ -6001,11 +6026,11 @@ void fct_slt() {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs));
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
     }
   }
 
@@ -6023,7 +6048,7 @@ void fct_slt() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -6037,7 +6062,7 @@ void op_sw() {
     print((int*) " ");
     printRegister(rt);
     print((int*) ",");
-    print(itoa(signExtend(immediate), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate));
     print((int*) "(");
     printRegister(rs);
     print((int*) ")");
@@ -6045,11 +6070,11 @@ void op_sw() {
       print((int*) ": ");
       printRegister(rt);
       print((int*) "=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      print(itoa(*(registers+rs), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rs), 0);
     }
   }
 
@@ -6075,9 +6100,9 @@ void op_sw() {
   if (debug) {
     if (interpret) {
       print((int*) " -> memory[");
-      print(itoa(vaddr, string_buffer, 16, 0, 0));
+      printHexadecimal(vaddr, 0);
       print((int*) "]=");
-      print(itoa(*(registers+rt), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rt));
       print((int*) "=");
       printRegister(rt);
     }
@@ -6121,7 +6146,7 @@ void printStatus(int status) {
 
   printException(exception);
   print((int*) " with parameter ");
-  print(itoa(parameter, string_buffer, 16, 4, 0));
+  printHexadecimal(parameter, 4);
 }
 
 void throwException(int exception, int parameter) {
@@ -6135,12 +6160,12 @@ void throwException(int exception, int parameter) {
   if (debug_exception) {
     print(binaryName);
     print((int*) ": context ");
-    print(itoa(getID(currentContext), string_buffer, 10, 0, 0));
+    printInteger(getID(currentContext));
     print((int*) " ");
     printStatus(status);
     if (exception == EXCEPTION_PAGEFAULT) {
       print((int*) " [virtual address=");
-      print(itoa(parameter, string_buffer, 16, 8, 0));
+      printHexadecimal(parameter, 8);
       print((int*) "]");
     }
     println();
@@ -6160,14 +6185,14 @@ void execute() {
       print(binaryName);
       print((int*) ": $pc=");
     }
-    print(itoa(pc, string_buffer, 16, 0, 0));
+    printHexadecimal(pc, 0);
     if (sourceLineNumber != (int*) 0) {
       print((int*) "(~");
-      print(itoa(*(sourceLineNumber + pc / WORDSIZE), string_buffer, 10, 0, 0));
+      printInteger(*(sourceLineNumber + pc / WORDSIZE));
       print((int*) ")");
     }
     print((int*) ": ");
-    print(itoa(ir, string_buffer, 16, 8, 0));
+    printHexadecimal(ir, 8);
     print((int*) ": ");
   }
 
@@ -6411,18 +6436,18 @@ int printCounters(int total, int* counters, int max) {
 
   a = addressWithMaxCounter(counters, max);
 
-  print(itoa(*(counters + a / WORDSIZE), string_buffer, 10, 0, 0));
+  printInteger(*(counters + a / WORDSIZE));
 
   print((int*) "(");
-  print(itoa(fixedPointRatio(total, *(counters + a / WORDSIZE)), string_buffer, 10, 0, 2));
+  printFixedPoint(total, *(counters + a / WORDSIZE));
   print((int*) "%)");
 
   if (*(counters + a / WORDSIZE) != 0) {
     print((int*) "@");
-    print(itoa(a, string_buffer, 16, 0, 0));
+    printHexadecimal(a, 0);
     if (sourceLineNumber != (int*) 0) {
       print((int*) "(~");
-      print(itoa(*(sourceLineNumber + a / WORDSIZE), string_buffer, 10, 0, 0));
+      printInteger(*(sourceLineNumber + a / WORDSIZE));
       print((int*) ")");
     }
   }
@@ -6436,7 +6461,7 @@ void printProfile(int* message, int total, int* counters) {
   if (total > 0) {
     print(selfieName);
     print(message);
-    print(itoa(total, string_buffer, 10, 0, 0));
+    printInteger(total);
     print((int*) ",");
     a = printCounters(total, counters, INT_MAX); // max counter
     print((int*) ",");
@@ -6490,9 +6515,9 @@ void selfie_disassemble() {
 
   print(selfieName);
   print((int*) ": ");
-  print(itoa(numberOfWrittenCharacters, string_buffer, 10, 0, 0));
+  printInteger(numberOfWrittenCharacters);
   print((int*) " characters of assembly with ");
-  print(itoa(codeLength / WORDSIZE, string_buffer, 10, 0, 0));
+  printInteger(codeLength / WORDSIZE);
   print((int*) " instructions written into ");
   print(assemblyName);
   println();
@@ -6527,7 +6552,7 @@ void selfie_run() {
   print((int*) " executing ");
   print(binaryName);
   print((int*) " with ");
-  print(itoa(frameMemorySize / 1024 / 1024, string_buffer, 10, 0, 0));
+  printInteger(frameMemorySize / 1024 / 1024);
   print((int*) "MB of memory");
   println();
 
