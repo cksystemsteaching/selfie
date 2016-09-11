@@ -3205,7 +3205,9 @@ int gr_expression() {
       //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use jal here...
+      // use JAL instead of unconditional BEQ
+      emitUJFormat(2 * WORDSIZE, REG_ZR, OP_JAL);
+      //emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
       //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 
@@ -3220,7 +3222,9 @@ int gr_expression() {
       //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use JAL here...
+      // use JAL instead of unconditional BEQ
+      emitUJFormat(2 * WORDSIZE, REG_ZR, OP_JAL);
+      //emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
       //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
@@ -3287,8 +3291,9 @@ void gr_while() {
   } else
     syntaxErrorSymbol(SYM_WHILE);
 
-  // unconditional branch to beginning of while
-  emitSBFormat((brBackToWhile - binaryLength - WORDSIZE), REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use JAL instead
+  // use JAL instead of unconditional branch) to beginning of while
+  emitUJFormat((brBackToWhile - binaryLength), REG_ZR, OP_JAL);
+  //emitSBFormat((brBackToWhile - binaryLength - WORDSIZE), REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
   //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - WORDSIZE) / WORDSIZE);
 
   if (brForwardToEnd != 0)
@@ -3352,7 +3357,8 @@ void gr_if() {
 
           // if the "if" case was true, we branch to the end
           brForwardToEnd = binaryLength;
-          emitSBFormat(0, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use JAL instead
+          // cannot use JAL here because of relative fixup
+          emitSBFormat(0, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
           //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
 
           // if the "if" case was not true, we branch here
