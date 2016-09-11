@@ -1,21 +1,21 @@
 int* main() {
-  int* x;
+  int* foo;
 
   // print the following string on the console
-  x = "Hello World!";
+  foo = "Hello World!";
 
-  // characters are stored in chunks of 4 in memory,
-  // that is, as "Hell", "o Wo", and "rld!" which
-  // means that we can print them in chunks of 4
+  // strings are actually stored in chunks of 4 characters in memory,
+  // that is, here as "Hell", "o Wo", and "rld!" which allows us to
+  // print them conveniently in chunks of 4 characters at a time
 
   // as long as there are characters print them
-  while (*x != 0) {
-    // 1 means that we print to the console,
-    // x contains the 4 characters, and
+  while (*foo != 0) {
+    // 1 means that we print to the console
+    // foo points to a chunk of 4 characters
     // 4 means that we print 4 characters
-    write(1, x, 4);
+    write(1, foo, 4);
 
-    // go to the next 4 characters
-    x = x + 1;
+    // go to the next chunk of 4 characters
+    foo = foo + 1;
   }
 }

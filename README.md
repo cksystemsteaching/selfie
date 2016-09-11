@@ -6,7 +6,9 @@ For further information and support please refer to http://selfie.cs.uni-salzbur
 
 ## Build Instructions
 
-The first step is to produce a binary that runs on your computer. To do that on a Linux or Mac OS X system type `make` in a terminal. This will invoke the default C compiler:
+Selfie runs on Mac, Linux, Windows and possibly other systems. The only requirement is a terminal application and a C compiler that supports generating 32-bit binaries. We assume that the compiler is invoked as `cc` in the terminal. We also use `make` which is strictly speaking not necessary but anyway convenient to have. The commands invoked by `make` are listed below and can also be invoked manually.
+
+The first step is to produce a selfie binary that runs on your computer. To do that type `make` in a terminal. This will invoke the C compiler:
 
 ```bash
 cc -w -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
@@ -14,19 +16,17 @@ cc -w -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
 
 and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-m32` option makes the compiler generate a 32-bit executable (which may require installing gcc-multiarch or gcc-multilib, depending on your system). Selfie only supports 32-bit architectures. The `-D` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but may be required by the compiler.
 
-We have not tested selfie on Windows systems ourselves but users have reported success. Since the only unusual requirement is to have a C compiler installed that supports generating 32-bit binaries, compiling selfie on Windows should be straightforward to do.
-
 ## Running Selfie
 
 Once you have successfully compiled selfie you may invoke it in a terminal as follows:
 
 ```bash
-./selfie { -c source | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ]
+./selfie { -c { source } | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ]
 ```
 
 The order in which the options are provided matters for taking full advantage of self-referentiality.
 
-The `-c` option invokes the C\* compiler on the given `source` file producing MIPSter code that is stored internally.
+The `-c` option invokes the C\* compiler on the given list of `source` files compiling and linking them into MIPSter code that is stored internally.
 
 The `-o` option writes MIPSter code produced by the most recent compiler invocation to the given `binary` file.
 
@@ -80,7 +80,7 @@ Note that at least 2MB of memory is required.
 
 ### Self-execution
 
-The following example shows how to perform self-execution of `selfie.c`. In this case we invoke the emulator to invoke itself which then invokes the compiler to compile itself:
+The following example shows how to perform self-execution of `selfie.c`. In this case we invoke the mipster emulator to invoke itself which then invokes the compiler to compile itself:
 
 ```bash
 $ ./selfie -c selfie.c -o selfie1.m -m 4 -l selfie1.m -m 2 -c selfie.c -o selfie2.m
@@ -110,13 +110,13 @@ Files selfie1.m and selfie2.m are identical
 
 ### Workflow
 
-To compile any C\* source and execute it right away in a single invocation of `selfie` without generating a MIPSter binary use:
+To compile any C\* source code and execute it right away in a single invocation of `selfie` without generating a MIPSter binary use:
 
 ```bash
 $ ./selfie -c any-cstar-file.c -m 1 "arguments for any-cstar-file.c"
 ```
 
-Equivalently, you may also use a selfie-compiled version of `selfie` and have the emulator execute selfie to compile any C\* source and then execute it right away with hypster on the same emulator instance:
+Equivalently, you may also use a selfie-compiled version of `selfie` and have the mipster emulator execute selfie to compile any C\* source code and then execute it right away with hypster on the same emulator instance:
 
 ```bash
 $ ./selfie -c selfie.c -m 1 -c any-cstar-file.c -y 1 "arguments for any-cstar-file.c"
@@ -145,9 +145,25 @@ The generated MIPSter binaries can then be loaded and executed as follows:
 $ ./selfie -l any-cstar-file1.m -m 1 "arguments for any-cstar-file1.m"
 ```
 
+#### Linking
+
+To compile and link any C\* source code from multiple source files use:
+
+```bash
+$ ./selfie -c any-cstar-file1.c any-cstar-file2.c ... -m 1
+```
+
+For example, to make the source code of `selfie.c` available as library code in any C\* source code use:
+
+```bash
+$ ./selfie -c any-cstar-file.c selfie.c -m 1
+```
+
+Note that multiple definitions of symbols are ignored by the compiler with a warning.
+
 #### Debugging
 
-Console messages always begin with the name of the source or binary file currently running. The emulator also shows the amount of memory allocated for its machine instance and how execution terminated (exit code).
+Selfie's console messages always begin with the name of the source or binary file currently running. The mipster emulator also shows the amount of memory allocated for its machine instance and how execution terminated (exit code).
 
 MIPSter assembly for `selfie` and any other C\* file is generated as follows:
 
