@@ -844,12 +844,12 @@ int debug_open   = 0;
 
 int debug_malloc = 0;
 
-int SYSCALL_EXIT   = 4001;
-int SYSCALL_READ   = 4003;
-int SYSCALL_WRITE  = 4004;
-int SYSCALL_OPEN   = 4005;
+int SYSCALL_EXIT   = 93;
+int SYSCALL_READ   = 63;
+int SYSCALL_WRITE  = 64;
+int SYSCALL_OPEN   = 1024;
 
-int SYSCALL_MALLOC = 4045;
+int SYSCALL_MALLOC = 10;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -898,12 +898,12 @@ int debug_status = 0;
 int debug_delete = 0;
 int debug_map    = 0;
 
-int SYSCALL_ID     = 4901;
-int SYSCALL_CREATE = 4902;
-int SYSCALL_SWITCH = 4903;
-int SYSCALL_STATUS = 4904;
-int SYSCALL_DELETE = 4905;
-int SYSCALL_MAP    = 4906;
+int SYSCALL_ID     = 11;
+int SYSCALL_CREATE = 12;
+int SYSCALL_SWITCH = 13;
+int SYSCALL_STATUS = 14;
+int SYSCALL_DELETE = 15;
+int SYSCALL_MAP    = 16;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -2607,39 +2607,63 @@ void load_integer(int value) {
   talloc();
 
   if (value >= 0) {
-    if (value < twoToThePowerOf(15))
-      // ADDIU can only load numbers < 2^15 without sign extension
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), value);
-    else if (value < twoToThePowerOf(28)) {
-      // load 14 msbs of a 28-bit number first
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 14));
+    if (value < twoToThePowerOf(11)) {
+      // ADDI can only load numbers < 2^11 without sign extension
+      emitIFormat(value, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+    } else if (value < twoToThePowerOf(20)) {
+      // load 10 msbs of a 20-bit number first
+      emitIFormat(rightShift(value, 10), REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
-      // shift left by 14 bits
-      emitLeftShiftBy(14);
+      // shift left by 10 bits
+      emitLeftShiftBy(10);
 
-      // and finally add 14 lsbs
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 18), 18));
+      // and finally add 10 lsbs
+      emitIFormat(rightShift(leftShift(value, 22), 22), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+
+    } else if (value < twoToThePowerOf(30)) {
+      // load 10 msbs of a 30-bit number first
+      emitIFormat(rightShift(value, 20), REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+
+      // shift left by 10 bits
+      emitLeftShiftBy(10);
+
+      // then add the next 10 msbs
+      emitIFormat(rightShift(leftShift(value, 12), 22), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+
+      emitLeftShiftBy(10);
+
+      // and finally add the remaining 10 lsbs
+      emitIFormat(rightShift(leftShift(value, 22), 22), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+
     } else {
-      // load 14 msbs of a 31-bit number first
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 17));
+      // load 10 msbs of a 31-bit number first
+      emitIFormat(rightShift(value, 21), REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
-      emitLeftShiftBy(14);
+      // shift left by 10 bits
+      emitLeftShiftBy(10);
 
-      // then add the next 14 msbs
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 15), 18));
+      // then add the next 10 msbs
+      emitIFormat(rightShift(leftShift(value, 11), 22), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
 
-      emitLeftShiftBy(3);
+      emitLeftShiftBy(10);
 
-      // and finally add the remaining 3 lsbs
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 29), 29));
+      // then add the next 10 msbs
+      emitIFormat(rightShift(leftShift(value, 21), 22), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+
+      emitLeftShiftBy(1);
+
+      // and finally add the remaining lsb
+      emitIFormat(rightShift(leftShift(value, 31), 31), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
     }
   } else {
-    // load largest positive 16-bit number with a single bit set: 2^14
-    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), twoToThePowerOf(14));
+    // load largest positive 12-bit number with a single bit set: 2^10
+    emitIFormat(twoToThePowerOf(10), REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+    //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), twoToThePowerOf(14));
 
-    // and then multiply 2^14 by 2^14*2^3 to get to 2^31 == INT_MIN
-    emitLeftShiftBy(14);
-    emitLeftShiftBy(3);
+    // and then multiply 2^10 by 2^10*2^10*2^1 to get to 2^31 == INT_MIN
+    emitLeftShiftBy(10);
+    emitLeftShiftBy(10);
+    emitLeftShiftBy(1);
   }
 }
 
@@ -2650,11 +2674,17 @@ void load_string(int* string) {
 
   allocatedMemory = allocatedMemory + roundUp(length, WORDSIZE);
 
+  // we need to make use of load_integer because some allocatedMemory
+  // values may be bigger than our 12 bit immediates
+  load_integer(allocatedMemory);
+
   createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory);
 
-  talloc();
+  // allocatedMemory in currentTemporary() is a negative number
+  emitRFormat(F7_SUB, REG_ZR, currentTemporary(), F3_SUB, currentTemporary(), OP_OP);
+  emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
 
-  emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
+  //emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
 }
 
 int help_call_codegen(int* entry, int* procedure) {
