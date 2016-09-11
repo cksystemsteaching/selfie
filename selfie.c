@@ -702,15 +702,11 @@ int signExtend(int immediate, int bits);
 // ---------------------------- DECODER ----------------------------
 // -----------------------------------------------------------------
 
-void initDecoder();
-
-
 void decode();
 void decodeRFormat();
 void decodeIFormat();
 void decodeSFormat();
 void decodeSBFormat();
-void decodeUFormat();
 void decodeUJFormat();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -2489,8 +2485,11 @@ void tfree(int numberOfTemporaries) {
 void save_temporaries() {
   while (allocatedTemporaries > 0) {
     // push temporary onto stack
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-    emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+    emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+    //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+
+    emitSFormat(0, currentTemporary(), REG_SP, F3_SW, OP_SW);
+    //emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
     tfree(1);
   }
@@ -2501,8 +2500,10 @@ void restore_temporaries(int numberOfTemporaries) {
     talloc();
 
     // restore temporary from stack
-    emitIFormat(OP_LW, REG_SP, currentTemporary(), 0);
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+    emitIFormat(0, REG_SP, F3_LW, currentTemporary(), OP_LW);
+    //emitIFormat(OP_LW, REG_SP, currentTemporary(), 0);
+    emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+    //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
   }
 }
 
@@ -2579,7 +2580,8 @@ int load_variable(int* variable) {
 
   talloc();
 
-  emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  emitIFormat(getAddress(entry), getScope(entry), F3_LW, currentTemporary(), OP_LW);
+  //emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
 
   return getType(entry);
 }
@@ -2681,7 +2683,8 @@ int help_call_codegen(int* entry, int* procedure) {
 
     createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
 
-    emitJFormat(OP_JAL, 0);
+    emitUJFormat(0, REG_RA, OP_JAL);
+    //emitJFormat(OP_JAL, 0);
 
   } else {
     type = getType(entry);
@@ -2690,60 +2693,77 @@ int help_call_codegen(int* entry, int* procedure) {
       // procedure declared but never called nor defined
       setAddress(entry, binaryLength);
 
-      emitJFormat(OP_JAL, 0);
+      emitUJFormat(0, REG_RA, OP_JAL);
+      //emitJFormat(OP_JAL, 0);
     } else if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL) {
       // procedure called and possibly declared but not defined
 
-      // create fixup chain
-      emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
+      // we need the absolute address here because
+      // this instruction will be part of a fixup chain
+      emitUJFormat(getAddress(entry), REG_RA, OP_JAL);
+      //emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
       setAddress(entry, binaryLength - WORDSIZE);
     } else
       // procedure defined, use address
-      emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
+      // we need a pc relative address here because this
+      // instruction will not be modified in the future
+      emitUJFormat(getAddress(entry) - binaryLength, REG_RA, OP_JAL);
+      //emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
   }
-
   return type;
 }
 
 void help_procedure_prologue(int localVariables) {
   // allocate memory for return address
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
   // save return address
-  emitIFormat(OP_SW, REG_SP, REG_RA, 0);
+  emitSFormat(0, REG_RA, REG_SP, F3_SW, OP_SW);
+  //emitIFormat(OP_SW, REG_SP, REG_RA, 0);
 
-  // allocate memory for caller's frame pointer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  // allocate space for caller's frame pointer
+  emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
   // save caller's frame pointer
-  emitIFormat(OP_SW, REG_SP, REG_FP, 0);
+  emitSFormat(0, REG_FP, REG_SP, F3_SW, OP_SW);
+  //emitIFormat(OP_SW, REG_SP, REG_FP, 0);
 
   // set callee's frame pointer
-  emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
+  emitIFormat(0, REG_SP, F3_ADDI, REG_FP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
 
-  // allocate memory for callee's local variables
+  // allocate space for callee's local variables
   if (localVariables != 0)
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * WORDSIZE);
+    emitIFormat(-localVariables * WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+    //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * WORDSIZE);
 }
 
 void help_procedure_epilogue(int parameters) {
-  // deallocate memory for callee's frame pointer and local variables
-  emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
+  // deallocate space for callee's frame pointer and local variables
+  emitIFormat(0, REG_FP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
 
   // restore caller's frame pointer
-  emitIFormat(OP_LW, REG_SP, REG_FP, 0);
+  emitIFormat(0, REG_SP, F3_LW, REG_FP, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_FP, 0);
 
-  // deallocate memory for caller's frame pointer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // deallocate space for caller's frame pointer
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   // restore return address
-  emitIFormat(OP_LW, REG_SP, REG_RA, 0);
+  emitIFormat(0, REG_SP, F3_LW, REG_RA, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_RA, 0);
 
-  // deallocate memory for return address and parameters
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * WORDSIZE);
+  // deallocate space for return address and parameters
+  emitIFormat((parameters + 1) * WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * WORDSIZE);
 
   // return
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int gr_call(int* procedure) {
@@ -2767,8 +2787,10 @@ int gr_call(int* procedure) {
     // TODO: check if types/number of parameters is correct
 
     // push first parameter onto stack
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-    emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+    emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+    // emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+    emitSFormat(0, currentTemporary(), REG_SP, F3_SW, OP_SW);
+    //emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
     tfree(1);
 
@@ -2778,8 +2800,10 @@ int gr_call(int* procedure) {
       gr_expression();
 
       // push more parameters onto stack
-      emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-      emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+      emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+      emitSFormat(0, currentTemporary(), REG_SP, F3_SW, OP_SW);
+      //emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
       tfree(1);
     }
@@ -2893,7 +2917,8 @@ int gr_factor() {
       typeWarning(INTSTAR_T, type);
 
     // dereference
-    emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+    emitIFormat(0, currentTemporary(), F3_LW, currentTemporary(), OP_LW);
+    //emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
     type = INT_T;
 
@@ -2912,11 +2937,13 @@ int gr_factor() {
       talloc();
 
       // retrieve return value
-      emitIFormat(OP_ADDIU, REG_A0, currentTemporary(), 0);
+      emitIFormat(0, REG_A0, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_A0, currentTemporary(), 0);
 
       // reset return register to initial return value
       // for missing return expressions
-      emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
+      emitIFormat(0, REG_ZR, F3_ADDI, REG_A0, OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
     } else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
@@ -2933,7 +2960,8 @@ int gr_factor() {
   } else if (symbol == SYM_CHARACTER) {
     talloc();
 
-    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
+    emitIFormat(literal, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+    //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
 
     getSymbol();
 
@@ -2993,16 +3021,19 @@ int gr_term() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_ASTERISK) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      emitRFormat(F7_MUL, previousTemporary(), currentTemporary(), F3_MUL, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+      //emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
     } else if (operatorSymbol == SYM_DIV) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      emitRFormat(F7_DIVU, currentTemporary(), previousTemporary(), F3_DIVU, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+      //emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
     } else if (operatorSymbol == SYM_MOD) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-      emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+      emitRFormat(F3_REMU, currentTemporary(), previousTemporary(), F3_REMU, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+      //emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
     }
 
     tfree(1);
@@ -3053,7 +3084,8 @@ int gr_simpleExpression() {
       ltype = INT_T;
     }
 
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    emitRFormat(F7_SUB, REG_ZR, currentTemporary(), F3_SUB, currentTemporary(), OP_OP);
+    //emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
   }
 
   // + or -?
@@ -3074,13 +3106,15 @@ int gr_simpleExpression() {
       } else if (rtype == INTSTAR_T)
         typeWarning(ltype, rtype);
 
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+      emitRFormat(F7_ADD, previousTemporary(), currentTemporary(), F3_ADD, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
 
     } else if (operatorSymbol == SYM_MINUS) {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
     }
 
     tfree(1);
@@ -3117,59 +3151,79 @@ int gr_expression() {
 
     if (operatorSymbol == SYM_EQUALITY) {
       // subtract, if result = 0 then 1, else 0
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
 
       tfree(1);
 
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitSBFormat(1 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
+      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
       // subtract, if result = 0 then 0, else 1
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
+      //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
+      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitSBFormat(1 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
+      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_LT) {
       // set to 1 if a < b, else 0
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
+      emitRFormat(F7_SLT, currentTemporary(), previousTemporary(), F3_SLT, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
       // set to 1 if b < a, else 0
-      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
-
+      emitRFormat(F7_SLT, previousTemporary(), currentTemporary(), F3_SLT, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
       // if b < a set 0, else 1
-      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
+      emitRFormat(F7_SLT, previousTemporary(), currentTemporary(),F3_SLT, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
+      //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
+      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use jal here...
+      //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
+      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 
     } else if (operatorSymbol == SYM_GEQ) {
       // if a < b set 0, else 1
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
+      emitRFormat(F7_SLT, currentTemporary(), previousTemporary(), F3_SLT, previousTemporary(), OP_OP);
+      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
+      //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
+      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use JAL here...
+      //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
+      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
     }
   }
 
@@ -3200,7 +3254,8 @@ void gr_while() {
       // do not know where to branch, fixup later
       brForwardToEnd = binaryLength;
 
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+      emitSBFormat(0, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
 
       tfree(1);
 
@@ -3233,7 +3288,8 @@ void gr_while() {
     syntaxErrorSymbol(SYM_WHILE);
 
   // unconditional branch to beginning of while
-  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - WORDSIZE) / WORDSIZE);
+  emitSBFormat((brBackToWhile - binaryLength - WORDSIZE), REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use JAL instead
+  //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - WORDSIZE) / WORDSIZE);
 
   if (brForwardToEnd != 0)
     // first instruction after loop comes here
@@ -3263,7 +3319,8 @@ void gr_if() {
       // if the "if" case is not true, we branch to "else" (if provided)
       brForwardToElseOrEnd = binaryLength;
 
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+      emitSBFormat(0, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
 
       tfree(1);
 
@@ -3295,7 +3352,8 @@ void gr_if() {
 
           // if the "if" case was true, we branch to the end
           brForwardToEnd = binaryLength;
-          emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
+          emitSBFormat(0, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH); //XXX use JAL instead
+          //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
 
           // if the "if" case was not true, we branch here
           fixup_relative(brForwardToElseOrEnd);
@@ -3354,7 +3412,8 @@ void gr_return() {
       typeWarning(returnType, type);
 
     // save value of expression in return register
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_A0, FCT_ADDU);
+    emitRFormat(F7_ADD, REG_ZR, currentTemporary(), F3_ADD, REG_A0, OP_OP);
+    //emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_A0, FCT_ADDU);
 
     tfree(1);
   } else if (returnType != VOID_T)
@@ -3362,7 +3421,8 @@ void gr_return() {
 
   // unconditional branch to procedure epilogue
   // maintain fixup chain for later fixup
-  emitJFormat(OP_J, returnBranches / WORDSIZE);
+  emitUJFormat(returnBranches, REG_ZR, OP_JAL);
+  //emitJFormat(OP_J, returnBranches / WORDSIZE);
 
   // new head of fixup chain
   returnBranches = binaryLength - WORDSIZE;
@@ -3411,7 +3471,8 @@ void gr_statement() {
         if (rtype != INT_T)
           typeWarning(INT_T, rtype);
 
-        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+        emitSFormat(0, currentTemporary(), previousTemporary(), F3_SW, OP_SW);
+        //emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
         tfree(2);
 
@@ -3448,7 +3509,8 @@ void gr_statement() {
           if (rtype != INT_T)
             typeWarning(INT_T, rtype);
 
-          emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+          emitSFormat(0, currentTemporary(), previousTemporary(), F3_SW, OP_SW);
+          //emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
           tfree(2);
 
@@ -3482,7 +3544,8 @@ void gr_statement() {
 
       // reset return register to initial return value
       // for missing return expressions
-      emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
+      emitIFormat(0, REG_ZR, F3_ADDI, REG_A0, OP_IMM);
+      //emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3502,7 +3565,8 @@ void gr_statement() {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-      emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
+      emitSFormat(getAddress(entry), currentTemporary(), getScope(entry), F3_SW, OP_SW);
+      //emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
 
       tfree(1);
 
@@ -3886,9 +3950,11 @@ void emitLeftShiftBy(int b) {
   // assert: 0 <= b < 15
 
   // load multiplication factor less than 2^15 to avoid sign extension
-  emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
-  emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, FCT_MULTU);
-  emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
+  emitIFormat(twoToThePowerOf(b), REG_ZR, F3_ADDI, nextTemporary(), OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
+  emitRFormat(F7_MUL, currentTemporary(), nextTemporary(), F3_MUL, currentTemporary(), OP_OP);
+  //emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, FCT_MULTU);
+  //emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
 }
 
 void emitMainEntry() {
@@ -3907,7 +3973,8 @@ void emitMainEntry() {
   // since we load positive integers < 2^28 which take
   // no more than 8 instructions each, see load_integer
   while (i < 16) {
-    emitIFormat(OP_ADDIU, REG_ZR, REG_ZR, 0);
+    emitIFormat(0, REG_ZR, F3_ADDI, REG_ZR, OP_IMM);
+    //emitIFormat(OP_ADDIU, REG_ZR, REG_ZR, 0);
 
     i = i + 1;
   }
@@ -3917,11 +3984,14 @@ void emitMainEntry() {
   createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, mainJump);
 
   // jump and link to main, will return here only if there is no exit call
-  emitJFormat(OP_JAL, 0);
+  emitUJFormat(0, REG_RA, OP_JAL);
+  //emitJFormat(OP_JAL, 0);
 
   // we exit with exit code in return register pushed onto the stack
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-  emitIFormat(OP_SW, REG_SP, REG_A0, 0);
+  emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  emitSFormat(0, REG_A0, REG_SP, F3_SW, OP_SW);
+  //emitIFormat(OP_SW, REG_SP, REG_A0, 0);
 
   // no need to reset return register here
 }
@@ -3940,7 +4010,8 @@ void bootstrapCode() {
   load_integer(savedBinaryLength);
 
   // load binaryLength into GP register
-  emitIFormat(OP_ADDIU, currentTemporary(), REG_GP, 0);
+  emitIFormat(0, currentTemporary(), F3_ADDI, REG_GP, OP_IMM);
+  //emitIFormat(OP_ADDIU, currentTemporary(), REG_GP, 0);
 
   tfree(1);
 
@@ -3952,7 +4023,8 @@ void bootstrapCode() {
   load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
 
   // load initial stack pointer into SP register
-  emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
+  emitIFormat(0, currentTemporary(), F3_LW, REG_SP, OP_LW);
+  //emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
 
   tfree(1);
 
@@ -4333,7 +4405,7 @@ int getImmediateUJFormat(int instruction) {
   imm4 = rightShift(leftShift(instruction, 12), 24);
 
   // reassemble immediate and add trailing zero
-  return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);;
+  return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);
 }
 
 int signExtend(int immediate, int bits) {
@@ -4350,7 +4422,7 @@ int signExtend(int immediate, int bits) {
 // -----------------------------------------------------------------
 
 void decode() {
-  opcode = rv_getOpcode(ir);
+  opcode = getOpcode(ir);
 
   if (opcode == OP_OP)
     decodeRFormat();
@@ -4387,11 +4459,11 @@ void decode() {
 // | funct7   |  rs2  |  rs1  | funct3 |   rd  | opcode  |
 // +----------+-------+-------+--------+-------+---------+
 void decodeRFormat() {
-  funct7    = rv_getFunct7(ir);
-  rs2       = rv_getRS2(ir);
-  rs1       = rv_getRS1(ir);
-  funct3    = rv_getFunct3(ir);
-  rd        = rv_getRD(ir);
+  funct7    = getFunct7(ir);
+  rs2       = getRS2(ir);
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
+  rd        = getRD(ir);
   immediate = 0;
 }
 
@@ -4405,10 +4477,10 @@ void decodeRFormat() {
 void decodeIFormat() {
   funct7    = 0;
   rs2       = 0;
-  rs1       = rv_getRS1(ir);
-  funct3    = rv_getFunct3(ir);
-  rd        = rv_getRD(ir);
-  immediate = rv_getImmediateIFormat(ir);
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
+  rd        = getRD(ir);
+  immediate = getImmediateIFormat(ir);
 }
 
 // -----------------------------------------------------------------
@@ -4421,11 +4493,11 @@ void decodeIFormat() {
 //  imm[11:5]                          imm[4:0]
 void decodeSFormat() {
   funct7    = 0;
-  rs2       = rv_getRS2(ir);
-  rs1       = rv_getRS1(ir);
-  funct3    = rv_getFunct3(ir);
+  rs2       = getRS2(ir);
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
   rd        = 0;
-  immediate = rv_getImmediateSFormat(ir);
+  immediate = getImmediateSFormat(ir);
 }
 
 // -----------------------------------------------------------------
@@ -4438,11 +4510,11 @@ void decodeSFormat() {
 // imm[12] imm[10:5]                       imm[4:1] imm[11]
 void decodeSBFormat() {
   funct7    = 0;
-  rs2       = rv_getRS2(ir);
-  rs1       = rv_getRS1(ir);
-  funct3    = rv_getFunct3(ir);
+  rs2       = getRS2(ir);
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
   rd        = 0;
-  immediate = rv_getImmediateSBFormat(ir);
+  immediate = getImmediateSBFormat(ir);
 }
 
 // -----------------------------------------------------------------
@@ -4458,8 +4530,8 @@ void decodeUJFormat() {
   rs2       = 0;
   rs1       = 0;
   funct3    = 0;
-  rd        = rv_getRD(ir);
-  immediate = rv_getImmediateUJFormat(ir);
+  rd        = getRD(ir);
+  immediate = getImmediateUJFormat(ir);
 }
 
 // -----------------------------------------------------------------
@@ -4774,14 +4846,18 @@ void emitExit() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   // load argument for exit
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
 
   // remove the argument from the stack
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   // load the correct syscall number and invoke syscall
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_EXIT);
-  emitRFormat(0, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_EXIT, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_EXIT);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(0, 0, 0, 0, FCT_SYSCALL);
 
   // never returns here
 }
@@ -4792,7 +4868,7 @@ void implementExit() {
   exitCode = *(registers+REG_A0);
 
   // exit code must be signed 12-bit integer
-  if (exitCode > INT12_MIN_MAX)
+  if (exitCode > INT12_MAX)
     exitCode = INT12_MAX;
   else if (exitCode < INT12_MIN)
     exitCode = INT12_MIN;
@@ -4808,20 +4884,29 @@ void implementExit() {
 void emitRead() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "read", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_READ);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_READ, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_READ);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   // jump back to caller, return value is in REG_A0
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementRead() {
@@ -4925,19 +5010,28 @@ void implementRead() {
 void emitWrite() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "write", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
+ // emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_WRITE);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_WRITE, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_WRITE);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementWrite() {
@@ -5041,19 +5135,28 @@ void implementWrite() {
 void emitOpen() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "open", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
+ // emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // flags
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // flags
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // filename
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // filename
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_OPEN);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_OPEN, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_OPEN);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int down_loadString(int* table, int vaddr, int* s) {
@@ -5151,13 +5254,18 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "zalloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MALLOC);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_MALLOC, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MALLOC);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementMalloc() {
@@ -5201,10 +5309,13 @@ void implementMalloc() {
 void emitID() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_ID);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_ID, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_ID);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementID() {
@@ -5226,10 +5337,13 @@ int selfie_ID() {
 void emitCreate() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_CREATE);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_CREATE, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_CREATE);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int doCreate(int parentID) {
@@ -5277,16 +5391,22 @@ int selfie_create() {
 void emitSwitch() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_SWITCH);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_SWITCH, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_SWITCH);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   // save ID of context from which we are switching here in return register
-  emitRFormat(OP_SPECIAL, REG_ZR, REG_S1, REG_A0, FCT_ADDU);
+  //emitRFormat(F7_ADD, REG_ZR, REG_S1, F3_ADD, REG_A0, OP_OP);
+  //emitRFormat(OP_SPECIAL, REG_ZR, REG_S1, REG_A0, FCT_ADDU);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int doSwitch(int toID) {
@@ -5366,10 +5486,13 @@ int selfie_switch(int toID) {
 void emitStatus() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_STATUS);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_STATUS, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_STATUS);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int doStatus() {
@@ -5408,13 +5531,17 @@ int selfie_status() {
 void emitDelete() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_DELETE);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
-
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(SYSCALL_DELETE, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_DELETE);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void doDelete(int ID) {
@@ -5459,19 +5586,28 @@ void selfie_delete(int ID) {
 void emitMap() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_map", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // frame
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A2, 0); // frame
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // page
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // page
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
+  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MAP);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  emitIFormat(SYSCALL_MAP, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MAP);
+  emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
+  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
+  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void doMap(int ID, int page, int frame) {
@@ -6265,7 +6401,7 @@ int decodeExceptionNumber(int status) {
 }
 
 int decodeExceptionParameter(int status) {
-  return signExtend(rightShift(leftShift(status, 16), 16));
+  return signExtend(rightShift(leftShift(status, 16), 16), 16);
 }
 
 void printStatus(int status) {
@@ -6327,41 +6463,48 @@ void execute() {
     print((int*) ": ");
   }
 
-  if (opcode == OP_SPECIAL) {
-    if (function == FCT_ADDU)
-      fct_addu();
-    else if (function == FCT_SUBU)
-      fct_subu();
-    else if (function == FCT_MULTU)
-      fct_multu();
-    else if (function == FCT_DIVU)
-      fct_divu();
-    else if (function == FCT_MFHI)
-      fct_mfhi();
-    else if (function == FCT_MFLO)
-      fct_mflo();
-    else if (function == FCT_SLT)
+  if (opcode == OP_OP) {    //could be ADD, SUB, SLT, MUL, DIVU, REMU
+    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
+      if (funct7 == F7_ADD)
+        fct_add();
+      else if (funct7 == F7_SUB)
+        fct_sub();
+      else if (funct7 == F7_MUL)
+        fct_mul();
+      else
+        throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+    }
+    else if (funct3 == F3_SLT)
       fct_slt();
-    else if (function == FCT_JR)
-      fct_jr();
-    else if (function == FCT_SYSCALL)
-      fct_syscall();
+    else if (funct3 == F3_DIVU)
+      fct_divu();
+    else if (funct3 == F3_REMU)
+      fct_remu();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else if (opcode == OP_ADDIU)
-    op_addiu();
+  }
+
+  else if (opcode == OP_BRANCH) {
+    if (funct3 == F3_BEQ)
+      fct_beq();
+    else if (funct3 == F3_BNE)
+      fct_bne();
+    else
+      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  }
+
+  else if (opcode == OP_IMM)
+    fct_addi();
+  else if (opcode == OP_JAL)
+    op_jal();
+  else if (opcode == OP_JALR)
+    op_jalr();
   else if (opcode == OP_LW)
     op_lw();
   else if (opcode == OP_SW)
     op_sw();
-  else if (opcode == OP_BEQ)
-    op_beq();
-  else if (opcode == OP_BNE)
-    op_bne();
-  else if (opcode == OP_JAL)
-    op_jal();
-  else if (opcode == OP_J)
-    op_j();
+  else if (opcode == OP_SYSTEM)
+    op_ecall();
   else
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
 
@@ -7011,7 +7154,6 @@ int main(int argc, int* argv) {
   initScanner();
 
   initRegister();
-  initDecoder();
 
   initInterpreter();
 
