@@ -679,18 +679,24 @@ void initRegister() {
 // ---------------------------- ENCODER ----------------------------
 // -----------------------------------------------------------------
 
-int encodeRFormat(int opcode, int rs, int rt, int rd, int function);
-int encodeIFormat(int opcode, int rs, int rt, int immediate);
-int encodeJFormat(int opcode, int instr_index);
+int encodeRFormat(int funct7, int rs2, int rs1, int funct3, int rd, int opcode);
+int encodeIFormat(int immediate, int rs1, int funct3, int rd, int opcode);
+int encodeSFormat(int immediate, int rs2, int rs1, int funct3, int opcode);
+int encodeSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode);
+int encodeUJFormat(int immediate, int rd, int opcode);
 
 int getOpcode(int instruction);
-int getRS(int instruction);
-int getRT(int instruction);
+int getRS1(int instruction);
+int getRS2(int instruction);
 int getRD(int instruction);
-int getFunction(int instruction);
-int getImmediate(int instruction);
-int getInstrIndex(int instruction);
-int signExtend(int immediate);
+int getFunct3(int instruction);
+int getFunct7(int instruction);
+int getImmediateIFormat(int instruction);
+int getImmediateSFormat(int instruction);
+int getImmediateSBFormat(int instruction);
+int getImmediateUJFormat(int instruction);
+int signExtend(int immediate, int bits);
+
 
 // -----------------------------------------------------------------
 // ---------------------------- DECODER ----------------------------
@@ -698,74 +704,63 @@ int signExtend(int immediate);
 
 void initDecoder();
 
-void printOpcode(int opcode);
-void printFunction(int function);
 
 void decode();
 void decodeRFormat();
 void decodeIFormat();
-void decodeJFormat();
+void decodeSFormat();
+void decodeSBFormat();
+void decodeUFormat();
+void decodeUJFormat();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int OP_SPECIAL = 0;
-int OP_J       = 2;
-int OP_JAL     = 3;
-int OP_BEQ     = 4;
-int OP_BNE     = 5;
-int OP_ADDIU   = 9;
-int OP_LW      = 35;
-int OP_SW      = 43;
+// opcodes
+int OP_IMM    = 19;  // 0010011, IF (ADDI)
+int OP_OP     = 51;  // 0110011, RF (ADD, SUB, SLT, MUL, DIVU, REMU)
+int OP_JAL    = 111; // 1101111, UJF (JAL)
+int OP_JALR   = 103; // 1100111, IF (JALR)
+int OP_BRANCH = 99;  // 1100011, SBF (BEQ, BNE)
+int OP_LW     = 3;   // 0000011, IF (LW)
+int OP_SW     = 35;  // 0100011, SF (SW)
+int OP_SYSTEM = 115; // 1110011, IF? (ECALL)
 
-int* OPCODES; // strings representing MIPS opcodes
+// f3-codes
+int F3_ADDI = 0;  // 000 x
+int F3_ADD  = 0;  // 000 x
+int F3_SUB  = 0;  // 000 x
+int F3_SLT  = 2;  // 010 x
+int F3_JALR = 0;  // 000
+int F3_BEQ  = 0;  // 000 x
+int F3_BNE  = 1;  // 001 x
+int F3_LW   = 2;  // 010
+int F3_SW   = 2;  // 010 x
+int F3_PRIV = 0;  // 000 x
+int F3_MUL  = 0;  // 000 x
+int F3_DIVU = 5;  // 101 x
+int F3_REMU = 7;  // 111 x
 
-int FCT_JR      = 8;
-int FCT_SYSCALL = 12;
-int FCT_MFHI    = 16;
-int FCT_MFLO    = 18;
-int FCT_MULTU   = 25;
-int FCT_DIVU    = 27;
-int FCT_ADDU    = 33;
-int FCT_SUBU    = 35;
-int FCT_SLT     = 42;
+// f7-codes
+int F7_ADD  = 0;  // 0000000
+int F7_SUB  = 31; // 0100000
+int F7_SLT  = 0;  // 0000000
+int F7_MUL  = 1;  // 0000001
+int F7_DIVU = 1;  // 0000001
+int F7_REMU = 1;  // 0000001
 
-int* FUNCTIONS; // strings representing MIPS functions
+// f12-codes (immediates)
+int F12_ECALL = 0; // 000000000000
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 int opcode      = 0;
-int rs          = 0;
-int rt          = 0;
+int rs1         = 0;
+int rs2         = 0;
 int rd          = 0;
 int immediate   = 0;
-int function    = 0;
-int instr_index = 0;
+int funct3      = 0;
+int funct7      = 0;
 
-// ------------------------- INITIALIZATION ------------------------
-
-void initDecoder() {
-  OPCODES = malloc(44 * SIZEOFINTSTAR);
-
-  *(OPCODES + OP_J)       = (int) "j";
-  *(OPCODES + OP_JAL)     = (int) "jal";
-  *(OPCODES + OP_BEQ)     = (int) "beq";
-  *(OPCODES + OP_BNE)     = (int) "bne";
-  *(OPCODES + OP_ADDIU)   = (int) "addiu";
-  *(OPCODES + OP_LW)      = (int) "lw";
-  *(OPCODES + OP_SW)      = (int) "sw";
-
-  FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
-
-  *(FUNCTIONS + FCT_JR)      = (int) "jr";
-  *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
-  *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
-  *(FUNCTIONS + FCT_MFLO)    = (int) "mflo";
-  *(FUNCTIONS + FCT_MULTU)   = (int) "multu";
-  *(FUNCTIONS + FCT_DIVU)    = (int) "divu";
-  *(FUNCTIONS + FCT_ADDU)    = (int) "addu";
-  *(FUNCTIONS + FCT_SUBU)    = (int) "subu";
-  *(FUNCTIONS + FCT_SLT)     = (int) "slt";
-}
 
 // -----------------------------------------------------------------
 // ----------------------------- CODE ------------------------------
@@ -777,9 +772,11 @@ void storeBinary(int baddr, int instruction);
 void storeInstruction(int baddr, int instruction);
 
 void emitInstruction(int instruction);
-void emitRFormat(int opcode, int rs, int rt, int rd, int function);
-void emitIFormat(int opcode, int rs, int rt, int immediate);
-void emitJFormat(int opcode, int instr_index);
+void emitRFormat(int funct7, int rs2, int rs1, int funct3, int rd, int opcode);
+void emitIFormat(int immediate, int rs1, int funct3, int rd, int opcode);
+void emitSFormat(int immediate, int rs2, int rs1, int funct3, int opcode);
+void emitSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode);
+void emitUJFormat(int immediate, int rd, int opcode);
 
 void fixup_relative(int fromAddress);
 void fixup_absolute(int fromAddress, int toAddress);
@@ -4157,159 +4154,326 @@ void printRegister(int reg) {
 
 // -----------------------------------------------------------------
 // 32 bit
-//
-// +------+-----+-----+-----+-----+------+
-// |opcode| rs  | rt  | rd  |00000|fction|
-// +------+-----+-----+-----+-----+------+
-//    6      5     5     5     5     6
-int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
-  // assert: 0 <= opcode < 2^6
-  // assert: 0 <= rs < 2^5
-  // assert: 0 <= rt < 2^5
+
+//      7         5       5       3        5        7
+// +----------+-------+-------+--------+-------+---------+
+// | funct7   |  rs2  |  rs1  | funct3 |   rd  | opcode  |
+// +----------+-------+-------+--------+-------+---------+
+int encodeRFormat(int funct7, int rs2, int rs1, int funct3, int rd, int opcode) {
+  // assert: 0 <= opcode < 2^7
+  // assert: 0 <= rs1 < 2^5
+  // assert: 0 <= rs2 < 2^5
   // assert: 0 <= rd < 2^5
-  // assert: 0 <= function < 2^6
-  return leftShift(leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 5) + rd, 11) + function;
+  // assert: 0 <= funct3 < 2^3
+  // assert: 0 <= funct7 < 2^7
+
+  return leftShift(leftShift(leftShift(leftShift(leftShift(funct7, 5) + rs2, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;
 }
 
 // -----------------------------------------------------------------
 // 32 bit
-//
-// +------+-----+-----+----------------+
-// |opcode| rs  | rt  |   immediate    |
-// +------+-----+-----+----------------+
-//    6      5     5          16
-int encodeIFormat(int opcode, int rs, int rt, int immediate) {
-  // assert: 0 <= opcode < 2^6
-  // assert: 0 <= rs < 2^5
-  // assert: 0 <= rt < 2^5
-  // assert: -2^15 <= immediate < 2^15
-  if (immediate < 0)
-    // convert from 32-bit to 16-bit two's complement
-    immediate = immediate + twoToThePowerOf(16);
 
-  return leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 16) + immediate;
+//          12            5       3        5        7
+// +------------------+-------+--------+-------+---------+
+// |    immediate     |  rs1  | funct3 |   rd  | opcode  |
+// +------------------+-------+--------+-------+---------+
+int encodeIFormat(int immediate, int rs1, int funct3, int rd, int opcode) {
+  // assert: 0 <= opcode < 2^7
+  // assert: 0 <= rs1 < 2^5
+  // assert: 0 <= rd < 2^5
+  // assert: 0 <= funct3 < 2^3
+  // assert: 0 <= immediate < 2^12
+
+  if (immediate < 0) {
+    // convert from 32-bit to 12-bit two's complement
+    immediate = immediate + twoToThePowerOf(12);
+  }
+
+  return leftShift(leftShift(leftShift(leftShift(immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;
 }
 
-// --------------------------------------------------------------
+// -----------------------------------------------------------------
 // 32 bit
-//
-// +------+--------------------------+
-// |opcode|       instr_index        |
-// +------+--------------------------+
-//    6                26
-int encodeJFormat(int opcode, int instr_index) {
-  // assert: 0 <= opcode < 2^6
-  // assert: 0 <= instr_index < 2^26
-  return leftShift(opcode, 26) + instr_index;
+
+//      7         5       5       3        5        7
+// +----------+-------+-------+--------+-------+---------+
+// |   imm1   |  rs2  |  rs1  | funct3 | imm2  | opcode  |
+// +----------+-------+-------+--------+-------+---------+
+//  imm[11:5]                          imm[4:0]
+int encodeSFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
+  // assert: 0 <= opcode < 2^7
+  // assert: 0 <= rs1 < 2^5
+  // assert: 0 <= rs2 < 2^5
+  // assert: 0 <= funct3 < 2^3
+  // assert: 0 <= immediate < 2^12
+  int imm1;
+  int imm2;
+
+  if (immediate < 0)
+    // convert from 32-bit to 12-bit two's complement
+    immediate = immediate + twoToThePowerOf(12);
+
+  // split immediate by shifting 32-bit value accordingly
+  imm1 = rightShift(leftShift(immediate, 20), 25);
+  imm2 = rightShift(leftShift(immediate, 27), 27);
+
+  return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 5) + rs2, 5) + rs1, 3) + funct3, 5) + imm2, 7) + opcode;
+}
+
+// -----------------------------------------------------------------
+// 32 bit
+
+//    1        6        5       5      3       4       1       7
+// +------+---------+-------+-------+------+-------+------+---------+
+// | imm1 |  imm2   |  rs2  |  rs1  |funct3| imm3  | imm4 | opcode  |
+// +------+---------+-------+-------+------+-------+------+---------+
+// imm[12] imm[10:5]                       imm[4:1] imm[11]
+int encodeSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
+  // assert: 0 <= opcode < 2^7
+  // assert: 0 <= rs1 < 2^5
+  // assert: 0 <= rs2 < 2^5
+  // assert: 0 <= funct3 < 2^3
+  // assert: 0 <= immediate < 2^12
+  int imm1;
+  int imm2;
+  int imm3;
+  int imm4;
+
+  if (immediate < 0)
+    // convert from 32-bit to 13-bit two's complement
+    immediate = immediate + twoToThePowerOf(13);
+
+  imm1 = rightShift(leftShift(immediate, 19), 31);
+  imm2 = rightShift(leftShift(immediate, 21), 26);
+  imm3 = rightShift(leftShift(immediate, 27), 28);
+  imm4 = rightShift(leftShift(immediate, 20), 31);
+
+  return leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 6) + imm2, 5) + rs2, 5) + rs1, 3) + funct3, 4) + imm3, 1) + imm4, 7) + opcode;
+}
+
+// -----------------------------------------------------------------
+// 32 bit
+
+//     1        10         1         8        5        7
+// +-------+-----------+-------+-----------+-------+---------+
+// | imm1  |   imm2    | imm3  |   imm4    |  rd   | opcode  |
+// +-------+-----------+-------+-----------+-------+---------+
+//  imm[20]  imm[10:1]  imm[11] imm[19:12]
+int encodeUJFormat(int immediate, int rd, int opcode) {
+  // assert: 0 <= opcode < 2^7
+  // assert: 0 <= rd < 2^5
+  // assert: 0 <= immediate < 2^21
+
+  int imm1;
+  int imm2;
+  int imm3;
+  int imm4;
+
+  if (immediate < 0) {
+    // convert from 32-bit to 21-bit two's complement
+    immediate = immediate + twoToThePowerOf(21);
+  }
+
+  imm1 = rightShift(leftShift(immediate, 11), 31);
+  imm2 = rightShift(leftShift(immediate, 21), 22);
+  imm3 = rightShift(leftShift(immediate, 20), 31);
+  imm4 = rightShift(leftShift(immediate, 12), 24);
+
+  return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 10) + imm2, 1) + imm3, 8) + imm4, 5) + rd, 7) + opcode;
 }
 
 int getOpcode(int instruction) {
-  return rightShift(instruction, 26);
+  return rightShift(leftShift(instruction, 25), 25);
 }
 
-int getRS(int instruction) {
-  return rightShift(leftShift(instruction, 6), 27);
+int getRS1(int instruction) {
+  return rightShift(leftShift(instruction, 12), 27);
 }
 
-int getRT(int instruction) {
-  return rightShift(leftShift(instruction, 11), 27);
+int getRS2(int instruction) {
+    return rightShift(leftShift(instruction, 7), 27);
 }
 
 int getRD(int instruction) {
-  return rightShift(leftShift(instruction, 16), 27);
+    return rightShift(leftShift(instruction, 20), 27);
 }
 
-int getFunction(int instruction) {
-  return rightShift(leftShift(instruction, 26), 26);
+int getFunct3(int instruction) {
+  return rightShift(leftShift(instruction, 17), 29);
 }
 
-int getImmediate(int instruction) {
-  return rightShift(leftShift(instruction, 16), 16);
+int getFunct7(int instruction) {
+  return rightShift(instruction, 25);
 }
 
-int getInstrIndex(int instruction) {
-  return rightShift(leftShift(instruction, 6), 6);
+int getImmediateIFormat(int instruction) {
+  return rightShift(instruction, 20);
 }
 
-int signExtend(int immediate) {
-  // sign-extend from 16-bit to 32-bit two's complement
-  if (immediate < twoToThePowerOf(15))
+int getImmediateSFormat(int instruction) {
+  int imm1;
+  int imm2;
+
+  imm1 = rightShift(instruction, 25);
+  imm2 = rightShift(leftShift(instruction, 20), 27);
+
+  return leftShift(imm1, 5) + imm2;
+}
+
+int getImmediateSBFormat(int instruction) {
+  int imm1;
+  int imm2;
+  int imm3;
+  int imm4;
+
+  imm1 = rightShift(instruction, 31);
+  imm2 = rightShift(leftShift(instruction, 1), 26);
+  imm3 = rightShift(leftShift(instruction, 20), 28);
+  imm4 = rightShift(leftShift(instruction, 24), 31);
+
+  // reassemble immediate and add trailing zero
+  return leftShift(leftShift(leftShift(leftShift(imm1, 1) + imm4, 6) + imm2, 4) + imm3, 1);
+}
+
+int getImmediateUJFormat(int instruction) {
+  int imm1;
+  int imm2;
+  int imm3;
+  int imm4;
+
+  imm1 = rightShift(instruction, 31);
+  imm2 = rightShift(leftShift(instruction, 1), 22);
+  imm3 = rightShift(leftShift(instruction, 11), 31);
+  imm4 = rightShift(leftShift(instruction, 12), 24);
+
+  // reassemble immediate and add trailing zero
+  return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);;
+}
+
+int signExtend(int immediate, int bits) {
+  // sign-extend from "bits"-bit to 32-bit two's complement
+  if (immediate < twoToThePowerOf(bits-1))
     return immediate;
   else
-    return immediate - twoToThePowerOf(16);
+    return immediate - twoToThePowerOf(bits);
 }
+
 
 // -----------------------------------------------------------------
 // ---------------------------- DECODER ----------------------------
 // -----------------------------------------------------------------
 
-void printOpcode(int opcode) {
-  print((int*) *(OPCODES + opcode));
-}
-
-void printFunction(int function) {
-  print((int*) *(FUNCTIONS + function));
-}
-
 void decode() {
-  opcode = getOpcode(ir);
+  opcode = rv_getOpcode(ir);
 
-  if (opcode == 0)
+  if (opcode == OP_OP)
     decodeRFormat();
+  else if (opcode == OP_SW)
+    decodeSFormat();
+  else if (opcode == OP_BRANCH)
+    decodeSBFormat();
   else if (opcode == OP_JAL)
-    decodeJFormat();
-  else if (opcode == OP_J)
-    decodeJFormat();
-  else
+    decodeUJFormat();
+  else if (opcode == OP_IMM)
     decodeIFormat();
+  else if (opcode == OP_LW)
+    decodeIFormat();
+  else if (opcode == OP_JALR)
+    decodeIFormat();
+  else if (opcode == OP_SYSTEM)
+    decodeIFormat();
+  else {
+    print(selfieName);
+    print((int*) ": unkown opcode ");
+    print(itoa(opcode, string_buffer, 10, 0, 0));
+    print((int*) " (");
+    print(itoa(opcode, string_buffer, 2, 0, 0));
+    print((int*) ") detected");
+    exit(-1);
+  }
 }
 
 // --------------------------------------------------------------
 // 32 bit
-//
-// +------+-----+-----+-----+-----+------+
-// |opcode| rs  | rt  | rd  |00000|fction|
-// +------+-----+-----+-----+-----+------+
-//    6      5     5     5     5     6
+
+//      7         5       5       3        5        7
+// +----------+-------+-------+--------+-------+---------+
+// | funct7   |  rs2  |  rs1  | funct3 |   rd  | opcode  |
+// +----------+-------+-------+--------+-------+---------+
 void decodeRFormat() {
-  rs          = getRS(ir);
-  rt          = getRT(ir);
-  rd          = getRD(ir);
-  immediate   = 0;
-  function    = getFunction(ir);
-  instr_index = 0;
+  funct7    = rv_getFunct7(ir);
+  rs2       = rv_getRS2(ir);
+  rs1       = rv_getRS1(ir);
+  funct3    = rv_getFunct3(ir);
+  rd        = rv_getRD(ir);
+  immediate = 0;
 }
 
 // --------------------------------------------------------------
 // 32 bit
 //
-// +------+-----+-----+----------------+
-// |opcode| rs  | rt  |   immediate    |
-// +------+-----+-----+----------------+
-//    6      5     5          16
+//          12            5       3        5        7
+// +------------------+-------+--------+-------+---------+
+// |    immediate     |  rs1  | funct3 |   rd  | opcode  |
+// +------------------+-------+--------+-------+---------+
 void decodeIFormat() {
-  rs          = getRS(ir);
-  rt          = getRT(ir);
-  rd          = 0;
-  immediate   = getImmediate(ir);
-  function    = 0;
-  instr_index = 0;
+  funct7    = 0;
+  rs2       = 0;
+  rs1       = rv_getRS1(ir);
+  funct3    = rv_getFunct3(ir);
+  rd        = rv_getRD(ir);
+  immediate = rv_getImmediateIFormat(ir);
 }
 
-// --------------------------------------------------------------
+// -----------------------------------------------------------------
 // 32 bit
-//
-// +------+--------------------------+
-// |opcode|       instr_index        |
-// +------+--------------------------+
-//    6                26
-void decodeJFormat() {
-  rs          = 0;
-  rt          = 0;
-  rd          = 0;
-  immediate   = 0;
-  function    = 0;
-  instr_index = getInstrIndex(ir);
+
+//      7         5       5       3        5        7
+// +----------+-------+-------+--------+-------+---------+
+// |   imm1   |  rs2  |  rs1  | funct3 | imm2  | opcode  |
+// +----------+-------+-------+--------+-------+---------+
+//  imm[11:5]                          imm[4:0]
+void decodeSFormat() {
+  funct7    = 0;
+  rs2       = rv_getRS2(ir);
+  rs1       = rv_getRS1(ir);
+  funct3    = rv_getFunct3(ir);
+  rd        = 0;
+  immediate = rv_getImmediateSFormat(ir);
+}
+
+// -----------------------------------------------------------------
+// 32 bit
+
+//    1        6        5       5      3       4       1       7
+// +------+---------+-------+-------+------+-------+------+---------+
+// | imm1 |  imm2   |  rs2  |  rs1  |funct3| imm3  | imm4 | opcode  |
+// +------+---------+-------+-------+------+-------+------+---------+
+// imm[12] imm[10:5]                       imm[4:1] imm[11]
+void decodeSBFormat() {
+  funct7    = 0;
+  rs2       = rv_getRS2(ir);
+  rs1       = rv_getRS1(ir);
+  funct3    = rv_getFunct3(ir);
+  rd        = 0;
+  immediate = rv_getImmediateSBFormat(ir);
+}
+
+// -----------------------------------------------------------------
+// 32 bit
+
+//     1        10         1         8        5        7
+// +-------+-----------+-------+-----------+-------+---------+
+// | imm1  |   imm2    | imm3  |   imm4    |  rd   | opcode  |
+// +-------+-----------+-------+-----------+-------+---------+
+//  imm[20]  imm[10:1]  imm[11] imm[19:12]
+void decodeUJFormat() {
+  funct7    = 0;
+  rs2       = 0;
+  rs1       = 0;
+  funct3    = 0;
+  rd        = rv_getRD(ir);
+  immediate = rv_getImmediateUJFormat(ir);
 }
 
 // -----------------------------------------------------------------
@@ -4343,16 +4507,24 @@ void emitInstruction(int instruction) {
   }
 }
 
-void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
-  emitInstruction(encodeRFormat(opcode, rs, rt, rd, function));
+void emitRFormat(int funct7, int rs2, int rs1, int funct3, int rd, int opcode) {
+  emitInstruction(encodeRFormat(funct7, rs2, rs1, funct3, rd, opcode));
 }
 
-void emitIFormat(int opcode, int rs, int rt, int immediate) {
-  emitInstruction(encodeIFormat(opcode, rs, rt, immediate));
+void emitIFormat(int immediate, int rs1, int funct3, int rd, int opcode) {
+  emitInstruction(encodeIFormat(immediate, rs1, funct3, rd, opcode));
 }
 
-void emitJFormat(int opcode, int instr_index) {
-  emitInstruction(encodeJFormat(opcode, instr_index));
+void emitSFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
+  emitInstruction(encodeSFormat(immediate, rs2, rs1, funct3, opcode));
+}
+
+void emitSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
+  emitInstruction(encodeSBFormat(immediate, rs2, rs1, funct3, opcode));
+}
+
+void emitUJFormat(int immediate, int rd, int opcode) {
+  emitInstruction(encodeUJFormat(immediate, rd, opcode));
 }
 
 void fixup_relative(int fromAddress) {
