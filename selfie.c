@@ -157,8 +157,8 @@ int* power_of_two_table;
 int INT_MAX; // maximum numerical value of a signed 32-bit integer
 int INT_MIN; // minimum numerical value of a signed 32-bit integer
 
-int INT16_MAX; // maximum numerical value of a signed 16-bit integer
-int INT16_MIN; // minimum numerical value of a signed 16-bit integer
+int INT12_MAX; // maximum numerical value of a signed 16-bit integer
+int INT12_MIN; // minimum numerical value of a signed 16-bit integer
 
 int maxFilenameLength = 128;
 
@@ -221,8 +221,8 @@ void initLibrary() {
   INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
   INT_MIN = -INT_MAX - 1;
 
-  INT16_MAX = twoToThePowerOf(15) - 1;
-  INT16_MIN = -INT16_MAX - 1;
+  INT12_MAX = twoToThePowerOf(11) - 1;
+  INT12_MIN = -INT12_MAX - 1;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = malloc(1);
@@ -962,19 +962,17 @@ void initMemory(int bytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void fct_syscall();
+void op_ecall();
 void op_jal();
-void op_j();
-void op_beq();
-void op_bne();
-void op_addiu();
-void fct_jr();
-void fct_mfhi();
-void fct_mflo();
-void fct_multu();
+void fct_beq();
+void fct_bne();
+void fct_addi();
+void op_jalr();
+void fct_mul();
 void fct_divu();
-void fct_addu();
-void fct_subu();
+void fct_remu();
+void fct_add();
+void fct_sub();
 void op_lw();
 void fct_slt();
 void op_sw();
@@ -1042,9 +1040,6 @@ int* registers = (int*) 0; // general purpose registers
 int pc = 0; // program counter
 int ir = 0; // instruction register
 
-int reg_hi = 0; // hi register for multiplication/division
-int reg_lo = 0; // lo register for multiplication/division
-
 int* pt = (int*) 0; // page table
 
 int brk = 0; // break between code, data, and heap
@@ -1095,9 +1090,6 @@ void resetInterpreter() {
 
   pc = 0;
   ir = 0;
-
-  reg_hi = 0;
-  reg_lo = 0;
 
   pt = (int*) 0;
 
@@ -1151,11 +1143,9 @@ void mapPage(int* table, int page, int frame);
 // | 2 | id     | unique identifier
 // | 3 | pc     | program counter
 // | 4 | regs   | pointer to general purpose registers
-// | 5 | reg_hi | hi register
-// | 6 | reg_lo | lo register
-// | 7 | pt     | pointer to page table
-// | 8 | brk    | break between code, data, and heap
-// | 9 | parent | ID of context that created this context
+// | 5 | pt     | pointer to page table
+// | 6 | brk    | break between code, data, and heap
+// | 7 | parent | ID of context that created this context
 // +---+--------+
 
 int* getNextContext(int* context) { return (int*) *context; }
@@ -1163,22 +1153,18 @@ int* getPrevContext(int* context) { return (int*) *(context + 1); }
 int  getID(int* context)          { return        *(context + 2); }
 int  getPC(int* context)          { return        *(context + 3); }
 int* getRegs(int* context)        { return (int*) *(context + 4); }
-int  getRegHi(int* context)       { return        *(context + 5); }
-int  getRegLo(int* context)       { return        *(context + 6); }
-int* getPT(int* context)          { return (int*) *(context + 7); }
-int  getBreak(int* context)       { return        *(context + 8); }
-int  getParent(int* context)      { return        *(context + 9); }
+int* getPT(int* context)          { return (int*) *(context + 5); }
+int  getBreak(int* context)       { return        *(context + 6); }
+int  getParent(int* context)      { return        *(context + 7); }
 
 void setNextContext(int* context, int* next) { *context       = (int) next; }
 void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
 void setID(int* context, int id)             { *(context + 2) = id; }
 void setPC(int* context, int pc)             { *(context + 3) = pc; }
 void setRegs(int* context, int* regs)        { *(context + 4) = (int) regs; }
-void setRegHi(int* context, int reg_hi)      { *(context + 5) = reg_hi; }
-void setRegLo(int* context, int reg_lo)      { *(context + 6) = reg_lo; }
-void setPT(int* context, int* pt)            { *(context + 7) = (int) pt; }
-void setBreak(int* context, int brk)         { *(context + 8) = brk; }
-void setParent(int* context, int id)         { *(context + 9) = id; }
+void setPT(int* context, int* pt)            { *(context + 5) = (int) pt; }
+void setBreak(int* context, int brk)         { *(context + 6) = brk; }
+void setParent(int* context, int id)         { *(context + 7) = id; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -4533,22 +4519,30 @@ void fixup_relative(int fromAddress) {
   instruction = loadBinary(fromAddress);
 
   storeBinary(fromAddress,
-    encodeIFormat(getOpcode(instruction),
-      getRS(instruction),
-      getRT(instruction),
-      (binaryLength - fromAddress - WORDSIZE) / WORDSIZE));
+    encodeSBFormat(
+      (binaryLength - fromAddress - WORDSIZE),
+      getRS1(instruction),
+      getRS2(instruction),
+      getFunct3(instruction),
+      getOpcode(instruction)));
 }
 
 void fixup_absolute(int fromAddress, int toAddress) {
+  int currentOp;
+  int currentRD;
+
+  currentOp = getOpcode(loadBinary(fromAddress));
+  currentRD = getRD(loadBinary(fromAddress));
+
   storeBinary(fromAddress,
-    encodeJFormat(getOpcode(loadBinary(fromAddress)), toAddress / WORDSIZE));
+      encodeUJFormat((toAddress - fromAddress), currentRD, currentOp));
 }
 
 void fixlink_absolute(int fromAddress, int toAddress) {
   int previousAddress;
 
   while (fromAddress != 0) {
-    previousAddress = getInstrIndex(loadBinary(fromAddress)) * WORDSIZE;
+    previousAddress = getImmediateUJFormat(loadBinary(fromAddress));
 
     fixup_absolute(fromAddress, toAddress);
 
@@ -4797,11 +4791,11 @@ void implementExit() {
 
   exitCode = *(registers+REG_A0);
 
-  // exit code must be signed 16-bit integer
-  if (exitCode > INT16_MAX)
-    exitCode = INT16_MAX;
-  else if (exitCode < INT16_MIN)
-    exitCode = INT16_MIN;
+  // exit code must be signed 12-bit integer
+  if (exitCode > INT12_MIN_MAX)
+    exitCode = INT12_MAX;
+  else if (exitCode < INT12_MIN)
+    exitCode = INT12_MIN;
 
   throwException(EXCEPTION_EXIT, exitCode);
 
@@ -5645,9 +5639,9 @@ void mapAndStoreVirtualMemory(int* table, int vaddr, int data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void fct_syscall() {
+void op_ecall() {
   if (debug) {
-    printFunction(function);
+    print((int*) "ecall");
     println();
   }
 
@@ -5686,187 +5680,155 @@ void fct_syscall() {
 
 void op_jal() {
   if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printHexadecimal(instr_index, 0);
+    print((int*) "jal ");
+    print(itoa(signExtend(immediate, 21), string_buffer, 16, 0, 0));
     print((int*) "[");
-    printHexadecimal(instr_index * WORDSIZE, 0);
+    print(itoa(signExtend(immediate, 21) + pc, string_buffer, 16, 0, 0));
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
-      printRegister(REG_RA);
+      printRegister(rd);
       print((int*) "=");
-      printHexadecimal(*(registers+REG_RA), 0);
+      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
     }
   }
 
   if (interpret) {
-    *(registers+REG_RA) = pc + 4;
+    // if rd == 0, this is a J instruction -
+    // do not write into REG_ZR!
+    if (rd != REG_ZR)
+      *(registers+rd) = pc + 4;
 
-    pc = instr_index * WORDSIZE;
+    pc = pc + signExtend(immediate, 21);
 
     // keep track of number of procedure calls
     calls = calls + 1;
 
     *(callsPerAddress + pc / WORDSIZE) = *(callsPerAddress + pc / WORDSIZE) + 1;
-
-    // TODO: execute delay slot
   }
 
   if (debug) {
     if (interpret) {
       print((int*) " -> ");
-      printRegister(REG_RA);
+      printRegister(rd);
       print((int*) "=");
-      printHexadecimal(*(registers+REG_RA), 0);
+      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
       print((int*) ",$pc=");
-      printHexadecimal(pc, 0);
+      print(itoa(pc, string_buffer, 16, 0, 0));
     }
     println();
   }
 }
 
-void op_j() {
+void fct_beq() {
   if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printHexadecimal(instr_index, 0);
-    print((int*) "[");
-    printHexadecimal(instr_index * WORDSIZE, 0);
-    print((int*) "]");
-  }
-
-  if (interpret) {
-    pc = instr_index * WORDSIZE;
-
-    // TODO: execute delay slot
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) ": -> $pc=");
-      printHexadecimal(pc, 0);
-    }
-    println();
-  }
-}
-
-void op_beq() {
-  if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printRegister(rs);
+    print((int*) "beq ");
+    printRegister(rs2);
     print((int*) ",");
-    printRegister(rt);
+    printRegister(rs1);
     print((int*) ",");
-    printInteger(signExtend(immediate));
+    print(itoa(signExtend(immediate, 13), string_buffer, 10, 0, 0));
     print((int*) "[");
-    printHexadecimal(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, 0);
+    print(itoa(pc + WORDSIZE + signExtend(immediate, 13), string_buffer, 16, 0, 0));
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
-      printRegister(rs);
+      printRegister(rs2);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rt);
+      printRegister(rs1);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
     }
   }
 
   if (interpret) {
     pc = pc + WORDSIZE;
 
-    if (*(registers+rs) == *(registers+rt)) {
-      pc = pc + signExtend(immediate) * WORDSIZE;
+    if (*(registers+rs1) == *(registers+rs2)) {
+      pc = pc + signExtend(immediate, 13);
 
-      if (signExtend(immediate) < 0) {
+      if (signExtend(immediate, 13) < 0) {
         // keep track of number of loop iterations
         loops = loops + 1;
 
         *(loopsPerAddress + pc / WORDSIZE) = *(loopsPerAddress + pc / WORDSIZE) + 1;
       }
-
-      // TODO: execute delay slot
     }
   }
 
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      printHexadecimal(pc, 0);
+      print(itoa(pc, string_buffer, 16, 0, 0));
     }
     println();
   }
 }
 
-void op_bne() {
+void fct_bne() {
   if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printRegister(rs);
+    print((int*) "bne ");
+    printRegister(rs2);
     print((int*) ",");
-    printRegister(rt);
+    printRegister(rs1);
     print((int*) ",");
-    printInteger(signExtend(immediate));
+    print(itoa(signExtend(immediate, 13), string_buffer, 10, 0, 0));
     print((int*) "[");
-    printHexadecimal(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, 0);
+    print(itoa(pc + WORDSIZE + signExtend(immediate, 13), string_buffer, 16, 0, 0));
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
-      printRegister(rs);
+      printRegister(rs2);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rt);
+      printRegister(rs1);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
     }
   }
 
   if (interpret) {
     pc = pc + WORDSIZE;
 
-    if (*(registers+rs) != *(registers+rt)) {
-      pc = pc + signExtend(immediate) * WORDSIZE;
-
-      // TODO: execute delay slot
+    if (*(registers+rs1) != *(registers+rs2)) {
+      pc = pc + signExtend(immediate, 13);
     }
   }
 
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      printHexadecimal(pc, 0);
+      print(itoa(pc, string_buffer, 16, 0, 0));
     }
     println();
   }
 }
 
-void op_addiu() {
+void fct_addi() {
   if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printRegister(rt);
+    print((int*) "addi ");
+    printRegister(rd);
     print((int*) ",");
-    printRegister(rs);
+    printRegister(rs1);
     print((int*) ",");
-    printInteger(signExtend(immediate));
+    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
     if (interpret) {
       print((int*) ": ");
-      printRegister(rt);
+      printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rs);
+      printRegister(rs1);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
     }
   }
 
   if (interpret) {
-    *(registers+rt) = *(registers+rs) + signExtend(immediate);
+    *(registers+rd) = *(registers+rs1) + signExtend(immediate, 12);
 
     // TODO: check for overflow
 
@@ -5876,135 +5838,89 @@ void op_addiu() {
   if (debug) {
     if (interpret) {
       print((int*) " -> ");
-      printRegister(rt);
+      printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
     }
     println();
   }
 }
 
-void fct_jr() {
+void op_jalr() {
   if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rs);
+    print((int*) "jalr ");
+    printRegister(rd);
+    print((int*) ",");
+    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
+    print((int*) "(");
+    printRegister(rs1);
+    print((int*) ")");
     if (interpret) {
       print((int*) ": ");
-      printRegister(rs);
+      printRegister(rd);
       print((int*) "=");
-      printHexadecimal(*(registers+rs), 0);
+      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
+      print((int*) ",");
+      printRegister(rs1);
+      print((int*) "=");
+      print(itoa(*(registers+rs1), string_buffer, 16, 0, 0));
     }
   }
 
-  if (interpret)
-    pc = *(registers+rs);
+  if (interpret) {
+    // if rd == 0, this is a JR instruction -
+    // do not write into REG_ZR!
+    if (rd != REG_ZR)
+      *(registers+rd) = pc + 4;
+
+    // add 12-bit signed immediate to rs1, then set the
+    // least-signficant bit of the result to zero
+    pc = leftShift(rightShift(*(registers+rs1) + signExtend(immediate, 12), 1), 1);
+  }
 
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      printHexadecimal(pc, 0);
+      print(itoa(pc, string_buffer, 16, 0, 0));
     }
     println();
   }
 }
 
-void fct_mfhi() {
+void fct_mul() {
   if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    if (interpret) {
-      print((int*) ":");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",$hi=");
-      printInteger(reg_hi);
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = reg_hi;
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-    }
-    println();
-  }
-}
-
-void fct_mflo() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",$lo=");
-      printInteger(reg_lo);
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = reg_lo;
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-    }
-    println();
-  }
-}
-
-void fct_multu() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rs);
+    print((int*) "mul ");
+    printRegister(rs2);
     print((int*) ",");
-    printRegister(rt);
+    printRegister(rs1);
     if (interpret) {
       print((int*) ": ");
-      printRegister(rs);
+      printRegister(rs2);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rt);
+      printRegister(rs1);
       print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) ",$lo=");
-      printInteger(reg_lo);
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      print((int*) ",");
+      printRegister(rd);
+      print((int*) "=");
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
     }
   }
 
   if (interpret) {
-    // TODO: 64-bit resolution currently not supported
-    reg_lo = *(registers+rs) * *(registers+rt);
+    *(registers+rd) = *(registers+rs1) * *(registers+rs2);
 
     pc = pc + WORDSIZE;
   }
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> $lo=");
-      printInteger(reg_lo);
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
     }
     println();
   }
@@ -6012,72 +5928,28 @@ void fct_multu() {
 
 void fct_divu() {
   if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rs);
+    print((int*) "divu ");
+    printRegister(rs1);
     print((int*) ",");
-    printRegister(rt);
+    printRegister(rs2);
     if (interpret) {
       print((int*) ": ");
-      printRegister(rs);
+      printRegister(rs1);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rt);
+      printRegister(rs2);
       print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) ",$lo=");
-      printInteger(reg_lo);
-      print((int*) ",$hi=");
-      printInteger(reg_hi);
-    }
-  }
-
-  if (interpret) {
-    reg_lo = *(registers+rs) / *(registers+rt);
-    reg_hi = *(registers+rs) % *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $lo=");
-      printInteger(reg_lo);
-      print((int*) ",$hi=");
-      printInteger(reg_hi);
-    }
-    println();
-  }
-}
-
-void fct_addu() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    print((int*) ",");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
-    if (interpret) {
-      print((int*) ": ");
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      print((int*) ", ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
     }
   }
 
   if (interpret) {
-    *(registers+rd) = *(registers+rs) + *(registers+rt);
+    *(registers+rd) = *(registers+rs1) / *(registers+rs2);
 
     pc = pc + WORDSIZE;
   }
@@ -6087,39 +5959,36 @@ void fct_addu() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
     }
     println();
   }
 }
 
-void fct_subu() {
+void fct_remu() {
   if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
+    print((int*) "remu ");
+    printRegister(rs1);
     print((int*) ",");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
+    printRegister(rs2);
     if (interpret) {
       print((int*) ": ");
+      printRegister(rs1);
+      print((int*) "=");
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      print((int*) ",");
+      printRegister(rs2);
+      print((int*) "=");
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      print((int*) ", ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
     }
   }
 
   if (interpret) {
-    *(registers+rd) = *(registers+rs) - *(registers+rt);
+    *(registers+rd) = *(registers+rs1) % *(registers+rs2);
 
     pc = pc + WORDSIZE;
   }
@@ -6129,7 +5998,92 @@ void fct_subu() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+    }
+    println();
+  }
+}
+
+void fct_add() {
+  if (debug) {
+    print((int*) "add ");
+    printRegister(rd);
+    print((int*) ",");
+    printRegister(rs2);
+    print((int*) ",");
+    printRegister(rs1);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rd);
+      print((int*) "=");
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      print((int*) ",");
+      printRegister(rs2);
+      print((int*) "=");
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      print((int*) ",");
+      printRegister(rs1);
+      print((int*) "=");
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+    }
+  }
+
+  if (interpret) {
+    *(registers+rd) = *(registers+rs2) + *(registers+rs1);
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+    }
+    println();
+  }
+}
+
+void fct_sub() {
+  if (debug) {
+    print((int*) "sub ");
+    printRegister(rd);
+    print((int*) ",");
+    printRegister(rs2);
+    print((int*) ",");
+    printRegister(rs1);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rd);
+      print((int*) "=");
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      print((int*) ",");
+      printRegister(rs2);
+      print((int*) "=");
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      print((int*) ",");
+      printRegister(rs1);
+      print((int*) "=");
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+    }
+  }
+
+  if (interpret) {
+    // could be the other way around on real RISC-V machines,
+    // specification does not say which register is subtracted
+    // from which!
+    *(registers+rd) = *(registers+rs2) - *(registers+rs1);
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
     }
     println();
   }
@@ -6139,32 +6093,31 @@ void op_lw() {
   int vaddr;
 
   if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printRegister(rt);
+    print((int*) "lw ");
+    printRegister(rd);
     print((int*) ",");
-    printInteger(signExtend(immediate));
+    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
     print((int*) "(");
-    printRegister(rs);
+    printRegister(rs1);
     print((int*) ")");
     if (interpret) {
       print((int*) ": ");
-      printRegister(rt);
+      printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rs);
+      printRegister(rs1);
       print((int*) "=");
-      printHexadecimal(*(registers+rs), 0);
+      print(itoa(*(registers+rs1), string_buffer, 16, 0, 0));
     }
   }
 
   if (interpret) {
-    vaddr = *(registers+rs) + signExtend(immediate);
+    vaddr = *(registers+rs1) + signExtend(immediate, 12);
 
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
-        *(registers+rt) = loadVirtualMemory(pt, vaddr);
+        *(registers+rd) = loadVirtualMemory(pt, vaddr);
 
         // keep track of number of loads
         loads = loads + 1;
@@ -6181,11 +6134,11 @@ void op_lw() {
   if (debug) {
     if (interpret) {
       print((int*) " -> ");
-      printRegister(rt);
+      printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
       print((int*) "=memory[");
-      printHexadecimal(vaddr, 0);
+      print(itoa(vaddr, string_buffer, 16, 0, 0));
       print((int*) "]");
     }
     println();
@@ -6194,27 +6147,26 @@ void op_lw() {
 
 void fct_slt() {
   if (debug) {
-    printFunction(function);
-    print((int*) " ");
+    print((int*) "slt ");
     printRegister(rd);
     print((int*) ",");
-    printRegister(rs);
+    printRegister(rs1);
     print((int*) ",");
-    printRegister(rt);
+    printRegister(rs2);
     if (interpret) {
       print((int*) ": ");
-      printRegister(rs);
+      printRegister(rs1);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rt);
+      printRegister(rs2);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
     }
   }
 
   if (interpret) {
-    if (*(registers+rs) < *(registers+rt))
+    if (*(registers+rs1) < *(registers+rs2))
       *(registers+rd) = 1;
     else
       *(registers+rd) = 0;
@@ -6227,7 +6179,7 @@ void fct_slt() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
     }
     println();
   }
@@ -6237,32 +6189,31 @@ void op_sw() {
   int vaddr;
 
   if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printRegister(rt);
+    print((int*) "sw ");
+    printRegister(rs2);
     print((int*) ",");
-    printInteger(signExtend(immediate));
+    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
     print((int*) "(");
-    printRegister(rs);
+    printRegister(rs1);
     print((int*) ")");
     if (interpret) {
       print((int*) ": ");
-      printRegister(rt);
+      printRegister(rs2);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
       print((int*) ",");
-      printRegister(rs);
+      printRegister(rs1);
       print((int*) "=");
-      printHexadecimal(*(registers+rs), 0);
+      print(itoa(*(registers+rs1), string_buffer, 16, 0, 0));
     }
   }
 
   if (interpret) {
-    vaddr = *(registers+rs) + signExtend(immediate);
+    vaddr = *(registers+rs1) + signExtend(immediate, 12);
 
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
-        storeVirtualMemory(pt, vaddr, *(registers+rt));
+        storeVirtualMemory(pt, vaddr, *(registers+rs2));
 
         // keep track of number of stores
         stores = stores + 1;
@@ -6279,15 +6230,16 @@ void op_sw() {
   if (debug) {
     if (interpret) {
       print((int*) " -> memory[");
-      printHexadecimal(vaddr, 0);
+      print(itoa(vaddr, string_buffer, 16, 0, 0));
       print((int*) "]=");
-      printInteger(*(registers+rt));
+      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
       print((int*) "=");
-      printRegister(rt);
+      printRegister(rs2);
     }
     println();
   }
 }
+
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -6776,7 +6728,7 @@ int* allocateContext(int ID, int parentID) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = malloc(4 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+    context = malloc(4 * SIZEOFINTSTAR + 4 * SIZEOFINT);
   else {
     context = freeContexts;
 
@@ -6793,9 +6745,6 @@ int* allocateContext(int ID, int parentID) {
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
   setRegs(context, zalloc(NUMBEROFREGISTERS * WORDSIZE));
-
-  setRegHi(context, 0);
-  setRegLo(context, 0);
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
@@ -6840,15 +6789,11 @@ int* findContext(int ID, int* in) {
 void switchContext(int* from, int* to) {
   // save machine state
   setPC(from, pc);
-  setRegHi(from, reg_hi);
-  setRegLo(from, reg_lo);
   setBreak(from, brk);
 
   // restore machine state
   pc        = getPC(to);
   registers = getRegs(to);
-  reg_hi    = getRegHi(to);
-  reg_lo    = getRegLo(to);
   pt        = getPT(to);
   brk       = getBreak(to);
 }
