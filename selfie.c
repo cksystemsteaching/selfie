@@ -5817,15 +5817,15 @@ void op_ecall() {
 void op_jal() {
   if (debug) {
     print((int*) "jal ");
-    print(itoa(signExtend(immediate, 21), string_buffer, 16, 0, 0));
+    printHexadecimal(signExtend(immediate, 21), 0);
     print((int*) "[");
-    print(itoa(signExtend(immediate, 21) + pc, string_buffer, 16, 0, 0));
+    printHexadecimal(signExtend(immediate, 21) + pc, 0);
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rd), 0);
     }
   }
 
@@ -5848,9 +5848,9 @@ void op_jal() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rd), 0);
       print((int*) ",$pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5863,19 +5863,19 @@ void fct_beq() {
     print((int*) ",");
     printRegister(rs1);
     print((int*) ",");
-    print(itoa(signExtend(immediate, 13), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate, 13));
     print((int*) "[");
-    print(itoa(pc + WORDSIZE + signExtend(immediate, 13), string_buffer, 16, 0, 0));
+    printHexadecimal(pc + WORDSIZE + signExtend(immediate, 13), 0);
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
     }
   }
 
@@ -5897,7 +5897,7 @@ void fct_beq() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5910,19 +5910,19 @@ void fct_bne() {
     print((int*) ",");
     printRegister(rs1);
     print((int*) ",");
-    print(itoa(signExtend(immediate, 13), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate, 13));
     print((int*) "[");
-    print(itoa(pc + WORDSIZE + signExtend(immediate, 13), string_buffer, 16, 0, 0));
+    printHexadecimal(pc + WORDSIZE + signExtend(immediate, 13), 0);
     print((int*) "]");
     if (interpret) {
       print((int*) ": ");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
     }
   }
 
@@ -5937,7 +5937,7 @@ void fct_bne() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -5950,16 +5950,16 @@ void fct_addi() {
     print((int*) ",");
     printRegister(rs1);
     print((int*) ",");
-    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate, 12));
     if (interpret) {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
     }
   }
 
@@ -5976,7 +5976,7 @@ void fct_addi() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -5987,7 +5987,7 @@ void op_jalr() {
     print((int*) "jalr ");
     printRegister(rd);
     print((int*) ",");
-    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate, 12));
     print((int*) "(");
     printRegister(rs1);
     print((int*) ")");
@@ -5995,11 +5995,11 @@ void op_jalr() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rd), 0);
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rs1), 0);
     }
   }
 
@@ -6017,7 +6017,7 @@ void op_jalr() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $pc=");
-      print(itoa(pc, string_buffer, 16, 0, 0));
+      printHexadecimal(pc, 0);
     }
     println();
   }
@@ -6033,15 +6033,15 @@ void fct_mul() {
       print((int*) ": ");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
       print((int*) ",");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
   }
 
@@ -6056,7 +6056,7 @@ void fct_mul() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -6072,15 +6072,15 @@ void fct_divu() {
       print((int*) ": ");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
       print((int*) ",");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ", ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rd), 0);
     }
   }
 
@@ -6095,7 +6095,7 @@ void fct_divu() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -6111,15 +6111,15 @@ void fct_remu() {
       print((int*) ": ");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
       print((int*) ",");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ", ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rd), 0);
     }
   }
 
@@ -6134,7 +6134,7 @@ void fct_remu() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -6152,15 +6152,15 @@ void fct_add() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
     }
   }
 
@@ -6175,7 +6175,7 @@ void fct_add() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -6193,15 +6193,15 @@ void fct_sub() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
     }
   }
 
@@ -6219,7 +6219,7 @@ void fct_sub() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -6232,7 +6232,7 @@ void op_lw() {
     print((int*) "lw ");
     printRegister(rd);
     print((int*) ",");
-    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate, 12));
     print((int*) "(");
     printRegister(rs1);
     print((int*) ")");
@@ -6240,11 +6240,11 @@ void op_lw() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rs1), 0);
     }
   }
 
@@ -6272,9 +6272,9 @@ void op_lw() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
       print((int*) "=memory[");
-      print(itoa(vaddr, string_buffer, 16, 0, 0));
+      printHexadecimal(vaddr, 0);
       print((int*) "]");
     }
     println();
@@ -6293,11 +6293,11 @@ void fct_slt() {
       print((int*) ": ");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs1));
       print((int*) ",");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
     }
   }
 
@@ -6315,7 +6315,7 @@ void fct_slt() {
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      print(itoa(*(registers+rd), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rd));
     }
     println();
   }
@@ -6328,7 +6328,7 @@ void op_sw() {
     print((int*) "sw ");
     printRegister(rs2);
     print((int*) ",");
-    print(itoa(signExtend(immediate, 12), string_buffer, 10, 0, 0));
+    printInteger(signExtend(immediate, 12));
     print((int*) "(");
     printRegister(rs1);
     print((int*) ")");
@@ -6336,11 +6336,11 @@ void op_sw() {
       print((int*) ": ");
       printRegister(rs2);
       print((int*) "=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
-      print(itoa(*(registers+rs1), string_buffer, 16, 0, 0));
+      printHexadecimal(*(registers+rs1), 0);
     }
   }
 
@@ -6366,9 +6366,9 @@ void op_sw() {
   if (debug) {
     if (interpret) {
       print((int*) " -> memory[");
-      print(itoa(vaddr, string_buffer, 16, 0, 0));
+      printHexadecimal(vaddr, 0);
       print((int*) "]=");
-      print(itoa(*(registers+rs2), string_buffer, 10, 0, 0));
+      printInteger(*(registers+rs2));
       print((int*) "=");
       printRegister(rs2);
     }
