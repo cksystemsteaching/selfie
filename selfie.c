@@ -588,6 +588,8 @@ void printRegister(int reg);
 
 int NUMBEROFREGISTERS = 32;
 
+int maxNumberOfTemporaries;
+
 int* temporary_registers = (int*) 0; // mapping for registers T0 - T7
 
 int REG_ZR = 0;
@@ -622,7 +624,6 @@ int REG_T3 = 28;
 int REG_T4 = 29;
 int REG_T5 = 30;
 int REG_T6 = 31;
-
 
 int* REGISTERS; // strings representing registers
 
@@ -664,7 +665,9 @@ void initRegister() {
   *(REGISTERS + REG_T6) = (int) "$t6";
 
 
-  temporary_registers = malloc(((REG_T2-REG_TP) + (REG_T6 - REG_S11)) * SIZEOFINT);
+  maxNumberOfTemporaries = (REG_T2 - REG_TP) + (REG_T6 - REG_S11);
+
+  temporary_registers = malloc(maxNumberOfTemporaries * SIZEOFINT);
 
   *(temporary_registers + 0) = REG_T0;
   *(temporary_registers + 1) = REG_T1;
@@ -2432,7 +2435,7 @@ int lookForType() {
 
 void talloc() {
   // we use registers REG_T0-REG_T2 or REG_T3-REG_T6 for temporaries
-  if (allocatedTemporaries < (REG_T2 - REG_TP) + (REG_T6 - REG_S11))
+  if (allocatedTemporaries < maxNumberOfTemporaries)
     allocatedTemporaries = allocatedTemporaries + 1;
   else {
     syntaxErrorMessage((int*) "out of registers");
@@ -2443,7 +2446,7 @@ void talloc() {
 
 int currentTemporary() {
   if (allocatedTemporaries > 0) {
-    return *(temporary_registers + (allocatedTemporaries-1));
+    return *(temporary_registers + (allocatedTemporaries - 1));
   } else {
     syntaxErrorMessage((int*) "illegal register access");
 
@@ -2462,8 +2465,7 @@ int previousTemporary() {
 }
 
 int nextTemporary() {
-  // we use registers REG_T0-REG_T2 or REG_T3-REG_T6 for temporaries
-  if (allocatedTemporaries < ((REG_T2 - REG_TP) + (REG_T6 - REG_S11)))
+  if (allocatedTemporaries < maxNumberOfTemporaries)
     return *(temporary_registers + (allocatedTemporaries));
   else {
     syntaxErrorMessage((int*) "out of registers");
