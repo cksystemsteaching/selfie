@@ -163,9 +163,9 @@ int INT16_MIN; // minimum numerical value of a signed 16-bit integer
 int maxFilenameLength = 128;
 
 int* character_buffer; // buffer for reading and writing characters
-int* string_buffer;    // buffer for string output
-int* filename_buffer;  // buffer for filenames
-int* io_buffer;        // buffer for binary I/O
+int* integer_buffer;   // buffer for printing integers
+int* filename_buffer;  // buffer for opening files
+int* binary_buffer;    // buffer for binary I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -229,14 +229,14 @@ void initLibrary() {
   *character_buffer = 0;
 
   // accommodate at least 32-bit numbers for itoa, no mapping needed
-  string_buffer = malloc(33);
+  integer_buffer = malloc(33);
 
   // does not need to be mapped
   filename_buffer = malloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  io_buffer  = malloc(SIZEOFINT);
-  *io_buffer = 0;
+  binary_buffer  = malloc(SIZEOFINT);
+  *binary_buffer = 0;
 }
 
 void resetLibrary() {
@@ -1679,23 +1679,23 @@ void printString(int* s) {
 }
 
 void printInteger(int n) {
-  print(itoa(n, string_buffer, 10, 0, 0));
+  print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
 void printFixedPoint(int a, int b) {
-  print(itoa(fixedPointRatio(a, b), string_buffer, 10, 0, 2));
+  print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
 void printHexadecimal(int n, int a) {
-  print(itoa(n, string_buffer, 16, a, 0));
+  print(itoa(n, integer_buffer, 16, a, 0));
 }
 
 void printOctal(int n, int a) {
-  print(itoa(n, string_buffer, 8, a, 0));
+  print(itoa(n, integer_buffer, 8, a, 0));
 }
 
 void printBinary(int n, int a) {
-  print(itoa(n, string_buffer, 2, a, 0));
+  print(itoa(n, integer_buffer, 2, a, 0));
 }
 
 int roundUp(int n, int m) {
@@ -4454,12 +4454,12 @@ void selfie_emit() {
     exit(-1);
   }
 
-  *io_buffer = codeLength;
+  *binary_buffer = codeLength;
 
-  // assert: io_buffer is mapped
+  // assert: binary_buffer is mapped
 
   // first write code length
-  write(fd, io_buffer, WORDSIZE);
+  write(fd, binary_buffer, WORDSIZE);
 
   // assert: binary is mapped
 
@@ -4538,13 +4538,13 @@ void selfie_load() {
   // no source line numbers in binaries
   sourceLineNumber = (int*) 0;
 
-  // assert: io_buffer is mapped
+  // assert: binary_buffer is mapped
 
   // read code length first
-  numberOfReadBytes = read(fd, io_buffer, WORDSIZE);
+  numberOfReadBytes = read(fd, binary_buffer, WORDSIZE);
 
   if (numberOfReadBytes == WORDSIZE) {
-    codeLength = *io_buffer;
+    codeLength = *binary_buffer;
 
     if (codeLength <= maxBinaryLength) {
       // assert: binary is mapped
@@ -4556,7 +4556,7 @@ void selfie_load() {
         binaryLength = numberOfReadBytes;
 
         // check if we are really at EOF
-        if (read(fd, io_buffer, WORDSIZE) == 0) {
+        if (read(fd, binary_buffer, WORDSIZE) == 0) {
           print(selfieName);
           print((int*) ": ");
           printInteger(binaryLength + WORDSIZE);
