@@ -103,12 +103,12 @@ int* itoa(int n, int* s, int b, int a, int p);
 
 int fixedPointRatio(int a, int b);
 
-void putCharacter(int character);
+void putCharacter(int c);
 
 void print(int* s);
 void println();
 
-void printCharacter(int character);
+void printCharacter(int c);
 void printString(int* s);
 void printInteger(int n);
 void printFixedPoint(int a, int b);
@@ -1608,8 +1608,8 @@ int fixedPointRatio(int a, int b) {
     return 0;
 }
 
-void putCharacter(int character) {
-  *character_buffer = character;
+void putCharacter(int c) {
+  *character_buffer = c;
 
   // assert: character_buffer is mapped
 
@@ -1653,19 +1653,19 @@ void println() {
   putCharacter(CHAR_LF);
 }
 
-void printCharacter(int character) {
+void printCharacter(int c) {
   putCharacter(CHAR_SINGLEQUOTE);
 
-  if (character == CHAR_EOF)
+  if (c == CHAR_EOF)
     print((int*) "end of file");
-  else if (character == CHAR_TAB)
+  else if (c == CHAR_TAB)
     print((int*) "tabulator");
-  else if (character == CHAR_LF)
+  else if (c == CHAR_LF)
     print((int*) "line feed");
-  else if (character == CHAR_CR)
+  else if (c == CHAR_CR)
     print((int*) "carriage return");
   else
-    putCharacter(character);
+    putCharacter(c);
 
   putCharacter(CHAR_SINGLEQUOTE);
 }
