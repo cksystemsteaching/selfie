@@ -6462,8 +6462,6 @@ void printProfile(int* message, int total, int* counters) {
 }
 
 void selfie_disassemble() {
-  int i;
-
   assemblyName = getArgument();
 
   if (codeLength == 0) {
@@ -6474,8 +6472,6 @@ void selfie_disassemble() {
 
     return;
   }
-
-  initMemory(MEGABYTE);
 
   // assert: assemblyName is mapped and not longer than maxFilenameLength
 
@@ -6493,19 +6489,26 @@ void selfie_disassemble() {
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
-  debug = 1;
-
   resetLibrary();
 
-  i = 0;
+  interpret = 0;
 
-  while(i < codeLength - WORDSIZE) {
-    ir = loadBinary(i);
+  debug = 1;
+
+  pc = 0;
+
+  while(pc < codeLength) {
+    ir = loadBinary(pc);
+
     decode();
     execute();
-    i = i + WORDSIZE;
+
+    pc = pc + WORDSIZE;
   }
 
+  pc = 0;
+  ir = 0;
+  
   debug = 0;
 
   outputName = (int*) 0;
