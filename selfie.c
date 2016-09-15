@@ -72,13 +72,21 @@
 // microkernel is inspired by microkernels of Professor Jochen Liedtke
 // from University of Karlsruhe.
 
-int* selfieName = (int*) 0;
-
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------     L I B R A R Y     ---------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ----------------------- BUILTIN PROCEDURES ----------------------
+// -----------------------------------------------------------------
+
+void exit(int code);
+int read(int fd, int* buffer, int bytesToRead);
+int write(int fd, int* buffer, int bytesToWrite);
+int open(int* filename, int flags, int mode);
+int* malloc(int size);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -118,11 +126,6 @@ void printBinary(int n, int a);
 
 int roundUp(int n, int m);
 
-void exit(int code);
-int read(int fd, int* buffer, int bytesToRead);
-int write(int fd, int* buffer, int bytesToWrite);
-int open(int* filename, int flags, int mode);
-int* malloc(int size);
 int* zalloc(int size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1245,6 +1248,8 @@ void setArgument(int* argv);
 
 int selfie_argc = 0;
 int* selfie_argv = (int*) 0;
+
+int* selfieName = (int*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -4023,7 +4028,6 @@ void selfie_compile() {
       }
 
       resetScanner();
-
       resetParser();
 
       // compile
@@ -6504,7 +6508,7 @@ void selfie_disassemble() {
 
     pc = pc + WORDSIZE;
   }
-  
+
   debug = 0;
 
   outputName = (int*) 0;
