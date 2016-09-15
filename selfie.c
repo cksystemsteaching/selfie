@@ -118,10 +118,12 @@ void printBinary(int n, int a);
 
 int roundUp(int n, int m);
 
+void exit(int code);
+int read(int fd, int* buffer, int bytesToRead);
+int write(int fd, int* buffer, int bytesToWrite);
+int open(int* filename, int flags, int mode);
 int* malloc(int size);
 int* zalloc(int size);
-
-void exit(int code);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -501,7 +503,7 @@ void restore_temporaries(int numberOfTemporaries);
 
 void syntaxErrorSymbol(int expected);
 void syntaxErrorUnexpected();
-int* putType(int type);
+void printType(int type);
 void typeWarning(int expected, int found);
 
 int* getVariable(int* variable);
@@ -764,8 +766,6 @@ void initDecoder() {
 int  loadBinary(int baddr);
 void storeBinary(int baddr, int instruction);
 
-void storeInstruction(int baddr, int instruction);
-
 void emitInstruction(int instruction);
 void emitRFormat(int opcode, int rs, int rt, int rd, int function);
 void emitIFormat(int opcode, int rs, int rt, int immediate);
@@ -781,7 +781,7 @@ void emitGlobalsStrings();
 
 int openWriteOnly(int* name);
 
-void selfie_emit();
+void selfie_output();
 
 int* touch(int* memory, int length);
 
@@ -2535,15 +2535,15 @@ void syntaxErrorUnexpected() {
   println();
 }
 
-int* putType(int type) {
+void printType(int type) {
   if (type == INT_T)
-    return (int*) "int";
+    print((int*) "int");
   else if (type == INTSTAR_T)
-    return (int*) "int*";
+    print((int*) "int*");
   else if (type == VOID_T)
-    return (int*) "void";
+    print((int*) "void");
   else
-    return (int*) "unknown";
+    print((int*) "unknown");
 }
 
 void typeWarning(int expected, int found) {
@@ -2551,11 +2551,11 @@ void typeWarning(int expected, int found) {
 
   print((int*) "type mismatch, ");
 
-  print(putType(expected));
+  printType(expected);
 
   print((int*) " expected but ");
 
-  print(putType(found));
+  printType(found);
 
   print((int*) " found");
 
@@ -4285,20 +4285,16 @@ void storeBinary(int baddr, int instruction) {
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
-void storeInstruction(int baddr, int instruction) {
-  if (*(sourceLineNumber + baddr / WORDSIZE) == 0)
-    *(sourceLineNumber + baddr / WORDSIZE) = lineNumber;
-
-  storeBinary(baddr, instruction);
-}
-
 void emitInstruction(int instruction) {
   if (binaryLength >= maxBinaryLength) {
     syntaxErrorMessage((int*) "exceeded maximum binary length");
 
     exit(-1);
   } else {
-    storeInstruction(binaryLength, instruction);
+    if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
+      *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
+
+    storeBinary(binaryLength, instruction);
 
     binaryLength = binaryLength + WORDSIZE;
   }
@@ -4427,7 +4423,7 @@ int openWriteOnly(int* name) {
   return fd;
 }
 
-void selfie_emit() {
+void selfie_output() {
   int fd;
 
   binaryName = getArgument();
@@ -6235,13 +6231,6 @@ void execute() {
     op_j();
   else
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-
-  if (interpret == 0) {
-    if (pc == codeLength - WORDSIZE)
-      throwException(EXCEPTION_EXIT, 0);
-    else
-      pc = pc + WORDSIZE;
-  }
 }
 
 void interrupt() {
@@ -6473,6 +6462,8 @@ void printProfile(int* message, int total, int* counters) {
 }
 
 void selfie_disassemble() {
+  int i;
+
   assemblyName = getArgument();
 
   if (codeLength == 0) {
@@ -6502,13 +6493,20 @@ void selfie_disassemble() {
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
-  mipster = 1;
-  debug   = 1;
+  debug = 1;
 
-  boot(0, (int*) 0);
+  resetLibrary();
 
-  mipster = 0;
-  debug   = 0;
+  i = 0;
+
+  while(i < codeLength - WORDSIZE) {
+    ir = loadBinary(i);
+    decode();
+    execute();
+    i = i + WORDSIZE;
+  }
+
+  debug = 0;
 
   outputName = (int*) 0;
   outputFD   = 1;
@@ -6773,9 +6771,6 @@ void down_mapPageTable(int* context) {
 }
 
 void boot(int argc, int* argv) {
-  // resetting library is only necessary for disassembler
-  resetLibrary();
-
   // resetting this is only necessary for mipster
   resetInterpreter();
   resetMicrokernel();
@@ -6849,7 +6844,7 @@ int selfie() {
         // remaining options have at least one argument
         return -1;
       else if (stringCompare(option, (int*) "-o"))
-        selfie_emit();
+        selfie_output();
       else if (stringCompare(option, (int*) "-s"))
         selfie_disassemble();
       else if (stringCompare(option, (int*) "-l"))
