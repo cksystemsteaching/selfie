@@ -6489,13 +6489,12 @@ void selfie_disassemble() {
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
-  resetLibrary();
-
   interpret = 0;
 
-  debug = 1;
+  resetLibrary();
+  resetInterpreter();
 
-  pc = 0;
+  debug = 1;
 
   while(pc < codeLength) {
     ir = loadBinary(pc);
@@ -6505,9 +6504,6 @@ void selfie_disassemble() {
 
     pc = pc + WORDSIZE;
   }
-
-  pc = 0;
-  ir = 0;
   
   debug = 0;
 
