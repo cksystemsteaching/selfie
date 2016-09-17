@@ -74,13 +74,21 @@
 // microkernel is inspired by microkernels of Professor Jochen Liedtke
 // from University of Karlsruhe.
 
-int* selfieName = (int*) 0;
-
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------     L I B R A R Y     ---------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ----------------------- BUILTIN PROCEDURES ----------------------
+// -----------------------------------------------------------------
+
+void exit(int code);
+int read(int fd, int* buffer, int bytesToRead);
+int write(int fd, int* buffer, int bytesToWrite);
+int open(int* filename, int flags, int mode);
+int* malloc(int size);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -105,12 +113,12 @@ int* itoa(int n, int* s, int b, int a, int p);
 
 int fixedPointRatio(int a, int b);
 
-void putCharacter(int character);
+void putCharacter(int c);
 
 void print(int* s);
 void println();
 
-void printCharacter(int character);
+void printCharacter(int c);
 void printString(int* s);
 void printInteger(int n);
 void printFixedPoint(int a, int b);
@@ -120,10 +128,7 @@ void printBinary(int n, int a);
 
 int roundUp(int n, int m);
 
-int* malloc(int size);
 int* zalloc(int size);
-
-void exit(int code);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -165,9 +170,9 @@ int INT12_MIN; // minimum numerical value of a signed 16-bit integer
 int maxFilenameLength = 128;
 
 int* character_buffer; // buffer for reading and writing characters
-int* string_buffer;    // buffer for string output
-int* filename_buffer;  // buffer for filenames
-int* io_buffer;        // buffer for binary I/O
+int* integer_buffer;   // buffer for printing integers
+int* filename_buffer;  // buffer for opening files
+int* binary_buffer;    // buffer for binary I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -231,14 +236,14 @@ void initLibrary() {
   *character_buffer = 0;
 
   // accommodate at least 32-bit numbers for itoa, no mapping needed
-  string_buffer = malloc(33);
+  integer_buffer = malloc(33);
 
   // does not need to be mapped
   filename_buffer = malloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  io_buffer  = malloc(SIZEOFINT);
-  *io_buffer = 0;
+  binary_buffer  = malloc(SIZEOFINT);
+  *binary_buffer = 0;
 }
 
 void resetLibrary() {
@@ -503,7 +508,7 @@ void restore_temporaries(int numberOfTemporaries);
 
 void syntaxErrorSymbol(int expected);
 void syntaxErrorUnexpected();
-int* putType(int type);
+void printType(int type);
 void typeWarning(int expected, int found);
 
 int* getVariable(int* variable);
@@ -770,8 +775,6 @@ int funct7      = 0;
 int  loadBinary(int baddr);
 void storeBinary(int baddr, int instruction);
 
-void storeInstruction(int baddr, int instruction);
-
 void emitInstruction(int instruction);
 void emitRFormat(int funct7, int rs2, int rs1, int funct3, int rd, int opcode);
 void emitIFormat(int immediate, int rs1, int funct3, int rd, int opcode);
@@ -789,7 +792,7 @@ void emitGlobalsStrings();
 
 int openWriteOnly(int* name);
 
-void selfie_emit();
+void selfie_output();
 
 int* touch(int* memory, int length);
 
@@ -1000,7 +1003,7 @@ void execute();
 void interrupt();
 
 void runUntilException();
-void runUntilExit();
+void runUntilExit(int toID);
 
 int  up_loadString(int* table, int* s, int SP);
 void up_loadArguments(int* table, int argc, int* argv);
@@ -1183,8 +1186,8 @@ int bumpID; // counter for generating unique context IDs
 
 int* currentContext = (int*) 0; // context currently running
 
-int* activeContexts = (int*) 0; // doubly-linked list of active contexts
-int* freeContexts   = (int*) 0; // singly-linked list of free contexts
+int* usedContexts = (int*) 0; // doubly-linked list of used contexts
+int* freeContexts = (int*) 0; // singly-linked list of free contexts
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1193,8 +1196,8 @@ void resetMicrokernel() {
 
   currentContext = (int*) 0;
 
-  while (activeContexts != (int*) 0)
-    activeContexts = deleteContext(activeContexts, activeContexts);
+  while (usedContexts != (int*) 0)
+    usedContexts = deleteContext(usedContexts, usedContexts);
 }
 
 // -----------------------------------------------------------------
@@ -1209,12 +1212,6 @@ void down_mapPageTable(int* context);
 void boot(int argc, int* argv);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
-
-int initID = 0;
-
-int* readyContexts = (int*) 0;
-
-int* initContext = (int*) 0;
 
 int usedMemory = 0;
 
@@ -1238,6 +1235,8 @@ void setArgument(int* argv);
 
 int selfie_argc = 0;
 int* selfie_argv = (int*) 0;
+
+int* selfieName = (int*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1601,8 +1600,8 @@ int fixedPointRatio(int a, int b) {
     return 0;
 }
 
-void putCharacter(int character) {
-  *character_buffer = character;
+void putCharacter(int c) {
+  *character_buffer = c;
 
   // assert: character_buffer is mapped
 
@@ -1646,19 +1645,19 @@ void println() {
   putCharacter(CHAR_LF);
 }
 
-void printCharacter(int character) {
+void printCharacter(int c) {
   putCharacter(CHAR_SINGLEQUOTE);
 
-  if (character == CHAR_EOF)
+  if (c == CHAR_EOF)
     print((int*) "end of file");
-  else if (character == CHAR_TAB)
+  else if (c == CHAR_TAB)
     print((int*) "tabulator");
-  else if (character == CHAR_LF)
+  else if (c == CHAR_LF)
     print((int*) "line feed");
-  else if (character == CHAR_CR)
+  else if (c == CHAR_CR)
     print((int*) "carriage return");
   else
-    putCharacter(character);
+    putCharacter(c);
 
   putCharacter(CHAR_SINGLEQUOTE);
 }
@@ -1672,23 +1671,23 @@ void printString(int* s) {
 }
 
 void printInteger(int n) {
-  print(itoa(n, string_buffer, 10, 0, 0));
+  print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
 void printFixedPoint(int a, int b) {
-  print(itoa(fixedPointRatio(a, b), string_buffer, 10, 0, 2));
+  print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
 void printHexadecimal(int n, int a) {
-  print(itoa(n, string_buffer, 16, a, 0));
+  print(itoa(n, integer_buffer, 16, a, 0));
 }
 
 void printOctal(int n, int a) {
-  print(itoa(n, string_buffer, 8, a, 0));
+  print(itoa(n, integer_buffer, 8, a, 0));
 }
 
 void printBinary(int n, int a) {
-  print(itoa(n, string_buffer, 2, a, 0));
+  print(itoa(n, integer_buffer, 2, a, 0));
 }
 
 int roundUp(int n, int m) {
@@ -2533,15 +2532,15 @@ void syntaxErrorUnexpected() {
   println();
 }
 
-int* putType(int type) {
+void printType(int type) {
   if (type == INT_T)
-    return (int*) "int";
+    print((int*) "int");
   else if (type == INTSTAR_T)
-    return (int*) "int*";
+    print((int*) "int*");
   else if (type == VOID_T)
-    return (int*) "void";
+    print((int*) "void");
   else
-    return (int*) "unknown";
+    print((int*) "unknown");
 }
 
 void typeWarning(int expected, int found) {
@@ -2549,11 +2548,11 @@ void typeWarning(int expected, int found) {
 
   print((int*) "type mismatch, ");
 
-  print(putType(expected));
+  printType(expected);
 
   print((int*) " expected but ");
 
-  print(putType(found));
+  printType(found);
 
   print((int*) " found");
 
@@ -4127,7 +4126,6 @@ void selfie_compile() {
       }
 
       resetScanner();
-
       resetParser();
 
       // compile
@@ -4556,20 +4554,16 @@ void storeBinary(int baddr, int instruction) {
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
-void storeInstruction(int baddr, int instruction) {
-  if (*(sourceLineNumber + baddr / WORDSIZE) == 0)
-    *(sourceLineNumber + baddr / WORDSIZE) = lineNumber;
-
-  storeBinary(baddr, instruction);
-}
-
 void emitInstruction(int instruction) {
   if (binaryLength >= maxBinaryLength) {
     syntaxErrorMessage((int*) "exceeded maximum binary length");
 
     exit(-1);
   } else {
-    storeInstruction(binaryLength, instruction);
+    if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
+      *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
+
+    storeBinary(binaryLength, instruction);
 
     binaryLength = binaryLength + WORDSIZE;
   }
@@ -4693,7 +4687,7 @@ int openWriteOnly(int* name) {
   return fd;
 }
 
-void selfie_emit() {
+void selfie_output() {
   int fd;
 
   binaryName = getArgument();
@@ -4720,12 +4714,12 @@ void selfie_emit() {
     exit(-1);
   }
 
-  *io_buffer = codeLength;
+  *binary_buffer = codeLength;
 
-  // assert: io_buffer is mapped
+  // assert: binary_buffer is mapped
 
   // first write code length
-  write(fd, io_buffer, WORDSIZE);
+  write(fd, binary_buffer, WORDSIZE);
 
   // assert: binary is mapped
 
@@ -4804,13 +4798,13 @@ void selfie_load() {
   // no source line numbers in binaries
   sourceLineNumber = (int*) 0;
 
-  // assert: io_buffer is mapped
+  // assert: binary_buffer is mapped
 
   // read code length first
-  numberOfReadBytes = read(fd, io_buffer, WORDSIZE);
+  numberOfReadBytes = read(fd, binary_buffer, WORDSIZE);
 
   if (numberOfReadBytes == WORDSIZE) {
-    codeLength = *io_buffer;
+    codeLength = *binary_buffer;
 
     if (codeLength <= maxBinaryLength) {
       // assert: binary is mapped
@@ -4822,7 +4816,7 @@ void selfie_load() {
         binaryLength = numberOfReadBytes;
 
         // check if we are really at EOF
-        if (read(fd, io_buffer, WORDSIZE) == 0) {
+        if (read(fd, binary_buffer, WORDSIZE) == 0) {
           print(selfieName);
           print((int*) ": ");
           printInteger(binaryLength + WORDSIZE);
@@ -5360,10 +5354,10 @@ int doCreate(int parentID) {
   if (bumpID < INT_MAX) {
     bumpID = createID(bumpID);
 
-    activeContexts = createContext(bumpID, parentID, activeContexts);
+    usedContexts = createContext(bumpID, parentID, usedContexts);
 
     if (currentContext == (int*) 0)
-      currentContext = activeContexts;
+      currentContext = usedContexts;
 
     if (debug_create) {
       print(binaryName);
@@ -5425,7 +5419,7 @@ int doSwitch(int toID) {
 
   fromID = getID(currentContext);
 
-  toContext = findContext(toID, activeContexts);
+  toContext = findContext(toID, usedContexts);
 
   if (toContext != (int*) 0) {
     switchContext(currentContext, toContext);
@@ -5557,10 +5551,10 @@ void emitDelete() {
 void doDelete(int ID) {
   int* context;
 
-  context = findContext(ID, activeContexts);
+  context = findContext(ID, usedContexts);
 
   if (context != (int*) 0) {
-    activeContexts = deleteContext(context, activeContexts);
+    usedContexts = deleteContext(context, usedContexts);
 
     if (debug_delete) {
       print(binaryName);
@@ -5624,11 +5618,11 @@ void doMap(int ID, int page, int frame) {
   int* mapContext;
   int* parentContext;
 
-  mapContext = findContext(ID, activeContexts);
+  mapContext = findContext(ID, usedContexts);
 
   if (mapContext != (int*) 0) {
     if (getParent(mapContext) != NO_ID) {
-      parentContext = findContext(getParent(mapContext), activeContexts);
+      parentContext = findContext(getParent(mapContext), usedContexts);
 
       if (parentContext != (int*) 0)
         // assert: 0 <= frame < VIRTUALMEMORYSIZE
@@ -6517,13 +6511,6 @@ void execute() {
     op_ecall();
   else
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-
-  if (interpret == 0) {
-    if (pc == codeLength - WORDSIZE)
-      throwException(EXCEPTION_EXIT, 0);
-    else
-      pc = pc + WORDSIZE;
-  }
 }
 
 void interrupt() {
@@ -6553,8 +6540,7 @@ void runUntilException() {
   trap = 0;
 }
 
-void runUntilExit() {
-  int toID;
+void runUntilExit(int toID) {
   int fromID;
   int* fromContext;
   int savedStatus;
@@ -6562,24 +6548,21 @@ void runUntilExit() {
   int exceptionParameter;
   int frame;
 
-  toID = initID;
-
   while (1) {
     fromID = selfie_switch(toID);
 
-    fromContext = findContext(fromID, readyContexts);
+    fromContext = findContext(fromID, usedContexts);
 
-    if (fromContext == (int*) 0) {
-      // assert: context with fromID must be in activeContexts
-      fromContext = findContext(fromID, activeContexts);
+    // assert: fromContext must be in usedContexts (created here)
 
+    if (getParent(fromContext) != selfie_ID())
       // switch to parent which is in charge of handling exceptions
       toID = getParent(fromContext);
-    } else {
+    else {
       // we are the parent in charge of handling exceptions
       savedStatus = selfie_status();
 
-      exceptionNumber  = decodeExceptionNumber(savedStatus);
+      exceptionNumber    = decodeExceptionNumber(savedStatus);
       exceptionParameter = decodeExceptionParameter(savedStatus);
 
       if (exceptionNumber == EXCEPTION_EXIT)
@@ -6766,8 +6749,6 @@ void selfie_disassemble() {
     return;
   }
 
-  initMemory(MEGABYTE);
-
   // assert: assemblyName is mapped and not longer than maxFilenameLength
 
   assemblyFD = openWriteOnly(assemblyName);
@@ -6784,13 +6765,23 @@ void selfie_disassemble() {
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
-  rocstar = 1;
-  debug   = 1;
+  interpret = 0;
 
-  boot(0, (int*) 0);
+  resetLibrary();
+  resetInterpreter();
 
-  rocstar = 0;
-  debug   = 0;
+  debug = 1;
+
+  while(pc < codeLength) {
+    ir = loadBinary(pc);
+
+    decode();
+    execute();
+
+    pc = pc + WORDSIZE;
+  }
+
+  debug = 0;
 
   outputName = (int*) 0;
   outputFD   = 1;
@@ -7048,8 +7039,7 @@ void down_mapPageTable(int* context) {
 }
 
 void boot(int argc, int* argv) {
-  // resetting library is only necessary for disassembler
-  resetLibrary();
+  int  initID;
 
   // resetting this is only necessary for rocstar
   resetInterpreter();
@@ -7058,19 +7048,27 @@ void boot(int argc, int* argv) {
   // create initial context on microkernel boot level
   initID = selfie_create();
 
-  // create duplicate of the initial context on this boot level
-  readyContexts = createContext(initID, selfie_ID(), readyContexts);
+  if (usedContexts != (int*) 0) {
+    // we are on microkernel boot level
 
-  initContext = readyContexts;
+    up_loadBinary(getPT(usedContexts));
 
-  up_loadBinary(getPT(initContext));
+    up_loadArguments(getPT(usedContexts), argc, argv);
+  } else {
+    // we are not on microkernel boot level
 
-  up_loadArguments(getPT(initContext), argc, argv);
+    // create duplicate of the initial context on our level
+    usedContexts = createContext(initID, selfie_ID(), (int*) 0);
 
-  // set up page table of initial context
-  down_mapPageTable(initContext);
+    up_loadBinary(getPT(usedContexts));
 
-  runUntilExit();
+    up_loadArguments(getPT(usedContexts), argc, argv);
+
+    // set up page table of initial context on microkernel level
+    down_mapPageTable(usedContexts);
+  }
+
+  runUntilExit(initID);
 }
 
 // -----------------------------------------------------------------
@@ -7124,7 +7122,7 @@ int selfie() {
         // remaining options have at least one argument
         return -1;
       else if (stringCompare(option, (int*) "-o"))
-        selfie_emit();
+        selfie_output();
       else if (stringCompare(option, (int*) "-s"))
         selfie_disassemble();
       else if (stringCompare(option, (int*) "-l"))

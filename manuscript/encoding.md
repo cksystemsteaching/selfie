@@ -199,7 +199,9 @@ Beyond that there is no support of, say, fixed-point or even floating-point numb
 
 Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number 85.
 
-X> The decimal number 85 in binary is the bit sequence 101010.
+X> As mentioned before, the decimal number 85 in binary is represented by the 8-bit sequence `0101010`. In fact, seven bits are enough for 85 since leading zeros are unnecessary. So, actually, 85 is just `101010`.
+
+How do we get from `101010` to 85?
 
 
 
