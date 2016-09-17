@@ -16,22 +16,23 @@
 // resolve self-reference in systems code which is seen as the key
 // challenge when teaching systems engineering, hence the name.
 //
-// Selfie is a fully self-referential 6k-line C implementation of:
+// Selfie is a fully self-referential 7k-line C implementation of:
 //
 // 1. a self-compiling compiler called starc that compiles
 //    a tiny but powerful subset of C called C Star (C*) to
-//    a tiny but powerful subset of MIPS32 called MIPSter,
-// 2. a self-executing emulator called mipster that executes
-//    MIPSter code including itself when compiled with starc,
+//    a tiny but powerful subset of RISC-V (RV32I +
+//    "M" Standard Extension) called RISCY,
+// 2. a self-executing emulator called rocstar that executes
+//    RISCY code including itself when compiled with starc,
 // 3. a self-hosting hypervisor called hypster which is based on
-//    a tiny microkernel implemented in mipster and provides
-//    MIPSter virtual machines that can host all of selfie,
-//    that is, starc, mipster, and hypster itself, and
+//    a tiny microkernel implemented in rocstar and provides
+//    RISCY virtual machines that can host all of selfie,
+//    that is, starc, rocstar, and hypster itself, and
 // 4. a tiny C* library called libcstar utilized by selfie.
 //
 // Selfie is kept minimal for simplicity and implemented in a single file.
 // There is a simple linker, disassembler, profiler, and debugger as well as
-// minimal operating system support in the form of MIPS32 o32 system calls
+// minimal operating system support in the form of RISC-V system calls
 // built into the emulator.
 //
 // C* is a tiny Turing-complete subset of C that includes dereferencing
@@ -48,13 +49,14 @@
 //
 // The compiler can readily be extended to compile features missing in C*
 // and to improve performance of the generated code. The compiler generates
-// MIPSter executables that can directly be executed by the emulator or
+// RISCY executables that can directly be executed by the emulator or
 // written to a file in a simple, custom-defined format. Support of standard
-// MIPS32 ELF binaries should be easy but remains future work.
+// RISC-V ELF binaries should be easy but remains future work.
 //
-// MIPSter is a tiny Turing-complete subset of the MIPS32 instruction set.
+// RISCY is a tiny Turing-complete subset of the RISC-V
+// (RV32I + "M" Standard Extension) instruction set.
 // It only features arithmetic, memory, and control-flow instructions but
-// neither bitwise nor byte-level instructions. MIPSter can be properly
+// neither bitwise nor byte-level instructions. RISCY can be properly
 // explained in a single week of classes.
 //
 // The emulator implements minimal operating system support that is meant
@@ -813,7 +815,7 @@ int* assemblyName = (int*) 0; // name of assembly file
 int  assemblyFD   = 0;        // file descriptor of open assembly file
 
 // -----------------------------------------------------------------
-// ----------------------- MIPSTER SYSCALLS ------------------------
+// ----------------------- ROCSTAR SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
 void emitExit();
@@ -865,7 +867,7 @@ int selfie_create();
 void emitSwitch();
 int  doSwitch(int toID);
 void implementSwitch();
-int  mipster_switch(int toID);
+int  rocstar_switch(int toID);
 
 int selfie_switch(int toID);
 
@@ -1051,7 +1053,7 @@ int cycles = 0; // cycle counter where one cycle is equal to one instruction
 
 int timer = 0; // counter for timer interrupt
 
-int mipster = 0; // flag for forcing to use mipster rather than hypster
+int rocstar = 0; // flag for forcing to use rocstar rather than hypster
 
 int interpret = 0; // flag for executing or disassembling code
 
@@ -2488,10 +2490,10 @@ void save_temporaries() {
   while (allocatedTemporaries > 0) {
     // push temporary onto stack
     emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-    //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
     emitSFormat(0, currentTemporary(), REG_SP, F3_SW, OP_SW);
-    //emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+    // MIPS: emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
     tfree(1);
   }
@@ -2503,9 +2505,9 @@ void restore_temporaries(int numberOfTemporaries) {
 
     // restore temporary from stack
     emitIFormat(0, REG_SP, F3_LW, currentTemporary(), OP_LW);
-    //emitIFormat(OP_LW, REG_SP, currentTemporary(), 0);
+    // MIPS: emitIFormat(OP_LW, REG_SP, currentTemporary(), 0);
     emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-    //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
   }
 }
 
@@ -2583,7 +2585,7 @@ int load_variable(int* variable) {
   talloc();
 
   emitIFormat(getAddress(entry), getScope(entry), F3_LW, currentTemporary(), OP_LW);
-  //emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  // MIPS: emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
 
   return getType(entry);
 }
@@ -2645,7 +2647,7 @@ void load_integer(int value) {
   } else {
     // load largest positive 12-bit number with a single bit set: 2^10
     emitIFormat(twoToThePowerOf(10), REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-    //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), twoToThePowerOf(14));
+    // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), twoToThePowerOf(14));
 
     // and then multiply 2^10 by 2^10*2^10*2^1 to get to 2^31 == INT_MIN
     emitLeftShiftBy(10);
@@ -2662,7 +2664,7 @@ void load_string(int* string) {
   allocatedMemory = allocatedMemory + roundUp(length, WORDSIZE);
 
   // we need to make use of load_integer because some allocatedMemory
-  // values may be bigger than our 12 bit immediates
+  // values may be larger than our 12-bit immediates
   load_integer(allocatedMemory);
 
   createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory);
@@ -2671,7 +2673,7 @@ void load_string(int* string) {
   emitRFormat(F7_SUB, REG_ZR, currentTemporary(), F3_SUB, currentTemporary(), OP_OP);
   emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
 
-  //emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
+  // MIPS: emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
 }
 
 int help_call_codegen(int* entry, int* procedure) {
@@ -2686,7 +2688,7 @@ int help_call_codegen(int* entry, int* procedure) {
     createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
 
     emitUJFormat(0, REG_RA, OP_JAL);
-    //emitJFormat(OP_JAL, 0);
+    // MIPS: emitJFormat(OP_JAL, 0);
 
   } else {
     type = getType(entry);
@@ -2696,21 +2698,21 @@ int help_call_codegen(int* entry, int* procedure) {
       setAddress(entry, binaryLength);
 
       emitUJFormat(0, REG_RA, OP_JAL);
-      //emitJFormat(OP_JAL, 0);
+      // MIPS: emitJFormat(OP_JAL, 0);
     } else if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL) {
       // procedure called and possibly declared but not defined
 
       // we need the absolute address here because
       // this instruction will be part of a fixup chain
       emitUJFormat(getAddress(entry), REG_RA, OP_JAL);
-      //emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
+      // MIPS: emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
       setAddress(entry, binaryLength - WORDSIZE);
     } else
       // procedure defined, use address
       // we need a pc relative address here because this
       // instruction will not be modified in the future
       emitUJFormat(getAddress(entry) - binaryLength, REG_RA, OP_JAL);
-      //emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
+      // MIPS: emitJFormat(OP_JAL, getAddress(entry) / WORDSIZE);
   }
   return type;
 }
@@ -2718,54 +2720,54 @@ int help_call_codegen(int* entry, int* procedure) {
 void help_procedure_prologue(int localVariables) {
   // allocate memory for return address
   emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
   // save return address
   emitSFormat(0, REG_RA, REG_SP, F3_SW, OP_SW);
-  //emitIFormat(OP_SW, REG_SP, REG_RA, 0);
+  // MIPS: emitIFormat(OP_SW, REG_SP, REG_RA, 0);
 
   // allocate space for caller's frame pointer
   emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
   // save caller's frame pointer
   emitSFormat(0, REG_FP, REG_SP, F3_SW, OP_SW);
-  //emitIFormat(OP_SW, REG_SP, REG_FP, 0);
+  // MIPS: emitIFormat(OP_SW, REG_SP, REG_FP, 0);
 
   // set callee's frame pointer
   emitIFormat(0, REG_SP, F3_ADDI, REG_FP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
 
   // allocate space for callee's local variables
   if (localVariables != 0)
     emitIFormat(-localVariables * WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-    //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * WORDSIZE);
+    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * WORDSIZE);
 }
 
 void help_procedure_epilogue(int parameters) {
   // deallocate space for callee's frame pointer and local variables
   emitIFormat(0, REG_FP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
+  // MIPS: emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
 
   // restore caller's frame pointer
   emitIFormat(0, REG_SP, F3_LW, REG_FP, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_FP, 0);
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_FP, 0);
 
   // deallocate space for caller's frame pointer
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   // restore return address
   emitIFormat(0, REG_SP, F3_LW, REG_RA, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_RA, 0);
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_RA, 0);
 
   // deallocate space for return address and parameters
   emitIFormat((parameters + 1) * WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * WORDSIZE);
 
   // return
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int gr_call(int* procedure) {
@@ -2790,9 +2792,9 @@ int gr_call(int* procedure) {
 
     // push first parameter onto stack
     emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-    // emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
     emitSFormat(0, currentTemporary(), REG_SP, F3_SW, OP_SW);
-    //emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+    // MIPS: emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
     tfree(1);
 
@@ -2803,9 +2805,9 @@ int gr_call(int* procedure) {
 
       // push more parameters onto stack
       emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+      // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
       emitSFormat(0, currentTemporary(), REG_SP, F3_SW, OP_SW);
-      //emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+      // MIPS: emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
 
       tfree(1);
     }
@@ -2920,7 +2922,7 @@ int gr_factor() {
 
     // dereference
     emitIFormat(0, currentTemporary(), F3_LW, currentTemporary(), OP_LW);
-    //emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+    // MIPS: emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
 
     type = INT_T;
 
@@ -2940,12 +2942,12 @@ int gr_factor() {
 
       // retrieve return value
       emitIFormat(0, REG_A0, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_A0, currentTemporary(), 0);
+      // MIPS: emitIFormat(OP_ADDIU, REG_A0, currentTemporary(), 0);
 
       // reset return register to initial return value
       // for missing return expressions
       emitIFormat(0, REG_ZR, F3_ADDI, REG_A0, OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
     } else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
@@ -2963,7 +2965,7 @@ int gr_factor() {
     talloc();
 
     emitIFormat(literal, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-    //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
+    // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
 
     getSymbol();
 
@@ -3024,18 +3026,18 @@ int gr_term() {
 
     if (operatorSymbol == SYM_ASTERISK) {
       emitRFormat(F7_MUL, previousTemporary(), currentTemporary(), F3_MUL, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
-      //emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+      // MIPS: emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
     } else if (operatorSymbol == SYM_DIV) {
       emitRFormat(F7_DIVU, currentTemporary(), previousTemporary(), F3_DIVU, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-      //emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+      // MIPS: emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
     } else if (operatorSymbol == SYM_MOD) {
       emitRFormat(F3_REMU, currentTemporary(), previousTemporary(), F3_REMU, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-      //emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+      // MIPS: emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
     }
 
     tfree(1);
@@ -3087,7 +3089,7 @@ int gr_simpleExpression() {
     }
 
     emitRFormat(F7_SUB, REG_ZR, currentTemporary(), F3_SUB, currentTemporary(), OP_OP);
-    //emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    // MIPS: emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
   }
 
   // + or -?
@@ -3109,14 +3111,14 @@ int gr_simpleExpression() {
         typeWarning(ltype, rtype);
 
       emitRFormat(F7_ADD, previousTemporary(), currentTemporary(), F3_ADD, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
 
     } else if (operatorSymbol == SYM_MINUS) {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
       emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
     }
 
     tfree(1);
@@ -3154,82 +3156,82 @@ int gr_expression() {
     if (operatorSymbol == SYM_EQUALITY) {
       // subtract, if result = 0 then 1, else 0
       emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
 
       tfree(1);
 
       emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
-      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+      // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
       emitSBFormat(1 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
-      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
+      // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
       // subtract, if result = 0 then 0, else 1
       emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
 
       tfree(1);
 
       emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
-      //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
+      // MIPS: emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
       emitSBFormat(1 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
-      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
+      // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_LT) {
       // set to 1 if a < b, else 0
       emitRFormat(F7_SLT, currentTemporary(), previousTemporary(), F3_SLT, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
       // set to 1 if b < a, else 0
       emitRFormat(F7_SLT, previousTemporary(), currentTemporary(), F3_SLT, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
+      // MIPS: emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
       // if b < a set 0, else 1
       emitRFormat(F7_SLT, previousTemporary(), currentTemporary(),F3_SLT, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
+      // MIPS: emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
       emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
-      //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
+      // MIPS: emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
       // use JAL instead of unconditional BEQ
       emitUJFormat(2 * WORDSIZE, REG_ZR, OP_JAL);
-      //emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-      //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
-      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      // MIPS: emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
+      // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
+      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 
     } else if (operatorSymbol == SYM_GEQ) {
       // if a < b set 0, else 1
       emitRFormat(F7_SLT, currentTemporary(), previousTemporary(), F3_SLT, previousTemporary(), OP_OP);
-      //emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
+      // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
       emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
-      //emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
+      // MIPS: emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
       // use JAL instead of unconditional BEQ
       emitUJFormat(2 * WORDSIZE, REG_ZR, OP_JAL);
-      //emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-      //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
+      // MIPS: emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
+      // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
     }
   }
 
@@ -3261,7 +3263,7 @@ void gr_while() {
       brForwardToEnd = binaryLength;
 
       emitSBFormat(0, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
-      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+      // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
 
       tfree(1);
 
@@ -3295,8 +3297,8 @@ void gr_while() {
 
   // use JAL instead of unconditional branch) to beginning of while
   emitUJFormat((brBackToWhile - binaryLength), REG_ZR, OP_JAL);
-  //emitSBFormat((brBackToWhile - binaryLength - WORDSIZE), REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-  //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - WORDSIZE) / WORDSIZE);
+  // MIPS: emitSBFormat((brBackToWhile - binaryLength - WORDSIZE), REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
+  // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - WORDSIZE) / WORDSIZE);
 
   if (brForwardToEnd != 0)
     // first instruction after loop comes here
@@ -3327,7 +3329,7 @@ void gr_if() {
       brForwardToElseOrEnd = binaryLength;
 
       emitSBFormat(0, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
-      //emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
+      // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 0);
 
       tfree(1);
 
@@ -3361,7 +3363,7 @@ void gr_if() {
           brForwardToEnd = binaryLength;
           // cannot use JAL here because of relative fixup
           emitSBFormat(0, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-          //emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
+          // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
 
           // if the "if" case was not true, we branch here
           fixup_relative(brForwardToElseOrEnd);
@@ -3421,7 +3423,7 @@ void gr_return() {
 
     // save value of expression in return register
     emitRFormat(F7_ADD, REG_ZR, currentTemporary(), F3_ADD, REG_A0, OP_OP);
-    //emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_A0, FCT_ADDU);
+    // MIPS: emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_A0, FCT_ADDU);
 
     tfree(1);
   } else if (returnType != VOID_T)
@@ -3430,7 +3432,7 @@ void gr_return() {
   // unconditional branch to procedure epilogue
   // maintain fixup chain for later fixup
   emitUJFormat(returnBranches, REG_ZR, OP_JAL);
-  //emitJFormat(OP_J, returnBranches / WORDSIZE);
+  // MIPS: emitJFormat(OP_J, returnBranches / WORDSIZE);
 
   // new head of fixup chain
   returnBranches = binaryLength - WORDSIZE;
@@ -3480,7 +3482,7 @@ void gr_statement() {
           typeWarning(INT_T, rtype);
 
         emitSFormat(0, currentTemporary(), previousTemporary(), F3_SW, OP_SW);
-        //emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+        // MIPS: emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
         tfree(2);
 
@@ -3518,7 +3520,7 @@ void gr_statement() {
             typeWarning(INT_T, rtype);
 
           emitSFormat(0, currentTemporary(), previousTemporary(), F3_SW, OP_SW);
-          //emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+          // MIPS: emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
 
           tfree(2);
 
@@ -3553,7 +3555,7 @@ void gr_statement() {
       // reset return register to initial return value
       // for missing return expressions
       emitIFormat(0, REG_ZR, F3_ADDI, REG_A0, OP_IMM);
-      //emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
+      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A0, 0);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3574,7 +3576,7 @@ void gr_statement() {
         typeWarning(ltype, rtype);
 
       emitSFormat(getAddress(entry), currentTemporary(), getScope(entry), F3_SW, OP_SW);
-      //emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
+      // MIPS: emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
 
       tfree(1);
 
@@ -3959,10 +3961,10 @@ void emitLeftShiftBy(int b) {
 
   // load multiplication factor less than 2^15 to avoid sign extension
   emitIFormat(twoToThePowerOf(b), REG_ZR, F3_ADDI, nextTemporary(), OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
   emitRFormat(F7_MUL, currentTemporary(), nextTemporary(), F3_MUL, currentTemporary(), OP_OP);
-  //emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, FCT_MULTU);
-  //emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
+  // MIPS: emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, FCT_MULTU);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
 }
 
 void emitMainEntry() {
@@ -3971,7 +3973,7 @@ void emitMainEntry() {
   // the instruction at address zero cannot be fixed up
   // we therefore need at least one not-to-be-fixed-up instruction here
 
-  // we generate NOPs (ADDUIs) to accommodate GP and SP register
+  // we generate ADDIs (NOPs) to accommodate GP and SP register
   // initialization code that overwrites the NOPs later
   // when binaryLength is known
 
@@ -3982,7 +3984,7 @@ void emitMainEntry() {
   // no more than 8 instructions each, see load_integer
   while (i < 16) {
     emitIFormat(0, REG_ZR, F3_ADDI, REG_ZR, OP_IMM);
-    //emitIFormat(OP_ADDIU, REG_ZR, REG_ZR, 0);
+    // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_ZR, 0);
 
     i = i + 1;
   }
@@ -3993,13 +3995,13 @@ void emitMainEntry() {
 
   // jump and link to main, will return here only if there is no exit call
   emitUJFormat(0, REG_RA, OP_JAL);
-  //emitJFormat(OP_JAL, 0);
+  // MIPS: emitJFormat(OP_JAL, 0);
 
   // we exit with exit code in return register pushed onto the stack
   emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
   emitSFormat(0, REG_A0, REG_SP, F3_SW, OP_SW);
-  //emitIFormat(OP_SW, REG_SP, REG_A0, 0);
+  // MIPS: emitIFormat(OP_SW, REG_SP, REG_A0, 0);
 
   // no need to reset return register here
 }
@@ -4019,7 +4021,7 @@ void bootstrapCode() {
 
   // load binaryLength into GP register
   emitIFormat(0, currentTemporary(), F3_ADDI, REG_GP, OP_IMM);
-  //emitIFormat(OP_ADDIU, currentTemporary(), REG_GP, 0);
+  // MIPS: emitIFormat(OP_ADDIU, currentTemporary(), REG_GP, 0);
 
   tfree(1);
 
@@ -4032,7 +4034,7 @@ void bootstrapCode() {
 
   // load initial stack pointer into SP register
   emitIFormat(0, currentTemporary(), F3_LW, REG_SP, OP_LW);
-  //emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
+  // MIPS: emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
 
   tfree(1);
 
@@ -4042,8 +4044,8 @@ void bootstrapCode() {
 
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
-    // exit by continuing to the next instruction (with delay slot)
-    fixup_absolute(mainJump, mainJump + 8);
+    // exit by continuing to the next instruction
+    fixup_absolute(mainJump, mainJump + 4);
 
   mainJump = 0;
 }
@@ -4248,7 +4250,7 @@ int encodeIFormat(int immediate, int rs1, int funct3, int rd, int opcode) {
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rd < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: 0 <= immediate < 2^12
+  // assert: -2^11 <= immediate < 2^11 -1
 
   if (immediate < 0) {
     // convert from 32-bit to 12-bit two's complement
@@ -4271,7 +4273,7 @@ int encodeSFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: 0 <= immediate < 2^12
+  // assert: -2^11 <= immediate < 2^11 -1
   int imm1;
   int imm2;
 
@@ -4299,7 +4301,7 @@ int encodeSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: 0 <= immediate < 2^12
+  // assert: -2^11 <= immediate < 2^11 -1
   int imm1;
   int imm2;
   int imm3;
@@ -4328,7 +4330,7 @@ int encodeSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
 int encodeUJFormat(int immediate, int rd, int opcode) {
   // assert: 0 <= opcode < 2^7
   // assert: 0 <= rd < 2^5
-  // assert: 0 <= immediate < 2^21
+  // assert: -2^20 <= immediate < 2^20 -1
 
   int imm1;
   int imm2;
@@ -4451,9 +4453,9 @@ void decode() {
   else {
     print(selfieName);
     print((int*) ": unkown opcode ");
-    print(itoa(opcode, string_buffer, 10, 0, 0));
+    printInteger(opcode);
     print((int*) " (");
-    print(itoa(opcode, string_buffer, 2, 0, 0));
+    printBinary(opcode, 0);
     print((int*) ") detected");
     exit(-1);
   }
@@ -4847,7 +4849,7 @@ void selfie_load() {
 }
 
 // -----------------------------------------------------------------
-// ----------------------- MIPSTER SYSCALLS ------------------------
+// ----------------------- ROCSTAR SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
 void emitExit() {
@@ -4855,17 +4857,17 @@ void emitExit() {
 
   // load argument for exit
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
 
   // remove the argument from the stack
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   // load the correct syscall number and invoke syscall
   emitIFormat(SYSCALL_EXIT, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_EXIT);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_EXIT);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(0, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(0, 0, 0, 0, FCT_SYSCALL);
 
   // never returns here
 }
@@ -4893,28 +4895,28 @@ void emitRead() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "read", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(SYSCALL_READ, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_READ);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_READ);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   // jump back to caller, return value is in REG_A0
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementRead() {
@@ -5019,27 +5021,27 @@ void emitWrite() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "write", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
- // emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(SYSCALL_WRITE, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_WRITE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_WRITE);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementWrite() {
@@ -5144,27 +5146,27 @@ void emitOpen() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "open", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
- // emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // flags
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A1, 0); // flags
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // filename
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // filename
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(SYSCALL_OPEN, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_OPEN);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_OPEN);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int down_loadString(int* table, int vaddr, int* s) {
@@ -5263,17 +5265,17 @@ void emitMalloc() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "zalloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(SYSCALL_MALLOC, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MALLOC);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MALLOC);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementMalloc() {
@@ -5318,12 +5320,12 @@ void emitID() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(SYSCALL_ID, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_ID);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_ID);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void implementID() {
@@ -5336,7 +5338,7 @@ int hypster_ID() {
 }
 
 int selfie_ID() {
-  if (mipster)
+  if (rocstar)
     return NO_ID;
   else
     return hypster_ID();
@@ -5346,12 +5348,12 @@ void emitCreate() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(SYSCALL_CREATE, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_CREATE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_CREATE);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int doCreate(int parentID) {
@@ -5390,7 +5392,7 @@ int hypster_create() {
 }
 
 int selfie_create() {
-  if (mipster)
+  if (rocstar)
     return doCreate(selfie_ID());
   else
     return hypster_create();
@@ -5400,21 +5402,21 @@ void emitSwitch() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(SYSCALL_SWITCH, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_SWITCH);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_SWITCH);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   // save ID of context from which we are switching here in return register
-  //emitRFormat(F7_ADD, REG_ZR, REG_S1, F3_ADD, REG_A0, OP_OP);
-  //emitRFormat(OP_SPECIAL, REG_ZR, REG_S1, REG_A0, FCT_ADDU);
+  // MIPS: emitRFormat(F7_ADD, REG_ZR, REG_S1, F3_ADD, REG_A0, OP_OP);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_ZR, REG_S1, REG_A0, FCT_ADDU);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int doSwitch(int toID) {
@@ -5462,7 +5464,7 @@ void implementSwitch() {
   *(registers+REG_S1) = fromID;
 }
 
-int mipster_switch(int toID) {
+int rocstar_switch(int toID) {
   int fromID;
 
   // CAUTION: doSwitch() modifies the global variable registers
@@ -5481,12 +5483,12 @@ int mipster_switch(int toID) {
 
 int hypster_switch(int toID) {
   // this procedure is only executed at boot level zero
-  return mipster_switch(toID);
+  return rocstar_switch(toID);
 }
 
 int selfie_switch(int toID) {
-  if (mipster)
-    return mipster_switch(toID);
+  if (rocstar)
+    return rocstar_switch(toID);
   else
     return hypster_switch(toID);
 }
@@ -5495,12 +5497,12 @@ void emitStatus() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(SYSCALL_STATUS, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_STATUS);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_STATUS);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 int doStatus() {
@@ -5530,7 +5532,7 @@ int hypster_status() {
 }
 
 int selfie_status() {
-  if (mipster)
+  if (rocstar)
     return doStatus();
   else
     return hypster_status();
@@ -5540,16 +5542,16 @@ void emitDelete() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(SYSCALL_DELETE, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_DELETE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_DELETE);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void doDelete(int ID) {
@@ -5585,7 +5587,7 @@ void hypster_delete(int ID) {
 }
 
 void selfie_delete(int ID) {
-  if (mipster)
+  if (rocstar)
     doDelete(ID);
   else
     hypster_delete(ID);
@@ -5595,27 +5597,27 @@ void emitMap() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_map", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A2, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A2, 0); // frame
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A2, 0); // frame
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A1, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A1, 0); // page
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A1, 0); // page
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
-  //emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
+  // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(SYSCALL_MAP, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  //emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MAP);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MAP);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
-  //emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
+  // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitIFormat(0, REG_RA, F3_JALR, REG_ZR, OP_JALR);
-  //emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
+  // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
 void doMap(int ID, int page, int frame) {
@@ -5674,7 +5676,7 @@ void hypster_map(int ID, int page, int frame) {
 }
 
 void selfie_map(int ID, int page, int frame) {
-  if (mipster)
+  if (rocstar)
     doMap(ID, page, frame);
   else
     hypster_map(ID, page, frame);
@@ -6782,12 +6784,12 @@ void selfie_disassemble() {
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
-  mipster = 1;
+  rocstar = 1;
   debug   = 1;
 
   boot(0, (int*) 0);
 
-  mipster = 0;
+  rocstar = 0;
   debug   = 0;
 
   outputName = (int*) 0;
@@ -6806,7 +6808,7 @@ void selfie_disassemble() {
 void selfie_run() {
   if (binaryLength == 0) {
     print(selfieName);
-    if (mipster)
+    if (rocstar)
       if (debug)
         print((int*) ": nothing to debug");
       else
@@ -6825,8 +6827,8 @@ void selfie_run() {
 
   print(selfieName);
   print((int*) ": this is selfie's ");
-  if (mipster)
-    print((int*) "mipster");
+  if (rocstar)
+    print((int*) "rocstar");
   else
     print((int*) "hypster");
   print((int*) " executing ");
@@ -6844,15 +6846,15 @@ void selfie_run() {
 
   print(selfieName);
   print((int*) ": this is selfie's ");
-  if (mipster)
-    print((int*) "mipster");
+  if (rocstar)
+    print((int*) "rocstar");
   else
     print((int*) "hypster");
   print((int*) " terminating ");
   print(binaryName);
   println();
 
-  if (mipster) {
+  if (rocstar) {
     print(selfieName);
     if (sourceLineNumber != (int*) 0)
       print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
@@ -7049,7 +7051,7 @@ void boot(int argc, int* argv) {
   // resetting library is only necessary for disassembler
   resetLibrary();
 
-  // resetting this is only necessary for mipster
+  // resetting this is only necessary for rocstar
   resetInterpreter();
   resetMicrokernel();
 
@@ -7128,20 +7130,20 @@ int selfie() {
       else if (stringCompare(option, (int*) "-l"))
         selfie_load();
       else if (stringCompare(option, (int*) "-m")) {
-        mipster = 1;
+        rocstar = 1;
 
         selfie_run();
 
-        mipster = 0;
+        rocstar = 0;
 
         return 0;
       } else if (stringCompare(option, (int*) "-d")) {
-        mipster = 1;
+        rocstar = 1;
         debug   = 1;
 
         selfie_run();
 
-        mipster = 0;
+        rocstar = 0;
         debug   = 0;
 
         return 0;
