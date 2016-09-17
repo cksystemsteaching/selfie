@@ -998,7 +998,7 @@ void execute();
 void interrupt();
 
 void runUntilException();
-void runUntilExit();
+void runUntilExit(int toID);
 
 int  up_loadString(int* table, int* s, int SP);
 void up_loadArguments(int* table, int argc, int* argv);
@@ -1193,8 +1193,8 @@ int bumpID; // counter for generating unique context IDs
 
 int* currentContext = (int*) 0; // context currently running
 
-int* activeContexts = (int*) 0; // doubly-linked list of active contexts
-int* freeContexts   = (int*) 0; // singly-linked list of free contexts
+int* usedContexts = (int*) 0; // doubly-linked list of used contexts
+int* freeContexts = (int*) 0; // singly-linked list of free contexts
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1203,8 +1203,8 @@ void resetMicrokernel() {
 
   currentContext = (int*) 0;
 
-  while (activeContexts != (int*) 0)
-    activeContexts = deleteContext(activeContexts, activeContexts);
+  while (usedContexts != (int*) 0)
+    usedContexts = deleteContext(usedContexts, usedContexts);
 }
 
 // -----------------------------------------------------------------
@@ -1219,12 +1219,6 @@ void down_mapPageTable(int* context);
 void boot(int argc, int* argv);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
-
-int initID = 0;
-
-int* readyContexts = (int*) 0;
-
-int* initContext = (int*) 0;
 
 int usedMemory = 0;
 
@@ -5052,10 +5046,10 @@ int doCreate(int parentID) {
   if (bumpID < INT_MAX) {
     bumpID = createID(bumpID);
 
-    activeContexts = createContext(bumpID, parentID, activeContexts);
+    usedContexts = createContext(bumpID, parentID, usedContexts);
 
     if (currentContext == (int*) 0)
-      currentContext = activeContexts;
+      currentContext = usedContexts;
 
     if (debug_create) {
       print(binaryName);
@@ -5111,7 +5105,7 @@ int doSwitch(int toID) {
 
   fromID = getID(currentContext);
 
-  toContext = findContext(toID, activeContexts);
+  toContext = findContext(toID, usedContexts);
 
   if (toContext != (int*) 0) {
     switchContext(currentContext, toContext);
@@ -5236,10 +5230,10 @@ void emitDelete() {
 void doDelete(int ID) {
   int* context;
 
-  context = findContext(ID, activeContexts);
+  context = findContext(ID, usedContexts);
 
   if (context != (int*) 0) {
-    activeContexts = deleteContext(context, activeContexts);
+    usedContexts = deleteContext(context, usedContexts);
 
     if (debug_delete) {
       print(binaryName);
@@ -5294,11 +5288,11 @@ void doMap(int ID, int page, int frame) {
   int* mapContext;
   int* parentContext;
 
-  mapContext = findContext(ID, activeContexts);
+  mapContext = findContext(ID, usedContexts);
 
   if (mapContext != (int*) 0) {
     if (getParent(mapContext) != NO_ID) {
-      parentContext = findContext(getParent(mapContext), activeContexts);
+      parentContext = findContext(getParent(mapContext), usedContexts);
 
       if (parentContext != (int*) 0)
         // assert: 0 <= frame < VIRTUALMEMORYSIZE
@@ -6264,8 +6258,7 @@ void runUntilException() {
   trap = 0;
 }
 
-void runUntilExit() {
-  int toID;
+void runUntilExit(int toID) {
   int fromID;
   int* fromContext;
   int savedStatus;
@@ -6273,24 +6266,21 @@ void runUntilExit() {
   int exceptionParameter;
   int frame;
 
-  toID = initID;
-
   while (1) {
     fromID = selfie_switch(toID);
 
-    fromContext = findContext(fromID, readyContexts);
+    fromContext = findContext(fromID, usedContexts);
 
-    if (fromContext == (int*) 0) {
-      // assert: context with fromID must be in activeContexts
-      fromContext = findContext(fromID, activeContexts);
+    // assert: fromContext must be in usedContexts (created here)
 
+    if (getParent(fromContext) != selfie_ID())
       // switch to parent which is in charge of handling exceptions
       toID = getParent(fromContext);
-    } else {
+    else {
       // we are the parent in charge of handling exceptions
       savedStatus = selfie_status();
 
-      exceptionNumber  = decodeExceptionNumber(savedStatus);
+      exceptionNumber    = decodeExceptionNumber(savedStatus);
       exceptionParameter = decodeExceptionParameter(savedStatus);
 
       if (exceptionNumber == EXCEPTION_EXIT)
@@ -6774,6 +6764,8 @@ void down_mapPageTable(int* context) {
 }
 
 void boot(int argc, int* argv) {
+  int  initID;
+
   // resetting this is only necessary for mipster
   resetInterpreter();
   resetMicrokernel();
@@ -6781,19 +6773,27 @@ void boot(int argc, int* argv) {
   // create initial context on microkernel boot level
   initID = selfie_create();
 
-  // create duplicate of the initial context on this boot level
-  readyContexts = createContext(initID, selfie_ID(), readyContexts);
+  if (usedContexts != (int*) 0) {
+    // we are on microkernel boot level
 
-  initContext = readyContexts;
+    up_loadBinary(getPT(usedContexts));
 
-  up_loadBinary(getPT(initContext));
+    up_loadArguments(getPT(usedContexts), argc, argv);
+  } else {
+    // we are not on microkernel boot level
 
-  up_loadArguments(getPT(initContext), argc, argv);
+    // create duplicate of the initial context on our level
+    usedContexts = createContext(initID, selfie_ID(), (int*) 0);
 
-  // set up page table of initial context
-  down_mapPageTable(initContext);
+    up_loadBinary(getPT(usedContexts));
 
-  runUntilExit();
+    up_loadArguments(getPT(usedContexts), argc, argv);
+
+    // set up page table of initial context on microkernel level
+    down_mapPageTable(usedContexts);
+  }
+
+  runUntilExit(initID);
 }
 
 // -----------------------------------------------------------------
