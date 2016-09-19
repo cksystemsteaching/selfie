@@ -6911,10 +6911,11 @@ int selfie_run(int engine, int machine, int debugger) {
   // pass binary name as first argument by replacing memory size
   setArgument(binaryName);
 
+  interpret = 1;
+
   if (engine == MIPSTER) {
     // boot mipster
-    mipster   = 1;
-    interpret = 1;
+    mipster = 1;
 
     if (debugger)
       debug = 1;
@@ -6926,10 +6927,8 @@ int selfie_run(int engine, int machine, int debugger) {
     else
       exitCode = bootmob(numberOfRemainingArguments(), remainingArguments());
 
-    debug = 0;
-
-    interpret = 0;
-    mipster   = 0;
+    debug   = 0;
+    mipster = 0;
 
     print(selfieName);
     if (sourceLineNumber != (int*) 0)
@@ -6944,6 +6943,8 @@ int selfie_run(int engine, int machine, int debugger) {
   } else
     // boot hypster
     exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+
+  interpret = 0;
 
   return exitCode;
 }
