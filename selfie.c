@@ -998,11 +998,6 @@ void execute();
 void interrupt();
 
 void runUntilException();
-void runUntilExit(int toID);
-
-int  up_loadString(int* table, int* s, int SP);
-void up_loadArguments(int* table, int argc, int* argv);
-void up_loadBinary(int* table);
 
 int addressWithMaxCounter(int* counters, int max);
 
@@ -1010,7 +1005,6 @@ int  printCounters(int total, int* counters, int max);
 void printProfile(int* message, int total, int* counters);
 
 void selfie_disassemble();
-void selfie_run();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1020,7 +1014,7 @@ int EXCEPTION_UNKNOWNSYSCALL     = 2;
 int EXCEPTION_ADDRESSERROR       = 3;
 int EXCEPTION_HEAPOVERFLOW       = 4;
 int EXCEPTION_EXIT               = 5;
-int EXCEPTION_INTERRUPT          = 6;
+int EXCEPTION_TIMER              = 6;
 int EXCEPTION_PAGEFAULT          = 7;
 
 int* EXCEPTIONS; // strings representing exceptions
@@ -1083,7 +1077,7 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_ADDRESSERROR)       = (int) "address error";
   *(EXCEPTIONS + EXCEPTION_HEAPOVERFLOW)       = (int) "heap overflow";
   *(EXCEPTIONS + EXCEPTION_EXIT)               = (int) "exit";
-  *(EXCEPTIONS + EXCEPTION_INTERRUPT)          = (int) "timer interrupt";
+  *(EXCEPTIONS + EXCEPTION_TIMER)              = (int) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
 }
 
@@ -1208,15 +1202,35 @@ void resetMicrokernel() {
 }
 
 // -----------------------------------------------------------------
-// --------------------------- HYPSTER -----------------------------
+// ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
 int* palloc();
 void pfree(int* frame);
 
+void up_loadBinary(int* table);
+
+int  up_loadString(int* table, int* s, int SP);
+void up_loadArguments(int* table, int argc, int* argv);
+
 void down_mapPageTable(int* context);
 
-void boot(int argc, int* argv);
+int runUntilExitWithoutExceptionHandling(int toID);
+int runUntilExitWithPageFaultHandling(int toID);
+
+int bootmin(int argc, int* argv);
+int boot(int argc, int* argv);
+int bootmob(int argc, int* argv);
+
+int selfie_run(int engine, int machine, int debugger);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+int MINSTER = 1;
+int MIPSTER = 2;
+int MOBSTER = 3;
+
+int HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1237,6 +1251,10 @@ int* remainingArguments();
 int* peekArgument();
 int* getArgument();
 void setArgument(int* argv);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+int USAGE = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -6139,8 +6157,11 @@ void printStatus(int status) {
   parameter = decodeExceptionParameter(status);
 
   printException(exception);
-  print((int*) " with parameter ");
-  printHexadecimal(parameter, 4);
+
+  if (exception == EXCEPTION_PAGEFAULT) {
+    print((int*) " at ");
+    printHexadecimal(parameter, 8);
+  }
 }
 
 void throwException(int exception, int parameter) {
@@ -6155,13 +6176,9 @@ void throwException(int exception, int parameter) {
     print(binaryName);
     print((int*) ": context ");
     printInteger(getID(currentContext));
-    print((int*) " ");
+    print((int*) " throws ");
     printStatus(status);
-    if (exception == EXCEPTION_PAGEFAULT) {
-      print((int*) " [virtual address=");
-      printHexadecimal(parameter, 8);
-      print((int*) "]");
-    }
+    print((int*) " exception");
     println();
   }
 }
@@ -6241,7 +6258,7 @@ void interrupt() {
       if (status == 0)
         // only throw exception if no other is pending
         // TODO: handle multiple pending exceptions
-        throwException(EXCEPTION_INTERRUPT, 0);
+        throwException(EXCEPTION_TIMER, 0);
     }
 }
 
@@ -6256,135 +6273,6 @@ void runUntilException() {
   }
 
   trap = 0;
-}
-
-void runUntilExit(int toID) {
-  int fromID;
-  int* fromContext;
-  int savedStatus;
-  int exceptionNumber;
-  int exceptionParameter;
-  int frame;
-
-  while (1) {
-    fromID = selfie_switch(toID);
-
-    fromContext = findContext(fromID, usedContexts);
-
-    // assert: fromContext must be in usedContexts (created here)
-
-    if (getParent(fromContext) != selfie_ID())
-      // switch to parent which is in charge of handling exceptions
-      toID = getParent(fromContext);
-    else {
-      // we are the parent in charge of handling exceptions
-      savedStatus = selfie_status();
-
-      exceptionNumber    = decodeExceptionNumber(savedStatus);
-      exceptionParameter = decodeExceptionParameter(savedStatus);
-
-      if (exceptionNumber == EXCEPTION_EXIT)
-        // TODO: only return if all contexts have exited
-        return;
-      else if (exceptionNumber == EXCEPTION_PAGEFAULT) {
-        frame = (int) palloc();
-
-        // TODO: use this table to unmap and reuse frames
-        mapPage(getPT(fromContext), exceptionParameter, frame);
-
-        // page table on microkernel boot level
-        selfie_map(fromID, exceptionParameter, frame);
-      }
-
-      // TODO: scheduler should go here
-      toID = fromID;
-    }
-  }
-}
-
-int up_loadString(int* table, int* s, int SP) {
-  int bytes;
-  int i;
-
-  bytes = roundUp(stringLength(s) + 1, WORDSIZE);
-
-  // allocate memory for storing string
-  SP = SP - bytes;
-
-  i = 0;
-
-  while (i < bytes) {
-    mapAndStoreVirtualMemory(table, SP + i, *s);
-
-    s = s + 1;
-
-    i = i + WORDSIZE;
-  }
-
-  return SP;
-}
-
-void up_loadArguments(int* table, int argc, int* argv) {
-  int SP;
-  int vargv;
-  int i_argc;
-  int i_vargv;
-
-  // arguments are pushed onto stack which starts at highest virtual address
-  SP = VIRTUALMEMORYSIZE - WORDSIZE;
-
-  // allocate memory for storing stack pointer later
-  SP = SP - WORDSIZE;
-
-  // allocate memory for storing *argv array
-  SP = SP - argc * WORDSIZE;
-
-  // vargv invalid if argc == 0
-  vargv = SP + WORDSIZE;
-
-  i_vargv = vargv;
-  i_argc  = argc;
-
-  while (i_argc > 0) {
-    SP = up_loadString(table, (int*) *argv, SP);
-
-    // store pointer to string in virtual *argv
-    mapAndStoreVirtualMemory(table, i_vargv, SP);
-
-    argv = argv + 1;
-
-    i_vargv = i_vargv + WORDSIZE;
-
-    i_argc = i_argc - 1;
-  }
-
-  // allocate memory for one word on the stack
-  SP = SP - WORDSIZE;
-
-  // push argc
-  mapAndStoreVirtualMemory(table, SP, argc);
-
-  // allocate memory for one word on the stack
-  SP = SP - WORDSIZE;
-
-  // push virtual argv
-  mapAndStoreVirtualMemory(table, SP, vargv);
-
-  // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
-}
-
-void up_loadBinary(int* table) {
-  int vaddr;
-
-  // binaries start at lowest virtual address
-  vaddr = 0;
-
-  while (vaddr < binaryLength) {
-    mapAndStoreVirtualMemory(table, vaddr, loadBinary(vaddr));
-
-    vaddr = vaddr + WORDSIZE;
-  }
 }
 
 int addressWithMaxCounter(int* counters, int max) {
@@ -6514,69 +6402,6 @@ void selfie_disassemble() {
   println();
 }
 
-void selfie_run() {
-  if (binaryLength == 0) {
-    print(selfieName);
-    if (mipster)
-      if (debug)
-        print((int*) ": nothing to debug");
-      else
-        print((int*) ": nothing to run");
-    else
-      print((int*) ": nothing to host");
-    println();
-
-    exit(-1);
-  }
-
-  initMemory(atoi(peekArgument()) * MEGABYTE);
-
-  // pass binary name as first argument by replacing memory size
-  setArgument(binaryName);
-
-  print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (mipster)
-    print((int*) "mipster");
-  else
-    print((int*) "hypster");
-  print((int*) " executing ");
-  print(binaryName);
-  print((int*) " with ");
-  printInteger(frameMemorySize / 1024 / 1024);
-  print((int*) "MB of memory");
-  println();
-
-  interpret = 1;
-
-  boot(numberOfRemainingArguments(), remainingArguments());
-
-  interpret = 0;
-
-  print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (mipster)
-    print((int*) "mipster");
-  else
-    print((int*) "hypster");
-  print((int*) " terminating ");
-  print(binaryName);
-  println();
-
-  if (mipster) {
-    print(selfieName);
-    if (sourceLineNumber != (int*) 0)
-      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
-    else
-      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
-    println();
-    printProfile((int*) ": calls: ", calls, callsPerAddress);
-    printProfile((int*) ": loops: ", loops, loopsPerAddress);
-    printProfile((int*) ": loads: ", loads, loadsPerAddress);
-    printProfile((int*) ": stores: ", stores, storesPerAddress);
-  }
-}
-
 // -----------------------------------------------------------------
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
@@ -6694,7 +6519,7 @@ void mapPage(int* table, int page, int frame) {
 }
 
 // -----------------------------------------------------------------
-// --------------------------- HYPSTER -----------------------------
+// ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
 int* palloc() {
@@ -6741,6 +6566,91 @@ void pfree(int* frame) {
   // TODO: implement free list of page frames
 }
 
+void up_loadBinary(int* table) {
+  int vaddr;
+
+  // binaries start at lowest virtual address
+  vaddr = 0;
+
+  while (vaddr < binaryLength) {
+    mapAndStoreVirtualMemory(table, vaddr, loadBinary(vaddr));
+
+    vaddr = vaddr + WORDSIZE;
+  }
+}
+
+int up_loadString(int* table, int* s, int SP) {
+  int bytes;
+  int i;
+
+  bytes = roundUp(stringLength(s) + 1, WORDSIZE);
+
+  // allocate memory for storing string
+  SP = SP - bytes;
+
+  i = 0;
+
+  while (i < bytes) {
+    mapAndStoreVirtualMemory(table, SP + i, *s);
+
+    s = s + 1;
+
+    i = i + WORDSIZE;
+  }
+
+  return SP;
+}
+
+void up_loadArguments(int* table, int argc, int* argv) {
+  int SP;
+  int vargv;
+  int i_argc;
+  int i_vargv;
+
+  // arguments are pushed onto stack which starts at highest virtual address
+  SP = VIRTUALMEMORYSIZE - WORDSIZE;
+
+  // allocate memory for storing stack pointer later
+  SP = SP - WORDSIZE;
+
+  // allocate memory for storing *argv array
+  SP = SP - argc * WORDSIZE;
+
+  // vargv invalid if argc == 0
+  vargv = SP + WORDSIZE;
+
+  i_vargv = vargv;
+  i_argc  = argc;
+
+  while (i_argc > 0) {
+    SP = up_loadString(table, (int*) *argv, SP);
+
+    // store pointer to string in virtual *argv
+    mapAndStoreVirtualMemory(table, i_vargv, SP);
+
+    argv = argv + 1;
+
+    i_vargv = i_vargv + WORDSIZE;
+
+    i_argc = i_argc - 1;
+  }
+
+  // allocate memory for one word on the stack
+  SP = SP - WORDSIZE;
+
+  // push argc
+  mapAndStoreVirtualMemory(table, SP, argc);
+
+  // allocate memory for one word on the stack
+  SP = SP - WORDSIZE;
+
+  // push virtual argv
+  mapAndStoreVirtualMemory(table, SP, vargv);
+
+  // store stack pointer at highest virtual address for binary to retrieve
+  mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
+}
+
 void down_mapPageTable(int* context) {
   int page;
 
@@ -6763,37 +6673,279 @@ void down_mapPageTable(int* context) {
   }
 }
 
-void boot(int argc, int* argv) {
-  int  initID;
+int runUntilExitWithoutExceptionHandling(int toID) {
+  int fromID;
+  int* fromContext;
+  int savedStatus;
+  int exceptionNumber;
 
-  // resetting this is only necessary for mipster
+  while (1) {
+    fromID = selfie_switch(toID);
+
+    fromContext = findContext(fromID, usedContexts);
+
+    // assert: fromContext must be in usedContexts (created here)
+
+    if (getParent(fromContext) != selfie_ID())
+      // switch to parent which is in charge of handling exceptions
+      toID = getParent(fromContext);
+    else {
+      // we are the parent in charge of handling exit exceptions
+      savedStatus = selfie_status();
+
+      exceptionNumber = decodeExceptionNumber(savedStatus);
+
+      if (exceptionNumber == EXCEPTION_EXIT)
+        // TODO: only return if all contexts have exited
+        return decodeExceptionParameter(savedStatus);
+      else if (exceptionNumber != EXCEPTION_TIMER) {
+        print(binaryName);
+        print((int*) ": context ");
+        printInteger(getID(fromContext));
+        print((int*) " throws uncaught ");
+        printStatus(savedStatus);
+        println();
+
+        return -1;
+      }
+
+      toID = fromID;
+    }
+  }
+}
+
+int runUntilExitWithPageFaultHandling(int toID) {
+  int fromID;
+  int* fromContext;
+  int savedStatus;
+  int exceptionNumber;
+  int exceptionParameter;
+  int frame;
+
+  while (1) {
+    fromID = selfie_switch(toID);
+
+    fromContext = findContext(fromID, usedContexts);
+
+    // assert: fromContext must be in usedContexts (created here)
+
+    if (getParent(fromContext) != selfie_ID())
+      // switch to parent which is in charge of handling exceptions
+      toID = getParent(fromContext);
+    else {
+      // we are the parent in charge of handling exceptions
+      savedStatus = selfie_status();
+
+      exceptionNumber    = decodeExceptionNumber(savedStatus);
+      exceptionParameter = decodeExceptionParameter(savedStatus);
+
+      if (exceptionNumber == EXCEPTION_PAGEFAULT) {
+        frame = (int) palloc();
+
+        // TODO: use this table to unmap and reuse frames
+        mapPage(getPT(fromContext), exceptionParameter, frame);
+
+        // page table on microkernel boot level
+        selfie_map(fromID, exceptionParameter, frame);
+      } else if (exceptionNumber == EXCEPTION_EXIT)
+        // TODO: only return if all contexts have exited
+        return exceptionParameter;
+      else if (exceptionNumber != EXCEPTION_TIMER) {
+        print(binaryName);
+        print((int*) ": context ");
+        printInteger(getID(fromContext));
+        print((int*) " throws uncaught ");
+        printStatus(savedStatus);
+        println();
+
+        return -1;
+      }
+
+      // TODO: scheduler should go here
+      toID = fromID;
+    }
+  }
+}
+
+int bootmin(int argc, int* argv) {
+  // works only with mipster
+  int initID;
+  int exitCode;
+
+  print(selfieName);
+  print((int*) ": this is selfie's minster executing ");
+  print(binaryName);
+  print((int*) " with ");
+  printInteger(frameMemorySize / 1024 / 1024);
+  print((int*) "MB of memory");
+  println();
+
   resetInterpreter();
+  resetMicrokernel();
+
+  // create initial context on our boot level
+  initID = selfie_create();
+
+  up_loadBinary(getPT(usedContexts));
+
+  up_loadArguments(getPT(usedContexts), argc, argv);
+
+  // virtual is like physical memory in initial context
+  // by having mipster handle its page faults
+  exitCode = runUntilExitWithPageFaultHandling(initID);
+
+  print(selfieName);
+  print((int*) ": this is selfie's minster terminating ");
+  print(binaryName);
+  print((int*) " with exit code ");
+  printInteger(exitCode);
+  println();
+
+  return exitCode;
+}
+
+int boot(int argc, int* argv) {
+  // works with mipster and hypster
+  int initID;
+  int exitCode;
+
+  print(selfieName);
+  print((int*) ": this is selfie's ");
+  if (mipster)
+    print((int*) "mipster");
+  else
+    print((int*) "hypster");
+  print((int*) " executing ");
+  print(binaryName);
+  print((int*) " with ");
+  printInteger(frameMemorySize / 1024 / 1024);
+  print((int*) "MB of memory");
+  println();
+
+  // resetting interpreter is only necessary for mipster
+  resetInterpreter();
+
   resetMicrokernel();
 
   // create initial context on microkernel boot level
   initID = selfie_create();
 
-  if (usedContexts != (int*) 0) {
-    // we are on microkernel boot level
-
-    up_loadBinary(getPT(usedContexts));
-
-    up_loadArguments(getPT(usedContexts), argc, argv);
-  } else {
-    // we are not on microkernel boot level
-
-    // create duplicate of the initial context on our level
+  if (usedContexts == (int*) 0)
+    // create duplicate of the initial context on our boot level
     usedContexts = createContext(initID, selfie_ID(), (int*) 0);
 
-    up_loadBinary(getPT(usedContexts));
+  up_loadBinary(getPT(usedContexts));
 
-    up_loadArguments(getPT(usedContexts), argc, argv);
+  up_loadArguments(getPT(usedContexts), argc, argv);
 
-    // set up page table of initial context on microkernel level
-    down_mapPageTable(usedContexts);
+  // propagate page table of initial context to microkernel boot level
+  down_mapPageTable(usedContexts);
+
+  // mipster and hypster handle page faults
+  exitCode = runUntilExitWithPageFaultHandling(initID);
+
+  print(selfieName);
+  print((int*) ": this is selfie's ");
+  if (mipster)
+    print((int*) "mipster");
+  else
+    print((int*) "hypster");
+  print((int*) " terminating ");
+  print(binaryName);
+  print((int*) " with exit code ");
+  printInteger(exitCode);
+  println();
+
+  return exitCode;
+}
+
+int bootmob(int argc, int* argv) {
+  // works only with mipster
+  int initID;
+  int exitCode;
+
+  print(selfieName);
+  print((int*) ": this is selfie's mobster executing ");
+  print(binaryName);
+  print((int*) " with ");
+  printInteger(frameMemorySize / 1024 / 1024);
+  print((int*) "MB of memory");
+  println();
+
+  resetInterpreter();
+  resetMicrokernel();
+
+  // create initial context on our boot level
+  initID = selfie_create();
+
+  up_loadBinary(getPT(usedContexts));
+
+  up_loadArguments(getPT(usedContexts), argc, argv);
+
+  // even initial context needs to handle its own page faults
+  exitCode = runUntilExitWithoutExceptionHandling(initID);
+
+  print(selfieName);
+  print((int*) ": this is selfie's mobster terminating ");
+  print(binaryName);
+  print((int*) " with exit code ");
+  printInteger(exitCode);
+  println();
+
+  return exitCode;
+}
+
+int selfie_run(int engine, int machine, int debugger) {
+  int exitCode;
+
+  if (binaryLength == 0) {
+    print(selfieName);
+    print((int*) ": nothing to run, debug, or host");
+    println();
+
+    exit(-1);
   }
 
-  runUntilExit(initID);
+  initMemory(atoi(peekArgument()) * MEGABYTE);
+
+  // pass binary name as first argument by replacing memory size
+  setArgument(binaryName);
+
+  if (engine == MIPSTER) {
+    // boot mipster
+    mipster   = 1;
+    interpret = 1;
+
+    if (debugger)
+      debug = 1;
+
+    if (machine == MINSTER)
+      exitCode = bootmin(numberOfRemainingArguments(), remainingArguments());
+    else if (machine == MIPSTER)
+      exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+    else
+      exitCode = bootmob(numberOfRemainingArguments(), remainingArguments());
+
+    debug = 0;
+
+    interpret = 0;
+    mipster   = 0;
+
+    print(selfieName);
+    if (sourceLineNumber != (int*) 0)
+      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
+    else
+      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
+    println();
+    printProfile((int*) ": calls: ", calls, callsPerAddress);
+    printProfile((int*) ": loops: ", loops, loopsPerAddress);
+    printProfile((int*) ": loads: ", loads, loadsPerAddress);
+    printProfile((int*) ": stores: ", stores, storesPerAddress);
+  } else
+    // boot hypster
+    exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+
+  return exitCode;
 }
 
 // -----------------------------------------------------------------
@@ -6836,8 +6988,13 @@ int selfie() {
   int* option;
 
   if (numberOfRemainingArguments() == 0)
-    return -1;
-  else
+    return USAGE;
+  else {
+    initScanner();
+    initRegister();
+    initDecoder();
+    initInterpreter();
+
     while (numberOfRemainingArguments() > 0) {
       option = getArgument();
 
@@ -6845,59 +7002,46 @@ int selfie() {
         selfie_compile();
       else if (numberOfRemainingArguments() == 0)
         // remaining options have at least one argument
-        return -1;
+        return USAGE;
       else if (stringCompare(option, (int*) "-o"))
         selfie_output();
       else if (stringCompare(option, (int*) "-s"))
         selfie_disassemble();
       else if (stringCompare(option, (int*) "-l"))
         selfie_load();
-      else if (stringCompare(option, (int*) "-m")) {
-        mipster = 1;
-
-        selfie_run();
-
-        mipster = 0;
-
-        return 0;
-      } else if (stringCompare(option, (int*) "-d")) {
-        mipster = 1;
-        debug   = 1;
-
-        selfie_run();
-
-        mipster = 0;
-        debug   = 0;
-
-        return 0;
-      } else if (stringCompare(option, (int*) "-y")) {
-        selfie_run();
-
-        return 0;
-      } else
-        return -1;
+      else if (stringCompare(option, (int*) "-m"))
+        return selfie_run(MIPSTER, MIPSTER, 0);
+      else if (stringCompare(option, (int*) "-d"))
+        return selfie_run(MIPSTER, MIPSTER, 1);
+      else if (stringCompare(option, (int*) "-y"))
+        return selfie_run(HYPSTER, MIPSTER, 0);
+      else if (stringCompare(option, (int*) "-min"))
+        return selfie_run(MIPSTER, MINSTER, 0);
+      else if (stringCompare(option, (int*) "-mob"))
+        return selfie_run(MIPSTER, MOBSTER, 0);
+      else
+        return USAGE;
     }
+  }
 
   return 0;
 }
 
 int main(int argc, int* argv) {
-  initLibrary();
-
-  initScanner();
-
-  initRegister();
-  initDecoder();
-
-  initInterpreter();
+  int exitCode;
 
   initSelfie(argc, (int*) argv);
 
-  if (selfie() != 0) {
-    print(selfieName);
-    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
-    println();
-  }
+  initLibrary();
 
-  return 0;
+  exitCode = selfie();
+
+  if (exitCode == USAGE) {
+    print(selfieName);
+    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ] ");
+    println();
+
+    return 0;
+  } else
+    return exitCode;
 }
