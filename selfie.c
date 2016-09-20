@@ -1179,7 +1179,7 @@ void resetMicrokernel();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int NO_ID = -1;
+int MIPSTER_ID = -1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1193,7 +1193,7 @@ int* freeContexts = (int*) 0; // singly-linked list of free contexts
 // ------------------------- INITIALIZATION ------------------------
 
 void resetMicrokernel() {
-  bumpID = NO_ID;
+  bumpID = MIPSTER_ID;
 
   currentContext = (int*) 0;
 
@@ -1220,7 +1220,7 @@ void mapUnmappedPages(int* table);
 void down_mapPageTable(int* context);
 
 int runUntilExitWithoutExceptionHandling(int toID);
-int runUntilExitWithPageFaultHandling(int toID);
+int runOrHostUntilExitWithPageFaultHandling(int toID);
 
 int bootminmob(int argc, int* argv, int machine);
 int boot(int argc, int* argv);
@@ -5044,12 +5044,12 @@ void implementID() {
 
 int hypster_ID() {
   // this procedure is only executed at boot level zero
-  return NO_ID;
+  return MIPSTER_ID;
 }
 
 int selfie_ID() {
   if (mipster)
-    return NO_ID;
+    return MIPSTER_ID;
   else
     return hypster_ID();
 }
@@ -5312,7 +5312,7 @@ void doMap(int ID, int page, int frame) {
   mapContext = findContext(ID, usedContexts);
 
   if (mapContext != (int*) 0) {
-    if (getParent(mapContext) != NO_ID) {
+    if (getParent(mapContext) != MIPSTER_ID) {
       parentContext = findContext(getParent(mapContext), usedContexts);
 
       if (parentContext != (int*) 0)
@@ -6712,24 +6712,25 @@ void down_mapPageTable(int* context) {
 }
 
 int runUntilExitWithoutExceptionHandling(int toID) {
+  // works only with mipsters
   int fromID;
   int* fromContext;
   int savedStatus;
   int exceptionNumber;
 
   while (1) {
-    fromID = selfie_switch(toID);
+    fromID = mipster_switch(toID);
 
     fromContext = findContext(fromID, usedContexts);
 
     // assert: fromContext must be in usedContexts (created here)
 
-    if (getParent(fromContext) != selfie_ID())
+    if (getParent(fromContext) != MIPSTER_ID)
       // switch to parent which is in charge of handling exceptions
       toID = getParent(fromContext);
     else {
       // we are the parent in charge of handling exit exceptions
-      savedStatus = selfie_status();
+      savedStatus = doStatus();
 
       exceptionNumber = decodeExceptionNumber(savedStatus);
 
@@ -6752,7 +6753,8 @@ int runUntilExitWithoutExceptionHandling(int toID) {
   }
 }
 
-int runUntilExitWithPageFaultHandling(int toID) {
+int runOrHostUntilExitWithPageFaultHandling(int toID) {
+  // works with mipsters and hypsters
   int fromID;
   int* fromContext;
   int savedStatus;
@@ -6806,7 +6808,7 @@ int runUntilExitWithPageFaultHandling(int toID) {
 }
 
 int bootminmob(int argc, int* argv, int machine) {
-  // works only with minster and mobster
+  // works only with mipsters
   int initID;
   int exitCode;
 
@@ -6827,7 +6829,7 @@ int bootminmob(int argc, int* argv, int machine) {
   resetMicrokernel();
 
   // create initial context on our boot level
-  initID = selfie_create();
+  initID = doCreate(MIPSTER_ID);
 
   up_loadBinary(getPT(usedContexts));
 
@@ -6856,7 +6858,7 @@ int bootminmob(int argc, int* argv, int machine) {
 }
 
 int boot(int argc, int* argv) {
-  // works with mipster and hypster
+  // works with mipsters and hypsters
   int initID;
   int exitCode;
 
@@ -6873,7 +6875,7 @@ int boot(int argc, int* argv) {
   print((int*) "MB of memory");
   println();
 
-  // resetting interpreter is only necessary for mipster
+  // resetting interpreter is only necessary for mipsters
   resetInterpreter();
 
   resetMicrokernel();
@@ -6892,8 +6894,8 @@ int boot(int argc, int* argv) {
   // propagate page table of initial context to microkernel boot level
   down_mapPageTable(usedContexts);
 
-  // mipster and hypster handle page faults
-  exitCode = runUntilExitWithPageFaultHandling(initID);
+  // mipsters and hypsters handle page faults
+  exitCode = runOrHostUntilExitWithPageFaultHandling(initID);
 
   print(selfieName);
   print((int*) ": this is selfie's ");
