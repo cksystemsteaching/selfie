@@ -909,7 +909,7 @@ int SYSCALL_MAP    = 4906;
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-void initMemory(int bytes);
+void initMemory(int megabytes);
 
 int  loadPhysicalMemory(int* paddr);
 void storePhysicalMemory(int* paddr, int data);
@@ -947,12 +947,13 @@ int pageFrameMemory = 0; // size of memory for frames in bytes
 
 // ------------------------- INITIALIZATION ------------------------
 
-void initMemory(int bytes) {
-  pageFrameMemory = 64 * MEGABYTE;
+void initMemory(int megabytes) {
+  if (megabytes < 0)
+    megabytes = 0;
+  else if (megabytes > 64)
+    megabytes = 64;
 
-  if (bytes >= 0)
-    if (bytes < 64 * MEGABYTE)
-      pageFrameMemory = bytes;
+  pageFrameMemory = megabytes * MEGABYTE;
 }
 
 // -----------------------------------------------------------------
@@ -6846,6 +6847,7 @@ int bootminmob(int argc, int* argv, int machine) {
   if (machine == MINSTER)
     // virtual is like physical memory in initial context up to memory size
     // by mapping unmapped pages (for the heap) to all available page frames
+    // CAUTION: consumes memory even when not used
     mapUnmappedPages(getPT(usedContexts));
 
   exitCode = runUntilExitWithoutExceptionHandling(initID);
@@ -6937,7 +6939,7 @@ int selfie_run(int engine, int machine, int debugger) {
     exit(-1);
   }
 
-  initMemory(atoi(peekArgument()) * MEGABYTE);
+  initMemory(atoi(peekArgument()));
 
   // pass binary name as first argument by replacing memory size
   setArgument(binaryName);
