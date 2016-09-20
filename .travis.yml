@@ -10,7 +10,7 @@ addons:
   apt:
     packages:
     - gcc-multilib
-script: travis_wait make test
+script: make test
 notifications:
   email: false
   slack:
