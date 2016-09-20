@@ -16,7 +16,7 @@
 // resolve self-reference in systems code which is seen as the key
 // challenge when teaching systems engineering, hence the name.
 //
-// Selfie is a fully self-referential 6k-line C implementation of:
+// Selfie is a fully self-referential 7k-line C implementation of:
 //
 // 1. a self-compiling compiler called starc that compiles
 //    a tiny but powerful subset of C called C Star (C*) to
@@ -913,10 +913,11 @@ void initMemory(int bytes);
 int  loadPhysicalMemory(int* paddr);
 void storePhysicalMemory(int* paddr, int data);
 
-int isValidVirtualAddress(int vaddr);
-
 int getFrameForPage(int* table, int page);
+int isPageMapped(int* table, int page);
 
+int isValidVirtualAddress(int vaddr);
+int getPageOfVirtualAddress(int vaddr);
 int isVirtualAddressMapped(int* table, int vaddr);
 
 int* tlb(int* table, int vaddr);
@@ -946,12 +947,11 @@ int frameMemorySize = 0; // size of memory for frames in bytes
 // ------------------------- INITIALIZATION ------------------------
 
 void initMemory(int bytes) {
-  if (bytes < 0)
-    frameMemorySize = 64 * MEGABYTE;
-  else if (bytes > 1024 * MEGABYTE)
-    frameMemorySize = 1024 * MEGABYTE;
-  else
-    frameMemorySize = bytes;
+  frameMemorySize = 64 * MEGABYTE;
+
+  if (bytes >= 0)
+    if (bytes < 64 * MEGABYTE)
+      frameMemorySize = bytes;
 }
 
 // -----------------------------------------------------------------
@@ -1205,6 +1205,8 @@ void resetMicrokernel() {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
+int pavailable();
+
 int* palloc();
 void pfree(int* frame);
 
@@ -1213,14 +1215,15 @@ void up_loadBinary(int* table);
 int  up_loadString(int* table, int* s, int SP);
 void up_loadArguments(int* table, int argc, int* argv);
 
+void mapUnmappedPages(int* table);
+
 void down_mapPageTable(int* context);
 
 int runUntilExitWithoutExceptionHandling(int toID);
 int runUntilExitWithPageFaultHandling(int toID);
 
-int bootmin(int argc, int* argv);
+int bootminmob(int argc, int* argv, int machine);
 int boot(int argc, int* argv);
-int bootmob(int argc, int* argv);
 
 int selfie_run(int engine, int machine, int debugger);
 
@@ -5382,6 +5385,17 @@ void storePhysicalMemory(int* paddr, int data) {
   *paddr = data;
 }
 
+int getFrameForPage(int* table, int page) {
+  return *(table + page);
+}
+
+int isPageMapped(int* table, int page) {
+  if (getFrameForPage(table, page) != 0)
+    return 1;
+  else
+    return 0;
+}
+
 int isValidVirtualAddress(int vaddr) {
   if (vaddr >= 0)
     if (vaddr < VIRTUALMEMORYSIZE)
@@ -5392,17 +5406,14 @@ int isValidVirtualAddress(int vaddr) {
   return 0;
 }
 
-int getFrameForPage(int* table, int page) {
-  return *(table + page);
+int getPageOfVirtualAddress(int vaddr) {
+  return vaddr / PAGESIZE;
 }
 
 int isVirtualAddressMapped(int* table, int vaddr) {
   // assert: isValidVirtualAddress(vaddr) == 1
 
-  if (getFrameForPage(table, vaddr / PAGESIZE) != 0)
-    return 1;
-  else
-    return 0;
+  return isPageMapped(table, getPageOfVirtualAddress(vaddr));
 }
 
 int* tlb(int* table, int vaddr) {
@@ -5413,10 +5424,11 @@ int* tlb(int* table, int vaddr) {
   // assert: isValidVirtualAddress(vaddr) == 1
   // assert: isVirtualAddressMapped(table, vaddr) == 1
 
-  page = vaddr / PAGESIZE;
+  page = getPageOfVirtualAddress(vaddr);
 
   frame = getFrameForPage(table, page);
 
+  // map virtual address to physical address
   paddr = (vaddr - page * PAGESIZE) + frame;
 
   if (debug_tlb) {
@@ -5458,7 +5470,7 @@ void mapAndStoreVirtualMemory(int* table, int vaddr, int data) {
   // assert: isValidVirtualAddress(vaddr) == 1
 
   if (isVirtualAddressMapped(table, vaddr) == 0)
-    mapPage(table, vaddr / PAGESIZE, (int) palloc());
+    mapPage(table, getPageOfVirtualAddress(vaddr), (int) palloc());
 
   storeVirtualMemory(table, vaddr, data);
 }
@@ -6522,6 +6534,15 @@ void mapPage(int* table, int page, int frame) {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
+int pavailable() {
+  if (freePageFrame > 0)
+    return 1;
+  else if (usedMemory + MEGABYTE <= frameMemorySize)
+    return 1;
+  else
+    return 0;
+}
+
 int* palloc() {
   // CAUTION: on boot level zero palloc may return frame addresses < 0
   int block;
@@ -6543,6 +6564,7 @@ int* palloc() {
       nextPageFrame = roundUp(block, PAGESIZE);
 
       if (nextPageFrame > block)
+        // losing one page frame to fragmentation
         freePageFrame = freePageFrame - PAGESIZE;
     } else {
       print(selfieName);
@@ -6651,6 +6673,22 @@ void up_loadArguments(int* table, int argc, int* argv) {
   mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
 }
 
+void mapUnmappedPages(int* table) {
+  int page;
+  // assert: page table is only mapped from beginning up and end down
+
+  page = 0;
+
+  while (isPageMapped(table, page))
+    page = page + 1;
+
+  while (pavailable()) {
+    mapPage(table, page, (int) palloc());
+
+    page = page + 1;
+  }
+}
+
 void down_mapPageTable(int* context) {
   int page;
 
@@ -6658,7 +6696,7 @@ void down_mapPageTable(int* context) {
 
   page = 0;
 
-  while (getFrameForPage(getPT(context), page) != 0) {
+  while (isPageMapped(getPT(context), page)) {
     selfie_map(getID(context), page, getFrameForPage(getPT(context), page));
 
     page = page + 1;
@@ -6666,7 +6704,7 @@ void down_mapPageTable(int* context) {
 
   page = (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE;
 
-  while (getFrameForPage(getPT(context), page) != 0) {
+  while (isPageMapped(getPT(context), page)) {
     selfie_map(getID(context), page, getFrameForPage(getPT(context), page));
 
     page = page - 1;
@@ -6767,13 +6805,18 @@ int runUntilExitWithPageFaultHandling(int toID) {
   }
 }
 
-int bootmin(int argc, int* argv) {
-  // works only with mipster
+int bootminmob(int argc, int* argv, int machine) {
+  // works only with minster and mobster
   int initID;
   int exitCode;
 
   print(selfieName);
-  print((int*) ": this is selfie's minster executing ");
+  print((int*) ": this is selfie's ");
+  if (machine == MINSTER)
+    print((int*) "minster");
+  else
+    print((int*) "mobster");
+  print((int*) " executing ");
   print(binaryName);
   print((int*) " with ");
   printInteger(frameMemorySize / 1024 / 1024);
@@ -6790,12 +6833,20 @@ int bootmin(int argc, int* argv) {
 
   up_loadArguments(getPT(usedContexts), argc, argv);
 
-  // virtual is like physical memory in initial context
-  // by having mipster handle its page faults
-  exitCode = runUntilExitWithPageFaultHandling(initID);
+  if (machine == MINSTER)
+    // virtual is like physical memory in initial context up to memory size
+    // by mapping unmapped pages (for the heap) to all available page frames
+    mapUnmappedPages(getPT(usedContexts));
+
+  exitCode = runUntilExitWithoutExceptionHandling(initID);
 
   print(selfieName);
-  print((int*) ": this is selfie's minster terminating ");
+  print((int*) ": this is selfie's ");
+  if (machine == MINSTER)
+    print((int*) "minster");
+  else
+    print((int*) "mobster");
+  print((int*) " terminating ");
   print(binaryName);
   print((int*) " with exit code ");
   printInteger(exitCode);
@@ -6859,42 +6910,6 @@ int boot(int argc, int* argv) {
   return exitCode;
 }
 
-int bootmob(int argc, int* argv) {
-  // works only with mipster
-  int initID;
-  int exitCode;
-
-  print(selfieName);
-  print((int*) ": this is selfie's mobster executing ");
-  print(binaryName);
-  print((int*) " with ");
-  printInteger(frameMemorySize / 1024 / 1024);
-  print((int*) "MB of memory");
-  println();
-
-  resetInterpreter();
-  resetMicrokernel();
-
-  // create initial context on our boot level
-  initID = selfie_create();
-
-  up_loadBinary(getPT(usedContexts));
-
-  up_loadArguments(getPT(usedContexts), argc, argv);
-
-  // even initial context needs to handle its own page faults
-  exitCode = runUntilExitWithoutExceptionHandling(initID);
-
-  print(selfieName);
-  print((int*) ": this is selfie's mobster terminating ");
-  print(binaryName);
-  print((int*) " with exit code ");
-  printInteger(exitCode);
-  println();
-
-  return exitCode;
-}
-
 int selfie_run(int engine, int machine, int debugger) {
   int exitCode;
 
@@ -6920,12 +6935,10 @@ int selfie_run(int engine, int machine, int debugger) {
     if (debugger)
       debug = 1;
 
-    if (machine == MINSTER)
-      exitCode = bootmin(numberOfRemainingArguments(), remainingArguments());
-    else if (machine == MIPSTER)
+    if (machine == MIPSTER)
       exitCode = boot(numberOfRemainingArguments(), remainingArguments());
     else
-      exitCode = bootmob(numberOfRemainingArguments(), remainingArguments());
+      exitCode = bootminmob(numberOfRemainingArguments(), remainingArguments(), machine);
 
     debug   = 0;
     mipster = 0;
