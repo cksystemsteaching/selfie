@@ -119,7 +119,8 @@ void println();
 void printCharacter(int c);
 void printString(int* s);
 void printInteger(int n);
-void printFixedPoint(int a, int b);
+void printFixedPointPercentage(int a, int b);
+void printFixedPointRatio(int a, int b);
 void printHexadecimal(int n, int a);
 void printOctal(int n, int a);
 void printBinary(int n, int a);
@@ -942,16 +943,16 @@ int PAGEBITS = 12;   // 2^12 == 4096
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int frameMemorySize = 0; // size of memory for frames in bytes
+int pageFrameMemory = 0; // size of memory for frames in bytes
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initMemory(int bytes) {
-  frameMemorySize = 64 * MEGABYTE;
+  pageFrameMemory = 64 * MEGABYTE;
 
   if (bytes >= 0)
     if (bytes < 64 * MEGABYTE)
-      frameMemorySize = bytes;
+      pageFrameMemory = bytes;
 }
 
 // -----------------------------------------------------------------
@@ -1206,6 +1207,7 @@ void resetMicrokernel() {
 // -----------------------------------------------------------------
 
 int pavailable();
+int pused();
 
 int* palloc();
 void pfree(int* frame);
@@ -1237,10 +1239,10 @@ int HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int usedMemory = 0;
-
 int nextPageFrame = 0;
-int freePageFrame = 0;
+
+int usedPageFrameMemory = 0;
+int freePageFrameMemory = 0;
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -1599,30 +1601,27 @@ int* itoa(int n, int* s, int b, int a, int p) {
 }
 
 int fixedPointRatio(int a, int b) {
-  // assert: a >= b
-  int r;
-
-  // compute fixed point ratio r with 2 fractional digits
-
-  r = 0;
+  // compute fixed point ratio with 2 fractional digits
 
   // multiply a/b with 100 but avoid overflow
 
   if (a <= INT_MAX / 100) {
     if (b != 0)
-      r = a * 100 / b;
+      return a * 100 / b;
   } else if (a <= INT_MAX / 10) {
     if (b / 10 != 0)
-      r = a * 10 / (b / 10);
+      return a * 10 / (b / 10);
   } else {
     if (b / 100 != 0)
-      r = a / (b / 100);
+      return a / (b / 100);
   }
 
-  // compute a/b in percent
-  // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
+  return 0;
+}
 
+int fixedPointPercentage(int r) {
   if (r != 0)
+    // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
     return 1000000 / r;
   else
     return 0;
@@ -1702,7 +1701,11 @@ void printInteger(int n) {
   print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
-void printFixedPoint(int a, int b) {
+void printFixedPointPercentage(int a, int b) {
+  print(itoa(fixedPointPercentage(fixedPointRatio(a, b)), integer_buffer, 10, 0, 2));
+}
+
+void printFixedPointRatio(int a, int b) {
   print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
@@ -4062,7 +4065,7 @@ void selfie_compile() {
       print((int*) ": with ");
       printInteger(numberOfReadCharacters - numberOfIgnoredCharacters);
       print((int*) "(");
-      printFixedPoint(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
+      printFixedPointPercentage(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
       print((int*) "%) characters in ");
       printInteger(numberOfScannedSymbols);
       print((int*) " actual symbols");
@@ -6322,7 +6325,7 @@ int printCounters(int total, int* counters, int max) {
   printInteger(*(counters + a / WORDSIZE));
 
   print((int*) "(");
-  printFixedPoint(total, *(counters + a / WORDSIZE));
+  printFixedPointPercentage(total, *(counters + a / WORDSIZE));
   print((int*) "%)");
 
   if (*(counters + a / WORDSIZE) != 0) {
@@ -6535,12 +6538,16 @@ void mapPage(int* table, int page, int frame) {
 // -----------------------------------------------------------------
 
 int pavailable() {
-  if (freePageFrame > 0)
+  if (freePageFrameMemory > 0)
     return 1;
-  else if (usedMemory + MEGABYTE <= frameMemorySize)
+  else if (usedPageFrameMemory + MEGABYTE <= pageFrameMemory)
     return 1;
   else
     return 0;
+}
+
+int pused() {
+  return usedPageFrameMemory - freePageFrameMemory;
 }
 
 int* palloc() {
@@ -6548,24 +6555,24 @@ int* palloc() {
   int block;
   int frame;
 
-  // assert: frameMemorySize is equal to or a multiple of MEGABYTE
+  // assert: pageFrameMemory is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
-  if (freePageFrame == 0) {
-    freePageFrame = MEGABYTE;
+  if (freePageFrameMemory == 0) {
+    freePageFrameMemory = MEGABYTE;
 
-    if (usedMemory + freePageFrame <= frameMemorySize) {
+    if (usedPageFrameMemory + freePageFrameMemory <= pageFrameMemory) {
       // on boot level zero allocate zeroed memory
-      block = (int) zalloc(freePageFrame);
+      block = (int) zalloc(freePageFrameMemory);
 
-      usedMemory = usedMemory + freePageFrame;
+      usedPageFrameMemory = usedPageFrameMemory + freePageFrameMemory;
 
       // page frames must be page-aligned to work as page table index
       nextPageFrame = roundUp(block, PAGESIZE);
 
       if (nextPageFrame > block)
         // losing one page frame to fragmentation
-        freePageFrame = freePageFrame - PAGESIZE;
+        freePageFrameMemory = freePageFrameMemory - PAGESIZE;
     } else {
       print(selfieName);
       print((int*) ": palloc out of physical memory");
@@ -6578,7 +6585,8 @@ int* palloc() {
   frame = nextPageFrame;
 
   nextPageFrame = nextPageFrame + PAGESIZE;
-  freePageFrame = freePageFrame - PAGESIZE;
+
+  freePageFrameMemory = freePageFrameMemory - PAGESIZE;
 
   // strictly, touching is only necessary on boot levels higher than zero
   return touch((int*) frame, PAGESIZE);
@@ -6821,7 +6829,7 @@ int bootminmob(int argc, int* argv, int machine) {
   print((int*) " executing ");
   print(binaryName);
   print((int*) " with ");
-  printInteger(frameMemorySize / 1024 / 1024);
+  printInteger(pageFrameMemory / MEGABYTE);
   print((int*) "MB of memory");
   println();
 
@@ -6852,6 +6860,9 @@ int bootminmob(int argc, int* argv, int machine) {
   print(binaryName);
   print((int*) " with exit code ");
   printInteger(exitCode);
+  print((int*) " and ");
+  printFixedPointRatio(pused(), MEGABYTE);
+  print((int*) "MB of used memory");
   println();
 
   return exitCode;
@@ -6871,7 +6882,7 @@ int boot(int argc, int* argv) {
   print((int*) " executing ");
   print(binaryName);
   print((int*) " with ");
-  printInteger(frameMemorySize / 1024 / 1024);
+  printInteger(pageFrameMemory / MEGABYTE);
   print((int*) "MB of memory");
   println();
 
@@ -6907,6 +6918,9 @@ int boot(int argc, int* argv) {
   print(binaryName);
   print((int*) " with exit code ");
   printInteger(exitCode);
+  print((int*) " and ");
+  printFixedPointRatio(pused(), MEGABYTE);
+  print((int*) "MB of used memory");
   println();
 
   return exitCode;
