@@ -706,6 +706,7 @@ int getImmediateSFormat(int instruction);
 int getImmediateSBFormat(int instruction);
 int getImmediateUJFormat(int instruction);
 int signExtend(int immediate, int bits);
+int signCompress(int immediate, int bits);
 
 
 // -----------------------------------------------------------------
@@ -782,9 +783,8 @@ void emitSFormat(int immediate, int rs2, int rs1, int funct3, int opcode);
 void emitSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode);
 void emitUJFormat(int immediate, int rd, int opcode);
 
-void fixup_relative(int fromAddress);
-void fixup_absolute(int fromAddress, int toAddress);
-void fixlink_absolute(int fromAddress, int toAddress);
+void fixup(int fromAddress, int toAddress);
+void fixlink(int fromAddress, int toAddress);
 
 int copyStringToBinary(int* s, int a);
 
@@ -2669,7 +2669,7 @@ void load_string(int* string) {
   createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, INTSTAR_T, 0, -allocatedMemory);
 
   // allocatedMemory in currentTemporary() is a negative number
-  emitRFormat(F7_SUB, REG_ZR, currentTemporary(), F3_SUB, currentTemporary(), OP_OP);
+  emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
   emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
 
   // MIPS: emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
@@ -3087,7 +3087,7 @@ int gr_simpleExpression() {
       ltype = INT_T;
     }
 
-    emitRFormat(F7_SUB, REG_ZR, currentTemporary(), F3_SUB, currentTemporary(), OP_OP);
+    emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
     // MIPS: emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
   }
 
@@ -3116,7 +3116,7 @@ int gr_simpleExpression() {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
+      emitRFormat(F7_SUB, currentTemporary(), previousTemporary(), F3_SUB, previousTemporary(), OP_OP);
       // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
     }
 
@@ -3154,7 +3154,7 @@ int gr_expression() {
 
     if (operatorSymbol == SYM_EQUALITY) {
       // subtract, if result = 0 then 1, else 0
-      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
+      emitRFormat(F7_SUB, currentTemporary(), previousTemporary(), F3_SUB, previousTemporary(), OP_OP);
       // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
 
       tfree(1);
@@ -3170,7 +3170,7 @@ int gr_expression() {
 
     } else if (operatorSymbol == SYM_NOTEQ) {
       // subtract, if result = 0 then 0, else 1
-      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
+      emitRFormat(F7_SUB, currentTemporary(), previousTemporary(), F3_SUB, previousTemporary(), OP_OP);
       // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
 
       tfree(1);
@@ -3210,7 +3210,7 @@ int gr_expression() {
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
       // use JAL instead of unconditional BEQ
       emitUJFormat(2 * WORDSIZE, REG_ZR, OP_JAL);
-      // MIPS: emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
+      // alternative: emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
       // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);      // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 
@@ -3227,7 +3227,7 @@ int gr_expression() {
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
       // use JAL instead of unconditional BEQ
       emitUJFormat(2 * WORDSIZE, REG_ZR, OP_JAL);
-      // MIPS: emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
+      // alternative: emitSBFormat(1 * WORDSIZE, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
       // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 1);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
@@ -3294,15 +3294,15 @@ void gr_while() {
   } else
     syntaxErrorSymbol(SYM_WHILE);
 
-  // use JAL instead of unconditional branch) to beginning of while
+  // use JAL (instead of unconditional branch) to beginning of while
   emitUJFormat((brBackToWhile - binaryLength), REG_ZR, OP_JAL);
-  // MIPS: emitSBFormat((brBackToWhile - binaryLength - WORDSIZE), REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
+  // alternative: emitSBFormat((brBackToWhile - binaryLength - WORDSIZE), REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
   // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - WORDSIZE) / WORDSIZE);
 
   if (brForwardToEnd != 0)
     // first instruction after loop comes here
     // now we have our address for the conditional branch from above
-    fixup_relative(brForwardToEnd);
+    fixup(brForwardToEnd, binaryLength - WORDSIZE);
 
   // assert: allocatedTemporaries == 0
 
@@ -3360,12 +3360,12 @@ void gr_if() {
 
           // if the "if" case was true, we branch to the end
           brForwardToEnd = binaryLength;
-          // cannot use JAL here because of relative fixup
-          emitSBFormat(0, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
+          emitUJFormat(0, REG_ZR, OP_JAL);
+          // alternative: emitSBFormat(0, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
           // MIPS: emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
 
           // if the "if" case was not true, we branch here
-          fixup_relative(brForwardToElseOrEnd);
+          fixup(brForwardToElseOrEnd, binaryLength - WORDSIZE);
 
           // zero or more statements: { statement }
           if (symbol == SYM_LBRACE) {
@@ -3387,10 +3387,11 @@ void gr_if() {
             gr_statement();
 
           // if the "if" case was true, we branch here
-          fixup_relative(brForwardToEnd);
+          fixup(brForwardToEnd, binaryLength);
+
         } else
           // if the "if" case was not true, we branch here
-          fixup_relative(brForwardToElseOrEnd);
+          fixup(brForwardToElseOrEnd, binaryLength - WORDSIZE);
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -3793,7 +3794,7 @@ void gr_procedure(int* procedure, int type) {
         // procedure already called or defined
         if (getOpcode(loadBinary(getAddress(entry))) == OP_JAL) {
           // procedure already called but not defined
-          fixlink_absolute(getAddress(entry), binaryLength);
+          fixlink(getAddress(entry), binaryLength);
 
           if (stringCompare(procedure, (int*) "main"))
             // first source containing main procedure provides binary name
@@ -3857,7 +3858,7 @@ void gr_procedure(int* procedure, int type) {
       exit(-1);
     }
 
-    fixlink_absolute(returnBranches, binaryLength);
+    fixlink(returnBranches, binaryLength);
 
     returnBranches = 0;
 
@@ -4044,7 +4045,7 @@ void bootstrapCode() {
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
     // exit by continuing to the next instruction
-    fixup_absolute(mainJump, mainJump + 4);
+    fixup(mainJump, mainJump + 4);
 
   mainJump = 0;
 }
@@ -4250,10 +4251,7 @@ int encodeIFormat(int immediate, int rs1, int funct3, int rd, int opcode) {
   // assert: 0 <= funct3 < 2^3
   // assert: -2^11 <= immediate < 2^11 -1
 
-  if (immediate < 0) {
-    // convert from 32-bit to 12-bit two's complement
-    immediate = immediate + twoToThePowerOf(12);
-  }
+  immediate = signCompress(immediate, 12);
 
   return leftShift(leftShift(leftShift(leftShift(immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;
 }
@@ -4275,9 +4273,7 @@ int encodeSFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
   int imm1;
   int imm2;
 
-  if (immediate < 0)
-    // convert from 32-bit to 12-bit two's complement
-    immediate = immediate + twoToThePowerOf(12);
+  immediate = signCompress(immediate, 12);
 
   // split immediate by shifting 32-bit value accordingly
   imm1 = rightShift(leftShift(immediate, 20), 25);
@@ -4299,16 +4295,15 @@ int encodeSBFormat(int immediate, int rs2, int rs1, int funct3, int opcode) {
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^11 <= immediate < 2^11 -1
+  // assert: -2^12 <= immediate < 2^12 -1
   int imm1;
   int imm2;
   int imm3;
   int imm4;
 
-  if (immediate < 0)
-    // convert from 32-bit to 13-bit two's complement
-    immediate = immediate + twoToThePowerOf(13);
+  immediate = signCompress(immediate, 13);
 
+  // split immediate by shifting 32-bit value accordingly
   imm1 = rightShift(leftShift(immediate, 19), 31);
   imm2 = rightShift(leftShift(immediate, 21), 26);
   imm3 = rightShift(leftShift(immediate, 27), 28);
@@ -4335,11 +4330,9 @@ int encodeUJFormat(int immediate, int rd, int opcode) {
   int imm3;
   int imm4;
 
-  if (immediate < 0) {
-    // convert from 32-bit to 21-bit two's complement
-    immediate = immediate + twoToThePowerOf(21);
-  }
+  immediate = signCompress(immediate, 21);
 
+  // split immediate by shifting 32-bit value accordingly
   imm1 = rightShift(leftShift(immediate, 11), 31);
   imm2 = rightShift(leftShift(immediate, 21), 22);
   imm3 = rightShift(leftShift(immediate, 20), 31);
@@ -4424,6 +4417,13 @@ int signExtend(int immediate, int bits) {
     return immediate - twoToThePowerOf(bits);
 }
 
+int signCompress(int immediate, int bits) {
+  // sign-compress from 32-bit to "bits"-bit two's complement
+  if (immediate < 0)
+    return immediate + twoToThePowerOf(bits);
+  else
+    return immediate;
+}
 
 // -----------------------------------------------------------------
 // ---------------------------- DECODER ----------------------------
@@ -4450,7 +4450,7 @@ void decode() {
     decodeIFormat();
   else {
     print(selfieName);
-    print((int*) ": unkown opcode ");
+    print((int*) ": unknown opcode ");
     printInteger(opcode);
     print((int*) " (");
     printBinary(opcode, 0);
@@ -4589,38 +4589,44 @@ void emitUJFormat(int immediate, int rd, int opcode) {
   emitInstruction(encodeUJFormat(immediate, rd, opcode));
 }
 
-void fixup_relative(int fromAddress) {
+void fixup(int fromAddress, int toAddress) {
   int instruction;
+  int currentOp;
 
   instruction = loadBinary(fromAddress);
+  currentOp = getOpcode(instruction);
 
-  storeBinary(fromAddress,
+  if (currentOp == OP_BRANCH) {
+    storeBinary(fromAddress,
     encodeSBFormat(
-      (binaryLength - fromAddress - WORDSIZE),
-      getRS1(instruction),
-      getRS2(instruction),
-      getFunct3(instruction),
-      getOpcode(instruction)));
+        (toAddress - fromAddress),
+        getRS1(instruction),
+        getRS2(instruction),
+        getFunct3(instruction),
+        currentOp));
+
+  } else if (currentOp == OP_JAL) {
+    storeBinary(fromAddress,
+        encodeUJFormat((toAddress - fromAddress), getRD(instruction), currentOp));
+
+  } else {
+    print(selfieName);
+    print((int*) ": attempted invalid fixup with opcode ");
+    printInteger(opcode);
+    print((int*) " (");
+    printBinary(opcode, 0);
+    print((int*) ")");
+    exit(-1);
+  }
 }
 
-void fixup_absolute(int fromAddress, int toAddress) {
-  int currentOp;
-  int currentRD;
-
-  currentOp = getOpcode(loadBinary(fromAddress));
-  currentRD = getRD(loadBinary(fromAddress));
-
-  storeBinary(fromAddress,
-      encodeUJFormat((toAddress - fromAddress), currentRD, currentOp));
-}
-
-void fixlink_absolute(int fromAddress, int toAddress) {
+void fixlink(int fromAddress, int toAddress) {
   int previousAddress;
 
   while (fromAddress != 0) {
     previousAddress = getImmediateUJFormat(loadBinary(fromAddress));
 
-    fixup_absolute(fromAddress, toAddress);
+    fixup(fromAddress, toAddress);
 
     fromAddress = previousAddress;
   }
@@ -6190,30 +6196,27 @@ void fct_sub() {
     print((int*) "sub ");
     printRegister(rd);
     print((int*) ",");
-    printRegister(rs2);
-    print((int*) ",");
     printRegister(rs1);
+    print((int*) ",");
+    printRegister(rs2);
     if (interpret) {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
       printInteger(*(registers+rd));
       print((int*) ",");
-      printRegister(rs2);
-      print((int*) "=");
-      printInteger(*(registers+rs2));
-      print((int*) ",");
       printRegister(rs1);
       print((int*) "=");
       printInteger(*(registers+rs1));
+      print((int*) ",");
+      printRegister(rs2);
+      print((int*) "=");
+      printInteger(*(registers+rs2));
     }
   }
 
   if (interpret) {
-    // could be the other way around on real RISC-V machines,
-    // specification does not say which register is subtracted
-    // from which!
-    *(registers+rd) = *(registers+rs2) - *(registers+rs1);
+    *(registers+rd) = *(registers+rs1) - *(registers+rs2);
 
     pc = pc + WORDSIZE;
   }
@@ -6393,9 +6396,7 @@ int encodeException(int exception, int parameter) {
   // assert: 0 <= exception < 2^16
   // assert: -2^15 <= parameter < 2^15
 
-  if (parameter < 0)
-    // convert from 32-bit to 16-bit two's complement
-    parameter = parameter + twoToThePowerOf(16);
+  parameter = signCompress(parameter, 16);
 
   return leftShift(exception, 16) + parameter;
 }
