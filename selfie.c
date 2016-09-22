@@ -4637,6 +4637,9 @@ void implementExit() {
   print(binaryName);
   print((int*) ": exiting with exit code ");
   printInteger(*(registers+REG_A0));
+  print((int*) " and ");
+  printFixedPointRatio(brk - maxBinaryLength, MEGABYTE);
+  print((int*) "MB of mallocated memory");
   println();
 }
 
@@ -6756,8 +6759,6 @@ int runUntilExitWithoutExceptionHandling(int toID) {
 
         return -1;
       }
-
-      toID = fromID;
     }
   }
 }
@@ -6831,7 +6832,7 @@ int bootminmob(int argc, int* argv, int machine) {
   print(binaryName);
   print((int*) " with ");
   printInteger(pageFrameMemory / MEGABYTE);
-  print((int*) "MB of memory");
+  print((int*) "MB of physical memory");
   println();
 
   resetInterpreter();
@@ -6864,7 +6865,7 @@ int bootminmob(int argc, int* argv, int machine) {
   printInteger(exitCode);
   print((int*) " and ");
   printFixedPointRatio(pused(), MEGABYTE);
-  print((int*) "MB of used memory");
+  print((int*) "MB of mapped memory");
   println();
 
   return exitCode;
@@ -6885,7 +6886,7 @@ int boot(int argc, int* argv) {
   print(binaryName);
   print((int*) " with ");
   printInteger(pageFrameMemory / MEGABYTE);
-  print((int*) "MB of memory");
+  print((int*) "MB of physical memory");
   println();
 
   // resetting interpreter is only necessary for mipsters
@@ -6922,7 +6923,7 @@ int boot(int argc, int* argv) {
   printInteger(exitCode);
   print((int*) " and ");
   printFixedPointRatio(pused(), MEGABYTE);
-  print((int*) "MB of used memory");
+  print((int*) "MB of mapped memory");
   println();
 
   return exitCode;
