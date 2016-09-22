@@ -121,7 +121,8 @@ void println();
 void printCharacter(int c);
 void printString(int* s);
 void printInteger(int n);
-void printFixedPoint(int a, int b);
+void printFixedPointPercentage(int a, int b);
+void printFixedPointRatio(int a, int b);
 void printHexadecimal(int n, int a);
 void printOctal(int n, int a);
 void printBinary(int n, int a);
@@ -845,6 +846,7 @@ int debug_open   = 0;
 
 int debug_malloc = 0;
 
+// numbers according to pk kernel
 int SYSCALL_EXIT   = 93;
 int SYSCALL_READ   = 63;
 int SYSCALL_WRITE  = 64;
@@ -916,15 +918,16 @@ int SYSCALL_MAP    = 16;
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-void initMemory(int bytes);
+void initMemory(int megabytes);
 
 int  loadPhysicalMemory(int* paddr);
 void storePhysicalMemory(int* paddr, int data);
 
-int isValidVirtualAddress(int vaddr);
-
 int getFrameForPage(int* table, int page);
+int isPageMapped(int* table, int page);
 
+int isValidVirtualAddress(int vaddr);
+int getPageOfVirtualAddress(int vaddr);
 int isVirtualAddressMapped(int* table, int vaddr);
 
 int* tlb(int* table, int vaddr);
@@ -949,17 +952,17 @@ int PAGEBITS = 12;   // 2^12 == 4096
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int frameMemorySize = 0; // size of memory for frames in bytes
+int pageFrameMemory = 0; // size of memory for frames in bytes
 
 // ------------------------- INITIALIZATION ------------------------
 
-void initMemory(int bytes) {
-  if (bytes < 0)
-    frameMemorySize = 64 * MEGABYTE;
-  else if (bytes > 1024 * MEGABYTE)
-    frameMemorySize = 1024 * MEGABYTE;
-  else
-    frameMemorySize = bytes;
+void initMemory(int megabytes) {
+  if (megabytes < 0)
+    megabytes = 0;
+  else if (megabytes > 64)
+    megabytes = 64;
+
+  pageFrameMemory = megabytes * MEGABYTE;
 }
 
 // -----------------------------------------------------------------
@@ -1003,11 +1006,6 @@ void execute();
 void interrupt();
 
 void runUntilException();
-void runUntilExit(int toID);
-
-int  up_loadString(int* table, int* s, int SP);
-void up_loadArguments(int* table, int argc, int* argv);
-void up_loadBinary(int* table);
 
 int addressWithMaxCounter(int* counters, int max);
 
@@ -1015,7 +1013,6 @@ int  printCounters(int total, int* counters, int max);
 void printProfile(int* message, int total, int* counters);
 
 void selfie_disassemble();
-void selfie_run();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1025,7 +1022,7 @@ int EXCEPTION_UNKNOWNSYSCALL     = 2;
 int EXCEPTION_ADDRESSERROR       = 3;
 int EXCEPTION_HEAPOVERFLOW       = 4;
 int EXCEPTION_EXIT               = 5;
-int EXCEPTION_INTERRUPT          = 6;
+int EXCEPTION_TIMER              = 6;
 int EXCEPTION_PAGEFAULT          = 7;
 
 int* EXCEPTIONS; // strings representing exceptions
@@ -1085,7 +1082,7 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_ADDRESSERROR)       = (int) "address error";
   *(EXCEPTIONS + EXCEPTION_HEAPOVERFLOW)       = (int) "heap overflow";
   *(EXCEPTIONS + EXCEPTION_EXIT)               = (int) "exit";
-  *(EXCEPTIONS + EXCEPTION_INTERRUPT)          = (int) "timer interrupt";
+  *(EXCEPTIONS + EXCEPTION_TIMER)              = (int) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
 }
 
@@ -1178,7 +1175,7 @@ void resetMicrokernel();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int NO_ID = -1;
+int ROCSTAR_ID = -1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1192,7 +1189,7 @@ int* freeContexts = (int*) 0; // singly-linked list of free contexts
 // ------------------------- INITIALIZATION ------------------------
 
 void resetMicrokernel() {
-  bumpID = NO_ID;
+  bumpID = ROCSTAR_ID;
 
   currentContext = (int*) 0;
 
@@ -1201,22 +1198,46 @@ void resetMicrokernel() {
 }
 
 // -----------------------------------------------------------------
-// --------------------------- HYPSTER -----------------------------
+// ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
+
+int pavailable();
+int pused();
 
 int* palloc();
 void pfree(int* frame);
 
+void up_loadBinary(int* table);
+
+int  up_loadString(int* table, int* s, int SP);
+void up_loadArguments(int* table, int argc, int* argv);
+
+void mapUnmappedPages(int* table);
+
 void down_mapPageTable(int* context);
 
-void boot(int argc, int* argv);
+int runUntilExitWithoutExceptionHandling(int toID);
+int runOrHostUntilExitWithPageFaultHandling(int toID);
+
+int bootminmob(int argc, int* argv, int machine);
+int boot(int argc, int* argv);
+
+int selfie_run(int engine, int machine, int debugger);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+int MINSTER = 1;
+int ROCSTAR = 2;
+int MOBSTER = 3;
+
+int HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int usedMemory = 0;
-
 int nextPageFrame = 0;
-int freePageFrame = 0;
+
+int usedPageFrameMemory = 0;
+int freePageFrameMemory = 0;
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -1230,6 +1251,10 @@ int* remainingArguments();
 int* peekArgument();
 int* getArgument();
 void setArgument(int* argv);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+int USAGE = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1571,30 +1596,27 @@ int* itoa(int n, int* s, int b, int a, int p) {
 }
 
 int fixedPointRatio(int a, int b) {
-  // assert: a >= b
-  int r;
-
-  // compute fixed point ratio r with 2 fractional digits
-
-  r = 0;
+  // compute fixed point ratio with 2 fractional digits
 
   // multiply a/b with 100 but avoid overflow
 
   if (a <= INT_MAX / 100) {
     if (b != 0)
-      r = a * 100 / b;
+      return a * 100 / b;
   } else if (a <= INT_MAX / 10) {
     if (b / 10 != 0)
-      r = a * 10 / (b / 10);
+      return a * 10 / (b / 10);
   } else {
     if (b / 100 != 0)
-      r = a / (b / 100);
+      return a / (b / 100);
   }
 
-  // compute a/b in percent
-  // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
+  return 0;
+}
 
+int fixedPointPercentage(int r) {
   if (r != 0)
+    // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
     return 1000000 / r;
   else
     return 0;
@@ -1674,7 +1696,11 @@ void printInteger(int n) {
   print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
-void printFixedPoint(int a, int b) {
+void printFixedPointPercentage(int a, int b) {
+  print(itoa(fixedPointPercentage(fixedPointRatio(a, b)), integer_buffer, 10, 0, 2));
+}
+
+void printFixedPointRatio(int a, int b) {
   print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
@@ -4146,7 +4172,7 @@ void selfie_compile() {
       print((int*) ": with ");
       printInteger(numberOfReadCharacters - numberOfIgnoredCharacters);
       print((int*) "(");
-      printFixedPoint(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
+      printFixedPointPercentage(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
       print((int*) "%) characters in ");
       printInteger(numberOfScannedSymbols);
       print((int*) " actual symbols");
@@ -4888,6 +4914,9 @@ void implementExit() {
   print(binaryName);
   print((int*) ": exiting with exit code ");
   printInteger(*(registers+REG_A0));
+  print((int*) " and ");
+  printFixedPointRatio(brk - maxBinaryLength, MEGABYTE);
+  print((int*) "MB of mallocated memory");
   println();
 }
 
@@ -5334,12 +5363,12 @@ void implementID() {
 
 int hypster_ID() {
   // this procedure is only executed at boot level zero
-  return NO_ID;
+  return ROCSTAR_ID;
 }
 
 int selfie_ID() {
   if (rocstar)
-    return NO_ID;
+    return ROCSTAR_ID;
   else
     return hypster_ID();
 }
@@ -5627,7 +5656,7 @@ void doMap(int ID, int page, int frame) {
   mapContext = findContext(ID, usedContexts);
 
   if (mapContext != (int*) 0) {
-    if (getParent(mapContext) != NO_ID) {
+    if (getParent(mapContext) != ROCSTAR_ID) {
       parentContext = findContext(getParent(mapContext), usedContexts);
 
       if (parentContext != (int*) 0)
@@ -5700,6 +5729,17 @@ void storePhysicalMemory(int* paddr, int data) {
   *paddr = data;
 }
 
+int getFrameForPage(int* table, int page) {
+  return *(table + page);
+}
+
+int isPageMapped(int* table, int page) {
+  if (getFrameForPage(table, page) != 0)
+    return 1;
+  else
+    return 0;
+}
+
 int isValidVirtualAddress(int vaddr) {
   if (vaddr >= 0)
     if (vaddr < VIRTUALMEMORYSIZE)
@@ -5710,17 +5750,14 @@ int isValidVirtualAddress(int vaddr) {
   return 0;
 }
 
-int getFrameForPage(int* table, int page) {
-  return *(table + page);
+int getPageOfVirtualAddress(int vaddr) {
+  return vaddr / PAGESIZE;
 }
 
 int isVirtualAddressMapped(int* table, int vaddr) {
   // assert: isValidVirtualAddress(vaddr) == 1
 
-  if (getFrameForPage(table, vaddr / PAGESIZE) != 0)
-    return 1;
-  else
-    return 0;
+  return isPageMapped(table, getPageOfVirtualAddress(vaddr));
 }
 
 int* tlb(int* table, int vaddr) {
@@ -5731,10 +5768,11 @@ int* tlb(int* table, int vaddr) {
   // assert: isValidVirtualAddress(vaddr) == 1
   // assert: isVirtualAddressMapped(table, vaddr) == 1
 
-  page = vaddr / PAGESIZE;
+  page = getPageOfVirtualAddress(vaddr);
 
   frame = getFrameForPage(table, page);
 
+  // map virtual address to physical address
   paddr = (vaddr - page * PAGESIZE) + frame;
 
   if (debug_tlb) {
@@ -5776,7 +5814,7 @@ void mapAndStoreVirtualMemory(int* table, int vaddr, int data) {
   // assert: isValidVirtualAddress(vaddr) == 1
 
   if (isVirtualAddressMapped(table, vaddr) == 0)
-    mapPage(table, vaddr / PAGESIZE, (int) palloc());
+    mapPage(table, getPageOfVirtualAddress(vaddr), (int) palloc());
 
   storeVirtualMemory(table, vaddr, data);
 }
@@ -6417,8 +6455,11 @@ void printStatus(int status) {
   parameter = decodeExceptionParameter(status);
 
   printException(exception);
-  print((int*) " with parameter ");
-  printHexadecimal(parameter, 4);
+
+  if (exception == EXCEPTION_PAGEFAULT) {
+    print((int*) " at ");
+    printHexadecimal(parameter, 8);
+  }
 }
 
 void throwException(int exception, int parameter) {
@@ -6433,13 +6474,9 @@ void throwException(int exception, int parameter) {
     print(binaryName);
     print((int*) ": context ");
     printInteger(getID(currentContext));
-    print((int*) " ");
+    print((int*) " throws ");
     printStatus(status);
-    if (exception == EXCEPTION_PAGEFAULT) {
-      print((int*) " [virtual address=");
-      printHexadecimal(parameter, 8);
-      print((int*) "]");
-    }
+    print((int*) " exception");
     println();
   }
 }
@@ -6524,7 +6561,7 @@ void interrupt() {
       if (status == 0)
         // only throw exception if no other is pending
         // TODO: handle multiple pending exceptions
-        throwException(EXCEPTION_INTERRUPT, 0);
+        throwException(EXCEPTION_TIMER, 0);
     }
 }
 
@@ -6539,135 +6576,6 @@ void runUntilException() {
   }
 
   trap = 0;
-}
-
-void runUntilExit(int toID) {
-  int fromID;
-  int* fromContext;
-  int savedStatus;
-  int exceptionNumber;
-  int exceptionParameter;
-  int frame;
-
-  while (1) {
-    fromID = selfie_switch(toID);
-
-    fromContext = findContext(fromID, usedContexts);
-
-    // assert: fromContext must be in usedContexts (created here)
-
-    if (getParent(fromContext) != selfie_ID())
-      // switch to parent which is in charge of handling exceptions
-      toID = getParent(fromContext);
-    else {
-      // we are the parent in charge of handling exceptions
-      savedStatus = selfie_status();
-
-      exceptionNumber    = decodeExceptionNumber(savedStatus);
-      exceptionParameter = decodeExceptionParameter(savedStatus);
-
-      if (exceptionNumber == EXCEPTION_EXIT)
-        // TODO: only return if all contexts have exited
-        return;
-      else if (exceptionNumber == EXCEPTION_PAGEFAULT) {
-        frame = (int) palloc();
-
-        // TODO: use this table to unmap and reuse frames
-        mapPage(getPT(fromContext), exceptionParameter, frame);
-
-        // page table on microkernel boot level
-        selfie_map(fromID, exceptionParameter, frame);
-      }
-
-      // TODO: scheduler should go here
-      toID = fromID;
-    }
-  }
-}
-
-int up_loadString(int* table, int* s, int SP) {
-  int bytes;
-  int i;
-
-  bytes = roundUp(stringLength(s) + 1, WORDSIZE);
-
-  // allocate memory for storing string
-  SP = SP - bytes;
-
-  i = 0;
-
-  while (i < bytes) {
-    mapAndStoreVirtualMemory(table, SP + i, *s);
-
-    s = s + 1;
-
-    i = i + WORDSIZE;
-  }
-
-  return SP;
-}
-
-void up_loadArguments(int* table, int argc, int* argv) {
-  int SP;
-  int vargv;
-  int i_argc;
-  int i_vargv;
-
-  // arguments are pushed onto stack which starts at highest virtual address
-  SP = VIRTUALMEMORYSIZE - WORDSIZE;
-
-  // allocate memory for storing stack pointer later
-  SP = SP - WORDSIZE;
-
-  // allocate memory for storing *argv array
-  SP = SP - argc * WORDSIZE;
-
-  // vargv invalid if argc == 0
-  vargv = SP + WORDSIZE;
-
-  i_vargv = vargv;
-  i_argc  = argc;
-
-  while (i_argc > 0) {
-    SP = up_loadString(table, (int*) *argv, SP);
-
-    // store pointer to string in virtual *argv
-    mapAndStoreVirtualMemory(table, i_vargv, SP);
-
-    argv = argv + 1;
-
-    i_vargv = i_vargv + WORDSIZE;
-
-    i_argc = i_argc - 1;
-  }
-
-  // allocate memory for one word on the stack
-  SP = SP - WORDSIZE;
-
-  // push argc
-  mapAndStoreVirtualMemory(table, SP, argc);
-
-  // allocate memory for one word on the stack
-  SP = SP - WORDSIZE;
-
-  // push virtual argv
-  mapAndStoreVirtualMemory(table, SP, vargv);
-
-  // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
-}
-
-void up_loadBinary(int* table) {
-  int vaddr;
-
-  // binaries start at lowest virtual address
-  vaddr = 0;
-
-  while (vaddr < binaryLength) {
-    mapAndStoreVirtualMemory(table, vaddr, loadBinary(vaddr));
-
-    vaddr = vaddr + WORDSIZE;
-  }
 }
 
 int addressWithMaxCounter(int* counters, int max) {
@@ -6705,7 +6613,7 @@ int printCounters(int total, int* counters, int max) {
   printInteger(*(counters + a / WORDSIZE));
 
   print((int*) "(");
-  printFixedPoint(total, *(counters + a / WORDSIZE));
+  printFixedPointPercentage(total, *(counters + a / WORDSIZE));
   print((int*) "%)");
 
   if (*(counters + a / WORDSIZE) != 0) {
@@ -6797,68 +6705,6 @@ void selfie_disassemble() {
   println();
 }
 
-void selfie_run() {
-  if (binaryLength == 0) {
-    print(selfieName);
-    if (rocstar)
-      if (debug)
-        print((int*) ": nothing to debug");
-      else
-        print((int*) ": nothing to run");
-    else
-      print((int*) ": nothing to host");
-    println();
-
-    exit(-1);
-  }
-
-  initMemory(atoi(peekArgument()) * MEGABYTE);
-
-  // pass binary name as first argument by replacing memory size
-  setArgument(binaryName);
-
-  print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (rocstar)
-    print((int*) "rocstar");
-  else
-    print((int*) "hypster");
-  print((int*) " executing ");
-  print(binaryName);
-  print((int*) " with ");
-  printInteger(frameMemorySize / 1024 / 1024);
-  print((int*) "MB of memory");
-  println();
-
-  interpret = 1;
-
-  boot(numberOfRemainingArguments(), remainingArguments());
-
-  interpret = 0;
-
-  print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (rocstar)
-    print((int*) "rocstar");
-  else
-    print((int*) "hypster");
-  print((int*) " terminating ");
-  print(binaryName);
-  println();
-
-  if (rocstar) {
-    print(selfieName);
-    if (sourceLineNumber != (int*) 0)
-      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
-    else
-      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
-    println();
-    printProfile((int*) ": calls: ", calls, callsPerAddress);
-    printProfile((int*) ": loops: ", loops, loopsPerAddress);
-    printProfile((int*) ": loads: ", loads, loadsPerAddress);
-    printProfile((int*) ": stores: ", stores, storesPerAddress);
-  }
-}
 
 // -----------------------------------------------------------------
 // ---------------------------- CONTEXTS ---------------------------
@@ -6970,31 +6816,45 @@ void mapPage(int* table, int page, int frame) {
 }
 
 // -----------------------------------------------------------------
-// --------------------------- HYPSTER -----------------------------
+// ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
+
+int pavailable() {
+  if (freePageFrameMemory > 0)
+    return 1;
+  else if (usedPageFrameMemory + MEGABYTE <= pageFrameMemory)
+    return 1;
+  else
+    return 0;
+}
+
+int pused() {
+  return usedPageFrameMemory - freePageFrameMemory;
+}
 
 int* palloc() {
   // CAUTION: on boot level zero palloc may return frame addresses < 0
   int block;
   int frame;
 
-  // assert: frameMemorySize is equal to or a multiple of MEGABYTE
+  // assert: pageFrameMemory is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
-  if (freePageFrame == 0) {
-    freePageFrame = MEGABYTE;
+  if (freePageFrameMemory == 0) {
+    freePageFrameMemory = MEGABYTE;
 
-    if (usedMemory + freePageFrame <= frameMemorySize) {
+    if (usedPageFrameMemory + freePageFrameMemory <= pageFrameMemory) {
       // on boot level zero allocate zeroed memory
-      block = (int) zalloc(freePageFrame);
+      block = (int) zalloc(freePageFrameMemory);
 
-      usedMemory = usedMemory + freePageFrame;
+      usedPageFrameMemory = usedPageFrameMemory + freePageFrameMemory;
 
       // page frames must be page-aligned to work as page table index
       nextPageFrame = roundUp(block, PAGESIZE);
 
       if (nextPageFrame > block)
-        freePageFrame = freePageFrame - PAGESIZE;
+        // losing one page frame to fragmentation
+        freePageFrameMemory = freePageFrameMemory - PAGESIZE;
     } else {
       print(selfieName);
       print((int*) ": palloc out of physical memory");
@@ -7007,7 +6867,8 @@ int* palloc() {
   frame = nextPageFrame;
 
   nextPageFrame = nextPageFrame + PAGESIZE;
-  freePageFrame = freePageFrame - PAGESIZE;
+
+  freePageFrameMemory = freePageFrameMemory - PAGESIZE;
 
   // strictly, touching is only necessary on boot levels higher than zero
   return touch((int*) frame, PAGESIZE);
@@ -7017,6 +6878,107 @@ void pfree(int* frame) {
   // TODO: implement free list of page frames
 }
 
+void up_loadBinary(int* table) {
+  int vaddr;
+
+  // binaries start at lowest virtual address
+  vaddr = 0;
+
+  while (vaddr < binaryLength) {
+    mapAndStoreVirtualMemory(table, vaddr, loadBinary(vaddr));
+
+    vaddr = vaddr + WORDSIZE;
+  }
+}
+
+int up_loadString(int* table, int* s, int SP) {
+  int bytes;
+  int i;
+
+  bytes = roundUp(stringLength(s) + 1, WORDSIZE);
+
+  // allocate memory for storing string
+  SP = SP - bytes;
+
+  i = 0;
+
+  while (i < bytes) {
+    mapAndStoreVirtualMemory(table, SP + i, *s);
+
+    s = s + 1;
+
+    i = i + WORDSIZE;
+  }
+
+  return SP;
+}
+
+void up_loadArguments(int* table, int argc, int* argv) {
+  int SP;
+  int vargv;
+  int i_argc;
+  int i_vargv;
+
+  // arguments are pushed onto stack which starts at highest virtual address
+  SP = VIRTUALMEMORYSIZE - WORDSIZE;
+
+  // allocate memory for storing stack pointer later
+  SP = SP - WORDSIZE;
+
+  // allocate memory for storing *argv array
+  SP = SP - argc * WORDSIZE;
+
+  // vargv invalid if argc == 0
+  vargv = SP + WORDSIZE;
+
+  i_vargv = vargv;
+  i_argc  = argc;
+
+  while (i_argc > 0) {
+    SP = up_loadString(table, (int*) *argv, SP);
+
+    // store pointer to string in virtual *argv
+    mapAndStoreVirtualMemory(table, i_vargv, SP);
+
+    argv = argv + 1;
+
+    i_vargv = i_vargv + WORDSIZE;
+
+    i_argc = i_argc - 1;
+  }
+
+  // allocate memory for one word on the stack
+  SP = SP - WORDSIZE;
+
+  // push argc
+  mapAndStoreVirtualMemory(table, SP, argc);
+
+  // allocate memory for one word on the stack
+  SP = SP - WORDSIZE;
+
+  // push virtual argv
+  mapAndStoreVirtualMemory(table, SP, vargv);
+
+  // store stack pointer at highest virtual address for binary to retrieve
+  mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
+}
+
+void mapUnmappedPages(int* table) {
+  int page;
+  // assert: page table is only mapped from beginning up and end down
+
+  page = 0;
+
+  while (isPageMapped(table, page))
+    page = page + 1;
+
+  while (pavailable()) {
+    mapPage(table, page, (int) palloc());
+
+    page = page + 1;
+  }
+}
+
 void down_mapPageTable(int* context) {
   int page;
 
@@ -7024,7 +6986,7 @@ void down_mapPageTable(int* context) {
 
   page = 0;
 
-  while (getFrameForPage(getPT(context), page) != 0) {
+  while (isPageMapped(getPT(context), page)) {
     selfie_map(getID(context), page, getFrameForPage(getPT(context), page));
 
     page = page + 1;
@@ -7032,44 +6994,269 @@ void down_mapPageTable(int* context) {
 
   page = (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE;
 
-  while (getFrameForPage(getPT(context), page) != 0) {
+  while (isPageMapped(getPT(context), page)) {
     selfie_map(getID(context), page, getFrameForPage(getPT(context), page));
 
     page = page - 1;
   }
 }
 
-void boot(int argc, int* argv) {
-  int  initID;
+int runUntilExitWithoutExceptionHandling(int toID) {
+  // works only with rocstars
+  int fromID;
+  int* fromContext;
+  int savedStatus;
+  int exceptionNumber;
 
-  // resetting this is only necessary for rocstar
+  while (1) {
+    fromID = rocstar_switch(toID);
+
+    fromContext = findContext(fromID, usedContexts);
+
+    // assert: fromContext must be in usedContexts (created here)
+
+    if (getParent(fromContext) != ROCSTAR_ID)
+      // switch to parent which is in charge of handling exceptions
+      toID = getParent(fromContext);
+    else {
+      // we are the parent in charge of handling exit exceptions
+      savedStatus = doStatus();
+
+      exceptionNumber = decodeExceptionNumber(savedStatus);
+
+      if (exceptionNumber == EXCEPTION_EXIT)
+        // TODO: only return if all contexts have exited
+        return decodeExceptionParameter(savedStatus);
+      else if (exceptionNumber != EXCEPTION_TIMER) {
+        print(binaryName);
+        print((int*) ": context ");
+        printInteger(getID(fromContext));
+        print((int*) " throws uncaught ");
+        printStatus(savedStatus);
+        println();
+
+        return -1;
+      }
+    }
+  }
+}
+
+int runOrHostUntilExitWithPageFaultHandling(int toID) {
+  // works with rocstars and hypsters
+  int fromID;
+  int* fromContext;
+  int savedStatus;
+  int exceptionNumber;
+  int exceptionParameter;
+  int frame;
+
+  while (1) {
+    fromID = selfie_switch(toID);
+
+    fromContext = findContext(fromID, usedContexts);
+
+    // assert: fromContext must be in usedContexts (created here)
+
+    if (getParent(fromContext) != selfie_ID())
+      // switch to parent which is in charge of handling exceptions
+      toID = getParent(fromContext);
+    else {
+      // we are the parent in charge of handling exceptions
+      savedStatus = selfie_status();
+
+      exceptionNumber    = decodeExceptionNumber(savedStatus);
+      exceptionParameter = decodeExceptionParameter(savedStatus);
+
+      if (exceptionNumber == EXCEPTION_PAGEFAULT) {
+        frame = (int) palloc();
+
+        // TODO: use this table to unmap and reuse frames
+        mapPage(getPT(fromContext), exceptionParameter, frame);
+
+        // page table on microkernel boot level
+        selfie_map(fromID, exceptionParameter, frame);
+      } else if (exceptionNumber == EXCEPTION_EXIT)
+        // TODO: only return if all contexts have exited
+        return exceptionParameter;
+      else if (exceptionNumber != EXCEPTION_TIMER) {
+        print(binaryName);
+        print((int*) ": context ");
+        printInteger(getID(fromContext));
+        print((int*) " throws uncaught ");
+        printStatus(savedStatus);
+        println();
+
+        return -1;
+      }
+
+      // TODO: scheduler should go here
+      toID = fromID;
+    }
+  }
+}
+
+int bootminmob(int argc, int* argv, int machine) {
+  // works only with rocstars
+  int initID;
+  int exitCode;
+
+  print(selfieName);
+  print((int*) ": this is selfie's ");
+  if (machine == MINSTER)
+    print((int*) "minster");
+  else
+    print((int*) "mobster");
+  print((int*) " executing ");
+  print(binaryName);
+  print((int*) " with ");
+  printInteger(pageFrameMemory / MEGABYTE);
+  print((int*) "MB of physical memory");
+  println();
+
   resetInterpreter();
+  resetMicrokernel();
+
+  // create initial context on our boot level
+  initID = doCreate(ROCSTAR_ID);
+
+  up_loadBinary(getPT(usedContexts));
+
+  up_loadArguments(getPT(usedContexts), argc, argv);
+
+  if (machine == MINSTER)
+    // virtual is like physical memory in initial context up to memory size
+    // by mapping unmapped pages (for the heap) to all available page frames
+    // CAUTION: consumes memory even when not used
+    mapUnmappedPages(getPT(usedContexts));
+
+  exitCode = runUntilExitWithoutExceptionHandling(initID);
+
+  print(selfieName);
+  print((int*) ": this is selfie's ");
+  if (machine == MINSTER)
+    print((int*) "minster");
+  else
+    print((int*) "mobster");
+  print((int*) " terminating ");
+  print(binaryName);
+  print((int*) " with exit code ");
+  printInteger(exitCode);
+  print((int*) " and ");
+  printFixedPointRatio(pused(), MEGABYTE);
+  print((int*) "MB of mapped memory");
+  println();
+
+  return exitCode;
+}
+
+int boot(int argc, int* argv) {
+  // works with rocstars and hypsters
+  int initID;
+  int exitCode;
+
+  print(selfieName);
+  print((int*) ": this is selfie's ");
+  if (rocstar)
+    print((int*) "rocstar");
+  else
+    print((int*) "hypster");
+  print((int*) " executing ");
+  print(binaryName);
+  print((int*) " with ");
+  printInteger(pageFrameMemory / MEGABYTE);
+  print((int*) "MB of physical memory");
+  println();
+
+  // resetting interpreter is only necessary for rocstars
+  resetInterpreter();
+
   resetMicrokernel();
 
   // create initial context on microkernel boot level
   initID = selfie_create();
 
-  if (usedContexts != (int*) 0) {
-    // we are on microkernel boot level
-
-    up_loadBinary(getPT(usedContexts));
-
-    up_loadArguments(getPT(usedContexts), argc, argv);
-  } else {
-    // we are not on microkernel boot level
-
-    // create duplicate of the initial context on our level
+  if (usedContexts == (int*) 0)
+    // create duplicate of the initial context on our boot level
     usedContexts = createContext(initID, selfie_ID(), (int*) 0);
 
-    up_loadBinary(getPT(usedContexts));
+  up_loadBinary(getPT(usedContexts));
 
-    up_loadArguments(getPT(usedContexts), argc, argv);
+  up_loadArguments(getPT(usedContexts), argc, argv);
 
-    // set up page table of initial context on microkernel level
-    down_mapPageTable(usedContexts);
+  // propagate page table of initial context to microkernel boot level
+  down_mapPageTable(usedContexts);
+
+  // rocstars and hypsters handle page faults
+  exitCode = runOrHostUntilExitWithPageFaultHandling(initID);
+
+  print(selfieName);
+  print((int*) ": this is selfie's ");
+  if (rocstar)
+    print((int*) "rocstar");
+  else
+    print((int*) "hypster");
+  print((int*) " terminating ");
+  print(binaryName);
+  print((int*) " with exit code ");
+  printInteger(exitCode);
+  print((int*) " and ");
+  printFixedPointRatio(pused(), MEGABYTE);
+  print((int*) "MB of mapped memory");
+  println();
+
+  return exitCode;
+}
+
+int selfie_run(int engine, int machine, int debugger) {
+  int exitCode;
+
+  if (binaryLength == 0) {
+    print(selfieName);
+    print((int*) ": nothing to run, debug, or host");
+    println();
+
+    exit(-1);
   }
 
-  runUntilExit(initID);
+  initMemory(atoi(peekArgument()));
+
+  // pass binary name as first argument by replacing memory size
+  setArgument(binaryName);
+
+  interpret = 1;
+
+  if (engine == ROCSTAR) {
+    // boot rocstar
+    rocstar = 1;
+
+    if (debugger)
+      debug = 1;
+
+    if (machine == ROCSTAR)
+      exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+    else
+      exitCode = bootminmob(numberOfRemainingArguments(), remainingArguments(), machine);
+
+    debug   = 0;
+    rocstar = 0;
+
+    print(selfieName);
+    if (sourceLineNumber != (int*) 0)
+      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
+    else
+      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
+    println();
+    printProfile((int*) ": calls: ", calls, callsPerAddress);
+    printProfile((int*) ": loops: ", loops, loopsPerAddress);
+    printProfile((int*) ": loads: ", loads, loadsPerAddress);
+    printProfile((int*) ": stores: ", stores, storesPerAddress);
+  } else
+    // boot hypster
+    exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+
+  interpret = 0;
+
+  return exitCode;
 }
 
 // -----------------------------------------------------------------
@@ -7112,8 +7299,12 @@ int selfie() {
   int* option;
 
   if (numberOfRemainingArguments() == 0)
-    return -1;
-  else
+    return USAGE;
+  else {
+    initScanner();
+    initRegister();
+    initInterpreter();
+
     while (numberOfRemainingArguments() > 0) {
       option = getArgument();
 
@@ -7121,58 +7312,46 @@ int selfie() {
         selfie_compile();
       else if (numberOfRemainingArguments() == 0)
         // remaining options have at least one argument
-        return -1;
+        return USAGE;
       else if (stringCompare(option, (int*) "-o"))
         selfie_output();
       else if (stringCompare(option, (int*) "-s"))
         selfie_disassemble();
       else if (stringCompare(option, (int*) "-l"))
         selfie_load();
-      else if (stringCompare(option, (int*) "-m")) {
-        rocstar = 1;
-
-        selfie_run();
-
-        rocstar = 0;
-
-        return 0;
-      } else if (stringCompare(option, (int*) "-d")) {
-        rocstar = 1;
-        debug   = 1;
-
-        selfie_run();
-
-        rocstar = 0;
-        debug   = 0;
-
-        return 0;
-      } else if (stringCompare(option, (int*) "-y")) {
-        selfie_run();
-
-        return 0;
-      } else
-        return -1;
+      else if (stringCompare(option, (int*) "-m"))
+        return selfie_run(ROCSTAR, ROCSTAR, 0);
+      else if (stringCompare(option, (int*) "-d"))
+        return selfie_run(ROCSTAR, ROCSTAR, 1);
+      else if (stringCompare(option, (int*) "-y"))
+        return selfie_run(HYPSTER, ROCSTAR, 0);
+      else if (stringCompare(option, (int*) "-min"))
+        return selfie_run(ROCSTAR, MINSTER, 0);
+      else if (stringCompare(option, (int*) "-mob"))
+        return selfie_run(ROCSTAR, MOBSTER, 0);
+      else
+        return USAGE;
     }
+  }
 
   return 0;
 }
 
 int main(int argc, int* argv) {
-  initLibrary();
-
-  initScanner();
-
-  initRegister();
-
-  initInterpreter();
+  int exitCode;
 
   initSelfie(argc, (int*) argv);
 
-  if (selfie() != 0) {
-    print(selfieName);
-    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ] ");
-    println();
-  }
+  initLibrary();
 
-  return 0;
+  exitCode = selfie();
+
+  if (exitCode == USAGE) {
+    print(selfieName);
+    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ] ");
+    println();
+
+    return 0;
+  } else
+    return exitCode;
 }
