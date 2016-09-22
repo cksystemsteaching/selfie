@@ -2725,7 +2725,7 @@ void help_procedure_prologue(int localVariables) {
   emitSFormat(0, REG_RA, REG_SP, F3_SW, OP_SW);
   // MIPS: emitIFormat(OP_SW, REG_SP, REG_RA, 0);
 
-  // allocate space for caller's frame pointer
+  // allocate memory for caller's frame pointer
   emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
@@ -2737,14 +2737,14 @@ void help_procedure_prologue(int localVariables) {
   emitIFormat(0, REG_SP, F3_ADDI, REG_FP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
 
-  // allocate space for callee's local variables
+  // allocate memory for callee's local variables
   if (localVariables != 0)
     emitIFormat(-localVariables * WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
     // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * WORDSIZE);
 }
 
 void help_procedure_epilogue(int parameters) {
-  // deallocate space for callee's frame pointer and local variables
+  // deallocate memory for callee's frame pointer and local variables
   emitIFormat(0, REG_FP, F3_ADDI, REG_SP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
 
@@ -2752,7 +2752,7 @@ void help_procedure_epilogue(int parameters) {
   emitIFormat(0, REG_SP, F3_LW, REG_FP, OP_LW);
   // MIPS: emitIFormat(OP_LW, REG_SP, REG_FP, 0);
 
-  // deallocate space for caller's frame pointer
+  // deallocate memory for caller's frame pointer
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
@@ -2760,7 +2760,7 @@ void help_procedure_epilogue(int parameters) {
   emitIFormat(0, REG_SP, F3_LW, REG_RA, OP_LW);
   // MIPS: emitIFormat(OP_LW, REG_SP, REG_RA, 0);
 
-  // deallocate space for return address and parameters
+  // deallocate memory for return address and parameters
   emitIFormat((parameters + 1) * WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * WORDSIZE);
 
