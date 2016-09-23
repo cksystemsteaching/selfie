@@ -6758,7 +6758,8 @@ int runUntilExitWithoutExceptionHandling(int toID) {
         println();
 
         return -1;
-      }
+      } else
+        toID = fromID;
     }
   }
 }
