@@ -165,8 +165,8 @@ int* power_of_two_table;
 int INT_MAX; // maximum numerical value of a signed 32-bit integer
 int INT_MIN; // minimum numerical value of a signed 32-bit integer
 
-int INT12_MAX; // maximum numerical value of a signed 16-bit integer
-int INT12_MIN; // minimum numerical value of a signed 16-bit integer
+int INT12_MAX; // maximum numerical value of a signed 12-bit integer
+int INT12_MIN; // minimum numerical value of a signed 12-bit integer
 
 int maxFilenameLength = 128;
 
