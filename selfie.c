@@ -570,7 +570,19 @@ void resetParser() {
 
 void emitLeftShiftBy(int b);
 void emitMainEntry();
+void createELFHeader();
+void createELFSectionHeader(int start, int name, int type, int flags, int addr, int off, int size, int link, int info, int align, int entsize);
 void bootstrapCode();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+//
+int ELF_HEADER_LEN    = 268;   // = 67 * 4 Bytes (0x10A)
+int ELF_ENTRY_POINT   = 65536; // = 0x10000
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+int *ELF_header;
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -734,23 +746,23 @@ int OP_SW     = 35;  // 0100011, SF (SW)
 int OP_SYSTEM = 115; // 1110011, IF? (ECALL)
 
 // f3-codes
-int F3_ADDI = 0;  // 000 x
-int F3_ADD  = 0;  // 000 x
-int F3_SUB  = 0;  // 000 x
-int F3_SLT  = 2;  // 010 x
+int F3_ADDI = 0;  // 000
+int F3_ADD  = 0;  // 000
+int F3_SUB  = 0;  // 000
+int F3_SLT  = 2;  // 010
 int F3_JALR = 0;  // 000
-int F3_BEQ  = 0;  // 000 x
-int F3_BNE  = 1;  // 001 x
+int F3_BEQ  = 0;  // 000
+int F3_BNE  = 1;  // 001
 int F3_LW   = 2;  // 010
-int F3_SW   = 2;  // 010 x
-int F3_PRIV = 0;  // 000 x
-int F3_MUL  = 0;  // 000 x
-int F3_DIVU = 5;  // 101 x
-int F3_REMU = 7;  // 111 x
+int F3_SW   = 2;  // 010
+int F3_PRIV = 0;  // 000
+int F3_MUL  = 0;  // 000
+int F3_DIVU = 5;  // 101
+int F3_REMU = 7;  // 111
 
 // f7-codes
 int F7_ADD  = 0;  // 0000000
-int F7_SUB  = 31; // 0100000
+int F7_SUB  = 32; // 0100000
 int F7_SLT  = 0;  // 0000000
 int F7_MUL  = 1;  // 0000001
 int F7_DIVU = 1;  // 0000001
@@ -1054,6 +1066,8 @@ int cycles = 0; // cycle counter where one cycle is equal to one instruction
 int timer = 0; // counter for timer interrupt
 
 int rocstar = 0; // flag for forcing to use rocstar rather than hypster
+
+int pk = 0; // flag for telling bootstrapCode not to emit SP initialization instructions
 
 int interpret = 0; // flag for executing or disassembling code
 
@@ -3999,9 +4013,9 @@ void emitMainEntry() {
   // the instruction at address zero cannot be fixed up
   // we therefore need at least one not-to-be-fixed-up instruction here
 
-  // we generate ADDIs (NOPs) to accommodate GP and SP register
-  // initialization code that overwrites the NOPs later
-  // when binaryLength is known
+  // we generate ADDIs (NOPs) to accommodate
+  // GP register initialization code that
+  // overwrites the NOPs later when binaryLength is known
 
   i = 0;
 
@@ -4032,6 +4046,86 @@ void emitMainEntry() {
   // no need to reset return register here
 }
 
+void createELFHeader() {
+  int i;
+  int startOfProgHeaders;
+  int startOfSecHeaders;
+  int stringBytes;
+
+  startOfProgHeaders = 52;
+  startOfSecHeaders  = 84;
+  stringBytes        = 22;
+
+  // store all numbers necessary to create a valid
+  // ELF header incl. program header and section headers.
+  // For more info about specific fields, consult ELF documentation.
+  ELF_header = malloc(ELF_HEADER_LEN);
+
+  // ELF magic number
+  *(ELF_header + 0) = 1179403647; // part 1 of ELF magic number
+  *(ELF_header + 1) = 65793;      // part 2 of ELF magic number
+  *(ELF_header + 2) = 0;          // part 3 of ELF magic number
+  *(ELF_header + 3) = 0;          // part 4 of ELF magic number
+
+  // ELF Header
+  *(ELF_header + 4)  = 15925250; // Type and Machine fields (16 bit each)
+  *(ELF_header + 5)  = 1;        // Version number
+  *(ELF_header + 6)  = ELF_ENTRY_POINT;
+  *(ELF_header + 7)  = startOfProgHeaders;
+  *(ELF_header + 8)  = startOfSecHeaders;
+  *(ELF_header + 9)  = 0;        // Flags
+  *(ELF_header + 10) = 2097204;  // Size of ELF header and size of program header
+  *(ELF_header + 11) = 2621441;  // # of program header and size of section header (40 Bytes)
+  *(ELF_header + 12) = 196612;   // # of section headers (4) and section header string table index (3)
+
+  // Program Header
+  *(ELF_header + 13) = 1;               // Type of program header (LOAD)
+  *(ELF_header + 14) = ELF_HEADER_LEN+4;// Offset to 1. byte of segment (extra 4B for binaryLength)
+  *(ELF_header + 15) = ELF_ENTRY_POINT; // Virtual address
+  *(ELF_header + 16) = 0;               // Physical address
+  *(ELF_header + 17) = binaryLength;    // File size
+  *(ELF_header + 18) = binaryLength;    // Memory size
+  *(ELF_header + 19) = 7;               // Flags (Read, Write, Execute)
+  *(ELF_header + 20) = 4096;            // Alignment of segments
+
+  // Section Header 0 (Zero-Header)
+  createELFSectionHeader(21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  // Section Header 1 (.text)
+  createELFSectionHeader(31, 1, 1, 7,  ELF_ENTRY_POINT,
+    ELF_HEADER_LEN + 4, codeLength, 0,  0, 0, 0);
+
+  // Section Header 2 (.data)
+  createELFSectionHeader(41, 7, 1, 7, ELF_ENTRY_POINT + 4 + codeLength,
+    ELF_HEADER_LEN + 4 + codeLength, binaryLength - codeLength, 0, 0, 0, 0);
+
+  // Section Header 3 (.shstrtab)
+  createELFSectionHeader(51, 13, 3, 0, 0, ELF_HEADER_LEN - stringBytes,
+    codeLength, 0, 0, 0, 0);
+
+  // String table
+  *(ELF_header + 61) = 1702112768;  // 0.te
+  *(ELF_header + 62) = 771781752;   // xt0.
+  *(ELF_header + 63) = 1635017060;  // data
+  *(ELF_header + 64) = 1752378880;  // 0.sh
+  *(ELF_header + 65) = 1953657971;  // strt
+  *(ELF_header + 66) = 25185;       // ab
+}
+
+void createELFSectionHeader(int start, int name, int type, int flags, int addr, int off, int size, int link, int info, int align, int entsize) {
+
+  *(ELF_header + start)     = name;
+  *(ELF_header + (start+1)) = type;
+  *(ELF_header + (start+2)) = flags;
+  *(ELF_header + (start+3)) = addr;
+  *(ELF_header + (start+4)) = off;
+  *(ELF_header + (start+5)) = size;
+  *(ELF_header + (start+6)) = link;
+  *(ELF_header + (start+7)) = info;
+  *(ELF_header + (start+8)) = align;
+  *(ELF_header + (start+9)) = entsize;
+}
+
 void bootstrapCode() {
   int savedBinaryLength;
 
@@ -4043,7 +4137,11 @@ void bootstrapCode() {
 
   // assert: 0 <= savedBinaryLength < 2^28 (see load_integer)
 
-  load_integer(savedBinaryLength);
+  if (pk == 0) {
+    load_integer(savedBinaryLength);
+  } else {
+    load_integer(ELF_ENTRY_POINT + savedBinaryLength);
+  }
 
   // load binaryLength into GP register
   emitIFormat(0, currentTemporary(), F3_ADDI, REG_GP, OP_IMM);
@@ -4051,19 +4149,20 @@ void bootstrapCode() {
 
   tfree(1);
 
-  // assert: allocatedTemporaries == 0
+  if (pk == 0) {
+    // assert: allocatedTemporaries == 0
 
-  // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^28 (see load_integer)
+    // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^28 (see load_integer)
 
-  // initial stack pointer is stored at highest virtual address
-  load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
+    // initial stack pointer is stored at highest virtual address
+    load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
 
-  // load initial stack pointer into SP register
-  emitIFormat(0, currentTemporary(), F3_LW, REG_SP, OP_LW);
-  // MIPS: emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
+    // load initial stack pointer into SP register
+    emitIFormat(0, currentTemporary(), F3_LW, REG_SP, OP_LW);
+    // MIPS: emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
 
-  tfree(1);
-
+    tfree(1);
+  }
   // assert: allocatedTemporaries == 0
 
   binaryLength = savedBinaryLength;
@@ -4748,14 +4847,16 @@ void selfie_output() {
 
   *binary_buffer = codeLength;
 
-  // assert: binary_buffer is mapped
+  // first create ELF header and write to fd
+  createELFHeader();
+  write(fd, ELF_header, ELF_HEADER_LEN);
 
-  // first write code length
+  // assert: binary_buffer is mapped
+  // then write code length
   write(fd, binary_buffer, WORDSIZE);
 
   // assert: binary is mapped
-
-  // then write binary
+  // lastly write binary
   write(fd, binary, binaryLength);
 
   print(selfieName);
@@ -4805,6 +4906,9 @@ int* touch(int* memory, int length) {
 void selfie_load() {
   int fd;
   int numberOfReadBytes;
+  int* elfBuffer;
+
+  elfBuffer = malloc(ELF_HEADER_LEN);
 
   binaryName = getArgument();
 
@@ -4833,6 +4937,17 @@ void selfie_load() {
   // assert: binary_buffer is mapped
 
   // read code length first
+  //numberOfReadBytes = read(fd, binary_buffer, WORDSIZE);
+
+  // read ELF header first
+  numberOfReadBytes = read(fd, elfBuffer, ELF_HEADER_LEN);
+
+  // something wrong with ELF header length?
+  if (numberOfReadBytes != ELF_HEADER_LEN) {
+    exit(-1);
+  }
+
+  // then read code length (note: also saved in ELF header)
   numberOfReadBytes = read(fd, binary_buffer, WORDSIZE);
 
   if (numberOfReadBytes == WORDSIZE) {
@@ -6759,7 +6874,14 @@ int* createContext(int ID, int parentID, int* in) {
   if (in != (int*) 0)
     setPrevContext(in, context);
 
+  // initialize SP here since this is no longer done
+  // in the binary (pk-kernel does not expects it there)
+
+  //*(getRegs(context)+REG_SP) = ;
+  // XXX not working like that...
+
   return context;
+
 }
 
 int* findContext(int ID, int* in) {
@@ -7311,7 +7433,11 @@ int selfie() {
 
       if (stringCompare(option, (int*) "-c"))
         selfie_compile();
-      else if (numberOfRemainingArguments() == 0)
+      else if (stringCompare(option, (int*) "-C")) {
+        pk = 1;
+        selfie_compile();
+        pk = 0;
+      } else if (numberOfRemainingArguments() == 0)
         // remaining options have at least one argument
         return USAGE;
       else if (stringCompare(option, (int*) "-o"))
