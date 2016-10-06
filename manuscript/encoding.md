@@ -12,9 +12,9 @@ Both ASCII and UTF-8 are essentially one-to-one mappings from bits to characters
 
 Let us pause for a moment and reflect about this. The above bit sequence could really still mean anything. The encoding standards for characters are just agreements on how to associate bits and characters but there is still no meaning.
 
-X> The bit sequence `01010101` is also binary for the decimal number 85.
+X> The bit sequence `01010101` is also binary for the [decimal number](https://en.wikipedia.org/wiki/Decimal) `85`.
 
-So what is it now, `U` or 85? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws `U` for `01010101` on the screen then `01010101` stands for `U` in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent 85.
+So what is it now, `U` or `85`? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws `U` for `01010101` on the screen then `01010101` stands for `U` in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent `85`.
 
 But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
 
@@ -195,15 +195,25 @@ Numbers are important and computers are incredibly good at working with them. No
 [Integer](https://en.wikipedia.org/wiki/Integer "Integer")
 : A number that can be written without a fractional component (from the Latin integer meaning "whole").
 
-Beyond that there is no support of, say, fixed-point or even floating-point numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profile information that [computes the fixed-point ratio of two integers](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/selfie.c#L1549-L1578) with up to two fractional digits.
+Beyond that there is no support of, say, fixed-point or even floating-point numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profile information that [computes the fixed-point ratio of two integers as percentage](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/selfie.c#L1549-L1578) with up to two fractional digits.
 
-Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number 85.
+Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number `85`.
 
-X> As mentioned before, the decimal number 85 in binary is represented by the 8-bit sequence `0101010`. In fact, seven bits are enough for 85 since leading zeros are unnecessary. So, actually, 85 is just `101010`.
+X> As mentioned before, the decimal number `85` in binary is represented by the 8-bit sequence `01010101`. In fact, seven bits are enough for `85` since leading zeros are unnecessary. So, actually, `85` is just `1010101`.
 
-How do we get from `101010` to 85?
+Both representations look different but mean the same thing and are even based on the same [numeral system](https://en.wikipedia.org/wiki/Numeral_system) using [positional notation](https://en.wikipedia.org/wiki/Positional_notation). The only difference is their *base* or *radix*.
 
+[Radix](https://en.wikipedia.org/wiki/Radix "Radix")
+: The number of unique digits, including zero, used to represent numbers in a positional numeral system.
 
+While `1010101` is a binary number with base 2, the decimal number `85` is obviously encoded with base 10 in the *hindu-arabic* numeral system.
+
+[Hindu-Arabic Numeral System](https://en.wikipedia.org/wiki/Hindu%E2%80%93Arabic_numeral_system "Hindu-Arabic Numeral System")
+: A positional decimal numeral system and the most common for the symbolic representation of numbers in the world.
+
+X> The value represented by `85` is obviously `8`\*10+`5` (or equivalently `8`\*10^1+`5`\*10^0) using base 10 which is equal to (((((`1`\*2+`0`)\*2+`1`)\*2+`0`)\*2+`1`)\*2+`0`)\*2+`1` (or equivalently `1`\*2^6+`0`\*2^5+`1`\*2^4+`0`\*2^3+`1`\*2^2+`0`\*2^1+`1`\*2^0) using base 2 as represented by `1010101`.
+
+Selfie does in fact implement exactly the above computation but only for decimal numbers.
 
 ## Integer Literal
 
