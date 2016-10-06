@@ -211,9 +211,13 @@ While `1010101` is a binary number with base 2, the decimal number `85` is obvio
 [Hindu-Arabic Numeral System](https://en.wikipedia.org/wiki/Hindu%E2%80%93Arabic_numeral_system "Hindu-Arabic Numeral System")
 : A positional decimal numeral system and the most common for the symbolic representation of numbers in the world.
 
-X> The value represented by `85` is obviously `8`\*10+`5` (or equivalently `8`\*10^1+`5`\*10^0) using base 10 which is equal to (((((`1`\*2+`0`)\*2+`1`)\*2+`0`)\*2+`1`)\*2+`0`)\*2+`1` (or equivalently `1`\*2^6+`0`\*2^5+`1`\*2^4+`0`\*2^3+`1`\*2^2+`0`\*2^1+`1`\*2^0) using base 2 as represented by `1010101`.
+X> The value represented by `85` is obviously `8`\*10+`5` using base 10, or equivalently, (((((`1`\*2+`0`)\*2+`1`)\*2+`0`)\*2+`1`)\*2+`0`)\*2+`1` as represented by `1010101` using base 2.
 
-Selfie does in fact implement exactly the above computation but only for decimal numbers.
+Selfie does in fact implement exactly the above computation of a [recurrence relation](https://en.wikipedia.org/wiki/Recurrence_relation) for encoding numbers but only for numbers represented in decimal notation. An extension to other bases is nevertheless easy to do. Think about it and try!
+
+The encoding is done in the procedure [`atoi`](http://github.com/cksystemsteaching/selfie/blob/3e2931dd960265d643086b6d82daee0d628301a2/selfie.c#L1408-L1457) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
+
+X> Note that the value represented by `85` can also be computed by `8`\*10^1+`5`\*10^0 using powers of base 10, or equivalently, `1`\*2^6+`0`\*2^5+`1`\*2^4+`0`\*2^3+`1`\*2^2+`0`\*2^1+`1`\*2^0 as represented by `1010101` using powers of base 2. However, since the digits are read from left to right, computing the recurrence relation is easier.
 
 ## Integer Literal
 
