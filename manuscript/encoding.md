@@ -254,51 +254,21 @@ Hexadecimal and octal notation are popular in computer science because their dig
 
 X> Both `0x55` and `00125` represent the value `1010101` in binary, that is, two blocks of four bits `0101 0101` and three blocks of three bits `001 010 101`, respectively.
 
-## Integer Literal
+## Integer Literals
+
+Similar to character and string literals, source code written in C\* may contain integer values, also called integer literals, written in decimal notation.
 
 [Integer Literal](https://en.wikipedia.org/wiki/Integer_literal "Integer Literal")
 : An integer whose value is directly represented in source code.
 
-Actually, there is another reason why identifiers start with a letter. It is because knowing upon reading the first character whether we are dealing with an identifier (or keyword) or a number makes the code that does this much simpler.
+The code in selfie that [reads integer literals](http://github.com/cksystemsteaching/selfie/blob/47f130e2633a90761f65e459d8d1753cf6f99bcd/selfie.c#L2018-L2060) is next to the code that reads identifiers. Similar to the characters of an identifier, the digits of an integer literal are first read and stored in a string. However, that string is then converted to an integer value using the `atoi` procedure.
+
+T> Recall that identifiers may also contain digits but must start with a letter. This requirement makes it easy for the compiler to distinguish integer literals from identifiers upon reading the first character. This is in fact the reason why identifiers are usually required to start with a letter.
+
+This chapter is not finished here. There will be more on encoding of negative integers, symbols of C\*, and machine words and instructions.
 
 ## Symbols
 
 ## Words
-
-You may have noticed in the comments of the "Hello World!" program that the characters `"Hello World!"` are actually stored in chunks of four characters and printed accordingly. We can even see that by slowing down selfie, as before, by running in this case three mipsters on top of each other. Give it a few seconds and you will see for yourself:
-
-{line-numbers=off}
-```
-> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1 -l hello-world.m -m 1
-./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
-...
-./selfie: 600 bytes with 145 instructions and 20 bytes of data written into hello-world.m
-./selfie: this is selfie's starc compiling selfie.c
-...
-./selfie: 125948 bytes with 29970 instructions and 6068 bytes of data written into selfie.m
-./selfie: this is selfie's mipster executing selfie.m with 2MB of memory
-selfie.m: 125948 bytes with 29970 instructions and 6068 bytes of data loaded from selfie.m
-selfie.m: this is selfie's mipster executing selfie.m with 1MB of memory
-selfie.m: 600 bytes with 145 instructions and 20 bytes of data loaded from hello-world.m
-selfie.m: this is selfie's mipster executing hello-world.m with 1MB of memory
-Hello World!hello-world.m: exiting with exit code 0
-selfie.m: this is selfie's mipster terminating hello-world.m
-...
-selfie.m: exiting with exit code 0
-selfie.m: this is selfie's mipster terminating selfie.m
-...
-selfie.m: exiting with exit code 0
-./selfie: this is selfie's mipster terminating selfie.m
-...
-```
-
-The string `"Hell"` appears first on the console. Then, after a while, the string `"o Wo"` appears. Finally, the string `"rld!"` appears and selfie terminates, slowly.
-
-
-
-The machine that the mipster emulator in selfie emulates handles everything, code and data, in chunks of 32 bits, that is, four bytes. Such a chunk is called a *machine word* or just a *word*.
-
-[Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
-: A term for the natural unit of data used by a particular processor design. A word is basically a fixed-sized group of digits that are handled as a unit by the instruction set or the hardware of the processor. The number of digits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
 
 ## Instructions
