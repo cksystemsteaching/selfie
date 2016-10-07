@@ -206,6 +206,8 @@ Both representations look different but mean the same thing and are even based o
 [Radix](https://en.wikipedia.org/wiki/Radix "Radix")
 : The number of unique digits, including zero, used to represent numbers in a positional numeral system.
 
+Most importantly, no matter the base, as long as we use the same base for the operands of arithmetic operations any method for doing so works. For example, manually adding two binary numbers works just like adding two decimal numbers.
+
 While `1010101` is a binary number with base 2, the decimal number `85` is obviously encoded with base 10 in the *hindu-arabic* numeral system.
 
 [Hindu-Arabic Numeral System](https://en.wikipedia.org/wiki/Hindu%E2%80%93Arabic_numeral_system "Hindu-Arabic Numeral System")
@@ -218,6 +220,39 @@ Selfie does in fact implement exactly the above computation of a [recurrence rel
 The encoding is done in the procedure [`atoi`](http://github.com/cksystemsteaching/selfie/blob/3e2931dd960265d643086b6d82daee0d628301a2/selfie.c#L1408-L1457) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
 
 X> Note that the value represented by `85` can also be computed by `8`\*10^1+`5`\*10^0 using powers of base 10, or equivalently, `1`\*2^6+`0`\*2^5+`1`\*2^4+`0`\*2^3+`1`\*2^2+`0`\*2^1+`1`\*2^0 as represented by `1010101` using powers of base 2. However, since the digits are read from left to right, computing the recurrence relation is easier.
+
+Selfie also implements the procedure symmetric to `atoi` called [`itoa`](http://github.com/cksystemsteaching/selfie/blob/c7ec82ae917cb1807af3a0f60799bfb8dce755ed/selfie.c#L1458-L1603) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
+
+X> Suppose we would like to convert the value of `85` to a string `"85"` that shows the value in decimal. This works by dividing `85` by the base 10, resulting in the quotient `8`, and saving the remainder, which is `5`, as a string `"5"`. We then divide quotient `8` by 10 which is quotient `0` and append the remainder, which is `8`, to the string `"5"` resulting in the string `"58"`. Quotient `0` terminates the conversion. The resulting string `"58"` in reverse is the desired string `"85"`.
+
+The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](http://github.com/cksystemsteaching/selfie/blob/c7ec82ae917cb1807af3a0f60799bfb8dce755ed/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/integer.c selfie.c -m 1
+./selfie: this is selfie's starc compiling manuscript/code/integer.c
+...
+./selfie: this is selfie's mipster executing manuscript/code/integer.c with 1MB of physical memory
+85 decimal:     85
+'U' ASCII code: 85
+"85" string:    85
+85 hexadecimal: 0x55
+85 octal:       00125
+85 binary:      1010101
+manuscript/code/integer.c: exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: this is selfie's mipster terminating manuscript/code/integer.c with exit code 0 and 0.12MB of mapped memory
+...
+```
+
+T> Numbers in hexadecimal, such as `0x55` for example, are printed with a leading `0x` to emphasize that they use base 16. Similarly, a leading `00` indicates that the following number uses base 8, as in `00125` for example.
+
+You may check for yourself that `0x55` and `00125` do in fact represent the value `85` by computing `5`\*16+`5` and (`1`\*8+`2`)\*8+`5`.
+
+T> For hexadecimal notation six digits more than the ten digits of decimal notation are needed. More specifically, the values `10`, `11`, `12`, `13`, `14`, and `15` need to be represented. The standard representation is to use the uppercase letters `A`, `B`, `C`, `D`, `E`, and `F`, respectively. For example, `0xFF` stands for the value `15`\*16+`15` which is `255`.
+
+Hexadecimal and octal notation are popular in computer science because their digits represent blocks of four and three bits, respectively. In other words, their bases are powers of four and three, respectively, of the base 2 of binary notation. Hexadecimal and octal notation are therefore convenient and compact notation for binary numbers. The base 10 of decimal notation is not a power of the base 2. Digits in decimal notation therefore do not evenly correspond to blocks of bits.
+
+X> Both `0x55` and `00125` represent the value `1010101` in binary, that is, two blocks of four bits `0101 0101` and three blocks of three bits `001 010 101`, respectively.
 
 ## Integer Literal
 
