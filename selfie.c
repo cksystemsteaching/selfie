@@ -88,7 +88,7 @@ void exit(int code);
 int read(int fd, int* buffer, int bytesToRead);
 int write(int fd, int* buffer, int bytesToWrite);
 int open(int* filename, int flags, int mode);
-int* malloc(int size);
+int* sbrk(int size);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -130,6 +130,8 @@ void printBinary(int n, int a);
 int roundUp(int n, int m);
 
 int* zalloc(int size);
+
+int* smalloc(int size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -212,7 +214,7 @@ void initLibrary() {
 
   // powers of two table with 31 entries for 2^0 to 2^30
   // avoiding overflow for 2^31 and larger numbers with 32-bit signed integers
-  power_of_two_table = malloc(31 * SIZEOFINT);
+  power_of_two_table = smalloc(31 * SIZEOFINT);
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -225,6 +227,7 @@ void initLibrary() {
     i = i + 1;
   }
 
+
   // compute INT_MAX and INT_MIN without integer overflows
   INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
   INT_MIN = -INT_MAX - 1;
@@ -233,17 +236,17 @@ void initLibrary() {
   INT12_MIN = -INT12_MAX - 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = malloc(1);
+  character_buffer  = smalloc(1);
   *character_buffer = 0;
 
   // accommodate at least 32-bit numbers for itoa, no mapping needed
-  integer_buffer = malloc(33);
+  integer_buffer = smalloc(33);
 
   // does not need to be mapped
-  filename_buffer = malloc(maxFilenameLength);
+  filename_buffer = smalloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = malloc(SIZEOFINT);
+  binary_buffer  = smalloc(SIZEOFINT);
   *binary_buffer = 0;
 }
 
@@ -354,7 +357,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = malloc(28 * SIZEOFINTSTAR);
+  SYMBOLS = smalloc(28 * SIZEOFINTSTAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -584,6 +587,8 @@ int ELF_ENTRY_POINT   = 65536; // = 0x10000
 
 int *ELF_header;
 
+int pk_compile = 0; // flag for controlling starc's behavior depending on which platform binaries will be executed on
+
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
@@ -650,7 +655,7 @@ int* REGISTERS; // strings representing registers
 // ------------------------- INITIALIZATION ------------------------
 
 void initRegister() {
-  REGISTERS = malloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
+  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
   *(REGISTERS + REG_ZR) = (int) "$zero";
   *(REGISTERS + REG_RA) = (int) "$ra";
   *(REGISTERS + REG_SP) = (int) "$sp";
@@ -687,7 +692,7 @@ void initRegister() {
 
   maxNumberOfTemporaries = (REG_T2 - REG_TP) + (REG_T6 - REG_S11);
 
-  temporary_registers = malloc(maxNumberOfTemporaries * SIZEOFINT);
+  temporary_registers = smalloc(maxNumberOfTemporaries * SIZEOFINT);
 
   *(temporary_registers + 0) = REG_T0;
   *(temporary_registers + 1) = REG_T1;
@@ -847,8 +852,8 @@ void emitOpen();
 int  down_loadString(int* table, int vaddr, int* s);
 void implementOpen();
 
-void emitMalloc();
-void implementMalloc();
+void emitSbrk();
+void implementSbrk();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -856,13 +861,14 @@ int debug_read   = 0;
 int debug_write  = 0;
 int debug_open   = 0;
 
-int debug_malloc = 0;
+int debug_sbrk   = 0;
 
 // numbers according to pk kernel
 int SYSCALL_EXIT   = 93;
 int SYSCALL_READ   = 63;
 int SYSCALL_WRITE  = 64;
 int SYSCALL_OPEN   = 1024;
+int SYSCALL_SBRK   = 214;
 
 int SYSCALL_MALLOC = 10;
 
@@ -1067,7 +1073,7 @@ int timer = 0; // counter for timer interrupt
 
 int rocstar = 0; // flag for forcing to use rocstar rather than hypster
 
-int pk = 0; // flag for telling bootstrapCode not to emit SP initialization instructions
+int* sbrk_start = (int*)0; // return value for sbrk()
 
 int interpret = 0; // flag for executing or disassembling code
 
@@ -1088,7 +1094,7 @@ int* storesPerAddress = (int*) 0; // number of executed stores per store operati
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = malloc(8 * SIZEOFINTSTAR);
+  EXCEPTIONS = smalloc(8 * SIZEOFINTSTAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (int) "no exception";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (int) "unknown instruction";
@@ -1749,7 +1755,7 @@ int* zalloc(int size) {
 
   size = roundUp(size, WORDSIZE);
 
-  memory = malloc(size);
+  memory = smalloc(size);
 
   size = size / WORDSIZE;
 
@@ -1764,6 +1770,26 @@ int* zalloc(int size) {
 
   return memory;
 }
+
+
+
+int* smalloc(int size) {
+  int r;
+  int* tmp_brk;
+
+  if (sbrk_start == (int*)0) {
+    sbrk_start = sbrk(0);
+  }
+
+  r = roundUp(size, WORDSIZE);
+  tmp_brk = sbrk_start;
+  sbrk_start = sbrk_start + r/4;
+  sbrk(sbrk_start);
+
+  return tmp_brk;
+
+}
+
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -2001,7 +2027,7 @@ void getSymbol() {
       // while looking for whitespace and "//"
       if (isCharacterLetter()) {
         // accommodate identifier and null for termination
-        identifier = malloc(maxIdentifierLength + 1);
+        identifier = smalloc(maxIdentifierLength + 1);
 
         i = 0;
 
@@ -2025,7 +2051,7 @@ void getSymbol() {
 
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
-        integer = malloc(maxIntegerLength + 1);
+        integer = smalloc(maxIntegerLength + 1);
 
         i = 0;
 
@@ -2238,7 +2264,7 @@ void getSymbol() {
 void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address) {
   int* newEntry;
 
-  newEntry = malloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+  newEntry = smalloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -3074,7 +3100,7 @@ int gr_term() {
       // MIPS: emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
     } else if (operatorSymbol == SYM_MOD) {
-      emitRFormat(F3_REMU, currentTemporary(), previousTemporary(), F3_REMU, previousTemporary(), OP_OP);
+      emitRFormat(F7_REMU, currentTemporary(), previousTemporary(), F3_REMU, previousTemporary(), OP_OP);
       // MIPS: emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
       // MIPS: emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
     }
@@ -3199,11 +3225,11 @@ int gr_expression() {
 
       tfree(1);
 
-      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      emitSBFormat(3 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
       // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitSBFormat(1 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
       // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
@@ -3215,11 +3241,11 @@ int gr_expression() {
 
       tfree(1);
 
-      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
+      emitSBFormat(3 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
       // MIPS: emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitSBFormat(1 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
+      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BEQ, OP_BRANCH);
       // MIPS: emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 1);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
@@ -3244,7 +3270,7 @@ int gr_expression() {
 
       tfree(1);
 
-      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
+      emitSBFormat(3 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
       // MIPS: emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
@@ -3261,7 +3287,7 @@ int gr_expression() {
 
       tfree(1);
 
-      emitSBFormat(2 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
+      emitSBFormat(3 * WORDSIZE, REG_ZR, currentTemporary(), F3_BNE, OP_BRANCH);
       // MIPS: emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 2);
       emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
       // MIPS: emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
@@ -4029,6 +4055,19 @@ void emitMainEntry() {
     i = i + 1;
   }
 
+  if (pk_compile == 1) {
+    emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_A0, OP_IMM);
+    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+
+    // allocate 4 Bytes on stack for argv
+    emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+
+    // push REG_A0 onto stack
+    emitSFormat(0, REG_A0, REG_SP, F3_SW, OP_SW);
+    // MIPS: emitIFormat(OP_SW, REG_SP, REG_A0, 0);
+  }
+
   mainJump = binaryLength;
 
   createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, mainJump);
@@ -4047,19 +4086,18 @@ void emitMainEntry() {
 }
 
 void createELFHeader() {
-  int i;
   int startOfProgHeaders;
   int startOfSecHeaders;
   int stringBytes;
 
   startOfProgHeaders = 52;
   startOfSecHeaders  = 84;
-  stringBytes        = 22;
+  stringBytes        = 24;
 
   // store all numbers necessary to create a valid
   // ELF header incl. program header and section headers.
   // For more info about specific fields, consult ELF documentation.
-  ELF_header = malloc(ELF_HEADER_LEN);
+  ELF_header = smalloc(ELF_HEADER_LEN);
 
   // ELF magic number
   *(ELF_header + 0) = 1179403647; // part 1 of ELF magic number
@@ -4137,7 +4175,7 @@ void bootstrapCode() {
 
   // assert: 0 <= savedBinaryLength < 2^28 (see load_integer)
 
-  if (pk == 0) {
+  if (pk_compile == 0) {
     load_integer(savedBinaryLength);
   } else {
     load_integer(ELF_ENTRY_POINT + savedBinaryLength);
@@ -4149,7 +4187,7 @@ void bootstrapCode() {
 
   tfree(1);
 
-  if (pk == 0) {
+  if (pk_compile == 0) {
     // assert: allocatedTemporaries == 0
 
     // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^28 (see load_integer)
@@ -4193,7 +4231,7 @@ void selfie_compile() {
   binaryName = sourceName;
 
   // allocate memory for storing binary
-  binary       = malloc(maxBinaryLength);
+  binary       = smalloc(maxBinaryLength);
   binaryLength = 0;
 
   // reset code length
@@ -4214,8 +4252,7 @@ void selfie_compile() {
   emitRead();
   emitWrite();
   emitOpen();
-  emitMalloc();
-
+  emitSbrk();
   emitID();
   emitCreate();
   emitSwitch();
@@ -4715,6 +4752,7 @@ void emitUJFormat(int immediate, int rd, int opcode) {
 }
 
 void fixup(int fromAddress, int toAddress) {
+  // TODO difference in immediate?
   int instruction;
   int currentOp;
 
@@ -4724,7 +4762,7 @@ void fixup(int fromAddress, int toAddress) {
   if (currentOp == OP_BRANCH) {
     storeBinary(fromAddress,
     encodeSBFormat(
-        (toAddress - fromAddress),
+        (toAddress - fromAddress + WORDSIZE),
         getRS1(instruction),
         getRS2(instruction),
         getFunct3(instruction),
@@ -4908,7 +4946,7 @@ void selfie_load() {
   int numberOfReadBytes;
   int* elfBuffer;
 
-  elfBuffer = malloc(ELF_HEADER_LEN);
+  elfBuffer = smalloc(ELF_HEADER_LEN);
 
   binaryName = getArgument();
 
@@ -4926,7 +4964,7 @@ void selfie_load() {
   }
 
   // make sure binary is mapped
-  binary = touch(malloc(maxBinaryLength), maxBinaryLength);
+  binary = touch(smalloc(maxBinaryLength), maxBinaryLength);
 
   binaryLength = 0;
   codeLength   = 0;
@@ -4936,16 +4974,12 @@ void selfie_load() {
 
   // assert: binary_buffer is mapped
 
-  // read code length first
-  //numberOfReadBytes = read(fd, binary_buffer, WORDSIZE);
-
   // read ELF header first
   numberOfReadBytes = read(fd, elfBuffer, ELF_HEADER_LEN);
 
   // something wrong with ELF header length?
-  if (numberOfReadBytes != ELF_HEADER_LEN) {
+  if (numberOfReadBytes != ELF_HEADER_LEN)
     exit(-1);
-  }
 
   // then read code length (note: also saved in ELF header)
   numberOfReadBytes = read(fd, binary_buffer, WORDSIZE);
@@ -5401,20 +5435,16 @@ void implementOpen() {
   }
 }
 
-void emitMalloc() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
-
-  // on boot levels higher than zero, zalloc falls back to malloc
-  // assuming that page frames are zeroed on boot level zero
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "zalloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
+void emitSbrk() {
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "sbrk", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
   // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(SYSCALL_MALLOC, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
-  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_MALLOC);
+  emitIFormat(SYSCALL_SBRK, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_SBRK);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
   // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
@@ -5422,39 +5452,43 @@ void emitMalloc() {
   // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementMalloc() {
-  int size;
-  int bump;
+void implementSbrk() {
+  int new_brk;
 
-  if (debug_malloc) {
+  if (debug_sbrk) {
     print(binaryName);
-    print((int*) ": trying to malloc ");
-    printInteger(*(registers+REG_A0));
-    print((int*) " bytes");
+    print((int*) ": trying to set new brk at ");
+    printHexadecimal(*(registers+REG_A0), 0);
     println();
   }
 
-  size = roundUp(*(registers+REG_A0), WORDSIZE);
+  new_brk = *(registers + REG_A0);
 
-  bump = brk;
+  // only for sbrk initialization
+  if (new_brk == 0) {
+    *(registers+REG_A0) = brk;
+    return;
+  }
 
-  if (bump + size >= *(registers+REG_SP))
+  // TODO: check for negative sbrk value
+  if (new_brk >= *(registers+REG_SP))
     throwException(EXCEPTION_HEAPOVERFLOW, 0);
   else {
-    *(registers+REG_A0) = bump;
+    *(registers+REG_A0) = new_brk;
 
-    brk = bump + size;
-
-    if (debug_malloc) {
+    if (debug_sbrk) {
       print(binaryName);
-      print((int*) ": actually mallocating ");
-      printInteger(size);
+      print((int*) ": actually allocating ");
+      printInteger(new_brk - brk);
       print((int*) " bytes at virtual address ");
-      printHexadecimal(bump, 8);
+      printHexadecimal(new_brk, 8);
       println();
     }
+
+    brk = new_brk;
   }
 }
+
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -5955,8 +5989,8 @@ void op_ecall() {
       implementWrite();
     else if (*(registers+REG_A7) == SYSCALL_OPEN)
       implementOpen();
-    else if (*(registers+REG_A7) == SYSCALL_MALLOC)
-      implementMalloc();
+    else if (*(registers+REG_A7) == SYSCALL_SBRK)
+      implementSbrk();
     else if (*(registers+REG_A7) == SYSCALL_ID)
       implementID();
     else if (*(registers+REG_A7) == SYSCALL_CREATE)
@@ -6043,7 +6077,6 @@ void fct_beq() {
   }
 
   if (interpret) {
-    pc = pc + WORDSIZE;
 
     if (*(registers+rs1) == *(registers+rs2)) {
       pc = pc + signExtend(immediate, 13);
@@ -6054,6 +6087,8 @@ void fct_beq() {
 
         *(loopsPerAddress + pc / WORDSIZE) = *(loopsPerAddress + pc / WORDSIZE) + 1;
       }
+    } else {
+      pc = pc + WORDSIZE;
     }
   }
 
@@ -6090,10 +6125,11 @@ void fct_bne() {
   }
 
   if (interpret) {
-    pc = pc + WORDSIZE;
 
     if (*(registers+rs1) != *(registers+rs2)) {
       pc = pc + signExtend(immediate, 13);
+    } else {
+      pc = pc + WORDSIZE;
     }
   }
 
@@ -6834,7 +6870,7 @@ int* allocateContext(int ID, int parentID) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = malloc(4 * SIZEOFINTSTAR + 4 * SIZEOFINT);
+    context = smalloc(4 * SIZEOFINTSTAR + 4 * SIZEOFINT);
   else {
     context = freeContexts;
 
@@ -6874,14 +6910,7 @@ int* createContext(int ID, int parentID, int* in) {
   if (in != (int*) 0)
     setPrevContext(in, context);
 
-  // initialize SP here since this is no longer done
-  // in the binary (pk-kernel does not expects it there)
-
-  //*(getRegs(context)+REG_SP) = ;
-  // XXX not working like that...
-
   return context;
-
 }
 
 int* findContext(int ID, int* in) {
@@ -7430,13 +7459,12 @@ int selfie() {
 
     while (numberOfRemainingArguments() > 0) {
       option = getArgument();
-
       if (stringCompare(option, (int*) "-c"))
         selfie_compile();
       else if (stringCompare(option, (int*) "-C")) {
-        pk = 1;
+        pk_compile = 1;
         selfie_compile();
-        pk = 0;
+        pk_compile = 0;
       } else if (numberOfRemainingArguments() == 0)
         // remaining options have at least one argument
         return USAGE;
@@ -7448,8 +7476,12 @@ int selfie() {
         selfie_load();
       else if (stringCompare(option, (int*) "-m"))
         return selfie_run(ROCSTAR, ROCSTAR, 0);
+      else if (stringCompare(option, (int*) "-M"))
+        return selfie_run(ROCSTAR, ROCSTAR, 0);
       else if (stringCompare(option, (int*) "-d"))
         return selfie_run(ROCSTAR, ROCSTAR, 1);
+      else if (stringCompare(option, (int*) "-D"))
+        return selfie_run(ROCSTAR, ROCSTAR, 0);
       else if (stringCompare(option, (int*) "-y"))
         return selfie_run(HYPSTER, ROCSTAR, 0);
       else if (stringCompare(option, (int*) "-min"))
