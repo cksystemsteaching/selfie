@@ -193,9 +193,11 @@ Since the keywords in C\* all begin with a letter they should not be mistaken fo
 Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in memory. Numbers in selfie are *signed integers*, that is, whole numbers, positive or negative.
 
 [Integer](https://en.wikipedia.org/wiki/Integer "Integer")
-: A number that can be written without a fractional component (from the Latin integer meaning "whole").
+: A number that can be written without a fractional component (from the Latin integer meaning "whole"). For example, 21, 4, 0, and −2048 are integers, while 9.75 and 5.5 are not. The set of integers consists of zero (0), the natural numbers (1, 2, 3, ...), also called whole, counting, or positive numbers, and their additive inverses (the negative numbers, that is −1, −2, −3, ...).
 
-Beyond that there is no support of, say, fixed-point or even floating-point numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profile information that [computes the fixed-point ratio of two integers as percentage](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/selfie.c#L1549-L1578) with up to two fractional digits.
+T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers.
+
+Beyond signed integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers as percentage](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/selfie.c#L1549-L1578) with up to two fractional digits.
 
 Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number `85`.
 
@@ -206,7 +208,7 @@ Both representations look different but mean the same thing and are even based o
 [Radix](https://en.wikipedia.org/wiki/Radix "Radix")
 : The number of unique digits, including zero, used to represent numbers in a positional numeral system.
 
-Most importantly, no matter the base, as long as we use the same base for the operands of arithmetic operations any method for doing so works. For example, manually adding two binary numbers works just like adding two decimal numbers.
+Most importantly, no matter the base, as long as we use the same base for the operands of arithmetic operations any method for doing so works. For example, manually adding two binary numbers works just like adding two decimal numbers, more on that below.
 
 While `1010101` is a binary number with base 2, the decimal number `85` is obviously encoded with base 10 in the *hindu-arabic* numeral system.
 
@@ -219,11 +221,11 @@ Selfie does in fact implement exactly the above computation of a [recurrence rel
 
 The encoding is done in the procedure [`atoi`](http://github.com/cksystemsteaching/selfie/blob/3e2931dd960265d643086b6d82daee0d628301a2/selfie.c#L1408-L1457) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
 
-X> Note that the value represented by `85` can also be computed by `8`\*10^1+`5`\*10^0 using powers of base 10, or equivalently, `1`\*2^6+`0`\*2^5+`1`\*2^4+`0`\*2^3+`1`\*2^2+`0`\*2^1+`1`\*2^0 as represented by `1010101` using powers of base 2. However, since the digits are read from left to right, computing the recurrence relation is easier.
+X> Note that the value represented by `85` can also be computed by `8`\*10^1^+`5`\*10^0^ using powers of base 10, or equivalently, `1`\*2^6^+`0`\*2^5^+`1`\*2^4^+`0`\*2^3^+`1`\*2^2^+`0`\*2^1^+`1`\*2^0^ as represented by `1010101` using powers of base 2. However, since the digits are read from left to right, computing the recurrence relation is easier.
 
 Selfie also implements the procedure symmetric to `atoi` called [`itoa`](http://github.com/cksystemsteaching/selfie/blob/c7ec82ae917cb1807af3a0f60799bfb8dce755ed/selfie.c#L1458-L1603) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
 
-X> Suppose we would like to convert the value of `85` to a string `"85"` that shows the value in decimal. This works by dividing `85` by the base 10, resulting in the quotient `8`, and saving the remainder, which is `5`, as a string `"5"`. We then divide quotient `8` by 10 which is quotient `0` and append the remainder, which is `8`, to the string `"5"` resulting in the string `"58"`. Quotient `0` terminates the conversion. The resulting string `"58"` in reverse is the desired string `"85"`.
+X> Suppose we would like to convert the value of `85` to a string `"85"` that shows the value in decimal. This works by dividing `85` by the base 10 resulting in the quotient `8` and the remainder `5`, which we save as a string `"5"`. We then divide quotient `8` by 10 which is quotient `0` and append the remainder, which is `8`, to the string `"5"` resulting in the string `"58"`. Quotient `0` terminates the conversion. The resulting string `"58"` in reverse is the desired string `"85"`.
 
 The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](http://github.com/cksystemsteaching/selfie/blob/c7ec82ae917cb1807af3a0f60799bfb8dce755ed/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
 
@@ -252,7 +254,152 @@ T> For hexadecimal notation six digits more than the ten digits of decimal notat
 
 Hexadecimal and octal notation are popular in computer science because their digits represent blocks of four and three bits, respectively. In other words, their bases are powers of four and three, respectively, of the base 2 of binary notation. Hexadecimal and octal notation are therefore convenient and compact notation for binary numbers. The base 10 of decimal notation is not a power of the base 2. Digits in decimal notation therefore do not evenly correspond to blocks of bits.
 
-X> Both `0x55` and `00125` represent the value `1010101` in binary, that is, two blocks of four bits `0101 0101` and three blocks of three bits `001 010 101`, respectively.
+X> Both `0x55` and `00125` represent the value `1010101` in binary, that is, two blocks of four bits `0101 0101` and three blocks of three bits `001 010 101`, respectively. A block of four bits such as `0101` is called a [nibble](https://en.wikipedia.org/wiki/Nibble) which corresponds to exactly one hexadecimal digit such as here `0x5`.
+
+The actual encoding of numbers in the memory of a digital computer, however, is not in hexadecimal or octal but usually in binary. Before continuing to negative numbers let us point out that there is a way to represent numbers that is even more basic than binary. It is called *unary* and works by simply using an alphabet with a single digit for counting the value of a number.
+
+[Unary Numeral System](https://en.wikipedia.org/wiki/Unary_numeral_system)
+: The bijective base-1 numeral system. It is the simplest numeral system to represent natural numbers: in order to represent a number N, an arbitrarily chosen symbol representing the value 1 is repeated N times.
+
+Q> The decimal number `85`, for example, is in unary `1111111111111111111111111111111111111111111111111111111111111111111111111111111111111`.
+
+Well, have you noticed the enormous difference in length between unary and other representations with higher bases?
+
+Q> For example, `85` in unary obviously requires more than forty times more digits than the two digits of `85` and still more than ten times more digits than the eight bits of `01010101`.
+Q>
+Q> In fact, the situation is worse since, for example, seven bits are actually enough to represent `85`. Even worse, seven bits can represent up to 128 different values, that is, in the representation chosen here, all decimal numbers between 0 and 127 inclusive. Thus unary requires up to eighteen times more digits than a 7-bit binary number. One more bit almost doubles the difference. Then, unary needs up to 32 times more digits than an 8-bit binary number.
+
+The fundamental reason for the difference in size between different notations is that any representation with a base greater than one is *exponentially* more succinct than unary. However, representations with base greater than one are only different in size by a *constant factor*. For example, octal and hexadecimal representations are only three and four times, respectively, more succinct than binary. A larger alphabet makes even less of a difference, that is, *logarithmically* less in the size of the alphabet. ASCII, for example, is only seven times more succinct than binary although there are 128 ASCII characters.
+
+| Encoding | Alphabet | Base (Radix, Size of Alphabet) | # Digits in Values {$$}n>1{/$$} | # Values in Digits {$$}n>0{/$$} |
+| - | - | -: | -: | -: |
+| [Unary](https://en.wikipedia.org/wiki/Unary_numeral_system "Unary") | {1} | 1 | {$$}n{/$$} | {$$}n{/$$} |
+| [Binary](https://en.wikipedia.org/wiki/Binary_number "Binary") | {0,1} | 2 | {$$}\lceil\frac{log(n)}{log(2)}\rceil{/$$} | {$$}2^n{/$$} |
+| [Octal](https://en.wikipedia.org/wiki/Octal "Octal") | {0,1,2,3,4,5,6,7} | 8 | {$$}\lceil\frac{log(n)}{log(8)}\rceil{/$$} | {$$}8^n{/$$} |
+| [Decimal](https://en.wikipedia.org/wiki/Decimal "Decimal") | {0,1,2,3,4,5,6,7,8,9} | 10 | {$$}\lceil\frac{log(n)}{log(10)}\rceil{/$$} | {$$}10^n{/$$} |
+| [Hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal "Hexadecimal") | {0,1,2,3,4,5,6,7,8,9, | 16 | {$$}\lceil\frac{log(n)}{log(16)}\rceil{/$$} | {$$}16^n{/$$} |
+| | A,B,C,D,E,F} | | | |
+
+### Elementary Arithmetics
+
+Fortunately, elementary arithmetics works for binary numbers just like it does for decimal numbers or any other representation with base greater than one. For example, adding two numbers in any such representation works as usual by adding their digits from right to left while carrying any *overflow* to the left. Only unary is different! Elementary arithmetics with unary numbers is done by, imagine, *string concatenation*.
+
+X> Let us add the values 85 and, say, 170.
+X>
+X> Remember from school? Starting from the right we find that 5+0=5. Thus the rightmost digit of the result is 5. Then, with 8+7=15 the second rightmost digit is 5. Since 15>9 there is an overflow that needs to be considered next. With 1+1=2 we obtain the leftmost digit and the final result of 255.
+X>
+X> Let us now add both numbers in binary, that is, 01010101 for 85 and 10101010, which is binary for 170. It works in just the same way.
+X>
+X> Since 1+0=1 there is no overflow here. Thus the result of 11111111, which is binary for 255, can easily be obtained by just adding the individual digits. In general though, one adds two binary numbers just like decimal numbers, digit by digit from right to left, while carrying any overflow to the left.
+X>
+X> Adding both numbers in hexadecimal, that is, 0x55 and 0xAA, works similarly, in this case also without overflow. With 5+A=F the result is 0xFF, which is hexadecimal for 255.
+
+In binary numbers the leftmost and rightmost bits have a meaning similar to the leftmost and rightmost digits in decimal numbers. The rightmost bit, also called *least significant bit*, determines if the number is even or odd. For example, `01010101` represents an odd number whereas `10101010` an even number. The leftmost bit, also called *most significant bit*, represents the greatest value. Thus `10101010` stands for a number larger than what `01010101` stands for.
+
+[Least Significant Bit (LSB)](https://en.wikipedia.org/wiki/Least_significant_bit "Least Significant Bit (LSB)")
+: The bit in a binary number that appears rightmost and determines if the number is even (0) or odd (1).
+
+[Most Significant Bit (MSB)](https://en.wikipedia.org/wiki/Most_significant_bit "Most Significant Bit (MSB)")
+: The bit in a binary number that appears leftmost and has the greatest value.
+
+Now, what happens if we try to add two numbers where the result exceeds the number of digits necessary to represent them individually? For example, what if we compute 255+1=256 in binary? In this case, that is, 11111111+00000001, the result is 100000000, a binary number with 9 bits rather than the 8 bits representing 255. This is not a problem if we have more than 8 bits. However, with computers everything is finite, in particular memory. Moreover, arithmetic operations are on most machines implemented for bit strings with a fixed size such as 8 bits. On such machines adding 11111111 and 00000001 results in what is called *arithmetic overflow*.
+
+[Arithmetic Overflow](https://en.wikipedia.org/wiki/Arithmetic_overflow "Arithmetic Overflow")
+: Occurs when an arithmetic operation attempts to create a numeric value that is too large to be represented within the available storage space.
+
+How can we deal with arithmetic overflow? There are two approaches that can be combined: detection and semantics. If the occurrence of an arithmetic overflow can be detected one can discard the computation and do something else. For this purpose most processors feature a so-called *carry bit* or *carry flag* which is set if an arithmetic operation causes an overflow indicated by a *carry out of the most significant bits*. In our example, the 9-th bit in 100000000 is that carry bit.
+
+In terms of semantics, if the result of an arithmetic overflow has a defined value, one may be able to use that value in a meaningful way. For example, a common semantics for n-bit arithmetics is to compute everything modulo 2^n^, also referred to as *wrap-around semantics* or just *wrap around*. For example, 255+1=256 modulo 2^8^=256 modulo 256=0, which is exactly what 100000000 in an 8-bit system stands for. There are applications that are correct even when such wrap-arounds occur.
+
+[Modulo](https://en.wikipedia.org/wiki/Modulo_operation "Modulo")
+: The remainder after division of one number by another, also called modulus.
+
+Arithmetic overflow nevertheless is the cause of numerous software bugs and even costly accidents. Restricting the space available for representing something that can be arbitrarily large such as numbers has serious consequences. Computer arithmetics are always an approximation of real arithmetics. For correctness, computer applications need to be properly adapted to work for computer arithmetics, not real arithmetics.
+
+### Negative Numbers
+
+Now, what about subtraction and negative numbers? Ideally, we would like to represent not just *positive* but also *negative* numbers just using bits with elementary arithmetics on them still intact. Obviously, one bit, or more generally one digit, is enough to encode the *sign* of a number, that is, distinguish positive from negative numbers. Fortunately, however, there is an overall encoding scheme that works without changing elementary arithmetics such as addition. In fact, subtraction will work by using addition, as previously discussed, with negative numbers.
+
+So, how can we represent -85 and compute something like, say, 127-85? Again, fortunately, there is a representation of negative numbers that works for any representation with base greater than one and makes addition work like subtraction. We simply take the so-called *radix complement* to encode a negative number which only requires us to fix the number of digits that we intend to support. Subtracting a number then works by adding its complement and ignoring the overflow beyond the supported number of digits.
+
+X> Let us compute 127-85 in the decimal system.
+X>
+X> The radix (ten's) complement of 85 for, say, 3-digit numbers is 10^3^-85=1000-85=915.
+X>
+X> Then, we exploit that 127-85 can be written as (127+(10^3^-85))-10^3^ which simplifies to (127+915)-1000=1042-1000=42 (what a coincidence). Subtracting 1000 is easily done by just ignoring the overflow of 127+915 into the fourth digit.
+X>
+X> So, supporting, say, 4-digit numbers works in just the same way, that is, by ignoring the fifth rather than the fourth digit: 127-85=(127+(10^4^-85))-10^4^=(127+(10000-85))-10000=(127+9915)-10000=10042-10000=42.
+
+You may still ask how computing 1000-85 is any easier than computing 127-85 directly. Well, it is not but the radix complement of a number happens to be equal to the so-called *diminished radix complement* of that number plus one, which is in fact easier to compute than the radix complement.
+
+X> The diminished radix (nines') complement of 85 for, say, again 3-digit numbers is (10^3^-1)-85=(1000-1)-85=999-85=914.
+X>
+X> The term 999-85 can easily be computed by complementing each digit of 85, again for 3-digit numbers, with respect to the diminished base 10-1=9, that is, by subtracting each digit of 85 from 9.
+X>
+X> So, 914 is obtained by computing: 9-0=9 (since the leftmost digit of 85 in a 3-digit system is 0), 9-8=1, and 9-5=4.
+X>
+X> Finally, we have that 127-85=(127+(((1000-1)-85)+1))-1000=(127+((999-85)+1))-1000=(127+(914+1))-1000=(127+915)-1000=1042-1000=42.
+
+T> By the way, the position of the apostrophe in nines' complement is not by chance. It indicates that we mean the *diminished* radix complement with radix ten. The term nine's complement refers to the (undiminished) radix complement with radix nine. Hence the term ten's complement refers to the radix complement with radix ten.
+
+Back to our example. What happens if we actually try to compute 85-127 instead? Let us go through that computation as well.
+
+X> Assuming again a 3-digit system we have that: 85-127=(85+(((1000-1)-127)+1))-1000=(85+((999-127)+1))-1000=(85+(872+1))-1000=(85+873)-1000=958-1000=-42.
+X>
+X> Seems to work fine. However, in this case there is no overflow since 85+873=958<1000. The trick to solve this problem is simple. We just do not subtract 1000. That's it. In fact, 958 is the ten's complement of 42 in a 3-digit system and thus the correct representation of -42.
+
+Using the ten's complement for representing negative numbers really means that the leftmost digit represents the sign. In the decimal system, an even leftmost digit indicates that we are dealing with a positive number. Conversely, an odd leftmost digit such as the 9 in 958 means that the number is actually meant to be negative. This implies that with n digits and the ten's complement for negative numbers we can represent signed integers i with -10^n^/2-1 < i < 10^n^/2. For example, in a 3-digit system we can represent signed integers i with -501 < i < 500. In other words, we can still represent 1000 numbers with 3 digits but offset by 500 into the negative numbers.
+
+Now, how does a computer represent negative numbers? The short answer: the exact same way as in the decimal system, just in binary. In other words, a negative number may be represented in binary by its two's complement (remember binary has base 2). Just like before, the two's complement of a number is computed by taking the ones' complement of that number and adding one to it. This time, however, computing the diminished radix complement, that is, the ones' complement is particularly easy. It is done by simply inverting the bits.
+
+X> Let us assume that we are still dealing with bytes, that is, 8 bits for each number. We are interested in computing 127-85 where both numbers are represented in binary.
+X>
+X> The ones' complement of 01010101, which is again binary for 85, is 10101010.
+X>
+X> The two's complement of 01010101 is therefore 10101010+1=10101011 and thus stands for -85.
+X>
+X> Computing 127-85 in binary is done by just adding 01111111, which is again binary for 127, and 10101011, and finally subtracting 100000000 which is actually done by simply ignoring the carry bit. The result is thus 01111111+10101011=100101010-100000000=00101010, which is binary for 42.
+X>
+X> Conversely, computing 85-127 in binary works as follows.
+X>
+X> The ones' complement of 01111111 is 10000000.
+X>
+X> The two's complement of 01111111 is therefore 10000000+1=10000001.
+X>
+X> To compute 85-127 we compute 01010101+10000001=11010110, which is binary for the two's complement of 42. This time we do not subtract 100000000, again by ignoring the carry bit which is not set anyway.
+
+Using two's complement for representing negative numbers a byte can in total represent signed integers i from -128 to 127, that is, with -2^8^/2-1 = -2^7^-1 = -129 < i < 128 = 2^7^ = 2^8^/2. Our running example fits these constraints. Moreover, the most significant bit has taken over a different role than before. It indicates if a number is positive or negative. For example, 01111111 represents a positive number whereas 10000000 stands for a negative number.
+
+[Ones' Complement](https://en.wikipedia.org/wiki/Ones%27_complement "One's Complement")
+: All bits of the number inverted, that is, 0s swapped for 1s and vice versa.
+
+[Two's Complement](https://en.wikipedia.org/wiki/Two%27s_complement "Two's Complement")
+: Given an n-bit number i with -2^n^/2-1 = -2^n-1^-1 < i < 2^n-1^ = 2^n^/2, the complement of i with respect to 2^n^, that is, 2^n^-i which is equal to the ones' complement of i plus one.
+
+[Most Significant Bit (MSB)](https://en.wikipedia.org/wiki/Most_significant_bit "Most Significant Bit (MSB)")
+: The bit in a binary number that appears leftmost and has the greatest value or, if the number represents a signed integer in two's complement, determines if the integer is positive (0) or negative (1).
+
+T> In sum, subtraction of signed integers that are represented in binary code using two's complement for negative numbers works as follows:
+T>
+T> Given two signed integers x and y, x-y=x+y'+1 where y' is the ones' complement of y, ignoring the carry bit of the sum x+y'+1.
+T>
+T> Step by step, we compute:
+T>
+T> 1. the ones' complement y' of y by inverting all bits of y.
+T> 2. the two's complement of y by computing y'+1.
+T> 3. the sum x+y'+1 by adding x to y'+1 ignoring the carry bit of the sum.
+
+Finally, what happened to the problem of arithmetic overflow? It is still there. Only the carry bit is now insufficient to detect it. When can an overflow actually occur? Simple. Only when adding two numbers with the same sign! The result of an overflow is a number with the opposite sign. Thus we need to distinguish two cases: adding two positive numbers resulting in a negative number and adding two negative numbers resulting in a positive number. Both cases follow wrap-around semantics similar to unsigned integers.
+
+X> With 8 bits and two's complement the result of 01111111+00000001 which represents 127+1 is 10000000 which stands for -128.
+X>
+X> Similarly, the result of 10000000-00000001 which represents -128-1 is 10000000+11111111=01111111 which stands for 127.
+
+In the first case, the MSBs of the two numbers are zero, since both represent positive numbers, and the MSB of the result is one. The second case is the exact opposite. How can we detect this? Easy. There is an overflow either if there is a carry *into* the MSB of the result but not *out* into the carry bit (wrapping two positive numbers into a negative number), or else if there is no carry *into* the MSB but *out* into the carry bit (wrapping two negative numbers into a positive number). Most processors feature an *overflow bit* or *overflow flag* that is set accordingly, that is, by a so-called *exclusive or* between the carry into and out of the MSB. An exclusive or of two bits is true if and only if the bits are different. Note, however, that just like the carry bit has no meaning when adding signed integers, the overflow bit has no meaning when adding unsigned integers.
+
+T> There are many other ways to do elementary arithmetics on computers including the handling of overflows! What you have seen here is just the arguably most prevalent choice.
+T>
+T> Most important for you is to be aware of the issue and know what your choice of system actually does when it comes to numbers.
 
 ## Integer Literals
 
