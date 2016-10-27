@@ -16,34 +16,34 @@ int main() {
   initLibrary();
 
   // print the integer literal 85 in decimal
-  print("85 decimal:     ");
+  print("85 in decimal:     ");
   printInteger(85);
   println();
 
   // print the ASCII code of 'U' (which is 85)
   printCharacter('U');
-  print(" ASCII code: ");
+  print(" in ASCII:      ");
   printInteger('U');
   println();
 
   // print the string literal "85"
   printString("85");
-  print(" string:    ");
+  print(" string:       ");
   print("85");
   println();
 
   // print the integer literal 85 in hexadecimal
-  print("85 hexadecimal: ");
+  print("85 in hexadecimal: ");
   printHexadecimal(85, 0);
   println();
 
   // print the integer literal 85 in octal
-  print("85 octal:       ");
+  print("85 in octal:       ");
   printOctal(85, 0);
   println();
 
   // print the integer literal 85 in binary
-  print("85 binary:      ");
+  print("85 in binary:      ");
   printBinary(85, 0);
   println();
 }

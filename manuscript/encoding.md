@@ -122,7 +122,7 @@ Files hello-world.m and hello-world-minified.m are identical
 
 ## Strings
 
-In computer science sequences of characters such as `Hello World!` or in fact sequences of any kind of symbols are called *strings*.
+In computer science sequences of characters such as `Hello World!` are called *strings*.
 
 [String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
 : A finite sequence of characters taken from some finite alphabet.
@@ -173,7 +173,7 @@ The code in `selfie.c` that [recognizes a character literal](http://github.com/c
 Let us now go back to the notion of identifiers and our example of the identifier `foo` in the "Hello World!" program. An identifier like `foo` is just a name of something.
 
 [Identifier](https://en.wikipedia.org/wiki/Identifier "Identifier")
-: Token (also called symbol) which names a language entity. Some of the kinds of entities an identifier might denote include variables, types, labels, subroutines, and packages.
+: A name that identifies (that is, labels the identity of) either a unique entity or a unique class of entities. Some of the kinds of entities an identifier might denote include variables, types, and subroutines.
 
 Identifiers in C\* can indeed denote different kinds of entities. But, for now, we only need to know that, unlike string literals, identifiers in C\* always begin with a letter. After that there may appear letters, digits, and underscores `_` in any order but no other characters. Why is that? Because this is how the machine knows when an identifier begins and ends. Remember, identifiers are not enclosed by any special characters like double quotes, for example.
 
@@ -190,7 +190,7 @@ Since the keywords in C\* all begin with a letter they should not be mistaken fo
 
 ## Integers
 
-Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in memory. Numbers in selfie are *signed integers*, that is, whole numbers, positive or negative.
+Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in digital memory. Numbers in selfie are *signed integers*, that is, whole numbers, positive or negative.
 
 [Integer](https://en.wikipedia.org/wiki/Integer "Integer")
 : A number that can be written without a fractional component (from the Latin integer meaning "whole"). For example, 21, 4, 0, and −2048 are integers, while 9.75 and 5.5 are not. The set of integers consists of zero (0), the natural numbers (1, 2, 3, ...), also called whole, counting, or positive numbers, and their additive inverses (the negative numbers, that is −1, −2, −3, ...).
@@ -208,7 +208,7 @@ Both representations look different but mean the same thing and are even based o
 [Radix](https://en.wikipedia.org/wiki/Radix "Radix")
 : The number of unique digits, including zero, used to represent numbers in a positional numeral system.
 
-Most importantly, no matter the base, as long as we use the same base for the operands of arithmetic operations any method for doing so works. For example, manually adding two binary numbers works just like adding two decimal numbers, more on that below.
+Most importantly, arithmetic operations such as addition and subtraction work the same way for any base greater than one as long as we use the same base for the operands of the operation. For example, manually adding two binary numbers works just like adding two decimal numbers, more on that below.
 
 While `1010101` is a binary number with base 2, the decimal number `85` is obviously encoded with base 10 in the *hindu-arabic* numeral system.
 
@@ -235,18 +235,18 @@ The implementation of `itoa` in selfie not only supports decimal but also binary
 ./selfie: this is selfie's starc compiling manuscript/code/integer.c
 ...
 ./selfie: this is selfie's mipster executing manuscript/code/integer.c with 1MB of physical memory
-85 decimal:     85
-'U' ASCII code: 85
-"85" string:    85
-85 hexadecimal: 0x55
-85 octal:       00125
-85 binary:      1010101
+85 in decimal:     85
+'U' in ASCII:      85
+"85" string:       85
+85 in hexadecimal: 0x55
+85 in octal:       00125
+85 in binary:      1010101
 manuscript/code/integer.c: exiting with exit code 0 and 0.00MB of mallocated memory
 ./selfie: this is selfie's mipster terminating manuscript/code/integer.c with exit code 0 and 0.12MB of mapped memory
 ...
 ```
 
-T> Numbers in hexadecimal, such as `0x55` for example, are printed with a leading `0x` to emphasize that they use base 16. Similarly, a leading `00` indicates that the following number uses base 8, as in `00125` for example.
+T> Numbers in hexadecimal, such as `0x55` for example, are printed with a leading `0x` to emphasize that they use base 16. Similarly, a leading `00` indicates that the following number uses base 8 as in `00125`, for example.
 
 You may check for yourself that `0x55` and `00125` do in fact represent the value `85` by computing `5`\*16+`5` and (`1`\*8+`2`)\*8+`5`.
 
@@ -280,9 +280,9 @@ The fundamental reason for the difference in size between different notations is
 | [Hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal "Hexadecimal") | {0,1,2,3,4,5,6,7,8,9, | 16 | {$$}\lceil\frac{log(n)}{log(16)}\rceil{/$$} | {$$}16^n{/$$} |
 | | A,B,C,D,E,F} | | | |
 
-### Elementary Arithmetics
+### Integer Arithmetics
 
-Fortunately, elementary arithmetics works for binary numbers just like it does for decimal numbers or any other representation with base greater than one. For example, adding two numbers in any such representation works as usual by adding their digits from right to left while carrying any *overflow* to the left. Only unary is different! Elementary arithmetics with unary numbers is done by, imagine, *string concatenation*.
+Fortunately, elementary arithmetics with binary numbers works just like it does with decimal numbers or any other representation with base greater than one. For example, adding two numbers in any such representation works as usual by adding their digits from right to left while carrying any *overflow* to the left. Only unary is different! Elementary arithmetics with unary numbers is obviously done by, imagine, *string concatenation*.
 
 X> Let us add the values 85 and, say, 170.
 X>
@@ -314,11 +314,11 @@ In terms of semantics, if the result of an arithmetic overflow has a defined val
 [Modulo](https://en.wikipedia.org/wiki/Modulo_operation "Modulo")
 : The remainder after division of one number by another, also called modulus.
 
-Arithmetic overflow nevertheless is the cause of numerous software bugs and even costly accidents. Restricting the space available for representing something that can be arbitrarily large such as numbers has serious consequences. Computer arithmetics are always an approximation of real arithmetics. For correctness, computer applications need to be properly adapted to work for computer arithmetics, not real arithmetics.
+Arithmetic overflow nevertheless is the cause of numerous software bugs and even costly accidents. Restricting the space available for representing something that can be arbitrarily large such as numbers has serious consequences. Integer arithmetics are always an approximation of real arithmetics. For correctness, computer applications need to be properly adapted to work for integer arithmetics, not real arithmetics.
 
-### Negative Numbers
+### Signed Integers
 
-Now, what about subtraction and negative numbers? Ideally, we would like to represent not just *positive* but also *negative* numbers just using bits with elementary arithmetics on them still intact. Obviously, one bit, or more generally one digit, is enough to encode the *sign* of a number, that is, distinguish positive from negative numbers. Fortunately, however, there is an overall encoding scheme that works without changing elementary arithmetics such as addition. In fact, subtraction will work by using addition, as previously discussed, with negative numbers.
+Now, what about subtraction and negative numbers? Ideally, we would like to represent not just *positive* but also *negative* numbers just using bits with integer arithmetics on them still intact. Obviously, one bit, or more generally one digit, is enough to encode the *sign* of a number, that is, distinguish positive from negative numbers. Fortunately, however, there is an overall encoding scheme that works without changing integer arithmetics such as addition. In fact, subtraction will work by using addition, as previously discussed, with negative numbers.
 
 So, how can we represent -85 and compute something like, say, 127-85? Again, fortunately, there is a representation of negative numbers that works for any representation with base greater than one and makes addition work like subtraction. We simply take the so-called *radix complement* to encode a negative number which only requires us to fix the number of digits that we intend to support. Subtracting a number then works by adding its complement and ignoring the overflow beyond the supported number of digits.
 
@@ -397,7 +397,7 @@ X> Similarly, the result of 10000000-00000001 which represents -128-1 is 1000000
 
 In the first case, the MSBs of the two numbers are zero, since both represent positive numbers, and the MSB of the result is one. The second case is the exact opposite. How can we detect this? Easy. There is an overflow either if there is a carry *into* the MSB of the result but not *out* into the carry bit (wrapping two positive numbers into a negative number), or else if there is no carry *into* the MSB but *out* into the carry bit (wrapping two negative numbers into a positive number). Most processors feature an *overflow bit* or *overflow flag* that is set accordingly, that is, by a so-called *exclusive or* between the carry into and out of the MSB. An exclusive or of two bits is true if and only if the bits are different. Note, however, that just like the carry bit has no meaning when adding signed integers, the overflow bit has no meaning when adding unsigned integers.
 
-T> There are many other ways to do elementary arithmetics on computers including the handling of overflows! What you have seen here is just the arguably most prevalent choice.
+T> There are many other ways to do integer arithmetics on computers including the handling of overflows! What you have seen here is just the arguably most prevalent choice.
 T>
 T> Most important for you is to be aware of the issue and know what your choice of system actually does when it comes to numbers.
 
@@ -412,10 +412,30 @@ The code in selfie that [reads integer literals](http://github.com/cksystemsteac
 
 T> Recall that identifiers may also contain digits but must start with a letter. This requirement makes it easy for the compiler to distinguish integer literals from identifiers upon reading the first character. This is in fact the reason why identifiers are usually required to start with a letter.
 
-This chapter is not finished here. There will be more on encoding of negative integers, symbols of C\*, and machine words and instructions.
-
-## Symbols
+What about negative numbers then? Can we write integer literals in C\* that represent negative values? The answer is yes, very conveniently in fact, for example, by writing `-85` which obviously represents the value -85. However, this notation is only an abbreviation for `0 - 85` which obviously represents the same value. When reading integer literals such as `-85` the starc compiler does in fact generate code that [subtracts](http://github.com/cksystemsteaching/selfie/blob/f0f9f756d9602efaed192026979cbf12d657f77f/selfie.c#L3057) the positive value 85 from 0 to obtain the negative value -85.
 
 ## Words
 
+So, before continuing let us point out that character, string, and integer literals are the only way to describe data in C\* programs. All other language elements of C\* including keywords and identifiers are there to describe code and manage memory! We already know that characters are encoded in bytes and strings are stored contiguously in byte-addressed memory. What about integers then? To answer that question we need to take a closer look at how a computer handles data.
+
+First of all, in addition to memory, most computers contain at least one *processor* or *central processing unit* (CPU) connected to memory and other hardware. While memory stores information the CPU performs actual computation with that information.
+
+[Central Processing Unit (CPU)](https://en.wikipedia.org/wiki/Central_processing_unit "Central Processing Unit (CPU)")
+: The electronic circuitry within a computer that carries out the instructions of a computer program by performing the basic arithmetic, logical, control and input/output (I/O) operations specified by the instructions.
+
+Instead of operating directly on memory, most CPUs load data from memory into *registers*, then perform some computation with that data, and finally store the result back in memory. The reason is performance. The registers of a CPU are by far the fastest storage available in a computer.
+
+[Register](https://en.wikipedia.org/wiki/Processor_register "Register")
+: A quickly accessible location available to a digital processor's central processing unit (CPU). Registers usually consist of a small amount of fast storage, although some registers have specific hardware functions. Registers are typically addressed by mechanisms other than main memory.
+
+
+
+[Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
+: The natural unit of data used by a particular processor design. A word is a fixed-sized piece of data handled as a unit by the instruction set or the hardware of the processor. The number of bits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
+
 ## Instructions
+
+[Instruction Set Architecture (ISA)](https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)")
+: The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and external I/O. An ISA includes a specification of the set of opcodes (machine language), and the native commands implemented by a particular processor. An instruction set is the interface between a computer's software and its hardware, and thereby enables the independent development of these two computing realms.
+
+## Summary
