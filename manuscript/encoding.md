@@ -464,9 +464,27 @@ manuscript/code/negative.c: exiting with exit code 0 and 0.00MB of mallocated me
 ...
 ```
 
-The second reason for using 32-bit words is that memory addresses in mipster and ultimately in C\* are then 32 bits as well. This means in particular that the content of a register can also be seen as a memory address and not just an integer value.
+The second reason for using 32-bit words is that memory addresses in mipster and ultimately in C\* are then 32 bits as well. This means in particular that the content of a register can also be seen as a memory address and not just an integer value. However, there is one important detail. On a mipster machine, memory is not only byte-addressed but also *word-aligned* for access. This means that words can only be accessed in memory at addresses that are multiples of four, the word size in bytes.
+
+T> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 4, 8, 12, and so on. The word at address 0, for example, then contains the four bytes at addresses 0, 1, 2, and 3.
+
+An interesting question is which bits in a word are used to represent which bytes in memory. The two standard choices are determined by the *endianness* of a processor.
+
+[Endianness](https://en.wikipedia.org/wiki/Endianness "Endianness")
+: The order of the bytes that compose a digital word in computer memory. Words may be represented in big-endian or little-endian format. When storing a word in big-endian format the most significant byte, which is the byte containing the most significant bit, is stored first and the following bytes are stored in decreasing significance order with the least significant byte, which is the byte containing the least significant bit, thus being stored at last place. Little-endian format reverses the order of the sequence and stores the least significant byte at the first location with the most significant byte being stored last.
+
+Interestingly, the endianness of a mipster machine is irrelevant since there is no way to access data in sizes other than word size directly in memory at addresses that are not multiples of the word size. In general, however, this is not true. Most processors allow accessing memory such that endianness does make a difference. We have deliberately ruled that out in selfie to make things simpler. Another simplification in selfie is the absence of any native support of *bitwise operations*.
+
+[Bitwise Operation](https://en.wikipedia.org/wiki/Bitwise_operation "Bitwise Operation")
+: Operates on one or more bit patterns or binary numerals at the level of their individual bits. It is a fast, simple action directly supported by the processor, and is used to manipulate values for comparisons and calculations.
+
+Why would we want support of that anyway? Well, how do we read and modify individual bits in registers and eventually memory if everything happens at word granularity? This is where bitwise operations come in. There are typically bitwise logical operations such as bitwise *NOT*, *AND*, and *OR* operations as well as bitwise shift operations such as *left shift* and *logical right shift* operations.
+
+Bitwise operations have in common that they treat integers and words purely as sequences of bits. For example, a left shift operation shifts the bits in an integer or word to the left by a given amount of bits while shifting in zeros into the LSB. The logical right shift operation does the exact opposite.
 
 
+
+Before moving on let us quickly revisit how characters and strings are stored in memory.
 
 ## Instructions
 
