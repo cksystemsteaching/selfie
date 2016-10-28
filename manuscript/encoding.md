@@ -368,7 +368,7 @@ X> The two's complement of 01111111 is therefore 10000000+1=10000001.
 X>
 X> To compute 85-127 we compute 01010101+10000001=11010110, which is binary for the two's complement of 42. This time we do not subtract 100000000, again by ignoring the carry bit which is not set anyway.
 
-Using two's complement for representing negative numbers a byte can in total represent signed integers i from -128 to 127, that is, with -2^8^/2-1 = -2^7^-1 = -129 < i < 128 = 2^7^ = 2^8^/2. Our running example fits these constraints. Moreover, the most significant bit has taken over a different role than before. It indicates if a number is positive or negative. For example, 01111111 represents a positive number whereas 10000000 stands for a negative number.
+Using two's complement for representing negative numbers a byte can in total represent signed integer values i from -128 to 127, that is, with -2^8^/2-1 = -2^7^-1 = -129 < i < 128 = 2^7^ = 2^8^/2. Our running example fits these constraints. Moreover, the most significant bit has taken over a different role than before. It indicates if a number is positive or negative. For example, 01111111 represents a positive number whereas 10000000 stands for a negative number.
 
 [Ones' Complement](https://en.wikipedia.org/wiki/Ones%27_complement "One's Complement")
 : All bits of the number inverted, that is, 0s swapped for 1s and vice versa.
@@ -428,10 +428,45 @@ Instead of operating directly on memory, most CPUs load data from memory into *r
 [Register](https://en.wikipedia.org/wiki/Processor_register "Register")
 : A quickly accessible location available to a digital processor's central processing unit (CPU). Registers usually consist of a small amount of fast storage, although some registers have specific hardware functions. Registers are typically addressed by mechanisms other than main memory.
 
-
+Most registers of a CPU have the same size, that is, accommodate the same number of bits. Usually, data goes back and forth between memory and registers in chunks of that size called *words*.
 
 [Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
 : The natural unit of data used by a particular processor design. A word is a fixed-sized piece of data handled as a unit by the instruction set or the hardware of the processor. The number of bits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
+
+The processor that the mipster emulator implements has a word size of 32 bits. In fact, virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution, as we see below. The reason is again performance. Involving 32 bits in parallel in all operations is obviously faster than working with bits individually. You probably know that there are machines with even larger word sizes for even greater speed such as 64-bit machines, for example. We stick to 32-bit words though since it makes things easier for two reasons.
+
+The first reason is that the size of an integer in C\* is also 32 bits encoding the sign in the MSB and the value in the remaining 31 LSBs in two's complement. This means that a single mipster register can hold exactly one C\* integer value. Beautiful!
+
+T> A signed integer in C\* can in total represent signed integer values i from -2147483648 to 2147483647 since -2^32^/2-1 = -2^31^-1 = -2147483649 < i < 2147483648 = 2^31^ = 2^32^/2. In `selfie.c` the largest positive value is called [`INT_MAX`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/selfie.c#L227) while the smallest negative value is called [`INT_MIN`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/selfie.c#L228).
+
+We prepared a simple program called [`negative.c`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `INT_MAX` and `INT_MIN` for reference, in all possible ways supported by selfie as follows:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/negative.c selfie.c -m 1
+./selfie: this is selfie's starc compiling manuscript/code/negative.c
+...
+./selfie: this is selfie's mipster executing manuscript/code/negative.c with 1MB of physical memory
+    -85 in decimal:     -85
+    -85 in hexadecimal: 0xFFFFFFAB
+    -85 in octal:       0037777777653
+    -85 in binary:      11111111111111111111111110101011
+INT_MAX in decimal:     2147483647
+INT_MAX in hexadecimal: 0x7FFFFFFF
+INT_MAX in octal:       0017777777777
+INT_MAX in binary:      01111111111111111111111111111111
+INT_MIN in decimal:     -2147483648
+INT_MIN in hexadecimal: 0x80000000
+INT_MIN in octal:       0020000000000
+INT_MIN in binary:      10000000000000000000000000000000
+manuscript/code/negative.c: exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: this is selfie's mipster terminating manuscript/code/negative.c with exit code 0 and 0.12MB of mapped memory
+...
+```
+
+The second reason for using 32-bit words is that memory addresses in mipster and ultimately in C\* are then 32 bits as well. This means in particular that the content of a register can also be seen as a memory address and not just an integer value.
+
+
 
 ## Instructions
 
