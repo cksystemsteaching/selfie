@@ -439,7 +439,7 @@ The first reason is that the size of an integer in C\* is also 32 bits encoding 
 
 T> A signed integer in C\* can in total represent signed integer values i from -2147483648 to 2147483647 since -2^32^/2-1 = -2^31^-1 = -2147483649 < i < 2147483648 = 2^31^ = 2^32^/2. In `selfie.c` the largest positive value is called [`INT_MAX`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/selfie.c#L227) while the smallest negative value is called [`INT_MIN`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/selfie.c#L228).
 
-We prepared a simple program called [`negative.c`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `INT_MAX` and `INT_MIN` for reference, in all possible ways supported by selfie as follows:
+We prepared another simple program called [`negative.c`](http://github.com/cksystemsteaching/selfie/blob/45268efa9dfed0303d9f6bfec37004ac5a8c890b/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `INT_MAX` and `INT_MIN` for reference, in all possible ways supported by selfie as follows:
 
 {line-numbers=off}
 ```
@@ -481,6 +481,30 @@ Interestingly, the endianness of a mipster machine is irrelevant since there is 
 Why would we want support of that anyway? Well, how do we read and modify individual bits in registers and eventually memory if everything happens at word granularity? This is where bitwise operations come in. There are typically bitwise logical operations such as bitwise *NOT*, *AND*, and *OR* operations as well as bitwise shift operations such as *left shift* and *logical right shift* operations.
 
 Bitwise operations have in common that they treat integers and words purely as sequences of bits. For example, a left shift operation shifts the bits in an integer or word to the left by a given amount of bits while shifting in zeros into the LSB. The logical right shift operation does the exact opposite.
+
+We prepared another simple program called [`shift.c`](http://github.com/cksystemsteaching/selfie/blob/45268efa9dfed0303d9f6bfec37004ac5a8c890b/manuscript/code/shift.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/shift.c selfie.c -m 1
+./selfie: this is selfie's starc compiling manuscript/code/shift.c
+...
+./selfie: this is selfie's mipster executing manuscript/code/shift.c with 1MB of physical memory
+00000000000000000000000000000011 in binary = 3 in decimal
+00000000000000000000000011000000 in binary = 192 in decimal
+00000000000000000011000000000000 in binary = 12288 in decimal
+00000000000011000000000000000000 in binary = 786432 in decimal
+00000011000000000000000000000000 in binary = 50331648 in decimal
+11000000000000000000000000000000 in binary = -1073741824 in decimal
+11000000000000000000000000000000 in binary = -1073741824 in decimal
+00000011000000000000000000000000 in binary = 50331648 in decimal
+00000000000011000000000000000000 in binary = 786432 in decimal
+00000000000000000011000000000000 in binary = 12288 in decimal
+00000000000000000000000011000000 in binary = 192 in decimal
+00000000000000000000000000000011 in binary = 3 in decimal
+manuscript/code/shift.c: exiting with exit code 0 and 0.00MB of mallocated memory
+...
+```
 
 
 
