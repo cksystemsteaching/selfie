@@ -482,7 +482,7 @@ Why would we want support of that anyway? Well, how do we read and modify indivi
 
 Bitwise operations have in common that they treat integers and words purely as sequences of bits. For example, a left shift operation shifts the bits in an integer or word to the left by a given amount of bits while shifting in zeros into the LSB. The logical right shift operation does the exact opposite.
 
-We prepared another simple program called [`bitwise.c`](http://github.com/cksystemsteaching/selfie/blob/45268efa9dfed0303d9f6bfec37004ac5a8c890b/manuscript/code/shift.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
+We prepared another simple program called [`bitwise.c`](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/manuscript/code/bitwise.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
 
 {line-numbers=off}
 ```
@@ -521,9 +521,21 @@ T> Dividing a signed integer with 2^n^ shifts the bits representing the integer 
 
 The `bitwise.c` program applies that method to shift the bits to the right repeatedly by six bits back to their original position.
 
-Interestingly, the bitwise OR, left shift, and logical right shift operations presented here are sufficient to implement selfie!
+Interestingly, the bitwise OR, left shift, and logical right shift operations presented here are sufficient to implement all of selfie!
 
-Before moving on let us quickly revisit how characters and strings are stored in memory.
+Before moving on let us quickly revisit how characters and strings are stored in memory. In selfie characters are represented by 8 bits. A 32-bit word may therefore hold up to four characters. This is in fact done to store the characters of strings in memory. A character literal, however, is stored in the eight LSBs of a word leaving the remaining bits blank.
+
+X> The string literal `"Hello World!"` is stored in four 32-bit words located contiguously in memory accommodating the substrings `"Hell"`, `"o Wo"`, and `"rld!"` as well as the value 0 in the fourth word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
+
+Try the following command to see that our "Hello World!" program does actually print the characters in chunks of four by printing the three words containing the characters directly on the console. The command creates three mipsters on top of each other slowing down the execution of the program to the extent that the behavior is really visible:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 1 -l selfie.m -m 1 -l hello-world.m -m 1
+...
+```
+
+This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/selfie.c#L1334-L1345) and [storing](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/selfie.c#L1346-L1360) characters of strings in memory accordingly.
 
 ## Instructions
 
