@@ -482,31 +482,46 @@ Why would we want support of that anyway? Well, how do we read and modify indivi
 
 Bitwise operations have in common that they treat integers and words purely as sequences of bits. For example, a left shift operation shifts the bits in an integer or word to the left by a given amount of bits while shifting in zeros into the LSB. The logical right shift operation does the exact opposite.
 
-We prepared another simple program called [`shift.c`](http://github.com/cksystemsteaching/selfie/blob/45268efa9dfed0303d9f6bfec37004ac5a8c890b/manuscript/code/shift.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
+We prepared another simple program called [`bitwise.c`](http://github.com/cksystemsteaching/selfie/blob/45268efa9dfed0303d9f6bfec37004ac5a8c890b/manuscript/code/shift.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
 
 {line-numbers=off}
 ```
-> ./selfie -c manuscript/code/shift.c selfie.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/shift.c
+> ./selfie -c manuscript/code/bitwise.c selfie.c -m 1
+./selfie: this is selfie's starc compiling manuscript/code/bitwise.c
 ...
-./selfie: this is selfie's mipster executing manuscript/code/shift.c with 1MB of physical memory
+./selfie: this is selfie's mipster executing manuscript/code/bitwise.c with 1MB of physical memory
 00000000000000000000000000000011 in binary = 3 in decimal
 00000000000000000000000011000000 in binary = 192 in decimal
 00000000000000000011000000000000 in binary = 12288 in decimal
 00000000000011000000000000000000 in binary = 786432 in decimal
 00000011000000000000000000000000 in binary = 50331648 in decimal
 11000000000000000000000000000000 in binary = -1073741824 in decimal
+11000011000011000011000011000011 in binary = -1022611261 in decimal
 11000000000000000000000000000000 in binary = -1073741824 in decimal
 00000011000000000000000000000000 in binary = 50331648 in decimal
 00000000000011000000000000000000 in binary = 786432 in decimal
 00000000000000000011000000000000 in binary = 12288 in decimal
 00000000000000000000000011000000 in binary = 192 in decimal
 00000000000000000000000000000011 in binary = 3 in decimal
-manuscript/code/shift.c: exiting with exit code 0 and 0.00MB of mallocated memory
+manuscript/code/bitwise.c: exiting with exit code 0 and 0.00MB of mallocated memory
 ...
 ```
 
+But how did we do this if there is no support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1296-L1309), and [logical right shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1310-L1333) operations in selfie.
 
+T> Multiplying a signed integer with 2^n^ shifts the bits representing the integer value to the left by n bits even if the value is negative provided two's complement and wrap-around semantics upon arithmetic overflow is used.
+
+In the `bitwise.c` program we shift the bits representing the integer value 3 to the left by six bits by multiplying the value repeatedly with 64=2^6^ until the value wraps around and becomes negative.
+
+T> Adding two signed integers corresponds to a bitwise OR operation if the bits at the same index in both integers are never both 1 avoiding any carry bit to be set.
+
+The `bitwise.c` program demonstrates that by performing a bitwise OR operation on all intermediate values through simple integer addition.
+
+T> Dividing a signed integer with 2^n^ shifts the bits representing the integer value to the right by n bits if the value is positive. If it is negative, [the sign bit can be reset before performing the division and then restored n bits to the right](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1321-L1326).
+
+The `bitwise.c` program applies that method to shift the bits to the right repeatedly by six bits back to their original position.
+
+Interestingly, the bitwise OR, left shift, and logical right shift operations presented here are sufficient to implement selfie!
 
 Before moving on let us quickly revisit how characters and strings are stored in memory.
 
