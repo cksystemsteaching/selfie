@@ -428,7 +428,7 @@ Instead of operating directly on memory, most CPUs load data from memory into *r
 [Register](https://en.wikipedia.org/wiki/Processor_register "Register")
 : A quickly accessible location available to a digital processor's central processing unit (CPU). Registers usually consist of a small amount of fast storage, although some registers have specific hardware functions. Registers are typically addressed by mechanisms other than main memory.
 
-Most registers of a CPU have the same size, that is, accommodate the same number of bits. Usually, data goes back and forth between memory and registers in chunks of that size called *words*.
+Most registers of a CPU have the same size, that is, accommodate the same number of bits. Usually, data goes back and forth between memory and registers in chunks of that size called *machine words* or just *words*.
 
 [Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
 : The natural unit of data used by a particular processor design. A word is a fixed-sized piece of data handled as a unit by the instruction set or the hardware of the processor. The number of bits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
@@ -541,7 +541,7 @@ So, on the machine everything related to data happens at the granularity of word
 
 ## Instructions
 
-The code of a mipster machine is represented by a sequence of words where each word encodes a machine instruction. It is that easy and actually true for many other processors as well. The exact specification of the encoding as well as the meaning of each instruction is provided by the *instruction set architecture* or *ISA* for short.
+The code of a mipster machine is represented by a sequence of machine words where each word encodes a machine instruction. It is that easy and actually true for many other processors as well. The exact specification of the encoding as well as the meaning of each instruction is provided by the *instruction set architecture* or *ISA* for short.
 
 [Instruction Set Architecture (ISA)](https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)")
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and external I/O. An ISA includes a specification of the set of opcodes (machine language), and the native commands implemented by a particular processor. An instruction set is the interface between a computer's software and its hardware, and thereby enables the independent development of these two computing realms.
@@ -584,15 +584,19 @@ Let us go back to the above example. The `addiu` string in `addiu $t0,$zero,7` i
 [Opcode](https://en.wikipedia.org/wiki/Opcode "Opcode")
 : The portion of a machine language instruction that specifies the operation to be performed. Beside the opcode itself, most instructions also specify the data they will process, in the form of operands.
 
-In our example, `addiu` instructs the processor to add the value of the integer `7` to the value stored in register `$zero` and store the result in register `$t0`. A MIPS processor has 32 32-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is obviously register 0 while the register `$t0`, less obviously, happens to be register 8. The only missing piece of information is that `addiu` is represented by the opcode 9. Now, how do we get from there to `0x24080007`?
+In our example, `addiu` instructs the processor to add the value of the integer `7` to the value stored in register `$zero` (which is always 0) and store the result in register `$t0` (which will thus contain the value 7 after executing the instruction).
+
+A MIPS processor has 32 32-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is obviously register 0 while the register `$t0`, less obviously, happens to be register 8. The only missing piece of information is that `addiu` is represented by the opcode 9. Now, how do we get from there to `0x24080007`?
 
 We take the opcode 9 (`001001`), register 0 (`00000`), register 8 (`01000`), and value 7 (`0000000000000111`) and put them together in binary as follows:
 
 `001001 00000 01000 0000000000000111`
 
-If you merge that into a 32-bit word you get `0x24080007`. The MIPS32 ISA specifies that the six MSBs encode the opcode 9, the next five bits encode the second (!) operand register 0, the following five bits encode the first (!) operand register 8, and lastly the remaining sixteen LSBs encode the third operand value 7 (in 16-bit two's complement in fact so it could even be a negative value).
+If you merge that into a 32-bit word you get `0x24080007`. The MIPS32 ISA specifies that the six MSBs encode the opcode 9, the next five bits encode the second (!) operand register 0, the following five bits encode the first (!) operand register 8, and lastly the remaining sixteen LSBs encode the third operand value 7, in 16-bit two's complement in fact so it could even be a negative value.
 
-How does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4139-L4190) is nevertheless pretty straightforward.
+Why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5^=32 different registers of the machine. The six bits for the opcode obviously allow us to distinguish up to 2^6^=64 different opcodes but we actually do not need that many. Now, think about the range of values that can be encoded in two's complement in the sixteen bits for the third operand! This is the range of values that we can get into a register such as `$t0$` with a single `addiu` instruction. In other words, we can use that instruction to initialize registers. Cool! The remaining sixteen instructions of MIPSter are just as simple, we introduce them on the fly as needed.
+
+So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4139-L4190) is nevertheless pretty straightforward.
 
 An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4191-L4291), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works! It may look technical but is actually very simple.
 
