@@ -265,6 +265,13 @@ Try the `-s` option to have selfie generate assembly as follows:
 ./selfie: 1259544 characters of assembly with 29889 instructions written into selfie.s
 ```
 
+The part of selfie that generates assembly is called a *disassembler*.
+
+[Disassembler](https://en.wikipedia.org/wiki/Disassembler)
+: A computer program that translates machine language into assembly language — the inverse operation to that of an assembler.
+
+Selfie does not implement an assembler though. The starc compiler simply generates machine code right away without going through assembly first (which would then require an assembler to generate machine code from that assembly).
+
 Since assembly is human-readable let us check it out:
 
 {line-numbers=off}

@@ -507,7 +507,7 @@ manuscript/code/bitwise.c: exiting with exit code 0 and 0.00MB of mallocated mem
 ...
 ```
 
-But how did we do this if there is no support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1296-L1309), and [logical right shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1310-L1333) operations in selfie.
+But how did we do this if there is no native support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1296-L1309), and [logical right shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1310-L1333) operations in selfie.
 
 T> Multiplying a signed integer with 2^n^ shifts the bits representing the integer value to the left by n bits even if the value is negative provided two's complement and wrap-around semantics upon arithmetic overflow is used.
 
@@ -537,9 +537,63 @@ Try the following command to see that our "Hello World!" program does actually p
 
 This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/selfie.c#L1334-L1345) and [storing](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/selfie.c#L1346-L1360) characters of strings in memory accordingly.
 
+So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even all machine code is handled at that granularity as well.
+
 ## Instructions
+
+The code of a mipster machine is represented by a sequence of words where each word encodes a machine instruction. It is that easy and actually true for many other processors as well. The exact specification of the encoding as well as the meaning of each instruction is provided by the *instruction set architecture* or *ISA* for short.
 
 [Instruction Set Architecture (ISA)](https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)")
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and external I/O. An ISA includes a specification of the set of opcodes (machine language), and the native commands implemented by a particular processor. An instruction set is the interface between a computer's software and its hardware, and thereby enables the independent development of these two computing realms.
+
+Let us have another look at the first few lines of the assembly code in `selfie.s` presented in the previous chapter:
+
+{line-numbers=off}
+```
+0x0(~76): 0x24080007: addiu $t0,$zero,7
+0x4(~76): 0x24094000: addiu $t1,$zero,16384
+0x8(~76): 0x01090019: multu $t0,$t1
+0xC(~76): 0x00004012: mflo $t0
+0x10(~76): 0x00000000: nop
+0x14(~76): 0x00000000: nop
+0x18(~76): 0x25082AAC: addiu $t0,$t0,10924
+0x1C(~76): 0x251C0000: addiu $gp,$t0,0
+0x20(~76): 0x24080FFF: addiu $t0,$zero,4095
+0x24(~76): 0x24094000: addiu $t1,$zero,16384
+0x28(~76): 0x01090019: multu $t0,$t1
+0x2C(~76): 0x00004012: mflo $t0
+0x30(~76): 0x00000000: nop
+0x34(~76): 0x00000000: nop
+0x38(~76): 0x25083FFC: addiu $t0,$t0,16380
+0x3C(~76): 0x8D1D0000: lw $sp,0($t0)
+0x40(~76): 0x0C00746F: jal 0x746F[0x1D1BC]
+0x44(~76): 0x00000000: nop
+```
+
+Each line represents one machine instruction. The first line, for example, reads like this. The hexadecimal number `0x0` is the word-aligned memory address of the instruction in memory. The expression `(~76)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x24080007` is in fact the in binary encoded version of the instruction itself. Finally, `addiu $t0,$zero,7` is the human-readable assembly version of the instruction. This means in particular that `0x24080007` and `addiu $t0,$zero,7` are semantically equivalent. The 32-bit word `0x24080007` in binary stored at address `0x0` in memory is thus the only thing that the machine needs, the rest is for us to make it readable. The machine code in `selfie.m` presented in the previous chapter contains just that binary code. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
+
+So, how do we know that `0x24080007` represents `addiu $t0,$zero,7`? This is specified precisely by the ISA of the widely used MIPS processor family.
+
+[MIPS](https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS")
+: A reduced instruction set computer (RISC) instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.). The early MIPS architectures were 32-bit, with 64-bit versions added later. Multiple revisions of the MIPS instruction set exist, including MIPS I, MIPS II, MIPS III, MIPS IV, MIPS V, MIPS32, and MIPS64. The current revisions are MIPS32 (for 32-bit implementations) and MIPS64 (for 64-bit implementations).
+
+The mipster emulator implements a strict subset of the instructions of the MIPS32 processor which we call *MIPSter*. In fact, mipster only implements 17 out of the more than 40 instructions of MIPS32. The starc compiler generates MIPSter code that runs on mipster and thus, at least in principle, also on a real MIPS32 processor. The converse is not true, of course. MIPS32 code does in general not run on mipster but that is not a problem here.
+
+Let us go back to the above example. The `addiu` string in `addiu $t0,$zero,7` is an assembly mnemonic of the *operation code* or *opcode*, for short, that identifies the operation to be performed while the remaining `$t0,$zero,7` are three operands of that operation.
+
+[Opcode](https://en.wikipedia.org/wiki/Opcode "Opcode")
+: The portion of a machine language instruction that specifies the operation to be performed. Beside the opcode itself, most instructions also specify the data they will process, in the form of operands.
+
+In our example, `addiu` instructs the processor to add the value of the integer `7` to the value stored in register `$zero` and store the result in register `$t0`. A MIPS processor has 32 32-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is obviously register 0 while the register `$t0`, less obviously, happens to be register 8. The only missing piece of information is that `addiu` is represented by the opcode 9. Now, how do we get from there to `0x24080007`?
+
+We take the opcode 9 (`001001`), register 0 (`00000`), register 8 (`01000`), and value 7 (`0000000000000111`) and put them together in binary as follows:
+
+`001001 00000 01000 0000000000000111`
+
+If you merge that into a 32-bit word you get `0x24080007`. The MIPS32 ISA specifies that the six MSBs encode the opcode 9, the next five bits encode the second (!) operand register 0, the following five bits encode the first (!) operand register 8, and lastly the remaining sixteen LSBs encode the third operand value 7 (in 16-bit two's complement in fact so it could even be a negative value).
+
+How does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4139-L4190) is nevertheless pretty straightforward.
+
+An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4191-L4291), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works! It may look technical but is actually very simple.
 
 ## Summary
