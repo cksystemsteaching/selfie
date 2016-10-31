@@ -676,6 +676,12 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int function);
 int encodeIFormat(int opcode, int rs, int rt, int immediate);
 int encodeJFormat(int opcode, int instr_index);
 
+// -----------------------------------------------------------------
+// ---------------------------- DECODER ----------------------------
+// -----------------------------------------------------------------
+
+void initDecoder();
+
 int getOpcode(int instruction);
 int getRS(int instruction);
 int getRT(int instruction);
@@ -685,19 +691,14 @@ int getImmediate(int instruction);
 int getInstrIndex(int instruction);
 int signExtend(int immediate);
 
-// -----------------------------------------------------------------
-// ---------------------------- DECODER ----------------------------
-// -----------------------------------------------------------------
-
-void initDecoder();
-
-void printOpcode(int opcode);
-void printFunction(int function);
-
-void decode();
 void decodeRFormat();
 void decodeIFormat();
 void decodeJFormat();
+
+void decode();
+
+void printOpcode(int opcode);
+void printFunction(int function);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -4187,6 +4188,10 @@ int encodeJFormat(int opcode, int instr_index) {
   return leftShift(opcode, 26) + instr_index;
 }
 
+// -----------------------------------------------------------------
+// ---------------------------- DECODER ----------------------------
+// -----------------------------------------------------------------
+
 int getOpcode(int instruction) {
   return rightShift(instruction, 26);
 }
@@ -4221,31 +4226,6 @@ int signExtend(int immediate) {
     return immediate;
   else
     return immediate - twoToThePowerOf(16);
-}
-
-// -----------------------------------------------------------------
-// ---------------------------- DECODER ----------------------------
-// -----------------------------------------------------------------
-
-void printOpcode(int opcode) {
-  print((int*) *(OPCODES + opcode));
-}
-
-void printFunction(int function) {
-  print((int*) *(FUNCTIONS + function));
-}
-
-void decode() {
-  opcode = getOpcode(ir);
-
-  if (opcode == 0)
-    decodeRFormat();
-  else if (opcode == OP_JAL)
-    decodeJFormat();
-  else if (opcode == OP_J)
-    decodeJFormat();
-  else
-    decodeIFormat();
 }
 
 // --------------------------------------------------------------
@@ -4294,6 +4274,27 @@ void decodeJFormat() {
   immediate   = 0;
   function    = 0;
   instr_index = getInstrIndex(ir);
+}
+
+void decode() {
+  opcode = getOpcode(ir);
+
+  if (opcode == 0)
+    decodeRFormat();
+  else if (opcode == OP_JAL)
+    decodeJFormat();
+  else if (opcode == OP_J)
+    decodeJFormat();
+  else
+    decodeIFormat();
+}
+
+void printOpcode(int opcode) {
+  print((int*) *(OPCODES + opcode));
+}
+
+void printFunction(int function) {
+  print((int*) *(FUNCTIONS + function));
 }
 
 // -----------------------------------------------------------------
