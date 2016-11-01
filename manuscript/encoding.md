@@ -570,7 +570,9 @@ Let us have another look at the first few lines of the assembly code in `selfie.
 0x44(~76): 0x00000000: nop
 ```
 
-Each line represents one machine instruction. The first line, for example, reads like this. The hexadecimal number `0x0` is the word-aligned memory address of the instruction in memory. The expression `(~76)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x24080007` is in fact the in binary encoded version of the instruction itself. Finally, `addiu $t0,$zero,7` is the human-readable assembly version of the instruction. This means in particular that `0x24080007` and `addiu $t0,$zero,7` are semantically equivalent. The 32-bit word `0x24080007` in binary stored at address `0x0` in memory is thus the only thing that the machine needs, the rest is for us to make it readable. The machine code in `selfie.m` presented in the previous chapter contains just that binary code. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
+Each line represents one machine instruction. The first line, for example, reads like this. The hexadecimal number `0x0` is the word-aligned memory address of the instruction in memory. The expression `(~76)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x24080007` is in fact the in binary encoded version of the instruction itself. Finally, `addiu $t0,$zero,7` is the human-readable assembly version of the instruction. This means in particular that `0x24080007` and `addiu $t0,$zero,7` are semantically equivalent. The 32-bit word `0x24080007` in binary stored at address `0x0` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
+
+The machine code in `selfie.m` presented in the previous chapter contains just that binary code, that is, `0x24080007` followed by `0x24094000` from the second line in `selfie.s` and so on. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
 
 So, how do we know that `0x24080007` represents `addiu $t0,$zero,7`? This is specified precisely by the ISA of the widely used MIPS processor family.
 
@@ -598,6 +600,24 @@ Why does the ISA provision five bits for the first and second operand? Because f
 
 So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4139-L4190) is nevertheless pretty straightforward.
 
-An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4191-L4291), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works! It may look technical but is actually very simple.
+An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4191-L4291), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works in the code! It may look technical but is actually very simple.
 
 ## Summary
+
+In this chapter we have seen how characters, strings, identifiers, integers, and even machine instructions are encoded and decoded, and how all that allows us to represent source and machine code using just bits.
+
+But there is still something missing. Why is all of this encoded the way it is and not some other way? There are two important reasons:
+
+1. Time: Depending on the encoding, data can be processed faster or slower, even fundamentally faster or slower in the sense that some encoding may not allow reasonably fast processing at all.
+
+    But why do we not always pick the encoding that supports the fastest possible processing? We could do that but it could make the actual encoding process slow and in some cases even fundamentally slow, and because:
+
+2. Space: The amount of bits needed to encode data can vary significantly and even fundamentally depending on the encoding scheme.
+
+X> Take unary versus binary encoding of numbers, for example. Unary encoding requires exponentially more space than binary encoding. Fortunately, even though binary encoding is so much more compact than unary, arithmetics on binary numbers can still be done very fast. This is why binary encoding for numbers is actually a good choice.
+X>
+X> The encoding of strings is another interesting example. Squeezing four characters rather than just, say, one character into a word saves four times the space in our case but makes accessing strings slower. However, access time is not fundamentally slower in the sense that accessing a single character is only slower by some constant amount of time due to the involved bitwise operations.
+
+Machine instructions are also encoded such that code size is compact while decoding them, which is ultimately done in hardware by the machine, is still fast. This is, of course, extremely important since every single instruction a processor executes needs to be decoded into opcode and operands before execution.
+
+In computer science the trade off between time and space shows up in all kinds of situations. Data encoding is just one example. The important lesson here is to be aware of the trade off and understand that [there is no such thing as a free lunch!](https://en.wikipedia.org/wiki/There_ain%27t_no_such_thing_as_a_free_lunch)
