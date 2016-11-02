@@ -16,13 +16,13 @@ X> The bit sequence `01010101` is also binary for the [decimal number](https://e
 
 So what is it now, `U` or `85`? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws `U` for `01010101` on the screen then `01010101` stands for `U` in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent `85`.
 
-But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1595) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](http://github.com/cksystemsteaching/selfie/blob/58503341fdff87ef993b469bc6353d75dd8ee9fd/selfie.c#L1469) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
+But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1820) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1639) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
 
 In general, we only provide links to code with comments so that text explaining code is not duplicated here. You may want read the code in `selfie.c` as if it was some sort of mechanical English. There are a lot of comments whenever the code is not sufficiently self-explanatory. In other words, reading code and comments is part of the experience of reading this book!
 
 ## Comments
 
-Now, what is a comment in code anyway? A comment is text that the compiler ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/0d76fc92d8a79db612973153d133f14eb35efae6/selfie.c#L76) that means something to the machine and is not a comment.
+Now, what is a comment in code anyway? A comment is text that the compiler ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L85) that means something to the machine and is not a comment.
 
 If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we can safely remove even more characters called whitespace without changing any semantics.
 
@@ -44,7 +44,7 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 ...
 ```
 
-Out of all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The code in `selfie.c` that starc uses to [ignore whitespace and comments](http://github.com/cksystemsteaching/selfie/blob/1de4c78a109a13e384aa2e4b8b126227b08f0e9a/selfie.c#L1710-L1770) works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
+Out of all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The code in `selfie.c` that starc uses to [ignore whitespace and comments](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1858-L1913) works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
 
 Let us have a look at the following ["Hello World!" program](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program) written in C\*:
 
@@ -138,7 +138,7 @@ X> The obvious way of storing UTF-8-encoded strings such as our `Hello World!` s
 X>
 X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 54, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but to indicate the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
 
-In selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L1990-L2018) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/a1f9a4270fa799430141c0aa68748b34bd5208cb/selfie.c#L2020) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
+In selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2116) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2118) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
 
 ## String Literals
 
@@ -147,13 +147,13 @@ You may have noticed the double quotes enclosing the `Hello World!` string in th
 [String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
 : The representation of a string value within the source code of a computer program.
 
-String literals in C\* such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/2613856aba61735e89ff42d98964d69637cb3111/selfie.c#L335-L362) as just one example.
+String literals in C\* such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L357-L384) as just one example.
 
-The code in `selfie.c` that actually [recognizes a string literal](http://github.com/cksystemsteaching/selfie/blob/38cf8f87dd0e0ae12216ddb6b368f2ed3a35e55e/selfie.c#L2006-L2041) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals in C\* are handled.
+The code in `selfie.c` that actually [recognizes a string literal](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2121) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals in C\* are handled.
 
 ## Character Literals
 
-There is also the notion of *character literals* in C\* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1835-L1850) and for [identifying characters that represent digits](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1851-L1860).
+There is also the notion of *character literals* in C\* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1915-L1929) and for [identifying characters that represent digits](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1931-L1940).
 
 [Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
 : The representation of a character value within the source code of a computer program.
@@ -164,9 +164,9 @@ X> So, what is the difference between, say, `'a'` and `"a"`?
 X>
 X> The character literal `'a'` is the *ASCII code* of the character `a` whereas the string literal `"a"` is an *address* in memory where the ASCII code of `a` followed by null is stored.
 
-The code in `selfie.c` that [identifies characters other than letters and digits](http://github.com/cksystemsteaching/selfie/blob/2067b468a2ce5df91afb9e9b3a476be85fefe95a/selfie.c#L124-L147) is another example which shows how character literals are used. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
+The code in `selfie.c` that [identifies characters other than letters and digits](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L134-L156) is another example which shows how character literals are used. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
 
-The code in `selfie.c` that [recognizes a character literal](http://github.com/cksystemsteaching/selfie/blob/38cf8f87dd0e0ae12216ddb6b368f2ed3a35e55e/selfie.c#L1981-L2005) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals in C\* are handled.
+The code in `selfie.c` that [recognizes a character literal](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L2061-L2084) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals in C\* are handled.
 
 ## Identifiers
 
@@ -177,16 +177,16 @@ Let us now go back to the notion of identifiers and our example of the identifie
 
 Identifiers in C\* can indeed denote different kinds of entities. But, for now, we only need to know that, unlike string literals, identifiers in C\* always begin with a letter. After that there may appear letters, digits, and underscores `_` in any order but no other characters. Why is that? Because this is how the machine knows when an identifier begins and ends. Remember, identifiers are not enclosed by any special characters like double quotes, for example.
 
-The code in `selfie.c` that [recognizes an identifier](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1915-L1938) in source code, after reading a letter outside of a comment, first allocates memory not used by anyone to store the identifier, just like a string. Then it reads one character at a time and stores the characters contiguously in memory until it reads a character that is neither a letter nor a digit nor an underscore. It then stores a null to terminate the identifier. However, before deciding whether it has just recognized an identifier the code checks if it has actually recognized a *reserved identifier* or *keyword*.
+The code in `selfie.c` that [recognizes an identifier](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1995-L2017) in source code, after reading a letter outside of a comment, first allocates memory not used by anyone to store the identifier, just like a string. Then it reads one character at a time and stores the characters contiguously in memory until it reads a character that is neither a letter nor a digit nor an underscore. It then stores a null to terminate the identifier. However, before deciding whether it has just recognized an identifier the code checks if it has actually recognized a *reserved identifier* or *keyword*.
 
 ## Keywords
 
-C\* features a number of [keywords](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/grammar.md#L11) with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
+C\* features a number of [keywords](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/grammar.md#L11) with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
 
 [Keyword](https://en.wikipedia.org/wiki/Keyword_(computer_programming) "Keyword")
 : In a computer language, a reserved word (also known as a reserved identifier) is a word that cannot be used as an identifier, such as the name of a variable, function, or label – it is "reserved from use". This is a syntactic definition, and a reserved word may have no meaning. A closely related and often conflated notion is a keyword which is a word with special meaning in a particular context. This is a semantic definition. The terms "reserved word" and "keyword" are often used interchangeably – one may say that a reserved word is "reserved for use as a keyword".
 
-Since the keywords in C\* all begin with a letter they should not be mistaken for identifiers. The code in `selfie.c` that [distinguishes keywords from identifiers](http://github.com/cksystemsteaching/selfie/blob/1520a42d446517d60e197d019977fadf471f3941/selfie.c#L1888-L1903) compares potential identifiers with all keywords to implement that distinction.
+Since the keywords in C\* all begin with a letter they should not be mistaken for identifiers. The code in `selfie.c` that [distinguishes keywords from identifiers](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1968-L1983) compares potential identifiers with all keywords to implement that distinction.
 
 ## Integers
 
@@ -197,7 +197,7 @@ Numbers are important and computers are incredibly good at working with them. No
 
 T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers.
 
-Beyond signed integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers as percentage](http://github.com/cksystemsteaching/selfie/blob/22ab60a28037ae5d367ccf1de1d09a8b2e1fe555/selfie.c#L1549-L1578) with up to two fractional digits.
+Beyond signed integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers as percentage](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1605-L1622) with up to two fractional digits.
 
 Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number `85`.
 
@@ -219,15 +219,15 @@ X> The value represented by `85` is obviously `8`\*10+`5` using base 10, or equi
 
 Selfie does in fact implement exactly the above computation of a [recurrence relation](https://en.wikipedia.org/wiki/Recurrence_relation) for encoding numbers but only for numbers represented in decimal notation. An extension to other bases is nevertheless easy to do. Think about it and try!
 
-The encoding is done in the procedure [`atoi`](http://github.com/cksystemsteaching/selfie/blob/3e2931dd960265d643086b6d82daee0d628301a2/selfie.c#L1408-L1457) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
+The encoding is done in the procedure [`atoi`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1409-L1457) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
 
 X> Note that the value represented by `85` can also be computed by `8`\*10^1^+`5`\*10^0^ using powers of base 10, or equivalently, `1`\*2^6^+`0`\*2^5^+`1`\*2^4^+`0`\*2^3^+`1`\*2^2^+`0`\*2^1^+`1`\*2^0^ as represented by `1010101` using powers of base 2. However, since the digits are read from left to right, computing the recurrence relation is easier.
 
-Selfie also implements the procedure symmetric to `atoi` called [`itoa`](http://github.com/cksystemsteaching/selfie/blob/c7ec82ae917cb1807af3a0f60799bfb8dce755ed/selfie.c#L1458-L1603) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
+Selfie also implements the procedure symmetric to `atoi` called [`itoa`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1459-L1603) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
 
 X> Suppose we would like to convert the value of `85` to a string `"85"` that shows the value in decimal. This works by dividing `85` by the base 10 resulting in the quotient `8` and the remainder `5`, which we save as a string `"5"`. We then divide quotient `8` by 10 which is quotient `0` and append the remainder, which is `8`, to the string `"5"` resulting in the string `"58"`. Quotient `0` terminates the conversion. The resulting string `"58"` in reverse is the desired string `"85"`.
 
-The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](http://github.com/cksystemsteaching/selfie/blob/c7ec82ae917cb1807af3a0f60799bfb8dce755ed/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
+The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
 
 {line-numbers=off}
 ```
@@ -408,11 +408,11 @@ Similar to character and string literals, source code written in C\* may contain
 [Integer Literal](https://en.wikipedia.org/wiki/Integer_literal "Integer Literal")
 : An integer whose value is directly represented in source code.
 
-The code in selfie that [reads integer literals](http://github.com/cksystemsteaching/selfie/blob/47f130e2633a90761f65e459d8d1753cf6f99bcd/selfie.c#L2018-L2060) is next to the code that reads identifiers. Similar to the characters of an identifier, the digits of an integer literal are first read and stored in a string. However, that string is then converted to an integer value using the `atoi` procedure.
+The code in selfie that [reads integer literals](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L2019-L2059) is next to the code that reads identifiers. Similar to the characters of an identifier, the digits of an integer literal are first read and stored in a string. However, that string is then converted to an integer value using the `atoi` procedure.
 
 T> Recall that identifiers may also contain digits but must start with a letter. This requirement makes it easy for the compiler to distinguish integer literals from identifiers upon reading the first character. This is in fact the reason why identifiers are usually required to start with a letter.
 
-What about negative numbers then? Can we write integer literals in C\* that represent negative values? The answer is yes, very conveniently in fact, for example, by writing `-85` which obviously represents the value -85. However, this notation is only an abbreviation for `0 - 85` which obviously represents the same value. When reading integer literals such as `-85` the starc compiler does in fact generate code that [subtracts](http://github.com/cksystemsteaching/selfie/blob/f0f9f756d9602efaed192026979cbf12d657f77f/selfie.c#L3057) the positive value 85 from 0 to obtain the negative value -85.
+What about negative numbers then? Can we write integer literals in C\* that represent negative values? The answer is yes, very conveniently in fact, for example, by writing `-85` which obviously represents the value -85. However, this notation is only an abbreviation for `0 - 85` which obviously represents the same value. When reading integer literals such as `-85` the starc compiler does in fact generate code that [subtracts](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L3058) the positive value 85 from 0 to obtain the negative value -85.
 
 ## Words
 
@@ -437,9 +437,9 @@ The processor that the mipster emulator implements has a word size of 32 bits. I
 
 The first reason is that the size of an integer in C\* is also 32 bits encoding the sign in the MSB and the value in the remaining 31 LSBs in two's complement. This means that a single mipster register can hold exactly one C\* integer value. Beautiful!
 
-T> A signed integer in C\* can in total represent signed integer values i from -2147483648 to 2147483647 since -2^32^/2-1 = -2^31^-1 = -2147483649 < i < 2147483648 = 2^31^ = 2^32^/2. In `selfie.c` the largest positive value is called [`INT_MAX`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/selfie.c#L227) while the smallest negative value is called [`INT_MIN`](http://github.com/cksystemsteaching/selfie/blob/cc32413d36654c1c4de48256553f80e453e24f7b/selfie.c#L228).
+T> A signed integer in C\* can in total represent signed integer values i from -2147483648 to 2147483647 since -2^32^/2-1 = -2^31^-1 = -2147483649 < i < 2147483648 = 2^31^ = 2^32^/2. In `selfie.c` the largest positive value is called [`INT_MAX`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L227) while the smallest negative value is called [`INT_MIN`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L228).
 
-We prepared another simple program called [`negative.c`](http://github.com/cksystemsteaching/selfie/blob/45268efa9dfed0303d9f6bfec37004ac5a8c890b/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `INT_MAX` and `INT_MIN` for reference, in all possible ways supported by selfie as follows:
+We prepared another simple program called [`negative.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `INT_MAX` and `INT_MIN` for reference, in all possible ways supported by selfie as follows:
 
 {line-numbers=off}
 ```
@@ -482,7 +482,7 @@ Why would we want support of that anyway? Well, how do we read and modify indivi
 
 Bitwise operations have in common that they treat integers and words purely as sequences of bits. For example, a left shift operation shifts the bits in an integer or word to the left by a given amount of bits while shifting in zeros into the LSB. The logical right shift operation does the exact opposite.
 
-We prepared another simple program called [`bitwise.c`](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/manuscript/code/bitwise.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
+We prepared another simple program called [`bitwise.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/bitwise.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
 
 {line-numbers=off}
 ```
@@ -507,7 +507,7 @@ manuscript/code/bitwise.c: exiting with exit code 0 and 0.00MB of mallocated mem
 ...
 ```
 
-But how did we do this if there is no native support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1296-L1309), and [logical right shift](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1310-L1333) operations in selfie.
+But how did we do this if there is no native support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1297-L1309), and [logical right shift](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1311-L1333) operations in selfie.
 
 T> Multiplying a signed integer with 2^n^ shifts the bits representing the integer value to the left by n bits even if the value is negative provided two's complement and wrap-around semantics upon arithmetic overflow is used.
 
@@ -517,7 +517,7 @@ T> Adding two signed integers corresponds to a bitwise OR operation if the bits 
 
 The `bitwise.c` program demonstrates that by performing a bitwise OR operation on all intermediate values through simple integer addition.
 
-T> Dividing a signed integer with 2^n^ shifts the bits representing the integer value to the right by n bits if the value is positive. If it is negative, [the sign bit can be reset before performing the division and then restored n bits to the right](http://github.com/cksystemsteaching/selfie/blob/d1eddec0cc3b8470049eaf8b87ea5073bae97d78/selfie.c#L1321-L1326).
+T> Dividing a signed integer with 2^n^ shifts the bits representing the integer value to the right by n bits if the value is positive. If it is negative, [the sign bit can be reset before performing the division and then restored n bits to the right](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1321-L1326).
 
 The `bitwise.c` program applies that method to shift the bits to the right repeatedly by six bits back to their original position.
 
@@ -535,7 +535,7 @@ Try the following command to see that our "Hello World!" program does actually p
 ...
 ```
 
-This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/selfie.c#L1334-L1345) and [storing](http://github.com/cksystemsteaching/selfie/blob/ebda60b15e264ff49ca2c90f6411360714947dda/selfie.c#L1346-L1360) characters of strings in memory accordingly.
+This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1335-L1345) and [storing](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1347-L1360) characters of strings in memory accordingly.
 
 So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even all machine code is handled at that granularity as well.
 
@@ -598,9 +598,9 @@ If you merge that into a 32-bit word you get `0x24080007`. The MIPS32 ISA specif
 
 Why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5^=32 different registers of the machine. The six bits for the opcode obviously allow us to distinguish up to 2^6^=64 different opcodes but we actually do not need that many. Now, think about the range of values that can be encoded in two's complement in the sixteen bits for the third operand! This is the range of values that we can get into a register such as `$t0$` with a single `addiu` instruction. In other words, we can use that instruction to initialize registers. Cool! The remaining sixteen instructions of MIPSter are just as simple, we introduce them on the fly as needed.
 
-So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4139-L4190) is nevertheless pretty straightforward.
+So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L4139-L4189) is nevertheless pretty straightforward.
 
-An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/6a36e29288919b185adf24137a1bab7a27d5bab4/selfie.c#L4191-L4291), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works in the code! It may look technical but is actually very simple.
+An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L4191-L4290), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works in the code! It may look technical but is actually very simple.
 
 ## Summary
 
