@@ -6028,7 +6028,8 @@ void op_lw() {
       } else
         throwException(EXCEPTION_PAGEFAULT, vaddr);
     } else
-      throwException(EXCEPTION_ADDRESSERROR, vaddr);
+      // TODO: pass invalid vaddr
+      throwException(EXCEPTION_ADDRESSERROR, 0);
   }
 
   if (debug) {
@@ -6126,7 +6127,8 @@ void op_sw() {
       } else
         throwException(EXCEPTION_PAGEFAULT, vaddr);
     } else
-      throwException(EXCEPTION_ADDRESSERROR, vaddr);
+      // TODO: pass invalid vaddr
+      throwException(EXCEPTION_ADDRESSERROR, 0);
   }
 
   if (debug) {
