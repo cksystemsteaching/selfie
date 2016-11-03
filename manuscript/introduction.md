@@ -16,6 +16,8 @@ Why is the *self* so important? Because it shows how meaning is created systemat
 
 The book works by explaining selfie step by step while focusing on the basic principles that are necessary to understand each step. In order to follow the book you will need to download and run [selfie](https://github.com/cksystemsteaching/selfie "selfie"). This requires, yes, a terminal and a C compiler. If you have a Mac or a Linux box, terminal and compiler are already there, and easy to get for a Windows machine.
 
-The [next chapter](#semantics) introduces selfie and how to use it. The focus is on developing an idea of the problem of semantics. Computer scientists have developed all these formalisms for coding and many other things. We show how selfie can help to understand the relevant aspects of the problem.
+[Chapter 2](#semantics) introduces selfie and how to use it. The focus is on developing an idea of the problem of semantics. Computer scientists have developed all these formalisms for coding and many other things. We show how selfie can help to understand the relevant aspects of the problem.
 
-[Chapter 3](#encoding) is an introduction to encoding and decoding basic information such as characters and numbers in binary form. We use selfie to show examples and how their encoding and decoding is actually done.
+[Chapter 3](#encoding) is an introduction to encoding and decoding basic information such as characters, strings, numbers, and even machine instructions in binary form. We use selfie to show examples and how their encoding and decoding is actually done.
+
+Chapter 4 will be on the notion of *state* which is a key concept for modeling computation. Understanding state is important for developing an idea of what source code means and how machine code executes. The encoding and decoding schemes introduced in the previous chapter will serve as simple examples.
