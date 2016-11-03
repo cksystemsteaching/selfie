@@ -39,8 +39,8 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 ```
 > ./selfie -c selfie.c
 ./selfie: this is selfie's starc compiling selfie.c
-./selfie: 166707 characters read in 6652 lines and 864 comments
-./selfie: with 94033(56.49%) characters in 29064 actual symbols
+./selfie: 176408 characters read in 7083 lines and 969 comments
+./selfie: with 97779(55.55%) characters in 28914 actual symbols
 ...
 ```
 
@@ -63,9 +63,9 @@ and run the code as follows (ignoring the compiler warning):
 ./selfie: 0 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
 ./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/hello-world.c with 1MB of memory
-Hello World!manuscript/code/hello-world.c: exiting with exit code 0
-./selfie: this is selfie's mipster terminating manuscript/code/hello-world.c
+./selfie: this is selfie's mipster executing manuscript/code/hello-world.c with 1MB of physical memory
+Hello World!manuscript/code/hello-world.c: exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: this is selfie's mipster terminating manuscript/code/hello-world.c with exit code 0 and 0.00MB of mapped memory
 ...
 ```
 
@@ -88,9 +88,9 @@ with this output when running it:
 ./selfie: 0 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
 ./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/hello-world-minified.c with 1MB of memory
-Hello World!manuscript/code/hello-world-minified.c: exiting with exit code 0
-./selfie: this is selfie's mipster terminating manuscript/code/hello-world-minified.c
+./selfie: this is selfie's mipster executing manuscript/code/hello-world-minified.c with 1MB of physical memory
+Hello World!manuscript/code/hello-world-minified.c: exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: this is selfie's mipster terminating manuscript/code/hello-world-minified.c with exit code 0 and 0.00MB of mapped memory
 ...
 ```
 
@@ -550,27 +550,27 @@ Let us have another look at the first few lines of the assembly code in `selfie.
 
 {line-numbers=off}
 ```
-0x0(~76): 0x24080007: addiu $t0,$zero,7
-0x4(~76): 0x24094000: addiu $t1,$zero,16384
-0x8(~76): 0x01090019: multu $t0,$t1
-0xC(~76): 0x00004012: mflo $t0
-0x10(~76): 0x00000000: nop
-0x14(~76): 0x00000000: nop
-0x18(~76): 0x25082AAC: addiu $t0,$t0,10924
-0x1C(~76): 0x251C0000: addiu $gp,$t0,0
-0x20(~76): 0x24080FFF: addiu $t0,$zero,4095
-0x24(~76): 0x24094000: addiu $t1,$zero,16384
-0x28(~76): 0x01090019: multu $t0,$t1
-0x2C(~76): 0x00004012: mflo $t0
-0x30(~76): 0x00000000: nop
-0x34(~76): 0x00000000: nop
-0x38(~76): 0x25083FFC: addiu $t0,$t0,16380
-0x3C(~76): 0x8D1D0000: lw $sp,0($t0)
-0x40(~76): 0x0C00746F: jal 0x746F[0x1D1BC]
-0x44(~76): 0x00000000: nop
+0x0(~1): 0x24080007: addiu $t0,$zero,7
+0x4(~1): 0x24094000: addiu $t1,$zero,16384
+0x8(~1): 0x01090019: multu $t0,$t1
+0xC(~1): 0x00004012: mflo $t0
+0x10(~1): 0x00000000: nop
+0x14(~1): 0x00000000: nop
+0x18(~1): 0x25081B38: addiu $t0,$t0,6968
+0x1C(~1): 0x251C0000: addiu $gp,$t0,0
+0x20(~1): 0x24080FFF: addiu $t0,$zero,4095
+0x24(~1): 0x24094000: addiu $t1,$zero,16384
+0x28(~1): 0x01090019: multu $t0,$t1
+0x2C(~1): 0x00004012: mflo $t0
+0x30(~1): 0x00000000: nop
+0x34(~1): 0x00000000: nop
+0x38(~1): 0x25083FFC: addiu $t0,$t0,16380
+0x3C(~1): 0x8D1D0000: lw $sp,0($t0)
+0x40(~1): 0x0C007029: jal 0x7029[0x1C0A4]
+0x44(~1): 0x00000000: nop
 ```
 
-Each line represents one machine instruction. The first line, for example, reads like this. The hexadecimal number `0x0` is the word-aligned memory address of the instruction in memory. The expression `(~76)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x24080007` is in fact the in binary encoded version of the instruction itself. Finally, `addiu $t0,$zero,7` is the human-readable assembly version of the instruction. This means in particular that `0x24080007` and `addiu $t0,$zero,7` are semantically equivalent. The 32-bit word `0x24080007` in binary stored at address `0x0` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
+Each line represents one machine instruction. The first line, for example, reads like this. The hexadecimal number `0x0` is the word-aligned memory address of the instruction in memory. The expression `(~1)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x24080007` is in fact the in binary encoded version of the instruction itself. Finally, `addiu $t0,$zero,7` is the human-readable assembly version of the instruction. This means in particular that `0x24080007` and `addiu $t0,$zero,7` are semantically equivalent. The 32-bit word `0x24080007` in binary stored at address `0x0` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
 
 The machine code in `selfie.m` presented in the previous chapter contains just that binary code, that is, `0x24080007` followed by `0x24094000` from the second line in `selfie.s` and so on. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
 
