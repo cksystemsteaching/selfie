@@ -8,4 +8,4 @@ The ideas presented here are the result of many years of teaching and working wi
 
 Disclaimer:
 
-This is work in progress. Only two chapters are done with a third getting ready in Summer 2016. Others exist in draft form but will take more time to be done. Also, even existing chapters may change, see the git history for details.
+This is work in progress. Only two chapters are done and a third getting ready by the end of 2016. Others exist in draft form but will take more time to be done. Also, even existing chapters may change, see the git history for details.
