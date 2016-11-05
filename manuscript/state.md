@@ -1,5 +1,9 @@
 # 4. State {#state}
 
+Computation is the evolution of state. At any given time, a computer stores a very large amount of bits in registers and memory. We call that the state of the machine. Then the processor executes one instruction which directs it to change a very small number of bits creating a new state. That process of change of state continues until the machine is turned off.
+
+Software on source code and in particular machine code level specifies for each state what the next state is. There are the data bits that are being changed and the code bits that determine that change. In this chapter, we explain how on machine level registers and memory represent state and how machine code describes change of that state. We also show how source code provides a higher-level view of that which is an important step towards learning how to code.
+
 ## Memory
 
 ### Declarations
