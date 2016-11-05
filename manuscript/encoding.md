@@ -414,6 +414,10 @@ T> Recall that identifiers may also contain digits but must start with a letter.
 
 What about negative numbers then? Can we write integer literals in C\* that represent negative values? The answer is yes, very conveniently in fact, for example, by writing `-85` which obviously represents the value -85. However, this notation is only an abbreviation for `0 - 85` which obviously represents the same value. When reading integer literals such as `-85` the starc compiler does in fact generate code that [subtracts](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L3058) the positive value 85 from 0 to obtain the negative value -85.
 
+## Symbols
+
+Among all language elements of C\* we have seen identifiers and keywords as well as character, string, and integer literals. The only missing elements are operator symbols and symbols for structuring source code. The [complete list of C\* symbols](http://github.com/cksystemsteaching/selfie/blob/e7ee49fb71eae1de5efc24435ab2b3ad4764c803/grammar.md#L13-L33), also called *tokens*, is surprisingly small. Our ["Hello World!" Program](http://github.com/cksystemsteaching/selfie/blob/e7ee49fb71eae1de5efc24435ab2b3ad4764c803/manuscript/code/hello-world.c) does not contain all possible symbols but at least one from each category, that is, keywords, identifiers, literals, operator symbols, and symbols for structuring source code.
+
 ## Words
 
 So, before continuing let us point out that character, string, and integer literals are the only way to describe data in C\* programs. All other language elements of C\* including keywords and identifiers are there to describe code and manage memory! We already know that characters are encoded in bytes and strings are stored contiguously in byte-addressed memory. What about integers then? To answer that question we need to take a closer look at how a computer handles data.
