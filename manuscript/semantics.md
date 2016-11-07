@@ -315,7 +315,7 @@ Let us try that using the `-d` option which invokes mipster in debugging mode. C
 > ./selfie -c selfie.c -d 1
 ./selfie: this is selfie's starc compiling selfie.c
 ...
-./selfie: this is selfie's mipster executing selfie.c with 1MB of memory
+./selfie: this is selfie's mipster executing selfie.c with 1MB of physical memory
 selfie.c: $pc=0x0(~1): 0x24080007: addiu $t0,$zero,7: $t0=0,$zero=0 -> $t0=7
 selfie.c: $pc=0x4(~1): 0x24094000: addiu $t1,$zero,16384: $t1=0,$zero=0 -> $t1=16384
 selfie.c: $pc=0x8(~1): 0x01090019: multu $t0,$t1: $t0=7,$t1=16384,$lo=0 -> $lo=114688
@@ -353,11 +353,11 @@ By the way, we can also slow down the machine to see what happens in slow motion
 
 {line-numbers=off}
 ```
-> ./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
+> ./selfie -c selfie.c -o selfie.m -m 1 -l selfie.m -m 1
 ./selfie: this is selfie's starc compiling selfie.c
 ...
 ./selfie: 121660 bytes with 28779 instructions and 6544 bytes of data written into selfie.m
-./selfie: this is selfie's mipster executing selfie.m with 2MB of physical memory
+./selfie: this is selfie's mipster executing selfie.m with 1MB of physical memory
 selfie.m: 121660 bytes with 28779 instructions and 6544 bytes of data loaded from selfie.m
 selfie.m: this is selfie's mipster executing selfie.m with 1MB of physical memory
 selfie.m: usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ]
@@ -383,15 +383,15 @@ With selfie, instead of having mipster execute mipster to execute starc, we can 
 [Hypervisor](https://en.wikipedia.org/wiki/Hypervisor "Hypervisor")
 : A piece of computer software, firmware or hardware that creates and runs virtual machines. A computer on which a hypervisor runs one or more virtual machines is called a host machine, and each virtual machine is called a guest machine.
 
-Let us try using the same command as above for running starc on mipster but this time running starc on hypster, using the `-y` option, running on top of mipster, which now needs 1MB more to accommodate hypster:
+Let us try using the same command as above for running starc on mipster but this time running starc on hypster, using the `-y` option, running on top of mipster:
 
 {line-numbers=off}
 ```
-> ./selfie -c selfie.c -o selfie3.m -m 3 -l selfie3.m -y 2 -c selfie.c -o selfie4.m
+> ./selfie -c selfie.c -o selfie3.m -m 2 -l selfie3.m -y 2 -c selfie.c -o selfie4.m
 ./selfie: this is selfie's starc compiling selfie.c
 ...
 ./selfie: 121660 bytes with 28779 instructions and 6544 bytes of data written into selfie3.m
-./selfie: this is selfie's mipster executing selfie3.m with 3MB of physical memory
+./selfie: this is selfie's mipster executing selfie3.m with 2MB of physical memory
 selfie3.m: 121660 bytes with 28779 instructions and 6544 bytes of data loaded from selfie3.m
 selfie3.m: this is selfie's hypster executing selfie3.m with 2MB of physical memory
 selfie3.m: this is selfie's starc compiling selfie.c
@@ -410,17 +410,17 @@ Again, `selfie3.m` and `selfie4.m` are identical and equal to `selfie.m`, `selfi
 
 {line-numbers=off}
 ```
-> ./selfie -c selfie.c -o selfie5.m -m 6 -l selfie5.m -y 5 -l selfie5.m -y 4 -l selfie5.m -y 3 -l selfie5.m -y 2 -c selfie.c -o selfie6.m
+> ./selfie -c selfie.c -o selfie5.m -m 3 -l selfie5.m -y 2 -l selfie5.m -y 2 -l selfie5.m -y 2 -l selfie5.m -y 2 -c selfie.c -o selfie6.m
 ./selfie: this is selfie's starc compiling selfie.c
 ...
 ./selfie: 121660 bytes with 28779 instructions and 6544 bytes of data written into selfie5.m
-./selfie: this is selfie's mipster executing selfie5.m with 6MB of physical memory
+./selfie: this is selfie's mipster executing selfie5.m with 3MB of physical memory
 selfie5.m: 121660 bytes with 28779 instructions and 6544 bytes of data loaded from selfie5.m
-selfie5.m: this is selfie's hypster executing selfie5.m with 5MB of physical memory
+selfie5.m: this is selfie's hypster executing selfie5.m with 2MB of physical memory
 selfie5.m: 121660 bytes with 28779 instructions and 6544 bytes of data loaded from selfie5.m
-selfie5.m: this is selfie's hypster executing selfie5.m with 4MB of physical memory
+selfie5.m: this is selfie's hypster executing selfie5.m with 2MB of physical memory
 selfie5.m: 121660 bytes with 28779 instructions and 6544 bytes of data loaded from selfie5.m
-selfie5.m: this is selfie's hypster executing selfie5.m with 3MB of physical memory
+selfie5.m: this is selfie's hypster executing selfie5.m with 2MB of physical memory
 selfie5.m: 121660 bytes with 28779 instructions and 6544 bytes of data loaded from selfie5.m
 selfie5.m: this is selfie's hypster executing selfie5.m with 2MB of physical memory
 selfie5.m: this is selfie's starc compiling selfie.c

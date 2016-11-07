@@ -307,7 +307,7 @@ Now, what happens if we try to add two numbers where the result exceeds the numb
 [Arithmetic Overflow](https://en.wikipedia.org/wiki/Arithmetic_overflow "Arithmetic Overflow")
 : Occurs when an arithmetic operation attempts to create a numeric value that is too large to be represented within the available storage space.
 
-How can we deal with arithmetic overflow? There are two approaches that can be combined: detection and semantics. If the occurrence of an arithmetic overflow can be detected one can discard the computation and do something else. For this purpose most processors feature a so-called *carry bit* or *carry flag* which is set if an arithmetic operation causes an overflow indicated by a *carry out of the most significant bits*. In our example, the 9-th bit in 100000000 is that carry bit.
+How can we deal with arithmetic overflow? There are two approaches that can be combined: detection and semantics. If the occurrence of an arithmetic overflow can be detected one can discard the computation and do something else. For this purpose most processors feature a so-called *carry bit* or *carry flag* which is set if an arithmetic operation causes an overflow indicated by a *carry out of the most significant bit*. In our example, the 9-th bit in 100000000 is that carry bit.
 
 In terms of semantics, if the result of an arithmetic overflow has a defined value, one may be able to use that value in a meaningful way. For example, a common semantics for n-bit arithmetics is to compute everything modulo 2^n^, also referred to as *wrap-around semantics* or just *wrap around*. For example, 255+1=256 modulo 2^8^=256 modulo 256=0, which is exactly what 100000000 in an 8-bit system stands for. There are applications that are correct even when such wrap-arounds occur.
 
@@ -397,7 +397,7 @@ X> Similarly, the result of 10000000-00000001 which represents -128-1 is 1000000
 
 In the first case, the MSBs of the two numbers are zero, since both represent positive numbers, and the MSB of the result is one. The second case is the exact opposite. How can we detect this? Easy. There is an overflow either if there is a carry *into* the MSB of the result but not *out* into the carry bit (wrapping two positive numbers into a negative number), or else if there is no carry *into* the MSB but *out* into the carry bit (wrapping two negative numbers into a positive number). Most processors feature an *overflow bit* or *overflow flag* that is set accordingly, that is, by a so-called *exclusive or* between the carry into and out of the MSB. An exclusive or of two bits is true if and only if the bits are different. Note, however, that just like the carry bit has no meaning when adding signed integers, the overflow bit has no meaning when adding unsigned integers.
 
-T> There are many other ways to do integer arithmetics on computers including the handling of overflows! What you have seen here is just the arguably most prevalent choice.
+T> There are many other ways to do integer arithmetics on computers including the handling of overflows! What you have seen here is just the arguably most prevalent choice which we therefore use in selfie as well.
 T>
 T> Most important for you is to be aware of the issue and know what your choice of system actually does when it comes to numbers.
 
