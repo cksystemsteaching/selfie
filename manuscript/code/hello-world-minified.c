@@ -1,1 +1,1 @@
-int*main(){int*foo;foo="Hello World!";while(*foo!=0){write(1,foo,4);foo=foo+1;}}
+int*foo;int*main(){foo="Hello World!";while(*foo!=0){write(1,foo,4);foo=foo+1;}}

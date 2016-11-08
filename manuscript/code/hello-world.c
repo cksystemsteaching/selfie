@@ -1,7 +1,9 @@
-int* main() {
-  int* foo;
+// global variable for pointing to the "Hello World!" string
+int* foo;
 
-  // print the following string on the console
+// main procedure for printing "Hello World!" on the console
+int* main() {
+  // point to the "Hello World!" string
   foo = "Hello World!";
 
   // strings are actually stored in chunks of 4 characters in memory,
