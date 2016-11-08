@@ -1,6 +1,8 @@
 # 3. Encoding {#encoding}
 
-Information, whatever it is, needs to be encoded in bits for a computer to handle it. Since `selfie.c` is a sequence of characters let us first look at how characters are encoded. After that we explain how sequences of characters form larger constructs such as strings, identifiers, and even whole numbers and machine instructions and how they are encoded and also decoded on the machine.
+Information, whatever it is, needs to be encoded in bits for a computer to handle it. Since `selfie.c` is a sequence of characters let us first look at how characters are encoded. After that we explain how sequences of characters form larger constructs such as strings, identifiers, and even positive and negative numbers. We also recall parts of elementary arithmetics and explain how that works on a computer.
+
+Interestingly, the encoding of numbers can also be used to represent information on machine level. For example, the encoding of memory addresses and machine instructions can be done in the same or a similar way than the encoding of numbers. We explain that here as well.
 
 ## Characters
 
@@ -261,7 +263,7 @@ The actual encoding of numbers in the memory of a digital computer, however, is 
 [Unary Numeral System](https://en.wikipedia.org/wiki/Unary_numeral_system)
 : The bijective base-1 numeral system. It is the simplest numeral system to represent natural numbers: in order to represent a number N, an arbitrarily chosen symbol representing the value 1 is repeated N times.
 
-Q> The decimal number `85`, for example, is in unary `1111111111111111111111111111111111111111111111111111111111111111111111111111111111111`.
+Q> The decimal number `85`, for example, is in unary `1111111111111111111111111111111111111111111111111111111111111111111111111111111111111`
 
 Well, have you noticed the enormous difference in length between unary and other representations with higher bases?
 
@@ -541,7 +543,15 @@ Try the following command to see that our "Hello World!" program does actually p
 
 This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1335-L1345) and [storing](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1347-L1360) characters of strings in memory accordingly.
 
-So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even all machine code is handled at that granularity as well.
+So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even memory addresses and all machine code is handled at that granularity as well.
+
+## Addresses
+
+The address of a byte or in fact a word in memory is obviously a positive number. On a mipster machine and many others as well, memory addresses are also represented by words. Thus the word size of such machines determines how many memory addresses can be distinguished and, as a consequence, how much memory can be accessed. A mipster machine, for example, supports up to 64MB of byte-addressed and word-aligned memory. Addressing that memory thus requires the 26 LSBs out of the 32 bits of a word. The remaining 6 MSBs are unused.
+
+X> The address of where the string literal `"Hello World!"` is stored in memory is an example of such a memory address represented by a word.
+
+Let us reflect on that for a moment. So, on a mipster machine, the 32 bits of a word can be used to encode characters, signed integers, and even memory addresses! That's right and this is not all. Even machine instructions are represented by words which is our next topic.
 
 ## Instructions
 
