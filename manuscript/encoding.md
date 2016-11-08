@@ -51,18 +51,18 @@ Let us have a look at the following ["Hello World!" program](https://en.wikipedi
 {line-numbers=on, lang=c}
 <<[A "Hello World!" Program](code/hello-world.c)
 
-and run the code as follows (ignoring the compiler warning):
+and run the [code](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world.c) as follows (ignoring the compiler warning):
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world.c -m 1
 ./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
-./selfie: warning in manuscript/code/hello-world.c in line 1: type mismatch, int expected but int* found
-./selfie: 595 characters read in 20 lines and 9 comments
-./selfie: with 80(13.45%) characters in 39 actual symbols
-./selfie: 0 global variables, 1 procedures, 1 string literals
+./selfie: warning in manuscript/code/hello-world.c in line 5: type mismatch, int expected but int* found
+./selfie: 729 characters read in 22 lines and 11 comments
+./selfie: with 80(10.97%) characters in 39 actual symbols
+./selfie: 1 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
+./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
 ./selfie: this is selfie's mipster executing manuscript/code/hello-world.c with 1MB of physical memory
 Hello World!manuscript/code/hello-world.c: exiting with exit code 0 and 0.00MB of mallocated memory
 ./selfie: this is selfie's mipster terminating manuscript/code/hello-world.c with exit code 0 and 0.00MB of mapped memory
@@ -76,7 +76,7 @@ Removing all whitespace and comments, also called minification, results in the f
 {line-numbers=on, lang=c}
 <<[Minified "Hello World!" Program](code/hello-world-minified.c)
 
-with this output when running it:
+with this output when running the [code](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world-minified.c):
 
 {line-numbers=off}
 ```
@@ -85,9 +85,9 @@ with this output when running it:
 ./selfie: warning in manuscript/code/hello-world-minified.c in line 1: type mismatch, int expected but int* found
 ./selfie: 80 characters read in 0 lines and 0 comments
 ./selfie: with 80(100.00%) characters in 39 actual symbols
-./selfie: 0 global variables, 1 procedures, 1 string literals
+./selfie: 1 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 145 instructions and 20 bytes of data
+./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
 ./selfie: this is selfie's mipster executing manuscript/code/hello-world-minified.c with 1MB of physical memory
 Hello World!manuscript/code/hello-world-minified.c: exiting with exit code 0 and 0.00MB of mallocated memory
 ./selfie: this is selfie's mipster terminating manuscript/code/hello-world-minified.c with exit code 0 and 0.00MB of mapped memory
@@ -106,10 +106,10 @@ Minification is useful for improving performance and saving bandwidth when commu
 > ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c manuscript/code/hello-world-minified.c -o hello-world-minified.m
 ./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
 ...
-./selfie: 600 bytes with 145 instructions and 20 bytes of data written into hello-world.m
+./selfie: 600 bytes with 144 instructions and 24 bytes of data written into hello-world.m
 ./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
 ...
-./selfie: 600 bytes with 145 instructions and 20 bytes of data written into hello-world-minified.m
+./selfie: 600 bytes with 144 instructions and 24 bytes of data written into hello-world-minified.m
 ```
 
 and then check that both files are indeed identical:
@@ -416,7 +416,7 @@ What about negative numbers then? Can we write integer literals in C\* that repr
 
 ## Symbols
 
-Among all language elements of C\* we have seen identifiers and keywords as well as character, string, and integer literals. The only missing elements are operator symbols and symbols for structuring source code. The [complete list of C\* symbols](http://github.com/cksystemsteaching/selfie/blob/e7ee49fb71eae1de5efc24435ab2b3ad4764c803/grammar.md#L13-L33), also called *tokens*, is surprisingly small. Our ["Hello World!" Program](http://github.com/cksystemsteaching/selfie/blob/e7ee49fb71eae1de5efc24435ab2b3ad4764c803/manuscript/code/hello-world.c) does not contain all possible symbols but at least one from each category, that is, keywords, identifiers, literals, operator symbols, and symbols for structuring source code.
+Among all language elements of C\* we have seen identifiers and keywords as well as character, string, and integer literals. The only missing elements are operator symbols and symbols for structuring source code. The [complete list of C\* symbols](http://github.com/cksystemsteaching/selfie/blob/e7ee49fb71eae1de5efc24435ab2b3ad4764c803/grammar.md#L13-L33), also called *tokens*, is surprisingly small. Our ["Hello World!" Program](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world.c) does not contain all possible symbols but at least one from each category, that is, keywords, identifiers, literals, operator symbols, and symbols for structuring source code.
 
 ## Words
 
@@ -624,4 +624,4 @@ X> The encoding of strings is another interesting example. Squeezing four charac
 
 Machine instructions are also encoded such that code size is compact while decoding them, which is ultimately done in hardware by the machine, is still fast. This is, of course, extremely important since every single instruction a processor executes needs to be decoded into opcode and operands before execution.
 
-In computer science the trade off between time and space shows up in all kinds of situations. Data encoding is just one example. The important lesson here is to be aware of the trade off and understand that [there is no such thing as a free lunch!](https://en.wikipedia.org/wiki/There_ain%27t_no_such_thing_as_a_free_lunch)
+In computer science the trade off between time and space shows up in all kinds of situations. Encoding information is just one example. The important lesson here is to be aware of the trade off and understand that [there is no such thing as a free lunch!](https://en.wikipedia.org/wiki/There_ain%27t_no_such_thing_as_a_free_lunch)
