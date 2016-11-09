@@ -1259,9 +1259,7 @@ int* peekArgument();
 int* getArgument();
 void setArgument(int* argv);
 
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-int USAGE = 1;
+void printUsage();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -7021,11 +7019,17 @@ void setArgument(int* argv) {
   *selfie_argv = (int) argv;
 }
 
+void printUsage() {
+  print(selfieName);
+  print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ ( -m | -d | -y | -min | -mob ) size ... ] ");
+  println();
+}
+
 int selfie() {
   int* option;
 
   if (numberOfRemainingArguments() == 0)
-    return USAGE;
+    printUsage();
   else {
     initScanner();
     initRegister();
@@ -7037,10 +7041,12 @@ int selfie() {
 
       if (stringCompare(option, (int*) "-c"))
         selfie_compile();
-      else if (numberOfRemainingArguments() == 0)
+      else if (numberOfRemainingArguments() == 0) {
         // remaining options have at least one argument
-        return USAGE;
-      else if (stringCompare(option, (int*) "-o"))
+        printUsage();
+
+        return -1;
+      } else if (stringCompare(option, (int*) "-o"))
         selfie_output();
       else if (stringCompare(option, (int*) "-s"))
         selfie_disassemble();
@@ -7056,8 +7062,11 @@ int selfie() {
         return selfie_run(MIPSTER, MINSTER, 0);
       else if (stringCompare(option, (int*) "-mob"))
         return selfie_run(MIPSTER, MOBSTER, 0);
-      else
-        return USAGE;
+      else {
+        printUsage();
+
+        return -1;
+      }
     }
   }
 
@@ -7065,20 +7074,9 @@ int selfie() {
 }
 
 int main(int argc, int* argv) {
-  int exitCode;
-
   initSelfie(argc, (int*) argv);
 
   initLibrary();
 
-  exitCode = selfie();
-
-  if (exitCode == USAGE) {
-    print(selfieName);
-    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ ( -m | -d | -y | -min | -mob ) size ... ] ");
-    println();
-
-    return 0;
-  } else
-    return exitCode;
+  return selfie();
 }
