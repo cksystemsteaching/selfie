@@ -64,7 +64,7 @@ For the memory program to be able to operate on a number there needs to be memor
 [Global Variable](https://en.wikipedia.org/wiki/Global_variable)
 : A variable with global scope, meaning that it is visible (hence accessible) throughout the program, unless shadowed. The set of all global variables is known as the global environment or global state.
 
-So global really just means here that `bar` can be used throughout the program. Line 3 is thus a *declaration* that specifies that the identifier `bar` refers to a variable that represents exactly one value in the whole program.
+So global really just means here that `bar` can be used throughout the program. Line 3 is thus a *declaration* that specifies that the identifier `bar` refers to the same variable in the whole program.
 
 [Declaration](https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration")
 : Specifies properties of an identifier: it declares what an identifier means. Declarations are most commonly used for functions, variables, constants, and classes. Beyond the name (the identifier itself) and the kind of entity (function, variable, etc.), declarations typically specify the data type (for variables and constants), or the type signature (for functions). The term "declaration" is frequently contrasted with the term "definition", but meaning and usage varies significantly between languages.
@@ -78,7 +78,9 @@ Line 3 also specifies that the *data type* of `bar` is `int` which, according to
 [Data Type](https://en.wikipedia.org/wiki/Data_type)
 : A classification of data which tells the compiler or interpreter how the programmer intends to use the data. Most programming languages support various types of data, for example: real, integer, or Boolean. A data type provides a set of values from which an expression (i.e. variable, function ...) may take its values. The type defines the operations that can be done on the data, the meaning of the data, and the way values of that type can be stored.
 
+So, this is important! A data type tells us and the compiler what the intention and in fact to some extent the meaning of the bits are that encode the data. Remember, bits can encode anything and have no meaning unless when changed by some operation. Data types therefore help with identifying meaning even before performing any operations.
 
+A global variable of type `int` such as `bar` provides storage for 32 bits which happens to match the size of a word on a mipster machine. In fact, the value of `bar` will be stored in exactly one word somewhere in memory. First of all, this means that `bar` provides storage that is identified by the identifier `bar` and not by some memory address. But it also means that the program as is cannot access any other bits in memory than the 32 bits identified by `bar` which obviously reduces the size of the state space dramatically! So the program state space is much smaller than the machine state space and therefore much easier to reason about. However, there is also code in the memory program that operates on `bar`. Let us have a closer look at how that is introduced in C\*.
 
 ### Procedures
 
