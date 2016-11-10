@@ -1,12 +1,10 @@
-// declaring bar as a global variable of type int
-int bar;
+// declaring bar as a global variable of type int and
+// defining the decimal value 10 as initial value of bar
+int bar = 10;
 
 // declaring main as a procedure with no arguments and return type int
 int main() {
-  // defining main
-
-  // assigning the decimal value 10 to bar
-  bar = 10;
+  // defining main to be the following code
 
   // while bar is greater than the decimal value 1 ...
   // otherwise continue to the return statement below
