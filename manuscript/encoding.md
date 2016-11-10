@@ -420,7 +420,7 @@ What about negative numbers then? Can we write integer literals in C\* that repr
 
 Among all language elements of C\* we have seen identifiers and keywords as well as character, string, and integer literals. The only missing elements are operator symbols and symbols for structuring source code. The [complete list of C\* symbols](http://github.com/cksystemsteaching/selfie/blob/e7ee49fb71eae1de5efc24435ab2b3ad4764c803/grammar.md#L13-L33), also called *tokens*, is surprisingly small. Our ["Hello World!" Program](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world.c) does not contain all possible symbols but at least one from each category, that is, keywords, identifiers, literals, operator symbols, and symbols for structuring source code.
 
-## Words
+## Machine Words
 
 So, before continuing let us point out that character, string, and integer literals are the only way to describe data in C\* programs. All other language elements of C\* including keywords and identifiers are there to describe code and manage memory! We already know that characters are encoded in bytes and strings are stored contiguously in byte-addressed memory. What about integers then? To answer that question we need to take a closer look at how a computer handles data.
 
@@ -545,7 +545,7 @@ This is nice but how do we then access individual characters of a string? Simple
 
 So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even memory addresses and all machine code is handled at that granularity as well.
 
-## Addresses
+## Memory Addresses
 
 The address of a byte or in fact a word in memory is obviously a positive number. On a mipster machine and many others as well, memory addresses are also represented by words. Thus the word size of such machines determines how many memory addresses can be distinguished and, as a consequence, how much memory can be accessed. A mipster machine, for example, supports up to 64MB of byte-addressed and word-aligned memory. Addressing that memory thus requires the 26 LSBs out of the 32 bits of a word. The remaining 6 MSBs are unused.
 
@@ -618,9 +618,24 @@ An interesting feature of the implementation of selfie in a single file is that 
 
 ## Summary
 
-In this chapter we have seen how characters, strings, identifiers, integers, and even machine instructions are encoded and decoded, and how all that allows us to represent source and machine code using just bits.
+In this chapter we have seen how characters, strings, identifiers, integers, and even machine instructions are encoded and decoded, and how all that allows us to represent source and machine code using just bits. We even understand now some of the output of the starc compiler when compiling our "Hello World!" program, for example:
 
-But there is still something missing. Why is all of this encoded the way it is and not some other way? There are two important reasons:
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world.c -m 1
+./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+...
+./selfie: 729 characters read in 22 lines and 11 comments
+./selfie: with 80(10.97%) characters in 39 actual symbols
+./selfie: 1 global variables, 1 procedures, 1 string literals
+./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
+./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
+...
+```
+
+The compiler counts `characters`, `lines`, `comments`, `whitespace`, and `symbols` in source code, and `instructions` and `bytes of data` in the generated machine code. The information about `global variables`, `procedures`, `calls`, `assignments`, `while`, `if`, and `return` will become clear in the next chapter.
+
+But there is still something missing here. Why is all of this encoded the way it is and not some other way? There are two important reasons:
 
 1. Time: Depending on the encoding, data can be processed faster or slower, even fundamentally faster or slower in the sense that some encoding may not allow reasonably fast processing at all.
 
