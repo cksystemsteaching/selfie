@@ -42,24 +42,28 @@ Before explaining how C\* code operates, we introduce C\* language elements that
 
 The program takes the decimal value 10 (Line 3) and decrements it (Line 13) until it reaches the decimal value 1 (Line 11) which is then returned (Line 19) as so-called *exit code*. To see for yourself run the [code](http://github.com/cksystemsteaching/selfie/blob/c46e68a8f6bbf7e7aa2789f74e584cf9f75a0d3c/manuscript/code/memory.c) as follows:
 
-{line-numbers=off}
 ```
-> ./selfie -c manuscript/code/memory.c -m 1
+> ./selfie -c manuscript/code/memory.c -o memory.m -m 1
 ./selfie: this is selfie's starc compiling manuscript/code/memory.c
 ./selfie: 625 characters read in 19 lines and 9 comments
 ./selfie: with 55(8.80%) characters in 28 actual symbols
 ./selfie: 1 global variables, 1 procedures, 0 string literals
 ./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: 496 bytes generated with 122 instructions and 8 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/memory.c with 1MB of physical memory
-manuscript/code/memory.c: exiting with exit code 1 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/memory.c with exit code 1 and 0.00MB of mapped memory
-...
+./selfie: 496 bytes with 122 instructions and 8 bytes of data written into memory.m
+./selfie: this is selfie's mipster executing memory.m with 1MB of physical memory
+memory.m: exiting with exit code 1 and 0.00MB of mallocated memory
+./selfie: this is selfie's mipster terminating memory.m with exit code 1 and 0.00MB of mapped memory
+./selfie: profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)
+./selfie: calls: 1,1(100.00%)@0x17C(~11),0(0.00%),0(0.00%)
+./selfie: loops: 9,9(100.00%)@0x190(~11),0(0.00%),0(0.00%)
+./selfie: loads: 24,10(41.66%)@0x190(~11),9(37.59%)@0x1A4(~13),1(4.16%)@0x24(~1)
+./selfie: stores: 12,9(75.18%)@0x1B0(~13),1(8.33%)@0x4C(~1),0(0.00%)
 ```
 
 ### Global Variables
 
-For the memory program to be able to operate on a number there needs to be memory to store that number. For this purpose, Line 3 *declares* a so-called *global variable* called `bar`.
+For the memory program to be able to operate on a number there needs to be memory to store that number. For this purpose, Line 3 in the source code *declares* a so-called *global variable* called `bar`. The starc compiler even reports that it found exactly that one global variable, see Line 5 in the above output.
 
 [Global Variable](https://en.wikipedia.org/wiki/Global_variable)
 : A variable with global scope, meaning that it is visible (hence accessible) throughout the program, unless shadowed. The set of all global variables is known as the global environment or global state.
@@ -69,25 +73,41 @@ So global really just means here that `bar` can be used throughout the program. 
 [Declaration](https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration")
 : Specifies properties of an identifier: it declares what an identifier means. Declarations are most commonly used for functions, variables, constants, and classes. Beyond the name (the identifier itself) and the kind of entity (function, variable, etc.), declarations typically specify the data type (for variables and constants), or the type signature (for functions). The term "declaration" is frequently contrasted with the term "definition", but meaning and usage varies significantly between languages.
 
-Line 3 not only declares `bar` but also *defines* the initial value of `bar` as the decimal value 10 represented by the integer literal `10`. The initial value of a global variable is nevertheless optional. Line 3 could be rewritten to `int bar;` in which case the value of `bar` would be undefined.
+Line 3 not only declares `bar` but also *defines* the initial value of `bar` as the decimal value 10 represented by the integer literal `10`. The initial value of a global variable is nevertheless optional. Line 3 could be rewritten to `int bar;` in which case the value of `bar` would be initially undefined meaning it could initially be any value. Undefined values are a common source of errors, if programs depend on them. Modern compilers usually warn programmers about that (not starc though since we need to keep things simple). A simple way to avoid depending on undefined values is to either provide an initial value for a variable or to assign a value to a variable before using the variable in any computation, see below for more about how to do that. A program that does not depend on undefined values has a single initial state from which it begins all computations. This is what we want!
 
-Note that the equality sign `=` is merely [syntactic sugar](https://en.wikipedia.org/wiki/Syntactic_sugar) making the code more readable while the [semicolon](https://en.wikipedia.org/wiki/Semicolon) `;` is a so-called *terminator* which indicates the end of a statement. Programming languages newer than C often make terminators optional or omit them altogether since they are, similar to syntactic sugar, not necessary for the compiler to work and, unlike syntactic sugar, considered a burden.
+Note that the equality sign `=` in Line 3 is merely [syntactic sugar](https://en.wikipedia.org/wiki/Syntactic_sugar) making the code more readable while the [semicolon](https://en.wikipedia.org/wiki/Semicolon) `;` is a so-called *terminator* which indicates the end of a statement. After the semicolon we could insert more global variable declarations as long as they all were to introduce unique identifiers and were properly terminated with semicolons. Programming languages newer than C often make such terminators optional or omit them altogether since they are, similar to syntactic sugar, not necessary for the compiler to work and, unlike syntactic sugar, sometimes considered a burden.
 
-Line 3 also specifies that the *data type* of `bar` is `int` which, according to the C standard, means that `bar` represents a 32-bit signed integer, that is, 32 bits encoding a positive or negative number in two's complement. It also means that arithmetic operations involving `bar` will be done with 32-bit wrap-around semantics.
+Line 3 also specifies that the *data type* of `bar` is `int` which, according to the C standard, means that `bar` represents a signed 32-bit integer, that is, 32 bits encoding a positive or negative number in two's complement. It also means that arithmetic operations involving `bar` will be done with 32-bit wrap-around semantics.
 
 [Data Type](https://en.wikipedia.org/wiki/Data_type)
 : A classification of data which tells the compiler or interpreter how the programmer intends to use the data. Most programming languages support various types of data, for example: real, integer, or Boolean. A data type provides a set of values from which an expression (i.e. variable, function ...) may take its values. The type defines the operations that can be done on the data, the meaning of the data, and the way values of that type can be stored.
 
-So, this is important! A data type tells us and the compiler what the intention and in fact to some extent the meaning of the bits are that encode the data. Remember, bits can encode anything and have no meaning unless when changed by some operation. Data types therefore help with identifying meaning even before performing any operations.
+So, this is important! A data type tells us and the compiler what the intended meaning of the bits are that encode the data. Remember, bits can encode anything and have no meaning unless when changed by some operation. Data types therefore help with identifying meaning even without performing any operations.
 
 A global variable of type `int` such as `bar` provides storage for 32 bits which happens to match the size of a word on a mipster machine. In fact, the value of `bar` will be stored in exactly one word somewhere in memory. First of all, this means that `bar` provides storage that is identified by the identifier `bar` and not by some memory address. But it also means that the program as is cannot access any other bits in memory than the 32 bits identified by `bar` which obviously reduces the size of the state space dramatically! So the program state space is much smaller than the machine state space and therefore much easier to reason about. However, there is also code in the memory program that operates on `bar`. Let us have a closer look at how that is introduced in C\*.
 
 ### Procedures
 
+The source code of the memory program declares a so-called *procedure* called `main` in Line 6. The broader term for procedures is *subroutines* defined as follows.
+
 [Subroutine](https://en.wikipedia.org/wiki/Subroutine)
 : A sequence of program instructions that perform a specific task, packaged as a unit. This unit can then be used in programs wherever that particular task should be performed. Subprograms may be defined within programs, or separately in libraries that can be used by multiple programs. In different programming languages, a subroutine may be called a procedure, a function, a routine, a method, or a subprogram.
 
+In C subroutines are called procedures. Line 6 specifies that `main` refers to a procedure rather than a global variable simply by using `()` after the identifier. In fact, it would be perfectly fine to just say `int main();`. The code enclosed in `{}`, however, also *defines* the implementation of the procedure. We get to that below. The `int` keyword before `main` specifies that the so-called [return type](https://en.wikipedia.org/wiki/Return_type) of the procedure is a signed 32-bit integer. This means that the procedure returns a signed 32-bit integer value when done.
+
+Global variable and procedure declarations, as in Lines 3 and 6, may use any identifier not used anywhere else in the program. In other words, identifiers used in declarations must be unique. The `main` procedure name, however, is even more special because the `main` procedure is the one that is invoked when a C program starts executing. Thus a valid C program needs to contain exactly one declaration and definition of a procedure called `main`. Otherwise, the system would not "know" what to execute. See for yourself by renaming `main` in `memory.c` to something else. When `main` returns the program stops executing and the system outputs the value returned by `main` as the previously mentioned exit code, see Line 10 in the above output.
+
+There can be any number of global variable and procedure declarations in a C program. The starc compiler reports in Line 5 in the above output that there is exactly one procedure declared in the memory program which is in fact the `main` procedure.
+
+Line 7 in the above output mentions that starc generated exactly 496 bytes for the memory program representing 122 instructions (remember each instruction takes 4 bytes) and 8 bytes of data (496=122\*4+8). The 122 instructions represent the machine code generated by starc for implementing the `main` procedure, that is, the C\* code in Lines 11-19 in `memory.c`. Out of the 8 bytes of data, 4 bytes represent the initial value of `bar` which is 10. The other 4 bytes encode the amount of bytes needed to represent the instructions, that is, the value 488 which is equal to 122\*4. This information is necessary to determine which bytes are code and which are data.
+
+Selfie can write the generated bytes into a [binary file](https://en.wikipedia.org/wiki/Binary_file) (using the `-o` option) that can later be loaded again (using the `-l` option) and executed (using the `-m` option, for example). In our example, selfie is instructed to write the generated bytes, also called *executable code* or just [executable](https://en.wikipedia.org/wiki/Executable), into a binary file called `memory.m`, as reported in Line 8 in the above output. The format of that file is very simple. It begins with the 4 bytes encoding the number of bytes of code (representing 488 here), followed by the 488 bytes of code, followed by the 4 bytes of data (representing 10 here). That's it.
+
+We also instructed selfie to generate an assembly file `memory.s` for the memory program (using the `-s` option) that represents a human-readable version of the binary file `memory.m`. Selfie reports on that in Line 9 in the above output. Note that `memory.s` only contains code but not any data such as the initial value of `bar`.
+
 ### Program Break
+
+[Program Break](https://en.wikipedia.org/wiki/Sbrk)
 
 ## Code
 
