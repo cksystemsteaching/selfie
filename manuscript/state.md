@@ -1,21 +1,34 @@
 # 4. State {#state}
 
-Computation is the evolution of state. At any given time, a computer stores a very large but still finite amount of bits in registers and memory. The values of all these bits together is what we call the state of the machine. Then the processor executes one instruction which directs it to change the values of a very small number of bits creating a new state. That process of change from one state to the next continues until the machine is turned off.
+Computation is the evolution of state. At any given time, a computer stores a very large but still finite amount of bits in memory and registers. The values of all these bits together is what we call the state of the machine. Then the processor executes one instruction which directs it to change the values of a very small number of bits creating a new state. That process of change from one state to the next continues until the machine is turned off.
 
 [State](https://en.wikipedia.org/wiki/State_(computer_science))
 : The state of a digital logic circuit or computer program is a technical term for all the stored information, at a given instant in time, to which the circuit or program has access. The output of a digital circuit or computer program at any time is completely determined by its current inputs and its state.
 
 Software on source and machine code level specifies for each state what the next state is. There are the data bits that are being changed and the code bits that determine that change. Input is typically modeled by data bits that are changed by something other than the processor such as a keyboard, for example.
 
-In this chapter, we explain how on machine level registers and memory represent state and how machine code describes change of that state. We also show how source code provides a high-level view of program state and how that translates down to machine code level. Seeing both levels and how they connect is an important step towards learning how to code.
+In this chapter, we explain how on machine level memory and registers represent state and how machine code describes change of that state. We also show how source code provides a high-level view of program state and how that translates down to machine code level. Seeing both levels and how they connect is an important step towards learning how to code.
+
+## Machine
+
+Most general-purpose computers today are based on what is known as the *von Neumann model* or *von Neumann architecture*.
+
+[Von Neumann Architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture)
+: A computer architecture, described in 1945 by the mathematician and physicist John von Neumann and others, for an electronic digital computer with parts consisting of a processing unit containing an arithmetic logic unit and processor registers; a control unit containing an instruction register and program counter; a memory to store both data and instructions; external mass storage; and input and output mechanisms.
+
+![Von Neumann Architecture](images/von-neumann-architecture.png "Von Neumann Architecture")
+
+The CPU and main memory in a typical computer correspond to the processing unit and memory of a von Neumann architecture, respectively. The mipster emulator is no exception. It emulates a *von Neumann machine*.
+
+The key idea is very simple. A von Neumann machine is a [stored-program computer](https://en.wikipedia.org/wiki/Stored-program_computer) which stores both code and data in the same memory. In fact, in memory there is really no distinction between code and data. A von Neumann machine fetches code from memory and executes it. The code will in turn instruct the machine to load data from memory into registers, perform some computation on registers, and finally store the results back in memory. We explain the details of how this works below. For now it is only important to understand that bits fetched from memory and executed happen to represent code in that moment while bits loaded from memory into registers, then modified, and finally stored back in memory represent data in that moment. At all other times, they are just bits.
 
 ## Memory
 
-A machine that can store n bits in registers and memory can distinguish 2^n^ states.
+A von Neumann machine that can store n bits in memory and registers can distinguish 2^n^ states.
 
-X> The mipster emulator implements a machine with 32 general purpose 32-bit registers and 3 special purpose 32-bit registers, explained below, and 64MB of memory.
+X> The mipster emulator implements a von Neumann machine with 64MB of memory, and 32 general-purpose 32-bit registers and 3 special-purpose 32-bit registers, explained below.
 X>
-X> Therefore, a mipster machine can store 32\*32+3\*32+2^26^\*8 bits which is equal to 536872032 bits. Thus the machine can be in [2^536872032^](http://www.wolframalpha.com/input/?source=nav&i=2%5E536872032) different states, a number with 161,614,586 decimal digits. Imagine what a machine with gigabytes or even terabytes of memory can do.
+X> Therefore, a mipster machine can store 2^26^\*8+32\*32+3\*32 bits which is equal to 536872032 bits. Thus the machine can be in [2^536872032^](http://www.wolframalpha.com/input/?source=nav&i=2%5E536872032) different states, a number with 161,614,586 decimal digits. Imagine what a machine with gigabytes or even terabytes of memory can do.
 
 Interestingly, we can always, at least in principle, partition that enormously large state space into a set of good states and a set of bad states. Software without bugs would always keep the machine in good states, or conversely, prevent the machine from ever going to a bad state. However, what is a good state?
 
@@ -35,7 +48,7 @@ Imperative programming is supported by many programming languages but it is not 
 
 Intuitively, rather than saying imperatively how to change state, declarative programming focuses on declaring what needs to change. While spelling out how to change state can become tedious with imperative programming spelling out what to change can become burdensome with declarative programming. Yet both paradigms have their important use cases and a port of selfie to a declarative programming language would be very nice to have but remains future work for now.
 
-Before explaining how C\* code operates, we introduce C\* language elements that allow us to describe program state as a high-level abstraction of machine state. Code written in C\* then operates on that program state. Let us have a look at the following C\* program which we call the countdown program or just countdown:
+Before explaining how C\* code works, we introduce C\* language elements that allow us to describe program state as a high-level abstraction of machine state. Code written in C\* then operates on that program state. Let us have a look at the following C\* program which we call the countdown program or just countdown:
 
 {line-numbers=on, lang=c}
 <<[The Countdown Program](code/countdown.c)
@@ -102,11 +115,33 @@ There can be any number of global variable and procedure declarations in a C pro
 
 Line 7 in the above output mentions that starc generated exactly 496 bytes for `countdown.c` representing 122 instructions (remember each instruction takes 4 bytes) and 8 bytes of data (496=122\*4+8). The 122 instructions represent the machine code generated by starc for implementing the `main` procedure, that is, the C\* code in Lines 11-19 in `countdown.c`. Out of the 8 bytes of data, 4 bytes represent the initial value of `bar` which is 10. The other 4 bytes encode the amount of bytes needed to represent the instructions, that is, the value 488 which is equal to 122\*4. This information is necessary to determine which bytes are code and which are data.
 
-Selfie can write the generated bytes into a [binary file](https://en.wikipedia.org/wiki/Binary_file) (using the `-o` option) that can later be loaded again (using the `-l` option) and executed (using the `-m` option, for example). In our example, selfie is instructed to write the generated bytes, also called *executable code* or just [executable](https://en.wikipedia.org/wiki/Executable), into a binary file called `countdown.m`, as reported in Line 8 in the above output. The format of that file is very simple. It begins with the 4 bytes encoding the number of bytes of code (representing 488 here), followed by the 488 bytes of code, followed by the 4 bytes of data (representing 10 here). That's it.
+Selfie can [write](http://github.com/cksystemsteaching/selfie/blob/1d595e36388e2621f4dd24d541f04856547c7a5d/selfie.c#L4448-L4497) the generated bytes into a *binary file* or just *binary* (using the `-o` option) that can later be [loaded](http://github.com/cksystemsteaching/selfie/blob/1d595e36388e2621f4dd24d541f04856547c7a5d/selfie.c#L4531-L4601) again (using the `-l` option) and [executed](http://github.com/cksystemsteaching/selfie/blob/1d595e36388e2621f4dd24d541f04856547c7a5d/selfie.c#L6934-L6984) (using the `-m` option, for example).
 
-We also instructed selfie to generate an assembly file `countdown.s` for the countdown program (using the `-s` option) that represents a human-readable version of the binary file `countdown.m`. Selfie reports on that in Line 9 in the above output. Note that `countdown.s` only contains code but not any data such as the initial value of `bar`.
+[Binary File](https://en.wikipedia.org/wiki/Binary_file)
+: A computer file that is not a text file. The term "binary file" is often used as a term meaning "non-text file". Binary files are usually thought of as being a sequence of bytes, which means the binary digits (bits) are grouped in eights. Binary files typically contain bytes that are intended to be interpreted as something other than text characters. Compiled computer programs are typical examples; indeed, compiled applications are sometimes referred to, particularly by programmers, as binaries.
 
-### Program Break
+In our example, selfie is instructed to write the generated bytes into a binary file called `countdown.m`, as reported in Line 8 in the above output. The `countdown.m` binary is what is known as an *executable*.
+
+[Executable](https://en.wikipedia.org/wiki/Executable)
+: Causes a computer "to perform indicated tasks according to encoded instructions," as opposed to a data file that must be parsed by a program to be meaningful. These instructions are traditionally machine code instructions for a physical CPU.
+
+We may use the terms binary and executable interchangeably even though, strictly speaking, there are binary files such as image files, for example, that are obviously not executable. However, executables are usually binaries.
+
+The format of the `countdown.m` executable is very simple. It begins with [the 4 bytes encoding the number of bytes of code](http://github.com/cksystemsteaching/selfie/blob/1d595e36388e2621f4dd24d541f04856547c7a5d/selfie.c#L4480) (representing 488 here) followed by [the 488 bytes of code followed by the 4 bytes of data](http://github.com/cksystemsteaching/selfie/blob/1d595e36388e2621f4dd24d541f04856547c7a5d/selfie.c#L4485) (representing 10 here). That's it.
+
+When invoking selfie on the countdown program, we also instructed selfie to [produce](http://github.com/cksystemsteaching/selfie/blob/1d595e36388e2621f4dd24d541f04856547c7a5d/selfie.c#L6366-L6423) an assembly file `countdown.s` for the countdown program (using the `-s` option) that represents a human-readable version of the binary file `countdown.m`. Selfie reports on that in Line 9 in the above output. Note that `countdown.s` only contains code but not any data such as the initial value of `bar`.
+
+Ok, but what happens now when selfie is instructed by the final `-m 1` option to execute the generated code? Doing that involves solving a problem that appears to have no solution. How does a computer load an executable into memory without an executable in memory that instructs the machine how to do this?
+
+[Bootstrapping](https://en.wikipedia.org/wiki/Bootstrapping)
+: A self-starting process that is supposed to proceed without external input. In computer technology the term (usually shortened to booting) usually refers to the process of loading the basic software into the memory of a computer after power-on or general reset, especially the operating system which will then take care of loading other software as needed.
+
+[Loader](https://en.wikipedia.org/wiki/Loader_(computing))
+: Part of an operating system that is responsible for loading programs and libraries. It is one of the essential stages in the process of starting a program, as it places programs into memory and prepares them for execution. Loading a program involves reading the contents of the executable file containing the program instructions into memory, and then carrying out other required preparatory tasks to prepare the executable for running. Once loading is complete, the operating system starts the program by passing control to the loaded program code.
+
+### Layout
+
+![Memory Layout](images/memory-layout.png "Memory Layout")
 
 [Program Break](https://en.wikipedia.org/wiki/Sbrk)
 
