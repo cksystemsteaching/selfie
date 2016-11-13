@@ -6,9 +6,9 @@ int bar = 10;
 int main() {
   // defining main to be the following code
 
-  // while bar is greater than the decimal value 1 ...
+  // while bar is greater than the decimal value 0 ...
   // otherwise continue to the return statement below
-  while (bar > 1) {
+  while (bar > 0) {
     // ... subtract the decimal value 1 from bar and assign the result to bar
     bar = bar - 1;
 
