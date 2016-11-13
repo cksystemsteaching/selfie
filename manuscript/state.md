@@ -161,3 +161,15 @@ Going back to C\* in general and the countdown program in particular, global var
 ### Statements
 
 Mention string handling using the "Hello World!" program.
+
+## Summary
+
+| High-Level Program          | Low-Level Machine |
+| --------------------------- | ----------------- |
+| Global Variable Declaration | Data Location in Memory |
+| Global Variable Definition  | Initial Value in Memory |
+| Data Type                   | Intended Meaning of Bits |
+| Procedure Declaration       | Code Location in Memory |
+| Procedure Definition        | Actual Code in Memory |
+| Statement                   | Machine Instructions |
+| Current Statement           | Program Counter |
