@@ -35,35 +35,36 @@ Imperative programming is supported by many programming languages but it is not 
 
 Intuitively, rather than saying imperatively how to change state, declarative programming focuses on declaring what needs to change. While spelling out how to change state can become tedious with imperative programming spelling out what to change can become burdensome with declarative programming. Yet both paradigms have their important use cases and a port of selfie to a declarative programming language would be very nice to have but remains future work for now.
 
-Before explaining how C\* code operates, we introduce C\* language elements that allow us to describe program state as a high-level abstraction of machine state. Code written in C\* then operates on that program state. Let us have a look at the following C\* program which we call the memory program:
+Before explaining how C\* code operates, we introduce C\* language elements that allow us to describe program state as a high-level abstraction of machine state. Code written in C\* then operates on that program state. Let us have a look at the following C\* program which we call the countdown program or just countdown:
 
 {line-numbers=on, lang=c}
-<<[The Memory Program](code/memory.c)
+<<[The Countdown Program](code/countdown.c)
 
-The program takes the decimal value 10 (Line 3) and decrements it (Line 13) until it reaches the decimal value 1 (Line 11) which is then returned (Line 19) as so-called *exit code*. To see for yourself run the [code](http://github.com/cksystemsteaching/selfie/blob/c46e68a8f6bbf7e7aa2789f74e584cf9f75a0d3c/manuscript/code/memory.c) as follows:
+The program takes the decimal value 10 (Line 3) and decrements it (Line 13) until it reaches the decimal value 0 (Line 11) which is then returned (Line 19) as so-called *exit code*. To see for yourself run the [code](http://github.com/cksystemsteaching/selfie/blob/2b97bcfc85897ed2a3c421bb601cd8255ad3a3f3/manuscript/code/countdown.c) as follows:
 
 ```
-> ./selfie -c manuscript/code/memory.c -o memory.m -m 1
-./selfie: this is selfie's starc compiling manuscript/code/memory.c
+> ./selfie -c manuscript/code/countdown.c -o countdown.m -s countdown.s -m 1
+./selfie: this is selfie's starc compiling manuscript/code/countdown.c
 ./selfie: 625 characters read in 19 lines and 9 comments
 ./selfie: with 55(8.80%) characters in 28 actual symbols
 ./selfie: 1 global variables, 1 procedures, 0 string literals
 ./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: 496 bytes generated with 122 instructions and 8 bytes of data
-./selfie: 496 bytes with 122 instructions and 8 bytes of data written into memory.m
-./selfie: this is selfie's mipster executing memory.m with 1MB of physical memory
-memory.m: exiting with exit code 1 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating memory.m with exit code 1 and 0.00MB of mapped memory
+./selfie: 496 bytes with 122 instructions and 8 bytes of data written into countdown.m
+./selfie: 4301 characters of assembly with 122 instructions written into countdown.s
+./selfie: this is selfie's mipster executing countdown.m with 1MB of physical memory
+countdown.m: exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: this is selfie's mipster terminating countdown.m with exit code 0 and 0.00MB of mapped memory
 ./selfie: profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)
 ./selfie: calls: 1,1(100.00%)@0x17C(~11),0(0.00%),0(0.00%)
-./selfie: loops: 9,9(100.00%)@0x190(~11),0(0.00%),0(0.00%)
-./selfie: loads: 24,10(41.66%)@0x190(~11),9(37.59%)@0x1A4(~13),1(4.16%)@0x24(~1)
-./selfie: stores: 12,9(75.18%)@0x1B0(~13),1(8.33%)@0x4C(~1),0(0.00%)
+./selfie: loops: 10,10(100.00%)@0x190(~11),0(0.00%),0(0.00%)
+./selfie: loads: 26,11(42.37%)@0x190(~11),10(38.46%)@0x1A4(~13),1(3.84%)@0x24(~1)
+./selfie: stores: 13,10(76.92%)@0x1B0(~13),1(7.69%)@0x4C(~1),0(0.00%)
 ```
 
 ### Global Variables
 
-For the memory program to be able to operate on a number there needs to be memory to store that number. For this purpose, Line 3 in the source code *declares* a so-called *global variable* called `bar`. The starc compiler even reports that it found exactly that one global variable, see Line 5 in the above output.
+For the countdown program to be able to operate on a number there needs to be memory to store that number. For this purpose, Line 3 in the source code *declares* a so-called *global variable* called `bar`. The starc compiler even reports that it found exactly that one global variable, see Line 5 in the above output.
 
 [Global Variable](https://en.wikipedia.org/wiki/Global_variable)
 : A variable with global scope, meaning that it is visible (hence accessible) throughout the program, unless shadowed. The set of all global variables is known as the global environment or global state.
@@ -84,26 +85,26 @@ Line 3 also specifies that the *data type* of `bar` is `int` which, according to
 
 So, this is important! A data type tells us and the compiler what the intended meaning of the bits are that encode the data. Remember, bits can encode anything and have no meaning unless when changed by some operation. Data types therefore help with identifying meaning even without performing any operations.
 
-A global variable of type `int` such as `bar` provides storage for 32 bits which happens to match the size of a word on a mipster machine. In fact, the value of `bar` will be stored in exactly one word somewhere in memory. First of all, this means that `bar` provides storage that is identified by the identifier `bar` and not by some memory address. But it also means that the program as is cannot access any other bits in memory than the 32 bits identified by `bar` which obviously reduces the size of the state space dramatically! So the program state space is much smaller than the machine state space and therefore much easier to reason about. However, there is also code in the memory program that operates on `bar`. Let us have a closer look at how that is introduced in C\*.
+A global variable of type `int` such as `bar` provides storage for 32 bits which happens to match the size of a word on a mipster machine. In fact, the value of `bar` will be stored in exactly one word somewhere in memory. First of all, this means that `bar` provides storage that is identified by the identifier `bar` and not by some memory address. But it also means that the program as is cannot access any other bits in memory than the 32 bits identified by `bar` which obviously reduces the size of the state space dramatically! So the program state space is much smaller than the machine state space and therefore much easier to reason about. However, there is also code in countdown that operates on `bar`. Let us have a closer look at how that is introduced in C\*.
 
 ### Procedures
 
-The source code of the memory program declares a so-called *procedure* called `main` in Line 6. The broader term for procedures is *subroutines* defined as follows.
+The source code of the countdown program declares a so-called *procedure* called `main` in Line 6. The broader term for procedures is *subroutines* defined as follows.
 
 [Subroutine](https://en.wikipedia.org/wiki/Subroutine)
 : A sequence of program instructions that perform a specific task, packaged as a unit. This unit can then be used in programs wherever that particular task should be performed. Subprograms may be defined within programs, or separately in libraries that can be used by multiple programs. In different programming languages, a subroutine may be called a procedure, a function, a routine, a method, or a subprogram.
 
 In C subroutines are called procedures. Line 6 specifies that `main` refers to a procedure rather than a global variable simply by using `()` after the identifier. In fact, it would be perfectly fine to just say `int main();`. The code enclosed in `{}`, however, also *defines* the implementation of the procedure. We get to that below. The `int` keyword before `main` specifies that the so-called [return type](https://en.wikipedia.org/wiki/Return_type) of the procedure is a signed 32-bit integer. This means that the procedure returns a signed 32-bit integer value when done.
 
-Global variable and procedure declarations, as in Lines 3 and 6, may use any identifier not used anywhere else in the program. In other words, identifiers used in declarations must be unique. The `main` procedure name, however, is even more special because the `main` procedure is the one that is invoked when a C program starts executing. Thus a valid C program needs to contain exactly one declaration and definition of a procedure called `main`. Otherwise, the system would not "know" what to execute. See for yourself by renaming `main` in `memory.c` to something else. When `main` returns the program stops executing and the system outputs the value returned by `main` as the previously mentioned exit code, see Line 10 in the above output.
+Global variable and procedure declarations, as in Lines 3 and 6, may use any identifier not used anywhere else in the program. In other words, identifiers used in declarations must be unique. The `main` procedure name, however, is even more special because the `main` procedure is the one that is invoked when a C program starts executing. Thus a valid C program needs to contain exactly one declaration and definition of a procedure called `main`. Otherwise, the system would not "know" what to execute. See for yourself by renaming `main` in `countdown.c` to something else. When `main` returns the program stops executing and the system outputs the value returned by `main`, which is 0, as the previously mentioned exit code, see Line 10 in the above output.
 
-There can be any number of global variable and procedure declarations in a C program. The starc compiler reports in Line 5 in the above output that there is exactly one procedure declared in the memory program which is in fact the `main` procedure.
+There can be any number of global variable and procedure declarations in a C program. The starc compiler reports in Line 5 in the above output that there is exactly one procedure declared in `countdown.c` which is in fact the `main` procedure.
 
-Line 7 in the above output mentions that starc generated exactly 496 bytes for the memory program representing 122 instructions (remember each instruction takes 4 bytes) and 8 bytes of data (496=122\*4+8). The 122 instructions represent the machine code generated by starc for implementing the `main` procedure, that is, the C\* code in Lines 11-19 in `memory.c`. Out of the 8 bytes of data, 4 bytes represent the initial value of `bar` which is 10. The other 4 bytes encode the amount of bytes needed to represent the instructions, that is, the value 488 which is equal to 122\*4. This information is necessary to determine which bytes are code and which are data.
+Line 7 in the above output mentions that starc generated exactly 496 bytes for `countdown.c` representing 122 instructions (remember each instruction takes 4 bytes) and 8 bytes of data (496=122\*4+8). The 122 instructions represent the machine code generated by starc for implementing the `main` procedure, that is, the C\* code in Lines 11-19 in `countdown.c`. Out of the 8 bytes of data, 4 bytes represent the initial value of `bar` which is 10. The other 4 bytes encode the amount of bytes needed to represent the instructions, that is, the value 488 which is equal to 122\*4. This information is necessary to determine which bytes are code and which are data.
 
-Selfie can write the generated bytes into a [binary file](https://en.wikipedia.org/wiki/Binary_file) (using the `-o` option) that can later be loaded again (using the `-l` option) and executed (using the `-m` option, for example). In our example, selfie is instructed to write the generated bytes, also called *executable code* or just [executable](https://en.wikipedia.org/wiki/Executable), into a binary file called `memory.m`, as reported in Line 8 in the above output. The format of that file is very simple. It begins with the 4 bytes encoding the number of bytes of code (representing 488 here), followed by the 488 bytes of code, followed by the 4 bytes of data (representing 10 here). That's it.
+Selfie can write the generated bytes into a [binary file](https://en.wikipedia.org/wiki/Binary_file) (using the `-o` option) that can later be loaded again (using the `-l` option) and executed (using the `-m` option, for example). In our example, selfie is instructed to write the generated bytes, also called *executable code* or just [executable](https://en.wikipedia.org/wiki/Executable), into a binary file called `countdown.m`, as reported in Line 8 in the above output. The format of that file is very simple. It begins with the 4 bytes encoding the number of bytes of code (representing 488 here), followed by the 488 bytes of code, followed by the 4 bytes of data (representing 10 here). That's it.
 
-We also instructed selfie to generate an assembly file `memory.s` for the memory program (using the `-s` option) that represents a human-readable version of the binary file `memory.m`. Selfie reports on that in Line 9 in the above output. Note that `memory.s` only contains code but not any data such as the initial value of `bar`.
+We also instructed selfie to generate an assembly file `countdown.s` for the countdown program (using the `-s` option) that represents a human-readable version of the binary file `countdown.m`. Selfie reports on that in Line 9 in the above output. Note that `countdown.s` only contains code but not any data such as the initial value of `bar`.
 
 ### Program Break
 
