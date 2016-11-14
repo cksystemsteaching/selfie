@@ -131,7 +131,7 @@ int roundUp(int n, int m);
 
 int* zalloc(int size);
 
-int* smalloc(int size);
+int* salloc(int size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -214,7 +214,7 @@ void initLibrary() {
 
   // powers of two table with 31 entries for 2^0 to 2^30
   // avoiding overflow for 2^31 and larger numbers with 32-bit signed integers
-  power_of_two_table = smalloc(31 * SIZEOFINT);
+  power_of_two_table = salloc(31 * SIZEOFINT);
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -236,17 +236,17 @@ void initLibrary() {
   INT12_MIN = -INT12_MAX - 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = smalloc(1);
+  character_buffer  = salloc(1);
   *character_buffer = 0;
 
   // accommodate at least 32-bit numbers for itoa, no mapping needed
-  integer_buffer = smalloc(33);
+  integer_buffer = salloc(33);
 
   // does not need to be mapped
-  filename_buffer = smalloc(maxFilenameLength);
+  filename_buffer = salloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = smalloc(SIZEOFINT);
+  binary_buffer  = salloc(SIZEOFINT);
   *binary_buffer = 0;
 }
 
@@ -357,7 +357,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = smalloc(28 * SIZEOFINTSTAR);
+  SYMBOLS = salloc(28 * SIZEOFINTSTAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -655,7 +655,7 @@ int* REGISTERS; // strings representing registers
 // ------------------------- INITIALIZATION ------------------------
 
 void initRegister() {
-  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
+  REGISTERS = salloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
   *(REGISTERS + REG_ZR) = (int) "$zero";
   *(REGISTERS + REG_RA) = (int) "$ra";
   *(REGISTERS + REG_SP) = (int) "$sp";
@@ -692,7 +692,7 @@ void initRegister() {
 
   maxNumberOfTemporaries = (REG_T2 - REG_TP) + (REG_T6 - REG_S11);
 
-  temporary_registers = smalloc(maxNumberOfTemporaries * SIZEOFINT);
+  temporary_registers = salloc(maxNumberOfTemporaries * SIZEOFINT);
 
   *(temporary_registers + 0) = REG_T0;
   *(temporary_registers + 1) = REG_T1;
@@ -869,8 +869,6 @@ int SYSCALL_READ   = 63;
 int SYSCALL_WRITE  = 64;
 int SYSCALL_OPEN   = 1024;
 int SYSCALL_SBRK   = 214;
-
-int SYSCALL_MALLOC = 10;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1073,7 +1071,7 @@ int timer = 0; // counter for timer interrupt
 
 int rocstar = 0; // flag for forcing to use rocstar rather than hypster
 
-int* sbrk_start = (int*)0; // return value for sbrk()
+int* bump = (int*)0; // return value for sbrk()
 
 int interpret = 0; // flag for executing or disassembling code
 
@@ -1094,7 +1092,7 @@ int* storesPerAddress = (int*) 0; // number of executed stores per store operati
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = smalloc(8 * SIZEOFINTSTAR);
+  EXCEPTIONS = salloc(8 * SIZEOFINTSTAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (int) "no exception";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (int) "unknown instruction";
@@ -1755,7 +1753,7 @@ int* zalloc(int size) {
 
   size = roundUp(size, WORDSIZE);
 
-  memory = smalloc(size);
+  memory = salloc(size);
 
   size = size / WORDSIZE;
 
@@ -1773,18 +1771,18 @@ int* zalloc(int size) {
 
 
 
-int* smalloc(int size) {
+int* salloc(int size) {
   int r;
   int* tmp_brk;
 
-  if (sbrk_start == (int*)0) {
-    sbrk_start = sbrk(0);
+  if (bump == (int*)0) {
+    bump = sbrk(0);
   }
 
   r = roundUp(size, WORDSIZE);
-  tmp_brk = sbrk_start;
-  sbrk_start = sbrk_start + r/4;
-  sbrk(sbrk_start);
+  tmp_brk = bump;
+  bump = bump + r/4;
+  sbrk(bump);
 
   return tmp_brk;
 
@@ -2027,7 +2025,7 @@ void getSymbol() {
       // while looking for whitespace and "//"
       if (isCharacterLetter()) {
         // accommodate identifier and null for termination
-        identifier = smalloc(maxIdentifierLength + 1);
+        identifier = salloc(maxIdentifierLength + 1);
 
         i = 0;
 
@@ -2051,7 +2049,7 @@ void getSymbol() {
 
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
-        integer = smalloc(maxIntegerLength + 1);
+        integer = salloc(maxIntegerLength + 1);
 
         i = 0;
 
@@ -2264,7 +2262,7 @@ void getSymbol() {
 void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address) {
   int* newEntry;
 
-  newEntry = smalloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+  newEntry = salloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -4048,25 +4046,30 @@ void emitMainEntry() {
   // 8 NOPs per register is enough for initialization
   // since we load positive integers < 2^28 which take
   // no more than 8 instructions each, see load_integer
-  while (i < 16) {
+  // NOT ANYMORE,TODO: Check how much is really needed at max!
+  while (i < 32) {
     emitIFormat(0, REG_ZR, F3_ADDI, REG_ZR, OP_IMM);
     // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_ZR, 0);
 
     i = i + 1;
   }
 
-  if (pk_compile == 1) {
-    emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_A0, OP_IMM);
-    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+  talloc(1);
+  // this pushes argv pointer onto stack
+  // (argv = address of argv[0])
+  emitIFormat(WORDSIZE, REG_SP, F3_ADDI, currentTemporary(), OP_IMM);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-    // allocate 4 Bytes on stack for argv
-    emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
-    // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  // allocate 4 Bytes on stack for argv
+  emitIFormat(-WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
+  // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
-    // push REG_A0 onto stack
-    emitSFormat(0, REG_A0, REG_SP, F3_SW, OP_SW);
-    // MIPS: emitIFormat(OP_SW, REG_SP, REG_A0, 0);
-  }
+  // push REG_A0 onto stack
+  emitSFormat(0, currentTemporary(), REG_SP, F3_SW, OP_SW);
+  // MIPS: emitIFormat(OP_SW, REG_SP, REG_A0, 0);
+
+  tfree(1);
+
 
   mainJump = binaryLength;
 
@@ -4097,7 +4100,7 @@ void createELFHeader() {
   // store all numbers necessary to create a valid
   // ELF header incl. program header and section headers.
   // For more info about specific fields, consult ELF documentation.
-  ELF_header = smalloc(ELF_HEADER_LEN);
+  ELF_header = salloc(ELF_HEADER_LEN);
 
   // ELF magic number
   *(ELF_header + 0) = 1179403647; // part 1 of ELF magic number
@@ -4166,6 +4169,7 @@ void createELFSectionHeader(int start, int name, int type, int flags, int addr, 
 
 void bootstrapCode() {
   int savedBinaryLength;
+  int branch;
 
   savedBinaryLength = binaryLength;
 
@@ -4175,32 +4179,36 @@ void bootstrapCode() {
 
   // assert: 0 <= savedBinaryLength < 2^28 (see load_integer)
 
-  if (pk_compile == 0) {
-    load_integer(savedBinaryLength);
-  } else {
-    load_integer(ELF_ENTRY_POINT + savedBinaryLength);
-  }
-
+  // this is code for pk!!!
+  load_integer(ELF_ENTRY_POINT + savedBinaryLength);
   // load binaryLength into GP register
   emitIFormat(0, currentTemporary(), F3_ADDI, REG_GP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, currentTemporary(), REG_GP, 0);
-
   tfree(1);
 
-  if (pk_compile == 0) {
-    // assert: allocatedTemporaries == 0
+  branch = binaryLength;
+  emitSBFormat(0, REG_ZR, REG_SP, F3_BNE, OP_BRANCH);
+  // MIPS: emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 0);
 
-    // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^28 (see load_integer)
+  // assert: allocatedTemporaries == 0
+  // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^28 (see load_integer)
 
-    // initial stack pointer is stored at highest virtual address
-    load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
+  // initial stack pointer is stored at highest virtual address
+  load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
 
-    // load initial stack pointer into SP register
-    emitIFormat(0, currentTemporary(), F3_LW, REG_SP, OP_LW);
-    // MIPS: emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
+  // load initial stack pointer into SP register
+  emitIFormat(0, currentTemporary(), F3_LW, REG_SP, OP_LW);
+  // MIPS: emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
 
-    tfree(1);
-  }
+  // this overwrites the GP if code is meant to be
+  // executed on selfie
+  load_integer(savedBinaryLength);
+  // load binaryLength into GP register
+  emitIFormat(0, currentTemporary(), F3_ADDI, REG_GP, OP_IMM);
+  // MIPS: emitIFormat(OP_ADDIU, currentTemporary(), REG_GP, 0);
+  tfree(1);
+
+  fixup(branch, binaryLength - WORDSIZE); //XXX where to branch?!
   // assert: allocatedTemporaries == 0
 
   binaryLength = savedBinaryLength;
@@ -4231,7 +4239,7 @@ void selfie_compile() {
   binaryName = sourceName;
 
   // allocate memory for storing binary
-  binary       = smalloc(maxBinaryLength);
+  binary       = salloc(maxBinaryLength);
   binaryLength = 0;
 
   // reset code length
@@ -4946,7 +4954,7 @@ void selfie_load() {
   int numberOfReadBytes;
   int* elfBuffer;
 
-  elfBuffer = smalloc(ELF_HEADER_LEN);
+  elfBuffer = salloc(ELF_HEADER_LEN);
 
   binaryName = getArgument();
 
@@ -4964,7 +4972,7 @@ void selfie_load() {
   }
 
   // make sure binary is mapped
-  binary = touch(smalloc(maxBinaryLength), maxBinaryLength);
+  binary = touch(salloc(maxBinaryLength), maxBinaryLength);
 
   binaryLength = 0;
   codeLength   = 0;
@@ -6870,7 +6878,7 @@ int* allocateContext(int ID, int parentID) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = smalloc(4 * SIZEOFINTSTAR + 4 * SIZEOFINT);
+    context = salloc(4 * SIZEOFINTSTAR + 4 * SIZEOFINT);
   else {
     context = freeContexts;
 
@@ -7069,6 +7077,9 @@ void up_loadArguments(int* table, int argc, int* argv) {
   int vargv;
   int i_argc;
   int i_vargv;
+  int i;
+  int a;
+  int* data;
 
   // arguments are pushed onto stack which starts at highest virtual address
   SP = VIRTUALMEMORYSIZE - WORDSIZE;
@@ -7098,17 +7109,22 @@ void up_loadArguments(int* table, int argc, int* argv) {
     i_argc = i_argc - 1;
   }
 
+  // pushes arguments onto stack, but after
+  // the string section
+  i = VIRTUALMEMORYSIZE - 2 * WORDSIZE;
+  a = 0;
+  while (a < argc) {
+    SP = SP - WORDSIZE;
+    data = loadVirtualMemory(table, i - a*4);
+    mapAndStoreVirtualMemory(table, SP, (int) data);
+    a = a + 1;
+  }
+
   // allocate memory for one word on the stack
   SP = SP - WORDSIZE;
 
   // push argc
   mapAndStoreVirtualMemory(table, SP, argc);
-
-  // allocate memory for one word on the stack
-  SP = SP - WORDSIZE;
-
-  // push virtual argv
-  mapAndStoreVirtualMemory(table, SP, vargv);
 
   // store stack pointer at highest virtual address for binary to retrieve
   mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
