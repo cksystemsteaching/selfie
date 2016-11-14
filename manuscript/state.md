@@ -55,6 +55,7 @@ Before explaining how C\* code works, we introduce C\* language elements that al
 
 The program takes the decimal value 10 (Line 3) and decrements it (Line 13) until it reaches the decimal value 0 (Line 11) which is then returned (Line 19) as so-called *exit code*. To see for yourself run the [code](http://github.com/cksystemsteaching/selfie/blob/2b97bcfc85897ed2a3c421bb601cd8255ad3a3f3/manuscript/code/countdown.c) as follows:
 
+{line-numbers=on}
 ```
 > ./selfie -c manuscript/code/countdown.c -o countdown.m -s countdown.s -m 1
 ./selfie: this is selfie's starc compiling manuscript/code/countdown.c
@@ -144,19 +145,50 @@ Before launching the mipster emulator, selfie [bootstraps](http://github.com/cks
 
 ![Memory Layout](images/memory-layout.png "Memory Layout")
 
-With code and data copied to memory the machine is essentially ready to go. The rest of the memory layout will be explained in later chapters. For now we only need to know that the border between code and data and the rest of memory is the [program break](https://en.wikipedia.org/wiki/Sbrk) which divides memory into *statically* and *dynamically* allocated storage. The addresses of the code and data stored in memory below the program break will not change while the storage above the program break may be used for different purposes during execution.
+With code and data copied to memory the machine is essentially ready to go. The rest of the memory layout will be explained in later chapters. For now we only need to know that the border between code and data and the rest of memory is the [program break](https://en.wikipedia.org/wiki/Sbrk) which divides memory into *statically* and *dynamically* allocated storage. The addresses of the code and data stored in memory below the program break will not change while the storage above the program break may be used for different purposes during execution. Keep in mind though that the memory layout we describe here is only one choice out of many possible choices. However, that layout is probably the most widely adopted choice today.
 
 Going back to C\* in general and the countdown program in particular, global variable and procedure declarations specify exactly what is below the program break, what is code and data, and what the code does with the data, as we see next. Most important here is to understand that the state of memory is fully determined after copying the code for procedures and the data for global variables into memory. While countdown is a simple program think of the code and data for selfie. There are hundreds of global variable and procedure declarations in `selfie.c` but it is still the same thing. The fact that C\* allows us to talk about variables and procedures without worrying about memory layout is a key ingredient for managing the enormously large state space. The only missing piece now for a complete picture is the state of the registers. Let us take a look at that next!
 
 ## Registers
 
-[Control Flow](https://en.wikipedia.org/wiki/Control_flow "Control Flow")
-: The order in which individual statements, instructions or function calls of an imperative program are executed or evaluated. The emphasis on explicit control flow distinguishes an imperative programming language from a declarative programming language.
+How does a computer "know" what to execute? After all the bits in memory could mean anything. They could be code, they could be data, anything. But the answer to that question can anyway not be any simpler.
 
 ### Program Counter
 
+Processors based on the von Neumann model feature a special-purpose register as part of their control unit called the *program counter* (PC). The PC of the machine emulated by mipster is, unsurprisingly, yet another 32-bit register.
+
 [Program Counter (PC)](https://en.wikipedia.org/wiki/Program_counter "Program Counter (PC)")
 : A processor register that indicates where a computer is in its program sequence. In most processors, the PC is incremented after fetching an instruction, and holds the memory address of ("points to") the next instruction that would be executed. Instructions are usually fetched sequentially from memory, but control transfer instructions change the sequence by placing a new value in the PC. These include branches (sometimes called jumps), subroutine calls, and returns. A transfer that is conditional on the truth of some assertion lets the computer follow a different sequence under different conditions. A branch provides that the next instruction is fetched from somewhere else in memory. A subroutine call not only branches but saves the preceding contents of the PC somewhere. A return retrieves the saved contents of the PC and places it back in the PC, resuming sequential execution with the instruction following the subroutine call.
+
+At boot time, when selfie is done copying code and data into memory, selfie sets the PC to the memory address `0x0` (and all other registers to `0x0` as well) so that mipster begins code execution by [fetching the word in memory where the PC points to, decoding that word, and executing the resulting instruction](http://github.com/cksystemsteaching/selfie/blob/322ab8249e5cbd921735f5239ef6965b416489cc/selfie.c#L6289-L6291). From then on, each instruction not only instructs the processor to perform some computation but also determines the next value of the PC so that the processor "knows" where in memory the next instruction is stored. That sequence of PC values is called *control flow*.
+
+[Control Flow](https://en.wikipedia.org/wiki/Control_flow "Control Flow")
+: The order in which individual statements, instructions or function calls of an imperative program are executed or evaluated. The emphasis on explicit control flow distinguishes an imperative programming language from a declarative programming language.
+
+Let us take a look at how the first few instructions for the countdown program execute. You will need to scroll back to the beginning after that command though since selfie will output the whole sequence of instructions:
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/countdown.c -d 1
+./selfie: this is selfie's starc compiling manuscript/code/countdown.c
+./selfie: 625 characters read in 19 lines and 9 comments
+./selfie: with 55(8.80%) characters in 28 actual symbols
+./selfie: 1 global variables, 1 procedures, 0 string literals
+./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
+./selfie: 496 bytes generated with 122 instructions and 8 bytes of data
+./selfie: this is selfie's mipster executing manuscript/code/countdown.c with 1MB of physical memory
+manuscript/code/countdown.c: $pc=0x0(~1): 0x240801EC: addiu $t0,$zero,492: $t0=0,$zero=0 -> $t0=492
+manuscript/code/countdown.c: $pc=0x4(~1): 0x251C0000: addiu $gp,$t0,0: $gp=0,$t0=492 -> $gp=492
+manuscript/code/countdown.c: $pc=0x8(~1): 0x24080FFF: addiu $t0,$zero,4095: $t0=492,$zero=0 -> $t0=4095
+manuscript/code/countdown.c: $pc=0xC(~1): 0x24094000: addiu $t1,$zero,16384: $t1=0,$zero=0 -> $t1=16384
+manuscript/code/countdown.c: $pc=0x10(~1): 0x01090019: multu $t0,$t1: $t0=4095,$t1=16384,$lo=0 -> $lo=67092480
+manuscript/code/countdown.c: $pc=0x14(~1): 0x00004012: mflo $t0: $t0=4095,$lo=67092480 -> $t0=67092480
+manuscript/code/countdown.c: $pc=0x18(~1): 0x00000000: nop
+manuscript/code/countdown.c: $pc=0x1C(~1): 0x00000000: nop
+manuscript/code/countdown.c: $pc=0x20(~1): 0x25083FFC: addiu $t0,$t0,16380: $t0=67092480,$t0=67092480 -> $t0=67108860
+manuscript/code/countdown.c: $pc=0x24(~1): 0x8D1D0000: lw $sp,0($t0): $sp=0,$t0=0x3FFFFFC -> $sp=67108816=memory[0x3FFFFFC]
+...
+```
 
 ### Statements
 
