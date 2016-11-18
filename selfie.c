@@ -1033,11 +1033,11 @@ int TIMESLICE = 10000000;
 
 int* registers = (int*) 0; // general purpose registers
 
-int pc = 0; // program counter
-int ir = 0; // instruction register
-
 int reg_hi = 0; // hi register for multiplication/division
 int reg_lo = 0; // lo register for multiplication/division
+
+int pc = 0; // program counter
+int ir = 0; // instruction register
 
 int* pt = (int*) 0; // page table
 
