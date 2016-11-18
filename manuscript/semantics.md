@@ -185,7 +185,7 @@ selfie.m: exiting with exit code 0 and 0.00MB of mallocated memory
 ./selfie: stores: 6321,498(7.88%)@0x2390,248(3.92%)@0x23F0,125(1.97%)@0x3D34
 ```
 
-After loading `selfie.m` the `-m 1` option directs mipster to *emulate* a computer with 1MB of memory for executing `selfie.m`. Since `selfie.m` is invoked without any options, which could appear after the `-m 1` option, it responds, just like `selfie` without options before, with its usage pattern and then terminates. After that mipster terminates and outputs a summary of its builtin performance profiler.
+After loading `selfie.m` the `-m 1` option directs mipster to *emulate* a computer with 1 megabyte of memory (abbreviated 1MB, explained below) for executing `selfie.m`. Since `selfie.m` is invoked without any options, which could appear after the `-m 1` option, it responds, just like `selfie` without options before, with its usage pattern and then terminates. After that mipster terminates and outputs a summary of its builtin performance profiler.
 
 [Profiling](https://en.wikipedia.org/wiki/Profiling_(computer_programming) "Profiling")
 : A form of dynamic program analysis that measures, for example, the space (memory) or time complexity of a program, the usage of particular instructions, or the frequency and duration of function calls. Most commonly, profiling information serves to aid program optimization.
@@ -439,6 +439,57 @@ selfie5.m: exiting with exit code 0 and 2.68MB of mallocated memory
 ...
 ```
 
+## Performance
+
+A significant part of computer science is about computational performance. How much time does a computation take, how much memory does it need, and, increasingly important, how much energy does it consume? We introduce the standard units for quantifying computational performance in terms of time and space, and even in terms of energy.
+
+Before doing so, we should nevertheless point out that in computer science the notion of order of magnitude may be used with its standard meaning as it is common in other disciplines or with a meaning rather unique to the field. Traditionally, something is an order of magnitude bigger or smaller if it is bigger or smaller by a factor of ten. However, in computer science, because of the widespread use of binary codes, an order of magnitude may also refer to a factor of two.
+
+[Order of Magnitude](https://en.wikipedia.org/wiki/Orders_of_magnitude_(data) "Order of Magnitude")
+: A factor with base 10 (decimal) or with base 2 (binary).
+
+As a consequence and even more confusing is the fact that commonly used prefixes such as kilo, mega, giga, and tera may either refer to factors of 10^3^=1000 or 2^10^=1024 depending on context and unit. Only recently new binary prefixes for kilo, mega, giga, tera, and so on, called kibi, mebi, gibi, tebi, respectively, have been introduced. Adoption is nevertheless slow.
+
+| [Decimal Prefix](https://en.wikipedia.org/wiki/Metric_prefix "Decimal Prefix") | Value | [Binary Prefix](https://en.wikipedia.org/wiki/Binary_prefix "Binary Prefix") | Value |
+| ------------------ | --------------- | ----------------- | --------------- |
+| nano (n)           | 10^-9^=1000^-3^ |
+| micro (u)          | 10^-6^=1000^-2^ |
+| milli (m)          | 10^-3^=1000^-1^ |
+| kilo (k)           | 10^3^=1000^1^   | kilo (K,Ki,kibi)  | 2^10^ = 1024^1^ |
+| mega (M)           | 10^6^=1000^2^   | mega (M,Mi,mebi)  | 2^20^ = 1024^2^ |
+| giga (G)           | 10^9^=1000^3^   | giga (G,Gi,gibi)  | 2^30^ = 1024^3^ |
+| tera (T)           | 10^12^=1000^4^  | tera (T,Ti,tebi)  | 2^40^ = 1024^4^ |
+
+Memory storage is typically quantified in bytes with base 2, for example, in gigabytes or, more recently and unambiguously in gibibytes. Processor speed, however, may be represented in instructions per second with base 10, for example, in million instructions per second (MIPS). Similarly, special-purpose metrics such as FLOPS, floating-point operations per second, are prefixed with base 10. Also, data rates are often represented in bits per second with base 10, for example, in gigabits per second (gbps), that is, 10^9^ bits per second.
+
+Speed is generally characterized in terms of throughput, the amount of work done per unit of time, and latency, the amount of time to do some work, in particular before some other work can be done. The difference is usually explained with a simple example. Imagine a fiber optic cable connecting, say, New York City and San Francisco and a truck loaded with DVDs driving from New York City to San Francisco. Which one provides higher throughput and which one lower latency? Surprisingly, it may very well be possible that the truck provides higher throughput. However, delivering just a single bit by truck may take days. Thus the truck clearly provides terrible latency not suitable to host, say, a skype call. Got it?
+
+[Throughput](https://en.wikipedia.org/wiki/Throughput "Throughput")
+: Amount of work performed per unit of time.
+
+[Latency](https://en.wikipedia.org/wiki/Latency "Latency")
+: Amount of time (or delay) to perform work.
+
+For completeness and because of the increasing importance of energy efficiency in computing, in particular in mobile computing and large-scale data center computing, we also list standard units for quantifying energy here even though there is no further discussion of that topic.
+
+Energy is quantified in Joule and power consumption in Watt, that is, the amount of energy consumed per second. Interestingly, we can quantify the efficiency of computation in number of operations performed by that computation per Joule, or even in MIPS or FLOPS per Watt.
+
+| Performance | Unit |
+| ----------- | ---- |
+| memory      | bit (b), [kilobit](https://en.wikipedia.org/wiki/Kilobit "Kilobit") (kb), megabit (mb), gigabit (gb), terabit (tb) with decimal prefix |
+|             | byte (B), [kilobyte](https://en.wikipedia.org/wiki/Kilobyte "Kilobyte") (kB), megabyte (MB), gigabyte (GB), terabyte (TB) with decimal prefix |
+|             | byte (B), [kibibyte](https://en.wikipedia.org/wiki/Kibibyte "Kibibyte") (KB,KiB), mebibyte (MB,MiB), gibibyte (GB,GiB), tebibyte (TiB) with binary prefix |
+| latency     | nanoseconds (ns), microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h) |
+| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |
+|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |
+|             | bytes/second, [kB/s](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), MB/s, GB/s, TB/s |
+|             | bits/second, [kbps](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), mbps, gbps, tbps |
+| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |
+| power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
+| efficiency  | operations/joule |
+|             | MIPS/watt |
+|             | FLOPS/watt |
+
 ## Summary
 
 Let us summarize what we have seen so far and prepare for the next chapter. This chapter is the first step towards understanding selfie by observing that:
@@ -461,11 +512,9 @@ X> However, self-compiling `selfie.c` into `selfie.m` using the starc compiler o
 X>
 X> Moreover, executing or hosting `selfie.m` on mipster or hypster suddenly makes `selfie.m` be code.
 
-For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others.
+For now it is important to remember that semantics comes from change and that bits can be data, when changed, and code, when changing others. Selfie shows that through its self-referential nature. Selfie in source code can be data when being compiled and selfie in machine code can be code when being executed or hosted.
 
-## Selfie
-
-Selfie includes a compiler, an emulator, and a hypervisor. Selfie can compile itself, emulate itself, and host itself. The self-referential nature of selfie is particularly interesting because selfie in source code can be data when being compiled and selfie in machine code can be code when being executed or hosted. Furthermore, the source code of self-compiling compilers such as the starc compiler is written in the programming language that they compile. For example, `selfie.c` is written in C\* which is a tiny subset of the widely used programming language C hence the extension `.c` in the name of the file.
+Furthermore, the source code of self-compiling compilers such as the starc compiler is written in the programming language that they compile. For example, `selfie.c` is written in C\* which is a tiny subset of the widely used programming language C hence the extension `.c` in the name of the file.
 
 [C](https://en.wikipedia.org/wiki/C_(programming_language) "C")
 : A general-purpose, imperative computer programming language, supporting structured programming, lexical variable scope and recursion, while a static type system prevents many unintended operations.
