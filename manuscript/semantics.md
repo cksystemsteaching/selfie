@@ -443,7 +443,7 @@ selfie5.m: exiting with exit code 0 and 2.68MB of mallocated memory
 
 A significant part of computer science is about computational performance. How much time does a computation take, how much memory does it need, and, increasingly important, how much energy does it consume? We introduce the standard units for quantifying computational performance in terms of time and space, and even in terms of energy.
 
-Before doing so, we should nevertheless point out that in computer science the notion of order of magnitude may be used with its standard meaning as it is common in other disciplines or with a meaning rather unique to the field. Traditionally, something is an order of magnitude bigger or smaller if it is bigger or smaller by a factor of ten. However, in computer science, because of the widespread use of binary codes, an order of magnitude may also refer to a factor of two.
+Before doing so, we should nevertheless point out that in computer science the notion of *order of magnitude* may be used with its standard meaning as it is common in other disciplines or with a meaning rather unique to the field. Traditionally, something is an order of magnitude bigger or smaller if it is bigger or smaller by a factor of ten. However, in computer science, because of the widespread use of binary codes, an order of magnitude may also refer to a factor of two.
 
 [Order of Magnitude](https://en.wikipedia.org/wiki/Orders_of_magnitude_(data) "Order of Magnitude")
 : A factor with base 10 (decimal) or with base 2 (binary).
