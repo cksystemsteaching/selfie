@@ -88,7 +88,6 @@ void exit(int code);
 int read(int fd, int* buffer, int bytesToRead);
 int write(int fd, int* buffer, int bytesToWrite);
 int open(int* filename, int flags, int mode);
-int* sbrk(int size);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -132,6 +131,7 @@ int roundUp(int n, int m);
 int* zalloc(int size);
 
 int* salloc(int size);
+int* malloc(int size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -852,8 +852,8 @@ void emitOpen();
 int  down_loadString(int* table, int vaddr, int* s);
 void implementOpen();
 
-void emitSbrk();
-void implementSbrk();
+void emitMalloc();
+void implementMalloc();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -862,13 +862,14 @@ int debug_write  = 0;
 int debug_open   = 0;
 
 int debug_sbrk   = 0;
+int debug_malloc = 0;
 
 // numbers according to pk kernel
 int SYSCALL_EXIT   = 93;
 int SYSCALL_READ   = 63;
 int SYSCALL_WRITE  = 64;
 int SYSCALL_OPEN   = 1024;
-int SYSCALL_SBRK   = 214;
+int SYSCALL_MALLOC = 213;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1773,18 +1774,8 @@ int* zalloc(int size) {
 
 int* salloc(int size) {
   int r;
-  int* tmp_brk;
-
-  if (bump == (int*)0) {
-    bump = sbrk(0);
-  }
-
   r = roundUp(size, WORDSIZE);
-  tmp_brk = bump;
-  bump = bump + r/4;
-  sbrk(bump);
-
-  return tmp_brk;
+  return malloc(r); 
 
 }
 
@@ -4260,7 +4251,7 @@ void selfie_compile() {
   emitRead();
   emitWrite();
   emitOpen();
-  emitSbrk();
+  emitMalloc();
   emitID();
   emitCreate();
   emitSwitch();
@@ -5443,15 +5434,15 @@ void implementOpen() {
   }
 }
 
-void emitSbrk() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "sbrk", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
+void emitMalloc() {
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
   emitIFormat(0, REG_SP, F3_LW, REG_A0, OP_LW);
   // MIPS: emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(SYSCALL_SBRK, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
+  emitIFormat(SYSCALL_MALLOC, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
   // MIPS: emitIFormat(OP_ADDIU, REG_ZR, REG_A7, SYSCALL_SBRK);
   emitIFormat(F12_ECALL, 0, F3_PRIV, 0, OP_SYSTEM);
   // MIPS: emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5460,7 +5451,10 @@ void emitSbrk() {
   // MIPS: emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementSbrk() {
+void implementMalloc() {
+  int size;
+  int bump;
+
   int new_brk;
 
   if (debug_sbrk) {
@@ -5469,32 +5463,27 @@ void implementSbrk() {
     printHexadecimal(*(registers+REG_A0), 0);
     println();
   }
+  size = roundUp(*(registers+REG_A0), WORDSIZE);
 
-  new_brk = *(registers + REG_A0);
+  bump = brk;
 
-  // only for sbrk initialization
-  if (new_brk == 0) {
-    *(registers+REG_A0) = brk;
-    return;
-  }
-
-  // TODO: check for negative sbrk value
-  if (new_brk >= *(registers+REG_SP))
+  if (bump + size >= *(registers+REG_SP))
     throwException(EXCEPTION_HEAPOVERFLOW, 0);
   else {
-    *(registers+REG_A0) = new_brk;
+    *(registers+REG_A0) = bump;
 
-    if (debug_sbrk) {
+    brk = bump + size;
+
+    if (debug_malloc) {
       print(binaryName);
-      print((int*) ": actually allocating ");
-      printInteger(new_brk - brk);
+      print((int*) ": actually mallocating ");
+      printInteger(size);
       print((int*) " bytes at virtual address ");
-      printHexadecimal(new_brk, 8);
+      printHexadecimal(bump, 8);
       println();
     }
-
-    brk = new_brk;
   }
+
 }
 
 
@@ -5997,8 +5986,8 @@ void op_ecall() {
       implementWrite();
     else if (*(registers+REG_A7) == SYSCALL_OPEN)
       implementOpen();
-    else if (*(registers+REG_A7) == SYSCALL_SBRK)
-      implementSbrk();
+    else if (*(registers+REG_A7) == SYSCALL_MALLOC)
+      implementMalloc();
     else if (*(registers+REG_A7) == SYSCALL_ID)
       implementID();
     else if (*(registers+REG_A7) == SYSCALL_CREATE)

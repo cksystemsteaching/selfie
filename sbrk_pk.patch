@@ -1,0 +1,107 @@
+diff --git a/pk/syscall.c b/pk/syscall.c
+index 2d96282..aa8114a 100644
+--- a/pk/syscall.c
++++ b/pk/syscall.c
+@@ -302,7 +302,14 @@ long sys_getcwd(const char* buf, size_t size)
+ 
+ size_t sys_brk(size_t pos)
+ {
+-  return do_brk(pos);
++  size_t s; 
++  s = do_brk(pos);
++  return s;
++}
++
++size_t sys_sbrk(size_t pos)
++{
++  return do_sbrk(pos); 
+ }
+ 
+ int sys_uname(void* buf)
+@@ -444,6 +451,7 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, unsigned l
+     [SYS_mkdirat] = sys_mkdirat,
+     [SYS_getcwd] = sys_getcwd,
+     [SYS_brk] = sys_brk,
++    [SYS_sbrk] = sys_sbrk,
+     [SYS_uname] = sys_uname,
+     [SYS_getpid] = sys_getpid,
+     [SYS_getuid] = sys_getuid,
+diff --git a/pk/syscall.h b/pk/syscall.h
+index bed30e9..b96bb09 100644
+--- a/pk/syscall.h
++++ b/pk/syscall.h
+@@ -13,6 +13,7 @@
+ #define SYS_close 57
+ #define SYS_lseek 62
+ #define SYS_brk 214
++#define SYS_sbrk 213
+ #define SYS_linkat 37
+ #define SYS_unlinkat 35
+ #define SYS_mkdirat 34
+diff --git a/pk/vm.c b/pk/vm.c
+index cd2cba1..67ccf04 100644
+--- a/pk/vm.c
++++ b/pk/vm.c
+@@ -22,6 +22,7 @@ pte_t* root_page_table;
+ static uintptr_t first_free_page;
+ static size_t next_free_page;
+ static size_t free_pages;
++static int init_sbrk = 0; 
+ 
+ static uintptr_t __page_alloc()
+ {
+@@ -329,10 +330,11 @@ uintptr_t __do_brk(size_t addr)
+     current.brk = ROUNDUP(current.brk_min, RISCV_PGSIZE);
+ 
+   uintptr_t newbrk_page = ROUNDUP(newbrk, RISCV_PGSIZE);
+-  if (current.brk > newbrk_page)
++  if (current.brk > newbrk_page){
+     __do_munmap(newbrk_page, current.brk - newbrk_page);
+-  else if (current.brk < newbrk_page)
++  } else if (current.brk < newbrk_page) {
+     kassert(__do_mmap(current.brk, newbrk_page - current.brk, -1, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, 0, 0) == current.brk);
++  }
+   current.brk = newbrk_page;
+ 
+   return newbrk;
+@@ -347,6 +349,28 @@ uintptr_t do_brk(size_t addr)
+   return addr;
+ }
+ 
++uintptr_t do_sbrk(size_t size)
++{
++  size_t addr = 0; 
++
++  spinlock_lock(&vm_lock);
++
++   if (init_sbrk == 0) {
++     __do_brk(0);         //init brk
++     init_sbrk = 1; 
++  }
++  addr = current.brk;     //return old address
++  size_t newbrk = current.brk + size; 
++  if (newbrk > ROUNDUP(current.brk, RISCV_PGSIZE)) {
++       current.brk = ROUNDUP(current.brk, RISCV_PGSIZE);
++       __do_brk(newbrk); 
++  } else 
++	current.brk = newbrk; 
++   
++  spinlock_unlock(&vm_lock);
++  return addr; 
++}
++
+ uintptr_t do_mremap(uintptr_t addr, size_t old_size, size_t new_size, int flags)
+ {
+   return -ENOSYS;
+diff --git a/pk/vm.h b/pk/vm.h
+index 4a24e56..f48eeee 100644
+--- a/pk/vm.h
++++ b/pk/vm.h
+@@ -46,6 +46,7 @@ int do_munmap(uintptr_t addr, size_t length);
+ uintptr_t do_mremap(uintptr_t addr, size_t old_size, size_t new_size, int flags);
+ uintptr_t do_mprotect(uintptr_t addr, size_t length, int prot);
+ uintptr_t do_brk(uintptr_t addr);
++uintptr_t do_sbrk(size_t size);
+ 
+ typedef uintptr_t pte_t;
+ extern pte_t* root_page_table;
