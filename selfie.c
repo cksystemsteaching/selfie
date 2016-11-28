@@ -130,7 +130,6 @@ int roundUp(int n, int m);
 
 int* zalloc(int size);
 
-int* salloc(int size);
 int* malloc(int size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -214,7 +213,7 @@ void initLibrary() {
 
   // powers of two table with 31 entries for 2^0 to 2^30
   // avoiding overflow for 2^31 and larger numbers with 32-bit signed integers
-  power_of_two_table = salloc(31 * SIZEOFINT);
+  power_of_two_table = malloc(31 * SIZEOFINT);
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -236,17 +235,17 @@ void initLibrary() {
   INT12_MIN = -INT12_MAX - 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = salloc(1);
+  character_buffer  = malloc(1);
   *character_buffer = 0;
 
   // accommodate at least 32-bit numbers for itoa, no mapping needed
-  integer_buffer = salloc(33);
+  integer_buffer = malloc(33);
 
   // does not need to be mapped
-  filename_buffer = salloc(maxFilenameLength);
+  filename_buffer = malloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = salloc(SIZEOFINT);
+  binary_buffer  = malloc(SIZEOFINT);
   *binary_buffer = 0;
 }
 
@@ -357,7 +356,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = salloc(28 * SIZEOFINTSTAR);
+  SYMBOLS = malloc(28 * SIZEOFINTSTAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -655,7 +654,7 @@ int* REGISTERS; // strings representing registers
 // ------------------------- INITIALIZATION ------------------------
 
 void initRegister() {
-  REGISTERS = salloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
+  REGISTERS = malloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
   *(REGISTERS + REG_ZR) = (int) "$zero";
   *(REGISTERS + REG_RA) = (int) "$ra";
   *(REGISTERS + REG_SP) = (int) "$sp";
@@ -692,7 +691,7 @@ void initRegister() {
 
   maxNumberOfTemporaries = (REG_T2 - REG_TP) + (REG_T6 - REG_S11);
 
-  temporary_registers = salloc(maxNumberOfTemporaries * SIZEOFINT);
+  temporary_registers = malloc(maxNumberOfTemporaries * SIZEOFINT);
 
   *(temporary_registers + 0) = REG_T0;
   *(temporary_registers + 1) = REG_T1;
@@ -1093,7 +1092,7 @@ int* storesPerAddress = (int*) 0; // number of executed stores per store operati
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = salloc(8 * SIZEOFINTSTAR);
+  EXCEPTIONS = malloc(8 * SIZEOFINTSTAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (int) "no exception";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (int) "unknown instruction";
@@ -1754,7 +1753,7 @@ int* zalloc(int size) {
 
   size = roundUp(size, WORDSIZE);
 
-  memory = salloc(size);
+  memory = malloc(size);
 
   size = size / WORDSIZE;
 
@@ -1772,12 +1771,6 @@ int* zalloc(int size) {
 
 
 
-int* salloc(int size) {
-  int r;
-  r = roundUp(size, WORDSIZE);
-  return malloc(r); 
-
-}
 
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2016,7 +2009,7 @@ void getSymbol() {
       // while looking for whitespace and "//"
       if (isCharacterLetter()) {
         // accommodate identifier and null for termination
-        identifier = salloc(maxIdentifierLength + 1);
+        identifier = malloc(maxIdentifierLength + 1);
 
         i = 0;
 
@@ -2040,7 +2033,7 @@ void getSymbol() {
 
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
-        integer = salloc(maxIntegerLength + 1);
+        integer = malloc(maxIntegerLength + 1);
 
         i = 0;
 
@@ -2253,7 +2246,7 @@ void getSymbol() {
 void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address) {
   int* newEntry;
 
-  newEntry = salloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+  newEntry = malloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -4091,7 +4084,7 @@ void createELFHeader() {
   // store all numbers necessary to create a valid
   // ELF header incl. program header and section headers.
   // For more info about specific fields, consult ELF documentation.
-  ELF_header = salloc(ELF_HEADER_LEN);
+  ELF_header = malloc(ELF_HEADER_LEN);
 
   // ELF magic number
   *(ELF_header + 0) = 1179403647; // part 1 of ELF magic number
@@ -4230,7 +4223,7 @@ void selfie_compile() {
   binaryName = sourceName;
 
   // allocate memory for storing binary
-  binary       = salloc(maxBinaryLength);
+  binary       = malloc(maxBinaryLength);
   binaryLength = 0;
 
   // reset code length
@@ -4945,7 +4938,7 @@ void selfie_load() {
   int numberOfReadBytes;
   int* elfBuffer;
 
-  elfBuffer = salloc(ELF_HEADER_LEN);
+  elfBuffer = malloc(ELF_HEADER_LEN);
 
   binaryName = getArgument();
 
@@ -4963,7 +4956,7 @@ void selfie_load() {
   }
 
   // make sure binary is mapped
-  binary = touch(salloc(maxBinaryLength), maxBinaryLength);
+  binary = touch(malloc(maxBinaryLength), maxBinaryLength);
 
   binaryLength = 0;
   codeLength   = 0;
@@ -6867,7 +6860,7 @@ int* allocateContext(int ID, int parentID) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = salloc(4 * SIZEOFINTSTAR + 4 * SIZEOFINT);
+    context = malloc(4 * SIZEOFINTSTAR + 4 * SIZEOFINT);
   else {
     context = freeContexts;
 
