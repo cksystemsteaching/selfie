@@ -138,16 +138,16 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 ```
 0x0(~1): 0x240801EC: addiu $t0,$zero,492           // initialize global pointer
 0x4(~1): 0x251C0000: addiu $gp,$t0,0               // via $t0 register with 492
-0x8(~1): 0x24080FFF: addiu $t0,$zero,4095
-0xC(~1): 0x24094000: addiu $t1,$zero,16384
-0x10(~1): 0x01090019: multu $t0,$t1
-0x14(~1): 0x00004012: mflo $t0
-0x18(~1): 0x00000000: nop                          // initialize stack pointer
-0x1C(~1): 0x00000000: nop                          // with the machine word at
-0x20(~1): 0x25083FFC: addiu $t0,$t0,16380          // address 4095*16384+16380
-0x24(~1): 0x8D1D0000: lw $sp,0($t0)                // stored in $t0 here.
-0x28(~1): 0x00000000: nop
-0x2C(~1): 0x00000000: nop
+0x8(~1): 0x24080FFF: addiu $t0,$zero,4095          // initialize stack pointer
+0xC(~1): 0x24094000: addiu $t1,$zero,16384         // with the machine word at
+0x10(~1): 0x01090019: multu $t0,$t1                // address 4095*16384+16380
+0x14(~1): 0x00004012: mflo $t0                     // by loading 4095 into $t0
+0x18(~1): 0x00000000: nop                          // and 16384 into $t1, then
+0x1C(~1): 0x00000000: nop                          // multiplying $t0 with $t1,
+0x20(~1): 0x25083FFC: addiu $t0,$t0,16380          // and adding 16380 to the
+0x24(~1): 0x8D1D0000: lw $sp,0($t0)                // result in $t0, and finally
+0x28(~1): 0x00000000: nop                          // loading the word at the
+0x2C(~1): 0x00000000: nop                          // address in $t0.
 0x30(~1): 0x00000000: nop
 0x34(~1): 0x00000000: nop
 0x38(~1): 0x00000000: nop
@@ -325,7 +325,7 @@ In the above output we are not showing the instructions implementing the `main` 
 
 #### [jr](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5738-L5761)
 
-The `jr $ra` instruction sets the PC to the value of the `$ra` register where `jr` stands for *jump register*. The addressing mode is called *register addressing*. Here, the value of `$ra` is `0x48` which is the address of the instruction that follows the delay slot of the `jal` instruction that took us here. We are not yet showing the instruction at `0x48` here either but will get to it below. Important for now is to understand that `jal` and `jr` work together by instructing the machine to jump to some code, execute it, and eventually come back to resume code execution right after the jump. While `jal` always links to the `$ra` register (hardware convention )`jr` could in principle be used with any general-purpose register but is usually not (software convention).
+The `jr $ra` instruction sets the PC to the value of the `$ra` register where `jr` stands for *jump register*. The addressing mode is called *register addressing*. Here, the value of `$ra` is `0x48` which is the address of the instruction that follows the delay slot of the `jal` instruction that took us here. In other words, `jal` and `jr` work together by instructing the machine to jump to some code, execute it, and eventually come back to resume code execution right after the jump. While `jal` always links to the `$ra` register (hardware convention) `jr` could in principle be used with any general-purpose register but is usually not (software convention).
 
 ## Statements
 
