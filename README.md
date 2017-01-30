@@ -15,9 +15,13 @@ Selfie is a fully self-referential 7k-line C implementation of:
 
 For further information and support please refer to [http://selfie.cs.uni-salzburg.at]()
 
-## Build Instructions
+## Supported Platforms
 
-Selfie runs on Mac, Linux, Windows and possibly other systems that have a terminal and a C compiler installed. Even if you only have access to a web browser you can still run selfie through a cloud-based development environment. Here is how:
+Selfie runs on Mac, Linux, Windows and possibly other systems that have a terminal and a C compiler installed. Even if you only have access to a web browser you can still run selfie through a cloud-based development environment. There is also a [port of selfie](https://github.com/cksystemsteaching/selfie/tree/riscv) to [RISC-V](https://riscv.org) that runs on the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
+
+## Installing Selfie
+
+Here is how to install selfie:
 
 1. Get a [github](https://github.com) account unless you already have one.
 2. If you only have access to a web browser, fork [selfie]( https://github.com/cksystemsteaching/selfie) into your github account, then get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace. If you have access to a terminal and there is a C compiler installed, just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip) onto your system.
