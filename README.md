@@ -46,7 +46,7 @@ and compile `selfie.c` into an executable called `selfie` as directed by the `-o
 Once you have successfully compiled selfie you may invoke it in your terminal according to the following pattern:
 
 ```bash
-./selfie { -c { source } | -o binary | -s assembly | -l binary } [ -m size ... | -d size ... | -y size ... ]
+./selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ]
 ```
 
 The order in which the options are provided matters for taking full advantage of self-referentiality.
@@ -62,6 +62,8 @@ The `-l` option loads MIPSter code from the given `binary` file. The `-o` and `-
 The `-m` option invokes the mipster emulator to execute MIPSter code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `size` MB of memory. The `source` or `binary` name of the MIPSter code and any remaining `...` arguments are passed to the main function of the code. The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state.
 
 The `-y` option invokes the hypster hypervisor to execute MIPSter code similar to the mipster emulator. The difference to mipster is that hypster creates MIPSter virtual machines rather than a MIPSter emulator to execute the code.
+
+The `-min` and `-mob` options invoke special versions of the mipster emulator used for teaching.
 
 To compile `selfie.c` for mipster and hypster use the following command:
 
