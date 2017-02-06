@@ -7061,7 +7061,7 @@ void up_loadArguments(int* table, int argc, int* argv) {
   int i_vargv;
   int i;
   int a;
-  int* data;
+  int data;
 
   // arguments are pushed onto stack which starts at highest virtual address
   SP = VIRTUALMEMORYSIZE - WORDSIZE;
