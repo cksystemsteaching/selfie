@@ -1,0 +1,269 @@
+<!--sr5-->
+<HTML>
+<HEAD> 
+    <TITLE>RISC-V/selfie Virtual Appliance</TITLE>
+   <style>
+     pre { background-color: gray; }
+     tt { background-color: black; color: white; }
+   </style>
+</HEAD> 
+<BODY> 
+  <h1>RISC-V/selfie</h1>
+  <p><i><b>Abstract: </b></i> This thing provides a free, ready to go,
+  RISC-V/selfie toolchain and safes you from <tt>git clone</tt>ing and
+  compiling 5GB C/C++ source code files.  It contains a whole Debian
+  GNU/Linux operating system with all necessary packets in place.
+  Furthermore, it contains a compiled and patched RISC-V toolchain (32
+  and 64bit, the <tt>spike</tt> emulator and
+  the <b>P</b>roxy <b>K</b>ernel <tt>pk</tt>) and the selfie codebase
+  (git branch:riscv).  A patch is already applied to make selfie
+  binaries runnable on top of <tt>spike</tt> and <tt>pk</tt>. </p> 
+
+  <p><a href="https://riscv.org/">RISC-V</a> is an open RISC
+  Instruction Set
+  Architecture, <a href="https://github.com/cksystemsteaching/selfie">selfie</a>
+  is a RISC-V capable emulator, compiler package created by
+  the <a href="http://cs.uni-salzburg.at/~ck/">Computational Systems
+  Group</a> at the <a href="http://sbg.ac.at">University of
+  Salzburg</a>.  Please feel free to get in touch
+  with <a href="http://barthel.ch">me</a> if you have any questions
+  about this. </p>  
+
+  <h2>Getting started</h2>
+  <ol>
+    <li>Download and install
+    the <a href="http://www.vmware.com/products/player/playerpro-evaluation.html">VMware
+    Player</a> either for Windows or Linux.  Alternatively, you can
+    use <a href="http://www.virtualbox.org">VirtualBox</a>.  If you
+    already have VMware Workstation, VMware Fusion or VMware ESXi, you
+    don't need to install anything.  </li> 
+
+    <li>Download one of the following virtual machine images: 
+      <table border=1>
+        <tr>
+          <th>File</th>
+          <th>Version</th>
+          <th>Size (download/extracted)</th>
+          <th>SHA256</th>
+        </tr>
+        <tr>
+          <td><a href="https://drive.google.com/file/d/0B492ZbXi9VSwR3dnYmhWS2EySHc">selfie-1.0.tar.gz</a></td>
+          <td>Version 1.0</td>
+          <td>4.0GB / 4.1GB</td>
+          <td>SHA256 (selfie-1.0.tar.gz) =
+          a1001565808b9a6130064858de4f8cc31149822975e65b073d41c64a6ae8c630</td>
+        </tr>
+      </table>
+      This contains the <i>debian.ovf</i> virtual machine
+      configuration file
+      (<a href="https://en.wikipedia.org/wiki/Open_Virtualization_Format">OVF</a>
+      is an open virtualization format and it should be compatible
+      with at least VirtualBox, VMware, Red Hat EV, Oracle VM,
+      Microsoft SCVM and a few more) and the <i>debian-disk1.vmdk</i> virtual
+      machine disk file.  
+      <br>
+    </li>
+    <li>Extract it with <tt>tar xfz ./selfie-1.0.tar.gz</tt></li>
+    <li>Now you can start it by either 
+      <ul>
+        <li>VMware: 
+          <ul> 
+            <li>(double) clicking on <tt>debian.ovf</tt> and
+            importing it, </li> 
+            <li>or <tt>/usr/bin/vmplayer /path/to/debian.ovf</tt></li> 
+          </ul>
+        </li>
+        <li>VirtualBox: 
+          <ul>
+            <li>Inside Virtualbox: File, Import Appliance and select
+            the OVF file</li>
+            <li>A more detailed description about this process
+            is <a href="https://www.maketecheasier.com/convert-virtual-machines-vmware-virtualbox/">here</a>. 
+          </ul>
+        </li>
+      </ul>
+    <li>After that, a VM should boot up and you can start playing with RISC-V/selfie</li>
+  </ol>
+  
+  <h2>Use it</h2>
+  <p>Everything is done as <tt>root</tt>!  To get started, login with:  
+  </p>
+  <table border=1>
+    <tr><th>Login</th><th>Password</th></tr>
+    <tr><td>root</td><td>selfie</td></tr>
+  </table>
+  <p>
+    The most important paths are: 
+  </p>
+  <table border=1>
+    <tr><th>Path</th><th>Meaning</th></tr>
+    <tr><td>/root/selfie</td><td>selfie code base [branch:riscv]</td></tr>
+    <tr><td>/root/riscv-tools</td><td>Patched Risc-V source code</td></tr>
+    <tr><td>/root/riscv-tools/riscv-pk</td><td>patched source code of the PK Kernel</td></tr>
+    <tr><td>/root/toolchain</td><td>Compiled toolchain for RISC-V/32 and /64 bit</td></tr>
+    <tr><td>/root/toolchain/riscv64-unknown-elf</td><td>64 bit version of R5/pk</td></tr>
+    <tr><td>/root/toolchain/riscv32-unknown-elf</td><td>32 bit version of R5/pk</td></tr>
+    <tr><td>/root/toolchain/bin</td><td>GNU Binutils, gcc, ld, ar for RISC-V</td></tr>
+  </table>
+  <p>Most <tt>/bin/</tt> paths have been added to the <tt>PATH</tt> variable and can be directly used.  The VM is configured to use NAT on your host OS.  Make sure you have access to the internet. </p>
+  
+  <h3>Examples</h3>
+  <p><tt>spike</tt> is the official RISC-V emulator and <tt>riscv-pk</tt> is a 
+    proxy kernel, modelled after the Linux kernel.  You're able to either use the 
+    GCC crosscompiler <tt>riscv32-unkown-elf-gcc</tt> or <tt>selfie</tt> to generate 
+    executable binaries for either the <tt>spike</tt> emulator and <tt>pk</tt> 
+    kernel, or you can directly run those executables on the <tt>selfie</tt> emulator. 
+  </p>
+  <ul>
+    <li>
+      Compiling <tt>selfie</tt> to a RISC-V/32 bit ELF binary: 
+      <pre >
+# make
+# ./selfie -c selfie.c -o /tmp/selfie.r5.elf
+./selfie: this is selfie's starc compiling selfie.c
+./selfie: 199262 characters read in 7514 lines and 1237 comments
+./selfie: with 103778(52.08%) characters in 30752 actual symbols
+./selfie: 275 global variables, 290 procedures, 441 string literals
+./selfie: 2076 calls, 788 assignments, 58 while, 567 if, 250 return
+./selfie: 115332 bytes generated with 27182 instructions and 6604 bytes of data
+./selfie: 115332 bytes with 27182 instructions and 6604 bytes of data written into /tmp/selfie.r5.elf
+
+      </pre>
+    </li>
+    <li>
+      Using the GNU Binutils to read and manipulate the binary: 
+      <pre>
+# riscv32-unknown-elf-readelf -a /tmp/selfie.r5.elf
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           RISC-V
+  Version:                           0x1
+  Entry point address:               0x10000
+  Start of program headers:          52 (bytes into file)
+  Start of section headers:          84 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               52 (bytes)
+  Size of program headers:           32 (bytes)
+  Number of program headers:         1
+  Size of section headers:           40 (bytes)
+  Number of section headers:         4
+  Section header string table index: 3
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        00010000 000110 01a8b8 00 WAX  0   0  0
+  [ 2] .data             PROGBITS        0002a8bc 01a9c8 0019c8 00 WAX  0   0  0
+  [ 3] .shstrtab         STRTAB          00000000 0000f4 01a8b8 00      0   0  0
+     ...
+      </pre>
+      The <tt>objdump</tt> shows an alternative disassembly output: 
+      <pre>
+root@debian:~# riscv32-unknown-elf-objdump -d /tmp/selfie.r5.elf
+/tmp/selfie.r5.elf:     file format elf32-littleriscv
+
+Disassembly of section .text:
+00010000 <.text>:
+   10000:       0b000293                li      t0,176
+   10004:       40000313                li      t1,1024
+   10008:       025302b3                mul     t0,t1,t0
+   1000c:       28028293                addi    t0,t0,640
+   10010:       00028193                mv      gp,t0
+   10014:       02201c63                bne     zero,sp,0x1004c
+   10018:       03f00293                li      t0,63
+   1001c:       40000313                li      t1,1024
+   10020:       025302b3                mul     t0,t1,t0
+   10024:       3ff28293                addi    t0,t0,1023
+   10028:       40000313                li      t1,1024
+   1002c:       025302b3                mul     t0,t1,t0
+   10030:       3fc28293                addi    t0,t0,1020
+   10034:       0002a103                lw      sp,0(t0)
+   10038:       07000313                li      t1,112
+   .... 
+      </pre>
+    </li>
+    
+    <li>
+      Running <tt>selfie</tt> on top of <tt>spike</tt>
+      and <tt>pk</tt>.  <b>Note</b>:  the
+      flag <tt>--isa=RV32IMAFDC</tt> is very important and tells spike
+      which ISA implementation to use:  
+      <pre>   
+# spike --isa=RV32IMAFDC /root/toolchain/riscv32-unknown-elf/bin/pk /tmp/selfie.r5.elf
+warning: only got 1365245952 bytes of target mem (wanted 4294967296)
+/tmp/selfie.r5.elf: usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ]
+# spike --isa=RV32IMAFDC /root/toolchain/riscv32-unknown-elf/bin/pk /tmp/selfie.r5.elf  -c /root/selfie/selfie.c -o /tmp/selfie.r5.elfESC[K.2
+      </pre>   
+    </li>
+    <li>
+      Compiling <tt>selfie</tt> on top of <tt>spike</tt> and comparing
+      the selfie binaries:  
+      <pre>
+# spike --isa=RV32IMAFDC /root/toolchain/riscv32-unknown-elf/bin/pk /tmp/selfie.r5.elf  -c /root/selfie/selfie.c -o /tmp/selfie.r5.elf.2
+warning: only got 1365245952 bytes of target mem (wanted 4294967296)
+/tmp/selfie.r5.elf: this is selfie's starc compiling /root/selfie/selfie.c
+/tmp/selfie.r5.elf: 199262 characters read in 7514 lines and 1237 comments
+/tmp/selfie.r5.elf: with 103778(52.08%) characters in 30752 actual symbols
+/tmp/selfie.r5.elf: 275 global variables, 290 procedures, 441 string literals
+/tmp/selfie.r5.elf: 2076 calls, 788 assignments, 58 while, 567 if, 250 return
+/tmp/selfie.r5.elf: 115332 bytes generated with 27182 instructions and 6604 bytes of data
+/tmp/selfie.r5.elf: 115332 bytes with 27182 instructions and 6604 bytes of data written into /tmp/selfie.r5.elf.2
+# ls -l /tmp/selfie*
+-rw-r--r-- 1 root root 113K Feb  3 02:03 /tmp/selfie.r5.elf
+-rw-r--r-- 1 root root 113K Feb  3 02:08 /tmp/selfie.r5.elf.2
+# diff /tmp/selfie*
+#
+      </pre>
+
+    </li>
+  </ul>
+  <h2>FAQ</h2>
+  <dl>
+    <dt>Whats the reason of all this.. don't get it?</dt>
+    <dd>The reason is to get started with RISC-V/selfie within a short
+    time by just downloading a pre-installed VM where (1) all software
+    packets are installed, (2) all code is already downloaded and (3)
+    all tools are compiled and usable after booting. 
+    <dt>Can I work without root privileges.. it's dangerous?</dt> 
+    <dd>Yes, just copy all binary files to a (new) user
+    (checkout <tt>man adduser</tt>).  </dd> 
+    <dt>How can I start a GUI?</dt>
+    <dd>This is a plain Debian GNU/Linux installation without any
+    graphical components.  You may install a gui by
+    executing <tt>apt-get install windowmanagerName</tt></dd> 
+    <dt>Which editors are installed?</dt> 
+    <dd><tt>vi</tt>, <tt>nano</tt> and <tt>ed</tt>.  The usual UNIX
+    tools <tt>grep</tt>, <tt>cat</tt>, <tt>awk</tt>, <tt>sed</tt> are
+    available, too.  You can install additional editors
+    with <tt>apt-get install editorName</tt></dd> 
+    <dt>How to reset the VM and start from new</dt>
+    <dd>Just download the *.tar.gz file again and start anew.  Make
+    sure not to lose any viable information. </dd> 
+    <dt>It's inconvenient with a dumb terminal only..?</dt>
+    <dd>You can create a ssh-reverse tunnel and edit the code remotely
+    with GNU Emacs, set up NFS or Samba for a shared network disk,
+    etc. </dd> 
+    <dt>How to debug or get updates? </dt> 
+    <dd>I installed <tt>gdb</tt>, a very sophisticated commandline
+    debugger and <tt>git</tt>, to get some additional updates and
+    patches.  Updating source code may break the toolchain, though!   
+      <dt>Is it really that hard to compile all this?</dt>
+    <dd>Cloning, Compiling and patching the R5 toolchain, spike, PK
+    for 64 and 32 bit, GCC, GNU binutils is not that hard at all!  But
+    with close to 5GB of source code, it takes some time.  This
+    appliance should speed up your (and my) life (to not wasting time
+    on getting all this in place but start working with
+    RISC-V/selfie).</dd> 
+  </dl>
+  <br>
+  <hr>
+  Created by Christian Barthel,
+  Contact: <a href="http://barthel.ch">barthel.ch</a>, 02.02.2017 
+</BODY> 
+
+</HTML>
