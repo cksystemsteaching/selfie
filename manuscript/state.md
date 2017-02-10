@@ -235,32 +235,32 @@ Let us take a look at how the first few instructions for the countdown program e
 ./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: 496 bytes generated with 122 instructions and 8 bytes of data
 ./selfie: this is selfie's mipster executing manuscript/code/countdown.c with 1MB of physical memory
-manuscript/code/countdown.c: $pc=0x0(~1): 0x240801EC: addiu $t0,$zero,492: $t0=0,$zero=0 -> $t0=492
-manuscript/code/countdown.c: $pc=0x4(~1): 0x251C0000: addiu $gp,$t0,0: $gp=0,$t0=492 -> $gp=492
-manuscript/code/countdown.c: $pc=0x8(~1): 0x24080FFF: addiu $t0,$zero,4095: $t0=492,$zero=0 -> $t0=4095
-manuscript/code/countdown.c: $pc=0xC(~1): 0x24094000: addiu $t1,$zero,16384: $t1=0,$zero=0 -> $t1=16384
-manuscript/code/countdown.c: $pc=0x10(~1): 0x01090019: multu $t0,$t1: $t0=4095,$t1=16384,$lo=0 -> $lo=67092480
-manuscript/code/countdown.c: $pc=0x14(~1): 0x00004012: mflo $t0: $t0=4095,$lo=67092480 -> $t0=67092480
-manuscript/code/countdown.c: $pc=0x18(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x1C(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x20(~1): 0x25083FFC: addiu $t0,$t0,16380: $t0=67092480,$t0=67092480 -> $t0=67108860
-manuscript/code/countdown.c: $pc=0x24(~1): 0x8D1D0000: lw $sp,0($t0): $sp=0,$t0=0x3FFFFFC -> $sp=67108816=memory[0x3FFFFFC]
-manuscript/code/countdown.c: $pc=0x28(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x2C(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x30(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x34(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x38(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x3C(~1): 0x00000000: nop
-manuscript/code/countdown.c: $pc=0x40(~1): 0x0C00005F: jal 0x5F[0x17C]: $ra=0x0 -> $ra=0x48,$pc=0x17C
+$pc=0x0(~1): 0x240801EC: addiu $t0,$zero,492: $t0=0,$zero=0 -> $t0=492
+$pc=0x4(~1): 0x251C0000: addiu $gp,$t0,0: $gp=0,$t0=492 -> $gp=492
+$pc=0x8(~1): 0x24080FFF: addiu $t0,$zero,4095: $t0=492,$zero=0 -> $t0=4095
+$pc=0xC(~1): 0x24094000: addiu $t1,$zero,16384: $t1=0,$zero=0 -> $t1=16384
+$pc=0x10(~1): 0x01090019: multu $t0,$t1: $t0=4095,$t1=16384,$lo=0 -> $lo=67092480
+$pc=0x14(~1): 0x00004012: mflo $t0: $t0=4095,$lo=67092480 -> $t0=67092480
+$pc=0x18(~1): 0x00000000: nop
+$pc=0x1C(~1): 0x00000000: nop
+$pc=0x20(~1): 0x25083FFC: addiu $t0,$t0,16380: $t0=67092480,$t0=67092480 -> $t0=67108860
+$pc=0x24(~1): 0x8D1D0000: lw $sp,0($t0): $sp=0,$t0=0x3FFFFFC -> $sp=67108816=memory[0x3FFFFFC]
+$pc=0x28(~1): 0x00000000: nop
+$pc=0x2C(~1): 0x00000000: nop
+$pc=0x30(~1): 0x00000000: nop
+$pc=0x34(~1): 0x00000000: nop
+$pc=0x38(~1): 0x00000000: nop
+$pc=0x3C(~1): 0x00000000: nop
+$pc=0x40(~1): 0x0C00005F: jal 0x5F[0x17C]: $ra=0x0 -> $ra=0x48,$pc=0x17C
 ...
-manuscript/code/countdown.c: $pc=0x1E0(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
-manuscript/code/countdown.c: $pc=0x48(~1): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108816,$sp=67108816 -> $sp=67108812
-manuscript/code/countdown.c: $pc=0x4C(~1): 0xAFA20000: sw $v0,0($sp): $v0=0,$sp=0x3FFFFCC -> memory[0x3FFFFCC]=0=$v0
-manuscript/code/countdown.c: $pc=0x50(~1): 0x8FA40000: lw $a0,0($sp): $a0=0,$sp=0x3FFFFCC -> $a0=0=memory[0x3FFFFCC]
-manuscript/code/countdown.c: $pc=0x54(~1): 0x27BD0004: addiu $sp,$sp,4: $sp=67108812,$sp=67108812 -> $sp=67108816
-manuscript/code/countdown.c: $pc=0x58(~1): 0x24020FA1: addiu $v0,$zero,4001: $v0=0,$zero=0 -> $v0=4001
-manuscript/code/countdown.c: $pc=0x5C(~1): 0x0000000C: syscall
-manuscript/code/countdown.c: exiting with exit code 0 and 0.00MB of mallocated memory
+$pc=0x1E0(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
+$pc=0x48(~1): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108816,$sp=67108816 -> $sp=67108812
+$pc=0x4C(~1): 0xAFA20000: sw $v0,0($sp): $v0=0,$sp=0x3FFFFCC -> memory[0x3FFFFCC]=0=$v0
+$pc=0x50(~1): 0x8FA40000: lw $a0,0($sp): $a0=0,$sp=0x3FFFFCC -> $a0=0=memory[0x3FFFFCC]
+$pc=0x54(~1): 0x27BD0004: addiu $sp,$sp,4: $sp=67108812,$sp=67108812 -> $sp=67108816
+$pc=0x58(~1): 0x24020FA1: addiu $v0,$zero,4001: $v0=0,$zero=0 -> $v0=4001
+$pc=0x5C(~1): 0x0000000C: syscall
+exiting with exit code 0 and 0.00MB of mallocated memory
 ./selfie: this is selfie's mipster terminating manuscript/code/countdown.c with exit code 0 and 0.00MB of mapped memory
 ./selfie: profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)
 ./selfie: calls: 1,1(100.00%)@0x17C(~11),0(0.00%),0(0.00%)
@@ -281,7 +281,7 @@ The `addiu` instruction can nevertheless involve any of the 32 general-purpose r
 
 Also, very important and not to forget, `addiu $t0,$zero,492` makes the processor increment the `$pc` register from `0x0` to `0x4` so that the next instruction executed by the processor is the instruction at memory address `0x4` that immediately follows the current instruction in memory. Incrementing the PC like that creates so-called *sequential* control flow. Most instructions actually do that, not just `addiu`. There are, however, also instructions that can alter the control flow by setting the `$pc` register depending on the values in registers other than `$pc`. We explain that below.
 
-This takes us to the next instruction at memory address `0x4`. Its effect on the machine state is that the value in the `$gp` register is set to 492 because it instructs the processor to add 0 to the value in register `$t0` which is currently 492 and store the result in `$gp`. Also, the value of the `$pc` register is incremented to `0x8`.
+This takes us to the next instruction at memory address `0x4`. Its effect on the machine state is that the value in the `$gp` register is set to 492 because it instructs the processor to add 0 to the value in register `$t0` which is currently 492 and store the result in `$gp`. Also, the value of the `$pc` register is incremented to `0x8`. The `$gp` register is register 28 among the 32 general-purpose registers.
 
 What is the purpose of the first two instructions? Simple. They are meant to [initialize](http://github.com/cksystemsteaching/selfie/blob/d5e3134063256d509752fe381a9fdcb76bb65ff2/selfie.c#L3941-L3944) the `$gp` register which stands for *global pointer*. Why do we use two instructions instead of one? Good question. Just using `addiu $gp,$zero,492` would do the trick as well. The reason why we are not doing this is because it makes the compiler simpler, and better performance through using fewer instructions and fewer registers is not our focus here. It is, however, of major concern in state-of-the-art compilers.
 
@@ -291,7 +291,7 @@ The purpose of the `$gp` register is to provide a fixed point of reference for r
 
 ## Stack Pointer
 
-Let us take a look at the next eight instructions in the above output. Their purpose is to [load the word at the highest address in memory](http://github.com/cksystemsteaching/selfie/blob/d5e3134063256d509752fe381a9fdcb76bb65ff2/selfie.c#L3952-L3956) into the `$sp` register which stands for *stack pointer*. The purpose of the stack pointer is to facilitate fast dynamic allocation of memory for procedures. The details are explained in the stack chapter.
+Let us take a look at the next eight instructions in the above output. Their purpose is to [load the word at the highest address in memory](http://github.com/cksystemsteaching/selfie/blob/d5e3134063256d509752fe381a9fdcb76bb65ff2/selfie.c#L3952-L3956) into the `$sp` register which stands for *stack pointer* and is the register 29 among the 32 general-purpose registers. The purpose of the stack pointer is to facilitate fast dynamic allocation of memory for procedures. The details are explained in the stack chapter.
 
 Interesting here is to see how the highest address which is 2^26^-4=67108860=0x3FFFFFC is loaded into register `$t0`. Remember that mipster emulates 64MB of memory which is 64\*2^20^=2^6^\*2^20^=2^26^ bytes. The highest address is thus 2^26^ bytes subtracted by 4 bytes because memory addresses start at `0x0` and need to be word-aligned.
 
@@ -309,7 +309,9 @@ In order to access the result in `$lo` we use the instruction `mflo $t0` which c
 
 #### [lw](http://github.com/cksystemsteaching/selfie/blob/e37e0b759dba9e7c4b35f7fa5e4d8b76be7a1f44/selfie.c#L5989-L6045)
 
-The following `lw $sp,0($t0)` instruction *loads the word* stored at the memory address in `$t0` plus the offset `0` into the `$sp` register. This behavior is another addressing mode which is called *register-relative addressing*. We hear more about that below. Why we are loading that word is explained in another chapter.
+The following `lw $sp,0($t0)` instruction at memory address `0x24` *loads the word* stored at the memory address in `$t0` plus the offset `0` into the `$sp` register. This behavior is another addressing mode which is called *register-relative addressing*. We hear more about that below. Why we are loading that word is explained in another chapter.
+
+Interestingly, this load operation is actually mentioned by the profiler in `loads: 26,...,1(3.84%)@0x24(~1)` as one of the third most executed operations among a total of 26 load operations even though it is only executed once which corresponds to 3.84% of all load operations.
 
 Imagine, it took us ten instructions to get the integer value 492 into `$gp` and the value at memory address 0x3FFFFFC into `$sp`. We definitely need a higher-level programming language to raise the level of abstraction. However, as tedious as the machine level might be, it is completely deterministic and rather easy to understand.
 
@@ -317,9 +319,9 @@ For now, the important take-away message here is that we can reconstruct the ful
 
 #### [jal](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5537-L5578)
 
-The next six instructions in the above output are all `nop` instructions. The next interesting instruction is the `jal 0x5F[0x17C]` instruction where `jal` stands for *jump and link*. This instruction sets the PC to the *absolute* address `0x17C` which is where the first instruction implementing the `main` procedure is located in memory. The `jal` instruction instructs the processor to *jump* to an absolute address in memory and continue code execution there. The addressing mode is called *absolute addressing*. The actual binary encoding of the address in the instruction contains the address in words, here `0x5F`, rather than bytes, here `0x17C`. The address in bytes is only provided as `[0x17C]` for better readability.
+The next six instructions in the above output are all `nop` instructions. The next interesting instruction is the `jal 0x5F[0x17C]` instruction where `jal` stands for *jump and link*. This instruction sets the PC to the *absolute* address `0x17C` which is where the first instruction implementing the `main` procedure is located in memory. The profiler even mentions that first instruction in `calls: 1,1(100.00%)@0x17C(~11),...,...` as the most called procedure code even though it is only called once (since there is no other). The `jal` instruction instructs the processor to *jump* to an absolute address in memory and continue code execution there. The addressing mode is called *absolute addressing*. The actual binary encoding of the address in the instruction contains the address in words, here `0x5F`, rather than bytes, here `0x17C`. The address in bytes is only provided as `[0x17C]` for better readability.
 
-However, most importantly, before setting the PC and performing the actual jump, the `jal` instruction sets the `$ra` register which stands for *return address* to the value of the `$pc` register plus 8 bytes, which is `0x48` in the example here. The purpose of that is to remember or *link to* where code execution should resume when done with the code to which the machine is going to jump. The reason why it is 8 bytes rather than 4 bytes is because the instruction immediately following the `jal` instruction should be skipped when resuming code execution here. That instruction is in a so-called [delay slot](https://en.wikipedia.org/wiki/Delay_slot) which is nevertheless an artifact that we can safely ignore. For simplicity, starc ensures that there is always a `nop` instruction in any delay slot.
+However, most importantly, before setting the PC and performing the actual jump, the `jal` instruction sets the `$ra` register which stands for *return address* to the value of the `$pc` register plus 8 bytes, which is `0x48` in the example here. The `$ra` register is the register with the highest index 31 among the 32 general-purpose registers. Its purpose is to remember or *link to* where code execution should resume when done with the code to which the machine is going to jump. The reason why it is 8 bytes rather than 4 bytes is because the instruction immediately following the `jal` instruction should be skipped when resuming code execution here. That instruction is in a so-called [delay slot](https://en.wikipedia.org/wiki/Delay_slot) which is nevertheless an artifact that we can safely ignore. For simplicity, starc ensures that there is always a `nop` instruction in any delay slot.
 
 In the above output we are not showing the instructions implementing the `main` procedure except for the very last one which is the natural counterpart to the `jal` instruction. Let us first focus on that instruction.
 
@@ -329,13 +331,17 @@ The `jr $ra` instruction sets the PC to the value of the `$ra` register where `j
 
 #### [sw](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L6088-L6143)
 
-So, with the PC now pointing to the memory address `0x48`, the next four instructions to be executed are `addiu $sp,$sp,-4`, followed by `sw $v0,0($sp)`, `lw $a0,0($sp)`, and `addiu $sp,$sp,4`. Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of a special instruction for exiting the program.
+So, with the PC now pointing to the memory address `0x48`, the next four instructions to be executed are `addiu $sp,$sp,-4`, followed by `sw $v0,0($sp)`, `lw $a0,0($sp)`, and `addiu $sp,$sp,4`. Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of a special instruction for exiting the program.
 
-Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction which *stores the word* in `$v0` at the memory address in `$sp` plus the offset `0`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is the natural counterpart to the `lw` instruction. Here, the value in `$v0` is thus copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
+Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at memory address `0x4C` which *stores the word* in `$v0` at the memory address in `$sp` plus the offset `0`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is the natural counterpart to the `lw` instruction. Here, the value in `$v0` is thus copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
+
+Interestingly again, this store instruction is also mentioned by the profiler in `stores: 13,...,1(7.69%)@0x4C(~1),...` as one of the second most executed operations among a total of 13 store operations even though it is only executed once which corresponds to 7.69% of all store operations.
 
 #### [syscall](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L5488-L5525)
 
-The next instruction `addiu $v0,$zero,4001` loads the value 4001 into the `$v0` register. Upon executing the following `syscall` instruction, that value in `$v0` instructs the machine to output the value in `$a0` as exit code, which is 0, and then to shut down. That's it. Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters.
+The next instruction `addiu $v0,$zero,4001` loads the value 4001 into the `$v0` register. Upon executing the following `syscall` instruction, that value in `$v0` instructs the machine to output the value in `$a0` as exit code, which is 0, and then to shut down. That's it.
+
+Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. We only point out that the `syscall` instruction does not have any explicit arguments. However, it does expect implicit arguments provided in at least the `$v0` register which identifies among a finite set of choices the functionality that the machine is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code.
 
 ## Statements
 
@@ -345,6 +351,57 @@ So, how does the `main` procedure of countdown actually work? A procedure in C\*
 : The smallest standalone element of an imperative programming language that expresses some action to be carried out. It is an instruction written in a high-level language that commands the computer to perform a specified action. A program written in such a language is formed by a sequence of one or more statements. A statement may have internal components (e.g., expressions).
 
 C\* features only five different kinds of statements: assignment, `while`, `if`, procedure call, and `return`. We discuss assignment, `while`, and `return` here and explain `if` and procedure call in subsequent chapters. The default control flow in C\*, just like in MIPSter, is sequential from one statement to the next. However, while only 5 out of the 17 MIPSter machine instructions are control flow instructions, all statements but assignment are control flow statements in C\*.
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/countdown.c -d 1
+...
+$pc=0x19C(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108816,$sp=67108816 -> $sp=67108812
+$pc=0x1A0(~11): 0xAFBF0000: sw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> memory[0x3FFFFCC]=72=$ra
+$pc=0x1A4(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108812,$sp=67108812 -> $sp=67108808
+$pc=0x1A8(~11): 0xAFBE0000: sw $fp,0($sp): $fp=0,$sp=0x3FFFFC8 -> memory[0x3FFFFC8]=0=$fp
+$pc=0x1AC(~11): 0x27BE0000: addiu $fp,$sp,0: $fp=0,$sp=67108808 -> $fp=67108808
+$pc=0x1B0(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=67108860,$gp=0x20C -> $t0=10=memory[0x208]
+$pc=0x1B4(~11): 0x24090000: addiu $t1,$zero,0: $t1=16384,$zero=0 -> $t1=0
+$pc=0x1B8(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=10 -> $t0=1
+$pc=0x1BC(~11): 0x10080007: beq $zero,$t0,7[0x1DC]: $zero=0,$t0=1 -> $pc=0x1C0
+$pc=0x1C0(~11): 0x00000000: nop
+$pc=0x1C4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x20C -> $t0=10=memory[0x208]
+$pc=0x1C8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
+$pc=0x1CC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=10,$t0=10,$t1=1 -> $t0=9
+$pc=0x1D0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=9,$gp=0x20C -> memory[0x208]=9=$t0
+$pc=0x1D4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x1B0]: $zero=0,$zero=0 -> $pc=0x1B0
+$pc=0x1B0(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=9,$gp=0x20C -> $t0=9=memory[0x208]
+$pc=0x1B4(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
+$pc=0x1B8(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=9 -> $t0=1
+$pc=0x1BC(~11): 0x10080007: beq $zero,$t0,7[0x1DC]: $zero=0,$t0=1 -> $pc=0x1C0
+$pc=0x1C0(~11): 0x00000000: nop
+$pc=0x1C4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x20C -> $t0=9=memory[0x208]
+$pc=0x1C8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
+$pc=0x1CC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=9,$t0=9,$t1=1 -> $t0=8
+$pc=0x1D0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=8,$gp=0x20C -> memory[0x208]=8=$t0
+$pc=0x1D4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x1B0]: $zero=0,$zero=0 -> $pc=0x1B0
+...
+$pc=0x1C4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x20C -> $t0=1=memory[0x208]
+$pc=0x1C8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
+$pc=0x1CC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=1,$t0=1,$t1=1 -> $t0=0
+$pc=0x1D0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=0,$gp=0x20C -> memory[0x208]=0=$t0
+$pc=0x1D4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x1B0]: $zero=0,$zero=0 -> $pc=0x1B0
+$pc=0x1B0(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x20C -> $t0=0=memory[0x208]
+$pc=0x1B4(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
+$pc=0x1B8(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=0 -> $t0=0
+$pc=0x1BC(~11): 0x10080007: beq $zero,$t0,7[0x1DC]: $zero=0,$t0=0 -> $pc=0x1DC
+$pc=0x1DC(~19): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x20C -> $t0=0=memory[0x208]
+$pc=0x1E0(~19): 0x00081021: addu $v0,$zero,$t0: $v0=0,$zero=0,$t0=0 -> $v0=0
+$pc=0x1E4(~19): 0x0800007B: j 0x7B[0x1EC]: -> $pc=0x1EC
+$pc=0x1EC(~20): 0x27DD0000: addiu $sp,$fp,0: $sp=67108808,$fp=67108808 -> $sp=67108808
+$pc=0x1F0(~20): 0x8FBE0000: lw $fp,0($sp): $fp=67108808,$sp=0x3FFFFC8 -> $fp=0=memory[0x3FFFFC8]
+$pc=0x1F4(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108808,$sp=67108808 -> $sp=67108812
+$pc=0x1F8(~20): 0x8FBF0000: lw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> $ra=72=memory[0x3FFFFCC]
+$pc=0x1FC(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108812,$sp=67108812 -> $sp=67108816
+$pc=0x200(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
+...
+```
 
 ## While Statement
 
