@@ -323,7 +323,7 @@ The next six instructions in the above output are all `nop` instructions. The ne
 
 However, most importantly, before setting the PC and performing the actual jump, the `jal` instruction sets the `$ra` register which stands for *return address* to the value of the `$pc` register plus 8 bytes, which is `0x48` in the example here. The `$ra` register is the register with the highest index 31 among the 32 general-purpose registers. Its purpose is to remember or *link to* where code execution should resume when done with the code to which the machine is going to jump. The reason why it is 8 bytes rather than 4 bytes is because the instruction immediately following the `jal` instruction should be skipped when resuming code execution here. That instruction is in a so-called [delay slot](https://en.wikipedia.org/wiki/Delay_slot) which is nevertheless an artifact that we can safely ignore. For simplicity, starc ensures that there is always a `nop` instruction in any delay slot.
 
-In the above output we are not showing the instructions implementing the `main` procedure except for the very last one which is the natural counterpart to the `jal` instruction. Let us first focus on that instruction.
+In the above output we are not showing the instructions implementing the `main` procedure except for the very last one which is the natural counterpart to the `jal` instruction. Let us first focus on that instruction and then see how the machine shuts down before explaining how the `main` procedure is implemented.
 
 #### [jr](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5738-L5761)
 
@@ -331,13 +331,9 @@ The `jr $ra` instruction sets the PC to the value of the `$ra` register where `j
 
 #### [sw](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L6088-L6143)
 
-So, with the PC now pointing to the memory address `0x48`, the next four instructions to be executed are `addiu $sp,$sp,-4`, followed by `sw $v0,0($sp)`, `lw $a0,0($sp)`, and `addiu $sp,$sp,4`. Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind.
+So, with the PC now pointing to the memory address `0x48`, the next four instructions to be executed are `addiu $sp,$sp,-4`, followed by `sw $v0,0($sp)`, `lw $a0,0($sp)`, and `addiu $sp,$sp,4`. Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of a special instruction for exiting the program and shutting down the machine.
 
-The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of a special instruction for exiting the program and shutting down the machine.
-
-Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at memory address `0x4C`. This instruction *stores the word* in `$v0` in the memory word at address `$sp` plus offset `0`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is the natural counterpart to the `lw` instruction.
-
-The effect of the four instructions is that the value in `$v0` is copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
+Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at memory address `0x4C`. This instruction *stores the word* in `$v0` in the memory word at address `$sp` plus offset `0`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is the natural counterpart to the `lw` instruction. The effect of the four instructions is that the value in `$v0` is copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
 
 Interestingly again, this store instruction is also mentioned by the profiler in `stores: 13,...,1(7.69%)@0x4C(~1),...` as one of the second most executed operations among a total of 13 store operations even though it is only executed once which corresponds to 7.69% of all store operations.
 
@@ -345,7 +341,7 @@ Interestingly again, this store instruction is also mentioned by the profiler in
 
 The next instruction `addiu $v0,$zero,4001` loads the value 4001 into the `$v0` register. Upon executing the following `syscall` instruction, that value in `$v0` instructs the machine to output the value in `$a0` as exit code, which is 0, and then to shut down. That's it.
 
-Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. We only point out that the `syscall` instruction does not have any explicit arguments. However, it does expect implicit arguments provided in at least the `$v0` register which identifies among a finite set of choices the functionality that the machine is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code.
+Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. Here, we only point out that the `syscall` instruction does not have any explicit arguments. However, it does expect implicit arguments provided in at least the `$v0` register which identifies among a finite set of choices the functionality that the machine is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code.
 
 ## Statements
 
@@ -355,6 +351,8 @@ So, how does the `main` procedure of countdown actually work? A procedure in C\*
 : The smallest standalone element of an imperative programming language that expresses some action to be carried out. It is an instruction written in a high-level language that commands the computer to perform a specified action. A program written in such a language is formed by a sequence of one or more statements. A statement may have internal components (e.g., expressions).
 
 C\* features only five different kinds of statements: assignment, `while`, `if`, procedure call, and `return`. We discuss assignment, `while`, and `return` here and explain `if` and procedure call in subsequent chapters. The default control flow in C\*, just like in MIPSter, is sequential from one statement to the next. However, while only 5 out of the 17 MIPSter machine instructions are control flow instructions, all statements but assignment are control flow statements in C\*.
+
+Here is the output of mipster when executing the instructions that implement the `main` procedure. The `...` part of the output in the middle is repetitive and skipped for brevity but explained below. The first five and the last six instructions, including the `jr` instruction, correspond to the so-called *prologue* and *epilogue* of the procedure and can safely be ignored for now. They are generated by starc for all procedures. An important property is that the last five instructions before the `jr` instruction undo exactly what the first five instructions did to the involved registers. The `$fp` register is explained in the stack chapter. Look at the register values before and after executing these instructions to see for yourself!
 
 {line-numbers=off}
 ```
