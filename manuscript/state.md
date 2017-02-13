@@ -309,7 +309,7 @@ In order to access the result in `$lo` we use the instruction `mflo $t0` which c
 
 #### [lw](http://github.com/cksystemsteaching/selfie/blob/e37e0b759dba9e7c4b35f7fa5e4d8b76be7a1f44/selfie.c#L5989-L6045)
 
-The following `lw $sp,0($t0)` instruction at memory address `0x24` *loads the word* stored at the memory address in `$t0` plus the offset `0` into the `$sp` register. This behavior is another addressing mode which is called *register-relative addressing*. We hear more about that below. Why we are loading that word is explained in another chapter.
+The following `lw $sp,0($t0)` instruction at memory address `0x24` *loads the word* from memory stored at address `$t0` plus offset `0` into the `$sp` register. This means in particular that the value in `$t0` is interpreted as memory address plus some constant offset that does not have to be zero and can even be negative. This behavior is another addressing mode which is called *register-relative addressing*. We hear more about that below. Why we are loading that word is explained in another chapter.
 
 Interestingly, this load operation is actually mentioned by the profiler in `loads: 26,...,1(3.84%)@0x24(~1)` as one of the third most executed operations among a total of 26 load operations even though it is only executed once which corresponds to 3.84% of all load operations.
 
@@ -331,9 +331,13 @@ The `jr $ra` instruction sets the PC to the value of the `$ra` register where `j
 
 #### [sw](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L6088-L6143)
 
-So, with the PC now pointing to the memory address `0x48`, the next four instructions to be executed are `addiu $sp,$sp,-4`, followed by `sw $v0,0($sp)`, `lw $a0,0($sp)`, and `addiu $sp,$sp,4`. Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of a special instruction for exiting the program.
+So, with the PC now pointing to the memory address `0x48`, the next four instructions to be executed are `addiu $sp,$sp,-4`, followed by `sw $v0,0($sp)`, `lw $a0,0($sp)`, and `addiu $sp,$sp,4`. Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind.
 
-Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at memory address `0x4C` which *stores the word* in `$v0` at the memory address in `$sp` plus the offset `0`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is the natural counterpart to the `lw` instruction. Here, the value in `$v0` is thus copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
+The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of a special instruction for exiting the program and shutting down the machine.
+
+Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at memory address `0x4C`. This instruction *stores the word* in `$v0` in the memory word at address `$sp` plus offset `0`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is the natural counterpart to the `lw` instruction.
+
+The effect of the four instructions is that the value in `$v0` is copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
 
 Interestingly again, this store instruction is also mentioned by the profiler in `stores: 13,...,1(7.69%)@0x4C(~1),...` as one of the second most executed operations among a total of 13 store operations even though it is only executed once which corresponds to 7.69% of all store operations.
 
