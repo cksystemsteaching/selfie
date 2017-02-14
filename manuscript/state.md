@@ -277,6 +277,8 @@ The purpose of the first sixteen instructions executed by mipster is to initiali
 
 Initially, the PC denoted by `$pc` points to memory address `0x0`. The instruction at this address is thus the first instruction that will be executed by the machine. The instruction is encoded in the word `0x240801EC` which stands for [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625), as mentioned before.
 
+In our discussion we provide for each new instruction a link to the source code of mipster that implements the instruction (see, for example, the above [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)) and for each concrete instruction in the example a link to the source code of starc that generated the instruction (see, for example, the above [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625)).
+
 Now, here is the interesting part. The output `$t0=0,$zero=0 -> $t0=492` next to the instruction tells us which part of the state space (memory, registers) the instruction depends on and what the affected state actually is right before executing the instruction (`$t0=0,$zero=0` to the left of the arrow `->`) and which part of the state space changes and how after executing the instruction (`$t0=492` to the right of `->`). In other words, the instruction depends on the values in the two registers `$t0` and `$zero` that both contain 0 and the instruction changes the value in register `$t0` to 492. This is because `addiu $t0,$zero,492` instructs the processor to *add* the value 492 to the value in register `$zero` which is always 0 and store the result in register `$t0`.
 
 The `addiu` instruction can nevertheless involve any of the 32 general-purpose registers, not just `$t0` and `$zero`. However, there is a convention of using registers for a certain purpose as reflected in the names of registers. For example, the `t` in `$t0` stands for *temporary*. Registers with `t` are meant to store temporary results during computation.
@@ -364,50 +366,55 @@ Here is the output of mipster when executing the instructions that implement the
 ```
 > ./selfie -c manuscript/code/countdown.c -d 1
 ...
-$pc=0x19C(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108816,$sp=67108816 -> $sp=67108812
-$pc=0x1A0(~11): 0xAFBF0000: sw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> memory[0x3FFFFCC]=72=$ra
-$pc=0x1A4(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108812,$sp=67108812 -> $sp=67108808
-$pc=0x1A8(~11): 0xAFBE0000: sw $fp,0($sp): $fp=0,$sp=0x3FFFFC8 -> memory[0x3FFFFC8]=0=$fp
-$pc=0x1AC(~11): 0x27BE0000: addiu $fp,$sp,0: $fp=0,$sp=67108808 -> $fp=67108808
-$pc=0x1B0(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=67108860,$gp=0x20C -> $t0=10=memory[0x208]
-$pc=0x1B4(~11): 0x24090000: addiu $t1,$zero,0: $t1=16384,$zero=0 -> $t1=0
-$pc=0x1B8(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=10 -> $t0=1
-$pc=0x1BC(~11): 0x10080007: beq $zero,$t0,7[0x1DC]: $zero=0,$t0=1 -> $pc=0x1C0
-$pc=0x1C0(~11): 0x00000000: nop
-$pc=0x1C4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x20C -> $t0=10=memory[0x208]
-$pc=0x1C8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
-$pc=0x1CC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=10,$t0=10,$t1=1 -> $t0=9
-$pc=0x1D0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=9,$gp=0x20C -> memory[0x208]=9=$t0
-$pc=0x1D4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x1B0]: $zero=0,$zero=0 -> $pc=0x1B0
-$pc=0x1B0(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=9,$gp=0x20C -> $t0=9=memory[0x208]
-$pc=0x1B4(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
-$pc=0x1B8(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=9 -> $t0=1
-$pc=0x1BC(~11): 0x10080007: beq $zero,$t0,7[0x1DC]: $zero=0,$t0=1 -> $pc=0x1C0
-$pc=0x1C0(~11): 0x00000000: nop
-$pc=0x1C4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x20C -> $t0=9=memory[0x208]
-$pc=0x1C8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
-$pc=0x1CC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=9,$t0=9,$t1=1 -> $t0=8
-$pc=0x1D0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=8,$gp=0x20C -> memory[0x208]=8=$t0
-$pc=0x1D4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x1B0]: $zero=0,$zero=0 -> $pc=0x1B0
+$pc=0x17C(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108816,$sp=67108816 -> $sp=67108812
+$pc=0x180(~11): 0xAFBF0000: sw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> memory[0x3FFFFCC]=72=$ra
+$pc=0x184(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108812,$sp=67108812 -> $sp=67108808
+$pc=0x188(~11): 0xAFBE0000: sw $fp,0($sp): $fp=0,$sp=0x3FFFFC8 -> memory[0x3FFFFC8]=0=$fp
+$pc=0x18C(~11): 0x27BE0000: addiu $fp,$sp,0: $fp=0,$sp=67108808 -> $fp=67108808
+$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=67108860,$gp=0x1EC -> $t0=10=memory[0x1E8]
+$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=16384,$zero=0 -> $t1=0
+$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=10 -> $t0=1
+$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=1 -> $pc=0x1A0
+$pc=0x1A0(~11): 0x00000000: nop
+$pc=0x1A4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=10=memory[0x1E8]
+$pc=0x1A8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
+$pc=0x1AC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=10,$t0=10,$t1=1 -> $t0=9
+$pc=0x1B0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=9,$gp=0x1EC -> memory[0x1E8]=9=$t0
+$pc=0x1B4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x190]: $zero=0,$zero=0 -> $pc=0x190
+$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=9,$gp=0x1EC -> $t0=9=memory[0x1E8]
+$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
+$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=9 -> $t0=1
+$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=1 -> $pc=0x1A0
+$pc=0x1A0(~11): 0x00000000: nop
+$pc=0x1A4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=9=memory[0x1E8]
+$pc=0x1A8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
+$pc=0x1AC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=9,$t0=9,$t1=1 -> $t0=8
+$pc=0x1B0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=8,$gp=0x1EC -> memory[0x1E8]=8=$t0
+$pc=0x1B4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x190]: $zero=0,$zero=0 -> $pc=0x190
 ...
-$pc=0x1C4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x20C -> $t0=1=memory[0x208]
-$pc=0x1C8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
-$pc=0x1CC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=1,$t0=1,$t1=1 -> $t0=0
-$pc=0x1D0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=0,$gp=0x20C -> memory[0x208]=0=$t0
-$pc=0x1D4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x1B0]: $zero=0,$zero=0 -> $pc=0x1B0
-$pc=0x1B0(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x20C -> $t0=0=memory[0x208]
-$pc=0x1B4(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
-$pc=0x1B8(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=0 -> $t0=0
-$pc=0x1BC(~11): 0x10080007: beq $zero,$t0,7[0x1DC]: $zero=0,$t0=0 -> $pc=0x1DC
-$pc=0x1DC(~19): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x20C -> $t0=0=memory[0x208]
-$pc=0x1E0(~19): 0x00081021: addu $v0,$zero,$t0: $v0=0,$zero=0,$t0=0 -> $v0=0
-$pc=0x1E4(~19): 0x0800007B: j 0x7B[0x1EC]: -> $pc=0x1EC
-$pc=0x1EC(~20): 0x27DD0000: addiu $sp,$fp,0: $sp=67108808,$fp=67108808 -> $sp=67108808
-$pc=0x1F0(~20): 0x8FBE0000: lw $fp,0($sp): $fp=67108808,$sp=0x3FFFFC8 -> $fp=0=memory[0x3FFFFC8]
-$pc=0x1F4(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108808,$sp=67108808 -> $sp=67108812
-$pc=0x1F8(~20): 0x8FBF0000: lw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> $ra=72=memory[0x3FFFFCC]
-$pc=0x1FC(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108812,$sp=67108812 -> $sp=67108816
-$pc=0x200(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
+$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=1=memory[0x1E8]
+$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
+$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=1 -> $t0=1
+$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=1 -> $pc=0x1A0
+$pc=0x1A0(~11): 0x00000000: nop
+$pc=0x1A4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=1=memory[0x1E8]
+$pc=0x1A8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
+$pc=0x1AC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=1,$t0=1,$t1=1 -> $t0=0
+$pc=0x1B0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=0,$gp=0x1EC -> memory[0x1E8]=0=$t0
+$pc=0x1B4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x190]: $zero=0,$zero=0 -> $pc=0x190
+$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x1EC -> $t0=0=memory[0x1E8]
+$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
+$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=0 -> $t0=0
+$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=0 -> $pc=0x1BC
+$pc=0x1BC(~19): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x1EC -> $t0=0=memory[0x1E8]
+$pc=0x1C0(~19): 0x00081021: addu $v0,$zero,$t0: $v0=0,$zero=0,$t0=0 -> $v0=0
+$pc=0x1C4(~19): 0x08000073: j 0x73[0x1CC]: -> $pc=0x1CC
+$pc=0x1CC(~20): 0x27DD0000: addiu $sp,$fp,0: $sp=67108808,$fp=67108808 -> $sp=67108808
+$pc=0x1D0(~20): 0x8FBE0000: lw $fp,0($sp): $fp=67108808,$sp=0x3FFFFC8 -> $fp=0=memory[0x3FFFFC8]
+$pc=0x1D4(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108808,$sp=67108808 -> $sp=67108812
+$pc=0x1D8(~20): 0x8FBF0000: lw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> $ra=72=memory[0x3FFFFCC]
+$pc=0x1DC(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108812,$sp=67108812 -> $sp=67108816
+$pc=0x1E0(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
 ...
 ```
 
@@ -423,6 +430,10 @@ Here, `bar > 0` is that Boolean condition, also called *loop condition*, which e
 The execution of a while loop always results in checking the loop condition at least once. However, the body of the while loop may be executed any number of times, including zero times, depending on the Boolean condition and the statements in the body. For example, `while (0) { ... }` would find its loop condition to evaluate to false and therefore proceed to the next statement, skipping any statements in its body, whereas `while (1) { ... }` would always find its loop condition to evaluate to true and therefore never proceed to the next statement. Try that yourself by modifying the countdown program accordingly!
 
 You may also ask yourself if there can be *nested* while loops, that is, while statements in the body of a while loop. The answer is yes, of course, any finite number of times in fact. Imagine what this can do, a loop inside of a loop inside of a loop. This is very powerful and can get quite tricky so we stay away from that for now.
+
+Let us now take a look at the machine code generated by starc for the while loop and how it executes. The instructions implement exactly what we just described informally.
+
+The first instruction of the while loop is the [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/37f109104bce441cb94b5a7fa9361389bebd47d5/selfie.c#L2612) instruction at memory address `0x190`. The purpose of this instruction is to load the value of the global variable `bar`, as it occurs in `while (bar > 0)`, into register `$t0` for comparison with `0`. This means in particular that the value of `bar` is stored in memory in the word at `$gp` plus the offset `-4` (bytes). Remember, `$gp` refers to the first word in memory after the data segment. Since the value of `$gp` is 492, or `0x1EC` in hexadecimal, the actual address of the value of `bar` in memory is 488, or `0x1E8` in hexadecimal. If there was a second global variable its value would be stored at `$gp` plus the offset `-8` (bytes) and so on. The output `$t0=67108860,$gp=0x1EC -> $t0=10=memory[0x1E8]` next to the instruction shows that the value stored at `0x1E8` is in fact 10 which is the initial value of `bar`. How did that value get there? The boot loader put it there!
 
 
 
