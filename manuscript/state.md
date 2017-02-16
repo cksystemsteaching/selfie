@@ -301,13 +301,15 @@ Now, the issue is that representing 0x3FFFFFC in binary requires 26 bits but the
 
 #### [multu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5827-L5862) and the $hi and $lo registers
 
-The multiplication 4095\*16384 is performed by first loading 4095 and 16384 into registers `$t0` and `$t1`, respectively. Similar to `$t0`, `$t1` is also a register for temporary results, it is register 9 among the 32 general-purpose registers. The actual multiplication is performed by the instruction [`multu $t0,$t1`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3891) which multiplies the value in `$t0` with the value in `$t1` and stores the 32 LSBs of the 64-bit result in a special-purpose 32-bit register called `$lo`. An actual MIPS processor would also store the 32 MSBs of the result in another special-purpose 32-bit register called `$hi` which we nevertheless ignore here. The `$lo` register contains the result with 32-bit wrap-around semantics which is exactly what we need. However, `$hi` is used for integer division in MIPSter just like on a MIPS32 processor. We get to that later.
+The multiplication 4095\*16384 is performed by first loading 4095 and 16384 into registers `$t0` and `$t1`, respectively. Similar to `$t0`, `$t1` is also a register for temporary results, it is register 9 among the 32 general-purpose registers. The actual multiplication is performed by the instruction [`multu $t0,$t1`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3891) where `multu` stands for *multiply unsigned*. Similar to `addiu`, the term unsigned is misleading. Its actual meaning is that arithmetic overflows with `multu` are ignored while wrap-around semantics apply.
+
+The instruction multiplies the value in `$t0` with the value in `$t1` and stores the 32 LSBs of the 64-bit result in a special-purpose 32-bit register called `$lo`. An actual MIPS processor would also store the 32 MSBs of the result in another special-purpose 32-bit register called `$hi` which we nevertheless ignore here. The `$lo` register contains the result with 32-bit wrap-around semantics which is exactly what we need. However, `$hi` is used for integer division in MIPSter just like on a MIPS32 processor. We get to that later.
 
 The `$lo` and `$hi` registers are together with the `$pc` register the 3 special-purpose registers of a mipster machine that we mentioned above. At boot time, `$lo` and `$hi` are also zeroed just like all other registers. This is in fact now the complete machine state, no more surprises.
 
 #### [mflo](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5795-L5825) and [nop](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5527-L5535)
 
-In order to access the result in `$lo` we use the instruction [`mflo $t0`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3892) which copies the value in `$lo` to `$t0`. The following two `nop` instructions do *no operation*, that is, do not do anything other than advancing the PC to the next instruction. They are there because the MIPS ISA restricts what the processor can do in the next two instructions after an `mflo` instruction. We can nevertheless safely ignore the technical reasons behind that. After adding 16380 to the value in `$t0` we have the desired value 0x3FFFFFC in `$t0`.
+In order to access the result in `$lo` we use the instruction [`mflo $t0`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3892) where `mflo` stands for *move from low*. It copies the value in `$lo` to `$t0`. The following two `nop` instructions do *no operation*, that is, do not do anything other than advancing the PC to the next instruction. They are there because the MIPS ISA restricts what the processor can do in the next two instructions after an `mflo` instruction. We can nevertheless safely ignore the technical reasons behind that. After adding 16380 to the value in `$t0` we have the desired value 0x3FFFFFC in `$t0`.
 
 #### [lw](http://github.com/cksystemsteaching/selfie/blob/e37e0b759dba9e7c4b35f7fa5e4d8b76be7a1f44/selfie.c#L5989-L6045)
 
@@ -349,7 +351,7 @@ Interestingly again, this store instruction is also mentioned by the profiler in
 
 The next instruction [`addiu $v0,$zero,4001`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4617) loads the value 4001 into the `$v0` register. Upon executing the following [`syscall`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4618) instruction, that value in `$v0` instructs the machine to output the value in `$a0` as exit code, which is 0, and then to shut down. That's it.
 
-Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. Here, we only point out that the `syscall` instruction does not have any explicit arguments. However, it does expect implicit arguments provided in at least the `$v0` register which identifies among a finite set of choices the functionality that the machine is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code.
+Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. Here, we only point out that the `syscall` instruction, which stands for *system call*, does not have any explicit arguments. However, it does expect implicit arguments provided in at least the `$v0` register which identifies among a finite set of choices the functionality that the machine is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code.
 
 ## Statements
 
@@ -452,9 +454,11 @@ Now, what would happen if the result of the previous `slt` instruction was 0, me
 
 Before explaining the instructions that implement the body of the while loop we focus on the last instruction that implements the while statement (disregarding the `nop` instruction in its delay slot). It is the [`beq $zero,$zero,-10[0x190]`](http://github.com/cksystemsteaching/selfie/blob/d149a48a35817ccb6093f8bdd30fc7637f334a78/selfie.c#L3235-L3236) instruction at memory address `0x1B4` which is in fact used here for *unconditional branching*. Since the value of `$zero` is always equal to itself, the instruction unconditionally branches *backwards* by 10 instructions (due to the negative offset `-10`) to the first instruction that implements the while statement at memory address `0x190`. In other words, the unconditional branch completes the loop.
 
-For brevity we are only showing in the above output the first two iterations and the last iteration of the loop. Note that the only relevant thing that changes in the machine's state from one loop iteration to the next is the value of `bar` in memory. The values of `$t0` and `$t1` also change but are always overwritten in the next iteration and therefore never used beyond one iteration.
+For brevity we are only showing in the above output the first two iterations and the last, in fact, tenth iteration of the loop. The profiler even mentions in `loops: 10,10(100.00%)@0x190(~11),...,...` the total number of loop iterations taken during program execution. It also reports that they were all done by the same while loop with its first instruction at memory address `0x190`.
 
-Also, the core structure of a while statement is only implemented by the two `beq` instructions we just explained, that is, a conditional forward branch and an unconditional backward branch. The instructions before the forward branch that belong to the while statement implement the loop condition and the instructions between the forward and backward branch implement the body of the while loop. Let us now have a look at the body of the while loop in our example.
+Also, note that the only relevant thing that changes in the machine's state from one loop iteration to the next is the value of `bar` in memory. The values of `$t0` and `$t1` also change but are always overwritten in the next iteration and therefore never used beyond one iteration.
+
+Moreover, the control structure of a while statement is only implemented by the two `beq` instructions we just explained, that is, a conditional forward branch and an unconditional backward branch. The instructions before the forward branch that belong to the while statement implement the loop condition and the instructions between the forward and backward branch implement the body of the while loop. Let us now have a look at the body of the while loop in our example.
 
 ## Assignment
 
@@ -476,15 +480,31 @@ A Boolean condition such as `bar > 0` is actually also an example of an expressi
 
 Let us now again take a look at the machine code generated by starc for the assignment and see how it executes. Just like before, the instructions implement exactly what we described above informally.
 
-The first two instructions of the assignment [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2612) at memory address 0x1A4 and [`addiu $t1,$zero,1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2625) at 0x1A8 load the values of `bar` and `1` into `$t0` and `$t1`, respectively, to prepare for the evaluation of the expression `bar - 1`.
+The first two instructions of the assignment [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2612) at memory address `0x1A4` and [`addiu $t1,$zero,1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2625) at `0x1A8` load the values of `bar` and `1` into `$t0` and `$t1`, respectively, to prepare for the evaluation of the expression `bar - 1`.
 
 #### [subu](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L5947-L5987)
 
-The following [`subu $t0,$t0,$t1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L3083) implements the subtraction in `bar - 1`, that is, the `-` operator, by subtracting the value of `$t1` from the value of `$t0` and store the result in `$t0`. The `sub` in `subu` stands for *subtract* and the trailing `u` stands for *unsigned*. Similar to `addiu`, the term unsigned is misleading. Its actual meaning is that arithmetic overflows with `subu` are ignored while wrap-around semantics apply.
+The following [`subu $t0,$t0,$t1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L3083) implements the subtraction in `bar - 1`, that is, the `-` operator, by subtracting the value of `$t1` from the value of `$t0` and store the result in `$t0`. Unsurprisingly, `subu` stands for *subtract unsigned*, analogous to `addiu`. However, the term unsigned is again misleading. Its actual meaning is that arithmetic overflows with `subu` are ignored while wrap-around semantics apply.
 
-At this point the evaluation of the expression and thus the right hand side of the `=` operator is complete. The only remaining thing to do is to perform the actual assignment. This is done by [`sw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L3506) which is the last instruction generated by starc for the assignment, that is, for the left hand side of the `=` operator. Analogous to `lw $t0,-4($gp)`, which loads the memory word that represents the value of `bar` into `$t0`, `sw $t0,-4($gp)` stores the result of the evaluation in `$t0` in that memory word. That's it!
+At this point the evaluation of the expression and thus the right hand side of the `=` operator is complete. The only remaining thing to do is to perform the actual assignment. This is done by [`sw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L3506) which is the last instruction generated by starc for the assignment, that is, for the left hand side of the `=` operator. Analogous to `lw $t0,-4($gp)`, which loads the memory word that represents the value of `bar` into `$t0`, `sw $t0,-4($gp)` stores the result of the evaluation in `$t0` in that memory word. That's it! Interestingly, an assignment is actually implemented by only one instruction, namely that `sw` instruction. The other instructions are there for evaluating the expression in the right hand side of the assignment.
 
 ## Return Statement
+
+Once mipster executed the instructions implementing the while statement and the assignment in `countdown.c` ten times, the machine takes the forward branch of the `beq $zero,$t0,7[0x1BC]` instruction and proceeds to the first instruction at memory address `0x1BC` which implements the return statement.
+
+[`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L2612)
+
+#### [addu](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L5905-L5945)
+
+[`addu $v0,$zero,$t0`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3357) which stands for *add unsigned*.
+
+#### [j](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L5580-L5603)
+
+[`j 0x73[0x1CC]`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3365) which stands for *jump*.
+
+Mention the three missing instructions `divu`, `mfhi`, and `bne`.
+
+## Strings Revisited
 
 Mention string handling using the "Hello World!" program.
 
