@@ -76,7 +76,7 @@ countdown.m: exiting with exit code 0 and 0.00MB of mallocated memory
 ./selfie: stores: 13,10(76.92%)@0x1B0(~13),1(7.69%)@0x4C(~1),0(0.00%)
 ```
 
-## Global Variables
+## [Global Variable](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3847-L3874)
 
 For the countdown program to be able to operate on a number there needs to be memory to store that number. For this purpose, Line 3 in the source code *declares* a so-called *global variable* called `bar`. The starc compiler even reports that it found exactly that one global variable, see Line 5 in the above output.
 
@@ -92,6 +92,8 @@ Line 3 not only declares `bar` but also *defines* the initial value of `bar` as 
 
 Note that the equality sign `=` in Line 3 is merely [syntactic sugar](https://en.wikipedia.org/wiki/Syntactic_sugar) making the code more readable while the [semicolon](https://en.wikipedia.org/wiki/Semicolon) `;` is a so-called *terminator* which indicates the end of a statement. After the semicolon we could insert more global variable declarations as long as they all were to introduce unique identifiers and were properly terminated with semicolons. Programming languages newer than C often make such terminators optional or omit them altogether since they are, similar to syntactic sugar, not necessary for the compiler to work and, unlike syntactic sugar, sometimes considered a burden.
 
+#### [Data Type](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3538-L3555)
+
 Line 3 also specifies that the *data type* of `bar` is `int` which, according to the C standard, means that `bar` represents a signed 32-bit integer, that is, 32 bits encoding a positive or negative number in two's complement. It also means that arithmetic operations involving `bar` will be done with 32-bit wrap-around semantics.
 
 [Data Type](https://en.wikipedia.org/wiki/Data_type)
@@ -101,14 +103,14 @@ So, this is important! A data type tells us and the compiler what the intended m
 
 A global variable of type `int` such as `bar` provides storage for 32 bits which happens to match the size of a word on a mipster machine. In fact, the value of `bar` will be stored in exactly one word somewhere in memory. First of all, this means that `bar` provides storage that is identified by the identifier `bar` and not by some memory address. But it also means that the program as is cannot access any other bits in memory than the 32 bits identified by `bar` which obviously reduces the size of the state space dramatically! So the program state space is much smaller than the machine state space and therefore much easier to reason about. However, there is also code in countdown that operates on `bar`. Let us have a closer look at how that is introduced in C\*.
 
-## Procedures
+## [Procedure](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3648-L3800)
 
 The source code of the countdown program declares a so-called *procedure* called `main` in Line 6. The broader term for procedures is *subroutines* defined as follows.
 
 [Subroutine](https://en.wikipedia.org/wiki/Subroutine)
 : A sequence of program instructions that perform a specific task, packaged as a unit. This unit can then be used in programs wherever that particular task should be performed. Subprograms may be defined within programs, or separately in libraries that can be used by multiple programs. In different programming languages, a subroutine may be called a procedure, a function, a routine, a method, or a subprogram.
 
-In C subroutines are called procedures. Line 6 specifies that `main` refers to a procedure rather than a global variable simply by using `()` after the identifier. In fact, it would be perfectly fine to just say `int main();`. The code enclosed in `{}`, however, also *defines* the implementation of the procedure. We get to that below. The `int` keyword before `main` specifies that the so-called [return type](https://en.wikipedia.org/wiki/Return_type) of the procedure is a signed 32-bit integer. This means that the procedure returns a signed 32-bit integer value when done.
+In C subroutines are called procedures. Line 6 specifies that `main` refers to a procedure rather than a global variable simply by using `()` after the identifier. In fact, it would be perfectly fine to just say `int main();`. However, the code enclosed in `{}`, called the *body* of the procedure, also *defines* the implementation of the procedure. It describes what the procedure does. We get to that further below. The `int` keyword before `main` specifies that the so-called [return type](https://en.wikipedia.org/wiki/Return_type) of the procedure is a signed 32-bit integer. This means that the procedure returns a signed 32-bit integer value when done.
 
 Global variable and procedure declarations, as in Lines 3 and 6, may use any identifier not used anywhere else in the program. In other words, identifiers used in declarations must be unique. The `main` procedure name, however, is even more special because the `main` procedure is the one that is invoked when a C program starts executing. Thus a valid C program needs to contain exactly one declaration and definition of a procedure called `main`. Otherwise, the system would not "know" what to execute. See for yourself by renaming `main` in `countdown.c` to something else. When `main` returns the program stops executing and the system outputs the value returned by `main`, which is 0, as the previously mentioned exit code, see Line 10 in the above output.
 
@@ -199,7 +201,7 @@ Ok, but what happens now when selfie is instructed by the final `-m 1` option to
 
 A computer typically bootstraps itself by having the processor initially fetch, decode, and execute machine code from some non-volatile memory rather than volatile main memory. That machine code implements a so-called *boot loader* which instructs the processor to load the code that the processor is actually supposed to execute from some external source and store it in main memory. When done, the boot loader instructs the processor to start fetching, decoding, and executing the code stored in main memory.
 
-## Program Break
+## [Program Break](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L1044)
 
 Before launching the mipster emulator, selfie [bootstraps](http://github.com/cksystemsteaching/selfie/blob/90815070126adc8d8fc6b525d307debe075d7d0c/selfie.c#L6876-L6932) mipster exactly like a computer bootstraps itself. First of all, the emulated memory and registers are all *zeroed*, that is, set to `0x0`. The machine code and data generated by starc (or loaded from a binary file) is then [copied](http://github.com/cksystemsteaching/selfie/blob/90815070126adc8d8fc6b525d307debe075d7d0c/selfie.c#L6604-L6615) into the emulated memory starting at the lowest address `0x0`. The portions of memory where code and data are located are also called the *code segment* and the *data segment*, respectively. The result is the following memory layout.
 
@@ -209,7 +211,7 @@ With code and data copied to memory the machine is essentially ready to go. The 
 
 Going back to C\* in general and the countdown program in particular, global variable and procedure declarations specify exactly what is below the program break, what is code and data, and what the code does with the data, as we see next. Most important here is to understand that the state of memory is fully determined after copying the code for procedures and the data for global variables into memory. While countdown is a simple program think of the code and data for selfie. There are hundreds of global variable and procedure declarations in `selfie.c` but it is still the same thing. The fact that C\* allows us to talk about variables and procedures without worrying about memory layout is a key ingredient for managing the enormously large state space. The only missing piece now for a complete picture is the state of the registers. Let us take a look at that next!
 
-## Program Counter
+## [Program Counter](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L1039)
 
 How does a computer "know" what to execute? After all the bits in memory could mean anything. They could be code, they could be data, anything. But the answer to that question can anyway not be any simpler.
 
@@ -218,7 +220,7 @@ Processors based on the von Neumann model feature a special-purpose register as 
 [Program Counter (PC)](https://en.wikipedia.org/wiki/Program_counter "Program Counter (PC)")
 : A processor register that indicates where a computer is in its program sequence. In most processors, the PC is incremented after fetching an instruction, and holds the memory address of ("points to") the next instruction that would be executed. Instructions are usually fetched sequentially from memory, but control transfer instructions change the sequence by placing a new value in the PC. These include branches (sometimes called jumps), subroutine calls, and returns. A transfer that is conditional on the truth of some assertion lets the computer follow a different sequence under different conditions. A branch provides that the next instruction is fetched from somewhere else in memory. A subroutine call not only branches but saves the preceding contents of the PC somewhere. A return retrieves the saved contents of the PC and places it back in the PC, resuming sequential execution with the instruction following the subroutine call.
 
-At boot time, when selfie is done zeroing all emulated memory and registers, in particular the PC, and copying code and data into memory, mipster is ready to start code execution, well, at the lowest memory address `0x0` because that is where the PC points to. From then on mipster [fetches the word in memory where the PC points to, decodes that word, and executes the resulting instruction](http://github.com/cksystemsteaching/selfie/blob/322ab8249e5cbd921735f5239ef6965b416489cc/selfie.c#L6289-L6291). Each instruction not only instructs the processor to perform some computation but also determines the next value of the PC so that the processor "knows" where in memory the next instruction is stored. That sequence of PC values is called *control flow*.
+At boot time, when selfie is done zeroing all emulated memory and registers, in particular the PC, and copying code and data into memory, mipster is ready to start code execution, well, at the lowest address `0x0` in memory because that is where the PC points to. From then on mipster [fetches the word in memory where the PC points to, decodes that word, and executes the resulting instruction](http://github.com/cksystemsteaching/selfie/blob/322ab8249e5cbd921735f5239ef6965b416489cc/selfie.c#L6289-L6291). Each instruction not only instructs the processor to perform some computation but also determines the next value of the PC so that the processor "knows" where in memory the next instruction is stored. That sequence of PC values is called *control flow*.
 
 [Control Flow](https://en.wikipedia.org/wiki/Control_flow "Control Flow")
 : The order in which individual statements, instructions or function calls of an imperative program are executed or evaluated. The emphasis on explicit control flow distinguishes an imperative programming language from a declarative programming language.
@@ -275,7 +277,7 @@ The purpose of the first sixteen instructions executed by mipster is to initiali
 
 #### [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)
 
-Initially, the PC denoted by `$pc` points to memory address `0x0`. The instruction at this address is thus the first instruction that will be executed by the machine. The instruction is encoded in the word `0x240801EC` which stands for [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625), as mentioned before.
+Initially, the PC denoted by `$pc` points to address `0x0` in memory. The instruction at this address is thus the first instruction that will be executed by the machine. The instruction is encoded in the word `0x240801EC` which stands for [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625), as mentioned before.
 
 In our discussion we provide for each new instruction a link to the source code of mipster that implements the instruction (see, for example, the above [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)) and for each concrete instruction in the example a link to the source code of starc that generated the instruction (see, for example, the above [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625)).
 
@@ -283,9 +285,9 @@ Now, here is the interesting part. The output `$t0=0,$zero=0 -> $t0=492` next to
 
 The `addiu` instruction can nevertheless be used for other purposes and involve any of the 32 general-purpose registers, not just `$t0` and `$zero`. However, there is a convention of using registers for a certain purpose as reflected in the names of registers. For example, the `t` in `$t0` stands for *temporary*. Registers with `t` are meant to store temporary results during computation.
 
-Also, very important and not to forget, `addiu $t0,$zero,492` makes the processor increment the `$pc` register from `0x0` to `0x4` so that the next instruction executed by the processor is the instruction at memory address `0x4` that immediately follows the current instruction in memory. Incrementing the PC like that creates so-called *sequential* control flow. Most instructions actually do that, not just `addiu`. There are, however, also instructions that can alter the control flow by setting the `$pc` register depending on the values in registers other than `$pc`. We explain that below.
+Also, very important and not to forget, `addiu $t0,$zero,492` makes the processor increment the `$pc` register from `0x0` to `0x4` so that the next instruction executed by the processor is the instruction at address `0x4` that immediately follows the current instruction in memory. Incrementing the PC like that creates so-called *sequential* control flow. Most instructions actually do that, not just `addiu`. There are, however, also instructions that can alter the control flow by setting the `$pc` register depending on the values in registers other than `$pc`. We explain that below.
 
-This takes us to the next instruction [`addiu $gp,$t0,0`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3943-L3944) at memory address `0x4`. Its effect on the machine state is that the value in the `$gp` register is set to 492 because it instructs the processor to add 0 to the value in register `$t0` which is currently 492 and store the result in `$gp`. Also, the value of the `$pc` register is incremented to `0x8`. The `$gp` register is register 28 among the 32 general-purpose registers.
+This takes us to the next instruction [`addiu $gp,$t0,0`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3943-L3944) at address `0x4`. Its effect on the machine state is that the value in the `$gp` register is set to 492 because it instructs the processor to add 0 to the value in register `$t0` which is currently 492 and store the result in `$gp`. Also, the value of the `$pc` register is incremented to `0x8`. The `$gp` register is register 28 among the 32 general-purpose registers.
 
 What is the purpose of the first two instructions? Simple. They are meant to [initialize](http://github.com/cksystemsteaching/selfie/blob/d5e3134063256d509752fe381a9fdcb76bb65ff2/selfie.c#L3941-L3944) the `$gp` register which stands for *global pointer*. Why do we use two instructions instead of one? Good question. Just using `addiu $gp,$zero,492` would do the trick as well. The reason why we are not doing this is because it makes the compiler simpler, and better performance through using fewer instructions and fewer registers is not our focus here. It is, however, of major concern in state-of-the-art compilers.
 
@@ -313,11 +315,11 @@ In order to access the result in `$lo` we use the instruction [`mflo $t0`](http:
 
 #### [lw](http://github.com/cksystemsteaching/selfie/blob/e37e0b759dba9e7c4b35f7fa5e4d8b76be7a1f44/selfie.c#L5989-L6045)
 
-The following [`lw $sp,0($t0)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3955-L3956) instruction at memory address `0x24` *loads the word* from memory stored at address `$t0` plus offset `0` into the `$sp` register. This means in particular that the value in `$t0` is interpreted as memory address plus some constant offset that does not have to be zero and can even be negative. This behavior is another addressing mode which is called *register-relative* addressing. We hear more about that below. Why we are loading that word is explained in another chapter.
+The next instruction is the [`lw $sp,0($t0)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3955-L3956) instruction at address `0x24` where `lw` stands for *load word*. This instruction loads, into the `$sp` register, the word from memory stored at the address derived from the value of `$t0` plus offset `0`, as indicated by the notation `0($t0)`. This means in particular that the value in `$t0` is interpreted as memory address plus some constant offset that does not have to be zero and can even be negative. This behavior is another addressing mode which is called *register-relative* addressing. We hear more about that below. Why we are loading that word is explained in another chapter.
 
 Interestingly, this load operation is actually mentioned by the profiler in the above output, that is, in `loads: 26,...,...,1(3.84%)@0x24(~1)` as one of the third most executed operations among a total of 26 load operations even though it is only executed once which corresponds to 3.84% of all load operations.
 
-The next six instructions in the above output are all `nop` instructions. So, imagine, it took us sixteen instructions to get the integer value 492 into `$gp` and the value at memory address 0x3FFFFFC into `$sp`. We definitely need a higher-level programming language to raise the level of abstraction. However, as tedious as the machine level might be, it is completely deterministic and rather easy to understand.
+The next six instructions in the above output are all `nop` instructions. So, imagine, it took us sixteen instructions to get the integer value 492 into `$gp` and the value at address 0x3FFFFFC into `$sp`. We definitely need a higher-level programming language to raise the level of abstraction. However, as tedious as the machine level might be, it is completely deterministic and rather easy to understand.
 
 For now, the important take-away message here is that we can reconstruct the full state of the machine at any instruction in the above output just by following the arrows `->` line by line until that instruction. If you still cannot believe that a computer really is so simple and does work in these tiny steps and does so completely deterministically it is time to reflect about that here again. The machine starts in some given state and proceeds from there by changing very few bits in each step instructed by other bits that are identified by the program counter. That's it. The only reason why computers appear to be so powerful is because they are so fast and can store enormous amounts of bits. This even applies to computers appearing to do many things at the same time. They don't. When looking close enough things happen step by step.
 
@@ -339,11 +341,11 @@ The [`jr $ra`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2
 
 ## Termination
 
-So, with the PC now pointing to the memory address `0x48`, the next four instructions to be executed are [`addiu $sp,$sp,-4`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3924), followed by [`sw $v0,0($sp)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3925), [`lw $a0,0($sp)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4610-4611), and [`addiu $sp,$sp,4`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4613-L4614). Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of [code for exiting the program by shutting down the machine](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4607-L4621).
+So, with the PC now pointing to the address `0x48` in memory, the next four instructions to be executed are [`addiu $sp,$sp,-4`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3924), followed by [`sw $v0,0($sp)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3925), [`lw $a0,0($sp)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4610-4611), and [`addiu $sp,$sp,4`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4613-L4614). Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of [code for exiting the program by shutting down the machine](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4607-L4621).
 
 #### [sw](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L6088-L6143)
 
-Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at memory address `0x4C`. This instruction *stores the word* in `$v0` in the memory word at address `$sp` plus offset `0`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is the natural counterpart to the `lw` instruction. The effect of the four instructions is that the value in `$v0` is copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
+Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at address `0x4C` where `sw` stands for *store word*. This instruction stores the word in `$v0` in the memory word at the address derived from the value of `$sp` plus offset `0`, again as indicated by the notation `0($sp)`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is thus the natural counterpart to the `lw` instruction. The effect of the four instructions is that the value in `$v0` is copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
 
 Interestingly again, this store instruction is also mentioned by the profiler in the above output, that is, in `stores: 13,...,1(7.69%)@0x4C(~1),...` as one of the second most executed operations among a total of 13 store operations even though it is only executed once which corresponds to 7.69% of all store operations.
 
@@ -353,7 +355,7 @@ The next instruction [`addiu $v0,$zero,4001`](http://github.com/cksystemsteachin
 
 Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. Here, we only point out that the `syscall` instruction, which stands for *system call*, does not have any explicit arguments. However, it does expect implicit arguments provided in at least the `$v0` register which identifies among a finite set of choices the functionality that the machine is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code.
 
-## Statements
+## [Statement](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3376-L3536)
 
 So, how does the `main` procedure of countdown actually work? A procedure in C\* consists of a sequence of *statements* which are the C\* counterpart to MIPSter machine instructions. In fact, each statement translates to a sequence of machine instructions generated automatically by starc during compilation.
 
@@ -420,7 +422,7 @@ $pc=0x1E0(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
 ...
 ```
 
-## While Statement
+## [While Statement](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3181-L3246)
 
 The execution of a procedure like `main` always begins with the first statement of the procedure which is here the `while` statement, also called *while loop*, in Line 11 in `countdown.c`. The meaning of that statement is to check if the value of the global variable `bar` is greater than 0 and, if yes, to execute the sequence of statements, called the *body* of the while loop, enclosed in the curly braces `{}` right after `while (bar > 0)`. Here, there is only one statement which is the assignment `bar = bar - 1`. When the body of the while loop is finished executing, control flows back to `while (bar > 0)` for checking the value of `bar` again. If the value is still greater than 0 the body of the while loop is executed again in another iteration of the loop and so on. Only if the value of `bar` is not greater than 0 the body is not executed. In this case, the while loop is terminated and control flows to the statement that follows the `while` statement, which is here the `return bar` statement.
 
@@ -435,9 +437,9 @@ You may also ask yourself if there can be *nested* while loops, that is, while s
 
 Let us now take a look at the machine code generated by starc for the while loop and see how it executes. The instructions implement exactly what we just described informally.
 
-The first instruction of the while loop is [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/37f109104bce441cb94b5a7fa9361389bebd47d5/selfie.c#L2612) at memory address `0x190`. Its purpose is to load the value of the global variable `bar`, as it occurs in `while (bar > 0)`, into register `$t0` for comparison with `0`. This means in particular that the value of `bar` is stored in memory in the word at `$gp` plus the offset `-4` (bytes). Remember, `$gp` refers to the first word in memory above the data segment. Since the value of `$gp` is 492, or 0x1EC in hexadecimal, the actual address of the value of `bar` in memory is 488, or 0x1E8 in hexadecimal. If there was a second global variable its value would be stored at `$gp` plus the offset `-8` (bytes) and so on. The output `$t0=67108860,$gp=0x1EC -> $t0=10=memory[0x1E8]` next to the instruction shows that the value stored at `0x1E8` is in fact 10 which is the initial value of `bar`. How did that value get there? The boot loader put it there! So 10 was there after loading the code and data generated by starc even before mipster started executing any code.
+The first instruction of the while loop is [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/37f109104bce441cb94b5a7fa9361389bebd47d5/selfie.c#L2612) at address `0x190`. Its purpose is to load the value of the global variable `bar` occurring in `while (bar > 0)` into register `$t0` for comparison with `0`. This means in particular that the value of `bar` is stored in memory in the word at `$gp` plus the offset `-4` (bytes). Remember, `$gp` refers to the first word in memory above the data segment. Since the value of `$gp` is 492, or 0x1EC in hexadecimal, the actual address of the value of `bar` in memory is 488, or 0x1E8 in hexadecimal. If there was a second global variable its value would be stored at `$gp` plus the offset `-8` (bytes) and so on. The output `$t0=67108860,$gp=0x1EC -> $t0=10=memory[0x1E8]` next to the instruction shows that the value stored at `0x1E8` is in fact 10 which is the initial value of `bar`. How did that value get there? The boot loader put it there! So 10 was there after loading the code and data generated by starc even before mipster started executing any code.
 
-The next instruction of the while loop is [`addiu $t1,$zero,0`](http://github.com/cksystemsteaching/selfie/blob/d149a48a35817ccb6093f8bdd30fc7637f334a78/selfie.c#L2625) which loads the value of `0`, as it occurs in `while (bar > 0)`, into register `$t1` for comparison with `$t0`.
+The next instruction of the while loop is [`addiu $t1,$zero,0`](http://github.com/cksystemsteaching/selfie/blob/d149a48a35817ccb6093f8bdd30fc7637f334a78/selfie.c#L2625) which loads the value of `0` occurring in `while (bar > 0)` into register `$t1` for comparison with `$t0`.
 
 #### [slt](http://github.com/cksystemsteaching/selfie/blob/d149a48a35817ccb6093f8bdd30fc7637f334a78/selfie.c#L6047-L6086)
 
@@ -452,15 +454,15 @@ Now, what would happen if the result of the previous `slt` instruction was 0, me
 [Branch](https://en.wikipedia.org/wiki/Branch_(computer_science))
 : An instruction in a computer program that can cause a computer to begin executing a different instruction sequence and thus deviate from its default behavior of executing instructions in order. A branch instruction can be either an unconditional branch, which always results in branching, or a conditional branch, which may or may not cause branching, depending on some condition. Branch instructions are used to implement control flow in program loops and conditionals (i.e., executing a particular sequence of instructions only if certain conditions are satisfied).
 
-Before explaining the instructions that implement the body of the while loop we focus on the last instruction that implements the while statement (disregarding the `nop` instruction in its delay slot). It is the [`beq $zero,$zero,-10[0x190]`](http://github.com/cksystemsteaching/selfie/blob/d149a48a35817ccb6093f8bdd30fc7637f334a78/selfie.c#L3235-L3236) instruction at memory address `0x1B4` which is in fact used here for *unconditional branching*. Since the value of `$zero` is always equal to itself, the instruction unconditionally branches *backwards* by 10 instructions (due to the negative offset `-10`) to the first instruction that implements the while statement at memory address `0x190`. In other words, the unconditional branch completes the loop.
+Before explaining the instructions that implement the body of the while loop we focus on the last instruction that implements the while statement (disregarding the `nop` instruction in its delay slot). It is the [`beq $zero,$zero,-10[0x190]`](http://github.com/cksystemsteaching/selfie/blob/d149a48a35817ccb6093f8bdd30fc7637f334a78/selfie.c#L3235-L3236) instruction at address `0x1B4` which is in fact used here for *unconditional branching*. Since the value of `$zero` is always equal to itself, the instruction unconditionally branches *backwards* by 10 instructions (due to the negative offset `-10`) to the first instruction that implements the while statement at address `0x190`. In other words, the unconditional branch completes the loop.
 
-For brevity we are only showing in the above output the first two iterations and the last, in fact, tenth iteration of the loop. The profiler even mentions in `loops: 10,10(100.00%)@0x190(~11),...,...` the total number of loop iterations taken during program execution. It also reports that they were all done by the same while loop with its first instruction at memory address `0x190`.
+For brevity we are only showing in the above output the first two iterations and the last, in fact, tenth iteration of the loop. The profiler even mentions in `loops: 10,10(100.00%)@0x190(~11),...,...` the total number of loop iterations taken during program execution. It also reports that they were all done by the same while loop with its first instruction at address `0x190`.
 
 Also, note that the only relevant thing that changes in the machine's state from one loop iteration to the next is the value of `bar` in memory. The values of `$t0` and `$t1` also change but are always overwritten in the next iteration and therefore never used beyond one iteration.
 
 Moreover, the control structure of a while statement is only implemented by the two `beq` instructions we just explained, that is, a conditional forward branch and an unconditional backward branch. The instructions before the forward branch that belong to the while statement implement the loop condition and the instructions between the forward and backward branch implement the body of the while loop. Let us now have a look at the body of the while loop in our example.
 
-## Assignment
+## [Assignment](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3494-L3517)
 
 The *assignment* `bar = bar - 1` in Line 13 in `countdown.c` constitutes the body of the previously discussed while loop. The assignment decrements the value of `bar` by 1, that is, it loads the value of `bar` (right hand side of `=`) from memory, subtracts 1 from that value, and stores the resulting value in the memory for `bar` (left hand side of `=`), overwriting the previous value of `bar` in memory.
 
@@ -468,6 +470,8 @@ The *assignment* `bar = bar - 1` in Line 13 in `countdown.c` constitutes the bod
 : Sets and/or re-sets the value stored in the storage location(s) denoted by a variable name; in other words, it copies a value into the variable. In most imperative programming languages, the assignment statement (or expression) is a fundamental construct.
 
 What does fundamental construct mean? In imperative programming languages assignments are the only way to change state other than control state which is the portion of state that represents the current state of control flow, that is, the currently executed statement. In the countdown program the only non-control-state information is thus the value of `bar` in memory. That's it! On source code level, the values of all other memory and all registers is therefore not relevant for the correctness of countdown.
+
+#### [Expression](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3094-L3179)
 
 The right hand side of an assignment provides a so-called *expression* for computing non-control-state information, that is, the next value of the variable on the left hand side of the assignment. In `bar = bar - 1` that expression is obviously `bar - 1`.
 
@@ -480,7 +484,7 @@ A Boolean condition such as `bar > 0` is actually also an example of an expressi
 
 Let us now again take a look at the machine code generated by starc for the assignment and see how it executes. Just like before, the instructions implement exactly what we described above informally.
 
-The first two instructions of the assignment [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2612) at memory address `0x1A4` and [`addiu $t1,$zero,1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2625) at `0x1A8` load the values of `bar` and `1` into `$t0` and `$t1`, respectively, to prepare for the evaluation of the expression `bar - 1`.
+The first two instructions of the assignment [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2612) at address `0x1A4` and [`addiu $t1,$zero,1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2625) at address `0x1A8` load the values of `bar` and `1` into `$t0` and `$t1`, respectively, to prepare for the evaluation of the expression `bar - 1`.
 
 #### [subu](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L5947-L5987)
 
@@ -488,19 +492,30 @@ The following [`subu $t0,$t0,$t1`](http://github.com/cksystemsteaching/selfie/bl
 
 At this point the evaluation of the expression and thus the right hand side of the `=` operator is complete. The only remaining thing to do is to perform the actual assignment. This is done by [`sw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L3506) which is the last instruction generated by starc for the assignment, that is, for the left hand side of the `=` operator. Analogous to `lw $t0,-4($gp)`, which loads the memory word that represents the value of `bar` into `$t0`, `sw $t0,-4($gp)` stores the result of the evaluation in `$t0` in that memory word. That's it! Interestingly, an assignment is actually implemented by only one instruction, namely that `sw` instruction. The other instructions are there for evaluating the expression in the right hand side of the assignment.
 
-## Return Statement
+## [Return Statement](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3339-L3374)
 
-Once mipster executed the instructions implementing the while statement and the assignment in `countdown.c` ten times, the machine takes the forward branch of the `beq $zero,$t0,7[0x1BC]` instruction and proceeds to the first instruction at memory address `0x1BC` which implements the return statement.
+Once the while statement and the assignment in `countdown.c` has been executed ten times, control reaches the *return statement* `return bar` in Line 19. That statement does two things. It provides the value of `bar` as return value of the `main` procedure, and it terminates the execution of the body of `main`, even if there were more statements after `return bar`, and returns to the code that invoked `main`.
 
-[`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L2612)
+[Return Statement](https://en.wikipedia.org/wiki/Return_statement)
+: Causes execution to leave the current subroutine and resume at the point in the code immediately after where the subroutine was called, known as its return address. The return address is saved, usually on the process's call stack, as part of the operation of making the subroutine call. Return statements in many languages allow a function to specify a return value to be passed back to the code that called the function.
+
+We mentioned the return address for the invocation of the `main` procedure before, which is `0x48`. However, we did not mention that it is actually saved in memory where the stack pointer refers to by the `sw $ra,0($sp)` instruction at `0x180` in the prologue of the procedure. There is also the `lw $ra,0($sp)` instruction at `0x1D8` in the epilogue of the procedure that matches the `sw` instruction. The details of why this is done are explained in the stack chapter. Also, the terms *procedure* and *function* are used synonymously here. We prefer to just use procedure to avoid confusion with functions in a mathematical sense.
+
+Recall that the `main` procedure in our example has a return type `int` declared in Line 6 in `countdown.c`. The data type of any value returned by a return statement in the body of `main` needs to match that return type. In our example, `return bar` is fine because the data type of `bar` is also `int`. Also, any expressions more complex than just `bar` are possible as long as they evaluate to a value of the return type. Try `return bar + 7`, for example.
+
+Again, let us now take a look at the machine code generated by starc for the return statement and see how it executes. Just like before, the instructions implement exactly what we described above informally.
+
+Upon terminating the execution of the instructions that implement the while loop in `countdown.c`, the machine takes the forward branch of the `beq $zero,$t0,7[0x1BC]` instruction at address `0x19C` to proceed to the [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L2612) instruction at address `0x1BC`. This instruction is generated by starc for loading the value of `bar` occurring in `return bar` from memory into `$t0`.
 
 #### [addu](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L5905-L5945)
 
-[`addu $v0,$zero,$t0`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3357) which stands for *add unsigned*.
+The next instruction is the [`addu $v0,$zero,$t0`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3357) instruction where `addu` stands for *add unsigned*.
+
+
 
 #### [j](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L5580-L5603)
 
-[`j 0x73[0x1CC]`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3365) which stands for *jump*.
+[`j 0x73[0x1CC]`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3365) where `j` stands for *jump*.
 
 Mention the three missing instructions `divu`, `mfhi`, and `bne`.
 
