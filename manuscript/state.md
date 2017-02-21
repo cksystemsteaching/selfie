@@ -509,15 +509,28 @@ Upon terminating the execution of the instructions that implement the while loop
 
 #### [addu](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L5905-L5945)
 
-The next instruction is [`addu $v0,$zero,$t0`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3357) whose purpose is to copy the value of `$t0` to `$v0` by adding the value of `$t0` to the value of `$zero`, which is still 0, and storing the result in `$v0`. Again, sounds awkward but does the job and also, unsurprisingly, `addu` stands for *add unsigned* and features wrap-around semantics, analogous to `addiu` and `subu`. Just like `subu`, it uses register addressing.
+The next instruction is [`addu $v0,$zero,$t0`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3357). Its purpose is to copy the value of `$t0` to `$v0` by adding the value of `$t0` to the value of `$zero`, which is still 0, and storing the result in `$v0`. Again, sounds awkward but does the job and also, unsurprisingly, `addu` stands for *add unsigned* and features wrap-around semantics, analogous to `addiu` and `subu`. Just like `subu`, it uses register addressing.
 
 So, now the value of `bar` is in register `$v0`. Why? Because starc generates code such that return values of procedures are always stored in `$v0`. It is another software convention. Recall that the four instructions starting at address `0x48` to which we eventually return do something with `$v0`. In fact, they copy the value of `$v0` to `$a0`. The following `syscall` instruction takes the value of `$a0` and outputs it as exit code. Voila.
 
 #### [j](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L5580-L5603)
 
-[`j 0x73[0x1CC]`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3365) where `j` stands for *jump*.
+The last instruction implementing the return statement is
+[`j 0x73[0x1CC]`](http://github.com/cksystemsteaching/selfie/blob/f2fa9497129391e22be52a0acc0b2ac4830643cc/selfie.c#L3365) where `j` stands for *jump*. Its purpose is to jump to the epilogue of the procedure using absolute addressing similar to the `jal` instruction. Here, it does so by merely jumping over the `nop` instruction in its delay slot since the epilogue appears right after that instruction. In other words, the jump is actually not necessary here. However, this is not true in general, namely whenever the return statement is not the last statement in the body of a procedure. To keep things simple we nevertheless have starc generate the `j` instruction anyway.
 
-Mention the three missing instructions `divu`, `mfhi`, and `bne`.
+Hard to believe but this concludes the discussion of the countdown program. We have seen all there is to say about it. However, there are three more MIPSter instructions that we have not seen yet since they are not needed to implement `countdown.c`.
+
+#### [divu](http://github.com/cksystemsteaching/selfie/blob/fa68fdc57bc1548e252a5551cba8ec9ceaccd241/selfie.c#L5864-L5903)
+
+The `divu` instruction *divides* the value of one general-purpose register by the value of another general-purpose register and stores the 32-bit integer result in the `$lo` register and the remainder in the `$hi` register. Obviously, `divu` stands for *divide unsigned* with the usual meaning.
+
+#### [mfhi](http://github.com/cksystemsteaching/selfie/blob/fa68fdc57bc1548e252a5551cba8ec9ceaccd241/selfie.c#L5763-L5793)
+
+The `mfhi` instruction complements the `mflo` instruction where `mfhi` obviously stands for *move from high*. Unsurprisingly, it copies the value of `$hi` to a general-purpose register and thus provides access to the remainder of an integer division by the `divu` instruction.
+
+#### [bne](http://github.com/cksystemsteaching/selfie/blob/fa68fdc57bc1548e252a5551cba8ec9ceaccd241/selfie.c#L5655-L5696)
+
+The `bne` instruction branches exactly when the `beq` instruction does not, that is, `bne` stands for *branch on not equal*. The starc compiler generates `bne` instructions for some comparison operators.
 
 ## Strings Revisited
 
