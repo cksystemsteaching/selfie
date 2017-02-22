@@ -532,9 +532,48 @@ The `mfhi` instruction complements the `mflo` instruction where `mfhi` obviously
 
 The `bne` instruction branches exactly when the `beq` instruction does not, that is, `bne` stands for *branch on not equal*. The starc compiler generates `bne` instructions for some comparison operators.
 
-## Strings Revisited
+## Pointer
 
-Mention string handling using the "Hello World!" program.
+Before concluding this chapter we go back to the ["Hello World!" program](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world.c) presented in the previous chapter:
+
+{line-numbers=on, lang=c}
+<<[A "Hello World!" Program](code/hello-world.c)
+
+Here, we are interested in how the `"Hello World!"` string is actually handled in machine code.
+
+[Pointer](https://en.wikipedia.org/wiki/Pointer_(computer_programming))
+: A programming language object, whose value refers to (or "points to") another value stored elsewhere in the computer memory using its memory address. A pointer references a location in memory, and obtaining the value stored at that location is known as dereferencing the pointer.
+
+[`*`](https://en.wikipedia.org/wiki/Dereference_operator)
+
+{line-numbers=off}
+```
+> ./selfie -c manuscript/code/hello-world.c -d 1
+./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+...
+./selfie: this is selfie's mipster executing manuscript/code/hello-world.c with 1MB of physical memory
+$pc=0x0(~1): 0x24080254: addiu $t0,$zero,596: $t0=0,$zero=0 -> $t0=596
+$pc=0x4(~1): 0x251C0000: addiu $gp,$t0,0: $gp=0,$t0=596 -> $gp=596
+...
+$pc=0x190(~7): 0x2788FFEC: addiu $t0,$gp,-20: $t0=67108860,$gp=596 -> $t0=576
+$pc=0x194(~7): 0xAF88FFFC: sw $t0,-4($gp): $t0=576,$gp=0x254 -> memory[0x250]=576=$t0
+$pc=0x198(~14): 0x8F88FFFC: lw $t0,-4($gp): $t0=576,$gp=0x254 -> $t0=576=memory[0x250]
+$pc=0x19C(~14): 0x8D080000: lw $t0,0($t0): $t0=576,$t0=0x240 -> $t0=1819043144=memory[0x240]
+...
+$pc=0x1F8(~21): 0x8F88FFFC: lw $t0,-4($gp): $t0=4,$gp=0x254 -> $t0=576=memory[0x250]
+$pc=0x1FC(~21): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
+$pc=0x200(~21): 0x240A0004: addiu $t2,$zero,4: $t2=0,$zero=0 -> $t2=4
+$pc=0x204(~21): 0x012A0019: multu $t1,$t2: $t1=1,$t2=4,$lo=67092480 -> $lo=4
+$pc=0x208(~21): 0x00004812: mflo $t1: $t1=1,$lo=4 -> $t1=4
+$pc=0x20C(~21): 0x00000000: nop
+$pc=0x210(~21): 0x00000000: nop
+$pc=0x214(~21): 0x01094021: addu $t0,$t0,$t1: $t0=576,$t0=576,$t1=4 -> $t0=580
+$pc=0x218(~21): 0xAF88FFFC: sw $t0,-4($gp): $t0=580,$gp=0x254 -> memory[0x250]=580=$t0
+...
+exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: this is selfie's mipster terminating manuscript/code/hello-world.c with exit code 0 and 0.00MB of mapped memory
+...
+```
 
 ## Summary
 
