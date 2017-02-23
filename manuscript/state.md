@@ -539,10 +539,12 @@ Before concluding this chapter we go back to the ["Hello World!" program](http:/
 {line-numbers=on, lang=c}
 <<[A "Hello World!" Program](code/hello-world.c)
 
-Here, we are interested in how the `"Hello World!"` string is actually handled in machine code.
+Here, we are interested in how the `"Hello World!"` string is actually handled in machine code. Consider the global variable declaration in Line 2. It declares a global variable `foo`. However, its data type is not `int`, it is `int*`. So, what is the difference? Values of both types are represented by 32 bits. So, that is not the difference. The only difference is the intention of what to do with them. Values of type `int` are obviously meant to be signed 32-bit integers which is reflected in the semantics of the operations on them which is of course integer arithmetics. Values of type `int*`, however, are meant to be *pointers* to values of type `int` stored in memory and identified by their memory addresses.
 
 [Pointer](https://en.wikipedia.org/wiki/Pointer_(computer_programming))
 : A programming language object, whose value refers to (or "points to") another value stored elsewhere in the computer memory using its memory address. A pointer references a location in memory, and obtaining the value stored at that location is known as dereferencing the pointer.
+
+Line 7 in the `"Hello World!"` program provides an example. In the previous chapter, we already explained that the string literal `"Hello World!"` is stored contiguously in memory in four words encoding `"Hell"`, `"o Wo"`, `"rld!"`, and 0 to terminate the string. The assignment in Line 7 takes the address of the first word in memory encoding `"Hell"` and assigns that address as value to `foo`. In other words, after the assignment `foo` *points to* the `"Hello World!"` string in memory.
 
 [`*`](https://en.wikipedia.org/wiki/Dereference_operator)
 
