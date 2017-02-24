@@ -597,25 +597,24 @@ The following two instructions compute the increment 4 by multiplying the values
 
 ## Summary
 
-| High-Level Programming Construct | Low-Level Machine Artifact |
-| -------------------------------- | -------------------------- |
-| Global Variable Declaration      | Data Location in Memory |
-| Global Variable Definition       | Initial Value in Memory |
-| Data Type                        | Intended Meaning of Bits |
-| Procedure Declaration            | Code Location in Memory |
-| Procedure Definition             | Actual Code in Memory |
-| Statement                        | Machine Instructions |
-| Current Statement                | Program Counter |
-
-| High-Level Programming Construct | Low-Level Machine Artifact |
-| -------------------------------- | -------------------------- |
-| Character Literal in Definition  | Data: Character in Memory Word |
-| Character Literal in Expression  | Code: Character in Instruction Argument |
-| String Literal in Expression     | Data: Characters in Memory Words |
-|                                  | Code: Address in Instruction Argument |
-| Integer Literal in Definition    | Data: Value in Memory Word |
-| Integer Literal in Expression    | Code: Value in Instruction Argument |
-| Variable in Expression           | Code: Load Memory Word into Register |
-| Arithmetic/Comparison Operator   | Code: Compute with Registers |
-| Assignment                       | Code: Store Register into Memory Word |
-| While Statement                  | Code: Forward and Backward Branching |
+| High-Level Programming Artifact | Low-Level Machine Artifact |
+| ------------------------------- | -------------------------- |
+| Global Variable Declaration     | Word in Memory |
+| Global Variable Definition      | Initial Value in Memory Word |
+| Integer Literal in Definition   | Value in Memory Word |
+| Character Literal in Definition | Character in Memory Word |
+| Data Type                       | Intended Meaning of Bits |
+| Procedure Declaration           | Address of Code in Memory |
+| Procedure Definition            | Actual Code in Memory |
+| Procedure Call                  | Jumping and Linking to Prologue |
+| Statement                       | Machine Instructions |
+| Current Statement               | Program Counter |
+| While Statement                 | Forward and Backward Branching |
+| Assignment                      | Storing Register into Memory Word |
+| Return Statement                | Forward Jumping to Epilogue |
+| Variable in Expression          | Loading Memory Word into Register |
+| Integer Literal in Expression   | Value in Instruction Argument |
+| Character Literal in Expression | Character in Instruction Argument |
+| String Literal in Expression    | Characters in Memory Words |
+|                                 | Offset in Instruction Argument |
+| Arithmetic/Comparison Operator  | Computing with Registers |
