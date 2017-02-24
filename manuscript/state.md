@@ -597,6 +597,12 @@ The following two instructions compute the increment 4 by multiplying the values
 
 ## Summary
 
+Computation is a sequence of states. The execution of a program written in a high-level programming language like C\* as well as the execution of machine code implementing that program evolves from one program or machine state to another. A key challenge is to make sure that bad states are never reached during any execution. This is difficult because there are usually very large amounts of possible states, good and bad. Programming correct code in a high-level language rather than a machine language feels easier because there is generally way fewer high-level program states than low-level machine states.
+
+The `"Hello World!"` program, for example, only has one global variable `foo`. Its program state consists of the value of `foo` and the currently executed statement in the body of the `main` procedure. The same is true for the countdown program with its global variable `bar`. The machine code for both programs, however, is a lot more complicated because of its size and its state which involves a number of registers and memory locations.
+
+The following table summarizes in which way the high-level programming artifacts we have seen so far relate to the low-level machine artifacts that implement them.
+
 | High-Level Programming Artifact | Low-Level Machine Artifact |
 | ------------------------------- | -------------------------- |
 | Global Variable Declaration     | Word in Memory |
@@ -618,3 +624,5 @@ The following two instructions compute the increment 4 by multiplying the values
 | String Literal in Expression    | Characters in Memory Words |
 |                                 | Offset in Instruction Argument |
 | Arithmetic/Comparison Operator  | Computing with Registers |
+
+The next chapter introduces the arguably simplest way to control the state space of programs that still allows to implement a large set of interesting applications. We show which parts of selfie are using that technique and how.

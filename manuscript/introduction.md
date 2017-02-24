@@ -20,4 +20,6 @@ The book works by explaining selfie step by step while focusing on the basic pri
 
 [Chapter 3](#encoding) is an introduction to encoding and decoding basic information such as characters, strings, numbers, and even machine instructions in binary form. We use selfie to show examples and how their encoding and decoding is actually done.
 
-Chapter 4 will be on the notion of *state* which is a key concept for modeling computation. Understanding state is important for developing an idea of what source code means and how machine code executes. The encoding and decoding schemes introduced in the previous chapter will serve as simple examples.
+[Chapter 4](#state) introduces computation as the evolution of state. Using a simple example of a program we explain what its source code means, how that source code translates to machine code that gives the source code its meaning, and how both source and machine code execute from one state to another.
+
+Chapter 5 will be on regularity and finite state machines. We show how to control the potentially very large state space of code to simplify reasoning about its correctness.
