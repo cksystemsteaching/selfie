@@ -623,6 +623,7 @@ The following table summarizes in which way the high-level programming artifacts
 | Character Literal in Expression | Character in Instruction Argument |
 | String Literal in Expression    | Characters in Memory Words |
 |                                 | Offset in Instruction Argument |
+| Pointer                         | Address in Memory |
 | Arithmetic/Comparison Operator  | Computing with Registers |
 
 The next chapter introduces the arguably simplest way to control the state space of programs that still allows to implement a large set of interesting applications. We show which parts of selfie are using that technique and how.
