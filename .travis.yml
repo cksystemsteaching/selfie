@@ -1,3 +1,7 @@
+branches:
+  except:
+  - gh-pages
+  - book
 language:
 - c
 os:
