@@ -963,23 +963,24 @@ void initMemory(int megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void fct_syscall();
 void fct_nop();
-void op_jal();
-void op_j();
-void op_beq();
-void op_bne();
-void op_addiu();
-void fct_jr();
-void fct_mfhi();
-void fct_mflo();
-void fct_multu();
-void fct_divu();
 void fct_addu();
 void fct_subu();
-void op_lw();
+void fct_multu();
+void fct_divu();
+void fct_mfhi();
+void fct_mflo();
 void fct_slt();
+void fct_jr();
+void fct_syscall();
+
+void op_addiu();
+void op_lw();
 void op_sw();
+void op_beq();
+void op_bne();
+void op_jal();
+void op_j();
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -5489,6 +5490,308 @@ void mapAndStoreVirtualMemory(int* table, int vaddr, int data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
+void fct_nop() {
+  if (debug) {
+    printFunction(function);
+    println();
+  }
+
+  if (interpret)
+    pc = pc + WORDSIZE;
+}
+
+void fct_addu() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rd);
+    print((int*) ",");
+    printRegister(rs);
+    print((int*) ",");
+    printRegister(rt);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+      print((int*) ",");
+      printRegister(rs);
+      print((int*) "=");
+      printInteger(*(registers+rs));
+      print((int*) ",");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+    }
+  }
+
+  if (interpret) {
+    *(registers+rd) = *(registers+rs) + *(registers+rt);
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+    }
+    println();
+  }
+}
+
+void fct_subu() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rd);
+    print((int*) ",");
+    printRegister(rs);
+    print((int*) ",");
+    printRegister(rt);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+      print((int*) ",");
+      printRegister(rs);
+      print((int*) "=");
+      printInteger(*(registers+rs));
+      print((int*) ",");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+    }
+  }
+
+  if (interpret) {
+    *(registers+rd) = *(registers+rs) - *(registers+rt);
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+    }
+    println();
+  }
+}
+
+void fct_multu() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rs);
+    print((int*) ",");
+    printRegister(rt);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rs);
+      print((int*) "=");
+      printInteger(*(registers+rs));
+      print((int*) ",");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+      print((int*) ",$lo=");
+      printInteger(reg_lo);
+    }
+  }
+
+  if (interpret) {
+    // TODO: 64-bit resolution currently not supported
+    reg_lo = *(registers+rs) * *(registers+rt);
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> $lo=");
+      printInteger(reg_lo);
+    }
+    println();
+  }
+}
+
+void fct_divu() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rs);
+    print((int*) ",");
+    printRegister(rt);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rs);
+      print((int*) "=");
+      printInteger(*(registers+rs));
+      print((int*) ",");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+      print((int*) ",$lo=");
+      printInteger(reg_lo);
+      print((int*) ",$hi=");
+      printInteger(reg_hi);
+    }
+  }
+
+  if (interpret) {
+    reg_lo = *(registers+rs) / *(registers+rt);
+    reg_hi = *(registers+rs) % *(registers+rt);
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> $lo=");
+      printInteger(reg_lo);
+      print((int*) ",$hi=");
+      printInteger(reg_hi);
+    }
+    println();
+  }
+}
+
+void fct_mfhi() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rd);
+    if (interpret) {
+      print((int*) ":");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+      print((int*) ",$hi=");
+      printInteger(reg_hi);
+    }
+  }
+
+  if (interpret) {
+    *(registers+rd) = reg_hi;
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+    }
+    println();
+  }
+}
+
+void fct_mflo() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rd);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+      print((int*) ",$lo=");
+      printInteger(reg_lo);
+    }
+  }
+
+  if (interpret) {
+    *(registers+rd) = reg_lo;
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+    }
+    println();
+  }
+}
+
+void fct_slt() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rd);
+    print((int*) ",");
+    printRegister(rs);
+    print((int*) ",");
+    printRegister(rt);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rs);
+      print((int*) "=");
+      printInteger(*(registers+rs));
+      print((int*) ",");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+    }
+  }
+
+  if (interpret) {
+    if (*(registers+rs) < *(registers+rt))
+      *(registers+rd) = 1;
+    else
+      *(registers+rd) = 0;
+
+    pc = pc + WORDSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> ");
+      printRegister(rd);
+      print((int*) "=");
+      printInteger(*(registers+rd));
+    }
+    println();
+  }
+}
+
+void fct_jr() {
+  if (debug) {
+    printFunction(function);
+    print((int*) " ");
+    printRegister(rs);
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rs);
+      print((int*) "=");
+      printHexadecimal(*(registers+rs), 0);
+    }
+  }
+
+  if (interpret)
+    pc = *(registers+rs);
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> $pc=");
+      printHexadecimal(pc, 0);
+    }
+    println();
+  }
+}
+
 void fct_syscall() {
   if (debug) {
     printFunction(function);
@@ -5528,79 +5831,156 @@ void fct_syscall() {
   }
 }
 
-void fct_nop() {
-  if (debug) {
-    printFunction(function);
-    println();
-  }
-
-  if (interpret)
-    pc = pc + WORDSIZE;
-}
-
-void op_jal() {
+void op_addiu() {
   if (debug) {
     printOpcode(opcode);
     print((int*) " ");
-    printHexadecimal(instr_index, 0);
-    print((int*) "[");
-    printHexadecimal(instr_index * WORDSIZE, 0);
-    print((int*) "]");
+    printRegister(rt);
+    print((int*) ",");
+    printRegister(rs);
+    print((int*) ",");
+    printInteger(signExtend(immediate));
     if (interpret) {
       print((int*) ": ");
-      printRegister(REG_RA);
+      printRegister(rt);
       print((int*) "=");
-      printHexadecimal(*(registers+REG_RA), 0);
+      printInteger(*(registers+rt));
+      print((int*) ",");
+      printRegister(rs);
+      print((int*) "=");
+      printInteger(*(registers+rs));
     }
   }
 
   if (interpret) {
-    // skip over delay slot
-    *(registers+REG_RA) = pc + 8;
+    *(registers+rt) = *(registers+rs) + signExtend(immediate);
 
-    pc = instr_index * WORDSIZE;
+    // TODO: check for overflow
 
-    // keep track of number of procedure calls
-    calls = calls + 1;
-
-    *(callsPerAddress + pc / WORDSIZE) = *(callsPerAddress + pc / WORDSIZE) + 1;
-
-    // TODO: execute delay slot
+    pc = pc + WORDSIZE;
   }
 
   if (debug) {
     if (interpret) {
       print((int*) " -> ");
-      printRegister(REG_RA);
+      printRegister(rt);
       print((int*) "=");
-      printHexadecimal(*(registers+REG_RA), 0);
-      print((int*) ",$pc=");
-      printHexadecimal(pc, 0);
+      printInteger(*(registers+rt));
     }
     println();
   }
 }
 
-void op_j() {
+void op_lw() {
+  int vaddr;
+
   if (debug) {
     printOpcode(opcode);
     print((int*) " ");
-    printHexadecimal(instr_index, 0);
-    print((int*) "[");
-    printHexadecimal(instr_index * WORDSIZE, 0);
-    print((int*) "]");
+    printRegister(rt);
+    print((int*) ",");
+    printInteger(signExtend(immediate));
+    print((int*) "(");
+    printRegister(rs);
+    print((int*) ")");
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+      print((int*) ",");
+      printRegister(rs);
+      print((int*) "=");
+      printHexadecimal(*(registers+rs), 0);
+    }
   }
 
   if (interpret) {
-    pc = instr_index * WORDSIZE;
+    vaddr = *(registers+rs) + signExtend(immediate);
 
-    // TODO: execute delay slot
+    if (isValidVirtualAddress(vaddr)) {
+      if (isVirtualAddressMapped(pt, vaddr)) {
+        *(registers+rt) = loadVirtualMemory(pt, vaddr);
+
+        // keep track of number of loads
+        loads = loads + 1;
+
+        *(loadsPerAddress + pc / WORDSIZE) = *(loadsPerAddress + pc / WORDSIZE) + 1;
+
+        pc = pc + WORDSIZE;
+      } else
+        throwException(EXCEPTION_PAGEFAULT, vaddr);
+    } else
+      // TODO: pass invalid vaddr
+      throwException(EXCEPTION_ADDRESSERROR, 0);
   }
 
   if (debug) {
     if (interpret) {
-      print((int*) ": -> $pc=");
-      printHexadecimal(pc, 0);
+      print((int*) " -> ");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+      print((int*) "=memory[");
+      printHexadecimal(vaddr, 0);
+      print((int*) "]");
+    }
+    println();
+  }
+}
+
+void op_sw() {
+  int vaddr;
+
+  if (debug) {
+    printOpcode(opcode);
+    print((int*) " ");
+    printRegister(rt);
+    print((int*) ",");
+    printInteger(signExtend(immediate));
+    print((int*) "(");
+    printRegister(rs);
+    print((int*) ")");
+    if (interpret) {
+      print((int*) ": ");
+      printRegister(rt);
+      print((int*) "=");
+      printInteger(*(registers+rt));
+      print((int*) ",");
+      printRegister(rs);
+      print((int*) "=");
+      printHexadecimal(*(registers+rs), 0);
+    }
+  }
+
+  if (interpret) {
+    vaddr = *(registers+rs) + signExtend(immediate);
+
+    if (isValidVirtualAddress(vaddr)) {
+      if (isVirtualAddressMapped(pt, vaddr)) {
+        storeVirtualMemory(pt, vaddr, *(registers+rt));
+
+        // keep track of number of stores
+        stores = stores + 1;
+
+        *(storesPerAddress + pc / WORDSIZE) = *(storesPerAddress + pc / WORDSIZE) + 1;
+
+        pc = pc + WORDSIZE;
+      } else
+        throwException(EXCEPTION_PAGEFAULT, vaddr);
+    } else
+      // TODO: pass invalid vaddr
+      throwException(EXCEPTION_ADDRESSERROR, 0);
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((int*) " -> memory[");
+      printHexadecimal(vaddr, 0);
+      print((int*) "]=");
+      printInteger(*(registers+rt));
+      print((int*) "=");
+      printRegister(rt);
     }
     println();
   }
@@ -5699,448 +6079,69 @@ void op_bne() {
   }
 }
 
-void op_addiu() {
+void op_jal() {
   if (debug) {
     printOpcode(opcode);
     print((int*) " ");
-    printRegister(rt);
-    print((int*) ",");
-    printRegister(rs);
-    print((int*) ",");
-    printInteger(signExtend(immediate));
+    printHexadecimal(instr_index, 0);
+    print((int*) "[");
+    printHexadecimal(instr_index * WORDSIZE, 0);
+    print((int*) "]");
     if (interpret) {
       print((int*) ": ");
-      printRegister(rt);
+      printRegister(REG_RA);
       print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) ",");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
+      printHexadecimal(*(registers+REG_RA), 0);
     }
   }
 
   if (interpret) {
-    *(registers+rt) = *(registers+rs) + signExtend(immediate);
+    // skip over delay slot
+    *(registers+REG_RA) = pc + 8;
 
-    // TODO: check for overflow
+    pc = instr_index * WORDSIZE;
 
-    pc = pc + WORDSIZE;
+    // keep track of number of procedure calls
+    calls = calls + 1;
+
+    *(callsPerAddress + pc / WORDSIZE) = *(callsPerAddress + pc / WORDSIZE) + 1;
+
+    // TODO: execute delay slot
   }
 
   if (debug) {
     if (interpret) {
       print((int*) " -> ");
-      printRegister(rt);
+      printRegister(REG_RA);
       print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-    println();
-  }
-}
-
-void fct_jr() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rs);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rs);
-      print((int*) "=");
-      printHexadecimal(*(registers+rs), 0);
-    }
-  }
-
-  if (interpret)
-    pc = *(registers+rs);
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $pc=");
+      printHexadecimal(*(registers+REG_RA), 0);
+      print((int*) ",$pc=");
       printHexadecimal(pc, 0);
     }
     println();
   }
 }
 
-void fct_mfhi() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    if (interpret) {
-      print((int*) ":");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",$hi=");
-      printInteger(reg_hi);
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = reg_hi;
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-    }
-    println();
-  }
-}
-
-void fct_mflo() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",$lo=");
-      printInteger(reg_lo);
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = reg_lo;
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-    }
-    println();
-  }
-}
-
-void fct_multu() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) ",$lo=");
-      printInteger(reg_lo);
-    }
-  }
-
-  if (interpret) {
-    // TODO: 64-bit resolution currently not supported
-    reg_lo = *(registers+rs) * *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $lo=");
-      printInteger(reg_lo);
-    }
-    println();
-  }
-}
-
-void fct_divu() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) ",$lo=");
-      printInteger(reg_lo);
-      print((int*) ",$hi=");
-      printInteger(reg_hi);
-    }
-  }
-
-  if (interpret) {
-    reg_lo = *(registers+rs) / *(registers+rt);
-    reg_hi = *(registers+rs) % *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $lo=");
-      printInteger(reg_lo);
-      print((int*) ",$hi=");
-      printInteger(reg_hi);
-    }
-    println();
-  }
-}
-
-void fct_addu() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    print((int*) ",");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = *(registers+rs) + *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-    }
-    println();
-  }
-}
-
-void fct_subu() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    print((int*) ",");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-      print((int*) ",");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = *(registers+rs) - *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-    }
-    println();
-  }
-}
-
-void op_lw() {
-  int vaddr;
-
+void op_j() {
   if (debug) {
     printOpcode(opcode);
     print((int*) " ");
-    printRegister(rt);
-    print((int*) ",");
-    printInteger(signExtend(immediate));
-    print((int*) "(");
-    printRegister(rs);
-    print((int*) ")");
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) ",");
-      printRegister(rs);
-      print((int*) "=");
-      printHexadecimal(*(registers+rs), 0);
-    }
+    printHexadecimal(instr_index, 0);
+    print((int*) "[");
+    printHexadecimal(instr_index * WORDSIZE, 0);
+    print((int*) "]");
   }
 
   if (interpret) {
-    vaddr = *(registers+rs) + signExtend(immediate);
+    pc = instr_index * WORDSIZE;
 
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        *(registers+rt) = loadVirtualMemory(pt, vaddr);
-
-        // keep track of number of loads
-        loads = loads + 1;
-
-        *(loadsPerAddress + pc / WORDSIZE) = *(loadsPerAddress + pc / WORDSIZE) + 1;
-
-        pc = pc + WORDSIZE;
-      } else
-        throwException(EXCEPTION_PAGEFAULT, vaddr);
-    } else
-      // TODO: pass invalid vaddr
-      throwException(EXCEPTION_ADDRESSERROR, 0);
+    // TODO: execute delay slot
   }
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> ");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) "=memory[");
-      printHexadecimal(vaddr, 0);
-      print((int*) "]");
-    }
-    println();
-  }
-}
-
-void fct_slt() {
-  if (debug) {
-    printFunction(function);
-    print((int*) " ");
-    printRegister(rd);
-    print((int*) ",");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    if (*(registers+rs) < *(registers+rt))
-      *(registers+rd) = 1;
-    else
-      *(registers+rd) = 0;
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> ");
-      printRegister(rd);
-      print((int*) "=");
-      printInteger(*(registers+rd));
-    }
-    println();
-  }
-}
-
-void op_sw() {
-  int vaddr;
-
-  if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printRegister(rt);
-    print((int*) ",");
-    printInteger(signExtend(immediate));
-    print((int*) "(");
-    printRegister(rs);
-    print((int*) ")");
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-      print((int*) ",");
-      printRegister(rs);
-      print((int*) "=");
-      printHexadecimal(*(registers+rs), 0);
-    }
-  }
-
-  if (interpret) {
-    vaddr = *(registers+rs) + signExtend(immediate);
-
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        storeVirtualMemory(pt, vaddr, *(registers+rt));
-
-        // keep track of number of stores
-        stores = stores + 1;
-
-        *(storesPerAddress + pc / WORDSIZE) = *(storesPerAddress + pc / WORDSIZE) + 1;
-
-        pc = pc + WORDSIZE;
-      } else
-        throwException(EXCEPTION_PAGEFAULT, vaddr);
-    } else
-      // TODO: pass invalid vaddr
-      throwException(EXCEPTION_ADDRESSERROR, 0);
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> memory[");
-      printHexadecimal(vaddr, 0);
-      print((int*) "]=");
-      printInteger(*(registers+rt));
-      print((int*) "=");
-      printRegister(rt);
+      print((int*) ": -> $pc=");
+      printHexadecimal(pc, 0);
     }
     println();
   }
