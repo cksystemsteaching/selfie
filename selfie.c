@@ -900,6 +900,8 @@ int SYSCALL_STATUS = 4904;
 int SYSCALL_DELETE = 4905;
 int SYSCALL_MAP    = 4906;
 
+int mipster = 0; // flag for forcing to use mipster rather than hypster
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------    E M U L A T O R    ---------------------
@@ -1031,17 +1033,25 @@ int TIMESLICE = 10000000;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int* registers = (int*) 0; // general purpose registers
+int interpret = 0; // flag for executing or disassembling code
 
-int reg_hi = 0; // hi register for multiplication/division
-int reg_lo = 0; // lo register for multiplication/division
+int debug = 0; // flag for logging code execution
+
+// hardware thread state
 
 int pc = 0; // program counter
 int ir = 0; // instruction register
 
+int* registers = (int*) 0; // general-purpose registers
+
+int reg_hi = 0; // hi register for multiplication/division
+int reg_lo = 0; // lo register for multiplication/division
+
 int* pt = (int*) 0; // page table
 
 int brk = 0; // break between code, data, and heap
+
+// core state
 
 int trap = 0; // flag for creating a trap
 
@@ -1050,12 +1060,6 @@ int status = 0; // machine status including faulting address
 int cycles = 0; // cycle counter where one cycle is equal to one instruction
 
 int timer = 0; // counter for timer interrupt
-
-int mipster = 0; // flag for forcing to use mipster rather than hypster
-
-int interpret = 0; // flag for executing or disassembling code
-
-int debug = 0; // flag for logging code execution
 
 int  calls           = 0;        // total number of executed procedure calls
 int* callsPerAddress = (int*) 0; // number of executed calls of each procedure
@@ -1085,10 +1089,10 @@ void initInterpreter() {
 }
 
 void resetInterpreter() {
-  registers = (int*) 0;
-
   pc = 0;
   ir = 0;
+
+  registers = (int*) 0;
 
   reg_hi = 0;
   reg_lo = 0;
