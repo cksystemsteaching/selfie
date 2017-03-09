@@ -44,7 +44,7 @@ The programming language C of which we use a tiny subset here was originally des
 Imperative programming is supported by many programming languages but it is not the only programming paradigm. *Declarative programming* is an important alternative that is also supported by many programming languages but handles program state differently.
 
 [Declarative Programming](https://en.wikipedia.org/wiki/Declarative_programming)
-: A programming paradigm — a style of building the structure and elements of computer programs — that expresses the logic of a computation without describing its control flow.
+: A programming paradigm -- a style of building the structure and elements of computer programs -- that expresses the logic of a computation without describing its control flow.
 
 Intuitively, rather than saying imperatively how to change state, declarative programming focuses on declaring what needs to change. While spelling out how to change state can become tedious with imperative programming spelling out what to change can become burdensome with declarative programming. Yet both paradigms have their important use cases and a port of selfie to a declarative programming language would be very nice to have but remains future work for now.
 
