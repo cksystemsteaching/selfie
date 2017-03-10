@@ -268,7 +268,7 @@ Try the `-s` option to have selfie generate assembly as follows:
 The part of selfie that generates assembly is called a *disassembler*.
 
 [Disassembler](https://en.wikipedia.org/wiki/Disassembler)
-: A computer program that translates machine language into assembly language — the inverse operation to that of an assembler.
+: A computer program that translates machine language into assembly language -- the inverse operation to that of an assembler.
 
 Selfie does not implement an assembler though. The starc compiler simply generates machine code right away without going through assembly first (which would then require an assembler to generate machine code from that assembly).
 
