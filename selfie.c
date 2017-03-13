@@ -1187,11 +1187,11 @@ void resetMicrokernel();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int MIPSTER_ID = -1;
+int MIPSTER_ID = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int bumpID; // counter for generating unique context IDs
+int bumpID = 0; // counter for generating unique context IDs
 
 int* currentContext = (int*) 0; // context currently running
 
@@ -1201,7 +1201,7 @@ int* freeContexts = (int*) 0; // singly-linked list of free contexts
 // ------------------------- INITIALIZATION ------------------------
 
 void resetMicrokernel() {
-  bumpID = MIPSTER_ID;
+  bumpID = selfie_ID();
 
   currentContext = (int*) 0;
 
@@ -5059,10 +5059,7 @@ int hypster_ID() {
 }
 
 int selfie_ID() {
-  if (mipster)
-    return MIPSTER_ID;
-  else
-    return hypster_ID();
+  return hypster_ID();
 }
 
 void emitCreate() {
@@ -5323,7 +5320,7 @@ void doMap(int ID, int page, int frame) {
   mapContext = findContext(ID, usedContexts);
 
   if (mapContext != (int*) 0) {
-    if (getParent(mapContext) != MIPSTER_ID) {
+    if (getParent(mapContext) != selfie_ID()) {
       parentContext = findContext(getParent(mapContext), usedContexts);
 
       if (parentContext != (int*) 0)
@@ -6743,7 +6740,7 @@ int runUntilExitWithoutExceptionHandling(int toID) {
 
     // assert: fromContext must be in usedContexts (created here)
 
-    if (getParent(fromContext) != MIPSTER_ID)
+    if (getParent(fromContext) != selfie_ID())
       // switch to parent which is in charge of handling exceptions
       toID = getParent(fromContext);
     else {
@@ -6846,7 +6843,7 @@ int bootminmob(int argc, int* argv, int machine) {
   resetMicrokernel();
 
   // create initial context on our boot level
-  initID = doCreate(MIPSTER_ID);
+  initID = doCreate(selfie_ID());
 
   up_loadBinary(getPT(usedContexts));
 
