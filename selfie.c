@@ -852,12 +852,12 @@ int SYSCALL_MALLOC = 4045;
 
 void emitID();
 void implementID();
-
-int selfie_ID();
+int  selfie_ID();
 
 void emitCreate();
 int  doCreate(int parentID);
 void implementCreate();
+int  mipster_create();
 
 void emitSwitch();
 int  doSwitch(int toID);
@@ -5096,7 +5096,7 @@ int mipster_create() {
 
 int hypster_create() {
   // this procedure is only executed at boot level zero
-  return doCreate(selfie_ID());
+  return mipster_create();
 }
 
 void emitSwitch() {
@@ -5217,7 +5217,7 @@ int mipster_status() {
 
 int hypster_status() {
   // this procedure is only executed at boot level zero
-  return doStatus();
+  return mipster_status();
 }
 
 void emitDelete() {
@@ -5265,7 +5265,7 @@ void mipster_delete(int ID) {
 
 void hypster_delete(int ID) {
   // this procedure is only executed at boot level zero
-  doDelete(ID);
+  mipster_delete(ID);
 }
 
 void emitMap() {
@@ -5342,7 +5342,7 @@ void mipster_map(int ID, int page, int frame) {
 
 void hypster_map(int ID, int page, int frame) {
   // this procedure is only executed at boot level zero
-  doMap(ID, page, frame);
+  mipster_map(ID, page, frame);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
