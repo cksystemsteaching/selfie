@@ -860,9 +860,9 @@ void implementCreate();
 int  mipster_create();
 
 void emitSwitch();
-int  doSwitch(int toID);
+int  doSwitch(int toID, int timeout);
 void implementSwitch();
-int  mipster_switch(int toID);
+int  mipster_switch(int toID, int timeout);
 
 void emitStatus();
 void implementStatus();
@@ -1051,9 +1051,7 @@ int trap = 0; // flag for creating a trap
 
 int status = 0; // machine status including faulting address
 
-int cycles = 0; // cycle counter where one cycle is equal to one instruction
-
-int timer = 0; // counter for timer interrupt
+int timer = -1; // counter for timer interrupt
 
 int  calls           = 0;        // total number of executed procedure calls
 int* callsPerAddress = (int*) 0; // number of executed calls of each procedure
@@ -1099,9 +1097,7 @@ void resetInterpreter() {
 
   status = 0;
 
-  cycles = 0;
-
-  timer = TIMESLICE;
+  timer = -1;
 
   if (interpret) {
     calls           = 0;
@@ -5102,6 +5098,9 @@ int hypster_create() {
 void emitSwitch() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength);
 
+  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // number of instructions to execute
+  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
+
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
@@ -5114,7 +5113,7 @@ void emitSwitch() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int doSwitch(int toID) {
+int doSwitch(int toID, int timeout) {
   int fromID;
   int* toContext;
 
@@ -5127,12 +5126,19 @@ int doSwitch(int toID) {
 
     currentContext = toContext;
 
+    timer = timeout;
+
     if (debug_switch) {
       print(binaryName);
       print((int*) ": switching from context ");
       printInteger(fromID);
       print((int*) " to context ");
       printInteger(toID);
+      if (timeout >= 0) {
+        print((int*) " to execute ");
+        printInteger(timeout);
+        print((int*) " instructions");
+      }
       println();
     }
   } else if (debug_switch) {
@@ -5153,20 +5159,20 @@ void implementSwitch() {
   // but some compilers dereference the lvalue *(registers+REG_V1)
   // before evaluating the rvalue doSwitch()
 
-  fromID = doSwitch(*(registers+REG_A0));
+  fromID = doSwitch(*(registers+REG_A0), *(registers+REG_A1));
 
   // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
   *(registers+REG_V1) = fromID;
 }
 
-int mipster_switch(int toID) {
+int mipster_switch(int toID, int timeout) {
   int fromID;
 
   // CAUTION: doSwitch() modifies the global variable registers
   // but some compilers dereference the lvalue *(registers+REG_V1)
   // before evaluating the rvalue doSwitch()
 
-  fromID = doSwitch(toID);
+  fromID = doSwitch(toID, timeout);
 
   // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
   *(registers+REG_V1) = fromID;
@@ -5176,9 +5182,9 @@ int mipster_switch(int toID) {
   return getID(currentContext);
 }
 
-int hypster_switch(int toID) {
+int hypster_switch(int toID, int timeout) {
   // this procedure is only executed at boot level zero
-  return mipster_switch(toID);
+  return mipster_switch(toID, timeout);
 }
 
 void emitStatus() {
@@ -6241,17 +6247,14 @@ void execute() {
 }
 
 void interrupt() {
-  cycles = cycles + 1;
-
   if (timer > 0)
-    if (cycles == timer) {
-      cycles = 0;
+    timer = timer - 1;
 
-      if (status == 0)
-        // only throw exception if no other is pending
-        // TODO: handle multiple pending exceptions
-        throwException(EXCEPTION_TIMER, 0);
-    }
+  if (timer == 0)
+    if (status == 0)
+      // only throw exception if no other is pending
+      // TODO: handle multiple pending exceptions
+      throwException(EXCEPTION_TIMER, 0);
 }
 
 void runUntilException() {
@@ -6704,7 +6707,7 @@ int runUntilExitWithoutExceptionHandling(int toID) {
   int exceptionNumber;
 
   while (1) {
-    fromID = mipster_switch(toID);
+    fromID = mipster_switch(toID, TIMESLICE);
 
     fromContext = findContext(fromID, usedContexts);
 
@@ -6748,9 +6751,9 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
 
   while (1) {
     if (mipster)
-      fromID = mipster_switch(toID);
+      fromID = mipster_switch(toID, TIMESLICE);
     else
-      fromID = hypster_switch(toID);
+      fromID = hypster_switch(toID, TIMESLICE);
 
     fromContext = findContext(fromID, usedContexts);
 
