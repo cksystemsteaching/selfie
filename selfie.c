@@ -6884,6 +6884,9 @@ int boot(int argc, int* argv) {
     // create duplicate of the initial context on our boot level
     usedContexts = createContext(initID, selfie_ID(), (int*) 0);
 
+  if (currentContext == (int*) 0)
+    currentContext = usedContexts;
+
   up_loadBinary(getPT(usedContexts));
 
   up_loadArguments(getPT(usedContexts), argc, argv);
