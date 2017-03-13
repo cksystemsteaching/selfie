@@ -859,31 +859,24 @@ void emitCreate();
 int  doCreate(int parentID);
 void implementCreate();
 
-int selfie_create();
-
 void emitSwitch();
 int  doSwitch(int toID);
 void implementSwitch();
 int  mipster_switch(int toID);
 
-int selfie_switch(int toID);
-
 void emitStatus();
 void implementStatus();
-
-int selfie_status();
+int  mipster_status();
 
 void emitDelete();
 void doDelete(int ID);
 void implementDelete();
-
-void selfie_delete(int ID);
+void mipster_delete(int ID);
 
 void emitMap();
 void doMap(int ID, int page, int frame);
 void implementMap();
-
-void selfie_map(int ID, int page, int frame);
+void mipster_map(int ID, int page, int frame);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1187,7 +1180,7 @@ void resetMicrokernel();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int MIPSTER_ID = 0;
+int ROOT_ID = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -5041,7 +5034,7 @@ void implementMalloc() {
 // -----------------------------------------------------------------
 
 void emitID() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_ID", 0, PROCEDURE, INT_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "selfie_ID", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_ID);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5053,13 +5046,9 @@ void implementID() {
   *(registers+REG_V0) = getID(currentContext);
 }
 
-int hypster_ID() {
-  // this procedure is only executed at boot level zero
-  return MIPSTER_ID;
-}
-
 int selfie_ID() {
-  return hypster_ID();
+  // this procedure is only executed at boot level zero
+  return ROOT_ID;
 }
 
 void emitCreate() {
@@ -5082,7 +5071,7 @@ int doCreate(int parentID) {
 
     if (debug_create) {
       print(binaryName);
-      print((int*) ": selfie_create context ");
+      print((int*) ": created context ");
       printInteger(bumpID);
       println();
     }
@@ -5090,7 +5079,7 @@ int doCreate(int parentID) {
     return bumpID;
   } else {
     print(binaryName);
-    print((int*) ": selfie_create failed");
+    print((int*) ": creating context failed");
     println();
 
     exit(-1);
@@ -5101,16 +5090,13 @@ void implementCreate() {
   *(registers+REG_V0) = doCreate(getID(currentContext));
 }
 
-int hypster_create() {
-  // this procedure is only executed at boot level zero
+int mipster_create() {
   return doCreate(selfie_ID());
 }
 
-int selfie_create() {
-  if (mipster)
-    return doCreate(selfie_ID());
-  else
-    return hypster_create();
+int hypster_create() {
+  // this procedure is only executed at boot level zero
+  return doCreate(selfie_ID());
 }
 
 void emitSwitch() {
@@ -5143,7 +5129,7 @@ int doSwitch(int toID) {
 
     if (debug_switch) {
       print(binaryName);
-      print((int*) ": selfie_switch from context ");
+      print((int*) ": switching from context ");
       printInteger(fromID);
       print((int*) " to context ");
       printInteger(toID);
@@ -5151,9 +5137,9 @@ int doSwitch(int toID) {
     }
   } else if (debug_switch) {
     print(binaryName);
-    print((int*) ": selfie_switch context ");
+    print((int*) ": context ");
     printInteger(toID);
-    print((int*) " not found");
+    print((int*) " not found for switching");
     println();
   }
 
@@ -5195,13 +5181,6 @@ int hypster_switch(int toID) {
   return mipster_switch(toID);
 }
 
-int selfie_switch(int toID) {
-  if (mipster)
-    return mipster_switch(toID);
-  else
-    return hypster_switch(toID);
-}
-
 void emitStatus() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength);
 
@@ -5220,7 +5199,7 @@ int doStatus() {
 
   if (debug_status) {
     print(binaryName);
-    print((int*) ": selfie_status ");
+    print((int*) ": status ");
     printStatus(savedStatus);
     println();
   }
@@ -5232,16 +5211,13 @@ void implementStatus() {
   *(registers+REG_V0) = doStatus();
 }
 
-int hypster_status() {
-  // this procedure is only executed at boot level zero
+int mipster_status() {
   return doStatus();
 }
 
-int selfie_status() {
-  if (mipster)
-    return doStatus();
-  else
-    return hypster_status();
+int hypster_status() {
+  // this procedure is only executed at boot level zero
+  return doStatus();
 }
 
 void emitDelete() {
@@ -5266,15 +5242,15 @@ void doDelete(int ID) {
 
     if (debug_delete) {
       print(binaryName);
-      print((int*) ": selfie_delete context ");
+      print((int*) ": deleted context ");
       printInteger(ID);
       println();
     }
   } else if (debug_delete) {
     print(binaryName);
-    print((int*) ": selfie_delete context ");
+    print((int*) ": context ");
     printInteger(ID);
-    print((int*) " not found");
+    print((int*) " not found for deletion");
     println();
   }
 }
@@ -5283,16 +5259,13 @@ void implementDelete() {
   doDelete(*(registers+REG_A0));
 }
 
-void hypster_delete(int ID) {
-  // this procedure is only executed at boot level zero
+void mipster_delete(int ID) {
   doDelete(ID);
 }
 
-void selfie_delete(int ID) {
-  if (mipster)
-    doDelete(ID);
-  else
-    hypster_delete(ID);
+void hypster_delete(int ID) {
+  // this procedure is only executed at boot level zero
+  doDelete(ID);
 }
 
 void emitMap() {
@@ -5328,11 +5301,11 @@ void doMap(int ID, int page, int frame) {
         frame = getFrameForPage(getPT(parentContext), frame / PAGESIZE);
       else if (debug_map) {
         print(binaryName);
-        print((int*) ": selfie_map parent context ");
+        print((int*) ": parent context ");
         printInteger(getParent(mapContext));
         print((int*) " of context ");
         printInteger(ID);
-        print((int*) " not found");
+        print((int*) " not found for mapping");
         println();
       }
     }
@@ -5342,19 +5315,19 @@ void doMap(int ID, int page, int frame) {
 
     if (debug_map) {
       print(binaryName);
-      print((int*) ": selfie_map page ");
+      print((int*) ": page ");
       printHexadecimal(page, 4);
-      print((int*) " to frame ");
+      print((int*) " mapped to frame ");
       printHexadecimal(frame, 8);
-      print((int*) " for context ");
+      print((int*) " in context ");
       printInteger(ID);
       println();
     }
   } else if (debug_map) {
     print(binaryName);
-    print((int*) ": selfie_map context ");
+    print((int*) ": context ");
     printInteger(ID);
-    print((int*) " not found");
+    print((int*) " not found for mapping");
     println();
   }
 }
@@ -5363,16 +5336,13 @@ void implementMap() {
   doMap(*(registers+REG_A0), *(registers+REG_A1), *(registers+REG_A2));
 }
 
-void hypster_map(int ID, int page, int frame) {
-  // this procedure is only executed at boot level zero
+void mipster_map(int ID, int page, int frame) {
   doMap(ID, page, frame);
 }
 
-void selfie_map(int ID, int page, int frame) {
-  if (mipster)
-    doMap(ID, page, frame);
-  else
-    hypster_map(ID, page, frame);
+void hypster_map(int ID, int page, int frame) {
+  // this procedure is only executed at boot level zero
+  doMap(ID, page, frame);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -6712,7 +6682,7 @@ void down_mapPageTable(int* context) {
   page = 0;
 
   while (isPageMapped(getPT(context), page)) {
-    selfie_map(getID(context), page, getFrameForPage(getPT(context), page));
+    hypster_map(getID(context), page, getFrameForPage(getPT(context), page));
 
     page = page + 1;
   }
@@ -6720,7 +6690,7 @@ void down_mapPageTable(int* context) {
   page = (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE;
 
   while (isPageMapped(getPT(context), page)) {
-    selfie_map(getID(context), page, getFrameForPage(getPT(context), page));
+    hypster_map(getID(context), page, getFrameForPage(getPT(context), page));
 
     page = page - 1;
   }
@@ -6777,7 +6747,10 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
   int frame;
 
   while (1) {
-    fromID = selfie_switch(toID);
+    if (mipster)
+      fromID = mipster_switch(toID);
+    else
+      fromID = hypster_switch(toID);
 
     fromContext = findContext(fromID, usedContexts);
 
@@ -6788,7 +6761,10 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
       toID = getParent(fromContext);
     else {
       // we are the parent in charge of handling exceptions
-      savedStatus = selfie_status();
+      if (mipster)
+        savedStatus = mipster_status();
+      else
+        savedStatus = hypster_status();
 
       exceptionNumber    = decodeExceptionNumber(savedStatus);
       exceptionParameter = decodeExceptionParameter(savedStatus);
@@ -6797,10 +6773,10 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
         frame = (int) palloc();
 
         // TODO: use this table to unmap and reuse frames
-        mapPage(getPT(fromContext), exceptionParameter, frame);
+        mipster_map(fromID, exceptionParameter, frame);
 
         // page table on microkernel boot level
-        selfie_map(fromID, exceptionParameter, frame);
+        hypster_map(fromID, exceptionParameter, frame);
       } else if (exceptionNumber == EXCEPTION_EXIT)
         // TODO: only return if all contexts have exited
         return exceptionParameter;
@@ -6843,7 +6819,7 @@ int bootminmob(int argc, int* argv, int machine) {
   resetMicrokernel();
 
   // create initial context on our boot level
-  initID = doCreate(selfie_ID());
+  initID = mipster_create();
 
   up_loadBinary(getPT(usedContexts));
 
@@ -6899,7 +6875,7 @@ int boot(int argc, int* argv) {
   resetMicrokernel();
 
   // create initial context on microkernel boot level
-  initID = selfie_create();
+  initID = hypster_create();
 
   if (usedContexts == (int*) 0)
     // create duplicate of the initial context on our boot level
