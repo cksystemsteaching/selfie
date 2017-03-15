@@ -1882,7 +1882,7 @@ int findNextCharacter() {
 
     } else if (isCharacterWhitespace()) {
       // keep track of line numbers for error reporting and code annotation
-      if (isCharacterNewLine())
+      if (character == CHAR_LF)
         lineNumber = lineNumber + 1;
 
       // count line feed and carriage return as ignored characters
