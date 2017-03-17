@@ -1008,13 +1008,14 @@ void selfie_disassemble();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int EXCEPTION_NOEXCEPTION        = 0;
-int EXCEPTION_UNKNOWNINSTRUCTION = 1;
-int EXCEPTION_UNKNOWNSYSCALL     = 2;
-int EXCEPTION_ADDRESSERROR       = 3;
-int EXCEPTION_HEAPOVERFLOW       = 4;
-int EXCEPTION_EXIT               = 5;
-int EXCEPTION_TIMER              = 6;
-int EXCEPTION_PAGEFAULT          = 7;
+int EXCEPTION_EXIT               = 1;
+int EXCEPTION_TIMER              = 2;
+int EXCEPTION_PAGEFAULT          = 3;
+int EXCEPTION_SYSCALL            = 4;
+int EXCEPTION_ADDRESSERROR       = 5;
+int EXCEPTION_HEAPOVERFLOW       = 6;
+int EXCEPTION_UNKNOWNINSTRUCTION = 7;
+int EXCEPTION_UNKNOWNSYSCALL     = 8;
 
 int* EXCEPTIONS; // strings representing exceptions
 
@@ -1068,16 +1069,17 @@ int* storesPerAddress = (int*) 0; // number of executed stores per store operati
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = malloc(8 * SIZEOFINTSTAR);
+  EXCEPTIONS = malloc(9 * SIZEOFINTSTAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (int) "no exception";
-  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (int) "unknown instruction";
-  *(EXCEPTIONS + EXCEPTION_UNKNOWNSYSCALL)     = (int) "unknown syscall";
-  *(EXCEPTIONS + EXCEPTION_ADDRESSERROR)       = (int) "address error";
-  *(EXCEPTIONS + EXCEPTION_HEAPOVERFLOW)       = (int) "heap overflow";
   *(EXCEPTIONS + EXCEPTION_EXIT)               = (int) "exit";
   *(EXCEPTIONS + EXCEPTION_TIMER)              = (int) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
+  *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (int) "syscall";
+  *(EXCEPTIONS + EXCEPTION_ADDRESSERROR)       = (int) "address error";
+  *(EXCEPTIONS + EXCEPTION_HEAPOVERFLOW)       = (int) "heap overflow";
+  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (int) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_UNKNOWNSYSCALL)     = (int) "unknown syscall";
 }
 
 void resetInterpreter() {
@@ -1095,7 +1097,7 @@ void resetInterpreter() {
 
   trap = 0;
 
-  status = 0;
+  status = EXCEPTION_NOEXCEPTION;
 
   timer = -1;
 
@@ -5201,7 +5203,7 @@ int doStatus() {
 
   savedStatus = status;
 
-  status = 0;
+  status = EXCEPTION_NOEXCEPTION;
 
   if (debug_status) {
     print(binaryName);
