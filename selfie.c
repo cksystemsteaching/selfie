@@ -106,8 +106,8 @@ int  stringLength(int* s);
 void stringReverse(int* s);
 int  stringCompare(int* s, int* t);
 
-int safeAddition(int n, int c);
-int safeMultiplication(int n, int c);
+int checkedAddition(int n, int c);
+int checkedMultiplication(int n, int c);
 
 int  atoi(int* s);
 int* itoa(int n, int* s, int b, int a, int p);
@@ -1412,7 +1412,7 @@ int stringCompare(int* s, int* t) {
       return 0;
 }
 
-int safeAddition(int n, int c) {
+int checkedAddition(int n, int c) {
   // assert: n > INT_MIN && c >= 0
 
   if (n <= INT_MAX - c)
@@ -1423,14 +1423,14 @@ int safeAddition(int n, int c) {
     return -1;
 }
 
-int safeMultiplication(int n, int c) {
+int checkedMultiplication(int n, int c) {
   // assert: n >= 0 && c > 0
   int o;
   o = n;
 
   while (c > 1) {
 
-    n = safeAddition(n, o);
+    n = checkedAddition(n, o);
 
     if (n == INT_MIN)
       if (c == 2)
@@ -1481,7 +1481,7 @@ int atoi(int* s) {
     next = loadCharacter(s, i);
 
     // multiply by base
-    n = safeMultiplication(n, 10);
+    n = checkedMultiplication(n, 10);
 
     // handle special case, where INT_MIN is allowed
     if (n == INT_MIN)
@@ -1494,7 +1494,7 @@ int atoi(int* s) {
       return -1;
 
     // add least significant digit
-    n = safeAddition(n, c);
+    n = checkedAddition(n, c);
 
     // handle special case, where INT_MIN is allowed
     if (n == INT_MIN)
