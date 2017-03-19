@@ -850,33 +850,29 @@ int SYSCALL_MALLOC = 4045;
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
-void emitID();
-void implementID();
-int  selfie_ID();
-
 void emitCreate();
-int  doCreate(int parentID);
+void doCreate(int* parent, int vctxt);
 void implementCreate();
-int  mipster_create();
+void mipster_create(int vctxt);
 
 void emitSwitch();
-int  doSwitch(int toID, int timeout);
+int* doSwitch(int* toContext, int timeout);
 void implementSwitch();
-int  mipster_switch(int toID, int timeout);
+int* mipster_switch(int* toContext, int timeout);
 
 void emitStatus();
 void implementStatus();
 int  mipster_status();
 
 void emitDelete();
-void doDelete(int ID);
+void doDelete(int* context);
 void implementDelete();
-void mipster_delete(int ID);
+void mipster_delete(int* context);
 
 void emitMap();
-void doMap(int ID, int page, int frame);
+void doMap(int* context, int page, int frame);
 void implementMap();
-void mipster_map(int ID, int page, int frame);
+void mipster_map(int* context, int page, int frame);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -886,12 +882,11 @@ int debug_status = 0;
 int debug_delete = 0;
 int debug_map    = 0;
 
-int SYSCALL_ID     = 4901;
-int SYSCALL_CREATE = 4902;
-int SYSCALL_SWITCH = 4903;
-int SYSCALL_STATUS = 4904;
-int SYSCALL_DELETE = 4905;
-int SYSCALL_MAP    = 4906;
+int SYSCALL_CREATE = 4901;
+int SYSCALL_SWITCH = 4902;
+int SYSCALL_STATUS = 4903;
+int SYSCALL_DELETE = 4904;
+int SYSCALL_MAP    = 4905;
 
 int mipster = 0; // flag for forcing to use mipster rather than hypster
 
@@ -1120,12 +1115,10 @@ void resetInterpreter() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int createID(int seed);
+int* allocateContext(int* parent, int vctxt);
+int* createContext(int* parent, int vctxt, int* in);
 
-int* allocateContext(int ID, int parentID);
-int* createContext(int ID, int parentID, int* in);
-
-int* findContext(int ID, int* in);
+int* findContext(int* parent, int vctxt, int* in);
 
 void switchContext(int* from, int* to);
 
@@ -1138,37 +1131,37 @@ void mapPage(int* table, int page, int frame);
 // +---+--------+
 // | 0 | next   | pointer to next context
 // | 1 | prev   | pointer to previous context
-// | 2 | id     | unique identifier
+// | 2 | vctxt  | virtual context address
 // | 3 | pc     | program counter
 // | 4 | regs   | pointer to general purpose registers
 // | 5 | reg_hi | hi register
 // | 6 | reg_lo | lo register
 // | 7 | pt     | pointer to page table
 // | 8 | brk    | break between code, data, and heap
-// | 9 | parent | ID of context that created this context
+// | 9 | parent | context that created this context
 // +---+--------+
 
-int* getNextContext(int* context) { return (int*) *context; }
-int* getPrevContext(int* context) { return (int*) *(context + 1); }
-int  getID(int* context)          { return        *(context + 2); }
-int  getPC(int* context)          { return        *(context + 3); }
-int* getRegs(int* context)        { return (int*) *(context + 4); }
-int  getRegHi(int* context)       { return        *(context + 5); }
-int  getRegLo(int* context)       { return        *(context + 6); }
-int* getPT(int* context)          { return (int*) *(context + 7); }
-int  getBreak(int* context)       { return        *(context + 8); }
-int  getParent(int* context)      { return        *(context + 9); }
+int* getNextContext(int* context)    { return (int*) *context; }
+int* getPrevContext(int* context)    { return (int*) *(context + 1); }
+int  getVirtualContext(int* context) { return        *(context + 2); }
+int  getPC(int* context)             { return        *(context + 3); }
+int* getRegs(int* context)           { return (int*) *(context + 4); }
+int  getRegHi(int* context)          { return        *(context + 5); }
+int  getRegLo(int* context)          { return        *(context + 6); }
+int* getPT(int* context)             { return (int*) *(context + 7); }
+int  getBreak(int* context)          { return        *(context + 8); }
+int* getParent(int* context)         { return (int*) *(context + 9); }
 
-void setNextContext(int* context, int* next) { *context       = (int) next; }
-void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
-void setID(int* context, int id)             { *(context + 2) = id; }
-void setPC(int* context, int pc)             { *(context + 3) = pc; }
-void setRegs(int* context, int* regs)        { *(context + 4) = (int) regs; }
-void setRegHi(int* context, int reg_hi)      { *(context + 5) = reg_hi; }
-void setRegLo(int* context, int reg_lo)      { *(context + 6) = reg_lo; }
-void setPT(int* context, int* pt)            { *(context + 7) = (int) pt; }
-void setBreak(int* context, int brk)         { *(context + 8) = brk; }
-void setParent(int* context, int id)         { *(context + 9) = id; }
+void setNextContext(int* context, int* next)    { *context       = (int) next; }
+void setPrevContext(int* context, int* prev)    { *(context + 1) = (int) prev; }
+void setVirtualContext(int* context, int vctxt) { *(context + 2) = vctxt; }
+void setPC(int* context, int pc)                { *(context + 3) = pc; }
+void setRegs(int* context, int* regs)           { *(context + 4) = (int) regs; }
+void setRegHi(int* context, int reg_hi)         { *(context + 5) = reg_hi; }
+void setRegLo(int* context, int reg_lo)         { *(context + 6) = reg_lo; }
+void setPT(int* context, int* pt)               { *(context + 7) = (int) pt; }
+void setBreak(int* context, int brk)            { *(context + 8) = brk; }
+void setParent(int* context, int* parent)       { *(context + 9) = (int) parent; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1178,11 +1171,9 @@ void resetMicrokernel();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int ROOT_ID = 0;
+int* MY_CONTEXT = (int*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
-
-int bumpID = 0; // counter for generating unique context IDs
 
 int* currentContext = (int*) 0; // context currently running
 
@@ -1192,8 +1183,6 @@ int* freeContexts = (int*) 0; // singly-linked list of free contexts
 // ------------------------- INITIALIZATION ------------------------
 
 void resetMicrokernel() {
-  bumpID = selfie_ID();
-
   currentContext = (int*) 0;
 
   while (usedContexts != (int*) 0)
@@ -1219,8 +1208,8 @@ void mapUnmappedPages(int* table);
 
 void down_mapPageTable(int* context);
 
-int runUntilExitWithoutExceptionHandling(int toID);
-int runOrHostUntilExitWithPageFaultHandling(int toID);
+int runUntilExitWithoutExceptionHandling(int* toContext);
+int runOrHostUntilExitWithPageFaultHandling(int* toContext);
 
 int bootminmob(int argc, int* argv, int machine);
 int boot(int argc, int* argv);
@@ -3233,7 +3222,7 @@ void gr_while() {
 
   if (brForwardToEnd != 0)
     // first instruction after loop comes here
-    // now we have our address for the conditional branch from above
+    // now we have the address for the conditional branch from above
     fixup_relative(brForwardToEnd);
 
   // assert: allocatedTemporaries == 0
@@ -4006,7 +3995,6 @@ void selfie_compile() {
   emitOpen();
   emitMalloc();
 
-  emitID();
   emitCreate();
   emitSwitch();
   emitStatus();
@@ -5031,26 +5019,11 @@ void implementMalloc() {
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
-void emitID() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "selfie_ID", 0, PROCEDURE, INT_T, 0, binaryLength);
-
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_ID);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
-
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
-}
-
-void implementID() {
-  *(registers+REG_V0) = getID(currentContext);
-}
-
-int selfie_ID() {
-  // this procedure is only executed at boot level zero
-  return ROOT_ID;
-}
-
 void emitCreate() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength);
+
+  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // virtual context address
+  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_CREATE);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
@@ -5058,135 +5031,126 @@ void emitCreate() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int doCreate(int parentID) {
-  if (bumpID < INT_MAX) {
-    bumpID = createID(bumpID);
+void doCreate(int* parent, int vctxt) {
+  // TODO: check if context already exists
+  usedContexts = createContext(parent, vctxt, usedContexts);
 
-    usedContexts = createContext(bumpID, parentID, usedContexts);
+  if (currentContext == MY_CONTEXT)
+    currentContext = usedContexts;
 
-    if (currentContext == (int*) 0)
-      currentContext = usedContexts;
-
-    if (debug_create) {
-      print(binaryName);
-      print((int*) ": created context ");
-      printInteger(bumpID);
-      println();
-    }
-
-    return bumpID;
-  } else {
+  if (debug_create) {
     print(binaryName);
-    print((int*) ": creating context failed");
+    print((int*) ": parent context ");
+    printHexadecimal((int) parent, 8);
+    print((int*) " created child context ");
+    printHexadecimal((int) usedContexts, 8);
     println();
-
-    exit(-1);
   }
 }
 
 void implementCreate() {
-  *(registers+REG_V0) = doCreate(getID(currentContext));
+  doCreate(currentContext, *(registers+REG_A0));
 }
 
-int mipster_create() {
-  return doCreate(selfie_ID());
+void mipster_create(int vctxt) {
+  doCreate(MY_CONTEXT, vctxt);
 }
 
-int hypster_create() {
+void hypster_create(int* context) {
   // this procedure is only executed at boot level zero
-  return mipster_create();
 }
 
 void emitSwitch() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INT_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
   emitIFormat(OP_LW, REG_SP, REG_A1, 0); // number of instructions to execute
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // ID of context to which we switch
+  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context to which we switch
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_SWITCH);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
-  // save ID of context from which we are switching here in return register
+  // save context from which we are switching here in return register
   emitRFormat(OP_SPECIAL, REG_ZR, REG_V1, REG_V0, FCT_ADDU);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int doSwitch(int toID, int timeout) {
-  int fromID;
-  int* toContext;
+int* doSwitch(int* toContext, int timeout) {
+  int* fromContext;
 
-  fromID = getID(currentContext);
+  fromContext = currentContext;
 
-  toContext = findContext(toID, usedContexts);
+  switchContext(currentContext, toContext);
 
-  if (toContext != (int*) 0) {
-    switchContext(currentContext, toContext);
+  currentContext = toContext;
 
-    currentContext = toContext;
+  timer = timeout;
 
-    timer = timeout;
-
-    if (debug_switch) {
-      print(binaryName);
-      print((int*) ": switching from context ");
-      printInteger(fromID);
-      print((int*) " to context ");
-      printInteger(toID);
-      if (timeout >= 0) {
-        print((int*) " to execute ");
-        printInteger(timeout);
-        print((int*) " instructions");
-      }
-      println();
-    }
-  } else if (debug_switch) {
+  if (debug_switch) {
     print(binaryName);
-    print((int*) ": context ");
-    printInteger(toID);
-    print((int*) " not found for switching");
+    print((int*) ": switched from context ");
+    printHexadecimal((int) fromContext, 8);
+    print((int*) " to context ");
+    printHexadecimal((int) toContext, 8);
+    if (timeout >= 0) {
+      print((int*) " to execute ");
+      printInteger(timeout);
+      print((int*) " instructions");
+    }
     println();
   }
 
-  return fromID;
+  return fromContext;
 }
 
 void implementSwitch() {
-  int fromID;
+  int* toContext;
+  int* fromContext;
 
-  // CAUTION: doSwitch() modifies the global variable registers
-  // but some compilers dereference the lvalue *(registers+REG_V1)
-  // before evaluating the rvalue doSwitch()
+  toContext = findContext(currentContext, *(registers+REG_A0), usedContexts);
 
-  fromID = doSwitch(*(registers+REG_A0), *(registers+REG_A1));
+  if (toContext != (int*) 0) {
+    // CAUTION: doSwitch() modifies the global variable registers
+    // but some compilers dereference the lvalue *(registers+REG_V1)
+    // before evaluating the rvalue doSwitch()
 
-  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  *(registers+REG_V1) = fromID;
+    fromContext = doSwitch(toContext, *(registers+REG_A1));
+
+    // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
+    *(registers+REG_V1) = getVirtualContext(fromContext);
+  } else if (debug_switch) {
+    print(binaryName);
+    print((int*) ": context ");
+    printHexadecimal(*(registers+REG_A0), 8);
+    print((int*) " not found for switching in parent context ");
+    printHexadecimal((int) currentContext, 8);
+    println();
+  }
 }
 
-int mipster_switch(int toID, int timeout) {
-  int fromID;
+int* mipster_switch(int* toContext, int timeout) {
+  int* fromContext;
 
   // CAUTION: doSwitch() modifies the global variable registers
   // but some compilers dereference the lvalue *(registers+REG_V1)
   // before evaluating the rvalue doSwitch()
 
-  fromID = doSwitch(toID, timeout);
+  fromContext = doSwitch(toContext, timeout);
 
   // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  *(registers+REG_V1) = fromID;
+  *(registers+REG_V1) = getVirtualContext(fromContext);
 
   runUntilException();
 
-  return getID(currentContext);
+  return currentContext;
 }
 
-int hypster_switch(int toID, int timeout) {
+int* hypster_switch(int* toContext, int timeout) {
   // this procedure is only executed at boot level zero
-  return mipster_switch(toID, timeout);
+  return mipster_switch(toContext, timeout);
 }
 
 void emitStatus() {
@@ -5231,7 +5195,7 @@ int hypster_status() {
 void emitDelete() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
+  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_DELETE);
@@ -5240,40 +5204,40 @@ void emitDelete() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void doDelete(int ID) {
-  int* context;
+void doDelete(int* context) {
+  usedContexts = deleteContext(context, usedContexts);
 
-  context = findContext(ID, usedContexts);
-
-  if (context != (int*) 0) {
-    usedContexts = deleteContext(context, usedContexts);
-
-    if (debug_delete) {
-      print(binaryName);
-      print((int*) ": deleted context ");
-      printInteger(ID);
-      println();
-    }
-  } else if (debug_delete) {
+  if (debug_delete) {
     print(binaryName);
-    print((int*) ": context ");
-    printInteger(ID);
-    print((int*) " not found for deletion");
+    print((int*) ": deleted context ");
+    printHexadecimal((int) context, 8);
     println();
   }
 }
 
 void implementDelete() {
-  doDelete(*(registers+REG_A0));
+  int* context;
+
+  context = findContext(currentContext, *(registers+REG_A0), usedContexts);
+
+  if (context != (int*) 0)
+    doDelete(context);
+  else if (debug_delete) {
+    print(binaryName);
+    print((int*) ": context ");
+    printHexadecimal(*(registers+REG_A0), 8);
+    print((int*) " not found for deletion in parent context ");
+    printHexadecimal((int) currentContext, 8);
+    println();
+  }
 }
 
-void mipster_delete(int ID) {
-  doDelete(ID);
+void mipster_delete(int* context) {
+  doDelete(context);
 }
 
-void hypster_delete(int ID) {
+void hypster_delete(int* context) {
   // this procedure is only executed at boot level zero
-  mipster_delete(ID);
 }
 
 void emitMap() {
@@ -5285,7 +5249,7 @@ void emitMap() {
   emitIFormat(OP_LW, REG_SP, REG_A1, 0); // page
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context ID
+  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
 
   emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MAP);
@@ -5294,63 +5258,49 @@ void emitMap() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void doMap(int ID, int page, int frame) {
-  int* mapContext;
-  int* parentContext;
+void doMap(int* context, int page, int frame) {
+  if (getParent(context) != MY_CONTEXT)
+    // assert: 0 <= frame < VIRTUALMEMORYSIZE
+    frame = getFrameForPage(getPT(getParent(context)), frame / PAGESIZE);
 
-  mapContext = findContext(ID, usedContexts);
+  // on boot level zero frame may be any signed integer
+  mapPage(getPT(context), page, frame);
 
-  if (mapContext != (int*) 0) {
-    if (getParent(mapContext) != selfie_ID()) {
-      parentContext = findContext(getParent(mapContext), usedContexts);
-
-      if (parentContext != (int*) 0)
-        // assert: 0 <= frame < VIRTUALMEMORYSIZE
-        frame = getFrameForPage(getPT(parentContext), frame / PAGESIZE);
-      else if (debug_map) {
-        print(binaryName);
-        print((int*) ": parent context ");
-        printInteger(getParent(mapContext));
-        print((int*) " of context ");
-        printInteger(ID);
-        print((int*) " not found for mapping");
-        println();
-      }
-    }
-
-    // on boot level zero frame may be any signed integer
-    mapPage(getPT(mapContext), page, frame);
-
-    if (debug_map) {
-      print(binaryName);
-      print((int*) ": page ");
-      printHexadecimal(page, 4);
-      print((int*) " mapped to frame ");
-      printHexadecimal(frame, 8);
-      print((int*) " in context ");
-      printInteger(ID);
-      println();
-    }
-  } else if (debug_map) {
+  if (debug_map) {
     print(binaryName);
-    print((int*) ": context ");
-    printInteger(ID);
-    print((int*) " not found for mapping");
+    print((int*) ": page ");
+    printHexadecimal(page, 4);
+    print((int*) " mapped to frame ");
+    printHexadecimal(frame, 8);
+    print((int*) " in context ");
+    printHexadecimal((int) context, 8);
     println();
   }
 }
 
 void implementMap() {
-  doMap(*(registers+REG_A0), *(registers+REG_A1), *(registers+REG_A2));
+  int* context;
+
+  context = findContext(currentContext, *(registers+REG_A0), usedContexts);
+
+  if (context != (int*) 0)
+    doMap(context, *(registers+REG_A1), *(registers+REG_A2));
+  else if (debug_map) {
+    print(binaryName);
+    print((int*) ": context ");
+    printHexadecimal(*(registers+REG_A0), 8);
+    print((int*) " not found for mapping in parent context ");
+    printHexadecimal((int) currentContext, 8);
+    println();
+  }
 }
 
-void mipster_map(int ID, int page, int frame) {
-  doMap(ID, page, frame);
+void mipster_map(int* context, int page, int frame) {
+  doMap(context, page, frame);
 }
 
-void hypster_map(int ID, int page, int frame) {
+void hypster_map(int* context, int page, int frame) {
   // this procedure is only executed at boot level zero
-  mipster_map(ID, page, frame);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5786,8 +5736,6 @@ void fct_syscall() {
       implementOpen();
     else if (*(registers+REG_V0) == SYSCALL_MALLOC)
       implementMalloc();
-    else if (*(registers+REG_V0) == SYSCALL_ID)
-      implementID();
     else if (*(registers+REG_V0) == SYSCALL_CREATE)
       implementCreate();
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
@@ -6175,7 +6123,7 @@ void throwException(int exception, int parameter) {
   if (debug_exception) {
     print(binaryName);
     print((int*) ": context ");
-    printInteger(getID(currentContext));
+    printHexadecimal((int) currentContext, 8);
     print((int*) " throws ");
     printStatus(status);
     print((int*) " exception");
@@ -6403,12 +6351,7 @@ void selfie_disassemble() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int createID(int seed) {
-  // assert: seed < INT_MAX
-  return seed + 1;
-}
-
-int* allocateContext(int ID, int parentID) {
+int* allocateContext(int* parent, int vctxt) {
   int* context;
 
   if (freeContexts == (int*) 0)
@@ -6422,7 +6365,7 @@ int* allocateContext(int ID, int parentID) {
   setNextContext(context, (int*) 0);
   setPrevContext(context, (int*) 0);
 
-  setID(context, ID);
+  setVirtualContext(context, vctxt);
 
   setPC(context, 0);
 
@@ -6440,15 +6383,15 @@ int* allocateContext(int ID, int parentID) {
   // heap starts where it is safe to start
   setBreak(context, maxBinaryLength);
 
-  setParent(context, parentID);
+  setParent(context, parent);
 
   return context;
 }
 
-int* createContext(int ID, int parentID, int* in) {
+int* createContext(int* parent, int vctxt, int* in) {
   int* context;
 
-  context = allocateContext(ID, parentID);
+  context = allocateContext(parent, vctxt);
 
   setNextContext(context, in);
 
@@ -6458,14 +6401,15 @@ int* createContext(int ID, int parentID, int* in) {
   return context;
 }
 
-int* findContext(int ID, int* in) {
+int* findContext(int* parent, int vctxt, int* in) {
   int* context;
 
   context = in;
 
   while (context != (int*) 0) {
-    if (getID(context) == ID)
-      return context;
+    if (getParent(context) == parent)
+      if (getVirtualContext(context) == vctxt)
+        return context;
 
     context = getNextContext(context);
   }
@@ -6687,7 +6631,7 @@ void down_mapPageTable(int* context) {
   page = 0;
 
   while (isPageMapped(getPT(context), page)) {
-    hypster_map(getID(context), page, getFrameForPage(getPT(context), page));
+    hypster_map(context, page, getFrameForPage(getPT(context), page));
 
     page = page + 1;
   }
@@ -6695,32 +6639,29 @@ void down_mapPageTable(int* context) {
   page = (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE;
 
   while (isPageMapped(getPT(context), page)) {
-    hypster_map(getID(context), page, getFrameForPage(getPT(context), page));
+    hypster_map(context, page, getFrameForPage(getPT(context), page));
 
     page = page - 1;
   }
 }
 
-int runUntilExitWithoutExceptionHandling(int toID) {
+int runUntilExitWithoutExceptionHandling(int* toContext) {
   // works only with mipsters
-  int fromID;
   int* fromContext;
   int savedStatus;
   int exceptionNumber;
 
   while (1) {
-    fromID = mipster_switch(toID, TIMESLICE);
-
-    fromContext = findContext(fromID, usedContexts);
+    fromContext = mipster_switch(toContext, TIMESLICE);
 
     // assert: fromContext must be in usedContexts (created here)
 
-    if (getParent(fromContext) != selfie_ID())
+    if (getParent(fromContext) != MY_CONTEXT)
       // switch to parent which is in charge of handling exceptions
-      toID = getParent(fromContext);
+      toContext = getParent(fromContext);
     else {
       // we are the parent in charge of handling exit exceptions
-      savedStatus = doStatus();
+      savedStatus = mipster_status();
 
       exceptionNumber = decodeExceptionNumber(savedStatus);
 
@@ -6730,21 +6671,20 @@ int runUntilExitWithoutExceptionHandling(int toID) {
       else if (exceptionNumber != EXCEPTION_TIMER) {
         print(binaryName);
         print((int*) ": context ");
-        printInteger(getID(fromContext));
+        printHexadecimal((int) fromContext, 8);
         print((int*) " throws uncaught ");
         printStatus(savedStatus);
         println();
 
         return -1;
       } else
-        toID = fromID;
+        toContext = fromContext;
     }
   }
 }
 
-int runOrHostUntilExitWithPageFaultHandling(int toID) {
+int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
   // works with mipsters and hypsters
-  int fromID;
   int* fromContext;
   int savedStatus;
   int exceptionNumber;
@@ -6753,17 +6693,15 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
 
   while (1) {
     if (mipster)
-      fromID = mipster_switch(toID, TIMESLICE);
+      fromContext = mipster_switch(toContext, TIMESLICE);
     else
-      fromID = hypster_switch(toID, TIMESLICE);
-
-    fromContext = findContext(fromID, usedContexts);
+      fromContext = hypster_switch(toContext, TIMESLICE);
 
     // assert: fromContext must be in usedContexts (created here)
 
-    if (getParent(fromContext) != selfie_ID())
+    if (getParent(fromContext) != MY_CONTEXT)
       // switch to parent which is in charge of handling exceptions
-      toID = getParent(fromContext);
+      toContext = getParent(fromContext);
     else {
       // we are the parent in charge of handling exceptions
       if (mipster)
@@ -6778,17 +6716,17 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
         frame = (int) palloc();
 
         // TODO: use this table to unmap and reuse frames
-        mipster_map(fromID, exceptionParameter, frame);
+        mipster_map(fromContext, exceptionParameter, frame);
 
         // page table on microkernel boot level
-        hypster_map(fromID, exceptionParameter, frame);
+        hypster_map(fromContext, exceptionParameter, frame);
       } else if (exceptionNumber == EXCEPTION_EXIT)
         // TODO: only return if all contexts have exited
         return exceptionParameter;
       else if (exceptionNumber != EXCEPTION_TIMER) {
         print(binaryName);
         print((int*) ": context ");
-        printInteger(getID(fromContext));
+        printHexadecimal((int) fromContext, 8);
         print((int*) " throws uncaught ");
         printStatus(savedStatus);
         println();
@@ -6797,14 +6735,13 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
       }
 
       // TODO: scheduler should go here
-      toID = fromID;
+      toContext = fromContext;
     }
   }
 }
 
 int bootminmob(int argc, int* argv, int machine) {
   // works only with mipsters
-  int initID;
   int exitCode;
 
   print(selfieName);
@@ -6823,20 +6760,20 @@ int bootminmob(int argc, int* argv, int machine) {
   resetInterpreter();
   resetMicrokernel();
 
-  // create initial context on our boot level
-  initID = mipster_create();
+  // create initial context on my boot level
+  mipster_create(0);
 
-  up_loadBinary(getPT(usedContexts));
+  up_loadBinary(getPT(currentContext));
 
-  up_loadArguments(getPT(usedContexts), argc, argv);
+  up_loadArguments(getPT(currentContext), argc, argv);
 
   if (machine == MINSTER)
     // virtual is like physical memory in initial context up to memory size
     // by mapping unmapped pages (for the heap) to all available page frames
     // CAUTION: consumes memory even when not used
-    mapUnmappedPages(getPT(usedContexts));
+    mapUnmappedPages(getPT(currentContext));
 
-  exitCode = runUntilExitWithoutExceptionHandling(initID);
+  exitCode = runUntilExitWithoutExceptionHandling(currentContext);
 
   print(selfieName);
   print((int*) ": this is selfie's ");
@@ -6858,7 +6795,6 @@ int bootminmob(int argc, int* argv, int machine) {
 
 int boot(int argc, int* argv) {
   // works with mipsters and hypsters
-  int initID;
   int exitCode;
 
   print(selfieName);
@@ -6879,25 +6815,21 @@ int boot(int argc, int* argv) {
 
   resetMicrokernel();
 
-  // create initial context on microkernel boot level
-  initID = hypster_create();
+  // create initial context on my boot level
+  mipster_create(0);
 
-  if (usedContexts == (int*) 0)
-    // create duplicate of the initial context on our boot level
-    usedContexts = createContext(initID, selfie_ID(), (int*) 0);
+  // create duplicate of the initial context on microkernel boot level
+  hypster_create(currentContext);
 
-  if (currentContext == (int*) 0)
-    currentContext = usedContexts;
+  up_loadBinary(getPT(currentContext));
 
-  up_loadBinary(getPT(usedContexts));
-
-  up_loadArguments(getPT(usedContexts), argc, argv);
+  up_loadArguments(getPT(currentContext), argc, argv);
 
   // propagate page table of initial context to microkernel boot level
-  down_mapPageTable(usedContexts);
+  down_mapPageTable(currentContext);
 
   // mipsters and hypsters handle page faults
-  exitCode = runOrHostUntilExitWithPageFaultHandling(initID);
+  exitCode = runOrHostUntilExitWithPageFaultHandling(currentContext);
 
   print(selfieName);
   print((int*) ": this is selfie's ");
