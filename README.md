@@ -13,7 +13,7 @@ Selfie is a fully self-referential 7k-line C implementation of:
 3. a self-hosting hypervisor called hypster which is based on a tiny microkernel implemented in mipster and provides MIPSter virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself, and
 4. a tiny C* library called libcstar utilized by selfie.
 
-For further information and support please refer to [http://selfie.cs.uni-salzburg.at]()
+For further information and support please refer to [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
 ## Supported Platforms
 
