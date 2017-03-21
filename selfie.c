@@ -1034,8 +1034,8 @@ int ir = 0; // instruction register
 
 int* registers = (int*) 0; // general-purpose registers
 
-int reg_hi = 0; // hi register for multiplication/division
-int reg_lo = 0; // lo register for multiplication/division
+int loReg = 0; // lo register for multiplication/division
+int hiReg = 0; // hi register for multiplication/division
 
 int* pt = (int*) 0; // page table
 
@@ -1083,8 +1083,8 @@ void resetInterpreter() {
 
   registers = (int*) 0;
 
-  reg_hi = 0;
-  reg_lo = 0;
+  loReg = 0;
+  hiReg = 0;
 
   pt = (int*) 0;
 
@@ -1128,40 +1128,63 @@ int* deleteContext(int* context, int* from);
 void mapPage(int* table, int page, int frame);
 
 // context struct:
-// +---+--------+
-// | 0 | next   | pointer to next context
-// | 1 | prev   | pointer to previous context
-// | 2 | vctxt  | virtual context address
-// | 3 | pc     | program counter
-// | 4 | regs   | pointer to general purpose registers
-// | 5 | reg_hi | hi register
-// | 6 | reg_lo | lo register
-// | 7 | pt     | pointer to page table
-// | 8 | brk    | break between code, data, and heap
-// | 9 | parent | context that created this context
-// +---+--------+
+// +----+--------+
+// |  0 | next   | pointer to next context
+// |  1 | prev   | pointer to previous context
+// |  2 | pc     | program counter
+// |  3 | regs   | pointer to general purpose registers
+// |  4 | loReg  | lo register
+// |  5 | hiReg  | hi register
+// |  6 | pt     | pointer to page table
+// |  7 | loPage | lowest low unmapped page
+// |  8 | mePage | highest low unmapped page
+// |  9 | hiPage | highest high unmapped page
+// | 10 | brk    | break between code, data, and heap
+// | 11 | parent | context that created this context
+// | 12 | vctxt  | virtual context address
+// +----+--------+
+
+int* nextContext(int* context)    { return context; }
+int* prevContext(int* context)    { return context + 1; }
+int* PC(int* context)             { return context + 2; }
+int* Regs(int* context)           { return context + 3; }
+int* LoReg(int* context)          { return context + 4; }
+int* HiReg(int* context)          { return context + 5; }
+int* PT(int* context)             { return context + 6; }
+int* LoPage(int* context)         { return context + 7; }
+int* MePage(int* context)         { return context + 8; }
+int* HiPage(int* context)         { return context + 9; }
+int* ProgramBreak(int* context)   { return context + 10; }
+int* Parent(int* context)         { return context + 11; }
+int* VirtualContext(int* context) { return context + 12; }
 
 int* getNextContext(int* context)    { return (int*) *context; }
 int* getPrevContext(int* context)    { return (int*) *(context + 1); }
-int  getVirtualContext(int* context) { return        *(context + 2); }
-int  getPC(int* context)             { return        *(context + 3); }
-int* getRegs(int* context)           { return (int*) *(context + 4); }
-int  getRegHi(int* context)          { return        *(context + 5); }
-int  getRegLo(int* context)          { return        *(context + 6); }
-int* getPT(int* context)             { return (int*) *(context + 7); }
-int  getBreak(int* context)          { return        *(context + 8); }
-int* getParent(int* context)         { return (int*) *(context + 9); }
+int  getPC(int* context)             { return        *(context + 2); }
+int* getRegs(int* context)           { return (int*) *(context + 3); }
+int  getLoReg(int* context)          { return        *(context + 4); }
+int  getHiReg(int* context)          { return        *(context + 5); }
+int* getPT(int* context)             { return (int*) *(context + 6); }
+int  getLoPage(int* context)         { return        *(context + 7); }
+int  getMePage(int* context)         { return        *(context + 8); }
+int  getHiPage(int* context)         { return        *(context + 9); }
+int  getProgramBreak(int* context)   { return        *(context + 10); }
+int* getParent(int* context)         { return (int*) *(context + 11); }
+int  getVirtualContext(int* context) { return        *(context + 12); }
 
-void setNextContext(int* context, int* next)    { *context       = (int) next; }
-void setPrevContext(int* context, int* prev)    { *(context + 1) = (int) prev; }
-void setVirtualContext(int* context, int vctxt) { *(context + 2) = vctxt; }
-void setPC(int* context, int pc)                { *(context + 3) = pc; }
-void setRegs(int* context, int* regs)           { *(context + 4) = (int) regs; }
-void setRegHi(int* context, int reg_hi)         { *(context + 5) = reg_hi; }
-void setRegLo(int* context, int reg_lo)         { *(context + 6) = reg_lo; }
-void setPT(int* context, int* pt)               { *(context + 7) = (int) pt; }
-void setBreak(int* context, int brk)            { *(context + 8) = brk; }
-void setParent(int* context, int* parent)       { *(context + 9) = (int) parent; }
+void setNextContext(int* context, int* next) { *context       = (int) next; }
+void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
+void setPC(int* context, int pc)             { *(context + 2) = pc; }
+void setRegs(int* context, int* regs)        { *(context + 3) = (int) regs; }
+void setLoReg(int* context, int loReg)       { *(context + 4) = loReg; }
+void setHiReg(int* context, int hiReg)       { *(context + 5) = hiReg; }
+void setPT(int* context, int* pt)            { *(context + 6) = (int) pt; }
+void setLoPage(int* context, int loPage)     { *(context + 7) = loPage; }
+void setMePage(int* context, int mePage)     { *(context + 8) = mePage; }
+void setHiPage(int* context, int hiPage)     { *(context + 9) = hiPage; }
+void setProgramBreak(int* context, int brk)  { *(context + 10) = brk; }
+void setParent(int* context, int* parent) { *(context + 11) = (int) parent; }
+void setVirtualContext(int* context, int vctxt) { *(context + 12) = vctxt; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -5112,23 +5135,20 @@ void implementSwitch() {
 
   toContext = findContext(currentContext, *(registers+REG_A0), usedContexts);
 
-  if (toContext != (int*) 0) {
-    // CAUTION: doSwitch() modifies the global variable registers
-    // but some compilers dereference the lvalue *(registers+REG_V1)
-    // before evaluating the rvalue doSwitch()
+  if (toContext == (int*) 0) {
+    doCreate(currentContext, *(registers+REG_A0));
 
-    fromContext = doSwitch(toContext, *(registers+REG_A1));
-
-    // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-    *(registers+REG_V1) = getVirtualContext(fromContext);
-  } else if (debug_switch) {
-    print(binaryName);
-    print((int*) ": context ");
-    printHexadecimal(*(registers+REG_A0), 8);
-    print((int*) " not found for switching in parent context ");
-    printHexadecimal((int) currentContext, 8);
-    println();
+    toContext = usedContexts;
   }
+
+  // CAUTION: doSwitch() modifies the global variable registers
+  // but some compilers dereference the lvalue *(registers+REG_V1)
+  // before evaluating the rvalue doSwitch()
+
+  fromContext = doSwitch(toContext, *(registers+REG_A1));
+
+  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
+  *(registers+REG_V1) = getVirtualContext(fromContext);
 }
 
 int* mipster_switch(int* toContext, int timeout) {
@@ -5297,6 +5317,12 @@ void implementMap() {
 
 void mipster_map(int* context, int page, int frame) {
   doMap(context, page, frame);
+
+  // exploit spatial locality in page table caching
+  if (page < getLoPage(context))
+    setLoPage(context, page);
+  else if (getMePage(context) < page)
+    setMePage(context, page);
 }
 
 void hypster_map(int* context, int page, int frame) {
@@ -5526,13 +5552,13 @@ void fct_multu() {
       print((int*) "=");
       printInteger(*(registers+rt));
       print((int*) ",$lo=");
-      printInteger(reg_lo);
+      printInteger(loReg);
     }
   }
 
   if (interpret) {
     // TODO: 64-bit resolution currently not supported
-    reg_lo = *(registers+rs) * *(registers+rt);
+    loReg = *(registers+rs) * *(registers+rt);
 
     pc = pc + WORDSIZE;
   }
@@ -5540,7 +5566,7 @@ void fct_multu() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $lo=");
-      printInteger(reg_lo);
+      printInteger(loReg);
     }
     println();
   }
@@ -5563,15 +5589,15 @@ void fct_divu() {
       print((int*) "=");
       printInteger(*(registers+rt));
       print((int*) ",$lo=");
-      printInteger(reg_lo);
+      printInteger(loReg);
       print((int*) ",$hi=");
-      printInteger(reg_hi);
+      printInteger(hiReg);
     }
   }
 
   if (interpret) {
-    reg_lo = *(registers+rs) / *(registers+rt);
-    reg_hi = *(registers+rs) % *(registers+rt);
+    loReg = *(registers+rs) / *(registers+rt);
+    hiReg = *(registers+rs) % *(registers+rt);
 
     pc = pc + WORDSIZE;
   }
@@ -5579,9 +5605,9 @@ void fct_divu() {
   if (debug) {
     if (interpret) {
       print((int*) " -> $lo=");
-      printInteger(reg_lo);
+      printInteger(loReg);
       print((int*) ",$hi=");
-      printInteger(reg_hi);
+      printInteger(hiReg);
     }
     println();
   }
@@ -5598,12 +5624,12 @@ void fct_mfhi() {
       print((int*) "=");
       printInteger(*(registers+rd));
       print((int*) ",$hi=");
-      printInteger(reg_hi);
+      printInteger(hiReg);
     }
   }
 
   if (interpret) {
-    *(registers+rd) = reg_hi;
+    *(registers+rd) = hiReg;
 
     pc = pc + WORDSIZE;
   }
@@ -5630,12 +5656,12 @@ void fct_mflo() {
       print((int*) "=");
       printInteger(*(registers+rd));
       print((int*) ",$lo=");
-      printInteger(reg_lo);
+      printInteger(loReg);
     }
   }
 
   if (interpret) {
-    *(registers+rd) = reg_lo;
+    *(registers+rd) = loReg;
 
     pc = pc + WORDSIZE;
   }
@@ -6355,7 +6381,7 @@ int* allocateContext(int* parent, int vctxt) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = malloc(4 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+    context = malloc(5 * SIZEOFINTSTAR + 8 * SIZEOFINT);
   else {
     context = freeContexts;
 
@@ -6365,25 +6391,29 @@ int* allocateContext(int* parent, int vctxt) {
   setNextContext(context, (int*) 0);
   setPrevContext(context, (int*) 0);
 
-  setVirtualContext(context, vctxt);
-
   setPC(context, 0);
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
   setRegs(context, zalloc(NUMBEROFREGISTERS * WORDSIZE));
 
-  setRegHi(context, 0);
-  setRegLo(context, 0);
+  setLoReg(context, 0);
+  setHiReg(context, 0);
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
   setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * WORDSIZE));
 
+  setLoPage(context, 0);
+  setMePage(context, 0);
+  setHiPage(context, (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE);
+
   // heap starts where it is safe to start
-  setBreak(context, maxBinaryLength);
+  setProgramBreak(context, maxBinaryLength);
 
   setParent(context, parent);
+
+  setVirtualContext(context, vctxt);
 
   return context;
 }
@@ -6417,20 +6447,105 @@ int* findContext(int* parent, int vctxt, int* in) {
   return (int*) 0;
 }
 
+void down_cachePageTable(int* context) {
+  int virtualContext;
+  int* parentTable;
+  int* table;
+  int page;
+  int mePage;
+
+  virtualContext = getVirtualContext(context);
+
+  if (virtualContext != 0) {
+    parentTable = getPT(getParent(context));
+
+    table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
+
+    // assert: context page table is only mapped from beginning up and end down
+
+    page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
+
+    while (loadVirtualMemory(parentTable, (int) (table + page)) != 0) {
+      //printHexadecimal((int) context,8);print((int*) ", ");printHexadecimal(virtualContext,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(mePage,8);print((int*) ", ");printHexadecimal(loadVirtualMemory(parentTable, (int) (table + page)),8);println();
+
+      doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
+
+      page = page + 1;
+    }
+
+    mePage = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
+
+    while (page <= mePage) {
+      //printHexadecimal((int) context,8);print((int*) ", ");printHexadecimal(virtualContext,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(mePage,8);print((int*) ", ");printHexadecimal(loadVirtualMemory(parentTable, (int) (table + page)),8);println();
+
+      if (loadVirtualMemory(parentTable, (int) (table + page)) != 0)
+        doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
+
+      page = page + 1;
+    }
+
+    storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), mePage + 1);
+
+    page = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
+
+    while (loadVirtualMemory(parentTable, (int) (table + page)) != 0) {
+      //printHexadecimal(context,8);print((int*) ", ");printHexadecimal(virtualContext,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(loadVirtualMemory(parentTable, (int) (table + page)),8);println();
+
+      doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
+
+      page = page - 1;
+    }
+
+    storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
+  }
+}
+
+void down_mapPageTable(int* context) {
+  int page;
+
+  // assert: context page table is only mapped from beginning up and end down
+
+  page = 0;
+
+  while (isPageMapped(getPT(context), page)) {
+    //printHexadecimal(context,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(getFrameForPage(getPT(context), page),8);println();
+
+    hypster_map(context, page, getFrameForPage(getPT(context), page));
+
+    page = page + 1;
+  }
+
+  //setLoPage(context, page);
+
+  page = (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE;
+
+  while (isPageMapped(getPT(context), page)) {
+    //printHexadecimal(context,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(getFrameForPage(getPT(context), page),8);println();
+
+    hypster_map(context, page, getFrameForPage(getPT(context), page));
+
+    page = page - 1;
+  }
+
+  //setHiPage(context, page);
+}
+
 void switchContext(int* from, int* to) {
   // save machine state
   setPC(from, pc);
-  setRegHi(from, reg_hi);
-  setRegLo(from, reg_lo);
-  setBreak(from, brk);
+  setLoReg(from, loReg);
+  setHiReg(from, hiReg);
+  setProgramBreak(from, brk);
 
   // restore machine state
   pc        = getPC(to);
   registers = getRegs(to);
-  reg_hi    = getRegHi(to);
-  reg_lo    = getRegLo(to);
+  loReg     = getLoReg(to);
+  hiReg     = getHiReg(to);
   pt        = getPT(to);
-  brk       = getBreak(to);
+  brk       = getProgramBreak(to);
+
+  down_cachePageTable(to);
 }
 
 void freeContext(int* context) {
@@ -6623,28 +6738,6 @@ void mapUnmappedPages(int* table) {
   }
 }
 
-void down_mapPageTable(int* context) {
-  int page;
-
-  // assert: context page table is only mapped from beginning up and end down
-
-  page = 0;
-
-  while (isPageMapped(getPT(context), page)) {
-    hypster_map(context, page, getFrameForPage(getPT(context), page));
-
-    page = page + 1;
-  }
-
-  page = (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE;
-
-  while (isPageMapped(getPT(context), page)) {
-    hypster_map(context, page, getFrameForPage(getPT(context), page));
-
-    page = page - 1;
-  }
-}
-
 int runUntilExitWithoutExceptionHandling(int* toContext) {
   // works only with mipsters
   int* fromContext;
@@ -6719,7 +6812,7 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
         mipster_map(fromContext, exceptionParameter, frame);
 
         // page table on microkernel boot level
-        hypster_map(fromContext, exceptionParameter, frame);
+        //hypster_map(fromContext, exceptionParameter, frame);
       } else if (exceptionNumber == EXCEPTION_EXIT)
         // TODO: only return if all contexts have exited
         return exceptionParameter;
@@ -6819,14 +6912,14 @@ int boot(int argc, int* argv) {
   mipster_create(0);
 
   // create duplicate of the initial context on microkernel boot level
-  hypster_create(currentContext);
+  //hypster_create(currentContext);
 
   up_loadBinary(getPT(currentContext));
 
   up_loadArguments(getPT(currentContext), argc, argv);
 
   // propagate page table of initial context to microkernel boot level
-  down_mapPageTable(currentContext);
+  //down_mapPageTable(currentContext);
 
   // mipsters and hypsters handle page faults
   exitCode = runOrHostUntilExitWithPageFaultHandling(currentContext);
