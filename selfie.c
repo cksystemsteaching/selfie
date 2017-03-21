@@ -574,6 +574,7 @@ void emitLeftShiftBy(int b);
 void emitMainEntry();
 void createELFHeader();
 void createELFSectionHeader(int start, int name, int type, int flags, int addr, int off, int size, int link, int info, int align, int entsize);
+void createELFProgramHeader(int type, int offset, int vaddr, int paddr, int fsize, int memsize, int flags, int align); 
 void bootstrapCode();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -4104,14 +4105,8 @@ void createELFHeader() {
   *(ELF_header + 12) = 196612;   // # of section headers (4) and section header string table index (3)
 
   // Program Header
-  *(ELF_header + 13) = 1;               // Type of program header (LOAD)
-  *(ELF_header + 14) = ELF_HEADER_LEN+4;// Offset to 1. byte of segment (extra 4B for binaryLength)
-  *(ELF_header + 15) = ELF_ENTRY_POINT; // Virtual address
-  *(ELF_header + 16) = 0;               // Physical address
-  *(ELF_header + 17) = binaryLength;    // File size
-  *(ELF_header + 18) = binaryLength;    // Memory size
-  *(ELF_header + 19) = 7;               // Flags (Read, Write, Execute)
-  *(ELF_header + 20) = 4096;            // Alignment of segments
+  createELFProgramHeader(1, ELF_HEADER_LEN+4, ELF_ENTRY_POINT, 
+                         0, binaryLength, binaryLength, 7, 4096); 
 
   // Section Header 0 (Zero-Header)
   createELFSectionHeader(21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -4135,6 +4130,17 @@ void createELFHeader() {
   *(ELF_header + 64) = 1752378880;  // 0.sh
   *(ELF_header + 65) = 1953657971;  // strt
   *(ELF_header + 66) = 25185;       // ab
+}
+
+void createELFProgramHeader(int type, int offset, int vaddr, int paddr, int fsize, int memsize, int flags, int align) {
+  *(ELF_header + 13) = type;    // Type of program header (LOAD)
+  *(ELF_header + 14) = offset;  // Offset to 1. byte of segment (extra 4B for binaryLength)
+  *(ELF_header + 15) = vaddr;   // Virtual address
+  *(ELF_header + 16) = paddr;   // Physical address
+  *(ELF_header + 17) = fsize;   // File size
+  *(ELF_header + 18) = memsize; // Memory size
+  *(ELF_header + 19) = flags;   // Flags (Read, Write, Execute)
+  *(ELF_header + 20) = align;   // Alignment of segments
 }
 
 void createELFSectionHeader(int start, int name, int type, int flags, int addr, int off, int size, int link, int info, int align, int entsize) {
