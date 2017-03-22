@@ -851,7 +851,7 @@ int SYSCALL_MALLOC = 4045;
 // -----------------------------------------------------------------
 
 void emitSwitch();
-int* doSwitch(int* toContext, int timeout);
+void doSwitch(int* toContext, int timeout);
 void implementSwitch();
 int* mipster_switch(int* toContext, int timeout);
 
@@ -1096,8 +1096,6 @@ int* allocateContext(int* parent, int vctxt, int* in);
 
 int* findContext(int* parent, int vctxt, int* in);
 
-void cacheContext(int* context);
-
 void switchContext(int* from, int* to);
 
 void freeContext(int* context);
@@ -1168,10 +1166,12 @@ void setVirtualContext(int* context, int vctxt) { *(context + 12) = vctxt; }
 
 void resetMicrokernel();
 
-void createContext(int* parent, int vctxt);
+int* createContext(int* parent, int vctxt);
 
 void mapPage(int* context, int page, int frame);
 void mapAndStore(int* context, int vaddr, int data);
+
+int* cacheContext(int virtualContext);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -5039,12 +5039,17 @@ void emitSwitch() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int* doSwitch(int* toContext, int timeout) {
+void doSwitch(int* toContext, int timeout) {
   int* fromContext;
 
   fromContext = currentContext;
 
+  // CAUTION: switchContext() modifies the global variable registers
+
   switchContext(currentContext, toContext);
+
+  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
+  *(registers+REG_V1) = getVirtualContext(fromContext);
 
   currentContext = toContext;
 
@@ -5063,45 +5068,15 @@ int* doSwitch(int* toContext, int timeout) {
     }
     println();
   }
-
-  return fromContext;
 }
 
 void implementSwitch() {
-  int* toContext;
-  int* fromContext;
-
-  // find cached context on my boot level
-  toContext = findContext(currentContext, *(registers+REG_A0), usedContexts);
-
-  if (toContext == (int*) 0) {
-    // create cached context on my boot level
-    createContext(currentContext, *(registers+REG_A0));
-
-    toContext = usedContexts;
-  }
-
-  // CAUTION: doSwitch() modifies the global variable registers
-  // but some compilers dereference the lvalue *(registers+REG_V1)
-  // before evaluating the rvalue doSwitch()
-
-  fromContext = doSwitch(toContext, *(registers+REG_A1));
-
-  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  *(registers+REG_V1) = getVirtualContext(fromContext);
+  // cache recent page mappings on my boot level before switching
+  doSwitch(cacheContext(*(registers+REG_A0)), *(registers+REG_A1));
 }
 
 int* mipster_switch(int* toContext, int timeout) {
-  int* fromContext;
-
-  // CAUTION: doSwitch() modifies the global variable registers
-  // but some compilers dereference the lvalue *(registers+REG_V1)
-  // before evaluating the rvalue doSwitch()
-
-  fromContext = doSwitch(toContext, timeout);
-
-  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  *(registers+REG_V1) = getVirtualContext(fromContext);
+  doSwitch(toContext, timeout);
 
   runUntilException();
 
@@ -6246,55 +6221,6 @@ int* findContext(int* parent, int vctxt, int* in) {
   return (int*) 0;
 }
 
-void cacheContext(int* context) {
-  int virtualContext;
-  int* parentTable;
-  int* table;
-  int page;
-  int me;
-  int frame;
-
-  virtualContext = getVirtualContext(context);
-
-  if (virtualContext != 0) {
-    // assert: context has parent
-
-    parentTable = getPT(getParent(context));
-
-    table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
-
-    // assert: context page table is only mapped from beginning up and end down
-
-    page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
-    me   = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
-
-    while (page <= me) {
-      frame = loadVirtualMemory(parentTable, (int) (table + page));
-
-      if (frame != 0)
-        // assert: 0 <= frame < VIRTUALMEMORYSIZE
-        mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
-
-      page = page + 1;
-    }
-
-    storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), page);
-
-    page  = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
-    frame = loadVirtualMemory(parentTable, (int) (table + page));
-
-    while (frame != 0) {
-      // assert: 0 <= frame < VIRTUALMEMORYSIZE
-      mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
-
-      page  = page - 1;
-      frame = loadVirtualMemory(parentTable, (int) (table + page));
-    }
-
-    storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
-  }
-}
-
 void switchContext(int* from, int* to) {
   // save machine state
   setPC(from, pc);
@@ -6309,9 +6235,6 @@ void switchContext(int* from, int* to) {
   hiReg     = getHiReg(to);
   pt        = getPT(to);
   brk       = getProgramBreak(to);
-
-  // cache recent page mappings on my boot level
-  cacheContext(to);
 }
 
 void freeContext(int* context) {
@@ -6339,7 +6262,7 @@ int* deleteContext(int* context, int* from) {
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
 
-void createContext(int* parent, int vctxt) {
+int* createContext(int* parent, int vctxt) {
   // TODO: check if context already exists
   usedContexts = allocateContext(parent, vctxt, usedContexts);
 
@@ -6354,6 +6277,8 @@ void createContext(int* parent, int vctxt) {
     printHexadecimal((int) usedContexts, 8);
     println();
   }
+
+  return usedContexts;
 }
 
 void mapPage(int* context, int page, int frame) {
@@ -6394,6 +6319,58 @@ void mapAndStore(int* context, int vaddr, int data) {
     mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
 
   storeVirtualMemory(getPT(context), vaddr, data);
+}
+
+int* cacheContext(int virtualContext) {
+  int* context;
+  int* parentTable;
+  int* table;
+  int page;
+  int me;
+  int frame;
+
+  // find cached context on my boot level
+  context = findContext(currentContext, virtualContext, usedContexts);
+
+  if (context == (int*) 0)
+    // create cached context on my boot level
+    context = createContext(currentContext, virtualContext);
+
+  parentTable = getPT(currentContext);
+
+  table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
+
+  // assert: context page table is only mapped from beginning up and end down
+
+  page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
+  me   = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
+
+  while (page <= me) {
+    frame = loadVirtualMemory(parentTable, (int) (table + page));
+
+    if (frame != 0)
+      // assert: 0 <= frame < VIRTUALMEMORYSIZE
+      mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
+
+    page = page + 1;
+  }
+
+  storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), page);
+
+  page  = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
+  frame = loadVirtualMemory(parentTable, (int) (table + page));
+
+  while (frame != 0) {
+    // assert: 0 <= frame < VIRTUALMEMORYSIZE
+    mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
+
+    page  = page - 1;
+    frame = loadVirtualMemory(parentTable, (int) (table + page));
+  }
+
+  storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
+
+  return context;
 }
 
 // -----------------------------------------------------------------
