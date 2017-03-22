@@ -864,22 +864,15 @@ void doDelete(int* context);
 void implementDelete();
 void mipster_delete(int* context);
 
-void emitMap();
-void doMap(int* context, int page, int frame);
-void implementMap();
-void mipster_map(int* context, int page, int frame);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+int SYSCALL_SWITCH = 4901;
+int SYSCALL_STATUS = 4902;
+int SYSCALL_DELETE = 4903;
 
 int debug_switch = 0;
 int debug_status = 0;
 int debug_delete = 0;
-int debug_map    = 0;
-
-int SYSCALL_SWITCH = 4902;
-int SYSCALL_STATUS = 4903;
-int SYSCALL_DELETE = 4904;
-int SYSCALL_MAP    = 4905;
 
 int mipster = 0; // flag for forcing to use mipster rather than hypster
 
@@ -1117,9 +1110,6 @@ void switchContext(int* from, int* to);
 void freeContext(int* context);
 int* deleteContext(int* context, int* from);
 
-void mapPage(int* context, int page, int frame);
-void mapAndStoreVirtualMemory(int* context, int vaddr, int data);
-
 // context struct:
 // +----+--------+
 // |  0 | next   | pointer to next context
@@ -1187,11 +1177,15 @@ void resetMicrokernel();
 
 void createContext(int* parent, int vctxt);
 
+void mapPage(int* context, int page, int frame);
+void mapAndStore(int* context, int vaddr, int data);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int debug_create = 0;
-
 int* MY_CONTEXT = (int*) 0;
+
+int debug_create = 0;
+int debug_map    = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -4016,7 +4010,6 @@ void selfie_compile() {
   emitSwitch();
   emitStatus();
   emitDelete();
-  emitMap();
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -5215,69 +5208,6 @@ void hypster_delete(int* context) {
   // this procedure is only executed at boot level zero
 }
 
-void emitMap() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_map", 0, PROCEDURE, VOID_T, 0, binaryLength);
-
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // frame
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
-
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // page
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
-
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
-
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MAP);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
-
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
-}
-
-void doMap(int* context, int page, int frame) {
-  if (getParent(context) != MY_CONTEXT)
-    // assert: 0 <= frame < VIRTUALMEMORYSIZE
-    frame = getFrameForPage(getPT(getParent(context)), frame / PAGESIZE);
-
-  // on boot level zero frame may be any signed integer
-  mapPage(context, page, frame);
-
-  if (debug_map) {
-    print(binaryName);
-    print((int*) ": page ");
-    printHexadecimal(page, 4);
-    print((int*) " mapped to frame ");
-    printHexadecimal(frame, 8);
-    print((int*) " in context ");
-    printHexadecimal((int) context, 8);
-    println();
-  }
-}
-
-void implementMap() {
-  int* context;
-
-  context = findContext(currentContext, *(registers+REG_A0), usedContexts);
-
-  if (context != (int*) 0)
-    doMap(context, *(registers+REG_A1), *(registers+REG_A2));
-  else if (debug_map) {
-    print(binaryName);
-    print((int*) ": context ");
-    printHexadecimal(*(registers+REG_A0), 8);
-    print((int*) " not found for mapping in parent context ");
-    printHexadecimal((int) currentContext, 8);
-    println();
-  }
-}
-
-void mipster_map(int* context, int page, int frame) {
-  doMap(context, page, frame);
-}
-
-void hypster_map(int* context, int page, int frame) {
-  // this procedure is only executed at boot level zero
-}
-
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------    E M U L A T O R    ---------------------
@@ -5708,8 +5638,6 @@ void fct_syscall() {
       implementStatus();
     else if (*(registers+REG_V0) == SYSCALL_DELETE)
       implementDelete();
-    else if (*(registers+REG_V0) == SYSCALL_MAP)
-      implementMap();
     else {
       pc = pc - WORDSIZE;
 
@@ -6381,7 +6309,8 @@ void cacheContext(int* context) {
   int* parentTable;
   int* table;
   int page;
-  int mePage;
+  int me;
+  int frame;
 
   virtualContext = getVirtualContext(context);
 
@@ -6393,24 +6322,29 @@ void cacheContext(int* context) {
     // assert: context page table is only mapped from beginning up and end down
 
     page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
+    me   = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
 
-    mePage = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
+    while (page <= me) {
+      frame = loadVirtualMemory(parentTable, (int) (table + page));
 
-    while (page <= mePage) {
-      if (loadVirtualMemory(parentTable, (int) (table + page)) != 0)
-        doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
+      if (frame != 0)
+        // assert: 0 <= frame < VIRTUALMEMORYSIZE
+        mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
 
       page = page + 1;
     }
 
     storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), page);
 
-    page = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
+    page  = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
+    frame = loadVirtualMemory(parentTable, (int) (table + page));
 
-    while (loadVirtualMemory(parentTable, (int) (table + page)) != 0) {
-      doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
+    while (frame != 0) {
+      // assert: 0 <= frame < VIRTUALMEMORYSIZE
+      mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
 
-      page = page - 1;
+      page  = page - 1;
+      frame = loadVirtualMemory(parentTable, (int) (table + page));
     }
 
     storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
@@ -6457,32 +6391,6 @@ int* deleteContext(int* context, int* from) {
   return from;
 }
 
-void mapPage(int* context, int page, int frame) {
-  int* table;
-
-  table = getPT(context);
-
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
-  *(table + page) = frame;
-
-  // exploit spatial locality in page table caching
-  if (page != getHiPage(context)) {
-    if (page < getLoPage(context))
-      setLoPage(context, page);
-    else if (getMePage(context) < page)
-      setMePage(context, page);
-  }
-}
-
-void mapAndStoreVirtualMemory(int* context, int vaddr, int data) {
-  // assert: isValidVirtualAddress(vaddr) == 1
-
-  if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
-    mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
-
-  storeVirtualMemory(getPT(context), vaddr, data);
-}
-
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
@@ -6502,6 +6410,46 @@ void createContext(int* parent, int vctxt) {
     printHexadecimal((int) usedContexts, 8);
     println();
   }
+}
+
+void mapPage(int* context, int page, int frame) {
+  int* table;
+
+  table = getPT(context);
+
+  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+
+  // on boot level zero frame may be any signed integer
+
+  *(table + page) = frame;
+
+  // exploit spatial locality in page table caching
+  if (page != getHiPage(context)) {
+    if (page < getLoPage(context))
+      setLoPage(context, page);
+    else if (getMePage(context) < page)
+      setMePage(context, page);
+  }
+
+  if (debug_map) {
+    print(binaryName);
+    print((int*) ": page ");
+    printHexadecimal(page, 4);
+    print((int*) " mapped to frame ");
+    printHexadecimal(frame, 8);
+    print((int*) " in context ");
+    printHexadecimal((int) context, 8);
+    println();
+  }
+}
+
+void mapAndStore(int* context, int vaddr, int data) {
+  // assert: isValidVirtualAddress(vaddr) == 1
+
+  if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
+    mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
+
+  storeVirtualMemory(getPT(context), vaddr, data);
 }
 
 // -----------------------------------------------------------------
@@ -6574,7 +6522,7 @@ void up_loadBinary(int* context) {
   vaddr = 0;
 
   while (vaddr < binaryLength) {
-    mapAndStoreVirtualMemory(context, vaddr, loadBinary(vaddr));
+    mapAndStore(context, vaddr, loadBinary(vaddr));
 
     vaddr = vaddr + WORDSIZE;
   }
@@ -6592,7 +6540,7 @@ int up_loadString(int* context, int* s, int SP) {
   i = 0;
 
   while (i < bytes) {
-    mapAndStoreVirtualMemory(context, SP + i, *s);
+    mapAndStore(context, SP + i, *s);
 
     s = s + 1;
 
@@ -6627,7 +6575,7 @@ void up_loadArguments(int* context, int argc, int* argv) {
     SP = up_loadString(context, (int*) *argv, SP);
 
     // store pointer to string in virtual *argv
-    mapAndStoreVirtualMemory(context, i_vargv, SP);
+    mapAndStore(context, i_vargv, SP);
 
     argv = argv + 1;
 
@@ -6640,16 +6588,16 @@ void up_loadArguments(int* context, int argc, int* argv) {
   SP = SP - WORDSIZE;
 
   // push argc
-  mapAndStoreVirtualMemory(context, SP, argc);
+  mapAndStore(context, SP, argc);
 
   // allocate memory for one word on the stack
   SP = SP - WORDSIZE;
 
   // push virtual argv
-  mapAndStoreVirtualMemory(context, SP, vargv);
+  mapAndStore(context, SP, vargv);
 
   // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStoreVirtualMemory(context, VIRTUALMEMORYSIZE - WORDSIZE, SP);
+  mapAndStore(context, VIRTUALMEMORYSIZE - WORDSIZE, SP);
 }
 
 void mapUnmappedPages(int* context) {
@@ -6737,7 +6685,7 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
 
       if (exceptionNumber == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
-        mipster_map(fromContext, exceptionParameter, (int) palloc());
+        mapPage(fromContext, exceptionParameter, (int) palloc());
       else if (exceptionNumber == EXCEPTION_EXIT)
         // TODO: only return if all contexts have exited
         return exceptionParameter;
