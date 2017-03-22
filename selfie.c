@@ -859,20 +859,13 @@ void emitStatus();
 void implementStatus();
 int  mipster_status();
 
-void emitDelete();
-void doDelete(int* context);
-void implementDelete();
-void mipster_delete(int* context);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int SYSCALL_SWITCH = 4901;
 int SYSCALL_STATUS = 4902;
-int SYSCALL_DELETE = 4903;
 
 int debug_switch = 0;
 int debug_status = 0;
-int debug_delete = 0;
 
 int mipster = 0; // flag for forcing to use mipster rather than hypster
 
@@ -4009,7 +4002,6 @@ void selfie_compile() {
 
   emitSwitch();
   emitStatus();
-  emitDelete();
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -5160,54 +5152,6 @@ int hypster_status() {
   return mipster_status();
 }
 
-void emitDelete() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_delete", 0, PROCEDURE, VOID_T, 0, binaryLength);
-
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
-
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_DELETE);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
-
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
-}
-
-void doDelete(int* context) {
-  usedContexts = deleteContext(context, usedContexts);
-
-  if (debug_delete) {
-    print(binaryName);
-    print((int*) ": deleted context ");
-    printHexadecimal((int) context, 8);
-    println();
-  }
-}
-
-void implementDelete() {
-  int* context;
-
-  context = findContext(currentContext, *(registers+REG_A0), usedContexts);
-
-  if (context != (int*) 0)
-    doDelete(context);
-  else if (debug_delete) {
-    print(binaryName);
-    print((int*) ": context ");
-    printHexadecimal(*(registers+REG_A0), 8);
-    print((int*) " not found for deletion in parent context ");
-    printHexadecimal((int) currentContext, 8);
-    println();
-  }
-}
-
-void mipster_delete(int* context) {
-  doDelete(context);
-}
-
-void hypster_delete(int* context) {
-  // this procedure is only executed at boot level zero
-}
-
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------    E M U L A T O R    ---------------------
@@ -5636,8 +5580,6 @@ void fct_syscall() {
       implementSwitch();
     else if (*(registers+REG_V0) == SYSCALL_STATUS)
       implementStatus();
-    else if (*(registers+REG_V0) == SYSCALL_DELETE)
-      implementDelete();
     else {
       pc = pc - WORDSIZE;
 
@@ -6315,6 +6257,8 @@ void cacheContext(int* context) {
   virtualContext = getVirtualContext(context);
 
   if (virtualContext != 0) {
+    // assert: context has parent
+
     parentTable = getPT(getParent(context));
 
     table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
