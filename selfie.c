@@ -917,8 +917,6 @@ int* tlb(int* table, int vaddr);
 int  loadVirtualMemory(int* table, int vaddr);
 void storeVirtualMemory(int* table, int vaddr, int data);
 
-void mapAndStoreVirtualMemory(int* table, int vaddr, int data);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int debug_tlb = 0;
@@ -1120,12 +1118,15 @@ int* createContext(int* parent, int vctxt, int* in);
 
 int* findContext(int* parent, int vctxt, int* in);
 
+void down_cachePageTable(int* context);
+
 void switchContext(int* from, int* to);
 
 void freeContext(int* context);
 int* deleteContext(int* context, int* from);
 
-void mapPage(int* table, int page, int frame);
+void mapPage(int* context, int page, int frame);
+void mapAndStoreVirtualMemory(int* context, int vaddr, int data);
 
 // context struct:
 // +----+--------+
@@ -1222,14 +1223,12 @@ int pused();
 int* palloc();
 void pfree(int* frame);
 
-void up_loadBinary(int* table);
+void up_loadBinary(int* context);
 
-int  up_loadString(int* table, int* s, int SP);
-void up_loadArguments(int* table, int argc, int* argv);
+int  up_loadString(int* context, int* s, int SP);
+void up_loadArguments(int* context, int argc, int* argv);
 
-void mapUnmappedPages(int* table);
-
-void down_mapPageTable(int* context);
+void mapUnmappedPages(int* context);
 
 int runUntilExitWithoutExceptionHandling(int* toContext);
 int runOrHostUntilExitWithPageFaultHandling(int* toContext);
@@ -5284,7 +5283,7 @@ void doMap(int* context, int page, int frame) {
     frame = getFrameForPage(getPT(getParent(context)), frame / PAGESIZE);
 
   // on boot level zero frame may be any signed integer
-  mapPage(getPT(context), page, frame);
+  mapPage(context, page, frame);
 
   if (debug_map) {
     print(binaryName);
@@ -5317,12 +5316,6 @@ void implementMap() {
 
 void mipster_map(int* context, int page, int frame) {
   doMap(context, page, frame);
-
-  // exploit spatial locality in page table caching
-  if (page < getLoPage(context))
-    setLoPage(context, page);
-  else if (getMePage(context) < page)
-    setMePage(context, page);
 }
 
 void hypster_map(int* context, int page, int frame) {
@@ -5426,15 +5419,6 @@ void storeVirtualMemory(int* table, int vaddr, int data) {
   // assert: isVirtualAddressMapped(table, vaddr) == 1
 
   storePhysicalMemory(tlb(table, vaddr), data);
-}
-
-void mapAndStoreVirtualMemory(int* table, int vaddr, int data) {
-  // assert: isValidVirtualAddress(vaddr) == 1
-
-  if (isVirtualAddressMapped(table, vaddr) == 0)
-    mapPage(table, getPageOfVirtualAddress(vaddr), (int) palloc());
-
-  storeVirtualMemory(table, vaddr, data);
 }
 
 // -----------------------------------------------------------------
@@ -6404,6 +6388,7 @@ int* allocateContext(int* parent, int vctxt) {
   // TODO: save and reuse memory for page table
   setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * WORDSIZE));
 
+  // determine range of recently mapped pages
   setLoPage(context, 0);
   setMePage(context, 0);
   setHiPage(context, (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE);
@@ -6465,32 +6450,20 @@ void down_cachePageTable(int* context) {
 
     page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
 
-    while (loadVirtualMemory(parentTable, (int) (table + page)) != 0) {
-      //printHexadecimal((int) context,8);print((int*) ", ");printHexadecimal(virtualContext,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(mePage,8);print((int*) ", ");printHexadecimal(loadVirtualMemory(parentTable, (int) (table + page)),8);println();
-
-      doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
-
-      page = page + 1;
-    }
-
     mePage = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
 
     while (page <= mePage) {
-      //printHexadecimal((int) context,8);print((int*) ", ");printHexadecimal(virtualContext,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(mePage,8);print((int*) ", ");printHexadecimal(loadVirtualMemory(parentTable, (int) (table + page)),8);println();
-
       if (loadVirtualMemory(parentTable, (int) (table + page)) != 0)
         doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
 
       page = page + 1;
     }
 
-    storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), mePage + 1);
+    storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), page);
 
     page = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
 
     while (loadVirtualMemory(parentTable, (int) (table + page)) != 0) {
-      //printHexadecimal(context,8);print((int*) ", ");printHexadecimal(virtualContext,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(loadVirtualMemory(parentTable, (int) (table + page)),8);println();
-
       doMap(context, page, loadVirtualMemory(parentTable, (int) (table + page)));
 
       page = page - 1;
@@ -6498,36 +6471,6 @@ void down_cachePageTable(int* context) {
 
     storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
   }
-}
-
-void down_mapPageTable(int* context) {
-  int page;
-
-  // assert: context page table is only mapped from beginning up and end down
-
-  page = 0;
-
-  while (isPageMapped(getPT(context), page)) {
-    //printHexadecimal(context,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(getFrameForPage(getPT(context), page),8);println();
-
-    hypster_map(context, page, getFrameForPage(getPT(context), page));
-
-    page = page + 1;
-  }
-
-  //setLoPage(context, page);
-
-  page = (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE;
-
-  while (isPageMapped(getPT(context), page)) {
-    //printHexadecimal(context,8);print((int*) ", ");printHexadecimal(page,8);print((int*) ", ");printHexadecimal(getFrameForPage(getPT(context), page),8);println();
-
-    hypster_map(context, page, getFrameForPage(getPT(context), page));
-
-    page = page - 1;
-  }
-
-  //setHiPage(context, page);
 }
 
 void switchContext(int* from, int* to) {
@@ -6545,6 +6488,7 @@ void switchContext(int* from, int* to) {
   pt        = getPT(to);
   brk       = getProgramBreak(to);
 
+  // cache recent page mappings on my boot level
   down_cachePageTable(to);
 }
 
@@ -6569,9 +6513,30 @@ int* deleteContext(int* context, int* from) {
   return from;
 }
 
-void mapPage(int* table, int page, int frame) {
+void mapPage(int* context, int page, int frame) {
+  int* table;
+
+  table = getPT(context);
+
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
   *(table + page) = frame;
+
+  // exploit spatial locality in page table caching
+  if (page != getHiPage(context)) {
+    if (page < getLoPage(context))
+      setLoPage(context, page);
+    else if (getMePage(context) < page)
+      setMePage(context, page);
+  }
+}
+
+void mapAndStoreVirtualMemory(int* context, int vaddr, int data) {
+  // assert: isValidVirtualAddress(vaddr) == 1
+
+  if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
+    mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
+
+  storeVirtualMemory(getPT(context), vaddr, data);
 }
 
 // -----------------------------------------------------------------
@@ -6637,20 +6602,20 @@ void pfree(int* frame) {
   // TODO: implement free list of page frames
 }
 
-void up_loadBinary(int* table) {
+void up_loadBinary(int* context) {
   int vaddr;
 
   // binaries start at lowest virtual address
   vaddr = 0;
 
   while (vaddr < binaryLength) {
-    mapAndStoreVirtualMemory(table, vaddr, loadBinary(vaddr));
+    mapAndStoreVirtualMemory(context, vaddr, loadBinary(vaddr));
 
     vaddr = vaddr + WORDSIZE;
   }
 }
 
-int up_loadString(int* table, int* s, int SP) {
+int up_loadString(int* context, int* s, int SP) {
   int bytes;
   int i;
 
@@ -6662,7 +6627,7 @@ int up_loadString(int* table, int* s, int SP) {
   i = 0;
 
   while (i < bytes) {
-    mapAndStoreVirtualMemory(table, SP + i, *s);
+    mapAndStoreVirtualMemory(context, SP + i, *s);
 
     s = s + 1;
 
@@ -6672,7 +6637,7 @@ int up_loadString(int* table, int* s, int SP) {
   return SP;
 }
 
-void up_loadArguments(int* table, int argc, int* argv) {
+void up_loadArguments(int* context, int argc, int* argv) {
   int SP;
   int vargv;
   int i_argc;
@@ -6694,10 +6659,10 @@ void up_loadArguments(int* table, int argc, int* argv) {
   i_argc  = argc;
 
   while (i_argc > 0) {
-    SP = up_loadString(table, (int*) *argv, SP);
+    SP = up_loadString(context, (int*) *argv, SP);
 
     // store pointer to string in virtual *argv
-    mapAndStoreVirtualMemory(table, i_vargv, SP);
+    mapAndStoreVirtualMemory(context, i_vargv, SP);
 
     argv = argv + 1;
 
@@ -6710,29 +6675,30 @@ void up_loadArguments(int* table, int argc, int* argv) {
   SP = SP - WORDSIZE;
 
   // push argc
-  mapAndStoreVirtualMemory(table, SP, argc);
+  mapAndStoreVirtualMemory(context, SP, argc);
 
   // allocate memory for one word on the stack
   SP = SP - WORDSIZE;
 
   // push virtual argv
-  mapAndStoreVirtualMemory(table, SP, vargv);
+  mapAndStoreVirtualMemory(context, SP, vargv);
 
   // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStoreVirtualMemory(table, VIRTUALMEMORYSIZE - WORDSIZE, SP);
+  mapAndStoreVirtualMemory(context, VIRTUALMEMORYSIZE - WORDSIZE, SP);
 }
 
-void mapUnmappedPages(int* table) {
+void mapUnmappedPages(int* context) {
   int page;
+
   // assert: page table is only mapped from beginning up and end down
 
   page = 0;
 
-  while (isPageMapped(table, page))
+  while (isPageMapped(getPT(context), page))
     page = page + 1;
 
   while (pavailable()) {
-    mapPage(table, page, (int) palloc());
+    mapPage(context, page, (int) palloc());
 
     page = page + 1;
   }
@@ -6782,7 +6748,6 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
   int savedStatus;
   int exceptionNumber;
   int exceptionParameter;
-  int frame;
 
   while (1) {
     if (mipster)
@@ -6805,15 +6770,10 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
       exceptionNumber    = decodeExceptionNumber(savedStatus);
       exceptionParameter = decodeExceptionParameter(savedStatus);
 
-      if (exceptionNumber == EXCEPTION_PAGEFAULT) {
-        frame = (int) palloc();
-
+      if (exceptionNumber == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
-        mipster_map(fromContext, exceptionParameter, frame);
-
-        // page table on microkernel boot level
-        //hypster_map(fromContext, exceptionParameter, frame);
-      } else if (exceptionNumber == EXCEPTION_EXIT)
+        mipster_map(fromContext, exceptionParameter, (int) palloc());
+      else if (exceptionNumber == EXCEPTION_EXIT)
         // TODO: only return if all contexts have exited
         return exceptionParameter;
       else if (exceptionNumber != EXCEPTION_TIMER) {
@@ -6856,15 +6816,15 @@ int bootminmob(int argc, int* argv, int machine) {
   // create initial context on my boot level
   mipster_create(0);
 
-  up_loadBinary(getPT(currentContext));
+  up_loadBinary(currentContext);
 
-  up_loadArguments(getPT(currentContext), argc, argv);
+  up_loadArguments(currentContext, argc, argv);
 
   if (machine == MINSTER)
     // virtual is like physical memory in initial context up to memory size
     // by mapping unmapped pages (for the heap) to all available page frames
     // CAUTION: consumes memory even when not used
-    mapUnmappedPages(getPT(currentContext));
+    mapUnmappedPages(currentContext);
 
   exitCode = runUntilExitWithoutExceptionHandling(currentContext);
 
@@ -6914,12 +6874,9 @@ int boot(int argc, int* argv) {
   // create duplicate of the initial context on microkernel boot level
   //hypster_create(currentContext);
 
-  up_loadBinary(getPT(currentContext));
+  up_loadBinary(currentContext);
 
-  up_loadArguments(getPT(currentContext), argc, argv);
-
-  // propagate page table of initial context to microkernel boot level
-  //down_mapPageTable(currentContext);
+  up_loadArguments(currentContext, argc, argv);
 
   // mipsters and hypsters handle page faults
   exitCode = runOrHostUntilExitWithPageFaultHandling(currentContext);
