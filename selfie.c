@@ -850,11 +850,6 @@ int SYSCALL_MALLOC = 4045;
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
-void emitCreate();
-void doCreate(int* parent, int vctxt);
-void implementCreate();
-void mipster_create(int vctxt);
-
 void emitSwitch();
 int* doSwitch(int* toContext, int timeout);
 void implementSwitch();
@@ -876,13 +871,11 @@ void mipster_map(int* context, int page, int frame);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int debug_create = 0;
 int debug_switch = 0;
 int debug_status = 0;
 int debug_delete = 0;
 int debug_map    = 0;
 
-int SYSCALL_CREATE = 4901;
 int SYSCALL_SWITCH = 4902;
 int SYSCALL_STATUS = 4903;
 int SYSCALL_DELETE = 4904;
@@ -1113,12 +1106,11 @@ void resetInterpreter() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int* allocateContext(int* parent, int vctxt);
-int* createContext(int* parent, int vctxt, int* in);
+int* allocateContext(int* parent, int vctxt, int* in);
 
 int* findContext(int* parent, int vctxt, int* in);
 
-void down_cachePageTable(int* context);
+void cacheContext(int* context);
 
 void switchContext(int* from, int* to);
 
@@ -1193,7 +1185,11 @@ void setVirtualContext(int* context, int vctxt) { *(context + 12) = vctxt; }
 
 void resetMicrokernel();
 
+void createContext(int* parent, int vctxt);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+int debug_create = 0;
 
 int* MY_CONTEXT = (int*) 0;
 
@@ -4017,7 +4013,6 @@ void selfie_compile() {
   emitOpen();
   emitMalloc();
 
-  emitCreate();
   emitSwitch();
   emitStatus();
   emitDelete();
@@ -5041,47 +5036,6 @@ void implementMalloc() {
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
-void emitCreate() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_create", 0, PROCEDURE, INT_T, 0, binaryLength);
-
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // virtual context address
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
-
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_CREATE);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
-
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
-}
-
-void doCreate(int* parent, int vctxt) {
-  // TODO: check if context already exists
-  usedContexts = createContext(parent, vctxt, usedContexts);
-
-  if (currentContext == MY_CONTEXT)
-    currentContext = usedContexts;
-
-  if (debug_create) {
-    print(binaryName);
-    print((int*) ": parent context ");
-    printHexadecimal((int) parent, 8);
-    print((int*) " created child context ");
-    printHexadecimal((int) usedContexts, 8);
-    println();
-  }
-}
-
-void implementCreate() {
-  doCreate(currentContext, *(registers+REG_A0));
-}
-
-void mipster_create(int vctxt) {
-  doCreate(MY_CONTEXT, vctxt);
-}
-
-void hypster_create(int* context) {
-  // this procedure is only executed at boot level zero
-}
-
 void emitSwitch() {
   createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
@@ -5132,10 +5086,12 @@ void implementSwitch() {
   int* toContext;
   int* fromContext;
 
+  // find cached context on my boot level
   toContext = findContext(currentContext, *(registers+REG_A0), usedContexts);
 
   if (toContext == (int*) 0) {
-    doCreate(currentContext, *(registers+REG_A0));
+    // create cached context on my boot level
+    createContext(currentContext, *(registers+REG_A0));
 
     toContext = usedContexts;
   }
@@ -5746,8 +5702,6 @@ void fct_syscall() {
       implementOpen();
     else if (*(registers+REG_V0) == SYSCALL_MALLOC)
       implementMalloc();
-    else if (*(registers+REG_V0) == SYSCALL_CREATE)
-      implementCreate();
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
     else if (*(registers+REG_V0) == SYSCALL_STATUS)
@@ -6361,7 +6315,7 @@ void selfie_disassemble() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int* allocateContext(int* parent, int vctxt) {
+int* allocateContext(int* parent, int vctxt, int* in) {
   int* context;
 
   if (freeContexts == (int*) 0)
@@ -6372,8 +6326,11 @@ int* allocateContext(int* parent, int vctxt) {
     freeContexts = getNextContext(freeContexts);
   }
 
-  setNextContext(context, (int*) 0);
+  setNextContext(context, in);
   setPrevContext(context, (int*) 0);
+
+  if (in != (int*) 0)
+    setPrevContext(in, context);
 
   setPC(context, 0);
 
@@ -6403,19 +6360,6 @@ int* allocateContext(int* parent, int vctxt) {
   return context;
 }
 
-int* createContext(int* parent, int vctxt, int* in) {
-  int* context;
-
-  context = allocateContext(parent, vctxt);
-
-  setNextContext(context, in);
-
-  if (in != (int*) 0)
-    setPrevContext(in, context);
-
-  return context;
-}
-
 int* findContext(int* parent, int vctxt, int* in) {
   int* context;
 
@@ -6432,7 +6376,7 @@ int* findContext(int* parent, int vctxt, int* in) {
   return (int*) 0;
 }
 
-void down_cachePageTable(int* context) {
+void cacheContext(int* context) {
   int virtualContext;
   int* parentTable;
   int* table;
@@ -6489,7 +6433,7 @@ void switchContext(int* from, int* to) {
   brk       = getProgramBreak(to);
 
   // cache recent page mappings on my boot level
-  down_cachePageTable(to);
+  cacheContext(to);
 }
 
 void freeContext(int* context) {
@@ -6537,6 +6481,27 @@ void mapAndStoreVirtualMemory(int* context, int vaddr, int data) {
     mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
 
   storeVirtualMemory(getPT(context), vaddr, data);
+}
+
+// -----------------------------------------------------------------
+// -------------------------- MICROKERNEL --------------------------
+// -----------------------------------------------------------------
+
+void createContext(int* parent, int vctxt) {
+  // TODO: check if context already exists
+  usedContexts = allocateContext(parent, vctxt, usedContexts);
+
+  if (currentContext == (int*) 0)
+    currentContext = usedContexts;
+
+  if (debug_create) {
+    print(binaryName);
+    print((int*) ": parent context ");
+    printHexadecimal((int) parent, 8);
+    print((int*) " created child context ");
+    printHexadecimal((int) usedContexts, 8);
+    println();
+  }
 }
 
 // -----------------------------------------------------------------
@@ -6814,7 +6779,7 @@ int bootminmob(int argc, int* argv, int machine) {
   resetMicrokernel();
 
   // create initial context on my boot level
-  mipster_create(0);
+  createContext(MY_CONTEXT, 0);
 
   up_loadBinary(currentContext);
 
@@ -6869,10 +6834,7 @@ int boot(int argc, int* argv) {
   resetMicrokernel();
 
   // create initial context on my boot level
-  mipster_create(0);
-
-  // create duplicate of the initial context on microkernel boot level
-  //hypster_create(currentContext);
+  createContext(MY_CONTEXT, 0);
 
   up_loadBinary(currentContext);
 
