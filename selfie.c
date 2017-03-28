@@ -4317,10 +4317,11 @@ void storeBinary(int baddr, int instruction) {
 }
 
 void emitInstruction(int instruction) {
+  // call storeBinary first so we exit if binary is full 
+  storeBinary(binaryLength, instruction);
+
   if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
     *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
-
-  storeBinary(binaryLength, instruction);
 
   binaryLength = binaryLength + WORDSIZE;
 }
