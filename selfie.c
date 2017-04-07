@@ -982,6 +982,10 @@ void op_bne();
 void op_jal();
 void op_j();
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+int debug_overflow = 0;
+
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
@@ -5501,6 +5505,21 @@ void fct_nop() {
 }
 
 void fct_addu() {
+  int s;
+  int t;
+  int d;
+  int n;
+  int o;
+
+  if (interpret) {
+    s = *(registers+rs);
+    t = *(registers+rt);
+    d = *(registers+rd);
+
+    // implementing addu with +
+    n = s + t;
+  }
+
   if (debug) {
     printFunction(function);
     print((int*) " ");
@@ -5513,36 +5532,72 @@ void fct_addu() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(d);
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      printInteger(s);
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = *(registers+rs) + *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
+      printInteger(t);
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(n);
     }
     println();
+  }
+
+  if (interpret) {
+    *(registers+rd) = n;
+
+    pc = pc + WORDSIZE;
+
+    if (debug_overflow) {
+      o = 0;
+
+      if (s > 0) {
+        if (t > 0)
+          if (n <= -2)
+            // INT_MIN <= n <= -2 == INT_MAX + INT_MAX
+            o = 1;
+      } else {
+        if (t < 0)
+          if (n >= 0)
+            // INT_MIN + INT_MIN == 0 <= n <= INT_MAX
+            o = 1;
+      }
+
+      if (o) {
+        print((int*) "overflow: ");
+        printInteger(s);
+        print((int*) " + ");
+        printInteger(t);
+        print((int*) " ~ ");
+        printInteger(n);
+        println();
+      }
+    }
   }
 }
 
 void fct_subu() {
+  int s;
+  int t;
+  int d;
+  int n;
+  int o;
+
+  if (interpret) {
+    s = *(registers+rs);
+    t = *(registers+rt);
+    d = *(registers+rd);
+
+    // implementing subu with -
+    n = s - t;
+  }
+
   if (debug) {
     printFunction(function);
     print((int*) " ");
@@ -5555,36 +5610,69 @@ void fct_subu() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(d);
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      printInteger(s);
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = *(registers+rs) - *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
+      printInteger(t);
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(n);
     }
     println();
+  }
+
+  if (interpret) {
+    *(registers+rd) = n;
+
+    pc = pc + WORDSIZE;
+
+    if (debug_overflow) {
+      o = 0;
+
+      if (s > 0) {
+        if (t < 0)
+          if (n <= -1)
+            // INT_MIN <= n <= -1 == INT_MAX - INT_MIN
+            o = 1;
+      } else {
+        if (t > 0)
+          if (n >= 1)
+            // INT_MIN - INT_MAX == 1 <= n <= INT_MAX
+            o = 1;
+      }
+
+      if (o) {
+        print((int*) "overflow: ");
+        printInteger(s);
+        print((int*) " - ");
+        printInteger(t);
+        print((int*) " ~ ");
+        printInteger(n);
+        println();
+      }
+    }
   }
 }
 
 void fct_multu() {
+  int s;
+  int t;
+  int n;
+
+  if (interpret) {
+    s = *(registers+rs);
+    t = *(registers+rt);
+
+    // implementing multu with *
+    n = s * t;
+  }
+
   if (debug) {
     printFunction(function);
     print((int*) " ");
@@ -5595,29 +5683,37 @@ void fct_multu() {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      printInteger(s);
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      printInteger(t);
       print((int*) ",$lo=");
       printInteger(reg_lo);
+      print((int*) " -> $lo=");
+      printInteger(n);
     }
+    println();
   }
 
   if (interpret) {
     // TODO: 64-bit resolution currently not supported
-    reg_lo = *(registers+rs) * *(registers+rt);
+    reg_lo = n;
 
     pc = pc + WORDSIZE;
-  }
 
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $lo=");
-      printInteger(reg_lo);
-    }
-    println();
+    if (debug_overflow)
+      if (s != 0)
+        // CAUTION: does not work if n / s is optimized to t
+        if (t != n / s) {
+          print((int*) "overflow: ");
+          printInteger(s);
+          print((int*) " * ");
+          printInteger(t);
+          print((int*) " ~ ");
+          printInteger(n);
+          println();
+        }
   }
 }
 
