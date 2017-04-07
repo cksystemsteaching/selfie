@@ -1303,13 +1303,28 @@ int twoToThePowerOf(int p) {
 
 int leftShift(int n, int b) {
   // assert: b >= 0;
+  int p;
 
-  if (b < 31)
+  if (b == 0)
+    return n;
+  else if (b < 31) {
     // left shift of integers works by multiplication with powers of two
-    return n * twoToThePowerOf(b);
-  else if (b == 31)
+
+    if (n >= 0)
+      p = n - rightShift(n, 32 - b) * twoToThePowerOf(32 - b - 1) * 2;
+    else
+      p = n - (INT_MIN + rightShift((n + 1) + INT_MAX, 32 - b) * twoToThePowerOf(32 - b - 1) * 2);
+
+    if (p < twoToThePowerOf(32 - b - 1))
+      return p * twoToThePowerOf(b);
+    else
+      return INT_MIN + (p - twoToThePowerOf(32 - b - 1)) * twoToThePowerOf(b);
+  } else if (b == 31)
     // twoToThePowerOf(b) only works for b < 31
-    return n * twoToThePowerOf(30) * 2;
+    if (n % 2 == 1)
+      return INT_MIN;
+    else
+      return 0;
   else
     // left shift of a 32-bit integer by more than 31 bits is always 0
     return 0;
