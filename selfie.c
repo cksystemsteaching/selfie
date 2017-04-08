@@ -4309,22 +4309,21 @@ int loadBinary(int baddr) {
 }
 
 void storeBinary(int baddr, int instruction) {
+  if (baddr >= maxBinaryLength) {
+    syntaxErrorMessage((int*) "exceeded maximum binary length");
+    exit(-1);
+  }
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
 void emitInstruction(int instruction) {
-  if (binaryLength >= maxBinaryLength) {
-    syntaxErrorMessage((int*) "exceeded maximum binary length");
+  // call storeBinary first so we exit if binary is full 
+  storeBinary(binaryLength, instruction);
 
-    exit(-1);
-  } else {
-    if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
-      *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
+  if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
+    *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
 
-    storeBinary(binaryLength, instruction);
-
-    binaryLength = binaryLength + WORDSIZE;
-  }
+  binaryLength = binaryLength + WORDSIZE;
 }
 
 void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
