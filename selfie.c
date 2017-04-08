@@ -4310,14 +4310,15 @@ int loadBinary(int baddr) {
 
 void storeBinary(int baddr, int instruction) {
   if (baddr >= maxBinaryLength) {
-    syntaxErrorMessage((int*) "exceeded maximum binary length");
+    syntaxErrorMessage((int*) "maximum binary length exceeded");
+
     exit(-1);
   }
+
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
 void emitInstruction(int instruction) {
-  // call storeBinary first so we exit if binary is full 
   storeBinary(binaryLength, instruction);
 
   if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
