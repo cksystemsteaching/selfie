@@ -36,10 +36,10 @@ At this point we assume that you have a system that supports running selfie. Bel
 The next step is to produce a selfie binary that runs on your system. To do that type `make` in your terminal. This will invoke the C compiler:
 
 ```bash
-cc -w -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
+cc -w -O3 -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
 ```
 
-and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-m32` option makes the compiler generate a 32-bit executable. The `-D` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but may be required by the compiler.
+and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-O3` option instructs the compiler to generate optimized code. The `-m32` option makes the compiler generate a 32-bit executable. The `-D` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but may be required by the compiler.
 
 ## Running Selfie
 
