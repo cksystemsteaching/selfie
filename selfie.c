@@ -794,7 +794,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int maxBinaryLength = 131072; // 128KB
+int maxBinaryLength = 262144; // 256KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -946,6 +946,10 @@ void op_beq();
 void op_bne();
 void op_jal();
 void op_j();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+int debug_overflow = 0;
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1283,38 +1287,62 @@ int twoToThePowerOf(int p) {
 }
 
 int leftShift(int n, int b) {
-  // assert: b >= 0;
+  int t;
 
-  if (b < 31)
+  if (b <= 0)
+    return n;
+  else if (b < 31) {
     // left shift of integers works by multiplication with powers of two
-    return n * twoToThePowerOf(b);
-  else if (b == 31)
-    // twoToThePowerOf(b) only works for b < 31
-    return n * twoToThePowerOf(30) * 2;
+    // to avoid integer overflow clear the b MSBs first
+
+    // right shift by 32 - b bits, then left shift by 32 - b - 1 bits
+    // since twoToThePowerOf(x) only works for 0 <= x < 31, and finally
+    // left shift one more time by one more bit (multiply by 2)
+
+    t = twoToThePowerOf(32 - b - 1);
+
+    if (n >= 0)
+      n = n - rightShift(n, 32 - b) * t * 2;
+    else
+      // reset sign bit, right and left shift, then set sign bit again
+      n = n - (rightShift((n + 1) + INT_MAX, 32 - b) * t * 2 + INT_MIN);
+
+    if (n < t)
+      // the bit in n that will become the sign bit is not set
+      return n * twoToThePowerOf(b);
+    else
+      // reset that bit first, then left shift, finally set sign bit
+      return (n - t) * twoToThePowerOf(b) + INT_MIN;
+  } else if (b == 31)
+    // twoToThePowerOf(b) only works for 0 <= b < 31
+    if (n % 2 == 1)
+      // LSB becomes sign bit of INT_MIN when left shifting by 31 bits
+      return INT_MIN;
+    else
+      return 0;
   else
     // left shift of a 32-bit integer by more than 31 bits is always 0
     return 0;
 }
 
 int rightShift(int n, int b) {
-  // assert: b >= 0
-
-  if (n >= 0) {
-    if (b < 31)
+  if (b <= 0)
+    return n;
+  else if (b < 31) {
+    if (n >= 0)
       // right shift of positive integers works by division with powers of two
       return n / twoToThePowerOf(b);
     else
-      // right shift of a 32-bit integer by more than 31 bits is always 0
+      // right shift of negative integers requires resetting the sign bit and
+      // then dividing with powers of two, and finally restoring the sign bit
+      // but b bits to the right; this works even if n == INT_MIN
+      return ((n + 1) + INT_MAX) / twoToThePowerOf(b) + (INT_MAX / twoToThePowerOf(b) + 1);
+  } else if (b == 31)
+    if (n < 0)
+      // right shift of a negative 32-bit integer by 31 bits is 1 (sign bit)
+      return 1;
+    else
       return 0;
-  } else if (b < 31)
-    // right shift of negative integers requires resetting the sign bit first,
-    // then dividing with powers of two, and finally restoring the sign bit
-    // but b bits to the right; this works even if n == INT_MIN
-    return ((n + 1) + INT_MAX) / twoToThePowerOf(b) +
-      (INT_MAX / twoToThePowerOf(b) + 1);
-  else if (b == 31)
-    // right shift of a negative 32-bit integer by 31 bits is 1 (the sign bit)
-    return 1;
   else
     // right shift of a 32-bit integer by more than 31 bits is always 0
     return 0;
@@ -1867,7 +1895,7 @@ int findNextCharacter() {
 
     } else if (isCharacterWhitespace()) {
       // keep track of line numbers for error reporting and code annotation
-      if (isCharacterNewLine())
+      if (character == CHAR_LF)
         lineNumber = lineNumber + 1;
 
       // count line feed and carriage return as ignored characters
@@ -4290,22 +4318,22 @@ int loadBinary(int baddr) {
 }
 
 void storeBinary(int baddr, int instruction) {
+  if (baddr >= maxBinaryLength) {
+    syntaxErrorMessage((int*) "maximum binary length exceeded");
+
+    exit(-1);
+  }
+
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
 void emitInstruction(int instruction) {
-  if (binaryLength >= maxBinaryLength) {
-    syntaxErrorMessage((int*) "exceeded maximum binary length");
+  storeBinary(binaryLength, instruction);
 
-    exit(-1);
-  } else {
-    if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
-      *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
+  if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
+    *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
 
-    storeBinary(binaryLength, instruction);
-
-    binaryLength = binaryLength + WORDSIZE;
-  }
+  binaryLength = binaryLength + WORDSIZE;
 }
 
 void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
@@ -5241,6 +5269,21 @@ void fct_nop() {
 }
 
 void fct_addu() {
+  int s;
+  int t;
+  int d;
+  int n;
+  int o;
+
+  if (interpret) {
+    s = *(registers+rs);
+    t = *(registers+rt);
+    d = *(registers+rd);
+
+    // implementing addu with +
+    n = s + t;
+  }
+
   if (debug) {
     printFunction(function);
     print((int*) " ");
@@ -5253,36 +5296,72 @@ void fct_addu() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(d);
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      printInteger(s);
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = *(registers+rs) + *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
+      printInteger(t);
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(n);
     }
     println();
+  }
+
+  if (interpret) {
+    *(registers+rd) = n;
+
+    pc = pc + WORDSIZE;
+
+    if (debug_overflow) {
+      o = 0;
+
+      if (s > 0) {
+        if (t > 0)
+          if (n <= -2)
+            // INT_MIN <= n <= -2 == INT_MAX + INT_MAX
+            o = 1;
+      } else {
+        if (t < 0)
+          if (n >= 0)
+            // INT_MIN + INT_MIN == 0 <= n <= INT_MAX
+            o = 1;
+      }
+
+      if (o) {
+        print((int*) "overflow: ");
+        printInteger(s);
+        print((int*) " + ");
+        printInteger(t);
+        print((int*) " ~ ");
+        printInteger(n);
+        println();
+      }
+    }
   }
 }
 
 void fct_subu() {
+  int s;
+  int t;
+  int d;
+  int n;
+  int o;
+
+  if (interpret) {
+    s = *(registers+rs);
+    t = *(registers+rt);
+    d = *(registers+rd);
+
+    // implementing subu with -
+    n = s - t;
+  }
+
   if (debug) {
     printFunction(function);
     print((int*) " ");
@@ -5295,36 +5374,69 @@ void fct_subu() {
       print((int*) ": ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(d);
       print((int*) ",");
       printRegister(rs);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      printInteger(s);
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    *(registers+rd) = *(registers+rs) - *(registers+rt);
-
-    pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
+      printInteger(t);
       print((int*) " -> ");
       printRegister(rd);
       print((int*) "=");
-      printInteger(*(registers+rd));
+      printInteger(n);
     }
     println();
+  }
+
+  if (interpret) {
+    *(registers+rd) = n;
+
+    pc = pc + WORDSIZE;
+
+    if (debug_overflow) {
+      o = 0;
+
+      if (s > 0) {
+        if (t < 0)
+          if (n <= -1)
+            // INT_MIN <= n <= -1 == INT_MAX - INT_MIN
+            o = 1;
+      } else {
+        if (t > 0)
+          if (n >= 1)
+            // INT_MIN - INT_MAX == 1 <= n <= INT_MAX
+            o = 1;
+      }
+
+      if (o) {
+        print((int*) "overflow: ");
+        printInteger(s);
+        print((int*) " - ");
+        printInteger(t);
+        print((int*) " ~ ");
+        printInteger(n);
+        println();
+      }
+    }
   }
 }
 
 void fct_multu() {
+  int s;
+  int t;
+  int n;
+
+  if (interpret) {
+    s = *(registers+rs);
+    t = *(registers+rt);
+
+    // implementing multu with *
+    n = s * t;
+  }
+
   if (debug) {
     printFunction(function);
     print((int*) " ");
@@ -5335,29 +5447,37 @@ void fct_multu() {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      printInteger(s);
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      printInteger(t);
       print((int*) ",$lo=");
       printInteger(loReg);
+      print((int*) " -> $lo=");
+      printInteger(n);
     }
+    println();
   }
 
   if (interpret) {
     // TODO: 64-bit resolution currently not supported
-    loReg = *(registers+rs) * *(registers+rt);
+    loReg = n;
 
     pc = pc + WORDSIZE;
-  }
 
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $lo=");
-      printInteger(loReg);
-    }
-    println();
+    if (debug_overflow)
+      if (s != 0)
+        // CAUTION: does not work if n / s is optimized to t
+        if (t != n / s) {
+          print((int*) "overflow: ");
+          printInteger(s);
+          print((int*) " * ");
+          printInteger(t);
+          print((int*) " ~ ");
+          printInteger(n);
+          println();
+        }
   }
 }
 
