@@ -794,7 +794,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int maxBinaryLength = 131072; // 128KB
+int maxBinaryLength = 262144; // 256KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -4337,22 +4337,22 @@ int loadBinary(int baddr) {
 }
 
 void storeBinary(int baddr, int instruction) {
+  if (baddr >= maxBinaryLength) {
+    syntaxErrorMessage((int*) "maximum binary length exceeded");
+
+    exit(-1);
+  }
+
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
 void emitInstruction(int instruction) {
-  if (binaryLength >= maxBinaryLength) {
-    syntaxErrorMessage((int*) "exceeded maximum binary length");
+  storeBinary(binaryLength, instruction);
 
-    exit(-1);
-  } else {
-    if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
-      *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
+  if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
+    *(sourceLineNumber + binaryLength / WORDSIZE) = lineNumber;
 
-    storeBinary(binaryLength, instruction);
-
-    binaryLength = binaryLength + WORDSIZE;
-  }
+  binaryLength = binaryLength + WORDSIZE;
 }
 
 void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
