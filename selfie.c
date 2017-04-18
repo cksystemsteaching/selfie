@@ -972,7 +972,7 @@ void fetch();
 void execute();
 void interrupt();
 
-void runUntilException();
+int* runUntilException();
 
 int addressWithMaxCounter(int* counters, int max);
 
@@ -1100,8 +1100,6 @@ int* allocateContext(int* parent, int vctxt, int* in);
 
 int* findContext(int* parent, int vctxt, int* in);
 
-void switchContext(int* from, int* to);
-
 void freeContext(int* context);
 int* deleteContext(int* context, int* from);
 
@@ -1172,14 +1170,17 @@ void resetMicrokernel();
 
 int* createContext(int* parent, int vctxt);
 
-void mapPage(int* context, int page, int frame);
-void mapAndStore(int* context, int vaddr, int data);
-
 int* cacheContext(int virtualContext);
 
-// ------------------------ GLOBAL CONSTANTS -----------------------
+void saveContext(int* context);
 
-int* MY_CONTEXT = (int*) 0;
+void mapPage(int* context, int page, int frame);
+
+void restoreContext(int* context);
+
+int* switchContext(int* toContext, int timeout);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
 
 int debug_create = 0;
 int debug_map    = 0;
@@ -1210,6 +1211,8 @@ int pused();
 int* palloc();
 void pfree(int* frame);
 
+void mapAndStore(int* context, int vaddr, int data);
+
 void up_loadBinary(int* context);
 
 int  up_loadString(int* context, int* s, int SP);
@@ -1226,6 +1229,8 @@ int boot(int argc, int* argv);
 int selfie_run(int engine, int machine, int debugger);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+int* MY_CONTEXT = (int*) 0;
 
 int MINSTER = 1;
 int MIPSTER = 2;
@@ -5070,18 +5075,7 @@ void emitSwitch() {
 void doSwitch(int* toContext, int timeout) {
   int* fromContext;
 
-  fromContext = currentContext;
-
-  // CAUTION: switchContext() modifies the global variable registers
-
-  switchContext(currentContext, toContext);
-
-  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  *(registers+REG_V1) = getVirtualContext(fromContext);
-
-  currentContext = toContext;
-
-  timer = timeout;
+  fromContext = switchContext(toContext, timeout);
 
   if (debug_switch) {
     print(binaryName);
@@ -5106,9 +5100,7 @@ void implementSwitch() {
 int* mipster_switch(int* toContext, int timeout) {
   doSwitch(toContext, timeout);
 
-  runUntilException();
-
-  return currentContext;
+  return runUntilException();
 }
 
 int* hypster_switch(int* toContext, int timeout) {
@@ -6136,7 +6128,7 @@ void interrupt() {
       throwException(EXCEPTION_TIMER, 0);
 }
 
-void runUntilException() {
+int* runUntilException() {
   trap = 0;
 
   while (trap == 0) {
@@ -6147,6 +6139,8 @@ void runUntilException() {
   }
 
   trap = 0;
+
+  return currentContext;
 }
 
 int addressWithMaxCounter(int* counters, int max) {
@@ -6341,22 +6335,6 @@ int* findContext(int* parent, int vctxt, int* in) {
   return (int*) 0;
 }
 
-void switchContext(int* from, int* to) {
-  // save machine state
-  setPC(from, pc);
-  setLoReg(from, loReg);
-  setHiReg(from, hiReg);
-  setProgramBreak(from, brk);
-
-  // restore machine state
-  pc        = getPC(to);
-  registers = getRegs(to);
-  loReg     = getLoReg(to);
-  hiReg     = getHiReg(to);
-  pt        = getPT(to);
-  brk       = getProgramBreak(to);
-}
-
 void freeContext(int* context) {
   setNextContext(context, freeContexts);
 
@@ -6401,6 +6379,23 @@ int* createContext(int* parent, int vctxt) {
   return usedContexts;
 }
 
+int* cacheContext(int virtualContext) {
+  int* context;
+
+  // find cached context on my boot level
+  context = findContext(currentContext, virtualContext, usedContexts);
+
+  if (context == (int*) 0)
+    // create cached context on my boot level
+    context = createContext(currentContext, virtualContext);
+
+  return context;
+}
+
+void saveContext(int* context) {
+
+}
+
 void mapPage(int* context, int page, int frame) {
   int* table;
 
@@ -6432,65 +6427,86 @@ void mapPage(int* context, int page, int frame) {
   }
 }
 
-void mapAndStore(int* context, int vaddr, int data) {
-  // assert: isValidVirtualAddress(vaddr) == 1
-
-  if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
-    mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
-
-  storeVirtualMemory(getPT(context), vaddr, data);
-}
-
-int* cacheContext(int virtualContext) {
-  int* context;
+void restoreContext(int* context) {
+  int virtualContext;
   int* parentTable;
   int* table;
   int page;
   int me;
   int frame;
 
-  // find cached context on my boot level
-  context = findContext(currentContext, virtualContext, usedContexts);
+  virtualContext = getVirtualContext(context);
 
-  if (context == (int*) 0)
-    // create cached context on my boot level
-    context = createContext(currentContext, virtualContext);
+  if (virtualContext != 0) {
+    parentTable = getPT(getParent(context));
 
-  parentTable = getPT(currentContext);
+    table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
 
-  table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
+    // assert: context page table is only mapped from beginning up and end down
 
-  // assert: context page table is only mapped from beginning up and end down
+    page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
+    me   = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
 
-  page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
-  me   = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
+    while (page <= me) {
+      frame = loadVirtualMemory(parentTable, (int) (table + page));
 
-  while (page <= me) {
+      if (frame != 0)
+        // assert: 0 <= frame < VIRTUALMEMORYSIZE
+        mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
+
+      page = page + 1;
+    }
+
+    storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), page);
+
+    page  = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
     frame = loadVirtualMemory(parentTable, (int) (table + page));
 
-    if (frame != 0)
+    while (frame != 0) {
       // assert: 0 <= frame < VIRTUALMEMORYSIZE
       mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
 
-    page = page + 1;
+      page  = page - 1;
+      frame = loadVirtualMemory(parentTable, (int) (table + page));
+    }
+
+    storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
   }
+}
 
-  storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), page);
+int* switchContext(int* toContext, int timeout) {
+  int* fromContext;
 
-  page  = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
-  frame = loadVirtualMemory(parentTable, (int) (table + page));
+  fromContext = currentContext;
 
-  while (frame != 0) {
-    // assert: 0 <= frame < VIRTUALMEMORYSIZE
-    mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
+  // save machine state
+  setPC(fromContext, pc);
+  setLoReg(fromContext, loReg);
+  setHiReg(fromContext, hiReg);
+  setProgramBreak(fromContext, brk);
 
-    page  = page - 1;
-    frame = loadVirtualMemory(parentTable, (int) (table + page));
-  }
+  // upload context
+  saveContext(fromContext);
 
-  storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
+  // download context
+  restoreContext(toContext);
 
-  return context;
+  // restore machine state
+  pc        = getPC(toContext);
+  registers = getRegs(toContext);
+  loReg     = getLoReg(toContext);
+  hiReg     = getHiReg(toContext);
+  pt        = getPT(toContext);
+  brk       = getProgramBreak(toContext);
+
+  timer = timeout;
+
+  currentContext = toContext;
+
+  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
+  *(registers+REG_V1) = getVirtualContext(fromContext);
+
+  return fromContext;
 }
 
 // -----------------------------------------------------------------
@@ -6554,6 +6570,15 @@ int* palloc() {
 
 void pfree(int* frame) {
   // TODO: implement free list of page frames
+}
+
+void mapAndStore(int* context, int vaddr, int data) {
+  // assert: isValidVirtualAddress(vaddr) == 1
+
+  if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
+    mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
+
+  storeVirtualMemory(getPT(context), vaddr, data);
 }
 
 void up_loadBinary(int* context) {
