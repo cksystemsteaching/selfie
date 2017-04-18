@@ -231,7 +231,7 @@ void initLibrary() {
   INT16_MIN = -INT16_MAX - 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = malloc(1);
+  character_buffer  = malloc(SIZEOFINT);
   *character_buffer = 0;
 
   // accommodate at least 32-bit numbers for itoa, no mapping needed
