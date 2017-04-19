@@ -6393,7 +6393,35 @@ int* cacheContext(int virtualContext) {
 }
 
 void saveContext(int* context) {
+  int virtualContext;
+  int* parentTable;
+  int r;
+  int* regs;
+  int* vregs;
 
+  virtualContext = getVirtualContext(context);
+
+  if (virtualContext != 0) {
+    parentTable = getPT(getParent(context));
+
+    storeVirtualMemory(parentTable, (int) PC((int*) virtualContext), getPC(context));
+
+    r = 0;
+
+    regs = getRegs(context);
+
+    vregs = (int*) loadVirtualMemory(parentTable, (int) Regs((int*) virtualContext));
+
+    while (r < NUMBEROFREGISTERS) {
+      storeVirtualMemory(parentTable, (int) (vregs + r), *(regs + r));
+
+      r = r + 1;
+    }
+
+    storeVirtualMemory(parentTable, (int) LoReg((int*) virtualContext), getLoReg(context));
+    storeVirtualMemory(parentTable, (int) HiReg((int*) virtualContext), getHiReg(context));
+    storeVirtualMemory(parentTable, (int) ProgramBreak((int*) virtualContext), getProgramBreak(context));
+  }
 }
 
 void mapPage(int* context, int page, int frame) {
@@ -6430,6 +6458,9 @@ void mapPage(int* context, int page, int frame) {
 void restoreContext(int* context) {
   int virtualContext;
   int* parentTable;
+  int r;
+  int* regs;
+  int* vregs;
   int* table;
   int page;
   int me;
@@ -6439,6 +6470,24 @@ void restoreContext(int* context) {
 
   if (virtualContext != 0) {
     parentTable = getPT(getParent(context));
+
+    setPC(context, loadVirtualMemory(parentTable, (int) PC((int*) virtualContext)));
+
+    r = 0;
+
+    regs = getRegs(context);
+
+    vregs = (int*) loadVirtualMemory(parentTable, (int) Regs((int*) virtualContext));
+
+    while (r < NUMBEROFREGISTERS) {
+      *(regs + r) = loadVirtualMemory(parentTable, (int) (vregs + r));
+
+      r = r + 1;
+    }
+
+    setLoReg(context, loadVirtualMemory(parentTable, (int) LoReg((int*) virtualContext)));
+    setHiReg(context, loadVirtualMemory(parentTable, (int) HiReg((int*) virtualContext)));
+    setProgramBreak(context, loadVirtualMemory(parentTable, (int) ProgramBreak((int*) virtualContext)));
 
     table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
 
