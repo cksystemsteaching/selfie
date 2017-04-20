@@ -1178,8 +1178,6 @@ void mapPage(int* context, int page, int frame);
 
 void restoreContext(int* context);
 
-int* switchContext(int* toContext, int timeout);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int debug_create = 0;
@@ -5075,7 +5073,24 @@ void emitSwitch() {
 void doSwitch(int* toContext, int timeout) {
   int* fromContext;
 
-  fromContext = switchContext(toContext, timeout);
+  fromContext = currentContext;
+
+  restoreContext(toContext);
+
+  // restore machine state
+  pc        = getPC(toContext);
+  registers = getRegs(toContext);
+  loReg     = getLoReg(toContext);
+  hiReg     = getHiReg(toContext);
+  pt        = getPT(toContext);
+  brk       = getProgramBreak(toContext);
+
+  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
+  *(registers+REG_V1) = getVirtualContext(fromContext);
+
+  currentContext = toContext;
+
+  timer = timeout;
 
   if (debug_switch) {
     print(binaryName);
@@ -5093,14 +5108,20 @@ void doSwitch(int* toContext, int timeout) {
 }
 
 void implementSwitch() {
-  // cache recent page mappings on my boot level before switching
+  saveContext(currentContext);
+
+  // cache context on my boot level before switching
   doSwitch(cacheContext(*(registers+REG_A0)), *(registers+REG_A1));
 }
 
 int* mipster_switch(int* toContext, int timeout) {
   doSwitch(toContext, timeout);
 
-  return runUntilException();
+  runUntilException();
+
+  saveContext(currentContext);
+
+  return currentContext;
 }
 
 int* hypster_switch(int* toContext, int timeout) {
@@ -6393,16 +6414,22 @@ int* cacheContext(int virtualContext) {
 }
 
 void saveContext(int* context) {
-  int virtualContext;
   int* parentTable;
+  int virtualContext;
   int r;
   int* regs;
   int* vregs;
 
-  virtualContext = getVirtualContext(context);
+  // save machine state
+  setPC(context, pc);
+  setLoReg(context, loReg);
+  setHiReg(context, hiReg);
+  setProgramBreak(context, brk);
 
-  if (virtualContext != 0) {
+  if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
+
+    virtualContext = getVirtualContext(context);
 
     storeVirtualMemory(parentTable, (int) PC((int*) virtualContext), getPC(context));
 
@@ -6456,8 +6483,8 @@ void mapPage(int* context, int page, int frame) {
 }
 
 void restoreContext(int* context) {
-  int virtualContext;
   int* parentTable;
+  int virtualContext;
   int r;
   int* regs;
   int* vregs;
@@ -6466,10 +6493,10 @@ void restoreContext(int* context) {
   int me;
   int frame;
 
-  virtualContext = getVirtualContext(context);
-
-  if (virtualContext != 0) {
+  if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
+
+    virtualContext = getVirtualContext(context);
 
     setPC(context, loadVirtualMemory(parentTable, (int) PC((int*) virtualContext)));
 
@@ -6521,41 +6548,6 @@ void restoreContext(int* context) {
 
     storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
   }
-}
-
-int* switchContext(int* toContext, int timeout) {
-  int* fromContext;
-
-  fromContext = currentContext;
-
-  // save machine state
-  setPC(fromContext, pc);
-  setLoReg(fromContext, loReg);
-  setHiReg(fromContext, hiReg);
-  setProgramBreak(fromContext, brk);
-
-  // upload context
-  saveContext(fromContext);
-
-  // download context
-  restoreContext(toContext);
-
-  // restore machine state
-  pc        = getPC(toContext);
-  registers = getRegs(toContext);
-  loReg     = getLoReg(toContext);
-  hiReg     = getHiReg(toContext);
-  pt        = getPT(toContext);
-  brk       = getProgramBreak(toContext);
-
-  timer = timeout;
-
-  currentContext = toContext;
-
-  // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  *(registers+REG_V1) = getVirtualContext(fromContext);
-
-  return fromContext;
 }
 
 // -----------------------------------------------------------------
