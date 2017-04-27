@@ -5086,7 +5086,10 @@ void doSwitch(int* toContext, int timeout) {
   brk       = getProgramBreak(toContext);
 
   // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  *(registers+REG_V1) = getVirtualContext(fromContext);
+  if (getParent(fromContext) == MY_CONTEXT)
+    *(registers+REG_V1) = (int) fromContext;
+  else
+    *(registers+REG_V1) = getVirtualContext(fromContext);
 
   currentContext = toContext;
 
@@ -6764,16 +6767,31 @@ int runUntilExitWithoutExceptionHandling(int* toContext) {
 
 int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
   // works with mipsters and hypsters
+  int mslice;
   int* fromContext;
   int savedStatus;
   int exceptionNumber;
   int exceptionParameter;
 
+  mslice = TIMESLICE;
+
+  if (mslice <= INT_MAX / 100)
+    mslice = mslice * mipster / 100;
+  else if (mslice <= INT_MAX / 10)
+    mslice = mslice / 10 * (mipster / 10);
+  else
+    mslice = mslice / 100 * mipster;
+
+  if (mslice > 0)
+    mipster = 1;
+  else
+    mipster = 0;
+
   while (1) {
     if (mipster)
-      fromContext = mipster_switch(toContext, TIMESLICE);
+      fromContext = mipster_switch(toContext, mslice);
     else
-      fromContext = hypster_switch(toContext, TIMESLICE);
+      fromContext = hypster_switch(toContext, TIMESLICE - mslice);
 
     // assert: fromContext must be in usedContexts (created here)
 
@@ -6809,6 +6827,12 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
 
       // TODO: scheduler should go here
       toContext = fromContext;
+
+      if (mipster) {
+        if (mslice != TIMESLICE)
+          mipster = 0;
+      } else if (mslice > 0)
+        mipster = 1;
     }
   }
 }
@@ -6871,14 +6895,13 @@ int boot(int argc, int* argv) {
   int exitCode;
 
   print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (mipster)
-    print((int*) "mipster");
-  else
-    print((int*) "hypster");
-  print((int*) " executing ");
+  print((int*) ": this is selfie executing ");
   print(binaryName);
   print((int*) " with ");
+  printInteger(mipster);
+  print((int*) "% mipster and ");
+  printInteger(100 - mipster);
+  print((int*) "% hypster and ");
   printInteger(pageFrameMemory / MEGABYTE);
   print((int*) "MB of physical memory");
   println();
@@ -6899,12 +6922,7 @@ int boot(int argc, int* argv) {
   exitCode = runOrHostUntilExitWithPageFaultHandling(currentContext);
 
   print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (mipster)
-    print((int*) "mipster");
-  else
-    print((int*) "hypster");
-  print((int*) " terminating ");
+  print((int*) ": this is selfie terminating ");
   print(binaryName);
   print((int*) " with exit code ");
   printInteger(exitCode);
@@ -6936,7 +6954,7 @@ int selfie_run(int engine, int machine, int debugger) {
 
   if (engine == MIPSTER) {
     // boot mipster
-    mipster = 1;
+    mipster = 100;
 
     if (debugger)
       debug = 1;
@@ -6946,8 +6964,7 @@ int selfie_run(int engine, int machine, int debugger) {
     else
       exitCode = bootminmob(numberOfRemainingArguments(), remainingArguments(), machine);
 
-    debug   = 0;
-    mipster = 0;
+    debug = 0;
 
     print(selfieName);
     if (sourceLineNumber != (int*) 0)
@@ -6959,9 +6976,15 @@ int selfie_run(int engine, int machine, int debugger) {
     printProfile((int*) ": loops: ", loops, loopsPerAddress);
     printProfile((int*) ": loads: ", loads, loadsPerAddress);
     printProfile((int*) ": stores: ", stores, storesPerAddress);
-  } else
+  } else {
+    // change this value to anywhere between 0% to 100% mipster
+    mipster = 0;
+
     // boot hypster
     exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+  }
+
+  mipster = 0;
 
   interpret = 0;
 
