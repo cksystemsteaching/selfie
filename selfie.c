@@ -884,6 +884,7 @@ void initMemory(int megabytes);
 int  loadPhysicalMemory(int* paddr);
 void storePhysicalMemory(int* paddr, int data);
 
+int FrameForPage(int* table, int page);
 int getFrameForPage(int* table, int page);
 int isPageMapped(int* table, int page);
 
@@ -1096,9 +1097,9 @@ void resetInterpreter() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int* allocateContext(int* parent, int vctxt, int* in);
+int* allocateContext(int* parent, int* vctxt, int* in);
 
-int* findContext(int* parent, int vctxt, int* in);
+int* findContext(int* parent, int* vctxt, int* in);
 
 void freeContext(int* context);
 int* deleteContext(int* context, int* from);
@@ -1120,19 +1121,19 @@ int* deleteContext(int* context, int* from);
 // | 12 | vctxt  | virtual context address
 // +----+--------+
 
-int* nextContext(int* context)    { return context; }
-int* prevContext(int* context)    { return context + 1; }
-int* PC(int* context)             { return context + 2; }
-int* Regs(int* context)           { return context + 3; }
-int* LoReg(int* context)          { return context + 4; }
-int* HiReg(int* context)          { return context + 5; }
-int* PT(int* context)             { return context + 6; }
-int* LoPage(int* context)         { return context + 7; }
-int* MePage(int* context)         { return context + 8; }
-int* HiPage(int* context)         { return context + 9; }
-int* ProgramBreak(int* context)   { return context + 10; }
-int* Parent(int* context)         { return context + 11; }
-int* VirtualContext(int* context) { return context + 12; }
+int nextContext(int* context)    { return (int) context; }
+int prevContext(int* context)    { return (int) (context + 1); }
+int PC(int* context)             { return (int) (context + 2); }
+int Regs(int* context)           { return (int) (context + 3); }
+int LoReg(int* context)          { return (int) (context + 4); }
+int HiReg(int* context)          { return (int) (context + 5); }
+int PT(int* context)             { return (int) (context + 6); }
+int LoPage(int* context)         { return (int) (context + 7); }
+int MePage(int* context)         { return (int) (context + 8); }
+int HiPage(int* context)         { return (int) (context + 9); }
+int ProgramBreak(int* context)   { return (int) (context + 10); }
+int Parent(int* context)         { return (int) (context + 11); }
+int VirtualContext(int* context) { return (int) (context + 12); }
 
 int* getNextContext(int* context)    { return (int*) *context; }
 int* getPrevContext(int* context)    { return (int*) *(context + 1); }
@@ -1146,7 +1147,7 @@ int  getMePage(int* context)         { return        *(context + 8); }
 int  getHiPage(int* context)         { return        *(context + 9); }
 int  getProgramBreak(int* context)   { return        *(context + 10); }
 int* getParent(int* context)         { return (int*) *(context + 11); }
-int  getVirtualContext(int* context) { return        *(context + 12); }
+int* getVirtualContext(int* context) { return (int*) *(context + 12); }
 
 void setNextContext(int* context, int* next) { *context       = (int) next; }
 void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
@@ -1160,7 +1161,7 @@ void setMePage(int* context, int mePage)     { *(context + 8) = mePage; }
 void setHiPage(int* context, int hiPage)     { *(context + 9) = hiPage; }
 void setProgramBreak(int* context, int brk)  { *(context + 10) = brk; }
 void setParent(int* context, int* parent) { *(context + 11) = (int) parent; }
-void setVirtualContext(int* context, int vctxt) { *(context + 12) = vctxt; }
+void setVirtualContext(int* context, int* vctxt) { *(context + 12) = (int) vctxt; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1168,9 +1169,9 @@ void setVirtualContext(int* context, int vctxt) { *(context + 12) = vctxt; }
 
 void resetMicrokernel();
 
-int* createContext(int* parent, int vctxt);
+int* createContext(int* parent, int* vctxt);
 
-int* cacheContext(int virtualContext);
+int* cacheContext(int* vctxt);
 
 void saveContext(int* context);
 
@@ -5089,7 +5090,7 @@ void doSwitch(int* toContext, int timeout) {
   if (getParent(fromContext) == MY_CONTEXT)
     *(registers+REG_V1) = (int) fromContext;
   else
-    *(registers+REG_V1) = getVirtualContext(fromContext);
+    *(registers+REG_V1) = (int) getVirtualContext(fromContext);
 
   currentContext = toContext;
 
@@ -5114,7 +5115,7 @@ void implementSwitch() {
   saveContext(currentContext);
 
   // cache context on my boot level before switching
-  doSwitch(cacheContext(*(registers+REG_A0)), *(registers+REG_A1));
+  doSwitch(cacheContext((int*) *(registers+REG_A0)), *(registers+REG_A1));
 }
 
 int* mipster_switch(int* toContext, int timeout) {
@@ -5187,6 +5188,10 @@ int loadPhysicalMemory(int* paddr) {
 
 void storePhysicalMemory(int* paddr, int data) {
   *paddr = data;
+}
+
+int FrameForPage(int* table, int page) {
+  return (int) (table + page);
 }
 
 int getFrameForPage(int* table, int page) {
@@ -6298,7 +6303,7 @@ void selfie_disassemble() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int* allocateContext(int* parent, int vctxt, int* in) {
+int* allocateContext(int* parent, int* vctxt, int* in) {
   int* context;
 
   if (freeContexts == (int*) 0)
@@ -6343,7 +6348,7 @@ int* allocateContext(int* parent, int vctxt, int* in) {
   return context;
 }
 
-int* findContext(int* parent, int vctxt, int* in) {
+int* findContext(int* parent, int* vctxt, int* in) {
   int* context;
 
   context = in;
@@ -6384,7 +6389,7 @@ int* deleteContext(int* context, int* from) {
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
 
-int* createContext(int* parent, int vctxt) {
+int* createContext(int* parent, int* vctxt) {
   // TODO: check if context already exists
   usedContexts = allocateContext(parent, vctxt, usedContexts);
 
@@ -6403,22 +6408,22 @@ int* createContext(int* parent, int vctxt) {
   return usedContexts;
 }
 
-int* cacheContext(int virtualContext) {
+int* cacheContext(int* vctxt) {
   int* context;
 
   // find cached context on my boot level
-  context = findContext(currentContext, virtualContext, usedContexts);
+  context = findContext(currentContext, vctxt, usedContexts);
 
   if (context == (int*) 0)
     // create cached context on my boot level
-    context = createContext(currentContext, virtualContext);
+    context = createContext(currentContext, vctxt);
 
   return context;
 }
 
 void saveContext(int* context) {
   int* parentTable;
-  int virtualContext;
+  int* vctxt;
   int r;
   int* regs;
   int* vregs;
@@ -6432,15 +6437,15 @@ void saveContext(int* context) {
   if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
 
-    virtualContext = getVirtualContext(context);
+    vctxt = getVirtualContext(context);
 
-    storeVirtualMemory(parentTable, (int) PC((int*) virtualContext), getPC(context));
+    storeVirtualMemory(parentTable, PC(vctxt), getPC(context));
 
     r = 0;
 
     regs = getRegs(context);
 
-    vregs = (int*) loadVirtualMemory(parentTable, (int) Regs((int*) virtualContext));
+    vregs = (int*) loadVirtualMemory(parentTable, Regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
       storeVirtualMemory(parentTable, (int) (vregs + r), *(regs + r));
@@ -6448,9 +6453,9 @@ void saveContext(int* context) {
       r = r + 1;
     }
 
-    storeVirtualMemory(parentTable, (int) LoReg((int*) virtualContext), getLoReg(context));
-    storeVirtualMemory(parentTable, (int) HiReg((int*) virtualContext), getHiReg(context));
-    storeVirtualMemory(parentTable, (int) ProgramBreak((int*) virtualContext), getProgramBreak(context));
+    storeVirtualMemory(parentTable, LoReg(vctxt), getLoReg(context));
+    storeVirtualMemory(parentTable, HiReg(vctxt), getHiReg(context));
+    storeVirtualMemory(parentTable, ProgramBreak(vctxt), getProgramBreak(context));
   }
 }
 
@@ -6487,7 +6492,7 @@ void mapPage(int* context, int page, int frame) {
 
 void restoreContext(int* context) {
   int* parentTable;
-  int virtualContext;
+  int* vctxt;
   int r;
   int* regs;
   int* vregs;
@@ -6499,15 +6504,15 @@ void restoreContext(int* context) {
   if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
 
-    virtualContext = getVirtualContext(context);
+    vctxt = getVirtualContext(context);
 
-    setPC(context, loadVirtualMemory(parentTable, (int) PC((int*) virtualContext)));
+    setPC(context, loadVirtualMemory(parentTable, PC(vctxt)));
 
     r = 0;
 
     regs = getRegs(context);
 
-    vregs = (int*) loadVirtualMemory(parentTable, (int) Regs((int*) virtualContext));
+    vregs = (int*) loadVirtualMemory(parentTable, Regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
       *(regs + r) = loadVirtualMemory(parentTable, (int) (vregs + r));
@@ -6515,19 +6520,19 @@ void restoreContext(int* context) {
       r = r + 1;
     }
 
-    setLoReg(context, loadVirtualMemory(parentTable, (int) LoReg((int*) virtualContext)));
-    setHiReg(context, loadVirtualMemory(parentTable, (int) HiReg((int*) virtualContext)));
-    setProgramBreak(context, loadVirtualMemory(parentTable, (int) ProgramBreak((int*) virtualContext)));
+    setLoReg(context, loadVirtualMemory(parentTable, LoReg(vctxt)));
+    setHiReg(context, loadVirtualMemory(parentTable, HiReg(vctxt)));
+    setProgramBreak(context, loadVirtualMemory(parentTable, ProgramBreak(vctxt)));
 
-    table = (int*) loadVirtualMemory(parentTable, (int) PT((int*) virtualContext));
+    table = (int*) loadVirtualMemory(parentTable, PT(vctxt));
 
     // assert: context page table is only mapped from beginning up and end down
 
-    page = loadVirtualMemory(parentTable, (int) LoPage((int*) virtualContext));
-    me   = loadVirtualMemory(parentTable, (int) MePage((int*) virtualContext));
+    page = loadVirtualMemory(parentTable, LoPage(vctxt));
+    me   = loadVirtualMemory(parentTable, MePage(vctxt));
 
     while (page <= me) {
-      frame = loadVirtualMemory(parentTable, (int) (table + page));
+      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
       if (frame != 0)
         // assert: 0 <= frame < VIRTUALMEMORYSIZE
@@ -6536,20 +6541,20 @@ void restoreContext(int* context) {
       page = page + 1;
     }
 
-    storeVirtualMemory(parentTable, (int) LoPage((int*) virtualContext), page);
+    storeVirtualMemory(parentTable, LoPage(vctxt), page);
 
-    page  = loadVirtualMemory(parentTable, (int) HiPage((int*) virtualContext));
-    frame = loadVirtualMemory(parentTable, (int) (table + page));
+    page  = loadVirtualMemory(parentTable, HiPage(vctxt));
+    frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
     while (frame != 0) {
       // assert: 0 <= frame < VIRTUALMEMORYSIZE
       mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
 
       page  = page - 1;
-      frame = loadVirtualMemory(parentTable, (int) (table + page));
+      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
     }
 
-    storeVirtualMemory(parentTable, (int) HiPage((int*) virtualContext), page);
+    storeVirtualMemory(parentTable, HiPage(vctxt), page);
   }
 }
 
