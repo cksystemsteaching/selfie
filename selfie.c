@@ -816,7 +816,7 @@ int  assemblyFD   = 0;        // file descriptor of open assembly file
 // -----------------------------------------------------------------
 
 void emitExit();
-void implementExit();
+int  implementExit(int* context);
 
 void emitRead();
 void implementRead();
@@ -1119,6 +1119,7 @@ int* deleteContext(int* context, int* from);
 // | 10 | brk    | break between code, data, and heap
 // | 11 | parent | context that created this context
 // | 12 | vctxt  | virtual context address
+// | 13 | name   | binary name loaded into context
 // +----+--------+
 
 int nextContext(int* context)    { return (int) context; }
@@ -1134,6 +1135,7 @@ int HiPage(int* context)         { return (int) (context + 9); }
 int ProgramBreak(int* context)   { return (int) (context + 10); }
 int Parent(int* context)         { return (int) (context + 11); }
 int VirtualContext(int* context) { return (int) (context + 12); }
+int Name(int* context)           { return (int) (context + 13); }
 
 int* getNextContext(int* context)    { return (int*) *context; }
 int* getPrevContext(int* context)    { return (int*) *(context + 1); }
@@ -1148,6 +1150,7 @@ int  getHiPage(int* context)         { return        *(context + 9); }
 int  getProgramBreak(int* context)   { return        *(context + 10); }
 int* getParent(int* context)         { return (int*) *(context + 11); }
 int* getVirtualContext(int* context) { return (int*) *(context + 12); }
+int* getName(int* context)           { return (int*) *(context + 13); }
 
 void setNextContext(int* context, int* next) { *context       = (int) next; }
 void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
@@ -1162,6 +1165,7 @@ void setHiPage(int* context, int hiPage)     { *(context + 9) = hiPage; }
 void setProgramBreak(int* context, int brk)  { *(context + 10) = brk; }
 void setParent(int* context, int* parent) { *(context + 11) = (int) parent; }
 void setVirtualContext(int* context, int* vctxt) { *(context + 12) = (int) vctxt; }
+void setName(int* context, int* name) { *(context + 13) = (int) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1681,12 +1685,16 @@ void putCharacter(int c) {
 void print(int* s) {
   int i;
 
-  i = 0;
+  if (s == (int*) 0)
+    print((int*) "NULL");
+  else {
+    i = 0;
 
-  while (loadCharacter(s, i) != 0) {
-    putCharacter(loadCharacter(s, i));
+    while (loadCharacter(s, i) != 0) {
+      putCharacter(loadCharacter(s, i));
 
-    i = i + 1;
+      i = i + 1;
+    }
   }
 }
 
@@ -3401,7 +3409,7 @@ void gr_statement() {
   int* variableOrProcedureName;
   int* entry;
 
-  // assert: allocatedTemporaries == 0;
+  // assert: allocatedTemporaries == 0
 
   while (lookForStatement()) {
     syntaxErrorUnexpected();
@@ -4046,8 +4054,9 @@ void selfie_compile() {
       numberOfSourceFiles = numberOfSourceFiles + 1;
 
       print(selfieName);
-      print((int*) ": this is selfie's starc compiling ");
+      print((int*) ": this is selfie compiling ");
       print(sourceName);
+      print((int*) " with starc");
       println();
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
@@ -4638,10 +4647,10 @@ void emitExit() {
   // never returns here
 }
 
-void implementExit() {
+int implementExit(int* context) {
   int exitCode;
 
-  exitCode = *(registers+REG_A0);
+  exitCode = *(getRegs(context)+REG_A0);
 
   // exit code must be signed 16-bit integer
   if (exitCode > INT16_MAX)
@@ -4649,15 +4658,17 @@ void implementExit() {
   else if (exitCode < INT16_MIN)
     exitCode = INT16_MIN;
 
-  throwException(EXCEPTION_EXIT, exitCode);
-
-  print(binaryName);
-  print((int*) ": exiting with exit code ");
-  printInteger(*(registers+REG_A0));
+  print(selfieName);
+  print((int*) ": ");
+  print(getName(context));
+  print((int*) " exiting with exit code ");
+  printInteger(exitCode);
   print((int*) " and ");
-  printFixedPointRatio(brk - maxBinaryLength, MEGABYTE);
+  printFixedPointRatio(getProgramBreak(context) - maxBinaryLength, MEGABYTE);
   print((int*) "MB of mallocated memory");
   println();
+
+  return exitCode;
 }
 
 void emitRead() {
@@ -4696,7 +4707,7 @@ void implementRead() {
   fd    = *(registers+REG_A0);
 
   if (debug_read) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": trying to read ");
     printInteger(size);
     print((int*) " bytes from file with descriptor ");
@@ -4740,7 +4751,7 @@ void implementRead() {
         size = 0;
 
         if (debug_read) {
-          print(binaryName);
+          print(selfieName);
           print((int*) ": reading into virtual address ");
           printHexadecimal(vaddr, 8);
           print((int*) " failed because the address is unmapped");
@@ -4753,7 +4764,7 @@ void implementRead() {
       size = 0;
 
       if (debug_read) {
-        print(binaryName);
+        print(selfieName);
         print((int*) ": reading into virtual address ");
         printHexadecimal(vaddr, 8);
         print((int*) " failed because the address is invalid");
@@ -4768,7 +4779,7 @@ void implementRead() {
     *(registers+REG_V0) = -1;
 
   if (debug_read) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": actually read ");
     printInteger(readTotal);
     print((int*) " bytes from file with descriptor ");
@@ -4812,7 +4823,7 @@ void implementWrite() {
   fd    = *(registers+REG_A0);
 
   if (debug_write) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": trying to write ");
     printInteger(size);
     print((int*) " bytes from buffer at virtual address ");
@@ -4856,7 +4867,7 @@ void implementWrite() {
         size = 0;
 
         if (debug_write) {
-          print(binaryName);
+          print(selfieName);
           print((int*) ": writing into virtual address ");
           printHexadecimal(vaddr, 8);
           print((int*) " failed because the address is unmapped");
@@ -4869,7 +4880,7 @@ void implementWrite() {
       size = 0;
 
       if (debug_write) {
-        print(binaryName);
+        print(selfieName);
         print((int*) ": writing into virtual address ");
         printHexadecimal(vaddr, 8);
         print((int*) " failed because the address is invalid");
@@ -4884,7 +4895,7 @@ void implementWrite() {
     *(registers+REG_V0) = -1;
 
   if (debug_write) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": actually wrote ");
     printInteger(writtenTotal);
     print((int*) " bytes into file with descriptor ");
@@ -4938,7 +4949,7 @@ int down_loadString(int* table, int vaddr, int* s) {
         i = i + 1;
       } else {
         if (debug_open) {
-          print(binaryName);
+          print(selfieName);
           print((int*) ": opening file with name at virtual address ");
           printHexadecimal(vaddr, 8);
           print((int*) " failed because the address is unmapped");
@@ -4947,7 +4958,7 @@ int down_loadString(int* table, int vaddr, int* s) {
       }
     } else {
       if (debug_open) {
-        print(binaryName);
+        print(selfieName);
         print((int*) ": opening file with name at virtual address ");
         printHexadecimal(vaddr, 8);
         print((int*) " failed because the address is invalid");
@@ -4975,7 +4986,7 @@ void implementOpen() {
     *(registers+REG_V0) = fd;
 
     if (debug_open) {
-      print(binaryName);
+      print(selfieName);
       print((int*) ": opened file ");
       printString(filename_buffer);
       print((int*) " with flags ");
@@ -4990,7 +5001,7 @@ void implementOpen() {
     *(registers+REG_V0) = -1;
 
     if (debug_open) {
-      print(binaryName);
+      print(selfieName);
       print((int*) ": opening file with name at virtual address ");
       printHexadecimal(vaddr, 8);
       print((int*) " failed because the name is too long");
@@ -5020,7 +5031,7 @@ void implementMalloc() {
   int bump;
 
   if (debug_malloc) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": trying to malloc ");
     printInteger(*(registers+REG_A0));
     print((int*) " bytes");
@@ -5039,7 +5050,7 @@ void implementMalloc() {
     brk = bump + size;
 
     if (debug_malloc) {
-      print(binaryName);
+      print(selfieName);
       print((int*) ": actually mallocating ");
       printInteger(size);
       print((int*) " bytes at virtual address ");
@@ -5097,7 +5108,7 @@ void doSwitch(int* toContext, int timeout) {
   timer = timeout;
 
   if (debug_switch) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": switched from context ");
     printHexadecimal((int) fromContext, 8);
     print((int*) " to context ");
@@ -5150,7 +5161,7 @@ int doStatus() {
   status = EXCEPTION_NOEXCEPTION;
 
   if (debug_status) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": status ");
     printStatus(savedStatus);
     println();
@@ -5241,7 +5252,7 @@ int* tlb(int* table, int vaddr) {
   paddr = (vaddr - page * PAGESIZE) + frame;
 
   if (debug_tlb) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": tlb access:");
     println();
     print((int*) " vaddr: ");
@@ -5683,7 +5694,7 @@ void fct_syscall() {
     pc = pc + WORDSIZE;
 
     if (*(registers+REG_V0) == SYSCALL_EXIT)
-      implementExit();
+      throwException(EXCEPTION_SYSCALL, 0);
     else if (*(registers+REG_V0) == SYSCALL_READ)
       implementRead();
     else if (*(registers+REG_V0) == SYSCALL_WRITE)
@@ -6071,7 +6082,7 @@ void throwException(int exception, int parameter) {
   trap = 1;
 
   if (debug_exception) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": context ");
     printHexadecimal((int) currentContext, 8);
     print((int*) " throws ");
@@ -6091,7 +6102,7 @@ void fetch() {
 void execute() {
   if (debug) {
     if (interpret) {
-      print(binaryName);
+      print(getName(currentContext));
       print((int*) ": $pc=");
     }
     printHexadecimal(pc, 0);
@@ -6307,7 +6318,7 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = malloc(5 * SIZEOFINTSTAR + 8 * SIZEOFINT);
+    context = malloc(6 * SIZEOFINTSTAR + 8 * SIZEOFINT);
   else {
     context = freeContexts;
 
@@ -6342,8 +6353,9 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   setProgramBreak(context, maxBinaryLength);
 
   setParent(context, parent);
-
   setVirtualContext(context, vctxt);
+
+  setName(context, (int*) 0);
 
   return context;
 }
@@ -6397,7 +6409,7 @@ int* createContext(int* parent, int* vctxt) {
     currentContext = usedContexts;
 
   if (debug_create) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": parent context ");
     printHexadecimal((int) parent, 8);
     print((int*) " created child context ");
@@ -6479,7 +6491,7 @@ void mapPage(int* context, int page, int frame) {
   }
 
   if (debug_map) {
-    print(binaryName);
+    print(selfieName);
     print((int*) ": page ");
     printHexadecimal(page, 4);
     print((int*) " mapped to frame ");
@@ -6633,6 +6645,8 @@ void mapAndStore(int* context, int vaddr, int data) {
 void up_loadBinary(int* context) {
   int vaddr;
 
+  setName(context, binaryName);
+
   // binaries start at lowest virtual address
   vaddr = 0;
 
@@ -6752,11 +6766,11 @@ int runUntilExitWithoutExceptionHandling(int* toContext) {
 
       exceptionNumber = decodeExceptionNumber(savedStatus);
 
-      if (exceptionNumber == EXCEPTION_EXIT)
+      if (exceptionNumber == EXCEPTION_SYSCALL)
         // TODO: only return if all contexts have exited
-        return decodeExceptionParameter(savedStatus);
+        return implementExit(fromContext);
       else if (exceptionNumber != EXCEPTION_TIMER) {
-        print(binaryName);
+        print(selfieName);
         print((int*) ": context ");
         printHexadecimal((int) fromContext, 8);
         print((int*) " throws uncaught ");
@@ -6816,11 +6830,11 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
       if (exceptionNumber == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, exceptionParameter, (int) palloc());
-      else if (exceptionNumber == EXCEPTION_EXIT)
+      else if (exceptionNumber == EXCEPTION_SYSCALL)
         // TODO: only return if all contexts have exited
-        return exceptionParameter;
+        return implementExit(fromContext);
       else if (exceptionNumber != EXCEPTION_TIMER) {
-        print(binaryName);
+        print(selfieName);
         print((int*) ": context ");
         printHexadecimal((int) fromContext, 8);
         print((int*) " throws uncaught ");
@@ -6847,14 +6861,12 @@ int bootminmob(int argc, int* argv, int machine) {
   int exitCode;
 
   print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (machine == MINSTER)
-    print((int*) "minster");
-  else
-    print((int*) "mobster");
-  print((int*) " executing ");
+  print((int*) ": this is selfie executing ");
   print(binaryName);
-  print((int*) " with ");
+  if (machine == MINSTER)
+    print((int*) " with minster and ");
+  else
+    print((int*) " with mobster and ");
   printInteger(pageFrameMemory / MEGABYTE);
   print((int*) "MB of physical memory");
   println();
@@ -6878,13 +6890,8 @@ int bootminmob(int argc, int* argv, int machine) {
   exitCode = runUntilExitWithoutExceptionHandling(currentContext);
 
   print(selfieName);
-  print((int*) ": this is selfie's ");
-  if (machine == MINSTER)
-    print((int*) "minster");
-  else
-    print((int*) "mobster");
-  print((int*) " terminating ");
-  print(binaryName);
+  print((int*) ": this is selfie terminating ");
+  print(getName(currentContext));
   print((int*) " with exit code ");
   printInteger(exitCode);
   print((int*) " and ");
@@ -6928,7 +6935,7 @@ int boot(int argc, int* argv) {
 
   print(selfieName);
   print((int*) ": this is selfie terminating ");
-  print(binaryName);
+  print(getName(currentContext));
   print((int*) " with exit code ");
   printInteger(exitCode);
   print((int*) " and ");
