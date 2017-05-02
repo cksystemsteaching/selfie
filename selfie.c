@@ -816,7 +816,7 @@ int  assemblyFD   = 0;        // file descriptor of open assembly file
 // -----------------------------------------------------------------
 
 void emitExit();
-int  implementExit(int* context);
+void implementExit(int* context);
 
 void emitRead();
 void implementRead();
@@ -1025,11 +1025,13 @@ int brk = 0; // break between code, data, and heap
 
 // core state
 
+int timer = -1; // counter for timer interrupt
+
 int trap = 0; // flag for creating a trap
 
 int status = 0; // machine status including faulting address
 
-int timer = -1; // counter for timer interrupt
+int exitCode = 0; // exit code when terminating mipster and hypster
 
 int  calls           = 0;        // total number of executed procedure calls
 int* callsPerAddress = (int*) 0; // number of executed calls of each procedure
@@ -1223,11 +1225,13 @@ void up_loadArguments(int* context, int argc, int* argv);
 
 void mapUnmappedPages(int* context);
 
-int runUntilExitWithoutExceptionHandling(int* toContext);
-int runOrHostUntilExitWithPageFaultHandling(int* toContext);
+int handleException(int* context, int status);
 
-int bootminmob(int argc, int* argv, int machine);
-int boot(int argc, int* argv);
+void runUntilExitWithoutExceptionHandling(int* toContext);
+void runOrHostUntilExitWithPageFaultHandling(int* toContext);
+
+void bootminmob(int argc, int* argv, int machine);
+void boot(int argc, int* argv);
 
 int selfie_run(int engine, int machine, int debugger);
 
@@ -4647,9 +4651,7 @@ void emitExit() {
   // never returns here
 }
 
-int implementExit(int* context) {
-  int exitCode;
-
+void implementExit(int* context) {
   exitCode = *(getRegs(context)+REG_A0);
 
   // exit code must be signed 16-bit integer
@@ -4667,8 +4669,6 @@ int implementExit(int* context) {
   printFixedPointRatio(getProgramBreak(context) - maxBinaryLength, MEGABYTE);
   print((int*) "MB of mallocated memory");
   println();
-
-  return exitCode;
 }
 
 void emitRead() {
@@ -5702,6 +5702,7 @@ void fct_syscall() {
     else if (*(registers+REG_V0) == SYSCALL_OPEN)
       implementOpen();
     else if (*(registers+REG_V0) == SYSCALL_MALLOC)
+      //throwException(EXCEPTION_SYSCALL, 0);
       implementMalloc();
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
@@ -6746,11 +6747,66 @@ void mapUnmappedPages(int* context) {
   }
 }
 
-int runUntilExitWithoutExceptionHandling(int* toContext) {
+int handleException(int* context, int status) {
+  int exceptionNumber;
+  int exceptionParameter;
+  int v0;
+
+  exceptionNumber    = decodeExceptionNumber(status);
+  exceptionParameter = decodeExceptionParameter(status);
+
+  if (exceptionNumber == EXCEPTION_PAGEFAULT)
+    // TODO: use this table to unmap and reuse frames
+    mapPage(context, exceptionParameter, (int) palloc());
+  else if (exceptionNumber == EXCEPTION_SYSCALL) {
+    v0 = *(getRegs(context)+REG_V0);
+
+    if (v0 == SYSCALL_EXIT) {
+      implementExit(context);
+
+      // TODO: exit only if all contexts have exited
+      return 1;
+    } else if (v0 == SYSCALL_READ)
+      implementRead();
+    else if (v0 == SYSCALL_WRITE)
+      implementWrite();
+    else if (v0 == SYSCALL_OPEN)
+      implementOpen();
+    else if (v0 == SYSCALL_MALLOC)
+      implementMalloc();
+    else if (v0 == SYSCALL_SWITCH)
+      implementSwitch();
+    else if (v0 == SYSCALL_STATUS)
+      implementStatus();
+    else {
+      print(selfieName);
+      print((int*) ": unknown system call ");
+      printInteger(v0);
+      println();
+
+      exitCode = -1;
+
+      return 1;
+    }
+  } else if (exceptionNumber != EXCEPTION_TIMER) {
+    print(selfieName);
+    print((int*) ": context ");
+    print(getName(context));
+    print((int*) " throws uncaught ");
+    printStatus(status);
+    println();
+
+    exitCode = -1;
+
+    return 1;
+  }
+
+  return 0;
+}
+
+void runUntilExitWithoutExceptionHandling(int* toContext) {
   // works only with mipsters
   int* fromContext;
-  int savedStatus;
-  int exceptionNumber;
 
   while (1) {
     fromContext = mipster_switch(toContext, TIMESLICE);
@@ -6760,37 +6816,19 @@ int runUntilExitWithoutExceptionHandling(int* toContext) {
     if (getParent(fromContext) != MY_CONTEXT)
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
-    else {
-      // we are the parent in charge of handling exit exceptions
-      savedStatus = mipster_status();
-
-      exceptionNumber = decodeExceptionNumber(savedStatus);
-
-      if (exceptionNumber == EXCEPTION_SYSCALL)
-        // TODO: only return if all contexts have exited
-        return implementExit(fromContext);
-      else if (exceptionNumber != EXCEPTION_TIMER) {
-        print(selfieName);
-        print((int*) ": context ");
-        printHexadecimal((int) fromContext, 8);
-        print((int*) " throws uncaught ");
-        printStatus(savedStatus);
-        println();
-
-        return -1;
-      } else
-        toContext = fromContext;
-    }
+    else // we are the parent in charge of handling exit exceptions
+    if (handleException(fromContext, mipster_status()))
+      return;
+    else
+      toContext = fromContext;
   }
 }
 
-int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
+void runOrHostUntilExitWithPageFaultHandling(int* toContext) {
   // works with mipsters and hypsters
   int mslice;
   int* fromContext;
-  int savedStatus;
-  int exceptionNumber;
-  int exceptionParameter;
+  int status;
 
   mslice = TIMESLICE;
 
@@ -6820,32 +6858,15 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
     else {
       // we are the parent in charge of handling exceptions
       if (mipster)
-        savedStatus = mipster_status();
+        status = mipster_status();
       else
-        savedStatus = hypster_status();
+        status = hypster_status();
 
-      exceptionNumber    = decodeExceptionNumber(savedStatus);
-      exceptionParameter = decodeExceptionParameter(savedStatus);
-
-      if (exceptionNumber == EXCEPTION_PAGEFAULT)
-        // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, exceptionParameter, (int) palloc());
-      else if (exceptionNumber == EXCEPTION_SYSCALL)
-        // TODO: only return if all contexts have exited
-        return implementExit(fromContext);
-      else if (exceptionNumber != EXCEPTION_TIMER) {
-        print(selfieName);
-        print((int*) ": context ");
-        printHexadecimal((int) fromContext, 8);
-        print((int*) " throws uncaught ");
-        printStatus(savedStatus);
-        println();
-
-        return -1;
-      }
-
-      // TODO: scheduler should go here
-      toContext = fromContext;
+      if (handleException(fromContext, status))
+        return;
+      else
+        // TODO: scheduler should go here
+        toContext = fromContext;
 
       if (mipster) {
         if (mslice != TIMESLICE)
@@ -6856,9 +6877,8 @@ int runOrHostUntilExitWithPageFaultHandling(int* toContext) {
   }
 }
 
-int bootminmob(int argc, int* argv, int machine) {
+void bootminmob(int argc, int* argv, int machine) {
   // works only with mipsters
-  int exitCode;
 
   print(selfieName);
   print((int*) ": this is selfie executing ");
@@ -6887,7 +6907,7 @@ int bootminmob(int argc, int* argv, int machine) {
     // CAUTION: consumes memory even when not used
     mapUnmappedPages(currentContext);
 
-  exitCode = runUntilExitWithoutExceptionHandling(currentContext);
+  runUntilExitWithoutExceptionHandling(currentContext);
 
   print(selfieName);
   print((int*) ": this is selfie terminating ");
@@ -6898,13 +6918,10 @@ int bootminmob(int argc, int* argv, int machine) {
   printFixedPointRatio(pused(), MEGABYTE);
   print((int*) "MB of mapped memory");
   println();
-
-  return exitCode;
 }
 
-int boot(int argc, int* argv) {
+void boot(int argc, int* argv) {
   // works with mipsters and hypsters
-  int exitCode;
 
   print(selfieName);
   print((int*) ": this is selfie executing ");
@@ -6931,7 +6948,7 @@ int boot(int argc, int* argv) {
   up_loadArguments(currentContext, argc, argv);
 
   // mipsters and hypsters handle page faults
-  exitCode = runOrHostUntilExitWithPageFaultHandling(currentContext);
+  runOrHostUntilExitWithPageFaultHandling(currentContext);
 
   print(selfieName);
   print((int*) ": this is selfie terminating ");
@@ -6942,13 +6959,9 @@ int boot(int argc, int* argv) {
   printFixedPointRatio(pused(), MEGABYTE);
   print((int*) "MB of mapped memory");
   println();
-
-  return exitCode;
 }
 
 int selfie_run(int engine, int machine, int debugger) {
-  int exitCode;
-
   if (binaryLength == 0) {
     print(selfieName);
     print((int*) ": nothing to run, debug, or host");
@@ -6972,9 +6985,9 @@ int selfie_run(int engine, int machine, int debugger) {
       debug = 1;
 
     if (machine == MIPSTER)
-      exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+      boot(numberOfRemainingArguments(), remainingArguments());
     else
-      exitCode = bootminmob(numberOfRemainingArguments(), remainingArguments(), machine);
+      bootminmob(numberOfRemainingArguments(), remainingArguments(), machine);
 
     debug = 0;
 
@@ -6993,7 +7006,7 @@ int selfie_run(int engine, int machine, int debugger) {
     mipster = 0;
 
     // boot hypster
-    exitCode = boot(numberOfRemainingArguments(), remainingArguments());
+    boot(numberOfRemainingArguments(), remainingArguments());
   }
 
   mipster = 0;
