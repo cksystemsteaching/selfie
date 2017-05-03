@@ -867,8 +867,6 @@ int SYSCALL_STATUS = 4902;
 int debug_switch = 0;
 int debug_status = 0;
 
-int mipster = 0; // flag for forcing to use mipster rather than hypster
-
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------    E M U L A T O R    ---------------------
@@ -1227,13 +1225,13 @@ void mapUnmappedPages(int* context);
 
 int handleException(int* context, int status);
 
-void runUntilExitWithoutExceptionHandling(int* toContext);
-void runOrHostUntilExitWithPageFaultHandling(int* toContext);
+void mipster(int* toContext);
+void minster(int* toContext);
+void mobster(int* toContext);
+void hypster(int* toContext);
+void mixter(int* toContext, int mix);
 
-void bootminmob(int argc, int* argv, int machine);
-void boot(int argc, int* argv);
-
-int selfie_run(int engine, int machine, int debugger);
+int selfie_run(int machine);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -6755,10 +6753,7 @@ int handleException(int* context, int status) {
   exceptionNumber    = decodeExceptionNumber(status);
   exceptionParameter = decodeExceptionParameter(status);
 
-  if (exceptionNumber == EXCEPTION_PAGEFAULT)
-    // TODO: use this table to unmap and reuse frames
-    mapPage(context, exceptionParameter, (int) palloc());
-  else if (exceptionNumber == EXCEPTION_SYSCALL) {
+  if (exceptionNumber == EXCEPTION_SYSCALL) {
     v0 = *(getRegs(context)+REG_V0);
 
     if (v0 == SYSCALL_EXIT) {
@@ -6804,14 +6799,48 @@ int handleException(int* context, int status) {
   return 0;
 }
 
-void runUntilExitWithoutExceptionHandling(int* toContext) {
-  // works only with mipsters
+void mipster(int* toContext) {
   int* fromContext;
+  int status;
+
+  print((int*) "mipster");
+  println();
 
   while (1) {
     fromContext = mipster_switch(toContext, TIMESLICE);
 
-    // assert: fromContext must be in usedContexts (created here)
+    if (getParent(fromContext) != MY_CONTEXT)
+      // switch to parent which is in charge of handling exceptions
+      toContext = getParent(fromContext);
+    else {
+       // we are the parent in charge of handling exceptions
+
+      status = mipster_status();
+
+      if (decodeExceptionNumber(status) == EXCEPTION_PAGEFAULT)
+        // TODO: use this table to unmap and reuse frames
+        mapPage(fromContext, decodeExceptionParameter(status), (int) palloc());
+      else if (handleException(fromContext, status))
+        return;
+
+      toContext = fromContext;
+    }
+  }
+}
+
+void minster(int* toContext) {
+  int* fromContext;
+
+  print((int*) "minster");
+  println();
+
+  // virtual is like physical memory in initial context up to memory size
+  // by mapping unmapped pages (for the heap) to all available page frames
+  // CAUTION: consumes memory even when not accessed
+  mapUnmappedPages(toContext);
+
+  while (1) {
+    fromContext = mipster_switch(toContext, TIMESLICE);
 
     if (getParent(fromContext) != MY_CONTEXT)
       // switch to parent which is in charge of handling exceptions
@@ -6824,173 +6853,168 @@ void runUntilExitWithoutExceptionHandling(int* toContext) {
   }
 }
 
-void runOrHostUntilExitWithPageFaultHandling(int* toContext) {
+void mobster(int* toContext) {
+  int* fromContext;
+
+  print((int*) "mobster");
+  println();
+
+  while (1) {
+    fromContext = mipster_switch(toContext, TIMESLICE);
+
+    if (getParent(fromContext) != MY_CONTEXT)
+      // switch to parent which is in charge of handling exceptions
+      toContext = getParent(fromContext);
+    else // we are the parent in charge of handling exit exceptions
+    if (handleException(fromContext, mipster_status()))
+      return;
+    else
+      toContext = fromContext;
+  }
+}
+
+void hypster(int* toContext) {
+  int* fromContext;
+  int status;
+
+  print((int*) "hypster");
+  println();
+
+  while (1) {
+    fromContext = hypster_switch(toContext, TIMESLICE);
+
+    status = hypster_status();
+
+    if (decodeExceptionNumber(status) == EXCEPTION_PAGEFAULT)
+      // TODO: use this table to unmap and reuse frames
+      mapPage(fromContext, decodeExceptionParameter(status), (int) palloc());
+    else if (handleException(fromContext, status))
+      return;
+
+    toContext = fromContext;
+  }
+}
+
+void mixter(int* toContext, int mix) {
   // works with mipsters and hypsters
   int mslice;
   int* fromContext;
   int status;
 
+  print((int*) "mixter (");
+  printInteger(mix);
+  print((int*) "% mipster/");
+  printInteger(100 - mix);
+  print((int*) "% hypster)");
+  println();
+
   mslice = TIMESLICE;
 
   if (mslice <= INT_MAX / 100)
-    mslice = mslice * mipster / 100;
+    mslice = mslice * mix / 100;
   else if (mslice <= INT_MAX / 10)
-    mslice = mslice / 10 * (mipster / 10);
+    mslice = mslice / 10 * (mix / 10);
   else
-    mslice = mslice / 100 * mipster;
+    mslice = mslice / 100 * mix;
 
   if (mslice > 0)
-    mipster = 1;
+    mix = 1;
   else
-    mipster = 0;
+    mix = 0;
 
   while (1) {
-    if (mipster)
+    if (mix)
       fromContext = mipster_switch(toContext, mslice);
     else
       fromContext = hypster_switch(toContext, TIMESLICE - mslice);
-
-    // assert: fromContext must be in usedContexts (created here)
 
     if (getParent(fromContext) != MY_CONTEXT)
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
     else {
       // we are the parent in charge of handling exceptions
-      if (mipster)
+      if (mix)
         status = mipster_status();
       else
         status = hypster_status();
 
-      if (handleException(fromContext, status))
+      if (decodeExceptionNumber(status) == EXCEPTION_PAGEFAULT)
+        // TODO: use this table to unmap and reuse frames
+        mapPage(fromContext, decodeExceptionParameter(status), (int) palloc());
+      else if (handleException(fromContext, status))
         return;
-      else
-        // TODO: scheduler should go here
-        toContext = fromContext;
 
-      if (mipster) {
+      // TODO: scheduler should go here
+      toContext = fromContext;
+
+      if (mix) {
         if (mslice != TIMESLICE)
-          mipster = 0;
+          mix = 0;
       } else if (mslice > 0)
-        mipster = 1;
+        mix = 1;
     }
   }
 }
 
-void bootminmob(int argc, int* argv, int machine) {
-  // works only with mipsters
-
-  print(selfieName);
-  print((int*) ": this is selfie executing ");
-  print(binaryName);
-  if (machine == MINSTER)
-    print((int*) " with minster and ");
-  else
-    print((int*) " with mobster and ");
-  printInteger(pageFrameMemory / MEGABYTE);
-  print((int*) "MB of physical memory");
-  println();
-
-  resetInterpreter();
-  resetMicrokernel();
-
-  // create initial context on my boot level
-  createContext(MY_CONTEXT, 0);
-
-  up_loadBinary(currentContext);
-
-  up_loadArguments(currentContext, argc, argv);
-
-  if (machine == MINSTER)
-    // virtual is like physical memory in initial context up to memory size
-    // by mapping unmapped pages (for the heap) to all available page frames
-    // CAUTION: consumes memory even when not used
-    mapUnmappedPages(currentContext);
-
-  runUntilExitWithoutExceptionHandling(currentContext);
-
-  print(selfieName);
-  print((int*) ": this is selfie terminating ");
-  print(getName(currentContext));
-  print((int*) " with exit code ");
-  printInteger(exitCode);
-  print((int*) " and ");
-  printFixedPointRatio(pused(), MEGABYTE);
-  print((int*) "MB of mapped memory");
-  println();
-}
-
-void boot(int argc, int* argv) {
-  // works with mipsters and hypsters
-
-  print(selfieName);
-  print((int*) ": this is selfie executing ");
-  print(binaryName);
-  print((int*) " with ");
-  printInteger(mipster);
-  print((int*) "% mipster and ");
-  printInteger(100 - mipster);
-  print((int*) "% hypster and ");
-  printInteger(pageFrameMemory / MEGABYTE);
-  print((int*) "MB of physical memory");
-  println();
-
-  // resetting interpreter is only necessary for mipsters
-  resetInterpreter();
-
-  resetMicrokernel();
-
-  // create initial context on my boot level
-  createContext(MY_CONTEXT, 0);
-
-  up_loadBinary(currentContext);
-
-  up_loadArguments(currentContext, argc, argv);
-
-  // mipsters and hypsters handle page faults
-  runOrHostUntilExitWithPageFaultHandling(currentContext);
-
-  print(selfieName);
-  print((int*) ": this is selfie terminating ");
-  print(getName(currentContext));
-  print((int*) " with exit code ");
-  printInteger(exitCode);
-  print((int*) " and ");
-  printFixedPointRatio(pused(), MEGABYTE);
-  print((int*) "MB of mapped memory");
-  println();
-}
-
-int selfie_run(int engine, int machine, int debugger) {
+int selfie_run(int machine) {
   if (binaryLength == 0) {
     print(selfieName);
     print((int*) ": nothing to run, debug, or host");
     println();
 
-    exit(-1);
+    return -1;
   }
 
   initMemory(atoi(peekArgument()));
 
+  interpret = 1;
+
+  resetInterpreter();
+  resetMicrokernel();
+
+  createContext(MY_CONTEXT, 0);
+
+  up_loadBinary(currentContext);
+
   // pass binary name as first argument by replacing memory size
   setArgument(binaryName);
 
-  interpret = 1;
+  up_loadArguments(currentContext, numberOfRemainingArguments(), remainingArguments());
 
-  if (engine == MIPSTER) {
-    // boot mipster
-    mipster = 100;
+  print(selfieName);
+  print((int*) ": this is selfie executing ");
+  print(binaryName);
+  print((int*) " with ");
+  printInteger(pageFrameMemory / MEGABYTE);
+  print((int*) "MB of physical memory on ");
 
-    if (debugger)
-      debug = 1;
+  if (machine == MIPSTER)
+    mipster(currentContext);
+  else if (machine == MINSTER)
+    minster(currentContext);
+  else if (machine == MOBSTER)
+    mobster(currentContext);
+  else if (machine == HYPSTER)
+    hypster(currentContext);
+  else
+    // change 0 to anywhere between 0% to 100% mipster
+    mixter(currentContext, 0);
 
-    if (machine == MIPSTER)
-      boot(numberOfRemainingArguments(), remainingArguments());
-    else
-      bootminmob(numberOfRemainingArguments(), remainingArguments(), machine);
+  interpret = 0;
 
-    debug = 0;
+  debug = 0;
 
+  print(selfieName);
+  print((int*) ": this is selfie terminating ");
+  print(getName(currentContext));
+  print((int*) " with exit code ");
+  printInteger(exitCode);
+  print((int*) " and ");
+  printFixedPointRatio(pused(), MEGABYTE);
+  print((int*) "MB of mapped memory");
+  println();
+
+  if (calls > 0) {
     print(selfieName);
     if (sourceLineNumber != (int*) 0)
       print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
@@ -7001,17 +7025,7 @@ int selfie_run(int engine, int machine, int debugger) {
     printProfile((int*) ": loops: ", loops, loopsPerAddress);
     printProfile((int*) ": loads: ", loads, loadsPerAddress);
     printProfile((int*) ": stores: ", stores, storesPerAddress);
-  } else {
-    // change this value to anywhere between 0% to 100% mipster
-    mipster = 0;
-
-    // boot hypster
-    boot(numberOfRemainingArguments(), remainingArguments());
   }
-
-  mipster = 0;
-
-  interpret = 0;
 
   return exitCode;
 }
@@ -7086,15 +7100,17 @@ int selfie() {
       else if (stringCompare(option, (int*) "-l"))
         selfie_load();
       else if (stringCompare(option, (int*) "-m"))
-        return selfie_run(MIPSTER, MIPSTER, 0);
-      else if (stringCompare(option, (int*) "-d"))
-        return selfie_run(MIPSTER, MIPSTER, 1);
-      else if (stringCompare(option, (int*) "-y"))
-        return selfie_run(HYPSTER, MIPSTER, 0);
+        return selfie_run(MIPSTER);
+      else if (stringCompare(option, (int*) "-d")) {
+        debug = 1;
+
+        return selfie_run(MIPSTER);
+      } else if (stringCompare(option, (int*) "-y"))
+        return selfie_run(HYPSTER);
       else if (stringCompare(option, (int*) "-min"))
-        return selfie_run(MIPSTER, MINSTER, 0);
+        return selfie_run(MINSTER);
       else if (stringCompare(option, (int*) "-mob"))
-        return selfie_run(MIPSTER, MOBSTER, 0);
+        return selfie_run(MOBSTER);
       else {
         printUsage();
 
