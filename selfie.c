@@ -855,17 +855,11 @@ void doSwitch(int* toContext, int timeout);
 void implementSwitch();
 int* mipster_switch(int* toContext, int timeout);
 
-void emitStatus();
-void implementStatus();
-int  mipster_status();
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int SYSCALL_SWITCH = 4901;
-int SYSCALL_STATUS = 4902;
 
 int debug_switch = 0;
-int debug_status = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -957,15 +951,8 @@ int debug_overflow = 0;
 void initInterpreter();
 void resetInterpreter();
 
-void printException(int exception);
-
-int encodeException(int exception, int parameter);
-int decodeExceptionNumber(int status);
-int decodeExceptionParameter(int status);
-
-void printStatus(int status);
-
-void throwException(int exception, int parameter);
+void printException(int exception, int faultingPage);
+void throwException(int exception, int faultingPage);
 
 void fetch();
 void execute();
@@ -1027,10 +1014,6 @@ int timer = -1; // counter for timer interrupt
 
 int trap = 0; // flag for creating a trap
 
-int status = 0; // machine status including faulting address
-
-int exitCode = 0; // exit code when terminating mipster and hypster
-
 int  calls           = 0;        // total number of executed procedure calls
 int* callsPerAddress = (int*) 0; // number of executed calls of each procedure
 
@@ -1074,8 +1057,6 @@ void resetInterpreter() {
 
   trap = 0;
 
-  status = EXCEPTION_NOEXCEPTION;
-
   timer = -1;
 
   if (interpret) {
@@ -1105,22 +1086,25 @@ void freeContext(int* context);
 int* deleteContext(int* context, int* from);
 
 // context struct:
-// +----+--------+
-// |  0 | next   | pointer to next context
-// |  1 | prev   | pointer to previous context
-// |  2 | pc     | program counter
-// |  3 | regs   | pointer to general purpose registers
-// |  4 | loReg  | lo register
-// |  5 | hiReg  | hi register
-// |  6 | pt     | pointer to page table
-// |  7 | loPage | lowest low unmapped page
-// |  8 | mePage | highest low unmapped page
-// |  9 | hiPage | highest high unmapped page
-// | 10 | brk    | break between code, data, and heap
-// | 11 | parent | context that created this context
-// | 12 | vctxt  | virtual context address
-// | 13 | name   | binary name loaded into context
-// +----+--------+
+// +----+----------------+
+// |  0 | nextContext    | pointer to next context
+// |  1 | prevContext    | pointer to previous context
+// |  2 | pc             | program counter
+// |  3 | regs           | pointer to general purpose registers
+// |  4 | loReg          | lo register
+// |  5 | hiReg          | hi register
+// |  6 | pt             | pointer to page table
+// |  7 | loPage         | lowest low unmapped page
+// |  8 | mePage         | highest low unmapped page
+// |  9 | hiPage         | highest high unmapped page
+// | 10 | brk            | break between code, data, and heap
+// | 11 | exception      | exception ID
+// | 12 | faultingPage   | faulting page
+// | 13 | exitCode       | exit code
+// | 14 | parent         | context that created this context
+// | 15 | virtualContext | virtual context address
+// | 16 | name           | binary name loaded into context
+// +----+----------------+
 
 int nextContext(int* context)    { return (int) context; }
 int prevContext(int* context)    { return (int) (context + 1); }
@@ -1133,9 +1117,12 @@ int LoPage(int* context)         { return (int) (context + 7); }
 int MePage(int* context)         { return (int) (context + 8); }
 int HiPage(int* context)         { return (int) (context + 9); }
 int ProgramBreak(int* context)   { return (int) (context + 10); }
-int Parent(int* context)         { return (int) (context + 11); }
-int VirtualContext(int* context) { return (int) (context + 12); }
-int Name(int* context)           { return (int) (context + 13); }
+int Exception(int* context)      { return (int) (context + 11); }
+int FaultingPage(int* context)   { return (int) (context + 12); }
+int ExitCode(int* context)       { return (int) (context + 13); }
+int Parent(int* context)         { return (int) (context + 14); }
+int VirtualContext(int* context) { return (int) (context + 15); }
+int Name(int* context)           { return (int) (context + 16); }
 
 int* getNextContext(int* context)    { return (int*) *context; }
 int* getPrevContext(int* context)    { return (int*) *(context + 1); }
@@ -1148,9 +1135,12 @@ int  getLoPage(int* context)         { return        *(context + 7); }
 int  getMePage(int* context)         { return        *(context + 8); }
 int  getHiPage(int* context)         { return        *(context + 9); }
 int  getProgramBreak(int* context)   { return        *(context + 10); }
-int* getParent(int* context)         { return (int*) *(context + 11); }
-int* getVirtualContext(int* context) { return (int*) *(context + 12); }
-int* getName(int* context)           { return (int*) *(context + 13); }
+int  getException(int* context)      { return        *(context + 11); }
+int  getFaultingPage(int* context)   { return        *(context + 12); }
+int  getExitCode(int* context)       { return        *(context + 13); }
+int* getParent(int* context)         { return (int*) *(context + 14); }
+int* getVirtualContext(int* context) { return (int*) *(context + 15); }
+int* getName(int* context)           { return (int*) *(context + 16); }
 
 void setNextContext(int* context, int* next) { *context       = (int) next; }
 void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
@@ -1163,9 +1153,12 @@ void setLoPage(int* context, int loPage)     { *(context + 7) = loPage; }
 void setMePage(int* context, int mePage)     { *(context + 8) = mePage; }
 void setHiPage(int* context, int hiPage)     { *(context + 9) = hiPage; }
 void setProgramBreak(int* context, int brk)  { *(context + 10) = brk; }
-void setParent(int* context, int* parent) { *(context + 11) = (int) parent; }
-void setVirtualContext(int* context, int* vctxt) { *(context + 12) = (int) vctxt; }
-void setName(int* context, int* name) { *(context + 13) = (int) name; }
+void setException(int* context, int exception) { *(context + 11) = exception; }
+void setFaultingPage(int* context, int page) { *(context + 12) = page; }
+void setExitCode(int* context, int code)     { *(context + 13) = code; }
+void setParent(int* context, int* parent) { *(context + 14) = (int) parent; }
+void setVirtualContext(int* context, int* vctxt) { *(context + 15) = (int) vctxt; }
+void setName(int* context, int* name) { *(context + 16) = (int) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1223,13 +1216,13 @@ void up_loadArguments(int* context, int argc, int* argv);
 
 void mapUnmappedPages(int* context);
 
-int handleException(int* context, int status);
+int handleSystemCalls(int* context);
 
-void mipster(int* toContext);
-void minster(int* toContext);
-void mobster(int* toContext);
-void hypster(int* toContext);
-void mixter(int* toContext, int mix);
+int mipster(int* toContext);
+int minster(int* toContext);
+int mobster(int* toContext);
+int hypster(int* toContext);
+int mixter(int* toContext, int mix);
 
 int selfie_run(int machine);
 
@@ -4043,7 +4036,6 @@ void selfie_compile() {
   emitMalloc();
 
   emitSwitch();
-  emitStatus();
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -4650,19 +4642,13 @@ void emitExit() {
 }
 
 void implementExit(int* context) {
-  exitCode = *(getRegs(context)+REG_A0);
-
-  // exit code must be signed 16-bit integer
-  if (exitCode > INT16_MAX)
-    exitCode = INT16_MAX;
-  else if (exitCode < INT16_MIN)
-    exitCode = INT16_MIN;
+  setExitCode(context, *(getRegs(context)+REG_A0));
 
   print(selfieName);
   print((int*) ": ");
   print(getName(context));
   print((int*) " exiting with exit code ");
-  printInteger(exitCode);
+  printInteger(getExitCode(context));
   print((int*) " and ");
   printFixedPointRatio(getProgramBreak(context) - maxBinaryLength, MEGABYTE);
   print((int*) "MB of mallocated memory");
@@ -5140,45 +5126,6 @@ int* mipster_switch(int* toContext, int timeout) {
 int* hypster_switch(int* toContext, int timeout) {
   // this procedure is only executed at boot level zero
   return mipster_switch(toContext, timeout);
-}
-
-void emitStatus() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_status", 0, PROCEDURE, INT_T, 0, binaryLength);
-
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_STATUS);
-  emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
-
-  emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
-}
-
-int doStatus() {
-  int savedStatus;
-
-  savedStatus = status;
-
-  status = EXCEPTION_NOEXCEPTION;
-
-  if (debug_status) {
-    print(selfieName);
-    print((int*) ": status ");
-    printStatus(savedStatus);
-    println();
-  }
-
-  return savedStatus;
-}
-
-void implementStatus() {
-  *(registers+REG_V0) = doStatus();
-}
-
-int mipster_status() {
-  return doStatus();
-}
-
-int hypster_status() {
-  // this procedure is only executed at boot level zero
-  return mipster_status();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5704,8 +5651,6 @@ void fct_syscall() {
       implementMalloc();
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
-    else if (*(registers+REG_V0) == SYSCALL_STATUS)
-      implementStatus();
     else {
       pc = pc - WORDSIZE;
 
@@ -5792,7 +5737,7 @@ void op_lw() {
 
         pc = pc + WORDSIZE;
       } else
-        throwException(EXCEPTION_PAGEFAULT, vaddr);
+        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
     } else
       // TODO: pass invalid vaddr
       throwException(EXCEPTION_ADDRESSERROR, 0);
@@ -5850,7 +5795,7 @@ void op_sw() {
 
         pc = pc + WORDSIZE;
       } else
-        throwException(EXCEPTION_PAGEFAULT, vaddr);
+        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
     } else
       // TODO: pass invalid vaddr
       throwException(EXCEPTION_ADDRESSERROR, 0);
@@ -6034,49 +5979,18 @@ void op_j() {
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
-void printException(int exception) {
+void printException(int exception, int faultingPage) {
   print((int*) *(EXCEPTIONS + exception));
-}
-
-int encodeException(int exception, int parameter) {
-  // assert: 0 <= exception < 2^16
-  // assert: -2^15 <= parameter < 2^15
-
-  if (parameter < 0)
-    // convert from 32-bit to 16-bit two's complement
-    parameter = parameter + twoToThePowerOf(16);
-
-  return leftShift(exception, 16) + parameter;
-}
-
-int decodeExceptionNumber(int status) {
-  return rightShift(status, 16);
-}
-
-int decodeExceptionParameter(int status) {
-  return signExtend(rightShift(leftShift(status, 16), 16));
-}
-
-void printStatus(int status) {
-  int exception;
-  int parameter;
-
-  exception = decodeExceptionNumber(status);
-  parameter = decodeExceptionParameter(status);
-
-  printException(exception);
 
   if (exception == EXCEPTION_PAGEFAULT) {
     print((int*) " at ");
-    printHexadecimal(parameter, 8);
+    printHexadecimal(faultingPage, 8);
   }
 }
 
-void throwException(int exception, int parameter) {
-  if (exception == EXCEPTION_PAGEFAULT)
-    status = encodeException(exception, parameter / PAGESIZE);
-  else
-    status = encodeException(exception, parameter);
+void throwException(int exception, int faultingPage) {
+  setException(currentContext, exception);
+  setFaultingPage(currentContext, faultingPage);
 
   trap = 1;
 
@@ -6085,7 +5999,7 @@ void throwException(int exception, int parameter) {
     print((int*) ": context ");
     printHexadecimal((int) currentContext, 8);
     print((int*) " throws ");
-    printStatus(status);
+    printException(exception, faultingPage);
     print((int*) " exception");
     println();
   }
@@ -6161,7 +6075,7 @@ void interrupt() {
     timer = timer - 1;
 
   if (timer == 0)
-    if (status == 0)
+    if (getException(currentContext) == EXCEPTION_NOEXCEPTION)
       // only throw exception if no other is pending
       // TODO: handle multiple pending exceptions
       throwException(EXCEPTION_TIMER, 0);
@@ -6317,7 +6231,7 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = malloc(6 * SIZEOFINTSTAR + 8 * SIZEOFINT);
+    context = malloc(6 * SIZEOFINTSTAR + 11 * SIZEOFINT);
   else {
     context = freeContexts;
 
@@ -6346,10 +6260,15 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   // determine range of recently mapped pages
   setLoPage(context, 0);
   setMePage(context, 0);
-  setHiPage(context, (VIRTUALMEMORYSIZE - WORDSIZE) / PAGESIZE);
+  setHiPage(context, getPageOfVirtualAddress(VIRTUALMEMORYSIZE - WORDSIZE));
 
   // heap starts where it is safe to start
   setProgramBreak(context, maxBinaryLength);
+
+  setException(context, EXCEPTION_NOEXCEPTION);
+  setFaultingPage(context, 0);
+
+  setExitCode(context, 0);
 
   setParent(context, parent);
   setVirtualContext(context, vctxt);
@@ -6467,6 +6386,10 @@ void saveContext(int* context) {
     storeVirtualMemory(parentTable, LoReg(vctxt), getLoReg(context));
     storeVirtualMemory(parentTable, HiReg(vctxt), getHiReg(context));
     storeVirtualMemory(parentTable, ProgramBreak(vctxt), getProgramBreak(context));
+
+    storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
+    storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
+    storeVirtualMemory(parentTable, ExitCode(vctxt), getExitCode(context));
   }
 }
 
@@ -6535,6 +6458,10 @@ void restoreContext(int* context) {
     setHiReg(context, loadVirtualMemory(parentTable, HiReg(vctxt)));
     setProgramBreak(context, loadVirtualMemory(parentTable, ProgramBreak(vctxt)));
 
+    setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
+    setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
+    setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
+
     table = (int*) loadVirtualMemory(parentTable, PT(vctxt));
 
     // assert: context page table is only mapped from beginning up and end down
@@ -6547,7 +6474,7 @@ void restoreContext(int* context) {
 
       if (frame != 0)
         // assert: 0 <= frame < VIRTUALMEMORYSIZE
-        mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
+        mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page = page + 1;
     }
@@ -6559,7 +6486,7 @@ void restoreContext(int* context) {
 
     while (frame != 0) {
       // assert: 0 <= frame < VIRTUALMEMORYSIZE
-      mapPage(context, page, getFrameForPage(parentTable, frame / PAGESIZE));
+      mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page  = page - 1;
       frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
@@ -6745,15 +6672,10 @@ void mapUnmappedPages(int* context) {
   }
 }
 
-int handleException(int* context, int status) {
-  int exceptionNumber;
-  int exceptionParameter;
+int handleSystemCalls(int* context) {
   int v0;
 
-  exceptionNumber    = decodeExceptionNumber(status);
-  exceptionParameter = decodeExceptionParameter(status);
-
-  if (exceptionNumber == EXCEPTION_SYSCALL) {
+  if (getException(context) == EXCEPTION_SYSCALL) {
     v0 = *(getRegs(context)+REG_V0);
 
     if (v0 == SYSCALL_EXIT) {
@@ -6771,27 +6693,25 @@ int handleException(int* context, int status) {
       implementMalloc();
     else if (v0 == SYSCALL_SWITCH)
       implementSwitch();
-    else if (v0 == SYSCALL_STATUS)
-      implementStatus();
     else {
       print(selfieName);
       print((int*) ": unknown system call ");
       printInteger(v0);
       println();
 
-      exitCode = -1;
+      setExitCode(context, -1);
 
       return 1;
     }
-  } else if (exceptionNumber != EXCEPTION_TIMER) {
+  } else if (getException(context) != EXCEPTION_TIMER) {
     print(selfieName);
     print((int*) ": context ");
     print(getName(context));
     print((int*) " throws uncaught ");
-    printStatus(status);
+    printException(getException(context), getFaultingPage(context));
     println();
 
-    exitCode = -1;
+    setExitCode(context, -1);
 
     return 1;
   }
@@ -6799,9 +6719,8 @@ int handleException(int* context, int status) {
   return 0;
 }
 
-void mipster(int* toContext) {
+int mipster(int* toContext) {
   int* fromContext;
-  int status;
 
   print((int*) "mipster");
   println();
@@ -6815,20 +6734,20 @@ void mipster(int* toContext) {
     else {
        // we are the parent in charge of handling exceptions
 
-      status = mipster_status();
-
-      if (decodeExceptionNumber(status) == EXCEPTION_PAGEFAULT)
+      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, decodeExceptionParameter(status), (int) palloc());
-      else if (handleException(fromContext, status))
-        return;
+        mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
+      else if (handleSystemCalls(fromContext))
+        return getExitCode(fromContext);
+
+      setException(fromContext, EXCEPTION_NOEXCEPTION);
 
       toContext = fromContext;
     }
   }
 }
 
-void minster(int* toContext) {
+int minster(int* toContext) {
   int* fromContext;
 
   print((int*) "minster");
@@ -6845,15 +6764,20 @@ void minster(int* toContext) {
     if (getParent(fromContext) != MY_CONTEXT)
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
-    else // we are the parent in charge of handling exit exceptions
-    if (handleException(fromContext, mipster_status()))
-      return;
-    else
+    else {
+      // we are the parent in charge of handling exit exceptions
+
+      if (handleSystemCalls(fromContext))
+        return getExitCode(fromContext);
+
+      setException(fromContext, EXCEPTION_NOEXCEPTION);
+
       toContext = fromContext;
+    }
   }
 }
 
-void mobster(int* toContext) {
+int mobster(int* toContext) {
   int* fromContext;
 
   print((int*) "mobster");
@@ -6865,17 +6789,21 @@ void mobster(int* toContext) {
     if (getParent(fromContext) != MY_CONTEXT)
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
-    else // we are the parent in charge of handling exit exceptions
-    if (handleException(fromContext, mipster_status()))
-      return;
-    else
+    else {
+      // we are the parent in charge of handling exit exceptions
+
+      if (handleSystemCalls(fromContext))
+        return getExitCode(fromContext);
+
+      setException(fromContext, EXCEPTION_NOEXCEPTION);
+
       toContext = fromContext;
+    }
   }
 }
 
-void hypster(int* toContext) {
+int hypster(int* toContext) {
   int* fromContext;
-  int status;
 
   print((int*) "hypster");
   println();
@@ -6883,23 +6811,22 @@ void hypster(int* toContext) {
   while (1) {
     fromContext = hypster_switch(toContext, TIMESLICE);
 
-    status = hypster_status();
-
-    if (decodeExceptionNumber(status) == EXCEPTION_PAGEFAULT)
+    if (getException(fromContext) == EXCEPTION_PAGEFAULT)
       // TODO: use this table to unmap and reuse frames
-      mapPage(fromContext, decodeExceptionParameter(status), (int) palloc());
-    else if (handleException(fromContext, status))
-      return;
+      mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
+    else if (handleSystemCalls(fromContext))
+      return getExitCode(fromContext);
+
+    setException(fromContext, EXCEPTION_NOEXCEPTION);
 
     toContext = fromContext;
   }
 }
 
-void mixter(int* toContext, int mix) {
+int mixter(int* toContext, int mix) {
   // works with mipsters and hypsters
   int mslice;
   int* fromContext;
-  int status;
 
   print((int*) "mixter (");
   printInteger(mix);
@@ -6933,16 +6860,14 @@ void mixter(int* toContext, int mix) {
       toContext = getParent(fromContext);
     else {
       // we are the parent in charge of handling exceptions
-      if (mix)
-        status = mipster_status();
-      else
-        status = hypster_status();
 
-      if (decodeExceptionNumber(status) == EXCEPTION_PAGEFAULT)
+      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, decodeExceptionParameter(status), (int) palloc());
-      else if (handleException(fromContext, status))
-        return;
+        mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
+      else if (handleSystemCalls(fromContext))
+        return getExitCode(fromContext);
+
+      setException(fromContext, EXCEPTION_NOEXCEPTION);
 
       // TODO: scheduler should go here
       toContext = fromContext;
@@ -6957,6 +6882,8 @@ void mixter(int* toContext, int mix) {
 }
 
 int selfie_run(int machine) {
+  int exitCode;
+
   if (binaryLength == 0) {
     print(selfieName);
     print((int*) ": nothing to run, debug, or host");
@@ -6989,16 +6916,16 @@ int selfie_run(int machine) {
   print((int*) "MB of physical memory on ");
 
   if (machine == MIPSTER)
-    mipster(currentContext);
+    exitCode = mipster(currentContext);
   else if (machine == MINSTER)
-    minster(currentContext);
+    exitCode = minster(currentContext);
   else if (machine == MOBSTER)
-    mobster(currentContext);
+    exitCode = mobster(currentContext);
   else if (machine == HYPSTER)
-    hypster(currentContext);
+    exitCode = hypster(currentContext);
   else
     // change 0 to anywhere between 0% to 100% mipster
-    mixter(currentContext, 0);
+    exitCode = mixter(currentContext, 0);
 
   interpret = 0;
 
