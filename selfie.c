@@ -819,17 +819,17 @@ void emitExit();
 void implementExit(int* context);
 
 void emitRead();
-void implementRead();
+void implementRead(int* context);
 
 void emitWrite();
-void implementWrite();
+void implementWrite(int* context);
 
 void emitOpen();
 int  down_loadString(int* table, int vaddr, int* s);
-void implementOpen();
+void implementOpen(int* context);
 
 void emitMalloc();
-void implementMalloc();
+void implementMalloc(int* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1006,8 +1006,6 @@ int hiReg = 0; // hi register for multiplication/division
 
 int* pt = (int*) 0; // page table
 
-int brk = 0; // break between code, data, and heap
-
 // core state
 
 int timer = -1; // counter for timer interrupt
@@ -1052,8 +1050,6 @@ void resetInterpreter() {
   hiReg = 0;
 
   pt = (int*) 0;
-
-  brk = maxBinaryLength;
 
   trap = 0;
 
@@ -4674,7 +4670,7 @@ void emitRead() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementRead() {
+void implementRead(int* context) {
   int size;
   int vaddr;
   int fd;
@@ -4686,9 +4682,9 @@ void implementRead() {
 
   // assert: read buffer is mapped
 
-  size  = *(registers+REG_A2);
-  vaddr = *(registers+REG_A1);
-  fd    = *(registers+REG_A0);
+  size  = *(getRegs(context)+REG_A2);
+  vaddr = *(getRegs(context)+REG_A1);
+  fd    = *(getRegs(context)+REG_A0);
 
   if (debug_read) {
     print(selfieName);
@@ -4708,8 +4704,8 @@ void implementRead() {
 
   while (size > 0) {
     if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        buffer = tlb(pt, vaddr);
+      if (isVirtualAddressMapped(getPT(context), vaddr)) {
+        buffer = tlb(getPT(context), vaddr);
 
         if (size < bytesToRead)
           bytesToRead = size;
@@ -4758,9 +4754,9 @@ void implementRead() {
   }
 
   if (failed == 0)
-    *(registers+REG_V0) = readTotal;
+    *(getRegs(context)+REG_V0) = readTotal;
   else
-    *(registers+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = -1;
 
   if (debug_read) {
     print(selfieName);
@@ -4790,7 +4786,7 @@ void emitWrite() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementWrite() {
+void implementWrite(int* context) {
   int size;
   int vaddr;
   int fd;
@@ -4802,9 +4798,9 @@ void implementWrite() {
 
   // assert: write buffer is mapped
 
-  size  = *(registers+REG_A2);
-  vaddr = *(registers+REG_A1);
-  fd    = *(registers+REG_A0);
+  size  = *(getRegs(context)+REG_A2);
+  vaddr = *(getRegs(context)+REG_A1);
+  fd    = *(getRegs(context)+REG_A0);
 
   if (debug_write) {
     print(selfieName);
@@ -4824,8 +4820,8 @@ void implementWrite() {
 
   while (size > 0) {
     if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        buffer = tlb(pt, vaddr);
+      if (isVirtualAddressMapped(getPT(context), vaddr)) {
+        buffer = tlb(getPT(context), vaddr);
 
         if (size < bytesToWrite)
           bytesToWrite = size;
@@ -4874,9 +4870,9 @@ void implementWrite() {
   }
 
   if (failed == 0)
-    *(registers+REG_V0) = writtenTotal;
+    *(getRegs(context)+REG_V0) = writtenTotal;
   else
-    *(registers+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = -1;
 
   if (debug_write) {
     print(selfieName);
@@ -4954,20 +4950,20 @@ int down_loadString(int* table, int vaddr, int* s) {
   return 0;
 }
 
-void implementOpen() {
+void implementOpen(int* context) {
   int mode;
   int flags;
   int vaddr;
   int fd;
 
-  mode  = *(registers+REG_A2);
-  flags = *(registers+REG_A1);
-  vaddr = *(registers+REG_A0);
+  mode  = *(getRegs(context)+REG_A2);
+  flags = *(getRegs(context)+REG_A1);
+  vaddr = *(getRegs(context)+REG_A0);
 
-  if (down_loadString(pt, vaddr, filename_buffer)) {
+  if (down_loadString(getPT(context), vaddr, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
-    *(registers+REG_V0) = fd;
+    *(getRegs(context)+REG_V0) = fd;
 
     if (debug_open) {
       print(selfieName);
@@ -4982,7 +4978,7 @@ void implementOpen() {
       println();
     }
   } else {
-    *(registers+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = -1;
 
     if (debug_open) {
       print(selfieName);
@@ -5010,28 +5006,28 @@ void emitMalloc() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementMalloc() {
+void implementMalloc(int* context) {
   int size;
   int bump;
 
   if (debug_malloc) {
     print(selfieName);
     print((int*) ": trying to malloc ");
-    printInteger(*(registers+REG_A0));
+    printInteger(*(getRegs(context)+REG_A0));
     print((int*) " bytes");
     println();
   }
 
-  size = roundUp(*(registers+REG_A0), WORDSIZE);
+  size = roundUp(*(getRegs(context)+REG_A0), WORDSIZE);
 
-  bump = brk;
+  bump = getProgramBreak(context);
 
-  if (bump + size >= *(registers+REG_SP))
+  if (bump + size >= *(getRegs(context)+REG_SP))
     throwException(EXCEPTION_HEAPOVERFLOW, 0);
   else {
-    *(registers+REG_V0) = bump;
+    *(getRegs(context)+REG_V0) = bump;
 
-    brk = bump + size;
+    setProgramBreak(context, bump + size);
 
     if (debug_malloc) {
       print(selfieName);
@@ -5079,7 +5075,6 @@ void doSwitch(int* toContext, int timeout) {
   loReg     = getLoReg(toContext);
   hiReg     = getHiReg(toContext);
   pt        = getPT(toContext);
-  brk       = getProgramBreak(toContext);
 
   // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
   if (getParent(fromContext) == MY_CONTEXT)
@@ -5641,14 +5636,13 @@ void fct_syscall() {
     if (*(registers+REG_V0) == SYSCALL_EXIT)
       throwException(EXCEPTION_SYSCALL, 0);
     else if (*(registers+REG_V0) == SYSCALL_READ)
-      implementRead();
+      throwException(EXCEPTION_SYSCALL, 0);
     else if (*(registers+REG_V0) == SYSCALL_WRITE)
-      implementWrite();
+      throwException(EXCEPTION_SYSCALL, 0);
     else if (*(registers+REG_V0) == SYSCALL_OPEN)
-      implementOpen();
+      throwException(EXCEPTION_SYSCALL, 0);
     else if (*(registers+REG_V0) == SYSCALL_MALLOC)
-      //throwException(EXCEPTION_SYSCALL, 0);
-      implementMalloc();
+      throwException(EXCEPTION_SYSCALL, 0);
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
     else {
@@ -6362,7 +6356,6 @@ void saveContext(int* context) {
   setPC(context, pc);
   setLoReg(context, loReg);
   setHiReg(context, hiReg);
-  setProgramBreak(context, brk);
 
   if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
@@ -6684,15 +6677,13 @@ int handleSystemCalls(int* context) {
       // TODO: exit only if all contexts have exited
       return 1;
     } else if (v0 == SYSCALL_READ)
-      implementRead();
+      implementRead(context);
     else if (v0 == SYSCALL_WRITE)
-      implementWrite();
+      implementWrite(context);
     else if (v0 == SYSCALL_OPEN)
-      implementOpen();
+      implementOpen(context);
     else if (v0 == SYSCALL_MALLOC)
-      implementMalloc();
-    else if (v0 == SYSCALL_SWITCH)
-      implementSwitch();
+      implementMalloc(context);
     else {
       print(selfieName);
       print((int*) ": unknown system call ");
