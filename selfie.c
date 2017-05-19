@@ -829,7 +829,7 @@ int  down_loadString(int* table, int vaddr, int* s);
 void implementOpen();
 
 void emitMalloc();
-void implementMalloc();
+int implementMalloc(int* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -970,14 +970,11 @@ void selfie_disassemble();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int EXCEPTION_NOEXCEPTION        = 0;
-int EXCEPTION_EXIT               = 1;
-int EXCEPTION_TIMER              = 2;
-int EXCEPTION_PAGEFAULT          = 3;
-int EXCEPTION_SYSCALL            = 4;
-int EXCEPTION_ADDRESSERROR       = 5;
-int EXCEPTION_HEAPOVERFLOW       = 6;
-int EXCEPTION_UNKNOWNINSTRUCTION = 7;
-int EXCEPTION_UNKNOWNSYSCALL     = 8;
+int EXCEPTION_PAGEFAULT          = 1;
+int EXCEPTION_SYSCALL            = 2;
+int EXCEPTION_TIMER              = 3;
+int EXCEPTION_INVALIDADDRESS     = 4;
+int EXCEPTION_UNKNOWNINSTRUCTION = 5;
 
 int* EXCEPTIONS; // strings representing exceptions
 
@@ -987,6 +984,8 @@ int debug_exception = 0;
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
 // TODO: implement proper interrupt controller to turn interrupts on and off
 int TIMESLICE = 10000000;
+
+int TIMEROFF = -1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1005,8 +1004,6 @@ int loReg = 0; // lo register for multiplication/division
 int hiReg = 0; // hi register for multiplication/division
 
 int* pt = (int*) 0; // page table
-
-int brk = 0; // break between code, data, and heap
 
 // core state
 
@@ -1029,17 +1026,14 @@ int* storesPerAddress = (int*) 0; // number of executed stores per store operati
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = malloc(9 * SIZEOFINTSTAR);
+  EXCEPTIONS = malloc(6 * SIZEOFINTSTAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (int) "no exception";
-  *(EXCEPTIONS + EXCEPTION_EXIT)               = (int) "exit";
-  *(EXCEPTIONS + EXCEPTION_TIMER)              = (int) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
   *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (int) "syscall";
-  *(EXCEPTIONS + EXCEPTION_ADDRESSERROR)       = (int) "address error";
-  *(EXCEPTIONS + EXCEPTION_HEAPOVERFLOW)       = (int) "heap overflow";
+  *(EXCEPTIONS + EXCEPTION_TIMER)              = (int) "timer interrupt";
+  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (int) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (int) "unknown instruction";
-  *(EXCEPTIONS + EXCEPTION_UNKNOWNSYSCALL)     = (int) "unknown syscall";
 }
 
 void resetInterpreter() {
@@ -1053,11 +1047,9 @@ void resetInterpreter() {
 
   pt = (int*) 0;
 
-  brk = maxBinaryLength;
-
   trap = 0;
 
-  timer = -1;
+  timer = TIMEROFF;
 
   if (interpret) {
     calls           = 0;
@@ -1229,6 +1221,17 @@ int selfie_run(int machine);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 int* MY_CONTEXT = (int*) 0;
+
+int DONOTEXIT = 0;
+int EXIT = 1;
+
+int EXITCODE_NOERROR = 0;
+int EXITCODE_IOERROR = -1;
+int EXITCODE_COMPILEERROR = -2;
+int EXITCODE_OUTOFVIRTUALMEMORY = -3;
+int EXITCODE_OUTOFPHYSICALMEMORY = -4;
+int EXITCODE_UNKNOWNSYSCALL = -5;
+int EXITCODE_UNCAUGHTEXCEPTION = -6;
 
 int MINSTER = 1;
 int MIPSTER = 2;
@@ -1673,7 +1676,7 @@ void putCharacter(int c) {
       println();
     }
 
-    exit(-1);
+    exit(EXITCODE_IOERROR);
   }
 }
 
@@ -1856,7 +1859,7 @@ void getCharacter() {
     print(sourceName);
     println();
 
-    exit(-1);
+    exit(EXITCODE_IOERROR);
   }
 }
 
@@ -2025,7 +2028,7 @@ void getSymbol() {
           if (i >= maxIdentifierLength) {
             syntaxErrorMessage((int*) "identifier too long");
 
-            exit(-1);
+            exit(EXITCODE_COMPILEERROR);
           }
 
           storeCharacter(identifier, i, character);
@@ -2049,7 +2052,7 @@ void getSymbol() {
           if (i >= maxIntegerLength) {
             syntaxErrorMessage((int*) "integer out of bound");
 
-            exit(-1);
+            exit(EXITCODE_COMPILEERROR);
           }
 
           storeCharacter(integer, i, character);
@@ -2070,12 +2073,12 @@ void getSymbol() {
             else {
               syntaxErrorMessage((int*) "integer out of bound");
 
-              exit(-1);
+              exit(EXITCODE_COMPILEERROR);
             }
           } else {
             syntaxErrorMessage((int*) "integer out of bound");
 
-            exit(-1);
+            exit(EXITCODE_COMPILEERROR);
           }
         }
 
@@ -2089,7 +2092,7 @@ void getSymbol() {
         if (character == CHAR_EOF) {
           syntaxErrorMessage((int*) "reached end of file looking for a character literal");
 
-          exit(-1);
+          exit(EXITCODE_COMPILEERROR);
         } else
           literal = character;
 
@@ -2100,7 +2103,7 @@ void getSymbol() {
         else if (character == CHAR_EOF) {
           syntaxErrorCharacter(CHAR_SINGLEQUOTE);
 
-          exit(-1);
+          exit(EXITCODE_COMPILEERROR);
         } else
           syntaxErrorCharacter(CHAR_SINGLEQUOTE);
 
@@ -2120,7 +2123,7 @@ void getSymbol() {
           if (i >= maxStringLength) {
             syntaxErrorMessage((int*) "string too long");
 
-            exit(-1);
+            exit(EXITCODE_COMPILEERROR);
           }
 
           storeCharacter(string, i, character);
@@ -2135,7 +2138,7 @@ void getSymbol() {
         else {
           syntaxErrorCharacter(CHAR_DOUBLEQUOTE);
 
-          exit(-1);
+          exit(EXITCODE_COMPILEERROR);
         }
 
         storeCharacter(string, i, 0); // null-terminated string
@@ -2239,7 +2242,7 @@ void getSymbol() {
 
         println();
 
-        exit(-1);
+        exit(EXITCODE_COMPILEERROR);
       }
     }
 
@@ -2497,7 +2500,7 @@ void talloc() {
   else {
     syntaxErrorMessage((int*) "out of registers");
 
-    exit(-1);
+    exit(EXITCODE_COMPILEERROR);
   }
 }
 
@@ -2507,7 +2510,7 @@ int currentTemporary() {
   else {
     syntaxErrorMessage((int*) "illegal register access");
 
-    exit(-1);
+    exit(EXITCODE_COMPILEERROR);
   }
 }
 
@@ -2517,7 +2520,7 @@ int previousTemporary() {
   else {
     syntaxErrorMessage((int*) "illegal register access");
 
-    exit(-1);
+    exit(EXITCODE_COMPILEERROR);
   }
 }
 
@@ -2527,7 +2530,7 @@ int nextTemporary() {
   else {
     syntaxErrorMessage((int*) "out of registers");
 
-    exit(-1);
+    exit(EXITCODE_COMPILEERROR);
   }
 }
 
@@ -2537,7 +2540,7 @@ void tfree(int numberOfTemporaries) {
   if (allocatedTemporaries < 0) {
     syntaxErrorMessage((int*) "illegal register deallocation");
 
-    exit(-1);
+    exit(EXITCODE_COMPILEERROR);
   }
 }
 
@@ -2621,7 +2624,7 @@ int* getVariable(int* variable) {
     print((int*) " undeclared");
     println();
 
-    exit(-1);
+    exit(EXITCODE_COMPILEERROR);
   }
 
   return entry;
@@ -2856,7 +2859,7 @@ int gr_factor() {
     syntaxErrorUnexpected();
 
     if (symbol == SYM_EOF)
-      exit(-1);
+      exit(EXITCODE_COMPILEERROR);
     else
       getSymbol();
   }
@@ -3244,7 +3247,7 @@ void gr_while() {
           else {
             syntaxErrorSymbol(SYM_RBRACE);
 
-            exit(-1);
+            exit(EXITCODE_COMPILEERROR);
           }
         }
         // only one statement without {}
@@ -3307,7 +3310,7 @@ void gr_if() {
           else {
             syntaxErrorSymbol(SYM_RBRACE);
 
-            exit(-1);
+            exit(EXITCODE_COMPILEERROR);
           }
         }
         // only one statement without {}
@@ -3337,7 +3340,7 @@ void gr_if() {
             else {
               syntaxErrorSymbol(SYM_RBRACE);
 
-              exit(-1);
+              exit(EXITCODE_COMPILEERROR);
             }
 
           // only one statement without {}
@@ -3410,7 +3413,7 @@ void gr_statement() {
     syntaxErrorUnexpected();
 
     if (symbol == SYM_EOF)
-      exit(-1);
+      exit(EXITCODE_COMPILEERROR);
     else
       getSymbol();
   }
@@ -3807,7 +3810,7 @@ void gr_procedure(int* procedure, int type) {
     else {
       syntaxErrorSymbol(SYM_RBRACE);
 
-      exit(-1);
+      exit(EXITCODE_COMPILEERROR);
     }
 
     fixlink_absolute(returnBranches, binaryLength);
@@ -3836,7 +3839,7 @@ void gr_cstar() {
       syntaxErrorUnexpected();
 
       if (symbol == SYM_EOF)
-        exit(-1);
+        exit(EXITCODE_COMPILEERROR);
       else
         getSymbol();
     }
@@ -4063,7 +4066,7 @@ void selfie_compile() {
         print(sourceName);
         println();
 
-        exit(-1);
+        exit(EXITCODE_IOERROR);
       }
 
       resetScanner();
@@ -4328,7 +4331,7 @@ void storeBinary(int baddr, int instruction) {
   if (baddr >= maxBinaryLength) {
     syntaxErrorMessage((int*) "maximum binary length exceeded");
 
-    exit(-1);
+    exit(EXITCODE_COMPILEERROR);
   }
 
   *(binary + baddr / WORDSIZE) = instruction;
@@ -4490,7 +4493,7 @@ void selfie_output() {
     print(binaryName);
     println();
 
-    exit(-1);
+    exit(EXITCODE_IOERROR);
   }
 
   *binary_buffer = codeLength;
@@ -4565,7 +4568,7 @@ void selfie_load() {
     print(binaryName);
     println();
 
-    exit(-1);
+    exit(EXITCODE_IOERROR);
   }
 
   // make sure binary is mapped
@@ -4618,7 +4621,7 @@ void selfie_load() {
   print(binaryName);
   println();
 
-  exit(-1);
+  exit(EXITCODE_IOERROR);
 }
 
 // -----------------------------------------------------------------
@@ -5010,28 +5013,33 @@ void emitMalloc() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementMalloc() {
+int implementMalloc(int* context) {
+  int* regs;
   int size;
   int bump;
+
+  regs = getRegs(context);
 
   if (debug_malloc) {
     print(selfieName);
     print((int*) ": trying to malloc ");
-    printInteger(*(registers+REG_A0));
+    printInteger(*(regs+REG_A0));
     print((int*) " bytes");
     println();
   }
 
-  size = roundUp(*(registers+REG_A0), WORDSIZE);
+  size = roundUp(*(regs+REG_A0), WORDSIZE);
 
-  bump = brk;
+  bump = getProgramBreak(context);
 
-  if (bump + size >= *(registers+REG_SP))
-    throwException(EXCEPTION_HEAPOVERFLOW, 0);
-  else {
-    *(registers+REG_V0) = bump;
+  if (bump + size >= *(regs+REG_SP)) {
+    setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
 
-    brk = bump + size;
+    return EXIT;
+  } else {
+    *(regs+REG_V0) = bump;
+
+    setProgramBreak(context, bump + size);
 
     if (debug_malloc) {
       print(selfieName);
@@ -5041,6 +5049,8 @@ void implementMalloc() {
       printHexadecimal(bump, 8);
       println();
     }
+
+    return DONOTEXIT;
   }
 }
 
@@ -5079,13 +5089,12 @@ void doSwitch(int* toContext, int timeout) {
   loReg     = getLoReg(toContext);
   hiReg     = getHiReg(toContext);
   pt        = getPT(toContext);
-  brk       = getProgramBreak(toContext);
 
   // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
-  if (getParent(fromContext) == MY_CONTEXT)
-    *(registers+REG_V1) = (int) fromContext;
-  else
+  if (getParent(fromContext) != MY_CONTEXT)
     *(registers+REG_V1) = (int) getVirtualContext(fromContext);
+  else
+    *(registers+REG_V1) = (int) fromContext;
 
   currentContext = toContext;
 
@@ -5638,24 +5647,16 @@ void fct_syscall() {
   if (interpret) {
     pc = pc + WORDSIZE;
 
-    if (*(registers+REG_V0) == SYSCALL_EXIT)
-      throwException(EXCEPTION_SYSCALL, 0);
-    else if (*(registers+REG_V0) == SYSCALL_READ)
+    if (*(registers+REG_V0) == SYSCALL_READ)
       implementRead();
     else if (*(registers+REG_V0) == SYSCALL_WRITE)
       implementWrite();
     else if (*(registers+REG_V0) == SYSCALL_OPEN)
       implementOpen();
-    else if (*(registers+REG_V0) == SYSCALL_MALLOC)
-      //throwException(EXCEPTION_SYSCALL, 0);
-      implementMalloc();
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
-    else {
-      pc = pc - WORDSIZE;
-
-      throwException(EXCEPTION_UNKNOWNSYSCALL, 0);
-    }
+    else
+      throwException(EXCEPTION_SYSCALL, 0);
   }
 }
 
@@ -5740,7 +5741,7 @@ void op_lw() {
         throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
     } else
       // TODO: pass invalid vaddr
-      throwException(EXCEPTION_ADDRESSERROR, 0);
+      throwException(EXCEPTION_INVALIDADDRESS, 0);
   }
 
   if (debug) {
@@ -5798,7 +5799,7 @@ void op_sw() {
         throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
     } else
       // TODO: pass invalid vaddr
-      throwException(EXCEPTION_ADDRESSERROR, 0);
+      throwException(EXCEPTION_INVALIDADDRESS, 0);
   }
 
   if (debug) {
@@ -6186,7 +6187,7 @@ void selfie_disassemble() {
     print(assemblyName);
     println();
 
-    exit(-1);
+    exit(EXITCODE_IOERROR);
   }
 
   outputName = assemblyName;
@@ -6268,7 +6269,7 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   setException(context, EXCEPTION_NOEXCEPTION);
   setFaultingPage(context, 0);
 
-  setExitCode(context, 0);
+  setExitCode(context, EXITCODE_NOERROR);
 
   setParent(context, parent);
   setVirtualContext(context, vctxt);
@@ -6362,7 +6363,6 @@ void saveContext(int* context) {
   setPC(context, pc);
   setLoReg(context, loReg);
   setHiReg(context, hiReg);
-  setProgramBreak(context, brk);
 
   if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
@@ -6541,7 +6541,7 @@ int* palloc() {
       print((int*) ": palloc out of physical memory");
       println();
 
-      exit(-1);
+      exit(EXITCODE_OUTOFPHYSICALMEMORY);
     }
   }
 
@@ -6682,26 +6682,18 @@ int handleSystemCalls(int* context) {
       implementExit(context);
 
       // TODO: exit only if all contexts have exited
-      return 1;
-    } else if (v0 == SYSCALL_READ)
-      implementRead();
-    else if (v0 == SYSCALL_WRITE)
-      implementWrite();
-    else if (v0 == SYSCALL_OPEN)
-      implementOpen();
-    else if (v0 == SYSCALL_MALLOC)
-      implementMalloc();
-    else if (v0 == SYSCALL_SWITCH)
-      implementSwitch();
+      return EXIT;
+    } else if (v0 == SYSCALL_MALLOC)
+      return implementMalloc(context);
     else {
       print(selfieName);
       print((int*) ": unknown system call ");
       printInteger(v0);
       println();
 
-      setExitCode(context, -1);
+      setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
 
-      return 1;
+      return EXIT;
     }
   } else if (getException(context) != EXCEPTION_TIMER) {
     print(selfieName);
@@ -6711,47 +6703,57 @@ int handleSystemCalls(int* context) {
     printException(getException(context), getFaultingPage(context));
     println();
 
-    setExitCode(context, -1);
+    setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
 
-    return 1;
+    return EXIT;
   }
 
-  return 0;
+  return DONOTEXIT;
 }
 
 int mipster(int* toContext) {
+  int timeout;
   int* fromContext;
 
   print((int*) "mipster");
   println();
 
-  while (1) {
-    fromContext = mipster_switch(toContext, TIMESLICE);
+  timeout = TIMESLICE;
 
-    if (getParent(fromContext) != MY_CONTEXT)
+  while (1) {
+    fromContext = mipster_switch(toContext, timeout);
+
+    if (getParent(fromContext) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
-    else {
+
+      timeout = TIMEROFF;
+    } else {
        // we are the parent in charge of handling exceptions
 
       if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
-      else if (handleSystemCalls(fromContext))
+      else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
       toContext = fromContext;
+
+      timeout = TIMESLICE;
     }
   }
 }
 
 int minster(int* toContext) {
+  int timeout;
   int* fromContext;
 
   print((int*) "minster");
   println();
+
+  timeout = TIMESLICE;
 
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
@@ -6759,45 +6761,56 @@ int minster(int* toContext) {
   mapUnmappedPages(toContext);
 
   while (1) {
-    fromContext = mipster_switch(toContext, TIMESLICE);
+    fromContext = mipster_switch(toContext, timeout);
 
-    if (getParent(fromContext) != MY_CONTEXT)
+    if (getParent(fromContext) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
-    else {
+
+      timeout = TIMEROFF;
+    } else {
       // we are the parent in charge of handling exit exceptions
 
-      if (handleSystemCalls(fromContext))
+      if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
       toContext = fromContext;
+
+      timeout = TIMESLICE;
     }
   }
 }
 
 int mobster(int* toContext) {
+  int timeout;
   int* fromContext;
 
   print((int*) "mobster");
   println();
 
+  timeout = TIMESLICE;
+
   while (1) {
     fromContext = mipster_switch(toContext, TIMESLICE);
 
-    if (getParent(fromContext) != MY_CONTEXT)
+    if (getParent(fromContext) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
-    else {
+
+      timeout = TIMEROFF;
+    } else {
       // we are the parent in charge of handling exit exceptions
 
-      if (handleSystemCalls(fromContext))
+      if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
       toContext = fromContext;
+
+      timeout = TIMESLICE;
     }
   }
 }
@@ -6814,7 +6827,7 @@ int hypster(int* toContext) {
     if (getException(fromContext) == EXCEPTION_PAGEFAULT)
       // TODO: use this table to unmap and reuse frames
       mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
-    else if (handleSystemCalls(fromContext))
+    else if (handleSystemCalls(fromContext) == EXIT)
       return getExitCode(fromContext);
 
     setException(fromContext, EXCEPTION_NOEXCEPTION);
@@ -6826,6 +6839,7 @@ int hypster(int* toContext) {
 int mixter(int* toContext, int mix) {
   // works with mipsters and hypsters
   int mslice;
+  int timeout;
   int* fromContext;
 
   print((int*) "mixter (");
@@ -6844,27 +6858,34 @@ int mixter(int* toContext, int mix) {
   else
     mslice = mslice / 100 * mix;
 
-  if (mslice > 0)
+  if (mslice > 0) {
     mix = 1;
-  else
+
+    timeout = mslice;
+  } else {
     mix = 0;
+
+    timeout = TIMESLICE;
+  }
 
   while (1) {
     if (mix)
-      fromContext = mipster_switch(toContext, mslice);
+      fromContext = mipster_switch(toContext, TIMESLICE);
     else
-      fromContext = hypster_switch(toContext, TIMESLICE - mslice);
+      fromContext = hypster_switch(toContext, TIMESLICE);
 
-    if (getParent(fromContext) != MY_CONTEXT)
+    if (getParent(fromContext) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
       toContext = getParent(fromContext);
-    else {
+
+      timeout = TIMEROFF;
+    } else {
       // we are the parent in charge of handling exceptions
 
       if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
-      else if (handleSystemCalls(fromContext))
+      else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
@@ -6873,10 +6894,16 @@ int mixter(int* toContext, int mix) {
       toContext = fromContext;
 
       if (mix) {
-        if (mslice != TIMESLICE)
+        if (mslice != TIMESLICE) {
           mix = 0;
-      } else if (mslice > 0)
+
+          timeout = TIMESLICE - mslice;
+        }
+      } else if (mslice > 0) {
         mix = 1;
+
+        timeout = mslice;
+      }
     }
   }
 }
