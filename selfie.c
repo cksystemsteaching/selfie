@@ -826,7 +826,7 @@ void implementWrite();
 
 void emitOpen();
 int  down_loadString(int* table, int vaddr, int* s);
-void implementOpen();
+void implementOpen(int* context);
 
 void emitMalloc();
 int implementMalloc(int* context);
@@ -4957,20 +4957,20 @@ int down_loadString(int* table, int vaddr, int* s) {
   return 0;
 }
 
-void implementOpen() {
+void implementOpen(int* context) {
   int mode;
   int flags;
   int vaddr;
   int fd;
 
-  mode  = *(registers+REG_A2);
-  flags = *(registers+REG_A1);
-  vaddr = *(registers+REG_A0);
+  mode  = *(getRegs(context)+REG_A2);
+  flags = *(getRegs(context)+REG_A1);
+  vaddr = *(getRegs(context)+REG_A0);
 
-  if (down_loadString(pt, vaddr, filename_buffer)) {
+  if (down_loadString(getPT(context), vaddr, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
-    *(registers+REG_V0) = fd;
+    *(getRegs(context)+REG_V0) = fd;
 
     if (debug_open) {
       print(selfieName);
@@ -4985,7 +4985,7 @@ void implementOpen() {
       println();
     }
   } else {
-    *(registers+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = -1;
 
     if (debug_open) {
       print(selfieName);
@@ -5014,30 +5014,27 @@ void emitMalloc() {
 }
 
 int implementMalloc(int* context) {
-  int* regs;
   int size;
   int bump;
-
-  regs = getRegs(context);
 
   if (debug_malloc) {
     print(selfieName);
     print((int*) ": trying to malloc ");
-    printInteger(*(regs+REG_A0));
+    printInteger(*(getRegs(context)+REG_A0));
     print((int*) " bytes");
     println();
   }
 
-  size = roundUp(*(regs+REG_A0), WORDSIZE);
+  size = roundUp(*(getRegs(context)+REG_A0), WORDSIZE);
 
   bump = getProgramBreak(context);
 
-  if (bump + size >= *(regs+REG_SP)) {
+  if (bump + size >= *(getRegs(context)+REG_SP)) {
     setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
 
     return EXIT;
   } else {
-    *(regs+REG_V0) = bump;
+    *(getRegs(context)+REG_V0) = bump;
 
     setProgramBreak(context, bump + size);
 
@@ -5651,8 +5648,6 @@ void fct_syscall() {
       implementRead();
     else if (*(registers+REG_V0) == SYSCALL_WRITE)
       implementWrite();
-    else if (*(registers+REG_V0) == SYSCALL_OPEN)
-      implementOpen();
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
     else
@@ -6685,6 +6680,8 @@ int handleSystemCalls(int* context) {
       return EXIT;
     } else if (v0 == SYSCALL_MALLOC)
       return implementMalloc(context);
+    else if (v0 == SYSCALL_OPEN)
+      implementOpen(context);
     else {
       print(selfieName);
       print((int*) ": unknown system call ");
