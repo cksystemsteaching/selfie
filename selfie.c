@@ -819,7 +819,7 @@ void emitExit();
 void implementExit(int* context);
 
 void emitRead();
-void implementRead();
+void implementRead(int* context);
 
 void emitWrite();
 void implementWrite();
@@ -4677,7 +4677,7 @@ void emitRead() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementRead() {
+void implementRead(int* context) {
   int size;
   int vaddr;
   int fd;
@@ -4689,9 +4689,9 @@ void implementRead() {
 
   // assert: read buffer is mapped
 
-  size  = *(registers+REG_A2);
-  vaddr = *(registers+REG_A1);
-  fd    = *(registers+REG_A0);
+  size  = *(getRegs(context)+REG_A2);
+  vaddr = *(getRegs(context)+REG_A1);
+  fd    = *(getRegs(context)+REG_A0);
 
   if (debug_read) {
     print(selfieName);
@@ -4711,8 +4711,8 @@ void implementRead() {
 
   while (size > 0) {
     if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        buffer = tlb(pt, vaddr);
+      if (isVirtualAddressMapped(getPT(context), vaddr)) {
+        buffer = tlb(getPT(context), vaddr);
 
         if (size < bytesToRead)
           bytesToRead = size;
@@ -4761,9 +4761,9 @@ void implementRead() {
   }
 
   if (failed == 0)
-    *(registers+REG_V0) = readTotal;
+    *(getRegs(context)+REG_V0) = readTotal;
   else
-    *(registers+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = -1;
 
   if (debug_read) {
     print(selfieName);
@@ -5644,9 +5644,7 @@ void fct_syscall() {
   if (interpret) {
     pc = pc + WORDSIZE;
 
-    if (*(registers+REG_V0) == SYSCALL_READ)
-      implementRead();
-    else if (*(registers+REG_V0) == SYSCALL_WRITE)
+    if (*(registers+REG_V0) == SYSCALL_WRITE)
       implementWrite();
     else if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
@@ -6673,16 +6671,18 @@ int handleSystemCalls(int* context) {
   if (getException(context) == EXCEPTION_SYSCALL) {
     v0 = *(getRegs(context)+REG_V0);
 
-    if (v0 == SYSCALL_EXIT) {
+    if (v0 == SYSCALL_MALLOC)
+      return implementMalloc(context);
+    else if (v0 == SYSCALL_READ)
+      implementRead(context);
+    else if (v0 == SYSCALL_OPEN)
+      implementOpen(context);
+    else if (v0 == SYSCALL_EXIT) {
       implementExit(context);
 
       // TODO: exit only if all contexts have exited
       return EXIT;
-    } else if (v0 == SYSCALL_MALLOC)
-      return implementMalloc(context);
-    else if (v0 == SYSCALL_OPEN)
-      implementOpen(context);
-    else {
+    } else {
       print(selfieName);
       print((int*) ": unknown system call ");
       printInteger(v0);
