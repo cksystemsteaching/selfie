@@ -822,7 +822,7 @@ void emitRead();
 void implementRead(int* context);
 
 void emitWrite();
-void implementWrite();
+void implementWrite(int* context);
 
 void emitOpen();
 int  down_loadString(int* table, int vaddr, int* s);
@@ -4793,7 +4793,7 @@ void emitWrite() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementWrite() {
+void implementWrite(int* context) {
   int size;
   int vaddr;
   int fd;
@@ -4805,9 +4805,9 @@ void implementWrite() {
 
   // assert: write buffer is mapped
 
-  size  = *(registers+REG_A2);
-  vaddr = *(registers+REG_A1);
-  fd    = *(registers+REG_A0);
+  size  = *(getRegs(context)+REG_A2);
+  vaddr = *(getRegs(context)+REG_A1);
+  fd    = *(getRegs(context)+REG_A0);
 
   if (debug_write) {
     print(selfieName);
@@ -4827,8 +4827,8 @@ void implementWrite() {
 
   while (size > 0) {
     if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        buffer = tlb(pt, vaddr);
+      if (isVirtualAddressMapped(getPT(context), vaddr)) {
+        buffer = tlb(getPT(context), vaddr);
 
         if (size < bytesToWrite)
           bytesToWrite = size;
@@ -4877,9 +4877,9 @@ void implementWrite() {
   }
 
   if (failed == 0)
-    *(registers+REG_V0) = writtenTotal;
+    *(getRegs(context)+REG_V0) = writtenTotal;
   else
-    *(registers+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = -1;
 
   if (debug_write) {
     print(selfieName);
@@ -5644,9 +5644,7 @@ void fct_syscall() {
   if (interpret) {
     pc = pc + WORDSIZE;
 
-    if (*(registers+REG_V0) == SYSCALL_WRITE)
-      implementWrite();
-    else if (*(registers+REG_V0) == SYSCALL_SWITCH)
+    if (*(registers+REG_V0) == SYSCALL_SWITCH)
       implementSwitch();
     else
       throwException(EXCEPTION_SYSCALL, 0);
@@ -6675,6 +6673,8 @@ int handleSystemCalls(int* context) {
       return implementMalloc(context);
     else if (v0 == SYSCALL_READ)
       implementRead(context);
+    else if (v0 == SYSCALL_WRITE)
+      implementWrite(context);
     else if (v0 == SYSCALL_OPEN)
       implementOpen(context);
     else if (v0 == SYSCALL_EXIT) {
