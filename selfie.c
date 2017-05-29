@@ -863,7 +863,7 @@ int debug_switch = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// ---------------------    E M U L A T O R    ---------------------
+// ----------------------    R U N T I M E    ----------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
@@ -5136,7 +5136,7 @@ int* hypster_switch(int* toContext, int timeout) {
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// ---------------------    E M U L A T O R    ---------------------
+// ----------------------    R U N T I M E    ----------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
@@ -6985,6 +6985,41 @@ int selfie_run(int machine) {
   }
 
   return exitCode;
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -----------------------    P R O V E R    -----------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+int NONE  = -1;
+int FALSE = 0;
+int TRUE  = 1;
+
+int UNSAT = 0;
+int SAT   = 1;
+
+int numberOfPropositionalVariables = 0;
+
+ // numberOfPropositionalVariables
+int* propositionalAssignment = (int*) 0;
+
+int numberOfPropositionalClauses = 0;
+
+// numberOfPropositionalClauses * numberOfPropositionalVariables
+int* propositionalInstance = (int*) 0;
+
+// numberOfPropositionalClauses
+int* propositionalWatchlist = (int*) 0;
+
+int sat0(int d) {
+  if (d == numberOfPropositionalVariables)
+    return SAT;
+
+  *(propositionalAssignment + d) = FALSE;
+
+  // continue here
 }
 
 // -----------------------------------------------------------------
