@@ -6993,7 +6993,6 @@ int selfie_run(int machine) {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-int NONE  = -1;
 int FALSE = 0;
 int TRUE  = 1;
 
@@ -7007,19 +7006,142 @@ int* propositionalAssignment = (int*) 0;
 
 int numberOfPropositionalClauses = 0;
 
-// numberOfPropositionalClauses * numberOfPropositionalVariables
+// numberOfPropositionalClauses * 2 * numberOfPropositionalVariables
 int* propositionalInstance = (int*) 0;
 
-// numberOfPropositionalClauses
-int* propositionalWatchlist = (int*) 0;
+int clauseMayBeTrue(int* clauseAddress, int depth) {
+  int variable;
 
-int sat0(int d) {
-  if (d == numberOfPropositionalVariables)
-    return SAT;
+  variable = 0;
 
-  *(propositionalAssignment + d) = FALSE;
+  while (variable <= depth) {
+    if (*(propositionalAssignment + variable) == TRUE) {
+      if (*(clauseAddress + 2 * variable))
+        return TRUE;
+    } else if (*(clauseAddress + 2 * variable + 1))
+      // variable must be FALSE because variable <= depth
+      return TRUE;
 
-  // continue here
+    variable = variable + 1;
+  }
+
+  while (variable < numberOfPropositionalVariables) {
+    // variable must be unassigned because variable > depth
+    if (*(clauseAddress + 2 * variable))
+      return TRUE;
+    else if (*(clauseAddress + 2 * variable + 1))
+      return TRUE;
+
+    variable = variable + 1;
+  }
+
+  return FALSE;
+}
+
+int instanceMayBeTrue(int depth) {
+  int clause;
+
+  clause = 0;
+
+  while (clause < numberOfPropositionalClauses) {
+    if (clauseMayBeTrue(propositionalInstance + clause * 2 * numberOfPropositionalVariables, depth))
+      clause = clause + 1;
+    else
+      // clause is FALSE under current assignment
+      return FALSE;
+  }
+
+  return TRUE;
+}
+
+int babysat(int depth) {
+  if (depth == numberOfPropositionalVariables) return SAT;
+
+  *(propositionalAssignment + depth) = TRUE;
+
+  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) return SAT;
+
+  *(propositionalAssignment + depth) = FALSE;
+
+  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) return SAT;
+
+  return UNSAT;
+}
+
+void sat() {
+  int variable;
+
+  // Rivest's unsatisfiable four-variable eight-clause formula
+  // omitting the last clause makes it satisfiable with ~x1 ~x2 x3
+  // and either x4 or ~x4
+
+  numberOfPropositionalVariables = 4;
+
+  propositionalAssignment = (int*) malloc(numberOfPropositionalVariables * WORDSIZE);
+
+  numberOfPropositionalClauses = 7;
+
+  propositionalInstance = (int*) malloc(numberOfPropositionalClauses * 2 * numberOfPropositionalVariables * WORDSIZE);
+
+  // x2 x3 ~x4
+  *(propositionalInstance + 0 + 2) = TRUE;
+  *(propositionalInstance + 0 + 4) = TRUE;
+  *(propositionalInstance + 0 + 7) = TRUE;
+
+  // x1 x3 x4
+  *(propositionalInstance + 8 + 0) = TRUE;
+  *(propositionalInstance + 8 + 4) = TRUE;
+  *(propositionalInstance + 8 + 6) = TRUE;
+
+  // ~x1 x2 x4
+  *(propositionalInstance + 16 + 1) = TRUE;
+  *(propositionalInstance + 16 + 2) = TRUE;
+  *(propositionalInstance + 16 + 6) = TRUE;
+
+  // ~x1 ~x2 x3
+  *(propositionalInstance + 24 + 1) = TRUE;
+  *(propositionalInstance + 24 + 3) = TRUE;
+  *(propositionalInstance + 24 + 4) = TRUE;
+
+  // ~x2 ~x3 x4
+  *(propositionalInstance + 32 + 3) = TRUE;
+  *(propositionalInstance + 32 + 5) = TRUE;
+  *(propositionalInstance + 32 + 6) = TRUE;
+
+  // ~x1 ~x3 ~x4
+  *(propositionalInstance + 40 + 1) = TRUE;
+  *(propositionalInstance + 40 + 5) = TRUE;
+  *(propositionalInstance + 40 + 7) = TRUE;
+
+  // x1 ~x2 ~x4
+  *(propositionalInstance + 48 + 0) = TRUE;
+  *(propositionalInstance + 48 + 3) = TRUE;
+  *(propositionalInstance + 48 + 7) = TRUE;
+
+  // x1 x2 ~x3
+  //*(propositionalInstance + 56 + 0) = TRUE;
+  //*(propositionalInstance + 56 + 2) = TRUE;
+  //*(propositionalInstance + 56 + 5) = TRUE;
+
+  if (babysat(0) == SAT) {
+    print((int*) "SAT: ");
+
+    variable = 0;
+
+    while (variable < numberOfPropositionalVariables) {
+      if (*(propositionalAssignment + variable) == FALSE)
+        print((int*) "~");
+
+      print((int*) "x");
+      printInteger(variable + 1);
+      print((int*) " ");
+
+      variable = variable + 1;
+    }
+  } else
+    print((int*) "UNSAT");
+
+  println();
 }
 
 // -----------------------------------------------------------------
