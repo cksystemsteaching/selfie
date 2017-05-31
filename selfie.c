@@ -7363,7 +7363,9 @@ void setArgument(int* argv) {
 
 void printUsage() {
   print(selfieName);
-  print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -y | -min | -mob ) size ... ] ");
+  print((int*) ": usage: ");
+  print((int*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
+  print((int*) "[ ( -m | -d | -y | -min | -mob ) size ... ]");
   println();
 }
 
