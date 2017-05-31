@@ -267,6 +267,7 @@ void printLineNumber(int* message, int line);
 
 void syntaxErrorMessage(int* message);
 void syntaxErrorCharacter(int character);
+void syntaxErrorIdentifier(int* expected);
 
 void getCharacter();
 
@@ -1227,11 +1228,13 @@ int EXIT = 1;
 
 int EXITCODE_NOERROR = 0;
 int EXITCODE_IOERROR = -1;
-int EXITCODE_COMPILEERROR = -2;
-int EXITCODE_OUTOFVIRTUALMEMORY = -3;
-int EXITCODE_OUTOFPHYSICALMEMORY = -4;
-int EXITCODE_UNKNOWNSYSCALL = -5;
-int EXITCODE_UNCAUGHTEXCEPTION = -6;
+int EXITCODE_SCANNERERROR = -2;
+int EXITCODE_PARSERERROR = -3;
+int EXITCODE_COMPILERERROR = -4;
+int EXITCODE_OUTOFVIRTUALMEMORY = -5;
+int EXITCODE_OUTOFPHYSICALMEMORY = -6;
+int EXITCODE_UNKNOWNSYSCALL = -7;
+int EXITCODE_UNCAUGHTEXCEPTION = -8;
 
 int MINSTER = 1;
 int MIPSTER = 2;
@@ -1836,6 +1839,18 @@ void syntaxErrorCharacter(int expected) {
   println();
 }
 
+void syntaxErrorIdentifier(int* expected) {
+  printLineNumber((int*) "error", lineNumber);
+
+  print(expected);
+  print((int*) " expected but ");
+
+  print(identifier);
+  print((int*) " found");
+
+  println();
+}
+
 void getCharacter() {
   int numberOfReadBytes;
 
@@ -2028,7 +2043,7 @@ void getSymbol() {
           if (i >= maxIdentifierLength) {
             syntaxErrorMessage((int*) "identifier too long");
 
-            exit(EXITCODE_COMPILEERROR);
+            exit(EXITCODE_SCANNERERROR);
           }
 
           storeCharacter(identifier, i, character);
@@ -2052,7 +2067,7 @@ void getSymbol() {
           if (i >= maxIntegerLength) {
             syntaxErrorMessage((int*) "integer out of bound");
 
-            exit(EXITCODE_COMPILEERROR);
+            exit(EXITCODE_SCANNERERROR);
           }
 
           storeCharacter(integer, i, character);
@@ -2073,12 +2088,12 @@ void getSymbol() {
             else {
               syntaxErrorMessage((int*) "integer out of bound");
 
-              exit(EXITCODE_COMPILEERROR);
+              exit(EXITCODE_SCANNERERROR);
             }
           } else {
             syntaxErrorMessage((int*) "integer out of bound");
 
-            exit(EXITCODE_COMPILEERROR);
+            exit(EXITCODE_SCANNERERROR);
           }
         }
 
@@ -2092,7 +2107,7 @@ void getSymbol() {
         if (character == CHAR_EOF) {
           syntaxErrorMessage((int*) "reached end of file looking for a character literal");
 
-          exit(EXITCODE_COMPILEERROR);
+          exit(EXITCODE_SCANNERERROR);
         } else
           literal = character;
 
@@ -2103,7 +2118,7 @@ void getSymbol() {
         else if (character == CHAR_EOF) {
           syntaxErrorCharacter(CHAR_SINGLEQUOTE);
 
-          exit(EXITCODE_COMPILEERROR);
+          exit(EXITCODE_SCANNERERROR);
         } else
           syntaxErrorCharacter(CHAR_SINGLEQUOTE);
 
@@ -2123,7 +2138,7 @@ void getSymbol() {
           if (i >= maxStringLength) {
             syntaxErrorMessage((int*) "string too long");
 
-            exit(EXITCODE_COMPILEERROR);
+            exit(EXITCODE_SCANNERERROR);
           }
 
           storeCharacter(string, i, character);
@@ -2138,7 +2153,7 @@ void getSymbol() {
         else {
           syntaxErrorCharacter(CHAR_DOUBLEQUOTE);
 
-          exit(EXITCODE_COMPILEERROR);
+          exit(EXITCODE_SCANNERERROR);
         }
 
         storeCharacter(string, i, 0); // null-terminated string
@@ -2242,7 +2257,7 @@ void getSymbol() {
 
         println();
 
-        exit(EXITCODE_COMPILEERROR);
+        exit(EXITCODE_SCANNERERROR);
       }
     }
 
@@ -2500,7 +2515,7 @@ void talloc() {
   else {
     syntaxErrorMessage((int*) "out of registers");
 
-    exit(EXITCODE_COMPILEERROR);
+    exit(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -2510,7 +2525,7 @@ int currentTemporary() {
   else {
     syntaxErrorMessage((int*) "illegal register access");
 
-    exit(EXITCODE_COMPILEERROR);
+    exit(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -2520,7 +2535,7 @@ int previousTemporary() {
   else {
     syntaxErrorMessage((int*) "illegal register access");
 
-    exit(EXITCODE_COMPILEERROR);
+    exit(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -2530,7 +2545,7 @@ int nextTemporary() {
   else {
     syntaxErrorMessage((int*) "out of registers");
 
-    exit(EXITCODE_COMPILEERROR);
+    exit(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -2540,7 +2555,7 @@ void tfree(int numberOfTemporaries) {
   if (allocatedTemporaries < 0) {
     syntaxErrorMessage((int*) "illegal register deallocation");
 
-    exit(EXITCODE_COMPILEERROR);
+    exit(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -2624,7 +2639,7 @@ int* getVariable(int* variable) {
     print((int*) " undeclared");
     println();
 
-    exit(EXITCODE_COMPILEERROR);
+    exit(EXITCODE_PARSERERROR);
   }
 
   return entry;
@@ -2859,7 +2874,7 @@ int gr_factor() {
     syntaxErrorUnexpected();
 
     if (symbol == SYM_EOF)
-      exit(EXITCODE_COMPILEERROR);
+      exit(EXITCODE_PARSERERROR);
     else
       getSymbol();
   }
@@ -3247,7 +3262,7 @@ void gr_while() {
           else {
             syntaxErrorSymbol(SYM_RBRACE);
 
-            exit(EXITCODE_COMPILEERROR);
+            exit(EXITCODE_PARSERERROR);
           }
         }
         // only one statement without {}
@@ -3310,7 +3325,7 @@ void gr_if() {
           else {
             syntaxErrorSymbol(SYM_RBRACE);
 
-            exit(EXITCODE_COMPILEERROR);
+            exit(EXITCODE_PARSERERROR);
           }
         }
         // only one statement without {}
@@ -3340,7 +3355,7 @@ void gr_if() {
             else {
               syntaxErrorSymbol(SYM_RBRACE);
 
-              exit(EXITCODE_COMPILEERROR);
+              exit(EXITCODE_PARSERERROR);
             }
 
           // only one statement without {}
@@ -3413,7 +3428,7 @@ void gr_statement() {
     syntaxErrorUnexpected();
 
     if (symbol == SYM_EOF)
-      exit(EXITCODE_COMPILEERROR);
+      exit(EXITCODE_PARSERERROR);
     else
       getSymbol();
   }
@@ -3810,7 +3825,7 @@ void gr_procedure(int* procedure, int type) {
     else {
       syntaxErrorSymbol(SYM_RBRACE);
 
-      exit(EXITCODE_COMPILEERROR);
+      exit(EXITCODE_PARSERERROR);
     }
 
     fixlink_absolute(returnBranches, binaryLength);
@@ -3839,7 +3854,7 @@ void gr_cstar() {
       syntaxErrorUnexpected();
 
       if (symbol == SYM_EOF)
-        exit(EXITCODE_COMPILEERROR);
+        exit(EXITCODE_PARSERERROR);
       else
         getSymbol();
     }
@@ -4331,7 +4346,7 @@ void storeBinary(int baddr, int instruction) {
   if (baddr >= maxBinaryLength) {
     syntaxErrorMessage((int*) "maximum binary length exceeded");
 
-    exit(EXITCODE_COMPILEERROR);
+    exit(EXITCODE_COMPILERERROR);
   }
 
   *(binary + baddr / WORDSIZE) = instruction;
@@ -6999,15 +7014,17 @@ int TRUE  = 1;
 int UNSAT = 0;
 int SAT   = 1;
 
-int numberOfPropositionalVariables = 0;
+int* dimacsName = (int*) 0;
 
- // numberOfPropositionalVariables
-int* propositionalAssignment = (int*) 0;
+int numberOfSATVariables = 0;
 
-int numberOfPropositionalClauses = 0;
+ // numberOfSATVariables
+int* SATAssignment = (int*) 0;
 
-// numberOfPropositionalClauses * 2 * numberOfPropositionalVariables
-int* propositionalInstance = (int*) 0;
+int numberOfSATClauses = 0;
+
+// numberOfSATClauses * 2 * numberOfSATVariables
+int* SATInstance = (int*) 0;
 
 int clauseMayBeTrue(int* clauseAddress, int depth) {
   int variable;
@@ -7015,7 +7032,7 @@ int clauseMayBeTrue(int* clauseAddress, int depth) {
   variable = 0;
 
   while (variable <= depth) {
-    if (*(propositionalAssignment + variable) == TRUE) {
+    if (*(SATAssignment + variable) == TRUE) {
       if (*(clauseAddress + 2 * variable))
         return TRUE;
     } else if (*(clauseAddress + 2 * variable + 1))
@@ -7025,7 +7042,7 @@ int clauseMayBeTrue(int* clauseAddress, int depth) {
     variable = variable + 1;
   }
 
-  while (variable < numberOfPropositionalVariables) {
+  while (variable < numberOfSATVariables) {
     // variable must be unassigned because variable > depth
     if (*(clauseAddress + 2 * variable))
       return TRUE;
@@ -7043,8 +7060,8 @@ int instanceMayBeTrue(int depth) {
 
   clause = 0;
 
-  while (clause < numberOfPropositionalClauses) {
-    if (clauseMayBeTrue(propositionalInstance + clause * 2 * numberOfPropositionalVariables, depth))
+  while (clause < numberOfSATClauses) {
+    if (clauseMayBeTrue(SATInstance + clause * 2 * numberOfSATVariables, depth))
       clause = clause + 1;
     else
       // clause is FALSE under current assignment
@@ -7055,91 +7072,255 @@ int instanceMayBeTrue(int depth) {
 }
 
 int babysat(int depth) {
-  if (depth == numberOfPropositionalVariables) return SAT;
+  if (depth == numberOfSATVariables) return SAT;
 
-  *(propositionalAssignment + depth) = TRUE;
+  *(SATAssignment + depth) = TRUE;
 
   if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) return SAT;
 
-  *(propositionalAssignment + depth) = FALSE;
+  *(SATAssignment + depth) = FALSE;
 
   if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) return SAT;
 
   return UNSAT;
 }
 
-void sat() {
+void dimacs_findProblem() {
+  while (symbol == SYM_IDENTIFIER) {
+    if (stringCompare(identifier, (int*) "c")) {
+      // count c as ignored character as well
+      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+
+      // count the number of comments
+      numberOfComments = numberOfComments + 1;
+
+      while (isCharacterNewLine() == 0) {
+        // comments end with new line
+
+        if (character == CHAR_EOF) {
+          syntaxErrorMessage((int*) "reached end of file looking for new line");
+
+          exit(EXITCODE_SCANNERERROR);
+        }
+
+        numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+
+        getCharacter();
+      }
+
+      // count new line character as ignored character as well
+      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+
+      getCharacter();
+    } else
+      return;
+
+    getSymbol();
+  }
+}
+
+void dimacs_word(int* word) {
+  if (symbol == SYM_IDENTIFIER) {
+    if (stringCompare(identifier, word)) {
+      getSymbol();
+
+      return;
+    } else
+      syntaxErrorIdentifier(word);
+  } else
+    syntaxErrorSymbol(SYM_IDENTIFIER);
+
+  exit(EXITCODE_PARSERERROR);
+}
+
+int dimacs_number() {
+  int number;
+
+  if (symbol == SYM_INTEGER) {
+    number = literal;
+
+    getSymbol();
+
+    return number;
+  } else
+    syntaxErrorSymbol(SYM_INTEGER);
+
+  exit(EXITCODE_PARSERERROR);
+}
+
+void dimacs_getClause(int clause) {
+  int not;
+
+  while (1) {
+    not = 0;
+
+    if (symbol == SYM_MINUS) {
+      not = 1;
+
+      getSymbol();
+    }
+
+    if (symbol == SYM_INTEGER) {
+      if (literal <= 0) {
+        // if literal < 0 it is equal to INT_MIN which we treat here as 0
+        getSymbol();
+
+        return;
+      } else if (literal > numberOfSATVariables) {
+        syntaxErrorMessage((int*) "clause exceeds declared number of variables");
+
+        exit(EXITCODE_PARSERERROR);
+      }
+
+      // literal encoding starts at 0
+      literal = literal - 1;
+
+      if (not)
+        *(SATInstance + clause * 2 * numberOfSATVariables + 2 * literal + 1) = TRUE;
+      else
+        *(SATInstance + clause * 2 * numberOfSATVariables + 2 * literal) = TRUE;
+    } else if (symbol == SYM_EOF)
+      return;
+    else
+      syntaxErrorSymbol(SYM_INTEGER);
+
+    getSymbol();
+  }
+}
+
+void printSATInstance() {
+  int clause;
   int variable;
 
-  // Rivest's unsatisfiable four-variable eight-clause formula
-  // omitting the last clause makes it satisfiable with ~x1 ~x2 x3
-  // and either x4 or ~x4
+  clause = 0;
 
-  numberOfPropositionalVariables = 4;
-
-  propositionalAssignment = (int*) malloc(numberOfPropositionalVariables * WORDSIZE);
-
-  numberOfPropositionalClauses = 7;
-
-  propositionalInstance = (int*) malloc(numberOfPropositionalClauses * 2 * numberOfPropositionalVariables * WORDSIZE);
-
-  // x2 x3 ~x4
-  *(propositionalInstance + 0 + 2) = TRUE;
-  *(propositionalInstance + 0 + 4) = TRUE;
-  *(propositionalInstance + 0 + 7) = TRUE;
-
-  // x1 x3 x4
-  *(propositionalInstance + 8 + 0) = TRUE;
-  *(propositionalInstance + 8 + 4) = TRUE;
-  *(propositionalInstance + 8 + 6) = TRUE;
-
-  // ~x1 x2 x4
-  *(propositionalInstance + 16 + 1) = TRUE;
-  *(propositionalInstance + 16 + 2) = TRUE;
-  *(propositionalInstance + 16 + 6) = TRUE;
-
-  // ~x1 ~x2 x3
-  *(propositionalInstance + 24 + 1) = TRUE;
-  *(propositionalInstance + 24 + 3) = TRUE;
-  *(propositionalInstance + 24 + 4) = TRUE;
-
-  // ~x2 ~x3 x4
-  *(propositionalInstance + 32 + 3) = TRUE;
-  *(propositionalInstance + 32 + 5) = TRUE;
-  *(propositionalInstance + 32 + 6) = TRUE;
-
-  // ~x1 ~x3 ~x4
-  *(propositionalInstance + 40 + 1) = TRUE;
-  *(propositionalInstance + 40 + 5) = TRUE;
-  *(propositionalInstance + 40 + 7) = TRUE;
-
-  // x1 ~x2 ~x4
-  *(propositionalInstance + 48 + 0) = TRUE;
-  *(propositionalInstance + 48 + 3) = TRUE;
-  *(propositionalInstance + 48 + 7) = TRUE;
-
-  // x1 x2 ~x3
-  //*(propositionalInstance + 56 + 0) = TRUE;
-  //*(propositionalInstance + 56 + 2) = TRUE;
-  //*(propositionalInstance + 56 + 5) = TRUE;
-
-  if (babysat(0) == SAT) {
-    print((int*) "SAT: ");
+  while (clause < numberOfSATClauses) {
+    print(selfieName);
+    print((int*) ": ");
+    printInteger(clause + 1);
+    print((int*) ":");
 
     variable = 0;
 
-    while (variable < numberOfPropositionalVariables) {
-      if (*(propositionalAssignment + variable) == FALSE)
-        print((int*) "~");
+    while (variable < numberOfSATVariables) {
+      if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable) == TRUE) {
+        print((int*) " ");
+        printInteger(variable + 1);
+      } else if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable + 1) == TRUE) {
+        print((int*) " ");
+        printInteger(-(variable + 1));
+      }
 
-      print((int*) "x");
+      variable = variable + 1;
+    }
+
+    println();
+
+    clause = clause + 1;
+  }
+}
+
+void selfie_dimacs() {
+  int clauses;
+
+  sourceName = getArgument();
+
+  print(selfieName);
+  print((int*) ": this is selfie loading SAT instance ");
+  print(sourceName);
+  println();
+
+  // assert: sourceName is mapped and not longer than maxFilenameLength
+
+  sourceFD = open(sourceName, O_RDONLY, 0);
+
+  if (sourceFD < 0) {
+    print(selfieName);
+    print((int*) ": could not open input file ");
+    print(sourceName);
+    println();
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  resetScanner();
+  resetParser();
+
+  dimacs_findProblem();
+
+  dimacs_word((int*) "p");
+  dimacs_word((int*) "cnf");
+
+  numberOfSATVariables = dimacs_number();
+
+  SATAssignment = (int*) malloc(numberOfSATVariables * WORDSIZE);
+
+  numberOfSATClauses = dimacs_number();
+
+  SATInstance = (int*) malloc(numberOfSATClauses * 2 * numberOfSATVariables * WORDSIZE);
+
+  clauses = 0;
+
+  while (symbol != SYM_EOF) {
+    dimacs_getClause(clauses);
+
+    clauses = clauses + 1;
+  }
+
+  if (clauses == numberOfSATClauses) {
+    print(selfieName);
+    print((int*) ": ");
+    printInteger(numberOfSATClauses);
+    print((int*) " clauses with ");
+    printInteger(numberOfSATVariables);
+    print((int*) " declared variables loaded from ");
+    print(sourceName);
+    println();
+  } else {
+    syntaxErrorMessage((int*) "instance mismatches number of declared clauses");
+
+    exit(EXITCODE_PARSERERROR);
+  }
+
+  dimacsName = sourceName;
+
+  printSATInstance();
+}
+
+void selfie_sat() {
+  int variable;
+
+  if (dimacsName == (int*) 0) {
+    print(selfieName);
+    print((int*) ": nothing to SAT solve");
+    println();
+
+    return;
+  }
+
+  if (babysat(0) == SAT) {
+    print(selfieName);
+    print((int*) ": ");
+    print(dimacsName);
+    print((int*) " is satisfiable with ");
+
+    variable = 0;
+
+    while (variable < numberOfSATVariables) {
+      if (*(SATAssignment + variable) == FALSE)
+        print((int*) "-");
+
       printInteger(variable + 1);
       print((int*) " ");
 
       variable = variable + 1;
     }
-  } else
-    print((int*) "UNSAT");
+  } else {
+    print(selfieName);
+    print((int*) ": ");
+    print(dimacsName);
+    print((int*) " is unsatisfiable");
+  }
 
   println();
 }
@@ -7182,7 +7363,7 @@ void setArgument(int* argv) {
 
 void printUsage() {
   print(selfieName);
-  print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ ( -m | -d | -y | -min | -mob ) size ... ] ");
+  print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -y | -min | -mob ) size ... ] ");
   println();
 }
 
@@ -7213,7 +7394,11 @@ int selfie() {
         selfie_disassemble();
       else if (stringCompare(option, (int*) "-l"))
         selfie_load();
-      else if (stringCompare(option, (int*) "-m"))
+      else if (stringCompare(option, (int*) "-sat")) {
+        selfie_dimacs();
+
+        selfie_sat();
+      } else if (stringCompare(option, (int*) "-m"))
         return selfie_run(MIPSTER);
       else if (stringCompare(option, (int*) "-d")) {
         debug = 1;
