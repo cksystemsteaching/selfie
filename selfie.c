@@ -398,8 +398,6 @@ void resetScanner() {
   numberOfIgnoredCharacters = 0;
   numberOfComments          = 0;
   numberOfScannedSymbols    = 0;
-
-  getSymbol();
 }
 
 // -----------------------------------------------------------------
@@ -561,6 +559,8 @@ void resetParser() {
   numberOfWhile       = 0;
   numberOfIf          = 0;
   numberOfReturn      = 0;
+
+  getSymbol();
 }
 
 // -----------------------------------------------------------------
@@ -7026,6 +7026,38 @@ int numberOfSATClauses = 0;
 // numberOfSATClauses * 2 * numberOfSATVariables
 int* SATInstance = (int*) 0;
 
+void printSATInstance() {
+  int clause;
+  int variable;
+
+  clause = 0;
+
+  while (clause < numberOfSATClauses) {
+    print(selfieName);
+    print((int*) ": ");
+    printInteger(clause + 1);
+    print((int*) ":");
+
+    variable = 0;
+
+    while (variable < numberOfSATVariables) {
+      if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable) == TRUE) {
+        print((int*) " ");
+        printInteger(variable + 1);
+      } else if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable + 1) == TRUE) {
+        print((int*) " ");
+        printInteger(-(variable + 1));
+      }
+
+      variable = variable + 1;
+    }
+
+    println();
+
+    clause = clause + 1;
+  }
+}
+
 int clauseMayBeTrue(int* clauseAddress, int depth) {
   int variable;
 
@@ -7085,44 +7117,61 @@ int babysat(int depth) {
   return UNSAT;
 }
 
-void dimacs_findProblem() {
-  while (symbol == SYM_IDENTIFIER) {
-    if (stringCompare(identifier, (int*) "c")) {
-      // count c as ignored character as well
-      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+void dimacs_ignoreComment() {
+  int newLine;
 
-      // count the number of comments
-      numberOfComments = numberOfComments + 1;
+  newLine = 0;
 
-      while (isCharacterNewLine() == 0) {
-        // comments end with new line
+  while (character != CHAR_EOF) {
+    while (isCharacterNewLine()) {
+      if (character == CHAR_LF)
+        lineNumber = lineNumber + 1;
 
-        if (character == CHAR_EOF) {
-          syntaxErrorMessage((int*) "reached end of file looking for new line");
-
-          exit(EXITCODE_SCANNERERROR);
-        }
-
-        numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
-
-        getCharacter();
-      }
-
-      // count new line character as ignored character as well
       numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
       getCharacter();
-    } else
-      return;
 
-    getSymbol();
+      // comments end with new line
+      newLine = 1;
+    }
+
+    if (newLine)
+      return;
+    else {
+      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+
+      getCharacter();
+    }
   }
+}
+
+void dimacs_findNonCommentLine() {
+  while (character == 'c') {
+    // count the number of comments
+    numberOfComments = numberOfComments + 1;
+
+    dimacs_ignoreComment();
+  }
+}
+
+void dimacs_findNextCharacter() {
+  while (character != CHAR_EOF) {
+    while (isCharacterWhitespace()) {
+      // continue here
+    }
+  }
+}
+
+void dimacs_getSymbol() {
+  dimacs_findNextCharacter();
+
+  getSymbol();
 }
 
 void dimacs_word(int* word) {
   if (symbol == SYM_IDENTIFIER) {
     if (stringCompare(identifier, word)) {
-      getSymbol();
+      dimacs_getSymbol();
 
       return;
     } else
@@ -7188,41 +7237,36 @@ void dimacs_getClause(int clause) {
   }
 }
 
-void printSATInstance() {
-  int clause;
-  int variable;
+void dimacs_getInstance() {
+  int clauses;
 
-  clause = 0;
+  clauses = 0;
 
-  while (clause < numberOfSATClauses) {
-    print(selfieName);
-    print((int*) ": ");
-    printInteger(clause + 1);
-    print((int*) ":");
+  while (clauses < numberOfSATClauses) {
+    dimacs_findNonCommentLine();
 
-    variable = 0;
+    if (symbol != SYM_EOF) {
+      dimacs_getClause(clauses);
 
-    while (variable < numberOfSATVariables) {
-      if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable) == TRUE) {
-        print((int*) " ");
-        printInteger(variable + 1);
-      } else if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable + 1) == TRUE) {
-        print((int*) " ");
-        printInteger(-(variable + 1));
-      }
+      clauses = clauses + 1;
+    } else {
+      syntaxErrorMessage((int*) "instance has fewer clauses than declared");
 
-      variable = variable + 1;
+      exit(EXITCODE_PARSERERROR);
     }
+  }
 
-    println();
+  // read past all comments
+  dimacs_findNonCommentLine();
 
-    clause = clause + 1;
+  if (symbol != SYM_EOF) {
+    syntaxErrorMessage((int*) "instance has more clauses than declared");
+
+    exit(EXITCODE_PARSERERROR);
   }
 }
 
 void selfie_dimacs() {
-  int clauses;
-
   sourceName = getArgument();
 
   print(selfieName);
@@ -7244,9 +7288,8 @@ void selfie_dimacs() {
   }
 
   resetScanner();
-  resetParser();
 
-  dimacs_findProblem();
+  dimacs_findNonCommentLine();
 
   dimacs_word((int*) "p");
   dimacs_word((int*) "cnf");
@@ -7259,32 +7302,20 @@ void selfie_dimacs() {
 
   SATInstance = (int*) malloc(numberOfSATClauses * 2 * numberOfSATVariables * WORDSIZE);
 
-  clauses = 0;
+  dimacs_getInstance();
 
-  while (symbol != SYM_EOF) {
-    dimacs_getClause(clauses);
-
-    clauses = clauses + 1;
-  }
-
-  if (clauses == numberOfSATClauses) {
-    print(selfieName);
-    print((int*) ": ");
-    printInteger(numberOfSATClauses);
-    print((int*) " clauses with ");
-    printInteger(numberOfSATVariables);
-    print((int*) " declared variables loaded from ");
-    print(sourceName);
-    println();
-  } else {
-    syntaxErrorMessage((int*) "instance mismatches number of declared clauses");
-
-    exit(EXITCODE_PARSERERROR);
-  }
+  print(selfieName);
+  print((int*) ": ");
+  printInteger(numberOfSATClauses);
+  print((int*) " clauses with ");
+  printInteger(numberOfSATVariables);
+  print((int*) " declared variables loaded from ");
+  print(sourceName);
+  println();
 
   dimacsName = sourceName;
 
-  printSATInstance();
+  //printSATInstance();
 }
 
 void selfie_sat() {
