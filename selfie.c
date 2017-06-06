@@ -7117,53 +7117,59 @@ int babysat(int depth) {
   return UNSAT;
 }
 
-void dimacs_ignoreComment() {
-  int newLine;
+void dimacs_findNextCharacter(int newLine) {
+  int inComment;
 
-  newLine = 0;
+  // assuming we are not in a comment
+  inComment = 0;
 
-  while (character != CHAR_EOF) {
-    while (isCharacterNewLine()) {
-      if (character == CHAR_LF)
-        lineNumber = lineNumber + 1;
+  // read and discard all whitespace and comments until a character is found
+  // that is not whitespace and does not occur in a comment, or the file ends
+  while (1) {
+    if (inComment) {
+      getCharacter();
 
+      if (isCharacterNewLine())
+        // comments end with new line
+        inComment = 0;
+      else if (character == CHAR_EOF)
+        return;
+      else
+        // count the characters in comments as ignored characters
+        // line feed and carriage return are counted below
+        numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+    } else if (newLine) {
+      newLine = 0;
+
+      if (character == 'c') {
+        // 'c' at beginning of a line begins a comment
+        inComment = 1;
+
+        // count the number of comments
+        numberOfComments = numberOfComments + 1;
+      }
+    } else if (isCharacterWhitespace()) {
+      if (isCharacterNewLine()) {
+        newLine = 1;
+
+        // keep track of line numbers for error reporting and code annotation
+        if (character == CHAR_LF)
+          lineNumber = lineNumber + 1;
+      } else
+        newLine = 0;
+
+      // count whitespace as ignored characters
       numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
       getCharacter();
-
-      // comments end with new line
-      newLine = 1;
-    }
-
-    if (newLine)
+    } else
+      // character found that is not whitespace and not occurring in a comment
       return;
-    else {
-      numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
-
-      getCharacter();
-    }
-  }
-}
-
-void dimacs_findNonCommentLine() {
-  while (character == 'c') {
-    // count the number of comments
-    numberOfComments = numberOfComments + 1;
-
-    dimacs_ignoreComment();
-  }
-}
-
-void dimacs_findNextCharacter() {
-  while (character != CHAR_EOF) {
-    while (isCharacterWhitespace()) {
-      // continue here
-    }
   }
 }
 
 void dimacs_getSymbol() {
-  dimacs_findNextCharacter();
+  dimacs_findNextCharacter(0);
 
   getSymbol();
 }
@@ -7188,7 +7194,7 @@ int dimacs_number() {
   if (symbol == SYM_INTEGER) {
     number = literal;
 
-    getSymbol();
+    dimacs_getSymbol();
 
     return number;
   } else
@@ -7206,13 +7212,13 @@ void dimacs_getClause(int clause) {
     if (symbol == SYM_MINUS) {
       not = 1;
 
-      getSymbol();
+      dimacs_getSymbol();
     }
 
     if (symbol == SYM_INTEGER) {
       if (literal <= 0) {
         // if literal < 0 it is equal to INT_MIN which we treat here as 0
-        getSymbol();
+        dimacs_getSymbol();
 
         return;
       } else if (literal > numberOfSATVariables) {
@@ -7233,7 +7239,7 @@ void dimacs_getClause(int clause) {
     else
       syntaxErrorSymbol(SYM_INTEGER);
 
-    getSymbol();
+    dimacs_getSymbol();
   }
 }
 
@@ -7242,9 +7248,7 @@ void dimacs_getInstance() {
 
   clauses = 0;
 
-  while (clauses < numberOfSATClauses) {
-    dimacs_findNonCommentLine();
-
+  while (clauses < numberOfSATClauses)
     if (symbol != SYM_EOF) {
       dimacs_getClause(clauses);
 
@@ -7254,10 +7258,6 @@ void dimacs_getInstance() {
 
       exit(EXITCODE_PARSERERROR);
     }
-  }
-
-  // read past all comments
-  dimacs_findNonCommentLine();
 
   if (symbol != SYM_EOF) {
     syntaxErrorMessage((int*) "instance has more clauses than declared");
@@ -7289,7 +7289,10 @@ void selfie_dimacs() {
 
   resetScanner();
 
-  dimacs_findNonCommentLine();
+  // ignore all comments before problem
+  dimacs_findNextCharacter(1);
+
+  dimacs_getSymbol();
 
   dimacs_word((int*) "p");
   dimacs_word((int*) "cnf");
