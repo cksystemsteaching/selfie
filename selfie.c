@@ -1249,6 +1249,56 @@ int nextPageFrame = 0;
 int usedPageFrameMemory = 0;
 int freePageFrameMemory = 0;
 
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------   T H E O R E M  P R O V E R    ----------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// -------------------------- SAT Solver ---------------------------
+// -----------------------------------------------------------------
+
+int FALSE = 0;
+int TRUE  = 1;
+
+int UNSAT = 0;
+int SAT   = 1;
+
+int* dimacsName = (int*) 0;
+
+int numberOfSATVariables = 0;
+
+ // numberOfSATVariables
+int* SATAssignment = (int*) 0;
+
+int numberOfSATClauses = 0;
+
+// numberOfSATClauses * 2 * numberOfSATVariables
+int* SATInstance = (int*) 0;
+
+int clauseMayBeTrue(int* clauseAddress, int depth);
+int instanceMayBeTrue(int depth);
+
+int babysat(int depth);
+
+// -----------------------------------------------------------------
+// ----------------------- DIMACS CNF PARSER -----------------------
+// -----------------------------------------------------------------
+
+void selfie_printDimacs();
+
+void dimacs_findNextCharacter(int newLine);
+void dimacs_getSymbol();
+void dimacs_word(int* word);
+int  dimacs_number();
+void dimacs_getClause(int clause);
+void dimacs_getInstance();
+
+void selfie_loadDimacs();
+
+void selfie_sat();
+
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
@@ -7004,59 +7054,13 @@ int selfie_run(int machine) {
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// -----------------------    P R O V E R    -----------------------
+// ----------------   T H E O R E M  P R O V E R    ----------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
-int FALSE = 0;
-int TRUE  = 1;
-
-int UNSAT = 0;
-int SAT   = 1;
-
-int* dimacsName = (int*) 0;
-
-int numberOfSATVariables = 0;
-
- // numberOfSATVariables
-int* SATAssignment = (int*) 0;
-
-int numberOfSATClauses = 0;
-
-// numberOfSATClauses * 2 * numberOfSATVariables
-int* SATInstance = (int*) 0;
-
-void printSATInstance() {
-  int clause;
-  int variable;
-
-  clause = 0;
-
-  while (clause < numberOfSATClauses) {
-    print(selfieName);
-    print((int*) ": ");
-    printInteger(clause + 1);
-    print((int*) ":");
-
-    variable = 0;
-
-    while (variable < numberOfSATVariables) {
-      if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable) == TRUE) {
-        print((int*) " ");
-        printInteger(variable + 1);
-      } else if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable + 1) == TRUE) {
-        print((int*) " ");
-        printInteger(-(variable + 1));
-      }
-
-      variable = variable + 1;
-    }
-
-    println();
-
-    clause = clause + 1;
-  }
-}
+// -----------------------------------------------------------------
+// -------------------------- SAT Solver ---------------------------
+// -----------------------------------------------------------------
 
 int clauseMayBeTrue(int* clauseAddress, int depth) {
   int variable;
@@ -7115,6 +7119,44 @@ int babysat(int depth) {
   if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) return SAT;
 
   return UNSAT;
+}
+
+// -----------------------------------------------------------------
+// ----------------------- DIMACS CNF PARSER -----------------------
+// -----------------------------------------------------------------
+
+void selfie_printDimacs() {
+  int clause;
+  int variable;
+
+  print((int*) "p cnf ");
+  printInteger(numberOfSATVariables);
+  print((int*) " ");
+  printInteger(numberOfSATClauses);
+  println();
+
+  clause = 0;
+
+  while (clause < numberOfSATClauses) {
+    variable = 0;
+
+    while (variable < numberOfSATVariables) {
+      if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable) == TRUE) {
+        printInteger(variable + 1);
+        print((int*) " ");
+      } else if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable + 1) == TRUE) {
+        printInteger(-(variable + 1));
+        print((int*) " ");
+      }
+
+      variable = variable + 1;
+    }
+
+    print((int*) "0");
+    println();
+
+    clause = clause + 1;
+  }
 }
 
 void dimacs_findNextCharacter(int newLine) {
@@ -7266,7 +7308,7 @@ void dimacs_getInstance() {
   }
 }
 
-void selfie_dimacs() {
+void selfie_loadDimacs() {
   sourceName = getArgument();
 
   print(selfieName);
@@ -7317,12 +7359,12 @@ void selfie_dimacs() {
   println();
 
   dimacsName = sourceName;
-
-  //printSATInstance();
 }
 
 void selfie_sat() {
   int variable;
+
+  selfie_loadDimacs();
 
   if (dimacsName == (int*) 0) {
     print(selfieName);
@@ -7331,6 +7373,8 @@ void selfie_sat() {
 
     return;
   }
+
+  selfie_printDimacs();
 
   if (babysat(0) == SAT) {
     print(selfieName);
@@ -7430,11 +7474,9 @@ int selfie() {
         selfie_disassemble();
       else if (stringCompare(option, (int*) "-l"))
         selfie_load();
-      else if (stringCompare(option, (int*) "-sat")) {
-        selfie_dimacs();
-
+      else if (stringCompare(option, (int*) "-sat"))
         selfie_sat();
-      } else if (stringCompare(option, (int*) "-m"))
+      else if (stringCompare(option, (int*) "-m"))
         return selfie_run(MIPSTER);
       else if (stringCompare(option, (int*) "-d")) {
         debug = 1;

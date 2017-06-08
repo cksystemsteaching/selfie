@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : test clean
+.PHONY : test sat all clean
 
 # Test self-compilation, self-execution, and self-hosting
 test: selfie
@@ -25,6 +25,14 @@ test: selfie
 	diff -q selfie3.m selfie5.m
 	diff -q selfie3.s selfie5.s
 	./selfie -c -mob 1
+
+# Test SAT solver
+sat: selfie
+	./selfie -sat manuscript/cnfs/rivest.cnf
+	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
+
+# Test everything
+all: test sat
 
 # Clean up
 clean:

@@ -1,0 +1,13 @@
+c Rivest's unsatisfiable four-variable eight-clause formula
+c omitting the last clause to make the instance satisfiable
+c with -1 -2 3 and either 4 or -4
+c
+p cnf 4 7
+2 3 -4 0
+1 3 4 0
+-1 2 4 0
+-1 -2 3 0
+-2 -3 4 0
+-1 -3 -4 0
+1 -2 -4 0
+c1 2 -3 0

@@ -13,6 +13,8 @@ Selfie is a fully self-referential 7k-line C implementation of:
 3. a self-hosting hypervisor called hypster which is based on a tiny microkernel implemented in mipster and provides MIPSter virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself, and
 4. a tiny C* library called libcstar utilized by selfie.
 
+There is also a simple SAT solver implemented in selfie that will eventually become part of a self-verifying theorem prover. This is ongoing work.
+
 For further information and support please refer to [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
 ## Supported Platforms
@@ -46,7 +48,7 @@ and compile `selfie.c` into an executable called `selfie` as directed by the `-o
 Once you have successfully compiled selfie you may invoke it in your terminal according to the following pattern:
 
 ```bash
-./selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ]
+./selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ (-m | -d | -y | -min | -mob ) size ... ]
 ```
 
 The order in which the options are provided matters for taking full advantage of self-referentiality.
@@ -58,6 +60,8 @@ The `-o` option writes MIPSter code produced by the most recent compiler invocat
 The `-s` option writes MIPSter assembly of the MIPSter code produced by the most recent compiler invocation including approximate source line numbers to the given `assembly` file.
 
 The `-l` option loads MIPSter code from the given `binary` file. The `-o` and `-s` options can also be used after the `-l` option. However, in this case the `-s` option does not generate approximate source line numbers.
+
+The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The current implementation is naive and only works on small instances.
 
 The `-m` option invokes the mipster emulator to execute MIPSter code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `size` MB of memory. The `source` or `binary` name of the MIPSter code and any remaining `...` arguments are passed to the main function of the code. The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state.
 
