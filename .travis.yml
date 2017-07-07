@@ -14,7 +14,7 @@ addons:
   apt:
     packages:
     - gcc-multilib
-script: make all
+script: travis_wait 60 make all
 notifications:
   email: false
   slack:
