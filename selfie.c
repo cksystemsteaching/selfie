@@ -567,7 +567,7 @@ void resetParser() {
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
-void emitLeftShiftBy(int b);
+void emitLeftShiftBy(int reg, int b);
 void emitMainEntry();
 void bootstrapCode();
 
@@ -2721,7 +2721,7 @@ void load_integer(int value) {
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 14));
 
       // shift left by 14 bits
-      emitLeftShiftBy(14);
+      emitLeftShiftBy(currentTemporary(), 14);
 
       // and finally add 14 lsbs
       emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 18), 18));
@@ -2729,12 +2729,12 @@ void load_integer(int value) {
       // load 14 msbs of a 31-bit number first
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 17));
 
-      emitLeftShiftBy(14);
+      emitLeftShiftBy(currentTemporary(), 14);
 
       // then add the next 14 msbs
       emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 15), 18));
 
-      emitLeftShiftBy(3);
+      emitLeftShiftBy(currentTemporary(), 3);
 
       // and finally add the remaining 3 lsbs
       emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 29), 29));
@@ -2744,8 +2744,8 @@ void load_integer(int value) {
     emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), twoToThePowerOf(14));
 
     // and then multiply 2^14 by 2^14*2^3 to get to 2^31 == INT_MIN
-    emitLeftShiftBy(14);
-    emitLeftShiftBy(3);
+    emitLeftShiftBy(currentTemporary(), 14);
+    emitLeftShiftBy(currentTemporary(), 3);
   }
 }
 
@@ -3162,18 +3162,45 @@ int gr_simpleExpression() {
     if (operatorSymbol == SYM_PLUS) {
       if (ltype == INTSTAR_T) {
         if (rtype == INT_T)
+          // INTSTAR_T + INT_T
           // pointer arithmetic: factor of 2^2 of integer operand
-          emitLeftShiftBy(2);
-      } else if (rtype == INTSTAR_T)
-        typeWarning(ltype, rtype);
+          emitLeftShiftBy(currentTemporary(), 2);
+        else
+          // INTSTAR_T + INTSTAR_T
+          syntaxErrorMessage((int*) "(int*) + (int*) is undefined");
+      } else if (rtype == INTSTAR_T) {
+        // INT_T + INTSTAR_T
+        // pointer arithmetic: factor of 2^2 of integer operand
+        emitLeftShiftBy(previousTemporary(), 2);
+
+        ltype = INTSTAR_T;
+      }
 
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
 
     } else if (operatorSymbol == SYM_MINUS) {
-      if (ltype != rtype)
-        typeWarning(ltype, rtype);
+      if (ltype == INTSTAR_T) {
+        if (rtype == INT_T) {
+          // INTSTAR_T - INT_T
+          // pointer arithmetic: factor of 2^2 of integer operand
+          emitLeftShiftBy(currentTemporary(), 2);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+        } else {
+          // INTSTAR_T - INTSTAR_T
+          // pointer arithmetic: (left_term - right_term) / SIZEOFINT
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+          emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+          ltype = INT_T;
+        }
+      } else if (rtype == INTSTAR_T)
+        // INT_T - INTSTAR_T
+        syntaxErrorMessage((int*) "(int) - (int*) is undefined");
+      else
+        // INT_T - INT_T
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
     }
 
     tfree(1);
@@ -3976,13 +4003,13 @@ void gr_cstar() {
 // ------------------------ MACHINE CODE LIBRARY -------------------
 // -----------------------------------------------------------------
 
-void emitLeftShiftBy(int b) {
+void emitLeftShiftBy(int reg, int b) {
   // assert: 0 <= b < 15
 
   // load multiplication factor less than 2^15 to avoid sign extension
   emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
-  emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), 0, FCT_MULTU);
-  emitRFormat(OP_SPECIAL, 0, 0, currentTemporary(), FCT_MFLO);
+  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_MULTU);
+  emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
 }
 
 void emitMainEntry() {
