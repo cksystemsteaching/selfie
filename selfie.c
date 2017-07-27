@@ -106,6 +106,9 @@ int  stringLength(int* s);
 void stringReverse(int* s);
 int  stringCompare(int* s, int* t);
 
+int checkedAddition(int n, int c);
+int checkedMultiplication(int n, int c);
+
 int  atoi(int* s);
 int* itoa(int n, int* s, int b, int a, int p);
 
@@ -1481,10 +1484,44 @@ int stringCompare(int* s, int* t) {
       return 0;
 }
 
+int checkedAddition(int n, int c) {
+  // assert: n > INT_MIN && c >= 0
+
+  if (n <= INT_MAX - c)
+    return n + c;
+  else if (n - 1 == (INT_MAX - c))
+    return INT_MIN;
+  else
+    return -1;
+}
+
+int checkedMultiplication(int n, int c) {
+  // assert: n >= 0 && c > 0
+  int o;
+  o = n;
+
+  while (c > 1) {
+
+    n = checkedAddition(n, o);
+
+    if (n == INT_MIN)
+      if (c == 2)
+        return INT_MIN;
+    
+    if (n < 0)
+      return -1;
+
+    c = c - 1;
+  }
+
+  return n;
+}
+
 int atoi(int* s) {
   int i;
   int n;
   int c;
+  int next;
 
   // the conversion of the ASCII string in s to its numerical value n
   // begins with the leftmost digit in s
@@ -1509,23 +1546,38 @@ int atoi(int* s) {
       return -1;
 
     // assert: s contains a decimal number, that is, with base 10
-    n = n * 10 + c;
 
     // go to the next digit
     i = i + 1;
 
-    c = loadCharacter(s, i);
+    next = loadCharacter(s, i);
 
-    if (n < 0) {
-      // the only negative number for n allowed here is INT_MIN
-      if (n != INT_MIN)
-        // but n is not INT_MIN which may happen because of an earlier
-        // integer overflow if the number in s is larger than INT_MAX
-        return -1;
-      else if (c != 0)
-        // n is INT_MIN but s is not terminated yet
-        return -1;
-    }
+    // multiply by base
+    n = checkedMultiplication(n, 10);
+
+    // handle special case, where INT_MIN is allowed
+    if (n == INT_MIN)
+      if (next == 0)
+        if (c == 0)
+          return INT_MIN;
+  
+    // return -1 on overflow
+    if (n < 0)
+      return -1;
+
+    // add least significant digit
+    n = checkedAddition(n, c);
+
+    // handle special case, where INT_MIN is allowed
+    if (n == INT_MIN)
+      if (next == 0)
+        return INT_MIN;
+
+    // return -1 on overflow
+    if (n < 0)
+      return -1;
+
+    c = next;
   }
 
   return n;
