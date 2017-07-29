@@ -2,6 +2,11 @@
 // Please see the AUTHORS file for details. Use of this source code is
 // governed by a BSD license that can be found in the LICENSE file.
 //
+// CDCL solver in this code is a C* port from microsat which is written
+// by Marijn Heule in C:
+// Copyright (c) 2014-2017 Marijn Heule
+// https://github.com/marijnheule/microsat
+//
 // Selfie is a project of the Computational Systems Group at the
 // Department of Computer Sciences of the University of Salzburg
 // in Austria. For further information and code please refer to:
@@ -896,7 +901,7 @@ int debug_tlb = 0;
 
 int MEGABYTE = 1048576;
 
-int VIRTUALMEMORYSIZE = 67108864; // 64MB of virtual memory
+int VIRTUALMEMORYSIZE = 268435456; // 256MB of virtual memory
 
 int WORDSIZE = 4; // must be the same as SIZEOFINT and SIZEOFINTSTAR
 
@@ -912,8 +917,8 @@ int pageFrameMemory = 0; // size of memory for frames in bytes
 void initMemory(int megabytes) {
   if (megabytes < 0)
     megabytes = 0;
-  else if (megabytes > 64)
-    megabytes = 64;
+  else if (megabytes > VIRTUALMEMORYSIZE / MEGABYTE)
+    megabytes = VIRTUALMEMORYSIZE / MEGABYTE;
 
   pageFrameMemory = megabytes * MEGABYTE;
 }
@@ -1269,7 +1274,6 @@ int* dimacsName = (int*) 0;
 
 int numberOfSATVariables = 0;
 
- // numberOfSATVariables
 int* SATAssignment = (int*) 0;
 
 int numberOfSATClauses = 0;
@@ -1281,6 +1285,114 @@ int clauseMayBeTrue(int* clauseAddress, int depth);
 int instanceMayBeTrue(int depth);
 
 int babysat(int depth);
+
+// -----------------------------------------------------------------
+// -------------------------- CDCL Solver --------------------------
+// -----------------------------------------------------------------
+
+int* solver;
+
+// solver:
+// +----+-------------+
+// |  0 | DB          | (int*) pointer to the data-base memory
+// |  1 | nVars       | number of variables
+// |  2 | nClauses    | number of clauses
+// |  3 | mem_used    | number of integers allocated in the DB
+// |  4 | mem_fixed   |
+// |  5 | maxLemmas   | maximum number of lemmas
+// |  6 | nLemmas     | number of learned lemmas
+// |  7 | assumptions | (int*) list of assumptions (for incremental SAT)
+// |  8 | assumeHead  |
+// |  9 | restarts    | counter used for deciding when to restart
+// | 10 | nConflicts  | number of conflicts which is used to update scores
+// | 11 | model       | (int*) full assignment of variables
+// | 12 | reason      | (int*) array of clauses which determines antecedents of each variable; (decision variables the antecedent is 0)
+// | 13 | falseStack  | (int*) stack of falsified literals
+// | 14 | false       | (int*) labels for variables; non-zero means false
+// | 15 | first       | (int*) offset of the first watched clause; watched array, each literal a pointer to watched clauses
+// | 16 | heap        | (int*) binary heap of variables sorted by scores
+// | 17 | heapSize    | size of binary heap
+// | 18 | lookup      | (int*) lookup table for the position of a variable in the heap
+// | 19 | score       | (int*) variable score (based on involvement in recent conflicts)
+// | 20 | forced      | (int*) points inside falseStack at first decision (unforced literal)
+// | 21 | processed   | (int*) points inside falseStack at first unprocessed literal
+// | 22 | assigned    | (int*) points inside falseStack at last unprocessed literal
+// +----+-------------+
+
+int* getDB()             { return (int*) *solver; }
+int  getNVars()          { return        *(solver + 1); }
+int  getNClauses()       { return        *(solver + 2); }
+int  getMemUsed()        { return        *(solver + 3); }
+int  getMemFixed()       { return        *(solver + 4); }
+int  getMaxLemmas()      { return        *(solver + 5); }
+int  getNLemmas()        { return        *(solver + 6); }
+int* getAssumptions()    { return (int*) *(solver + 7); }
+int* getAssumeHead()     { return (int*) *(solver + 8); }
+int  getRestarts()       { return        *(solver + 9); }
+int  getNConflicts()     { return        *(solver + 10); }
+int* getModel()          { return (int*) *(solver + 11); }
+int* getReason()         { return (int*) *(solver + 12); }
+int* getFalseStack()     { return (int*) *(solver + 13); }
+int* getFalse()          { return (int*) *(solver + 14); }
+int* getFirst()          { return (int*) *(solver + 15); }
+int* getHeap()           { return (int*) *(solver + 16); }
+int  getHeapSize()       { return        *(solver + 17); }
+int* getLookup()         { return (int*) *(solver + 18); }
+int* getScore()          { return (int*) *(solver + 19); }
+int* getForced()         { return (int*) *(solver + 20); }
+int* getProcessed()      { return (int*) *(solver + 21); }
+int* getAssigned()       { return (int*) *(solver + 22); }
+
+void setDB(int* DB)                    { *solver       = (int) DB; }
+void setNVars(int nVars)               { *(solver + 1) = nVars; }
+void setNClauses(int nClauses)         { *(solver + 2) = nClauses; }
+void setMemUsed(int mem_used)          { *(solver + 3) = mem_used; }
+void setMemFixed(int mem_fixed)        { *(solver + 4) = mem_fixed; }
+void setMaxLemmas(int maxLemmas)       { *(solver + 5) = maxLemmas; }
+void setNLemmas(int nLemmas)           { *(solver + 6) = nLemmas; }
+void setAssumptions(int* assumptions)  { *(solver + 7) = (int) assumptions; }
+void setAssumeHead(int* assumeHead)    { *(solver + 8) = (int) assumeHead; }
+void setRestarts(int restarts)         { *(solver + 9) = restarts; }
+void setNConflicts(int nConflicts)     { *(solver + 10) = nConflicts; }
+void setModel(int* model)              { *(solver + 11) = (int) model; }
+void setReason(int* reason)            { *(solver + 12) = (int) reason; }
+void setFalseStack(int* falseStack)    { *(solver + 13) = (int) falseStack; }
+void setFalse(int* false)              { *(solver + 14) = (int) false; }
+void setFirst(int* first)              { *(solver + 15) = (int) first; }
+void setHeap(int* heap)                { *(solver + 16) = (int) heap; }
+void setHeapSize(int heapSize)         { *(solver + 17) = heapSize; }
+void setLookup(int* lookup)            { *(solver + 18) = (int) lookup; }
+void setScore(int* score)              { *(solver + 19) = (int) score; }
+void setForced(int* forced)            { *(solver + 20) = (int) forced; }
+void setProcessed(int* processed)      { *(solver + 21) = (int) processed; }
+void setAssigned(int* assigned)        { *(solver + 22) = (int) assigned; }
+
+int* scanned_clause; // the currently scanned clause
+int MAX_MEMORY; // maximum memory size
+int END = -9;
+int MARK = 2;
+
+void SET_MARK(int lit);
+void ASSIGN(int a, int* r, int forced);
+void ASSIGN_DECISION(int a);
+void UNASSIGN(int lit);
+void ADD_WATCH(int l, int m);
+int ABS(int a);
+int* getMemory (int mem_size);
+int* addClause (int* input, int size);
+void reduceDB();
+void heapRemoveTop();
+void heapUp(int var);
+int implied(int lit);
+int* analyze(int* clause);
+int propagate();
+int luby(int x);
+int solve();
+
+void dimacs_cdcl_getClause();
+void dimacs_cdcl_getInstance();
+void selfie_cdcl_loadDimacs();
+void selfie_cdcl_sat();
 
 // -----------------------------------------------------------------
 // ----------------------- DIMACS CNF PARSER -----------------------
@@ -7149,6 +7261,740 @@ int babysat(int depth) {
 }
 
 // -----------------------------------------------------------------
+// ------------------------- CDCL Solver ---------------------------
+// -----------------------------------------------------------------
+
+void SET_MARK(int lit) {
+  if (*(getFalse() + lit) != MARK) {
+    *(getScore() + ABS(lit)) = rightShift((3 * *(getScore() + ABS(lit)) +  leftShift(getNConflicts(), 5)), 2);
+  	if (*(getLookup() + ABS(lit)) != END) heapUp(ABS(lit));
+  }
+  *(getFalse() + lit) = MARK;
+}
+
+void ASSIGN(int a, int* r, int forced) {
+  *(getFalse() - a) = 1 + 5 * forced;
+  *(getAssigned()) = -a;
+  setAssigned(getAssigned() + 1);
+  *(getReason() + ABS(a)) = 1 + (int) (r - getDB());
+
+  if (a > 0)
+    *(getModel() + ABS(a)) = 1;
+  else
+    *(getModel() + ABS(a)) = 0;
+}
+
+void ASSIGN_DECISION(int a)	{
+  *(getFalse() - a) = 1;
+  *(getAssigned()) = -a;
+  setAssigned(getAssigned() + 1);
+  *(getReason() + ABS(a)) = 0;
+}
+
+void UNASSIGN(int lit) {
+  *(getFalse() + lit) = 0;
+  if (*(getLookup() + ABS(lit)) == END) {
+    setHeapSize(getHeapSize() + 1);
+    *(getLookup() + ABS(lit)) = getHeapSize();
+    heapUp(ABS(lit));
+  }
+}
+
+void ADD_WATCH(int l, int m)  {
+  *(getDB() + m) = *(getFirst() + l);
+  *(getFirst() + l) = m;
+}
+
+int ABS(int a) {
+  if (a > 0)
+    return a;
+  else
+    return -a;
+}
+
+int* getMemory(int mem_size) {
+  int* store;
+
+  if (getMemUsed() + mem_size > MAX_MEMORY) {
+    syntaxErrorMessage((int*) "OUT OF MEMORY");
+    exit(-1);
+  }
+
+  store = getDB() + getMemUsed();
+  setMemUsed(getMemUsed() + mem_size);
+
+  return store;
+}
+
+////
+// | first watch pointer | second watch pointer | first watch literal | second watch literal | other clause literals | 0 |
+////
+int* addClause(int* input, int size) {
+  int i;
+  int* clause;
+
+  if (size > 1) {
+    ADD_WATCH (*input, getMemUsed());
+    ADD_WATCH (*(input + 1), getMemUsed() + 1);
+  }
+
+  clause = getMemory(size + 3) + 2;
+  i = 0;
+  while (i < size) {
+    *(clause + i) = *(input + i);
+    i = i + 1;
+  }
+  *(clause + i) = 0;
+
+  return clause;
+}
+
+void reduceDB() {
+  int* head;
+  int* tail;
+  int i;
+  int lbound;
+  int* watch;
+  int size;
+  int count;
+  int* lem;
+
+  head = getDB() + getMemFixed();
+  tail = getDB() + getMemUsed();
+
+  setMaxLemmas(rightShift(getMaxLemmas() * 9, 3));
+  setMemUsed(getMemFixed());
+  setNLemmas(0);
+
+  i = -getNVars();
+  lbound = getNVars();
+  while (i <= lbound) {
+    if (i != 0) {
+      watch = getFirst() + i;
+      while (*watch != END)
+        if (*watch < getMemFixed())
+          watch = getDB() + (*watch);
+        else
+          *watch = *(getDB() + (*watch));
+    }
+    i = i + 1;
+  }
+
+  while (head < tail) {
+    size = 0;
+    count = 0;
+    lem = head + 2;
+    while (*lem) {
+      size = size + 1;
+      if (*lem > 0) {
+        if (*(getModel() + ABS(*lem)) == 1)
+          count = count + 1;
+      } else {
+        if (*(getModel() + ABS(*lem)) == 0)
+          count = count + 1;
+      }
+
+      lem = lem + 1;
+    }
+    if (count < 4) {
+      addClause (head + 2, size);
+      setNLemmas(getNLemmas() + 1);
+    }
+    head = lem + 1;
+  }
+}
+
+void heapRemoveTop() {
+  int last;
+  int score;
+  int p;
+  int c;
+  int lbreak;
+  int lbound;
+
+  *(getLookup() + *(getHeap())) = END;
+  last  = *(getHeap() + getHeapSize());
+  setHeapSize(getHeapSize() - 1);
+  score = *(getScore() + last);
+  p = 0;
+  c = 1;
+
+  lbreak = 1;
+  lbound = 0;
+  if (c <= getHeapSize())
+    lbound = 1;
+  while (lbound) {
+    if ( *(getScore() + *(getHeap() + c)) < *(getScore() + *(getHeap() + (c + 1))) )
+      if ( c < getHeapSize() )
+        c = c + 1;
+
+    if  ( *(getScore() + *(getHeap() + c)) < score ) {
+      lbreak = 0;
+      lbound = 0;
+    }
+
+    if (lbreak) {
+      *(getHeap() + p) = *(getHeap() + c);
+      *(getLookup() + *(getHeap() + c)) = p;
+      p = c;
+      c = leftShift(c, 1) + 1;
+    }
+
+    if (c > getHeapSize())
+      lbound = 0;
+  }
+
+  *(getHeap() + p) = last;
+  *(getLookup() + last) = p;
+}
+
+void heapUp(int var) {
+  int score;
+  int p;
+  int lbound;
+  int rshift;
+
+  score = *(getScore() + var);
+  p = *(getLookup() + var);
+
+  lbound = 0;
+  rshift = rightShift(p-1, 1);
+  if (p)
+    if ( *(getScore() + *(getHeap() + rshift)) < score )
+      lbound = 1;
+  while (lbound) {
+    *(getHeap() + p) = *(getHeap() + rshift);
+    *(getLookup() + *(getHeap() + p)) = p;
+    p = rshift;
+
+    lbound = 0;
+    if (p) {
+      rshift = rightShift(p-1, 1);
+      if ( *(getScore() + *(getHeap() + rshift)) < score )
+        lbound = 1;
+    }
+  }
+
+  *(getHeap() + p) = var;
+  *(getLookup() + var) = p;
+}
+
+int implied(int lit) {
+  int* p;
+
+  if (*(getFalse() + lit) > MARK)
+    return ((*(getFalse() + lit) / 2) % 2);
+  if (*(getReason() + ABS(lit)) == 0)
+    return 0;
+  p = getDB() + *(getReason() + ABS(lit));
+  while ( *p ) {
+    if ( *(getFalse() + *p) != 2 ) {
+      if (implied(*p) == 0) {
+        *(getFalse() + lit) = 5;
+        return 0;
+      }
+    }
+    p = p + 1;
+  }
+  *(getFalse() + lit) = 6;
+  return 1;
+}
+
+int* analyze(int* clause) {
+  int* check;
+  int lbreak;
+  int size;
+  int* p;
+
+  setNLemmas(getNLemmas() + 1);
+  setRestarts(getRestarts() + 1);
+  setNConflicts(getNConflicts() + 1);
+
+  while (*clause) {
+    SET_MARK(*clause);
+    clause = clause + 1;
+  }
+
+  setAssigned(getAssigned() - 1);
+  lbreak = *(getReason() + ABS(*(getAssigned())));
+  while (lbreak) {
+    if (*(getFalse() + *(getAssigned())) == MARK) {
+      check = getAssigned() - 1;
+      while (*(getFalse() + *check) != MARK) {
+        if (*(getReason() + ABS(*check)) == 0) {
+          MARK = *(getFalse() + *(check - 1)); // break 1
+          lbreak = 0; // break 2
+        }
+        check = check - 1;
+      }
+      MARK = 2; // due to prior break 1
+
+      if (lbreak) {
+        clause = getDB() + *(getReason() + ABS(*(getAssigned())));
+        while (*clause) {
+          SET_MARK(*clause);
+          clause = clause + 1;
+        }
+      }
+    }
+
+    if (lbreak) {
+      UNASSIGN(*(getAssigned()));
+
+      setAssigned(getAssigned() - 1);
+      lbreak = *(getReason() + ABS(*(getAssigned())));
+    }
+  }
+
+  size = 0;
+  p = getAssigned();
+  while (p >= getForced()) {
+    if (*(getFalse() + *p) == MARK) {
+      if (implied(*p) == 0) {
+        *(scanned_clause + size) = *p; // here scanned_clause is learned clause
+        size = size + 1;
+      }
+    }
+    if (size == 1) {
+      if (*(getReason() + ABS(*p)) == 0)
+        setProcessed(p);
+    }
+    *(getFalse() + *p) = 1;
+    p = p - 1;
+  }
+
+  while (getAssigned() > getProcessed()) {
+    UNASSIGN(*(getAssigned()));
+    setAssigned(getAssigned() - 1);
+  }
+  UNASSIGN(*(getAssigned()));
+
+  return addClause(scanned_clause, size); // learned clause
+}
+
+int propagate() {
+  int forced;
+  int lit;
+  int* watch;
+  int i;
+  int* clause;
+  int store;
+  int lbound;
+  int lbreak;
+  int* lemma;
+
+  forced = *(getReason() + ABS(*(getProcessed())));
+  while (getProcessed() < getAssigned()) {
+    lit = *(getProcessed());
+    setProcessed(getProcessed() + 1);
+
+    watch = getFirst() + lit;
+    while (*watch != END) {
+      clause = getDB() + *watch + 1;
+      if (*(clause - 2) == 0)
+        clause = clause + 1;
+
+      if (*clause == lit)
+        *clause = *(clause + 1);
+
+      lbreak = 1;
+      i = 2;
+      lbound = *(clause + i);
+      while (lbound) {
+        if (*(getFalse() + lbound) == 0) {
+          *(clause + 1) = lbound;
+          *(clause + i) = lit;
+          store = *watch;
+          *watch = *(getDB() + *watch);
+          ADD_WATCH (*(clause + 1), store);
+          lbreak = 0;
+          lbound = 0;
+        }
+        if (lbreak) {
+          i = i + 1;
+          lbound = *(clause + i);
+        }
+      }
+
+      if (lbreak) {
+        *(clause + 1) = lit;
+        watch = getDB() + *watch;
+        if (*(getFalse() - *clause)) {
+          lbreak = 0;
+        }
+
+        if (lbreak) {
+          if (*(getFalse() + *clause) == 0) {
+            ASSIGN (*clause, clause, forced);
+          } else if (forced) {
+            return UNSAT;
+          } else {
+            lemma = analyze (clause);
+            ASSIGN (*lemma, lemma, forced);
+            if (*(lemma + 1))
+              forced = 0;
+            else
+              forced = 1;
+
+            END = *watch; // break
+          }
+        }
+      }
+    }
+    END = -9; // due to prior break
+  }
+
+  if (forced) setForced(getProcessed());
+
+  return SAT;
+}
+
+int luby (int x) {
+  int size;
+  int seq;
+  int bound;
+
+  size = 1;
+  seq = 0;
+  bound = x + 1;
+  while (size < bound) {
+    seq = seq + 1;
+    size = 2 * size + 1;
+  }
+
+  while (size - 1 != x) {
+    size = rightShift(size - 1, 1);
+    seq = seq - 1;
+    x = x % size;
+  }
+
+  return seq;
+}
+
+int solve() {
+  int restarts;
+  int decision;
+  int shift;
+  int lbound;
+  int lbreak;
+
+  restarts = 0;
+  shift = luby(restarts);
+
+  while (1) {
+    if (propagate() == UNSAT)
+      return UNSAT;
+
+    ////
+    // Restart
+    ////
+    if (getRestarts() > leftShift(100, shift)) {
+      while (getAssigned() > getForced()) {
+        setAssigned(getAssigned() - 1);
+        UNASSIGN(*(getAssigned()));
+      }
+
+      // Reset pointers and restart counter
+      setProcessed(getForced());
+      setRestarts(0);
+      restarts = restarts + 1;
+      shift = luby(restarts);
+    }
+    // OR
+    if (getNLemmas() > getMaxLemmas()) {
+      while (getAssigned() > getForced()) {
+        setAssigned(getAssigned() - 1);
+        UNASSIGN(*(getAssigned()));
+      }
+
+      // Reset pointers and restart counter
+      setProcessed(getForced());
+      setRestarts(0);
+      restarts = restarts + 1;
+      shift = luby(restarts);
+    }
+    ////
+
+    if (getNLemmas() > getMaxLemmas()) reduceDB();   // Reduce the DB when it contains too many lemmas
+
+    // Get the next decision from the heap
+    lbreak = 1;
+    lbound = 0;
+    if (getHeapSize())
+      lbound = 1;
+    while (lbound) {
+      // If the top of the heap is unassigned
+      if (*(getFalse() + *(getHeap())) == 0)
+      {
+        if (*(getFalse() - *(getHeap())) == 0)
+        {
+          lbreak = 0;
+          lbound = 0;
+        }
+      }
+
+      // Otherwise remove the top from the heap
+      if (lbreak) {
+        heapRemoveTop();
+
+        lbound = 0;
+        if (getHeapSize())
+          lbound = 1;
+      }
+    }
+
+    if (getHeapSize() == 0) return SAT;              // A solution is found when the heap is empty
+
+    // Assign decision based on current model
+    if (*(getModel() + *(getHeap())))
+      decision = *(getHeap());
+    else
+      decision = -(*(getHeap()));
+
+    ASSIGN_DECISION(decision);
+  }
+}
+
+// -----------------------------------------------------------------
+// ---------------- DIMACS CNF PARSER for CDCL ---------------------
+// -----------------------------------------------------------------
+
+void dimacs_cdcl_getClause() {
+  int not;
+  int size;
+  int* clause;
+
+  size = 0;
+  while (1) {
+    not = 0;
+
+    if (symbol == SYM_MINUS) {
+      not = 1;
+
+      dimacs_getSymbol();
+    }
+
+    if (symbol == SYM_INTEGER) {
+      if (literal <= 0) {
+        // if literal < 0 it is equal to INT_MIN which we treat here as 0
+        dimacs_getSymbol();
+
+        ////
+        // Added for CDCL solver
+        ////
+        clause = addClause(scanned_clause, size);
+        if (size == 0)
+        {
+          syntaxErrorMessage((int*) "Wrong Clause");
+          exit(EXITCODE_PARSERERROR);
+        }
+
+        if (size == 1)
+          if (*(getFalse() + *scanned_clause) > 0)
+          {
+            syntaxErrorMessage((int*) "Wrong Clause");
+            exit(EXITCODE_PARSERERROR);
+          }
+
+        if (size == 1)
+          if (*(getFalse() - *scanned_clause) == 0)
+            ASSIGN(*scanned_clause, clause, 1);
+
+        ////
+        return;
+      } else if (literal > numberOfSATVariables) {
+        syntaxErrorMessage((int*) "clause exceeds declared number of variables");
+
+        exit(EXITCODE_PARSERERROR);
+      }
+
+      if (not)
+        *(scanned_clause + size) = -literal;
+      else
+        *(scanned_clause + size) = literal;
+
+      size = size + 1;
+    } else if (symbol == SYM_EOF)
+      return;
+    else
+      syntaxErrorSymbol(SYM_INTEGER);
+
+    dimacs_getSymbol();
+  }
+}
+
+void dimacs_cdcl_getInstance() {
+  int clauses;
+  int n;
+  int i;
+
+  clauses = 0;
+  n = getNVars();
+
+  setMemUsed(0);                                  // The number of integers allocated in the DB
+  setNLemmas(0);                                  // The number of learned clauses -- redundant means learned
+  setNConflicts(0);                               // Under of conflicts which is used to updates scores
+  setRestarts(0);                                 // Counter used for deciding when to restart
+  setMaxLemmas(2 + rightShift(getNClauses(), 2)); // The maximum number of lemmas
+  setAssumptions(getMemory(n + 1));               // List of assumptions (for incremental SAT)
+  setModel(getMemory(n + 1));                     // Full assignment of the (Boolean) variables (initially set to false)
+  setScore(getMemory(n + 1));                     // Variable score (based on involvement in recent conflicts).
+  setHeap(getMemory(n));                          // Binary heap of variables sorted by S->score
+  setHeapSize(n - 1);                             // Size of the heap
+  setLookup(getMemory(n + 1));                    // Lookup table for the position of a variable in the heap
+  setReason(getMemory(n + 1));                    // Array of clauses
+  setFalseStack(getMemory(n + 1));                // Stack of falsified literals -- this pointer is never changed
+  setForced(getFalseStack());                     // Points inside *falseStack at first decision (unforced literal)
+  setProcessed(getFalseStack());                  // Points inside *falseStack at first unprocessed literal
+  setAssigned(getFalseStack());                   // Points inside *falseStack at last unprocessed literal
+  setFalse(getMemory(2 * n + 1));                 // Labels for variables, non-zero means false
+  setFalse(getFalse() + n);
+  setFirst(getMemory(2 * n + 1));                 // Offset of the first watched clause
+  setFirst(getFirst() + n);
+  *(getDB() + getMemUsed()) = 0;                  // Make sure there is a 0 before the clauses are loaded.
+  setMemUsed(getMemUsed() + 1);
+
+  i = 1;
+  while (i <= n) {
+    *(getHeap() + (i-1)) = i;
+    *(getLookup() + i) = i-1;
+    *(getModel() + i) = 0;
+    *(getScore() + i) = 1;
+    *(getFalse() + i) = 0;
+    *(getFalse() - i) = 0;
+    *(getFirst() + i) = END;
+    *(getFirst() - i) = END;
+    i = i + 1;
+  }
+
+  while (clauses < numberOfSATClauses)
+    if (symbol != SYM_EOF) {
+      dimacs_cdcl_getClause();
+
+      clauses = clauses + 1;
+    } else {
+      syntaxErrorMessage((int*) "instance has fewer clauses than declared");
+
+      exit(EXITCODE_PARSERERROR);
+    }
+
+  if (symbol != SYM_EOF) {
+    syntaxErrorMessage((int*) "instance has more clauses than declared");
+
+    exit(EXITCODE_PARSERERROR);
+  }
+
+  setMemFixed(getMemUsed());
+}
+
+void selfie_cdcl_loadDimacs() {
+  int i;
+
+  sourceName = getArgument();
+
+  print(selfieName);
+  print((int*) ": this is selfie loading SAT instance ");
+  print(sourceName);
+  println();
+
+  // assert: sourceName is mapped and not longer than maxFilenameLength
+
+  sourceFD = open(sourceName, O_RDONLY, 0);
+
+  if (sourceFD < 0) {
+    print(selfieName);
+    print((int*) ": could not open input file ");
+    print(sourceName);
+    println();
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  resetScanner();
+
+  // ignore all comments before problem
+  dimacs_findNextCharacter(1);
+
+  dimacs_getSymbol();
+
+  dimacs_word((int*) "p");
+  dimacs_word((int*) "cnf");
+
+  numberOfSATVariables = dimacs_number();
+
+  numberOfSATClauses = dimacs_number();
+
+  ////
+  // Added for CDCL solver
+  ////
+  scanned_clause = (int*) malloc(numberOfSATVariables * SIZEOFINT);
+  MAX_MEMORY = 2 * (numberOfSATClauses * (numberOfSATVariables + 3) + 11 * (numberOfSATVariables + 1));
+  solver = (int*) malloc(23 * SIZEOFINT);
+  setNVars(numberOfSATVariables);
+  setNClauses(numberOfSATClauses);
+  setDB((int*) malloc(MAX_MEMORY * SIZEOFINT));
+  i = 0;
+  while (i < MAX_MEMORY) {
+    *(getDB() + i) = 0;
+    i = i + 1;
+  }
+  ////
+
+  dimacs_cdcl_getInstance();
+
+  print(selfieName);
+  print((int*) ": ");
+  printInteger(numberOfSATClauses);
+  print((int*) " clauses with ");
+  printInteger(numberOfSATVariables);
+  print((int*) " declared variables loaded from ");
+  print(sourceName);
+  println();
+
+  dimacsName = sourceName;
+}
+
+void selfie_cdcl_sat() {
+  int variable;
+
+  selfie_cdcl_loadDimacs();
+
+  if (dimacsName == (int*) 0) {
+    print(selfieName);
+    print((int*) ": nothing to SAT solve");
+    println();
+
+    return;
+  }
+
+  if (solve() != UNSAT) {
+    print(selfieName);
+    print((int*) ": ");
+    print(dimacsName);
+    print((int*) " is satisfiable with ");
+
+    variable = 1;
+
+    while (variable <= numberOfSATVariables) {
+      if (*(getModel() + variable) == FALSE)
+        print((int*) "-");
+
+      printInteger(variable);
+      print((int*) " ");
+
+      variable = variable + 1;
+    }
+  } else {
+    print(selfieName);
+    print((int*) ": ");
+    print(dimacsName);
+    print((int*) " is unsatisfiable");
+  }
+
+  println();
+}
+
+// -----------------------------------------------------------------
 // ----------------------- DIMACS CNF PARSER -----------------------
 // -----------------------------------------------------------------
 
@@ -7502,7 +8348,7 @@ int selfie() {
       else if (stringCompare(option, (int*) "-l"))
         selfie_load();
       else if (stringCompare(option, (int*) "-sat"))
-        selfie_sat();
+        selfie_cdcl_sat();
       else if (stringCompare(option, (int*) "-m"))
         return selfie_run(MIPSTER);
       else if (stringCompare(option, (int*) "-d")) {
