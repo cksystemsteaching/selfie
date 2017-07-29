@@ -901,7 +901,7 @@ int debug_tlb = 0;
 
 int MEGABYTE = 1048576;
 
-int VIRTUALMEMORYSIZE = 268435456; // 256MB of virtual memory
+int VIRTUALMEMORYSIZE = 134217728; // 128MB of virtual memory
 
 int WORDSIZE = 4; // must be the same as SIZEOFINT and SIZEOFINTSTAR
 
