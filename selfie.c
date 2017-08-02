@@ -1508,24 +1508,36 @@ int atoi(int* s) {
       // c was not a decimal digit
       return -1;
 
-    // assert: s contains a decimal number, that is, with base 10
-    n = n * 10 + c;
+    // assert: s contains a decimal number
+
+    // use base 10 but avoid integer overflow
+    if (n < INT_MAX / 10)
+      n = n * 10 + c;
+    else if (n == INT_MAX / 10) {
+      // In decimal representation of integers,
+      // the least significant digit of INT_MIN is exactly 1 
+      // greater than the least significant digit of INT_MAX. 
+      if (c <= INT_MAX % 10)
+        n = n * 10 + c;
+      else if (c == (INT_MAX % 10) + 1)
+        // s must be terminated next, check below
+        n = INT_MIN;
+      else
+        // s contains a decimal number larger than INT_MAX
+        return -1;
+    } else
+      // s contains a decimal number larger than INT_MAX
+      return -1;
 
     // go to the next digit
     i = i + 1;
 
     c = loadCharacter(s, i);
 
-    if (n < 0) {
-      // the only negative number for n allowed here is INT_MIN
-      if (n != INT_MIN)
-        // but n is not INT_MIN which may happen because of an earlier
-        // integer overflow if the number in s is larger than INT_MAX
-        return -1;
-      else if (c != 0)
+    if (n == INT_MIN)
+      if (c != 0)
         // n is INT_MIN but s is not terminated yet
         return -1;
-    }
   }
 
   return n;
