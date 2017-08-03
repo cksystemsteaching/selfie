@@ -1514,9 +1514,6 @@ int atoi(int* s) {
     if (n < INT_MAX / 10)
       n = n * 10 + c;
     else if (n == INT_MAX / 10) {
-      // In decimal representation of integers,
-      // the least significant digit of INT_MIN is exactly 1 
-      // greater than the least significant digit of INT_MAX. 
       if (c <= INT_MAX % 10)
         n = n * 10 + c;
       else if (c == (INT_MAX % 10) + 1)
