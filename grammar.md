@@ -1,4 +1,4 @@
-Copyright (c) 2015-2016, the Selfie Project authors. All rights reserved. Please see the AUTHORS file for details. Use of this source code is governed by a BSD license that can be found in the LICENSE file.
+Copyright (c) 2015-2017, the Selfie Project authors. All rights reserved. Please see the AUTHORS file for details. Use of this source code is governed by a BSD license that can be found in the LICENSE file.
 
 Selfie is a project of the Computational Systems Group at the Department of Computer Sciences of the University of Salzburg in Austria. For further information and code please refer to:
 
@@ -6,9 +6,9 @@ http://selfie.cs.uni-salzburg.at
 
 This is the grammar of the C Star (C\*) programming language.
 
-C\* is a small Turing-complete subset of C that includes dereferencing (the `*` operator) but excludes data structures, bitwise and Boolean operators, and many other features. C\* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler.
+C\* is a tiny Turing-complete subset of C that includes dereferencing (the `*` operator) but excludes data types other then `int` and `int*`, bitwise and Boolean operators, and many other features. C\* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler.
 
-C\* Keywords: `int`, `while`, `if`, `else`, `return`, `void`
+C\* Keywords: `int`, `void`, `while`, `if`, `else`, `return`
 
 C\* Symbols: `=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `,`, `(`, `)`, `{`, `}`, `;`, integer, identifier, character, string
 
