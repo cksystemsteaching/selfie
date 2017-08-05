@@ -96,6 +96,7 @@ void initLibrary();
 void resetLibrary();
 
 int addWrap(int a, int b);
+int subtractWrap(int a, int b);
 
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
@@ -1351,24 +1352,48 @@ int addWrap(int a, int b) {
   // signed integer addition with wrap-around semantics and overflow detection
   // but without causing any integer overflow in the implementation
 
-  if (b > 0)
+  if (b > 0) {
     if (a > INT_MAX - b) {
       INT_OVERFLOW = OVERFLOW_YES;
 
       // INT_MIN <= a + b <= -2 == INT_MAX + INT_MAX
-      return (INT_MIN + (a - (INT_MAX - b))) - 1;
+      return INT_MIN + (a - ((INT_MAX - b) + 1));
     }
-  else if (a < INT_MIN - b) {
+  } else if (a < INT_MIN - b) {
     INT_OVERFLOW = OVERFLOW_YES;
 
     // INT_MIN + INT_MIN == 0 <= a + b <= INT_MAX
-    return (INT_MAX + (a - (INT_MIN - b))) + 1;
+    return INT_MAX + (a - ((INT_MIN - b) - 1));
   }
 
   INT_OVERFLOW = OVERFLOW_NO;
 
   // implementing addition with +
   return a + b;
+}
+
+int subtractWrap(int a, int b) {
+  // signed integer subtraction with wrap-around semantics and overflow
+  // detection but without causing any integer overflow in the implementation
+
+  if (b > 0) {
+    if (a < INT_MIN + b) {
+      INT_OVERFLOW = OVERFLOW_YES;
+
+      // INT_MIN - INT_MAX == 1 <= a - b <= INT_MAX
+      return INT_MAX + (a - ((INT_MIN + b) - 1));
+    }
+  } else if (a > INT_MAX + b) {
+    INT_OVERFLOW = OVERFLOW_YES;
+
+    // INT_MIN <= a - b <= -1 == INT_MAX - INT_MIN
+    return INT_MIN + (a - ((INT_MAX + b) + 1));
+  }
+
+  INT_OVERFLOW = OVERFLOW_NO;
+
+  // implementing subtraction with -
+  return a - b;
 }
 
 int twoToThePowerOf(int p) {
@@ -1562,9 +1587,11 @@ int atoi(int* s) {
 
     c = loadCharacter(s, i);
 
-    if (n == INT_MIN)
+    // checking if n == INT_MIN may cause an integer overflow but,
+    // since n < 0 implies n == INT_MIN here, we simply check n < 0
+    if (n < 0)
       if (c != 0)
-        // n is INT_MIN but s is not terminated yet
+        // n == INT_MIN but s is not terminated yet
         return -1;
   }
 
@@ -5449,15 +5476,13 @@ void fct_subu() {
   int t;
   int d;
   int n;
-  int o;
 
   if (interpret) {
     s = *(registers+rs);
     t = *(registers+rt);
     d = *(registers+rd);
 
-    // implementing subu with -
-    n = s - t;
+    n = subtractWrap(s, t);
   }
 
   if (debug) {
@@ -5494,22 +5519,8 @@ void fct_subu() {
 
     pc = pc + WORDSIZE;
 
-    if (debug_overflow) {
-      o = 0;
-
-      if (s > 0) {
-        if (t < 0)
-          if (n <= -1)
-            // INT_MIN <= n <= -1 == INT_MAX - INT_MIN
-            o = 1;
-      } else {
-        if (t > 0)
-          if (n >= 1)
-            // INT_MIN - INT_MAX == 1 <= n <= INT_MAX
-            o = 1;
-      }
-
-      if (o) {
+    if (debug_overflow)
+      if (INT_OVERFLOW == OVERFLOW_YES) {
         print((int*) "overflow: ");
         printInteger(s);
         print((int*) " - ");
@@ -5518,7 +5529,6 @@ void fct_subu() {
         printInteger(n);
         println();
       }
-    }
   }
 }
 
