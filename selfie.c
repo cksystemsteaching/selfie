@@ -95,6 +95,8 @@ int* malloc(int size);
 void initLibrary();
 void resetLibrary();
 
+int addWrap(int a, int b);
+
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
@@ -165,6 +167,11 @@ int INT_MIN; // minimum numerical value of a signed 32-bit integer
 
 int INT16_MAX; // maximum numerical value of a signed 16-bit integer
 int INT16_MIN; // minimum numerical value of a signed 16-bit integer
+
+int INT_OVERFLOW = 0; // indicates if an integer overflow occurred
+
+int OVERFLOW_NO  = 0;
+int OVERFLOW_YES = 1;
 
 int maxFilenameLength = 128;
 
@@ -1340,6 +1347,30 @@ void initSelfie(int argc, int* argv) {
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
+int addWrap(int a, int b) {
+  // signed integer addition with wrap-around semantics and overflow detection
+  // but without causing any integer overflow in the implementation
+
+  if (b > 0)
+    if (a > INT_MAX - b) {
+      INT_OVERFLOW = OVERFLOW_YES;
+
+      // INT_MIN <= a + b <= -2 == INT_MAX + INT_MAX
+      return (INT_MIN + (a - (INT_MAX - b))) - 1;
+    }
+  else if (a < INT_MIN - b) {
+    INT_OVERFLOW = OVERFLOW_YES;
+
+    // INT_MIN + INT_MIN == 0 <= a + b <= INT_MAX
+    return (INT_MAX + (a - (INT_MIN - b))) + 1;
+  }
+
+  INT_OVERFLOW = OVERFLOW_NO;
+
+  // implementing addition with +
+  return a + b;
+}
+
 int twoToThePowerOf(int p) {
   // assert: 0 <= p < 31
   return *(power_of_two_table + p);
@@ -1351,7 +1382,7 @@ int leftShift(int n, int b) {
   if (b <= 0)
     return n;
   else if (b < 31) {
-    // left shift of integers works by multiplication with powers of two
+    // left shift of integers works by multiplication with powers of two,
     // to avoid integer overflow clear the b MSBs first
 
     // right shift by 32 - b bits, then left shift by 32 - b - 1 bits
@@ -5357,15 +5388,13 @@ void fct_addu() {
   int t;
   int d;
   int n;
-  int o;
 
   if (interpret) {
     s = *(registers+rs);
     t = *(registers+rt);
     d = *(registers+rd);
 
-    // implementing addu with +
-    n = s + t;
+    n = addWrap(s, t);
   }
 
   if (debug) {
@@ -5402,22 +5431,8 @@ void fct_addu() {
 
     pc = pc + WORDSIZE;
 
-    if (debug_overflow) {
-      o = 0;
-
-      if (s > 0) {
-        if (t > 0)
-          if (n <= -2)
-            // INT_MIN <= n <= -2 == INT_MAX + INT_MAX
-            o = 1;
-      } else {
-        if (t < 0)
-          if (n >= 0)
-            // INT_MIN + INT_MIN == 0 <= n <= INT_MAX
-            o = 1;
-      }
-
-      if (o) {
+    if (debug_overflow)
+      if (INT_OVERFLOW == OVERFLOW_YES) {
         print((int*) "overflow: ");
         printInteger(s);
         print((int*) " + ");
@@ -5426,7 +5441,6 @@ void fct_addu() {
         printInteger(n);
         println();
       }
-    }
   }
 }
 
