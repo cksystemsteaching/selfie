@@ -5616,6 +5616,20 @@ void fct_multu() {
 }
 
 void fct_divu() {
+  int s;
+  int t;
+  int l;
+  int h;
+
+  if (interpret) {
+    s = *(registers+rs);
+    t = *(registers+rt);
+
+    // this will fail if t == 0 or (s == INT_MIN and t == -1)
+    l = s / t;
+    h = s % t;
+  }
+
   if (debug) {
     printFunction(function);
     print((int*) " ");
@@ -5626,33 +5640,27 @@ void fct_divu() {
       print((int*) ": ");
       printRegister(rs);
       print((int*) "=");
-      printInteger(*(registers+rs));
+      printInteger(s);
       print((int*) ",");
       printRegister(rt);
       print((int*) "=");
-      printInteger(*(registers+rt));
+      printInteger(t);
       print((int*) ",$lo=");
       printInteger(loReg);
       print((int*) ",$hi=");
       printInteger(hiReg);
+      print((int*) " -> $lo=");
+      printInteger(l);
+      print((int*) ",$hi=");
+      printInteger(h);
     }
   }
 
   if (interpret) {
-    loReg = *(registers+rs) / *(registers+rt);
-    hiReg = *(registers+rs) % *(registers+rt);
+    loReg = l;
+    hiReg = h;
 
     pc = pc + WORDSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $lo=");
-      printInteger(loReg);
-      print((int*) ",$hi=");
-      printInteger(hiReg);
-    }
-    println();
   }
 }
 
