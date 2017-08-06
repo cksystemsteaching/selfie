@@ -6,22 +6,22 @@ http://selfie.cs.uni-salzburg.at
 
 This is the grammar of the C Star (C\*) programming language.
 
-C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables without initialization. C\* also includes the unary `*` operator for dereferencing pointers (hence the name) but excludes data types other than `int` and `int*`, bitwise and Boolean operators, and many other features. C\* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C\* has 6 keywords and 22 symbols. Whitespace is ignored including one-line comments (`//`).
+C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `int` and `int*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with six keywords and 22 symbols. Whitespace is ignored including one-line comments (`//`).
 
-C\* Keywords: `int`, `void`, `while`, `if`, `else`, `return`
+C\* Keywords: `int`, `while`, `if`, `else`, `return`, `void`
 
-C\* Symbols: `=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `,`, `(`, `)`, `{`, `}`, `;`, `integer`, `identifier`, `character`, `string`
+C\* Symbols: `=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `,`, `(`, `)`, `{`, `}`, `;`, `integer`, `character`, `string`, `identifier`
 
 with:
 
 ```
 integer    = digit { digit } .
 
-identifier = letter { letter | digit | "_" } .
-
 character  = "'" printable_character "'" .
 
 string     = """ { printable_character } """ .
+
+identifier = letter { letter | digit | "_" } .
 ```
 
 and:
