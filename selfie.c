@@ -97,6 +97,7 @@ void resetLibrary();
 
 int addWrap(int a, int b);
 int subtractWrap(int a, int b);
+int multiplyWrap(int a, int b);
 
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
@@ -951,7 +952,7 @@ void op_j();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int debug_overflow = 0;
+int debug_overflow = 1;
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1396,6 +1397,33 @@ int subtractWrap(int a, int b) {
   return a - b;
 }
 
+int multiplyWrap(int a, int b) {
+  INT_OVERFLOW = OVERFLOW_NO;
+
+  if (a > 0) {
+    if (b > 0) {
+      if (a > INT_MAX / b)
+        INT_OVERFLOW = OVERFLOW_YES;
+    } else {
+      if (b < INT_MIN / a)
+        INT_OVERFLOW = OVERFLOW_YES;
+    }
+  } else {
+    if (b > 0) {
+      if (a < INT_MIN / b)
+        INT_OVERFLOW = OVERFLOW_YES;
+    } else {
+      if (a != 0)
+        if (b < INT_MAX / a)
+          INT_OVERFLOW = OVERFLOW_YES;
+    }
+  }
+
+  // implementing multiplication with * but relying on
+  // wrap-around semantics of bootstrapping compiler
+  return a * b;
+}
+
 int twoToThePowerOf(int p) {
   // assert: 0 <= p < 31
   return *(power_of_two_table + p);
@@ -1587,8 +1615,9 @@ int atoi(int* s) {
 
     c = loadCharacter(s, i);
 
-    // checking if n == INT_MIN may cause an integer overflow but,
-    // since n < 0 implies n == INT_MIN here, we simply check n < 0
+    // here we need to check whether n == INT_MIN but checking
+    // n == INT_MIN causes an integer overflow if n >= 0;
+    // since n < 0 implies n == INT_MIN here we check n < 0 instead
     if (n < 0)
       if (c != 0)
         // n == INT_MIN but s is not terminated yet
@@ -5541,8 +5570,7 @@ void fct_multu() {
     s = *(registers+rs);
     t = *(registers+rt);
 
-    // implementing multu with *
-    n = s * t;
+    n = multiplyWrap(s, t);
   }
 
   if (debug) {
@@ -5575,17 +5603,15 @@ void fct_multu() {
     pc = pc + WORDSIZE;
 
     if (debug_overflow)
-      if (s != 0)
-        // CAUTION: does not work if n / s is optimized to t
-        if (t != n / s) {
-          print((int*) "overflow: ");
-          printInteger(s);
-          print((int*) " * ");
-          printInteger(t);
-          print((int*) " ~ ");
-          printInteger(n);
-          println();
-        }
+      if (INT_OVERFLOW == OVERFLOW_YES) {
+        print((int*) "overflow: ");
+        printInteger(s);
+        print((int*) " * ");
+        printInteger(t);
+        print((int*) " ~ ");
+        printInteger(n);
+        println();
+      }
   }
 }
 
