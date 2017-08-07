@@ -3242,6 +3242,7 @@ int gr_expression() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_EQUALITY) {
+      // if a == b load 1 else load 0
       emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
 
       tfree(1);
@@ -3251,6 +3252,7 @@ int gr_expression() {
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
+      // if a == b load 0 else load 1
       emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
 
       tfree(1);
@@ -3260,19 +3262,19 @@ int gr_expression() {
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 
     } else if (operatorSymbol == SYM_LT) {
-      // set to 1 if a < b, else 0
+      // if a < b load 1 else load 0
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
-      // set to 1 if b < a, else 0
+      // if b < a load 1 else load 0
       emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
-      // if b < a set 0, else 1
+      // if b < a load 0 else load 1
       emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
@@ -3283,7 +3285,7 @@ int gr_expression() {
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_GEQ) {
-      // if a < b set 0, else 1
+      // if a < b load 0 else load 1
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
