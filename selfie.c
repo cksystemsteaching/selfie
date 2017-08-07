@@ -1612,10 +1612,7 @@ int atoi(int* s) {
 
     c = loadCharacter(s, i);
 
-    // here we need to check whether n == INT_MIN but checking
-    // n == INT_MIN causes an integer overflow if n >= 0;
-    // since n < 0 implies n == INT_MIN here we check n < 0 instead
-    if (n < 0)
+    if (n == INT_MIN)
       if (c != 0)
         // n == INT_MIN but s is not terminated yet
         return -1;
