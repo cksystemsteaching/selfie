@@ -716,7 +716,6 @@ int OP_SPECIAL = 0;
 int OP_J       = 2;
 int OP_JAL     = 3;
 int OP_BEQ     = 4;
-int OP_BNE     = 5;
 int OP_ADDIU   = 9;
 int OP_LW      = 35;
 int OP_SW      = 43;
@@ -755,7 +754,6 @@ void initDecoder() {
   *(OPCODES + OP_J)       = (int) "j";
   *(OPCODES + OP_JAL)     = (int) "jal";
   *(OPCODES + OP_BEQ)     = (int) "beq";
-  *(OPCODES + OP_BNE)     = (int) "bne";
   *(OPCODES + OP_ADDIU)   = (int) "addiu";
   *(OPCODES + OP_LW)      = (int) "lw";
   *(OPCODES + OP_SW)      = (int) "sw";
@@ -946,7 +944,6 @@ void op_addiu();
 void op_lw();
 void op_sw();
 void op_beq();
-void op_bne();
 void op_jal();
 void op_j();
 
@@ -3332,60 +3329,58 @@ int gr_expression() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_EQUALITY) {
-      // subtract, if result = 0 then 1, else 0
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      // if a == b load 1 else load 0
+      emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
 
       tfree(1);
 
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
+      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
-      // subtract, if result = 0 then 0, else 1
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+      // if a == b load 0 else load 1
+      emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 2);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
 
     } else if (operatorSymbol == SYM_LT) {
-      // set to 1 if a < b, else 0
+      // if a < b load 1 else load 0
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
-      // set to 1 if b < a, else 0
+      // if b < a load 1 else load 0
       emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
-      // if b < a set 0, else 1
+      // if b < a load 0 else load 1
       emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_GEQ) {
-      // if a < b set 0, else 1
+      // if a < b load 0 else load 1
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
 
       tfree(1);
 
-      emitIFormat(OP_BNE, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
+      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
     }
   }
 
@@ -4556,8 +4551,6 @@ void emitIFormat(int opcode, int rs, int rt, int immediate) {
   emitInstruction(encodeIFormat(opcode, rs, rt, immediate));
 
   if (opcode == OP_BEQ)
-    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
-  else if (opcode == OP_BNE)
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
 }
 
@@ -6015,49 +6008,6 @@ void op_beq() {
   }
 }
 
-void op_bne() {
-  if (debug) {
-    printOpcode(opcode);
-    print((int*) " ");
-    printRegister(rs);
-    print((int*) ",");
-    printRegister(rt);
-    print((int*) ",");
-    printInteger(signExtend(immediate));
-    print((int*) "[");
-    printHexadecimal(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, 0);
-    print((int*) "]");
-    if (interpret) {
-      print((int*) ": ");
-      printRegister(rs);
-      print((int*) "=");
-      printInteger(*(registers+rs));
-      print((int*) ",");
-      printRegister(rt);
-      print((int*) "=");
-      printInteger(*(registers+rt));
-    }
-  }
-
-  if (interpret) {
-    pc = pc + WORDSIZE;
-
-    if (*(registers+rs) != *(registers+rt)) {
-      pc = pc + signExtend(immediate) * WORDSIZE;
-
-      // TODO: execute delay slot
-    }
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((int*) " -> $pc=");
-      printHexadecimal(pc, 0);
-    }
-    println();
-  }
-}
-
 void op_jal() {
   if (debug) {
     printOpcode(opcode);
@@ -6211,8 +6161,6 @@ void execute() {
     op_sw();
   else if (opcode == OP_BEQ)
     op_beq();
-  else if (opcode == OP_BNE)
-    op_bne();
   else if (opcode == OP_JAL)
     op_jal();
   else if (opcode == OP_J)
