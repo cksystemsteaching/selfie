@@ -1567,13 +1567,15 @@ int atoi(int* s) {
   int n;
   int c;
 
-  // the conversion of the ASCII string in s to its numerical value n
-  // begins with the leftmost digit in s
+  // the conversion of the ASCII string in s to its
+  // numerical value n begins with the leftmost digit in s
   i = 0;
 
   // and the numerical value 0 for n
   n = 0;
 
+  // load character (one byte) at index i in s from memory
+  // requires bit shifting since memory access is in words
   c = loadCharacter(s, i);
 
   // loop until s is terminated
@@ -1610,6 +1612,8 @@ int atoi(int* s) {
     // go to the next digit
     i = i + 1;
 
+    // load character (one byte) at index i in s from memory
+    // requires bit shifting since memory access is in words
     c = loadCharacter(s, i);
 
     if (n == INT_MIN)
