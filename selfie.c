@@ -7685,9 +7685,6 @@ int solve() {
     if (propagate() == UNSAT)
       return UNSAT;
 
-    ////
-    // Restart
-    ////
     if (getRestarts() > leftShift(100, shift)) {
       while (getAssigned() > getForced()) {
         setAssigned(getAssigned() - 1);
@@ -7699,9 +7696,8 @@ int solve() {
       setRestarts(0);
       restarts = restarts + 1;
       shift = luby(restarts);
-    }
-    // OR
-    if (getNLemmas() > getMaxLemmas()) {
+
+    } else if (getNLemmas() > getMaxLemmas()) {
       while (getAssigned() > getForced()) {
         setAssigned(getAssigned() - 1);
         UNASSIGN(*(getAssigned()));
@@ -7713,7 +7709,6 @@ int solve() {
       restarts = restarts + 1;
       shift = luby(restarts);
     }
-    ////
 
     if (getNLemmas() > getMaxLemmas()) reduceDB();   // Reduce the DB when it contains too many lemmas
 
@@ -7783,14 +7778,12 @@ void dimacs_cdcl_getClause() {
         // Added for CDCL solver
         ////
         clause = addClause(scanned_clause, size);
-        if (size == 0)
-        {
+        if (size == 0) {
           syntaxErrorMessage((int*) "Wrong Clause");
           exit(EXITCODE_PARSERERROR);
-        }
 
-        if (size == 1)
-          if (*(getFalse() + *scanned_clause) > 0)
+        } else if (size == 1)
+          if (*(getFalse() + *scanned_clause))
           {
             syntaxErrorMessage((int*) "Wrong Clause");
             exit(EXITCODE_PARSERERROR);
