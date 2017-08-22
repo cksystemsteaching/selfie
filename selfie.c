@@ -99,6 +99,8 @@ int addWrap(int a, int b);
 int subtractWrap(int a, int b);
 int multiplyWrap(int a, int b);
 
+void checkDivision(int a, int b);
+
 int twoToThePowerOf(int p);
 int leftShift(int n, int b);
 int rightShift(int n, int b);
@@ -1419,6 +1421,16 @@ int multiplyWrap(int a, int b) {
   // implementing multiplication with * but relying on
   // wrap-around semantics of bootstrapping compiler
   return a * b;
+}
+
+void checkDivision(int a, int b) {
+  INT_OVERFLOW = OVERFLOW_NO;
+
+  if (b == 0)
+    INT_OVERFLOW = OVERFLOW_YES;
+  else if (a == INT_MIN)
+    if (b == -1)
+      INT_OVERFLOW = OVERFLOW_YES;
 }
 
 int twoToThePowerOf(int p) {
@@ -5618,6 +5630,20 @@ void fct_divu() {
   if (interpret) {
     s = *(registers+rs);
     t = *(registers+rt);
+
+    checkDivision(s, t);
+
+    if (debug_overflow)
+      if (INT_OVERFLOW == OVERFLOW_YES) {
+        if (t == 0)
+          print((int*) "division-by-zero error: ");
+        else
+          print((int*) "signed integer error: ");
+        printInteger(s);
+        print((int*) " / ");
+        printInteger(t);
+        println();
+      }
 
     // this will fail if t == 0 or (s == INT_MIN and t == -1)
     l = s / t;
