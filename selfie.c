@@ -903,7 +903,7 @@ int debug_tlb = 0;
 
 int MEGABYTE = 1048576;
 
-int VIRTUALMEMORYSIZE = 67108864; // 64MB of virtual memory
+int VIRTUALMEMORYSIZE = 2147483644; // 2GB - 1 Word of virtual memory (has to be word aligned)
 
 int WORDSIZE = 4; // must be the same as SIZEOFINT and SIZEOFINTSTAR
 
@@ -919,8 +919,8 @@ int pageFrameMemory = 0; // size of memory for frames in bytes
 void initMemory(int megabytes) {
   if (megabytes < 0)
     megabytes = 0;
-  else if (megabytes > 64)
-    megabytes = 64;
+  else if (megabytes > 2047)
+    megabytes = 2047;
 
   pageFrameMemory = megabytes * MEGABYTE;
 }
@@ -4116,10 +4116,9 @@ void emitMainEntry() {
 
   i = 0;
 
-  // 8 NOPs per register is enough for initialization
-  // since we load positive integers < 2^28 which take
-  // no more than 8 instructions each, see load_integer
-  while (i < 16) {
+  // 8 NOPs to initialize the global pointer with a positive integer < 2^28 (see load_integer)
+  // 14 NOPs to initialize the stack pointer with a positive integer < 2^31 (see load_integer)
+  while (i < 22) {
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
 
     i = i + 1;
@@ -4159,7 +4158,7 @@ void bootstrapCode() {
 
   // assert: allocatedTemporaries == 0
 
-  // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^28 (see load_integer)
+  // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^31 (see load_integer)
 
   // initial stack pointer is stored at highest virtual address
   load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
@@ -6167,7 +6166,7 @@ void execute() {
   else if (opcode == OP_J)
     op_j();
   else
-    throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
 }
 
 void interrupt() {
