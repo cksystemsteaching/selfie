@@ -7070,7 +7070,7 @@ int mixter(int* toContext, int mix) {
 
 int selfie_run(int machine) {
   int exitCode;
-  
+
   if (binaryLength == 0) {
     print(selfieName);
     print((int*) ": nothing to run, debug, or host");
