@@ -6193,7 +6193,7 @@ void execute() {
   else if (opcode == OP_J)
     op_j();
   else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+    throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
 }
 
 void interrupt() {
