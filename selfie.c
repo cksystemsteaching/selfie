@@ -905,26 +905,25 @@ int debug_tlb = 0;
 
 int MEGABYTE = 1048576;
 
-int VIRTUALMEMORYSIZE = 2147483644; // 2GB - 1 Word of virtual memory (has to be word aligned)
+int HIGHESTMEMORYADDRESS = 2147483644;  // 2GB - 1 Word of virtual memory (has to be word aligned)
 
 int WORDSIZE = 4; // must be the same as SIZEOFINT and SIZEOFINTSTAR
 
 int PAGESIZE = 4096; // we use standard 4KB pages
 int PAGEBITS = 12;   // 2^12 == 4096
+int PAGETABLESIZE = 2097152; // 2^31 / PAGESIZE * WORDSIZE
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int pageFrameMemory = 0; // size of memory for frames in bytes
+int pageFrameMemory = -4; // size of memory for frames in bytes (with a offset of -WORDSIZE)
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initMemory(int megabytes) {
-  if (megabytes < 0)
-    megabytes = 0;
-  else if (megabytes > 2047)
-    megabytes = 2047;
-
-  pageFrameMemory = megabytes * MEGABYTE;
+  if (megabytes >= 2048)
+    pageFrameMemory = -WORDSIZE + 2047 * MEGABYTE + MEGABYTE;
+  else if (megabytes >= 0)
+    pageFrameMemory = -WORDSIZE + megabytes * MEGABYTE;
 }
 
 // -----------------------------------------------------------------
@@ -1254,9 +1253,9 @@ int HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int nextPageFrame = 0;
-
-int usedPageFrameMemory = 0;
+int nextPageFrame = -4;       // Start at HIGHESTMEMORYADDRESS - 2^31 to prevent
+                              // integer overflows when calculating with addresses
+int usedPageFrameMemory = -4; // same here
 int freePageFrameMemory = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -4173,10 +4172,10 @@ void bootstrapCode() {
 
   // assert: allocatedTemporaries == 0
 
-  // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^31 (see load_integer)
+  // assert: 0 <= HIGHESTMEMORYADDRESS < 2^31 (see load_integer)
 
   // initial stack pointer is stored at highest virtual address
-  load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
+  load_integer(HIGHESTMEMORYADDRESS);
 
   // load initial stack pointer into SP register
   emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
@@ -5365,7 +5364,7 @@ int isPageMapped(int* table, int page) {
 
 int isValidVirtualAddress(int vaddr) {
   if (vaddr >= 0)
-    if (vaddr < VIRTUALMEMORYSIZE)
+    if (vaddr <= HIGHESTMEMORYADDRESS)
       // memory must be word-addressed for lack of byte-sized data type
       if (vaddr % WORDSIZE == 0)
         return 1;
@@ -6383,12 +6382,12 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * WORDSIZE));
+  setPT(context, zalloc(PAGETABLESIZE)); 
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
   setMePage(context, 0);
-  setHiPage(context, getPageOfVirtualAddress(VIRTUALMEMORYSIZE - WORDSIZE));
+  setHiPage(context, getPageOfVirtualAddress(HIGHESTMEMORYADDRESS));
 
   // heap starts where it is safe to start
   setProgramBreak(context, maxBinaryLength);
@@ -6525,7 +6524,7 @@ void mapPage(int* context, int page, int frame) {
 
   table = getPT(context);
 
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+  // assert: 0 <= page < (HIGHESTMEMORYADDRESS + WORDSIZE) / PAGESIZE
 
   // on boot level zero frame may be any signed integer
 
@@ -6600,7 +6599,7 @@ void restoreContext(int* context) {
       frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
       if (frame != 0)
-        // assert: 0 <= frame < VIRTUALMEMORYSIZE
+        // assert: 0 <= frame < (HIGHESTMEMORYADDRESS + WORDSIZE)
         mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page = page + 1;
@@ -6612,7 +6611,7 @@ void restoreContext(int* context) {
     frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
     while (frame != 0) {
-      // assert: 0 <= frame < VIRTUALMEMORYSIZE
+      // assert: 0 <= frame < (HIGHESTMEMORYADDRESS + WORDSIZE)
       mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page  = page - 1;
@@ -6637,7 +6636,12 @@ int pavailable() {
 }
 
 int pused() {
-  return usedPageFrameMemory - freePageFrameMemory;
+  int used = usedPageFrameMemory - freePageFrameMemory;
+
+  if (used < HIGHESTMEMORYADDRESS)
+    return used + WORDSIZE;
+  
+  return used;
 }
 
 int* palloc() {
@@ -6645,7 +6649,7 @@ int* palloc() {
   int block;
   int frame;
 
-  // assert: pageFrameMemory is equal to or a multiple of MEGABYTE
+  // assert: (pageFrameMemory + WORDSIZE) is equal to or a multiple of MEGABYTE
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (freePageFrameMemory == 0) {
@@ -6739,7 +6743,7 @@ void up_loadArguments(int* context, int argc, int* argv) {
   int i_vargv;
 
   // arguments are pushed onto stack which starts at highest virtual address
-  SP = VIRTUALMEMORYSIZE - WORDSIZE;
+  SP = HIGHESTMEMORYADDRESS;
 
   // allocate memory for storing stack pointer later
   SP = SP - WORDSIZE;
@@ -6779,7 +6783,7 @@ void up_loadArguments(int* context, int argc, int* argv) {
   mapAndStore(context, SP, vargv);
 
   // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStore(context, VIRTUALMEMORYSIZE - WORDSIZE, SP);
+  mapAndStore(context, HIGHESTMEMORYADDRESS, SP);
 }
 
 void mapUnmappedPages(int* context) {
@@ -7064,7 +7068,7 @@ int mixter(int* toContext, int mix) {
 
 int selfie_run(int machine) {
   int exitCode;
-
+  
   if (binaryLength == 0) {
     print(selfieName);
     print((int*) ": nothing to run, debug, or host");
@@ -7093,7 +7097,7 @@ int selfie_run(int machine) {
   print((int*) ": this is selfie executing ");
   print(binaryName);
   print((int*) " with ");
-  printInteger(pageFrameMemory / MEGABYTE);
+  printInteger(pageFrameMemory / MEGABYTE + 1);
   print((int*) "MB of physical memory on ");
 
   if (machine == MIPSTER)
@@ -7104,10 +7108,10 @@ int selfie_run(int machine) {
     exitCode = mobster(currentContext);
   else if (machine == HYPSTER)
     if (isBootLevelZero())
-      // no hypster on boot level zero
+     // no hypster on boot level zero
       exitCode = mipster(currentContext);
     else
-      exitCode = hypster(currentContext)
+      exitCode = hypster(currentContext);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
