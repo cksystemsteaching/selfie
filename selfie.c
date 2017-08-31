@@ -1217,6 +1217,8 @@ void up_loadArguments(int* context, int argc, int* argv);
 
 void mapUnmappedPages(int* context);
 
+int isBootLevelZero();
+
 int handleSystemCalls(int* context);
 
 int mipster(int* toContext);
@@ -6797,6 +6799,27 @@ void mapUnmappedPages(int* context) {
   }
 }
 
+int isBootLevelZero() {
+  // In C99 malloc(0) returns either a null pointer or a unique pointer. 
+  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
+  // Selfie, on the other hand, returns the same not null address,
+  // if malloc(0) is called consecutively.
+
+  int a0;
+  int a1;
+
+  a0 = (int) malloc(0);
+  a1 = (int) malloc(0);
+
+  if (a0 == 0)
+    return 1;
+  else if (a0 != a1)
+    return 1;
+
+  // It is selfie's malloc, so it can't be boot level zero.
+  return 0;
+}
+
 int handleSystemCalls(int* context) {
   int v0;
 
@@ -7080,12 +7103,11 @@ int selfie_run(int machine) {
   else if (machine == MOBSTER)
     exitCode = mobster(currentContext);
   else if (machine == HYPSTER)
-    // Detect if selfie's malloc implementation is used
-    if (malloc(0) == malloc(0))
-      exitCode = hypster(currentContext);
-    else
+    if (isBootLevelZero())
       // no hypster on boot level zero
       exitCode = mipster(currentContext);
+    else
+      exitCode = hypster(currentContext)
   else
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
