@@ -6636,7 +6636,9 @@ int pavailable() {
 }
 
 int pused() {
-  int used = usedPageFrameMemory - freePageFrameMemory;
+  int used;
+  
+  used = usedPageFrameMemory - freePageFrameMemory;
 
   if (used < HIGHESTMEMORYADDRESS)
     return used + WORDSIZE;
