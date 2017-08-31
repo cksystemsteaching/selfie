@@ -7079,9 +7079,8 @@ int selfie_run(int machine) {
   else if (machine == MOBSTER)
     exitCode = mobster(currentContext);
   else if (machine == HYPSTER)
-    if (isValidVirtualAddress((int) malloc(0)))
-      // TODO: does not work if boot level zero actually
-      // does mallocate valid virtual addresses
+    // Detect if selfie's malloc implementation is used
+    if (malloc(0) == malloc(0))
       exitCode = hypster(currentContext);
     else
       // no hypster on boot level zero
