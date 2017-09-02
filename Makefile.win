@@ -1,0 +1,42 @@
+# Compiler flags
+CFLAGS = /O2 /Datoi=xatoi
+
+# Compile selfie.c into selfie executable
+selfie.exe: selfie.c
+	$(CC) $(CFLAGS) selfie.c /Feselfie
+
+# Consider these targets as targets, not files
+.PHONY : test sat all clean
+
+# Test self-compilation, self-execution, and self-hosting
+test: selfie.exe
+	selfie.exe -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	fc selfie1.m selfie2.m
+	fc selfie1.s selfie2.s
+	selfie.exe -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
+	selfie.exe -c selfie.c -o selfie3.m -s selfie3.s -y 3 -l selfie3.m -y 2 -l selfie3.m -y 2 -c selfie.c -o selfie4.m -s selfie4.s
+	fc selfie3.m selfie4.m
+	fc selfie3.s selfie4.s
+	fc selfie1.m selfie3.m
+	fc selfie1.s selfie3.s
+	selfie.exe -c selfie.c -o selfie5.m -s selfie5.s -min 4 -l selfie5.m -y 2 -l selfie5.m -y 2 -c selfie.c -o selfie6.m -s selfie6.s
+	fc selfie5.m selfie6.m
+	fc selfie5.s selfie6.s
+	fc selfie3.m selfie5.m
+	fc selfie3.s selfie5.s
+	selfie.exe -c -mob 1
+
+# Test SAT solver
+sat: selfie.exe
+	selfie.exe -sat manuscript\cnfs\rivest.cnf
+	selfie.exe -c selfie.c -m 1 -sat manuscript\cnfs\rivest.cnf
+
+# Test everything
+all: test sat
+
+# Clean up
+clean:
+	del *.m
+	del *.obj
+	del *.s
+	del selfie.exe
