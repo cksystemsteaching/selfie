@@ -4205,10 +4205,10 @@ void emitMainEntry() {
 
   i = 0;
 
-  // 14 NOPs per register is enough for initialization 
-  // since we load positive integers < 2^31 which take 
+  // 15 NOPs per register is enough for initialization 
+  // since we load positive integers < 2^32 which take 
   // no more than 14 instructions each, see load_integer 
-  while (i < 28) { 
+  while (i < 30) { 
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
 
     i = i + 1;
