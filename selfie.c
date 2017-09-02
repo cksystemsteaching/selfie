@@ -3343,6 +3343,21 @@ int gr_expression() {
     if (ltype != rtype)
       typeWarning(ltype, rtype);
 
+    if (ltype == INTSTAR_T)
+      if (rtype == INTSTAR_T)
+        if (operatorSymbol != SYM_EQUALITY)
+          if (operatorSymbol != SYM_NOTEQ) {
+            // pointer arithmetics: We need to compare pointers as unsigned integers.
+            // We do that, by adding a offset of INT_MIN to get this relationship: 
+            // 0x0 < INT_MAX (0x7FFF FFFF) < INT_MIN (0xFFFF FFFF)
+            load_integer(INT_MIN);
+
+            tfree(1);
+
+            emitRFormat(OP_SPECIAL, previousTemporary(), nextTemporary(), previousTemporary(), FCT_SUBU);
+            emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), currentTemporary(), FCT_SUBU);
+          }
+
     if (operatorSymbol == SYM_EQUALITY) {
       // if a == b load 1 else load 0
       emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
@@ -4125,7 +4140,7 @@ void emitLeftShiftBy(int reg, int b) {
 
 void emitRightShiftBy(int reg, int b) {
   // assert: 0 <= b < 31;
-  
+
   int brPositive;
   int brNegative;
 
