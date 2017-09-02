@@ -1934,6 +1934,14 @@ int* zalloc(int size) {
 
   memory = malloc(size);
 
+  if ((int) memory == 0) {
+    print(selfieName);
+    print((int*) ": malloc out of physical memory");
+    println();
+
+    exit(EXITCODE_OUTOFPHYSICALMEMORY);
+  }
+
   size = size / WORDSIZE;
 
   i = 0;
