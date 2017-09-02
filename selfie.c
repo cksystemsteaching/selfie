@@ -579,6 +579,7 @@ void resetParser() {
 // -----------------------------------------------------------------
 
 void emitLeftShiftBy(int reg, int b);
+void emitRightShiftBy(int reg, int b);
 void emitMainEntry();
 void bootstrapCode();
 
@@ -3295,10 +3296,10 @@ int gr_simpleExpression() {
         } else {
           // INTSTAR_T - INTSTAR_T
           // pointer arithmetic: (left_term - right_term) / SIZEOFINT
+          //                 <=> (left_term >> 2) - (right_term >> 2)
+          emitRightShiftBy(previousTemporary(), 2);
+          emitRightShiftBy(currentTemporary(), 2);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
-          emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
           ltype = INT_T;
         }
@@ -4109,12 +4110,72 @@ void gr_cstar() {
 // -----------------------------------------------------------------
 
 void emitLeftShiftBy(int reg, int b) {
-  // assert: 0 <= b < 15
+  // assert: 0 <= b < 31
 
-  // load multiplication factor less than 2^15 to avoid sign extension
-  emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
-  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_MULTU);
+  if (b == 0)
+    return;
+
+  load_integer(twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), 0, FCT_MULTU);
   emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  tfree(1);
+}
+
+void emitRightShiftBy(int reg, int b) {
+  // assert: 0 <= b < 31;
+  
+  int brPositive;
+  int brNegative;
+
+  if (b == 0)
+    return;
+
+  // Check if the number we want to shift is negative
+  emitRFormat(OP_SPECIAL, reg, REG_ZR, nextTemporary(), FCT_SLT);
+
+  brPositive = binaryLength;
+
+  emitIFormat(OP_BEQ, nextTemporary(), REG_ZR, 0);
+
+  // If the number is negative, calculate 
+  //                                     (number < 0)
+  // (number - INT_MIN) / 2^b + 2^(31 - b)   <=>   number >> b
+  load_integer(INT_MIN);
+  
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), reg, FCT_SUBU);
+  
+  tfree(1);
+  
+  emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_DIVU);
+  emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  load_integer(twoToThePowerOf(31 - b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), reg, FCT_ADDU);
+
+  tfree(1);
+
+  brNegative = binaryLength;
+  
+  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
+
+  fixup_relative(brPositive);
+
+  // If the number is positive, calculate 
+  //           (number >= 0)
+  // number / 2^b   <=>   number >> b
+  load_integer(twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), 0, FCT_DIVU);
+  emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  tfree(1);
+
+  fixup_relative(brNegative);
 }
 
 void emitMainEntry() {
