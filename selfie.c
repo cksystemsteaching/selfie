@@ -2848,7 +2848,7 @@ void load_integer(int value) {
     }
   } else {
     // load largest positive 16-bit number with a single bit set: 2^14
-    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), twoToThePowerOf(14));
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), -twoToThePowerOf(14));
 
     // and then multiply 2^14 by 2^14*2^3 to get to 2^31 == INT_MIN
     emitLeftShiftBy(currentTemporary(), 14);
