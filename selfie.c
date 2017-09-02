@@ -2816,11 +2816,17 @@ int load_variable(int* variable) {
 }
 
 void load_integer(int value) {
-  // assert: value >= 0 or value == INT_MIN
+  int isNegative;
 
   talloc();
 
-  if (value >= 0) {
+  if (value != INT_MIN) {
+    if (value < 0) {
+      isNegative = 1;
+      value = -value;
+    } else 
+      isNegative = 0;
+
     if (value < twoToThePowerOf(15))
       // ADDIU can only load numbers < 2^15 without sign extension
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), value);
@@ -2847,6 +2853,10 @@ void load_integer(int value) {
       // and finally add the remaining 3 lsbs
       emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 29), 29));
     }
+
+    if (isNegative)
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+
   } else {
     // load largest positive 16-bit number with a single bit set: 2^14
     emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), -twoToThePowerOf(14));
