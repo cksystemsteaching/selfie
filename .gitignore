@@ -1,3 +1,5 @@
 *.m
 *.s
+*.obj
 selfie
+selfie.exe
