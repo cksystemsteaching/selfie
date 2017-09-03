@@ -579,6 +579,7 @@ void resetParser() {
 // -----------------------------------------------------------------
 
 void emitLeftShiftBy(int reg, int b);
+void emitRightShiftBy(int reg, int b);
 void emitMainEntry();
 void bootstrapCode();
 
@@ -903,28 +904,30 @@ void storeVirtualMemory(int* table, int vaddr, int data);
 
 int debug_tlb = 0;
 
-int MEGABYTE = 1048576;
+// We use the unit [# of Words] to prevent overflow problems in calculations
+int MEGABYTE = 1048576;         // 1024 * 1024       One megabyte in [# of Bytes]
+int MEGABYTEINWORDS = 262144;   // 1024 * 1024 / 4   One megabyte in [# of Words]
 
-int VIRTUALMEMORYSIZE = 67108864; // 64MB of virtual memory
+int HIGHESTMEMORYADDRESS = -4;  // Highest word aligned 32bit address in 2's compliment
 
-int WORDSIZE = 4; // must be the same as SIZEOFINT and SIZEOFINTSTAR
+int WORDSIZE = 4;               // must be the same as SIZEOFINT and SIZEOFINTSTAR
 
-int PAGESIZE = 4096; // we use standard 4KB pages
-int PAGEBITS = 12;   // 2^12 == 4096
+int PAGESIZE = 4096;            // we use standard 4KB pages [# of Bytes] (=> 12 pagebits: 2^12 == 4096)
+int PAGESIZEINWORDS = 1024;     // Page size in words [# of Words]
+
+int NUMBEROFPAGES = 1048576;    // 2^32 / PAGESIZE   max. amount of pages in vmemory.
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int pageFrameMemory = 0; // size of memory for frames in bytes
+int pageFrameMemory = 0; // size of memory for frames [# of Words]
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initMemory(int megabytes) {
-  if (megabytes < 0)
-    megabytes = 0;
-  else if (megabytes > 64)
-    megabytes = 64;
-
-  pageFrameMemory = megabytes * MEGABYTE;
+  if (megabytes >= 4096)
+    pageFrameMemory = 4096 * MEGABYTEINWORDS;
+  else if (megabytes > 0)
+    pageFrameMemory = megabytes * MEGABYTEINWORDS;
 }
 
 // -----------------------------------------------------------------
@@ -1217,6 +1220,8 @@ void up_loadArguments(int* context, int argc, int* argv);
 
 void mapUnmappedPages(int* context);
 
+int isBootLevelZero();
+
 int handleSystemCalls(int* context);
 
 int mipster(int* toContext);
@@ -1252,10 +1257,10 @@ int HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int nextPageFrame = 0;
+int nextPageFrame = 0;        // [# of Words]
 
-int usedPageFrameMemory = 0;
-int freePageFrameMemory = 0;
+int usedPageFrameMemory = 0;  // [# of Words]
+int freePageFrameMemory = 0;  // [# of Words]
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -1928,6 +1933,14 @@ int* zalloc(int size) {
   size = roundUp(size, WORDSIZE);
 
   memory = malloc(size);
+
+  if ((int) memory == 0) {
+    print(selfieName);
+    print((int*) ": malloc out of physical memory");
+    println();
+
+    exit(EXITCODE_OUTOFPHYSICALMEMORY);
+  }
 
   size = size / WORDSIZE;
 
@@ -2814,11 +2827,17 @@ int load_variable(int* variable) {
 }
 
 void load_integer(int value) {
-  // assert: value >= 0 or value == INT_MIN
+  int isNegative;
 
   talloc();
 
-  if (value >= 0) {
+  if (value != INT_MIN) {
+    if (value < 0) {
+      isNegative = 1;
+      value = -value;
+    } else 
+      isNegative = 0;
+
     if (value < twoToThePowerOf(15))
       // ADDIU can only load numbers < 2^15 without sign extension
       emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), value);
@@ -2845,9 +2864,13 @@ void load_integer(int value) {
       // and finally add the remaining 3 lsbs
       emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 29), 29));
     }
+
+    if (isNegative)
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+
   } else {
     // load largest positive 16-bit number with a single bit set: 2^14
-    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), twoToThePowerOf(14));
+    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), -twoToThePowerOf(14));
 
     // and then multiply 2^14 by 2^14*2^3 to get to 2^31 == INT_MIN
     emitLeftShiftBy(currentTemporary(), 14);
@@ -3294,10 +3317,10 @@ int gr_simpleExpression() {
         } else {
           // INTSTAR_T - INTSTAR_T
           // pointer arithmetic: (left_term - right_term) / SIZEOFINT
+          //                 <=> (left_term >> 2) - (right_term >> 2)
+          emitRightShiftBy(previousTemporary(), 2);
+          emitRightShiftBy(currentTemporary(), 2);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
-          emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
           ltype = INT_T;
         }
@@ -3340,6 +3363,21 @@ int gr_expression() {
 
     if (ltype != rtype)
       typeWarning(ltype, rtype);
+
+    if (ltype == INTSTAR_T)
+      if (rtype == INTSTAR_T)
+        if (operatorSymbol != SYM_EQUALITY)
+          if (operatorSymbol != SYM_NOTEQ) {
+            // pointer arithmetics: We need to compare pointers as unsigned integers.
+            // We do that, by adding a offset of INT_MIN to get this relationship: 
+            // 0x0 < INT_MAX (0x7FFF FFFF) < INT_MIN (0xFFFF FFFF)
+            load_integer(INT_MIN);
+
+            tfree(1);
+
+            emitRFormat(OP_SPECIAL, previousTemporary(), nextTemporary(), previousTemporary(), FCT_SUBU);
+            emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), currentTemporary(), FCT_SUBU);
+          }
 
     if (operatorSymbol == SYM_EQUALITY) {
       // if a == b load 1 else load 0
@@ -4108,12 +4146,72 @@ void gr_cstar() {
 // -----------------------------------------------------------------
 
 void emitLeftShiftBy(int reg, int b) {
-  // assert: 0 <= b < 15
+  // assert: 0 <= b < 31
 
-  // load multiplication factor less than 2^15 to avoid sign extension
-  emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
-  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_MULTU);
+  if (b == 0)
+  return;
+
+  load_integer(twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), 0, FCT_MULTU);
   emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  tfree(1);
+}
+
+void emitRightShiftBy(int reg, int b) {
+  // assert: 0 <= b < 31;
+
+  int brPositive;
+  int brNegative;
+
+  if (b == 0)
+  return;
+
+// Check if the number we want to shift is negative
+  emitRFormat(OP_SPECIAL, reg, REG_ZR, nextTemporary(), FCT_SLT);
+
+  brPositive = binaryLength;
+
+  emitIFormat(OP_BEQ, nextTemporary(), REG_ZR, 0);
+
+  // If the number is negative, calculate 
+  //                                     (number < 0)
+  // (number - INT_MIN) / 2^b + 2^(31 - b)   <=>   number >> b
+  load_integer(INT_MIN);
+  
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), reg, FCT_SUBU);
+  
+  tfree(1);
+  
+  emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_DIVU);
+  emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  load_integer(twoToThePowerOf(31 - b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), reg, FCT_ADDU);
+
+  tfree(1);
+
+  brNegative = binaryLength;
+  
+  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
+
+  fixup_relative(brPositive);
+
+  // If the number is positive, calculate 
+  //           (number >= 0)
+  // number / 2^b   <=>   number >> b
+  load_integer(twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), 0, FCT_DIVU);
+  emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  tfree(1);
+
+  fixup_relative(brNegative);
 }
 
 void emitMainEntry() {
@@ -4128,10 +4226,10 @@ void emitMainEntry() {
 
   i = 0;
 
-  // 8 NOPs per register is enough for initialization
-  // since we load positive integers < 2^28 which take
-  // no more than 8 instructions each, see load_integer
-  while (i < 16) {
+  // 15 NOPs per register is enough for initialization 
+  // since we load integers < 2^32 which take 
+  // no more than 15 instructions each, see load_integer
+  while (i < 30) { 
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
 
     i = i + 1;
@@ -4171,10 +4269,10 @@ void bootstrapCode() {
 
   // assert: allocatedTemporaries == 0
 
-  // assert: 0 <= VIRTUALMEMORYSIZE - WORDSIZE < 2^28 (see load_integer)
+  // assert: 0 <= HIGHESTMEMORYADDRESS < 2^31 (see load_integer)
 
   // initial stack pointer is stored at highest virtual address
-  load_integer(VIRTUALMEMORYSIZE - WORDSIZE);
+  load_integer(HIGHESTMEMORYADDRESS);
 
   // load initial stack pointer into SP register
   emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
@@ -4727,7 +4825,7 @@ int* touch(int* memory, int length) {
   while (length > PAGESIZE) {
     length = length - PAGESIZE;
 
-    m = m + PAGESIZE / WORDSIZE;
+    m = m + PAGESIZEINWORDS;
 
     // touch every following page
     n = *m;
@@ -5210,6 +5308,9 @@ void emitMalloc() {
 int implementMalloc(int* context) {
   int size;
   int bump;
+  int stackptr;
+  int available;
+  int temp;
 
   if (debug_malloc) {
     print(selfieName);
@@ -5223,14 +5324,25 @@ int implementMalloc(int* context) {
 
   bump = getProgramBreak(context);
 
-  if (bump + size >= *(getRegs(context)+REG_SP)) {
+  stackptr = *(getRegs(context)+REG_SP);
+
+  temp = INT_OVERFLOW;
+
+  available = subtractWrap(stackptr, bump);
+
+  if (available < 0)
+    available = INT_MAX;
+
+  if (size > available) {
     setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
 
     return EXIT;
   } else {
     *(getRegs(context)+REG_V0) = bump;
 
-    setProgramBreak(context, bump + size);
+    setProgramBreak(context, addWrap(bump, size));
+
+    INT_OVERFLOW = temp;
 
     if (debug_malloc) {
       print(selfieName);
@@ -5362,16 +5474,17 @@ int isPageMapped(int* table, int page) {
 }
 
 int isValidVirtualAddress(int vaddr) {
-  if (vaddr >= 0)
-    if (vaddr < VIRTUALMEMORYSIZE)
-      // memory must be word-addressed for lack of byte-sized data type
-      if (vaddr % WORDSIZE == 0)
-        return 1;
+  // memory must be word-addressed for lack of byte-sized data type
+  if (vaddr % WORDSIZE == 0)
+    return 1;
 
   return 0;
 }
 
 int getPageOfVirtualAddress(int vaddr) {
+  if (vaddr < 0)
+    return (vaddr - INT_MIN) / PAGESIZE + NUMBEROFPAGES / 2;
+
   return vaddr / PAGESIZE;
 }
 
@@ -5394,7 +5507,10 @@ int* tlb(int* table, int vaddr) {
   frame = getFrameForPage(table, page);
 
   // map virtual address to physical address
-  paddr = (vaddr - page * PAGESIZE) + frame;
+  if (vaddr < 0)
+    paddr = vaddr - INT_MIN - (page - NUMBEROFPAGES / 2) * PAGESIZE + frame;
+  else
+    paddr = vaddr - page * PAGESIZE + frame;
 
   if (debug_tlb) {
     print(selfieName);
@@ -5404,6 +5520,10 @@ int* tlb(int* table, int vaddr) {
     printBinary(vaddr, 32);
     println();
     print((int*) " page:  ");
+    if (page < NUMBEROFPAGES / 2)
+      printBinary(page * PAGESIZE, 32);
+    else
+      printBinary(INT_MIN + (page - NUMBEROFPAGES / 2) * PAGESIZE, 32);
     printBinary(page * PAGESIZE, 32);
     println();
     print((int*) " frame: ");
@@ -6381,12 +6501,12 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * WORDSIZE));
+  setPT(context, zalloc(NUMBEROFPAGES * WORDSIZE)); 
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
   setMePage(context, 0);
-  setHiPage(context, getPageOfVirtualAddress(VIRTUALMEMORYSIZE - WORDSIZE));
+  setHiPage(context, getPageOfVirtualAddress(HIGHESTMEMORYADDRESS));
 
   // heap starts where it is safe to start
   setProgramBreak(context, maxBinaryLength);
@@ -6523,7 +6643,7 @@ void mapPage(int* context, int page, int frame) {
 
   table = getPT(context);
 
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+  // assert: 0 <= page < NUMBEROFPAGES
 
   // on boot level zero frame may be any signed integer
 
@@ -6598,7 +6718,7 @@ void restoreContext(int* context) {
       frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
       if (frame != 0)
-        // assert: 0 <= frame < VIRTUALMEMORYSIZE
+        // assert: 0 <= frame < (HIGHESTMEMORYADDRESS + WORDSIZE)
         mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page = page + 1;
@@ -6610,7 +6730,7 @@ void restoreContext(int* context) {
     frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
     while (frame != 0) {
-      // assert: 0 <= frame < VIRTUALMEMORYSIZE
+      // assert: 0 <= frame < (HIGHESTMEMORYADDRESS + WORDSIZE)
       mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page  = page - 1;
@@ -6628,7 +6748,7 @@ void restoreContext(int* context) {
 int pavailable() {
   if (freePageFrameMemory > 0)
     return 1;
-  else if (usedPageFrameMemory + MEGABYTE <= pageFrameMemory)
+  else if (usedPageFrameMemory + MEGABYTEINWORDS <= pageFrameMemory)
     return 1;
   else
     return 0;
@@ -6643,24 +6763,24 @@ int* palloc() {
   int block;
   int frame;
 
-  // assert: pageFrameMemory is equal to or a multiple of MEGABYTE
-  // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
+  // assert: (pageFrameMemory + 1) is equal to or a multiple of MEGABYTEINWORDS
+  // assert: PAGESIZEINWORDS is a factor of MEGABYTEINWORDS strictly less than MEGABYTEINWORDS
 
   if (freePageFrameMemory == 0) {
-    freePageFrameMemory = MEGABYTE;
+    freePageFrameMemory = MEGABYTEINWORDS;
 
     if (usedPageFrameMemory + freePageFrameMemory <= pageFrameMemory) {
       // on boot level zero allocate zeroed memory
-      block = (int) zalloc(freePageFrameMemory);
+      block = (int) zalloc(freePageFrameMemory * WORDSIZE);
 
       usedPageFrameMemory = usedPageFrameMemory + freePageFrameMemory;
 
       // page frames must be page-aligned to work as page table index
-      nextPageFrame = roundUp(block, PAGESIZE);
+      nextPageFrame = roundUp(block, PAGESIZE) / WORDSIZE;
 
       if (nextPageFrame > block)
         // losing one page frame to fragmentation
-        freePageFrameMemory = freePageFrameMemory - PAGESIZE;
+        freePageFrameMemory = freePageFrameMemory - PAGESIZEINWORDS;
     } else {
       print(selfieName);
       print((int*) ": palloc out of physical memory");
@@ -6670,11 +6790,12 @@ int* palloc() {
     }
   }
 
-  frame = nextPageFrame;
+  // frame[# of Bytes] = nextPageFrame[# of Words] * WORDSIZE
+  frame = nextPageFrame * WORDSIZE;
 
-  nextPageFrame = nextPageFrame + PAGESIZE;
+  nextPageFrame = nextPageFrame + PAGESIZEINWORDS;
 
-  freePageFrameMemory = freePageFrameMemory - PAGESIZE;
+  freePageFrameMemory = freePageFrameMemory - PAGESIZEINWORDS;
 
   // strictly, touching is only necessary on boot levels higher than zero
   return touch((int*) frame, PAGESIZE);
@@ -6737,7 +6858,7 @@ void up_loadArguments(int* context, int argc, int* argv) {
   int i_vargv;
 
   // arguments are pushed onto stack which starts at highest virtual address
-  SP = VIRTUALMEMORYSIZE - WORDSIZE;
+  SP = HIGHESTMEMORYADDRESS;
 
   // allocate memory for storing stack pointer later
   SP = SP - WORDSIZE;
@@ -6777,7 +6898,7 @@ void up_loadArguments(int* context, int argc, int* argv) {
   mapAndStore(context, SP, vargv);
 
   // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStore(context, VIRTUALMEMORYSIZE - WORDSIZE, SP);
+  mapAndStore(context, HIGHESTMEMORYADDRESS, SP);
 }
 
 void mapUnmappedPages(int* context) {
@@ -6795,6 +6916,27 @@ void mapUnmappedPages(int* context) {
 
     page = page + 1;
   }
+}
+
+int isBootLevelZero() {
+  // In C99 malloc(0) returns either a null pointer or a unique pointer. 
+  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
+  // Selfie, on the other hand, returns the same not null address,
+  // if malloc(0) is called consecutively.
+
+  int a0;
+  int a1;
+
+  a0 = (int) malloc(0);
+  a1 = (int) malloc(0);
+
+  if (a0 == 0)
+    return 1;
+  else if (a0 != a1)
+    return 1;
+
+  // It is selfie's malloc, so it can't be boot level zero.
+  return 0;
 }
 
 int handleSystemCalls(int* context) {
@@ -7070,7 +7212,7 @@ int selfie_run(int machine) {
   print((int*) ": this is selfie executing ");
   print(binaryName);
   print((int*) " with ");
-  printInteger(pageFrameMemory / MEGABYTE);
+  printInteger(pageFrameMemory / MEGABYTEINWORDS);
   print((int*) "MB of physical memory on ");
 
   if (machine == MIPSTER)
@@ -7080,13 +7222,11 @@ int selfie_run(int machine) {
   else if (machine == MOBSTER)
     exitCode = mobster(currentContext);
   else if (machine == HYPSTER)
-    if (isValidVirtualAddress((int) malloc(0)))
-      // TODO: does not work if boot level zero actually
-      // does mallocate valid virtual addresses
-      exitCode = hypster(currentContext);
-    else
-      // no hypster on boot level zero
+    if (isBootLevelZero())
+     // no hypster on boot level zero
       exitCode = mipster(currentContext);
+    else
+      exitCode = hypster(currentContext);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
@@ -7101,7 +7241,7 @@ int selfie_run(int machine) {
   print((int*) " with exit code ");
   printInteger(exitCode);
   print((int*) " and ");
-  printFixedPointRatio(pused(), MEGABYTE);
+  printFixedPointRatio(pused(), MEGABYTEINWORDS);
   print((int*) "MB of mapped memory");
   println();
 
