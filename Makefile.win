@@ -3,7 +3,7 @@ CFLAGS = /O2 /Datoi=xatoi
 
 # Compile selfie.c into selfie executable
 selfie.exe: selfie.c
-	$(CC) $(CFLAGS) selfie.c /Feselfie
+	$(CC) $(CFLAGS) selfie.c /Feselfie.exe
 
 # Consider these targets as targets, not files
 .PHONY : test sat all clean
