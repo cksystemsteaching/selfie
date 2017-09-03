@@ -5308,9 +5308,9 @@ void emitMalloc() {
 int implementMalloc(int* context) {
   int size;
   int bump;
-  int newBump;
   int stackptr;
   int available;
+  int temp;
 
   if (debug_malloc) {
     print(selfieName);
@@ -5326,43 +5326,23 @@ int implementMalloc(int* context) {
 
   stackptr = *(getRegs(context)+REG_SP);
 
-  if (stackptr < 0)
-    if (bump < 0) {
-      available = stackptr - bump;
+  temp = INT_OVERFLOW;
 
-      newBump = bump + size;
-    } else {
-      available = INT_MAX - bump;
-      
-      if (INT_MAX - (stackptr - INT_MIN) < available)
-        available = INT_MAX;
-      else
-        available = available + (stackptr - INT_MIN);
-    }
-  else
-    available = stackptr - bump;
+  available = subtractWrap(stackptr, bump);
+
+  if (available < 0)
+    available = INT_MAX;
 
   if (size > available) {
     setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
 
     return EXIT;
   } else {
-    newBump = -1;
-
-    if (stackptr < 0)
-      if (bump >= 0) {
-        available = INT_MAX - bump;
-        
-        if (size > available)
-          newBump = INT_MIN + (size - available - 1);
-      }
-
-    if (newBump == -1)
-      newBump = bump + size;
-
     *(getRegs(context)+REG_V0) = bump;
 
-    setProgramBreak(context, newBump);
+    setProgramBreak(context, addWrap(bump, size));
+
+    INT_OVERFLOW = temp;
 
     if (debug_malloc) {
       print(selfieName);
