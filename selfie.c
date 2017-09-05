@@ -3341,6 +3341,21 @@ int gr_expression() {
     if (ltype != rtype)
       typeWarning(ltype, rtype);
 
+    if (ltype == INTSTAR_T)
+      if (rtype == INTSTAR_T)
+        if (operatorSymbol != SYM_EQUALITY)
+          if (operatorSymbol != SYM_NOTEQ) {
+            // pointer arithmetics: We need to compare pointers as unsigned integer
+            // by subtracting a offset of INT_MIN (INT_MIN - INT_MIN = INT_MAX),
+            // the variables can be compared with a signed comparison instruction (slt)
+            load_integer(INT_MIN);
+
+            tfree(1);
+
+            emitRFormat(OP_SPECIAL, previousTemporary(), nextTemporary(), previousTemporary(), FCT_SUBU);
+            emitRFormat(OP_SPECIAL, currentTemporary(), nextTemporary(), currentTemporary(), FCT_SUBU);
+          }
+
     if (operatorSymbol == SYM_EQUALITY) {
       // if a == b load 1 else load 0
       emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
