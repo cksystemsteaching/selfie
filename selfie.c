@@ -4183,41 +4183,6 @@ void emitMainEntry() {
 
   i = 0;
 
-  // 15 NOPs per register is enough for initialization 
-  // since we load integers < 2^32 which take 
-  // no more than 15 instructions each, see load_integer
-  while (i < 30) { 
-    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
-
-    i = i + 1;
-  }
-
-  mainJump = binaryLength;
-
-  createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, mainJump);
-
-  // jump and link to main, will return here only if there is no exit call
-  emitJFormat(OP_JAL, 0);
-
-  // we exit with exit code in return register pushed onto the stack
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
-  emitIFormat(OP_SW, REG_SP, REG_V0, 0);
-
-  // no need to reset return register here
-}
-
-void emitMainEntry() {
-  int i;
-
-  // the instruction at address zero cannot be fixed up
-  // we therefore need at least one not-to-be-fixed-up instruction here
-
-  // we generate NOPs to accommodate GP and SP register
-  // initialization code that overwrites the NOPs later
-  // when binaryLength is known
-
-  i = 0;
-
   // 8 NOPs per register is enough for initialization
   // since we load positive integers < 2^28 which take
   // no more than 8 instructions each, see load_integer
