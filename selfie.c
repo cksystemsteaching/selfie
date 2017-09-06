@@ -4143,10 +4143,10 @@ void emitMainEntry() {
 
   i = 0;
 
-  // 15 NOPs per register is enough for initialization 
-  // since we load integers -2^31 <= n < 2^31 which take 
+  // 15 NOPs per register is enough for initialization
+  // since we load integers -2^31 <= n < 2^31 which take
   // no more than 15 instructions each, see load_integer
-  while (i < 30) { 
+  while (i < 30) {
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
 
     i = i + 1;
@@ -6411,7 +6411,7 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(NUMBEROFPAGES * WORDSIZE)); 
+  setPT(context, zalloc(NUMBEROFPAGES * WORDSIZE));
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
