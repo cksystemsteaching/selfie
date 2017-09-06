@@ -579,6 +579,7 @@ void resetParser() {
 // -----------------------------------------------------------------
 
 void emitLeftShiftBy(int reg, int b);
+void emitRightShiftBy(int reg, int b);
 void emitMainEntry();
 void bootstrapCode();
 
@@ -3294,10 +3295,9 @@ int gr_simpleExpression() {
         } else {
           // INTSTAR_T - INTSTAR_T
           // pointer arithmetic: (left_term - right_term) / SIZEOFINT
+          //                 <=> (left_term - right_term) >> 2
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
-          emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
-          emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
+          emitRightShiftBy(previousTemporary(), 2);
 
           ltype = INT_T;
         }
@@ -4114,6 +4114,96 @@ void emitLeftShiftBy(int reg, int b) {
   emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
   emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_MULTU);
   emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+}
+
+void emitRightShiftBy(int reg, int b) {
+  // assert: 0 <= b < 31;
+
+  int brPositive;
+  int brNegative;
+
+  if (b == 0)
+    return;
+
+  // check if the number to be shifted is negative
+  emitRFormat(OP_SPECIAL, reg, REG_ZR, nextTemporary(), FCT_SLT);
+
+  brPositive = binaryLength;
+
+  emitIFormat(OP_BEQ, nextTemporary(), REG_ZR, 0);
+
+  // if the number is negative, calculate
+  //                                     (number < 0)
+  // (number - INT_MIN) / 2^b + 2^(31 - b)   <=>   number >> b
+  load_integer(INT_MIN);
+ 
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), reg, FCT_SUBU);
+
+  tfree(1);
+
+  emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_DIVU);
+  emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  load_integer(twoToThePowerOf(31 - b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), reg, FCT_ADDU);
+
+  tfree(1);
+
+  brNegative = binaryLength;
+
+  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 0);
+
+  fixup_relative(brPositive);
+
+  // if the number is positive, calculate
+  //           (number >= 0)
+  // number / 2^b   <=>   number >> b
+  load_integer(twoToThePowerOf(b));
+
+  emitRFormat(OP_SPECIAL, reg, currentTemporary(), 0, FCT_DIVU);
+  emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
+
+  tfree(1);
+
+  fixup_relative(brNegative);
+}
+
+void emitMainEntry() {
+  int i;
+
+  // the instruction at address zero cannot be fixed up
+  // we therefore need at least one not-to-be-fixed-up instruction here
+
+  // we generate NOPs to accommodate GP and SP register
+  // initialization code that overwrites the NOPs later
+  // when binaryLength is known
+
+  i = 0;
+
+  // 15 NOPs per register is enough for initialization 
+  // since we load integers < 2^32 which take 
+  // no more than 15 instructions each, see load_integer
+  while (i < 30) { 
+    emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
+
+    i = i + 1;
+  }
+
+  mainJump = binaryLength;
+
+  createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, mainJump);
+
+  // jump and link to main, will return here only if there is no exit call
+  emitJFormat(OP_JAL, 0);
+
+  // we exit with exit code in return register pushed onto the stack
+  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
+  emitIFormat(OP_SW, REG_SP, REG_V0, 0);
+
+  // no need to reset return register here
 }
 
 void emitMainEntry() {
