@@ -133,6 +133,7 @@ void printBinary(int n, int a);
 
 int roundUp(int n, int m);
 
+int* smalloc(int size);
 int* zalloc(int size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -221,7 +222,7 @@ void initLibrary() {
 
   // powers of two table with 31 entries for 2^0 to 2^30
   // avoiding overflow for 2^31 and larger numbers with 32-bit signed integers
-  power_of_two_table = malloc(31 * SIZEOFINT);
+  power_of_two_table = smalloc(31 * SIZEOFINT);
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -242,17 +243,17 @@ void initLibrary() {
   INT16_MIN = -INT16_MAX - 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = malloc(SIZEOFINT);
+  character_buffer  = smalloc(SIZEOFINT);
   *character_buffer = 0;
 
   // accommodate at least 32-bit numbers for itoa, no mapping needed
-  integer_buffer = malloc(33);
+  integer_buffer = smalloc(33);
 
   // does not need to be mapped
-  filename_buffer = malloc(maxFilenameLength);
+  filename_buffer = smalloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = malloc(SIZEOFINT);
+  binary_buffer  = smalloc(SIZEOFINT);
   *binary_buffer = 0;
 }
 
@@ -364,7 +365,7 @@ int  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = malloc(28 * SIZEOFINTSTAR);
+  SYMBOLS = smalloc(28 * SIZEOFINTSTAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
@@ -644,7 +645,7 @@ int* REGISTERS; // strings representing registers
 // ------------------------- INITIALIZATION ------------------------
 
 void initRegister() {
-  REGISTERS = malloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
+  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
 
   *(REGISTERS + REG_ZR) = (int) "$zero";
   *(REGISTERS + REG_AT) = (int) "$at";
@@ -750,7 +751,7 @@ int instr_index = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initDecoder() {
-  OPCODES = malloc(44 * SIZEOFINTSTAR);
+  OPCODES = smalloc(44 * SIZEOFINTSTAR);
 
   *(OPCODES + OP_SPECIAL) = (int) "nop";
   *(OPCODES + OP_J)       = (int) "j";
@@ -760,7 +761,7 @@ void initDecoder() {
   *(OPCODES + OP_LW)      = (int) "lw";
   *(OPCODES + OP_SW)      = (int) "sw";
 
-  FUNCTIONS = malloc(43 * SIZEOFINTSTAR);
+  FUNCTIONS = smalloc(43 * SIZEOFINTSTAR);
 
   *(FUNCTIONS + FCT_NOP)     = (int) "nop";
   *(FUNCTIONS + FCT_JR)      = (int) "jr";
@@ -1035,7 +1036,7 @@ int* storesPerAddress = (int*) 0; // number of executed stores per store operati
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = malloc(6 * SIZEOFINTSTAR);
+  EXCEPTIONS = smalloc(6 * SIZEOFINTSTAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (int) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
@@ -1917,6 +1918,27 @@ int roundUp(int n, int m) {
     return n - n % m;
 }
 
+int* smalloc(int size) {
+  // this procedure ensures a defined program exit,
+  // if no memory can be allocated
+  int* memory;
+
+  memory = malloc(size);
+
+  if (size == 0)
+    // any address including null
+    return memory;
+  else if ((int) memory == 0) {
+    print(selfieName);
+    print((int*) ": malloc out of memory");
+    println();
+
+    exit(EXITCODE_OUTOFVIRTUALMEMORY);
+  }
+
+  return memory;
+}
+
 int* zalloc(int size) {
   // this procedure is only executed at boot level zero
   // zalloc allocates size bytes rounded up to word size
@@ -1927,7 +1949,7 @@ int* zalloc(int size) {
 
   size = roundUp(size, WORDSIZE);
 
-  memory = malloc(size);
+  memory = smalloc(size);
 
   size = size / WORDSIZE;
 
@@ -2191,7 +2213,7 @@ void getSymbol() {
       // while looking for whitespace and "//"
       if (isCharacterLetter()) {
         // accommodate identifier and null for termination
-        identifier = malloc(maxIdentifierLength + 1);
+        identifier = smalloc(maxIdentifierLength + 1);
 
         i = 0;
 
@@ -2215,7 +2237,7 @@ void getSymbol() {
 
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
-        integer = malloc(maxIntegerLength + 1);
+        integer = smalloc(maxIntegerLength + 1);
 
         i = 0;
 
@@ -2428,7 +2450,7 @@ void getSymbol() {
 void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address) {
   int* newEntry;
 
-  newEntry = malloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+  newEntry = smalloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -4211,7 +4233,7 @@ void selfie_compile() {
   binaryName = sourceName;
 
   // allocate memory for storing binary
-  binary       = malloc(maxBinaryLength);
+  binary       = smalloc(maxBinaryLength);
   binaryLength = 0;
 
   // reset code length
@@ -4766,7 +4788,7 @@ void selfie_load() {
   }
 
   // make sure binary is mapped
-  binary = touch(malloc(maxBinaryLength), maxBinaryLength);
+  binary = touch(smalloc(maxBinaryLength), maxBinaryLength);
 
   binaryLength = 0;
   codeLength   = 0;
@@ -6357,7 +6379,7 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   int* context;
 
   if (freeContexts == (int*) 0)
-    context = malloc(6 * SIZEOFINTSTAR + 11 * SIZEOFINT);
+    context = smalloc(6 * SIZEOFINTSTAR + 11 * SIZEOFINT);
   else {
     context = freeContexts;
 
@@ -7080,7 +7102,7 @@ int selfie_run(int machine) {
   else if (machine == MOBSTER)
     exitCode = mobster(currentContext);
   else if (machine == HYPSTER)
-    if (isValidVirtualAddress((int) malloc(0)))
+    if (isValidVirtualAddress((int) smalloc(0)))
       // TODO: does not work if boot level zero actually
       // does mallocate valid virtual addresses
       exitCode = hypster(currentContext);
@@ -7410,11 +7432,11 @@ void selfie_loadDimacs() {
 
   numberOfSATVariables = dimacs_number();
 
-  SATAssignment = (int*) malloc(numberOfSATVariables * WORDSIZE);
+  SATAssignment = (int*) smalloc(numberOfSATVariables * WORDSIZE);
 
   numberOfSATClauses = dimacs_number();
 
-  SATInstance = (int*) malloc(numberOfSATClauses * 2 * numberOfSATVariables * WORDSIZE);
+  SATInstance = (int*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * WORDSIZE);
 
   dimacs_getInstance();
 
