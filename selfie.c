@@ -1313,6 +1313,42 @@ void selfie_sat();
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+// -----------------------------------------------------------------
+// ------------------- EXPRESSION REPRESENTATION -------------------
+// -----------------------------------------------------------------
+
+// We represent symbolic expressions through a tree structure.
+// For example: a + 1           +
+// ("a" is symbolic)           / \
+//                            a   1
+
+int* createSymbolicNode(int type, int value, int* leftCh, int* rightCh);
+
+// symbolic expression node:
+// +----+---------+
+// |  0 | type    | symbolic value / concrete value / operation
+// |  1 | value   | representation of symbolic value, concrete value or operation
+// |  2 | leftCh  | pointer to left child node (or 0 if there is none)
+// |  3 | rightCh | pointer to right child node (or 0 if there is none)
+// +----+---------+
+
+int getSymNodeType(int* entry)   {return *(entry + 0);}
+int getSymNodeValue(int* entry)  {return *(entry + 1);}
+int* getSymNodeLeft(int* entry)   {return (int*) *(entry + 2);}
+int* getSymNodeRight(int* entry)  {return (int*) *(entry + 3);}
+
+void setSymNodeType(int* entry, int type)    {*(entry + 0) = type;}
+void setSymNodeValue(int* entry, int value)  {*(entry + 1) = value;}
+void setSymNodeLeft(int* entry, int* node)   {*(entry + 2) = (int) node;}
+void setSymNodeRight(int* entry, int* node)  {*(entry + 3) = (int) node;}
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+// types
+int SYMBOLIC_VAL = 0;
+int SYMBOLIC_CON = 1;
+int SYMBOLIC_OP = 2;
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // --------------------   S M T  S O L V E R    --------------------
@@ -7489,6 +7525,23 @@ void selfie_sat() {
 // ------------   S Y M B O L I C  E X E C U T I O N    ------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ------------------- EXPRESSION REPRESENTATION -------------------
+// -----------------------------------------------------------------
+
+int* createSymbolicNode(int type, int value, int* leftCh, int* rightCh) {
+  int* newNode;
+
+  newNode = malloc(2 * SIZEOFINT + 2 * SIZEOFINTSTAR);
+
+  setSymNodeType(newNode, type);
+  setSymNodeValue(newNode, value);
+  setSymNodeLeft(newNode, leftCh);
+  setSymNodeRight(newNode, rightCh);
+
+  return newNode;
+}
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
