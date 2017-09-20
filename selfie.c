@@ -95,10 +95,6 @@ uint32_t* malloc(uint32_t size);
 void initLibrary();
 void resetLibrary();
 
-uint32_t addWrap(uint32_t a, uint32_t b);
-uint32_t subtractWrap(uint32_t a, uint32_t b);
-uint32_t multiplyWrap(uint32_t a, uint32_t b);
-
 void checkDivision(uint32_t a, uint32_t b);
 
 uint32_t twoToThePowerOf(uint32_t p);
@@ -965,7 +961,7 @@ void op_j();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint32_t debug_overflow = 0;
+uint32_t debug_overflow = 1;
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1363,81 +1359,6 @@ void initSelfie(uint32_t argc, uint32_t* argv) {
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
-
-uint32_t addWrap(uint32_t a, uint32_t b) {
-  // signed integer addition with wrap-around semantics and overflow detection
-  // but without causing any integer overflow in the implementation
-
-  if (b > 0) {
-    if (a > INT_MAX - b) {
-      INT_OVERFLOW = OVERFLOW_YES;
-
-      // INT_MIN <= a + b <= -2 == INT_MAX + INT_MAX
-      return INT_MIN + (a - ((INT_MAX - b) + 1));
-    }
-  } else if (a < INT_MIN - b) {
-    INT_OVERFLOW = OVERFLOW_YES;
-
-    // INT_MIN + INT_MIN == 0 <= a + b <= INT_MAX
-    return INT_MAX + (a - ((INT_MIN - b) - 1));
-  }
-
-  INT_OVERFLOW = OVERFLOW_NO;
-
-  // implementing addition with +
-  return a + b;
-}
-
-uint32_t subtractWrap(uint32_t a, uint32_t b) {
-  // signed integer subtraction with wrap-around semantics and overflow
-  // detection but without causing any integer overflow in the implementation
-
-  if (b > 0) {
-    if (a < INT_MIN + b) {
-      INT_OVERFLOW = OVERFLOW_YES;
-
-      // INT_MIN - INT_MAX == 1 <= a - b <= INT_MAX
-      return INT_MAX + (a - ((INT_MIN + b) - 1));
-    }
-  } else if (a > INT_MAX + b) {
-    INT_OVERFLOW = OVERFLOW_YES;
-
-    // INT_MIN <= a - b <= -1 == INT_MAX - INT_MIN
-    return INT_MIN + (a - ((INT_MAX + b) + 1));
-  }
-
-  INT_OVERFLOW = OVERFLOW_NO;
-
-  // implementing subtraction with -
-  return a - b;
-}
-
-uint32_t multiplyWrap(uint32_t a, uint32_t b) {
-  INT_OVERFLOW = OVERFLOW_NO;
-
-  if (a > 0) {
-    if (b > 0) {
-      if (a > INT_MAX / b)
-        INT_OVERFLOW = OVERFLOW_YES;
-    } else {
-      if (b < INT_MIN / a)
-        INT_OVERFLOW = OVERFLOW_YES;
-    }
-  } else {
-    if (b > 0) {
-      if (a < INT_MIN / b)
-        INT_OVERFLOW = OVERFLOW_YES;
-    } else {
-      if (a != 0)
-        if (b < INT_MAX / a)
-          INT_OVERFLOW = OVERFLOW_YES;
-    }
-  }
-
-  // implementing multiplication with * but relying on
-  // wrap-around semantics of bootstrapping compiler
-  return a * b;
-}
 
 void checkDivision(uint32_t a, uint32_t b) {
   INT_OVERFLOW = OVERFLOW_NO;
@@ -5544,7 +5465,7 @@ void fct_addu() {
     t = *(registers+rt);
     d = *(registers+rd);
 
-    n = addWrap(s, t);
+    n = s + t;
   }
 
   if (debug) {
@@ -5580,17 +5501,6 @@ void fct_addu() {
     *(registers+rd) = n;
 
     pc = pc + WORDSIZE;
-
-    if (debug_overflow)
-      if (INT_OVERFLOW == OVERFLOW_YES) {
-        print((uint32_t*) "overflow: ");
-        printInteger(s);
-        print((uint32_t*) " + ");
-        printInteger(t);
-        print((uint32_t*) " ~ ");
-        printInteger(n);
-        println();
-      }
   }
 }
 
@@ -5605,7 +5515,7 @@ void fct_subu() {
     t = *(registers+rt);
     d = *(registers+rd);
 
-    n = subtractWrap(s, t);
+    n = s - t;
   }
 
   if (debug) {
@@ -5641,17 +5551,6 @@ void fct_subu() {
     *(registers+rd) = n;
 
     pc = pc + WORDSIZE;
-
-    if (debug_overflow)
-      if (INT_OVERFLOW == OVERFLOW_YES) {
-        print((uint32_t*) "overflow: ");
-        printInteger(s);
-        print((uint32_t*) " - ");
-        printInteger(t);
-        print((uint32_t*) " ~ ");
-        printInteger(n);
-        println();
-      }
   }
 }
 
@@ -5664,7 +5563,7 @@ void fct_multu() {
     s = *(registers+rs);
     t = *(registers+rt);
 
-    n = multiplyWrap(s, t);
+    n = s * t;
   }
 
   if (debug) {
@@ -5695,17 +5594,6 @@ void fct_multu() {
     loReg = n;
 
     pc = pc + WORDSIZE;
-
-    if (debug_overflow)
-      if (INT_OVERFLOW == OVERFLOW_YES) {
-        print((uint32_t*) "overflow: ");
-        printInteger(s);
-        print((uint32_t*) " * ");
-        printInteger(t);
-        print((uint32_t*) " ~ ");
-        printInteger(n);
-        println();
-      }
   }
 }
 
