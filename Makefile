@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS := -w -O3 -m32 -D'main(a,b)=main(a,char**argv)'
+CFLAGS := -w -O3 -m32 -D'main(a,b)=main(int argc, char** argv)' -Duint32_t='unsigned int'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c

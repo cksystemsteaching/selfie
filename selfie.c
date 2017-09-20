@@ -82,11 +82,11 @@
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-void exit(int code);
-int read(int fd, int* buffer, int bytesToRead);
-int write(int fd, int* buffer, int bytesToWrite);
-int open(int* filename, int flags, int mode);
-int* malloc(int size);
+void exit(uint32_t code);
+uint32_t read(uint32_t fd, uint32_t* buffer, uint32_t bytesToRead);
+uint32_t write(uint32_t fd, uint32_t* buffer, uint32_t bytesToWrite);
+uint32_t open(uint32_t* filename, uint32_t flags, uint32_t mode);
+uint32_t* malloc(uint32_t size);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -95,95 +95,100 @@ int* malloc(int size);
 void initLibrary();
 void resetLibrary();
 
-int addWrap(int a, int b);
-int subtractWrap(int a, int b);
-int multiplyWrap(int a, int b);
+uint32_t addWrap(uint32_t a, uint32_t b);
+uint32_t subtractWrap(uint32_t a, uint32_t b);
+uint32_t multiplyWrap(uint32_t a, uint32_t b);
 
-void checkDivision(int a, int b);
+void checkDivision(uint32_t a, uint32_t b);
 
-int twoToThePowerOf(int p);
-int leftShift(int n, int b);
-int rightShift(int n, int b);
+uint32_t twoToThePowerOf(uint32_t p);
+uint32_t leftShift(uint32_t n, uint32_t b);
+uint32_t rightShift(uint32_t n, uint32_t b);
+uint32_t signedLessThan(uint32_t lhs, uint32_t rhs);
+uint32_t signedGreaterThan(uint32_t lhs, uint32_t rhs);
 
-int  loadCharacter(int* s, int i);
-int* storeCharacter(int* s, int i, int c);
+uint32_t  loadCharacter(uint32_t* s, uint32_t i);
+uint32_t* storeCharacter(uint32_t* s, uint32_t i, uint32_t c);
 
-int  stringLength(int* s);
-void stringReverse(int* s);
-int  stringCompare(int* s, int* t);
+uint32_t  stringLength(uint32_t* s);
+void stringReverse(uint32_t* s);
+uint32_t  stringCompare(uint32_t* s, uint32_t* t);
 
-int  atoi(int* s);
-int* itoa(int n, int* s, int b, int a, int p);
+uint32_t  atoi(uint32_t* s);
+uint32_t* itoa(uint32_t n, uint32_t* s, uint32_t b, uint32_t a, uint32_t p);
 
-int fixedPointRatio(int a, int b);
+uint32_t fixedPointRatio(uint32_t a, uint32_t b);
 
-void putCharacter(int c);
+void putCharacter(uint32_t c);
 
-void print(int* s);
+void print(uint32_t* s);
 void println();
 
-void printCharacter(int c);
-void printString(int* s);
-void printInteger(int n);
-void printFixedPointPercentage(int a, int b);
-void printFixedPointRatio(int a, int b);
-void printHexadecimal(int n, int a);
-void printOctal(int n, int a);
-void printBinary(int n, int a);
+void printCharacter(uint32_t c);
+void printString(uint32_t* s);
+void printInteger(uint32_t n);
+void printFixedPointPercentage(uint32_t a, uint32_t b);
+void printFixedPointRatio(uint32_t a, uint32_t b);
+void printHexadecimal(uint32_t n, uint32_t a);
+void printOctal(uint32_t n, uint32_t a);
+void printBinary(uint32_t n, uint32_t a);
 
-int roundUp(int n, int m);
+uint32_t roundUp(uint32_t n, uint32_t m);
 
-int* smalloc(int size);
-int* zalloc(int size);
+uint32_t* smalloc(uint32_t size);
+uint32_t* zalloc(uint32_t size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int CHAR_EOF          = -1; // end of file
-int CHAR_TAB          = 9;  // ASCII code 9  = tabulator
-int CHAR_LF           = 10; // ASCII code 10 = line feed
-int CHAR_CR           = 13; // ASCII code 13 = carriage return
-int CHAR_SPACE        = ' ';
-int CHAR_SEMICOLON    = ';';
-int CHAR_PLUS         = '+';
-int CHAR_DASH         = '-';
-int CHAR_ASTERISK     = '*';
-int CHAR_SLASH        = '/';
-int CHAR_UNDERSCORE   = '_';
-int CHAR_EQUAL        = '=';
-int CHAR_LPARENTHESIS = '(';
-int CHAR_RPARENTHESIS = ')';
-int CHAR_LBRACE       = '{';
-int CHAR_RBRACE       = '}';
-int CHAR_COMMA        = ',';
-int CHAR_LT           = '<';
-int CHAR_GT           = '>';
-int CHAR_EXCLAMATION  = '!';
-int CHAR_PERCENTAGE   = '%';
-int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
-int CHAR_DOUBLEQUOTE  = '"';
+uint32_t CHAR_EOF          = -1; // end of file
+uint32_t CHAR_TAB          = 9;  // ASCII code 9  = tabulator
+uint32_t CHAR_LF           = 10; // ASCII code 10 = line feed
+uint32_t CHAR_CR           = 13; // ASCII code 13 = carriage return
+uint32_t CHAR_SPACE        = ' ';
+uint32_t CHAR_SEMICOLON    = ';';
+uint32_t CHAR_PLUS         = '+';
+uint32_t CHAR_DASH         = '-';
+uint32_t CHAR_ASTERISK     = '*';
+uint32_t CHAR_SLASH        = '/';
+uint32_t CHAR_UNDERSCORE   = '_';
+uint32_t CHAR_EQUAL        = '=';
+uint32_t CHAR_LPARENTHESIS = '(';
+uint32_t CHAR_RPARENTHESIS = ')';
+uint32_t CHAR_LBRACE       = '{';
+uint32_t CHAR_RBRACE       = '}';
+uint32_t CHAR_COMMA        = ',';
+uint32_t CHAR_LT           = '<';
+uint32_t CHAR_GT           = '>';
+uint32_t CHAR_EXCLAMATION  = '!';
+uint32_t CHAR_PERCENTAGE   = '%';
+uint32_t CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
+uint32_t CHAR_DOUBLEQUOTE  = '"';
 
-int SIZEOFINT     = 4; // must be the same as WORDSIZE
-int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
+uint32_t SIZEOFINT     = 4; // must be the same as WORDSIZE
+uint32_t SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
 
-int* power_of_two_table;
+uint32_t* power_of_two_table;
 
-int INT_MAX; // maximum numerical value of a signed 32-bit integer
-int INT_MIN; // minimum numerical value of a signed 32-bit integer
+uint32_t INT_MAX; // maximum numerical value of a signed 32-bit integer
+uint32_t INT_MIN; // minimum numerical value of a signed 32-bit integer
 
-int INT16_MAX; // maximum numerical value of a signed 16-bit integer
-int INT16_MIN; // minimum numerical value of a signed 16-bit integer
+uint32_t UINT_MAX; // maximum numerical value of a unsigned 32-bit integer
+uint32_t UINT_MIN; // minimum numerical value of a unsigned 32-bit integer
 
-int INT_OVERFLOW = 0; // indicates if an integer overflow occurred
+uint32_t INT16_MAX; // maximum numerical value of a signed 16-bit integer
+uint32_t INT16_MIN; // minimum numerical value of a signed 16-bit integer
 
-int OVERFLOW_NO  = 0;
-int OVERFLOW_YES = 1;
+uint32_t INT_OVERFLOW = 0; // indicates if an integer overflow occurred
 
-int maxFilenameLength = 128;
+uint32_t OVERFLOW_NO  = 0;
+uint32_t OVERFLOW_YES = 1;
 
-int* character_buffer; // buffer for reading and writing characters
-int* integer_buffer;   // buffer for printing integers
-int* filename_buffer;  // buffer for opening files
-int* binary_buffer;    // buffer for binary I/O
+uint32_t maxFilenameLength = 128;
+
+uint32_t* character_buffer; // buffer for reading and writing characters
+uint32_t* integer_buffer;   // buffer for printing integers
+uint32_t* filename_buffer;  // buffer for opening files
+uint32_t* binary_buffer;    // buffer for binary I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -191,34 +196,34 @@ int* binary_buffer;    // buffer for binary I/O
 // WINDOWS: 32768 = 0x8000 = _O_BINARY (0x8000) | _O_RDONLY (0x0000)
 // since LINUX/MAC do not seem to mind about _O_BINARY set
 // we use the WINDOWS flags as default
-int O_RDONLY = 32768;
+uint32_t O_RDONLY = 32768;
 
 // flags for opening write-only files
 // MAC: 1537 = 0x0601 = O_CREAT (0x0200) | O_TRUNC (0x0400) | O_WRONLY (0x0001)
-int MAC_O_CREAT_TRUNC_WRONLY = 1537;
+uint32_t MAC_O_CREAT_TRUNC_WRONLY = 1537;
 
 // LINUX: 577 = 0x0241 = O_CREAT (0x0040) | O_TRUNC (0x0200) | O_WRONLY (0x0001)
-int LINUX_O_CREAT_TRUNC_WRONLY = 577;
+uint32_t LINUX_O_CREAT_TRUNC_WRONLY = 577;
 
 // WINDOWS: 33537 = 0x8301 = _O_BINARY (0x8000) | _O_CREAT (0x0100) | _O_TRUNC (0x0200) | _O_WRONLY (0x0001)
-int WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
+uint32_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 
 // flags for rw-r--r-- file permissions
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 // these flags seem to be working for LINUX, MAC, and WINDOWS
-int S_IRUSR_IWUSR_IRGRP_IROTH = 420;
+uint32_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int numberOfWrittenCharacters = 0;
+uint32_t numberOfWrittenCharacters = 0;
 
-int* outputName = (int*) 0;
-int  outputFD   = 1;
+uint32_t* outputName = (uint32_t*) 0;
+uint32_t  outputFD   = 1;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initLibrary() {
-  int i;
+  uint32_t i;
 
   // powers of two table with 31 entries for 2^0 to 2^30
   // avoiding overflow for 2^31 and larger numbers with 32-bit signed integers
@@ -238,6 +243,9 @@ void initLibrary() {
   // compute INT_MAX and INT_MIN without integer overflows
   INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
   INT_MIN = -INT_MAX - 1;
+
+  UINT_MAX = (twoToThePowerOf(31) - 1) * 2 + 1;
+  UINT_MIN = 0;
 
   INT16_MAX = twoToThePowerOf(15) - 1;
   INT16_MIN = -INT16_MAX - 1;
@@ -274,127 +282,127 @@ void resetLibrary() {
 void initScanner();
 void resetScanner();
 
-void printSymbol(int symbol);
-void printLineNumber(int* message, int line);
+void printSymbol(uint32_t symbol);
+void printLineNumber(uint32_t* message, uint32_t line);
 
-void syntaxErrorMessage(int* message);
-void syntaxErrorCharacter(int character);
-void syntaxErrorIdentifier(int* expected);
+void syntaxErrorMessage(uint32_t* message);
+void syntaxErrorCharacter(uint32_t character);
+void syntaxErrorIdentifier(uint32_t* expected);
 
 void getCharacter();
 
-int isCharacterNewLine();
-int isCharacterWhitespace();
+uint32_t isCharacterNewLine();
+uint32_t isCharacterWhitespace();
 
-int findNextCharacter();
+uint32_t findNextCharacter();
 
-int isCharacterLetter();
-int isCharacterDigit();
-int isCharacterLetterOrDigitOrUnderscore();
-int isCharacterNotDoubleQuoteOrNewLineOrEOF();
+uint32_t isCharacterLetter();
+uint32_t isCharacterDigit();
+uint32_t isCharacterLetterOrDigitOrUnderscore();
+uint32_t isCharacterNotDoubleQuoteOrNewLineOrEOF();
 
-int identifierStringMatch(int stringIndex);
-int identifierOrKeyword();
+uint32_t identifierStringMatch(uint32_t stringIndex);
+uint32_t identifierOrKeyword();
 
 void getSymbol();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int SYM_EOF          = -1; // end of file
-int SYM_IDENTIFIER   = 0;  // identifier
-int SYM_INTEGER      = 1;  // integer
-int SYM_VOID         = 2;  // VOID
-int SYM_INT          = 3;  // INT
-int SYM_SEMICOLON    = 4;  // ;
-int SYM_IF           = 5;  // IF
-int SYM_ELSE         = 6;  // ELSE
-int SYM_PLUS         = 7;  // +
-int SYM_MINUS        = 8;  // -
-int SYM_ASTERISK     = 9;  // *
-int SYM_DIV          = 10; // /
-int SYM_EQUALITY     = 11; // ==
-int SYM_ASSIGN       = 12; // =
-int SYM_LPARENTHESIS = 13; // (
-int SYM_RPARENTHESIS = 14; // )
-int SYM_LBRACE       = 15; // {
-int SYM_RBRACE       = 16; // }
-int SYM_WHILE        = 17; // WHILE
-int SYM_RETURN       = 18; // RETURN
-int SYM_COMMA        = 19; // ,
-int SYM_LT           = 20; // <
-int SYM_LEQ          = 21; // <=
-int SYM_GT           = 22; // >
-int SYM_GEQ          = 23; // >=
-int SYM_NOTEQ        = 24; // !=
-int SYM_MOD          = 25; // %
-int SYM_CHARACTER    = 26; // character
-int SYM_STRING       = 27; // string
+uint32_t SYM_EOF          = -1; // end of file
+uint32_t SYM_IDENTIFIER   = 0;  // identifier
+uint32_t SYM_INTEGER      = 1;  // integer
+uint32_t SYM_VOID         = 2;  // VOID
+uint32_t SYM_UINT32       = 3;  // uint32_t
+uint32_t SYM_SEMICOLON    = 4;  // ;
+uint32_t SYM_IF           = 5;  // IF
+uint32_t SYM_ELSE         = 6;  // ELSE
+uint32_t SYM_PLUS         = 7;  // +
+uint32_t SYM_MINUS        = 8;  // -
+uint32_t SYM_ASTERISK     = 9;  // *
+uint32_t SYM_DIV          = 10; // /
+uint32_t SYM_EQUALITY     = 11; // ==
+uint32_t SYM_ASSIGN       = 12; // =
+uint32_t SYM_LPARENTHESIS = 13; // (
+uint32_t SYM_RPARENTHESIS = 14; // )
+uint32_t SYM_LBRACE       = 15; // {
+uint32_t SYM_RBRACE       = 16; // }
+uint32_t SYM_WHILE        = 17; // WHILE
+uint32_t SYM_RETURN       = 18; // RETURN
+uint32_t SYM_COMMA        = 19; // ,
+uint32_t SYM_LT           = 20; // <
+uint32_t SYM_LEQ          = 21; // <=
+uint32_t SYM_GT           = 22; // >
+uint32_t SYM_GEQ          = 23; // >=
+uint32_t SYM_NOTEQ        = 24; // !=
+uint32_t SYM_MOD          = 25; // %
+uint32_t SYM_CHARACTER    = 26; // character
+uint32_t SYM_STRING       = 27; // string
 
-int* SYMBOLS; // strings representing symbols
+uint32_t* SYMBOLS; // strings representing symbols
 
-int maxIdentifierLength = 64; // maximum number of characters in an identifier
-int maxIntegerLength    = 10; // maximum number of characters in an integer
-int maxStringLength     = 128; // maximum number of characters in a string
+uint32_t maxIdentifierLength = 64; // maximum number of characters in an identifier
+uint32_t maxIntegerLength    = 10; // maximum number of characters in an integer
+uint32_t maxStringLength     = 128; // maximum number of characters in a string
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int lineNumber = 1; // current line number for error reporting
+uint32_t lineNumber = 1; // current line number for error reporting
 
-int* identifier = (int*) 0; // stores scanned identifier as string
-int* integer    = (int*) 0; // stores scanned integer as string
-int* string     = (int*) 0; // stores scanned string
+uint32_t* identifier = (uint32_t*) 0; // stores scanned identifier as string
+uint32_t* integer    = (uint32_t*) 0; // stores scanned integer as string
+uint32_t* string     = (uint32_t*) 0; // stores scanned string
 
-int literal = 0; // stores numerical value of scanned integer or character
+uint32_t literal = 0; // stores numerical value of scanned integer or character
 
-int mayBeINTMIN = 0; // allow INT_MIN if '-' was scanned before
-int isINTMIN    = 0; // flag to indicate that INT_MIN was scanned
+uint32_t mayBeINTMIN = 0; // allow INT_MIN if '-' was scanned before
+uint32_t isINTMIN    = 0; // flag to indicate that INT_MIN was scanned
 
-int character; // most recently read character
+uint32_t character; // most recently read character
 
-int numberOfReadCharacters = 0;
+uint32_t numberOfReadCharacters = 0;
 
-int symbol; // most recently recognized symbol
+uint32_t symbol; // most recently recognized symbol
 
-int numberOfIgnoredCharacters = 0;
-int numberOfComments          = 0;
-int numberOfScannedSymbols    = 0;
+uint32_t numberOfIgnoredCharacters = 0;
+uint32_t numberOfComments          = 0;
+uint32_t numberOfScannedSymbols    = 0;
 
-int* sourceName = (int*) 0; // name of source file
-int  sourceFD   = 0;        // file descriptor of open source file
+uint32_t* sourceName = (uint32_t*) 0; // name of source file
+uint32_t  sourceFD   = 0;        // file descriptor of open source file
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
   SYMBOLS = smalloc(28 * SIZEOFINTSTAR);
 
-  *(SYMBOLS + SYM_IDENTIFIER)   = (int) "identifier";
-  *(SYMBOLS + SYM_INTEGER)      = (int) "integer";
-  *(SYMBOLS + SYM_VOID)         = (int) "void";
-  *(SYMBOLS + SYM_INT)          = (int) "int";
-  *(SYMBOLS + SYM_SEMICOLON)    = (int) ";";
-  *(SYMBOLS + SYM_IF)           = (int) "if";
-  *(SYMBOLS + SYM_ELSE)         = (int) "else";
-  *(SYMBOLS + SYM_PLUS)         = (int) "+";
-  *(SYMBOLS + SYM_MINUS)        = (int) "-";
-  *(SYMBOLS + SYM_ASTERISK)     = (int) "*";
-  *(SYMBOLS + SYM_DIV)          = (int) "/";
-  *(SYMBOLS + SYM_EQUALITY)     = (int) "==";
-  *(SYMBOLS + SYM_ASSIGN)       = (int) "=";
-  *(SYMBOLS + SYM_LPARENTHESIS) = (int) "(";
-  *(SYMBOLS + SYM_RPARENTHESIS) = (int) ")";
-  *(SYMBOLS + SYM_LBRACE)       = (int) "{";
-  *(SYMBOLS + SYM_RBRACE)       = (int) "}";
-  *(SYMBOLS + SYM_WHILE)        = (int) "while";
-  *(SYMBOLS + SYM_RETURN)       = (int) "return";
-  *(SYMBOLS + SYM_COMMA)        = (int) ",";
-  *(SYMBOLS + SYM_LT)           = (int) "<";
-  *(SYMBOLS + SYM_LEQ)          = (int) "<=";
-  *(SYMBOLS + SYM_GT)           = (int) ">";
-  *(SYMBOLS + SYM_GEQ)          = (int) ">=";
-  *(SYMBOLS + SYM_NOTEQ)        = (int) "!=";
-  *(SYMBOLS + SYM_MOD)          = (int) "%";
-  *(SYMBOLS + SYM_CHARACTER)    = (int) "character";
-  *(SYMBOLS + SYM_STRING)       = (int) "string";
+  *(SYMBOLS + SYM_IDENTIFIER)   = (uint32_t) "identifier";
+  *(SYMBOLS + SYM_INTEGER)      = (uint32_t) "integer";
+  *(SYMBOLS + SYM_VOID)         = (uint32_t) "void";
+  *(SYMBOLS + SYM_UINT32)       = (uint32_t) "uint32_t";
+  *(SYMBOLS + SYM_SEMICOLON)    = (uint32_t) ";";
+  *(SYMBOLS + SYM_IF)           = (uint32_t) "if";
+  *(SYMBOLS + SYM_ELSE)         = (uint32_t) "else";
+  *(SYMBOLS + SYM_PLUS)         = (uint32_t) "+";
+  *(SYMBOLS + SYM_MINUS)        = (uint32_t) "-";
+  *(SYMBOLS + SYM_ASTERISK)     = (uint32_t) "*";
+  *(SYMBOLS + SYM_DIV)          = (uint32_t) "/";
+  *(SYMBOLS + SYM_EQUALITY)     = (uint32_t) "==";
+  *(SYMBOLS + SYM_ASSIGN)       = (uint32_t) "=";
+  *(SYMBOLS + SYM_LPARENTHESIS) = (uint32_t) "(";
+  *(SYMBOLS + SYM_RPARENTHESIS) = (uint32_t) ")";
+  *(SYMBOLS + SYM_LBRACE)       = (uint32_t) "{";
+  *(SYMBOLS + SYM_RBRACE)       = (uint32_t) "}";
+  *(SYMBOLS + SYM_WHILE)        = (uint32_t) "while";
+  *(SYMBOLS + SYM_RETURN)       = (uint32_t) "return";
+  *(SYMBOLS + SYM_COMMA)        = (uint32_t) ",";
+  *(SYMBOLS + SYM_LT)           = (uint32_t) "<";
+  *(SYMBOLS + SYM_LEQ)          = (uint32_t) "<=";
+  *(SYMBOLS + SYM_GT)           = (uint32_t) ">";
+  *(SYMBOLS + SYM_GEQ)          = (uint32_t) ">=";
+  *(SYMBOLS + SYM_NOTEQ)        = (uint32_t) "!=";
+  *(SYMBOLS + SYM_MOD)          = (uint32_t) "%";
+  *(SYMBOLS + SYM_CHARACTER)    = (uint32_t) "character";
+  *(SYMBOLS + SYM_STRING)       = (uint32_t) "string";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -418,13 +426,13 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-void createSymbolTableEntry(int which, int* string, int line, int class, int type, int value, int address);
+void createSymbolTableEntry(uint32_t which, uint32_t* string, uint32_t line, uint32_t class, uint32_t type, uint32_t value, uint32_t address);
 
-int* searchSymbolTable(int* entry, int* string, int class);
-int* getScopedSymbolTableEntry(int* string, int class);
+uint32_t* searchSymbolTable(uint32_t* entry, uint32_t* string, uint32_t class);
+uint32_t* getScopedSymbolTableEntry(uint32_t* string, uint32_t class);
 
-int isUndefinedProcedure(int* entry);
-int reportUndefinedProcedures();
+uint32_t isUndefinedProcedure(uint32_t* entry);
+uint32_t reportUndefinedProcedures();
 
 // symbol table entry:
 // +----+---------+
@@ -438,58 +446,58 @@ int reportUndefinedProcedures();
 // |  7 | scope   | REG_GP, REG_FP
 // +----+---------+
 
-int* getNextEntry(int* entry)  { return (int*) *entry; }
-int* getString(int* entry)     { return (int*) *(entry + 1); }
-int  getLineNumber(int* entry) { return        *(entry + 2); }
-int  getClass(int* entry)      { return        *(entry + 3); }
-int  getType(int* entry)       { return        *(entry + 4); }
-int  getValue(int* entry)      { return        *(entry + 5); }
-int  getAddress(int* entry)    { return        *(entry + 6); }
-int  getScope(int* entry)      { return        *(entry + 7); }
+uint32_t* getNextEntry(uint32_t* entry)  { return (uint32_t*) *entry; }
+uint32_t* getString(uint32_t* entry)     { return (uint32_t*) *(entry + 1); }
+uint32_t  getLineNumber(uint32_t* entry) { return        *(entry + 2); }
+uint32_t  getClass(uint32_t* entry)      { return        *(entry + 3); }
+uint32_t  getType(uint32_t* entry)       { return        *(entry + 4); }
+uint32_t  getValue(uint32_t* entry)      { return        *(entry + 5); }
+uint32_t  getAddress(uint32_t* entry)    { return        *(entry + 6); }
+uint32_t  getScope(uint32_t* entry)      { return        *(entry + 7); }
 
-void setNextEntry(int* entry, int* next)    { *entry       = (int) next; }
-void setString(int* entry, int* identifier) { *(entry + 1) = (int) identifier; }
-void setLineNumber(int* entry, int line)    { *(entry + 2) = line; }
-void setClass(int* entry, int class)        { *(entry + 3) = class; }
-void setType(int* entry, int type)          { *(entry + 4) = type; }
-void setValue(int* entry, int value)        { *(entry + 5) = value; }
-void setAddress(int* entry, int address)    { *(entry + 6) = address; }
-void setScope(int* entry, int scope)        { *(entry + 7) = scope; }
+void setNextEntry(uint32_t* entry, uint32_t* next)    { *entry       = (uint32_t) next; }
+void setString(uint32_t* entry, uint32_t* identifier) { *(entry + 1) = (uint32_t) identifier; }
+void setLineNumber(uint32_t* entry, uint32_t line)    { *(entry + 2) = line; }
+void setClass(uint32_t* entry, uint32_t class)        { *(entry + 3) = class; }
+void setType(uint32_t* entry, uint32_t type)          { *(entry + 4) = type; }
+void setValue(uint32_t* entry, uint32_t value)        { *(entry + 5) = value; }
+void setAddress(uint32_t* entry, uint32_t address)    { *(entry + 6) = address; }
+void setScope(uint32_t* entry, uint32_t scope)        { *(entry + 7) = scope; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // classes
-int VARIABLE  = 1;
-int PROCEDURE = 2;
-int STRING    = 3;
+uint32_t VARIABLE  = 1;
+uint32_t PROCEDURE = 2;
+uint32_t STRING    = 3;
 
 // types
-int INT_T     = 1;
-int INTSTAR_T = 2;
-int VOID_T    = 3;
+uint32_t INT_T     = 1;
+uint32_t INTSTAR_T = 2;
+uint32_t VOID_T    = 3;
 
 // symbol tables
-int GLOBAL_TABLE  = 1;
-int LOCAL_TABLE   = 2;
-int LIBRARY_TABLE = 3;
+uint32_t GLOBAL_TABLE  = 1;
+uint32_t LOCAL_TABLE   = 2;
+uint32_t LIBRARY_TABLE = 3;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 // table pointers
-int* global_symbol_table  = (int*) 0;
-int* local_symbol_table   = (int*) 0;
-int* library_symbol_table = (int*) 0;
+uint32_t* global_symbol_table  = (uint32_t*) 0;
+uint32_t* local_symbol_table   = (uint32_t*) 0;
+uint32_t* library_symbol_table = (uint32_t*) 0;
 
-int numberOfGlobalVariables = 0;
-int numberOfProcedures      = 0;
-int numberOfStrings         = 0;
+uint32_t numberOfGlobalVariables = 0;
+uint32_t numberOfProcedures      = 0;
+uint32_t numberOfStrings         = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void resetSymbolTables() {
-  global_symbol_table  = (int*) 0;
-  local_symbol_table   = (int*) 0;
-  library_symbol_table = (int*) 0;
+  global_symbol_table  = (uint32_t*) 0;
+  local_symbol_table   = (uint32_t*) 0;
+  library_symbol_table = (uint32_t*) 0;
 
   numberOfGlobalVariables = 0;
   numberOfProcedures      = 0;
@@ -502,66 +510,66 @@ void resetSymbolTables() {
 
 void resetParser();
 
-int isNotRbraceOrEOF();
-int isExpression();
-int isLiteral();
-int isStarOrDivOrModulo();
-int isPlusOrMinus();
-int isComparison();
+uint32_t isNotRbraceOrEOF();
+uint32_t isExpression();
+uint32_t isLiteral();
+uint32_t isStarOrDivOrModulo();
+uint32_t isPlusOrMinus();
+uint32_t isComparison();
 
-int lookForFactor();
-int lookForStatement();
-int lookForType();
+uint32_t lookForFactor();
+uint32_t lookForStatement();
+uint32_t lookForType();
 
 void save_temporaries();
-void restore_temporaries(int numberOfTemporaries);
+void restore_temporaries(uint32_t numberOfTemporaries);
 
-void syntaxErrorSymbol(int expected);
+void syntaxErrorSymbol(uint32_t expected);
 void syntaxErrorUnexpected();
-void printType(int type);
-void typeWarning(int expected, int found);
+void printType(uint32_t type);
+void typeWarning(uint32_t expected, uint32_t found);
 
-int* getVariable(int* variable);
-int  load_variable(int* variable);
-void load_integer(int value);
-void load_string(int* string);
+uint32_t* getVariable(uint32_t* variable);
+uint32_t  load_variable(uint32_t* variable);
+void load_integer(uint32_t value);
+void load_string(uint32_t* string);
 
-int  help_call_codegen(int* entry, int* procedure);
-void help_procedure_prologue(int localVariables);
-void help_procedure_epilogue(int parameters);
+uint32_t  help_call_codegen(uint32_t* entry, uint32_t* procedure);
+void help_procedure_prologue(uint32_t localVariables);
+void help_procedure_epilogue(uint32_t parameters);
 
-int  gr_call(int* procedure);
-int  gr_factor();
-int  gr_term();
-int  gr_simpleExpression();
-int  gr_expression();
+uint32_t  gr_call(uint32_t* procedure);
+uint32_t  gr_factor();
+uint32_t  gr_term();
+uint32_t  gr_simpleExpression();
+uint32_t  gr_expression();
 void gr_while();
 void gr_if();
 void gr_return();
 void gr_statement();
-int  gr_type();
-void gr_variable(int offset);
-int  gr_initialization(int type);
-void gr_procedure(int* procedure, int type);
+uint32_t  gr_type();
+void gr_variable(uint32_t offset);
+uint32_t  gr_initialization(uint32_t type);
+void gr_procedure(uint32_t* procedure, uint32_t type);
 void gr_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int allocatedTemporaries = 0; // number of allocated temporaries
+uint32_t allocatedTemporaries = 0; // number of allocated temporaries
 
-int allocatedMemory = 0; // number of bytes for global variables and strings
+uint32_t allocatedMemory = 0; // number of bytes for global variables and strings
 
-int returnBranches = 0; // fixup chain for return statements
+uint32_t returnBranches = 0; // fixup chain for return statements
 
-int returnType = 0; // return type of currently parsed procedure
+uint32_t returnType = 0; // return type of currently parsed procedure
 
-int mainJump = 0; // address where JAL instruction to main procedure is
+uint32_t mainJump = 0; // address where JAL instruction to main procedure is
 
-int numberOfCalls       = 0;
-int numberOfAssignments = 0;
-int numberOfWhile       = 0;
-int numberOfIf          = 0;
-int numberOfReturn      = 0;
+uint32_t numberOfCalls       = 0;
+uint32_t numberOfAssignments = 0;
+uint32_t numberOfWhile       = 0;
+uint32_t numberOfIf          = 0;
+uint32_t numberOfReturn      = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -579,8 +587,8 @@ void resetParser() {
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
-void emitLeftShiftBy(int reg, int b);
-void emitRightShiftBy(int reg, int b);
+void emitLeftShiftBy(uint32_t reg, uint32_t b);
+void emitRightShiftBy(uint32_t reg, uint32_t b);
 void emitMainEntry();
 void bootstrapCode();
 
@@ -602,93 +610,93 @@ void selfie_compile();
 
 void initRegister();
 
-void printRegister(int reg);
+void printRegister(uint32_t reg);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int NUMBEROFREGISTERS = 32;
+uint32_t NUMBEROFREGISTERS = 32;
 
-int REG_ZR = 0;
-int REG_AT = 1;
-int REG_V0 = 2;
-int REG_V1 = 3;
-int REG_A0 = 4;
-int REG_A1 = 5;
-int REG_A2 = 6;
-int REG_A3 = 7;
-int REG_T0 = 8;
-int REG_T1 = 9;
-int REG_T2 = 10;
-int REG_T3 = 11;
-int REG_T4 = 12;
-int REG_T5 = 13;
-int REG_T6 = 14;
-int REG_T7 = 15;
-int REG_S0 = 16;
-int REG_S1 = 17;
-int REG_S2 = 18;
-int REG_S3 = 19;
-int REG_S4 = 20;
-int REG_S5 = 21;
-int REG_S6 = 22;
-int REG_S7 = 23;
-int REG_T8 = 24;
-int REG_T9 = 25;
-int REG_K0 = 26;
-int REG_K1 = 27;
-int REG_GP = 28;
-int REG_SP = 29;
-int REG_FP = 30;
-int REG_RA = 31;
+uint32_t REG_ZR = 0;
+uint32_t REG_AT = 1;
+uint32_t REG_V0 = 2;
+uint32_t REG_V1 = 3;
+uint32_t REG_A0 = 4;
+uint32_t REG_A1 = 5;
+uint32_t REG_A2 = 6;
+uint32_t REG_A3 = 7;
+uint32_t REG_T0 = 8;
+uint32_t REG_T1 = 9;
+uint32_t REG_T2 = 10;
+uint32_t REG_T3 = 11;
+uint32_t REG_T4 = 12;
+uint32_t REG_T5 = 13;
+uint32_t REG_T6 = 14;
+uint32_t REG_T7 = 15;
+uint32_t REG_S0 = 16;
+uint32_t REG_S1 = 17;
+uint32_t REG_S2 = 18;
+uint32_t REG_S3 = 19;
+uint32_t REG_S4 = 20;
+uint32_t REG_S5 = 21;
+uint32_t REG_S6 = 22;
+uint32_t REG_S7 = 23;
+uint32_t REG_T8 = 24;
+uint32_t REG_T9 = 25;
+uint32_t REG_K0 = 26;
+uint32_t REG_K1 = 27;
+uint32_t REG_GP = 28;
+uint32_t REG_SP = 29;
+uint32_t REG_FP = 30;
+uint32_t REG_RA = 31;
 
-int* REGISTERS; // strings representing registers
+uint32_t* REGISTERS; // strings representing registers
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initRegister() {
   REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
 
-  *(REGISTERS + REG_ZR) = (int) "$zero";
-  *(REGISTERS + REG_AT) = (int) "$at";
-  *(REGISTERS + REG_V0) = (int) "$v0";
-  *(REGISTERS + REG_V1) = (int) "$v1";
-  *(REGISTERS + REG_A0) = (int) "$a0";
-  *(REGISTERS + REG_A1) = (int) "$a1";
-  *(REGISTERS + REG_A2) = (int) "$a2";
-  *(REGISTERS + REG_A3) = (int) "$a3";
-  *(REGISTERS + REG_T0) = (int) "$t0";
-  *(REGISTERS + REG_T1) = (int) "$t1";
-  *(REGISTERS + REG_T2) = (int) "$t2";
-  *(REGISTERS + REG_T3) = (int) "$t3";
-  *(REGISTERS + REG_T4) = (int) "$t4";
-  *(REGISTERS + REG_T5) = (int) "$t5";
-  *(REGISTERS + REG_T6) = (int) "$t6";
-  *(REGISTERS + REG_T7) = (int) "$t7";
-  *(REGISTERS + REG_S0) = (int) "$s0";
-  *(REGISTERS + REG_S1) = (int) "$s1";
-  *(REGISTERS + REG_S2) = (int) "$s2";
-  *(REGISTERS + REG_S3) = (int) "$s3";
-  *(REGISTERS + REG_S4) = (int) "$s4";
-  *(REGISTERS + REG_S5) = (int) "$s5";
-  *(REGISTERS + REG_S6) = (int) "$s6";
-  *(REGISTERS + REG_S7) = (int) "$s7";
-  *(REGISTERS + REG_T8) = (int) "$t8";
-  *(REGISTERS + REG_T9) = (int) "$t9";
-  *(REGISTERS + REG_K0) = (int) "$k0";
-  *(REGISTERS + REG_K1) = (int) "$k1";
-  *(REGISTERS + REG_GP) = (int) "$gp";
-  *(REGISTERS + REG_SP) = (int) "$sp";
-  *(REGISTERS + REG_FP) = (int) "$fp";
-  *(REGISTERS + REG_RA) = (int) "$ra";
+  *(REGISTERS + REG_ZR) = (uint32_t) "$zero";
+  *(REGISTERS + REG_AT) = (uint32_t) "$at";
+  *(REGISTERS + REG_V0) = (uint32_t) "$v0";
+  *(REGISTERS + REG_V1) = (uint32_t) "$v1";
+  *(REGISTERS + REG_A0) = (uint32_t) "$a0";
+  *(REGISTERS + REG_A1) = (uint32_t) "$a1";
+  *(REGISTERS + REG_A2) = (uint32_t) "$a2";
+  *(REGISTERS + REG_A3) = (uint32_t) "$a3";
+  *(REGISTERS + REG_T0) = (uint32_t) "$t0";
+  *(REGISTERS + REG_T1) = (uint32_t) "$t1";
+  *(REGISTERS + REG_T2) = (uint32_t) "$t2";
+  *(REGISTERS + REG_T3) = (uint32_t) "$t3";
+  *(REGISTERS + REG_T4) = (uint32_t) "$t4";
+  *(REGISTERS + REG_T5) = (uint32_t) "$t5";
+  *(REGISTERS + REG_T6) = (uint32_t) "$t6";
+  *(REGISTERS + REG_T7) = (uint32_t) "$t7";
+  *(REGISTERS + REG_S0) = (uint32_t) "$s0";
+  *(REGISTERS + REG_S1) = (uint32_t) "$s1";
+  *(REGISTERS + REG_S2) = (uint32_t) "$s2";
+  *(REGISTERS + REG_S3) = (uint32_t) "$s3";
+  *(REGISTERS + REG_S4) = (uint32_t) "$s4";
+  *(REGISTERS + REG_S5) = (uint32_t) "$s5";
+  *(REGISTERS + REG_S6) = (uint32_t) "$s6";
+  *(REGISTERS + REG_S7) = (uint32_t) "$s7";
+  *(REGISTERS + REG_T8) = (uint32_t) "$t8";
+  *(REGISTERS + REG_T9) = (uint32_t) "$t9";
+  *(REGISTERS + REG_K0) = (uint32_t) "$k0";
+  *(REGISTERS + REG_K1) = (uint32_t) "$k1";
+  *(REGISTERS + REG_GP) = (uint32_t) "$gp";
+  *(REGISTERS + REG_SP) = (uint32_t) "$sp";
+  *(REGISTERS + REG_FP) = (uint32_t) "$fp";
+  *(REGISTERS + REG_RA) = (uint32_t) "$ra";
 }
 
 // -----------------------------------------------------------------
 // ---------------------------- ENCODER ----------------------------
 // -----------------------------------------------------------------
 
-int encodeRFormat(int opcode, int rs, int rt, int rd, int function);
-int encodeIFormat(int opcode, int rs, int rt, int immediate);
-int encodeJFormat(int opcode, int instr_index);
+uint32_t encodeRFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t rd, uint32_t function);
+uint32_t encodeIFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t immediate);
+uint32_t encodeJFormat(uint32_t opcode, uint32_t instr_index);
 
 // -----------------------------------------------------------------
 // ---------------------------- DECODER ----------------------------
@@ -696,14 +704,14 @@ int encodeJFormat(int opcode, int instr_index);
 
 void initDecoder();
 
-int getOpcode(int instruction);
-int getRS(int instruction);
-int getRT(int instruction);
-int getRD(int instruction);
-int getFunction(int instruction);
-int getImmediate(int instruction);
-int getInstrIndex(int instruction);
-int signExtend(int immediate);
+uint32_t getOpcode(uint32_t instruction);
+uint32_t getRS(uint32_t instruction);
+uint32_t getRT(uint32_t instruction);
+uint32_t getRD(uint32_t instruction);
+uint32_t getFunction(uint32_t instruction);
+uint32_t getImmediate(uint32_t instruction);
+uint32_t getInstrIndex(uint32_t instruction);
+uint32_t signExtend(uint32_t immediate);
 
 void decodeRFormat();
 void decodeIFormat();
@@ -711,167 +719,167 @@ void decodeJFormat();
 
 void decode();
 
-void printOpcode(int opcode);
-void printFunction(int function);
+void printOpcode(uint32_t opcode);
+void printFunction(uint32_t function);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int OP_SPECIAL = 0;
-int OP_J       = 2;
-int OP_JAL     = 3;
-int OP_BEQ     = 4;
-int OP_ADDIU   = 9;
-int OP_LW      = 35;
-int OP_SW      = 43;
+uint32_t OP_SPECIAL = 0;
+uint32_t OP_J       = 2;
+uint32_t OP_JAL     = 3;
+uint32_t OP_BEQ     = 4;
+uint32_t OP_ADDIU   = 9;
+uint32_t OP_LW      = 35;
+uint32_t OP_SW      = 43;
 
-int* OPCODES; // strings representing MIPS opcodes
+uint32_t* OPCODES; // strings representing MIPS opcodes
 
-int FCT_NOP     = 0;
-int FCT_JR      = 8;
-int FCT_SYSCALL = 12;
-int FCT_MFHI    = 16;
-int FCT_MFLO    = 18;
-int FCT_MULTU   = 25;
-int FCT_DIVU    = 27;
-int FCT_ADDU    = 33;
-int FCT_SUBU    = 35;
-int FCT_SLT     = 42;
+uint32_t FCT_NOP     = 0;
+uint32_t FCT_JR      = 8;
+uint32_t FCT_SYSCALL = 12;
+uint32_t FCT_MFHI    = 16;
+uint32_t FCT_MFLO    = 18;
+uint32_t FCT_MULTU   = 25;
+uint32_t FCT_DIVU    = 27;
+uint32_t FCT_ADDU    = 33;
+uint32_t FCT_SUBU    = 35;
+uint32_t FCT_SLT     = 42;
 
-int* FUNCTIONS; // strings representing MIPS functions
+uint32_t* FUNCTIONS; // strings representing MIPS functions
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int opcode      = 0;
-int rs          = 0;
-int rt          = 0;
-int rd          = 0;
-int immediate   = 0;
-int function    = 0;
-int instr_index = 0;
+uint32_t opcode      = 0;
+uint32_t rs          = 0;
+uint32_t rt          = 0;
+uint32_t rd          = 0;
+uint32_t immediate   = 0;
+uint32_t function    = 0;
+uint32_t instr_index = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initDecoder() {
   OPCODES = smalloc(44 * SIZEOFINTSTAR);
 
-  *(OPCODES + OP_SPECIAL) = (int) "nop";
-  *(OPCODES + OP_J)       = (int) "j";
-  *(OPCODES + OP_JAL)     = (int) "jal";
-  *(OPCODES + OP_BEQ)     = (int) "beq";
-  *(OPCODES + OP_ADDIU)   = (int) "addiu";
-  *(OPCODES + OP_LW)      = (int) "lw";
-  *(OPCODES + OP_SW)      = (int) "sw";
+  *(OPCODES + OP_SPECIAL) = (uint32_t) "nop";
+  *(OPCODES + OP_J)       = (uint32_t) "j";
+  *(OPCODES + OP_JAL)     = (uint32_t) "jal";
+  *(OPCODES + OP_BEQ)     = (uint32_t) "beq";
+  *(OPCODES + OP_ADDIU)   = (uint32_t) "addiu";
+  *(OPCODES + OP_LW)      = (uint32_t) "lw";
+  *(OPCODES + OP_SW)      = (uint32_t) "sw";
 
   FUNCTIONS = smalloc(43 * SIZEOFINTSTAR);
 
-  *(FUNCTIONS + FCT_NOP)     = (int) "nop";
-  *(FUNCTIONS + FCT_JR)      = (int) "jr";
-  *(FUNCTIONS + FCT_SYSCALL) = (int) "syscall";
-  *(FUNCTIONS + FCT_MFHI)    = (int) "mfhi";
-  *(FUNCTIONS + FCT_MFLO)    = (int) "mflo";
-  *(FUNCTIONS + FCT_MULTU)   = (int) "multu";
-  *(FUNCTIONS + FCT_DIVU)    = (int) "divu";
-  *(FUNCTIONS + FCT_ADDU)    = (int) "addu";
-  *(FUNCTIONS + FCT_SUBU)    = (int) "subu";
-  *(FUNCTIONS + FCT_SLT)     = (int) "slt";
+  *(FUNCTIONS + FCT_NOP)     = (uint32_t) "nop";
+  *(FUNCTIONS + FCT_JR)      = (uint32_t) "jr";
+  *(FUNCTIONS + FCT_SYSCALL) = (uint32_t) "syscall";
+  *(FUNCTIONS + FCT_MFHI)    = (uint32_t) "mfhi";
+  *(FUNCTIONS + FCT_MFLO)    = (uint32_t) "mflo";
+  *(FUNCTIONS + FCT_MULTU)   = (uint32_t) "multu";
+  *(FUNCTIONS + FCT_DIVU)    = (uint32_t) "divu";
+  *(FUNCTIONS + FCT_ADDU)    = (uint32_t) "addu";
+  *(FUNCTIONS + FCT_SUBU)    = (uint32_t) "subu";
+  *(FUNCTIONS + FCT_SLT)     = (uint32_t) "slt";
 }
 
 // -----------------------------------------------------------------
 // ----------------------------- CODE ------------------------------
 // -----------------------------------------------------------------
 
-int  loadBinary(int baddr);
-void storeBinary(int baddr, int instruction);
+uint32_t  loadBinary(uint32_t baddr);
+void storeBinary(uint32_t baddr, uint32_t instruction);
 
-void emitInstruction(int instruction);
-void emitRFormat(int opcode, int rs, int rt, int rd, int function);
-void emitIFormat(int opcode, int rs, int rt, int immediate);
-void emitJFormat(int opcode, int instr_index);
+void emitInstruction(uint32_t instruction);
+void emitRFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t rd, uint32_t function);
+void emitIFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t immediate);
+void emitJFormat(uint32_t opcode, uint32_t instr_index);
 
-void fixup_relative(int fromAddress);
-void fixup_absolute(int fromAddress, int toAddress);
-void fixlink_absolute(int fromAddress, int toAddress);
+void fixup_relative(uint32_t fromAddress);
+void fixup_absolute(uint32_t fromAddress, uint32_t toAddress);
+void fixlink_absolute(uint32_t fromAddress, uint32_t toAddress);
 
-int copyStringToBinary(int* s, int a);
+uint32_t copyStringToBinary(uint32_t* s, uint32_t a);
 
 void emitGlobalsStrings();
 
-int openWriteOnly(int* name);
+uint32_t openWriteOnly(uint32_t* name);
 
 void selfie_output();
 
-int* touch(int* memory, int length);
+uint32_t* touch(uint32_t* memory, uint32_t length);
 
 void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int maxBinaryLength = 262144; // 256KB
+uint32_t maxBinaryLength = 262144; // 256KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int* binary = (int*) 0; // binary of emitted instructions
+uint32_t* binary = (uint32_t*) 0; // binary of emitted instructions
 
-int binaryLength = 0; // length of binary in bytes incl. globals & strings
+uint32_t binaryLength = 0; // length of binary in bytes incl. globals & strings
 
-int codeLength = 0; // length of code portion of binary in bytes
+uint32_t codeLength = 0; // length of code portion of binary in bytes
 
-int* binaryName = (int*) 0; // file name of binary
+uint32_t* binaryName = (uint32_t*) 0; // file name of binary
 
-int* sourceLineNumber = (int*) 0; // source line number per emitted instruction
+uint32_t* sourceLineNumber = (uint32_t*) 0; // source line number per emitted instruction
 
-int* assemblyName = (int*) 0; // name of assembly file
-int  assemblyFD   = 0;        // file descriptor of open assembly file
+uint32_t* assemblyName = (uint32_t*) 0; // name of assembly file
+uint32_t  assemblyFD   = 0;        // file descriptor of open assembly file
 
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
 void emitExit();
-void implementExit(int* context);
+void implementExit(uint32_t* context);
 
 void emitRead();
-void implementRead(int* context);
+void implementRead(uint32_t* context);
 
 void emitWrite();
-void implementWrite(int* context);
+void implementWrite(uint32_t* context);
 
 void emitOpen();
-int  down_loadString(int* table, int vaddr, int* s);
-void implementOpen(int* context);
+uint32_t  down_loadString(uint32_t* table, uint32_t vaddr, uint32_t* s);
+void implementOpen(uint32_t* context);
 
 void emitMalloc();
-int implementMalloc(int* context);
+uint32_t implementMalloc(uint32_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int debug_read   = 0;
-int debug_write  = 0;
-int debug_open   = 0;
+uint32_t debug_read   = 0;
+uint32_t debug_write  = 0;
+uint32_t debug_open   = 0;
 
-int debug_malloc = 0;
+uint32_t debug_malloc = 0;
 
-int SYSCALL_EXIT   = 4001;
-int SYSCALL_READ   = 4003;
-int SYSCALL_WRITE  = 4004;
-int SYSCALL_OPEN   = 4005;
+uint32_t SYSCALL_EXIT   = 4001;
+uint32_t SYSCALL_READ   = 4003;
+uint32_t SYSCALL_WRITE  = 4004;
+uint32_t SYSCALL_OPEN   = 4005;
 
-int SYSCALL_MALLOC = 4045;
+uint32_t SYSCALL_MALLOC = 4045;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
 void emitSwitch();
-void doSwitch(int* toContext, int timeout);
+void doSwitch(uint32_t* toContext, uint32_t timeout);
 void implementSwitch();
-int* mipster_switch(int* toContext, int timeout);
+uint32_t* mipster_switch(uint32_t* toContext, uint32_t timeout);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int SYSCALL_SWITCH = 4901;
+uint32_t SYSCALL_SWITCH = 4901;
 
-int debug_switch = 0;
+uint32_t debug_switch = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -883,49 +891,49 @@ int debug_switch = 0;
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-void initMemory(int megabytes);
+void initMemory(uint32_t megabytes);
 
-int  loadPhysicalMemory(int* paddr);
-void storePhysicalMemory(int* paddr, int data);
+uint32_t  loadPhysicalMemory(uint32_t* paddr);
+void storePhysicalMemory(uint32_t* paddr, uint32_t data);
 
-int FrameForPage(int* table, int page);
-int getFrameForPage(int* table, int page);
-int isPageMapped(int* table, int page);
+uint32_t FrameForPage(uint32_t* table, uint32_t page);
+uint32_t getFrameForPage(uint32_t* table, uint32_t page);
+uint32_t isPageMapped(uint32_t* table, uint32_t page);
 
-int isValidVirtualAddress(int vaddr);
-int getPageOfVirtualAddress(int vaddr);
-int isVirtualAddressMapped(int* table, int vaddr);
+uint32_t isValidVirtualAddress(uint32_t vaddr);
+uint32_t getPageOfVirtualAddress(uint32_t vaddr);
+uint32_t isVirtualAddressMapped(uint32_t* table, uint32_t vaddr);
 
-int* tlb(int* table, int vaddr);
+uint32_t* tlb(uint32_t* table, uint32_t vaddr);
 
-int  loadVirtualMemory(int* table, int vaddr);
-void storeVirtualMemory(int* table, int vaddr, int data);
+uint32_t  loadVirtualMemory(uint32_t* table, uint32_t vaddr);
+void storeVirtualMemory(uint32_t* table, uint32_t vaddr, uint32_t data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int debug_tlb = 0;
+uint32_t debug_tlb = 0;
 
 // we use the unit [number of words] to prevent overflow problems in calculations
-int MEGABYTE = 1048576;         // 1024 * 1024       one megabyte in [number of Bytes]
-int MEGABYTEINWORDS = 262144;   // 1024 * 1024 / 4   one megabyte in [number of words]
+uint32_t MEGABYTE = 1048576;         // 1024 * 1024       one megabyte in [number of Bytes]
+uint32_t MEGABYTEINWORDS = 262144;   // 1024 * 1024 / 4   one megabyte in [number of words]
 
-int HIGHESTMEMORYADDRESS = -4;  // highest word aligned 32bit address in two's complement
+uint32_t HIGHESTMEMORYADDRESS = -4;  // highest word aligned 32bit address in two's complement
 
-int WORDSIZE = 4;               // must be the same as SIZEOFINT and SIZEOFINTSTAR
+uint32_t WORDSIZE = 4;               // must be the same as SIZEOFINT and SIZEOFINTSTAR
 
-int PAGESIZE = 4096;            // we use standard 4KB pages [number of bytes] 
+uint32_t PAGESIZE = 4096;            // we use standard 4KB pages [number of bytes] 
                                 // (=> 12 pagebits: 2^12 == 4096)
-int PAGESIZEINWORDS = 1024;     // page size in words [number of words]
+uint32_t PAGESIZEINWORDS = 1024;     // page size in words [number of words]
 
-int NUMBEROFPAGES = 1048576;    // 2^32 / PAGESIZE   maximum amount of pages in virtual memory.
+uint32_t NUMBEROFPAGES = 1048576;    // 2^32 / PAGESIZE   maximum amount of pages in virtual memory.
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int pageFrameMemory = 0; // size of memory for frames [number of words]
+uint32_t pageFrameMemory = 0; // size of memory for frames [number of words]
 
 // ------------------------- INITIALIZATION ------------------------
 
-void initMemory(int megabytes) {
+void initMemory(uint32_t megabytes) {
   if (megabytes < 0)
     megabytes = 0;
   else if (megabytes > 4096)
@@ -958,7 +966,7 @@ void op_j();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int debug_overflow = 1;
+uint32_t debug_overflow = 0;
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -967,101 +975,101 @@ int debug_overflow = 1;
 void initInterpreter();
 void resetInterpreter();
 
-void printException(int exception, int faultingPage);
-void throwException(int exception, int faultingPage);
+void printException(uint32_t exception, uint32_t faultingPage);
+void throwException(uint32_t exception, uint32_t faultingPage);
 
 void fetch();
 void execute();
 void interrupt();
 
-int* runUntilException();
+uint32_t* runUntilException();
 
-int addressWithMaxCounter(int* counters, int max);
+uint32_t addressWithMaxCounter(uint32_t* counters, uint32_t max);
 
-int  printCounters(int total, int* counters, int max);
-void printProfile(int* message, int total, int* counters);
+uint32_t  printCounters(uint32_t total, uint32_t* counters, uint32_t max);
+void printProfile(uint32_t* message, uint32_t total, uint32_t* counters);
 
 void selfie_disassemble();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int EXCEPTION_NOEXCEPTION        = 0;
-int EXCEPTION_PAGEFAULT          = 1;
-int EXCEPTION_SYSCALL            = 2;
-int EXCEPTION_TIMER              = 3;
-int EXCEPTION_INVALIDADDRESS     = 4;
-int EXCEPTION_UNKNOWNINSTRUCTION = 5;
+uint32_t EXCEPTION_NOEXCEPTION        = 0;
+uint32_t EXCEPTION_PAGEFAULT          = 1;
+uint32_t EXCEPTION_SYSCALL            = 2;
+uint32_t EXCEPTION_TIMER              = 3;
+uint32_t EXCEPTION_INVALIDADDRESS     = 4;
+uint32_t EXCEPTION_UNKNOWNINSTRUCTION = 5;
 
-int* EXCEPTIONS; // strings representing exceptions
+uint32_t* EXCEPTIONS; // strings representing exceptions
 
-int debug_exception = 0;
+uint32_t debug_exception = 0;
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
 // TODO: implement proper interrupt controller to turn interrupts on and off
-int TIMESLICE = 10000000;
+uint32_t TIMESLICE = 10000000;
 
-int TIMEROFF = -1;
+uint32_t TIMEROFF = -1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int interpret = 0; // flag for executing or disassembling code
+uint32_t interpret = 0; // flag for executing or disassembling code
 
-int debug = 0; // flag for logging code execution
+uint32_t debug = 0; // flag for logging code execution
 
 // hardware thread state
 
-int pc = 0; // program counter
-int ir = 0; // instruction register
+uint32_t pc = 0; // program counter
+uint32_t ir = 0; // instruction register
 
-int* registers = (int*) 0; // general-purpose registers
+uint32_t* registers = (uint32_t*) 0; // general-purpose registers
 
-int loReg = 0; // lo register for multiplication/division
-int hiReg = 0; // hi register for multiplication/division
+uint32_t loReg = 0; // lo register for multiplication/division
+uint32_t hiReg = 0; // hi register for multiplication/division
 
-int* pt = (int*) 0; // page table
+uint32_t* pt = (uint32_t*) 0; // page table
 
 // core state
 
-int timer = -1; // counter for timer interrupt
+uint32_t timer = -1; // counter for timer interrupt
 
-int trap = 0; // flag for creating a trap
+uint32_t trap = 0; // flag for creating a trap
 
-int  calls           = 0;        // total number of executed procedure calls
-int* callsPerAddress = (int*) 0; // number of executed calls of each procedure
+uint32_t  calls           = 0;        // total number of executed procedure calls
+uint32_t* callsPerAddress = (uint32_t*) 0; // number of executed calls of each procedure
 
-int  loops           = 0;        // total number of executed loop iterations
-int* loopsPerAddress = (int*) 0; // number of executed iterations of each loop
+uint32_t  loops           = 0;        // total number of executed loop iterations
+uint32_t* loopsPerAddress = (uint32_t*) 0; // number of executed iterations of each loop
 
-int  loads           = 0;        // total number of executed memory loads
-int* loadsPerAddress = (int*) 0; // number of executed loads per load operation
+uint32_t  loads           = 0;        // total number of executed memory loads
+uint32_t* loadsPerAddress = (uint32_t*) 0; // number of executed loads per load operation
 
-int  stores           = 0;        // total number of executed memory stores
-int* storesPerAddress = (int*) 0; // number of executed stores per store operation
+uint32_t  stores           = 0;        // total number of executed memory stores
+uint32_t* storesPerAddress = (uint32_t*) 0; // number of executed stores per store operation
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
   EXCEPTIONS = smalloc(6 * SIZEOFINTSTAR);
 
-  *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (int) "no exception";
-  *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (int) "page fault";
-  *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (int) "syscall";
-  *(EXCEPTIONS + EXCEPTION_TIMER)              = (int) "timer interrupt";
-  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (int) "invalid address";
-  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (int) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint32_t) "no exception";
+  *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint32_t) "page fault";
+  *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (uint32_t) "syscall";
+  *(EXCEPTIONS + EXCEPTION_TIMER)              = (uint32_t) "timer interrupt";
+  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint32_t) "invalid address";
+  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint32_t) "unknown instruction";
 }
 
 void resetInterpreter() {
   pc = 0;
   ir = 0;
 
-  registers = (int*) 0;
+  registers = (uint32_t*) 0;
 
   loReg = 0;
   hiReg = 0;
 
-  pt = (int*) 0;
+  pt = (uint32_t*) 0;
 
   trap = 0;
 
@@ -1086,12 +1094,12 @@ void resetInterpreter() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int* allocateContext(int* parent, int* vctxt, int* in);
+uint32_t* allocateContext(uint32_t* parent, uint32_t* vctxt, uint32_t* in);
 
-int* findContext(int* parent, int* vctxt, int* in);
+uint32_t* findContext(uint32_t* parent, uint32_t* vctxt, uint32_t* in);
 
-void freeContext(int* context);
-int* deleteContext(int* context, int* from);
+void freeContext(uint32_t* context);
+uint32_t* deleteContext(uint32_t* context, uint32_t* from);
 
 // context struct:
 // +----+----------------+
@@ -1114,59 +1122,59 @@ int* deleteContext(int* context, int* from);
 // | 16 | name           | binary name loaded into context
 // +----+----------------+
 
-int nextContext(int* context)    { return (int) context; }
-int prevContext(int* context)    { return (int) (context + 1); }
-int PC(int* context)             { return (int) (context + 2); }
-int Regs(int* context)           { return (int) (context + 3); }
-int LoReg(int* context)          { return (int) (context + 4); }
-int HiReg(int* context)          { return (int) (context + 5); }
-int PT(int* context)             { return (int) (context + 6); }
-int LoPage(int* context)         { return (int) (context + 7); }
-int MePage(int* context)         { return (int) (context + 8); }
-int HiPage(int* context)         { return (int) (context + 9); }
-int ProgramBreak(int* context)   { return (int) (context + 10); }
-int Exception(int* context)      { return (int) (context + 11); }
-int FaultingPage(int* context)   { return (int) (context + 12); }
-int ExitCode(int* context)       { return (int) (context + 13); }
-int Parent(int* context)         { return (int) (context + 14); }
-int VirtualContext(int* context) { return (int) (context + 15); }
-int Name(int* context)           { return (int) (context + 16); }
+uint32_t nextContext(uint32_t* context)    { return (uint32_t) context; }
+uint32_t prevContext(uint32_t* context)    { return (uint32_t) (context + 1); }
+uint32_t PC(uint32_t* context)             { return (uint32_t) (context + 2); }
+uint32_t Regs(uint32_t* context)           { return (uint32_t) (context + 3); }
+uint32_t LoReg(uint32_t* context)          { return (uint32_t) (context + 4); }
+uint32_t HiReg(uint32_t* context)          { return (uint32_t) (context + 5); }
+uint32_t PT(uint32_t* context)             { return (uint32_t) (context + 6); }
+uint32_t LoPage(uint32_t* context)         { return (uint32_t) (context + 7); }
+uint32_t MePage(uint32_t* context)         { return (uint32_t) (context + 8); }
+uint32_t HiPage(uint32_t* context)         { return (uint32_t) (context + 9); }
+uint32_t ProgramBreak(uint32_t* context)   { return (uint32_t) (context + 10); }
+uint32_t Exception(uint32_t* context)      { return (uint32_t) (context + 11); }
+uint32_t FaultingPage(uint32_t* context)   { return (uint32_t) (context + 12); }
+uint32_t ExitCode(uint32_t* context)       { return (uint32_t) (context + 13); }
+uint32_t Parent(uint32_t* context)         { return (uint32_t) (context + 14); }
+uint32_t VirtualContext(uint32_t* context) { return (uint32_t) (context + 15); }
+uint32_t Name(uint32_t* context)           { return (uint32_t) (context + 16); }
 
-int* getNextContext(int* context)    { return (int*) *context; }
-int* getPrevContext(int* context)    { return (int*) *(context + 1); }
-int  getPC(int* context)             { return        *(context + 2); }
-int* getRegs(int* context)           { return (int*) *(context + 3); }
-int  getLoReg(int* context)          { return        *(context + 4); }
-int  getHiReg(int* context)          { return        *(context + 5); }
-int* getPT(int* context)             { return (int*) *(context + 6); }
-int  getLoPage(int* context)         { return        *(context + 7); }
-int  getMePage(int* context)         { return        *(context + 8); }
-int  getHiPage(int* context)         { return        *(context + 9); }
-int  getProgramBreak(int* context)   { return        *(context + 10); }
-int  getException(int* context)      { return        *(context + 11); }
-int  getFaultingPage(int* context)   { return        *(context + 12); }
-int  getExitCode(int* context)       { return        *(context + 13); }
-int* getParent(int* context)         { return (int*) *(context + 14); }
-int* getVirtualContext(int* context) { return (int*) *(context + 15); }
-int* getName(int* context)           { return (int*) *(context + 16); }
+uint32_t* getNextContext(uint32_t* context)    { return (uint32_t*) *context; }
+uint32_t* getPrevContext(uint32_t* context)    { return (uint32_t*) *(context + 1); }
+uint32_t  getPC(uint32_t* context)             { return        *(context + 2); }
+uint32_t* getRegs(uint32_t* context)           { return (uint32_t*) *(context + 3); }
+uint32_t  getLoReg(uint32_t* context)          { return        *(context + 4); }
+uint32_t  getHiReg(uint32_t* context)          { return        *(context + 5); }
+uint32_t* getPT(uint32_t* context)             { return (uint32_t*) *(context + 6); }
+uint32_t  getLoPage(uint32_t* context)         { return        *(context + 7); }
+uint32_t  getMePage(uint32_t* context)         { return        *(context + 8); }
+uint32_t  getHiPage(uint32_t* context)         { return        *(context + 9); }
+uint32_t  getProgramBreak(uint32_t* context)   { return        *(context + 10); }
+uint32_t  getException(uint32_t* context)      { return        *(context + 11); }
+uint32_t  getFaultingPage(uint32_t* context)   { return        *(context + 12); }
+uint32_t  getExitCode(uint32_t* context)       { return        *(context + 13); }
+uint32_t* getParent(uint32_t* context)         { return (uint32_t*) *(context + 14); }
+uint32_t* getVirtualContext(uint32_t* context) { return (uint32_t*) *(context + 15); }
+uint32_t* getName(uint32_t* context)           { return (uint32_t*) *(context + 16); }
 
-void setNextContext(int* context, int* next) { *context       = (int) next; }
-void setPrevContext(int* context, int* prev) { *(context + 1) = (int) prev; }
-void setPC(int* context, int pc)             { *(context + 2) = pc; }
-void setRegs(int* context, int* regs)        { *(context + 3) = (int) regs; }
-void setLoReg(int* context, int loReg)       { *(context + 4) = loReg; }
-void setHiReg(int* context, int hiReg)       { *(context + 5) = hiReg; }
-void setPT(int* context, int* pt)            { *(context + 6) = (int) pt; }
-void setLoPage(int* context, int loPage)     { *(context + 7) = loPage; }
-void setMePage(int* context, int mePage)     { *(context + 8) = mePage; }
-void setHiPage(int* context, int hiPage)     { *(context + 9) = hiPage; }
-void setProgramBreak(int* context, int brk)  { *(context + 10) = brk; }
-void setException(int* context, int exception) { *(context + 11) = exception; }
-void setFaultingPage(int* context, int page) { *(context + 12) = page; }
-void setExitCode(int* context, int code)     { *(context + 13) = code; }
-void setParent(int* context, int* parent) { *(context + 14) = (int) parent; }
-void setVirtualContext(int* context, int* vctxt) { *(context + 15) = (int) vctxt; }
-void setName(int* context, int* name) { *(context + 16) = (int) name; }
+void setNextContext(uint32_t* context, uint32_t* next) { *context       = (uint32_t) next; }
+void setPrevContext(uint32_t* context, uint32_t* prev) { *(context + 1) = (uint32_t) prev; }
+void setPC(uint32_t* context, uint32_t pc)             { *(context + 2) = pc; }
+void setRegs(uint32_t* context, uint32_t* regs)        { *(context + 3) = (uint32_t) regs; }
+void setLoReg(uint32_t* context, uint32_t loReg)       { *(context + 4) = loReg; }
+void setHiReg(uint32_t* context, uint32_t hiReg)       { *(context + 5) = hiReg; }
+void setPT(uint32_t* context, uint32_t* pt)            { *(context + 6) = (uint32_t) pt; }
+void setLoPage(uint32_t* context, uint32_t loPage)     { *(context + 7) = loPage; }
+void setMePage(uint32_t* context, uint32_t mePage)     { *(context + 8) = mePage; }
+void setHiPage(uint32_t* context, uint32_t hiPage)     { *(context + 9) = hiPage; }
+void setProgramBreak(uint32_t* context, uint32_t brk)  { *(context + 10) = brk; }
+void setException(uint32_t* context, uint32_t exception) { *(context + 11) = exception; }
+void setFaultingPage(uint32_t* context, uint32_t page) { *(context + 12) = page; }
+void setExitCode(uint32_t* context, uint32_t code)     { *(context + 13) = code; }
+void setParent(uint32_t* context, uint32_t* parent) { *(context + 14) = (uint32_t) parent; }
+void setVirtualContext(uint32_t* context, uint32_t* vctxt) { *(context + 15) = (uint32_t) vctxt; }
+void setName(uint32_t* context, uint32_t* name) { *(context + 16) = (uint32_t) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1174,34 +1182,34 @@ void setName(int* context, int* name) { *(context + 16) = (int) name; }
 
 void resetMicrokernel();
 
-int* createContext(int* parent, int* vctxt);
+uint32_t* createContext(uint32_t* parent, uint32_t* vctxt);
 
-int* cacheContext(int* vctxt);
+uint32_t* cacheContext(uint32_t* vctxt);
 
-void saveContext(int* context);
+void saveContext(uint32_t* context);
 
-void mapPage(int* context, int page, int frame);
+void mapPage(uint32_t* context, uint32_t page, uint32_t frame);
 
-void restoreContext(int* context);
+void restoreContext(uint32_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int debug_create = 0;
-int debug_map    = 0;
+uint32_t debug_create = 0;
+uint32_t debug_map    = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int* currentContext = (int*) 0; // context currently running
+uint32_t* currentContext = (uint32_t*) 0; // context currently running
 
-int* usedContexts = (int*) 0; // doubly-linked list of used contexts
-int* freeContexts = (int*) 0; // singly-linked list of free contexts
+uint32_t* usedContexts = (uint32_t*) 0; // doubly-linked list of used contexts
+uint32_t* freeContexts = (uint32_t*) 0; // singly-linked list of free contexts
 
 // ------------------------- INITIALIZATION ------------------------
 
 void resetMicrokernel() {
-  currentContext = (int*) 0;
+  currentContext = (uint32_t*) 0;
 
-  while (usedContexts != (int*) 0)
+  while (usedContexts != (uint32_t*) 0)
     usedContexts = deleteContext(usedContexts, usedContexts);
 }
 
@@ -1209,62 +1217,62 @@ void resetMicrokernel() {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
-int pavailable();
-int pused();
+uint32_t pavailable();
+uint32_t pused();
 
-int* palloc();
-void pfree(int* frame);
+uint32_t* palloc();
+void pfree(uint32_t* frame);
 
-void mapAndStore(int* context, int vaddr, int data);
+void mapAndStore(uint32_t* context, uint32_t vaddr, uint32_t data);
 
-void up_loadBinary(int* context);
+void up_loadBinary(uint32_t* context);
 
-int  up_loadString(int* context, int* s, int SP);
-void up_loadArguments(int* context, int argc, int* argv);
+uint32_t  up_loadString(uint32_t* context, uint32_t* s, uint32_t SP);
+void up_loadArguments(uint32_t* context, uint32_t argc, uint32_t* argv);
 
-void mapUnmappedPages(int* context);
+void mapUnmappedPages(uint32_t* context);
 
-int isBootLevelZero();
+uint32_t isBootLevelZero();
 
-int handleSystemCalls(int* context);
+uint32_t handleSystemCalls(uint32_t* context);
 
-int mipster(int* toContext);
-int minster(int* toContext);
-int mobster(int* toContext);
-int hypster(int* toContext);
-int mixter(int* toContext, int mix);
+uint32_t mipster(uint32_t* toContext);
+uint32_t minster(uint32_t* toContext);
+uint32_t mobster(uint32_t* toContext);
+uint32_t hypster(uint32_t* toContext);
+uint32_t mixter(uint32_t* toContext, uint32_t mix);
 
-int selfie_run(int machine);
+uint32_t selfie_run(uint32_t machine);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-int* MY_CONTEXT = (int*) 0;
+uint32_t* MY_CONTEXT = (uint32_t*) 0;
 
-int DONOTEXIT = 0;
-int EXIT = 1;
+uint32_t DONOTEXIT = 0;
+uint32_t EXIT = 1;
 
-int EXITCODE_NOERROR = 0;
-int EXITCODE_IOERROR = -1;
-int EXITCODE_SCANNERERROR = -2;
-int EXITCODE_PARSERERROR = -3;
-int EXITCODE_COMPILERERROR = -4;
-int EXITCODE_OUTOFVIRTUALMEMORY = -5;
-int EXITCODE_OUTOFPHYSICALMEMORY = -6;
-int EXITCODE_UNKNOWNSYSCALL = -7;
-int EXITCODE_UNCAUGHTEXCEPTION = -8;
+uint32_t EXITCODE_NOERROR = 0;
+uint32_t EXITCODE_IOERROR = -1;
+uint32_t EXITCODE_SCANNERERROR = -2;
+uint32_t EXITCODE_PARSERERROR = -3;
+uint32_t EXITCODE_COMPILERERROR = -4;
+uint32_t EXITCODE_OUTOFVIRTUALMEMORY = -5;
+uint32_t EXITCODE_OUTOFPHYSICALMEMORY = -6;
+uint32_t EXITCODE_UNKNOWNSYSCALL = -7;
+uint32_t EXITCODE_UNCAUGHTEXCEPTION = -8;
 
-int MINSTER = 1;
-int MIPSTER = 2;
-int MOBSTER = 3;
+uint32_t MINSTER = 1;
+uint32_t MIPSTER = 2;
+uint32_t MOBSTER = 3;
 
-int HYPSTER = 4;
+uint32_t HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int nextPageFrame = 0;        // [number of words]
+uint32_t nextPageFrame = 0;        // [number of words]
 
-int usedPageFrameMemory = 0;  // [number of words]
-int freePageFrameMemory = 0;  // [number of words]
+uint32_t usedPageFrameMemory = 0;  // [number of words]
+uint32_t freePageFrameMemory = 0;  // [number of words]
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -1276,28 +1284,28 @@ int freePageFrameMemory = 0;  // [number of words]
 // -------------------------- SAT Solver ---------------------------
 // -----------------------------------------------------------------
 
-int FALSE = 0;
-int TRUE  = 1;
+uint32_t FALSE = 0;
+uint32_t TRUE  = 1;
 
-int UNSAT = 0;
-int SAT   = 1;
+uint32_t UNSAT = 0;
+uint32_t SAT   = 1;
 
-int* dimacsName = (int*) 0;
+uint32_t* dimacsName = (uint32_t*) 0;
 
-int numberOfSATVariables = 0;
+uint32_t numberOfSATVariables = 0;
 
  // numberOfSATVariables
-int* SATAssignment = (int*) 0;
+uint32_t* SATAssignment = (uint32_t*) 0;
 
-int numberOfSATClauses = 0;
+uint32_t numberOfSATClauses = 0;
 
 // numberOfSATClauses * 2 * numberOfSATVariables
-int* SATInstance = (int*) 0;
+uint32_t* SATInstance = (uint32_t*) 0;
 
-int clauseMayBeTrue(int* clauseAddress, int depth);
-int instanceMayBeTrue(int depth);
+uint32_t clauseMayBeTrue(uint32_t* clauseAddress, uint32_t depth);
+uint32_t instanceMayBeTrue(uint32_t depth);
 
-int babysat(int depth);
+uint32_t babysat(uint32_t depth);
 
 // -----------------------------------------------------------------
 // ----------------------- DIMACS CNF PARSER -----------------------
@@ -1305,11 +1313,11 @@ int babysat(int depth);
 
 void selfie_printDimacs();
 
-void dimacs_findNextCharacter(int newLine);
+void dimacs_findNextCharacter(uint32_t newLine);
 void dimacs_getSymbol();
-void dimacs_word(int* word);
-int  dimacs_number();
-void dimacs_getClause(int clause);
+void dimacs_word(uint32_t* word);
+uint32_t  dimacs_number();
+void dimacs_getClause(uint32_t clause);
 void dimacs_getInstance();
 
 void selfie_loadDimacs();
@@ -1320,27 +1328,27 @@ void selfie_sat();
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
-void initSelfie(int argc, int* argv);
+void initSelfie(uint32_t argc, uint32_t* argv);
 
-int numberOfRemainingArguments();
-int* remainingArguments();
+uint32_t numberOfRemainingArguments();
+uint32_t* remainingArguments();
 
-int* peekArgument();
-int* getArgument();
-void setArgument(int* argv);
+uint32_t* peekArgument();
+uint32_t* getArgument();
+void setArgument(uint32_t* argv);
 
 void printUsage();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-int selfie_argc = 0;
-int* selfie_argv = (int*) 0;
+uint32_t selfie_argc = 0;
+uint32_t* selfie_argv = (uint32_t*) 0;
 
-int* selfieName = (int*) 0;
+uint32_t* selfieName = (uint32_t*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
-void initSelfie(int argc, int* argv) {
+void initSelfie(uint32_t argc, uint32_t* argv) {
   selfie_argc = argc;
   selfie_argv = argv;
 
@@ -1357,7 +1365,7 @@ void initSelfie(int argc, int* argv) {
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-int addWrap(int a, int b) {
+uint32_t addWrap(uint32_t a, uint32_t b) {
   // signed integer addition with wrap-around semantics and overflow detection
   // but without causing any integer overflow in the implementation
 
@@ -1381,7 +1389,7 @@ int addWrap(int a, int b) {
   return a + b;
 }
 
-int subtractWrap(int a, int b) {
+uint32_t subtractWrap(uint32_t a, uint32_t b) {
   // signed integer subtraction with wrap-around semantics and overflow
   // detection but without causing any integer overflow in the implementation
 
@@ -1405,7 +1413,7 @@ int subtractWrap(int a, int b) {
   return a - b;
 }
 
-int multiplyWrap(int a, int b) {
+uint32_t multiplyWrap(uint32_t a, uint32_t b) {
   INT_OVERFLOW = OVERFLOW_NO;
 
   if (a > 0) {
@@ -1432,7 +1440,7 @@ int multiplyWrap(int a, int b) {
   return a * b;
 }
 
-void checkDivision(int a, int b) {
+void checkDivision(uint32_t a, uint32_t b) {
   INT_OVERFLOW = OVERFLOW_NO;
 
   if (b == 0)
@@ -1442,13 +1450,13 @@ void checkDivision(int a, int b) {
       INT_OVERFLOW = OVERFLOW_YES;
 }
 
-int twoToThePowerOf(int p) {
+uint32_t twoToThePowerOf(uint32_t p) {
   // assert: 0 <= p < 31
   return *(power_of_two_table + p);
 }
 
-int leftShift(int n, int b) {
-  int t;
+uint32_t leftShift(uint32_t n, uint32_t b) {
+  uint32_t t;
 
   if (b <= 0)
     return n;
@@ -1486,7 +1494,7 @@ int leftShift(int n, int b) {
     return 0;
 }
 
-int rightShift(int n, int b) {
+uint32_t rightShift(uint32_t n, uint32_t b) {
   if (b <= 0)
     return n;
   else if (b < 31) {
@@ -1509,9 +1517,19 @@ int rightShift(int n, int b) {
     return 0;
 }
 
-int loadCharacter(int* s, int i) {
+uint32_t signedLessThan(uint32_t lhs, uint32_t rhs) {
+  // signed "<" operator: compare lhs and rhs in two's complement
+  return lhs + INT_MIN < rhs + INT_MIN;
+}
+
+uint32_t signedGreaterThan(uint32_t lhs, uint32_t rhs) {
+  // signed ">" operator: compare lhs and rhs in two's complement
+  return lhs + INT_MIN > rhs + INT_MIN;
+}
+
+uint32_t loadCharacter(uint32_t* s, uint32_t i) {
   // assert: i >= 0
-  int a;
+  uint32_t a;
 
   // a is the index of the word where the to-be-loaded i-th character in s is
   a = i / SIZEOFINT;
@@ -1521,9 +1539,9 @@ int loadCharacter(int* s, int i) {
   return rightShift(leftShift(*(s + a), ((SIZEOFINT - 1) - (i % SIZEOFINT)) * 8), (SIZEOFINT - 1) * 8);
 }
 
-int* storeCharacter(int* s, int i, int c) {
+uint32_t* storeCharacter(uint32_t* s, uint32_t i, uint32_t c) {
   // assert: i >= 0, all characters are 7-bit
-  int a;
+  uint32_t a;
 
   // a is the index of the word where the with c
   // to-be-overwritten i-th character in s is
@@ -1536,8 +1554,8 @@ int* storeCharacter(int* s, int i, int c) {
   return s;
 }
 
-int stringLength(int* s) {
-  int i;
+uint32_t stringLength(uint32_t* s) {
+  uint32_t i;
 
   i = 0;
 
@@ -1547,10 +1565,10 @@ int stringLength(int* s) {
   return i;
 }
 
-void stringReverse(int* s) {
-  int i;
-  int j;
-  int tmp;
+void stringReverse(uint32_t* s) {
+  uint32_t i;
+  uint32_t j;
+  uint32_t tmp;
 
   i = 0;
   j = stringLength(s) - 1;
@@ -1566,8 +1584,8 @@ void stringReverse(int* s) {
   }
 }
 
-int stringCompare(int* s, int* t) {
-  int i;
+uint32_t stringCompare(uint32_t* s, uint32_t* t) {
+  uint32_t i;
 
   i = 0;
 
@@ -1583,10 +1601,10 @@ int stringCompare(int* s, int* t) {
       return 0;
 }
 
-int atoi(int* s) {
-  int i;
-  int n;
-  int c;
+uint32_t atoi(uint32_t* s) {
+  uint32_t i;
+  uint32_t n;
+  uint32_t c;
 
   // the conversion of the ASCII string in s to its
   // numerical value n begins with the leftmost digit in s
@@ -1646,12 +1664,12 @@ int atoi(int* s) {
   return n;
 }
 
-int* itoa(int n, int* s, int b, int a, int p) {
+uint32_t* itoa(uint32_t n, uint32_t* s, uint32_t b, uint32_t a, uint32_t p) {
   // assert: b in {2,4,8,10,16}
 
-  int i;
-  int sign;
-  int msb;
+  uint32_t i;
+  uint32_t sign;
+  uint32_t msb;
 
   // the conversion of the integer n to an ASCII string in s
   // with base b, alignment a, and fixed point p
@@ -1792,7 +1810,7 @@ int* itoa(int n, int* s, int b, int a, int p) {
   return s;
 }
 
-int fixedPointRatio(int a, int b) {
+uint32_t fixedPointRatio(uint32_t a, uint32_t b) {
   // compute fixed point ratio with 2 fractional digits
 
   // multiply a/b with 100 but avoid overflow
@@ -1811,7 +1829,7 @@ int fixedPointRatio(int a, int b) {
   return 0;
 }
 
-int fixedPointPercentage(int r) {
+uint32_t fixedPointPercentage(uint32_t r) {
   if (r != 0)
     // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
     return 1000000 / r;
@@ -1819,7 +1837,7 @@ int fixedPointPercentage(int r) {
     return 0;
 }
 
-void putCharacter(int c) {
+void putCharacter(uint32_t c) {
   *character_buffer = c;
 
   // assert: character_buffer is mapped
@@ -1839,7 +1857,7 @@ void putCharacter(int c) {
       outputFD = 1;
 
       print(selfieName);
-      print((int*) ": could not write character to output file ");
+      print((uint32_t*) ": could not write character to output file ");
       print(outputName);
       println();
     }
@@ -1848,11 +1866,11 @@ void putCharacter(int c) {
   }
 }
 
-void print(int* s) {
-  int i;
+void print(uint32_t* s) {
+  uint32_t i;
 
-  if (s == (int*) 0)
-    print((int*) "NULL");
+  if (s == (uint32_t*) 0)
+    print((uint32_t*) "NULL");
   else {
     i = 0;
 
@@ -1868,24 +1886,24 @@ void println() {
   putCharacter(CHAR_LF);
 }
 
-void printCharacter(int c) {
+void printCharacter(uint32_t c) {
   putCharacter(CHAR_SINGLEQUOTE);
 
   if (c == CHAR_EOF)
-    print((int*) "end of file");
+    print((uint32_t*) "end of file");
   else if (c == CHAR_TAB)
-    print((int*) "tabulator");
+    print((uint32_t*) "tabulator");
   else if (c == CHAR_LF)
-    print((int*) "line feed");
+    print((uint32_t*) "line feed");
   else if (c == CHAR_CR)
-    print((int*) "carriage return");
+    print((uint32_t*) "carriage return");
   else
     putCharacter(c);
 
   putCharacter(CHAR_SINGLEQUOTE);
 }
 
-void printString(int* s) {
+void printString(uint32_t* s) {
   putCharacter(CHAR_DOUBLEQUOTE);
 
   print(s);
@@ -1893,31 +1911,31 @@ void printString(int* s) {
   putCharacter(CHAR_DOUBLEQUOTE);
 }
 
-void printInteger(int n) {
+void printInteger(uint32_t n) {
   print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
-void printFixedPointPercentage(int a, int b) {
+void printFixedPointPercentage(uint32_t a, uint32_t b) {
   print(itoa(fixedPointPercentage(fixedPointRatio(a, b)), integer_buffer, 10, 0, 2));
 }
 
-void printFixedPointRatio(int a, int b) {
+void printFixedPointRatio(uint32_t a, uint32_t b) {
   print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
-void printHexadecimal(int n, int a) {
+void printHexadecimal(uint32_t n, uint32_t a) {
   print(itoa(n, integer_buffer, 16, a, 0));
 }
 
-void printOctal(int n, int a) {
+void printOctal(uint32_t n, uint32_t a) {
   print(itoa(n, integer_buffer, 8, a, 0));
 }
 
-void printBinary(int n, int a) {
+void printBinary(uint32_t n, uint32_t a) {
   print(itoa(n, integer_buffer, 2, a, 0));
 }
 
-int roundUp(int n, int m) {
+uint32_t roundUp(uint32_t n, uint32_t m) {
   if (n % m == 0)
     return n;
   else if (n >= 0)
@@ -1926,19 +1944,19 @@ int roundUp(int n, int m) {
     return n - n % m;
 }
 
-int* smalloc(int size) {
+uint32_t* smalloc(uint32_t size) {
   // this procedure ensures a defined program exit,
   // if no memory can be allocated
-  int* memory;
+  uint32_t* memory;
 
   memory = malloc(size);
 
   if (size == 0)
     // any address including null
     return memory;
-  else if ((int) memory == 0) {
+  else if ((uint32_t) memory == 0) {
     print(selfieName);
-    print((int*) ": malloc out of memory");
+    print((uint32_t*) ": malloc out of memory");
     println();
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
@@ -1947,13 +1965,13 @@ int* smalloc(int size) {
   return memory;
 }
 
-int* zalloc(int size) {
+uint32_t* zalloc(uint32_t size) {
   // this procedure is only executed at boot level zero
   // zalloc allocates size bytes rounded up to word size
   // and then zeroes that memory, similar to calloc, but
   // called zalloc to avoid redeclaring calloc
-  int* memory;
-  int  i;
+  uint32_t* memory;
+  uint32_t  i;
 
   size = roundUp(size, WORDSIZE);
 
@@ -1983,62 +2001,62 @@ int* zalloc(int size) {
 // ---------------------------- SCANNER ----------------------------
 // -----------------------------------------------------------------
 
-void printSymbol(int symbol) {
+void printSymbol(uint32_t symbol) {
   putCharacter(CHAR_DOUBLEQUOTE);
 
   if (symbol == SYM_EOF)
-    print((int*) "end of file");
+    print((uint32_t*) "end of file");
   else
-    print((int*) *(SYMBOLS + symbol));
+    print((uint32_t*) *(SYMBOLS + symbol));
 
   putCharacter(CHAR_DOUBLEQUOTE);
 }
 
-void printLineNumber(int* message, int line) {
+void printLineNumber(uint32_t* message, uint32_t line) {
   print(selfieName);
-  print((int*) ": ");
+  print((uint32_t*) ": ");
   print(message);
-  print((int*) " in ");
+  print((uint32_t*) " in ");
   print(sourceName);
-  print((int*) " in line ");
+  print((uint32_t*) " in line ");
   printInteger(line);
-  print((int*) ": ");
+  print((uint32_t*) ": ");
 }
 
-void syntaxErrorMessage(int* message) {
-  printLineNumber((int*) "error", lineNumber);
+void syntaxErrorMessage(uint32_t* message) {
+  printLineNumber((uint32_t*) "error", lineNumber);
 
   print(message);
 
   println();
 }
 
-void syntaxErrorCharacter(int expected) {
-  printLineNumber((int*) "error", lineNumber);
+void syntaxErrorCharacter(uint32_t expected) {
+  printLineNumber((uint32_t*) "error", lineNumber);
 
   printCharacter(expected);
-  print((int*) " expected but ");
+  print((uint32_t*) " expected but ");
 
   printCharacter(character);
-  print((int*) " found");
+  print((uint32_t*) " found");
 
   println();
 }
 
-void syntaxErrorIdentifier(int* expected) {
-  printLineNumber((int*) "error", lineNumber);
+void syntaxErrorIdentifier(uint32_t* expected) {
+  printLineNumber((uint32_t*) "error", lineNumber);
 
   print(expected);
-  print((int*) " expected but ");
+  print((uint32_t*) " expected but ");
 
   print(identifier);
-  print((int*) " found");
+  print((uint32_t*) " found");
 
   println();
 }
 
 void getCharacter() {
-  int numberOfReadBytes;
+  uint32_t numberOfReadBytes;
 
   // assert: character_buffer is mapped
 
@@ -2056,7 +2074,7 @@ void getCharacter() {
     character = CHAR_EOF;
   else {
     print(selfieName);
-    print((int*) ": could not read character from input file ");
+    print((uint32_t*) ": could not read character from input file ");
     print(sourceName);
     println();
 
@@ -2064,7 +2082,7 @@ void getCharacter() {
   }
 }
 
-int isCharacterNewLine() {
+uint32_t isCharacterNewLine() {
   if (character == CHAR_LF)
     return 1;
   else if (character == CHAR_CR)
@@ -2073,7 +2091,7 @@ int isCharacterNewLine() {
     return 0;
 }
 
-int isCharacterWhitespace() {
+uint32_t isCharacterWhitespace() {
   if (character == CHAR_SPACE)
     return 1;
   else if (character == CHAR_TAB)
@@ -2082,8 +2100,8 @@ int isCharacterWhitespace() {
     return isCharacterNewLine();
 }
 
-int findNextCharacter() {
-  int inComment;
+uint32_t findNextCharacter() {
+  uint32_t inComment;
 
   // assuming we are not in a comment
   inComment = 0;
@@ -2139,7 +2157,7 @@ int findNextCharacter() {
   }
 }
 
-int isCharacterLetter() {
+uint32_t isCharacterLetter() {
   // ASCII codes for lower- and uppercase letters are in contiguous intervals
   if (character >= 'a')
     if (character <= 'z')
@@ -2155,7 +2173,7 @@ int isCharacterLetter() {
     return 0;
 }
 
-int isCharacterDigit() {
+uint32_t isCharacterDigit() {
   // ASCII codes for digits are in a contiguous interval
   if (character >= '0')
     if (character <= '9')
@@ -2166,7 +2184,7 @@ int isCharacterDigit() {
     return 0;
 }
 
-int isCharacterLetterOrDigitOrUnderscore() {
+uint32_t isCharacterLetterOrDigitOrUnderscore() {
   if (isCharacterLetter())
     return 1;
   else if (isCharacterDigit())
@@ -2177,7 +2195,7 @@ int isCharacterLetterOrDigitOrUnderscore() {
     return 0;
 }
 
-int isCharacterNotDoubleQuoteOrNewLineOrEOF() {
+uint32_t isCharacterNotDoubleQuoteOrNewLineOrEOF() {
   if (character == CHAR_DOUBLEQUOTE)
     return 0;
   else if (isCharacterNewLine())
@@ -2188,17 +2206,17 @@ int isCharacterNotDoubleQuoteOrNewLineOrEOF() {
     return 1;
 }
 
-int identifierStringMatch(int keyword) {
-  return stringCompare(identifier, (int*) *(SYMBOLS + keyword));
+uint32_t identifierStringMatch(uint32_t keyword) {
+  return stringCompare(identifier, (uint32_t*) *(SYMBOLS + keyword));
 }
 
-int identifierOrKeyword() {
+uint32_t identifierOrKeyword() {
   if (identifierStringMatch(SYM_WHILE))
     return SYM_WHILE;
   if (identifierStringMatch(SYM_IF))
     return SYM_IF;
-  if (identifierStringMatch(SYM_INT))
-    return SYM_INT;
+  if (identifierStringMatch(SYM_UINT32))
+    return SYM_UINT32;
   if (identifierStringMatch(SYM_ELSE))
     return SYM_ELSE;
   if (identifierStringMatch(SYM_RETURN))
@@ -2210,7 +2228,7 @@ int identifierOrKeyword() {
 }
 
 void getSymbol() {
-  int i;
+  uint32_t i;
 
   // reset previously scanned symbol
   symbol = SYM_EOF;
@@ -2227,7 +2245,7 @@ void getSymbol() {
 
         while (isCharacterLetterOrDigitOrUnderscore()) {
           if (i >= maxIdentifierLength) {
-            syntaxErrorMessage((int*) "identifier too long");
+            syntaxErrorMessage((uint32_t*) "identifier too long");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2251,7 +2269,7 @@ void getSymbol() {
 
         while (isCharacterDigit()) {
           if (i >= maxIntegerLength) {
-            syntaxErrorMessage((int*) "integer out of bound");
+            syntaxErrorMessage((uint32_t*) "integer out of bound");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2272,12 +2290,12 @@ void getSymbol() {
             if (mayBeINTMIN)
               isINTMIN = 1;
             else {
-              syntaxErrorMessage((int*) "integer out of bound");
+              syntaxErrorMessage((uint32_t*) "integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
             }
           } else {
-            syntaxErrorMessage((int*) "integer out of bound");
+            syntaxErrorMessage((uint32_t*) "integer out of bound");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2291,7 +2309,7 @@ void getSymbol() {
         literal = 0;
 
         if (character == CHAR_EOF) {
-          syntaxErrorMessage((int*) "reached end of file looking for a character literal");
+          syntaxErrorMessage((uint32_t*) "reached end of file looking for a character literal");
 
           exit(EXITCODE_SCANNERERROR);
         } else
@@ -2322,7 +2340,7 @@ void getSymbol() {
 
         while (isCharacterNotDoubleQuoteOrNewLineOrEOF()) {
           if (i >= maxStringLength) {
-            syntaxErrorMessage((int*) "string too long");
+            syntaxErrorMessage((uint32_t*) "string too long");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2437,8 +2455,8 @@ void getSymbol() {
         symbol = SYM_MOD;
 
       } else {
-        printLineNumber((int*) "error", lineNumber);
-        print((int*) "found unknown character ");
+        printLineNumber((uint32_t*) "error", lineNumber);
+        print((uint32_t*) "found unknown character ");
         printCharacter(character);
 
         println();
@@ -2455,8 +2473,8 @@ void getSymbol() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(int whichTable, int* string, int line, int class, int type, int value, int address) {
-  int* newEntry;
+void createSymbolTableEntry(uint32_t whichTable, uint32_t* string, uint32_t line, uint32_t class, uint32_t type, uint32_t value, uint32_t address) {
+  uint32_t* newEntry;
 
   newEntry = smalloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
 
@@ -2491,8 +2509,8 @@ void createSymbolTableEntry(int whichTable, int* string, int line, int class, in
   }
 }
 
-int* searchSymbolTable(int* entry, int* string, int class) {
-  while (entry != (int*) 0) {
+uint32_t* searchSymbolTable(uint32_t* entry, uint32_t* string, uint32_t class) {
+  while (entry != (uint32_t*) 0) {
     if (stringCompare(string, getString(entry)))
       if (class == getClass(entry))
         return entry;
@@ -2501,11 +2519,11 @@ int* searchSymbolTable(int* entry, int* string, int class) {
     entry = getNextEntry(entry);
   }
 
-  return (int*) 0;
+  return (uint32_t*) 0;
 }
 
-int* getScopedSymbolTableEntry(int* string, int class) {
-  int* entry;
+uint32_t* getScopedSymbolTableEntry(uint32_t* string, uint32_t class) {
+  uint32_t* entry;
 
   if (class == VARIABLE)
     // local variables override global variables
@@ -2514,22 +2532,22 @@ int* getScopedSymbolTableEntry(int* string, int class) {
     // library procedures override declared or defined procedures
     entry = searchSymbolTable(library_symbol_table, string, PROCEDURE);
   else
-    entry = (int*) 0;
+    entry = (uint32_t*) 0;
 
-  if (entry == (int*) 0)
+  if (entry == (uint32_t*) 0)
     return searchSymbolTable(global_symbol_table, string, class);
   else
     return entry;
 }
 
-int isUndefinedProcedure(int* entry) {
-  int* libraryEntry;
+uint32_t isUndefinedProcedure(uint32_t* entry) {
+  uint32_t* libraryEntry;
 
   if (getClass(entry) == PROCEDURE) {
     // library procedures override declared or defined procedures
     libraryEntry = searchSymbolTable(library_symbol_table, getString(entry), PROCEDURE);
 
-    if (libraryEntry != (int*) 0)
+    if (libraryEntry != (uint32_t*) 0)
       // procedure is library procedure
       return 0;
     else if (getAddress(entry) == 0)
@@ -2543,22 +2561,22 @@ int isUndefinedProcedure(int* entry) {
   return 0;
 }
 
-int reportUndefinedProcedures() {
-  int undefined;
-  int* entry;
+uint32_t reportUndefinedProcedures() {
+  uint32_t undefined;
+  uint32_t* entry;
 
   undefined = 0;
 
   entry = global_symbol_table;
 
-  while (entry != (int*) 0) {
+  while (entry != (uint32_t*) 0) {
     if (isUndefinedProcedure(entry)) {
       undefined = 1;
 
-      printLineNumber((int*) "error", getLineNumber(entry));
-      print((int*) "procedure ");
+      printLineNumber((uint32_t*) "error", getLineNumber(entry));
+      print((uint32_t*) "procedure ");
       print(getString(entry));
-      print((int*) " undefined");
+      print((uint32_t*) " undefined");
       println();
     }
 
@@ -2573,7 +2591,7 @@ int reportUndefinedProcedures() {
 // ---------------------------- PARSER -----------------------------
 // -----------------------------------------------------------------
 
-int isNotRbraceOrEOF() {
+uint32_t isNotRbraceOrEOF() {
   if (symbol == SYM_RBRACE)
     return 0;
   else if (symbol == SYM_EOF)
@@ -2582,7 +2600,7 @@ int isNotRbraceOrEOF() {
     return 1;
 }
 
-int isExpression() {
+uint32_t isExpression() {
   if (symbol == SYM_MINUS)
     return 1;
   else if (symbol == SYM_LPARENTHESIS)
@@ -2601,7 +2619,7 @@ int isExpression() {
     return 0;
 }
 
-int isLiteral() {
+uint32_t isLiteral() {
   if (symbol == SYM_INTEGER)
     return 1;
   else if (symbol == SYM_CHARACTER)
@@ -2610,7 +2628,7 @@ int isLiteral() {
     return 0;
 }
 
-int isStarOrDivOrModulo() {
+uint32_t isStarOrDivOrModulo() {
   if (symbol == SYM_ASTERISK)
     return 1;
   else if (symbol == SYM_DIV)
@@ -2621,7 +2639,7 @@ int isStarOrDivOrModulo() {
     return 0;
 }
 
-int isPlusOrMinus() {
+uint32_t isPlusOrMinus() {
   if (symbol == SYM_MINUS)
     return 1;
   else if (symbol == SYM_PLUS)
@@ -2630,7 +2648,7 @@ int isPlusOrMinus() {
     return 0;
 }
 
-int isComparison() {
+uint32_t isComparison() {
   if (symbol == SYM_EQUALITY)
     return 1;
   else if (symbol == SYM_NOTEQ)
@@ -2647,7 +2665,7 @@ int isComparison() {
     return 0;
 }
 
-int lookForFactor() {
+uint32_t lookForFactor() {
   if (symbol == SYM_LPARENTHESIS)
     return 0;
   else if (symbol == SYM_ASTERISK)
@@ -2666,7 +2684,7 @@ int lookForFactor() {
     return 1;
 }
 
-int lookForStatement() {
+uint32_t lookForStatement() {
   if (symbol == SYM_ASTERISK)
     return 0;
   else if (symbol == SYM_IDENTIFIER)
@@ -2683,8 +2701,8 @@ int lookForStatement() {
     return 1;
 }
 
-int lookForType() {
-  if (symbol == SYM_INT)
+uint32_t lookForType() {
+  if (symbol == SYM_UINT32)
     return 0;
   else if (symbol == SYM_VOID)
     return 0;
@@ -2699,47 +2717,47 @@ void talloc() {
   if (allocatedTemporaries < REG_T7 - REG_A3)
     allocatedTemporaries = allocatedTemporaries + 1;
   else {
-    syntaxErrorMessage((int*) "out of registers");
+    syntaxErrorMessage((uint32_t*) "out of registers");
 
     exit(EXITCODE_COMPILERERROR);
   }
 }
 
-int currentTemporary() {
+uint32_t currentTemporary() {
   if (allocatedTemporaries > 0)
     return allocatedTemporaries + REG_A3;
   else {
-    syntaxErrorMessage((int*) "illegal register access");
+    syntaxErrorMessage((uint32_t*) "illegal register access");
 
     exit(EXITCODE_COMPILERERROR);
   }
 }
 
-int previousTemporary() {
+uint32_t previousTemporary() {
   if (allocatedTemporaries > 1)
     return currentTemporary() - 1;
   else {
-    syntaxErrorMessage((int*) "illegal register access");
+    syntaxErrorMessage((uint32_t*) "illegal register access");
 
     exit(EXITCODE_COMPILERERROR);
   }
 }
 
-int nextTemporary() {
+uint32_t nextTemporary() {
   if (allocatedTemporaries < REG_T7 - REG_A3)
     return currentTemporary() + 1;
   else {
-    syntaxErrorMessage((int*) "out of registers");
+    syntaxErrorMessage((uint32_t*) "out of registers");
 
     exit(EXITCODE_COMPILERERROR);
   }
 }
 
-void tfree(int numberOfTemporaries) {
+void tfree(uint32_t numberOfTemporaries) {
   allocatedTemporaries = allocatedTemporaries - numberOfTemporaries;
 
   if (allocatedTemporaries < 0) {
-    syntaxErrorMessage((int*) "illegal register deallocation");
+    syntaxErrorMessage((uint32_t*) "illegal register deallocation");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -2755,7 +2773,7 @@ void save_temporaries() {
   }
 }
 
-void restore_temporaries(int numberOfTemporaries) {
+void restore_temporaries(uint32_t numberOfTemporaries) {
   while (allocatedTemporaries < numberOfTemporaries) {
     talloc();
 
@@ -2765,64 +2783,64 @@ void restore_temporaries(int numberOfTemporaries) {
   }
 }
 
-void syntaxErrorSymbol(int expected) {
-  printLineNumber((int*) "error", lineNumber);
+void syntaxErrorSymbol(uint32_t expected) {
+  printLineNumber((uint32_t*) "error", lineNumber);
 
   printSymbol(expected);
-  print((int*) " expected but ");
+  print((uint32_t*) " expected but ");
 
   printSymbol(symbol);
-  print((int*) " found");
+  print((uint32_t*) " found");
 
   println();
 }
 
 void syntaxErrorUnexpected() {
-  printLineNumber((int*) "error", lineNumber);
+  printLineNumber((uint32_t*) "error", lineNumber);
 
-  print((int*) "unexpected symbol ");
+  print((uint32_t*) "unexpected symbol ");
   printSymbol(symbol);
-  print((int*) " found");
+  print((uint32_t*) " found");
 
   println();
 }
 
-void printType(int type) {
+void printType(uint32_t type) {
   if (type == INT_T)
-    print((int*) "int");
+    print((uint32_t*) "int");
   else if (type == INTSTAR_T)
-    print((int*) "int*");
+    print((uint32_t*) "uint32_t*");
   else if (type == VOID_T)
-    print((int*) "void");
+    print((uint32_t*) "void");
   else
-    print((int*) "unknown");
+    print((uint32_t*) "unknown");
 }
 
-void typeWarning(int expected, int found) {
-  printLineNumber((int*) "warning", lineNumber);
+void typeWarning(uint32_t expected, uint32_t found) {
+  printLineNumber((uint32_t*) "warning", lineNumber);
 
-  print((int*) "type mismatch, ");
+  print((uint32_t*) "type mismatch, ");
 
   printType(expected);
 
-  print((int*) " expected but ");
+  print((uint32_t*) " expected but ");
 
   printType(found);
 
-  print((int*) " found");
+  print((uint32_t*) " found");
 
   println();
 }
 
-int* getVariable(int* variable) {
-  int* entry;
+uint32_t* getVariable(uint32_t* variable) {
+  uint32_t* entry;
 
   entry = getScopedSymbolTableEntry(variable, VARIABLE);
 
-  if (entry == (int*) 0) {
-    printLineNumber((int*) "error", lineNumber);
+  if (entry == (uint32_t*) 0) {
+    printLineNumber((uint32_t*) "error", lineNumber);
     print(variable);
-    print((int*) " undeclared");
+    print((uint32_t*) " undeclared");
     println();
 
     exit(EXITCODE_PARSERERROR);
@@ -2831,8 +2849,8 @@ int* getVariable(int* variable) {
   return entry;
 }
 
-int load_variable(int* variable) {
-  int* entry;
+uint32_t load_variable(uint32_t* variable) {
+  uint32_t* entry;
 
   entry = getVariable(variable);
 
@@ -2843,8 +2861,8 @@ int load_variable(int* variable) {
   return getType(entry);
 }
 
-void load_integer(int value) {
-  int isNegative;
+void load_integer(uint32_t value) {
+  uint32_t isNegative;
 
   talloc();
 
@@ -2895,8 +2913,8 @@ void load_integer(int value) {
   }
 }
 
-void load_string(int* string) {
-  int length;
+void load_string(uint32_t* string) {
+  uint32_t length;
 
   length = stringLength(string) + 1;
 
@@ -2909,10 +2927,10 @@ void load_string(int* string) {
   emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
 }
 
-int help_call_codegen(int* entry, int* procedure) {
-  int type;
+uint32_t help_call_codegen(uint32_t* entry, uint32_t* procedure) {
+  uint32_t type;
 
-  if (entry == (int*) 0) {
+  if (entry == (uint32_t*) 0) {
     // procedure never called nor declared nor defined
 
     // default return type is "int"
@@ -2944,7 +2962,7 @@ int help_call_codegen(int* entry, int* procedure) {
   return type;
 }
 
-void help_procedure_prologue(int localVariables) {
+void help_procedure_prologue(uint32_t localVariables) {
   // allocate memory for return address
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, -WORDSIZE);
 
@@ -2965,7 +2983,7 @@ void help_procedure_prologue(int localVariables) {
     emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * WORDSIZE);
 }
 
-void help_procedure_epilogue(int parameters) {
+void help_procedure_epilogue(uint32_t parameters) {
   // deallocate memory for callee's frame pointer and local variables
   emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
 
@@ -2985,10 +3003,10 @@ void help_procedure_epilogue(int parameters) {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int gr_call(int* procedure) {
-  int* entry;
-  int numberOfTemporaries;
-  int type;
+uint32_t gr_call(uint32_t* procedure) {
+  uint32_t* entry;
+  uint32_t numberOfTemporaries;
+  uint32_t type;
 
   // assert: n = allocatedTemporaries
 
@@ -3053,12 +3071,12 @@ int gr_call(int* procedure) {
   return type;
 }
 
-int gr_factor() {
-  int hasCast;
-  int cast;
-  int type;
+uint32_t gr_factor() {
+  uint32_t hasCast;
+  uint32_t cast;
+  uint32_t type;
 
-  int* variableOrProcedureName;
+  uint32_t* variableOrProcedureName;
 
   // assert: n = allocatedTemporaries
 
@@ -3079,8 +3097,8 @@ int gr_factor() {
   if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
-    // cast: "(" "int" [ "*" ] ")"
-    if (symbol == SYM_INT) {
+    // cast: "(" "uint32_t" [ "*" ] ")"
+    if (symbol == SYM_UINT32) {
       hasCast = 1;
 
       cast = gr_type();
@@ -3207,10 +3225,10 @@ int gr_factor() {
     return type;
 }
 
-int gr_term() {
-  int ltype;
-  int operatorSymbol;
-  int rtype;
+uint32_t gr_term() {
+  uint32_t ltype;
+  uint32_t operatorSymbol;
+  uint32_t rtype;
 
   // assert: n = allocatedTemporaries
 
@@ -3252,11 +3270,11 @@ int gr_term() {
   return ltype;
 }
 
-int gr_simpleExpression() {
-  int sign;
-  int ltype;
-  int operatorSymbol;
-  int rtype;
+uint32_t gr_simpleExpression() {
+  uint32_t sign;
+  uint32_t ltype;
+  uint32_t operatorSymbol;
+  uint32_t rtype;
 
   // assert: n = allocatedTemporaries
 
@@ -3313,7 +3331,7 @@ int gr_simpleExpression() {
           emitLeftShiftBy(currentTemporary(), 2);
         else
           // INTSTAR_T + INTSTAR_T
-          syntaxErrorMessage((int*) "(int*) + (int*) is undefined");
+          syntaxErrorMessage((uint32_t*) "(uint32_t*) + (uint32_t*) is undefined");
       } else if (rtype == INTSTAR_T) {
         // INT_T + INTSTAR_T
         // pointer arithmetic: factor of 2^2 of integer operand
@@ -3342,7 +3360,7 @@ int gr_simpleExpression() {
         }
       } else if (rtype == INTSTAR_T)
         // INT_T - INTSTAR_T
-        syntaxErrorMessage((int*) "(int) - (int*) is undefined");
+        syntaxErrorMessage((uint32_t*) "(uint32_t) - (uint32_t*) is undefined");
       else
         // INT_T - INT_T
         emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
@@ -3356,10 +3374,10 @@ int gr_simpleExpression() {
   return ltype;
 }
 
-int gr_expression() {
-  int ltype;
-  int operatorSymbol;
-  int rtype;
+uint32_t gr_expression() {
+  uint32_t ltype;
+  uint32_t operatorSymbol;
+  uint32_t rtype;
 
   // assert: n = allocatedTemporaries
 
@@ -3457,8 +3475,8 @@ int gr_expression() {
 }
 
 void gr_while() {
-  int brBackToWhile;
-  int brForwardToEnd;
+  uint32_t brBackToWhile;
+  uint32_t brForwardToEnd;
 
   // assert: allocatedTemporaries == 0
 
@@ -3524,8 +3542,8 @@ void gr_while() {
 }
 
 void gr_if() {
-  int brForwardToElseOrEnd;
-  int brForwardToEnd;
+  uint32_t brForwardToElseOrEnd;
+  uint32_t brForwardToEnd;
 
   // assert: allocatedTemporaries == 0
 
@@ -3615,7 +3633,7 @@ void gr_if() {
 }
 
 void gr_return() {
-  int type;
+  uint32_t type;
 
   // assert: allocatedTemporaries == 0
 
@@ -3652,10 +3670,10 @@ void gr_return() {
 }
 
 void gr_statement() {
-  int ltype;
-  int rtype;
-  int* variableOrProcedureName;
-  int* entry;
+  uint32_t ltype;
+  uint32_t rtype;
+  uint32_t* variableOrProcedureName;
+  uint32_t* entry;
 
   // assert: allocatedTemporaries == 0
 
@@ -3813,12 +3831,12 @@ void gr_statement() {
   }
 }
 
-int gr_type() {
-  int type;
+uint32_t gr_type() {
+  uint32_t type;
 
   type = INT_T;
 
-  if (symbol == SYM_INT) {
+  if (symbol == SYM_UINT32) {
     getSymbol();
 
     if (symbol == SYM_ASTERISK) {
@@ -3827,13 +3845,13 @@ int gr_type() {
       getSymbol();
     }
   } else
-    syntaxErrorSymbol(SYM_INT);
+    syntaxErrorSymbol(SYM_UINT32);
 
   return type;
 }
 
-void gr_variable(int offset) {
-  int type;
+void gr_variable(uint32_t offset) {
+  uint32_t type;
 
   type = gr_type();
 
@@ -3845,15 +3863,15 @@ void gr_variable(int offset) {
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
-    createSymbolTableEntry(LOCAL_TABLE, (int*) "missing variable name", lineNumber, VARIABLE, type, 0, offset);
+    createSymbolTableEntry(LOCAL_TABLE, (uint32_t*) "missing variable name", lineNumber, VARIABLE, type, 0, offset);
   }
 }
 
-int gr_initialization(int type) {
-  int initialValue;
-  int hasCast;
-  int cast;
-  int sign;
+uint32_t gr_initialization(uint32_t type) {
+  uint32_t initialValue;
+  uint32_t hasCast;
+  uint32_t cast;
+  uint32_t sign;
 
   initialValue = 0;
 
@@ -3923,12 +3941,12 @@ int gr_initialization(int type) {
   return initialValue;
 }
 
-void gr_procedure(int* procedure, int type) {
-  int isUndefined;
-  int numberOfParameters;
-  int parameters;
-  int localVariables;
-  int* entry;
+void gr_procedure(uint32_t* procedure, uint32_t type) {
+  uint32_t isUndefined;
+  uint32_t numberOfParameters;
+  uint32_t parameters;
+  uint32_t localVariables;
+  uint32_t* entry;
 
   // assuming procedure is undefined
   isUndefined = 1;
@@ -3978,7 +3996,7 @@ void gr_procedure(int* procedure, int type) {
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
-    if (entry == (int*) 0)
+    if (entry == (uint32_t*) 0)
       // procedure never called nor declared nor defined
       createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, 0);
     else if (getType(entry) != type)
@@ -3990,7 +4008,7 @@ void gr_procedure(int* procedure, int type) {
 
   } else if (symbol == SYM_LBRACE) {
     // this is a procedure definition
-    if (entry == (int*) 0)
+    if (entry == (uint32_t*) 0)
       // procedure never called nor declared nor defined
       createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
     else {
@@ -4001,7 +4019,7 @@ void gr_procedure(int* procedure, int type) {
           // procedure already called but not defined
           fixlink_absolute(getAddress(entry), binaryLength);
 
-          if (stringCompare(procedure, (int*) "main"))
+          if (stringCompare(procedure, (uint32_t*) "main"))
             // first source containing main procedure provides binary name
             binaryName = sourceName;
         } else
@@ -4020,10 +4038,10 @@ void gr_procedure(int* procedure, int type) {
         setAddress(entry, binaryLength);
       } else {
         // procedure already defined
-        printLineNumber((int*) "warning", lineNumber);
-        print((int*) "redefinition of procedure ");
+        printLineNumber((uint32_t*) "warning", lineNumber);
+        print((uint32_t*) "redefinition of procedure ");
         print(procedure);
-        print((int*) " ignored");
+        print((uint32_t*) " ignored");
         println();
       }
     }
@@ -4032,7 +4050,7 @@ void gr_procedure(int* procedure, int type) {
 
     localVariables = 0;
 
-    while (symbol == SYM_INT) {
+    while (symbol == SYM_UINT32) {
       localVariables = localVariables + 1;
 
       gr_variable(-localVariables * WORDSIZE);
@@ -4072,17 +4090,17 @@ void gr_procedure(int* procedure, int type) {
   } else
     syntaxErrorUnexpected();
 
-  local_symbol_table = (int*) 0;
+  local_symbol_table = (uint32_t*) 0;
 
   // assert: allocatedTemporaries == 0
 }
 
 void gr_cstar() {
-  int type;
-  int* variableOrProcedureName;
-  int currentLineNumber;
-  int initialValue;
-  int* entry;
+  uint32_t type;
+  uint32_t* variableOrProcedureName;
+  uint32_t currentLineNumber;
+  uint32_t initialValue;
+  uint32_t* entry;
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -4138,16 +4156,16 @@ void gr_cstar() {
 
           entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE);
 
-          if (entry == (int*) 0) {
+          if (entry == (uint32_t*) 0) {
             allocatedMemory = allocatedMemory + WORDSIZE;
 
             createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
           } else {
             // global variable already declared or defined
-            printLineNumber((int*) "warning", currentLineNumber);
-            print((int*) "redefinition of global variable ");
+            printLineNumber((uint32_t*) "warning", currentLineNumber);
+            print((uint32_t*) "redefinition of global variable ");
             print(variableOrProcedureName);
-            print((int*) " ignored");
+            print((uint32_t*) " ignored");
             println();
           }
         }
@@ -4161,7 +4179,7 @@ void gr_cstar() {
 // ------------------------ MACHINE CODE LIBRARY -------------------
 // -----------------------------------------------------------------
 
-void emitLeftShiftBy(int reg, int b) {
+void emitLeftShiftBy(uint32_t reg, uint32_t b) {
   // assert: 0 <= b < 15
 
   // load multiplication factor less than 2^15 to avoid sign extension
@@ -4170,11 +4188,11 @@ void emitLeftShiftBy(int reg, int b) {
   emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
 }
 
-void emitRightShiftBy(int reg, int b) {
+void emitRightShiftBy(uint32_t reg, uint32_t b) {
   // assert: 0 <= b < 31;
 
-  int brPositive;
-  int brNegative;
+  uint32_t brPositive;
+  uint32_t brNegative;
 
   if (b == 0)
     return;
@@ -4226,7 +4244,7 @@ void emitRightShiftBy(int reg, int b) {
 }
 
 void emitMainEntry() {
-  int i;
+  uint32_t i;
 
   // the instruction at address zero cannot be fixed up
   // we therefore need at least one not-to-be-fixed-up instruction here
@@ -4248,7 +4266,7 @@ void emitMainEntry() {
 
   mainJump = binaryLength;
 
-  createSymbolTableEntry(GLOBAL_TABLE, (int*) "main", 0, PROCEDURE, INT_T, 0, mainJump);
+  createSymbolTableEntry(GLOBAL_TABLE, (uint32_t*) "main", 0, PROCEDURE, INT_T, 0, mainJump);
 
   // jump and link to main, will return here only if there is no exit call
   emitJFormat(OP_JAL, 0);
@@ -4261,7 +4279,7 @@ void emitMainEntry() {
 }
 
 void bootstrapCode() {
-  int savedBinaryLength;
+  uint32_t savedBinaryLength;
 
   savedBinaryLength = binaryLength;
 
@@ -4303,15 +4321,15 @@ void bootstrapCode() {
 // -----------------------------------------------------------------
 
 void selfie_compile() {
-  int link;
-  int numberOfSourceFiles;
+  uint32_t link;
+  uint32_t numberOfSourceFiles;
 
   // link until next console option
   link = 1;
 
   numberOfSourceFiles = 0;
 
-  sourceName = (int*) "library";
+  sourceName = (uint32_t*) "library";
 
   binaryName = sourceName;
 
@@ -4352,18 +4370,18 @@ void selfie_compile() {
       numberOfSourceFiles = numberOfSourceFiles + 1;
 
       print(selfieName);
-      print((int*) ": this is selfie compiling ");
+      print((uint32_t*) ": this is selfie compiling ");
       print(sourceName);
-      print((int*) " with starc");
+      print((uint32_t*) " with starc");
       println();
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
       sourceFD = open(sourceName, O_RDONLY, 0);
 
-      if (sourceFD < 0) {
+      if (signedLessThan(sourceFD, 0)) {
         print(selfieName);
-        print((int*) ": could not open input file ");
+        print((uint32_t*) ": could not open input file ");
         print(sourceName);
         println();
 
@@ -4377,54 +4395,54 @@ void selfie_compile() {
       gr_cstar();
 
       print(selfieName);
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printInteger(numberOfReadCharacters);
-      print((int*) " characters read in ");
+      print((uint32_t*) " characters read in ");
       printInteger(lineNumber - 1);
-      print((int*) " lines and ");
+      print((uint32_t*) " lines and ");
       printInteger(numberOfComments);
-      print((int*) " comments");
+      print((uint32_t*) " comments");
       println();
 
       print(selfieName);
-      print((int*) ": with ");
+      print((uint32_t*) ": with ");
       printInteger(numberOfReadCharacters - numberOfIgnoredCharacters);
-      print((int*) "(");
+      print((uint32_t*) "(");
       printFixedPointPercentage(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
-      print((int*) "%) characters in ");
+      print((uint32_t*) "%) characters in ");
       printInteger(numberOfScannedSymbols);
-      print((int*) " actual symbols");
+      print((uint32_t*) " actual symbols");
       println();
 
       print(selfieName);
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printInteger(numberOfGlobalVariables);
-      print((int*) " global variables, ");
+      print((uint32_t*) " global variables, ");
       printInteger(numberOfProcedures);
-      print((int*) " procedures, ");
+      print((uint32_t*) " procedures, ");
       printInteger(numberOfStrings);
-      print((int*) " string literals");
+      print((uint32_t*) " string literals");
       println();
 
       print(selfieName);
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printInteger(numberOfCalls);
-      print((int*) " calls, ");
+      print((uint32_t*) " calls, ");
       printInteger(numberOfAssignments);
-      print((int*) " assignments, ");
+      print((uint32_t*) " assignments, ");
       printInteger(numberOfWhile);
-      print((int*) " while, ");
+      print((uint32_t*) " while, ");
       printInteger(numberOfIf);
-      print((int*) " if, ");
+      print((uint32_t*) " if, ");
       printInteger(numberOfReturn);
-      print((int*) " return");
+      print((uint32_t*) " return");
       println();
     }
   }
 
   if (numberOfSourceFiles == 0) {
     print(selfieName);
-    print((int*) ": nothing to compile, only library generated");
+    print((uint32_t*) ": nothing to compile, only library generated");
     println();
   }
 
@@ -4435,13 +4453,13 @@ void selfie_compile() {
   bootstrapCode();
 
   print(selfieName);
-  print((int*) ": ");
+  print((uint32_t*) ": ");
   printInteger(binaryLength + WORDSIZE);
-  print((int*) " bytes generated with ");
+  print((uint32_t*) " bytes generated with ");
   printInteger(codeLength / WORDSIZE);
-  print((int*) " instructions and ");
+  print((uint32_t*) " instructions and ");
   printInteger(binaryLength - codeLength + WORDSIZE);
-  print((int*) " bytes of data");
+  print((uint32_t*) " bytes of data");
   println();
 }
 
@@ -4455,8 +4473,8 @@ void selfie_compile() {
 // ---------------------------- REGISTER ---------------------------
 // -----------------------------------------------------------------
 
-void printRegister(int reg) {
-  print((int*) *(REGISTERS + reg));
+void printRegister(uint32_t reg) {
+  print((uint32_t*) *(REGISTERS + reg));
 }
 
 // -----------------------------------------------------------------
@@ -4470,7 +4488,7 @@ void printRegister(int reg) {
 // |opcode| rs  | rt  | rd  |00000|fction|
 // +------+-----+-----+-----+-----+------+
 //    6      5     5     5     5     6
-int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
+uint32_t encodeRFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t rd, uint32_t function) {
   // assert: 0 <= opcode < 2^6
   // assert: 0 <= rs < 2^5
   // assert: 0 <= rt < 2^5
@@ -4486,14 +4504,14 @@ int encodeRFormat(int opcode, int rs, int rt, int rd, int function) {
 // |opcode| rs  | rt  |   immediate    |
 // +------+-----+-----+----------------+
 //    6      5     5          16
-int encodeIFormat(int opcode, int rs, int rt, int immediate) {
+uint32_t encodeIFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t immediate) {
   // assert: 0 <= opcode < 2^6
   // assert: 0 <= rs < 2^5
   // assert: 0 <= rt < 2^5
   // assert: -2^15 <= immediate < 2^15
-  if (immediate < 0)
-    // convert from 32-bit to 16-bit two's complement
-    immediate = immediate + twoToThePowerOf(16);
+
+  // convert from 32-bit to 16-bit two's complement
+  immediate = rightShift(leftShift(immediate, 16), 16);
 
   return leftShift(leftShift(leftShift(opcode, 5) + rs, 5) + rt, 16) + immediate;
 }
@@ -4505,7 +4523,7 @@ int encodeIFormat(int opcode, int rs, int rt, int immediate) {
 // |opcode|       instr_index        |
 // +------+--------------------------+
 //    6                26
-int encodeJFormat(int opcode, int instr_index) {
+uint32_t encodeJFormat(uint32_t opcode, uint32_t instr_index) {
   // assert: 0 <= opcode < 2^6
   // assert: 0 <= instr_index < 2^26
   return leftShift(opcode, 26) + instr_index;
@@ -4515,35 +4533,35 @@ int encodeJFormat(int opcode, int instr_index) {
 // ---------------------------- DECODER ----------------------------
 // -----------------------------------------------------------------
 
-int getOpcode(int instruction) {
+uint32_t getOpcode(uint32_t instruction) {
   return rightShift(instruction, 26);
 }
 
-int getRS(int instruction) {
+uint32_t getRS(uint32_t instruction) {
   return rightShift(leftShift(instruction, 6), 27);
 }
 
-int getRT(int instruction) {
+uint32_t getRT(uint32_t instruction) {
   return rightShift(leftShift(instruction, 11), 27);
 }
 
-int getRD(int instruction) {
+uint32_t getRD(uint32_t instruction) {
   return rightShift(leftShift(instruction, 16), 27);
 }
 
-int getFunction(int instruction) {
+uint32_t getFunction(uint32_t instruction) {
   return rightShift(leftShift(instruction, 26), 26);
 }
 
-int getImmediate(int instruction) {
+uint32_t getImmediate(uint32_t instruction) {
   return rightShift(leftShift(instruction, 16), 16);
 }
 
-int getInstrIndex(int instruction) {
+uint32_t getInstrIndex(uint32_t instruction) {
   return rightShift(leftShift(instruction, 6), 6);
 }
 
-int signExtend(int immediate) {
+uint32_t signExtend(uint32_t immediate) {
   // sign-extend from 16-bit to 32-bit two's complement
   if (immediate < twoToThePowerOf(15))
     return immediate;
@@ -4612,25 +4630,25 @@ void decode() {
     decodeIFormat();
 }
 
-void printOpcode(int opcode) {
-  print((int*) *(OPCODES + opcode));
+void printOpcode(uint32_t opcode) {
+  print((uint32_t*) *(OPCODES + opcode));
 }
 
-void printFunction(int function) {
-  print((int*) *(FUNCTIONS + function));
+void printFunction(uint32_t function) {
+  print((uint32_t*) *(FUNCTIONS + function));
 }
 
 // -----------------------------------------------------------------
 // ----------------------------- CODE ------------------------------
 // -----------------------------------------------------------------
 
-int loadBinary(int baddr) {
+uint32_t loadBinary(uint32_t baddr) {
   return *(binary + baddr / WORDSIZE);
 }
 
-void storeBinary(int baddr, int instruction) {
+void storeBinary(uint32_t baddr, uint32_t instruction) {
   if (baddr >= maxBinaryLength) {
-    syntaxErrorMessage((int*) "maximum binary length exceeded");
+    syntaxErrorMessage((uint32_t*) "maximum binary length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -4638,7 +4656,7 @@ void storeBinary(int baddr, int instruction) {
   *(binary + baddr / WORDSIZE) = instruction;
 }
 
-void emitInstruction(int instruction) {
+void emitInstruction(uint32_t instruction) {
   storeBinary(binaryLength, instruction);
 
   if (*(sourceLineNumber + binaryLength / WORDSIZE) == 0)
@@ -4647,7 +4665,7 @@ void emitInstruction(int instruction) {
   binaryLength = binaryLength + WORDSIZE;
 }
 
-void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
+void emitRFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t rd, uint32_t function) {
   emitInstruction(encodeRFormat(opcode, rs, rt, rd, function));
 
   if (opcode == OP_SPECIAL) {
@@ -4665,21 +4683,21 @@ void emitRFormat(int opcode, int rs, int rt, int rd, int function) {
   }
 }
 
-void emitIFormat(int opcode, int rs, int rt, int immediate) {
+void emitIFormat(uint32_t opcode, uint32_t rs, uint32_t rt, uint32_t immediate) {
   emitInstruction(encodeIFormat(opcode, rs, rt, immediate));
 
   if (opcode == OP_BEQ)
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
 }
 
-void emitJFormat(int opcode, int instr_index) {
+void emitJFormat(uint32_t opcode, uint32_t instr_index) {
   emitInstruction(encodeJFormat(opcode, instr_index));
 
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP); // delay slot
 }
 
-void fixup_relative(int fromAddress) {
-  int instruction;
+void fixup_relative(uint32_t fromAddress) {
+  uint32_t instruction;
 
   instruction = loadBinary(fromAddress);
 
@@ -4690,13 +4708,13 @@ void fixup_relative(int fromAddress) {
       (binaryLength - fromAddress - WORDSIZE) / WORDSIZE));
 }
 
-void fixup_absolute(int fromAddress, int toAddress) {
+void fixup_absolute(uint32_t fromAddress, uint32_t toAddress) {
   storeBinary(fromAddress,
     encodeJFormat(getOpcode(loadBinary(fromAddress)), toAddress / WORDSIZE));
 }
 
-void fixlink_absolute(int fromAddress, int toAddress) {
-  int previousAddress;
+void fixlink_absolute(uint32_t fromAddress, uint32_t toAddress) {
+  uint32_t previousAddress;
 
   while (fromAddress != 0) {
     previousAddress = getInstrIndex(loadBinary(fromAddress)) * WORDSIZE;
@@ -4707,8 +4725,8 @@ void fixlink_absolute(int fromAddress, int toAddress) {
   }
 }
 
-int copyStringToBinary(int* s, int baddr) {
-  int next;
+uint32_t copyStringToBinary(uint32_t* s, uint32_t baddr) {
+  uint32_t next;
 
   next = baddr + roundUp(stringLength(s) + 1, WORDSIZE);
 
@@ -4724,14 +4742,14 @@ int copyStringToBinary(int* s, int baddr) {
 }
 
 void emitGlobalsStrings() {
-  int* entry;
+  uint32_t* entry;
 
   entry = global_symbol_table;
 
   // assert: n = binaryLength
 
   // allocate space for global variables and copy strings
-  while ((int) entry != 0) {
+  while ((uint32_t) entry != 0) {
     if (getClass(entry) == VARIABLE) {
       storeBinary(binaryLength, getValue(entry));
 
@@ -4747,20 +4765,20 @@ void emitGlobalsStrings() {
   allocatedMemory = 0;
 }
 
-int openWriteOnly(int* name) {
+uint32_t openWriteOnly(uint32_t* name) {
   // we try opening write-only files using platform-specific flags
   // to make selfie platform-independent, this may nevertheless
   // not always work and require intervention
-  int fd;
+  uint32_t fd;
 
   // try Mac flags
   fd = open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
 
-  if (fd < 0) {
+  if (signedLessThan(fd, 0)) {
     // try Linux flags
     fd = open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
 
-    if (fd < 0)
+    if (signedLessThan(fd, 0))
       // try Windows flags
       fd = open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
   }
@@ -4769,13 +4787,13 @@ int openWriteOnly(int* name) {
 }
 
 void selfie_output() {
-  int fd;
+  uint32_t fd;
 
   binaryName = getArgument();
 
   if (binaryLength == 0) {
     print(selfieName);
-    print((int*) ": nothing to emit to output file ");
+    print((uint32_t*) ": nothing to emit to output file ");
     print(binaryName);
     println();
 
@@ -4786,9 +4804,9 @@ void selfie_output() {
 
   fd = openWriteOnly(binaryName);
 
-  if (fd < 0) {
+  if (signedLessThan(fd, 0)) {
     print(selfieName);
-    print((int*) ": could not create binary output file ");
+    print((uint32_t*) ": could not create binary output file ");
     print(binaryName);
     println();
 
@@ -4808,20 +4826,20 @@ void selfie_output() {
   write(fd, binary, binaryLength);
 
   print(selfieName);
-  print((int*) ": ");
+  print((uint32_t*) ": ");
   printInteger(binaryLength + WORDSIZE);
-  print((int*) " bytes with ");
+  print((uint32_t*) " bytes with ");
   printInteger(codeLength / WORDSIZE);
-  print((int*) " instructions and ");
+  print((uint32_t*) " instructions and ");
   printInteger(binaryLength - codeLength + WORDSIZE);
-  print((int*) " bytes of data written into ");
+  print((uint32_t*) " bytes of data written into ");
   print(binaryName);
   println();
 }
 
-int* touch(int* memory, int length) {
-  int* m;
-  int n;
+uint32_t* touch(uint32_t* memory, uint32_t length) {
+  uint32_t* m;
+  uint32_t n;
 
   m = memory;
 
@@ -4852,8 +4870,8 @@ int* touch(int* memory, int length) {
 }
 
 void selfie_load() {
-  int fd;
-  int numberOfReadBytes;
+  uint32_t fd;
+  uint32_t numberOfReadBytes;
 
   binaryName = getArgument();
 
@@ -4861,9 +4879,9 @@ void selfie_load() {
 
   fd = open(binaryName, O_RDONLY, 0);
 
-  if (fd < 0) {
+  if (signedLessThan(fd, 0)) {
     print(selfieName);
-    print((int*) ": could not open input file ");
+    print((uint32_t*) ": could not open input file ");
     print(binaryName);
     println();
 
@@ -4877,7 +4895,7 @@ void selfie_load() {
   codeLength   = 0;
 
   // no source line numbers in binaries
-  sourceLineNumber = (int*) 0;
+  sourceLineNumber = (uint32_t*) 0;
 
   // assert: binary_buffer is mapped
 
@@ -4893,19 +4911,19 @@ void selfie_load() {
       // now read binary including global variables and strings
       numberOfReadBytes = read(fd, binary, maxBinaryLength);
 
-      if (numberOfReadBytes > 0) {
+      if (signedGreaterThan(numberOfReadBytes, 0)) {
         binaryLength = numberOfReadBytes;
 
         // check if we are really at EOF
         if (read(fd, binary_buffer, WORDSIZE) == 0) {
           print(selfieName);
-          print((int*) ": ");
+          print((uint32_t*) ": ");
           printInteger(binaryLength + WORDSIZE);
-          print((int*) " bytes with ");
+          print((uint32_t*) " bytes with ");
           printInteger(codeLength / WORDSIZE);
-          print((int*) " instructions and ");
+          print((uint32_t*) " instructions and ");
           printInteger(binaryLength - codeLength + WORDSIZE);
-          print((int*) " bytes of data loaded from ");
+          print((uint32_t*) " bytes of data loaded from ");
           print(binaryName);
           println();
 
@@ -4916,7 +4934,7 @@ void selfie_load() {
   }
 
   print(selfieName);
-  print((int*) ": failed to load code from input file ");
+  print((uint32_t*) ": failed to load code from input file ");
   print(binaryName);
   println();
 
@@ -4928,7 +4946,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emitExit() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint32_t*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   // load argument for exit
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
@@ -4943,22 +4961,22 @@ void emitExit() {
   // never returns here
 }
 
-void implementExit(int* context) {
+void implementExit(uint32_t* context) {
   setExitCode(context, *(getRegs(context)+REG_A0));
 
   print(selfieName);
-  print((int*) ": ");
+  print((uint32_t*) ": ");
   print(getName(context));
-  print((int*) " exiting with exit code ");
+  print((uint32_t*) " exiting with exit code ");
   printInteger(getExitCode(context));
-  print((int*) " and ");
+  print((uint32_t*) " and ");
   printFixedPointRatio(getProgramBreak(context) - maxBinaryLength, MEGABYTE);
-  print((int*) "MB of mallocated memory");
+  print((uint32_t*) "MB of mallocated memory");
   println();
 }
 
 void emitRead() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "read", 0, PROCEDURE, INT_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint32_t*) "read", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -4976,15 +4994,15 @@ void emitRead() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementRead(int* context) {
-  int size;
-  int vaddr;
-  int fd;
-  int readTotal;
-  int bytesToRead;
-  int* buffer;
-  int actuallyRead;
-  int failed;
+void implementRead(uint32_t* context) {
+  uint32_t size;
+  uint32_t vaddr;
+  uint32_t fd;
+  uint32_t readTotal;
+  uint32_t bytesToRead;
+  uint32_t* buffer;
+  uint32_t actuallyRead;
+  uint32_t failed;
 
   // assert: read buffer is mapped
 
@@ -4994,11 +5012,11 @@ void implementRead(int* context) {
 
   if (debug_read) {
     print(selfieName);
-    print((int*) ": trying to read ");
+    print((uint32_t*) ": trying to read ");
     printInteger(size);
-    print((int*) " bytes from file with descriptor ");
+    print((uint32_t*) " bytes from file with descriptor ");
     printInteger(fd);
-    print((int*) " into buffer at virtual address ");
+    print((uint32_t*) " into buffer at virtual address ");
     printHexadecimal(vaddr, 8);
     println();
   }
@@ -5026,7 +5044,7 @@ void implementRead(int* context) {
           if (size > 0)
             vaddr = vaddr + WORDSIZE;
         } else {
-          if (actuallyRead > 0)
+          if (signedGreaterThan(actuallyRead, 0))
             readTotal = readTotal + actuallyRead;
 
           size = 0;
@@ -5038,9 +5056,9 @@ void implementRead(int* context) {
 
         if (debug_read) {
           print(selfieName);
-          print((int*) ": reading into virtual address ");
+          print((uint32_t*) ": reading into virtual address ");
           printHexadecimal(vaddr, 8);
-          print((int*) " failed because the address is unmapped");
+          print((uint32_t*) " failed because the address is unmapped");
           println();
         }
       }
@@ -5051,9 +5069,9 @@ void implementRead(int* context) {
 
       if (debug_read) {
         print(selfieName);
-        print((int*) ": reading into virtual address ");
+        print((uint32_t*) ": reading into virtual address ");
         printHexadecimal(vaddr, 8);
-        print((int*) " failed because the address is invalid");
+        print((uint32_t*) " failed because the address is invalid");
         println();
       }
     }
@@ -5066,16 +5084,16 @@ void implementRead(int* context) {
 
   if (debug_read) {
     print(selfieName);
-    print((int*) ": actually read ");
+    print((uint32_t*) ": actually read ");
     printInteger(readTotal);
-    print((int*) " bytes from file with descriptor ");
+    print((uint32_t*) " bytes from file with descriptor ");
     printInteger(fd);
     println();
   }
 }
 
 void emitWrite() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "write", 0, PROCEDURE, INT_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint32_t*) "write", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5092,15 +5110,15 @@ void emitWrite() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void implementWrite(int* context) {
-  int size;
-  int vaddr;
-  int fd;
-  int writtenTotal;
-  int bytesToWrite;
-  int* buffer;
-  int actuallyWritten;
-  int failed;
+void implementWrite(uint32_t* context) {
+  uint32_t size;
+  uint32_t vaddr;
+  uint32_t fd;
+  uint32_t writtenTotal;
+  uint32_t bytesToWrite;
+  uint32_t* buffer;
+  uint32_t actuallyWritten;
+  uint32_t failed;
 
   // assert: write buffer is mapped
 
@@ -5110,11 +5128,11 @@ void implementWrite(int* context) {
 
   if (debug_write) {
     print(selfieName);
-    print((int*) ": trying to write ");
+    print((uint32_t*) ": trying to write ");
     printInteger(size);
-    print((int*) " bytes from buffer at virtual address ");
+    print((uint32_t*) " bytes from buffer at virtual address ");
     printHexadecimal(vaddr, 8);
-    print((int*) " into file with descriptor ");
+    print((uint32_t*) " into file with descriptor ");
     printInteger(fd);
     println();
   }
@@ -5142,7 +5160,7 @@ void implementWrite(int* context) {
           if (size > 0)
             vaddr = vaddr + WORDSIZE;
         } else {
-          if (actuallyWritten > 0)
+          if (signedGreaterThan(actuallyWritten, 0))
             writtenTotal = writtenTotal + actuallyWritten;
 
           size = 0;
@@ -5154,9 +5172,9 @@ void implementWrite(int* context) {
 
         if (debug_write) {
           print(selfieName);
-          print((int*) ": writing into virtual address ");
+          print((uint32_t*) ": writing into virtual address ");
           printHexadecimal(vaddr, 8);
-          print((int*) " failed because the address is unmapped");
+          print((uint32_t*) " failed because the address is unmapped");
           println();
         }
       }
@@ -5167,9 +5185,9 @@ void implementWrite(int* context) {
 
       if (debug_write) {
         print(selfieName);
-        print((int*) ": writing into virtual address ");
+        print((uint32_t*) ": writing into virtual address ");
         printHexadecimal(vaddr, 8);
-        print((int*) " failed because the address is invalid");
+        print((uint32_t*) " failed because the address is invalid");
         println();
       }
     }
@@ -5182,16 +5200,16 @@ void implementWrite(int* context) {
 
   if (debug_write) {
     print(selfieName);
-    print((int*) ": actually wrote ");
+    print((uint32_t*) ": actually wrote ");
     printInteger(writtenTotal);
-    print((int*) " bytes into file with descriptor ");
+    print((uint32_t*) " bytes into file with descriptor ");
     printInteger(fd);
     println();
   }
 }
 
 void emitOpen() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "open", 0, PROCEDURE, INT_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint32_t*) "open", 0, PROCEDURE, INT_T, 0, binaryLength);
 
   emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5208,9 +5226,9 @@ void emitOpen() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int down_loadString(int* table, int vaddr, int* s) {
-  int i;
-  int* paddr;
+uint32_t down_loadString(uint32_t* table, uint32_t vaddr, uint32_t* s) {
+  uint32_t i;
+  uint32_t* paddr;
 
   i = 0;
 
@@ -5236,18 +5254,18 @@ int down_loadString(int* table, int vaddr, int* s) {
       } else {
         if (debug_open) {
           print(selfieName);
-          print((int*) ": opening file with name at virtual address ");
+          print((uint32_t*) ": opening file with name at virtual address ");
           printHexadecimal(vaddr, 8);
-          print((int*) " failed because the address is unmapped");
+          print((uint32_t*) " failed because the address is unmapped");
           println();
         }
       }
     } else {
       if (debug_open) {
         print(selfieName);
-        print((int*) ": opening file with name at virtual address ");
+        print((uint32_t*) ": opening file with name at virtual address ");
         printHexadecimal(vaddr, 8);
-        print((int*) " failed because the address is invalid");
+        print((uint32_t*) " failed because the address is invalid");
         println();
       }
     }
@@ -5256,11 +5274,11 @@ int down_loadString(int* table, int vaddr, int* s) {
   return 0;
 }
 
-void implementOpen(int* context) {
-  int mode;
-  int flags;
-  int vaddr;
-  int fd;
+void implementOpen(uint32_t* context) {
+  uint32_t mode;
+  uint32_t flags;
+  uint32_t vaddr;
+  uint32_t fd;
 
   mode  = *(getRegs(context)+REG_A2);
   flags = *(getRegs(context)+REG_A1);
@@ -5273,13 +5291,13 @@ void implementOpen(int* context) {
 
     if (debug_open) {
       print(selfieName);
-      print((int*) ": opened file ");
+      print((uint32_t*) ": opened file ");
       printString(filename_buffer);
-      print((int*) " with flags ");
+      print((uint32_t*) " with flags ");
       printHexadecimal(flags, 0);
-      print((int*) " and mode ");
+      print((uint32_t*) " and mode ");
       printOctal(mode, 0);
-      print((int*) " returning file descriptor ");
+      print((uint32_t*) " returning file descriptor ");
       printInteger(fd);
       println();
     }
@@ -5288,20 +5306,20 @@ void implementOpen(int* context) {
 
     if (debug_open) {
       print(selfieName);
-      print((int*) ": opening file with name at virtual address ");
+      print((uint32_t*) ": opening file with name at virtual address ");
       printHexadecimal(vaddr, 8);
-      print((int*) " failed because the name is too long");
+      print((uint32_t*) " failed because the name is too long");
       println();
     }
   }
 }
 
 void emitMalloc() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint32_t*) "malloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
   // on boot levels higher than zero, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "zalloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint32_t*) "zalloc", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
   emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5312,18 +5330,18 @@ void emitMalloc() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-int implementMalloc(int* context) {
-  int size;
-  int bump;
-  int stackptr;
-  int available;
-  int temp;
+uint32_t implementMalloc(uint32_t* context) {
+  uint32_t size;
+  uint32_t bump;
+  uint32_t stackptr;
+  uint32_t available;
+  uint32_t temp;
 
   if (debug_malloc) {
     print(selfieName);
-    print((int*) ": trying to malloc ");
+    print((uint32_t*) ": trying to malloc ");
     printInteger(*(getRegs(context)+REG_A0));
-    print((int*) " bytes");
+    print((uint32_t*) " bytes");
     println();
   }
 
@@ -5333,12 +5351,7 @@ int implementMalloc(int* context) {
 
   stackptr = *(getRegs(context)+REG_SP);
 
-  temp = INT_OVERFLOW;
-
-  available = subtractWrap(stackptr, bump);
-
-  if (available < 0)
-    available = INT_MAX;
+  available = stackptr - bump;
 
   if (size > available) {
     setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
@@ -5347,15 +5360,13 @@ int implementMalloc(int* context) {
   } else {
     *(getRegs(context)+REG_V0) = bump;
 
-    setProgramBreak(context, addWrap(bump, size));
-
-    INT_OVERFLOW = temp;
+    setProgramBreak(context, bump + size);
 
     if (debug_malloc) {
       print(selfieName);
-      print((int*) ": actually mallocating ");
+      print((uint32_t*) ": actually mallocating ");
       printInteger(size);
-      print((int*) " bytes at virtual address ");
+      print((uint32_t*) " bytes at virtual address ");
       printHexadecimal(bump, 8);
       println();
     }
@@ -5369,7 +5380,7 @@ int implementMalloc(int* context) {
 // -----------------------------------------------------------------
 
 void emitSwitch() {
-  createSymbolTableEntry(LIBRARY_TABLE, (int*) "hypster_switch", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint32_t*) "hypster_switch", 0, PROCEDURE, INTSTAR_T, 0, binaryLength);
 
   emitIFormat(OP_LW, REG_SP, REG_A1, 0); // number of instructions to execute
   emitIFormat(OP_ADDIU, REG_SP, REG_SP, WORDSIZE);
@@ -5386,8 +5397,8 @@ void emitSwitch() {
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
 
-void doSwitch(int* toContext, int timeout) {
-  int* fromContext;
+void doSwitch(uint32_t* toContext, uint32_t timeout) {
+  uint32_t* fromContext;
 
   fromContext = currentContext;
 
@@ -5402,9 +5413,9 @@ void doSwitch(int* toContext, int timeout) {
 
   // use REG_V1 instead of REG_V0 to avoid race condition with interrupt
   if (getParent(fromContext) != MY_CONTEXT)
-    *(registers+REG_V1) = (int) getVirtualContext(fromContext);
+    *(registers+REG_V1) = (uint32_t) getVirtualContext(fromContext);
   else
-    *(registers+REG_V1) = (int) fromContext;
+    *(registers+REG_V1) = (uint32_t) fromContext;
 
   currentContext = toContext;
 
@@ -5412,14 +5423,14 @@ void doSwitch(int* toContext, int timeout) {
 
   if (debug_switch) {
     print(selfieName);
-    print((int*) ": switched from context ");
-    printHexadecimal((int) fromContext, 8);
-    print((int*) " to context ");
-    printHexadecimal((int) toContext, 8);
+    print((uint32_t*) ": switched from context ");
+    printHexadecimal((uint32_t) fromContext, 8);
+    print((uint32_t*) " to context ");
+    printHexadecimal((uint32_t) toContext, 8);
     if (timeout >= 0) {
-      print((int*) " to execute ");
+      print((uint32_t*) " to execute ");
       printInteger(timeout);
-      print((int*) " instructions");
+      print((uint32_t*) " instructions");
     }
     println();
   }
@@ -5429,10 +5440,10 @@ void implementSwitch() {
   saveContext(currentContext);
 
   // cache context on my boot level before switching
-  doSwitch(cacheContext((int*) *(registers+REG_A0)), *(registers+REG_A1));
+  doSwitch(cacheContext((uint32_t*) *(registers+REG_A0)), *(registers+REG_A1));
 }
 
-int* mipster_switch(int* toContext, int timeout) {
+uint32_t* mipster_switch(uint32_t* toContext, uint32_t timeout) {
   doSwitch(toContext, timeout);
 
   runUntilException();
@@ -5442,7 +5453,7 @@ int* mipster_switch(int* toContext, int timeout) {
   return currentContext;
 }
 
-int* hypster_switch(int* toContext, int timeout) {
+uint32_t* hypster_switch(uint32_t* toContext, uint32_t timeout) {
   // this procedure is only executed at boot level zero
   return mipster_switch(toContext, timeout);
 }
@@ -5457,51 +5468,51 @@ int* hypster_switch(int* toContext, int timeout) {
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
-int loadPhysicalMemory(int* paddr) {
+uint32_t loadPhysicalMemory(uint32_t* paddr) {
   return *paddr;
 }
 
-void storePhysicalMemory(int* paddr, int data) {
+void storePhysicalMemory(uint32_t* paddr, uint32_t data) {
   *paddr = data;
 }
 
-int FrameForPage(int* table, int page) {
-  return (int) (table + page);
+uint32_t FrameForPage(uint32_t* table, uint32_t page) {
+  return (uint32_t) (table + page);
 }
 
-int getFrameForPage(int* table, int page) {
+uint32_t getFrameForPage(uint32_t* table, uint32_t page) {
   return *(table + page);
 }
 
-int isPageMapped(int* table, int page) {
+uint32_t isPageMapped(uint32_t* table, uint32_t page) {
   if (getFrameForPage(table, page) != 0)
     return 1;
   else
     return 0;
 }
 
-int isValidVirtualAddress(int vaddr) {
+uint32_t isValidVirtualAddress(uint32_t vaddr) {
   // memory must be word-addressed for lack of byte-sized data type
   return vaddr % WORDSIZE == 0;
 }
 
-int getPageOfVirtualAddress(int vaddr) {
+uint32_t getPageOfVirtualAddress(uint32_t vaddr) {
   if (vaddr < 0)
     return (vaddr - INT_MIN) / PAGESIZE + NUMBEROFPAGES / 2;
 
   return vaddr / PAGESIZE;
 }
 
-int isVirtualAddressMapped(int* table, int vaddr) {
+uint32_t isVirtualAddressMapped(uint32_t* table, uint32_t vaddr) {
   // assert: isValidVirtualAddress(vaddr) == 1
 
   return isPageMapped(table, getPageOfVirtualAddress(vaddr));
 }
 
-int* tlb(int* table, int vaddr) {
-  int page;
-  int frame;
-  int paddr;
+uint32_t* tlb(uint32_t* table, uint32_t vaddr) {
+  uint32_t page;
+  uint32_t frame;
+  uint32_t paddr;
 
   // assert: isValidVirtualAddress(vaddr) == 1
   // assert: isVirtualAddressMapped(table, vaddr) == 1
@@ -5518,37 +5529,37 @@ int* tlb(int* table, int vaddr) {
 
   if (debug_tlb) {
     print(selfieName);
-    print((int*) ": tlb access:");
+    print((uint32_t*) ": tlb access:");
     println();
-    print((int*) " vaddr: ");
+    print((uint32_t*) " vaddr: ");
     printBinary(vaddr, 32);
     println();
-    print((int*) " page:  ");
+    print((uint32_t*) " page:  ");
     if (page < NUMBEROFPAGES / 2)
       printBinary(page * PAGESIZE, 32);
     else
       printBinary(INT_MIN + (page - NUMBEROFPAGES / 2) * PAGESIZE, 32);
     printBinary(page * PAGESIZE, 32);
     println();
-    print((int*) " frame: ");
+    print((uint32_t*) " frame: ");
     printBinary(frame, 32);
     println();
-    print((int*) " paddr: ");
+    print((uint32_t*) " paddr: ");
     printBinary(paddr, 32);
     println();
   }
 
-  return (int*) paddr;
+  return (uint32_t*) paddr;
 }
 
-int loadVirtualMemory(int* table, int vaddr) {
+uint32_t loadVirtualMemory(uint32_t* table, uint32_t vaddr) {
   // assert: isValidVirtualAddress(vaddr) == 1
   // assert: isVirtualAddressMapped(table, vaddr) == 1
 
   return loadPhysicalMemory(tlb(table, vaddr));
 }
 
-void storeVirtualMemory(int* table, int vaddr, int data) {
+void storeVirtualMemory(uint32_t* table, uint32_t vaddr, uint32_t data) {
   // assert: isValidVirtualAddress(vaddr) == 1
   // assert: isVirtualAddressMapped(table, vaddr) == 1
 
@@ -5570,10 +5581,10 @@ void fct_nop() {
 }
 
 void fct_addu() {
-  int s;
-  int t;
-  int d;
-  int n;
+  uint32_t s;
+  uint32_t t;
+  uint32_t d;
+  uint32_t n;
 
   if (interpret) {
     s = *(registers+rs);
@@ -5585,28 +5596,28 @@ void fct_addu() {
 
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rd);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rs);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rt);
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(d);
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(s);
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(t);
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(n);
     }
     println();
@@ -5619,11 +5630,11 @@ void fct_addu() {
 
     if (debug_overflow)
       if (INT_OVERFLOW == OVERFLOW_YES) {
-        print((int*) "overflow: ");
+        print((uint32_t*) "overflow: ");
         printInteger(s);
-        print((int*) " + ");
+        print((uint32_t*) " + ");
         printInteger(t);
-        print((int*) " ~ ");
+        print((uint32_t*) " ~ ");
         printInteger(n);
         println();
       }
@@ -5631,10 +5642,10 @@ void fct_addu() {
 }
 
 void fct_subu() {
-  int s;
-  int t;
-  int d;
-  int n;
+  uint32_t s;
+  uint32_t t;
+  uint32_t d;
+  uint32_t n;
 
   if (interpret) {
     s = *(registers+rs);
@@ -5646,28 +5657,28 @@ void fct_subu() {
 
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rd);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rs);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rt);
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(d);
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(s);
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(t);
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(n);
     }
     println();
@@ -5680,11 +5691,11 @@ void fct_subu() {
 
     if (debug_overflow)
       if (INT_OVERFLOW == OVERFLOW_YES) {
-        print((int*) "overflow: ");
+        print((uint32_t*) "overflow: ");
         printInteger(s);
-        print((int*) " - ");
+        print((uint32_t*) " - ");
         printInteger(t);
-        print((int*) " ~ ");
+        print((uint32_t*) " ~ ");
         printInteger(n);
         println();
       }
@@ -5692,9 +5703,9 @@ void fct_subu() {
 }
 
 void fct_multu() {
-  int s;
-  int t;
-  int n;
+  uint32_t s;
+  uint32_t t;
+  uint32_t n;
 
   if (interpret) {
     s = *(registers+rs);
@@ -5705,22 +5716,22 @@ void fct_multu() {
 
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rs);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rt);
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(s);
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(t);
-      print((int*) ",$lo=");
+      print((uint32_t*) ",$lo=");
       printInteger(loReg);
-      print((int*) " -> $lo=");
+      print((uint32_t*) " -> $lo=");
       printInteger(n);
     }
     println();
@@ -5734,11 +5745,11 @@ void fct_multu() {
 
     if (debug_overflow)
       if (INT_OVERFLOW == OVERFLOW_YES) {
-        print((int*) "overflow: ");
+        print((uint32_t*) "overflow: ");
         printInteger(s);
-        print((int*) " * ");
+        print((uint32_t*) " * ");
         printInteger(t);
-        print((int*) " ~ ");
+        print((uint32_t*) " ~ ");
         printInteger(n);
         println();
       }
@@ -5746,10 +5757,10 @@ void fct_multu() {
 }
 
 void fct_divu() {
-  int s;
-  int t;
-  int l;
-  int h;
+  uint32_t s;
+  uint32_t t;
+  uint32_t l;
+  uint32_t h;
 
   if (interpret) {
     s = *(registers+rs);
@@ -5760,11 +5771,11 @@ void fct_divu() {
     if (debug_overflow)
       if (INT_OVERFLOW == OVERFLOW_YES) {
         if (t == 0)
-          print((int*) "division-by-zero error: ");
+          print((uint32_t*) "division-by-zero error: ");
         else
-          print((int*) "signed integer error: ");
+          print((uint32_t*) "signed integer error: ");
         printInteger(s);
-        print((int*) " / ");
+        print((uint32_t*) " / ");
         printInteger(t);
         println();
       }
@@ -5776,26 +5787,26 @@ void fct_divu() {
 
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rs);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rt);
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(s);
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(t);
-      print((int*) ",$lo=");
+      print((uint32_t*) ",$lo=");
       printInteger(loReg);
-      print((int*) ",$hi=");
+      print((uint32_t*) ",$hi=");
       printInteger(hiReg);
-      print((int*) " -> $lo=");
+      print((uint32_t*) " -> $lo=");
       printInteger(l);
-      print((int*) ",$hi=");
+      print((uint32_t*) ",$hi=");
       printInteger(h);
     }
   }
@@ -5811,14 +5822,14 @@ void fct_divu() {
 void fct_mfhi() {
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rd);
     if (interpret) {
-      print((int*) ":");
+      print((uint32_t*) ":");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rd));
-      print((int*) ",$hi=");
+      print((uint32_t*) ",$hi=");
       printInteger(hiReg);
     }
   }
@@ -5831,9 +5842,9 @@ void fct_mfhi() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rd));
     }
     println();
@@ -5843,14 +5854,14 @@ void fct_mfhi() {
 void fct_mflo() {
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rd);
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rd));
-      print((int*) ",$lo=");
+      print((uint32_t*) ",$lo=");
       printInteger(loReg);
     }
   }
@@ -5863,9 +5874,9 @@ void fct_mflo() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rd));
     }
     println();
@@ -5875,20 +5886,20 @@ void fct_mflo() {
 void fct_slt() {
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rd);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rs);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rt);
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rs));
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rt));
     }
   }
@@ -5904,9 +5915,9 @@ void fct_slt() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(rd);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rd));
     }
     println();
@@ -5916,12 +5927,12 @@ void fct_slt() {
 void fct_jr() {
   if (debug) {
     printFunction(function);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rs);
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printHexadecimal(*(registers+rs), 0);
     }
   }
@@ -5931,7 +5942,7 @@ void fct_jr() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> $pc=");
+      print((uint32_t*) " -> $pc=");
       printHexadecimal(pc, 0);
     }
     println();
@@ -5957,20 +5968,20 @@ void fct_syscall() {
 void op_addiu() {
   if (debug) {
     printOpcode(opcode);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rt);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rs);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printInteger(signExtend(immediate));
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rt));
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rs));
     }
   }
@@ -5985,9 +5996,9 @@ void op_addiu() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rt));
     }
     println();
@@ -5995,25 +6006,25 @@ void op_addiu() {
 }
 
 void op_lw() {
-  int vaddr;
+  uint32_t vaddr;
 
   if (debug) {
     printOpcode(opcode);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rt);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printInteger(signExtend(immediate));
-    print((int*) "(");
+    print((uint32_t*) "(");
     printRegister(rs);
-    print((int*) ")");
+    print((uint32_t*) ")");
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rt));
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printHexadecimal(*(registers+rs), 0);
     }
   }
@@ -6040,38 +6051,38 @@ void op_lw() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rt));
-      print((int*) "=memory[");
+      print((uint32_t*) "=memory[");
       printHexadecimal(vaddr, 0);
-      print((int*) "]");
+      print((uint32_t*) "]");
     }
     println();
   }
 }
 
 void op_sw() {
-  int vaddr;
+  uint32_t vaddr;
 
   if (debug) {
     printOpcode(opcode);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rt);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printInteger(signExtend(immediate));
-    print((int*) "(");
+    print((uint32_t*) "(");
     printRegister(rs);
-    print((int*) ")");
+    print((uint32_t*) ")");
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rt));
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printHexadecimal(*(registers+rs), 0);
     }
   }
@@ -6098,11 +6109,11 @@ void op_sw() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> memory[");
+      print((uint32_t*) " -> memory[");
       printHexadecimal(vaddr, 0);
-      print((int*) "]=");
+      print((uint32_t*) "]=");
       printInteger(*(registers+rt));
-      print((int*) "=");
+      print((uint32_t*) "=");
       printRegister(rt);
     }
     println();
@@ -6112,23 +6123,23 @@ void op_sw() {
 void op_beq() {
   if (debug) {
     printOpcode(opcode);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printRegister(rs);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printRegister(rt);
-    print((int*) ",");
+    print((uint32_t*) ",");
     printInteger(signExtend(immediate));
-    print((int*) "[");
+    print((uint32_t*) "[");
     printHexadecimal(pc + WORDSIZE + signExtend(immediate) * WORDSIZE, 0);
-    print((int*) "]");
+    print((uint32_t*) "]");
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(rs);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rs));
-      print((int*) ",");
+      print((uint32_t*) ",");
       printRegister(rt);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printInteger(*(registers+rt));
     }
   }
@@ -6139,7 +6150,7 @@ void op_beq() {
     if (*(registers+rs) == *(registers+rt)) {
       pc = pc + signExtend(immediate) * WORDSIZE;
 
-      if (signExtend(immediate) < 0) {
+      if (signedLessThan(signExtend(immediate), 0)) {
         // keep track of number of loop iterations
         loops = loops + 1;
 
@@ -6152,7 +6163,7 @@ void op_beq() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> $pc=");
+      print((uint32_t*) " -> $pc=");
       printHexadecimal(pc, 0);
     }
     println();
@@ -6162,15 +6173,15 @@ void op_beq() {
 void op_jal() {
   if (debug) {
     printOpcode(opcode);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printHexadecimal(instr_index, 0);
-    print((int*) "[");
+    print((uint32_t*) "[");
     printHexadecimal(instr_index * WORDSIZE, 0);
-    print((int*) "]");
+    print((uint32_t*) "]");
     if (interpret) {
-      print((int*) ": ");
+      print((uint32_t*) ": ");
       printRegister(REG_RA);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printHexadecimal(*(registers+REG_RA), 0);
     }
   }
@@ -6191,11 +6202,11 @@ void op_jal() {
 
   if (debug) {
     if (interpret) {
-      print((int*) " -> ");
+      print((uint32_t*) " -> ");
       printRegister(REG_RA);
-      print((int*) "=");
+      print((uint32_t*) "=");
       printHexadecimal(*(registers+REG_RA), 0);
-      print((int*) ",$pc=");
+      print((uint32_t*) ",$pc=");
       printHexadecimal(pc, 0);
     }
     println();
@@ -6205,11 +6216,11 @@ void op_jal() {
 void op_j() {
   if (debug) {
     printOpcode(opcode);
-    print((int*) " ");
+    print((uint32_t*) " ");
     printHexadecimal(instr_index, 0);
-    print((int*) "[");
+    print((uint32_t*) "[");
     printHexadecimal(instr_index * WORDSIZE, 0);
-    print((int*) "]");
+    print((uint32_t*) "]");
   }
 
   if (interpret) {
@@ -6220,7 +6231,7 @@ void op_j() {
 
   if (debug) {
     if (interpret) {
-      print((int*) ": -> $pc=");
+      print((uint32_t*) ": -> $pc=");
       printHexadecimal(pc, 0);
     }
     println();
@@ -6231,16 +6242,16 @@ void op_j() {
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
-void printException(int exception, int faultingPage) {
-  print((int*) *(EXCEPTIONS + exception));
+void printException(uint32_t exception, uint32_t faultingPage) {
+  print((uint32_t*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT) {
-    print((int*) " at ");
+    print((uint32_t*) " at ");
     printHexadecimal(faultingPage, 8);
   }
 }
 
-void throwException(int exception, int faultingPage) {
+void throwException(uint32_t exception, uint32_t faultingPage) {
   setException(currentContext, exception);
   setFaultingPage(currentContext, faultingPage);
 
@@ -6248,11 +6259,11 @@ void throwException(int exception, int faultingPage) {
 
   if (debug_exception) {
     print(selfieName);
-    print((int*) ": context ");
-    printHexadecimal((int) currentContext, 8);
-    print((int*) " throws ");
+    print((uint32_t*) ": context ");
+    printHexadecimal((uint32_t) currentContext, 8);
+    print((uint32_t*) " throws ");
     printException(exception, faultingPage);
-    print((int*) " exception");
+    print((uint32_t*) " exception");
     println();
   }
 }
@@ -6268,17 +6279,17 @@ void execute() {
   if (debug) {
     if (interpret) {
       print(getName(currentContext));
-      print((int*) ": $pc=");
+      print((uint32_t*) ": $pc=");
     }
     printHexadecimal(pc, 0);
-    if (sourceLineNumber != (int*) 0) {
-      print((int*) "(~");
+    if (sourceLineNumber != (uint32_t*) 0) {
+      print((uint32_t*) "(~");
       printInteger(*(sourceLineNumber + pc / WORDSIZE));
-      print((int*) ")");
+      print((uint32_t*) ")");
     }
-    print((int*) ": ");
+    print((uint32_t*) ": ");
     printHexadecimal(ir, 8);
-    print((int*) ": ");
+    print((uint32_t*) ": ");
   }
 
   if (opcode == OP_SPECIAL) {
@@ -6331,7 +6342,7 @@ void interrupt() {
       throwException(EXCEPTION_TIMER, 0);
 }
 
-int* runUntilException() {
+uint32_t* runUntilException() {
   trap = 0;
 
   while (trap == 0) {
@@ -6346,11 +6357,11 @@ int* runUntilException() {
   return currentContext;
 }
 
-int addressWithMaxCounter(int* counters, int max) {
-  int a;
-  int n;
-  int i;
-  int c;
+uint32_t addressWithMaxCounter(uint32_t* counters, uint32_t max) {
+  uint32_t a;
+  uint32_t n;
+  uint32_t i;
+  uint32_t c;
 
   a = -1;
 
@@ -6373,42 +6384,42 @@ int addressWithMaxCounter(int* counters, int max) {
   return a;
 }
 
-int printCounters(int total, int* counters, int max) {
-  int a;
+uint32_t printCounters(uint32_t total, uint32_t* counters, uint32_t max) {
+  uint32_t a;
 
   a = addressWithMaxCounter(counters, max);
 
   printInteger(*(counters + a / WORDSIZE));
 
-  print((int*) "(");
+  print((uint32_t*) "(");
   printFixedPointPercentage(total, *(counters + a / WORDSIZE));
-  print((int*) "%)");
+  print((uint32_t*) "%)");
 
   if (*(counters + a / WORDSIZE) != 0) {
-    print((int*) "@");
+    print((uint32_t*) "@");
     printHexadecimal(a, 0);
-    if (sourceLineNumber != (int*) 0) {
-      print((int*) "(~");
+    if (sourceLineNumber != (uint32_t*) 0) {
+      print((uint32_t*) "(~");
       printInteger(*(sourceLineNumber + a / WORDSIZE));
-      print((int*) ")");
+      print((uint32_t*) ")");
     }
   }
 
   return a;
 }
 
-void printProfile(int* message, int total, int* counters) {
-  int a;
+void printProfile(uint32_t* message, uint32_t total, uint32_t* counters) {
+  uint32_t a;
 
   if (total > 0) {
     print(selfieName);
     print(message);
     printInteger(total);
-    print((int*) ",");
+    print((uint32_t*) ",");
     a = printCounters(total, counters, INT_MAX); // max counter
-    print((int*) ",");
+    print((uint32_t*) ",");
     a = printCounters(total, counters, *(counters + a / WORDSIZE)); // 2nd max
-    print((int*) ",");
+    print((uint32_t*) ",");
     a = printCounters(total, counters, *(counters + a / WORDSIZE)); // 3rd max
     println();
   }
@@ -6419,7 +6430,7 @@ void selfie_disassemble() {
 
   if (codeLength == 0) {
     print(selfieName);
-    print((int*) ": nothing to disassemble to output file ");
+    print((uint32_t*) ": nothing to disassemble to output file ");
     print(assemblyName);
     println();
 
@@ -6430,9 +6441,9 @@ void selfie_disassemble() {
 
   assemblyFD = openWriteOnly(assemblyName);
 
-  if (assemblyFD < 0) {
+  if (signedLessThan(assemblyFD, 0)) {
     print(selfieName);
-    print((int*) ": could not create assembly output file ");
+    print((uint32_t*) ": could not create assembly output file ");
     print(assemblyName);
     println();
 
@@ -6460,15 +6471,15 @@ void selfie_disassemble() {
 
   debug = 0;
 
-  outputName = (int*) 0;
+  outputName = (uint32_t*) 0;
   outputFD   = 1;
 
   print(selfieName);
-  print((int*) ": ");
+  print((uint32_t*) ": ");
   printInteger(numberOfWrittenCharacters);
-  print((int*) " characters of assembly with ");
+  print((uint32_t*) " characters of assembly with ");
   printInteger(codeLength / WORDSIZE);
-  print((int*) " instructions written into ");
+  print((uint32_t*) " instructions written into ");
   print(assemblyName);
   println();
 }
@@ -6477,10 +6488,10 @@ void selfie_disassemble() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-int* allocateContext(int* parent, int* vctxt, int* in) {
-  int* context;
+uint32_t* allocateContext(uint32_t* parent, uint32_t* vctxt, uint32_t* in) {
+  uint32_t* context;
 
-  if (freeContexts == (int*) 0)
+  if (freeContexts == (uint32_t*) 0)
     context = smalloc(6 * SIZEOFINTSTAR + 11 * SIZEOFINT);
   else {
     context = freeContexts;
@@ -6489,9 +6500,9 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   }
 
   setNextContext(context, in);
-  setPrevContext(context, (int*) 0);
+  setPrevContext(context, (uint32_t*) 0);
 
-  if (in != (int*) 0)
+  if (in != (uint32_t*) 0)
     setPrevContext(in, context);
 
   setPC(context, 0);
@@ -6523,17 +6534,17 @@ int* allocateContext(int* parent, int* vctxt, int* in) {
   setParent(context, parent);
   setVirtualContext(context, vctxt);
 
-  setName(context, (int*) 0);
+  setName(context, (uint32_t*) 0);
 
   return context;
 }
 
-int* findContext(int* parent, int* vctxt, int* in) {
-  int* context;
+uint32_t* findContext(uint32_t* parent, uint32_t* vctxt, uint32_t* in) {
+  uint32_t* context;
 
   context = in;
 
-  while (context != (int*) 0) {
+  while (context != (uint32_t*) 0) {
     if (getParent(context) == parent)
       if (getVirtualContext(context) == vctxt)
         return context;
@@ -6541,22 +6552,22 @@ int* findContext(int* parent, int* vctxt, int* in) {
     context = getNextContext(context);
   }
 
-  return (int*) 0;
+  return (uint32_t*) 0;
 }
 
-void freeContext(int* context) {
+void freeContext(uint32_t* context) {
   setNextContext(context, freeContexts);
 
   freeContexts = context;
 }
 
-int* deleteContext(int* context, int* from) {
-  if (getNextContext(context) != (int*) 0)
+uint32_t* deleteContext(uint32_t* context, uint32_t* from) {
+  if (getNextContext(context) != (uint32_t*) 0)
     setPrevContext(getNextContext(context), getPrevContext(context));
 
-  if (getPrevContext(context) != (int*) 0) {
+  if (getPrevContext(context) != (uint32_t*) 0) {
     setNextContext(getPrevContext(context), getNextContext(context));
-    setPrevContext(context, (int*) 0);
+    setPrevContext(context, (uint32_t*) 0);
   } else
     from = getNextContext(context);
 
@@ -6569,44 +6580,44 @@ int* deleteContext(int* context, int* from) {
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
 
-int* createContext(int* parent, int* vctxt) {
+uint32_t* createContext(uint32_t* parent, uint32_t* vctxt) {
   // TODO: check if context already exists
   usedContexts = allocateContext(parent, vctxt, usedContexts);
 
-  if (currentContext == (int*) 0)
+  if (currentContext == (uint32_t*) 0)
     currentContext = usedContexts;
 
   if (debug_create) {
     print(selfieName);
-    print((int*) ": parent context ");
-    printHexadecimal((int) parent, 8);
-    print((int*) " created child context ");
-    printHexadecimal((int) usedContexts, 8);
+    print((uint32_t*) ": parent context ");
+    printHexadecimal((uint32_t) parent, 8);
+    print((uint32_t*) " created child context ");
+    printHexadecimal((uint32_t) usedContexts, 8);
     println();
   }
 
   return usedContexts;
 }
 
-int* cacheContext(int* vctxt) {
-  int* context;
+uint32_t* cacheContext(uint32_t* vctxt) {
+  uint32_t* context;
 
   // find cached context on my boot level
   context = findContext(currentContext, vctxt, usedContexts);
 
-  if (context == (int*) 0)
+  if (context == (uint32_t*) 0)
     // create cached context on my boot level
     context = createContext(currentContext, vctxt);
 
   return context;
 }
 
-void saveContext(int* context) {
-  int* parentTable;
-  int* vctxt;
-  int r;
-  int* regs;
-  int* vregs;
+void saveContext(uint32_t* context) {
+  uint32_t* parentTable;
+  uint32_t* vctxt;
+  uint32_t r;
+  uint32_t* regs;
+  uint32_t* vregs;
 
   // save machine state
   setPC(context, pc);
@@ -6624,10 +6635,10 @@ void saveContext(int* context) {
 
     regs = getRegs(context);
 
-    vregs = (int*) loadVirtualMemory(parentTable, Regs(vctxt));
+    vregs = (uint32_t*) loadVirtualMemory(parentTable, Regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      storeVirtualMemory(parentTable, (int) (vregs + r), *(regs + r));
+      storeVirtualMemory(parentTable, (uint32_t) (vregs + r), *(regs + r));
 
       r = r + 1;
     }
@@ -6642,8 +6653,8 @@ void saveContext(int* context) {
   }
 }
 
-void mapPage(int* context, int page, int frame) {
-  int* table;
+void mapPage(uint32_t* context, uint32_t page, uint32_t frame) {
+  uint32_t* table;
 
   table = getPT(context);
 
@@ -6663,26 +6674,26 @@ void mapPage(int* context, int page, int frame) {
 
   if (debug_map) {
     print(selfieName);
-    print((int*) ": page ");
+    print((uint32_t*) ": page ");
     printHexadecimal(page, 4);
-    print((int*) " mapped to frame ");
+    print((uint32_t*) " mapped to frame ");
     printHexadecimal(frame, 8);
-    print((int*) " in context ");
-    printHexadecimal((int) context, 8);
+    print((uint32_t*) " in context ");
+    printHexadecimal((uint32_t) context, 8);
     println();
   }
 }
 
-void restoreContext(int* context) {
-  int* parentTable;
-  int* vctxt;
-  int r;
-  int* regs;
-  int* vregs;
-  int* table;
-  int page;
-  int me;
-  int frame;
+void restoreContext(uint32_t* context) {
+  uint32_t* parentTable;
+  uint32_t* vctxt;
+  uint32_t r;
+  uint32_t* regs;
+  uint32_t* vregs;
+  uint32_t* table;
+  uint32_t page;
+  uint32_t me;
+  uint32_t frame;
 
   if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
@@ -6695,10 +6706,10 @@ void restoreContext(int* context) {
 
     regs = getRegs(context);
 
-    vregs = (int*) loadVirtualMemory(parentTable, Regs(vctxt));
+    vregs = (uint32_t*) loadVirtualMemory(parentTable, Regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      *(regs + r) = loadVirtualMemory(parentTable, (int) (vregs + r));
+      *(regs + r) = loadVirtualMemory(parentTable, (uint32_t) (vregs + r));
 
       r = r + 1;
     }
@@ -6711,7 +6722,7 @@ void restoreContext(int* context) {
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
     setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
 
-    table = (int*) loadVirtualMemory(parentTable, PT(vctxt));
+    table = (uint32_t*) loadVirtualMemory(parentTable, PT(vctxt));
 
     // assert: context page table is only mapped from beginning up and end down
 
@@ -6747,7 +6758,7 @@ void restoreContext(int* context) {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
-int pavailable() {
+uint32_t pavailable() {
   if (freePageFrameMemory > 0)
     return 1;
   else if (usedPageFrameMemory + MEGABYTEINWORDS <= pageFrameMemory)
@@ -6756,14 +6767,14 @@ int pavailable() {
     return 0;
 }
 
-int pused() {
+uint32_t pused() {
   return usedPageFrameMemory - freePageFrameMemory;
 }
 
-int* palloc() {
+uint32_t* palloc() {
   // CAUTION: on boot level zero palloc may return frame addresses < 0
-  int block;
-  int frame;
+  uint32_t block;
+  uint32_t frame;
 
   // assert: pageFrameMemory is equal to or a multiple of MEGABYTEINWORDS
   // assert: PAGESIZEINWORDS is a factor of MEGABYTEINWORDS strictly less than MEGABYTEINWORDS
@@ -6773,7 +6784,7 @@ int* palloc() {
 
     if (usedPageFrameMemory + freePageFrameMemory <= pageFrameMemory) {
       // on boot level zero allocate zeroed memory
-      block = (int) zalloc(freePageFrameMemory * WORDSIZE);
+      block = (uint32_t) zalloc(freePageFrameMemory * WORDSIZE);
 
       usedPageFrameMemory = usedPageFrameMemory + freePageFrameMemory;
 
@@ -6785,7 +6796,7 @@ int* palloc() {
         freePageFrameMemory = freePageFrameMemory - PAGESIZEINWORDS;
     } else {
       print(selfieName);
-      print((int*) ": palloc out of physical memory");
+      print((uint32_t*) ": palloc out of physical memory");
       println();
 
       exit(EXITCODE_OUTOFPHYSICALMEMORY);
@@ -6800,24 +6811,24 @@ int* palloc() {
   freePageFrameMemory = freePageFrameMemory - PAGESIZEINWORDS;
 
   // strictly, touching is only necessary on boot levels higher than zero
-  return touch((int*) frame, PAGESIZE);
+  return touch((uint32_t*) frame, PAGESIZE);
 }
 
-void pfree(int* frame) {
+void pfree(uint32_t* frame) {
   // TODO: implement free list of page frames
 }
 
-void mapAndStore(int* context, int vaddr, int data) {
+void mapAndStore(uint32_t* context, uint32_t vaddr, uint32_t data) {
   // assert: isValidVirtualAddress(vaddr) == 1
 
   if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
-    mapPage(context, getPageOfVirtualAddress(vaddr), (int) palloc());
+    mapPage(context, getPageOfVirtualAddress(vaddr), (uint32_t) palloc());
 
   storeVirtualMemory(getPT(context), vaddr, data);
 }
 
-void up_loadBinary(int* context) {
-  int vaddr;
+void up_loadBinary(uint32_t* context) {
+  uint32_t vaddr;
 
   setName(context, binaryName);
 
@@ -6831,9 +6842,9 @@ void up_loadBinary(int* context) {
   }
 }
 
-int up_loadString(int* context, int* s, int SP) {
-  int bytes;
-  int i;
+uint32_t up_loadString(uint32_t* context, uint32_t* s, uint32_t SP) {
+  uint32_t bytes;
+  uint32_t i;
 
   bytes = roundUp(stringLength(s) + 1, WORDSIZE);
 
@@ -6853,11 +6864,11 @@ int up_loadString(int* context, int* s, int SP) {
   return SP;
 }
 
-void up_loadArguments(int* context, int argc, int* argv) {
-  int SP;
-  int vargv;
-  int i_argc;
-  int i_vargv;
+void up_loadArguments(uint32_t* context, uint32_t argc, uint32_t* argv) {
+  uint32_t SP;
+  uint32_t vargv;
+  uint32_t i_argc;
+  uint32_t i_vargv;
 
   // arguments are pushed onto stack which starts at highest virtual address
   SP = HIGHESTMEMORYADDRESS;
@@ -6875,7 +6886,7 @@ void up_loadArguments(int* context, int argc, int* argv) {
   i_argc  = argc;
 
   while (i_argc > 0) {
-    SP = up_loadString(context, (int*) *argv, SP);
+    SP = up_loadString(context, (uint32_t*) *argv, SP);
 
     // store pointer to string in virtual *argv
     mapAndStore(context, i_vargv, SP);
@@ -6903,8 +6914,8 @@ void up_loadArguments(int* context, int argc, int* argv) {
   mapAndStore(context, HIGHESTMEMORYADDRESS, SP);
 }
 
-void mapUnmappedPages(int* context) {
-  int page;
+void mapUnmappedPages(uint32_t* context) {
+  uint32_t page;
 
   // assert: page table is only mapped from beginning up and end down
 
@@ -6914,22 +6925,22 @@ void mapUnmappedPages(int* context) {
     page = page + 1;
 
   while (pavailable()) {
-    mapPage(context, page, (int) palloc());
+    mapPage(context, page, (uint32_t) palloc());
 
     page = page + 1;
   }
 }
 
-int isBootLevelZero() {
+uint32_t isBootLevelZero() {
   // in C99 malloc(0) returns either a null pointer or a unique pointer. 
   // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
   // selfie's malloc implementation, on the other hand, 
   // returns the same not null address, if malloc(0) is called consecutively.
-  int firstMalloc;
-  int secondMalloc;
+  uint32_t firstMalloc;
+  uint32_t secondMalloc;
 
-  firstMalloc = (int) malloc(0);
-  secondMalloc = (int) malloc(0);
+  firstMalloc = (uint32_t) malloc(0);
+  secondMalloc = (uint32_t) malloc(0);
 
   if (firstMalloc == 0)
     return 1;
@@ -6940,8 +6951,8 @@ int isBootLevelZero() {
   return 0;
 }
 
-int handleSystemCalls(int* context) {
-  int v0;
+uint32_t handleSystemCalls(uint32_t* context) {
+  uint32_t v0;
 
   if (getException(context) == EXCEPTION_SYSCALL) {
     v0 = *(getRegs(context)+REG_V0);
@@ -6961,7 +6972,7 @@ int handleSystemCalls(int* context) {
       return EXIT;
     } else {
       print(selfieName);
-      print((int*) ": unknown system call ");
+      print((uint32_t*) ": unknown system call ");
       printInteger(v0);
       println();
 
@@ -6971,9 +6982,9 @@ int handleSystemCalls(int* context) {
     }
   } else if (getException(context) != EXCEPTION_TIMER) {
     print(selfieName);
-    print((int*) ": context ");
+    print((uint32_t*) ": context ");
     print(getName(context));
-    print((int*) " throws uncaught ");
+    print((uint32_t*) " throws uncaught ");
     printException(getException(context), getFaultingPage(context));
     println();
 
@@ -6985,11 +6996,11 @@ int handleSystemCalls(int* context) {
   return DONOTEXIT;
 }
 
-int mipster(int* toContext) {
-  int timeout;
-  int* fromContext;
+uint32_t mipster(uint32_t* toContext) {
+  uint32_t timeout;
+  uint32_t* fromContext;
 
-  print((int*) "mipster");
+  print((uint32_t*) "mipster");
   println();
 
   timeout = TIMESLICE;
@@ -7007,7 +7018,7 @@ int mipster(int* toContext) {
 
       if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
+        mapPage(fromContext, getFaultingPage(fromContext), (uint32_t) palloc());
       else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
@@ -7020,11 +7031,11 @@ int mipster(int* toContext) {
   }
 }
 
-int minster(int* toContext) {
-  int timeout;
-  int* fromContext;
+uint32_t minster(uint32_t* toContext) {
+  uint32_t timeout;
+  uint32_t* fromContext;
 
-  print((int*) "minster");
+  print((uint32_t*) "minster");
   println();
 
   timeout = TIMESLICE;
@@ -7057,11 +7068,11 @@ int minster(int* toContext) {
   }
 }
 
-int mobster(int* toContext) {
-  int timeout;
-  int* fromContext;
+uint32_t mobster(uint32_t* toContext) {
+  uint32_t timeout;
+  uint32_t* fromContext;
 
-  print((int*) "mobster");
+  print((uint32_t*) "mobster");
   println();
 
   timeout = TIMESLICE;
@@ -7089,10 +7100,10 @@ int mobster(int* toContext) {
   }
 }
 
-int hypster(int* toContext) {
-  int* fromContext;
+uint32_t hypster(uint32_t* toContext) {
+  uint32_t* fromContext;
 
-  print((int*) "hypster");
+  print((uint32_t*) "hypster");
   println();
 
   while (1) {
@@ -7100,7 +7111,7 @@ int hypster(int* toContext) {
 
     if (getException(fromContext) == EXCEPTION_PAGEFAULT)
       // TODO: use this table to unmap and reuse frames
-      mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
+      mapPage(fromContext, getFaultingPage(fromContext), (uint32_t) palloc());
     else if (handleSystemCalls(fromContext) == EXIT)
       return getExitCode(fromContext);
 
@@ -7110,17 +7121,17 @@ int hypster(int* toContext) {
   }
 }
 
-int mixter(int* toContext, int mix) {
+uint32_t mixter(uint32_t* toContext, uint32_t mix) {
   // works with mipsters and hypsters
-  int mslice;
-  int timeout;
-  int* fromContext;
+  uint32_t mslice;
+  uint32_t timeout;
+  uint32_t* fromContext;
 
-  print((int*) "mixter (");
+  print((uint32_t*) "mixter (");
   printInteger(mix);
-  print((int*) "% mipster/");
+  print((uint32_t*) "% mipster/");
   printInteger(100 - mix);
-  print((int*) "% hypster)");
+  print((uint32_t*) "% hypster)");
   println();
 
   mslice = TIMESLICE;
@@ -7158,7 +7169,7 @@ int mixter(int* toContext, int mix) {
 
       if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, getFaultingPage(fromContext), (int) palloc());
+        mapPage(fromContext, getFaultingPage(fromContext), (uint32_t) palloc());
       else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
@@ -7182,12 +7193,12 @@ int mixter(int* toContext, int mix) {
   }
 }
 
-int selfie_run(int machine) {
-  int exitCode;
+uint32_t selfie_run(uint32_t machine) {
+  uint32_t exitCode;
 
   if (binaryLength == 0) {
     print(selfieName);
-    print((int*) ": nothing to run, debug, or host");
+    print((uint32_t*) ": nothing to run, debug, or host");
     println();
 
     return -1;
@@ -7210,11 +7221,11 @@ int selfie_run(int machine) {
   up_loadArguments(currentContext, numberOfRemainingArguments(), remainingArguments());
 
   print(selfieName);
-  print((int*) ": this is selfie executing ");
+  print((uint32_t*) ": this is selfie executing ");
   print(binaryName);
-  print((int*) " with ");
+  print((uint32_t*) " with ");
   printInteger(pageFrameMemory / MEGABYTEINWORDS);
-  print((int*) "MB of physical memory on ");
+  print((uint32_t*) "MB of physical memory on ");
 
   if (machine == MIPSTER)
     exitCode = mipster(currentContext);
@@ -7237,26 +7248,26 @@ int selfie_run(int machine) {
   debug = 0;
 
   print(selfieName);
-  print((int*) ": this is selfie terminating ");
+  print((uint32_t*) ": this is selfie terminating ");
   print(getName(currentContext));
-  print((int*) " with exit code ");
+  print((uint32_t*) " with exit code ");
   printInteger(exitCode);
-  print((int*) " and ");
+  print((uint32_t*) " and ");
   printFixedPointRatio(pused(), MEGABYTEINWORDS);
-  print((int*) "MB of mapped memory");
+  print((uint32_t*) "MB of mapped memory");
   println();
 
   if (calls > 0) {
     print(selfieName);
-    if (sourceLineNumber != (int*) 0)
-      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
+    if (sourceLineNumber != (uint32_t*) 0)
+      print((uint32_t*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
     else
-      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
+      print((uint32_t*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
     println();
-    printProfile((int*) ": calls: ", calls, callsPerAddress);
-    printProfile((int*) ": loops: ", loops, loopsPerAddress);
-    printProfile((int*) ": loads: ", loads, loadsPerAddress);
-    printProfile((int*) ": stores: ", stores, storesPerAddress);
+    printProfile((uint32_t*) ": calls: ", calls, callsPerAddress);
+    printProfile((uint32_t*) ": loops: ", loops, loopsPerAddress);
+    printProfile((uint32_t*) ": loads: ", loads, loadsPerAddress);
+    printProfile((uint32_t*) ": stores: ", stores, storesPerAddress);
   }
 
   return exitCode;
@@ -7272,8 +7283,8 @@ int selfie_run(int machine) {
 // -------------------------- SAT Solver ---------------------------
 // -----------------------------------------------------------------
 
-int clauseMayBeTrue(int* clauseAddress, int depth) {
-  int variable;
+uint32_t clauseMayBeTrue(uint32_t* clauseAddress, uint32_t depth) {
+  uint32_t variable;
 
   variable = 0;
 
@@ -7301,8 +7312,8 @@ int clauseMayBeTrue(int* clauseAddress, int depth) {
   return FALSE;
 }
 
-int instanceMayBeTrue(int depth) {
-  int clause;
+uint32_t instanceMayBeTrue(uint32_t depth) {
+  uint32_t clause;
 
   clause = 0;
 
@@ -7317,7 +7328,7 @@ int instanceMayBeTrue(int depth) {
   return TRUE;
 }
 
-int babysat(int depth) {
+uint32_t babysat(uint32_t depth) {
   if (depth == numberOfSATVariables) return SAT;
 
   *(SATAssignment + depth) = TRUE;
@@ -7336,12 +7347,12 @@ int babysat(int depth) {
 // -----------------------------------------------------------------
 
 void selfie_printDimacs() {
-  int clause;
-  int variable;
+  uint32_t clause;
+  uint32_t variable;
 
-  print((int*) "p cnf ");
+  print((uint32_t*) "p cnf ");
   printInteger(numberOfSATVariables);
-  print((int*) " ");
+  print((uint32_t*) " ");
   printInteger(numberOfSATClauses);
   println();
 
@@ -7353,24 +7364,24 @@ void selfie_printDimacs() {
     while (variable < numberOfSATVariables) {
       if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable) == TRUE) {
         printInteger(variable + 1);
-        print((int*) " ");
+        print((uint32_t*) " ");
       } else if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable + 1) == TRUE) {
         printInteger(-(variable + 1));
-        print((int*) " ");
+        print((uint32_t*) " ");
       }
 
       variable = variable + 1;
     }
 
-    print((int*) "0");
+    print((uint32_t*) "0");
     println();
 
     clause = clause + 1;
   }
 }
 
-void dimacs_findNextCharacter(int newLine) {
-  int inComment;
+void dimacs_findNextCharacter(uint32_t newLine) {
+  uint32_t inComment;
 
   // assuming we are not in a comment
   inComment = 0;
@@ -7426,7 +7437,7 @@ void dimacs_getSymbol() {
   getSymbol();
 }
 
-void dimacs_word(int* word) {
+void dimacs_word(uint32_t* word) {
   if (symbol == SYM_IDENTIFIER) {
     if (stringCompare(identifier, word)) {
       dimacs_getSymbol();
@@ -7440,8 +7451,8 @@ void dimacs_word(int* word) {
   exit(EXITCODE_PARSERERROR);
 }
 
-int dimacs_number() {
-  int number;
+uint32_t dimacs_number() {
+  uint32_t number;
 
   if (symbol == SYM_INTEGER) {
     number = literal;
@@ -7455,8 +7466,8 @@ int dimacs_number() {
   exit(EXITCODE_PARSERERROR);
 }
 
-void dimacs_getClause(int clause) {
-  int not;
+void dimacs_getClause(uint32_t clause) {
+  uint32_t not;
 
   while (1) {
     not = 0;
@@ -7474,7 +7485,7 @@ void dimacs_getClause(int clause) {
 
         return;
       } else if (literal > numberOfSATVariables) {
-        syntaxErrorMessage((int*) "clause exceeds declared number of variables");
+        syntaxErrorMessage((uint32_t*) "clause exceeds declared number of variables");
 
         exit(EXITCODE_PARSERERROR);
       }
@@ -7496,7 +7507,7 @@ void dimacs_getClause(int clause) {
 }
 
 void dimacs_getInstance() {
-  int clauses;
+  uint32_t clauses;
 
   clauses = 0;
 
@@ -7506,13 +7517,13 @@ void dimacs_getInstance() {
 
       clauses = clauses + 1;
     } else {
-      syntaxErrorMessage((int*) "instance has fewer clauses than declared");
+      syntaxErrorMessage((uint32_t*) "instance has fewer clauses than declared");
 
       exit(EXITCODE_PARSERERROR);
     }
 
   if (symbol != SYM_EOF) {
-    syntaxErrorMessage((int*) "instance has more clauses than declared");
+    syntaxErrorMessage((uint32_t*) "instance has more clauses than declared");
 
     exit(EXITCODE_PARSERERROR);
   }
@@ -7522,7 +7533,7 @@ void selfie_loadDimacs() {
   sourceName = getArgument();
 
   print(selfieName);
-  print((int*) ": this is selfie loading SAT instance ");
+  print((uint32_t*) ": this is selfie loading SAT instance ");
   print(sourceName);
   println();
 
@@ -7530,9 +7541,9 @@ void selfie_loadDimacs() {
 
   sourceFD = open(sourceName, O_RDONLY, 0);
 
-  if (sourceFD < 0) {
+  if (signedLessThan(sourceFD, 0)) {
     print(selfieName);
-    print((int*) ": could not open input file ");
+    print((uint32_t*) ": could not open input file ");
     print(sourceName);
     println();
 
@@ -7546,25 +7557,25 @@ void selfie_loadDimacs() {
 
   dimacs_getSymbol();
 
-  dimacs_word((int*) "p");
-  dimacs_word((int*) "cnf");
+  dimacs_word((uint32_t*) "p");
+  dimacs_word((uint32_t*) "cnf");
 
   numberOfSATVariables = dimacs_number();
 
-  SATAssignment = (int*) smalloc(numberOfSATVariables * WORDSIZE);
+  SATAssignment = (uint32_t*) smalloc(numberOfSATVariables * WORDSIZE);
 
   numberOfSATClauses = dimacs_number();
 
-  SATInstance = (int*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * WORDSIZE);
+  SATInstance = (uint32_t*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * WORDSIZE);
 
   dimacs_getInstance();
 
   print(selfieName);
-  print((int*) ": ");
+  print((uint32_t*) ": ");
   printInteger(numberOfSATClauses);
-  print((int*) " clauses with ");
+  print((uint32_t*) " clauses with ");
   printInteger(numberOfSATVariables);
-  print((int*) " declared variables loaded from ");
+  print((uint32_t*) " declared variables loaded from ");
   print(sourceName);
   println();
 
@@ -7572,13 +7583,13 @@ void selfie_loadDimacs() {
 }
 
 void selfie_sat() {
-  int variable;
+  uint32_t variable;
 
   selfie_loadDimacs();
 
-  if (dimacsName == (int*) 0) {
+  if (dimacsName == (uint32_t*) 0) {
     print(selfieName);
-    print((int*) ": nothing to SAT solve");
+    print((uint32_t*) ": nothing to SAT solve");
     println();
 
     return;
@@ -7588,26 +7599,26 @@ void selfie_sat() {
 
   if (babysat(0) == SAT) {
     print(selfieName);
-    print((int*) ": ");
+    print((uint32_t*) ": ");
     print(dimacsName);
-    print((int*) " is satisfiable with ");
+    print((uint32_t*) " is satisfiable with ");
 
     variable = 0;
 
     while (variable < numberOfSATVariables) {
       if (*(SATAssignment + variable) == FALSE)
-        print((int*) "-");
+        print((uint32_t*) "-");
 
       printInteger(variable + 1);
-      print((int*) " ");
+      print((uint32_t*) " ");
 
       variable = variable + 1;
     }
   } else {
     print(selfieName);
-    print((int*) ": ");
+    print((uint32_t*) ": ");
     print(dimacsName);
-    print((int*) " is unsatisfiable");
+    print((uint32_t*) " is unsatisfiable");
   }
 
   println();
@@ -7617,23 +7628,23 @@ void selfie_sat() {
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
-int numberOfRemainingArguments() {
+uint32_t numberOfRemainingArguments() {
   return selfie_argc;
 }
 
-int* remainingArguments() {
+uint32_t* remainingArguments() {
   return selfie_argv;
 }
 
-int* peekArgument() {
+uint32_t* peekArgument() {
   if (numberOfRemainingArguments() > 0)
-    return (int*) *selfie_argv;
+    return (uint32_t*) *selfie_argv;
   else
-    return (int*) 0;
+    return (uint32_t*) 0;
 }
 
-int* getArgument() {
-  int* argument;
+uint32_t* getArgument() {
+  uint32_t* argument;
 
   argument = peekArgument();
 
@@ -7645,20 +7656,20 @@ int* getArgument() {
   return argument;
 }
 
-void setArgument(int* argv) {
-  *selfie_argv = (int) argv;
+void setArgument(uint32_t* argv) {
+  *selfie_argv = (uint32_t) argv;
 }
 
 void printUsage() {
   print(selfieName);
-  print((int*) ": usage: ");
-  print((int*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((int*) "[ ( -m | -d | -y | -min | -mob ) size ... ]");
+  print((uint32_t*) ": usage: ");
+  print((uint32_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
+  print((uint32_t*) "[ ( -m | -d | -y | -min | -mob ) size ... ]");
   println();
 }
 
-int selfie() {
-  int* option;
+uint32_t selfie() {
+  uint32_t* option;
 
   if (numberOfRemainingArguments() == 0)
     printUsage();
@@ -7671,32 +7682,32 @@ int selfie() {
     while (numberOfRemainingArguments() > 0) {
       option = getArgument();
 
-      if (stringCompare(option, (int*) "-c"))
+      if (stringCompare(option, (uint32_t*) "-c"))
         selfie_compile();
       else if (numberOfRemainingArguments() == 0) {
         // remaining options have at least one argument
         printUsage();
 
         return -1;
-      } else if (stringCompare(option, (int*) "-o"))
+      } else if (stringCompare(option, (uint32_t*) "-o"))
         selfie_output();
-      else if (stringCompare(option, (int*) "-s"))
+      else if (stringCompare(option, (uint32_t*) "-s"))
         selfie_disassemble();
-      else if (stringCompare(option, (int*) "-l"))
+      else if (stringCompare(option, (uint32_t*) "-l"))
         selfie_load();
-      else if (stringCompare(option, (int*) "-sat"))
+      else if (stringCompare(option, (uint32_t*) "-sat"))
         selfie_sat();
-      else if (stringCompare(option, (int*) "-m"))
+      else if (stringCompare(option, (uint32_t*) "-m"))
         return selfie_run(MIPSTER);
-      else if (stringCompare(option, (int*) "-d")) {
+      else if (stringCompare(option, (uint32_t*) "-d")) {
         debug = 1;
 
         return selfie_run(MIPSTER);
-      } else if (stringCompare(option, (int*) "-y"))
+      } else if (stringCompare(option, (uint32_t*) "-y"))
         return selfie_run(HYPSTER);
-      else if (stringCompare(option, (int*) "-min"))
+      else if (stringCompare(option, (uint32_t*) "-min"))
         return selfie_run(MINSTER);
-      else if (stringCompare(option, (int*) "-mob"))
+      else if (stringCompare(option, (uint32_t*) "-mob"))
         return selfie_run(MOBSTER);
       else {
         printUsage();
@@ -7709,8 +7720,8 @@ int selfie() {
   return 0;
 }
 
-int main(int argc, int* argv) {
-  initSelfie(argc, (int*) argv);
+uint32_t main(uint32_t argc, uint32_t* argv) {
+  initSelfie(argc, (uint32_t*) argv);
 
   initLibrary();
 
