@@ -738,7 +738,7 @@ uint32_t FCT_MULTU   = 25;
 uint32_t FCT_DIVU    = 27;
 uint32_t FCT_ADDU    = 33;
 uint32_t FCT_SUBU    = 35;
-uint32_t FCT_SLT     = 42;
+uint32_t FCT_SLTU    = 43;
 
 uint32_t* FUNCTIONS; // strings representing MIPS functions
 
@@ -765,7 +765,7 @@ void initDecoder() {
   *(OPCODES + OP_LW)      = (uint32_t) "lw";
   *(OPCODES + OP_SW)      = (uint32_t) "sw";
 
-  FUNCTIONS = smalloc(43 * SIZEOFINTSTAR);
+  FUNCTIONS = smalloc(44 * SIZEOFINTSTAR);
 
   *(FUNCTIONS + FCT_NOP)     = (uint32_t) "nop";
   *(FUNCTIONS + FCT_JR)      = (uint32_t) "jr";
@@ -776,7 +776,7 @@ void initDecoder() {
   *(FUNCTIONS + FCT_DIVU)    = (uint32_t) "divu";
   *(FUNCTIONS + FCT_ADDU)    = (uint32_t) "addu";
   *(FUNCTIONS + FCT_SUBU)    = (uint32_t) "subu";
-  *(FUNCTIONS + FCT_SLT)     = (uint32_t) "slt";
+  *(FUNCTIONS + FCT_SLTU)    = (uint32_t) "sltu";
 }
 
 // -----------------------------------------------------------------
@@ -948,7 +948,7 @@ void fct_multu();
 void fct_divu();
 void fct_mfhi();
 void fct_mflo();
-void fct_slt();
+void fct_sltu();
 void fct_jr();
 void fct_syscall();
 
@@ -3309,19 +3309,19 @@ uint32_t gr_expression() {
 
     } else if (operatorSymbol == SYM_LT) {
       // if a < b load 1 else load 0
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLTU);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
       // if b < a load 1 else load 0
-      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
+      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLTU);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
       // if b < a load 0 else load 1
-      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLT);
+      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLTU);
 
       tfree(1);
 
@@ -3332,7 +3332,7 @@ uint32_t gr_expression() {
 
     } else if (operatorSymbol == SYM_GEQ) {
       // if a < b load 0 else load 1
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLT);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLTU);
 
       tfree(1);
 
@@ -4072,7 +4072,7 @@ void emitRightShiftBy(uint32_t reg, uint32_t b) {
     return;
 
   // check if the number to be shifted is negative
-  emitRFormat(OP_SPECIAL, reg, REG_ZR, nextTemporary(), FCT_SLT);
+  emitRFormat(OP_SPECIAL, reg, REG_ZR, nextTemporary(), FCT_SLTU);
 
   brPositive = binaryLength;
 
@@ -5724,7 +5724,7 @@ void fct_mflo() {
   }
 }
 
-void fct_slt() {
+void fct_sltu() {
   if (debug) {
     printFunction(function);
     print((uint32_t*) " ");
@@ -6148,8 +6148,8 @@ void execute() {
       fct_mfhi();
     else if (function == FCT_MFLO)
       fct_mflo();
-    else if (function == FCT_SLT)
-      fct_slt();
+    else if (function == FCT_SLTU)
+      fct_sltu();
     else if (function == FCT_JR)
       fct_jr();
     else if (function == FCT_SYSCALL)
