@@ -225,15 +225,14 @@ uint32_t  outputFD   = 1;
 void initLibrary() {
   uint32_t i;
 
-  // powers of two table with 31 entries for 2^0 to 2^30
-  // avoiding overflow for 2^31 and larger numbers with 32-bit signed integers
-  power_of_two_table = smalloc(31 * SIZEOFINT);
+  // powers of two table with 32 entries for 2^0 to 2^31
+  power_of_two_table = smalloc(32 * SIZEOFINT);
 
   *power_of_two_table = 1; // 2^0 == 1
 
   i = 1;
 
-  while (i < 31) {
+  while (i < 32) {
     // compute powers of two incrementally using this recurrence relation
     *(power_of_two_table + i) = *(power_of_two_table + (i - 1)) * 2;
 
@@ -1451,67 +1450,21 @@ void checkDivision(uint32_t a, uint32_t b) {
 }
 
 uint32_t twoToThePowerOf(uint32_t p) {
-  // assert: 0 <= p < 31
+  // assert: 0 <= p < 32
   return *(power_of_two_table + p);
 }
 
 uint32_t leftShift(uint32_t n, uint32_t b) {
-  uint32_t t;
-
-  if (b <= 0)
-    return n;
-  else if (b < 31) {
-    // left shift of integers works by multiplication with powers of two,
-    // to avoid integer overflow clear the b MSBs first
-
-    // right shift by 32 - b bits, then left shift by 32 - b - 1 bits
-    // since twoToThePowerOf(x) only works for 0 <= x < 31, and finally
-    // left shift one more time by one more bit (multiply by 2)
-
-    t = twoToThePowerOf(32 - b - 1);
-
-    if (n >= 0)
-      n = n - rightShift(n, 32 - b) * t * 2;
-    else
-      // reset sign bit, right and left shift, then set sign bit again
-      n = n - (rightShift((n + 1) + INT_MAX, 32 - b) * t * 2 + INT_MIN);
-
-    if (n < t)
-      // the bit in n that will become the sign bit is not set
-      return n * twoToThePowerOf(b);
-    else
-      // reset that bit first, then left shift, finally set sign bit
-      return (n - t) * twoToThePowerOf(b) + INT_MIN;
-  } else if (b == 31)
-    // twoToThePowerOf(b) only works for 0 <= b < 31
-    if (n % 2 == 1)
-      // LSB becomes sign bit of INT_MIN when left shifting by 31 bits
-      return INT_MIN;
-    else
-      return 0;
+  if (b < 32)
+    return n * twoToThePowerOf(b);
   else
     // left shift of a 32-bit integer by more than 31 bits is always 0
     return 0;
 }
 
 uint32_t rightShift(uint32_t n, uint32_t b) {
-  if (b <= 0)
-    return n;
-  else if (b < 31) {
-    if (n >= 0)
-      // right shift of positive integers works by division with powers of two
-      return n / twoToThePowerOf(b);
-    else
-      // right shift of negative integers requires resetting the sign bit and
-      // then dividing with powers of two, and finally restoring the sign bit
-      // but b bits to the right; this works even if n == INT_MIN
-      return ((n + 1) + INT_MAX) / twoToThePowerOf(b) + (INT_MAX / twoToThePowerOf(b) + 1);
-  } else if (b == 31)
-    if (n < 0)
-      // right shift of a negative 32-bit integer by 31 bits is 1 (sign bit)
-      return 1;
-    else
-      return 0;
+  if (b < 32)
+    return n / twoToThePowerOf(b);
   else
     // right shift of a 32-bit integer by more than 31 bits is always 0
     return 0;
