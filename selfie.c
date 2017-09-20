@@ -1926,14 +1926,14 @@ int* smalloc(int size) {
   memory = malloc(size);
 
   if (size == 0)
-    // a null address is valid, if 0 bytes should be allocated
+    // any address including null
     return memory;
   else if ((int) memory == 0) {
     print(selfieName);
-    print((int*) ": could not allocate physical memory");
+    print((int*) ": malloc out of memory");
     println();
 
-    exit(EXITCODE_OUTOFPHYSICALMEMORY);
+    exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
 
   return memory;
