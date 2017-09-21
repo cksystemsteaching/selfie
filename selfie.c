@@ -4992,6 +4992,7 @@ void emitOpen() {
 
 uint32_t down_loadString(uint32_t* table, uint32_t vaddr, uint32_t* s) {
   uint32_t i;
+  uint32_t j;
   uint32_t* paddr;
 
   i = 0;
@@ -5003,14 +5004,14 @@ uint32_t down_loadString(uint32_t* table, uint32_t vaddr, uint32_t* s) {
 
         *(s + i) = loadPhysicalMemory(paddr);
 
-        if (loadCharacter(paddr, 0) == 0)
-          return 1;
-        else if (loadCharacter(paddr, 1) == 0)
-          return 1;
-        else if (loadCharacter(paddr, 2) == 0)
-          return 1;
-        else if (loadCharacter(paddr, 3) == 0)
-          return 1;
+        j = 0;
+
+        while (j < SIZEOFINT) {
+          if (loadCharacter(paddr, j) == 0)
+            return 1;
+
+          j = j + 1;
+        }
 
         vaddr = vaddr + WORDSIZE;
 
