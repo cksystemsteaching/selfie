@@ -158,6 +158,8 @@ uint32_t CHAR_PERCENTAGE   = '%';
 uint32_t CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 uint32_t CHAR_DOUBLEQUOTE  = '"';
 
+uint32_t CPUBITWIDTH   = 32;
+
 uint32_t SIZEOFINT     = 4; // must be the same as WORDSIZE
 uint32_t SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
 
@@ -214,14 +216,14 @@ uint32_t  outputFD   = 1;
 void initLibrary() {
   uint32_t i;
 
-  // powers of two table with 32 entries for 2^0 to 2^31
-  power_of_two_table = smalloc(32 * SIZEOFINT);
+  // powers of two table with CPUBITWIDTH entries for 2^0 to 2^(CPUBITWIDTH - 1)
+  power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFINT);
 
   *power_of_two_table = 1; // 2^0 == 1
 
   i = 1;
 
-  while (i < 32) {
+  while (i < CPUBITWIDTH) {
     // compute powers of two incrementally using this recurrence relation
     *(power_of_two_table + i) = *(power_of_two_table + (i - 1)) * 2;
 
@@ -229,10 +231,10 @@ void initLibrary() {
   }
 
   // compute INT_MAX and INT_MIN without integer overflows
-  INT_MAX = (twoToThePowerOf(30) - 1) * 2 + 1;
+  INT_MAX = (twoToThePowerOf(CPUBITWIDTH - 2) - 1) * 2 + 1;
   INT_MIN = -INT_MAX - 1;
 
-  UINT_MAX = (twoToThePowerOf(31) - 1) * 2 + 1;
+  UINT_MAX = (twoToThePowerOf(CPUBITWIDTH - 1) - 1) * 2 + 1;
   UINT_MIN = 0;
 
   INT16_MAX = twoToThePowerOf(15) - 1;
@@ -242,8 +244,8 @@ void initLibrary() {
   character_buffer  = smalloc(SIZEOFINT);
   *character_buffer = 0;
 
-  // accommodate at least 32-bit numbers for itoa, no mapping needed
-  integer_buffer = smalloc(33);
+  // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
+  integer_buffer = smalloc(CPUBITWIDTH + 1);
 
   // does not need to be mapped
   filename_buffer = smalloc(maxFilenameLength);
@@ -361,7 +363,7 @@ uint32_t  sourceFD   = 0;        // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = smalloc(28 * SIZEOFINTSTAR);
+  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFINTSTAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (uint32_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint32_t) "integer";
@@ -747,7 +749,7 @@ uint32_t instr_index = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initDecoder() {
-  OPCODES = smalloc(44 * SIZEOFINTSTAR);
+  OPCODES = smalloc((OP_SW + 1) * SIZEOFINTSTAR);
 
   *(OPCODES + OP_SPECIAL) = (uint32_t) "nop";
   *(OPCODES + OP_J)       = (uint32_t) "j";
@@ -757,7 +759,7 @@ void initDecoder() {
   *(OPCODES + OP_LW)      = (uint32_t) "lw";
   *(OPCODES + OP_SW)      = (uint32_t) "sw";
 
-  FUNCTIONS = smalloc(44 * SIZEOFINTSTAR);
+  FUNCTIONS = smalloc((FCT_SLTU + 1) * SIZEOFINTSTAR);
 
   *(FUNCTIONS + FCT_NOP)     = (uint32_t) "nop";
   *(FUNCTIONS + FCT_JR)      = (uint32_t) "jr";
@@ -1037,7 +1039,7 @@ uint32_t* storesPerAddress = (uint32_t*) 0; // number of executed stores per sto
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = smalloc(6 * SIZEOFINTSTAR);
+  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFINTSTAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint32_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint32_t) "page fault";
@@ -1353,23 +1355,23 @@ void initSelfie(uint32_t argc, uint32_t* argv) {
 // -----------------------------------------------------------------
 
 uint32_t twoToThePowerOf(uint32_t p) {
-  // assert: 0 <= p < 32
+  // assert: 0 <= p < CPUBITWIDTH
   return *(power_of_two_table + p);
 }
 
 uint32_t leftShift(uint32_t n, uint32_t b) {
-  if (b < 32)
+  if (b < CPUBITWIDTH)
     return n * twoToThePowerOf(b);
   else
-    // left shift of a 32-bit integer by more than 31 bits is always 0
+    // left shift of a integer with CPUBITWIDTH bits by at least CPUBITWIDTH bits is always 0
     return 0;
 }
 
 uint32_t rightShift(uint32_t n, uint32_t b) {
-  if (b < 32)
+  if (b < CPUBITWIDTH)
     return n / twoToThePowerOf(b);
   else
-    // right shift of a 32-bit integer by more than 31 bits is always 0
+    // right shift of a integer with CPUBITWIDTH bits by at least CPUBITWIDTH bits is always 0
     return 0;
 }
 
@@ -5319,20 +5321,20 @@ uint32_t* tlb(uint32_t* table, uint32_t vaddr) {
     print((uint32_t*) ": tlb access:");
     println();
     print((uint32_t*) " vaddr: ");
-    printBinary(vaddr, 32);
+    printBinary(vaddr, CPUBITWIDTH);
     println();
     print((uint32_t*) " page:  ");
     if (page < NUMBEROFPAGES / 2)
-      printBinary(page * PAGESIZE, 32);
+      printBinary(page * PAGESIZE, CPUBITWIDTH);
     else
-      printBinary(INT_MIN + (page - NUMBEROFPAGES / 2) * PAGESIZE, 32);
-    printBinary(page * PAGESIZE, 32);
+      printBinary(INT_MIN + (page - NUMBEROFPAGES / 2) * PAGESIZE, CPUBITWIDTH);
+    printBinary(page * PAGESIZE, CPUBITWIDTH);
     println();
     print((uint32_t*) " frame: ");
-    printBinary(frame, 32);
+    printBinary(frame, CPUBITWIDTH);
     println();
     print((uint32_t*) " paddr: ");
-    printBinary(paddr, 32);
+    printBinary(paddr, CPUBITWIDTH);
     println();
   }
 
