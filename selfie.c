@@ -923,9 +923,7 @@ uint32_t pageFrameMemory = 0; // size of memory for frames [number of words]
 // ------------------------- INITIALIZATION ------------------------
 
 void initMemory(uint32_t megabytes) {
-  if (megabytes < 0)
-    megabytes = 0;
-  else if (megabytes > 4096)
+  if (megabytes > 4096)
     megabytes = 4096;
 
   pageFrameMemory = megabytes * MEGABYTEINWORDS;
@@ -1481,10 +1479,7 @@ uint32_t atoi(uint32_t* s) {
     // is offset by the ASCII code of '0' (which is 48)
     c = c - '0';
 
-    if (c < 0)
-      // c was not a decimal digit
-      return -1;
-    else if (c > 9)
+    if (c > 9)
       // c was not a decimal digit
       return -1;
 
@@ -1544,7 +1539,7 @@ uint32_t* itoa(uint32_t n, uint32_t* s, uint32_t b, uint32_t a, uint32_t p) {
     storeCharacter(s, 0, '0');
 
     i = 1;
-  } else if (n < 0) {
+  } else if (signedLessThan(n, 0)) {
     // convert n to a positive number but remember the sign
     sign = 1;
 
@@ -1796,10 +1791,8 @@ void printBinary(uint32_t n, uint32_t a) {
 uint32_t roundUp(uint32_t n, uint32_t m) {
   if (n % m == 0)
     return n;
-  else if (n >= 0)
-    return n + m - n % m;
   else
-    return n - n % m;
+    return n - n % m + m;
 }
 
 uint32_t* smalloc(uint32_t size) {
@@ -2143,7 +2136,7 @@ void getSymbol() {
 
         literal = atoi(integer);
 
-        if (literal < 0) {
+        if (signedLessThan(literal, 0)) {
           if (literal == INT_MIN) {
             if (mayBeINTMIN)
               isINTMIN = 1;
@@ -2612,9 +2605,9 @@ uint32_t nextTemporary() {
 }
 
 void tfree(uint32_t numberOfTemporaries) {
-  allocatedTemporaries = allocatedTemporaries - numberOfTemporaries;
-
-  if (allocatedTemporaries < 0) {
+  if (allocatedTemporaries >= numberOfTemporaries)
+    allocatedTemporaries = allocatedTemporaries - numberOfTemporaries;
+  else {
     syntaxErrorMessage((uint32_t*) "illegal register deallocation");
 
     exit(EXITCODE_COMPILERERROR);
@@ -2720,55 +2713,37 @@ uint32_t load_variable(uint32_t* variable) {
 }
 
 void load_integer(uint32_t value) {
-  uint32_t isNegative;
+  uint32_t reg;
+  uint32_t shifted;
+  uint32_t toShift;
+  uint32_t i;
 
   talloc();
 
-  if (value != INT_MIN) {
-    if (value < 0) {
-      isNegative = 1;
-      value = -value;
-    } else 
-      isNegative = 0;
+  reg = REG_ZR;
+  shifted = 0;
+  
+  toShift = CPUBITWIDTH % 14;
 
-    if (value < twoToThePowerOf(15))
-      // ADDIU can only load numbers < 2^15 without sign extension
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), value);
-    else if (value < twoToThePowerOf(28)) {
-      // load 14 msbs of a 28-bit number first
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 14));
+  i = CPUBITWIDTH - toShift;
 
-      // shift left by 14 bits
-      emitLeftShiftBy(currentTemporary(), 14);
+  while (i >= 14) {
+    if (value >= twoToThePowerOf(i)) {
+      emitIFormat(OP_ADDIU, reg, currentTemporary(), rightShift(leftShift(value, shifted), shifted + i));
 
-      // and finally add 14 lsbs
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 18), 18));
-    } else {
-      // load 14 msbs of a 31-bit number first
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), rightShift(value, 17));
+      reg = currentTemporary();
 
-      emitLeftShiftBy(currentTemporary(), 14);
-
-      // then add the next 14 msbs
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 15), 18));
-
-      emitLeftShiftBy(currentTemporary(), 3);
-
-      // and finally add the remaining 3 lsbs
-      emitIFormat(OP_ADDIU, currentTemporary(), currentTemporary(), rightShift(leftShift(value, 29), 29));
+      emitLeftShiftBy(reg, 14);
     }
 
-    if (isNegative)
-      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    shifted = shifted + toShift;
 
-  } else {
-    // load largest positive 16-bit number with a single bit set: 2^14
-    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), -twoToThePowerOf(14));
+    toShift = 14;
 
-    // and then multiply 2^14 by 2^14*2^3 to get to 2^31 == INT_MIN
-    emitLeftShiftBy(currentTemporary(), 14);
-    emitLeftShiftBy(currentTemporary(), 3);
+    i = i - toShift;
   }
+
+  emitIFormat(OP_ADDIU, reg, currentTemporary(), rightShift(leftShift(value, shifted), shifted));
 }
 
 void load_string(uint32_t* string) {
@@ -5123,8 +5098,6 @@ uint32_t implementMalloc(uint32_t* context) {
   uint32_t size;
   uint32_t bump;
   uint32_t stackptr;
-  uint32_t available;
-  uint32_t temp;
 
   if (debug_malloc) {
     print(selfieName);
@@ -5140,9 +5113,7 @@ uint32_t implementMalloc(uint32_t* context) {
 
   stackptr = *(getRegs(context)+REG_SP);
 
-  available = stackptr - bump;
-
-  if (size > available) {
+  if (size > stackptr - bump) {
     setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
 
     return EXIT;
@@ -5216,7 +5187,7 @@ void doSwitch(uint32_t* toContext, uint32_t timeout) {
     printHexadecimal((uint32_t) fromContext, 8);
     print((uint32_t*) " to context ");
     printHexadecimal((uint32_t) toContext, 8);
-    if (timeout >= 0) {
+    if (signedGreaterThan(timeout, -1)) {
       print((uint32_t*) " to execute ");
       printInteger(timeout);
       print((uint32_t*) " instructions");
@@ -5286,9 +5257,6 @@ uint32_t isValidVirtualAddress(uint32_t vaddr) {
 }
 
 uint32_t getPageOfVirtualAddress(uint32_t vaddr) {
-  if (vaddr < 0)
-    return (vaddr - INT_MIN) / PAGESIZE + NUMBEROFPAGES / 2;
-
   return vaddr / PAGESIZE;
 }
 
@@ -5311,10 +5279,7 @@ uint32_t* tlb(uint32_t* table, uint32_t vaddr) {
   frame = getFrameForPage(table, page);
 
   // map virtual address to physical address
-  if (vaddr < 0)
-    paddr = vaddr - INT_MIN - (page - NUMBEROFPAGES / 2) * PAGESIZE + frame;
-  else
-    paddr = vaddr - page * PAGESIZE + frame;
+  paddr = vaddr - page * PAGESIZE + frame;
 
   if (debug_tlb) {
     print(selfieName);
@@ -5324,10 +5289,6 @@ uint32_t* tlb(uint32_t* table, uint32_t vaddr) {
     printBinary(vaddr, CPUBITWIDTH);
     println();
     print((uint32_t*) " page:  ");
-    if (page < NUMBEROFPAGES / 2)
-      printBinary(page * PAGESIZE, CPUBITWIDTH);
-    else
-      printBinary(INT_MIN + (page - NUMBEROFPAGES / 2) * PAGESIZE, CPUBITWIDTH);
     printBinary(page * PAGESIZE, CPUBITWIDTH);
     println();
     print((uint32_t*) " frame: ");
