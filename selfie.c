@@ -95,8 +95,6 @@ uint32_t* malloc(uint32_t size);
 void initLibrary();
 void resetLibrary();
 
-void checkDivision(uint32_t a, uint32_t b);
-
 uint32_t twoToThePowerOf(uint32_t p);
 uint32_t leftShift(uint32_t n, uint32_t b);
 uint32_t rightShift(uint32_t n, uint32_t b);
@@ -173,11 +171,6 @@ uint32_t UINT_MIN; // minimum numerical value of a unsigned 32-bit integer
 
 uint32_t INT16_MAX; // maximum numerical value of a signed 16-bit integer
 uint32_t INT16_MIN; // minimum numerical value of a signed 16-bit integer
-
-uint32_t INT_OVERFLOW = 0; // indicates if an integer overflow occurred
-
-uint32_t OVERFLOW_NO  = 0;
-uint32_t OVERFLOW_YES = 1;
 
 uint32_t maxFilenameLength = 128;
 
@@ -960,7 +953,7 @@ void op_j();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint32_t debug_overflow = 1;
+uint32_t debug_divisionByZero = 1;
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1358,16 +1351,6 @@ void initSelfie(uint32_t argc, uint32_t* argv) {
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
-
-void checkDivision(uint32_t a, uint32_t b) {
-  INT_OVERFLOW = OVERFLOW_NO;
-
-  if (b == 0)
-    INT_OVERFLOW = OVERFLOW_YES;
-  else if (a == INT_MIN)
-    if (b == -1)
-      INT_OVERFLOW = OVERFLOW_YES;
-}
 
 uint32_t twoToThePowerOf(uint32_t p) {
   // assert: 0 <= p < 32
@@ -5537,23 +5520,22 @@ void fct_divu() {
     s = *(registers+rs);
     t = *(registers+rt);
 
-    checkDivision(s, t);
+    if (t == 0) {
+      // division by zero: the result for l and h is undefined
+      l = 0;
+      h = 0;
 
-    if (debug_overflow)
-      if (INT_OVERFLOW == OVERFLOW_YES) {
-        if (t == 0)
-          print((uint32_t*) "division-by-zero error: ");
-        else
-          print((uint32_t*) "signed integer error: ");
+      if (debug_divisionByZero) {
+        print((uint32_t*) "division-by-zero error: ");
         printInteger(s);
         print((uint32_t*) " / ");
         printInteger(t);
         println();
       }
-
-    // this will fail if t == 0 or (s == INT_MIN and t == -1)
-    l = s / t;
-    h = s % t;
+    } else {
+      l = s / t;
+      h = s % t;
+    }
   }
 
   if (debug) {
