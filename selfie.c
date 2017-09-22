@@ -1000,6 +1000,8 @@ int TIMEROFF = -1;
 
 int interpret = 0; // flag for executing or disassembling code
 
+int symbolic = 0; // flag for executing code symbolically
+
 int debug = 0; // flag for logging code execution
 
 // hardware thread state
@@ -5498,6 +5500,8 @@ void fct_addu() {
   int t;
   int d;
   int n;
+  int* symNode;
+  int con;
 
   if (interpret) {
     s = *(registers+rs);
@@ -5505,6 +5509,25 @@ void fct_addu() {
     d = *(registers+rd);
 
     n = addWrap(s, t);
+  }
+
+  if (symbolic) {
+    con = 0;
+
+    if (SYMBOLIC_CON == getSymNodeType(*(registers+rs)))
+    if (SYMBOLIC_CON == getSymNodeType(*(registers+rt)))
+        // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
+        con = 1;
+
+
+    if (con) {
+      n = addWrap(
+        getSymNodeValue(*(registers+rs)),
+        getSymNodeValue(*(registers+rt))
+      );
+      symNode = createSymbolicNode(SYMBOLIC_CON, n,(int*) 0,(int*) 0);
+    }
+    else symNode = createSymbolicNode(SYMBOLIC_OP, FCT_ADDU,*(registers+rs),*(registers+rt));
   }
 
   if (debug) {
@@ -5536,22 +5559,29 @@ void fct_addu() {
     println();
   }
 
+  if (symbolic) {
+    *(registers+rd) = symNode;
+
+    pc = pc + WORDSIZE;
+  }
+
   if (interpret) {
     *(registers+rd) = n;
 
     pc = pc + WORDSIZE;
-
-    if (debug_overflow)
-      if (INT_OVERFLOW == OVERFLOW_YES) {
-        print((int*) "overflow: ");
-        printInteger(s);
-        print((int*) " + ");
-        printInteger(t);
-        print((int*) " ~ ");
-        printInteger(n);
-        println();
-      }
   }
+
+  // INT_OVERFLOW == 1 possible only after addWraper, which gets only called during interpretation or symbolic execution
+  if (debug_overflow)
+    if (INT_OVERFLOW == OVERFLOW_YES) {
+      print((int*) "overflow: ");
+      printInteger(s);
+      print((int*) " + ");
+      printInteger(t);
+      print((int*) " ~ ");
+      printInteger(n);
+      println();
+    }
 }
 
 void fct_subu() {
