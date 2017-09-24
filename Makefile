@@ -1,5 +1,14 @@
 # General compiler flags
-CFLAGS := -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
+CFLAGS := -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
+
+# Add compiler specific flags
+ifeq ($(findstring gcc,$(CC)),gcc)
+CFLAGS += -Wno-main -Wno-return-type -Wno-maybe-uninitialized -Wno-unused-but-set-variable -Wno-builtin-declaration-mismatch 
+else ifeq ($(findstring $(CC),clang),clang)
+CFLAGS += -Wno-main-return-type -Wno-incompatible-library-redeclaration
+else
+$(error environment variable CC has to be set to gcc or clang)
+endif
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
