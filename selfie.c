@@ -319,7 +319,7 @@ uint64_t SYM_STRING       = 27; // string
 uint64_t* SYMBOLS; // strings representing symbols
 
 uint64_t maxIdentifierLength = 64; // maximum number of characters in an identifier
-uint64_t maxIntegerLength    = 10; // maximum number of characters in an integer
+uint64_t maxIntegerLength    = 19; // maximum number of characters in an integer
 uint64_t maxStringLength     = 128; // maximum number of characters in a string
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -452,7 +452,7 @@ uint64_t STRING    = 3;
 // types
 uint64_t UINT64_T     = 1;
 uint64_t UINT64STAR_T = 2;
-uint64_t VOID_T    = 3;
+uint64_t VOID_T       = 3;
 
 // symbol tables
 uint64_t GLOBAL_TABLE  = 1;
@@ -705,9 +705,9 @@ uint64_t OP_SPECIAL = 0;
 uint64_t OP_J       = 2;
 uint64_t OP_JAL     = 3;
 uint64_t OP_BEQ     = 4;
-uint64_t OP_ADDIU   = 9;
-uint64_t OP_LW      = 35;
-uint64_t OP_SW      = 43;
+uint64_t OP_DADDIU  = 25;
+uint64_t OP_LD      = 55;
+uint64_t OP_SD      = 63;
 
 uint64_t* OPCODES; // strings representing MIPS opcodes
 
@@ -716,11 +716,11 @@ uint64_t FCT_JR      = 8;
 uint64_t FCT_SYSCALL = 12;
 uint64_t FCT_MFHI    = 16;
 uint64_t FCT_MFLO    = 18;
-uint64_t FCT_MULTU   = 25;
-uint64_t FCT_DIVU    = 27;
-uint64_t FCT_ADDU    = 33;
-uint64_t FCT_SUBU    = 35;
+uint64_t FCT_DMULTU  = 29;
+uint64_t FCT_DDIVU   = 31;
 uint64_t FCT_SLTU    = 43;
+uint64_t FCT_DADDU   = 45;
+uint64_t FCT_DSUBU   = 47;
 
 uint64_t* FUNCTIONS; // strings representing MIPS functions
 
@@ -737,28 +737,28 @@ uint64_t instr_index = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initDecoder() {
-  OPCODES = smalloc((OP_SW + 1) * SIZEOFINTSTAR);
+  OPCODES = smalloc((OP_SD + 1) * SIZEOFINTSTAR);
 
   *(OPCODES + OP_SPECIAL) = (uint64_t) "nop";
   *(OPCODES + OP_J)       = (uint64_t) "j";
   *(OPCODES + OP_JAL)     = (uint64_t) "jal";
   *(OPCODES + OP_BEQ)     = (uint64_t) "beq";
-  *(OPCODES + OP_ADDIU)   = (uint64_t) "addiu";
-  *(OPCODES + OP_LW)      = (uint64_t) "lw";
-  *(OPCODES + OP_SW)      = (uint64_t) "sw";
+  *(OPCODES + OP_DADDIU)  = (uint64_t) "daddiu";
+  *(OPCODES + OP_LD)      = (uint64_t) "ld";
+  *(OPCODES + OP_SD)      = (uint64_t) "sd";
 
-  FUNCTIONS = smalloc((FCT_SLTU + 1) * SIZEOFINTSTAR);
+  FUNCTIONS = smalloc((FCT_DSUBU + 1) * SIZEOFINTSTAR);
 
   *(FUNCTIONS + FCT_NOP)     = (uint64_t) "nop";
   *(FUNCTIONS + FCT_JR)      = (uint64_t) "jr";
   *(FUNCTIONS + FCT_SYSCALL) = (uint64_t) "syscall";
   *(FUNCTIONS + FCT_MFHI)    = (uint64_t) "mfhi";
   *(FUNCTIONS + FCT_MFLO)    = (uint64_t) "mflo";
-  *(FUNCTIONS + FCT_MULTU)   = (uint64_t) "multu";
-  *(FUNCTIONS + FCT_DIVU)    = (uint64_t) "divu";
-  *(FUNCTIONS + FCT_ADDU)    = (uint64_t) "addu";
-  *(FUNCTIONS + FCT_SUBU)    = (uint64_t) "subu";
+  *(FUNCTIONS + FCT_DMULTU)  = (uint64_t) "dmultu";
+  *(FUNCTIONS + FCT_DDIVU)   = (uint64_t) "ddivu";
   *(FUNCTIONS + FCT_SLTU)    = (uint64_t) "sltu";
+  *(FUNCTIONS + FCT_DADDU)   = (uint64_t) "daddu";
+  *(FUNCTIONS + FCT_DSUBU)   = (uint64_t) "dsubu";
 }
 
 // -----------------------------------------------------------------
@@ -923,19 +923,19 @@ void initMemory(uint64_t megabytes) {
 // -----------------------------------------------------------------
 
 void fct_nop();
-void fct_addu();
-void fct_subu();
-void fct_multu();
-void fct_divu();
+void fct_daddu();
+void fct_dsubu();
+void fct_dmultu();
+void fct_ddivu();
 void fct_mfhi();
 void fct_mflo();
 void fct_sltu();
 void fct_jr();
 void fct_syscall();
 
-void op_addiu();
-void op_lw();
-void op_sw();
+void op_daddiu();
+void op_ld();
+void op_sd();
 void op_beq();
 void op_jal();
 void op_j();
@@ -2601,8 +2601,8 @@ void tfree(uint64_t numberOfTemporaries) {
 void save_temporaries() {
   while (allocatedTemporaries > 0) {
     // push temporary onto stack
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -REGISTERSIZE);
-    emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+    emitIFormat(OP_DADDIU, REG_SP, REG_SP, -REGISTERSIZE);
+    emitIFormat(OP_SD, REG_SP, currentTemporary(), 0);
 
     tfree(1);
   }
@@ -2613,8 +2613,8 @@ void restore_temporaries(uint64_t numberOfTemporaries) {
     talloc();
 
     // restore temporary from stack
-    emitIFormat(OP_LW, REG_SP, currentTemporary(), 0);
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+    emitIFormat(OP_LD, REG_SP, currentTemporary(), 0);
+    emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
   }
 }
 
@@ -2691,7 +2691,7 @@ uint64_t load_variable(uint64_t* variable) {
 
   talloc();
 
-  emitIFormat(OP_LW, getScope(entry), currentTemporary(), getAddress(entry));
+  emitIFormat(OP_LD, getScope(entry), currentTemporary(), getAddress(entry));
 
   return getType(entry);
 }
@@ -2713,7 +2713,7 @@ void load_integer(uint64_t value) {
 
   while (i >= 14) {
     if (value >= twoToThePowerOf(i)) {
-      emitIFormat(OP_ADDIU, reg, currentTemporary(), rightShift(leftShift(value, shifted), shifted + i));
+      emitIFormat(OP_DADDIU, reg, currentTemporary(), rightShift(leftShift(value, shifted), shifted + i));
 
       reg = currentTemporary();
 
@@ -2727,7 +2727,7 @@ void load_integer(uint64_t value) {
     i = i - toShift;
   }
 
-  emitIFormat(OP_ADDIU, reg, currentTemporary(), rightShift(leftShift(value, shifted), shifted));
+  emitIFormat(OP_DADDIU, reg, currentTemporary(), rightShift(leftShift(value, shifted), shifted));
 }
 
 void load_string(uint64_t* string) {
@@ -2741,7 +2741,7 @@ void load_string(uint64_t* string) {
 
   talloc();
 
-  emitIFormat(OP_ADDIU, REG_GP, currentTemporary(), -allocatedMemory);
+  emitIFormat(OP_DADDIU, REG_GP, currentTemporary(), -allocatedMemory);
 }
 
 uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
@@ -2781,40 +2781,40 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
 
 void help_procedure_prologue(uint64_t localVariables) {
   // allocate memory for return address
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -REGISTERSIZE);
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, -REGISTERSIZE);
 
   // save return address
-  emitIFormat(OP_SW, REG_SP, REG_RA, 0);
+  emitIFormat(OP_SD, REG_SP, REG_RA, 0);
 
   // allocate memory for caller's frame pointer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -REGISTERSIZE);
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, -REGISTERSIZE);
 
   // save caller's frame pointer
-  emitIFormat(OP_SW, REG_SP, REG_FP, 0);
+  emitIFormat(OP_SD, REG_SP, REG_FP, 0);
 
   // set callee's frame pointer
-  emitIFormat(OP_ADDIU, REG_SP, REG_FP, 0);
+  emitIFormat(OP_DADDIU, REG_SP, REG_FP, 0);
 
   // allocate memory for callee's local variables
   if (localVariables != 0)
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -localVariables * REGISTERSIZE);
+    emitIFormat(OP_DADDIU, REG_SP, REG_SP, -localVariables * REGISTERSIZE);
 }
 
 void help_procedure_epilogue(uint64_t parameters) {
   // deallocate memory for callee's frame pointer and local variables
-  emitIFormat(OP_ADDIU, REG_FP, REG_SP, 0);
+  emitIFormat(OP_DADDIU, REG_FP, REG_SP, 0);
 
   // restore caller's frame pointer
-  emitIFormat(OP_LW, REG_SP, REG_FP, 0);
+  emitIFormat(OP_LD, REG_SP, REG_FP, 0);
 
   // deallocate memory for caller's frame pointer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
   // restore return address
-  emitIFormat(OP_LW, REG_SP, REG_RA, 0);
+  emitIFormat(OP_LD, REG_SP, REG_RA, 0);
 
   // deallocate memory for return address and parameters
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, (parameters + 1) * REGISTERSIZE);
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, (parameters + 1) * REGISTERSIZE);
 
   // return
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -2841,8 +2841,8 @@ uint64_t gr_call(uint64_t* procedure) {
     // TODO: check if types/number of parameters is correct
 
     // push first parameter onto stack
-    emitIFormat(OP_ADDIU, REG_SP, REG_SP, -REGISTERSIZE);
-    emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+    emitIFormat(OP_DADDIU, REG_SP, REG_SP, -REGISTERSIZE);
+    emitIFormat(OP_SD, REG_SP, currentTemporary(), 0);
 
     tfree(1);
 
@@ -2852,8 +2852,8 @@ uint64_t gr_call(uint64_t* procedure) {
       gr_expression();
 
       // push more parameters onto stack
-      emitIFormat(OP_ADDIU, REG_SP, REG_SP, -REGISTERSIZE);
-      emitIFormat(OP_SW, REG_SP, currentTemporary(), 0);
+      emitIFormat(OP_DADDIU, REG_SP, REG_SP, -REGISTERSIZE);
+      emitIFormat(OP_SD, REG_SP, currentTemporary(), 0);
 
       tfree(1);
     }
@@ -2967,7 +2967,7 @@ uint64_t gr_factor() {
       typeWarning(UINT64STAR_T, type);
 
     // dereference
-    emitIFormat(OP_LW, currentTemporary(), currentTemporary(), 0);
+    emitIFormat(OP_LD, currentTemporary(), currentTemporary(), 0);
 
     type = UINT64_T;
 
@@ -2986,11 +2986,11 @@ uint64_t gr_factor() {
       talloc();
 
       // retrieve return value
-      emitIFormat(OP_ADDIU, REG_V0, currentTemporary(), 0);
+      emitIFormat(OP_DADDIU, REG_V0, currentTemporary(), 0);
 
       // reset return register to initial return value
       // for missing return expressions
-      emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+      emitIFormat(OP_DADDIU, REG_ZR, REG_V0, 0);
     } else
       // variable access: identifier
       type = load_variable(variableOrProcedureName);
@@ -3007,7 +3007,7 @@ uint64_t gr_factor() {
   } else if (symbol == SYM_CHARACTER) {
     talloc();
 
-    emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), literal);
+    emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), literal);
 
     getSymbol();
 
@@ -3067,15 +3067,15 @@ uint64_t gr_term() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_ASTERISK) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_MULTU);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DMULTU);
       emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
     } else if (operatorSymbol == SYM_DIV) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DDIVU);
       emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
     } else if (operatorSymbol == SYM_MOD) {
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DDIVU);
       emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFHI);
     }
 
@@ -3127,7 +3127,7 @@ uint64_t gr_simpleExpression() {
       ltype = UINT64_T;
     }
 
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SUBU);
+    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_DSUBU);
   }
 
   // + or -?
@@ -3157,7 +3157,7 @@ uint64_t gr_simpleExpression() {
         ltype = UINT64STAR_T;
       }
 
-      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_ADDU);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DADDU);
 
     } else if (operatorSymbol == SYM_MINUS) {
       if (ltype == UINT64STAR_T) {
@@ -3165,13 +3165,13 @@ uint64_t gr_simpleExpression() {
           // UINT64STAR_T - UINT64_T
           // pointer arithmetic: factor of 2^3 of integer operand
           emitLeftShiftBy(currentTemporary(), 3);
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DSUBU);
         } else {
           // UINT64STAR_T - UINT64STAR_T
           // pointer arithmetic: (left_term - right_term) / SIZEOFINT
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
-          emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
-          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DIVU);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DSUBU);
+          emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
+          emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DDIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
           ltype = UINT64_T;
@@ -3181,7 +3181,7 @@ uint64_t gr_simpleExpression() {
         syntaxErrorMessage((uint64_t*) "(uint64_t) - (uint64_t*) is undefined");
       else
         // UINT64_T - UINT64_T
-        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SUBU);
+        emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DSUBU);
     }
 
     tfree(1);
@@ -3222,9 +3222,9 @@ uint64_t gr_expression() {
 
       tfree(1);
 
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
       emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
       // if a == b load 0 else load 1
@@ -3232,9 +3232,9 @@ uint64_t gr_expression() {
 
       tfree(1);
 
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
       emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
 
     } else if (operatorSymbol == SYM_LT) {
       // if a < b load 1 else load 0
@@ -3255,9 +3255,9 @@ uint64_t gr_expression() {
       tfree(1);
 
       emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
       emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_GEQ) {
       // if a < b load 0 else load 1
@@ -3266,9 +3266,9 @@ uint64_t gr_expression() {
       tfree(1);
 
       emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 0);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
       emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_ADDIU, REG_ZR, currentTemporary(), 1);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
     }
   }
 
@@ -3454,7 +3454,7 @@ void gr_return() {
       typeWarning(returnType, type);
 
     // save value of expression in return register
-    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_V0, FCT_ADDU);
+    emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), REG_V0, FCT_DADDU);
 
     tfree(1);
   } else if (returnType != VOID_T)
@@ -3512,7 +3512,7 @@ void gr_statement() {
         if (rtype != UINT64_T)
           typeWarning(UINT64_T, rtype);
 
-        emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+        emitIFormat(OP_SD, previousTemporary(), currentTemporary(), 0);
 
         tfree(2);
 
@@ -3549,7 +3549,7 @@ void gr_statement() {
           if (rtype != UINT64_T)
             typeWarning(UINT64_T, rtype);
 
-          emitIFormat(OP_SW, previousTemporary(), currentTemporary(), 0);
+          emitIFormat(OP_SD, previousTemporary(), currentTemporary(), 0);
 
           tfree(2);
 
@@ -3583,7 +3583,7 @@ void gr_statement() {
 
       // reset return register to initial return value
       // for missing return expressions
-      emitIFormat(OP_ADDIU, REG_ZR, REG_V0, 0);
+      emitIFormat(OP_DADDIU, REG_ZR, REG_V0, 0);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -3603,7 +3603,7 @@ void gr_statement() {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-      emitIFormat(OP_SW, getScope(entry), currentTemporary(), getAddress(entry));
+      emitIFormat(OP_SD, getScope(entry), currentTemporary(), getAddress(entry));
 
       tfree(1);
 
@@ -3987,8 +3987,8 @@ void emitLeftShiftBy(uint64_t reg, uint64_t b) {
   // assert: 0 <= b < 15
 
   // load multiplication factor less than 2^15 to avoid sign extension
-  emitIFormat(OP_ADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
-  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_MULTU);
+  emitIFormat(OP_DADDIU, REG_ZR, nextTemporary(), twoToThePowerOf(b));
+  emitRFormat(OP_SPECIAL, reg, nextTemporary(), 0, FCT_DMULTU);
   emitRFormat(OP_SPECIAL, 0, 0, reg, FCT_MFLO);
 }
 
@@ -4004,10 +4004,10 @@ void emitMainEntry() {
 
   i = 0;
 
-  // 15 NOPs per register is enough for initialization
-  // since we load integers -2^31 <= n < 2^31 which take
-  // no more than 15 instructions each, see load_integer
-  while (i < 80) {
+  // 26 NOPs per register is enough for initialization
+  // since we load integers 0 <= n < 2^64 which take
+  // no more than 26 instructions each, see load_integer
+  while (i < 52) {
     emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_NOP);
 
     i = i + 1;
@@ -4021,8 +4021,8 @@ void emitMainEntry() {
   emitJFormat(OP_JAL, 0);
 
   // we exit with exit code in return register pushed onto the stack
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, -REGISTERSIZE);
-  emitIFormat(OP_SW, REG_SP, REG_V0, 0);
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, -REGISTERSIZE);
+  emitIFormat(OP_SD, REG_SP, REG_V0, 0);
 
   // no need to reset return register here
 }
@@ -4039,7 +4039,7 @@ void bootstrapCode() {
   load_integer(savedBinaryLength);
 
   // load binaryLength into GP register
-  emitIFormat(OP_ADDIU, currentTemporary(), REG_GP, 0);
+  emitIFormat(OP_DADDIU, currentTemporary(), REG_GP, 0);
 
   tfree(1);
 
@@ -4049,7 +4049,7 @@ void bootstrapCode() {
   load_integer(VIRTUALMEMORYSIZE - REGISTERSIZE);
 
   // load initial stack pointer into SP register
-  emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
+  emitIFormat(OP_LD, currentTemporary(), REG_SP, 0);
 
   tfree(1);
 
@@ -4732,13 +4732,13 @@ void emitExit() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   // load argument for exit
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // exit code
+  emitIFormat(OP_LD, REG_SP, REG_A0, 0); // exit code
 
   // remove the argument from the stack
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
   // load the correct syscall number and invoke syscall
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_EXIT);
+  emitIFormat(OP_DADDIU, REG_ZR, REG_V0, SYSCALL_EXIT);
   emitRFormat(0, 0, 0, 0, FCT_SYSCALL);
 
   // never returns here
@@ -4761,16 +4761,16 @@ void implementExit(uint64_t* context) {
 void emitRead() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A2, 0); // size
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A1, 0); // *buffer
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A0, 0); // fd
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_READ);
+  emitIFormat(OP_DADDIU, REG_ZR, REG_V0, SYSCALL_READ);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   // jump back to caller, return value is in REG_V0
@@ -4878,16 +4878,16 @@ void implementRead(uint64_t* context) {
 void emitWrite() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // size
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A2, 0); // size
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // *buffer
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A1, 0); // *buffer
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // fd
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A0, 0); // fd
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_WRITE);
+  emitIFormat(OP_DADDIU, REG_ZR, REG_V0, SYSCALL_WRITE);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -4994,16 +4994,16 @@ void implementWrite(uint64_t* context) {
 void emitOpen() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A2, 0); // mode
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A2, 0); // mode
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // flags
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A1, 0); // flags
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // filename
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A0, 0); // filename
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_OPEN);
+  emitIFormat(OP_DADDIU, REG_ZR, REG_V0, SYSCALL_OPEN);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -5105,10 +5105,10 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // size
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A0, 0); // size
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_MALLOC);
+  emitIFormat(OP_DADDIU, REG_ZR, REG_V0, SYSCALL_MALLOC);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
@@ -5162,17 +5162,17 @@ uint64_t implementMalloc(uint64_t* context) {
 void emitSwitch() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  emitIFormat(OP_LW, REG_SP, REG_A1, 0); // number of instructions to execute
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A1, 0); // number of instructions to execute
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_LW, REG_SP, REG_A0, 0); // context to which we switch
-  emitIFormat(OP_ADDIU, REG_SP, REG_SP, REGISTERSIZE);
+  emitIFormat(OP_LD, REG_SP, REG_A0, 0); // context to which we switch
+  emitIFormat(OP_DADDIU, REG_SP, REG_SP, REGISTERSIZE);
 
-  emitIFormat(OP_ADDIU, REG_ZR, REG_V0, SYSCALL_SWITCH);
+  emitIFormat(OP_DADDIU, REG_ZR, REG_V0, SYSCALL_SWITCH);
   emitRFormat(OP_SPECIAL, 0, 0, 0, FCT_SYSCALL);
 
   // save context from which we are switching here in return register
-  emitRFormat(OP_SPECIAL, REG_ZR, REG_V1, REG_V0, FCT_ADDU);
+  emitRFormat(OP_SPECIAL, REG_ZR, REG_V1, REG_V0, FCT_DADDU);
 
   emitRFormat(OP_SPECIAL, REG_RA, 0, 0, FCT_JR);
 }
@@ -5354,7 +5354,7 @@ void fct_nop() {
     pc = pc + INSTRUCTIONSIZE;
 }
 
-void fct_addu() {
+void fct_daddu() {
   uint64_t s;
   uint64_t t;
   uint64_t d;
@@ -5404,7 +5404,7 @@ void fct_addu() {
   }
 }
 
-void fct_subu() {
+void fct_dsubu() {
   uint64_t s;
   uint64_t t;
   uint64_t d;
@@ -5454,7 +5454,7 @@ void fct_subu() {
   }
 }
 
-void fct_multu() {
+void fct_dmultu() {
   uint64_t s;
   uint64_t t;
   uint64_t n;
@@ -5497,7 +5497,7 @@ void fct_multu() {
   }
 }
 
-void fct_divu() {
+void fct_ddivu() {
   uint64_t s;
   uint64_t t;
   uint64_t l;
@@ -5706,7 +5706,7 @@ void fct_syscall() {
   }
 }
 
-void op_addiu() {
+void op_daddiu() {
   if (debug) {
     printOpcode(opcode);
     print((uint64_t*) " ");
@@ -5746,7 +5746,7 @@ void op_addiu() {
   }
 }
 
-void op_lw() {
+void op_ld() {
   uint64_t vaddr;
 
   if (debug) {
@@ -5804,7 +5804,7 @@ void op_lw() {
   }
 }
 
-void op_sw() {
+void op_sd() {
   uint64_t vaddr;
 
   if (debug) {
@@ -6039,14 +6039,14 @@ void execute() {
   if (opcode == OP_SPECIAL) {
     if (function == FCT_NOP)
       fct_nop();
-    else if (function == FCT_ADDU)
-      fct_addu();
-    else if (function == FCT_SUBU)
-      fct_subu();
-    else if (function == FCT_MULTU)
-      fct_multu();
-    else if (function == FCT_DIVU)
-      fct_divu();
+    else if (function == FCT_DADDU)
+      fct_daddu();
+    else if (function == FCT_DSUBU)
+      fct_dsubu();
+    else if (function == FCT_DMULTU)
+      fct_dmultu();
+    else if (function == FCT_DDIVU)
+      fct_ddivu();
     else if (function == FCT_MFHI)
       fct_mfhi();
     else if (function == FCT_MFLO)
@@ -6059,12 +6059,12 @@ void execute() {
       fct_syscall();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else if (opcode == OP_ADDIU)
-    op_addiu();
-  else if (opcode == OP_LW)
-    op_lw();
-  else if (opcode == OP_SW)
-    op_sw();
+  } else if (opcode == OP_DADDIU)
+    op_daddiu();
+  else if (opcode == OP_LD)
+    op_ld();
+  else if (opcode == OP_SD)
+    op_sd();
   else if (opcode == OP_BEQ)
     op_beq();
   else if (opcode == OP_JAL)
