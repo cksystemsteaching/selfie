@@ -1,9 +1,9 @@
 # General compiler flags
-CFLAGS := -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
+CFLAGS := -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
 
 # Add compiler specific flags
 ifeq ($(findstring gcc,$(CC)),gcc)
-CFLAGS += -Wno-main -Wno-return-type -Wno-maybe-uninitialized -Wno-unused-but-set-variable -Wno-builtin-declaration-mismatch 
+CFLAGS += -Wno-main -Wno-return-type -Wno-maybe-uninitialized -Wno-unused-but-set-variable -Wno-builtin-declaration-mismatch -Wno-comment
 else ifeq ($(findstring $(CC),clang),clang)
 CFLAGS += -Wno-main-return-type -Wno-incompatible-library-redeclaration
 else
@@ -15,7 +15,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : test sat all clean
+.PHONY : test sat vipster all clean
 
 # Test self-compilation, self-execution, and self-hosting
 test: selfie
@@ -40,8 +40,12 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
+# Test vipster
+vipster: selfie
+	./selfie -c manuscript/verification-snippets/simple.c -v 4096
+
 # Test everything
-all: test sat
+all: test sat vipster
 
 # Clean up
 clean:
