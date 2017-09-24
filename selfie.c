@@ -132,6 +132,8 @@ uint64_t roundUp(uint64_t n, uint64_t m);
 uint64_t* smalloc(uint64_t size);
 uint64_t* zalloc(uint64_t size);
 
+void assert(uint64_t condition, uint64_t* msg);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t CHAR_EOF          = -1; // end of file
@@ -1340,12 +1342,33 @@ void setSymNodeValue(uint64_t* entry, uint64_t value)  {*(entry + 1) = value;}
 void setSymNodeLeft(uint64_t* entry, uint64_t* node)   {*(entry + 2) = (uint64_t) node;}
 void setSymNodeRight(uint64_t* entry, uint64_t* node)  {*(entry + 3) = (uint64_t) node;}
 
+// -----------------------------------------------------------------
+// ---------------------- EXECUTION ENGINE -------------------------
+// -----------------------------------------------------------------
+
+void symbolic_op_daddiu();
+void symbolic_op_ld();
+void symbolic_op_sd();
+void symbolic_op_jal();
+void symbolic_op_j();
+
 void symbolic_fct_nop();
 void symbolic_fct_daddu();
+void symbolic_fct_dmultu();
+void symbolic_fct_mflo();
+void symbolic_fct_jr();
+void symbolic_fct_syscall();
 
 void symbolic_execute();
 
-uint64_t* vipster_switch(uint64_t* toContext);
+uint64_t symbolic_handleSystemCalls(uint64_t* context);
+
+void printSymbolicExpression(uint64_t* expr);
+void printExecutionEngineState(uint64_t* ctx);
+
+void initExecutionEngine(uint64_t* ctx);
+
+uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout);
 uint64_t vipster(uint64_t* toContext);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1354,6 +1377,10 @@ uint64_t vipster(uint64_t* toContext);
 uint64_t SYMBOLIC_VAL = 0;
 uint64_t SYMBOLIC_CON = 1;
 uint64_t SYMBOLIC_OP  = 2;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* basePt = (uint64_t*) 0; // PT for all concrete values
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -1884,6 +1911,18 @@ uint64_t* zalloc(uint64_t size) {
   }
 
   return memory;
+}
+
+void assert(uint64_t condition, uint64_t* msg) {
+  if (condition == 0) {
+    outputFD = 1; // output on stdout
+
+    print((uint64_t*) "assertion failed: ");
+    print(msg);
+    println();
+
+    exit(-1);
+  }
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -7453,8 +7492,104 @@ uint64_t* createSymbolicNode(uint64_t type, uint64_t value, uint64_t* leftCh, ui
 }
 
 // -----------------------------------------------------------------
-// ------------------- EXPRESSION REPRESENTATION -------------------
+// ---------------------- EXECUTION ENGINE -------------------------
 // -----------------------------------------------------------------
+
+void symbolic_op_daddiu() {
+  uint64_t* s;
+  uint64_t* t;
+  uint64_t* n;
+
+  s = (uint64_t*) *(registers+rs);
+
+  if (SYMBOLIC_CON == getSymNodeType(s))
+    // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
+    n = createSymbolicNode(SYMBOLIC_CON, getSymNodeValue(s) + signExtend(immediate, 16),(uint64_t*) 0,(uint64_t*) 0);
+  else {
+    t = createSymbolicNode(SYMBOLIC_CON, signExtend(immediate, 16), (uint64_t*) 0,(uint64_t*) 0);
+
+    n = createSymbolicNode(SYMBOLIC_OP, FCT_DADDU, s, t);
+  }
+
+  *(registers+rt) = (uint64_t) n;
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void symbolic_op_ld() {
+  uint64_t* s;
+  uint64_t vaddr;
+  uint64_t* node;
+
+  s = (uint64_t*) *(registers+rs);
+
+  assert(getSymNodeType(s) == SYMBOLIC_CON, 
+    (uint64_t*) "symbolic expressions as source of ld instruction are not supported");
+
+  vaddr = getSymNodeValue(s) + signExtend(immediate, 16);
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      node = (uint64_t*) loadVirtualMemory(pt, vaddr);
+
+      if ((uint64_t) node == 0) {
+        if (isVirtualAddressMapped(basePt, vaddr)) {
+          if (rt == REG_SP)
+            node = createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(basePt, vaddr), (uint64_t*) 0, (uint64_t*) 0);
+          else if (rt == REG_GP)
+            node = createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(basePt, vaddr), (uint64_t*) 0, (uint64_t*) 0);
+          else if (rt == REG_FP)
+            node = createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(basePt, vaddr), (uint64_t*) 0, (uint64_t*) 0);
+          else
+            node = createSymbolicNode(SYMBOLIC_VAL, 0, (uint64_t*) 0, (uint64_t*) 0);
+        } else
+          node = createSymbolicNode(SYMBOLIC_VAL, 0, (uint64_t*) 0, (uint64_t*) 0);
+      }
+
+      *(registers+rt) = (uint64_t) node;
+
+      pc = pc + INSTRUCTIONSIZE;
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+}
+
+void symbolic_op_sd() {
+  uint64_t* s;
+  uint64_t vaddr;
+
+  s = (uint64_t*) *(registers+rs);
+
+  assert(getSymNodeType(s) == SYMBOLIC_CON, 
+    (uint64_t*) "symbolic expressions as source of sd instruction are not supported");
+
+  vaddr = getSymNodeValue(s) + signExtend(immediate, 16);
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      storeVirtualMemory(pt, vaddr, *(registers+rt));
+
+      pc = pc + INSTRUCTIONSIZE;
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+}
+
+void symbolic_op_beq() {
+
+}
+
+void symbolic_op_jal() {
+  *(registers+REG_RA) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, pc + 2 * INSTRUCTIONSIZE, (uint64_t*) 0, (uint64_t*) 0);
+
+  pc = instr_index * INSTRUCTIONSIZE;
+}
+
+void symbolic_op_j() {
+  pc = instr_index * INSTRUCTIONSIZE;
+}
 
 void symbolic_fct_nop() {
   pc = pc + INSTRUCTIONSIZE;
@@ -7488,38 +7623,204 @@ void symbolic_fct_daddu() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
+void symbolic_fct_dmultu() {
+  uint64_t* s;
+  uint64_t* t;
+  uint64_t isConcrete;
+
+  s = (uint64_t*) *(registers+rs);
+  t = (uint64_t*) *(registers+rt);
+
+  isConcrete = 0;
+  
+  if (SYMBOLIC_CON == getSymNodeType(s))
+    if (SYMBOLIC_CON == getSymNodeType(t))
+      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
+      isConcrete = 1;
+
+  if (isConcrete)
+    loReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 
+      getSymNodeValue(s) * getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
+  else
+    loReg = (uint64_t) createSymbolicNode(SYMBOLIC_OP, FCT_DMULTU, s, t);
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void symbolic_fct_mflo() {
+  *(registers+rd) = loReg;
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void symbolic_fct_jr() {
+  uint64_t* s;
+
+  s = (uint64_t*) *(registers+rs);
+
+  assert(getSymNodeType(s) == SYMBOLIC_CON, (uint64_t*)"");
+
+  pc = getSymNodeValue(s);
+}
+
+void symbolic_fct_syscall() {
+  pc = pc + INSTRUCTIONSIZE;
+
+  throwException(EXCEPTION_SYSCALL, 0);
+}
+
+void symbolic_fetch() {
+  // assert: isValidVirtualAddress(pc) == 1
+  // assert: isVirtualAddressMapped(basePt, pc) == 1
+
+  if (pc % REGISTERSIZE == 0)
+    ir = rightShift(loadVirtualMemory(basePt, pc), 32);
+  else
+    ir = rightShift(leftShift(loadVirtualMemory(basePt, pc - INSTRUCTIONSIZE), 32), 32);
+}
+
 void symbolic_execute() {
   if (opcode == OP_SPECIAL) {
     if (function == FCT_NOP)
       symbolic_fct_nop();
     else if (function == FCT_DADDU)
       symbolic_fct_daddu();
+    else if (function == FCT_DMULTU)
+      symbolic_fct_dmultu();
+    else if (function == FCT_MFLO)
+      symbolic_fct_mflo();
+    else if (function == FCT_JR)
+      symbolic_fct_jr();
+    else if (function == FCT_SYSCALL)
+      symbolic_fct_syscall();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else
+  } else if (opcode == OP_DADDIU)
+    symbolic_op_daddiu();
+  else if (opcode == OP_LD)
+    symbolic_op_ld();
+  else if (opcode == OP_SD)
+    symbolic_op_sd();
+  else if (opcode == OP_JAL)
+    symbolic_op_jal();
+  else if (opcode == OP_J)
+    symbolic_op_j();
+  else
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
 }
 
-uint64_t* vipster_switch(uint64_t* toContext) {
-  doSwitch(toContext, TIMESLICE);
+uint64_t symbolic_handleSystemCalls(uint64_t* context) {
+  uint64_t* node;
+  uint64_t v0;
+  
+    if (getException(context) == EXCEPTION_SYSCALL) {
+      node = (uint64_t*) *(getRegs(context)+REG_V0);
 
-  trap = 0;
+      assert(getSymNodeType(node) == SYMBOLIC_CON, 
+        (uint64_t*)"Symbolic value not allowed as syscall number");
 
-  while (trap == 0) {
-    fetch();
-    decode();
-    symbolic_execute();
+      v0 = getSymNodeValue(node);
+  
+      if (v0 == SYSCALL_EXIT) {
+        implementExit(context);
+  
+        return EXIT;
+      } else {
+        print(selfieName);
+        print((uint64_t*) ": unknown system call ");
+        printInteger(v0);
+        println();
+  
+        setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
+  
+        return EXIT;
+      }
+    } else if (getException(context) != EXCEPTION_TIMER) {
+      print(selfieName);
+      print((uint64_t*) ": context ");
+      print(getName(context));
+      print((uint64_t*) " throws uncaught ");
+      printException(getException(context), getFaultingPage(context));
+      println();
+  
+      setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
+  
+      return EXIT;
+    }
+  
+    return DONOTEXIT;
+}
+
+void printSymbolicExpression(uint64_t* expr) {
+  if ((uint64_t) expr == 0)
+    return;
+  else if (getSymNodeType(expr) == SYMBOLIC_CON)
+    printHexadecimal(getSymNodeValue(expr), 16);
+  else if (getSymNodeType(expr) == SYMBOLIC_OP) {
+    print((uint64_t*) "(");
+    printSymbolicExpression(getSymNodeLeft(expr));
+    print((uint64_t*) ") ");
+    
+    if (getSymNodeValue(expr) == FCT_DADDU)
+      print((uint64_t*) "+");
+    else if (getSymNodeValue(expr) == OP_DADDIU) 
+      print((uint64_t*) "+");
+    else if (getSymNodeValue(expr) == FCT_DSUBU) 
+      print((uint64_t*) "-");
+    else if (getSymNodeValue(expr) == FCT_DMULTU) 
+      print((uint64_t*) "*");
+    else if (getSymNodeValue(expr) == FCT_DDIVU) 
+      print((uint64_t*) "/");
+    else if (getSymNodeValue(expr) == FCT_SLTU) 
+      print((uint64_t*) "<");
+
+    print((uint64_t*) " (");
+    printSymbolicExpression(getSymNodeRight(expr));
+    print((uint64_t*) ")");
+  } else
+    print((uint64_t*) "x");
+}
+
+void printExecutionEngineState(uint64_t* ctx) {
+  uint64_t reg;
+
+  print((uint64_t*) "execution engine state on exit:");
+  println();
+  print((uint64_t*) "$pc=");
+  printHexadecimal(pc, 0);
+  if (sourceLineNumber != (uint64_t*) 0) {
+    print((uint64_t*) "(~");
+    printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
+    print((uint64_t*) ")");
+  }
+  println();
+  
+  reg = 0;
+
+  while (reg < NUMBEROFREGISTERS) {
+    printRegister(reg);
+    print((uint64_t*)"=");
+    printSymbolicExpression((uint64_t*) *(getRegs(ctx) + reg));
+    println();
+
+    reg = reg + 1;
   }
 
-  trap = 0;
+  print((uint64_t*)"$loReg=");
+  printSymbolicExpression((uint64_t*) loReg);
+  println();
 
-  saveContext(currentContext);
-
-  return currentContext;
+  print((uint64_t*)"$hiReg=");
+  printSymbolicExpression((uint64_t*) hiReg);
+  println();
 }
 
 void initExecutionEngine(uint64_t* ctx) {
   uint64_t reg;
+
+  // use a new page table for the symbolic expressions
+  basePt = getPT(ctx);
+  setPT(ctx, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFINT));
 
   reg = 0;
 
@@ -7533,17 +7834,75 @@ void initExecutionEngine(uint64_t* ctx) {
   setHiReg(ctx, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
 }
 
+uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
+  doSwitch(toContext, timeout);
+
+  trap = 0;
+
+  while (trap == 0) {
+    symbolic_fetch();
+    decode();
+    symbolic_execute();
+    interrupt();
+  }
+
+  trap = 0;
+
+  saveContext(currentContext);
+
+  return currentContext;
+}
+
 uint64_t vipster(uint64_t* toContext) {
+  uint64_t timeout;
+  uint64_t* fromContext;
+
   print((uint64_t*) "vipster");
   println();
 
   initExecutionEngine(toContext);
 
-  while (1) {
-    vipster_switch(toContext);
+  timeout = TIMESLICE;
 
-    // exception handling is not supported right now
-    return 0;
+  while (1) {
+    fromContext = vipster_switch(toContext, timeout);
+
+    if (getParent(fromContext) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      toContext = getParent(fromContext);
+    
+      timeout = TIMEROFF;
+    } else {
+       // we are the parent in charge of handling exceptions
+    
+      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
+        // TODO: use this table to unmap and reuse frames
+        mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
+      else if (getException(fromContext) == EXCEPTION_UNKNOWNINSTRUCTION) {
+        // VIP TODO: remove this exception if we can handle every instruction
+        print((uint64_t*) "warning: unknown instruction");
+        println();
+
+        printExecutionEngineState(fromContext);
+
+        // accept unknown instruction only for the moment
+        return 0;
+      } else if (symbolic_handleSystemCalls(fromContext) == EXIT) {
+        printExecutionEngineState(fromContext);
+
+        print((uint64_t*)"Exited with: ");
+        printSymbolicExpression((uint64_t*) getExitCode(fromContext));
+        println();
+
+        return 0;
+      }
+    
+      setException(fromContext, EXCEPTION_NOEXCEPTION);
+    
+      toContext = fromContext;
+    
+      timeout = TIMESLICE;
+    }
   }
 }
 
