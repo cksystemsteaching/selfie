@@ -1,5 +1,14 @@
-# Compiler flags
-CFLAGS := -w -O3 -m32 -D'main(a,b)=main(a,char**argv)'
+# General compiler flags
+CFLAGS := -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
+
+# Add compiler specific flags
+ifeq ($(findstring gcc,$(CC)),gcc)
+CFLAGS += -Wno-main -Wno-return-type -Wno-maybe-uninitialized -Wno-unused-but-set-variable -Wno-builtin-declaration-mismatch 
+else ifeq ($(findstring $(CC),clang),clang)
+CFLAGS += -Wno-main-return-type -Wno-incompatible-library-redeclaration
+else
+$(error environment variable CC has to be set to gcc or clang)
+endif
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
@@ -10,16 +19,16 @@ selfie: selfie.c
 
 # Test self-compilation, self-execution, and self-hosting
 test: selfie
-	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 4 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
-	./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
-	./selfie -c selfie.c -o selfie3.m -s selfie3.s -y 3 -l selfie3.m -y 2 -l selfie3.m -y 2 -c selfie.c -o selfie4.m -s selfie4.s
+	./selfie -c selfie.c -o selfie.m -m 6 -l selfie.m -m 1
+	./selfie -c selfie.c -o selfie3.m -s selfie3.s -m 16 -l selfie3.m -y 8 -l selfie3.m -y 8 -c selfie.c -o selfie4.m -s selfie4.s
 	diff -q selfie3.m selfie4.m
 	diff -q selfie3.s selfie4.s
 	diff -q selfie1.m selfie3.m
 	diff -q selfie1.s selfie3.s
-	./selfie -c selfie.c -o selfie5.m -s selfie5.s -min 4 -l selfie5.m -y 2 -l selfie5.m -y 2 -c selfie.c -o selfie6.m -s selfie6.s
+	./selfie -c selfie.c -o selfie5.m -s selfie5.s -min 24 -l selfie5.m -y 4 -l selfie5.m -y 4 -c selfie.c -o selfie6.m -s selfie6.s
 	diff -q selfie5.m selfie6.m
 	diff -q selfie5.s selfie6.s
 	diff -q selfie3.m selfie5.m
