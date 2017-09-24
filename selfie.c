@@ -893,27 +893,21 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data);
 
 uint64_t debug_tlb = 0;
 
-// we use the unit [number of words] to prevent overflow problems in calculations
-uint64_t MEGABYTE = 1048576;         // 1024 * 1024       one megabyte in [number of bytes]
-uint64_t MEGABYTEINWORDS = 262144;   // 1024 * 1024 / 4   one megabyte in [number of words]
+uint64_t MEGABYTE = 1048576;
 
-uint64_t HIGHESTMEMORYADDRESS = 4294967288;  // highest double word aligned 32bit address
+uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 
 uint64_t WORDSIZE = 4;
 uint64_t DOUBLEWORDSIZE = 8;
 
-uint64_t INSTRUCTIONSIZE = 4;     // must be the same as WORDSIZE
-uint64_t REGISTERSIZE = 8;        //  must be the same as DOUBLEWORDSIZE
+uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
+uint64_t REGISTERSIZE = 8;    // must be the same as DOUBLEWORDSIZE
 
-uint64_t PAGESIZE = 8192;         // we use standard 8KB pages [number of bytes] 
-                                  // (=> 13 pagebits: 2^13 == 8192)
-uint64_t PAGESIZEINWORDS = 2048;  // page size in words [number of words]
-
-uint64_t NUMBEROFPAGES = 524288;  // 2^32 / PAGESIZE   maximum amount of pages in virtual memory.
+uint64_t PAGESIZE = 8192;  // we use standard 8KB pages (=> 13 pagebits: 2^13 == 8192)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t pageFrameMemory = 0; // size of memory for frames [number of words]
+uint64_t pageFrameMemory = 0; // size of memory for frames
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -921,7 +915,7 @@ void initMemory(uint64_t megabytes) {
   if (megabytes > 4096)
     megabytes = 4096;
 
-  pageFrameMemory = megabytes * MEGABYTEINWORDS;
+  pageFrameMemory = megabytes * MEGABYTE;
 }
 
 // -----------------------------------------------------------------
@@ -4052,7 +4046,7 @@ void bootstrapCode() {
   // assert: allocatedTemporaries == 0
 
   // initial stack pointer is stored at highest virtual address
-  load_integer(HIGHESTMEMORYADDRESS);
+  load_integer(VIRTUALMEMORYSIZE - REGISTERSIZE);
 
   // load initial stack pointer into SP register
   emitIFormat(OP_LW, currentTemporary(), REG_SP, 0);
@@ -5279,7 +5273,7 @@ uint64_t isPageMapped(uint64_t* table, uint64_t page) {
 
 uint64_t isValidVirtualAddress(uint64_t vaddr) {
   // memory must be word-addressed for lack of byte-sized data type
-  if (vaddr <= HIGHESTMEMORYADDRESS)
+  if (vaddr < VIRTUALMEMORYSIZE)
     if (vaddr % REGISTERSIZE == 0)
       return 1;
 
@@ -6266,12 +6260,12 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(NUMBEROFPAGES * SIZEOFINT));
+  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFINT));
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
   setMePage(context, 0);
-  setHiPage(context, getPageOfVirtualAddress(HIGHESTMEMORYADDRESS));
+  setHiPage(context, getPageOfVirtualAddress(VIRTUALMEMORYSIZE - REGISTERSIZE));
 
   // heap starts where it is safe to start
   setProgramBreak(context, maxBinaryLength);
@@ -6408,7 +6402,7 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   table = getPT(context);
 
-  // assert: 0 <= page < NUMBEROFPAGES
+  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
   // on boot level zero frame may be any signed integer
 
@@ -6511,7 +6505,7 @@ void restoreContext(uint64_t* context) {
 uint64_t pavailable() {
   if (freePageFrameMemory > 0)
     return 1;
-  else if (usedPageFrameMemory + MEGABYTEINWORDS <= pageFrameMemory)
+  else if (usedPageFrameMemory + MEGABYTE <= pageFrameMemory)
     return 1;
   else
     return 0;
@@ -6526,24 +6520,24 @@ uint64_t* palloc() {
   uint64_t block;
   uint64_t frame;
 
-  // assert: pageFrameMemory is equal to or a multiple of MEGABYTEINWORDS
-  // assert: PAGESIZEINWORDS is a factor of MEGABYTEINWORDS strictly less than MEGABYTEINWORDS
+  // assert: pageFrameMemory is equal to or a multiple of MEGABYTE
+  // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (freePageFrameMemory == 0) {
-    freePageFrameMemory = MEGABYTEINWORDS;
+    freePageFrameMemory = MEGABYTE;
 
     if (usedPageFrameMemory + freePageFrameMemory <= pageFrameMemory) {
       // on boot level zero allocate zeroed memory
-      block = (uint64_t) zalloc(freePageFrameMemory * WORDSIZE);
+      block = (uint64_t) zalloc(freePageFrameMemory);
 
       usedPageFrameMemory = usedPageFrameMemory + freePageFrameMemory;
 
       // page frames must be page-aligned to work as page table index
-      nextPageFrame = roundUp(block, PAGESIZE) / WORDSIZE;
+      nextPageFrame = roundUp(block, PAGESIZE);
 
-      if (nextPageFrame * WORDSIZE > block)
+      if (nextPageFrame > block)
         // losing one page frame to fragmentation
-        freePageFrameMemory = freePageFrameMemory - PAGESIZEINWORDS;
+        freePageFrameMemory = freePageFrameMemory - PAGESIZE;
     } else {
       print(selfieName);
       print((uint64_t*) ": palloc out of physical memory");
@@ -6553,12 +6547,11 @@ uint64_t* palloc() {
     }
   }
 
-  // frame[number of bytes] = nextPageFrame[number of words] * WORDSIZE
-  frame = nextPageFrame * WORDSIZE;
+  frame = nextPageFrame;
 
-  nextPageFrame = nextPageFrame + PAGESIZEINWORDS;
+  nextPageFrame = nextPageFrame + PAGESIZE;
 
-  freePageFrameMemory = freePageFrameMemory - PAGESIZEINWORDS;
+  freePageFrameMemory = freePageFrameMemory - PAGESIZE;
 
   // strictly, touching is only necessary on boot levels higher than zero
   return touch((uint64_t*) frame, PAGESIZE);
@@ -6621,7 +6614,7 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   uint64_t i_vargv;
 
   // arguments are pushed onto stack which starts at highest virtual address
-  SP = HIGHESTMEMORYADDRESS;
+  SP = VIRTUALMEMORYSIZE - REGISTERSIZE;
 
   // allocate memory for storing stack pointer later
   SP = SP - REGISTERSIZE;
@@ -6661,7 +6654,7 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   mapAndStore(context, SP, vargv);
 
   // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStore(context, HIGHESTMEMORYADDRESS, SP);
+  mapAndStore(context, VIRTUALMEMORYSIZE - REGISTERSIZE, SP);
 }
 
 void mapUnmappedPages(uint64_t* context) {
@@ -6974,7 +6967,7 @@ uint64_t selfie_run(uint64_t machine) {
   print((uint64_t*) ": this is selfie executing ");
   print(binaryName);
   print((uint64_t*) " with ");
-  printInteger(pageFrameMemory / MEGABYTEINWORDS);
+  printInteger(pageFrameMemory / MEGABYTE);
   print((uint64_t*) "MB of physical memory on ");
 
   if (machine == MIPSTER)
@@ -7003,7 +6996,7 @@ uint64_t selfie_run(uint64_t machine) {
   print((uint64_t*) " with exit code ");
   printInteger(exitCode);
   print((uint64_t*) " and ");
-  printFixedPointRatio(pused(), MEGABYTEINWORDS);
+  printFixedPointRatio(pused(), MEGABYTE);
   print((uint64_t*) "MB of mapped memory");
   println();
 
