@@ -1246,6 +1246,8 @@ uint64_t MOBSTER = 3;
 
 uint64_t HYPSTER = 4;
 
+uint64_t VIPSTER = 5;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t nextPageFrame = 0;        // [number of words]
@@ -1337,6 +1339,14 @@ void setSymNodeType(uint64_t* entry, uint64_t type)    {*(entry + 0) = type;}
 void setSymNodeValue(uint64_t* entry, uint64_t value)  {*(entry + 1) = value;}
 void setSymNodeLeft(uint64_t* entry, uint64_t* node)   {*(entry + 2) = (uint64_t) node;}
 void setSymNodeRight(uint64_t* entry, uint64_t* node)  {*(entry + 3) = (uint64_t) node;}
+
+void symbolic_fct_nop();
+void symbolic_fct_daddu();
+
+void symbolic_execute();
+
+uint64_t* vipster_switch(uint64_t* toContext);
+uint64_t vipster(uint64_t* toContext);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -5409,8 +5419,6 @@ void fct_daddu() {
   uint64_t t;
   uint64_t d;
   uint64_t n;
-  uint64_t* symNode;
-  uint64_t con;
 
   if (interpret) {
     s = *(registers+rs);
@@ -5418,22 +5426,6 @@ void fct_daddu() {
     d = *(registers+rd);
 
     n = s + t;
-  }
-
-  if (symbolic) {
-    con = 0;
-
-    if (SYMBOLIC_CON == getSymNodeType(*(registers+rs)))
-      if (SYMBOLIC_CON == getSymNodeType(*(registers+rt)))
-        // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
-        con = 1;
-
-    if (con) {
-      n = getSymNodeValue(*(registers+rs)) + getSymNodeValue(*(registers+rt));
-
-      symNode = createSymbolicNode(SYMBOLIC_CON, n,(uint64_t*) 0,(uint64_t*) 0);
-    } else 
-      symNode = createSymbolicNode(SYMBOLIC_OP, FCT_ADDU,*(registers+rs),*(registers+rt));
   }
 
   if (debug) {
@@ -5463,12 +5455,6 @@ void fct_daddu() {
       printInteger(n);
     }
     println();
-  }
-
-  if (symbolic) {
-    *(registers+rd) = symNode;
-
-    pc = pc + INSTRUCTIONSIZE;
   }
 
   if (interpret) {
@@ -7056,6 +7042,8 @@ uint64_t selfie_run(uint64_t machine) {
       exitCode = mipster(currentContext);
     else
       exitCode = hypster(currentContext);
+  else if (machine == VIPSTER)
+    exitCode = vipster(currentContext);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
@@ -7454,7 +7442,7 @@ void selfie_sat() {
 uint64_t* createSymbolicNode(uint64_t type, uint64_t value, uint64_t* leftCh, uint64_t* rightCh) {
   uint64_t* newNode;
 
-  newNode = malloc(2 * SIZEOFINT + 2 * SIZEOFINTSTAR);
+  newNode = smalloc(2 * SIZEOFINT + 2 * SIZEOFINTSTAR);
 
   setSymNodeType(newNode, type);
   setSymNodeValue(newNode, value);
@@ -7463,6 +7451,102 @@ uint64_t* createSymbolicNode(uint64_t type, uint64_t value, uint64_t* leftCh, ui
 
   return newNode;
 }
+
+// -----------------------------------------------------------------
+// ------------------- EXPRESSION REPRESENTATION -------------------
+// -----------------------------------------------------------------
+
+void symbolic_fct_nop() {
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void symbolic_fct_daddu() {
+  uint64_t* s;
+  uint64_t* t;
+  uint64_t* d;
+  uint64_t* n;
+  uint64_t isConcrete;
+
+  s = (uint64_t*) *(registers+rs);
+  t = (uint64_t*) *(registers+rt);
+  d = (uint64_t*) *(registers+rd);
+
+  isConcrete = 0;
+  
+  if (SYMBOLIC_CON == getSymNodeType(s))
+    if (SYMBOLIC_CON == getSymNodeType(t))
+      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
+      isConcrete = 1;
+
+  if (isConcrete)
+    n = createSymbolicNode(SYMBOLIC_CON, getSymNodeValue(s) + getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
+  else
+    n = createSymbolicNode(SYMBOLIC_OP, FCT_DADDU, s, t);
+
+  *(registers+rd) = (uint64_t) n;
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void symbolic_execute() {
+  if (opcode == OP_SPECIAL) {
+    if (function == FCT_NOP)
+      symbolic_fct_nop();
+    else if (function == FCT_DADDU)
+      symbolic_fct_daddu();
+    else
+      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  } else
+    throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+}
+
+uint64_t* vipster_switch(uint64_t* toContext) {
+  doSwitch(toContext, TIMESLICE);
+
+  trap = 0;
+
+  while (trap == 0) {
+    fetch();
+    decode();
+    symbolic_execute();
+  }
+
+  trap = 0;
+
+  saveContext(currentContext);
+
+  return currentContext;
+}
+
+void initExecutionEngine(uint64_t* ctx) {
+  uint64_t reg;
+
+  reg = 0;
+
+  while (reg < NUMBEROFREGISTERS) {
+    *(getRegs(ctx) + reg) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
+
+    reg = reg + 1;
+  }
+
+  setLoReg(ctx, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
+  setHiReg(ctx, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
+}
+
+uint64_t vipster(uint64_t* toContext) {
+  print((uint64_t*) "vipster");
+  println();
+
+  initExecutionEngine(toContext);
+
+  while (1) {
+    vipster_switch(toContext);
+
+    // exception handling is not supported right now
+    return 0;
+  }
+}
+
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -7510,7 +7594,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -y | -min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -y | -min | -mob | -v ) size ... ]");
   println();
 }
 
@@ -7555,6 +7639,8 @@ uint64_t selfie() {
         return selfie_run(MINSTER);
       else if (stringCompare(option, (uint64_t*) "-mob"))
         return selfie_run(MOBSTER);
+      else if (stringCompare(option, (uint64_t*) "-v"))
+        return selfie_run(VIPSTER);
       else {
         printUsage();
 
