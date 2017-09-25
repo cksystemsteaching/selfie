@@ -1407,6 +1407,8 @@ uint64_t SYMBOLIC_OP  = 2;
 // machine state (extension to DONOTEXIT/EXIT)
 uint64_t SWITCH = 2;
 
+uint64_t MAX_FORKS = 100;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* frozenForks = (uint64_t*) 0; // single linked lists to all forzen forks (contexts)
@@ -7726,7 +7728,9 @@ void symbolic_fct_syscall() {
 
 void symbolic_implementExit(uint64_t* context) {
   usedContexts = freezeFork(context, usedContexts);
-  
+
+  print(selfieName);
+  print((uint64_t*) ": ");
   print((uint64_t*) "Fork ");
   print(getName(context));
   print((uint64_t*) " exiting with exit code ");
@@ -7787,28 +7791,36 @@ void printSymbolicExpression(uint64_t* expr) {
   if ((uint64_t) expr == 0)
     return;
   else if (getSymNodeType(expr) == SYMBOLIC_CON)
-    printHexadecimal(getSymNodeValue(expr), 16);
+    printInteger(getSymNodeValue(expr));
   else if (getSymNodeType(expr) == SYMBOLIC_OP) {
-    print((uint64_t*) "(");
+    if (getSymNodeLeft(expr) != 0)
+      if (getSymNodeType(getSymNodeLeft(expr)) == SYMBOLIC_OP)
+        print((uint64_t*) "(");
     printSymbolicExpression(getSymNodeLeft(expr));
-    print((uint64_t*) ") ");
+    if (getSymNodeLeft(expr) != 0)
+      if (getSymNodeType(getSymNodeLeft(expr)) == SYMBOLIC_OP)
+        print((uint64_t*) ")");
     
     if (getSymNodeValue(expr) == FCT_DADDU)
-      print((uint64_t*) "+");
+      print((uint64_t*) " + ");
     else if (getSymNodeValue(expr) == OP_DADDIU) 
-      print((uint64_t*) "+");
+      print((uint64_t*) " + ");
     else if (getSymNodeValue(expr) == FCT_DSUBU) 
-      print((uint64_t*) "-");
+      print((uint64_t*) " - ");
     else if (getSymNodeValue(expr) == FCT_DMULTU) 
-      print((uint64_t*) "*");
+      print((uint64_t*) " * ");
     else if (getSymNodeValue(expr) == FCT_DDIVU) 
-      print((uint64_t*) "/");
+      print((uint64_t*) " / ");
     else if (getSymNodeValue(expr) == FCT_SLTU) 
-      print((uint64_t*) "<");
+      print((uint64_t*) " < ");
 
-    print((uint64_t*) " (");
+    if (getSymNodeRight(expr) != 0)
+      if (getSymNodeType(getSymNodeRight(expr)) == SYMBOLIC_OP)
+        print((uint64_t*) "(");
     printSymbolicExpression(getSymNodeRight(expr));
-    print((uint64_t*) ")");
+    if (getSymNodeRight(expr) != 0)
+      if (getSymNodeType(getSymNodeRight(expr)) == SYMBOLIC_OP)
+        print((uint64_t*) ")");
   } else{
     print((uint64_t*) "v");
     printInteger(getSymNodeValue(expr));
@@ -7985,6 +7997,15 @@ void saveForkState(uint64_t* context) {
 }
 
 void fork(uint64_t firstPC, uint64_t secondPC) {
+  if (forks >= MAX_FORKS) {
+    print(selfieName);
+    print((uint64_t*) ": reached maximum number of forks in ");
+    print(binaryName);
+    println();
+
+    exit(0);
+  }
+
   createFork(currentContext, firstPC);
   createFork(currentContext, secondPC);
 
