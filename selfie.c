@@ -1343,12 +1343,13 @@ void setSymNodeLeft(uint64_t* entry, uint64_t* node)   {*(entry + 2) = (uint64_t
 void setSymNodeRight(uint64_t* entry, uint64_t* node)  {*(entry + 3) = (uint64_t) node;}
 
 // -----------------------------------------------------------------
-// ---------------------- EXECUTION ENGINE -------------------------
+// ------------------------ INSTRUCTIONS ---------------------------
 // -----------------------------------------------------------------
 
 void symbolic_op_daddiu();
 void symbolic_op_ld();
 void symbolic_op_sd();
+void symbolic_op_beq();
 void symbolic_op_jal();
 void symbolic_op_j();
 
@@ -1359,17 +1360,42 @@ void symbolic_fct_mflo();
 void symbolic_fct_jr();
 void symbolic_fct_syscall();
 
-void symbolic_execute();
+// -----------------------------------------------------------------
+// ------------------------- SYSTEM CALLS --------------------------
+// -----------------------------------------------------------------
+
+void symbolic_implementExit(uint64_t* context);
 
 uint64_t symbolic_handleSystemCalls(uint64_t* context);
+
+// -----------------------------------------------------------------
+// --------------------------- LIBRARY -----------------------------
+// -----------------------------------------------------------------
 
 void printSymbolicExpression(uint64_t* expr);
 void printExecutionEngineState(uint64_t* ctx);
 
-void initExecutionEngine(uint64_t* ctx);
+// -----------------------------------------------------------------
+// ---------------------- EXECUTION ENGINE -------------------------
+// -----------------------------------------------------------------
+
+void symbolic_fetch();
+void symbolic_execute();
+
+uint64_t* symbolic_loadFromParent(uint64_t* context, uint64_t vaddr);
+uint64_t  symbolic_loadVirtualMemory(uint64_t vaddr);
+
+uint64_t* createFork(uint64_t* parent, uint64_t pc);
+uint64_t* freezeFork(uint64_t* fork, uint64_t* from);
+void saveForkState(uint64_t* context);
+void fork(uint64_t firstPC, uint64_t secondPC);
+
+void symbolic_doSwitch(uint64_t* toContext, uint64_t timeout);
+uint64_t* initExecutionEngine(uint64_t* ctx);
 
 uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout);
 uint64_t vipster(uint64_t* toContext);
+
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1378,9 +1404,14 @@ uint64_t SYMBOLIC_VAL = 0;
 uint64_t SYMBOLIC_CON = 1;
 uint64_t SYMBOLIC_OP  = 2;
 
+// machine state (extension to DONOTEXIT/EXIT)
+uint64_t SWITCH = 2;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* basePt = (uint64_t*) 0; // PT for all concrete values
+uint64_t* frozenForks = (uint64_t*) 0; // single linked lists to all forzen forks (contexts)
+uint64_t forks = 0; // number of forks
+uint64_t  numberOfSymVariables = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -7484,15 +7515,21 @@ uint64_t* createSymbolicNode(uint64_t type, uint64_t value, uint64_t* leftCh, ui
   newNode = smalloc(2 * SIZEOFINT + 2 * SIZEOFINTSTAR);
 
   setSymNodeType(newNode, type);
-  setSymNodeValue(newNode, value);
   setSymNodeLeft(newNode, leftCh);
   setSymNodeRight(newNode, rightCh);
+
+  if(type == SYMBOLIC_VAL){
+    setSymNodeValue(newNode, numberOfSymVariables);
+    numberOfSymVariables = numberOfSymVariables + 1;
+  }else{
+    setSymNodeValue(newNode, value);
+  }
 
   return newNode;
 }
 
 // -----------------------------------------------------------------
-// ---------------------- EXECUTION ENGINE -------------------------
+// ------------------------ INSTRUCTIONS ---------------------------
 // -----------------------------------------------------------------
 
 void symbolic_op_daddiu() {
@@ -7519,7 +7556,6 @@ void symbolic_op_daddiu() {
 void symbolic_op_ld() {
   uint64_t* s;
   uint64_t vaddr;
-  uint64_t* node;
 
   s = (uint64_t*) *(registers+rs);
 
@@ -7530,23 +7566,16 @@ void symbolic_op_ld() {
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
-      node = (uint64_t*) loadVirtualMemory(pt, vaddr);
+      *(registers+rt) = (uint64_t) symbolic_loadVirtualMemory(vaddr);
 
-      if ((uint64_t) node == 0) {
-        if (isVirtualAddressMapped(basePt, vaddr)) {
-          if (rt == REG_SP)
-            node = createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(basePt, vaddr), (uint64_t*) 0, (uint64_t*) 0);
-          else if (rt == REG_GP)
-            node = createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(basePt, vaddr), (uint64_t*) 0, (uint64_t*) 0);
-          else if (rt == REG_FP)
-            node = createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(basePt, vaddr), (uint64_t*) 0, (uint64_t*) 0);
-          else
-            node = createSymbolicNode(SYMBOLIC_VAL, 0, (uint64_t*) 0, (uint64_t*) 0);
-        } else
-          node = createSymbolicNode(SYMBOLIC_VAL, 0, (uint64_t*) 0, (uint64_t*) 0);
-      }
+      // Load every global variable as symbolic value if it isn't already symbolic
+      // VIP TODO: Remove this hack 
+      if (vaddr <= getSymNodeValue((uint64_t*) *(registers+REG_GP)))
+        if (getSymNodeType((uint64_t*) *(registers+rt)) == SYMBOLIC_CON) {
+          *(registers+rt) = (uint64_t) createSymbolicNode(SYMBOLIC_VAL, 0, 0, 0);
 
-      *(registers+rt) = (uint64_t) node;
+          storeVirtualMemory(pt, vaddr, *(registers+rt));
+        }
 
       pc = pc + INSTRUCTIONSIZE;
     } else
@@ -7578,11 +7607,33 @@ void symbolic_op_sd() {
 }
 
 void symbolic_op_beq() {
+  uint64_t* s;
+  uint64_t* t;
+  uint64_t isConcrete;
 
+  s = (uint64_t*) *(registers+rs);
+  t = (uint64_t*) *(registers+rt);
+
+  isConcrete = 0;
+
+  if (getSymNodeType(s) == SYMBOLIC_CON)
+    if (getSymNodeType(t) == SYMBOLIC_CON)
+      isConcrete = 1;
+
+  if (isConcrete) {
+    if (getSymNodeValue(s) == getSymNodeValue(t))
+      pc = pc + signExtend(immediate, 16) * INSTRUCTIONSIZE + INSTRUCTIONSIZE;
+    else
+      pc = pc + INSTRUCTIONSIZE;
+  } else {
+    fork(pc + INSTRUCTIONSIZE, pc + signExtend(immediate, 16) * INSTRUCTIONSIZE + INSTRUCTIONSIZE);
+    
+    throwException(EXCEPTION_TIMER, 0);
+  }
 }
 
 void symbolic_op_jal() {
-  *(registers+REG_RA) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, pc + 2 * INSTRUCTIONSIZE, (uint64_t*) 0, (uint64_t*) 0);
+  *(registers+REG_RA) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, pc + 2 * INSTRUCTIONSIZE, 0, 0);
 
   pc = instr_index * INSTRUCTIONSIZE;
 }
@@ -7669,87 +7720,68 @@ void symbolic_fct_syscall() {
   throwException(EXCEPTION_SYSCALL, 0);
 }
 
-void symbolic_fetch() {
-  // assert: isValidVirtualAddress(pc) == 1
-  // assert: isVirtualAddressMapped(basePt, pc) == 1
+// -----------------------------------------------------------------
+// ------------------------- SYSTEM CALLS --------------------------
+// -----------------------------------------------------------------
 
-  if (pc % REGISTERSIZE == 0)
-    ir = rightShift(loadVirtualMemory(basePt, pc), 32);
-  else
-    ir = rightShift(leftShift(loadVirtualMemory(basePt, pc - INSTRUCTIONSIZE), 32), 32);
-}
-
-void symbolic_execute() {
-  if (opcode == OP_SPECIAL) {
-    if (function == FCT_NOP)
-      symbolic_fct_nop();
-    else if (function == FCT_DADDU)
-      symbolic_fct_daddu();
-    else if (function == FCT_DMULTU)
-      symbolic_fct_dmultu();
-    else if (function == FCT_MFLO)
-      symbolic_fct_mflo();
-    else if (function == FCT_JR)
-      symbolic_fct_jr();
-    else if (function == FCT_SYSCALL)
-      symbolic_fct_syscall();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else if (opcode == OP_DADDIU)
-    symbolic_op_daddiu();
-  else if (opcode == OP_LD)
-    symbolic_op_ld();
-  else if (opcode == OP_SD)
-    symbolic_op_sd();
-  else if (opcode == OP_JAL)
-    symbolic_op_jal();
-  else if (opcode == OP_J)
-    symbolic_op_j();
-  else
-    throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+void symbolic_implementExit(uint64_t* context) {
+  usedContexts = freezeFork(context, usedContexts);
+  
+  print((uint64_t*) "Fork ");
+  print(getName(context));
+  print((uint64_t*) " exiting with exit code ");
+  printSymbolicExpression((uint64_t*) *(getRegs(context)+REG_A0));
+  println();
 }
 
 uint64_t symbolic_handleSystemCalls(uint64_t* context) {
   uint64_t* node;
   uint64_t v0;
   
-    if (getException(context) == EXCEPTION_SYSCALL) {
-      node = (uint64_t*) *(getRegs(context)+REG_V0);
+  if (getException(context) == EXCEPTION_SYSCALL) {
+    node = (uint64_t*) *(getRegs(context)+REG_V0);
 
-      assert(getSymNodeType(node) == SYMBOLIC_CON, 
-        (uint64_t*)"Symbolic value not allowed as syscall number");
+    assert(getSymNodeType(node) == SYMBOLIC_CON, 
+      (uint64_t*)"Symbolic value not allowed as syscall number");
 
-      v0 = getSymNodeValue(node);
-  
-      if (v0 == SYSCALL_EXIT) {
-        implementExit(context);
-  
+    v0 = getSymNodeValue(node);
+
+    if (v0 == SYSCALL_EXIT) {
+      symbolic_implementExit(context);
+
+      if (usedContexts == (uint64_t*) 0)
         return EXIT;
-      } else {
-        print(selfieName);
-        print((uint64_t*) ": unknown system call ");
-        printInteger(v0);
-        println();
-  
-        setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
-  
-        return EXIT;
-      }
-    } else if (getException(context) != EXCEPTION_TIMER) {
+      else
+        return SWITCH;
+    } else {
       print(selfieName);
-      print((uint64_t*) ": context ");
-      print(getName(context));
-      print((uint64_t*) " throws uncaught ");
-      printException(getException(context), getFaultingPage(context));
+      print((uint64_t*) ": unknown system call ");
+      printInteger(v0);
       println();
-  
-      setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
-  
+
+      setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
+
       return EXIT;
     }
-  
-    return DONOTEXIT;
+  } else if (getException(context) != EXCEPTION_TIMER) {
+    print(selfieName);
+    print((uint64_t*) ": context ");
+    print(getName(context));
+    print((uint64_t*) " throws uncaught ");
+    printException(getException(context), getFaultingPage(context));
+    println();
+
+    setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
+
+    return EXIT;
+  }
+
+  return DONOTEXIT;
 }
+
+// -----------------------------------------------------------------
+// --------------------------- LIBRARY -----------------------------
+// -----------------------------------------------------------------
 
 void printSymbolicExpression(uint64_t* expr) {
   if ((uint64_t) expr == 0)
@@ -7777,8 +7809,10 @@ void printSymbolicExpression(uint64_t* expr) {
     print((uint64_t*) " (");
     printSymbolicExpression(getSymNodeRight(expr));
     print((uint64_t*) ")");
-  } else
-    print((uint64_t*) "x");
+  } else{
+    print((uint64_t*) "v");
+    printInteger(getSymNodeValue(expr));
+  }
 }
 
 void printExecutionEngineState(uint64_t* ctx) {
@@ -7815,27 +7849,204 @@ void printExecutionEngineState(uint64_t* ctx) {
   println();
 }
 
-void initExecutionEngine(uint64_t* ctx) {
+// -----------------------------------------------------------------
+// ---------------------- EXECUTION ENGINE -------------------------
+// -----------------------------------------------------------------
+
+void symbolic_fetch() {
+  // assert: isValidVirtualAddress(pc) == 1
+  // assert: isVirtualAddressMapped(basePt, pc) == 1
+
+  if (pc % REGISTERSIZE == 0)
+    ir = rightShift(*(binary + pc / SIZEOFINT), 32);
+  else
+    ir = rightShift(leftShift(*(binary + pc / SIZEOFINT), 32), 32);
+}
+
+void symbolic_execute() { 
+  if (opcode == OP_SPECIAL) {
+    if (function == FCT_NOP)
+      symbolic_fct_nop();
+    else if (function == FCT_DADDU)
+      symbolic_fct_daddu();
+    else if (function == FCT_DMULTU)
+      symbolic_fct_dmultu();
+    else if (function == FCT_MFLO)
+      symbolic_fct_mflo();
+    else if (function == FCT_JR)
+      symbolic_fct_jr();
+    else if (function == FCT_SYSCALL)
+      symbolic_fct_syscall();
+    else
+      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  } else if (opcode == OP_DADDIU)
+    symbolic_op_daddiu();
+  else if (opcode == OP_LD)
+    symbolic_op_ld();
+  else if (opcode == OP_SD)
+    symbolic_op_sd();
+  else if (opcode == OP_BEQ)
+    symbolic_op_beq();
+  else if (opcode == OP_JAL)
+    symbolic_op_jal();
+  else if (opcode == OP_J)
+    symbolic_op_j();
+  else
+    throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+}
+
+uint64_t* symbolic_loadFromParent(uint64_t* context, uint64_t vaddr) {
+  uint64_t data;
+
+  context = getParent(context);
+
+  while (context != 0) {
+    if (isVirtualAddressMapped(getPT(context), vaddr)) {
+      data = loadVirtualMemory(getPT(context), vaddr);
+
+      if (getParent(context) == MY_CONTEXT)
+        return createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(getPT(context), vaddr), 0, 0);
+      else if (data != 0)
+        return (uint64_t*) data;
+    }
+
+    context = getParent(context);
+  }
+
+  return 0;
+}
+
+uint64_t symbolic_loadVirtualMemory(uint64_t vaddr) {
+  uint64_t* node;
+
+  node = (uint64_t*) loadVirtualMemory(pt, vaddr);
+  
+  if ((uint64_t) node == 0) {
+    node = symbolic_loadFromParent(currentContext, vaddr);
+    
+    // nothing found..
+    if (node == 0)
+      node = createSymbolicNode(SYMBOLIC_VAL, 0, 0, 0);
+
+    storeVirtualMemory(pt, vaddr, (uint64_t) node);
+  }
+
+  return (uint64_t) node;
+}
+
+uint64_t* createFork(uint64_t* parent, uint64_t pc) {
+  uint64_t* fork;
   uint64_t reg;
 
-  // use a new page table for the symbolic expressions
-  basePt = getPT(ctx);
-  setPT(ctx, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFINT));
+  fork = createContext(parent, 0);
+
+  setPC(fork, pc);
 
   reg = 0;
 
   while (reg < NUMBEROFREGISTERS) {
-    *(getRegs(ctx) + reg) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
+    *(getRegs(fork) + reg) = *(getRegs(parent) + reg);
 
     reg = reg + 1;
   }
 
-  setLoReg(ctx, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
-  setHiReg(ctx, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
+  setLoReg(fork, getLoReg(parent));
+  setHiReg(fork, getHiReg(parent));
+
+  setProgramBreak(fork, getProgramBreak(parent));
+  setName(fork, itoa(forks, smalloc(7), 10, 0, 0));
+
+  forks = forks + 1;
+
+  return fork;
+}
+
+uint64_t* freezeFork(uint64_t* fork, uint64_t* from) {
+  if (getNextContext(fork) != (uint64_t*) 0)
+    setPrevContext(getNextContext(fork), getPrevContext(fork));
+
+  if (getPrevContext(fork) != (uint64_t*) 0) {
+    setNextContext(getPrevContext(fork), getNextContext(fork));
+    setPrevContext(fork, (uint64_t*) 0);
+  } else
+    from = getNextContext(fork);
+
+  setNextContext(fork, frozenForks);
+  
+  frozenForks = fork;
+
+  return from;
+}
+
+void saveForkState(uint64_t* context) {
+  setPC(context, pc);
+  setLoReg(context, loReg);
+  setHiReg(context, hiReg);
+}
+
+void fork(uint64_t firstPC, uint64_t secondPC) {
+  createFork(currentContext, firstPC);
+  createFork(currentContext, secondPC);
+
+  usedContexts = freezeFork(currentContext, usedContexts);
+}
+
+void symbolic_doSwitch(uint64_t* toContext, uint64_t timeout) {
+  uint64_t* fromContext;
+
+  fromContext = currentContext;
+
+  // restore machine state
+  pc        = getPC(toContext);
+  registers = getRegs(toContext);
+  loReg     = getLoReg(toContext);
+  hiReg     = getHiReg(toContext);
+  pt        = getPT(toContext);
+
+  currentContext = toContext;
+
+  timer = timeout;
+
+  if (debug_switch) {
+    print(selfieName);
+    print((uint64_t*) ": switched from fork ");
+    print(getName(fromContext));
+    print((uint64_t*) " to fork ");
+    print(getName(toContext));
+    if (signedGreaterThan(timeout, -1)) {
+      print((uint64_t*) " to execute ");
+      printInteger(timeout);
+      print((uint64_t*) " instructions");
+    }
+    println();
+  }
+}
+
+uint64_t* initExecutionEngine(uint64_t* ctx) {
+  uint64_t reg;
+  uint64_t* fork;
+
+  usedContexts = freezeFork(ctx, usedContexts);
+
+  // use a new page table for the symbolic expressions
+  fork = createFork(ctx, 0);
+
+  reg = 0;
+
+  while (reg < NUMBEROFREGISTERS) {
+    *(getRegs(fork) + reg) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
+
+    reg = reg + 1;
+  }
+
+  setLoReg(fork, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
+  setHiReg(fork, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
+
+  return fork;
 }
 
 uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
-  doSwitch(toContext, timeout);
+  symbolic_doSwitch(toContext, timeout);
 
   trap = 0;
 
@@ -7848,7 +8059,7 @@ uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
 
   trap = 0;
 
-  saveContext(currentContext);
+  saveForkState(currentContext);
 
   return currentContext;
 }
@@ -7856,53 +8067,44 @@ uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
 uint64_t vipster(uint64_t* toContext) {
   uint64_t timeout;
   uint64_t* fromContext;
+  uint64_t* next;
+  uint64_t status;
 
   print((uint64_t*) "vipster");
   println();
 
-  initExecutionEngine(toContext);
+  toContext = initExecutionEngine(toContext);
 
   timeout = TIMESLICE;
 
+  status = DONOTEXIT;
+
   while (1) {
+    next = getNextContext(toContext);
+
     fromContext = vipster_switch(toContext, timeout);
 
-    if (getParent(fromContext) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      toContext = getParent(fromContext);
-    
-      timeout = TIMEROFF;
-    } else {
-       // we are the parent in charge of handling exceptions
-    
-      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
-        // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-      else if (getException(fromContext) == EXCEPTION_UNKNOWNINSTRUCTION) {
-        // VIP TODO: remove this exception if we can handle every instruction
-        print((uint64_t*) "warning: unknown instruction");
-        println();
+    if (getException(fromContext) == EXCEPTION_PAGEFAULT)
+      // TODO: use this table to unmap and reuse frames
+      mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
+    else if (getException(fromContext) == EXCEPTION_TIMER)
+      status = SWITCH;
+    else
+      status = symbolic_handleSystemCalls(fromContext);
 
-        printExecutionEngineState(fromContext);
-
-        // accept unknown instruction only for the moment
-        return 0;
-      } else if (symbolic_handleSystemCalls(fromContext) == EXIT) {
-        printExecutionEngineState(fromContext);
-
-        print((uint64_t*)"Exited with: ");
-        printSymbolicExpression((uint64_t*) getExitCode(fromContext));
-        println();
-
-        return 0;
-      }
-    
-      setException(fromContext, EXCEPTION_NOEXCEPTION);
-    
+    if (status == EXIT)
+      return 0;
+    else if (status == SWITCH) {
+      if (next != 0)
+        toContext = next;
+      else
+        toContext = usedContexts;
+    } else
       toContext = fromContext;
-    
-      timeout = TIMESLICE;
-    }
+
+    setException(fromContext, EXCEPTION_NOEXCEPTION);
+  
+    timeout = TIMESLICE;
   }
 }
 
