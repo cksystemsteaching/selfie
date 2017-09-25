@@ -43,6 +43,7 @@ sat: selfie
 # Test vipster
 vipster: selfie
 	./selfie -c manuscript/verification-snippets/simple.c -v 4096
+	./selfie -c manuscript/verification-snippets/branch.c -v 4096
 
 # Test everything
 all: test sat vipster
