@@ -1355,8 +1355,11 @@ void symbolic_op_j();
 
 void symbolic_fct_nop();
 void symbolic_fct_daddu();
+void symbolic_fct_dsubu();
 void symbolic_fct_dmultu();
+void symbolic_fct_ddivu();
 void symbolic_fct_mflo();
+void symbolic_fct_mfhi();
 void symbolic_fct_jr();
 void symbolic_fct_syscall();
 
@@ -7676,6 +7679,34 @@ void symbolic_fct_daddu() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
+void symbolic_fct_dsubu() {
+  uint64_t* s;
+  uint64_t* t;
+  uint64_t* d;
+  uint64_t* n;
+  uint64_t isConcrete;
+
+  s = (uint64_t*) *(registers+rs);
+  t = (uint64_t*) *(registers+rt);
+  d = (uint64_t*) *(registers+rd);
+
+  isConcrete = 0;
+  
+  if (SYMBOLIC_CON == getSymNodeType(s))
+    if (SYMBOLIC_CON == getSymNodeType(t))
+      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
+      isConcrete = 1;
+
+  if (isConcrete)
+    n = createSymbolicNode(SYMBOLIC_CON, getSymNodeValue(s) - getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
+  else
+    n = createSymbolicNode(SYMBOLIC_OP, FCT_DSUBU, s, t);
+
+  *(registers+rd) = (uint64_t) n;
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
 void symbolic_fct_dmultu() {
   uint64_t* s;
   uint64_t* t;
@@ -7700,8 +7731,49 @@ void symbolic_fct_dmultu() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
+void symbolic_fct_ddivu() {
+  uint64_t* s;
+  uint64_t* t;
+  uint64_t* prod;
+  uint64_t isConcrete;
+
+  s = (uint64_t*) *(registers+rs);
+  t = (uint64_t*) *(registers+rt);
+
+  isConcrete = 0;
+  
+  if (SYMBOLIC_CON == getSymNodeType(s))
+    if (SYMBOLIC_CON == getSymNodeType(t))
+      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
+      isConcrete = 1;
+
+  if (isConcrete){
+    if(getSymNodeValue(t) == 0){
+      loReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
+      hiReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
+    }else{
+      loReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 
+        getSymNodeValue(s) / getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
+      hiReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 
+        getSymNodeValue(s) % getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
+    } 
+  }else{
+    loReg = (uint64_t) createSymbolicNode(SYMBOLIC_OP, FCT_DDIVU, s, t);
+    prod  = createSymbolicNode(SYMBOLIC_OP, FCT_DMULTU, t, (uint64_t*) loReg);
+    hiReg = (uint64_t) createSymbolicNode(SYMBOLIC_OP, FCT_DSUBU, s, prod);
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
 void symbolic_fct_mflo() {
   *(registers+rd) = loReg;
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void symbolic_fct_mfhi() {
+  *(registers+rd) = hiReg;
 
   pc = pc + INSTRUCTIONSIZE;
 }
@@ -7881,10 +7953,16 @@ void symbolic_execute() {
       symbolic_fct_nop();
     else if (function == FCT_DADDU)
       symbolic_fct_daddu();
+    else if (function == FCT_DSUBU)
+      symbolic_fct_dsubu();
     else if (function == FCT_DMULTU)
       symbolic_fct_dmultu();
+    else if (function == FCT_DDIVU)
+      symbolic_fct_ddivu();
     else if (function == FCT_MFLO)
       symbolic_fct_mflo();
+    else if (function == FCT_MFHI)
+      symbolic_fct_mfhi();
     else if (function == FCT_JR)
       symbolic_fct_jr();
     else if (function == FCT_SYSCALL)
