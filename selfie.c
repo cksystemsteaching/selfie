@@ -101,6 +101,9 @@ uint64_t rightShift(uint64_t n, uint64_t b);
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs);
 
+uint64_t getHighWord(uint64_t doubleWord);
+uint64_t getLowWord(uint64_t doubleWord);
+
 uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 
@@ -1365,6 +1368,14 @@ uint64_t signedLessThan(uint64_t lhs, uint64_t rhs) {
 uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs) {
   // signed ">" operator: compare lhs and rhs in two's complement
   return lhs + INT64_MIN > rhs + INT64_MIN;
+}
+
+uint64_t getHighWord(uint64_t doubleWord) {
+  return rightShift(doubleWord, 32);
+}
+
+uint64_t getLowWord(uint64_t doubleWord) {
+  return rightShift(leftShift(doubleWord, 32), 32);
 }
 
 uint64_t loadCharacter(uint64_t* s, uint64_t i) {
@@ -4391,11 +4402,9 @@ void printFunction(uint64_t function) {
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
-    // high word access
-    return rightShift(*(binary + baddr / SIZEOFINT), 32);
+    return getHighWord(*(binary + baddr / SIZEOFINT));
   else
-    // low word access
-    return rightShift(leftShift(*(binary + baddr / SIZEOFINT), 32), 32);
+    return getLowWord(*(binary + baddr / SIZEOFINT));
 }
 
 void storeInstruction(uint64_t baddr, uint64_t instruction) {
@@ -4410,10 +4419,10 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
   temp = *(binary + baddr / SIZEOFINT);
 
   if (baddr % SIZEOFINT == 0)
-    // high word access
+    // replace high word
     temp = leftShift(instruction, 32) + rightShift(leftShift(temp, 32), 32);
   else
-    // low word access
+    // replace low word
     temp = instruction + leftShift(rightShift(temp, 32), 32);
 
   *(binary + baddr / SIZEOFINT) = temp;
@@ -6014,9 +6023,9 @@ void fetch() {
   // assert: isVirtualAddressMapped(pt, pc) == 1
 
   if (pc % REGISTERSIZE == 0)
-    ir = rightShift(loadVirtualMemory(pt, pc), 32);
+    ir = getHighWord(loadVirtualMemory(pt, pc));
   else
-    ir = rightShift(leftShift(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE), 32), 32);
+    ir = getLowWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
 }
 
 void execute() {
@@ -6523,7 +6532,6 @@ uint64_t pused() {
 }
 
 uint64_t* palloc() {
-  // CAUTION: on boot level zero palloc may return frame addresses < 0
   uint64_t block;
   uint64_t frame;
 
