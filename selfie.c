@@ -101,6 +101,11 @@ uint64_t rightShift(uint64_t n, uint64_t b);
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs);
 
+uint64_t signShrink(uint64_t immediate, uint64_t bits);
+
+uint64_t getHighWord(uint64_t doubleWord);
+uint64_t getLowWord(uint64_t doubleWord);
+
 uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 
@@ -169,6 +174,8 @@ uint64_t* power_of_two_table;
 
 uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
 uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
+
+uint64_t INT_BITWIDTH = 32; // int bit width used for system call compatibility
 
 uint64_t maxFilenameLength = 128;
 
@@ -905,7 +912,7 @@ uint64_t DOUBLEWORDSIZE = 8;
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
 uint64_t REGISTERSIZE = 8;    // must be the same as DOUBLEWORDSIZE
 
-uint64_t PAGESIZE = 8192;  // we use standard 8KB pages (=> 13 pagebits: 2^13 == 8192)
+uint64_t PAGESIZE = 4096;  // we use standard 4KB pages (=> 12 pagebits: 2^12 == 4096)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1197,6 +1204,8 @@ void resetMicrokernel() {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
+void initKernel();
+
 uint64_t pavailable();
 uint64_t pused();
 
@@ -1233,14 +1242,14 @@ uint64_t EXIT = 1;
 
 // signed 32-bit exit codes [int]
 uint64_t EXITCODE_NOERROR = 0;
-uint64_t EXITCODE_IOERROR = 4294967295;             // -1
-uint64_t EXITCODE_SCANNERERROR = 4294967294;        // -2
-uint64_t EXITCODE_PARSERERROR = 4294967293;         // -3
-uint64_t EXITCODE_COMPILERERROR = 4294967292;       // -4
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY = 4294967291;  // -5
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY = 4294967290; // -6
-uint64_t EXITCODE_UNKNOWNSYSCALL = 4294967289;      // -7
-uint64_t EXITCODE_UNCAUGHTEXCEPTION = 4294967288;   // -8
+uint64_t EXITCODE_IOERROR;
+uint64_t EXITCODE_SCANNERERROR;
+uint64_t EXITCODE_PARSERERROR;
+uint64_t EXITCODE_COMPILERERROR;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
+uint64_t EXITCODE_UNKNOWNSYSCALL;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION;
 
 uint64_t MINSTER = 1;
 uint64_t MIPSTER = 2;
@@ -1256,6 +1265,19 @@ uint64_t nextPageFrame = 0;        // [number of words]
 
 uint64_t usedPageFrameMemory = 0;  // [number of words]
 uint64_t freePageFrameMemory = 0;  // [number of words]
+
+// ------------------------- INITIALIZATION ------------------------
+
+void initKernel() {
+  EXITCODE_IOERROR = signShrink(-1, INT_BITWIDTH);
+  EXITCODE_SCANNERERROR = signShrink(-2, INT_BITWIDTH);
+  EXITCODE_PARSERERROR = signShrink(-3, INT_BITWIDTH);
+  EXITCODE_COMPILERERROR = signShrink(-4, INT_BITWIDTH);
+  EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-5, INT_BITWIDTH);
+  EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-6, INT_BITWIDTH);
+  EXITCODE_UNKNOWNSYSCALL = signShrink(-7, INT_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-8, INT_BITWIDTH);
+}
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -1490,6 +1512,18 @@ uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs) {
   return lhs + INT64_MIN > rhs + INT64_MIN;
 }
 
+uint64_t signShrink(uint64_t immediate, uint64_t bits) {
+  return rightShift(leftShift(immediate, CPUBITWIDTH - bits), CPUBITWIDTH - bits);
+}
+
+uint64_t getHighWord(uint64_t doubleWord) {
+  return rightShift(doubleWord, 32);
+}
+
+uint64_t getLowWord(uint64_t doubleWord) {
+  return rightShift(leftShift(doubleWord, 32), 32);
+}
+
 uint64_t loadCharacter(uint64_t* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
@@ -1652,7 +1686,7 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
 
     if (b == 10) {
       if (n == INT64_MIN) {
-        // rightmost decimal digit of 32-bit INT64_MIN
+        // rightmost decimal digit of 64-bit integer
         storeCharacter(s, 0, '8');
 
         // avoids overflow
@@ -4261,7 +4295,7 @@ void selfie_compile() {
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
-      sourceFD = signExtend(open(sourceName, O_RDONLY, 0), 32);
+      sourceFD = signExtend(open(sourceName, O_RDONLY, 0), INT_BITWIDTH);
 
       if (signedLessThan(sourceFD, 0)) {
         print(selfieName);
@@ -4526,11 +4560,9 @@ void printFunction(uint64_t function) {
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
-    // high word access
-    return rightShift(*(binary + baddr / SIZEOFINT), 32);
+    return getHighWord(*(binary + baddr / SIZEOFINT));
   else
-    // low word access
-    return rightShift(leftShift(*(binary + baddr / SIZEOFINT), 32), 32);
+    return getLowWord(*(binary + baddr / SIZEOFINT));
 }
 
 void storeInstruction(uint64_t baddr, uint64_t instruction) {
@@ -4545,10 +4577,10 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
   temp = *(binary + baddr / SIZEOFINT);
 
   if (baddr % SIZEOFINT == 0)
-    // high word access
+    // replace high word
     temp = leftShift(instruction, 32) + rightShift(leftShift(temp, 32), 32);
   else
-    // low word access
+    // replace low word
     temp = instruction + leftShift(rightShift(temp, 32), 32);
 
   *(binary + baddr / SIZEOFINT) = temp;
@@ -4690,15 +4722,15 @@ uint64_t openWriteOnly(uint64_t* name) {
   uint64_t fd;
 
   // try Mac flags
-  fd = signExtend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), 32);
+  fd = signExtend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), INT_BITWIDTH);
 
   if (signedLessThan(fd, 0)) {
     // try Linux flags
-    fd = signExtend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), 32);
+    fd = signExtend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), INT_BITWIDTH);
 
     if (signedLessThan(fd, 0))
       // try Windows flags
-      fd = signExtend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), 32);
+      fd = signExtend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), INT_BITWIDTH);
   }
 
   return fd;
@@ -4795,7 +4827,7 @@ void selfie_load() {
 
   // assert: binaryName is mapped and not longer than maxFilenameLength
 
-  fd = signExtend(open(binaryName, O_RDONLY, 0), 32);
+  fd = signExtend(open(binaryName, O_RDONLY, 0), INT_BITWIDTH);
 
   if (signedLessThan(fd, 0)) {
     print(selfieName);
@@ -4827,7 +4859,7 @@ void selfie_load() {
       // assert: binary is mapped
 
       // now read binary including global variables and strings
-      numberOfReadBytes = signExtend(read(fd, binary, maxBinaryLength), 32);
+      numberOfReadBytes = signExtend(read(fd, binary, maxBinaryLength), INT_BITWIDTH);
 
       if (signedGreaterThan(numberOfReadBytes, 0)) {
         binaryLength = numberOfReadBytes;
@@ -4880,13 +4912,13 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  setExitCode(context, *(getRegs(context)+REG_A0));
+  setExitCode(context, signShrink(*(getRegs(context)+REG_A0), INT_BITWIDTH));
 
   print(selfieName);
   print((uint64_t*) ": ");
   print(getName(context));
   print((uint64_t*) " exiting with exit code ");
-  printInteger(getExitCode(context));
+  printInteger(signExtend(getExitCode(context), INT_BITWIDTH));
   print((uint64_t*) " and ");
   printFixedPointRatio(getProgramBreak(context) - maxBinaryLength, MEGABYTE);
   print((uint64_t*) "MB of mallocated memory");
@@ -4952,7 +4984,7 @@ void implementRead(uint64_t* context) {
         if (size < bytesToRead)
           bytesToRead = size;
 
-        actuallyRead = signExtend(read(fd, buffer, bytesToRead), 32);
+        actuallyRead = signExtend(read(fd, buffer, bytesToRead), INT_BITWIDTH);
 
         if (actuallyRead == bytesToRead) {
           readTotal = readTotal + actuallyRead;
@@ -4998,7 +5030,7 @@ void implementRead(uint64_t* context) {
   if (failed == 0)
     *(getRegs(context)+REG_V0) = readTotal;
   else
-    *(getRegs(context)+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = signShrink(-1, INT_BITWIDTH);
 
   if (debug_read) {
     print(selfieName);
@@ -5068,7 +5100,7 @@ void implementWrite(uint64_t* context) {
         if (size < bytesToWrite)
           bytesToWrite = size;
 
-        actuallyWritten = signExtend(write(fd, buffer, bytesToWrite), 32);
+        actuallyWritten = signExtend(write(fd, buffer, bytesToWrite), INT_BITWIDTH);
 
         if (actuallyWritten == bytesToWrite) {
           writtenTotal = writtenTotal + actuallyWritten;
@@ -5114,7 +5146,7 @@ void implementWrite(uint64_t* context) {
   if (failed == 0)
     *(getRegs(context)+REG_V0) = writtenTotal;
   else
-    *(getRegs(context)+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = signShrink(-1, INT_BITWIDTH);
 
   if (debug_write) {
     print(selfieName);
@@ -5221,7 +5253,7 @@ void implementOpen(uint64_t* context) {
       println();
     }
   } else {
-    *(getRegs(context)+REG_V0) = -1;
+    *(getRegs(context)+REG_V0) = signShrink(-1, INT_BITWIDTH);
 
     if (debug_open) {
       print(selfieName);
@@ -6149,9 +6181,9 @@ void fetch() {
   // assert: isVirtualAddressMapped(pt, pc) == 1
 
   if (pc % REGISTERSIZE == 0)
-    ir = rightShift(loadVirtualMemory(pt, pc), 32);
+    ir = getHighWord(loadVirtualMemory(pt, pc));
   else
-    ir = rightShift(leftShift(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE), 32), 32);
+    ir = getLowWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
 }
 
 void execute() {
@@ -6545,10 +6577,17 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   // exploit spatial locality in page table caching
   if (page != getHiPage(context)) {
-    if (page < getLoPage(context))
+    if (page < getLoPage(context)) {
+      // strictly, touching is only necessary on boot levels higher than zero
+      touch(table + page, (getLoPage(context) - page) * SIZEOFINT);
+
       setLoPage(context, page);
-    else if (getMePage(context) < page)
+    } else if (getMePage(context) < page) {
+      // strictly, touching is only necessary on boot levels higher than zero
+      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFINT);
+
       setMePage(context, page);
+    }
   }
 
   if (debug_map) {
@@ -6651,7 +6690,6 @@ uint64_t pused() {
 }
 
 uint64_t* palloc() {
-  // CAUTION: on boot level zero palloc may return frame addresses < 0
   uint64_t block;
   uint64_t frame;
 
@@ -7419,7 +7457,7 @@ void selfie_loadDimacs() {
 
   // assert: sourceName is mapped and not longer than maxFilenameLength
 
-  sourceFD = signExtend(open(sourceName, O_RDONLY, 0), 32);
+  sourceFD = signExtend(open(sourceName, O_RDONLY, 0), INT_BITWIDTH);
 
   if (signedLessThan(sourceFD, 0)) {
     print(selfieName);
@@ -8268,6 +8306,7 @@ uint64_t selfie() {
     initRegister();
     initDecoder();
     initInterpreter();
+    initKernel();
 
     while (numberOfRemainingArguments() > 0) {
       option = getArgument();
@@ -8317,5 +8356,5 @@ uint64_t main(uint64_t argc, uint64_t* argv) {
 
   initLibrary();
 
-  return selfie();
+  return signShrink(selfie(), INT_BITWIDTH);
 }
