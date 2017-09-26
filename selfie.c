@@ -903,7 +903,7 @@ uint64_t DOUBLEWORDSIZE = 8;
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
 uint64_t REGISTERSIZE = 8;    // must be the same as DOUBLEWORDSIZE
 
-uint64_t PAGESIZE = 8192;  // we use standard 8KB pages (=> 13 pagebits: 2^13 == 8192)
+uint64_t PAGESIZE = 4096;  // we use standard 4KB pages (=> 12 pagebits: 2^12 == 4096)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -6410,10 +6410,17 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   // exploit spatial locality in page table caching
   if (page != getHiPage(context)) {
-    if (page < getLoPage(context))
+    if (page < getLoPage(context)) {
+      // strictly, touching is only necessary on boot levels higher than zero
+      touch(table + page, (getLoPage(context) - page) * SIZEOFINT);
+
       setLoPage(context, page);
-    else if (getMePage(context) < page)
+    } else if (getMePage(context) < page) {
+      // strictly, touching is only necessary on boot levels higher than zero
+      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFINT);
+
       setMePage(context, page);
+    }
   }
 
   if (debug_map) {
