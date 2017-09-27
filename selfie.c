@@ -83,9 +83,9 @@
 // -----------------------------------------------------------------
 
 void exit(uint64_t code);
-uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytesToRead);
-uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytesToWrite);
-uint64_t open(uint64_t* filename, uint64_t flags, uint64_t mode);
+uint64_t  read(uint64_t fd, uint64_t* buffer, uint64_t bytesToRead);
+uint64_t  write(uint64_t fd, uint64_t* buffer, uint64_t bytesToWrite);
+uint64_t  open(uint64_t* filename, uint64_t flags, uint64_t mode);
 uint64_t* malloc(uint64_t size);
 
 // -----------------------------------------------------------------
@@ -109,9 +109,9 @@ uint64_t getLowWord(uint64_t doubleWord);
 uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 
-uint64_t  stringLength(uint64_t* s);
+uint64_t stringLength(uint64_t* s);
 void stringReverse(uint64_t* s);
-uint64_t  stringCompare(uint64_t* s, uint64_t* t);
+uint64_t stringCompare(uint64_t* s, uint64_t* t);
 
 uint64_t  atoi(uint64_t* s);
 uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p);
@@ -139,10 +139,10 @@ uint64_t* zalloc(uint64_t size);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t CHAR_EOF          = -1; // end of file
-uint64_t CHAR_TAB          = 9;  // ASCII code 9  = tabulator
-uint64_t CHAR_LF           = 10; // ASCII code 10 = line feed
-uint64_t CHAR_CR           = 13; // ASCII code 13 = carriage return
+uint64_t CHAR_EOF          =  -1; // end of file
+uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
+uint64_t CHAR_LF           =  10; // ASCII code 10 = line feed
+uint64_t CHAR_CR           =  13; // ASCII code 13 = carriage return
 uint64_t CHAR_SPACE        = ' ';
 uint64_t CHAR_SEMICOLON    = ';';
 uint64_t CHAR_PLUS         = '+';
@@ -160,7 +160,7 @@ uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
 uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_PERCENTAGE   = '%';
-uint64_t CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
+uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
 
 uint64_t CPUBITWIDTH   = 64;
@@ -296,11 +296,11 @@ void getSymbol();
 uint64_t SYM_EOF          = -1; // end of file
 uint64_t SYM_IDENTIFIER   = 0;  // identifier
 uint64_t SYM_INTEGER      = 1;  // integer
-uint64_t SYM_VOID         = 2;  // VOID
+uint64_t SYM_VOID         = 2;  // void
 uint64_t SYM_UINT64       = 3;  // uint64_t
 uint64_t SYM_SEMICOLON    = 4;  // ;
-uint64_t SYM_IF           = 5;  // IF
-uint64_t SYM_ELSE         = 6;  // ELSE
+uint64_t SYM_IF           = 5;  // if
+uint64_t SYM_ELSE         = 6;  // else
 uint64_t SYM_PLUS         = 7;  // +
 uint64_t SYM_MINUS        = 8;  // -
 uint64_t SYM_ASTERISK     = 9;  // *
@@ -311,8 +311,8 @@ uint64_t SYM_LPARENTHESIS = 13; // (
 uint64_t SYM_RPARENTHESIS = 14; // )
 uint64_t SYM_LBRACE       = 15; // {
 uint64_t SYM_RBRACE       = 16; // }
-uint64_t SYM_WHILE        = 17; // WHILE
-uint64_t SYM_RETURN       = 18; // RETURN
+uint64_t SYM_WHILE        = 17; // while
+uint64_t SYM_RETURN       = 18; // return
 uint64_t SYM_COMMA        = 19; // ,
 uint64_t SYM_LT           = 20; // <
 uint64_t SYM_LEQ          = 21; // <=
@@ -325,8 +325,8 @@ uint64_t SYM_STRING       = 27; // string
 
 uint64_t* SYMBOLS; // strings representing symbols
 
-uint64_t maxIdentifierLength = 64; // maximum number of characters in an identifier
-uint64_t maxIntegerLength    = 19; // maximum number of characters in an integer
+uint64_t maxIdentifierLength = 64;  // maximum number of characters in an identifier
+uint64_t maxIntegerLength    = 19;  // maximum number of characters in an integer
 uint64_t maxStringLength     = 128; // maximum number of characters in a string
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -353,7 +353,7 @@ uint64_t numberOfComments          = 0;
 uint64_t numberOfScannedSymbols    = 0;
 
 uint64_t* sourceName = (uint64_t*) 0; // name of source file
-uint64_t  sourceFD   = 0;        // file descriptor of open source file
+uint64_t  sourceFD   = 0;             // file descriptor of open source file
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1018,16 +1018,16 @@ uint64_t timer = -1; // counter for timer interrupt
 
 uint64_t trap = 0; // flag for creating a trap
 
-uint64_t  calls           = 0;        // total number of executed procedure calls
-uint64_t* callsPerAddress = (uint64_t*) 0; // number of executed calls of each procedure
+uint64_t  calls           = 0;              // total number of executed procedure calls
+uint64_t* callsPerAddress = (uint64_t*) 0;  // number of executed calls of each procedure
 
-uint64_t  loops           = 0;        // total number of executed loop iterations
-uint64_t* loopsPerAddress = (uint64_t*) 0; // number of executed iterations of each loop
+uint64_t  loops           = 0;              // total number of executed loop iterations
+uint64_t* loopsPerAddress = (uint64_t*) 0;  // number of executed iterations of each loop
 
-uint64_t  loads           = 0;        // total number of executed memory loads
-uint64_t* loadsPerAddress = (uint64_t*) 0; // number of executed loads per load operation
+uint64_t  loads           = 0;              // total number of executed memory loads
+uint64_t* loadsPerAddress = (uint64_t*) 0;  // number of executed loads per load operation
 
-uint64_t  stores           = 0;        // total number of executed memory stores
+uint64_t  stores           = 0;             // total number of executed memory stores
 uint64_t* storesPerAddress = (uint64_t*) 0; // number of executed stores per store operation
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1125,39 +1125,39 @@ uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 16); }
 
 uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
-uint64_t  getPC(uint64_t* context)             { return        *(context + 2); }
+uint64_t  getPC(uint64_t* context)             { return             *(context + 2); }
 uint64_t* getRegs(uint64_t* context)           { return (uint64_t*) *(context + 3); }
-uint64_t  getLoReg(uint64_t* context)          { return        *(context + 4); }
-uint64_t  getHiReg(uint64_t* context)          { return        *(context + 5); }
+uint64_t  getLoReg(uint64_t* context)          { return             *(context + 4); }
+uint64_t  getHiReg(uint64_t* context)          { return             *(context + 5); }
 uint64_t* getPT(uint64_t* context)             { return (uint64_t*) *(context + 6); }
-uint64_t  getLoPage(uint64_t* context)         { return        *(context + 7); }
-uint64_t  getMePage(uint64_t* context)         { return        *(context + 8); }
-uint64_t  getHiPage(uint64_t* context)         { return        *(context + 9); }
-uint64_t  getProgramBreak(uint64_t* context)   { return        *(context + 10); }
-uint64_t  getException(uint64_t* context)      { return        *(context + 11); }
-uint64_t  getFaultingPage(uint64_t* context)   { return        *(context + 12); }
-uint64_t  getExitCode(uint64_t* context)       { return        *(context + 13); }
+uint64_t  getLoPage(uint64_t* context)         { return             *(context + 7); }
+uint64_t  getMePage(uint64_t* context)         { return             *(context + 8); }
+uint64_t  getHiPage(uint64_t* context)         { return             *(context + 9); }
+uint64_t  getProgramBreak(uint64_t* context)   { return             *(context + 10); }
+uint64_t  getException(uint64_t* context)      { return             *(context + 11); }
+uint64_t  getFaultingPage(uint64_t* context)   { return             *(context + 12); }
+uint64_t  getExitCode(uint64_t* context)       { return             *(context + 13); }
 uint64_t* getParent(uint64_t* context)         { return (uint64_t*) *(context + 14); }
 uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 15); }
 uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 16); }
 
-void setNextContext(uint64_t* context, uint64_t* next) { *context       = (uint64_t) next; }
-void setPrevContext(uint64_t* context, uint64_t* prev) { *(context + 1) = (uint64_t) prev; }
-void setPC(uint64_t* context, uint64_t pc)             { *(context + 2) = pc; }
-void setRegs(uint64_t* context, uint64_t* regs)        { *(context + 3) = (uint64_t) regs; }
-void setLoReg(uint64_t* context, uint64_t loReg)       { *(context + 4) = loReg; }
-void setHiReg(uint64_t* context, uint64_t hiReg)       { *(context + 5) = hiReg; }
-void setPT(uint64_t* context, uint64_t* pt)            { *(context + 6) = (uint64_t) pt; }
-void setLoPage(uint64_t* context, uint64_t loPage)     { *(context + 7) = loPage; }
-void setMePage(uint64_t* context, uint64_t mePage)     { *(context + 8) = mePage; }
-void setHiPage(uint64_t* context, uint64_t hiPage)     { *(context + 9) = hiPage; }
-void setProgramBreak(uint64_t* context, uint64_t brk)  { *(context + 10) = brk; }
-void setException(uint64_t* context, uint64_t exception) { *(context + 11) = exception; }
-void setFaultingPage(uint64_t* context, uint64_t page) { *(context + 12) = page; }
-void setExitCode(uint64_t* context, uint64_t code)     { *(context + 13) = code; }
-void setParent(uint64_t* context, uint64_t* parent)    { *(context + 14) = (uint64_t) parent; }
+void setNextContext(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
+void setPrevContext(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
+void setPC(uint64_t* context, uint64_t pc)                 { *(context + 2)  = pc; }
+void setRegs(uint64_t* context, uint64_t* regs)            { *(context + 3)  = (uint64_t) regs; }
+void setLoReg(uint64_t* context, uint64_t loReg)           { *(context + 4)  = loReg; }
+void setHiReg(uint64_t* context, uint64_t hiReg)           { *(context + 5)  = hiReg; }
+void setPT(uint64_t* context, uint64_t* pt)                { *(context + 6)  = (uint64_t) pt; }
+void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 7)  = loPage; }
+void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 8)  = mePage; }
+void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 9)  = hiPage; }
+void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 10) = brk; }
+void setException(uint64_t* context, uint64_t exception)   { *(context + 11) = exception; }
+void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 12) = page; }
+void setExitCode(uint64_t* context, uint64_t code)         { *(context + 13) = code; }
+void setParent(uint64_t* context, uint64_t* parent)        { *(context + 14) = (uint64_t) parent; }
 void setVirtualContext(uint64_t* context, uint64_t* vctxt) { *(context + 15) = (uint64_t) vctxt; }
-void setName(uint64_t* context, uint64_t* name)        { *(context + 16) = (uint64_t) name; }
+void setName(uint64_t* context, uint64_t* name)            { *(context + 16) = (uint64_t) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1255,10 +1255,10 @@ uint64_t HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t nextPageFrame = 0;        // [number of words]
+uint64_t nextPageFrame = 0;
 
-uint64_t usedPageFrameMemory = 0;  // [number of words]
-uint64_t freePageFrameMemory = 0;  // [number of words]
+uint64_t usedPageFrameMemory = 0;
+uint64_t freePageFrameMemory = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1329,7 +1329,7 @@ void selfie_sat();
 
 void initSelfie(uint64_t argc, uint64_t* argv);
 
-uint64_t numberOfRemainingArguments();
+uint64_t  numberOfRemainingArguments();
 uint64_t* remainingArguments();
 
 uint64_t* peekArgument();
@@ -1390,6 +1390,7 @@ uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs) {
 }
 
 uint64_t signShrink(uint64_t immediate, uint64_t bits) {
+  // assert: 0 < bits <= CPUBITWIDTH
   return rightShift(leftShift(immediate, CPUBITWIDTH - bits), CPUBITWIDTH - bits);
 }
 
@@ -2740,7 +2741,7 @@ void load_integer(uint64_t value) {
 
   reg = REG_ZR;
   shifted = 0;
-  
+
   toShift = CPUBITWIDTH % 14;
 
   i = CPUBITWIDTH - toShift;
@@ -3366,8 +3367,7 @@ void gr_while() {
     syntaxErrorSymbol(SYM_WHILE);
 
   // unconditional branch to beginning of while
-  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 
-    (brBackToWhile - binaryLength - INSTRUCTIONSIZE) / INSTRUCTIONSIZE);
+  emitIFormat(OP_BEQ, REG_ZR, REG_ZR, (brBackToWhile - binaryLength - INSTRUCTIONSIZE) / INSTRUCTIONSIZE);
 
   if (brForwardToEnd != 0)
     // first instruction after loop comes here
@@ -3920,7 +3920,7 @@ void gr_procedure(uint64_t* procedure, uint64_t type) {
     }
 
     fixlink_absolute(returnBranches, binaryLength);
-    
+
     returnBranches = 0;
 
     help_procedure_epilogue(numberOfParameters);
@@ -3961,7 +3961,6 @@ void gr_cstar() {
         variableOrProcedureName = identifier;
 
         getSymbol();
-
 
         gr_procedure(variableOrProcedureName, type);
       } else
@@ -5304,8 +5303,8 @@ uint64_t isPageMapped(uint64_t* table, uint64_t page) {
 }
 
 uint64_t isValidVirtualAddress(uint64_t vaddr) {
-  // memory must be word-addressed for lack of byte-sized data type
   if (vaddr < VIRTUALMEMORYSIZE)
+    // memory must be word-addressed for lack of byte-sized data type
     if (vaddr % REGISTERSIZE == 0)
       return 1;
 
@@ -5522,7 +5521,7 @@ void fct_dmultu() {
   }
 
   if (interpret) {
-    // TODO: 64-bit resolution currently not supported
+    // TODO: 128-bit resolution currently not supported
     loReg = n;
 
     pc = pc + INSTRUCTIONSIZE;
@@ -5583,7 +5582,7 @@ void fct_ddivu() {
     }
     println();
   }
-  
+
   if (interpret) {
     loReg = l;
     hiReg = h;
@@ -5761,8 +5760,6 @@ void op_daddiu() {
 
   if (interpret) {
     *(registers+rt) = *(registers+rs) + signExtend(immediate, 16);
-
-    // TODO: check for overflow
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -6713,9 +6710,9 @@ void mapUnmappedPages(uint64_t* context) {
 }
 
 uint64_t isBootLevelZero() {
-  // in C99 malloc(0) returns either a null pointer or a unique pointer. 
+  // in C99 malloc(0) returns either a null pointer or a unique pointer.
   // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
-  // selfie's malloc implementation, on the other hand, 
+  // selfie's malloc implementation, on the other hand,
   // returns the same not null address, if malloc(0) is called consecutively.
   uint64_t firstMalloc;
   uint64_t secondMalloc;
