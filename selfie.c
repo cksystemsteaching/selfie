@@ -6159,16 +6159,22 @@ uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max) {
 
 uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max) {
   uint64_t a;
+  uint64_t ratio;
 
   a = addressWithMaxCounter(counters, max);
 
-  printInteger(*(counters + a / INSTRUCTIONSIZE));
+  if (a == -1)
+    ratio = 0;
+  else
+    ratio = *(counters + a / INSTRUCTIONSIZE);
+
+  printInteger(ratio);
 
   print((uint64_t*) "(");
-  printFixedPointPercentage(total, *(counters + a / INSTRUCTIONSIZE));
+  printFixedPointPercentage(total, ratio);
   print((uint64_t*) "%)");
 
-  if (*(counters + a / INSTRUCTIONSIZE) != 0) {
+  if (ratio != 0) {
     print((uint64_t*) "@");
     printHexadecimal(a, 0);
     if (sourceLineNumber != (uint64_t*) 0) {
@@ -6178,22 +6184,22 @@ uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max) {
     }
   }
 
-  return a;
+  return ratio;
 }
 
 void printProfile(uint64_t* message, uint64_t total, uint64_t* counters) {
-  uint64_t a;
+  uint64_t max;
 
   if (total > 0) {
     print(selfieName);
     print(message);
     printInteger(total);
     print((uint64_t*) ",");
-    a = printCounters(total, counters, INT64_MAX); // max counter
+    max = printCounters(total, counters, INT64_MAX); // max counter
     print((uint64_t*) ",");
-    a = printCounters(total, counters, *(counters + a / INSTRUCTIONSIZE)); // 2nd max
+    max = printCounters(total, counters, max); // 2nd max
     print((uint64_t*) ",");
-    a = printCounters(total, counters, *(counters + a / INSTRUCTIONSIZE)); // 3rd max
+    printCounters(total, counters, max); // 3rd max
     println();
   }
 }
