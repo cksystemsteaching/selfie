@@ -231,9 +231,9 @@ void initLibrary() {
     i = i + 1;
   }
 
-  // compute INT64_MAX and INT64_MIN without integer overflows
-  INT64_MAX = (twoToThePowerOf(CPUBITWIDTH - 2) - 1) * 2 + 1;
-  INT64_MIN = -INT64_MAX - 1;
+  // compute two's complement boundaries
+  INT64_MAX = twoToThePowerOf(CPUBITWIDTH - 1) - 1;
+  INT64_MIN = INT64_MAX + 1;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFINT);
