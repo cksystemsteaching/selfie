@@ -1541,7 +1541,6 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
 
   uint64_t i;
   uint64_t sign;
-  uint64_t msb;
 
   // the conversion of the integer n to an ASCII string in s
   // with base b, alignment a, and fixed point p
@@ -1551,43 +1550,18 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
   // for now assuming n is positive
   sign = 0;
 
-  // and msb not set
-  msb = 0;
-
   if (n == 0) {
     storeCharacter(s, 0, '0');
 
     i = 1;
   } else if (signedLessThan(n, 0)) {
-    // convert n to a positive number but remember the sign
-    sign = 1;
-
     if (b == 10) {
-      if (n == INT64_MIN) {
-        // rightmost decimal digit of 64-bit integer
-        storeCharacter(s, 0, '8');
+      // n is represented as two's complement
+      // convert n to a positive number but remember the sign
+      n = -n;
 
-        // avoids overflow
-        n = -(n / 10);
-        i = 1;
-      } else
-        n = -n;
-    } else {
-      if (n == INT64_MIN) {
-        // rightmost non-decimal digit of INT64_MIN
-        storeCharacter(s, 0, '0');
-
-        // avoids setting n to 0
-        n = (rightShift(INT64_MIN, 1) / b) * 2;
-        i = 1;
-      } else {
-        // reset msb, restore below
-        n   = rightShift(leftShift(n, 1), 1);
-        msb = 1;
-      }
+      sign = 1;
     }
-
-    // assert: n > 0
   }
 
   while (n != 0) {
@@ -1615,12 +1589,6 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
     n = n / b;
 
     i = i + 1;
-
-    if (msb) {
-      // restore msb from above
-      n   = n + (rightShift(INT64_MIN, 1) / b) * 2;
-      msb = 0;
-    }
   }
 
   if (p > 0) {
