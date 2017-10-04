@@ -1,6 +1,6 @@
-int x;
+uint64_t x;
 
-int main() {
+uint64_t main() {
   x = 0;
 
   x = x + 1;

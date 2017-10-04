@@ -1,7 +1,7 @@
-int main() {
-  int* x;
+uint64_t main() {
+  uint64_t* x;
 
-  x = malloc(8);
+  x = malloc(16);
 
   *x = 0;
 
