@@ -1,12 +1,12 @@
-int f(int x) {
+uint64_t f(uint64_t x) {
   while (x > 0)
     x = x - 1;
 
   return x;
 }
 
-int main() {
-  int x;
+uint64_t main() {
+  uint64_t x;
   
   x = 0;
 
