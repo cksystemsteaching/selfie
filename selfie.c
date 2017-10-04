@@ -6163,7 +6163,7 @@ uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max) {
 
   a = addressWithMaxCounter(counters, max);
 
-  if (a == -1)
+  if (a == (uint64_t) (-1))
     ratio = 0;
   else
     ratio = *(counters + a / INSTRUCTIONSIZE);

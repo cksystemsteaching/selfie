@@ -1,5 +1,5 @@
 # General compiler flags
-CFLAGS := -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
+CFLAGS := -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
 
 # Add compiler specific flags
 ifeq ($(findstring gcc,$(CC)),gcc)
