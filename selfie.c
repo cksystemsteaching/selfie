@@ -40,7 +40,7 @@
 // integers and 64-bit pointers as well as character and string literals.
 // This choice turns out to be helpful for students to understand the
 // true role of composite data types such as arrays and records.
-// Bitwise operations are implemented in libcstar using signed integer
+// Bitwise operations are implemented in libcstar using unsigned integer
 // arithmetics helping students gain true understanding of two's complement.
 // C* is supposed to be close to the minimum necessary for implementing
 // a self-compiling, single-pass, recursive-descent compiler. C* can be
