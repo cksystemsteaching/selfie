@@ -8,7 +8,7 @@ There is a free book in early draft form called [Selfie: Computer Science for Ev
 
 Selfie is a fully self-referential 7k-line C implementation of:
 
-1. a self-compiling compiler called starc that compiles a tiny but powerful subset of C called C Star (C*) to a tiny but powerful subset of MIPS32 called MIPSter,
+1. a self-compiling compiler called starc that compiles a tiny but powerful subset of C called C Star (C*) to a tiny but powerful subset of MIPS64 called MIPSter,
 2. a self-executing emulator called mipster that executes MIPSter code including itself when compiled with starc,
 3. a self-hosting hypervisor called hypster which is based on a tiny microkernel implemented in mipster and provides MIPSter virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself, and
 4. a tiny C* library called libcstar utilized by selfie.
@@ -27,21 +27,17 @@ Here is how to install selfie:
 
 1. Get a [github](https://github.com) account unless you already have one.
 2. If you only have access to a web browser, fork [selfie]( https://github.com/cksystemsteaching/selfie) into your github account, then get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace. If you have access to a terminal and there is a C compiler installed, just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip) onto your system.
-3. Make sure that the C compiler supports generating 32-bit binaries which may require installing `gcc-multilib` depending on your system. On Ubuntu systems (including cloud9), for example, first run:
-
-```bash
-sudo apt-get update && sudo apt-get --yes install gcc-multilib
-```
+3. Make sure that the C compiler supports generating 64-bit binaries
 
 At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
 
 The next step is to produce a selfie binary that runs on your system. To do that type `make` in your terminal. This will invoke the C compiler:
 
 ```bash
-cc -w -O3 -m32 -D'main(a,b)=main(a,char**argv)' selfie.c -o selfie
+cc -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
 ```
 
-and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-O3` option instructs the compiler to generate optimized code. The `-m32` option makes the compiler generate a 32-bit executable. The `-D` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but may be required by the compiler.
+and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-D'main(a,b)=main(int argc, char** argv)'` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but may be required by the compiler. The `-Duint64_t='unsigned long long'` option is used to specify the system specific 64-bit unsigned integer type.
 
 ## Running Selfie
 
