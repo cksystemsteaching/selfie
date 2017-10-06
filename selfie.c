@@ -165,8 +165,8 @@ uint64_t CHAR_DOUBLEQUOTE  = '"';
 
 uint64_t CPUBITWIDTH   = 64;
 
-uint64_t SIZEOFINT     = 8; // must be the same as REGISTERSIZE
-uint64_t SIZEOFINTSTAR = 8; // must be the same as REGISTERSIZE
+uint64_t SIZEOFUINT64     = 8; // must be the same as REGISTERSIZE
+uint64_t SIZEOFUINT64STAR = 8; // must be the same as REGISTERSIZE
 
 uint64_t* power_of_two_table;
 
@@ -218,7 +218,7 @@ void initLibrary() {
   uint64_t i;
 
   // powers of two table with CPUBITWIDTH entries for 2^0 to 2^(CPUBITWIDTH - 1)
-  power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFINT);
+  power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFUINT64);
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -236,7 +236,7 @@ void initLibrary() {
   INT64_MIN = INT64_MAX + 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = smalloc(SIZEOFINT);
+  character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
 
   // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
@@ -246,7 +246,7 @@ void initLibrary() {
   filename_buffer = smalloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = smalloc(SIZEOFINT);
+  binary_buffer  = smalloc(SIZEOFUINT64);
   *binary_buffer = 0;
 }
 
@@ -358,7 +358,7 @@ uint64_t  sourceFD   = 0;             // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFINTSTAR);
+  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
@@ -638,7 +638,7 @@ uint64_t* REGISTERS; // strings representing registers
 // ------------------------- INITIALIZATION ------------------------
 
 void initRegister() {
-  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
+  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR);
 
   *(REGISTERS + REG_ZR) = (uint64_t) "$zero";
   *(REGISTERS + REG_AT) = (uint64_t) "$at";
@@ -744,7 +744,7 @@ uint64_t instr_index = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initDecoder() {
-  OPCODES = smalloc((OP_SD + 1) * SIZEOFINTSTAR);
+  OPCODES = smalloc((OP_SD + 1) * SIZEOFUINT64STAR);
 
   *(OPCODES + OP_SPECIAL) = (uint64_t) "nop";
   *(OPCODES + OP_J)       = (uint64_t) "j";
@@ -754,7 +754,7 @@ void initDecoder() {
   *(OPCODES + OP_LD)      = (uint64_t) "ld";
   *(OPCODES + OP_SD)      = (uint64_t) "sd";
 
-  FUNCTIONS = smalloc((FCT_DSUBU + 1) * SIZEOFINTSTAR);
+  FUNCTIONS = smalloc((FCT_DSUBU + 1) * SIZEOFUINT64STAR);
 
   *(FUNCTIONS + FCT_NOP)     = (uint64_t) "nop";
   *(FUNCTIONS + FCT_JR)      = (uint64_t) "jr";
@@ -1033,7 +1033,7 @@ uint64_t* storesPerAddress = (uint64_t*) 0; // number of executed stores per sto
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFINTSTAR);
+  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1060,16 +1060,16 @@ void resetInterpreter() {
 
   if (interpret) {
     calls           = 0;
-    callsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    callsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     loops           = 0;
-    loopsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    loopsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     loads           = 0;
-    loadsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    loadsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     stores           = 0;
-    storesPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    storesPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
 }
 
@@ -1407,11 +1407,11 @@ uint64_t loadCharacter(uint64_t* s, uint64_t i) {
   uint64_t a;
 
   // a is the index of the word where the to-be-loaded i-th character in s is
-  a = i / SIZEOFINT;
+  a = i / SIZEOFUINT64;
 
   // shift to-be-loaded character to the left resetting all bits to the left
   // then shift to-be-loaded character all the way to the right and return
-  return rightShift(leftShift(*(s + a), ((SIZEOFINT - 1) - (i % SIZEOFINT)) * 8), (SIZEOFINT - 1) * 8);
+  return rightShift(leftShift(*(s + a), ((SIZEOFUINT64 - 1) - (i % SIZEOFUINT64)) * 8), (SIZEOFUINT64 - 1) * 8);
 }
 
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
@@ -1420,11 +1420,11 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
 
   // a is the index of the word where the with c
   // to-be-overwritten i-th character in s is
-  a = i / SIZEOFINT;
+  a = i / SIZEOFUINT64;
 
   // subtract the to-be-overwritten character resetting its bits in s
   // then add c setting its bits at the i-th position in s
-  *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFINT) * 8)) + leftShift(c, (i % SIZEOFINT) * 8);
+  *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFUINT64) * 8)) + leftShift(c, (i % SIZEOFUINT64) * 8);
 
   return s;
 }
@@ -1811,11 +1811,11 @@ uint64_t* zalloc(uint64_t size) {
   uint64_t* memory;
   uint64_t  i;
 
-  size = roundUp(size, SIZEOFINT);
+  size = roundUp(size, SIZEOFUINT64);
 
   memory = smalloc(size);
 
-  size = size / SIZEOFINT;
+  size = size / SIZEOFUINT64;
 
   i = 0;
 
@@ -2314,7 +2314,7 @@ void getSymbol() {
 void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* newEntry;
 
-  newEntry = smalloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+  newEntry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -3171,9 +3171,9 @@ uint64_t gr_simpleExpression() {
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DSUBU);
         } else {
           // UINT64STAR_T - UINT64STAR_T
-          // pointer arithmetic: (left_term - right_term) / SIZEOFINT
+          // pointer arithmetic: (left_term - right_term) / SIZEOFUINT64
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DSUBU);
-          emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
+          emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), SIZEOFUINT64);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DDIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
@@ -4091,7 +4091,7 @@ void selfie_compile() {
   codeLength = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  sourceLineNumber = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+  sourceLineNumber = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   resetSymbolTables();
 
@@ -4392,9 +4392,9 @@ void printFunction(uint64_t function) {
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
-    return getHighWord(*(binary + baddr / SIZEOFINT));
+    return getHighWord(*(binary + baddr / SIZEOFUINT64));
   else
-    return getLowWord(*(binary + baddr / SIZEOFINT));
+    return getLowWord(*(binary + baddr / SIZEOFUINT64));
 }
 
 void storeInstruction(uint64_t baddr, uint64_t instruction) {
@@ -4406,20 +4406,20 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  temp = *(binary + baddr / SIZEOFINT);
+  temp = *(binary + baddr / SIZEOFUINT64);
 
-  if (baddr % SIZEOFINT == 0)
+  if (baddr % SIZEOFUINT64 == 0)
     // replace high word
     temp = leftShift(instruction, 32) + rightShift(leftShift(temp, 32), 32);
   else
     // replace low word
     temp = instruction + leftShift(rightShift(temp, 32), 32);
 
-  *(binary + baddr / SIZEOFINT) = temp;
+  *(binary + baddr / SIZEOFUINT64) = temp;
 }
 
 uint64_t loadData(uint64_t baddr) {
-  return *(binary + baddr / SIZEOFINT);
+  return *(binary + baddr / SIZEOFUINT64);
 }
 
 void storeData(uint64_t baddr, uint64_t data) {
@@ -4429,7 +4429,7 @@ void storeData(uint64_t baddr, uint64_t data) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  *(binary + baddr / SIZEOFINT) = data;
+  *(binary + baddr / SIZEOFUINT64) = data;
 }
 
 void emitInstruction(uint64_t instruction) {
@@ -4504,14 +4504,14 @@ void fixlink_absolute(uint64_t fromAddress, uint64_t toAddress) {
 uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
   uint64_t next;
 
-  next = baddr + roundUp(stringLength(s) + 1, SIZEOFINT);
+  next = baddr + roundUp(stringLength(s) + 1, SIZEOFUINT64);
 
   while (baddr < next) {
     storeData(baddr, *s);
 
     s = s + 1;
 
-    baddr = baddr + SIZEOFINT;
+    baddr = baddr + SIZEOFUINT64;
   }
 
   return next;
@@ -4600,7 +4600,7 @@ void selfie_output() {
   // assert: binary_buffer is mapped
 
   // first write code length
-  write(fd, binary_buffer, SIZEOFINT);
+  write(fd, binary_buffer, SIZEOFUINT64);
 
   // assert: binary is mapped
 
@@ -4632,14 +4632,14 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
   while (length > PAGESIZE) {
     length = length - PAGESIZE;
 
-    m = m + PAGESIZE / SIZEOFINT;
+    m = m + PAGESIZE / SIZEOFUINT64;
 
     // touch every following page
     n = *m;
   }
 
   if (length > 0) {
-    m = m + (length - 1) / SIZEOFINT;
+    m = m + (length - 1) / SIZEOFUINT64;
 
     // touch at end
     n = *m;
@@ -4682,9 +4682,9 @@ void selfie_load() {
   // assert: binary_buffer is mapped
 
   // read code length first
-  numberOfReadBytes = read(fd, binary_buffer, SIZEOFINT);
+  numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
 
-  if (numberOfReadBytes == SIZEOFINT) {
+  if (numberOfReadBytes == SIZEOFUINT64) {
     codeLength = *binary_buffer;
 
     if (codeLength <= maxBinaryLength) {
@@ -4697,7 +4697,7 @@ void selfie_load() {
         binaryLength = numberOfReadBytes;
 
         // check if we are really at EOF
-        if (read(fd, binary_buffer, SIZEOFINT) == 0) {
+        if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
           print(selfieName);
           print((uint64_t*) ": ");
           printInteger(binaryLength + DOUBLEWORDSIZE);
@@ -4804,7 +4804,7 @@ void implementRead(uint64_t* context) {
   }
 
   readTotal   = 0;
-  bytesToRead = SIZEOFINT;
+  bytesToRead = SIZEOFUINT64;
 
   failed = 0;
 
@@ -4824,7 +4824,7 @@ void implementRead(uint64_t* context) {
           size = size - actuallyRead;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFINT;
+            vaddr = vaddr + SIZEOFUINT64;
         } else {
           if (signedGreaterThan(actuallyRead, 0))
             readTotal = readTotal + actuallyRead;
@@ -4920,7 +4920,7 @@ void implementWrite(uint64_t* context) {
   }
 
   writtenTotal = 0;
-  bytesToWrite = SIZEOFINT;
+  bytesToWrite = SIZEOFUINT64;
 
   failed = 0;
 
@@ -4940,7 +4940,7 @@ void implementWrite(uint64_t* context) {
           size = size - actuallyWritten;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFINT;
+            vaddr = vaddr + SIZEOFUINT64;
         } else {
           if (signedGreaterThan(actuallyWritten, 0))
             writtenTotal = writtenTotal + actuallyWritten;
@@ -5015,7 +5015,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
   i = 0;
 
-  while (i < maxFilenameLength / SIZEOFINT) {
+  while (i < maxFilenameLength / SIZEOFUINT64) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(table, vaddr)) {
         paddr = tlb(table, vaddr);
@@ -5024,14 +5024,14 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
         j = 0;
 
-        while (j < SIZEOFINT) {
+        while (j < SIZEOFUINT64) {
           if (loadCharacter(paddr, j) == 0)
             return 1;
 
           j = j + 1;
         }
 
-        vaddr = vaddr + SIZEOFINT;
+        vaddr = vaddr + SIZEOFUINT64;
 
         i = i + 1;
       } else {
@@ -5126,7 +5126,7 @@ uint64_t implementMalloc(uint64_t* context) {
     println();
   }
 
-  size = roundUp(*(getRegs(context)+REG_A0), SIZEOFINT);
+  size = roundUp(*(getRegs(context)+REG_A0), SIZEOFUINT64);
 
   bump = getProgramBreak(context);
 
@@ -6239,7 +6239,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(6 * SIZEOFINTSTAR + 11 * SIZEOFINT);
+    context = smalloc(6 * SIZEOFUINT64STAR + 11 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
@@ -6256,14 +6256,14 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  setRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFINT));
+  setRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
 
   setLoReg(context, 0);
   setHiReg(context, 0);
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFINT));
+  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFUINT64));
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
@@ -6415,12 +6415,12 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
   if (page != getHiPage(context)) {
     if (page < getLoPage(context)) {
       // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + page, (getLoPage(context) - page) * SIZEOFINT);
+      touch(table + page, (getLoPage(context) - page) * SIZEOFUINT64);
 
       setLoPage(context, page);
     } else if (getMePage(context) < page) {
       // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFINT);
+      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFUINT64);
 
       setMePage(context, page);
     }
@@ -6590,7 +6590,7 @@ void up_loadBinary(uint64_t* context) {
   while (vaddr < binaryLength) {
     mapAndStore(context, vaddr, loadData(vaddr));
 
-    vaddr = vaddr + SIZEOFINT;
+    vaddr = vaddr + SIZEOFUINT64;
   }
 }
 
@@ -7314,11 +7314,11 @@ void selfie_loadDimacs() {
 
   numberOfSATVariables = dimacs_number();
 
-  SATAssignment = (uint64_t*) smalloc(numberOfSATVariables * SIZEOFINT);
+  SATAssignment = (uint64_t*) smalloc(numberOfSATVariables * SIZEOFUINT64);
 
   numberOfSATClauses = dimacs_number();
 
-  SATInstance = (uint64_t*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * SIZEOFINT);
+  SATInstance = (uint64_t*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * SIZEOFUINT64);
 
   dimacs_getInstance();
 
