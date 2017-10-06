@@ -1,14 +1,5 @@
 # General compiler flags
-CFLAGS := -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
-
-# Add compiler specific flags
-ifeq ($(findstring gcc,$(CC)),gcc)
-CFLAGS += -Wno-main -Wno-return-type -Wno-maybe-uninitialized -Wno-unused-but-set-variable -Wno-builtin-declaration-mismatch 
-else ifeq ($(findstring $(CC),clang),clang)
-CFLAGS += -Wno-main-return-type -Wno-incompatible-library-redeclaration
-else
-$(error environment variable CC has to be set to gcc or clang)
-endif
+CFLAGS := -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
@@ -37,7 +28,7 @@ test: selfie
 
 # Test SAT solver
 sat: selfie
-	./selfie -sat manuscript/cnfs/rivest.cnf
+	./selfie -sat manuscript/cnfs/rivest.cnf 
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
 # Test everything
