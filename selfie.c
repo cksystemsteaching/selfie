@@ -340,7 +340,6 @@ uint64_t* string     = (uint64_t*) 0; // stores scanned string
 uint64_t literal = 0; // stores numerical value of scanned integer or character
 
 uint64_t mayBeINTMIN = 0; // allow INT64_MIN if '-' was scanned before
-uint64_t isINTMIN    = 0; // flag to indicate that INT64_MIN was scanned
 
 uint64_t character; // most recently read character
 
@@ -2125,9 +2124,7 @@ void getSymbol() {
 
         if (signedLessThan(literal, 0)) {
           if (literal == INT64_MIN) {
-            if (mayBeINTMIN)
-              isINTMIN = 1;
-            else {
+            if (mayBeINTMIN == 0) {
               syntaxErrorMessage((uint64_t*) "integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
@@ -3091,7 +3088,6 @@ uint64_t gr_term() {
 }
 
 uint64_t gr_simpleExpression() {
-  uint64_t sign;
   uint64_t ltype;
   uint64_t operatorSymbol;
   uint64_t rtype;
@@ -3100,30 +3096,14 @@ uint64_t gr_simpleExpression() {
 
   // optional: -
   if (symbol == SYM_MINUS) {
-    sign = 1;
-
     mayBeINTMIN = 1;
-    isINTMIN    = 0;
 
     getSymbol();
 
     mayBeINTMIN = 0;
 
-    if (isINTMIN) {
-      isINTMIN = 0;
+    ltype = gr_term();
 
-      // avoids 0-INT64_MIN overflow when bootstrapping
-      // even though 0-INT64_MIN == INT64_MIN
-      sign = 0;
-    }
-  } else
-    sign = 0;
-
-  ltype = gr_term();
-
-  // assert: allocatedTemporaries == n + 1
-
-  if (sign) {
     if (ltype != UINT64_T) {
       typeWarning(UINT64_T, ltype);
 
@@ -3131,7 +3111,10 @@ uint64_t gr_simpleExpression() {
     }
 
     emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_DSUBU);
-  }
+  } else
+    ltype = gr_term();
+
+  // assert: allocatedTemporaries == n + 1
 
   // + or -?
   while (isPlusOrMinus()) {
@@ -3677,7 +3660,6 @@ uint64_t gr_initialization(uint64_t type) {
   uint64_t initialValue;
   uint64_t hasCast;
   uint64_t cast;
-  uint64_t sign;
 
   initialValue = 0;
 
@@ -3702,33 +3684,19 @@ uint64_t gr_initialization(uint64_t type) {
 
     // optional: -
     if (symbol == SYM_MINUS) {
-      sign = 1;
-
       mayBeINTMIN = 1;
-      isINTMIN    = 0;
 
       getSymbol();
 
       mayBeINTMIN = 0;
 
-      if (isINTMIN) {
-        isINTMIN = 0;
-
-        // avoids 0-INT64_MIN overflow when bootstrapping
-        // even though 0-INT64_MIN == INT64_MIN
-        sign = 0;
-      }
+      initialValue = -literal;
     } else
-      sign = 0;
-
-    if (isLiteral()) {
       initialValue = literal;
 
+    if (isLiteral())
       getSymbol();
-
-      if (sign)
-        initialValue = -initialValue;
-    } else
+    else
       syntaxErrorUnexpected();
 
     if (symbol == SYM_SEMICOLON)
