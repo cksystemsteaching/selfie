@@ -41,7 +41,7 @@
 // This choice turns out to be helpful for students to understand the
 // true role of composite data types such as arrays and records.
 // Bitwise operations are implemented in libcstar using unsigned integer
-// arithmetics helping students gain true understanding of two's complement.
+// arithmetics helping students better understand arithmetic operators.
 // C* is supposed to be close to the minimum necessary for implementing
 // a self-compiling, single-pass, recursive-descent compiler. C* can be
 // taught in around two weeks of classes depending on student background.

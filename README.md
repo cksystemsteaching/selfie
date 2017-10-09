@@ -26,8 +26,7 @@ Selfie runs on Mac, Linux, Windows and possibly other systems that have a termin
 Here is how to install selfie:
 
 1. Get a [github](https://github.com) account unless you already have one.
-2. If you only have access to a web browser, fork [selfie]( https://github.com/cksystemsteaching/selfie) into your github account, then get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace. If you have access to a terminal and there is a C compiler installed, just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip) onto your system.
-3. Make sure that the C compiler supports generating 64-bit binaries
+2.  If you have access to a computer with a terminal application and a C compiler installed, just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip) on that machine. If you only have access to a web browser, fork [selfie]( https://github.com/cksystemsteaching/selfie) into your github account, then get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
 
 At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
 
@@ -37,7 +36,7 @@ The next step is to produce a selfie binary that runs on your system. To do that
 cc -w -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
 ```
 
-and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-D'main(a,b)=main(int argc, char** argv)'` option is needed to bootstrap the main function declaration. The `char` data type is not available in C\* but may be required by the compiler. The `-Duint64_t='unsigned long long'` option is used to specify the system specific 64-bit unsigned integer type.
+and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-D'main(a,b)=main(int argc, char** argv)'` and `-Duint64_t='unsigned long long'` options are needed to bootstrap the code. The `char` data type is not available in C\* but may be required by the compiler. The `uint64_t` data type is undefined since C\* does not support including the necessary declarations.
 
 ## Running Selfie
 

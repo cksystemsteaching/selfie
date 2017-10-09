@@ -28,7 +28,7 @@ test: selfie
 
 # Test SAT solver
 sat: selfie
-	./selfie -sat manuscript/cnfs/rivest.cnf 
+	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
 # Test everything
