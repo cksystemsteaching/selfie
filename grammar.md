@@ -6,9 +6,9 @@ http://selfie.cs.uni-salzburg.at
 
 This is the grammar of the C Star (C\*) programming language.
 
-C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `int` and `int*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with six keywords and 22 symbols. Whitespace is ignored including one-line comments (`//`).
+C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with six keywords and 22 symbols. Whitespace is ignored including one-line comments (`//`).
 
-C\* Keywords: `int`, `while`, `if`, `else`, `return`, `void`
+C\* Keywords: `uint64_t`, `while`, `if`, `else`, `return`, `void`
 
 C\* Symbols: `=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `,`, `(`, `)`, `{`, `}`, `;`, `integer`, `character`, `string`, `identifier`
 
@@ -38,7 +38,7 @@ C\* Grammar:
 cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
                    ( "void" | type ) identifier procedure } .
 
-type             = "int" [ "*" ] .
+type             = "uint64_t" [ "*" ] .
 
 cast             = "(" type ")" .
 

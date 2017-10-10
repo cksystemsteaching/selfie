@@ -10,10 +10,6 @@ os:
 compiler:
 - clang
 - gcc
-addons:
-  apt:
-    packages:
-    - gcc-multilib
 script: travis_wait 60 make all
 notifications:
   email: false

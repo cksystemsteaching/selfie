@@ -1,9 +1,9 @@
 // declaring bar as a global variable of type int and
 // defining the decimal value 10 as initial value of bar
-int bar = 10;
+uint64_t bar = 10;
 
 // declaring main as a procedure with no arguments and return type int
-int main() {
+uint64_t main() {
   // defining main to be the following code
 
   // while bar is greater than the decimal value 0 ...
