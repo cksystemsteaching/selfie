@@ -1390,6 +1390,7 @@ uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs) {
 
 uint64_t signShrink(uint64_t immediate, uint64_t bits) {
   // assert: 0 < bits <= CPUBITWIDTH
+  // assert: -2^(bits - 1) <= signed(immediate) < 2^(bits - 1)
   return rightShift(leftShift(immediate, CPUBITWIDTH - bits), CPUBITWIDTH - bits);
 }
 
