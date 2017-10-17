@@ -23,10 +23,7 @@ Selfie runs on Mac, Linux, Windows and possibly other systems that have a termin
 
 ## Installing Selfie
 
-Here is how to install selfie:
-
-1. Get a [github](https://github.com) account unless you already have one.
-2.  If you have access to a computer with a terminal application and a C compiler installed, just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip) on that machine. If you only have access to a web browser, fork [selfie]( https://github.com/cksystemsteaching/selfie) into your github account, then get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
+If you have access to a computer with a terminal application and a C compiler installed, just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip) on that machine. If you only have access to a web browser, get a [github](https://github.com) account, unless you already have one, and fork [selfie]( https://github.com/cksystemsteaching/selfie) into your github account. Then, get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
 
 At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
 
