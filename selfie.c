@@ -40,8 +40,8 @@
 // integers and 64-bit pointers as well as character and string literals.
 // This choice turns out to be helpful for students to understand the
 // true role of composite data types such as arrays and records.
-// Bitwise operations are implemented in libcstar using signed integer
-// arithmetics helping students gain true understanding of two's complement.
+// Bitwise operations are implemented in libcstar using unsigned integer
+// arithmetics helping students better understand arithmetic operators.
 // C* is supposed to be close to the minimum necessary for implementing
 // a self-compiling, single-pass, recursive-descent compiler. C* can be
 // taught in around two weeks of classes depending on student background.
@@ -82,7 +82,7 @@
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-void exit(uint64_t code);
+void      exit(uint64_t code);
 uint64_t  read(uint64_t fd, uint64_t* buffer, uint64_t bytesToRead);
 uint64_t  write(uint64_t fd, uint64_t* buffer, uint64_t bytesToWrite);
 uint64_t  open(uint64_t* filename, uint64_t flags, uint64_t mode);
@@ -110,7 +110,7 @@ uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 
 uint64_t stringLength(uint64_t* s);
-void stringReverse(uint64_t* s);
+void     stringReverse(uint64_t* s);
 uint64_t stringCompare(uint64_t* s, uint64_t* t);
 
 uint64_t  atoi(uint64_t* s);
@@ -136,8 +136,6 @@ uint64_t roundUp(uint64_t n, uint64_t m);
 
 uint64_t* smalloc(uint64_t size);
 uint64_t* zalloc(uint64_t size);
-
-void assert(uint64_t condition, uint64_t* msg);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -165,10 +163,10 @@ uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
 
-uint64_t CPUBITWIDTH   = 64;
+uint64_t CPUBITWIDTH = 64;
 
-uint64_t SIZEOFINT     = 8; // must be the same as REGISTERSIZE
-uint64_t SIZEOFINTSTAR = 8; // must be the same as REGISTERSIZE
+uint64_t SIZEOFUINT64     = 8; // must be the same as REGISTERSIZE
+uint64_t SIZEOFUINT64STAR = 8; // must be the same as REGISTERSIZE
 
 uint64_t* power_of_two_table;
 
@@ -220,7 +218,7 @@ void initLibrary() {
   uint64_t i;
 
   // powers of two table with CPUBITWIDTH entries for 2^0 to 2^(CPUBITWIDTH - 1)
-  power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFINT);
+  power_of_two_table = smalloc(CPUBITWIDTH * SIZEOFUINT64);
 
   *power_of_two_table = 1; // 2^0 == 1
 
@@ -238,7 +236,7 @@ void initLibrary() {
   INT64_MIN = INT64_MAX + 1;
 
   // allocate and touch to make sure memory is mapped for read calls
-  character_buffer  = smalloc(SIZEOFINT);
+  character_buffer  = smalloc(SIZEOFUINT64);
   *character_buffer = 0;
 
   // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
@@ -248,7 +246,7 @@ void initLibrary() {
   filename_buffer = smalloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = smalloc(SIZEOFINT);
+  binary_buffer  = smalloc(SIZEOFUINT64);
   *binary_buffer = 0;
 }
 
@@ -342,7 +340,6 @@ uint64_t* string     = (uint64_t*) 0; // stores scanned string
 uint64_t literal = 0; // stores numerical value of scanned integer or character
 
 uint64_t mayBeINTMIN = 0; // allow INT64_MIN if '-' was scanned before
-uint64_t isINTMIN    = 0; // flag to indicate that INT64_MIN was scanned
 
 uint64_t character; // most recently read character
 
@@ -360,7 +357,7 @@ uint64_t  sourceFD   = 0;             // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFINTSTAR);
+  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
@@ -518,27 +515,27 @@ void typeWarning(uint64_t expected, uint64_t found);
 
 uint64_t* getVariable(uint64_t* variable);
 uint64_t  load_variable(uint64_t* variable);
-void load_integer(uint64_t value);
-void load_string(uint64_t* string);
+void      load_integer(uint64_t value);
+void      load_string(uint64_t* string);
 
 uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
-void help_procedure_prologue(uint64_t localVariables);
-void help_procedure_epilogue(uint64_t parameters);
+void     help_procedure_prologue(uint64_t localVariables);
+void     help_procedure_epilogue(uint64_t parameters);
 
 uint64_t gr_call(uint64_t* procedure);
 uint64_t gr_factor();
 uint64_t gr_term();
 uint64_t gr_simpleExpression();
 uint64_t gr_expression();
-void gr_while();
-void gr_if();
-void gr_return();
-void gr_statement();
+void     gr_while();
+void     gr_if();
+void     gr_return();
+void     gr_statement();
 uint64_t gr_type();
-void gr_variable(uint64_t offset);
+void     gr_variable(uint64_t offset);
 uint64_t gr_initialization(uint64_t type);
-void gr_procedure(uint64_t* procedure, uint64_t type);
-void gr_cstar();
+void     gr_procedure(uint64_t* procedure, uint64_t type);
+void     gr_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -640,7 +637,7 @@ uint64_t* REGISTERS; // strings representing registers
 // ------------------------- INITIALIZATION ------------------------
 
 void initRegister() {
-  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFINTSTAR);
+  REGISTERS = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR);
 
   *(REGISTERS + REG_ZR) = (uint64_t) "$zero";
   *(REGISTERS + REG_AT) = (uint64_t) "$at";
@@ -746,7 +743,7 @@ uint64_t instr_index = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initDecoder() {
-  OPCODES = smalloc((OP_SD + 1) * SIZEOFINTSTAR);
+  OPCODES = smalloc((OP_SD + 1) * SIZEOFUINT64STAR);
 
   *(OPCODES + OP_SPECIAL) = (uint64_t) "nop";
   *(OPCODES + OP_J)       = (uint64_t) "j";
@@ -756,7 +753,7 @@ void initDecoder() {
   *(OPCODES + OP_LD)      = (uint64_t) "ld";
   *(OPCODES + OP_SD)      = (uint64_t) "sd";
 
-  FUNCTIONS = smalloc((FCT_DSUBU + 1) * SIZEOFINTSTAR);
+  FUNCTIONS = smalloc((FCT_DSUBU + 1) * SIZEOFUINT64STAR);
 
   *(FUNCTIONS + FCT_NOP)     = (uint64_t) "nop";
   *(FUNCTIONS + FCT_JR)      = (uint64_t) "jr";
@@ -833,11 +830,11 @@ void implementRead(uint64_t* context);
 void emitWrite();
 void implementWrite(uint64_t* context);
 
-void emitOpen();
+void     emitOpen();
 uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s);
-void implementOpen(uint64_t* context);
+void     implementOpen(uint64_t* context);
 
-void emitMalloc();
+void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -859,9 +856,9 @@ uint64_t SYSCALL_MALLOC = 4045;
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
-void emitSwitch();
-void doSwitch(uint64_t* toContext, uint64_t timeout);
-void implementSwitch();
+void      emitSwitch();
+void      doSwitch(uint64_t* toContext, uint64_t timeout);
+void      implementSwitch();
 uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -883,7 +880,7 @@ uint64_t debug_switch = 0;
 void initMemory(uint64_t megabytes);
 
 uint64_t loadPhysicalMemory(uint64_t* paddr);
-void storePhysicalMemory(uint64_t* paddr, uint64_t data);
+void     storePhysicalMemory(uint64_t* paddr, uint64_t data);
 
 uint64_t FrameForPage(uint64_t* table, uint64_t page);
 uint64_t getFrameForPage(uint64_t* table, uint64_t page);
@@ -896,7 +893,7 @@ uint64_t isVirtualAddressMapped(uint64_t* table, uint64_t vaddr);
 uint64_t* tlb(uint64_t* table, uint64_t vaddr);
 
 uint64_t loadVirtualMemory(uint64_t* table, uint64_t vaddr);
-void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data);
+void     storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -972,7 +969,7 @@ uint64_t* runUntilException();
 uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max);
 
 uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max);
-void printProfile(uint64_t* message, uint64_t total, uint64_t* counters);
+void     printProfile(uint64_t* message, uint64_t total, uint64_t* counters);
 
 void selfie_disassemble();
 
@@ -999,8 +996,6 @@ uint64_t TIMEROFF = -1;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t interpret = 0; // flag for executing or disassembling code
-
-uint64_t symbolic = 0; // flag for executing code symbolically
 
 uint64_t debug = 0; // flag for logging code execution
 
@@ -1037,7 +1032,7 @@ uint64_t* storesPerAddress = (uint64_t*) 0; // number of executed stores per sto
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFINTSTAR);
+  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1064,16 +1059,16 @@ void resetInterpreter() {
 
   if (interpret) {
     calls           = 0;
-    callsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    callsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     loops           = 0;
-    loopsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    loopsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     loads           = 0;
-    loadsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    loadsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     stores           = 0;
-    storesPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+    storesPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
 }
 
@@ -1085,7 +1080,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
 
 uint64_t* findContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
 
-void freeContext(uint64_t* context);
+void      freeContext(uint64_t* context);
 uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 
 // context struct:
@@ -1210,14 +1205,14 @@ uint64_t pavailable();
 uint64_t pused();
 
 uint64_t* palloc();
-void pfree(uint64_t* frame);
+void      pfree(uint64_t* frame);
 
 void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data);
 
 void up_loadBinary(uint64_t* context);
 
 uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP);
-void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv);
+void     up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv);
 
 void mapUnmappedPages(uint64_t* context);
 
@@ -1256,8 +1251,6 @@ uint64_t MIPSTER = 2;
 uint64_t MOBSTER = 3;
 
 uint64_t HYPSTER = 4;
-
-uint64_t VIPSTER = 5;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1318,133 +1311,16 @@ uint64_t babysat(uint64_t depth);
 
 void selfie_printDimacs();
 
-void dimacs_findNextCharacter(uint64_t newLine);
-void dimacs_getSymbol();
-void dimacs_word(uint64_t* word);
+void     dimacs_findNextCharacter(uint64_t newLine);
+void     dimacs_getSymbol();
+void     dimacs_word(uint64_t* word);
 uint64_t dimacs_number();
-void dimacs_getClause(uint64_t clause);
-void dimacs_getInstance();
+void     dimacs_getClause(uint64_t clause);
+void     dimacs_getInstance();
 
 void selfie_loadDimacs();
 
 void selfie_sat();
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// ------------   S Y M B O L I C  E X E C U T I O N    ------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// ------------------- EXPRESSION REPRESENTATION -------------------
-// -----------------------------------------------------------------
-
-// We represent symbolic expressions through a tree structure.
-// For example: a + 1           +
-// ("a" is symbolic)           / \
-//                            a   1
-
-uint64_t* createSymbolicNode(uint64_t type, uint64_t value, uint64_t* leftCh, uint64_t* rightCh);
-
-// symbolic expression node:
-// +----+---------+
-// |  0 | type    | symbolic value / concrete value / operation
-// |  1 | value   | representation of symbolic value, concrete value or operation
-// |  2 | leftCh  | pointer to left child node (or 0 if there is none)
-// |  3 | rightCh | pointer to right child node (or 0 if there is none)
-// +----+---------+
-
-uint64_t  getSymNodeType(uint64_t* entry)   {return *(entry + 0);}
-uint64_t  getSymNodeValue(uint64_t* entry)  {return *(entry + 1);}
-uint64_t* getSymNodeLeft(uint64_t* entry)   {return (uint64_t*) *(entry + 2);}
-uint64_t* getSymNodeRight(uint64_t* entry)  {return (uint64_t*) *(entry + 3);}
-
-void setSymNodeType(uint64_t* entry, uint64_t type)    {*(entry + 0) = type;}
-void setSymNodeValue(uint64_t* entry, uint64_t value)  {*(entry + 1) = value;}
-void setSymNodeLeft(uint64_t* entry, uint64_t* node)   {*(entry + 2) = (uint64_t) node;}
-void setSymNodeRight(uint64_t* entry, uint64_t* node)  {*(entry + 3) = (uint64_t) node;}
-
-// -----------------------------------------------------------------
-// ------------------------ INSTRUCTIONS ---------------------------
-// -----------------------------------------------------------------
-
-void symbolic_op_daddiu();
-void symbolic_op_ld();
-void symbolic_op_sd();
-void symbolic_op_beq();
-void symbolic_op_jal();
-void symbolic_op_j();
-
-void symbolic_fct_nop();
-void symbolic_fct_daddu();
-void symbolic_fct_dsubu();
-void symbolic_fct_dmultu();
-void symbolic_fct_ddivu();
-void symbolic_fct_mflo();
-void symbolic_fct_mfhi();
-void symbolic_fct_jr();
-void symbolic_fct_syscall();
-
-// -----------------------------------------------------------------
-// ------------------------- SYSTEM CALLS --------------------------
-// -----------------------------------------------------------------
-
-void symbolic_implementExit(uint64_t* context);
-
-uint64_t symbolic_handleSystemCalls(uint64_t* context);
-
-// -----------------------------------------------------------------
-// --------------------------- LIBRARY -----------------------------
-// -----------------------------------------------------------------
-
-void printSymbolicExpression(uint64_t* expr);
-void printExecutionEngineState(uint64_t* ctx);
-
-// -----------------------------------------------------------------
-// ---------------------- EXECUTION ENGINE -------------------------
-// -----------------------------------------------------------------
-
-void symbolic_fetch();
-void symbolic_execute();
-
-uint64_t* symbolic_loadFromParent(uint64_t* context, uint64_t vaddr);
-uint64_t  symbolic_loadVirtualMemory(uint64_t vaddr);
-
-uint64_t* createFork(uint64_t* parent, uint64_t pc);
-uint64_t* freezeFork(uint64_t* fork, uint64_t* from);
-void saveForkState(uint64_t* context);
-void fork(uint64_t firstPC, uint64_t secondPC);
-
-void symbolic_doSwitch(uint64_t* toContext, uint64_t timeout);
-uint64_t* initExecutionEngine(uint64_t* ctx);
-
-uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout);
-uint64_t vipster(uint64_t* toContext);
-
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-// types
-uint64_t SYMBOLIC_VAL = 0;
-uint64_t SYMBOLIC_CON = 1;
-uint64_t SYMBOLIC_OP  = 2;
-
-// machine state (extension to DONOTEXIT/EXIT)
-uint64_t SWITCH = 2;
-
-uint64_t MAX_FORKS = 100;
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t* frozenForks = (uint64_t*) 0; // single linked lists to all forzen forks (contexts)
-uint64_t forks = 0; // number of forks
-uint64_t  numberOfSymVariables = 0;
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// --------------------   S M T  S O L V E R    --------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -1457,13 +1333,13 @@ uint64_t* remainingArguments();
 
 uint64_t* peekArgument();
 uint64_t* getArgument();
-void setArgument(uint64_t* argv);
+void      setArgument(uint64_t* argv);
 
 void printUsage();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t selfie_argc = 0;
+uint64_t  selfie_argc = 0;
 uint64_t* selfie_argv = (uint64_t*) 0;
 
 uint64_t* selfieName = (uint64_t*) 0;
@@ -1530,11 +1406,11 @@ uint64_t loadCharacter(uint64_t* s, uint64_t i) {
   uint64_t a;
 
   // a is the index of the word where the to-be-loaded i-th character in s is
-  a = i / SIZEOFINT;
+  a = i / SIZEOFUINT64;
 
   // shift to-be-loaded character to the left resetting all bits to the left
   // then shift to-be-loaded character all the way to the right and return
-  return rightShift(leftShift(*(s + a), ((SIZEOFINT - 1) - (i % SIZEOFINT)) * 8), (SIZEOFINT - 1) * 8);
+  return rightShift(leftShift(*(s + a), ((SIZEOFUINT64 - 1) - (i % SIZEOFUINT64)) * 8), (SIZEOFUINT64 - 1) * 8);
 }
 
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
@@ -1543,11 +1419,11 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
 
   // a is the index of the word where the with c
   // to-be-overwritten i-th character in s is
-  a = i / SIZEOFINT;
+  a = i / SIZEOFUINT64;
 
   // subtract the to-be-overwritten character resetting its bits in s
   // then add c setting its bits at the i-th position in s
-  *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFINT) * 8)) + leftShift(c, (i % SIZEOFINT) * 8);
+  *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFUINT64) * 8)) + leftShift(c, (i % SIZEOFUINT64) * 8);
 
   return s;
 }
@@ -1934,11 +1810,11 @@ uint64_t* zalloc(uint64_t size) {
   uint64_t* memory;
   uint64_t  i;
 
-  size = roundUp(size, SIZEOFINT);
+  size = roundUp(size, SIZEOFUINT64);
 
   memory = smalloc(size);
 
-  size = size / SIZEOFINT;
+  size = size / SIZEOFUINT64;
 
   i = 0;
 
@@ -1950,18 +1826,6 @@ uint64_t* zalloc(uint64_t size) {
   }
 
   return memory;
-}
-
-void assert(uint64_t condition, uint64_t* msg) {
-  if (condition == 0) {
-    outputFD = 1; // output on stdout
-
-    print((uint64_t*) "assertion failed: ");
-    print(msg);
-    println();
-
-    exit(-1);
-  }
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2260,9 +2124,7 @@ void getSymbol() {
 
         if (signedLessThan(literal, 0)) {
           if (literal == INT64_MIN) {
-            if (mayBeINTMIN)
-              isINTMIN = 1;
-            else {
+            if (mayBeINTMIN == 0) {
               syntaxErrorMessage((uint64_t*) "integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
@@ -2449,7 +2311,7 @@ void getSymbol() {
 void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* newEntry;
 
-  newEntry = smalloc(2 * SIZEOFINTSTAR + 6 * SIZEOFINT);
+  newEntry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -3226,7 +3088,6 @@ uint64_t gr_term() {
 }
 
 uint64_t gr_simpleExpression() {
-  uint64_t sign;
   uint64_t ltype;
   uint64_t operatorSymbol;
   uint64_t rtype;
@@ -3235,30 +3096,14 @@ uint64_t gr_simpleExpression() {
 
   // optional: -
   if (symbol == SYM_MINUS) {
-    sign = 1;
-
     mayBeINTMIN = 1;
-    isINTMIN    = 0;
 
     getSymbol();
 
     mayBeINTMIN = 0;
 
-    if (isINTMIN) {
-      isINTMIN = 0;
+    ltype = gr_term();
 
-      // avoids 0-INT64_MIN overflow when bootstrapping
-      // even though 0-INT64_MIN == INT64_MIN
-      sign = 0;
-    }
-  } else
-    sign = 0;
-
-  ltype = gr_term();
-
-  // assert: allocatedTemporaries == n + 1
-
-  if (sign) {
     if (ltype != UINT64_T) {
       typeWarning(UINT64_T, ltype);
 
@@ -3266,7 +3111,10 @@ uint64_t gr_simpleExpression() {
     }
 
     emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_DSUBU);
-  }
+  } else
+    ltype = gr_term();
+
+  // assert: allocatedTemporaries == n + 1
 
   // + or -?
   while (isPlusOrMinus()) {
@@ -3306,9 +3154,9 @@ uint64_t gr_simpleExpression() {
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DSUBU);
         } else {
           // UINT64STAR_T - UINT64STAR_T
-          // pointer arithmetic: (left_term - right_term) / SIZEOFINT
+          // pointer arithmetic: (left_term - right_term) / SIZEOFUINT64
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_DSUBU);
-          emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), SIZEOFINT);
+          emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), SIZEOFUINT64);
           emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), 0, FCT_DDIVU);
           emitRFormat(OP_SPECIAL, 0, 0, previousTemporary(), FCT_MFLO);
 
@@ -3812,7 +3660,6 @@ uint64_t gr_initialization(uint64_t type) {
   uint64_t initialValue;
   uint64_t hasCast;
   uint64_t cast;
-  uint64_t sign;
 
   initialValue = 0;
 
@@ -3837,33 +3684,19 @@ uint64_t gr_initialization(uint64_t type) {
 
     // optional: -
     if (symbol == SYM_MINUS) {
-      sign = 1;
-
       mayBeINTMIN = 1;
-      isINTMIN    = 0;
 
       getSymbol();
 
       mayBeINTMIN = 0;
 
-      if (isINTMIN) {
-        isINTMIN = 0;
-
-        // avoids 0-INT64_MIN overflow when bootstrapping
-        // even though 0-INT64_MIN == INT64_MIN
-        sign = 0;
-      }
+      initialValue = -literal;
     } else
-      sign = 0;
-
-    if (isLiteral()) {
       initialValue = literal;
 
+    if (isLiteral())
       getSymbol();
-
-      if (sign)
-        initialValue = -initialValue;
-    } else
+    else
       syntaxErrorUnexpected();
 
     if (symbol == SYM_SEMICOLON)
@@ -4226,7 +4059,7 @@ void selfie_compile() {
   codeLength = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  sourceLineNumber = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFINT);
+  sourceLineNumber = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   resetSymbolTables();
 
@@ -4527,9 +4360,9 @@ void printFunction(uint64_t function) {
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
-    return getHighWord(*(binary + baddr / SIZEOFINT));
+    return getHighWord(*(binary + baddr / SIZEOFUINT64));
   else
-    return getLowWord(*(binary + baddr / SIZEOFINT));
+    return getLowWord(*(binary + baddr / SIZEOFUINT64));
 }
 
 void storeInstruction(uint64_t baddr, uint64_t instruction) {
@@ -4541,20 +4374,20 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  temp = *(binary + baddr / SIZEOFINT);
+  temp = *(binary + baddr / SIZEOFUINT64);
 
-  if (baddr % SIZEOFINT == 0)
+  if (baddr % SIZEOFUINT64 == 0)
     // replace high word
     temp = leftShift(instruction, 32) + rightShift(leftShift(temp, 32), 32);
   else
     // replace low word
     temp = instruction + leftShift(rightShift(temp, 32), 32);
 
-  *(binary + baddr / SIZEOFINT) = temp;
+  *(binary + baddr / SIZEOFUINT64) = temp;
 }
 
 uint64_t loadData(uint64_t baddr) {
-  return *(binary + baddr / SIZEOFINT);
+  return *(binary + baddr / SIZEOFUINT64);
 }
 
 void storeData(uint64_t baddr, uint64_t data) {
@@ -4564,7 +4397,7 @@ void storeData(uint64_t baddr, uint64_t data) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  *(binary + baddr / SIZEOFINT) = data;
+  *(binary + baddr / SIZEOFUINT64) = data;
 }
 
 void emitInstruction(uint64_t instruction) {
@@ -4639,14 +4472,14 @@ void fixlink_absolute(uint64_t fromAddress, uint64_t toAddress) {
 uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
   uint64_t next;
 
-  next = baddr + roundUp(stringLength(s) + 1, SIZEOFINT);
+  next = baddr + roundUp(stringLength(s) + 1, SIZEOFUINT64);
 
   while (baddr < next) {
     storeData(baddr, *s);
 
     s = s + 1;
 
-    baddr = baddr + SIZEOFINT;
+    baddr = baddr + SIZEOFUINT64;
   }
 
   return next;
@@ -4735,7 +4568,7 @@ void selfie_output() {
   // assert: binary_buffer is mapped
 
   // first write code length
-  write(fd, binary_buffer, SIZEOFINT);
+  write(fd, binary_buffer, SIZEOFUINT64);
 
   // assert: binary is mapped
 
@@ -4767,14 +4600,14 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
   while (length > PAGESIZE) {
     length = length - PAGESIZE;
 
-    m = m + PAGESIZE / SIZEOFINT;
+    m = m + PAGESIZE / SIZEOFUINT64;
 
     // touch every following page
     n = *m;
   }
 
   if (length > 0) {
-    m = m + (length - 1) / SIZEOFINT;
+    m = m + (length - 1) / SIZEOFUINT64;
 
     // touch at end
     n = *m;
@@ -4817,9 +4650,9 @@ void selfie_load() {
   // assert: binary_buffer is mapped
 
   // read code length first
-  numberOfReadBytes = read(fd, binary_buffer, SIZEOFINT);
+  numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
 
-  if (numberOfReadBytes == SIZEOFINT) {
+  if (numberOfReadBytes == SIZEOFUINT64) {
     codeLength = *binary_buffer;
 
     if (codeLength <= maxBinaryLength) {
@@ -4832,7 +4665,7 @@ void selfie_load() {
         binaryLength = numberOfReadBytes;
 
         // check if we are really at EOF
-        if (read(fd, binary_buffer, SIZEOFINT) == 0) {
+        if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
           print(selfieName);
           print((uint64_t*) ": ");
           printInteger(binaryLength + DOUBLEWORDSIZE);
@@ -4939,7 +4772,7 @@ void implementRead(uint64_t* context) {
   }
 
   readTotal   = 0;
-  bytesToRead = SIZEOFINT;
+  bytesToRead = SIZEOFUINT64;
 
   failed = 0;
 
@@ -4959,7 +4792,7 @@ void implementRead(uint64_t* context) {
           size = size - actuallyRead;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFINT;
+            vaddr = vaddr + SIZEOFUINT64;
         } else {
           if (signedGreaterThan(actuallyRead, 0))
             readTotal = readTotal + actuallyRead;
@@ -5055,7 +4888,7 @@ void implementWrite(uint64_t* context) {
   }
 
   writtenTotal = 0;
-  bytesToWrite = SIZEOFINT;
+  bytesToWrite = SIZEOFUINT64;
 
   failed = 0;
 
@@ -5075,7 +4908,7 @@ void implementWrite(uint64_t* context) {
           size = size - actuallyWritten;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFINT;
+            vaddr = vaddr + SIZEOFUINT64;
         } else {
           if (signedGreaterThan(actuallyWritten, 0))
             writtenTotal = writtenTotal + actuallyWritten;
@@ -5150,7 +4983,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
   i = 0;
 
-  while (i < maxFilenameLength / SIZEOFINT) {
+  while (i < maxFilenameLength / SIZEOFUINT64) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(table, vaddr)) {
         paddr = tlb(table, vaddr);
@@ -5159,14 +4992,14 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
         j = 0;
 
-        while (j < SIZEOFINT) {
+        while (j < SIZEOFUINT64) {
           if (loadCharacter(paddr, j) == 0)
             return 1;
 
           j = j + 1;
         }
 
-        vaddr = vaddr + SIZEOFINT;
+        vaddr = vaddr + SIZEOFUINT64;
 
         i = i + 1;
       } else {
@@ -5261,7 +5094,7 @@ uint64_t implementMalloc(uint64_t* context) {
     println();
   }
 
-  size = roundUp(*(getRegs(context)+REG_A0), SIZEOFINT);
+  size = roundUp(*(getRegs(context)+REG_A0), SIZEOFUINT64);
 
   bump = getProgramBreak(context);
 
@@ -6374,7 +6207,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(6 * SIZEOFINTSTAR + 11 * SIZEOFINT);
+    context = smalloc(6 * SIZEOFUINT64STAR + 11 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
@@ -6391,14 +6224,14 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  setRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFINT));
+  setRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
 
   setLoReg(context, 0);
   setHiReg(context, 0);
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFINT));
+  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFUINT64));
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
@@ -6550,12 +6383,12 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
   if (page != getHiPage(context)) {
     if (page < getLoPage(context)) {
       // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + page, (getLoPage(context) - page) * SIZEOFINT);
+      touch(table + page, (getLoPage(context) - page) * SIZEOFUINT64);
 
       setLoPage(context, page);
     } else if (getMePage(context) < page) {
       // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFINT);
+      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFUINT64);
 
       setMePage(context, page);
     }
@@ -6725,7 +6558,7 @@ void up_loadBinary(uint64_t* context) {
   while (vaddr < binaryLength) {
     mapAndStore(context, vaddr, loadData(vaddr));
 
-    vaddr = vaddr + SIZEOFINT;
+    vaddr = vaddr + SIZEOFUINT64;
   }
 }
 
@@ -7126,8 +6959,6 @@ uint64_t selfie_run(uint64_t machine) {
       exitCode = mipster(currentContext);
     else
       exitCode = hypster(currentContext);
-  else if (machine == VIPSTER)
-    exitCode = vipster(currentContext);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
@@ -7451,11 +7282,11 @@ void selfie_loadDimacs() {
 
   numberOfSATVariables = dimacs_number();
 
-  SATAssignment = (uint64_t*) smalloc(numberOfSATVariables * SIZEOFINT);
+  SATAssignment = (uint64_t*) smalloc(numberOfSATVariables * SIZEOFUINT64);
 
   numberOfSATClauses = dimacs_number();
 
-  SATInstance = (uint64_t*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * SIZEOFINT);
+  SATInstance = (uint64_t*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * SIZEOFUINT64);
 
   dimacs_getInstance();
 
@@ -7513,716 +7344,6 @@ void selfie_sat() {
   println();
 }
 
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// ------------   S Y M B O L I C  E X E C U T I O N    ------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// ------------------- EXPRESSION REPRESENTATION -------------------
-// -----------------------------------------------------------------
-
-uint64_t* createSymbolicNode(uint64_t type, uint64_t value, uint64_t* leftCh, uint64_t* rightCh) {
-  uint64_t* newNode;
-
-  newNode = smalloc(2 * SIZEOFINT + 2 * SIZEOFINTSTAR);
-
-  setSymNodeType(newNode, type);
-  setSymNodeLeft(newNode, leftCh);
-  setSymNodeRight(newNode, rightCh);
-
-  if(type == SYMBOLIC_VAL){
-    setSymNodeValue(newNode, numberOfSymVariables);
-    numberOfSymVariables = numberOfSymVariables + 1;
-  }else{
-    setSymNodeValue(newNode, value);
-  }
-
-  return newNode;
-}
-
-// -----------------------------------------------------------------
-// ------------------------ INSTRUCTIONS ---------------------------
-// -----------------------------------------------------------------
-
-void symbolic_op_daddiu() {
-  uint64_t* s;
-  uint64_t* t;
-  uint64_t* n;
-
-  s = (uint64_t*) *(registers+rs);
-
-  if (SYMBOLIC_CON == getSymNodeType(s))
-    // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
-    n = createSymbolicNode(SYMBOLIC_CON, getSymNodeValue(s) + signExtend(immediate, 16),(uint64_t*) 0,(uint64_t*) 0);
-  else {
-    t = createSymbolicNode(SYMBOLIC_CON, signExtend(immediate, 16), (uint64_t*) 0,(uint64_t*) 0);
-
-    n = createSymbolicNode(SYMBOLIC_OP, FCT_DADDU, s, t);
-  }
-
-  *(registers+rt) = (uint64_t) n;
-
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_op_ld() {
-  uint64_t* s;
-  uint64_t vaddr;
-
-  s = (uint64_t*) *(registers+rs);
-
-  assert(getSymNodeType(s) == SYMBOLIC_CON, 
-    (uint64_t*) "symbolic expressions as source of ld instruction are not supported");
-
-  vaddr = getSymNodeValue(s) + signExtend(immediate, 16);
-
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      *(registers+rt) = (uint64_t) symbolic_loadVirtualMemory(vaddr);
-
-      // Load every global variable as symbolic value if it isn't already symbolic
-      // VIP TODO: Remove this hack 
-      if (vaddr <= getSymNodeValue((uint64_t*) *(registers+REG_GP)))
-        if (getSymNodeType((uint64_t*) *(registers+rt)) == SYMBOLIC_CON) {
-          *(registers+rt) = (uint64_t) createSymbolicNode(SYMBOLIC_VAL, 0, 0, 0);
-
-          storeVirtualMemory(pt, vaddr, *(registers+rt));
-        }
-
-      pc = pc + INSTRUCTIONSIZE;
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
-}
-
-void symbolic_op_sd() {
-  uint64_t* s;
-  uint64_t vaddr;
-
-  s = (uint64_t*) *(registers+rs);
-
-  assert(getSymNodeType(s) == SYMBOLIC_CON, 
-    (uint64_t*) "symbolic expressions as source of sd instruction are not supported");
-
-  vaddr = getSymNodeValue(s) + signExtend(immediate, 16);
-
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      storeVirtualMemory(pt, vaddr, *(registers+rt));
-
-      pc = pc + INSTRUCTIONSIZE;
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
-}
-
-void symbolic_op_beq() {
-  uint64_t* s;
-  uint64_t* t;
-  uint64_t isConcrete;
-
-  s = (uint64_t*) *(registers+rs);
-  t = (uint64_t*) *(registers+rt);
-
-  isConcrete = 0;
-
-  if (getSymNodeType(s) == SYMBOLIC_CON)
-    if (getSymNodeType(t) == SYMBOLIC_CON)
-      isConcrete = 1;
-
-  if (isConcrete) {
-    if (getSymNodeValue(s) == getSymNodeValue(t))
-      pc = pc + signExtend(immediate, 16) * INSTRUCTIONSIZE + INSTRUCTIONSIZE;
-    else
-      pc = pc + INSTRUCTIONSIZE;
-  } else {
-    fork(pc + INSTRUCTIONSIZE, pc + signExtend(immediate, 16) * INSTRUCTIONSIZE + INSTRUCTIONSIZE);
-    
-    throwException(EXCEPTION_TIMER, 0);
-  }
-}
-
-void symbolic_op_jal() {
-  *(registers+REG_RA) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, pc + 2 * INSTRUCTIONSIZE, 0, 0);
-
-  pc = instr_index * INSTRUCTIONSIZE;
-}
-
-void symbolic_op_j() {
-  pc = instr_index * INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_nop() {
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_daddu() {
-  uint64_t* s;
-  uint64_t* t;
-  uint64_t* d;
-  uint64_t* n;
-  uint64_t isConcrete;
-
-  s = (uint64_t*) *(registers+rs);
-  t = (uint64_t*) *(registers+rt);
-  d = (uint64_t*) *(registers+rd);
-
-  isConcrete = 0;
-  
-  if (SYMBOLIC_CON == getSymNodeType(s))
-    if (SYMBOLIC_CON == getSymNodeType(t))
-      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
-      isConcrete = 1;
-
-  if (isConcrete)
-    n = createSymbolicNode(SYMBOLIC_CON, getSymNodeValue(s) + getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
-  else
-    n = createSymbolicNode(SYMBOLIC_OP, FCT_DADDU, s, t);
-
-  *(registers+rd) = (uint64_t) n;
-
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_dsubu() {
-  uint64_t* s;
-  uint64_t* t;
-  uint64_t* d;
-  uint64_t* n;
-  uint64_t isConcrete;
-
-  s = (uint64_t*) *(registers+rs);
-  t = (uint64_t*) *(registers+rt);
-  d = (uint64_t*) *(registers+rd);
-
-  isConcrete = 0;
-  
-  if (SYMBOLIC_CON == getSymNodeType(s))
-    if (SYMBOLIC_CON == getSymNodeType(t))
-      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
-      isConcrete = 1;
-
-  if (isConcrete)
-    n = createSymbolicNode(SYMBOLIC_CON, getSymNodeValue(s) - getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
-  else
-    n = createSymbolicNode(SYMBOLIC_OP, FCT_DSUBU, s, t);
-
-  *(registers+rd) = (uint64_t) n;
-
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_dmultu() {
-  uint64_t* s;
-  uint64_t* t;
-  uint64_t isConcrete;
-
-  s = (uint64_t*) *(registers+rs);
-  t = (uint64_t*) *(registers+rt);
-
-  isConcrete = 0;
-  
-  if (SYMBOLIC_CON == getSymNodeType(s))
-    if (SYMBOLIC_CON == getSymNodeType(t))
-      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
-      isConcrete = 1;
-
-  if (isConcrete)
-    loReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 
-      getSymNodeValue(s) * getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
-  else
-    loReg = (uint64_t) createSymbolicNode(SYMBOLIC_OP, FCT_DMULTU, s, t);
-
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_ddivu() {
-  uint64_t* s;
-  uint64_t* t;
-  uint64_t* prod;
-  uint64_t isConcrete;
-
-  s = (uint64_t*) *(registers+rs);
-  t = (uint64_t*) *(registers+rt);
-
-  isConcrete = 0;
-  
-  if (SYMBOLIC_CON == getSymNodeType(s))
-    if (SYMBOLIC_CON == getSymNodeType(t))
-      // no symbolic value in both the trees that rs and rt are pointing to - we can perform the arithmetic operation
-      isConcrete = 1;
-
-  if (isConcrete){
-    if(getSymNodeValue(t) == 0){
-      loReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
-      hiReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
-    }else{
-      loReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 
-        getSymNodeValue(s) / getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
-      hiReg = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 
-        getSymNodeValue(s) % getSymNodeValue(t),(uint64_t*) 0,(uint64_t*) 0);
-    } 
-  }else{
-    loReg = (uint64_t) createSymbolicNode(SYMBOLIC_OP, FCT_DDIVU, s, t);
-    prod  = createSymbolicNode(SYMBOLIC_OP, FCT_DMULTU, t, (uint64_t*) loReg);
-    hiReg = (uint64_t) createSymbolicNode(SYMBOLIC_OP, FCT_DSUBU, s, prod);
-  }
-
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_mflo() {
-  *(registers+rd) = loReg;
-
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_mfhi() {
-  *(registers+rd) = hiReg;
-
-  pc = pc + INSTRUCTIONSIZE;
-}
-
-void symbolic_fct_jr() {
-  uint64_t* s;
-
-  s = (uint64_t*) *(registers+rs);
-
-  assert(getSymNodeType(s) == SYMBOLIC_CON, (uint64_t*)"");
-
-  pc = getSymNodeValue(s);
-}
-
-void symbolic_fct_syscall() {
-  pc = pc + INSTRUCTIONSIZE;
-
-  throwException(EXCEPTION_SYSCALL, 0);
-}
-
-// -----------------------------------------------------------------
-// ------------------------- SYSTEM CALLS --------------------------
-// -----------------------------------------------------------------
-
-void symbolic_implementExit(uint64_t* context) {
-  usedContexts = freezeFork(context, usedContexts);
-
-  print(selfieName);
-  print((uint64_t*) ": ");
-  print((uint64_t*) "Fork ");
-  print(getName(context));
-  print((uint64_t*) " exiting with exit code ");
-  printSymbolicExpression((uint64_t*) *(getRegs(context)+REG_A0));
-  println();
-}
-
-uint64_t symbolic_handleSystemCalls(uint64_t* context) {
-  uint64_t* node;
-  uint64_t v0;
-  
-  if (getException(context) == EXCEPTION_SYSCALL) {
-    node = (uint64_t*) *(getRegs(context)+REG_V0);
-
-    assert(getSymNodeType(node) == SYMBOLIC_CON, 
-      (uint64_t*)"Symbolic value not allowed as syscall number");
-
-    v0 = getSymNodeValue(node);
-
-    if (v0 == SYSCALL_EXIT) {
-      symbolic_implementExit(context);
-
-      if (usedContexts == (uint64_t*) 0)
-        return EXIT;
-      else
-        return SWITCH;
-    } else {
-      print(selfieName);
-      print((uint64_t*) ": unknown system call ");
-      printInteger(v0);
-      println();
-
-      setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
-
-      return EXIT;
-    }
-  } else if (getException(context) != EXCEPTION_TIMER) {
-    print(selfieName);
-    print((uint64_t*) ": context ");
-    print(getName(context));
-    print((uint64_t*) " throws uncaught ");
-    printException(getException(context), getFaultingPage(context));
-    println();
-
-    setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
-
-    return EXIT;
-  }
-
-  return DONOTEXIT;
-}
-
-// -----------------------------------------------------------------
-// --------------------------- LIBRARY -----------------------------
-// -----------------------------------------------------------------
-
-void printSymbolicExpression(uint64_t* expr) {
-  if ((uint64_t) expr == 0)
-    return;
-  else if (getSymNodeType(expr) == SYMBOLIC_CON)
-    printInteger(getSymNodeValue(expr));
-  else if (getSymNodeType(expr) == SYMBOLIC_OP) {
-    if (getSymNodeLeft(expr) != 0)
-      if (getSymNodeType(getSymNodeLeft(expr)) == SYMBOLIC_OP)
-        print((uint64_t*) "(");
-    printSymbolicExpression(getSymNodeLeft(expr));
-    if (getSymNodeLeft(expr) != 0)
-      if (getSymNodeType(getSymNodeLeft(expr)) == SYMBOLIC_OP)
-        print((uint64_t*) ")");
-    
-    if (getSymNodeValue(expr) == FCT_DADDU)
-      print((uint64_t*) " + ");
-    else if (getSymNodeValue(expr) == OP_DADDIU) 
-      print((uint64_t*) " + ");
-    else if (getSymNodeValue(expr) == FCT_DSUBU) 
-      print((uint64_t*) " - ");
-    else if (getSymNodeValue(expr) == FCT_DMULTU) 
-      print((uint64_t*) " * ");
-    else if (getSymNodeValue(expr) == FCT_DDIVU) 
-      print((uint64_t*) " / ");
-    else if (getSymNodeValue(expr) == FCT_SLTU) 
-      print((uint64_t*) " < ");
-
-    if (getSymNodeRight(expr) != 0)
-      if (getSymNodeType(getSymNodeRight(expr)) == SYMBOLIC_OP)
-        print((uint64_t*) "(");
-    printSymbolicExpression(getSymNodeRight(expr));
-    if (getSymNodeRight(expr) != 0)
-      if (getSymNodeType(getSymNodeRight(expr)) == SYMBOLIC_OP)
-        print((uint64_t*) ")");
-  } else{
-    print((uint64_t*) "v");
-    printInteger(getSymNodeValue(expr));
-  }
-}
-
-void printExecutionEngineState(uint64_t* ctx) {
-  uint64_t reg;
-
-  print((uint64_t*) "execution engine state on exit:");
-  println();
-  print((uint64_t*) "$pc=");
-  printHexadecimal(pc, 0);
-  if (sourceLineNumber != (uint64_t*) 0) {
-    print((uint64_t*) "(~");
-    printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
-    print((uint64_t*) ")");
-  }
-  println();
-  
-  reg = 0;
-
-  while (reg < NUMBEROFREGISTERS) {
-    printRegister(reg);
-    print((uint64_t*)"=");
-    printSymbolicExpression((uint64_t*) *(getRegs(ctx) + reg));
-    println();
-
-    reg = reg + 1;
-  }
-
-  print((uint64_t*)"$loReg=");
-  printSymbolicExpression((uint64_t*) loReg);
-  println();
-
-  print((uint64_t*)"$hiReg=");
-  printSymbolicExpression((uint64_t*) hiReg);
-  println();
-}
-
-// -----------------------------------------------------------------
-// ---------------------- EXECUTION ENGINE -------------------------
-// -----------------------------------------------------------------
-
-void symbolic_fetch() {
-  // assert: isValidVirtualAddress(pc) == 1
-  // assert: isVirtualAddressMapped(basePt, pc) == 1
-
-  if (pc % REGISTERSIZE == 0)
-    ir = rightShift(*(binary + pc / SIZEOFINT), 32);
-  else
-    ir = rightShift(leftShift(*(binary + pc / SIZEOFINT), 32), 32);
-}
-
-void symbolic_execute() { 
-  if (opcode == OP_SPECIAL) {
-    if (function == FCT_NOP)
-      symbolic_fct_nop();
-    else if (function == FCT_DADDU)
-      symbolic_fct_daddu();
-    else if (function == FCT_DSUBU)
-      symbolic_fct_dsubu();
-    else if (function == FCT_DMULTU)
-      symbolic_fct_dmultu();
-    else if (function == FCT_DDIVU)
-      symbolic_fct_ddivu();
-    else if (function == FCT_MFLO)
-      symbolic_fct_mflo();
-    else if (function == FCT_MFHI)
-      symbolic_fct_mfhi();
-    else if (function == FCT_JR)
-      symbolic_fct_jr();
-    else if (function == FCT_SYSCALL)
-      symbolic_fct_syscall();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else if (opcode == OP_DADDIU)
-    symbolic_op_daddiu();
-  else if (opcode == OP_LD)
-    symbolic_op_ld();
-  else if (opcode == OP_SD)
-    symbolic_op_sd();
-  else if (opcode == OP_BEQ)
-    symbolic_op_beq();
-  else if (opcode == OP_JAL)
-    symbolic_op_jal();
-  else if (opcode == OP_J)
-    symbolic_op_j();
-  else
-    throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-}
-
-uint64_t* symbolic_loadFromParent(uint64_t* context, uint64_t vaddr) {
-  uint64_t data;
-
-  context = getParent(context);
-
-  while (context != 0) {
-    if (isVirtualAddressMapped(getPT(context), vaddr)) {
-      data = loadVirtualMemory(getPT(context), vaddr);
-
-      if (getParent(context) == MY_CONTEXT)
-        return createSymbolicNode(SYMBOLIC_CON, loadVirtualMemory(getPT(context), vaddr), 0, 0);
-      else if (data != 0)
-        return (uint64_t*) data;
-    }
-
-    context = getParent(context);
-  }
-
-  return 0;
-}
-
-uint64_t symbolic_loadVirtualMemory(uint64_t vaddr) {
-  uint64_t* node;
-
-  node = (uint64_t*) loadVirtualMemory(pt, vaddr);
-  
-  if ((uint64_t) node == 0) {
-    node = symbolic_loadFromParent(currentContext, vaddr);
-    
-    // nothing found..
-    if (node == 0)
-      node = createSymbolicNode(SYMBOLIC_VAL, 0, 0, 0);
-
-    storeVirtualMemory(pt, vaddr, (uint64_t) node);
-  }
-
-  return (uint64_t) node;
-}
-
-uint64_t* createFork(uint64_t* parent, uint64_t pc) {
-  uint64_t* fork;
-  uint64_t reg;
-
-  fork = createContext(parent, 0);
-
-  setPC(fork, pc);
-
-  reg = 0;
-
-  while (reg < NUMBEROFREGISTERS) {
-    *(getRegs(fork) + reg) = *(getRegs(parent) + reg);
-
-    reg = reg + 1;
-  }
-
-  setLoReg(fork, getLoReg(parent));
-  setHiReg(fork, getHiReg(parent));
-
-  setProgramBreak(fork, getProgramBreak(parent));
-  setName(fork, itoa(forks, smalloc(7), 10, 0, 0));
-
-  forks = forks + 1;
-
-  return fork;
-}
-
-uint64_t* freezeFork(uint64_t* fork, uint64_t* from) {
-  if (getNextContext(fork) != (uint64_t*) 0)
-    setPrevContext(getNextContext(fork), getPrevContext(fork));
-
-  if (getPrevContext(fork) != (uint64_t*) 0) {
-    setNextContext(getPrevContext(fork), getNextContext(fork));
-    setPrevContext(fork, (uint64_t*) 0);
-  } else
-    from = getNextContext(fork);
-
-  setNextContext(fork, frozenForks);
-  
-  frozenForks = fork;
-
-  return from;
-}
-
-void saveForkState(uint64_t* context) {
-  setPC(context, pc);
-  setLoReg(context, loReg);
-  setHiReg(context, hiReg);
-}
-
-void fork(uint64_t firstPC, uint64_t secondPC) {
-  if (forks >= MAX_FORKS) {
-    print(selfieName);
-    print((uint64_t*) ": reached maximum number of forks in ");
-    print(binaryName);
-    println();
-
-    exit(0);
-  }
-
-  createFork(currentContext, firstPC);
-  createFork(currentContext, secondPC);
-
-  usedContexts = freezeFork(currentContext, usedContexts);
-}
-
-void symbolic_doSwitch(uint64_t* toContext, uint64_t timeout) {
-  uint64_t* fromContext;
-
-  fromContext = currentContext;
-
-  // restore machine state
-  pc        = getPC(toContext);
-  registers = getRegs(toContext);
-  loReg     = getLoReg(toContext);
-  hiReg     = getHiReg(toContext);
-  pt        = getPT(toContext);
-
-  currentContext = toContext;
-
-  timer = timeout;
-
-  if (debug_switch) {
-    print(selfieName);
-    print((uint64_t*) ": switched from fork ");
-    print(getName(fromContext));
-    print((uint64_t*) " to fork ");
-    print(getName(toContext));
-    if (signedGreaterThan(timeout, -1)) {
-      print((uint64_t*) " to execute ");
-      printInteger(timeout);
-      print((uint64_t*) " instructions");
-    }
-    println();
-  }
-}
-
-uint64_t* initExecutionEngine(uint64_t* ctx) {
-  uint64_t reg;
-  uint64_t* fork;
-
-  usedContexts = freezeFork(ctx, usedContexts);
-
-  // use a new page table for the symbolic expressions
-  fork = createFork(ctx, 0);
-
-  reg = 0;
-
-  while (reg < NUMBEROFREGISTERS) {
-    *(getRegs(fork) + reg) = (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0);
-
-    reg = reg + 1;
-  }
-
-  setLoReg(fork, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
-  setHiReg(fork, (uint64_t) createSymbolicNode(SYMBOLIC_CON, 0, (uint64_t*) 0, (uint64_t*) 0));
-
-  return fork;
-}
-
-uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
-  symbolic_doSwitch(toContext, timeout);
-
-  trap = 0;
-
-  while (trap == 0) {
-    symbolic_fetch();
-    decode();
-    symbolic_execute();
-    interrupt();
-  }
-
-  trap = 0;
-
-  saveForkState(currentContext);
-
-  return currentContext;
-}
-
-uint64_t vipster(uint64_t* toContext) {
-  uint64_t timeout;
-  uint64_t* fromContext;
-  uint64_t* next;
-  uint64_t status;
-
-  print((uint64_t*) "vipster");
-  println();
-
-  toContext = initExecutionEngine(toContext);
-
-  timeout = TIMESLICE;
-
-  status = DONOTEXIT;
-
-  while (1) {
-    next = getNextContext(toContext);
-
-    fromContext = vipster_switch(toContext, timeout);
-
-    if (getException(fromContext) == EXCEPTION_PAGEFAULT)
-      // TODO: use this table to unmap and reuse frames
-      mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-    else if (getException(fromContext) == EXCEPTION_TIMER)
-      status = SWITCH;
-    else
-      status = symbolic_handleSystemCalls(fromContext);
-
-    if (status == EXIT)
-      return 0;
-    else if (status == SWITCH) {
-      if (next != 0)
-        toContext = next;
-      else
-        toContext = usedContexts;
-    } else
-      toContext = fromContext;
-
-    setException(fromContext, EXCEPTION_NOEXCEPTION);
-  
-    timeout = TIMESLICE;
-  }
-}
-
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// --------------------   S M T  S O L V E R    --------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
@@ -8263,7 +7384,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -y | -min | -mob | -v ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -y | -min | -mob ) size ... ]");
   println();
 }
 
@@ -8309,8 +7430,6 @@ uint64_t selfie() {
         return selfie_run(MINSTER);
       else if (stringCompare(option, (uint64_t*) "-mob"))
         return selfie_run(MOBSTER);
-      else if (stringCompare(option, (uint64_t*) "-v"))
-        return selfie_run(VIPSTER);
       else {
         printUsage();
 

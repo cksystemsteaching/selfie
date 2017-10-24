@@ -1,21 +1,12 @@
-# General compiler flags
-CFLAGS := -m64 -O3 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Wall -Wextra -Wno-unused-parameter
-
-# Add compiler specific flags
-ifeq ($(findstring gcc,$(CC)),gcc)
-CFLAGS += -Wno-main -Wno-return-type -Wno-maybe-uninitialized -Wno-unused-but-set-variable -Wno-builtin-declaration-mismatch -Wno-comment
-else ifeq ($(findstring $(CC),clang),clang)
-CFLAGS += -Wno-main-return-type -Wno-incompatible-library-redeclaration
-else
-$(error environment variable CC has to be set to gcc or clang)
-endif
+# Compiler flags
+CFLAGS := -w -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : test sat vipster all clean
+.PHONY : test sat all clean
 
 # Test self-compilation, self-execution, and self-hosting
 test: selfie
@@ -40,14 +31,8 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
-# Test vipster
-vipster: selfie
-	./selfie -c manuscript/verification-snippets/simple.c -v 4096
-	./selfie -c manuscript/verification-snippets/branch.c -v 4096
-	./selfie -c manuscript/verification-snippets/loop.c -v 4096
-
 # Test everything
-all: test sat vipster
+all: test sat
 
 # Clean up
 clean:
