@@ -860,6 +860,7 @@ void      emitSwitch();
 void      doSwitch(uint64_t* toContext, uint64_t timeout);
 void      implementSwitch();
 uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout);
+uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1225,6 +1226,7 @@ uint64_t minster(uint64_t* toContext);
 uint64_t mobster(uint64_t* toContext);
 uint64_t hypster(uint64_t* toContext);
 uint64_t mixter(uint64_t* toContext, uint64_t mix);
+uint64_t vipster(uint64_t* toContext);
 
 uint64_t selfie_run(uint64_t machine);
 
@@ -1252,6 +1254,8 @@ uint64_t MOBSTER = 3;
 
 uint64_t HYPSTER = 4;
 
+uint64_t VIPSTER = 5;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t nextPageFrame = 0;
@@ -1271,6 +1275,24 @@ void initKernel() {
   EXITCODE_UNKNOWNSYSCALL = signShrink(-7, INT_BITWIDTH);
   EXITCODE_UNCAUGHTEXCEPTION = signShrink(-8, INT_BITWIDTH);
 }
+
+// -----------------------------------------------------------------
+// ----------------------- SYMBOLLIC ENGINE ------------------------
+// -----------------------------------------------------------------
+
+// ------------------------ STACK MANAGEMENT -----------------------
+
+// DO NOT DEPEND ON CONTEXT RIGHT NOW!
+uint64_t * IP; // instruction pointer
+uint64_t instructionCount; // how many instructions are on the stack
+
+void prepStack();
+void pushInstr();
+
+// ---------------------- INSTRUCTION ENCODING ---------------------
+
+void setNumberInstruction(uint64_t number);
+uint64_t getNumberInstruction(uint64_t instruction);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5200,6 +5222,27 @@ uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout) {
   return currentContext;
 }
 
+uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
+  doSwitch(toContext, timeout);
+  
+  trap = 0;
+  
+  while (trap == 0) {
+    fetch();
+    decode();
+    prepStack();
+    execute();
+    pushInstr();
+    interrupt();
+  }
+
+  trap = 0;
+
+  saveContext(currentContext);
+
+  return currentContext;
+}
+
 uint64_t* hypster_switch(uint64_t* toContext, uint64_t timeout) {
   // this procedure is only executed at boot level zero
   return mipster_switch(toContext, timeout);
@@ -6913,6 +6956,45 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
   }
 }
 
+uint64_t vipster(uint64_t* toContext) {
+  uint64_t timeout;
+  uint64_t* fromContext;
+
+  print((uint64_t*) "vipster");
+  println();
+
+  // init
+  instructionCount = 0;
+  IP = (uint64_t *) 0;
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    fromContext = vipster_switch(toContext, timeout);
+
+    if (getParent(fromContext) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      toContext = getParent(fromContext);
+
+      timeout = TIMEROFF;
+    } else {
+       // we are the parent in charge of handling exceptions
+
+      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
+        // TODO: use this table to unmap and reuse frames
+        mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
+      else if (handleSystemCalls(fromContext) == EXIT)
+        return getExitCode(fromContext);
+
+      setException(fromContext, EXCEPTION_NOEXCEPTION);
+
+      toContext = fromContext;
+
+      timeout = TIMESLICE;
+    }
+  }
+}
+
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exitCode;
 
@@ -6953,6 +7035,8 @@ uint64_t selfie_run(uint64_t machine) {
     exitCode = minster(currentContext);
   else if (machine == MOBSTER)
     exitCode = mobster(currentContext);
+  else if (machine == VIPSTER)
+    exitCode = vipster(currentContext);
   else if (machine == HYPSTER)
     if (isBootLevelZero())
       // no hypster on boot level zero
@@ -6991,6 +7075,46 @@ uint64_t selfie_run(uint64_t machine) {
   }
 
   return exitCode;
+}
+
+// -----------------------------------------------------------------
+// ----------------------- SYMBOLLIC ENGINE ------------------------
+// -----------------------------------------------------------------
+
+// ------------------------ STACK MANAGEMENT -----------------------
+
+void prepStack() {
+  // check if next instruction would overwrite instructions and handle that
+}
+
+void pushInstr() {
+  // push current instruction from 'ir' on the stack
+}
+
+// ---------------------- INSTRUCTION ENCODING ---------------------
+
+void setNumberInstruction(uint64_t number) {
+  // add number to remaining 32 BIT in 'ir'
+  // assert: number >= 0
+  // assert: number < 2^32
+  // assert: instruction takes first 32 bits
+
+  uint64_t i;
+
+  i = leftShift(number, 32);
+
+  ir = ir + i;
+}
+
+uint64_t getNumberInstruction(uint64_t instruction) {
+  // read number from 'instruction'
+  // !!! TEST !!!
+
+  uint64_t i;
+
+  i = instruction;
+
+  return rightShift(i, 32);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -7430,6 +7554,8 @@ uint64_t selfie() {
         return selfie_run(MINSTER);
       else if (stringCompare(option, (uint64_t*) "-mob"))
         return selfie_run(MOBSTER);
+      else if (stringCompare(option, (uint64_t*) "-v"))
+        return selfie_run(VIPSTER);
       else {
         printUsage();
 
