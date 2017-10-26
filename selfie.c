@@ -1283,16 +1283,18 @@ void initKernel() {
 // ------------------------ STACK MANAGEMENT -----------------------
 
 // DO NOT DEPEND ON CONTEXT RIGHT NOW!
-uint64_t * IP; // instruction pointer
-uint64_t instructionCount; // how many instructions are on the stack
+uint64_t IP; // instruction pointer
+uint64_t numberOfInstructions; // how many instructions are on the stack
+uint64_t ipInitialized = 0;
 
 void prepStack();
-void pushInstr();
+void pushInstruction();
 
 // ---------------------- INSTRUCTION ENCODING ---------------------
 
-void setNumberInstruction(uint64_t number);
-uint64_t getNumberInstruction(uint64_t instruction);
+void setNumberOfInstruction(uint64_t n);
+uint64_t getNumberOfInstruction(uint64_t instruction);
+uint64_t getInstruction(uint64_t n);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5224,15 +5226,15 @@ uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout) {
 
 uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
   doSwitch(toContext, timeout);
-  
+
   trap = 0;
-  
+
   while (trap == 0) {
     fetch();
     decode();
     prepStack();
     execute();
-    pushInstr();
+    pushInstruction();
     interrupt();
   }
 
@@ -6964,8 +6966,8 @@ uint64_t vipster(uint64_t* toContext) {
   println();
 
   // init
-  instructionCount = 0;
-  IP = (uint64_t *) 0;
+  numberOfInstructions = 0;
+  IP = 0;
 
   timeout = TIMESLICE;
 
@@ -7078,7 +7080,7 @@ uint64_t selfie_run(uint64_t machine) {
 }
 
 // -----------------------------------------------------------------
-// ----------------------- SYMBOLLIC ENGINE ------------------------
+// ------------------------ SYMBOLIC ENGINE ------------------------
 // -----------------------------------------------------------------
 
 // ------------------------ STACK MANAGEMENT -----------------------
@@ -7087,34 +7089,65 @@ void prepStack() {
   // check if next instruction would overwrite instructions and handle that
 }
 
-void pushInstr() {
-  // push current instruction from 'ir' on the stack
+void pushInstruction() {
+  if (ipInitialized) {
+    // push current instruction from 'ir' on the stack
+    // TODO: only push specific instructions
+    if (isValidVirtualAddress(IP)) {
+      if (isVirtualAddressMapped(pt, IP)) {
+        setNumberOfInstruction(numberOfInstructions);
+        storeVirtualMemory(pt, IP, ir);
+
+        numberOfInstructions = numberOfInstructions + 1;
+        IP = IP - DOUBLEWORDSIZE;
+      } else
+        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(IP));
+    } else
+      throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  } else {
+    // initialization of SP initializes IP
+    if (opcode == OP_LD)
+      if (rt == REG_SP) {
+        IP = *(registers + rt) - DOUBLEWORDSIZE;
+        ipInitialized = 1;
+      }
+  }
 }
 
 // ---------------------- INSTRUCTION ENCODING ---------------------
 
-void setNumberInstruction(uint64_t number) {
-  // add number to remaining 32 BIT in 'ir'
-  // assert: number >= 0
-  // assert: number < 2^32
-  // assert: instruction takes first 32 bits
-
+void setNumberOfInstruction(uint64_t n) {
+  // add number to remaining 32 bit in 'ir'
+  // assert: 0 <= number < 2^32
   uint64_t i;
 
-  i = leftShift(number, 32);
+  i = leftShift(n, 32);
 
   ir = ir + i;
 }
 
-uint64_t getNumberInstruction(uint64_t instruction) {
-  // read number from 'instruction'
-  // !!! TEST !!!
-
+uint64_t getNumberOfInstruction(uint64_t instruction) {
   uint64_t i;
 
   i = instruction;
 
   return rightShift(i, 32);
+}
+
+uint64_t getInstruction(uint64_t n) {
+  // assert: n >= 0
+  // assert: instructions are sorted
+  uint64_t vaddr;
+
+  vaddr = IP + (numberOfInstructions - n) * DOUBLEWORDSIZE;
+
+  if (n < numberOfInstructions)
+    return loadVirtualMemory(pt, vaddr);
+  else
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  return -1;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
