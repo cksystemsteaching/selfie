@@ -986,6 +986,7 @@ uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 5;
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
 uint64_t debug_exception = 0;
+uint64_t stackTrace = 0;
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -1289,12 +1290,14 @@ uint64_t ipInitialized = 0;
 
 void prepStack();
 void pushInstruction();
+void printPushedInstructions();
 
 // ---------------------- INSTRUCTION ENCODING ---------------------
 
 void setNumberOfInstruction(uint64_t n);
 uint64_t getNumberOfInstruction(uint64_t instruction);
 uint64_t getInstruction(uint64_t n);
+uint64_t extractInstruction(uint64_t instruction);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -6965,9 +6968,11 @@ uint64_t vipster(uint64_t* toContext) {
   print((uint64_t*) "vipster");
   println();
 
-  // init
   numberOfInstructions = 0;
   IP = 0;
+
+  // shows stack below stack pointer
+  stackTrace = 1;
 
   timeout = TIMESLICE;
 
@@ -7076,6 +7081,9 @@ uint64_t selfie_run(uint64_t machine) {
     printProfile((uint64_t*) ": stores: ", stores, storesPerAddress);
   }
 
+  if (stackTrace)
+    printPushedInstructions();
+
   return exitCode;
 }
 
@@ -7115,6 +7123,24 @@ void pushInstruction() {
   }
 }
 
+void printPushedInstructions() {
+  uint64_t instruction;
+  uint64_t i;
+
+  i = 0;
+
+  while (i < numberOfInstructions) {
+    instruction = getInstruction(i);
+
+    printBinary(getNumberOfInstruction(instruction), 32);
+    print((uint64_t*) " ");
+    printBinary(extractInstruction(instruction), 32);
+    println();
+
+    i = i + 1;
+  }
+}
+
 // ---------------------- INSTRUCTION ENCODING ---------------------
 
 void setNumberOfInstruction(uint64_t n) {
@@ -7148,6 +7174,11 @@ uint64_t getInstruction(uint64_t n) {
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
   return -1;
+}
+
+uint64_t extractInstruction(uint64_t instruction) {
+  // returns the 32-bit MIPS instruction
+  return instruction - leftShift(getNumberOfInstruction(instruction), 32);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
