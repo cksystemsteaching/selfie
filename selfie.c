@@ -7095,6 +7095,48 @@ uint64_t selfie_run(uint64_t machine) {
 
 void prepStack() {
   // check if next instruction would overwrite instructions and handle that
+  uint64_t affectedInstructions;
+  uint64_t SP;
+  uint64_t FP;
+  uint64_t i;
+
+  // DADDIU $sp, $sp,  -8  : enhances stack
+  // DADDIU $sp, $sp, x*8  : shrinks stack
+  // DADDIU $sp, $fp,  0   : shrinks stack by whole frame
+
+  i = 0;
+
+  if (opcode == OP_DADDIU) {
+    if (rt == REG_SP) {
+      SP = *(registers+rt);
+      if (rs == REG_SP) {
+        // enhance stack by one doubleword
+        if (signExtend(immediate, 16) == -DOUBLEWORDSIZE) {
+          mapAndStore(currentContext,  IP,loadVirtualMemory(pt, SP - DOUBLEWORDSIZE));
+          IP = IP - DOUBLEWORDSIZE;
+        // shrink stack
+        } else {
+          affectedInstructions = immediate / DOUBLEWORDSIZE;
+
+          while (i < affectedInstructions) {
+            IP = IP + DOUBLEWORDSIZE;
+            mapAndStore(currentContext, SP + i * DOUBLEWORDSIZE, loadVirtualMemory(pt, IP));
+            i = i + 1;
+          }
+        }
+      // shrink stack by whole frame
+      } else if (rs == REG_FP) {
+        FP = *(registers+rs);
+        affectedInstructions = (FP - SP) / DOUBLEWORDSIZE;
+
+        while (i < affectedInstructions) {
+          i = i + 1;
+          IP = IP + DOUBLEWORDSIZE;
+          mapAndStore(currentContext, FP - i * DOUBLEWORDSIZE, loadVirtualMemory(pt, IP));
+        }
+      }
+    }
+  }
 }
 
 void pushInstruction() {
@@ -7102,14 +7144,10 @@ void pushInstruction() {
     // push current instruction from 'ir' on the stack
     // TODO: only push specific instructions
     if (isValidVirtualAddress(IP)) {
-      if (isVirtualAddressMapped(pt, IP)) {
-        setNumberOfInstruction(numberOfInstructions);
-        storeVirtualMemory(pt, IP, ir);
-
-        numberOfInstructions = numberOfInstructions + 1;
-        IP = IP - DOUBLEWORDSIZE;
-      } else
-        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(IP));
+      setNumberOfInstruction(numberOfInstructions);
+      mapAndStore(currentContext, IP, ir);
+      numberOfInstructions = numberOfInstructions + 1;
+      IP = IP - DOUBLEWORDSIZE;
     } else
       throwException(EXCEPTION_INVALIDADDRESS, 0);
 
@@ -7117,7 +7155,7 @@ void pushInstruction() {
     // initialization of SP initializes IP
     if (opcode == OP_LD)
       if (rt == REG_SP) {
-        IP = *(registers + rt) - DOUBLEWORDSIZE;
+        IP = *(registers+rt) - DOUBLEWORDSIZE;
         ipInitialized = 1;
       }
   }
