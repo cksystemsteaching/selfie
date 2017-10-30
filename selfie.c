@@ -7164,15 +7164,21 @@ void pushInstruction() {
 void printPushedInstructions() {
   uint64_t instruction;
   uint64_t i;
+  uint64_t number;
+  uint64_t fromStack;
 
   i = 0;
 
   while (i < numberOfInstructions) {
-    instruction = getInstruction(i);
+    fromStack = getInstruction(i);
+    instruction = extractInstruction(fromStack);
+    number = getNumberOfInstruction(fromStack);
 
-    printBinary(getNumberOfInstruction(instruction), 32);
-    print((uint64_t*) " ");
-    printBinary(extractInstruction(instruction), 32);
+    printBinary(instruction, 32);
+    print((uint64_t*) " (");
+    printInteger(number);
+    print((uint64_t*) "): ");
+    printOpcode(getOpcode(instruction));
     println();
 
     i = i + 1;
