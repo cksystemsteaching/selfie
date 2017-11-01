@@ -1292,10 +1292,15 @@ void prepStack();
 void pushInstruction();
 void printPushedInstructions();
 
+void     quicksort(uint64_t low, uint64_t high);
+uint64_t partition(uint64_t low, uint64_t high);
+void     swap(uint64_t vaddr_x, uint64_t vaddr_y);
+
 // ---------------------- INSTRUCTION ENCODING ---------------------
 
-void setNumberOfInstruction(uint64_t n);
+void     setNumberOfInstruction(uint64_t n);
 uint64_t getNumberOfInstruction(uint64_t instruction);
+uint64_t getNumberByAddr(uint64_t vaddr);
 uint64_t getInstruction(uint64_t n);
 uint64_t extractInstruction(uint64_t instruction);
 
@@ -7042,9 +7047,10 @@ uint64_t selfie_run(uint64_t machine) {
     exitCode = minster(currentContext);
   else if (machine == MOBSTER)
     exitCode = mobster(currentContext);
-  else if (machine == VIPSTER)
+  else if (machine == VIPSTER) {
     exitCode = vipster(currentContext);
-  else if (machine == HYPSTER)
+    //quicksort(*(registers+REG_SP) - DOUBLEWORDSIZE, IP + DOUBLEWORDSIZE);
+  } else if (machine == HYPSTER)
     if (isBootLevelZero())
       // no hypster on boot level zero
       exitCode = mipster(currentContext);
@@ -7112,7 +7118,7 @@ void prepStack() {
       if (rs == REG_SP) {
         // enhance stack by one doubleword
         if (signExtend(immediate, 16) == -DOUBLEWORDSIZE) {
-          mapAndStore(currentContext,  IP,loadVirtualMemory(pt, SP - DOUBLEWORDSIZE));
+          mapAndStore(currentContext, IP, loadVirtualMemory(pt, SP - DOUBLEWORDSIZE));
           IP = IP - DOUBLEWORDSIZE;
         // shrink stack
         } else {
@@ -7185,6 +7191,48 @@ void printPushedInstructions() {
   }
 }
 
+void quicksort (uint64_t low, uint64_t high) {
+  uint64_t pivot;
+
+  if (low > high) {
+    pivot = partition(low, high);
+    quicksort(low, pivot + DOUBLEWORDSIZE);
+    quicksort(pivot - DOUBLEWORDSIZE, high);
+  }
+}
+
+uint64_t partition(uint64_t low, uint64_t high) {
+  uint64_t pivot;
+  uint64_t i;
+  uint64_t j;
+
+  pivot = getNumberByAddr(high);
+  i = low + DOUBLEWORDSIZE;
+  j = low;
+
+  while (j > high) {
+    if (getNumberByAddr(j) < pivot) {
+      i = i - DOUBLEWORDSIZE;
+      swap(i, j);
+    }
+    j = j - DOUBLEWORDSIZE;
+  }
+  if (getNumberByAddr(high) < getNumberByAddr(i - DOUBLEWORDSIZE))
+    swap(i - DOUBLEWORDSIZE, high);
+
+  return i - DOUBLEWORDSIZE;
+}
+
+void swap(uint64_t vaddr_x, uint64_t vaddr_y) {
+  // TODO: computing paddr from vaddr every single
+  // time is definitely to slow, needs improvement
+  uint64_t  temp;
+
+  temp = loadVirtualMemory(pt, vaddr_x);
+  storeVirtualMemory(pt, vaddr_x, loadVirtualMemory(pt, vaddr_y));
+  storeVirtualMemory(pt, vaddr_y, temp);
+}
+
 // ---------------------- INSTRUCTION ENCODING ---------------------
 
 void setNumberOfInstruction(uint64_t n) {
@@ -7203,6 +7251,10 @@ uint64_t getNumberOfInstruction(uint64_t instruction) {
   i = instruction;
 
   return rightShift(i, 32);
+}
+
+uint64_t getNumberByAddr(uint64_t vaddr) {
+  return getNumberOfInstruction(loadVirtualMemory(pt, vaddr));
 }
 
 uint64_t getInstruction(uint64_t n) {
