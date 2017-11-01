@@ -1288,9 +1288,10 @@ uint64_t IP; // instruction pointer
 uint64_t numberOfInstructions; // how many instructions are on the stack
 uint64_t ipInitialized = 0;
 
-void prepStack();
-void pushInstruction();
-void printPushedInstructions();
+void     prepStack();
+void     pushInstruction();
+void     printPushedInstructions();
+uint64_t isNeededInstruction();
 
 void     quicksort(uint64_t low, uint64_t high);
 uint64_t partition(uint64_t low, uint64_t high);
@@ -7150,10 +7151,12 @@ void pushInstruction() {
     // push current instruction from 'ir' on the stack
     // TODO: only push specific instructions
     if (isValidVirtualAddress(IP)) {
-      setNumberOfInstruction(numberOfInstructions);
-      mapAndStore(currentContext, IP, ir);
-      numberOfInstructions = numberOfInstructions + 1;
-      IP = IP - DOUBLEWORDSIZE;
+      if (isNeededInstruction()) {
+        setNumberOfInstruction(numberOfInstructions);
+        mapAndStore(currentContext, IP, ir);
+        numberOfInstructions = numberOfInstructions + 1;
+        IP = IP - DOUBLEWORDSIZE;
+      }
     } else
       throwException(EXCEPTION_INVALIDADDRESS, 0);
 
@@ -7168,27 +7171,74 @@ void pushInstruction() {
 }
 
 void printPushedInstructions() {
-  uint64_t instruction;
   uint64_t i;
   uint64_t number;
   uint64_t fromStack;
+
+  // stolen from selfie_disassemble
+  interpret = 0;
+  debug = 1;
 
   i = 0;
 
   while (i < numberOfInstructions) {
     fromStack = getInstruction(i);
-    instruction = extractInstruction(fromStack);
+    ir = extractInstruction(fromStack);
     number = getNumberOfInstruction(fromStack);
 
-    printBinary(instruction, 32);
     print((uint64_t*) " (");
     printInteger(number);
     print((uint64_t*) "): ");
-    printOpcode(getOpcode(instruction));
-    println();
+
+    decode();
+    execute();
 
     i = i + 1;
   }
+}
+
+uint64_t isNeededInstruction() {
+  // return 1;
+  if (opcode == OP_SPECIAL) {
+    if (function == FCT_NOP)
+      return 0;
+    else if (function == FCT_JR)
+      return 1; // for now
+  } else if (opcode == OP_DADDIU) {
+    if (rs == REG_SP) {
+      if (rt == REG_SP)
+        return 0; // moving SP
+      else if (rt == REG_FP)
+        return 0; // moving FP
+    } else if (rs == REG_FP) {
+      if (rt == REG_SP)
+        return 0; // moving SP
+    }
+  }
+  else if (opcode == OP_LD) {
+    if (rs == REG_SP) {
+      if (rt == REG_FP)
+        return 0; // restoring FP
+      else if (rt == REG_RA)
+        return 0; // restoring RA
+    }
+  }
+  else if (opcode == OP_SD) {
+    if (rs == REG_SP) {
+      if (rt == REG_FP)
+        return 0; // restoring FP
+      else if (rt == REG_RA)
+        return 0; // restoring RA
+    }
+  }
+  else if (opcode == OP_BEQ)
+    return 1; // for now
+  else if (opcode == OP_JAL)
+    return 1; // for now
+  else if (opcode == OP_J)
+    return 1; // for now
+
+  return 1;
 }
 
 void quicksort (uint64_t low, uint64_t high) {
@@ -7218,7 +7268,7 @@ uint64_t partition(uint64_t low, uint64_t high) {
     j = j - DOUBLEWORDSIZE;
   }
   if (getNumberByAddr(high) < getNumberByAddr(i - DOUBLEWORDSIZE))
-    swap(i - DOUBLEWORDSIZE, high);
+  swap(i - DOUBLEWORDSIZE, high);
 
   return i - DOUBLEWORDSIZE;
 }
