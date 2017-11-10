@@ -1283,12 +1283,16 @@ void initKernel() {
 
 // ------------------------ STACK MANAGEMENT -----------------------
 
-// DO NOT DEPEND ON CONTEXT RIGHT NOW!
+// DOES NOT DEPEND ON CONTEXT RIGHT NOW!
 uint64_t IP; // instruction pointer
 uint64_t numberOfInstructions; // how many instructions are on the stack
+uint64_t addressOfFirstInstruction;
 uint64_t ipInitialized = 0;
 
-void     prepStack();
+uint64_t isPushedInstruction(uint64_t vaddr);
+void     adjustImmediateValue(uint64_t vaddr, uint64_t isNegative);
+
+void     prepareStack();
 void     pushInstruction();
 void     printPushedInstructions();
 uint64_t isNeededInstruction();
@@ -5241,7 +5245,7 @@ uint64_t* vipster_switch(uint64_t* toContext, uint64_t timeout) {
   while (trap == 0) {
     fetch();
     decode();
-    prepStack();
+    prepareStack();
     execute();
     pushInstruction();
     interrupt();
@@ -7100,48 +7104,111 @@ uint64_t selfie_run(uint64_t machine) {
 
 // ------------------------ STACK MANAGEMENT -----------------------
 
-void prepStack() {
-  // check if next instruction would overwrite instructions and handle that
-  uint64_t affectedInstructions;
+uint64_t isPushedInstruction(uint64_t vaddr) {
+  uint64_t instruction;
+  uint64_t number;
+
+  instruction = loadVirtualMemory(pt, vaddr);
+  number      = getNumberOfInstruction(instruction);
+
+  // TODO: this condition is not sufficient enough
+  // idea: push also a pointer to the next instruction
+  // onto the stack, like a singly linked list.
+
+  if (number > 0)
+    if (number <= numberOfInstructions)
+      return 1;
+
+  return 0;
+}
+
+void adjustImmediateValue(uint64_t vaddr, uint64_t isNegative) {
+  uint64_t offset;
+
+  if (isNegative)
+    offset = -signExtend(immediate, 16) / REGISTERSIZE;
+  else
+    offset = immediate / REGISTERSIZE;
+
+  while (offset > 0) {
+    if (isNegative)
+      vaddr = vaddr - REGISTERSIZE;
+    else
+      vaddr = vaddr + REGISTERSIZE;
+
+    if (isPushedInstruction(vaddr)) {
+      if (isNegative)
+        immediate = immediate - REGISTERSIZE;
+      else
+        immediate = immediate + REGISTERSIZE;
+
+      offset = offset + 1;
+    }
+    offset = offset - 1;
+  }
+}
+
+void prepareStack() {
+  uint64_t offset;
   uint64_t SP;
   uint64_t FP;
-  uint64_t i;
 
-  // DADDIU $sp, $sp,  -8  : enhances stack
+  // --------------------------------------------
+  // DADDIU $sp, $sp,  -x  : enhances stack
   // DADDIU $sp, $sp, x*8  : shrinks stack
-  // DADDIU $sp, $fp,  0   : shrinks stack by whole frame
-
-  i = 0;
+  // --------------------------------------------
+  // SD $t, -x($fp)        : store local variable
+  // LD $t, -x($fp)        : load local variable
+  // LD $t,  x($fp)        : recursion or load ra
+  // --------------------------------------------
 
   if (opcode == OP_DADDIU) {
     if (rt == REG_SP) {
       SP = *(registers+rt);
       if (rs == REG_SP) {
         // enhance stack by one doubleword
-        if (signExtend(immediate, 16) == -DOUBLEWORDSIZE) {
-          mapAndStore(currentContext, IP, loadVirtualMemory(pt, SP - DOUBLEWORDSIZE));
-          IP = IP - DOUBLEWORDSIZE;
+        // check if immediate is negative
+        if (immediate >= twoToThePowerOf(15)) {
+          offset = -signExtend(immediate, 16) / REGISTERSIZE;
+
+          while (offset > 0) {
+            SP = SP - REGISTERSIZE;
+            if (isPushedInstruction(SP)) {
+              immediate = immediate - REGISTERSIZE;
+              offset = offset + 1;
+              IP = IP - REGISTERSIZE;
+            }
+            offset = offset -1;
+          }
+
+          // move IP, if SP interferes with IP
+          while (SP - REGISTERSIZE <= IP)
+            IP = IP - REGISTERSIZE;
+
         // shrink stack
         } else {
-          affectedInstructions = immediate / DOUBLEWORDSIZE;
+          adjustImmediateValue(SP, 0);
 
-          while (i < affectedInstructions) {
-            IP = IP + DOUBLEWORDSIZE;
-            mapAndStore(currentContext, SP + i * DOUBLEWORDSIZE, loadVirtualMemory(pt, IP));
-            i = i + 1;
-          }
-        }
-      // shrink stack by whole frame
-      } else if (rs == REG_FP) {
-        FP = *(registers+rs);
-        affectedInstructions = (FP - SP) / DOUBLEWORDSIZE;
-
-        while (i < affectedInstructions) {
-          i = i + 1;
-          IP = IP + DOUBLEWORDSIZE;
-          mapAndStore(currentContext, FP - i * DOUBLEWORDSIZE, loadVirtualMemory(pt, IP));
+          // TODO: optimize IP here
         }
       }
+    }
+  } else if (rs == REG_FP) {
+    FP = *(registers+rs);
+
+    // load local variable
+    if (opcode == OP_LD) {
+      // check if immediate is negative
+      if (immediate >= twoToThePowerOf(15))
+        adjustImmediateValue(FP, 1);
+      // recursion or load return address
+      else
+        adjustImmediateValue(FP, 0);
+
+    // store local variable
+    } else if (opcode == OP_SD) {
+      // assert: immediate is negative
+      adjustImmediateValue(FP, 1);
     }
   }
 }
@@ -7151,12 +7218,13 @@ void pushInstruction() {
     // push current instruction from 'ir' on the stack
     // TODO: only push specific instructions
     if (isValidVirtualAddress(IP)) {
-      if (isNeededInstruction()) {
-        setNumberOfInstruction(numberOfInstructions);
-        mapAndStore(currentContext, IP, ir);
+      //if (isNeededInstruction()) {
         numberOfInstructions = numberOfInstructions + 1;
-        IP = IP - DOUBLEWORDSIZE;
-      }
+        setNumberOfInstruction(numberOfInstructions);
+
+        mapAndStore(currentContext, IP, ir);
+        IP = IP - REGISTERSIZE;
+      //}
     } else
       throwException(EXCEPTION_INVALIDADDRESS, 0);
 
@@ -7164,7 +7232,8 @@ void pushInstruction() {
     // initialization of SP initializes IP
     if (opcode == OP_LD)
       if (rt == REG_SP) {
-        IP = *(registers+rt) - DOUBLEWORDSIZE;
+        IP = *(registers+rt) - REGISTERSIZE;
+        addressOfFirstInstruction = IP;
         ipInitialized = 1;
       }
   }
@@ -7172,33 +7241,35 @@ void pushInstruction() {
 
 void printPushedInstructions() {
   uint64_t i;
-  uint64_t number;
-  uint64_t fromStack;
+  uint64_t vaddr;
+  uint64_t instruction;
 
   // stolen from selfie_disassemble
   interpret = 0;
   debug = 1;
 
   i = 0;
+  vaddr = addressOfFirstInstruction;
 
   while (i < numberOfInstructions) {
-    fromStack = getInstruction(i);
-    ir = extractInstruction(fromStack);
-    number = getNumberOfInstruction(fromStack);
+    if (isPushedInstruction(vaddr)) {
+      instruction = loadVirtualMemory(pt, vaddr);
+      ir = extractInstruction(instruction);
 
-    print((uint64_t*) " (");
-    printInteger(number);
-    print((uint64_t*) "): ");
+      print((uint64_t*) " (");
+      printInteger(getNumberOfInstruction(instruction));
+      print((uint64_t*) "): ");
 
-    decode();
-    execute();
+      decode();
+      execute();
 
-    i = i + 1;
+      i = i + 1;
+    }
+    vaddr = vaddr - REGISTERSIZE;
   }
 }
 
 uint64_t isNeededInstruction() {
-  // return 1;
   if (opcode == OP_SPECIAL) {
     if (function == FCT_NOP)
       return 0;
@@ -7214,24 +7285,21 @@ uint64_t isNeededInstruction() {
       if (rt == REG_SP)
         return 0; // moving SP
     }
-  }
-  else if (opcode == OP_LD) {
+  } else if (opcode == OP_LD) {
     if (rs == REG_SP) {
       if (rt == REG_FP)
         return 0; // restoring FP
       else if (rt == REG_RA)
         return 0; // restoring RA
     }
-  }
-  else if (opcode == OP_SD) {
+  } else if (opcode == OP_SD) {
     if (rs == REG_SP) {
       if (rt == REG_FP)
         return 0; // restoring FP
       else if (rt == REG_RA)
         return 0; // restoring RA
     }
-  }
-  else if (opcode == OP_BEQ)
+  } else if (opcode == OP_BEQ)
     return 1; // for now
   else if (opcode == OP_JAL)
     return 1; // for now
@@ -7246,8 +7314,8 @@ void quicksort (uint64_t low, uint64_t high) {
 
   if (low > high) {
     pivot = partition(low, high);
-    quicksort(low, pivot + DOUBLEWORDSIZE);
-    quicksort(pivot - DOUBLEWORDSIZE, high);
+    quicksort(low, pivot + REGISTERSIZE);
+    quicksort(pivot - REGISTERSIZE, high);
   }
 }
 
@@ -7257,20 +7325,20 @@ uint64_t partition(uint64_t low, uint64_t high) {
   uint64_t j;
 
   pivot = getNumberByAddr(high);
-  i = low + DOUBLEWORDSIZE;
+  i = low + REGISTERSIZE;
   j = low;
 
   while (j > high) {
     if (getNumberByAddr(j) < pivot) {
-      i = i - DOUBLEWORDSIZE;
+      i = i - REGISTERSIZE;
       swap(i, j);
     }
-    j = j - DOUBLEWORDSIZE;
+    j = j - REGISTERSIZE;
   }
-  if (getNumberByAddr(high) < getNumberByAddr(i - DOUBLEWORDSIZE))
-  swap(i - DOUBLEWORDSIZE, high);
+  if (getNumberByAddr(high) < getNumberByAddr(i - REGISTERSIZE))
+    swap(i - REGISTERSIZE, high);
 
-  return i - DOUBLEWORDSIZE;
+  return i - REGISTERSIZE;
 }
 
 void swap(uint64_t vaddr_x, uint64_t vaddr_y) {
@@ -7287,7 +7355,7 @@ void swap(uint64_t vaddr_x, uint64_t vaddr_y) {
 
 void setNumberOfInstruction(uint64_t n) {
   // add number to remaining 32 bit in 'ir'
-  // assert: 0 <= number < 2^32
+  // assert: 0 < number <= 2^32
   uint64_t i;
 
   i = leftShift(n, 32);
@@ -7296,11 +7364,7 @@ void setNumberOfInstruction(uint64_t n) {
 }
 
 uint64_t getNumberOfInstruction(uint64_t instruction) {
-  uint64_t i;
-
-  i = instruction;
-
-  return rightShift(i, 32);
+  return rightShift(instruction, 32);
 }
 
 uint64_t getNumberByAddr(uint64_t vaddr) {
@@ -7309,17 +7373,13 @@ uint64_t getNumberByAddr(uint64_t vaddr) {
 
 uint64_t getInstruction(uint64_t n) {
   // assert: n >= 0
-  // assert: instructions are sorted
+  // assert: instructions are contiguous
   uint64_t vaddr;
 
-  vaddr = IP + (numberOfInstructions - n) * DOUBLEWORDSIZE;
+  vaddr = addressOfFirstInstruction - n * REGISTERSIZE;
 
-  if (n < numberOfInstructions)
-    return loadVirtualMemory(pt, vaddr);
-  else
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
-
-  return -1;
+  // TODO: exception handling
+  return loadVirtualMemory(pt, vaddr);
 }
 
 uint64_t extractInstruction(uint64_t instruction) {
