@@ -1406,13 +1406,13 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
   uint64_t remainder;
 
   // necessary to handle INT64_MIN as dividend properly
-  if (divisor == 1) 
+  if (divisor == 1)
    return dividend;
 
   if (divisor == INT64_MIN) {
     if (dividend == INT64_MIN)
       return 1;
-    else 
+    else
       return 0;
   }
 
@@ -1435,7 +1435,7 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
   }
 
   quotient = dividend / divisor;
-  
+
   if (minFlag) {
     // check wether the result of division was changed by reset to -INT64_MAX
     remainder = dividend / divisor;
@@ -2714,7 +2714,7 @@ void syntaxErrorUnexpected() {
   println();
 }
 
-void encodingError(uint64_t min, uint64_t max, uint64_t found){
+void encodingError(uint64_t min, uint64_t max, uint64_t found) {
   print((uint64_t*) "Encoding error: Immediate overflow in structure around line ");
   printInteger(lineNumber);
   print((uint64_t*) ": Expected immediate in range from ");
@@ -2917,7 +2917,7 @@ void help_procedure_prologue(uint64_t localVariables) {
 
   // allocate memory for callee's local variables
   if (localVariables != 0)
-    emitIFormat(-localVariables * DOUBLEWORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM); 
+    emitIFormat(-localVariables * DOUBLEWORDSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 }
 
 void help_procedure_epilogue(uint64_t parameters) {
@@ -3422,9 +3422,8 @@ void gr_while() {
 
             exit(EXITCODE_PARSERERROR);
           }
-        }
-        // only one statement without {}
-        else
+        } else
+          // only one statement without {}
           gr_statement();
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
@@ -3485,9 +3484,8 @@ void gr_if() {
 
             exit(EXITCODE_PARSERERROR);
           }
-        }
+        } else
         // only one statement without {}
-        else
           gr_statement();
 
         //optional: else
@@ -3729,7 +3727,7 @@ void gr_statement() {
 
         tfree(2);
       }
-      
+
       numberOfAssignments = numberOfAssignments + 1;
 
       if (symbol == SYM_SEMICOLON)
@@ -4439,19 +4437,19 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   bound = twoToThePowerOf(12);
 
-  // branching offset in bytes 
+  // branching offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
   if (signedGreaterThan(immediate, bound - 1))
     encodingError(-bound, bound - 1, immediate);
-  else if(signedLessThan(immediate, - bound))
+  else if (signedLessThan(immediate, - bound))
     encodingError(- bound, bound - 1, immediate);
 
   immediate = signShrink(immediate, 13);
 
   // split immediate by shifting 64-bit value accordingly
   // branching offset will be encoded in halfwords
-  imm1 = rightShift(leftShift(immediate, 19 + 32), 31 + 32); 
+  imm1 = rightShift(leftShift(immediate, 19 + 32), 31 + 32);
   imm2 = rightShift(leftShift(immediate, 21 + 32), 26 + 32);
   imm3 = rightShift(leftShift(immediate, 27 + 32), 28 + 32);
   imm4 = rightShift(leftShift(immediate, 20 + 32), 31 + 32);
@@ -4479,7 +4477,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 
   bound = twoToThePowerOf(20);
 
-  // jumping offset in bytes 
+  // jumping offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
   if (signedGreaterThan(immediate, bound - 1))
@@ -4542,7 +4540,7 @@ uint64_t getImmediateBFormat(uint64_t instruction) {
   uint64_t imm3;
   uint64_t imm4;
 
-  imm1 = rightShift(leftShift(instruction, 32), 32 + 31); 
+  imm1 = rightShift(leftShift(instruction, 32), 32 + 31);
   imm2 = rightShift(leftShift(instruction, 32 + 1), 32 + 26);
   imm3 = rightShift(leftShift(instruction, 32 + 20), 32 + 28);
   imm4 = rightShift(leftShift(instruction, 32 + 24), 32 + 31);
@@ -4769,7 +4767,7 @@ void fixup_relative_BFormat(uint64_t fromAddress) {
   instruction = loadInstruction(fromAddress);
 
   storeInstruction(fromAddress,
-    encodeBFormat((binaryLength - fromAddress - INSTRUCTIONSIZE) / INSTRUCTIONSIZE, 
+    encodeBFormat((binaryLength - fromAddress - INSTRUCTIONSIZE) / INSTRUCTIONSIZE,
       getRS2(instruction),
       getRS1(instruction),
       getFunct3(instruction),
@@ -5823,7 +5821,7 @@ void fct_divu() {
 
     if (s2 == 0) {
       // division by zero: the result for l and h is undefined
-      n = (uint64_t) (-1); 
+      n = (uint64_t) (-1);
 
       if (debug_divisionByZero) {
         print((uint64_t*) "division-by-zero error: ");
@@ -5886,7 +5884,7 @@ void fct_remu() {
 
     if (s2 == 0) {
       // division by zero: the result for l and h is undefined
-      n = (uint64_t) (-1); 
+      n = (uint64_t) (-1);
 
       if (debug_divisionByZero) {
         print((uint64_t*) "division-by-zero error: ");
@@ -5991,11 +5989,11 @@ void fct_jalr() {
 
   imm = signExtend(immediate, 12);
 
-  if(interpret){
+  if (interpret) {
     s1 = *(registers + rs1);
     d  = *(registers + rd);
   }
-  
+
   if (debug) {
     print((uint64_t*) "jalr");
     print((uint64_t*) " ");
@@ -6016,14 +6014,14 @@ void fct_jalr() {
       printHexadecimal(s1, 0);
       print((uint64_t*)", pc=");
       printHexadecimal(pc, 0);
-      
+
     }
   }
 
   if (interpret) {
     // if rd == 0, this is a JR instruction -
     // do not write into REG_ZR!
-    if (rd != REG_ZR){
+    if (rd != REG_ZR) {
       d = pc + INSTRUCTIONSIZE;
       *(registers + rd) = d;
     }
@@ -6033,13 +6031,13 @@ void fct_jalr() {
     pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
   }
 
-  
+
 
   if (debug) {
     if (interpret) {
       print((uint64_t*) " -> $pc=");
       printHexadecimal(pc, 0);
-      if(rd != REG_ZR){
+      if (rd != REG_ZR) {
         print((uint64_t*) ", ");
         printRegister(rd);
         print((uint64_t*) "=");
@@ -6071,18 +6069,18 @@ void fct_addi() {
   uint64_t d;
   uint64_t imm;
 
-  imm = signExtend(immediate, 12); 
+  imm = signExtend(immediate, 12);
 
   // check for nop
-  if(rs1 == REG_ZR)
-    if(rd == REG_ZR) 
-      if(imm == 0){     
+  if (rs1 == REG_ZR)
+    if (rd == REG_ZR)
+      if (imm == 0) {
         fct_nop();
         return;
       }
 
 
-  if(interpret){
+  if (interpret) {
     s1 = *(registers + rs1);
     d  = *(registers + rd);
   }
@@ -6132,9 +6130,9 @@ void fct_ld() {
   uint64_t d;
   uint64_t imm;
 
-  imm = signExtend(immediate, 12); 
+  imm = signExtend(immediate, 12);
 
-  if(interpret){
+  if (interpret) {
     s1 = *(registers + rs1);
     d  = *(registers + rd);
   }
@@ -6203,7 +6201,7 @@ void fct_sd() {
 
   imm = signExtend(immediate, 12);
 
-  if(interpret){
+  if (interpret) {
     s1  = *(registers + rs1);
     s2  = *(registers + rs2);
   }
@@ -6269,7 +6267,7 @@ void fct_beq() {
 
   imm = signExtend(immediate, 13);
 
-  if(interpret){
+  if (interpret) {
     s1  = *(registers + rs1);
     s2  = *(registers + rs2);
   }
@@ -6331,7 +6329,7 @@ void fct_jal() {
 
   imm = signExtend(immediate, 21);
 
-  if(interpret){
+  if (interpret) {
     d   = *(registers + rd);
   }
 
@@ -6354,7 +6352,7 @@ void fct_jal() {
 
   if (interpret) {
     d = pc + INSTRUCTIONSIZE;
-    if(rd != REG_ZR)
+    if (rd != REG_ZR)
       *(registers + rd) = d;
 
     pc = pc + imm;
@@ -6370,7 +6368,7 @@ void fct_jal() {
   if (debug) {
     if (interpret) {
       print((uint64_t*) " -> ");
-      if(rd != REG_ZR){
+      if (rd != REG_ZR) {
         printRegister(rd);
         print((uint64_t*) "=");
         printHexadecimal(d, 0);
@@ -6432,7 +6430,7 @@ void execute() {
     printHexadecimal(pc, 0);
     if (sourceLineNumber != (uint64_t*) 0) {
       print((uint64_t*) "(~");
-      printInteger(*(sourceLineNumber + pc / WORDSIZE));
+      printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
       print((uint64_t*) ")");
     }
     print((uint64_t*) ": ");
@@ -6450,69 +6448,56 @@ void execute() {
         fct_mul();
       else
         throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-    }
-    else if (funct3 == F3_SLTU) {
+    } else if (funct3 == F3_SLTU) {
       if (funct7 == F7_SLTU)
         fct_sltu();
       else
         throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-    }
-    else if (funct3 == F3_DIVU) {
+    } else if (funct3 == F3_DIVU) {
       if (funct7 == F7_DIVU)
         fct_divu();
       else
         throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-    }
-    else if (funct3 == F3_REMU) {
+    } else if (funct3 == F3_REMU) {
       if (funct7 == F7_REMU)
         fct_remu();
       else
         throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-    }
-    else
+    } else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  }
-
-  else if (opcode == OP_BRANCH) {
+  } else if (opcode == OP_BRANCH) {
     if (funct3 == F3_BEQ)
       fct_beq();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  }
-  else if (opcode == OP_IMM) {
-    if(funct3 == F3_ADDI)
+  } else if (opcode == OP_IMM) {
+    if (funct3 == F3_ADDI)
       fct_addi();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  }
-  else if (opcode == OP_JAL) {
+  } else if (opcode == OP_JAL) {
     fct_jal();
-  }
-  else if (opcode == OP_JALR) {
-    if(funct3 == F3_JALR)
+  } else if (opcode == OP_JALR) {
+    if (funct3 == F3_JALR)
       fct_jalr();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  }
-  else if (opcode == OP_LD) {
-    if(funct3 == F3_LD)
+  } else if (opcode == OP_LD) {
+    if (funct3 == F3_LD)
       fct_ld();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  }
-  else if (opcode == OP_SD) {
-    if(funct3 == F3_SD)
+  } else if (opcode == OP_SD) {
+    if (funct3 == F3_SD)
       fct_sd();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  }
-  else if (opcode == OP_SYSTEM) {
+  } else if (opcode == OP_SYSTEM) {
     if (funct3 == F3_ECALL)
       fct_ecall();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  }
-  else
+  } else
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
 }
 
@@ -7529,17 +7514,17 @@ uint64_t instanceMayBeTrue(uint64_t depth) {
 }
 
 uint64_t babysat(uint64_t depth) {
-  if (depth == numberOfSATVariables) 
+  if (depth == numberOfSATVariables)
     return SAT;
 
   *(SATAssignment + depth) = TRUE;
 
-  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) 
+  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT)
     return SAT;
 
   *(SATAssignment + depth) = FALSE;
 
-  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) 
+  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT)
     return SAT;
 
   return UNSAT;
