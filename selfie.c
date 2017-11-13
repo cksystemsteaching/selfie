@@ -5831,20 +5831,6 @@ void fct_divu() {
         printInteger(s2);
         println();
       }
-      if (interpret) {
-        print(binaryName);
-        print((uint64_t*) ": $pc=");
-      }
-      printHexadecimal(pc, 0);
-      if (sourceLineNumber != (uint64_t*) 0) {
-        print((uint64_t*) "(~");
-        printInteger(*(sourceLineNumber + pc / WORDSIZE));
-        print((uint64_t*) ")");
-      }
-      print((uint64_t*) ": ");
-      printHexadecimal(ir, 8);
-      print((uint64_t*) ": ");
-      println();
     } else {
       n = s1 / s2;
     }
