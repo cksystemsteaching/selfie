@@ -513,7 +513,7 @@ void syntaxErrorSymbol(uint64_t expected);
 void syntaxErrorUnexpected();
 void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
-void encodingError(uint64_t max, uint64_t min, uint64_t found);
+void encodingError(uint64_t min, uint64_t max, uint64_t found);
 
 uint64_t* getVariable(uint64_t* variable);
 uint64_t  load_variable(uint64_t* variable);
@@ -830,7 +830,7 @@ void implementOpen(uint64_t* context);
 void emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
 
-void load_syscall_code(uint64_t code){
+void load_syscall_code(uint64_t code) {
   uint64_t divisor;
 
   divisor = twoToThePowerOf(10);
@@ -2884,11 +2884,11 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
       // procedure called and possibly declared but not defined
 
       // create fixup chain
-      emitJFormat(getAddress(entry), REG_RA, OP_JAL);
+      emitJFormat(getAddress(entry) / INSTRUCTIONSIZE, REG_RA, OP_JAL);
       setAddress(entry, binaryLength - INSTRUCTIONSIZE);
     } else
       // procedure defined, use address
-      emitJFormat(signedDivision(getAddress(entry) - binaryLength, INSTRUCTIONSIZE), REG_RA, OP_JAL); //TODO: check wether offset is multiple of 2
+      emitJFormat(signedDivision(getAddress(entry) - binaryLength, INSTRUCTIONSIZE), REG_RA, OP_JAL);
   }
 
   return type;
@@ -3428,7 +3428,7 @@ void gr_while() {
   } else
     syntaxErrorSymbol(SYM_WHILE);
 
-  // unconditional branch to beginning of while
+  // unconditional branch to the beginning of while
     emitJFormat((brBackToWhile - binaryLength) / INSTRUCTIONSIZE, REG_ZR, OP_JAL);
 
   if (brForwardToEnd != 0)
@@ -3558,7 +3558,7 @@ void gr_return() {
 
   // unconditional branch to procedure epilogue
   // maintain fixup chain for later fixup
-  emitJFormat(returnBranches, REG_ZR, OP_JAL);
+  emitJFormat(returnBranches / INSTRUCTIONSIZE, REG_ZR, OP_JAL);
 
   // new head of fixup chain
   returnBranches = binaryLength - INSTRUCTIONSIZE;
@@ -4786,7 +4786,7 @@ void fixlink_relative(uint64_t fromAddress, uint64_t toAddress) {
   uint64_t previousAddress;
 
   while (fromAddress != 0) {
-    previousAddress = getImmediateJFormat(loadInstruction(fromAddress)) / INSTRUCTIONSIZE;
+    previousAddress = getImmediateJFormat(loadInstruction(fromAddress));
 
     fixup_relative_JFormat(fromAddress, toAddress);
 
