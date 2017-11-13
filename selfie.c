@@ -174,6 +174,8 @@ uint64_t* power_of_two_table;
 uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
 uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 
+uint64_t UINT64_MAX; // maximum numerical value of a unsigned 64-bit integer
+
 uint64_t INT_BITWIDTH = 32; // int bit width used for system call compatibility
 
 uint64_t maxFilenameLength = 128;
@@ -235,6 +237,8 @@ void initLibrary() {
   // compute two's complement boundaries
   INT64_MAX = twoToThePowerOf(CPUBITWIDTH - 1) - 1;
   INT64_MIN = INT64_MAX + 1;
+
+  UINT64_MAX = (twoToThePowerOf(CPUBITWIDTH - 1) - 1) * 2 + 1;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
@@ -998,7 +1002,7 @@ uint64_t debug_exception = 0;
 // TODO: implement proper interrupt controller to turn interrupts on and off
 uint64_t TIMESLICE = 10000000;
 
-uint64_t TIMEROFF = -1;
+uint64_t TIMEROFF = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1020,7 +1024,7 @@ uint64_t* pt = (uint64_t*) 0; // page table
 
 // core state
 
-uint64_t timer = -1; // counter for timer interrupt
+uint64_t timer = 0; // counter for timer interrupt
 
 uint64_t trap = 0; // flag for creating a trap
 
@@ -5505,9 +5509,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
     printHexadecimal((uint64_t) fromContext, 8);
     print((uint64_t*) " to context ");
     printHexadecimal((uint64_t) toContext, 8);
-    if (signedGreaterThan(timeout, -1)) {
+    if (timer != TIMEROFF) {
       print((uint64_t*) " to execute ");
-      printInteger(timeout);
+      printInteger(timer);
       print((uint64_t*) " instructions");
     }
     println();
@@ -6526,14 +6530,19 @@ void execute() {
 }
 
 void interrupt() {
-  if (timer > 0)
+  if (timer != TIMEROFF) {
     timer = timer - 1;
 
-  if (timer == 0)
-    if (getException(currentContext) == EXCEPTION_NOEXCEPTION)
-      // only throw exception if no other is pending
-      // TODO: handle multiple pending exceptions
-      throwException(EXCEPTION_TIMER, 0);
+    if (timer == 0) {
+      if (getException(currentContext) == EXCEPTION_NOEXCEPTION)
+        // only throw exception if no other is pending
+        // TODO: handle multiple pending exceptions
+        throwException(EXCEPTION_TIMER, 0);
+      else
+        // trigger timer in the next interrupt cycle
+        timer = 1;
+    }
+  }
 }
 
 uint64_t* runUntilException() {
@@ -7340,9 +7349,9 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
 
   mslice = TIMESLICE;
 
-  if (mslice <= INT64_MAX / 100)
+  if (mslice <= UINT64_MAX / 100)
     mslice = mslice * mix / 100;
-  else if (mslice <= INT64_MAX / 10)
+  else if (mslice <= UINT64_MAX / 10)
     mslice = mslice / 10 * (mix / 10);
   else
     mslice = mslice / 100 * mix;
