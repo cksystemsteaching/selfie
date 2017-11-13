@@ -82,7 +82,7 @@
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-void exit(uint64_t code);
+void      exit(uint64_t code);
 uint64_t  read(uint64_t fd, uint64_t* buffer, uint64_t bytesToRead);
 uint64_t  write(uint64_t fd, uint64_t* buffer, uint64_t bytesToWrite);
 uint64_t  open(uint64_t* filename, uint64_t flags, uint64_t mode);
@@ -111,7 +111,7 @@ uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 
 uint64_t stringLength(uint64_t* s);
-void stringReverse(uint64_t* s);
+void     stringReverse(uint64_t* s);
 uint64_t stringCompare(uint64_t* s, uint64_t* t);
 
 uint64_t  atoi(uint64_t* s);
@@ -164,7 +164,7 @@ uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
 
-uint64_t CPUBITWIDTH   = 64;
+uint64_t CPUBITWIDTH = 64;
 
 uint64_t SIZEOFUINT64     = 8; // must be the same as REGISTERSIZE
 uint64_t SIZEOFUINT64STAR = 8; // must be the same as REGISTERSIZE
@@ -521,27 +521,27 @@ void encodingError(uint64_t min, uint64_t max, uint64_t found);
 
 uint64_t* getVariable(uint64_t* variable);
 uint64_t  load_variable(uint64_t* variable);
-void load_integer(uint64_t value);
-void load_string(uint64_t* string);
+void      load_integer(uint64_t value);
+void      load_string(uint64_t* string);
 
 uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
-void help_procedure_prologue(uint64_t localVariables);
-void help_procedure_epilogue(uint64_t parameters);
+void     help_procedure_prologue(uint64_t localVariables);
+void     help_procedure_epilogue(uint64_t parameters);
 
 uint64_t gr_call(uint64_t* procedure);
 uint64_t gr_factor();
 uint64_t gr_term();
 uint64_t gr_simpleExpression();
 uint64_t gr_expression();
-void gr_while();
-void gr_if();
-void gr_return();
-void gr_statement();
+void     gr_while();
+void     gr_if();
+void     gr_return();
+void     gr_statement();
 uint64_t gr_type();
-void gr_variable(uint64_t offset);
+void     gr_variable(uint64_t offset);
 uint64_t gr_initialization(uint64_t type);
-void gr_procedure(uint64_t* procedure, uint64_t type);
-void gr_cstar();
+void     gr_procedure(uint64_t* procedure, uint64_t type);
+void     gr_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -827,11 +827,11 @@ void implementRead(uint64_t* context);
 void emitWrite();
 void implementWrite(uint64_t* context);
 
-void emitOpen();
+void     emitOpen();
 uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s);
-void implementOpen(uint64_t* context);
+void     implementOpen(uint64_t* context);
 
-void emitMalloc();
+void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
 
 void load_syscall_code(uint64_t code) {
@@ -865,9 +865,9 @@ uint64_t SYSCALL_MALLOC = 4045;
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
 
-void emitSwitch();
-void doSwitch(uint64_t* toContext, uint64_t timeout);
-void implementSwitch();
+void      emitSwitch();
+void      doSwitch(uint64_t* toContext, uint64_t timeout);
+void      implementSwitch();
 uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -889,7 +889,7 @@ uint64_t debug_switch = 0;
 void initMemory(uint64_t megabytes);
 
 uint64_t loadPhysicalMemory(uint64_t* paddr);
-void storePhysicalMemory(uint64_t* paddr, uint64_t data);
+void     storePhysicalMemory(uint64_t* paddr, uint64_t data);
 
 uint64_t FrameForPage(uint64_t* table, uint64_t page);
 uint64_t getFrameForPage(uint64_t* table, uint64_t page);
@@ -902,7 +902,7 @@ uint64_t isVirtualAddressMapped(uint64_t* table, uint64_t vaddr);
 uint64_t* tlb(uint64_t* table, uint64_t vaddr);
 
 uint64_t loadVirtualMemory(uint64_t* table, uint64_t vaddr);
-void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data);
+void     storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -980,7 +980,7 @@ uint64_t* runUntilException();
 uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max);
 
 uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max);
-void printProfile(uint64_t* message, uint64_t total, uint64_t* counters);
+void     printProfile(uint64_t* message, uint64_t total, uint64_t* counters);
 
 void selfie_disassemble();
 
@@ -1091,7 +1091,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
 
 uint64_t* findContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
 
-void freeContext(uint64_t* context);
+void      freeContext(uint64_t* context);
 uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 
 // context struct:
@@ -1216,14 +1216,14 @@ uint64_t pavailable();
 uint64_t pused();
 
 uint64_t* palloc();
-void pfree(uint64_t* frame);
+void      pfree(uint64_t* frame);
 
 void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data);
 
 void up_loadBinary(uint64_t* context);
 
 uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP);
-void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv);
+void     up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv);
 
 void mapUnmappedPages(uint64_t* context);
 
@@ -1322,12 +1322,12 @@ uint64_t babysat(uint64_t depth);
 
 void selfie_printDimacs();
 
-void dimacs_findNextCharacter(uint64_t newLine);
-void dimacs_getSymbol();
-void dimacs_word(uint64_t* word);
+void     dimacs_findNextCharacter(uint64_t newLine);
+void     dimacs_getSymbol();
+void     dimacs_word(uint64_t* word);
 uint64_t dimacs_number();
-void dimacs_getClause(uint64_t clause);
-void dimacs_getInstance();
+void     dimacs_getClause(uint64_t clause);
+void     dimacs_getInstance();
 
 void selfie_loadDimacs();
 
@@ -1344,13 +1344,13 @@ uint64_t* remainingArguments();
 
 uint64_t* peekArgument();
 uint64_t* getArgument();
-void setArgument(uint64_t* argv);
+void      setArgument(uint64_t* argv);
 
 void printUsage();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t selfie_argc = 0;
+uint64_t  selfie_argc = 0;
 uint64_t* selfie_argv = (uint64_t*) 0;
 
 uint64_t* selfieName = (uint64_t*) 0;
