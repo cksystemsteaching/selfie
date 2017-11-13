@@ -1406,7 +1406,8 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
   uint64_t remainder;
 
   // necessary to handle INT64_MIN as dividend properly
-  if (divisor == 1) return dividend;
+  if (divisor == 1) 
+   return dividend;
 
   if (divisor == INT64_MIN) {
     if (dividend == INT64_MIN)
@@ -7542,15 +7543,18 @@ uint64_t instanceMayBeTrue(uint64_t depth) {
 }
 
 uint64_t babysat(uint64_t depth) {
-  if (depth == numberOfSATVariables) return SAT;
+  if (depth == numberOfSATVariables) 
+    return SAT;
 
   *(SATAssignment + depth) = TRUE;
 
-  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) return SAT;
+  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) 
+    return SAT;
 
   *(SATAssignment + depth) = FALSE;
 
-  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) return SAT;
+  if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT) 
+    return SAT;
 
   return UNSAT;
 }
