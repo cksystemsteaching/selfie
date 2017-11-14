@@ -5784,7 +5784,7 @@ void fct_mul() {
       printRegister(rd);
       print((uint64_t*) "=");
       printInteger(d);
-      print((uint64_t*) ", ");
+      print((uint64_t*) ",");
       printRegister(rs1);
       print((uint64_t*) "=");
       printInteger(s1);
@@ -6012,9 +6012,6 @@ void fct_jalr() {
       printRegister(rs1);
       print((uint64_t*) "=");
       printHexadecimal(s1, 0);
-      print((uint64_t*)", pc=");
-      printHexadecimal(pc, 0);
-
     }
   }
 
@@ -6292,8 +6289,6 @@ void fct_beq() {
       printRegister(rs2);
       print((uint64_t*) "=");
       printInteger(s2);
-      print((uint64_t*) "$pc=");
-      printInteger(pc);
     }
   }
 
@@ -6372,7 +6367,7 @@ void fct_jal() {
         printRegister(rd);
         print((uint64_t*) "=");
         printHexadecimal(d, 0);
-        print((uint64_t*) ", ");
+        print((uint64_t*) ",");
       }
       print((uint64_t*) "$pc=");
       printHexadecimal(pc, 0);
