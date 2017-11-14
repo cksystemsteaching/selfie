@@ -5839,7 +5839,7 @@ void fct_divu() {
     print((uint64_t*) "divu");
     print((uint64_t*) " ");
     printRegister(rd);
-    print((uint64_t*) ", ");
+    print((uint64_t*) ",");
     printRegister(rs1);
     print((uint64_t*) ",");
     printRegister(rs2);
@@ -5848,7 +5848,7 @@ void fct_divu() {
       printRegister(rd);
       print((uint64_t*) "=");
       printInteger(d);
-      print((uint64_t*) ", ");
+      print((uint64_t*) ",");
       printRegister(rs1);
       print((uint64_t*) "=");
       printInteger(s1);
@@ -5902,7 +5902,7 @@ void fct_remu() {
     print((uint64_t*) "remu");
     print((uint64_t*) " ");
     printRegister(rd);
-    print((uint64_t*) ", ");
+    print((uint64_t*) ",");
     printRegister(rs1);
     print((uint64_t*) ",");
     printRegister(rs2);
@@ -5911,7 +5911,7 @@ void fct_remu() {
       printRegister(rd);
       print((uint64_t*) "=");
       printInteger(d);
-      print((uint64_t*) ", ");
+      print((uint64_t*) ",");
       printRegister(rs1);
       print((uint64_t*) "=");
       printInteger(s1);
