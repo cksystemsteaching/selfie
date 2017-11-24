@@ -2809,6 +2809,7 @@ void load_integer(uint64_t value) {
   uint64_t toShift;
   uint64_t i;
   uint64_t isNegative;
+  uint64_t firstIteration;
 
   isNegative = 0;
 
@@ -2828,13 +2829,20 @@ void load_integer(uint64_t value) {
 
   i = CPUBITWIDTH - toShift;
 
+  firstIteration = 1;
+
   while (i >= 10) {
     if (value >= twoToThePowerOf(i)) {
       emitIFormat(rightShift(leftShift(value, shifted), shifted + i), reg, F3_ADDI, currentTemporary(), OP_IMM);
 
       reg = currentTemporary();
 
-      emitLeftShiftBy(reg, 10);
+      if (firstIteration) {
+        emitIFormat(twoToThePowerOf(10), REG_ZR, F3_ADDI, nextTemporary(), OP_IMM);
+        firstIteration = 0;
+      }
+
+      emitRFormat(F7_MUL, nextTemporary(), reg, F3_MUL, reg, OP_OP);
     }
 
     shifted = shifted + toShift;
