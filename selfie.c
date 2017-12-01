@@ -689,6 +689,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
 uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
 uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
 uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
+uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
 
 // -----------------------------------------------------------------
 // ---------------------------- DECODER ----------------------------
@@ -704,6 +705,7 @@ uint64_t getImmediateIFormat(uint64_t instruction);
 uint64_t getImmediateSFormat(uint64_t instruction);
 uint64_t getImmediateBFormat(uint64_t instruction);
 uint64_t getImmediateJFormat(uint64_t instruction);
+uint64_t getImmediateUFormat(uint64_t instruction);
 uint64_t signExtend(uint64_t immediate, uint64_t bits);
 
 void decodeRFormat();
@@ -711,6 +713,7 @@ void decodeIFormat();
 void decodeSFormat();
 void decodeBFormat();
 void decodeJFormat();
+void decodeUFormat();
 
 void decode();
 
@@ -721,6 +724,7 @@ uint64_t OP_LD     = 3;   // 0000011, IF (LD)
 uint64_t OP_IMM    = 19;  // 0010011, IF (ADDI, NOP)
 uint64_t OP_SD     = 35;  // 0100011, SF (SD)
 uint64_t OP_OP     = 51;  // 0110011, RF (ADD, SUB, SLTU, MUL, DIVU, REMU)
+uint64_t OP_LUI    = 55;  // 0110111, UT (LUI)
 uint64_t OP_BRANCH = 99;  // 1100011, BF (BEQ)
 uint64_t OP_JALR   = 103; // 1100111, IF (JALR)
 uint64_t OP_JAL    = 111; // 1101111, JF (JAL)
@@ -778,6 +782,7 @@ void emitIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64_t rd,
 void emitSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
 void emitBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
 void emitJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
+void emitUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
 
 void fixup_relative_BFormat(uint64_t fromAddress);
 void fixup_relative_JFormat(uint64_t fromAddress, uint64_t toAddress);
@@ -938,6 +943,7 @@ void initMemory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
+void fct_lui();
 void fct_addi();
 void fct_nop();
 
@@ -2803,13 +2809,22 @@ uint64_t load_variable(uint64_t* variable) {
   return getType(entry);
 }
 
-void load_integer(uint64_t value) {
-  uint64_t reg;
-  uint64_t shifted;
-  uint64_t toShift;
-  uint64_t i;
+// 64 bit
+//
+//         16                18                 18              12       
+// +----------------+------------------+------------------+------------+
+// |      imm3      |       imm2       |       imm1       |    imm0    |
+// +----------------+------------------+------------------+------------+
+// |              upper                |             lower             |
+// +-----------------------------------+-------------------------------+
+void load_integer(uint64_t value){
+  uint64_t imm0;
+  uint64_t imm1;
+  uint64_t imm2;
+  uint64_t imm3;
+  uint64_t upper;
+  uint64_t lower;
   uint64_t isNegative;
-  uint64_t firstIteration;
 
   isNegative = 0;
 
@@ -2822,37 +2837,53 @@ void load_integer(uint64_t value) {
 
   talloc();
 
-  reg = REG_ZR;
-  shifted = 0;
+  lower = value % twoToThePowerOf(30);
+  upper = value / twoToThePowerOf(30);
 
-  toShift = CPUBITWIDTH % 10;
+  // load upper part into register
+  if (upper != 0) {
+    // load shifting factor
+    emitIFormat(twoToThePowerOf(10), REG_ZR, F3_ADDI, REG_S1, OP_IMM);
+    emitIFormat(twoToThePowerOf(8), REG_ZR, F3_ADDI, REG_S2, OP_IMM);
+    emitRFormat(F7_MUL, REG_S1, REG_S2, F3_MUL, REG_S1, OP_OP);
 
-  i = CPUBITWIDTH - toShift;
+    imm2 = upper % twoToThePowerOf(18);
+    imm3 = upper / twoToThePowerOf(18);
 
-  firstIteration = 1;
-
-  while (i >= 10) {
-    if (value >= twoToThePowerOf(i)) {
-      emitIFormat(rightShift(leftShift(value, shifted), shifted + i), reg, F3_ADDI, currentTemporary(), OP_IMM);
-
-      reg = currentTemporary();
-
-      if (firstIteration) {
-        emitIFormat(twoToThePowerOf(10), REG_ZR, F3_ADDI, nextTemporary(), OP_IMM);
-        firstIteration = 0;
-      }
-
-      emitRFormat(F7_MUL, nextTemporary(), reg, F3_MUL, reg, OP_OP);
+    if (imm3 != 0) {
+      emitUFormat(imm3, REG_S3, OP_LUI);
+      emitRFormat(F7_MUL, REG_S1, REG_S3, F3_MUL, REG_S3, OP_OP);
     }
 
-    shifted = shifted + toShift;
+    emitUFormat(imm2, REG_S2, OP_LUI);
 
-    toShift = 10;
+    if(imm3 != 0) emitRFormat(F7_ADD, REG_S3, REG_S2, F3_ADD, REG_S2, OP_OP);
 
-    i = i - toShift;
+    emitRFormat(F7_MUL, REG_S1, REG_S2, F3_MUL, REG_S2, OP_OP);   
   }
 
-  emitIFormat(rightShift(leftShift(value, shifted), shifted), reg, F3_ADDI, currentTemporary(), OP_IMM);
+  imm0 = lower % twoToThePowerOf(12);
+  imm1 = lower / twoToThePowerOf(12);
+
+  // setting of bit 11 can only be reached by increasing imm1 by 1 and
+  // adding a negativ offset instead of imm0
+  if (imm0 >= twoToThePowerOf(11)) {
+    imm1 = imm1 + 1;
+    imm0 = imm0 - twoToThePowerOf(12);
+  }
+
+  // load lower part into register
+  if (imm1 != 0) {
+    emitUFormat(imm1, currentTemporary(), OP_LUI);
+    emitIFormat(imm0, currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+  } else {
+    emitIFormat(imm0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+  }
+
+  // bring together upper and lower part
+  if (upper != 0) {
+    emitRFormat(F7_ADD, REG_S2, currentTemporary(), F3_ADD, currentTemporary(), OP_OP);
+  }
 
   if (isNegative)
     emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
@@ -4362,9 +4393,6 @@ uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t fun
   return leftShift(leftShift(leftShift(leftShift(leftShift(funct7, 5) + rs2, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;
 }
 
-// -----------------------------------------------------------------
-// 32 bit
-
 //          12            5       3        5        7
 // +------------------+-------+--------+-------+---------+
 // |    immediate     |  rs1  | funct3 |   rd  | opcode  |
@@ -4388,9 +4416,6 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
 
   return leftShift(leftShift(leftShift(leftShift(immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;
 }
-
-// -----------------------------------------------------------------
-// 32 bit
 
 //      7         5       5       3        5        7
 // +----------+-------+-------+--------+-------+---------+
@@ -4422,9 +4447,6 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 5) + rs2, 5) + rs1, 3) + funct3, 5) + imm2, 7) + opcode;
 }
-
-// -----------------------------------------------------------------
-// 32 bit
 
 //    1        6        5       5      3       4       1       7
 // +------+---------+-------+-------+------+-------+------+---------+
@@ -4465,9 +4487,6 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   return leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 6) + imm2, 5) + rs2, 5) + rs1, 3) + funct3, 4) + imm3, 1) + imm4, 7) + opcode;
 }
 
-// -----------------------------------------------------------------
-// 32 bit
-
 //     1        10         1         8        5        7
 // +-------+-----------+-------+-----------+-------+---------+
 // | imm1  |   imm2    | imm3  |   imm4    |  rd   | opcode  |
@@ -4502,6 +4521,29 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   imm4 = rightShift(leftShift(immediate, 12 + 32), 24 + 32);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 10) + imm2, 1) + imm3, 8) + imm4, 5) + rd, 7) + opcode;
+}
+
+//                     20                      5        7
+// +---------------------------------------+-------+---------+
+// |                immediate              |  rd   | opcode  |
+// +---------------------------------------+-------+---------+
+//  imm[31:12]
+uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
+  // assert: 0 <= opcode < 2^7
+  // assert: 0 <= rd < 2^5
+  // assert: -2^19 <= immediate < 2^19 -1
+  uint64_t bound;
+
+  bound = twoToThePowerOf(19);
+
+  if (signedGreaterThan(immediate, bound - 1))
+    encodingError(-bound, bound - 1, immediate);
+  else if (signedLessThan(immediate, - bound))
+    encodingError(- bound, bound - 1, immediate);
+
+  immediate = signShrink(immediate, 20);
+
+  return leftShift(leftShift(immediate, 5) + rd, 7) + opcode;
 }
 
 uint64_t getOpcode(uint64_t instruction) {
@@ -4570,6 +4612,10 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
 
   // reassemble immediate and add trailing zero
   return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);
+}
+
+uint64_t getImmediateUFormat(uint64_t instruction) {
+  return rightShift(leftShift(instruction, 32), 12 + 32);
 }
 
 uint64_t signExtend(uint64_t immediate, uint64_t bits) {
@@ -4663,6 +4709,20 @@ void decodeJFormat() {
   immediate = getImmediateJFormat(ir);
 }
 
+//                     20                      5        7
+// +---------------------------------------+-------+---------+
+// |               immediate               |  rd   | opcode  |
+// +---------------------------------------+-------+---------+
+//                 imm[31:20]
+void decodeUFormat() {
+  funct7    = 0;
+  rs2       = 0;
+  rs1       = 0;
+  funct3    = 0;
+  rd        = getRD(ir);
+  immediate = getImmediateUFormat(ir);
+}
+
 void decode() {
   opcode = getOpcode(ir);
 
@@ -4674,6 +4734,8 @@ void decode() {
     decodeBFormat();
   else if (opcode == OP_JAL)
     decodeJFormat();
+  else if (opcode == OP_LUI)
+    decodeUFormat();
   else if (opcode == OP_IMM)
     decodeIFormat();
   else if (opcode == OP_LD)
@@ -4767,6 +4829,10 @@ void emitBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3
 
 void emitJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   emitInstruction(encodeJFormat(immediate, rd, opcode));
+}
+
+void emitUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
+  emitInstruction(encodeUFormat(immediate, rd, opcode));
 }
 
 void fixup_relative_BFormat(uint64_t fromAddress) {
@@ -6129,6 +6195,44 @@ void fct_addi() {
   }
 }
 
+void fct_lui() {
+  uint64_t imm;
+
+  if (debug) {
+    print((uint64_t*) "lui");
+    print((uint64_t*) " ");
+    printRegister(rd);
+    print((uint64_t*) ",");
+    printHexadecimal(immediate, 0);
+    if (interpret) {
+      print((uint64_t*) ": ");
+      printRegister(rd);
+      print((uint64_t*) "=");
+      printInteger(*(registers + rd));
+    }
+  }
+
+  if (interpret) {
+    imm = leftShift(immediate, 12);
+    imm = signExtend(imm, 32);
+
+    *(registers + rd) = imm;
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((uint64_t*) " -> ");
+      printRegister(rd);
+      print((uint64_t*) "=");
+      printHexadecimal(imm, 0);
+    }
+    println();
+  }
+
+}
+
 void fct_ld() {
   uint64_t vaddr;
   uint64_t s1;
@@ -6468,6 +6572,8 @@ void execute() {
         throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
     } else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  } else if (opcode == OP_LUI) {
+    fct_lui();
   } else if (opcode == OP_BRANCH) {
     if (funct3 == F3_BEQ)
       fct_beq();
