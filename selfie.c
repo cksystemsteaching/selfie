@@ -6463,13 +6463,21 @@ void restoreContext(uint64_t* context) {
     storeVirtualMemory(parentTable, LoPage(vctxt), page);
 
     page  = loadVirtualMemory(parentTable, HiPage(vctxt));
-    frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+
+    if (isVirtualAddressMapped(parentTable, FrameForPage(table, page)))
+      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+    else
+      frame = 0;
 
     while (frame != 0) {
       mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page  = page - 1;
-      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+
+      if (isVirtualAddressMapped(parentTable, FrameForPage(table, page)))
+        frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+      else
+        frame = 0;
     }
 
     storeVirtualMemory(parentTable, HiPage(vctxt), page);
