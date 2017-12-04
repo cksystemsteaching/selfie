@@ -1254,6 +1254,7 @@ uint64_t HYPSTER = 4;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+uint64_t has_compiler_error = 0;
 uint64_t nextPageFrame = 0;
 
 uint64_t usedPageFrameMemory = 0;
@@ -1861,6 +1862,7 @@ void printLineNumber(uint64_t* message, uint64_t line) {
 }
 
 void syntaxErrorMessage(uint64_t* message) {
+  has_compiler_error = 1;
   printLineNumber((uint64_t*) "error", lineNumber);
 
   print(message);
@@ -1869,6 +1871,7 @@ void syntaxErrorMessage(uint64_t* message) {
 }
 
 void syntaxErrorCharacter(uint64_t expected) {
+  has_compiler_error = 1;
   printLineNumber((uint64_t*) "error", lineNumber);
 
   printCharacter(expected);
@@ -1881,6 +1884,7 @@ void syntaxErrorCharacter(uint64_t expected) {
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
+  has_compiler_error = 1;
   printLineNumber((uint64_t*) "error", lineNumber);
 
   print(expected);
@@ -2619,6 +2623,7 @@ void restore_temporaries(uint64_t numberOfTemporaries) {
 }
 
 void syntaxErrorSymbol(uint64_t expected) {
+  has_compiler_error = 1;
   printLineNumber((uint64_t*) "error", lineNumber);
 
   printSymbol(expected);
@@ -2631,6 +2636,7 @@ void syntaxErrorSymbol(uint64_t expected) {
 }
 
 void syntaxErrorUnexpected() {
+  has_compiler_error = 1;
   printLineNumber((uint64_t*) "error", lineNumber);
 
   print((uint64_t*) "unexpected symbol ");
@@ -7403,8 +7409,10 @@ uint64_t selfie() {
     while (numberOfRemainingArguments() > 0) {
       option = getArgument();
 
-      if (stringCompare(option, (uint64_t*) "-c"))
+      if (stringCompare(option, (uint64_t*) "-c")) {
         selfie_compile();
+        if(has_compiler_error)  exit(EXITCODE_COMPILERERROR);
+      }
       else if (numberOfRemainingArguments() == 0) {
         // remaining options have at least one argument
         printUsage();
