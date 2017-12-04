@@ -6207,7 +6207,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(6 * SIZEOFUINT64STAR + 11 * SIZEOFUINT64);
+    context = smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
