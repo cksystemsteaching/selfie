@@ -415,7 +415,7 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
+uint64_t* createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class);
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class);
@@ -428,10 +428,10 @@ uint64_t reportUndefinedProcedures();
 // |  0 | next    | pointer to next entry
 // |  1 | string  | identifier string, string literal
 // |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, PROCEDURE, STRING
+// |  3 | class   | VARIABLE, PROCEDURE, STRING, BIGINT
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
-// |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset
+// |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset, BIGINT: offset
 // |  7 | scope   | REG_GP, REG_FP
 // +----+---------+
 
@@ -459,6 +459,7 @@ void setScope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
 uint64_t VARIABLE  = 1;
 uint64_t PROCEDURE = 2;
 uint64_t STRING    = 3;
+uint64_t BIGINT    = 4;
 
 // types
 uint64_t UINT64_T     = 1;
@@ -2377,7 +2378,7 @@ void getSymbol() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
+uint64_t* createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* newEntry;
 
   newEntry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
@@ -2411,6 +2412,8 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
     setNextEntry(newEntry, library_symbol_table);
     library_symbol_table = newEntry;
   }
+
+  return newEntry;
 }
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
@@ -2809,22 +2812,14 @@ uint64_t load_variable(uint64_t* variable) {
   return getType(entry);
 }
 
-// 64 bit
-//
-//         16                18                 18              12       
-// +----------------+------------------+------------------+------------+
-// |      imm3      |       imm2       |       imm1       |    imm0    |
-// +----------------+------------------+------------------+------------+
-// |              upper                |             lower             |
-// +-----------------------------------+-------------------------------+
-void load_integer(uint64_t value){
-  uint64_t imm0;
-  uint64_t imm1;
-  uint64_t imm2;
-  uint64_t imm3;
-  uint64_t upper;
+void load_integer(uint64_t value) {
   uint64_t lower;
+  uint64_t upper;
   uint64_t isNegative;
+  uint64_t* entry;
+  uint64_t bound;
+  uint64_t offset;
+  uint64_t* buffer;
 
   isNegative = 0;
 
@@ -2835,58 +2830,69 @@ void load_integer(uint64_t value){
       value = value * (-1);
     }
 
-  talloc();
+  // integers with an absolute value greater or equal to 2^30 are treated like global variables
+  if (value >= twoToThePowerOf(30)) {
+    if (isNegative) value = value * (-1);
 
-  lower = value % twoToThePowerOf(30);
-  upper = value / twoToThePowerOf(30);
+    buffer = malloc(maxIntegerLength + 1);
+    buffer = itoa(value, buffer, 10, 0, 0);
 
-  // load upper part into register
-  if (upper != 0) {
-    // load shifting factor
-    emitIFormat(twoToThePowerOf(10), REG_ZR, F3_ADDI, REG_S1, OP_IMM);
-    emitIFormat(twoToThePowerOf(8), REG_ZR, F3_ADDI, REG_S2, OP_IMM);
-    emitRFormat(F7_MUL, REG_S1, REG_S2, F3_MUL, REG_S1, OP_OP);
+    // avoids storing multiple times the same value
+    entry = searchSymbolTable(global_symbol_table, buffer, BIGINT);
 
-    imm2 = upper % twoToThePowerOf(18);
-    imm3 = upper / twoToThePowerOf(18);
+    if (entry == (uint64_t*) 0) {
 
-    if (imm3 != 0) {
-      emitUFormat(imm3, REG_S3, OP_LUI);
-      emitRFormat(F7_MUL, REG_S1, REG_S3, F3_MUL, REG_S3, OP_OP);
+      allocatedMemory = allocatedMemory + REGISTERSIZE;
+
+      entry = createSymbolTableEntry(GLOBAL_TABLE, buffer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
     }
 
-    emitUFormat(imm2, REG_S2, OP_LUI);
+    // generates code for loading the value
+    bound = twoToThePowerOf(11);
+    offset = getAddress(entry);
 
-    if(imm3 != 0) emitRFormat(F7_ADD, REG_S3, REG_S2, F3_ADD, REG_S2, OP_OP);
+    if (signedGreaterThan(offset, - bound - 1)) {
+      if (signedLessThan(offset, bound)) {
+        talloc();
 
-    emitRFormat(F7_MUL, REG_S1, REG_S2, F3_MUL, REG_S2, OP_OP);   
-  }
+        emitIFormat(offset, REG_GP, F3_LD, currentTemporary(), OP_LD);
+      } else {
+        load_integer(offset);
 
-  imm0 = lower % twoToThePowerOf(12);
-  imm1 = lower / twoToThePowerOf(12);
+        emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
+        emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
+     }
+    } else {
+      load_integer(offset);
 
-  // setting of bit 11 can only be reached by increasing imm1 by 1 and
-  // adding a negativ offset instead of imm0
-  if (imm0 >= twoToThePowerOf(11)) {
-    imm1 = imm1 + 1;
-    imm0 = imm0 - twoToThePowerOf(12);
-  }
+      emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
+      emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
+    }
 
-  // load lower part into register
-  if (imm1 != 0) {
-    emitUFormat(imm1, currentTemporary(), OP_LUI);
-    emitIFormat(imm0, currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+  // integers with an absolute value less than 2^30 are directly loaded into a register
   } else {
-    emitIFormat(imm0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-  }
+    talloc();
 
-  // bring together upper and lower part
-  if (upper != 0) {
-    emitRFormat(F7_ADD, REG_S2, currentTemporary(), F3_ADD, currentTemporary(), OP_OP);
-  }
+    lower = value % twoToThePowerOf(12);
+    upper = value / twoToThePowerOf(12);
 
-  if (isNegative)
-    emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
+    // setting of bit 11 can only be reached by increasing upper by 1 and
+    // adding a negativ offset instead of lower
+    if (lower >= twoToThePowerOf(11)) {
+      upper = upper + 1;
+      lower = lower - twoToThePowerOf(12);
+    }
+
+    if (upper != 0) {
+      emitUFormat(upper, currentTemporary(), OP_LUI);
+      emitIFormat(lower, currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+    } else {
+      emitIFormat(lower, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+    }
+
+    if (isNegative)
+      emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
+  }
 }
 
 void load_string(uint64_t* string) {
@@ -4172,31 +4178,38 @@ void emitMainEntry() {
 
 void bootstrapCode() {
   uint64_t savedBinaryLength;
+  uint64_t upper;
+  uint64_t lower;
 
   savedBinaryLength = binaryLength;
 
   binaryLength = 0;
 
-  // assert: allocatedTemporaries == 0
-
-  load_integer(savedBinaryLength);
-
   // load binaryLength into GP register
-  emitIFormat(0, currentTemporary(), F3_ADDI, REG_GP, OP_IMM);
+  lower = savedBinaryLength % twoToThePowerOf(12);
+  upper = savedBinaryLength / twoToThePowerOf(12);
 
-  tfree(1);
+  // setting of bit 11 can only be reached by increasing upper by 1 and
+  // adding a negativ offset instead of lower
+  if (lower >= twoToThePowerOf(11)) {
+    upper = upper + 1;
+    lower = lower - twoToThePowerOf(12);
+  }
 
-  // assert: allocatedTemporaries == 0
+  if (upper != 0) {
+    emitUFormat(upper, REG_GP, OP_LUI);
+    emitIFormat(lower, REG_GP, F3_ADDI, REG_GP, OP_IMM);
+  } else {
+    emitIFormat(lower, REG_ZR, F3_ADDI, REG_GP, OP_IMM);
+  }
 
   // initial stack pointer is stored at highest virtual address
-  load_integer(VIRTUALMEMORYSIZE - REGISTERSIZE);
+  emitUFormat(twoToThePowerOf(18), REG_T0, OP_LUI);
+  emitIFormat(4, REG_ZR, F3_ADDI, REG_T1, OP_IMM);
+  emitRFormat(F7_MUL, REG_T1, REG_T0, F3_MUL, REG_T0, OP_OP);
 
   // load initial stack pointer into SP register
-  emitIFormat(0, currentTemporary(), F3_LD, REG_SP, OP_LD);
-
-  tfree(1);
-
-  // assert: allocatedTemporaries == 0
+  emitIFormat(-REGISTERSIZE, REG_T0, F3_LD, REG_SP, OP_LD);
 
   binaryLength = savedBinaryLength;
 
@@ -4900,14 +4913,19 @@ void emitGlobalsStrings() {
 
   // assert: n = binaryLength
 
-  // allocate space for global variables and copy strings
+  // allocate space for global variables and copy strings and big integers
   while ((uint64_t) entry != 0) {
     if (getClass(entry) == VARIABLE) {
       storeData(binaryLength, getValue(entry));
 
       binaryLength = binaryLength + REGISTERSIZE;
-    } else if (getClass(entry) == STRING)
+    } else if (getClass(entry) == STRING) {
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
+    } else if (getClass(entry) == BIGINT) {
+      storeData(binaryLength, getValue(entry));
+
+      binaryLength = binaryLength + REGISTERSIZE;
+    }
 
     entry = getNextEntry(entry);
   }
