@@ -3203,58 +3203,47 @@ uint64_t gr_expression() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_EQUALITY) {
-      // if a == b load 1 else load 0
-      emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
+      // a == b iff unsigned b - a < 1
+      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_DSUBU);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
+      emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLTU);
 
       tfree(1);
-
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
-      // if a == b load 0 else load 1
-      emitIFormat(OP_BEQ, previousTemporary(), currentTemporary(), 4);
+      // a != b iff unsigned 0 < b - a
+      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_DSUBU);
 
       tfree(1);
 
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
+      emitRFormat(OP_SPECIAL, REG_ZR, currentTemporary(), currentTemporary(), FCT_SLTU);
 
     } else if (operatorSymbol == SYM_LT) {
-      // if a < b load 1 else load 0
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLTU);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
-      // if b < a load 1 else load 0
+      // a > b iff b < a
       emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLTU);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
-      // if b < a load 0 else load 1
+      // a <= b iff 1 - (b < a)
       emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_SLTU);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
+      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_DSUBU);
 
       tfree(1);
-
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
 
     } else if (operatorSymbol == SYM_GEQ) {
-      // if a < b load 0 else load 1
+      // a >= b iff 1 - (a < b)
       emitRFormat(OP_SPECIAL, previousTemporary(), currentTemporary(), previousTemporary(), FCT_SLTU);
+      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
+      emitRFormat(OP_SPECIAL, currentTemporary(), previousTemporary(), previousTemporary(), FCT_DSUBU);
 
       tfree(1);
-
-      emitIFormat(OP_BEQ, REG_ZR, currentTemporary(), 4);
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 0);
-      emitIFormat(OP_BEQ, REG_ZR, REG_ZR, 2);
-      emitIFormat(OP_DADDIU, REG_ZR, currentTemporary(), 1);
     }
   }
 
