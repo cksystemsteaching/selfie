@@ -98,6 +98,7 @@ void resetLibrary();
 uint64_t twoToThePowerOf(uint64_t p);
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
+uint64_t getLowBits(uint64_t n, uint64_t b);
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
@@ -1394,6 +1395,11 @@ uint64_t leftShift(uint64_t n, uint64_t b) {
 uint64_t rightShift(uint64_t n, uint64_t b) {
   // assert: 0 <= b < CPUBITWIDTH
   return n / twoToThePowerOf(b);
+}
+
+uint64_t getLowBits(uint64_t n, uint64_t b) {
+  // assert: 0 <= b < CPUBITWIDTH
+  return n % twoToThePowerOf(b);
 }
 
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs) {
@@ -2766,6 +2772,7 @@ uint64_t* getVariable(uint64_t* variable) {
   uint64_t* entry;
 
   entry = getScopedSymbolTableEntry(variable, VARIABLE);
+  if (entry == (uint64_t*) 0) entry = searchSymbolTable(global_symbol_table, variable, BIGINT);
 
   if (entry == (uint64_t*) 0) {
     printLineNumber((uint64_t*) "error", lineNumber);
@@ -2784,8 +2791,10 @@ uint64_t load_variable(uint64_t* variable) {
   uint64_t bound;
   uint64_t offset;
   uint64_t scope;
+  uint64_t type;
 
   entry = getVariable(variable);
+  type = getType(entry);
 
   bound = twoToThePowerOf(11);
   offset = getAddress(entry);
@@ -2796,20 +2805,17 @@ uint64_t load_variable(uint64_t* variable) {
       talloc();
 
       emitIFormat(offset, scope, F3_LD, currentTemporary(), OP_LD);
-    } else {
-      load_integer(offset);
 
-      emitRFormat(F7_ADD, currentTemporary(), scope, F3_ADD, currentTemporary(), OP_OP);
-      emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
-   }
-  } else {
-    load_integer(offset);
-
-    emitRFormat(F7_ADD, currentTemporary(), scope, F3_ADD, currentTemporary(), OP_OP);
-    emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
+      return type;
+    }
   }
+  
+  load_integer(offset);
 
-  return getType(entry);
+  emitRFormat(F7_ADD, currentTemporary(), scope, F3_ADD, currentTemporary(), OP_OP);
+  emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
+
+  return type;
 }
 
 void load_integer(uint64_t value) {
@@ -2817,9 +2823,7 @@ void load_integer(uint64_t value) {
   uint64_t upper;
   uint64_t isNegative;
   uint64_t* entry;
-  uint64_t bound;
-  uint64_t offset;
-  uint64_t* buffer;
+  uint64_t reg;
 
   isNegative = 0;
 
@@ -2834,47 +2838,24 @@ void load_integer(uint64_t value) {
   if (value >= twoToThePowerOf(30)) {
     if (isNegative) value = value * (-1);
 
-    buffer = malloc(maxIntegerLength + 1);
-    buffer = itoa(value, buffer, 10, 0, 0);
-
     // avoids storing multiple times the same value
-    entry = searchSymbolTable(global_symbol_table, buffer, BIGINT);
+    entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
 
       allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-      entry = createSymbolTableEntry(GLOBAL_TABLE, buffer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
+      entry = createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
     }
 
-    // generates code for loading the value
-    bound = twoToThePowerOf(11);
-    offset = getAddress(entry);
-
-    if (signedGreaterThan(offset, - bound - 1)) {
-      if (signedLessThan(offset, bound)) {
-        talloc();
-
-        emitIFormat(offset, REG_GP, F3_LD, currentTemporary(), OP_LD);
-      } else {
-        load_integer(offset);
-
-        emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
-        emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
-     }
-    } else {
-      load_integer(offset);
-
-      emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
-      emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
-    }
+    load_variable(integer);
 
   // integers with an absolute value less than 2^30 are directly loaded into a register
   } else {
     talloc();
 
-    lower = value % twoToThePowerOf(12);
-    upper = value / twoToThePowerOf(12);
+    lower = getLowBits(value, 12);
+    upper = rightShift(value, 12);
 
     // setting of bit 11 can only be reached by increasing upper by 1 and
     // adding a negativ offset instead of lower
@@ -2883,12 +2864,14 @@ void load_integer(uint64_t value) {
       lower = lower - twoToThePowerOf(12);
     }
 
+    reg = REG_ZR;
+
     if (upper != 0) {
+      reg = currentTemporary();
       emitUFormat(upper, currentTemporary(), OP_LUI);
-      emitIFormat(lower, currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
-    } else {
-      emitIFormat(lower, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
     }
+
+    emitIFormat(lower, reg, F3_ADDI, currentTemporary(), OP_IMM);
 
     if (isNegative)
       emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
@@ -4186,8 +4169,8 @@ void bootstrapCode() {
   binaryLength = 0;
 
   // load binaryLength into GP register
-  lower = savedBinaryLength % twoToThePowerOf(12);
-  upper = savedBinaryLength / twoToThePowerOf(12);
+  lower = getLowBits(savedBinaryLength, 12);
+  upper = rightShift(savedBinaryLength, 12);
 
   // setting of bit 11 can only be reached by increasing upper by 1 and
   // adding a negativ offset instead of lower
