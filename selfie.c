@@ -1471,7 +1471,7 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
 uint64_t isNBitSignedInt(uint64_t value, uint64_t n) {
   if (value < twoToThePowerOf(n - 1))
     return 1;
-  else if (value > -twoToThePowerOf(n - 1))
+  else if (value >= -twoToThePowerOf(n - 1))
     return 1;
   else
     return 0;
