@@ -98,10 +98,13 @@ void resetLibrary();
 uint64_t twoToThePowerOf(uint64_t p);
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
-uint64_t getLowBits(uint64_t n, uint64_t b);
+uint64_t getLSBs(uint64_t n, uint64_t b);
+
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
+uint64_t isNBitSignedInt(uint64_t value, uint64_t n);
+uint64_t abs(uint64_t n);
 
 uint64_t signShrink(uint64_t immediate, uint64_t bits);
 
@@ -416,7 +419,7 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-uint64_t* createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
+void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class);
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class);
@@ -521,8 +524,8 @@ void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
 void encodingError(uint64_t min, uint64_t max, uint64_t found);
 
-uint64_t* getVariable(uint64_t* variable);
-uint64_t  load_variable(uint64_t* variable);
+uint64_t* getVariableOrBigInt(uint64_t* variable);
+uint64_t  load_variableOrBigInt(uint64_t* variable);
 void      load_integer(uint64_t value);
 void      load_string(uint64_t* string);
 
@@ -861,6 +864,8 @@ uint64_t debug_open   = 0;
 
 uint64_t debug_malloc = 0;
 
+// TODO: get appropriate syscall codes
+
 uint64_t SYSCALL_EXIT   = 4001;
 uint64_t SYSCALL_READ   = 4003;
 uint64_t SYSCALL_WRITE  = 4004;
@@ -922,7 +927,6 @@ uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 uint64_t WORDSIZE = 4;
 uint64_t DOUBLEWORDSIZE = 8;
 
-uint64_t MINIMALINSTRUCTIONSIZE = 2; // must be a HALFWORD for rsic-v
 uint64_t INSTRUCTIONSIZE        = 4; // must be the same as WORDSIZE
 uint64_t REGISTERSIZE           = 8; // must be the same as DOUBLEWORDSIZE
 
@@ -1025,6 +1029,7 @@ uint64_t ir = 0; // instruction register
 
 uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
+// TODO: delete loReg and hiReg
 uint64_t loReg = 0; // lo register for multiplication/division
 uint64_t hiReg = 0; // hi register for multiplication/division
 
@@ -1397,7 +1402,7 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
   return n / twoToThePowerOf(b);
 }
 
-uint64_t getLowBits(uint64_t n, uint64_t b) {
+uint64_t getLSBs(uint64_t n, uint64_t b) {
   // assert: 0 <= b < CPUBITWIDTH
   return n % twoToThePowerOf(b);
 }
@@ -1438,12 +1443,12 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
 
   toggledSigns = 0;
   if (signedLessThan(dividend, 0)) {
-    dividend = (-1) * dividend;
+    dividend = -dividend;
     toggledSigns = toggledSigns + 1;
   }
 
   if (signedLessThan(divisor, 0)) {
-    divisor = (-1) * divisor;
+    divisor = -divisor;
     toggledSigns = toggledSigns + 1;
   }
 
@@ -1457,10 +1462,26 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
   }
 
   if (toggledSigns % 2 != 0) {
-    quotient = (-1) * quotient;
+    quotient = -quotient;
   }
 
   return quotient;
+}
+
+uint64_t isNBitSignedInt(uint64_t value, uint64_t n) {
+  if (value < twoToThePowerOf(n - 1))
+    return 1;
+  else if (value > -twoToThePowerOf(n - 1))
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t abs(uint64_t n) {
+  if (signedLessThan(n, 0))
+    return -n;
+  else
+    return n;
 }
 
 uint64_t signShrink(uint64_t immediate, uint64_t bits) {
@@ -2384,7 +2405,7 @@ void getSymbol() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-uint64_t* createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
+void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* newEntry;
 
   newEntry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
@@ -2418,8 +2439,6 @@ uint64_t* createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t
     setNextEntry(newEntry, library_symbol_table);
     library_symbol_table = newEntry;
   }
-
-  return newEntry;
 }
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
@@ -2768,11 +2787,13 @@ void typeWarning(uint64_t expected, uint64_t found) {
   println();
 }
 
-uint64_t* getVariable(uint64_t* variable) {
+uint64_t* getVariableOrBigInt(uint64_t* variable) {
   uint64_t* entry;
 
   entry = getScopedSymbolTableEntry(variable, VARIABLE);
-  if (entry == (uint64_t*) 0) entry = searchSymbolTable(global_symbol_table, variable, BIGINT);
+
+  if (entry == (uint64_t*) 0)
+    entry = searchSymbolTable(global_symbol_table, variable, BIGINT);
 
   if (entry == (uint64_t*) 0) {
     printLineNumber((uint64_t*) "error", lineNumber);
@@ -2786,76 +2807,48 @@ uint64_t* getVariable(uint64_t* variable) {
   return entry;
 }
 
-uint64_t load_variable(uint64_t* variable) {
+uint64_t load_variableOrBigInt(uint64_t* variable) {
   uint64_t* entry;
-  uint64_t bound;
-  uint64_t offset;
-  uint64_t scope;
-  uint64_t type;
 
-  entry = getVariable(variable);
-  type = getType(entry);
+  // assert: n = allocatedTemporaries
 
-  bound = twoToThePowerOf(11);
-  offset = getAddress(entry);
-  scope = getScope(entry);
+  entry = getVariableOrBigInt(variable);
 
-  if (signedGreaterThan(offset, - bound - 1)) {
-    if (signedLessThan(offset, bound)) {
-      talloc();
+  if (isNBitSignedInt(getAddress(entry), 12)) {
+    talloc();
 
-      emitIFormat(offset, scope, F3_LD, currentTemporary(), OP_LD);
+    emitIFormat(getAddress(entry), getScope(entry), F3_LD, currentTemporary(), OP_LD);
 
-      return type;
-    }
+    return getType(entry);
   }
   
-  load_integer(offset);
+  load_integer(getAddress(entry));
 
-  emitRFormat(F7_ADD, currentTemporary(), scope, F3_ADD, currentTemporary(), OP_OP);
+  emitRFormat(F7_ADD, currentTemporary(), getScope(entry), F3_ADD, currentTemporary(), OP_OP);
   emitIFormat(0, currentTemporary(), F3_LD, currentTemporary(), OP_LD);
 
-  return type;
+  // assert: allocatedTemporaries == n + 1
+
+  return getType(entry);
 }
 
 void load_integer(uint64_t value) {
   uint64_t lower;
   uint64_t upper;
-  uint64_t isNegative;
   uint64_t* entry;
-  uint64_t reg;
 
-  isNegative = 0;
+  // assert: n = allocatedTemporaries
 
-  if (signedLessThan(value, 0))
-    if (value != INT64_MIN) {
-      isNegative = 1;
-
-      value = value * (-1);
-    }
-
-  // integers with an absolute value greater or equal to 2^30 are treated like global variables
-  if (value >= twoToThePowerOf(30)) {
-    if (isNegative) value = value * (-1);
-
-    // avoids storing multiple times the same value
-    entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
-
-    if (entry == (uint64_t*) 0) {
-
-      allocatedMemory = allocatedMemory + REGISTERSIZE;
-
-      entry = createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
-    }
-
-    load_variable(integer);
-
-  // integers with an absolute value less than 2^30 are directly loaded into a register
-  } else {
+  if (isNBitSignedInt(value, 12)) {
+    // -2^11 <= value < 2^11 is loaded with one addi
     talloc();
 
-    lower = getLowBits(value, 12);
-    upper = rightShift(value, 12);
+    emitIFormat(value, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+
+  } else if (isNBitSignedInt(value, 31)) {
+    // -2^30 <= value < 2^30 is loaded with one addi and one lui
+    lower = getLSBs(abs(value), 12);
+    upper = rightShift(abs(value), 12);
 
     // setting of bit 11 can only be reached by increasing upper by 1 and
     // adding a negativ offset instead of lower
@@ -2864,22 +2857,34 @@ void load_integer(uint64_t value) {
       lower = lower - twoToThePowerOf(12);
     }
 
-    reg = REG_ZR;
+    talloc();
 
-    if (upper != 0) {
-      reg = currentTemporary();
-      emitUFormat(upper, currentTemporary(), OP_LUI);
+    emitUFormat(upper, currentTemporary(), OP_LUI);
+    emitIFormat(lower, currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
+
+    if (signedLessThan(value, 0))
+      emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
+
+  } else {
+    // -2^30 <= value < 2^30 is treated like global variable
+    entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
+
+    if (entry == (uint64_t*) 0) {
+      allocatedMemory = allocatedMemory + REGISTERSIZE;
+
+      createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
     }
 
-    emitIFormat(lower, reg, F3_ADDI, currentTemporary(), OP_IMM);
-
-    if (isNegative)
-      emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
+    load_variableOrBigInt(integer);
   }
+
+  // assert: allocatedTemporaries == n + 1
 }
 
 void load_string(uint64_t* string) {
   uint64_t length;
+
+  // assert: n = allocatedTemporaries
 
   length = stringLength(string) + 1;
 
@@ -2890,6 +2895,8 @@ void load_string(uint64_t* string) {
   load_integer(-allocatedMemory);
 
   emitRFormat(F7_ADD, currentTemporary(), REG_GP, F3_ADD, currentTemporary(), OP_OP);
+
+  // assert: allocatedTemporaries == n + 1
 }
 
 uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
@@ -3094,7 +3101,7 @@ uint64_t gr_factor() {
 
     // ["*"] identifier
     if (symbol == SYM_IDENTIFIER) {
-      type = load_variable(identifier);
+      type = load_variableOrBigInt(identifier);
 
       getSymbol();
 
@@ -3141,7 +3148,7 @@ uint64_t gr_factor() {
       emitIFormat(0, REG_ZR, F3_ADDI, REG_A0, OP_IMM);
     } else
       // variable access: identifier
-      type = load_variable(variableOrProcedureName);
+      type = load_variableOrBigInt(variableOrProcedureName);
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
@@ -3604,9 +3611,7 @@ void gr_statement() {
   uint64_t rtype;
   uint64_t* variableOrProcedureName;
   uint64_t* entry;
-  uint64_t bound;
   uint64_t offset;
-  uint64_t scope;
 
   // assert: allocatedTemporaries == 0
 
@@ -3625,7 +3630,7 @@ void gr_statement() {
 
     // "*" identifier
     if (symbol == SYM_IDENTIFIER) {
-      ltype = load_variable(identifier);
+      ltype = load_variableOrBigInt(identifier);
 
       if (ltype != UINT64STAR_T)
         typeWarning(UINT64STAR_T, ltype);
@@ -3721,7 +3726,7 @@ void gr_statement() {
 
     // identifier = expression
     } else if (symbol == SYM_ASSIGN) {
-      entry = getVariable(variableOrProcedureName);
+      entry = getVariableOrBigInt(variableOrProcedureName);
 
       ltype = getType(entry);
 
@@ -3732,25 +3737,16 @@ void gr_statement() {
       if (ltype != rtype)
         typeWarning(ltype, rtype);
 
-      bound = twoToThePowerOf(11);
       offset = getAddress(entry);
-      scope = getScope(entry);
 
-      if (signedGreaterThan(offset, - bound - 1)) {
-        if (signedLessThan(offset, bound)) {
-          emitSFormat(offset, currentTemporary(), scope, F3_SD, OP_SD);
+      if (isNBitSignedInt(offset, 12)) {
+        emitSFormat(offset, currentTemporary(), getScope(entry), F3_SD, OP_SD);
 
-          tfree(1);
-        } else {
-          load_integer(offset);
-          emitRFormat(F7_ADD, currentTemporary(), scope, F3_ADD, currentTemporary(), OP_OP);
-          emitSFormat(0, previousTemporary(), currentTemporary(), F3_SD, OP_SD);
-
-          tfree(2);
-        }
+        tfree(1);
       } else {
         load_integer(offset);
-        emitRFormat(F7_ADD, currentTemporary(), scope, F3_ADD, currentTemporary(), OP_OP);
+        
+        emitRFormat(F7_ADD, currentTemporary(), getScope(entry), F3_ADD, currentTemporary(), OP_OP);
         emitSFormat(0, previousTemporary(), currentTemporary(), F3_SD, OP_SD);
 
         tfree(2);
@@ -4169,7 +4165,7 @@ void bootstrapCode() {
   binaryLength = 0;
 
   // load binaryLength into GP register
-  lower = getLowBits(savedBinaryLength, 12);
+  lower = getLSBs(savedBinaryLength, 12);
   upper = rightShift(savedBinaryLength, 12);
 
   // setting of bit 11 can only be reached by increasing upper by 1 and
@@ -4362,10 +4358,6 @@ void selfie_compile() {
 void printRegister(uint64_t reg) {
   print((uint64_t*) *(REGISTERS + reg));
 }
-
-// -----------------------------------------------------------------
-// ---------------------------- ENCODER ----------------------------
-// -----------------------------------------------------------------
 
 // -----------------------------------------------------------------
 // ---------------------------- ENCODER ----------------------------
