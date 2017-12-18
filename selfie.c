@@ -1030,10 +1030,6 @@ uint64_t ir = 0; // instruction register
 
 uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
-// TODO: delete loReg and hiReg
-uint64_t loReg = 0; // lo register for multiplication/division
-uint64_t hiReg = 0; // hi register for multiplication/division
-
 uint64_t* pt = (uint64_t*) 0; // page table
 
 // core state
@@ -1073,9 +1069,6 @@ void resetInterpreter() {
 
   registers = (uint64_t*) 0;
 
-  loReg = 0;
-  hiReg = 0;
-
   pt = (uint64_t*) 0;
 
   trap = 0;
@@ -1114,74 +1107,66 @@ uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 // |  1 | prevContext    | pointer to previous context
 // |  2 | pc             | program counter
 // |  3 | regs           | pointer to general purpose registers
-// |  4 | loReg          | lo register
-// |  5 | hiReg          | hi register
-// |  6 | pt             | pointer to page table
-// |  7 | loPage         | lowest low unmapped page
-// |  8 | mePage         | highest low unmapped page
-// |  9 | hiPage         | highest high unmapped page
-// | 10 | brk            | break between code, data, and heap
-// | 11 | exception      | exception ID
-// | 12 | faultingPage   | faulting page
-// | 13 | exitCode       | exit code
-// | 14 | parent         | context that created this context
-// | 15 | virtualContext | virtual context address
-// | 16 | name           | binary name loaded into context
+// |  4 | pt             | pointer to page table
+// |  5 | loPage         | lowest low unmapped page
+// |  6 | mePage         | highest low unmapped page
+// |  7 | hiPage         | highest high unmapped page
+// |  8 | brk            | break between code, data, and heap
+// |  9 | exception      | exception ID
+// | 10 | faultingPage   | faulting page
+// | 11 | exitCode       | exit code
+// | 12 | parent         | context that created this context
+// | 13 | virtualContext | virtual context address
+// | 14 | name           | binary name loaded into context
 // +----+----------------+
 
 uint64_t nextContext(uint64_t* context)    { return (uint64_t) context; }
 uint64_t prevContext(uint64_t* context)    { return (uint64_t) (context + 1); }
 uint64_t PC(uint64_t* context)             { return (uint64_t) (context + 2); }
 uint64_t Regs(uint64_t* context)           { return (uint64_t) (context + 3); }
-uint64_t LoReg(uint64_t* context)          { return (uint64_t) (context + 4); }
-uint64_t HiReg(uint64_t* context)          { return (uint64_t) (context + 5); }
-uint64_t PT(uint64_t* context)             { return (uint64_t) (context + 6); }
-uint64_t LoPage(uint64_t* context)         { return (uint64_t) (context + 7); }
-uint64_t MePage(uint64_t* context)         { return (uint64_t) (context + 8); }
-uint64_t HiPage(uint64_t* context)         { return (uint64_t) (context + 9); }
-uint64_t ProgramBreak(uint64_t* context)   { return (uint64_t) (context + 10); }
-uint64_t Exception(uint64_t* context)      { return (uint64_t) (context + 11); }
-uint64_t FaultingPage(uint64_t* context)   { return (uint64_t) (context + 12); }
-uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 13); }
-uint64_t Parent(uint64_t* context)         { return (uint64_t) (context + 14); }
-uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 15); }
-uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 16); }
+uint64_t PT(uint64_t* context)             { return (uint64_t) (context + 4); }
+uint64_t LoPage(uint64_t* context)         { return (uint64_t) (context + 5); }
+uint64_t MePage(uint64_t* context)         { return (uint64_t) (context + 6); }
+uint64_t HiPage(uint64_t* context)         { return (uint64_t) (context + 7); }
+uint64_t ProgramBreak(uint64_t* context)   { return (uint64_t) (context + 8); }
+uint64_t Exception(uint64_t* context)      { return (uint64_t) (context + 9); }
+uint64_t FaultingPage(uint64_t* context)   { return (uint64_t) (context + 10); }
+uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 11); }
+uint64_t Parent(uint64_t* context)         { return (uint64_t) (context + 12); }
+uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 13); }
+uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 14); }
 
 uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
 uint64_t  getPC(uint64_t* context)             { return             *(context + 2); }
 uint64_t* getRegs(uint64_t* context)           { return (uint64_t*) *(context + 3); }
-uint64_t  getLoReg(uint64_t* context)          { return             *(context + 4); }
-uint64_t  getHiReg(uint64_t* context)          { return             *(context + 5); }
-uint64_t* getPT(uint64_t* context)             { return (uint64_t*) *(context + 6); }
-uint64_t  getLoPage(uint64_t* context)         { return             *(context + 7); }
-uint64_t  getMePage(uint64_t* context)         { return             *(context + 8); }
-uint64_t  getHiPage(uint64_t* context)         { return             *(context + 9); }
-uint64_t  getProgramBreak(uint64_t* context)   { return             *(context + 10); }
-uint64_t  getException(uint64_t* context)      { return             *(context + 11); }
-uint64_t  getFaultingPage(uint64_t* context)   { return             *(context + 12); }
-uint64_t  getExitCode(uint64_t* context)       { return             *(context + 13); }
-uint64_t* getParent(uint64_t* context)         { return (uint64_t*) *(context + 14); }
-uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 15); }
-uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 16); }
+uint64_t* getPT(uint64_t* context)             { return (uint64_t*) *(context + 4); }
+uint64_t  getLoPage(uint64_t* context)         { return             *(context + 5); }
+uint64_t  getMePage(uint64_t* context)         { return             *(context + 6); }
+uint64_t  getHiPage(uint64_t* context)         { return             *(context + 7); }
+uint64_t  getProgramBreak(uint64_t* context)   { return             *(context + 8); }
+uint64_t  getException(uint64_t* context)      { return             *(context + 9); }
+uint64_t  getFaultingPage(uint64_t* context)   { return             *(context + 10); }
+uint64_t  getExitCode(uint64_t* context)       { return             *(context + 11); }
+uint64_t* getParent(uint64_t* context)         { return (uint64_t*) *(context + 12); }
+uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 13); }
+uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 14); }
 
 void setNextContext(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
 void setPrevContext(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
 void setPC(uint64_t* context, uint64_t pc)                 { *(context + 2)  = pc; }
 void setRegs(uint64_t* context, uint64_t* regs)            { *(context + 3)  = (uint64_t) regs; }
-void setLoReg(uint64_t* context, uint64_t loReg)           { *(context + 4)  = loReg; }
-void setHiReg(uint64_t* context, uint64_t hiReg)           { *(context + 5)  = hiReg; }
-void setPT(uint64_t* context, uint64_t* pt)                { *(context + 6)  = (uint64_t) pt; }
-void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 7)  = loPage; }
-void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 8)  = mePage; }
-void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 9)  = hiPage; }
-void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 10) = brk; }
-void setException(uint64_t* context, uint64_t exception)   { *(context + 11) = exception; }
-void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 12) = page; }
-void setExitCode(uint64_t* context, uint64_t code)         { *(context + 13) = code; }
-void setParent(uint64_t* context, uint64_t* parent)        { *(context + 14) = (uint64_t) parent; }
-void setVirtualContext(uint64_t* context, uint64_t* vctxt) { *(context + 15) = (uint64_t) vctxt; }
-void setName(uint64_t* context, uint64_t* name)            { *(context + 16) = (uint64_t) name; }
+void setPT(uint64_t* context, uint64_t* pt)                { *(context + 4)  = (uint64_t) pt; }
+void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 5)  = loPage; }
+void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 6)  = mePage; }
+void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 7)  = hiPage; }
+void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 8) = brk; }
+void setException(uint64_t* context, uint64_t exception)   { *(context + 9) = exception; }
+void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 10) = page; }
+void setExitCode(uint64_t* context, uint64_t code)         { *(context + 11) = code; }
+void setParent(uint64_t* context, uint64_t* parent)        { *(context + 12) = (uint64_t) parent; }
+void setVirtualContext(uint64_t* context, uint64_t* vctxt) { *(context + 13) = (uint64_t) vctxt; }
+void setName(uint64_t* context, uint64_t* name)            { *(context + 14) = (uint64_t) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -5557,8 +5542,6 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   // restore machine state
   pc        = getPC(toContext);
   registers = getRegs(toContext);
-  loReg     = getLoReg(toContext);
-  hiReg     = getHiReg(toContext);
   pt        = getPT(toContext);
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
@@ -6796,9 +6779,6 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   // TODO: reuse memory
   setRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
 
-  setLoReg(context, 0);
-  setHiReg(context, 0);
-
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
   setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFUINT64));
@@ -6906,8 +6886,6 @@ void saveContext(uint64_t* context) {
 
   // save machine state
   setPC(context, pc);
-  setLoReg(context, loReg);
-  setHiReg(context, hiReg);
 
   if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
@@ -6928,8 +6906,6 @@ void saveContext(uint64_t* context) {
       r = r + 1;
     }
 
-    storeVirtualMemory(parentTable, LoReg(vctxt), getLoReg(context));
-    storeVirtualMemory(parentTable, HiReg(vctxt), getHiReg(context));
     storeVirtualMemory(parentTable, ProgramBreak(vctxt), getProgramBreak(context));
 
     storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
@@ -7006,8 +6982,6 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    setLoReg(context, loadVirtualMemory(parentTable, LoReg(vctxt)));
-    setHiReg(context, loadVirtualMemory(parentTable, HiReg(vctxt)));
     setProgramBreak(context, loadVirtualMemory(parentTable, ProgramBreak(vctxt)));
 
     setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
