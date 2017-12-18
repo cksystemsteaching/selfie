@@ -1493,7 +1493,7 @@ uint64_t abs(uint64_t n) {
 uint64_t signShrink(uint64_t immediate, uint64_t bits) {
   // assert: 0 < bits <= CPUBITWIDTH
   // assert: -2^(bits - 1) <= immediate < 2^(bits - 1)
-  return rightShift(leftShift(immediate, CPUBITWIDTH - bits), CPUBITWIDTH - bits);
+  return getLSBs(immediate, bits);
 }
 
 uint64_t getHighWord(uint64_t doubleWord) {
@@ -1501,19 +1501,19 @@ uint64_t getHighWord(uint64_t doubleWord) {
 }
 
 uint64_t getLowWord(uint64_t doubleWord) {
-  return rightShift(leftShift(doubleWord, 32), 32);
+  return getLSBs(doubleWord, 32);
 }
 
 uint64_t loadCharacter(uint64_t* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
 
-  // a is the index of the word where the to-be-loaded i-th character in s is
+  // a is the index of the double word where the to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
 
   // shift to-be-loaded character to the left resetting all bits to the left
   // then shift to-be-loaded character all the way to the right and return
-  return rightShift(leftShift(*(s + a), ((SIZEOFUINT64 - 1) - (i % SIZEOFUINT64)) * 8), (SIZEOFUINT64 - 1) * 8);
+  return getBitsFromTo(*(s + a), (i % SIZEOFUINT64) * 8, ((i % SIZEOFUINT64) + 1) * 8 - 1);
 }
 
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
@@ -4432,8 +4432,8 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   immediate = signShrink(immediate, 12);
 
   // split immediate by shifting 32-bit value accordingly
-  imm1 = rightShift(leftShift(immediate, 20 + 32), 25 + 32);
-  imm2 = rightShift(leftShift(immediate, 27 + 32), 27 + 32);
+  imm1 = getBitsFromTo(immediate, 5, 11);
+  imm2 = getLSBs(immediate, 5);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 5) + rs2, 5) + rs1, 3) + funct3, 5) + imm2, 7) + opcode;
 }
@@ -4469,10 +4469,10 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   // split immediate by shifting 64-bit value accordingly
   // branching offset will be encoded in halfwords
-  imm1 = rightShift(leftShift(immediate, 19 + 32), 31 + 32);
-  imm2 = rightShift(leftShift(immediate, 21 + 32), 26 + 32);
-  imm3 = rightShift(leftShift(immediate, 27 + 32), 28 + 32);
-  imm4 = rightShift(leftShift(immediate, 20 + 32), 31 + 32);
+  imm1 = getBitsFromTo(immediate, 12, 12);
+  imm2 = getBitsFromTo(immediate,  5, 10);
+  imm3 = getBitsFromTo(immediate,  1,  4);
+  imm4 = getBitsFromTo(immediate, 11, 11);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 6) + imm2, 5) + rs2, 5) + rs1, 3) + funct3, 4) + imm3, 1) + imm4, 7) + opcode;
 }
@@ -4505,10 +4505,10 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   immediate = signShrink(immediate, 21);
 
   // split immediate by shifting 32-bit value accordingly
-  imm1 = rightShift(leftShift(immediate, 11 + 32), 31 + 32);
-  imm2 = rightShift(leftShift(immediate, 21 + 32), 22 + 32);
-  imm3 = rightShift(leftShift(immediate, 20 + 32), 31 + 32);
-  imm4 = rightShift(leftShift(immediate, 12 + 32), 24 + 32);
+  imm1 = getBitsFromTo(immediate, 20, 20);
+  imm2 = getBitsFromTo(immediate,  1, 10);
+  imm3 = getBitsFromTo(immediate, 11, 11);
+  imm4 = getBitsFromTo(immediate, 12, 19);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 10) + imm2, 1) + imm3, 8) + imm4, 5) + rd, 7) + opcode;
 }
@@ -4537,39 +4537,39 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 }
 
 uint64_t getOpcode(uint64_t instruction) {
-  return rightShift(leftShift(instruction, 25 + 32), 25 + 32);
+  return getLSBs(instruction, 7);
 }
 
 uint64_t getRS1(uint64_t instruction) {
-  return rightShift(leftShift(instruction, 12 + 32), 27 + 32);
+  return getBitsFromTo(instruction, 15, 19);
 }
 
 uint64_t getRS2(uint64_t instruction) {
-    return rightShift(leftShift(instruction, 7 + 32), 27 + 32);
+    return getBitsFromTo(instruction, 20, 24);
 }
 
 uint64_t getRD(uint64_t instruction) {
-    return rightShift(leftShift(instruction, 20 + 32), 27 + 32);
+    return getBitsFromTo(instruction, 7, 11);
 }
 
 uint64_t getFunct3(uint64_t instruction) {
-  return rightShift(leftShift(instruction, 17 + 32), 29 + 32);
+  return getBitsFromTo(instruction, 12, 14);
 }
 
 uint64_t getFunct7(uint64_t instruction) {
-  return rightShift(leftShift(instruction, 32), 25 + 32);
+  return getBitsFromTo(instruction, 25, 31);
 }
 
 uint64_t getImmediateIFormat(uint64_t instruction) {
-  return rightShift(leftShift(instruction, 32), 20 + 32);
+  return getBitsFromTo(instruction, 20, 31);
 }
 
 uint64_t getImmediateSFormat(uint64_t instruction) {
   uint64_t imm1;
   uint64_t imm2;
 
-  imm1 = rightShift(leftShift(instruction, 32), 25 + 32);
-  imm2 = rightShift(leftShift(instruction, 20 + 32), 27 + 32);
+  imm1 = getBitsFromTo(instruction, 25, 31);
+  imm2 = getBitsFromTo(instruction,  7, 11);
 
   return leftShift(imm1, 5)+ imm2;
 }
@@ -4580,10 +4580,10 @@ uint64_t getImmediateBFormat(uint64_t instruction) {
   uint64_t imm3;
   uint64_t imm4;
 
-  imm1 = rightShift(leftShift(instruction, 32), 32 + 31);
-  imm2 = rightShift(leftShift(instruction, 32 + 1), 32 + 26);
-  imm3 = rightShift(leftShift(instruction, 32 + 20), 32 + 28);
-  imm4 = rightShift(leftShift(instruction, 32 + 24), 32 + 31);
+  imm1 = getBitsFromTo(instruction, 31, 31);
+  imm2 = getBitsFromTo(instruction, 25, 30);
+  imm3 = getBitsFromTo(instruction,  8, 11);
+  imm4 = getBitsFromTo(instruction,  7,  7);
 
   // reassemble immediate and add trailing zero
   return leftShift(leftShift(leftShift(leftShift(imm1, 1) + imm4, 6) + imm2, 4) + imm3, 1);
@@ -4595,17 +4595,17 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
   uint64_t imm3;
   uint64_t imm4;
 
-  imm1 = rightShift(leftShift(instruction, 32), 31 + 32);
-  imm2 = rightShift(leftShift(instruction, 1 + 32), 22 + 32);
-  imm3 = rightShift(leftShift(instruction, 11 + 32), 31 + 32);
-  imm4 = rightShift(leftShift(instruction, 12 + 32), 24 + 32);
+  imm1 = getBitsFromTo(instruction, 31, 31);
+  imm2 = getBitsFromTo(instruction, 21, 30);
+  imm3 = getBitsFromTo(instruction, 20, 20);
+  imm4 = getBitsFromTo(instruction, 12, 19);
 
   // reassemble immediate and add trailing zero
   return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);
 }
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
-  return rightShift(leftShift(instruction, 32), 12 + 32);
+  return getBitsFromTo(instruction, 12, 31);
 }
 
 uint64_t signExtend(uint64_t immediate, uint64_t bits) {
@@ -4770,7 +4770,7 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
 
   if (baddr % SIZEOFUINT64 == 0)
     // replace high word
-    temp = leftShift(instruction, 32) + rightShift(leftShift(temp, 32), 32);
+    temp = leftShift(instruction, 32) + getLSBs(temp, 32);
   else
     // replace low word
     temp = instruction + leftShift(rightShift(temp, 32), 32);
