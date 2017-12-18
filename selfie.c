@@ -98,6 +98,7 @@ void resetLibrary();
 uint64_t twoToThePowerOf(uint64_t p);
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
+uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
 uint64_t getLSBs(uint64_t n, uint64_t b);
 
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
@@ -1402,6 +1403,11 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
   return n / twoToThePowerOf(b);
 }
 
+uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to) {
+  // assert 0 <= from <= to < CPUBITWIDTH
+  return rightShift(leftShift(n, (CPUBITWIDTH - 1) - to), from + ((CPUBITWIDTH - 1) - to));
+}
+
 uint64_t getLSBs(uint64_t n, uint64_t b) {
   // assert: 0 <= b < CPUBITWIDTH
   return n % twoToThePowerOf(b);
@@ -1847,6 +1853,7 @@ void printString(uint64_t* s) {
   putCharacter(CHAR_DOUBLEQUOTE);
 }
 
+// TODO: correct for integers just a bit less than 2^31
 void printInteger(uint64_t n) {
   print(itoa(n, integer_buffer, 10, 0, 0));
 }
@@ -2787,17 +2794,17 @@ void typeWarning(uint64_t expected, uint64_t found) {
   println();
 }
 
-uint64_t* getVariableOrBigInt(uint64_t* variable) {
+uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt) {
   uint64_t* entry;
 
-  entry = getScopedSymbolTableEntry(variable, VARIABLE);
+  entry = getScopedSymbolTableEntry(variableOrBigInt, VARIABLE);
 
   if (entry == (uint64_t*) 0)
-    entry = searchSymbolTable(global_symbol_table, variable, BIGINT);
+    entry = searchSymbolTable(global_symbol_table, variableOrBigInt, BIGINT);
 
   if (entry == (uint64_t*) 0) {
     printLineNumber((uint64_t*) "error", lineNumber);
-    print(variable);
+    print(variableOrBigInt);
     print((uint64_t*) " undeclared");
     println();
 
@@ -2807,12 +2814,12 @@ uint64_t* getVariableOrBigInt(uint64_t* variable) {
   return entry;
 }
 
-uint64_t load_variableOrBigInt(uint64_t* variable) {
+uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt) {
   uint64_t* entry;
 
   // assert: n = allocatedTemporaries
 
-  entry = getVariableOrBigInt(variable);
+  entry = getVariableOrBigInt(variableOrBigInt);
 
   if (isNBitSignedInt(getAddress(entry), 12)) {
     talloc();
@@ -2845,28 +2852,23 @@ void load_integer(uint64_t value) {
 
     emitIFormat(value, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
-  } else if (isNBitSignedInt(value, 31)) {
-    // -2^30 <= value < 2^30 is loaded with one addi and one lui
-    lower = getLSBs(abs(value), 12);
-    upper = rightShift(abs(value), 12);
+  } else if (isNBitSignedInt(value, 32)) {
+    // -2^31 <= value < 2^31 is loaded with one addi and one lui
+    lower = getLSBs(value, 12);
+    upper = getBitsFromTo(value, 12, 31);
 
     // setting of bit 11 can only be reached by increasing upper by 1 and
     // adding a negativ offset instead of lower
-    if (lower >= twoToThePowerOf(11)) {
+    if (lower >= twoToThePowerOf(11))
       upper = upper + 1;
-      lower = lower - twoToThePowerOf(12);
-    }
 
     talloc();
 
-    emitUFormat(upper, currentTemporary(), OP_LUI);
-    emitIFormat(lower, currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
-
-    if (signedLessThan(value, 0))
-      emitRFormat(F7_SUB, currentTemporary(), REG_ZR, F3_SUB, currentTemporary(), OP_OP);
+    emitUFormat(signExtend(upper, 20), currentTemporary(), OP_LUI);
+    emitIFormat(signExtend(lower, 12), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
 
   } else {
-    // -2^30 <= value < 2^30 is treated like global variable
+    // -2^30 <= value < 2^30 is treated like a global variable
     entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
