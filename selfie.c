@@ -101,7 +101,6 @@ uint64_t rightShift(uint64_t n, uint64_t b);
 uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
 
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
-uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
 uint64_t isNBitSignedInt(uint64_t value, uint64_t n);
 uint64_t abs(uint64_t n);
@@ -522,7 +521,7 @@ void syntaxErrorSymbol(uint64_t expected);
 void syntaxErrorUnexpected();
 void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
-void encodingError(uint64_t min, uint64_t max, uint64_t found);
+void encodingError(uint64_t found, uint64_t bits);
 
 uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
 uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
@@ -1396,11 +1395,6 @@ uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to) {
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs) {
   // signed "<" operator: compare lhs and rhs in two's complement
   return lhs + INT64_MIN < rhs + INT64_MIN;
-}
-
-uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs) {
-  // signed ">" operator: compare lhs and rhs in two's complement
-  return lhs + INT64_MIN > rhs + INT64_MIN;
 }
 
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
@@ -2735,13 +2729,13 @@ void syntaxErrorUnexpected() {
   println();
 }
 
-void encodingError(uint64_t min, uint64_t max, uint64_t found) {
+void encodingError(uint64_t found, uint64_t bits) {
   print((uint64_t*) "Encoding error: Immediate overflow in structure around line ");
   printInteger(lineNumber);
   print((uint64_t*) ": Expected immediate in range from ");
-  printInteger(min);
+  printInteger(-twoToThePowerOf(bits - 1));
   print((uint64_t*) " to ");
-  printInteger(max);
+  printInteger(twoToThePowerOf(bits - 1) -1);
   print((uint64_t*) ", but found: ");
   printInteger(found);
   println();
@@ -4385,14 +4379,9 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= rd < 2^5
   // assert: 0 <= funct3 < 2^3
   // assert: -2^11 <= immediate < 2^11 -1
-  uint64_t bound;
 
-  bound = twoToThePowerOf(11);
-
-  if (signedGreaterThan(immediate, bound - 1))
-    encodingError(-bound, bound - 1, immediate);
-  else if (signedLessThan(immediate, - bound))
-    encodingError(-bound, bound - 1, immediate);
+  if (isNBitSignedInt(immediate, 12) == 0)
+    encodingError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4412,14 +4401,9 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // assert: -2^11 <= immediate < 2^11 -1
   uint64_t imm1;
   uint64_t imm2;
-  uint64_t bound;
-
-  bound = twoToThePowerOf(11);
-
-  if (signedGreaterThan(immediate, bound - 1))
-    encodingError(-bound, bound - 1, immediate);
-  else if (signedLessThan(immediate, - bound))
-    encodingError(-bound, bound - 1, immediate);
+  
+  if (isNBitSignedInt(immediate, 12) == 0)
+    encodingError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4445,17 +4429,12 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm2;
   uint64_t imm3;
   uint64_t imm4;
-  uint64_t bound;
-
-  bound = twoToThePowerOf(12);
 
   // branching offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
-  if (signedGreaterThan(immediate, bound - 1))
-    encodingError(-bound, bound - 1, immediate);
-  else if (signedLessThan(immediate, - bound))
-    encodingError(- bound, bound - 1, immediate);
+  if (isNBitSignedInt(immediate, 13) == 0)
+    encodingError(immediate, 13);
 
   immediate = signShrink(immediate, 13);
 
@@ -4482,17 +4461,12 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   uint64_t imm2;
   uint64_t imm3;
   uint64_t imm4;
-  uint64_t bound;
-
-  bound = twoToThePowerOf(20);
 
   // jumping offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
-  if (signedGreaterThan(immediate, bound - 1))
-    encodingError(-bound, bound - 1, immediate);
-  else if (signedLessThan(immediate, - bound))
-    encodingError(- bound, bound - 1, immediate);
+  if (isNBitSignedInt(immediate, 21) == 0)
+    encodingError(immediate, 21);
 
   immediate = signShrink(immediate, 21);
 
@@ -4514,14 +4488,9 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= opcode < 2^7
   // assert: 0 <= rd < 2^5
   // assert: -2^19 <= immediate < 2^19 -1
-  uint64_t bound;
 
-  bound = twoToThePowerOf(19);
-
-  if (signedGreaterThan(immediate, bound - 1))
-    encodingError(-bound, bound - 1, immediate);
-  else if (signedLessThan(immediate, - bound))
-    encodingError(- bound, bound - 1, immediate);
+  if (isNBitSignedInt(immediate, 20) == 0)
+    encodingError(immediate, 20);
 
   immediate = signShrink(immediate, 20);
 
@@ -5050,7 +5019,7 @@ void selfie_load() {
       // now read binary including global variables and strings
       numberOfReadBytes = signExtend(read(fd, binary, codeLength), INT_BITWIDTH);
 
-      if (signedGreaterThan(numberOfReadBytes, 0)) {
+      if (signedLessThan(0, numberOfReadBytes)) {
         binaryLength = numberOfReadBytes;
 
         // check if we are really at EOF
@@ -5181,7 +5150,7 @@ void implementRead(uint64_t* context) {
           if (size > 0)
             vaddr = vaddr + SIZEOFUINT64;
         } else {
-          if (signedGreaterThan(actuallyRead, 0))
+          if (signedLessThan(0, actuallyRead))
             readTotal = readTotal + actuallyRead;
 
           size = 0;
@@ -5298,7 +5267,7 @@ void implementWrite(uint64_t* context) {
           if (size > 0)
             vaddr = vaddr + SIZEOFUINT64;
         } else {
-          if (signedGreaterThan(actuallyWritten, 0))
+          if (signedLessThan(0, actuallyWritten))
             writtenTotal = writtenTotal + actuallyWritten;
 
           size = 0;
