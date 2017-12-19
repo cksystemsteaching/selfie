@@ -524,8 +524,8 @@ void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
 void encodingError(uint64_t min, uint64_t max, uint64_t found);
 
-uint64_t* getVariableOrBigInt(uint64_t* variable);
-uint64_t  load_variableOrBigInt(uint64_t* variable);
+uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
+uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
 void      load_integer(uint64_t value);
 void      load_string(uint64_t* string);
 
@@ -2774,32 +2774,33 @@ void typeWarning(uint64_t expected, uint64_t found) {
   println();
 }
 
-uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt) {
+uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   uint64_t* entry;
 
-  entry = getScopedSymbolTableEntry(variableOrBigInt, VARIABLE);
+  if (class == BIGINT)
+    return searchSymbolTable(global_symbol_table, variableOrBigInt, class);
+  else {
+    entry = getScopedSymbolTableEntry(variableOrBigInt, class);
 
-  if (entry == (uint64_t*) 0)
-    entry = searchSymbolTable(global_symbol_table, variableOrBigInt, BIGINT);
+    if (entry == (uint64_t*) 0) {
+      printLineNumber((uint64_t*) "error", lineNumber);
+      print(variableOrBigInt);
+      print((uint64_t*) " undeclared");
+      println();
 
-  if (entry == (uint64_t*) 0) {
-    printLineNumber((uint64_t*) "error", lineNumber);
-    print(variableOrBigInt);
-    print((uint64_t*) " undeclared");
-    println();
+      exit(EXITCODE_PARSERERROR);
+    }
 
-    exit(EXITCODE_PARSERERROR);
+    return entry;
   }
-
-  return entry;
 }
 
-uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt) {
+uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   uint64_t* entry;
 
   // assert: n = allocatedTemporaries
 
-  entry = getVariableOrBigInt(variableOrBigInt);
+  entry = getVariableOrBigInt(variableOrBigInt, class);
 
   if (isNBitSignedInt(getAddress(entry), 12)) {
     talloc();
@@ -2827,28 +2828,32 @@ void load_integer(uint64_t value) {
   // assert: n = allocatedTemporaries
 
   if (isNBitSignedInt(value, 12)) {
-    // -2^11 <= value < 2^11 is loaded with one addi
+    // integers greater than or equal to -2^11 and less than 2^11
+    // are loaded with one addi into a register
+
     talloc();
 
     emitIFormat(value, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
   } else if (isNBitSignedInt(value, 32)) {
-    // -2^31 <= value < 2^31 is loaded with one addi and one lui
+    // integers greater than or equal to -2^31 and less than 2^31
+    // are loaded with one addi and one lui into a register
+
     lower = getBitsFromTo(value,  0, 11);
     upper = getBitsFromTo(value, 12, 31);
 
-    // setting of bit 11 can only be reached by increasing upper by 1 and
-    // adding a negativ offset instead of lower
+    // adding 1 which is effectively 2^12 to cancel sign extension of lower
     if (lower >= twoToThePowerOf(11))
       upper = upper + 1;
 
     talloc();
 
+    // assert: 0 < u < 2^(32-12)
     emitUFormat(signExtend(upper, 20), currentTemporary(), OP_LUI);
     emitIFormat(signExtend(lower, 12), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
 
   } else {
-    // -2^30 <= value < 2^30 is treated like a global variable
+    // integers less than 2^-31 or greater than or equal to 2^31 are stored in data segment
     entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
@@ -2857,7 +2862,7 @@ void load_integer(uint64_t value) {
       createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
     }
 
-    load_variableOrBigInt(integer);
+    load_variableOrBigInt(integer, BIGINT);
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3083,7 +3088,7 @@ uint64_t gr_factor() {
 
     // ["*"] identifier
     if (symbol == SYM_IDENTIFIER) {
-      type = load_variableOrBigInt(identifier);
+      type = load_variableOrBigInt(identifier, VARIABLE);
 
       getSymbol();
 
@@ -3130,7 +3135,7 @@ uint64_t gr_factor() {
       emitIFormat(0, REG_ZR, F3_ADDI, REG_A0, OP_IMM);
     } else
       // variable access: identifier
-      type = load_variableOrBigInt(variableOrProcedureName);
+      type = load_variableOrBigInt(variableOrProcedureName, VARIABLE);
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
@@ -3602,7 +3607,7 @@ void gr_statement() {
 
     // "*" identifier
     if (symbol == SYM_IDENTIFIER) {
-      ltype = load_variableOrBigInt(identifier);
+      ltype = load_variableOrBigInt(identifier, VARIABLE);
 
       if (ltype != UINT64STAR_T)
         typeWarning(UINT64STAR_T, ltype);
@@ -3698,7 +3703,7 @@ void gr_statement() {
 
     // identifier = expression
     } else if (symbol == SYM_ASSIGN) {
-      entry = getVariableOrBigInt(variableOrProcedureName);
+      entry = getVariableOrBigInt(variableOrProcedureName, VARIABLE);
 
       ltype = getType(entry);
 
