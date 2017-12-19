@@ -586,6 +586,16 @@ void resetParser() {
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
 void emitMainEntry();
 void bootstrapCode();
+void createELFHeader();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t ELF_HEADER_LEN    = 120;    // = file header (64 byte) + program header (56 bytes)
+uint64_t ELF_ENTRY_POINT   = 65536;  // = 0x10000
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t *ELF_header = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -845,18 +855,6 @@ void     implementOpen(uint64_t* context);
 void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
 
-void load_syscall_code(uint64_t code) {
-  uint64_t divisor;
-
-  divisor = twoToThePowerOf(10);
-
-  emitIFormat(divisor, REG_ZR, F3_ADDI, REG_A5, OP_IMM);
-  emitIFormat(code / divisor, REG_ZR, F3_ADDI, REG_A6, OP_IMM);
-  emitRFormat(F7_MUL, REG_A5, REG_A6, F3_MUL, REG_A5, OP_OP);
-  emitIFormat(code % divisor, REG_ZR, F3_ADDI, REG_A6, OP_IMM);
-  emitRFormat(F7_ADD, REG_A5, REG_A6, F3_ADD, REG_A0, OP_OP);
-}
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read   = 0;
@@ -865,14 +863,13 @@ uint64_t debug_open   = 0;
 
 uint64_t debug_malloc = 0;
 
-// TODO: get appropriate syscall codes
+uint64_t SYSCALL_EXIT   = 93;
+uint64_t SYSCALL_READ   = 63;
+uint64_t SYSCALL_WRITE  = 64;
+uint64_t SYSCALL_OPEN   = 1024;
 
-uint64_t SYSCALL_EXIT   = 4001;
-uint64_t SYSCALL_READ   = 4003;
-uint64_t SYSCALL_WRITE  = 4004;
-uint64_t SYSCALL_OPEN   = 4005;
-
-uint64_t SYSCALL_MALLOC = 4045;
+// TODO: fix this syscall for spike
+uint64_t SYSCALL_MALLOC = 222;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -885,7 +882,8 @@ uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t SYSCALL_SWITCH = 4901;
+// TODO: fix this syscall for spike
+uint64_t SYSCALL_SWITCH = 401;
 
 uint64_t debug_switch = 0;
 
@@ -4113,16 +4111,13 @@ void emitMainEntry() {
   // the instruction at address zero cannot be fixed up
   // we therefore need at least one not-to-be-fixed-up instruction here
 
-  // we generate NOPs to accommodate GP and SP register
-  // initialization code that overwrites the NOPs later
+  // we generate NOPs to accommodate GP register
+  // initialization code that overwrites the jumps later
   // when binaryLength is known
-
   i = 0;
 
-  // 26 NOPs per register is enough for initialization
-  // since we load integers 0 <= n < 2^64 which take
-  // no more than 26 instructions each, see load_integer
-  while (i < 52) {
+  // 15 instructions is enough for initialization of GP, see load_integer
+  while (i < 15) {
     emitIFormat(0, REG_ZR, F3_NOP, REG_ZR, OP_IMM);
 
     i = i + 1;
@@ -4145,15 +4140,15 @@ void emitMainEntry() {
 void bootstrapCode() {
   uint64_t savedBinaryLength;
   uint64_t upper;
-  uint64_t lower;
+  uint64_t lower; 
 
   savedBinaryLength = binaryLength;
 
   binaryLength = 0;
 
   // load binaryLength into GP register
-  lower = getLSBs(savedBinaryLength, 12);
-  upper = rightShift(savedBinaryLength, 12);
+  lower = getLSBs(savedBinaryLength + ELF_ENTRY_POINT, 12);
+  upper = rightShift(savedBinaryLength + ELF_ENTRY_POINT, 12);
 
   // setting of bit 11 can only be reached by increasing upper by 1 and
   // adding a negativ offset instead of lower
@@ -4169,14 +4164,6 @@ void bootstrapCode() {
     emitIFormat(lower, REG_ZR, F3_ADDI, REG_GP, OP_IMM);
   }
 
-  // initial stack pointer is stored at highest virtual address
-  emitUFormat(twoToThePowerOf(18), REG_T0, OP_LUI);
-  emitIFormat(4, REG_ZR, F3_ADDI, REG_T1, OP_IMM);
-  emitRFormat(F7_MUL, REG_T1, REG_T0, F3_MUL, REG_T0, OP_OP);
-
-  // load initial stack pointer into SP register
-  emitIFormat(-REGISTERSIZE, REG_T0, F3_LD, REG_SP, OP_LD);
-
   binaryLength = savedBinaryLength;
 
   if (reportUndefinedProcedures())
@@ -4185,6 +4172,32 @@ void bootstrapCode() {
     fixup_relative_JFormat(mainJump, mainJump + INSTRUCTIONSIZE);
 
   mainJump = 0;
+}
+
+void createELFHeader() {
+  // store all numbers necessary to create a valid
+  // ELF header incl. program header and section headers.
+  // For more info about specific fields, consult ELF documentation.
+  ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+
+  // ELF Header
+  *(ELF_header + 0)  = 282584257676671;    // part 1 of ELF magic number
+  *(ELF_header + 1)  = 0;                  // part 2 of ELF magic number
+  *(ELF_header + 2)  = 15925250 + leftShift(1, 32); // type,machine fields (16 bit each) and version number
+  *(ELF_header + 3)  = ELF_ENTRY_POINT;
+  *(ELF_header + 4)  = 8 * SIZEOFUINT64;
+  *(ELF_header + 5)  = 0;
+  *(ELF_header + 6)  = leftShift(8 * SIZEOFUINT64 + leftShift(7 * SIZEOFUINT64, 16), 32); // flags and the size of ELF header and size of program header
+  *(ELF_header + 7)  = 1;
+
+  // Program Header
+  *(ELF_header + 8)  = 1 + leftShift(7, 32);  // type of program header (LOAD) and access flags (RWX)
+  *(ELF_header + 9)  = ELF_HEADER_LEN;        // offset to 1. byte of segment
+  *(ELF_header + 10) = ELF_ENTRY_POINT;       // virtual address
+  *(ELF_header + 11) = 0;                     // physical address
+  *(ELF_header + 12) = binaryLength;          // file size
+  *(ELF_header + 13) = binaryLength;          // memory size
+  *(ELF_header + 14) = PAGESIZE;              // alignment of segments
 }
 
 // -----------------------------------------------------------------
@@ -4321,9 +4334,11 @@ void selfie_compile() {
 
   bootstrapCode();
 
+  createELFHeader();
+
   print(selfieName);
   print((uint64_t*) ": ");
-  printInteger(binaryLength + DOUBLEWORDSIZE);
+  printInteger(binaryLength);
   print((uint64_t*) " bytes generated with ");
   printInteger(codeLength / INSTRUCTIONSIZE);
   print((uint64_t*) " instructions and ");
@@ -4737,9 +4752,9 @@ void decode() {
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
-    return getHighWord(*(binary + baddr / SIZEOFUINT64));
-  else
     return getLowWord(*(binary + baddr / SIZEOFUINT64));
+  else
+    return getHighWord(*(binary + baddr / SIZEOFUINT64));
 }
 
 void storeInstruction(uint64_t baddr, uint64_t instruction) {
@@ -4754,11 +4769,11 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
   temp = *(binary + baddr / SIZEOFUINT64);
 
   if (baddr % SIZEOFUINT64 == 0)
-    // replace high word
-    temp = leftShift(instruction, 32) + getLSBs(temp, 32);
-  else
     // replace low word
     temp = instruction + leftShift(rightShift(temp, 32), 32);
+  else
+    // replace high word
+    temp = leftShift(instruction, 32) + getLSBs(temp, 32);
 
   *(binary + baddr / SIZEOFUINT64) = temp;
 }
@@ -4945,12 +4960,10 @@ void selfie_output() {
     exit(EXITCODE_IOERROR);
   }
 
-  *binary_buffer = codeLength;
+  // assert: ELF_header is mapped
 
-  // assert: binary_buffer is mapped
-
-  // first write code length
-  write(fd, binary_buffer, SIZEOFUINT64);
+  // first write ELF header
+  write(fd, ELF_header, ELF_HEADER_LEN);
 
   // assert: binary is mapped
 
@@ -4959,11 +4972,11 @@ void selfie_output() {
 
   print(selfieName);
   print((uint64_t*) ": ");
-  printInteger(binaryLength + DOUBLEWORDSIZE);
+  printInteger(binaryLength);
   print((uint64_t*) " bytes with ");
   printInteger(codeLength / INSTRUCTIONSIZE);
   print((uint64_t*) " instructions and ");
-  printInteger(binaryLength - codeLength + DOUBLEWORDSIZE);
+  printInteger(binaryLength - codeLength);
   print((uint64_t*) " bytes of data written into ");
   print(binaryName);
   println();
@@ -5029,19 +5042,21 @@ void selfie_load() {
   // no source line numbers in binaries
   sourceLineNumber = (uint64_t*) 0;
 
-  // assert: binary_buffer is mapped
+  ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 
-  // read code length first
-  numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
+  // assert: ELF_header is mapped
 
-  if (numberOfReadBytes == SIZEOFUINT64) {
-    codeLength = *binary_buffer;
+  // read elf header first
+  numberOfReadBytes = read(fd, ELF_header, ELF_HEADER_LEN);
+
+  if (numberOfReadBytes == ELF_HEADER_LEN) {
+    codeLength = *(ELF_header + 12);
 
     if (codeLength <= maxBinaryLength) {
       // assert: binary is mapped
 
       // now read binary including global variables and strings
-      numberOfReadBytes = signExtend(read(fd, binary, maxBinaryLength), INT_BITWIDTH);
+      numberOfReadBytes = signExtend(read(fd, binary, codeLength), INT_BITWIDTH);
 
       if (signedGreaterThan(numberOfReadBytes, 0)) {
         binaryLength = numberOfReadBytes;
@@ -5050,12 +5065,8 @@ void selfie_load() {
         if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
           print(selfieName);
           print((uint64_t*) ": ");
-          printInteger(binaryLength + DOUBLEWORDSIZE);
-          print((uint64_t*) " bytes with ");
-          printInteger(codeLength / INSTRUCTIONSIZE);
-          print((uint64_t*) " instructions and ");
-          printInteger(binaryLength - codeLength + DOUBLEWORDSIZE);
-          print((uint64_t*) " bytes of data loaded from ");
+          printInteger(binaryLength);
+          print((uint64_t*) " bytes loaded from ");
           print(binaryName);
           println();
 
@@ -5081,13 +5092,13 @@ void emitExit() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   // load argument for exit
-  emitIFormat(0, REG_SP, F3_LD, REG_A3, OP_LD);
+  emitIFormat(0, REG_SP, F3_LD, REG_A0, OP_LD);
 
   // remove the argument from the stack
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
   // load the correct syscall number and invoke syscall
-  load_syscall_code(SYSCALL_EXIT);
+  emitIFormat(SYSCALL_EXIT, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
 
   emitIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
 
@@ -5095,7 +5106,7 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  setExitCode(context, signShrink(*(getRegs(context)+REG_A3), INT_BITWIDTH));
+  setExitCode(context, signShrink(*(getRegs(context)+REG_A0), INT_BITWIDTH));
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -5114,13 +5125,13 @@ void emitRead() {
   emitIFormat(0, REG_SP, F3_LD, REG_A2, OP_LD); // size
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A4, OP_LD); // *buffer
+  emitIFormat(0, REG_SP, F3_LD, REG_A1, OP_LD); // *buffer
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A3, OP_LD); // fd
+  emitIFormat(0, REG_SP, F3_LD, REG_A0, OP_LD); // fd
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  load_syscall_code(SYSCALL_READ);
+  emitIFormat(SYSCALL_READ, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
 
   emitIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
 
@@ -5141,8 +5152,8 @@ void implementRead(uint64_t* context) {
   // assert: read buffer is mapped
 
   size  = *(getRegs(context)+REG_A2);
-  fd    = *(getRegs(context)+REG_A3);
-  vaddr = *(getRegs(context)+REG_A4);
+  fd    = *(getRegs(context)+REG_A0);
+  vaddr = *(getRegs(context)+REG_A1);
 
   if (debug_read) {
     print(selfieName);
@@ -5232,13 +5243,13 @@ void emitWrite() {
   emitIFormat(0, REG_SP, F3_LD, REG_A2, OP_LD); // size
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A4, OP_LD); // *buffer
+  emitIFormat(0, REG_SP, F3_LD, REG_A1, OP_LD); // *buffer
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A3, OP_LD); // fd
+  emitIFormat(0, REG_SP, F3_LD, REG_A0, OP_LD); // fd
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  load_syscall_code(SYSCALL_WRITE);
+  emitIFormat(SYSCALL_WRITE, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
 
   emitIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
 
@@ -5258,8 +5269,8 @@ void implementWrite(uint64_t* context) {
   // assert: write buffer is mapped
 
   size  = *(getRegs(context)+REG_A2);
-  fd    = *(getRegs(context)+REG_A3);
-  vaddr = *(getRegs(context)+REG_A4);
+  fd    = *(getRegs(context)+REG_A0);
+  vaddr = *(getRegs(context)+REG_A1);
 
   if (debug_write) {
     print(selfieName);
@@ -5349,13 +5360,13 @@ void emitOpen() {
   emitIFormat(0, REG_SP, F3_LD, REG_A2, OP_LD); // mode
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A4, OP_LD); // flags
+  emitIFormat(0, REG_SP, F3_LD, REG_A1, OP_LD); // flags
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A3, OP_LD); // filename
+  emitIFormat(0, REG_SP, F3_LD, REG_A0, OP_LD); // filename
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  load_syscall_code(SYSCALL_OPEN);
+  emitIFormat(SYSCALL_OPEN, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
 
   emitIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
 
@@ -5418,8 +5429,8 @@ void implementOpen(uint64_t* context) {
   uint64_t fd;
 
   mode  = *(getRegs(context)+REG_A2);
-  vaddr = *(getRegs(context)+REG_A3);
-  flags = *(getRegs(context)+REG_A4);
+  vaddr = *(getRegs(context)+REG_A0);
+  flags = *(getRegs(context)+REG_A1);
 
   if (down_loadString(getPT(context), vaddr, filename_buffer)) {
     fd = open(filename_buffer, flags, mode); //here
@@ -5458,10 +5469,10 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A3, OP_LD); // size
+  emitIFormat(0, REG_SP, F3_LD, REG_A0, OP_LD); // size
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  load_syscall_code(SYSCALL_MALLOC);
+  emitIFormat(SYSCALL_MALLOC, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
 
   emitIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
 
@@ -5476,12 +5487,12 @@ uint64_t implementMalloc(uint64_t* context) {
   if (debug_malloc) {
     print(selfieName);
     print((uint64_t*) ": trying to malloc ");
-    printInteger(*(getRegs(context)+REG_A3));
+    printInteger(*(getRegs(context)+REG_A0));
     print((uint64_t*) " bytes");
     println();
   }
 
-  size = roundUp(*(getRegs(context)+REG_A3), SIZEOFUINT64);
+  size = roundUp(*(getRegs(context)+REG_A0), SIZEOFUINT64);
 
   bump = getProgramBreak(context);
 
@@ -5516,13 +5527,13 @@ uint64_t implementMalloc(uint64_t* context) {
 void emitSwitch() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A4, OP_LD); // number of instructions to execute
+  emitIFormat(0, REG_SP, F3_LD, REG_A1, OP_LD); // number of instructions to execute
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  emitIFormat(0, REG_SP, F3_LD, REG_A3, OP_LD); // context to which we switch
+  emitIFormat(0, REG_SP, F3_LD, REG_A0, OP_LD); // context to which we switch
   emitIFormat(REGISTERSIZE, REG_SP, F3_ADDI, REG_SP, OP_IMM);
 
-  load_syscall_code(SYSCALL_SWITCH);
+  emitIFormat(SYSCALL_SWITCH, REG_ZR, F3_ADDI, REG_A7, OP_IMM);
 
   emitIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM);
 
@@ -5573,7 +5584,7 @@ void implementSwitch() {
   saveContext(currentContext);
 
   // cache context on my boot level before switching
-  doSwitch(cacheContext((uint64_t*) *(registers+REG_A3)), *(registers+REG_A4));
+  doSwitch(cacheContext((uint64_t*) *(registers+REG_A0)), *(registers+REG_A1));
 }
 
 uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout) {
@@ -6106,7 +6117,7 @@ void fct_ecall() {
   if (interpret) {
     pc = pc + INSTRUCTIONSIZE;
 
-    if (*(registers + REG_A0) == SYSCALL_SWITCH)
+    if (*(registers + REG_A7) == SYSCALL_SWITCH)
       implementSwitch();
     else
       throwException(EXCEPTION_SYSCALL, 0);
@@ -6501,9 +6512,9 @@ void fetch() {
   // assert: isVirtualAddressMapped(pt, pc) == 1
 
   if (pc % REGISTERSIZE == 0)
-    ir = getHighWord(loadVirtualMemory(pt, pc));
+    ir = getLowWord(loadVirtualMemory(pt, pc));
   else
-    ir = getLowWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
+    ir = getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
 }
 
 void execute() {
@@ -6516,7 +6527,7 @@ void execute() {
     if (sourceLineNumber != (uint64_t*) 0) {
       print((uint64_t*) "(~");
       printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
-      print((uint64_t*) ")");
+      print((uint64_t*) ")"); 
     }
     print((uint64_t*) ": ");
     printHexadecimal(ir, 8);
@@ -7092,18 +7103,25 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
 }
 
 void up_loadBinary(uint64_t* context) {
-  uint64_t vaddr;
+  uint64_t entryPoint;
+  uint64_t baddr;
 
+  entryPoint = *(ELF_header + 10);
+
+  setPC(context, entryPoint);
+  setLoPage(context, getPageOfVirtualAddress(entryPoint));
+  setMePage(context, getPageOfVirtualAddress(entryPoint));
   setName(context, binaryName);
 
-  // binaries start at lowest virtual address
-  vaddr = 0;
+  baddr = 0;
 
-  while (vaddr < binaryLength) {
-    mapAndStore(context, vaddr, loadData(vaddr));
+  while (baddr < binaryLength) {
+    mapAndStore(context, entryPoint + baddr, loadData(baddr));
 
-    vaddr = vaddr + SIZEOFUINT64;
+    baddr = baddr + SIZEOFUINT64;
   }
+
+  setProgramBreak(context, roundUp(entryPoint + baddr, PAGESIZE));
 }
 
 uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
@@ -7174,8 +7192,8 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // push virtual argv
   mapAndStore(context, SP, vargv);
 
-  // store stack pointer at highest virtual address for binary to retrieve
-  mapAndStore(context, VIRTUALMEMORYSIZE - REGISTERSIZE, SP);
+  // store stack pointer value into the register
+  *(getRegs(context)+REG_SP) = SP;
 }
 
 void mapUnmappedPages(uint64_t* context) {
@@ -7183,7 +7201,7 @@ void mapUnmappedPages(uint64_t* context) {
 
   // assert: page table is only mapped from beginning up and end down
 
-  page = 0;
+  page = getLoPage(context);
 
   while (isPageMapped(getPT(context), page))
     page = page + 1;
@@ -7216,20 +7234,20 @@ uint64_t isBootLevelZero() {
 }
 
 uint64_t handleSystemCalls(uint64_t* context) {
-  uint64_t a0;
+  uint64_t a7;
 
   if (getException(context) == EXCEPTION_SYSCALL) {
-    a0 = *(getRegs(context)+REG_A0);
+    a7 = *(getRegs(context)+REG_A7);
 
-    if (a0 == SYSCALL_MALLOC)
+    if (a7 == SYSCALL_MALLOC)
       return implementMalloc(context);
-    else if (a0 == SYSCALL_READ)
+    else if (a7 == SYSCALL_READ)
       implementRead(context);
-    else if (a0 == SYSCALL_WRITE)
+    else if (a7 == SYSCALL_WRITE)
       implementWrite(context);
-    else if (a0 == SYSCALL_OPEN)
+    else if (a7 == SYSCALL_OPEN)
       implementOpen(context);
-    else if (a0 == SYSCALL_EXIT) {
+    else if (a7 == SYSCALL_EXIT) {
       implementExit(context);
 
       // TODO: exit only if all contexts have exited
@@ -7237,7 +7255,7 @@ uint64_t handleSystemCalls(uint64_t* context) {
     } else {
       print(selfieName);
       print((uint64_t*) ": unknown system call ");
-      printInteger(a0);
+      printInteger(a7);
       println();
 
       setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
