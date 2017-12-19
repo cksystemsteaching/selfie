@@ -3339,58 +3339,48 @@ uint64_t gr_expression() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_EQUALITY) {
-      // if a == b load 1 else load 0
-      emitBFormat(2, currentTemporary(), previousTemporary(), F3_BEQ, OP_BRANCH);
+      // a == b iff unsigned b - a < 1
+      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
+      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      emitRFormat(F7_SLTU, currentTemporary(), previousTemporary(), F3_SLTU, previousTemporary(), OP_OP);
 
       tfree(1);
-
-      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      emitBFormat(1, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
-      // if a == b load 0 else load 1
-      emitBFormat(2, currentTemporary(), previousTemporary(), F3_BEQ, OP_BRANCH);
+      // a != b iff unsigned 0 < b - a
+      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
 
       tfree(1);
 
-      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      emitBFormat(1, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      emitRFormat(F7_SLTU, currentTemporary(), REG_ZR, F3_SLTU, currentTemporary(), OP_OP);
 
     } else if (operatorSymbol == SYM_LT) {
-      // if a < b load 1 else load 0
+      // a < b
       emitRFormat(F7_SLTU, currentTemporary(), previousTemporary(), F3_SLTU, previousTemporary(), OP_OP);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
-      // if b < a load 1 else load 0
+      // a > b iff b < a
       emitRFormat(F7_SLTU, previousTemporary(), currentTemporary(), F3_SLTU, previousTemporary(), OP_OP);
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
-      // if b < a load 0 else load 1
+      // a <= b iff 1 - (b < a)
       emitRFormat(F7_SLTU, previousTemporary(), currentTemporary(), F3_SLTU, previousTemporary(), OP_OP);
+      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
 
       tfree(1);
-
-      emitBFormat(2, currentTemporary(), REG_ZR, F3_BEQ, OP_BRANCH);
-      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      emitBFormat(1, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
     } else if (operatorSymbol == SYM_GEQ) {
-      // if a < b load 0 else load 1
+      // a >= b iff 1 - (a < b)
       emitRFormat(F7_SLTU, currentTemporary(), previousTemporary(), F3_SLTU, previousTemporary(), OP_OP);
+      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
+      emitRFormat(F7_SUB, previousTemporary(), currentTemporary(), F3_SUB, previousTemporary(), OP_OP);
 
       tfree(1);
-
-      emitBFormat(2, currentTemporary(), REG_ZR, F3_BEQ, OP_BRANCH);
-      emitIFormat(0, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
-      emitBFormat(1, REG_ZR, REG_ZR, F3_BEQ, OP_BRANCH);
-      emitIFormat(1, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
     }
   }
 
@@ -6771,7 +6761,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(6 * SIZEOFUINT64STAR + 11 * SIZEOFUINT64);
+    context = smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
