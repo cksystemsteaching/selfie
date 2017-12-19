@@ -99,7 +99,6 @@ uint64_t twoToThePowerOf(uint64_t p);
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
 uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
-uint64_t getLSBs(uint64_t n, uint64_t b);
 
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedGreaterThan(uint64_t lhs, uint64_t rhs);
@@ -1387,13 +1386,11 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
 }
 
 uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to) {
-  // assert 0 <= from <= to < CPUBITWIDTH
-  return rightShift(leftShift(n, (CPUBITWIDTH - 1) - to), from + ((CPUBITWIDTH - 1) - to));
-}
-
-uint64_t getLSBs(uint64_t n, uint64_t b) {
-  // assert: 0 <= b < CPUBITWIDTH
-  return n % twoToThePowerOf(b);
+  // assert: 0 <= from <= to < CPUBITWIDTH
+  if (from == 0)
+    return n % twoToThePowerOf(to + 1);
+  else
+    return rightShift(leftShift(n, (CPUBITWIDTH - 1) - to), from + ((CPUBITWIDTH - 1) - to));
 }
 
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs) {
@@ -1476,15 +1473,15 @@ uint64_t abs(uint64_t n) {
 uint64_t signShrink(uint64_t immediate, uint64_t bits) {
   // assert: 0 < bits <= CPUBITWIDTH
   // assert: -2^(bits - 1) <= immediate < 2^(bits - 1)
-  return getLSBs(immediate, bits);
+  return getBitsFromTo(immediate, 0, bits - 1);
 }
 
 uint64_t getHighWord(uint64_t doubleWord) {
-  return rightShift(doubleWord, 32);
+  return getBitsFromTo(doubleWord, 32, 63);
 }
 
 uint64_t getLowWord(uint64_t doubleWord) {
-  return getLSBs(doubleWord, 32);
+  return getBitsFromTo(doubleWord, 0, 31);
 }
 
 uint64_t loadCharacter(uint64_t* s, uint64_t i) {
@@ -2837,7 +2834,7 @@ void load_integer(uint64_t value) {
 
   } else if (isNBitSignedInt(value, 32)) {
     // -2^31 <= value < 2^31 is loaded with one addi and one lui
-    lower = getLSBs(value, 12);
+    lower = getBitsFromTo(value,  0, 11);
     upper = getBitsFromTo(value, 12, 31);
 
     // setting of bit 11 can only be reached by increasing upper by 1 and
@@ -4137,8 +4134,8 @@ void bootstrapCode() {
   binaryLength = 0;
 
   // load binaryLength into GP register
-  lower = getLSBs(savedBinaryLength + ELF_ENTRY_POINT, 12);
-  upper = rightShift(savedBinaryLength + ELF_ENTRY_POINT, 12);
+  lower = getBitsFromTo(savedBinaryLength + ELF_ENTRY_POINT,  0, 11);
+  upper = getBitsFromTo(savedBinaryLength + ELF_ENTRY_POINT, 12, 63);
 
   // setting of bit 11 can only be reached by increasing upper by 1 and
   // adding a negativ offset instead of lower
@@ -4423,7 +4420,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   // split immediate by shifting 32-bit value accordingly
   imm1 = getBitsFromTo(immediate, 5, 11);
-  imm2 = getLSBs(immediate, 5);
+  imm2 = getBitsFromTo(immediate, 0,  4);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 5) + rs2, 5) + rs1, 3) + funct3, 5) + imm2, 7) + opcode;
 }
@@ -4527,7 +4524,7 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 }
 
 uint64_t getOpcode(uint64_t instruction) {
-  return getLSBs(instruction, 7);
+  return getBitsFromTo(instruction, 0, 6);
 }
 
 uint64_t getRS1(uint64_t instruction) {
@@ -4763,7 +4760,7 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
     temp = instruction + leftShift(rightShift(temp, 32), 32);
   else
     // replace high word
-    temp = leftShift(instruction, 32) + getLSBs(temp, 32);
+    temp = leftShift(instruction, 32) + getBitsFromTo(temp, 0, 31);
 
   *(binary + baddr / SIZEOFUINT64) = temp;
 }
