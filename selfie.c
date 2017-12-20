@@ -102,8 +102,7 @@ uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
 
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
-uint64_t isNBitSignedInt(uint64_t value, uint64_t n);
-uint64_t abs(uint64_t n);
+uint64_t isNBitSignedInteger(uint64_t value, uint64_t n);
 
 uint64_t signShrink(uint64_t immediate, uint64_t bits);
 
@@ -1387,7 +1386,10 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
 uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to) {
   // assert: 0 <= from <= to < CPUBITWIDTH
   if (from == 0)
-    return n % twoToThePowerOf(to + 1);
+    if (to == CPUBITWIDTH - 1)
+      return n;
+    else
+      return n % twoToThePowerOf(to + 1);
   else
     return rightShift(leftShift(n, (CPUBITWIDTH - 1) - to), from + ((CPUBITWIDTH - 1) - to));
 }
@@ -1448,20 +1450,13 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
   return quotient;
 }
 
-uint64_t isNBitSignedInt(uint64_t value, uint64_t n) {
+uint64_t isNBitSignedInteger(uint64_t value, uint64_t n) {
   if (value < twoToThePowerOf(n - 1))
     return 1;
   else if (value >= -twoToThePowerOf(n - 1))
     return 1;
   else
     return 0;
-}
-
-uint64_t abs(uint64_t n) {
-  if (signedLessThan(n, 0))
-    return -n;
-  else
-    return n;
 }
 
 uint64_t signShrink(uint64_t immediate, uint64_t bits) {
@@ -2735,7 +2730,7 @@ void encodingError(uint64_t found, uint64_t bits) {
   print((uint64_t*) ": Expected immediate in range from ");
   printInteger(-twoToThePowerOf(bits - 1));
   print((uint64_t*) " to ");
-  printInteger(twoToThePowerOf(bits - 1) -1);
+  printInteger(twoToThePowerOf(bits - 1) - 1);
   print((uint64_t*) ", but found: ");
   printInteger(found);
   println();
@@ -2796,7 +2791,7 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
   entry = getVariableOrBigInt(variableOrBigInt, class);
 
-  if (isNBitSignedInt(getAddress(entry), 12)) {
+  if (isNBitSignedInteger(getAddress(entry), 12)) {
     talloc();
 
     emitIFormat(getAddress(entry), getScope(entry), F3_LD, currentTemporary(), OP_LD);
@@ -2821,7 +2816,7 @@ void load_integer(uint64_t value) {
 
   // assert: n = allocatedTemporaries
 
-  if (isNBitSignedInt(value, 12)) {
+  if (isNBitSignedInteger(value, 12)) {
     // integers greater than or equal to -2^11 and less than 2^11
     // are loaded with one addi into a register
 
@@ -2829,7 +2824,7 @@ void load_integer(uint64_t value) {
 
     emitIFormat(value, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
-  } else if (isNBitSignedInt(value, 32)) {
+  } else if (isNBitSignedInteger(value, 32)) {
     // integers greater than or equal to -2^31 and less than 2^31
     // are loaded with one addi and one lui into a register
 
@@ -2847,7 +2842,7 @@ void load_integer(uint64_t value) {
     emitIFormat(signExtend(lower, 12), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
 
   } else {
-    // integers less than 2^-31 or greater than or equal to 2^31 are stored in data segment
+    // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
     entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
@@ -3710,7 +3705,7 @@ void gr_statement() {
 
       offset = getAddress(entry);
 
-      if (isNBitSignedInt(offset, 12)) {
+      if (isNBitSignedInteger(offset, 12)) {
         emitSFormat(offset, currentTemporary(), getScope(entry), F3_SD, OP_SD);
 
         tfree(1);
@@ -4380,7 +4375,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= funct3 < 2^3
   // assert: -2^11 <= immediate < 2^11 -1
 
-  if (isNBitSignedInt(immediate, 12) == 0)
+  if (isNBitSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
@@ -4402,7 +4397,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm1;
   uint64_t imm2;
   
-  if (isNBitSignedInt(immediate, 12) == 0)
+  if (isNBitSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
@@ -4433,7 +4428,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // branching offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
-  if (isNBitSignedInt(immediate, 13) == 0)
+  if (isNBitSignedInteger(immediate, 13) == 0)
     encodingError(immediate, 13);
 
   immediate = signShrink(immediate, 13);
@@ -4465,7 +4460,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // jumping offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
-  if (isNBitSignedInt(immediate, 21) == 0)
+  if (isNBitSignedInteger(immediate, 21) == 0)
     encodingError(immediate, 21);
 
   immediate = signShrink(immediate, 21);
@@ -4489,7 +4484,7 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= rd < 2^5
   // assert: -2^19 <= immediate < 2^19 -1
 
-  if (isNBitSignedInt(immediate, 20) == 0)
+  if (isNBitSignedInteger(immediate, 20) == 0)
     encodingError(immediate, 20);
 
   immediate = signShrink(immediate, 20);
@@ -6732,7 +6727,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
+    context = smalloc(7 * SIZEOFUINT64STAR + 8 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
