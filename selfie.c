@@ -1386,7 +1386,7 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
 uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to) {
   // assert: 0 <= from <= to < CPUBITWIDTH
   if (from == 0)
-    if (to == CPUBITWIDTH - 1)
+    if (to >= CPUBITWIDTH - 1)
       return n;
     else
       return n % twoToThePowerOf(to + 1);
@@ -6355,13 +6355,6 @@ void fct_beq() {
     if (s1 == s2) {
       pc = pc + imm;
 
-      if (signedLessThan(imm, 0)) {
-        // keep track of number of loop iterations
-        loops = loops + 1;
-
-        *(loopsPerAddress + pc / INSTRUCTIONSIZE) = *(loopsPerAddress + pc / INSTRUCTIONSIZE) + 1;
-      }
-
       // TODO: execute delay slot
     }
   }
@@ -6382,7 +6375,7 @@ void fct_jal() {
   imm = signExtend(immediate, 21);
 
   if (interpret) {
-    d   = *(registers + rd);
+    d = *(registers + rd);
   }
 
   if (debug) {
@@ -6404,15 +6397,23 @@ void fct_jal() {
 
   if (interpret) {
     d = pc + INSTRUCTIONSIZE;
+
     if (rd != REG_ZR)
       *(registers + rd) = d;
 
     pc = pc + imm;
 
-    // keep track of number of procedure calls
-    calls = calls + 1;
+    if (rd != REG_ZR) {
+      // keep track of number of procedure calls
+      calls = calls + 1;
 
-    *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+      *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+    } else if (signedLessThan(imm, 0)) {
+      // keep track of number of loop iterations
+      loops = loops + 1;
+
+      *(loopsPerAddress + pc / INSTRUCTIONSIZE) = *(loopsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+    }
 
     // TODO: execute delay slot
   }
@@ -6695,7 +6696,7 @@ void selfie_disassemble() {
 
   debug = 1;
 
-  while(pc < codeLength) {
+  while (pc < codeLength) {
     ir = loadInstruction(pc);
 
     decode();
