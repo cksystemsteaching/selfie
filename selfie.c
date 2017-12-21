@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2017, the Selfie Project authors. All rights reserved.
+// Copyright (c) 2015-2018, the Selfie Project authors. All rights reserved.
 // Please see the AUTHORS file for details. Use of this source code is
 // governed by a BSD license that can be found in the LICENSE file.
 //
@@ -16,23 +16,24 @@
 // resolve self-reference in systems code which is seen as the key
 // challenge when teaching systems engineering, hence the name.
 //
-// Selfie is a fully self-referential 7k-line C implementation of:
+// Selfie is a self-contained 7k-line, 64-bit C implementation of:
 //
 // 1. a self-compiling compiler called starc that compiles
-//    a tiny but powerful subset of C called C Star (C*) to
-//    a tiny but powerful subset of MIPS64 called MIPSter,
+//    a tiny but still fast subset of C called C Star (C*) to
+//    a tiny and easy-to-teach subset of RISC-V called RISC-U,
 // 2. a self-executing emulator called mipster that executes
-//    MIPSter code including itself when compiled with starc,
-// 3. a self-hosting hypervisor called hypster which is based on
-//    a tiny microkernel implemented in mipster and provides
-//    MIPSter virtual machines that can host all of selfie,
+//    RISC-U code including itself when compiled with starc,
+// 3. a self-hosting hypervisor called hypster that provides
+//    RISC-U virtual machines that can host all of selfie,
 //    that is, starc, mipster, and hypster itself, and
 // 4. a tiny C* library called libcstar utilized by selfie.
 //
-// Selfie is kept minimal for simplicity and implemented in a single file.
-// There is a simple linker, disassembler, profiler, and debugger as well as
-// minimal operating system support in the form of MIPS64 o64 system calls
-// built into the emulator.
+// Selfie is implemented in a single (!) file and kept minimal for simplicity.
+// There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
+// and a debugger as well as minimal operating system support in the form of
+// RISC-V system calls built into the emulator. As part of an ongoing effort,
+// there is also a simple SAT solver implemented in selfie that may eventually
+// be used in some form of self-verification.
 //
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes composite data types, bitwise and Boolean
@@ -44,18 +45,19 @@
 // arithmetics helping students better understand arithmetic operators.
 // C* is supposed to be close to the minimum necessary for implementing
 // a self-compiling, single-pass, recursive-descent compiler. C* can be
-// taught in around two weeks of classes depending on student background.
+// taught in one to two weeks of classes depending on student background.
 //
 // The compiler can readily be extended to compile features missing in C*
 // and to improve performance of the generated code. The compiler generates
-// MIPSter executables that can directly be executed by the emulator or
-// written to a file in a simple, custom-defined format. Support of standard
-// MIPS64 ELF binaries should be easy but remains future work.
+// RISC-U executables in ELF format that are compatible with the official
+// RISC-V toolchain. The mipster emulator can execute RISC-U executables
+// loaded from file but also from memory immediately after code generation
+// without going through the file system.
 //
-// MIPSter is a tiny Turing-complete subset of the MIPS64 instruction set.
-// It only features arithmetic, memory, and control-flow instructions but
-// neither bitwise nor byte-level instructions. MIPSter can be properly
-// explained in a single week of classes.
+// RISC-U is a tiny Turing-complete subset of the RISC-V instruction set.
+// It only features unsigned 64-bit arithmetic, double-word memory, and
+// simple control-flow instructions but neither bitwise nor byte- and
+// word-level instructions. RISC-U can be taught in one week of classes.
 //
 // The emulator implements minimal operating system support that is meant
 // to be extended by students, first as part of the emulator, and then
@@ -68,9 +70,10 @@
 //
 // Selfie is the result of many years of teaching systems engineering.
 // The design of the compiler is inspired by the Oberon compiler of
-// Professor Niklaus Wirth from ETH Zurich. The design of the selfie
-// microkernel is inspired by microkernels of Professor Jochen Liedtke
-// from University of Karlsruhe.
+// Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
+// RISC-V community around Professor David Patterson from UC Berkeley.
+// The design of the hypervisor is inspired by microkernels of
+// Professor Jochen Liedtke from University of Karlsruhe.
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -2798,7 +2801,7 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
     return getType(entry);
   }
-  
+
   load_integer(getAddress(entry));
 
   emitRFormat(F7_ADD, currentTemporary(), getScope(entry), F3_ADD, currentTemporary(), OP_OP);
@@ -3711,7 +3714,7 @@ void gr_statement() {
         tfree(1);
       } else {
         load_integer(offset);
-        
+
         emitRFormat(F7_ADD, currentTemporary(), getScope(entry), F3_ADD, currentTemporary(), OP_OP);
         emitSFormat(0, previousTemporary(), currentTemporary(), F3_SD, OP_SD);
 
@@ -4121,7 +4124,7 @@ void emitMainEntry() {
 void bootstrapCode() {
   uint64_t savedBinaryLength;
   uint64_t upper;
-  uint64_t lower; 
+  uint64_t lower;
 
   savedBinaryLength = binaryLength;
 
@@ -4396,7 +4399,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // assert: -2^11 <= immediate < 2^11 -1
   uint64_t imm1;
   uint64_t imm2;
-  
+
   if (isNBitSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
 
@@ -6484,7 +6487,7 @@ void execute() {
     if (sourceLineNumber != (uint64_t*) 0) {
       print((uint64_t*) "(~");
       printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
-      print((uint64_t*) ")"); 
+      print((uint64_t*) ")");
     }
     print((uint64_t*) ": ");
     printHexadecimal(ir, 8);
