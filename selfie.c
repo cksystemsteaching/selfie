@@ -99,19 +99,20 @@ void initLibrary();
 void resetLibrary();
 
 uint64_t twoToThePowerOf(uint64_t p);
+
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
-uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
 
-uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
+uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
+uint64_t getHighWord(uint64_t n);
+uint64_t getLowWord(uint64_t n);
+
+uint64_t signedLessThan(uint64_t a, uint64_t b);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
 
 uint64_t isSignedInteger(uint64_t n, uint64_t b);
 uint64_t signExtend(uint64_t n, uint64_t b);
 uint64_t signShrink(uint64_t n, uint64_t b);
-
-uint64_t getHighWord(uint64_t doubleWord);
-uint64_t getLowWord(uint64_t doubleWord);
 
 uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
@@ -746,19 +747,19 @@ uint64_t OP_JAL    = 111; // 1101111, JF (JAL)
 uint64_t OP_SYSTEM = 115; // 1110011, IF (ECALL)
 
 // f3-codes
-uint64_t F3_NOP   = 0;  // 000
-uint64_t F3_ADDI  = 0;  // 000
-uint64_t F3_ADD   = 0;  // 000
-uint64_t F3_SUB   = 0;  // 000
-uint64_t F3_MUL   = 0;  // 000
-uint64_t F3_DIVU  = 5;  // 101
-uint64_t F3_REMU  = 7;  // 111
-uint64_t F3_SLTU  = 3;  // 011
-uint64_t F3_JALR  = 0;  // 000
-uint64_t F3_BEQ   = 0;  // 000
-uint64_t F3_LD    = 3;  // 011
-uint64_t F3_SD    = 3;  // 011
-uint64_t F3_ECALL = 0;  // 000
+uint64_t F3_NOP   = 0; // 000
+uint64_t F3_ADDI  = 0; // 000
+uint64_t F3_ADD   = 0; // 000
+uint64_t F3_SUB   = 0; // 000
+uint64_t F3_MUL   = 0; // 000
+uint64_t F3_DIVU  = 5; // 101
+uint64_t F3_REMU  = 7; // 111
+uint64_t F3_SLTU  = 3; // 011
+uint64_t F3_JALR  = 0; // 000
+uint64_t F3_BEQ   = 0; // 000
+uint64_t F3_LD    = 3; // 011
+uint64_t F3_SD    = 3; // 011
+uint64_t F3_ECALL = 0; // 000
 
 // f7-codes
 uint64_t F7_ADD  = 0;  // 0000000
@@ -859,13 +860,12 @@ uint64_t implementMalloc(uint64_t* context);
 uint64_t debug_read   = 0;
 uint64_t debug_write  = 0;
 uint64_t debug_open   = 0;
-
 uint64_t debug_malloc = 0;
 
-uint64_t SYSCALL_EXIT   = 93;
-uint64_t SYSCALL_READ   = 63;
-uint64_t SYSCALL_WRITE  = 64;
-uint64_t SYSCALL_OPEN   = 1024;
+uint64_t SYSCALL_EXIT  = 93;
+uint64_t SYSCALL_READ  = 63;
+uint64_t SYSCALL_WRITE = 64;
+uint64_t SYSCALL_OPEN  = 1024;
 
 // TODO: fix this syscall for spike
 uint64_t SYSCALL_MALLOC = 222;
@@ -1398,9 +1398,17 @@ uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to) {
     return rightShift(leftShift(n, (CPUBITWIDTH - 1) - to), from + ((CPUBITWIDTH - 1) - to));
 }
 
-uint64_t signedLessThan(uint64_t lhs, uint64_t rhs) {
-  // signed "<" operator: compare lhs and rhs in two's complement
-  return lhs + INT64_MIN < rhs + INT64_MIN;
+uint64_t getHighWord(uint64_t n) {
+  return getBitsFromTo(n, 32, 63);
+}
+
+uint64_t getLowWord(uint64_t n) {
+  return getBitsFromTo(n, 0, 31);
+}
+
+uint64_t signedLessThan(uint64_t a, uint64_t b) {
+  // signed "<" operator: compare a and b in two's complement
+  return a + INT64_MIN < b + INT64_MIN;
 }
 
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
@@ -1479,14 +1487,6 @@ uint64_t signShrink(uint64_t n, uint64_t b) {
   // assert: -2^(b - 1) <= n < 2^(b - 1)
   // assert: 0 < b <= CPUBITWIDTH
   return getBitsFromTo(n, 0, b - 1);
-}
-
-uint64_t getHighWord(uint64_t doubleWord) {
-  return getBitsFromTo(doubleWord, 32, 63);
-}
-
-uint64_t getLowWord(uint64_t doubleWord) {
-  return getBitsFromTo(doubleWord, 0, 31);
 }
 
 uint64_t loadCharacter(uint64_t* s, uint64_t i) {
