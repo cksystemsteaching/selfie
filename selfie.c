@@ -1413,29 +1413,9 @@ uint64_t signedLessThan(uint64_t a, uint64_t b) {
 
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
   uint64_t toggledSigns;
-  uint64_t quotient;
-  uint64_t minFlag;
-  uint64_t remainder;
-
-  // necessary to handle INT64_MIN as dividend properly
-  if (divisor == 1)
-   return dividend;
-
-  if (divisor == INT64_MIN) {
-    if (dividend == INT64_MIN)
-      return 1;
-    else
-      return 0;
-  }
-
-  minFlag = 0;
-  if (dividend == INT64_MIN) {
-    minFlag = 1;
-    // reset dividend to -INT64_MAX
-    dividend = dividend + 1;
-  }
 
   toggledSigns = 0;
+
   if (signedLessThan(dividend, 0)) {
     dividend = -dividend;
     toggledSigns = toggledSigns + 1;
@@ -1446,20 +1426,10 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
     toggledSigns = toggledSigns + 1;
   }
 
-  quotient = dividend / divisor;
-
-  if (minFlag) {
-    // check wether the result of division was changed by reset to -INT64_MAX
-    remainder = dividend / divisor;
-    if (remainder + 1 == divisor)
-      quotient = quotient + 1;
-  }
-
-  if (toggledSigns % 2 != 0) {
-    quotient = -quotient;
-  }
-
-  return quotient;
+  if (toggledSigns % 2 != 0)
+    return -(dividend / divisor);
+  else
+    return dividend / divisor;
 }
 
 uint64_t isSignedInteger(uint64_t n, uint64_t b) {
@@ -2502,8 +2472,6 @@ uint64_t reportUndefinedProcedures() {
       print(getString(entry));
       print((uint64_t*) " undefined");
       println();
-
-      fixlink_relative(getAddress(entry), 0);
     }
 
     // keep looking
@@ -3449,8 +3417,11 @@ void gr_while() {
   } else
     syntaxErrorSymbol(SYM_WHILE);
 
-  // unconditional branch to the beginning of while
-    emitJFormat((brBackToWhile - binaryLength) / INSTRUCTIONSIZE, REG_ZR, OP_JAL);
+  // we you JAL for the unconditional branch to the beginning of the while loop 
+  // for two reasons:
+  // 1. the RISC-V doc recommends to do so to not disturb the branch predicition
+  // 2. GCC also uses JAL for the unconditional branch of a while loop
+  emitJFormat((brBackToWhile - binaryLength) / INSTRUCTIONSIZE, REG_ZR, OP_JAL);
 
   if (brForwardToEnd != 0)
     // first instruction after loop comes here
