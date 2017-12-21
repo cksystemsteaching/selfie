@@ -105,9 +105,10 @@ uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
 
 uint64_t signedLessThan(uint64_t lhs, uint64_t rhs);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
-uint64_t isNBitSignedInteger(uint64_t value, uint64_t n);
 
-uint64_t signShrink(uint64_t immediate, uint64_t bits);
+uint64_t isSignedInteger(uint64_t n, uint64_t b);
+uint64_t signExtend(uint64_t n, uint64_t b);
+uint64_t signShrink(uint64_t n, uint64_t b);
 
 uint64_t getHighWord(uint64_t doubleWord);
 uint64_t getLowWord(uint64_t doubleWord);
@@ -179,9 +180,7 @@ uint64_t* power_of_two_table;
 uint64_t INT64_MAX; // maximum numerical value of a signed 64-bit integer
 uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 
-uint64_t UINT64_MAX; // maximum numerical value of a unsigned 64-bit integer
-
-uint64_t INT_BITWIDTH = 32; // int bit width used for system call compatibility
+uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
 
 uint64_t maxFilenameLength = 128;
 
@@ -239,11 +238,12 @@ void initLibrary() {
     i = i + 1;
   }
 
-  // compute two's complement boundaries
-  INT64_MAX = twoToThePowerOf(CPUBITWIDTH - 1) - 1;
-  INT64_MIN = INT64_MAX + 1;
+  // compute 64-bit signed integer range using unsigned integer arithmetic
+  INT64_MIN = twoToThePowerOf(CPUBITWIDTH - 1);
+  INT64_MAX = INT64_MIN - 1;
 
-  UINT64_MAX = (twoToThePowerOf(CPUBITWIDTH - 1) - 1) * 2 + 1;
+  // compute 64-bit unsigned integer range using signed integer arithmetic
+  UINT64_MAX = -1;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
@@ -433,10 +433,10 @@ uint64_t reportUndefinedProcedures();
 // |  0 | next    | pointer to next entry
 // |  1 | string  | identifier string, string literal
 // |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, PROCEDURE, STRING, BIGINT
+// |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
-// |  6 | address | VARIABLE: offset, PROCEDURE: address, STRING: offset, BIGINT: offset
+// |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
 // |  7 | scope   | REG_GP, REG_FP
 // +----+---------+
 
@@ -462,9 +462,9 @@ void setScope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
 
 // classes
 uint64_t VARIABLE  = 1;
-uint64_t PROCEDURE = 2;
+uint64_t BIGINT    = 2;
 uint64_t STRING    = 3;
-uint64_t BIGINT    = 4;
+uint64_t PROCEDURE = 4;
 
 // types
 uint64_t UINT64_T     = 1;
@@ -590,8 +590,8 @@ void createELFHeader();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t ELF_HEADER_LEN    = 120;    // = file header (64 byte) + program header (56 bytes)
-uint64_t ELF_ENTRY_POINT   = 65536;  // = 0x10000
+uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
+uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -722,7 +722,6 @@ uint64_t getImmediateSFormat(uint64_t instruction);
 uint64_t getImmediateBFormat(uint64_t instruction);
 uint64_t getImmediateJFormat(uint64_t instruction);
 uint64_t getImmediateUFormat(uint64_t instruction);
-uint64_t signExtend(uint64_t immediate, uint64_t bits);
 
 void decodeRFormat();
 void decodeIFormat();
@@ -919,17 +918,17 @@ void     storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data);
 
 uint64_t debug_tlb = 0;
 
-uint64_t MEGABYTE = 1048576;
+uint64_t MEGABYTE = 1048576; // 1MB
 
 uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 
-uint64_t WORDSIZE = 4;
+uint64_t WORDSIZE       = 4;
 uint64_t DOUBLEWORDSIZE = 8;
 
-uint64_t INSTRUCTIONSIZE        = 4; // must be the same as WORDSIZE
-uint64_t REGISTERSIZE           = 8; // must be the same as DOUBLEWORDSIZE
+uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
+uint64_t REGISTERSIZE    = 8; // must be the same as DOUBLEWORDSIZE
 
-uint64_t PAGESIZE = 4096;  // we use standard 4KB pages (=> 12 pagebits: 2^12 == 4096)
+uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1254,6 +1253,8 @@ uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
 
+uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
+
 uint64_t MINSTER = 1;
 uint64_t MIPSTER = 2;
 uint64_t MOBSTER = 3;
@@ -1270,14 +1271,14 @@ uint64_t freePageFrameMemory = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initKernel() {
-  EXITCODE_IOERROR = signShrink(-1, INT_BITWIDTH);
-  EXITCODE_SCANNERERROR = signShrink(-2, INT_BITWIDTH);
-  EXITCODE_PARSERERROR = signShrink(-3, INT_BITWIDTH);
-  EXITCODE_COMPILERERROR = signShrink(-4, INT_BITWIDTH);
-  EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-5, INT_BITWIDTH);
-  EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-6, INT_BITWIDTH);
-  EXITCODE_UNKNOWNSYSCALL = signShrink(-7, INT_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-8, INT_BITWIDTH);
+  EXITCODE_IOERROR = signShrink(-1, SYSCALL_BITWIDTH);
+  EXITCODE_SCANNERERROR = signShrink(-2, SYSCALL_BITWIDTH);
+  EXITCODE_PARSERERROR = signShrink(-3, SYSCALL_BITWIDTH);
+  EXITCODE_COMPILERERROR = signShrink(-4, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-5, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-6, SYSCALL_BITWIDTH);
+  EXITCODE_UNKNOWNSYSCALL = signShrink(-7, SYSCALL_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-8, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1453,19 +1454,31 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
   return quotient;
 }
 
-uint64_t isNBitSignedInteger(uint64_t value, uint64_t n) {
-  if (value < twoToThePowerOf(n - 1))
+uint64_t isSignedInteger(uint64_t n, uint64_t b) {
+  // assert: 0 < b <= CPUBITWIDTH
+  if (n < twoToThePowerOf(b - 1))
+    // assert: 0 <= n < 2^(b - 1)
     return 1;
-  else if (value >= -twoToThePowerOf(n - 1))
+  else if (n >= -twoToThePowerOf(b - 1))
+    // assert: -2^(b - 1) <= n < 2^64
     return 1;
   else
     return 0;
 }
 
-uint64_t signShrink(uint64_t immediate, uint64_t bits) {
-  // assert: 0 < bits <= CPUBITWIDTH
-  // assert: -2^(bits - 1) <= immediate < 2^(bits - 1)
-  return getBitsFromTo(immediate, 0, bits - 1);
+uint64_t signExtend(uint64_t n, uint64_t b) {
+  // assert: -2^(b - 1) <= n < 2^(b - 1)
+  // assert: 0 < b <= CPUBITWIDTH
+  if (n < twoToThePowerOf(b - 1))
+    return n;
+  else
+    return n - twoToThePowerOf(b);
+}
+
+uint64_t signShrink(uint64_t n, uint64_t b) {
+  // assert: -2^(b - 1) <= n < 2^(b - 1)
+  // assert: 0 < b <= CPUBITWIDTH
+  return getBitsFromTo(n, 0, b - 1);
 }
 
 uint64_t getHighWord(uint64_t doubleWord) {
@@ -2794,7 +2807,7 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
   entry = getVariableOrBigInt(variableOrBigInt, class);
 
-  if (isNBitSignedInteger(getAddress(entry), 12)) {
+  if (isSignedInteger(getAddress(entry), 12)) {
     talloc();
 
     emitIFormat(getAddress(entry), getScope(entry), F3_LD, currentTemporary(), OP_LD);
@@ -2819,7 +2832,7 @@ void load_integer(uint64_t value) {
 
   // assert: n = allocatedTemporaries
 
-  if (isNBitSignedInteger(value, 12)) {
+  if (isSignedInteger(value, 12)) {
     // integers greater than or equal to -2^11 and less than 2^11
     // are loaded with one addi into a register
 
@@ -2827,7 +2840,7 @@ void load_integer(uint64_t value) {
 
     emitIFormat(value, REG_ZR, F3_ADDI, currentTemporary(), OP_IMM);
 
-  } else if (isNBitSignedInteger(value, 32)) {
+  } else if (isSignedInteger(value, 32)) {
     // integers greater than or equal to -2^31 and less than 2^31
     // are loaded with one addi and one lui into a register
 
@@ -3708,7 +3721,7 @@ void gr_statement() {
 
       offset = getAddress(entry);
 
-      if (isNBitSignedInteger(offset, 12)) {
+      if (isSignedInteger(offset, 12)) {
         emitSFormat(offset, currentTemporary(), getScope(entry), F3_SD, OP_SD);
 
         tfree(1);
@@ -4245,7 +4258,7 @@ void selfie_compile() {
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
-      sourceFD = signExtend(open(sourceName, O_RDONLY, 0), INT_BITWIDTH);
+      sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
       if (signedLessThan(sourceFD, 0)) {
         print(selfieName);
@@ -4378,7 +4391,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= funct3 < 2^3
   // assert: -2^11 <= immediate < 2^11 -1
 
-  if (isNBitSignedInteger(immediate, 12) == 0)
+  if (isSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
@@ -4400,7 +4413,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm1;
   uint64_t imm2;
 
-  if (isNBitSignedInteger(immediate, 12) == 0)
+  if (isSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
@@ -4431,7 +4444,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // branching offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
-  if (isNBitSignedInteger(immediate, 13) == 0)
+  if (isSignedInteger(immediate, 13) == 0)
     encodingError(immediate, 13);
 
   immediate = signShrink(immediate, 13);
@@ -4463,7 +4476,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // jumping offset in bytes
   immediate = immediate * INSTRUCTIONSIZE;
 
-  if (isNBitSignedInteger(immediate, 21) == 0)
+  if (isSignedInteger(immediate, 21) == 0)
     encodingError(immediate, 21);
 
   immediate = signShrink(immediate, 21);
@@ -4487,7 +4500,7 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= rd < 2^5
   // assert: -2^19 <= immediate < 2^19 -1
 
-  if (isNBitSignedInteger(immediate, 20) == 0)
+  if (isSignedInteger(immediate, 20) == 0)
     encodingError(immediate, 20);
 
   immediate = signShrink(immediate, 20);
@@ -4565,14 +4578,6 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
   return getBitsFromTo(instruction, 12, 31);
-}
-
-uint64_t signExtend(uint64_t immediate, uint64_t bits) {
-  // sign-extend from n-bits to 64-bit two's complement
-  if (immediate < twoToThePowerOf(bits - 1))
-    return immediate;
-  else
-    return immediate - twoToThePowerOf(bits);
 }
 
 // --------------------------------------------------------------
@@ -4878,15 +4883,15 @@ uint64_t openWriteOnly(uint64_t* name) {
   uint64_t fd;
 
   // try Mac flags
-  fd = signExtend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), INT_BITWIDTH);
+  fd = signExtend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
   if (signedLessThan(fd, 0)) {
     // try Linux flags
-    fd = signExtend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), INT_BITWIDTH);
+    fd = signExtend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
     if (signedLessThan(fd, 0))
       // try Windows flags
-      fd = signExtend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), INT_BITWIDTH);
+      fd = signExtend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
   }
 
   return fd;
@@ -4981,7 +4986,7 @@ void selfie_load() {
 
   // assert: binaryName is mapped and not longer than maxFilenameLength
 
-  fd = signExtend(open(binaryName, O_RDONLY, 0), INT_BITWIDTH);
+  fd = signExtend(open(binaryName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signedLessThan(fd, 0)) {
     print(selfieName);
@@ -5015,7 +5020,7 @@ void selfie_load() {
       // assert: binary is mapped
 
       // now read binary including global variables and strings
-      numberOfReadBytes = signExtend(read(fd, binary, codeLength), INT_BITWIDTH);
+      numberOfReadBytes = signExtend(read(fd, binary, codeLength), SYSCALL_BITWIDTH);
 
       if (signedLessThan(0, numberOfReadBytes)) {
         binaryLength = numberOfReadBytes;
@@ -5065,13 +5070,13 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  setExitCode(context, signShrink(*(getRegs(context)+REG_A0), INT_BITWIDTH));
+  setExitCode(context, signShrink(*(getRegs(context)+REG_A0), SYSCALL_BITWIDTH));
 
   print(selfieName);
   print((uint64_t*) ": ");
   print(getName(context));
   print((uint64_t*) " exiting with exit code ");
-  printInteger(signExtend(getExitCode(context), INT_BITWIDTH));
+  printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
   print((uint64_t*) " and ");
   printFixedPointRatio(getProgramBreak(context) - maxBinaryLength, MEGABYTE);
   print((uint64_t*) "MB of mallocated memory");
@@ -5138,7 +5143,7 @@ void implementRead(uint64_t* context) {
         if (size < bytesToRead)
           bytesToRead = size;
 
-        actuallyRead = signExtend(read(fd, buffer, bytesToRead), INT_BITWIDTH);
+        actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
         if (actuallyRead == bytesToRead) {
           readTotal = readTotal + actuallyRead;
@@ -5184,7 +5189,7 @@ void implementRead(uint64_t* context) {
   if (failed == 0)
     *(getRegs(context)+REG_A0) = readTotal;
   else
-    *(getRegs(context)+REG_A0) = signShrink(-1, INT_BITWIDTH);
+    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (debug_read) {
     print(selfieName);
@@ -5255,7 +5260,7 @@ void implementWrite(uint64_t* context) {
         if (size < bytesToWrite)
           bytesToWrite = size;
 
-        actuallyWritten = signExtend(write(fd, buffer, bytesToWrite), INT_BITWIDTH);
+        actuallyWritten = signExtend(write(fd, buffer, bytesToWrite), SYSCALL_BITWIDTH);
 
         if (actuallyWritten == bytesToWrite) {
           writtenTotal = writtenTotal + actuallyWritten;
@@ -5301,7 +5306,7 @@ void implementWrite(uint64_t* context) {
   if (failed == 0)
     *(getRegs(context)+REG_A0) = writtenTotal;
   else
-    *(getRegs(context)+REG_A0) = signShrink(-1, INT_BITWIDTH);
+    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (debug_write) {
     print(selfieName);
@@ -5409,7 +5414,7 @@ void implementOpen(uint64_t* context) {
       println();
     }
   } else {
-    *(getRegs(context)+REG_A0) = signShrink(-1, INT_BITWIDTH);
+    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open) {
       print(selfieName);
@@ -7783,7 +7788,7 @@ void selfie_loadDimacs() {
 
   // assert: sourceName is mapped and not longer than maxFilenameLength
 
-  sourceFD = signExtend(open(sourceName, O_RDONLY, 0), INT_BITWIDTH);
+  sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signedLessThan(sourceFD, 0)) {
     print(selfieName);
@@ -7970,5 +7975,5 @@ uint64_t main(uint64_t argc, uint64_t* argv) {
 
   initLibrary();
 
-  return signShrink(selfie(), INT_BITWIDTH);
+  return signShrink(selfie(), SYSCALL_BITWIDTH);
 }
