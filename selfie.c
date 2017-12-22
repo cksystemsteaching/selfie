@@ -103,9 +103,9 @@ uint64_t twoToThePowerOf(uint64_t p);
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
 
-uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to);
-uint64_t getHighWord(uint64_t n);
+uint64_t getBits(uint64_t n, uint64_t i, uint64_t b);
 uint64_t getLowWord(uint64_t n);
+uint64_t getHighWord(uint64_t n);
 
 uint64_t signedLessThan(uint64_t a, uint64_t b);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
@@ -923,6 +923,8 @@ uint64_t MEGABYTE = 1048576; // 1MB
 uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 
 uint64_t WORDSIZE       = 4;
+uint64_t WORDSIZEINBITS = 32;
+
 uint64_t DOUBLEWORDSIZE = 8;
 
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
@@ -1387,23 +1389,23 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
   return n / twoToThePowerOf(b);
 }
 
-uint64_t getBitsFromTo(uint64_t n, uint64_t from, uint64_t to) {
-  // assert: 0 <= from <= to < CPUBITWIDTH
-  if (from == 0)
-    if (to >= CPUBITWIDTH - 1)
+uint64_t getBits(uint64_t n, uint64_t i, uint64_t b) {
+  // assert: 0 <= i < i + b <= CPUBITWIDTH
+  if (i == 0)
+    if (b >= CPUBITWIDTH)
       return n;
     else
-      return n % twoToThePowerOf(to + 1);
+      return n % twoToThePowerOf(b);
   else
-    return rightShift(leftShift(n, (CPUBITWIDTH - 1) - to), from + ((CPUBITWIDTH - 1) - to));
-}
-
-uint64_t getHighWord(uint64_t n) {
-  return getBitsFromTo(n, 32, 63);
+    return rightShift(leftShift(n, CPUBITWIDTH - (i + b)), CPUBITWIDTH - b);
 }
 
 uint64_t getLowWord(uint64_t n) {
-  return getBitsFromTo(n, 0, 31);
+  return getBits(n, 0, WORDSIZEINBITS);
+}
+
+uint64_t getHighWord(uint64_t n) {
+  return getBits(n, WORDSIZEINBITS, WORDSIZEINBITS);
 }
 
 uint64_t signedLessThan(uint64_t a, uint64_t b) {
@@ -1456,7 +1458,7 @@ uint64_t signExtend(uint64_t n, uint64_t b) {
 uint64_t signShrink(uint64_t n, uint64_t b) {
   // assert: -2^(b - 1) <= n < 2^(b - 1)
   // assert: 0 < b <= CPUBITWIDTH
-  return getBitsFromTo(n, 0, b - 1);
+  return getBits(n, 0, b);
 }
 
 uint64_t loadCharacter(uint64_t* s, uint64_t i) {
@@ -1468,11 +1470,11 @@ uint64_t loadCharacter(uint64_t* s, uint64_t i) {
 
   // shift to-be-loaded character to the left resetting all bits to the left
   // then shift to-be-loaded character all the way to the right and return
-  return getBitsFromTo(*(s + a), (i % SIZEOFUINT64) * 8, ((i % SIZEOFUINT64) + 1) * 8 - 1);
+  return getBits(*(s + a), (i % SIZEOFUINT64) * 8, 8);
 }
 
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
-  // assert: i >= 0, all characters are 7-bit
+  // assert: i >= 0, all characters are 8-bit
   uint64_t a;
 
   // a is the index of the word where the with c
@@ -2812,8 +2814,8 @@ void load_integer(uint64_t value) {
     // integers greater than or equal to -2^31 and less than 2^31
     // are loaded with one addi and one lui into a register
 
-    lower = getBitsFromTo(value,  0, 11);
-    upper = getBitsFromTo(value, 12, 31);
+    lower = getBits(value,  0, 12);
+    upper = getBits(value, 12, 20);
 
     // adding 1 which is effectively 2^12 to cancel sign extension of lower
     if (lower >= twoToThePowerOf(11))
@@ -4115,8 +4117,8 @@ void bootstrapCode() {
   binaryLength = 0;
 
   // load binaryLength into GP register
-  lower = getBitsFromTo(savedBinaryLength + ELF_ENTRY_POINT,  0, 11);
-  upper = getBitsFromTo(savedBinaryLength + ELF_ENTRY_POINT, 12, 63);
+  lower = getBits(savedBinaryLength + ELF_ENTRY_POINT,  0, 12);
+  upper = getBits(savedBinaryLength + ELF_ENTRY_POINT, 12, 52);
 
   // setting of bit 11 can only be reached by increasing upper by 1 and
   // adding a negativ offset instead of lower
@@ -4136,7 +4138,7 @@ void bootstrapCode() {
 
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
-    // exit by continuing to the next instruction (with delay slot)
+    // exit by continuing to the next instruction
     fixup_relative_JFormat(mainJump, mainJump + INSTRUCTIONSIZE);
 
   mainJump = 0;
@@ -4360,7 +4362,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rd < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^11 <= immediate < 2^11 -1
+  // assert: -2^11 <= immediate < 2^11 - 1
 
   if (isSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
@@ -4380,7 +4382,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^11 <= immediate < 2^11 -1
+  // assert: -2^11 <= immediate < 2^11 - 1
   uint64_t imm1;
   uint64_t imm2;
 
@@ -4389,9 +4391,8 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   immediate = signShrink(immediate, 12);
 
-  // split immediate by shifting 32-bit value accordingly
-  imm1 = getBitsFromTo(immediate, 5, 11);
-  imm2 = getBitsFromTo(immediate, 0,  4);
+  imm1 = getBits(immediate, 5, 7);
+  imm2 = getBits(immediate, 0, 5);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 5) + rs2, 5) + rs1, 3) + funct3, 5) + imm2, 7) + opcode;
 }
@@ -4406,7 +4407,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^11 <= immediate <= 2^11 -1
+  // assert: -2^11 <= immediate <= 2^11 - 1
   uint64_t imm1;
   uint64_t imm2;
   uint64_t imm3;
@@ -4420,12 +4421,10 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   immediate = signShrink(immediate, 13);
 
-  // split immediate by shifting 64-bit value accordingly
-  // branching offset will be encoded in halfwords
-  imm1 = getBitsFromTo(immediate, 12, 12);
-  imm2 = getBitsFromTo(immediate,  5, 10);
-  imm3 = getBitsFromTo(immediate,  1,  4);
-  imm4 = getBitsFromTo(immediate, 11, 11);
+  imm1 = getBits(immediate, 12, 1);
+  imm2 = getBits(immediate,  5, 6);
+  imm3 = getBits(immediate,  1, 4);
+  imm4 = getBits(immediate, 11, 1);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 6) + imm2, 5) + rs2, 5) + rs1, 3) + funct3, 4) + imm3, 1) + imm4, 7) + opcode;
 }
@@ -4438,7 +4437,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= opcode < 2^7
   // assert: 0 <= rd < 2^5
-  // assert: -2^20 <= immediate < 2^20 -1
+  // assert: -2^20 <= immediate < 2^20 - 1
   uint64_t imm1;
   uint64_t imm2;
   uint64_t imm3;
@@ -4452,11 +4451,10 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 
   immediate = signShrink(immediate, 21);
 
-  // split immediate by shifting 32-bit value accordingly
-  imm1 = getBitsFromTo(immediate, 20, 20);
-  imm2 = getBitsFromTo(immediate,  1, 10);
-  imm3 = getBitsFromTo(immediate, 11, 11);
-  imm4 = getBitsFromTo(immediate, 12, 19);
+  imm1 = getBits(immediate, 20, 1);
+  imm2 = getBits(immediate,  1, 10);
+  imm3 = getBits(immediate, 11, 1);
+  imm4 = getBits(immediate, 12, 8);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 10) + imm2, 1) + imm3, 8) + imm4, 5) + rd, 7) + opcode;
 }
@@ -4469,7 +4467,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= opcode < 2^7
   // assert: 0 <= rd < 2^5
-  // assert: -2^19 <= immediate < 2^19 -1
+  // assert: -2^19 <= immediate < 2^19 - 1
 
   if (isSignedInteger(immediate, 20) == 0)
     encodingError(immediate, 20);
@@ -4480,39 +4478,39 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 }
 
 uint64_t getOpcode(uint64_t instruction) {
-  return getBitsFromTo(instruction, 0, 6);
+  return getBits(instruction, 0, 7);
 }
 
 uint64_t getRS1(uint64_t instruction) {
-  return getBitsFromTo(instruction, 15, 19);
+  return getBits(instruction, 15, 5);
 }
 
 uint64_t getRS2(uint64_t instruction) {
-    return getBitsFromTo(instruction, 20, 24);
+    return getBits(instruction, 20, 5);
 }
 
 uint64_t getRD(uint64_t instruction) {
-    return getBitsFromTo(instruction, 7, 11);
+    return getBits(instruction, 7, 5);
 }
 
 uint64_t getFunct3(uint64_t instruction) {
-  return getBitsFromTo(instruction, 12, 14);
+  return getBits(instruction, 12, 3);
 }
 
 uint64_t getFunct7(uint64_t instruction) {
-  return getBitsFromTo(instruction, 25, 31);
+  return getBits(instruction, 25, 7);
 }
 
 uint64_t getImmediateIFormat(uint64_t instruction) {
-  return getBitsFromTo(instruction, 20, 31);
+  return getBits(instruction, 20, 12);
 }
 
 uint64_t getImmediateSFormat(uint64_t instruction) {
   uint64_t imm1;
   uint64_t imm2;
 
-  imm1 = getBitsFromTo(instruction, 25, 31);
-  imm2 = getBitsFromTo(instruction,  7, 11);
+  imm1 = getBits(instruction, 25, 7);
+  imm2 = getBits(instruction,  7, 5);
 
   return leftShift(imm1, 5)+ imm2;
 }
@@ -4523,10 +4521,10 @@ uint64_t getImmediateBFormat(uint64_t instruction) {
   uint64_t imm3;
   uint64_t imm4;
 
-  imm1 = getBitsFromTo(instruction, 31, 31);
-  imm2 = getBitsFromTo(instruction, 25, 30);
-  imm3 = getBitsFromTo(instruction,  8, 11);
-  imm4 = getBitsFromTo(instruction,  7,  7);
+  imm1 = getBits(instruction, 31, 1);
+  imm2 = getBits(instruction, 25, 6);
+  imm3 = getBits(instruction,  8, 4);
+  imm4 = getBits(instruction,  7, 1);
 
   // reassemble immediate and add trailing zero
   return leftShift(leftShift(leftShift(leftShift(imm1, 1) + imm4, 6) + imm2, 4) + imm3, 1);
@@ -4538,17 +4536,17 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
   uint64_t imm3;
   uint64_t imm4;
 
-  imm1 = getBitsFromTo(instruction, 31, 31);
-  imm2 = getBitsFromTo(instruction, 21, 30);
-  imm3 = getBitsFromTo(instruction, 20, 20);
-  imm4 = getBitsFromTo(instruction, 12, 19);
+  imm1 = getBits(instruction, 31, 1);
+  imm2 = getBits(instruction, 21, 10);
+  imm3 = getBits(instruction, 20, 1);
+  imm4 = getBits(instruction, 12, 8);
 
   // reassemble immediate and add trailing zero
   return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);
 }
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
-  return getBitsFromTo(instruction, 12, 31);
+  return getBits(instruction, 12, 20);
 }
 
 // --------------------------------------------------------------
@@ -4705,10 +4703,10 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
 
   if (baddr % SIZEOFUINT64 == 0)
     // replace low word
-    temp = instruction + leftShift(rightShift(temp, 32), 32);
+    temp = leftShift(getHighWord(temp), WORDSIZEINBITS) + instruction;
   else
     // replace high word
-    temp = leftShift(instruction, 32) + getBitsFromTo(temp, 0, 31);
+    temp = leftShift(instruction, WORDSIZEINBITS) + getLowWord(temp);
 
   *(binary + baddr / SIZEOFUINT64) = temp;
 }
@@ -6331,11 +6329,8 @@ void fct_beq() {
   if (interpret) {
     pc = pc + INSTRUCTIONSIZE;
 
-    if (s1 == s2) {
+    if (s1 == s2)
       pc = pc + imm;
-
-      // TODO: execute delay slot
-    }
   }
 
   if (debug) {
@@ -6393,8 +6388,6 @@ void fct_jal() {
 
       *(loopsPerAddress + pc / INSTRUCTIONSIZE) = *(loopsPerAddress + pc / INSTRUCTIONSIZE) + 1;
     }
-
-    // TODO: execute delay slot
   }
 
   if (debug) {
