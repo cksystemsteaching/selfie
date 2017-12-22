@@ -1392,10 +1392,7 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
 uint64_t getBits(uint64_t n, uint64_t i, uint64_t b) {
   // assert: 0 <= i < i + b <= CPUBITWIDTH
   if (i == 0)
-    if (b >= CPUBITWIDTH)
-      return n;
-    else
-      return n % twoToThePowerOf(b);
+    return n % twoToThePowerOf(b);
   else
     return rightShift(leftShift(n, CPUBITWIDTH - (i + b)), CPUBITWIDTH - b);
 }
