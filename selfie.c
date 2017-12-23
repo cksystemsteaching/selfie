@@ -4348,6 +4348,7 @@ void printRegister(uint64_t reg) {
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
 
+// RISC-V R Format
 // -----------------------------------------------------------------
 // |     7      |    5    |    5    |  3   |    5    |      7      |
 // +------------+---------+---------+------+---------+-------------+
@@ -4355,6 +4356,7 @@ void printRegister(uint64_t reg) {
 // +------------+---------+---------+------+---------+-------------+
 // |31        25|24     20|19     15|14  12|11      7|6           0|
 // -----------------------------------------------------------------
+
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= funct7 < 2^7
   // assert: 0 <= rs2 < 2^5
@@ -4399,16 +4401,21 @@ void decodeRFormat() {
   immediate = 0;
 }
 
-//          12            5       3        5        7
-// +------------------+-------+--------+-------+---------+
-// |    immediate     |  rs1  | funct3 |   rd  | opcode  |
-// +------------------+-------+--------+-------+---------+
+// RISC-V I Format
+// -----------------------------------------------------------------
+// |          12          |    5    |  3   |    5    |      7      |
+// +----------------------+---------+------+---------+-------------+
+// |      immediate       |   rs1   |funct3|   rd    |   opcode    |
+// +----------------------+---------+------+---------+-------------+
+// |31                  20|19     15|14  12|11      7|6           0|
+// -----------------------------------------------------------------
+
 uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode) {
-  // assert: 0 <= opcode < 2^7
-  // assert: 0 <= rs1 < 2^5
-  // assert: 0 <= rd < 2^5
-  // assert: 0 <= funct3 < 2^3
   // assert: -2^11 <= immediate < 2^11
+  // assert: 0 <= rs1 < 2^5
+  // assert: 0 <= funct3 < 2^3
+  // assert: 0 <= rd < 2^5
+  // assert: 0 <= opcode < 2^7
 
   if (isSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
@@ -4416,6 +4423,19 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   immediate = signShrink(immediate, 12);
 
   return leftShift(leftShift(leftShift(leftShift(immediate, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;
+}
+
+uint64_t getImmediateIFormat(uint64_t instruction) {
+  return getBits(instruction, 20, 12);
+}
+
+void decodeIFormat() {
+  funct7    = 0;
+  rs2       = 0;
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
+  rd        = getRD(ir);
+  immediate = getImmediateIFormat(ir);
 }
 
 //      7         5       5       3        5        7
@@ -4523,10 +4543,6 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   return leftShift(leftShift(immediate, 5) + rd, 7) + opcode;
 }
 
-uint64_t getImmediateIFormat(uint64_t instruction) {
-  return getBits(instruction, 20, 12);
-}
-
 uint64_t getImmediateSFormat(uint64_t instruction) {
   uint64_t imm1;
   uint64_t imm2;
@@ -4569,22 +4585,6 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
   return getBits(instruction, 12, 20);
-}
-
-// --------------------------------------------------------------
-// 32 bit
-//
-//          12            5       3        5        7
-// +------------------+-------+--------+-------+---------+
-// |    immediate     |  rs1  | funct3 |   rd  | opcode  |
-// +------------------+-------+--------+-------+---------+
-void decodeIFormat() {
-  funct7    = 0;
-  rs2       = 0;
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = getRD(ir);
-  immediate = getImmediateIFormat(ir);
 }
 
 // -----------------------------------------------------------------
