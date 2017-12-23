@@ -4337,7 +4337,7 @@ void selfie_compile() {
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
-// ---------------------------- REGISTER ---------------------------
+// --------------------------- REGISTER ----------------------------
 // -----------------------------------------------------------------
 
 void printRegister(uint64_t reg) {
@@ -4345,25 +4345,58 @@ void printRegister(uint64_t reg) {
 }
 
 // -----------------------------------------------------------------
-// ---------------------------- ENCODER ----------------------------
+// ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
 
 // -----------------------------------------------------------------
-// 32 bit
-
-//      7         5       5       3        5        7
-// +----------+-------+-------+--------+-------+---------+
-// | funct7   |  rs2  |  rs1  | funct3 |   rd  | opcode  |
-// +----------+-------+-------+--------+-------+---------+
+// |     7      |    5    |    5    |  3   |    5    |      7      |
+// +------------+---------+---------+------+---------+-------------+
+// |   funct7   |   rs2   |   rs1   |funct3|   rd    |   opcode    |
+// +------------+---------+---------+------+---------+-------------+
+// |31        25|24     20|19     15|14  12|11      7|6           0|
+// -----------------------------------------------------------------
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode) {
-  // assert: 0 <= opcode < 2^7
-  // assert: 0 <= rs1 < 2^5
-  // assert: 0 <= rs2 < 2^5
-  // assert: 0 <= rd < 2^5
-  // assert: 0 <= funct3 < 2^3
   // assert: 0 <= funct7 < 2^7
+  // assert: 0 <= rs2 < 2^5
+  // assert: 0 <= rs1 < 2^5
+  // assert: 0 <= funct3 < 2^3
+  // assert: 0 <= rd < 2^5
+  // assert: 0 <= opcode < 2^7
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(funct7, 5) + rs2, 5) + rs1, 3) + funct3, 5) + rd, 7) + opcode;
+}
+
+uint64_t getFunct7(uint64_t instruction) {
+  return getBits(instruction, 25, 7);
+}
+
+uint64_t getRS2(uint64_t instruction) {
+  return getBits(instruction, 20, 5);
+}
+
+uint64_t getRS1(uint64_t instruction) {
+  return getBits(instruction, 15, 5);
+}
+
+uint64_t getFunct3(uint64_t instruction) {
+  return getBits(instruction, 12, 3);
+}
+
+uint64_t getRD(uint64_t instruction) {
+  return getBits(instruction, 7, 5);
+}
+
+uint64_t getOpcode(uint64_t instruction) {
+  return getBits(instruction, 0, 7);
+}
+
+void decodeRFormat() {
+  funct7    = getFunct7(ir);
+  rs2       = getRS2(ir);
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
+  rd        = getRD(ir);
+  immediate = 0;
 }
 
 //          12            5       3        5        7
@@ -4490,30 +4523,6 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   return leftShift(leftShift(immediate, 5) + rd, 7) + opcode;
 }
 
-uint64_t getOpcode(uint64_t instruction) {
-  return getBits(instruction, 0, 7);
-}
-
-uint64_t getRS1(uint64_t instruction) {
-  return getBits(instruction, 15, 5);
-}
-
-uint64_t getRS2(uint64_t instruction) {
-    return getBits(instruction, 20, 5);
-}
-
-uint64_t getRD(uint64_t instruction) {
-    return getBits(instruction, 7, 5);
-}
-
-uint64_t getFunct3(uint64_t instruction) {
-  return getBits(instruction, 12, 3);
-}
-
-uint64_t getFunct7(uint64_t instruction) {
-  return getBits(instruction, 25, 7);
-}
-
 uint64_t getImmediateIFormat(uint64_t instruction) {
   return getBits(instruction, 20, 12);
 }
@@ -4560,22 +4569,6 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
   return getBits(instruction, 12, 20);
-}
-
-// --------------------------------------------------------------
-// 32 bit
-
-//      7         5       5       3        5        7
-// +----------+-------+-------+--------+-------+---------+
-// | funct7   |  rs2  |  rs1  | funct3 |   rd  | opcode  |
-// +----------+-------+-------+--------+-------+---------+
-void decodeRFormat() {
-  funct7    = getFunct7(ir);
-  rs2       = getRS2(ir);
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = getRD(ir);
-  immediate = 0;
 }
 
 // --------------------------------------------------------------
