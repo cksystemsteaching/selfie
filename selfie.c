@@ -109,6 +109,7 @@ uint64_t getHighWord(uint64_t n);
 
 uint64_t signedLessThan(uint64_t a, uint64_t b);
 uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
+uint64_t abs(uint64_t n);
 
 uint64_t isSignedInteger(uint64_t n, uint64_t b);
 uint64_t signExtend(uint64_t n, uint64_t b);
@@ -1410,7 +1411,7 @@ uint64_t getHighWord(uint64_t n) {
 
 uint64_t signedLessThan(uint64_t a, uint64_t b) {
   // INT64_MIN <= n <= INT64_MAX iff
-  // INT64_MIN + INT64_MIN <= n + INT64_MIN <= INT64+MAX + INT64_MIN iff
+  // INT64_MIN + INT64_MIN <= n + INT64_MIN <= INT64_MAX + INT64_MIN iff
   // -2^64 <= n + INT64_MIN <= 2^64 - 1 (sign-extended to 65 bits) iff
   // 0 <= n + INT64_MIN <= UINT64_MAX
   return a + INT64_MIN < b + INT64_MIN;
@@ -1421,13 +1422,19 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
 
   toggledSigns = 0;
 
+  // note: the absolute value of INT64_MIN can not be represented correctly
+  // in signed 64-bit arithmetics, whereas it can in unsigned arithmetics 
+  // as INT64_MAX + 1
+  // Therefore unsigned division also works correctly on the absolute value
+  // of INT64_MIN
+
   if (signedLessThan(dividend, 0)) {
-    dividend = -dividend;
+    dividend = abs(dividend);
     toggledSigns = toggledSigns + 1;
   }
 
   if (signedLessThan(divisor, 0)) {
-    divisor = -divisor;
+    divisor = abs(divisor);
     toggledSigns = toggledSigns + 1;
   }
 
@@ -1435,6 +1442,13 @@ uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
     return -(dividend / divisor);
   else
     return dividend / divisor;
+}
+
+uint64_t abs(uint64_t n) {
+  if (signedLessThan(n, 0))
+    return -n;
+  else
+    return n;
 }
 
 uint64_t isSignedInteger(uint64_t n, uint64_t b) {
