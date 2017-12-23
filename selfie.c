@@ -1406,7 +1406,10 @@ uint64_t getHighWord(uint64_t n) {
 }
 
 uint64_t signedLessThan(uint64_t a, uint64_t b) {
-  // signed "<" operator: compare a and b in two's complement
+  // INT64_MIN <= n <= INT64_MAX iff
+  // INT64_MIN + INT64_MIN <= n + INT64_MIN <= INT64+MAX + INT64_MIN iff
+  // -2^64 <= n + INT64_MIN <= 2^64 - 1 (sign-extended to 65 bits) iff
+  // 0 <= n + INT64_MIN <= UINT64_MAX
   return a + INT64_MIN < b + INT64_MIN;
 }
 
@@ -1445,7 +1448,7 @@ uint64_t isSignedInteger(uint64_t n, uint64_t b) {
 
 uint64_t signExtend(uint64_t n, uint64_t b) {
   // assert: -2^(b - 1) <= n < 2^(b - 1)
-  // assert: 0 < b <= CPUBITWIDTH
+  // assert: 0 < b < CPUBITWIDTH
   if (n < twoToThePowerOf(b - 1))
     return n;
   else
@@ -1454,7 +1457,7 @@ uint64_t signExtend(uint64_t n, uint64_t b) {
 
 uint64_t signShrink(uint64_t n, uint64_t b) {
   // assert: -2^(b - 1) <= n < 2^(b - 1)
-  // assert: 0 < b <= CPUBITWIDTH
+  // assert: 0 < b < CPUBITWIDTH
   return getBits(n, 0, b);
 }
 
@@ -3416,9 +3419,8 @@ void gr_while() {
   } else
     syntaxErrorSymbol(SYM_WHILE);
 
-  // we you JAL for the unconditional branch to the beginning of the while loop 
-  // for two reasons:
-  // 1. the RISC-V doc recommends to do so to not disturb the branch predicition
+  // we use JAL for the unconditional branch back to the loop condition because:
+  // 1. the RISC-V doc recommends to do so to not disturb branch prediction
   // 2. GCC also uses JAL for the unconditional branch of a while loop
   emitJFormat((brBackToWhile - binaryLength) / INSTRUCTIONSIZE, REG_ZR, OP_JAL);
 
