@@ -107,9 +107,10 @@ uint64_t getBits(uint64_t n, uint64_t i, uint64_t b);
 uint64_t getLowWord(uint64_t n);
 uint64_t getHighWord(uint64_t n);
 
-uint64_t signedLessThan(uint64_t a, uint64_t b);
-uint64_t signedDivision(uint64_t dividend, uint64_t divisor);
 uint64_t abs(uint64_t n);
+
+uint64_t signedLessThan(uint64_t a, uint64_t b);
+uint64_t signedDivision(uint64_t a, uint64_t b);
 
 uint64_t isSignedInteger(uint64_t n, uint64_t b);
 uint64_t signExtend(uint64_t n, uint64_t b);
@@ -1409,6 +1410,13 @@ uint64_t getHighWord(uint64_t n) {
   return getBits(n, WORDSIZEINBITS, WORDSIZEINBITS);
 }
 
+uint64_t abs(uint64_t n) {
+  if (signedLessThan(n, 0))
+    return -n;
+  else
+    return n;
+}
+
 uint64_t signedLessThan(uint64_t a, uint64_t b) {
   // INT64_MIN <= n <= INT64_MAX iff
   // INT64_MIN + INT64_MIN <= n + INT64_MIN <= INT64_MAX + INT64_MIN iff
@@ -1417,38 +1425,27 @@ uint64_t signedLessThan(uint64_t a, uint64_t b) {
   return a + INT64_MIN < b + INT64_MIN;
 }
 
-uint64_t signedDivision(uint64_t dividend, uint64_t divisor) {
-  uint64_t toggledSigns;
-
-  toggledSigns = 0;
-
-  // note: the absolute value of INT64_MIN can not be represented correctly
-  // in signed 64-bit arithmetics, whereas it can in unsigned arithmetics 
-  // as INT64_MAX + 1
-  // Therefore unsigned division also works correctly on the absolute value
-  // of INT64_MIN
-
-  if (signedLessThan(dividend, 0)) {
-    dividend = abs(dividend);
-    toggledSigns = toggledSigns + 1;
-  }
-
-  if (signedLessThan(divisor, 0)) {
-    divisor = abs(divisor);
-    toggledSigns = toggledSigns + 1;
-  }
-
-  if (toggledSigns % 2 != 0)
-    return -(dividend / divisor);
+uint64_t signedDivision(uint64_t a, uint64_t b) {
+  // assert: b != 0
+  // assert: a == INT64_MIN -> b != -1
+  if (a == INT64_MIN)
+    if (b == INT64_MIN)
+      return 1;
+    else if (signedLessThan(b, 0))
+      return INT64_MIN / abs(b);
+    else
+      return -(INT64_MIN / b);
+  else if (b == INT64_MIN)
+    return 0;
+  else if (signedLessThan(a, 0))
+    if (signedLessThan(b, 0))
+      return abs(a) / abs(b);
+    else
+      return -(abs(a) / b);
+  else if (signedLessThan(b, 0))
+    return -(a / abs(b));
   else
-    return dividend / divisor;
-}
-
-uint64_t abs(uint64_t n) {
-  if (signedLessThan(n, 0))
-    return -n;
-  else
-    return n;
+    return a / b;
 }
 
 uint64_t isSignedInteger(uint64_t n, uint64_t b) {
