@@ -4378,7 +4378,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rd < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^11 <= immediate < 2^11 - 1
+  // assert: -2^11 <= immediate < 2^11
 
   if (isSignedInteger(immediate, 12) == 0)
     encodingError(immediate, 12);
@@ -4398,7 +4398,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^11 <= immediate < 2^11 - 1
+  // assert: -2^11 <= immediate < 2^11
   uint64_t imm1;
   uint64_t imm2;
 
@@ -4423,7 +4423,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^11 <= immediate <= 2^11 - 1
+  // assert: -2^10 <= immediate < 2^10
   uint64_t imm1;
   uint64_t imm2;
   uint64_t imm3;
@@ -4453,7 +4453,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= opcode < 2^7
   // assert: 0 <= rd < 2^5
-  // assert: -2^20 <= immediate < 2^20 - 1
+  // assert: -2^18 <= immediate < 2^18
   uint64_t imm1;
   uint64_t imm2;
   uint64_t imm3;
@@ -4483,7 +4483,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= opcode < 2^7
   // assert: 0 <= rd < 2^5
-  // assert: -2^19 <= immediate < 2^19 - 1
+  // assert: -2^19 <= immediate < 2^19
 
   if (isSignedInteger(immediate, 20) == 0)
     encodingError(immediate, 20);
