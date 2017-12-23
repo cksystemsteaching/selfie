@@ -1394,6 +1394,9 @@ uint64_t getBits(uint64_t n, uint64_t i, uint64_t b) {
   if (i == 0)
     return n % twoToThePowerOf(b);
   else
+    // shift to-be-loaded bits all the way to the left
+    // to reset all bits to the left of them, then
+    // shift to-be-loaded bits all the way to the right and return
     return rightShift(leftShift(n, CPUBITWIDTH - (i + b)), CPUBITWIDTH - b);
 }
 
@@ -1465,24 +1468,24 @@ uint64_t loadCharacter(uint64_t* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
 
-  // a is the index of the double word where the to-be-loaded i-th character in s is
+  // a is the index of the double word where
+  // the to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
 
-  // shift to-be-loaded character to the left resetting all bits to the left
-  // then shift to-be-loaded character all the way to the right and return
+  // return i-th 8-bit character in s
   return getBits(*(s + a), (i % SIZEOFUINT64) * 8, 8);
 }
 
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
-  // assert: i >= 0, all characters are 8-bit
+  // assert: i >= 0, 0 <= c < 2^8 (all characters are 8-bit)
   uint64_t a;
 
-  // a is the index of the word where the with c
-  // to-be-overwritten i-th character in s is
+  // a is the index of the double word where
+  // the with c to-be-overwritten i-th character in s is
   a = i / SIZEOFUINT64;
 
-  // subtract the to-be-overwritten character resetting its bits in s
-  // then add c setting its bits at the i-th position in s
+  // subtract the to-be-overwritten character to reset its bits in s
+  // then add c to set its bits at the i-th position in s
   *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFUINT64) * 8)) + leftShift(c, (i % SIZEOFUINT64) * 8);
 
   return s;
