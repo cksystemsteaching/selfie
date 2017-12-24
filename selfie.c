@@ -4473,7 +4473,7 @@ uint64_t getImmediateSFormat(uint64_t instruction) {
   imm1 = getBits(instruction, 25, 7);
   imm2 = getBits(instruction,  7, 5);
 
-  return leftShift(imm1, 5) + imm2;
+  return signExtend(leftShift(imm1, 5) + imm2, 12);
 }
 
 void decodeSFormat() {
@@ -4533,7 +4533,7 @@ uint64_t getImmediateBFormat(uint64_t instruction) {
   imm4 = getBits(instruction,  7, 1);
 
   // reassemble immediate and add trailing zero
-  return leftShift(leftShift(leftShift(leftShift(imm1, 1) + imm4, 6) + imm2, 4) + imm3, 1);
+  return signExtend(leftShift(leftShift(leftShift(leftShift(imm1, 1) + imm4, 6) + imm2, 4) + imm3, 1), 13);
 }
 
 void decodeBFormat() {
@@ -4591,7 +4591,7 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
   imm4 = getBits(instruction, 12, 8);
 
   // reassemble immediate and add trailing zero
-  return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);
+  return signExtend(leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1), 21);
 }
 
 void decodeJFormat() {
@@ -6265,13 +6265,10 @@ void fct_sd() {
 void fct_beq() {
   uint64_t s1;
   uint64_t s2;
-  uint64_t immediate;
-
-  immediate = signExtend(imm, 13);
 
   if (interpret) {
-    s1  = *(registers + rs1);
-    s2  = *(registers + rs2);
+    s1 = *(registers + rs1);
+    s2 = *(registers + rs2);
   }
 
   if (debug) {
@@ -6281,9 +6278,9 @@ void fct_beq() {
     print((uint64_t*) ",");
     printRegister(rs2);
     print((uint64_t*) ",");
-    printInteger(signedDivision(immediate, INSTRUCTIONSIZE));
+    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
     print((uint64_t*) "[");
-    printHexadecimal(pc + INSTRUCTIONSIZE + immediate, 0);
+    printHexadecimal(pc + INSTRUCTIONSIZE + imm, 0);
     print((uint64_t*) "]");
     if (interpret) {
       print((uint64_t*) ": ");
@@ -6301,7 +6298,7 @@ void fct_beq() {
     pc = pc + INSTRUCTIONSIZE;
 
     if (s1 == s2)
-      pc = pc + immediate;
+      pc = pc + imm;
   }
 
   if (debug) {
@@ -6315,22 +6312,18 @@ void fct_beq() {
 
 void fct_jal() {
   uint64_t d;
-  uint64_t immediate;
 
-  immediate = signExtend(imm, 21);
-
-  if (interpret) {
+  if (interpret)
     d = *(registers + rd);
-  }
 
   if (debug) {
     print((uint64_t*) "jal");
     print((uint64_t*) " ");
     printRegister(rd);
     print((uint64_t*) ",");
-    printInteger(signedDivision(immediate, INSTRUCTIONSIZE));
+    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
     print((uint64_t*) "[");
-    printHexadecimal(immediate + pc, 0);
+    printHexadecimal(pc + imm, 0);
     print((uint64_t*) "]");
     if (interpret) {
       print((uint64_t*) ": ");
@@ -6346,14 +6339,14 @@ void fct_jal() {
     if (rd != REG_ZR)
       *(registers + rd) = d;
 
-    pc = pc + immediate;
+    pc = pc + imm;
 
     if (rd != REG_ZR) {
       // keep track of number of procedure calls
       calls = calls + 1;
 
       *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
-    } else if (signedLessThan(immediate, 0)) {
+    } else if (signedLessThan(imm, 0)) {
       // keep track of number of loop iterations
       loops = loops + 1;
 
