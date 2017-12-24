@@ -4604,15 +4604,19 @@ void decodeJFormat() {
   immediate = getImmediateJFormat(ir);
 }
 
-//                     20                      5        7
-// +---------------------------------------+-------+---------+
-// |                immediate              |  rd   | opcode  |
-// +---------------------------------------+-------+---------+
-//  imm[31:12]
+// RISC-V U Format
+// ----------------------------------------------------------------
+// |                  20                 |        5        |  7   |
+// +-------------------------------------+-----------------+------+
+// |          immediate[19:0]            |       rd        |opcode|
+// +-------------------------------------+-----------------+------+
+// |31                                 12|11              7|6    0|
+// ----------------------------------------------------------------
+
 uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
-  // assert: 0 <= opcode < 2^7
-  // assert: 0 <= rd < 2^5
   // assert: -2^19 <= immediate < 2^19
+  // assert: 0 <= rd < 2^5
+  // assert: 0 <= opcode < 2^7
 
   if (isSignedInteger(immediate, 20) == 0)
     encodingError(immediate, 20);
@@ -4626,11 +4630,6 @@ uint64_t getImmediateUFormat(uint64_t instruction) {
   return getBits(instruction, 12, 20);
 }
 
-//                     20                      5        7
-// +---------------------------------------+-------+---------+
-// |               immediate               |  rd   | opcode  |
-// +---------------------------------------+-------+---------+
-//                 imm[31:20]
 void decodeUFormat() {
   funct7    = 0;
   rs2       = 0;
