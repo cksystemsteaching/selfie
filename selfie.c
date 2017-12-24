@@ -700,38 +700,37 @@ void initRegister() {
 }
 
 // -----------------------------------------------------------------
-// ---------------------------- ENCODER ----------------------------
+// ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
 
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode);
-uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode);
-uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
-uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
-uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
-uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
-
-// -----------------------------------------------------------------
-// ---------------------------- DECODER ----------------------------
-// -----------------------------------------------------------------
-
-uint64_t getOpcode(uint64_t instruction);
-uint64_t getRS1(uint64_t instruction);
-uint64_t getRS2(uint64_t instruction);
-uint64_t getRD(uint64_t instruction);
-uint64_t getFunct3(uint64_t instruction);
 uint64_t getFunct7(uint64_t instruction);
-uint64_t getImmediateIFormat(uint64_t instruction);
-uint64_t getImmediateSFormat(uint64_t instruction);
-uint64_t getImmediateBFormat(uint64_t instruction);
-uint64_t getImmediateJFormat(uint64_t instruction);
-uint64_t getImmediateUFormat(uint64_t instruction);
+uint64_t getRS2(uint64_t instruction);
+uint64_t getRS1(uint64_t instruction);
+uint64_t getFunct3(uint64_t instruction);
+uint64_t getRD(uint64_t instruction);
+uint64_t getOpcode(uint64_t instruction);
+void     decodeRFormat();
 
-void decodeRFormat();
-void decodeIFormat();
-void decodeSFormat();
-void decodeBFormat();
-void decodeJFormat();
-void decodeUFormat();
+uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode);
+uint64_t getImmediateIFormat(uint64_t instruction);
+void     decodeIFormat();
+
+uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
+uint64_t getImmediateSFormat(uint64_t instruction);
+void     decodeSFormat();
+
+uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
+uint64_t getImmediateBFormat(uint64_t instruction);
+void     decodeBFormat();
+
+uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
+uint64_t getImmediateJFormat(uint64_t instruction);
+void     decodeJFormat();
+
+uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
+uint64_t getImmediateUFormat(uint64_t instruction);
+void     decodeUFormat();
 
 void decode();
 
@@ -776,13 +775,13 @@ uint64_t F12_ECALL = 0; // 000000000000
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t opcode      = 0;
-uint64_t rs1         = 0;
-uint64_t rs2         = 0;
-uint64_t rd          = 0;
-uint64_t immediate   = 0;
-uint64_t funct3      = 0;
-uint64_t funct7      = 0;
+uint64_t opcode = 0;
+uint64_t rs1    = 0;
+uint64_t rs2    = 0;
+uint64_t rd     = 0;
+uint64_t imm    = 0;
+uint64_t funct3 = 0;
+uint64_t funct7 = 0;
 
 // -----------------------------------------------------------------
 // ----------------------------- CODE ------------------------------
@@ -800,7 +799,7 @@ void emitIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64_t rd,
 void emitSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
 void emitBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode);
 void emitJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
-void emitUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
+void emitLUI(uint64_t rd, uint64_t immediate);
 
 void fixup_relative_BFormat(uint64_t fromAddress);
 void fixup_relative_JFormat(uint64_t fromAddress, uint64_t toAddress);
@@ -2837,8 +2836,8 @@ void load_integer(uint64_t value) {
 
     talloc();
 
-    // assert: 0 < u < 2^(32-12)
-    emitUFormat(signExtend(upper, 20), currentTemporary(), OP_LUI);
+    // assert: 0 < upper < 2^(32-12)
+    emitLUI(currentTemporary(), signExtend(upper, 20));
     emitIFormat(signExtend(lower, 12), currentTemporary(), F3_ADDI, currentTemporary(), OP_IMM);
 
   } else {
@@ -4141,7 +4140,7 @@ void bootstrapCode() {
   }
 
   if (upper != 0) {
-    emitUFormat(upper, REG_GP, OP_LUI);
+    emitLUI(REG_GP, upper);
     emitIFormat(lower, REG_GP, F3_ADDI, REG_GP, OP_IMM);
   } else {
     emitIFormat(lower, REG_ZR, F3_ADDI, REG_GP, OP_IMM);
@@ -4393,12 +4392,12 @@ uint64_t getOpcode(uint64_t instruction) {
 }
 
 void decodeRFormat() {
-  funct7    = getFunct7(ir);
-  rs2       = getRS2(ir);
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = getRD(ir);
-  immediate = 0;
+  funct7 = getFunct7(ir);
+  rs2    = getRS2(ir);
+  rs1    = getRS1(ir);
+  funct3 = getFunct3(ir);
+  rd     = getRD(ir);
+  imm    = 0;
 }
 
 // RISC-V I Format
@@ -4430,12 +4429,12 @@ uint64_t getImmediateIFormat(uint64_t instruction) {
 }
 
 void decodeIFormat() {
-  funct7    = 0;
-  rs2       = 0;
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = getRD(ir);
-  immediate = getImmediateIFormat(ir);
+  funct7 = 0;
+  rs2    = 0;
+  rs1    = getRS1(ir);
+  funct3 = getFunct3(ir);
+  rd     = getRD(ir);
+  imm    = getImmediateIFormat(ir);
 }
 
 // RISC-V S Format
@@ -4478,12 +4477,12 @@ uint64_t getImmediateSFormat(uint64_t instruction) {
 }
 
 void decodeSFormat() {
-  funct7    = 0;
-  rs2       = getRS2(ir);
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = 0;
-  immediate = getImmediateSFormat(ir);
+  funct7 = 0;
+  rs2    = getRS2(ir);
+  rs1    = getRS1(ir);
+  funct3 = getFunct3(ir);
+  rd     = 0;
+  imm    = getImmediateSFormat(ir);
 }
 
 // RISC-V B Format
@@ -4538,12 +4537,12 @@ uint64_t getImmediateBFormat(uint64_t instruction) {
 }
 
 void decodeBFormat() {
-  funct7    = 0;
-  rs2       = getRS2(ir);
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = 0;
-  immediate = getImmediateBFormat(ir);
+  funct7 = 0;
+  rs2    = getRS2(ir);
+  rs1    = getRS1(ir);
+  funct3 = getFunct3(ir);
+  rd     = 0;
+  imm    = getImmediateBFormat(ir);
 }
 
 // RISC-V J Format
@@ -4596,19 +4595,19 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
 }
 
 void decodeJFormat() {
-  funct7    = 0;
-  rs2       = 0;
-  rs1       = 0;
-  funct3    = 0;
-  rd        = getRD(ir);
-  immediate = getImmediateJFormat(ir);
+  funct7 = 0;
+  rs2    = 0;
+  rs1    = 0;
+  funct3 = 0;
+  rd     = getRD(ir);
+  imm    = getImmediateJFormat(ir);
 }
 
 // RISC-V U Format
 // ----------------------------------------------------------------
 // |                  20                 |        5        |  7   |
 // +-------------------------------------+-----------------+------+
-// |          immediate[19:0]            |       rd        |opcode|
+// |           immediate[19:0]           |       rd        |opcode|
 // +-------------------------------------+-----------------+------+
 // |31                                 12|11              7|6    0|
 // ----------------------------------------------------------------
@@ -4627,16 +4626,16 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 }
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
-  return getBits(instruction, 12, 20);
+  return signExtend(getBits(instruction, 12, 20), 20);
 }
 
 void decodeUFormat() {
-  funct7    = 0;
-  rs2       = 0;
-  rs1       = 0;
-  funct3    = 0;
-  rd        = getRD(ir);
-  immediate = getImmediateUFormat(ir);
+  funct7 = 0;
+  rs2    = 0;
+  rs1    = 0;
+  funct3 = 0;
+  rd     = getRD(ir);
+  imm    = getImmediateUFormat(ir);
 }
 
 void decode() {
@@ -4747,8 +4746,8 @@ void emitJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   emitInstruction(encodeJFormat(immediate, rd, opcode));
 }
 
-void emitUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
-  emitInstruction(encodeUFormat(immediate, rd, opcode));
+void emitLUI(uint64_t rd, uint64_t immediate) {
+  emitInstruction(encodeUFormat(immediate, rd, OP_LUI));
 }
 
 void fixup_relative_BFormat(uint64_t fromAddress) {
@@ -5974,9 +5973,9 @@ void fct_sltu() {
 void fct_jalr() {
   uint64_t s1;
   uint64_t d;
-  uint64_t imm;
+  uint64_t immediate;
 
-  imm = signExtend(immediate, 12);
+  immediate = signExtend(imm, 12);
 
   if (interpret) {
     s1 = *(registers + rs1);
@@ -5988,7 +5987,7 @@ void fct_jalr() {
     print((uint64_t*) " ");
     printRegister(rd);
     print((uint64_t*) ",");
-    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
+    printInteger(signedDivision(immediate, INSTRUCTIONSIZE));
     print((uint64_t*) "(");
     printRegister(rs1);
     print((uint64_t*) ")");
@@ -6009,15 +6008,14 @@ void fct_jalr() {
     // do not write into REG_ZR!
     if (rd != REG_ZR) {
       d = pc + INSTRUCTIONSIZE;
+
       *(registers + rd) = d;
     }
 
     // add 12-bit signed immediate to rs1, then set the
     // least-signficant bit of the result to zero
-    pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
+    pc = leftShift(rightShift(*(registers + rs1) + immediate, 1), 1);
   }
-
-
 
   if (debug) {
     if (interpret) {
@@ -6053,24 +6051,22 @@ void fct_ecall() {
 void fct_addi() {
   uint64_t s1;
   uint64_t d;
-  uint64_t imm;
+  uint64_t immediate;
 
-  imm = signExtend(immediate, 12);
+  immediate = signExtend(imm, 12);
 
   // check for nop
   if (rs1 == REG_ZR)
     if (rd == REG_ZR)
-      if (imm == 0) {
+      if (immediate == 0) {
         fct_nop();
         return;
       }
-
 
   if (interpret) {
     s1 = *(registers + rs1);
     d  = *(registers + rd);
   }
-
 
   if (debug) {
     print((uint64_t*) "addi");
@@ -6079,7 +6075,7 @@ void fct_addi() {
     print((uint64_t*) ",");
     printRegister(rs1);
     print((uint64_t*) ",");
-    printInteger(imm);
+    printInteger(immediate);
     if (interpret) {
       print((uint64_t*) ": ");
       printRegister(rd);
@@ -6093,7 +6089,7 @@ void fct_addi() {
   }
 
   if (interpret) {
-    d = s1 + imm;
+    d = s1 + immediate;
     *(registers + rd) = d;
 
     pc = pc + INSTRUCTIONSIZE;
@@ -6111,14 +6107,14 @@ void fct_addi() {
 }
 
 void fct_lui() {
-  uint64_t imm;
+  uint64_t immediate;
 
   if (debug) {
     print((uint64_t*) "lui");
     print((uint64_t*) " ");
     printRegister(rd);
     print((uint64_t*) ",");
-    printHexadecimal(immediate, 0);
+    printHexadecimal(imm, 0);
     if (interpret) {
       print((uint64_t*) ": ");
       printRegister(rd);
@@ -6128,10 +6124,9 @@ void fct_lui() {
   }
 
   if (interpret) {
-    imm = leftShift(immediate, 12);
-    imm = signExtend(imm, 32);
+    immediate = leftShift(imm, 12);
 
-    *(registers + rd) = imm;
+    *(registers + rd) = immediate;
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -6141,20 +6136,19 @@ void fct_lui() {
       print((uint64_t*) " -> ");
       printRegister(rd);
       print((uint64_t*) "=");
-      printHexadecimal(imm, 0);
+      printHexadecimal(immediate, 0);
     }
     println();
   }
-
 }
 
 void fct_ld() {
   uint64_t vaddr;
   uint64_t s1;
   uint64_t d;
-  uint64_t imm;
+  uint64_t immediate;
 
-  imm = signExtend(immediate, 12);
+  immediate = signExtend(imm, 12);
 
   if (interpret) {
     s1 = *(registers + rs1);
@@ -6166,7 +6160,7 @@ void fct_ld() {
     print((uint64_t*) " ");
     printRegister(rd);
     print((uint64_t*) ",");
-    printInteger(imm);
+    printInteger(immediate);
     print((uint64_t*) "(");
     printRegister(rs1);
     print((uint64_t*) ")");
@@ -6183,7 +6177,7 @@ void fct_ld() {
   }
 
   if (interpret) {
-    vaddr = s1 + imm;
+    vaddr = s1 + immediate;
 
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
@@ -6221,9 +6215,9 @@ void fct_sd() {
   uint64_t vaddr;
   uint64_t s1;
   uint64_t s2;
-  uint64_t imm;
+  uint64_t immediate;
 
-  imm = signExtend(immediate, 12);
+  immediate = signExtend(imm, 12);
 
   if (interpret) {
     s1  = *(registers + rs1);
@@ -6235,7 +6229,7 @@ void fct_sd() {
     print((uint64_t*) " ");
     printRegister(rs2);
     print((uint64_t*) ",");
-    printInteger(imm);
+    printInteger(immediate);
     print((uint64_t*) "(");
     printRegister(rs1);
     print((uint64_t*) ")");
@@ -6252,7 +6246,7 @@ void fct_sd() {
   }
 
   if (interpret) {
-    vaddr = s1 + imm;
+    vaddr = s1 + immediate;
 
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
@@ -6287,9 +6281,9 @@ void fct_sd() {
 void fct_beq() {
   uint64_t s1;
   uint64_t s2;
-  uint64_t imm;
+  uint64_t immediate;
 
-  imm = signExtend(immediate, 13);
+  immediate = signExtend(imm, 13);
 
   if (interpret) {
     s1  = *(registers + rs1);
@@ -6303,9 +6297,9 @@ void fct_beq() {
     print((uint64_t*) ",");
     printRegister(rs2);
     print((uint64_t*) ",");
-    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
+    printInteger(signedDivision(immediate, INSTRUCTIONSIZE));
     print((uint64_t*) "[");
-    printHexadecimal(pc + INSTRUCTIONSIZE + imm, 0);
+    printHexadecimal(pc + INSTRUCTIONSIZE + immediate, 0);
     print((uint64_t*) "]");
     if (interpret) {
       print((uint64_t*) ": ");
@@ -6323,7 +6317,7 @@ void fct_beq() {
     pc = pc + INSTRUCTIONSIZE;
 
     if (s1 == s2)
-      pc = pc + imm;
+      pc = pc + immediate;
   }
 
   if (debug) {
@@ -6337,9 +6331,9 @@ void fct_beq() {
 
 void fct_jal() {
   uint64_t d;
-  uint64_t imm;
+  uint64_t immediate;
 
-  imm = signExtend(immediate, 21);
+  immediate = signExtend(imm, 21);
 
   if (interpret) {
     d = *(registers + rd);
@@ -6350,9 +6344,9 @@ void fct_jal() {
     print((uint64_t*) " ");
     printRegister(rd);
     print((uint64_t*) ",");
-    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
+    printInteger(signedDivision(immediate, INSTRUCTIONSIZE));
     print((uint64_t*) "[");
-    printHexadecimal(imm + pc, 0);
+    printHexadecimal(immediate + pc, 0);
     print((uint64_t*) "]");
     if (interpret) {
       print((uint64_t*) ": ");
@@ -6368,14 +6362,14 @@ void fct_jal() {
     if (rd != REG_ZR)
       *(registers + rd) = d;
 
-    pc = pc + imm;
+    pc = pc + immediate;
 
     if (rd != REG_ZR) {
       // keep track of number of procedure calls
       calls = calls + 1;
 
       *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
-    } else if (signedLessThan(imm, 0)) {
+    } else if (signedLessThan(immediate, 0)) {
       // keep track of number of loop iterations
       loops = loops + 1;
 
