@@ -4425,7 +4425,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
 }
 
 uint64_t getImmediateIFormat(uint64_t instruction) {
-  return getBits(instruction, 20, 12);
+  return signExtend(getBits(instruction, 20, 12), 12);
 }
 
 void decodeIFormat() {
@@ -5973,9 +5973,6 @@ void fct_sltu() {
 void fct_jalr() {
   uint64_t s1;
   uint64_t d;
-  uint64_t immediate;
-
-  immediate = signExtend(imm, 12);
 
   if (interpret) {
     s1 = *(registers + rs1);
@@ -5987,7 +5984,7 @@ void fct_jalr() {
     print((uint64_t*) " ");
     printRegister(rd);
     print((uint64_t*) ",");
-    printInteger(signedDivision(immediate, INSTRUCTIONSIZE));
+    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
     print((uint64_t*) "(");
     printRegister(rs1);
     print((uint64_t*) ")");
@@ -6014,7 +6011,7 @@ void fct_jalr() {
 
     // add 12-bit signed immediate to rs1, then set the
     // least-signficant bit of the result to zero
-    pc = leftShift(rightShift(*(registers + rs1) + immediate, 1), 1);
+    pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
   }
 
   if (debug) {
@@ -6051,14 +6048,11 @@ void fct_ecall() {
 void fct_addi() {
   uint64_t s1;
   uint64_t d;
-  uint64_t immediate;
-
-  immediate = signExtend(imm, 12);
 
   // check for nop
   if (rs1 == REG_ZR)
     if (rd == REG_ZR)
-      if (immediate == 0) {
+      if (imm == 0) {
         fct_nop();
         return;
       }
@@ -6075,7 +6069,7 @@ void fct_addi() {
     print((uint64_t*) ",");
     printRegister(rs1);
     print((uint64_t*) ",");
-    printInteger(immediate);
+    printInteger(imm);
     if (interpret) {
       print((uint64_t*) ": ");
       printRegister(rd);
@@ -6089,7 +6083,7 @@ void fct_addi() {
   }
 
   if (interpret) {
-    d = s1 + immediate;
+    d = s1 + imm;
     *(registers + rd) = d;
 
     pc = pc + INSTRUCTIONSIZE;
@@ -6107,8 +6101,6 @@ void fct_addi() {
 }
 
 void fct_lui() {
-  uint64_t immediate;
-
   if (debug) {
     print((uint64_t*) "lui");
     print((uint64_t*) " ");
@@ -6124,9 +6116,7 @@ void fct_lui() {
   }
 
   if (interpret) {
-    immediate = leftShift(imm, 12);
-
-    *(registers + rd) = immediate;
+    *(registers + rd) = leftShift(imm, 12);
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -6136,19 +6126,16 @@ void fct_lui() {
       print((uint64_t*) " -> ");
       printRegister(rd);
       print((uint64_t*) "=");
-      printHexadecimal(immediate, 0);
+      printHexadecimal(leftShift(imm, 12), 0);
     }
     println();
   }
 }
 
 void fct_ld() {
-  uint64_t vaddr;
   uint64_t s1;
   uint64_t d;
-  uint64_t immediate;
-
-  immediate = signExtend(imm, 12);
+  uint64_t vaddr;
 
   if (interpret) {
     s1 = *(registers + rs1);
@@ -6160,7 +6147,7 @@ void fct_ld() {
     print((uint64_t*) " ");
     printRegister(rd);
     print((uint64_t*) ",");
-    printInteger(immediate);
+    printInteger(imm);
     print((uint64_t*) "(");
     printRegister(rs1);
     print((uint64_t*) ")");
@@ -6177,7 +6164,7 @@ void fct_ld() {
   }
 
   if (interpret) {
-    vaddr = s1 + immediate;
+    vaddr = s1 + imm;
 
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
@@ -6212,16 +6199,13 @@ void fct_ld() {
 }
 
 void fct_sd() {
-  uint64_t vaddr;
   uint64_t s1;
   uint64_t s2;
-  uint64_t immediate;
-
-  immediate = signExtend(imm, 12);
+  uint64_t vaddr;
 
   if (interpret) {
-    s1  = *(registers + rs1);
-    s2  = *(registers + rs2);
+    s1 = *(registers + rs1);
+    s2 = *(registers + rs2);
   }
 
   if (debug) {
@@ -6229,7 +6213,7 @@ void fct_sd() {
     print((uint64_t*) " ");
     printRegister(rs2);
     print((uint64_t*) ",");
-    printInteger(immediate);
+    printInteger(imm);
     print((uint64_t*) "(");
     printRegister(rs1);
     print((uint64_t*) ")");
@@ -6246,7 +6230,7 @@ void fct_sd() {
   }
 
   if (interpret) {
-    vaddr = s1 + immediate;
+    vaddr = s1 + imm;
 
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
