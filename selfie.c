@@ -4349,13 +4349,13 @@ void printRegister(uint64_t reg) {
 // -----------------------------------------------------------------
 
 // RISC-V R Format
-// -----------------------------------------------------------------
-// |     7      |    5    |    5    |  3   |    5    |      7      |
-// +------------+---------+---------+------+---------+-------------+
-// |   funct7   |   rs2   |   rs1   |funct3|   rd    |   opcode    |
-// +------------+---------+---------+------+---------+-------------+
-// |31        25|24     20|19     15|14  12|11      7|6           0|
-// -----------------------------------------------------------------
+// ----------------------------------------------------------------
+// |        7         |  5  |  5  |  3   |        5        |  7   |
+// +------------------+-----+-----+------+-----------------+------+
+// |      funct7      | rs2 | rs1 |funct3|       rd        |opcode|
+// +------------------+-----+-----+------+-----------------+------+
+// |31              25|24 20|19 15|14  12|11              7|6    0|
+// ----------------------------------------------------------------
 
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= funct7 < 2^7
@@ -4402,13 +4402,13 @@ void decodeRFormat() {
 }
 
 // RISC-V I Format
-// -----------------------------------------------------------------
-// |          12          |    5    |  3   |    5    |      7      |
-// +----------------------+---------+------+---------+-------------+
-// |      immediate       |   rs1   |funct3|   rd    |   opcode    |
-// +----------------------+---------+------+---------+-------------+
-// |31                  20|19     15|14  12|11      7|6           0|
-// -----------------------------------------------------------------
+// ----------------------------------------------------------------
+// |           12           |  5  |  3   |        5        |  7   |
+// +------------------------+-----+------+-----------------+------+
+// |    immediate[11:0]     | rs1 |funct3|       rd        |opcode|
+// +------------------------+-----+------+-----------------+------+
+// |31                    20|19 15|14  12|11              7|6    0|
+// ----------------------------------------------------------------
 
 uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode) {
   // assert: -2^11 <= immediate < 2^11
@@ -4439,13 +4439,13 @@ void decodeIFormat() {
 }
 
 // RISC-V S Format
-// -----------------------------------------------------------------
-// |     7      |    5    |    5    |  3   |    5    |      7      |
-// +------------+---------+---------+------+---------+-------------+
-// |    imm1    |   rs2   |   rs1   |funct3|  imm2   |   opcode    |
-// +------------+---------+---------+------+---------+-------------+
-// |31        25|24     20|19     15|14  12|11      7|6           0|
-// -----------------------------------------------------------------
+// ----------------------------------------------------------------
+// |        7         |  5  |  5  |  3   |        5        |  7   |
+// +------------------+-----+-----+------+-----------------+------+
+// |    imm1[11:5]    | rs2 | rs1 |funct3|    imm2[4:0]    |opcode|
+// +------------------+-----+-----+------+-----------------+------+
+// |31              25|24 20|19 15|14  12|11              7|6    0|
+// ----------------------------------------------------------------
 
 uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode) {
   // assert: -2^11 <= immediate < 2^11
@@ -4486,17 +4486,21 @@ void decodeSFormat() {
   immediate = getImmediateSFormat(ir);
 }
 
-//    1        6        5       5      3       4       1       7
-// +------+---------+-------+-------+------+-------+------+---------+
-// | imm1 |  imm2   |  rs2  |  rs1  |funct3| imm3  | imm4 | opcode  |
-// +------+---------+-------+-------+------+-------+------+---------+
-// imm[12] imm[10:5]                       imm[4:1] imm[11]
+// RISC-V B Format
+// ----------------------------------------------------------------
+// |        7         |  5  |  5  |  3   |        5        |  7   |
+// +------------------+-----+-----+------+-----------------+------+
+// |imm1[12]imm2[10:5]| rs2 | rs1 |funct3|imm3[4:1]imm4[11]|opcode|
+// +------------------+-----+-----+------+-----------------+------+
+// |31              25|24 20|19 15|14  12|11              7|6    0|
+// ----------------------------------------------------------------
+
 uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode) {
-  // assert: 0 <= opcode < 2^7
-  // assert: 0 <= rs1 < 2^5
+  // assert: -2^11 <= immediate < 2^11
   // assert: 0 <= rs2 < 2^5
+  // assert: 0 <= rs1 < 2^5
   // assert: 0 <= funct3 < 2^3
-  // assert: -2^10 <= immediate < 2^10
+  // assert: 0 <= opcode < 2^7
   uint64_t imm1;
   uint64_t imm2;
   uint64_t imm3;
@@ -4516,6 +4520,30 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   imm4 = getBits(immediate, 11, 1);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 6) + imm2, 5) + rs2, 5) + rs1, 3) + funct3, 4) + imm3, 1) + imm4, 7) + opcode;
+}
+
+uint64_t getImmediateBFormat(uint64_t instruction) {
+  uint64_t imm1;
+  uint64_t imm2;
+  uint64_t imm3;
+  uint64_t imm4;
+
+  imm1 = getBits(instruction, 31, 1);
+  imm2 = getBits(instruction, 25, 6);
+  imm3 = getBits(instruction,  8, 4);
+  imm4 = getBits(instruction,  7, 1);
+
+  // reassemble immediate and add trailing zero
+  return leftShift(leftShift(leftShift(leftShift(imm1, 1) + imm4, 6) + imm2, 4) + imm3, 1);
+}
+
+void decodeBFormat() {
+  funct7    = 0;
+  rs2       = getRS2(ir);
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
+  rd        = 0;
+  immediate = getImmediateBFormat(ir);
 }
 
 //     1        10         1         8        5        7
@@ -4566,21 +4594,6 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   return leftShift(leftShift(immediate, 5) + rd, 7) + opcode;
 }
 
-uint64_t getImmediateBFormat(uint64_t instruction) {
-  uint64_t imm1;
-  uint64_t imm2;
-  uint64_t imm3;
-  uint64_t imm4;
-
-  imm1 = getBits(instruction, 31, 1);
-  imm2 = getBits(instruction, 25, 6);
-  imm3 = getBits(instruction,  8, 4);
-  imm4 = getBits(instruction,  7, 1);
-
-  // reassemble immediate and add trailing zero
-  return leftShift(leftShift(leftShift(leftShift(imm1, 1) + imm4, 6) + imm2, 4) + imm3, 1);
-}
-
 uint64_t getImmediateJFormat(uint64_t instruction) {
   uint64_t imm1;
   uint64_t imm2;
@@ -4598,23 +4611,6 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
   return getBits(instruction, 12, 20);
-}
-
-// -----------------------------------------------------------------
-// 32 bit
-
-//    1        6        5       5      3       4       1       7
-// +------+---------+-------+-------+------+-------+------+---------+
-// | imm1 |  imm2   |  rs2  |  rs1  |funct3| imm3  | imm4 | opcode  |
-// +------+---------+-------+-------+------+-------+------+---------+
-// imm[12] imm[10:5]                       imm[4:1] imm[11]
-void decodeBFormat() {
-  funct7    = 0;
-  rs2       = getRS2(ir);
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = 0;
-  immediate = getImmediateBFormat(ir);
 }
 
 // -----------------------------------------------------------------
