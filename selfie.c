@@ -740,7 +740,7 @@ void decode();
 uint64_t OP_LD     = 3;   // 0000011, IF (LD)
 uint64_t OP_IMM    = 19;  // 0010011, IF (ADDI, NOP)
 uint64_t OP_SD     = 35;  // 0100011, SF (SD)
-uint64_t OP_OP     = 51;  // 0110011, RF (ADD, SUB, SLTU, MUL, DIVU, REMU)
+uint64_t OP_OP     = 51;  // 0110011, RF (ADD, SUB, MUL, DIVU, REMU, SLTU)
 uint64_t OP_LUI    = 55;  // 0110111, UT (LUI)
 uint64_t OP_BRANCH = 99;  // 1100011, BF (BEQ)
 uint64_t OP_JALR   = 103; // 1100111, IF (JALR)
@@ -756,19 +756,19 @@ uint64_t F3_MUL   = 0; // 000
 uint64_t F3_DIVU  = 5; // 101
 uint64_t F3_REMU  = 7; // 111
 uint64_t F3_SLTU  = 3; // 011
-uint64_t F3_JALR  = 0; // 000
-uint64_t F3_BEQ   = 0; // 000
 uint64_t F3_LD    = 3; // 011
 uint64_t F3_SD    = 3; // 011
+uint64_t F3_BEQ   = 0; // 000
+uint64_t F3_JALR  = 0; // 000
 uint64_t F3_ECALL = 0; // 000
 
 // f7-codes
 uint64_t F7_ADD  = 0;  // 0000000
 uint64_t F7_MUL  = 1;  // 0000001
 uint64_t F7_SUB  = 32; // 0100000
-uint64_t F7_SLTU = 0;  // 0000000
 uint64_t F7_DIVU = 1;  // 0000001
 uint64_t F7_REMU = 1;  // 0000001
+uint64_t F7_SLTU = 0;  // 0000000
 
 // f12-codes (immediates)
 uint64_t F12_ECALL = 0; // 000000000000
@@ -966,9 +966,10 @@ void initMemory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
+void fct_nop();
+
 void fct_lui();
 void fct_addi();
-void fct_nop();
 
 void fct_add();
 void fct_sub();
@@ -977,12 +978,12 @@ void fct_divu();
 void fct_remu();
 void fct_sltu();
 
-void fct_beq();
-void fct_jalr();
-void fct_jal();
-
 void fct_ld();
 void fct_sd();
+
+void fct_beq();
+void fct_jal();
+void fct_jalr();
 
 void fct_ecall();
 
@@ -5687,6 +5688,94 @@ void fct_nop() {
     pc = pc + INSTRUCTIONSIZE;
 }
 
+void fct_lui() {
+  if (debug) {
+    print((uint64_t*) "lui");
+    print((uint64_t*) " ");
+    printRegister(rd);
+    print((uint64_t*) ",");
+    printHexadecimal(imm, 0);
+    if (interpret) {
+      print((uint64_t*) ": ");
+      printRegister(rd);
+      print((uint64_t*) "=");
+      printInteger(*(registers + rd));
+    }
+  }
+
+  if (interpret) {
+    *(registers + rd) = leftShift(imm, 12);
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((uint64_t*) " -> ");
+      printRegister(rd);
+      print((uint64_t*) "=");
+      printHexadecimal(leftShift(imm, 12), 0);
+    }
+    println();
+  }
+}
+
+void fct_addi() {
+  uint64_t s1;
+  uint64_t d;
+
+  // check for nop
+  if (rs1 == REG_ZR)
+    if (rd == REG_ZR)
+      if (imm == 0) {
+        fct_nop();
+        return;
+      }
+
+  if (interpret) {
+    s1 = *(registers + rs1);
+    d  = *(registers + rd);
+  }
+
+  if (debug) {
+    print((uint64_t*) "addi");
+    print((uint64_t*) " ");
+    printRegister(rd);
+    print((uint64_t*) ",");
+    printRegister(rs1);
+    print((uint64_t*) ",");
+    printInteger(imm);
+    if (interpret) {
+      print((uint64_t*) ": ");
+      printRegister(rd);
+      print((uint64_t*) "=");
+      printInteger(d);
+      print((uint64_t*) ",");
+      printRegister(rs1);
+      print((uint64_t*) "=");
+      printInteger(s1);
+    }
+  }
+
+  if (interpret) {
+    d = s1 + imm;
+
+    *(registers + rd) = d;
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((uint64_t*) " -> ");
+      printRegister(rd);
+      print((uint64_t*) "=");
+      printInteger(d);
+    }
+    println();
+  }
+}
+
 void fct_add() {
   uint64_t s1;
   uint64_t s2;
@@ -6016,169 +6105,6 @@ void fct_sltu() {
   }
 }
 
-void fct_jalr() {
-  uint64_t s1;
-  uint64_t d;
-
-  if (interpret) {
-    s1 = *(registers + rs1);
-    d  = *(registers + rd);
-  }
-
-  if (debug) {
-    print((uint64_t*) "jalr");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
-    print((uint64_t*) "(");
-    printRegister(rs1);
-    print((uint64_t*) ")");
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printHexadecimal(d, 0);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printHexadecimal(s1, 0);
-    }
-  }
-
-  if (interpret) {
-    // if rd == 0, this is a JR instruction -
-    // do not write into REG_ZR!
-    if (rd != REG_ZR) {
-      d = pc + INSTRUCTIONSIZE;
-
-      *(registers + rd) = d;
-    }
-
-    // add 12-bit signed immediate to rs1, then set the
-    // least-signficant bit of the result to zero
-    pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> $pc=");
-      printHexadecimal(pc, 0);
-      if (rd != REG_ZR) {
-        print((uint64_t*) ", ");
-        printRegister(rd);
-        print((uint64_t*) "=");
-        printHexadecimal(d, 0);
-      }
-    }
-    println();
-  }
-}
-
-void fct_ecall() {
-  if (debug) {
-    print((uint64_t*) "ecall");
-    println();
-  }
-
-  if (interpret) {
-    pc = pc + INSTRUCTIONSIZE;
-
-    if (*(registers + REG_A7) == SYSCALL_SWITCH)
-      implementSwitch();
-    else
-      throwException(EXCEPTION_SYSCALL, 0);
-  }
-}
-
-void fct_addi() {
-  uint64_t s1;
-  uint64_t d;
-
-  // check for nop
-  if (rs1 == REG_ZR)
-    if (rd == REG_ZR)
-      if (imm == 0) {
-        fct_nop();
-        return;
-      }
-
-  if (interpret) {
-    s1 = *(registers + rs1);
-    d  = *(registers + rd);
-  }
-
-  if (debug) {
-    print((uint64_t*) "addi");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printInteger(imm);
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-    }
-  }
-
-  if (interpret) {
-    d = s1 + imm;
-
-    *(registers + rd) = d;
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-    }
-    println();
-  }
-}
-
-void fct_lui() {
-  if (debug) {
-    print((uint64_t*) "lui");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printHexadecimal(imm, 0);
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(*(registers + rd));
-    }
-  }
-
-  if (interpret) {
-    *(registers + rd) = leftShift(imm, 12);
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printHexadecimal(leftShift(imm, 12), 0);
-    }
-    println();
-  }
-}
-
 void fct_ld() {
   uint64_t s1;
   uint64_t d;
@@ -6414,6 +6340,81 @@ void fct_jal() {
       printHexadecimal(pc, 0);
     }
     println();
+  }
+}
+
+void fct_jalr() {
+  uint64_t s1;
+  uint64_t d;
+
+  if (interpret) {
+    s1 = *(registers + rs1);
+    d  = *(registers + rd);
+  }
+
+  if (debug) {
+    print((uint64_t*) "jalr");
+    print((uint64_t*) " ");
+    printRegister(rd);
+    print((uint64_t*) ",");
+    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
+    print((uint64_t*) "(");
+    printRegister(rs1);
+    print((uint64_t*) ")");
+    if (interpret) {
+      print((uint64_t*) ": ");
+      printRegister(rd);
+      print((uint64_t*) "=");
+      printHexadecimal(d, 0);
+      print((uint64_t*) ",");
+      printRegister(rs1);
+      print((uint64_t*) "=");
+      printHexadecimal(s1, 0);
+    }
+  }
+
+  if (interpret) {
+    // if rd == 0, this is a JR instruction -
+    // do not write into REG_ZR!
+    if (rd != REG_ZR) {
+      d = pc + INSTRUCTIONSIZE;
+
+      *(registers + rd) = d;
+    }
+
+    // add 12-bit signed immediate to rs1, then set the
+    // least-signficant bit of the result to zero
+    pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
+  }
+
+  if (debug) {
+    if (interpret) {
+      print((uint64_t*) " -> $pc=");
+      printHexadecimal(pc, 0);
+      if (rd != REG_ZR) {
+        print((uint64_t*) ", ");
+        printRegister(rd);
+        print((uint64_t*) "=");
+        printHexadecimal(d, 0);
+      }
+    }
+    println();
+  }
+}
+
+void fct_ecall() {
+  if (debug) {
+    print((uint64_t*) "ecall");
+    println();
+  }
+
+  if (interpret) {
+    pc = pc + INSTRUCTIONSIZE;
+
+    if (*(registers + REG_A7) == SYSCALL_SWITCH)
+      implementSwitch();
+    else
+      throwException(EXCEPTION_SYSCALL, 0);
   }
 }
 
