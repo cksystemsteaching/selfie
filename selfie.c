@@ -4496,7 +4496,7 @@ void decodeSFormat() {
 // ----------------------------------------------------------------
 
 uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode) {
-  // assert: -2^11 <= immediate < 2^11
+  // assert: -2^10 <= immediate < 2^10
   // assert: 0 <= rs2 < 2^5
   // assert: 0 <= rs1 < 2^5
   // assert: 0 <= funct3 < 2^3
@@ -4546,15 +4546,19 @@ void decodeBFormat() {
   immediate = getImmediateBFormat(ir);
 }
 
-//     1        10         1         8        5        7
-// +-------+-----------+-------+-----------+-------+---------+
-// | imm1  |   imm2    | imm3  |   imm4    |  rd   | opcode  |
-// +-------+-----------+-------+-----------+-------+---------+
-//  imm[20]  imm[10:1]  imm[11] imm[19:12]
+// RISC-V J Format
+// ----------------------------------------------------------------
+// |                  20                 |        5        |  7   |
+// +-------------------------------------+-----------------+------+
+// |imm1[20]imm2[10:1]imm3[11]imm4[19:12]|       rd        |opcode|
+// +-------------------------------------+-----------------+------+
+// |31                                 12|11              7|6    0|
+// ----------------------------------------------------------------
+
 uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
-  // assert: 0 <= opcode < 2^7
-  // assert: 0 <= rd < 2^5
   // assert: -2^18 <= immediate < 2^18
+  // assert: 0 <= rd < 2^5
+  // assert: 0 <= opcode < 2^7
   uint64_t imm1;
   uint64_t imm2;
   uint64_t imm3;
@@ -4576,6 +4580,30 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 10) + imm2, 1) + imm3, 8) + imm4, 5) + rd, 7) + opcode;
 }
 
+uint64_t getImmediateJFormat(uint64_t instruction) {
+  uint64_t imm1;
+  uint64_t imm2;
+  uint64_t imm3;
+  uint64_t imm4;
+
+  imm1 = getBits(instruction, 31, 1);
+  imm2 = getBits(instruction, 21, 10);
+  imm3 = getBits(instruction, 20, 1);
+  imm4 = getBits(instruction, 12, 8);
+
+  // reassemble immediate and add trailing zero
+  return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);
+}
+
+void decodeJFormat() {
+  funct7    = 0;
+  rs2       = 0;
+  rs1       = 0;
+  funct3    = 0;
+  rd        = getRD(ir);
+  immediate = getImmediateJFormat(ir);
+}
+
 //                     20                      5        7
 // +---------------------------------------+-------+---------+
 // |                immediate              |  rd   | opcode  |
@@ -4594,40 +4622,8 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   return leftShift(leftShift(immediate, 5) + rd, 7) + opcode;
 }
 
-uint64_t getImmediateJFormat(uint64_t instruction) {
-  uint64_t imm1;
-  uint64_t imm2;
-  uint64_t imm3;
-  uint64_t imm4;
-
-  imm1 = getBits(instruction, 31, 1);
-  imm2 = getBits(instruction, 21, 10);
-  imm3 = getBits(instruction, 20, 1);
-  imm4 = getBits(instruction, 12, 8);
-
-  // reassemble immediate and add trailing zero
-  return leftShift(leftShift(leftShift(leftShift(imm1, 8) + imm4, 1) + imm3, 10) + imm2, 1);
-}
-
 uint64_t getImmediateUFormat(uint64_t instruction) {
   return getBits(instruction, 12, 20);
-}
-
-// -----------------------------------------------------------------
-// 32 bit
-
-//     1        10         1         8        5        7
-// +-------+-----------+-------+-----------+-------+---------+
-// | imm1  |   imm2    | imm3  |   imm4    |  rd   | opcode  |
-// +-------+-----------+-------+-----------+-------+---------+
-//  imm[20]  imm[10:1]  imm[11] imm[19:12]
-void decodeJFormat() {
-  funct7    = 0;
-  rs2       = 0;
-  rs1       = 0;
-  funct3    = 0;
-  rd        = getRD(ir);
-  immediate = getImmediateJFormat(ir);
 }
 
 //                     20                      5        7
