@@ -4438,17 +4438,21 @@ void decodeIFormat() {
   immediate = getImmediateIFormat(ir);
 }
 
-//      7         5       5       3        5        7
-// +----------+-------+-------+--------+-------+---------+
-// |   imm1   |  rs2  |  rs1  | funct3 | imm2  | opcode  |
-// +----------+-------+-------+--------+-------+---------+
-//  imm[11:5]                          imm[4:0]
+// RISC-V S Format
+// -----------------------------------------------------------------
+// |     7      |    5    |    5    |  3   |    5    |      7      |
+// +------------+---------+---------+------+---------+-------------+
+// |    imm1    |   rs2   |   rs1   |funct3|  imm2   |   opcode    |
+// +------------+---------+---------+------+---------+-------------+
+// |31        25|24     20|19     15|14  12|11      7|6           0|
+// -----------------------------------------------------------------
+
 uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t opcode) {
-  // assert: 0 <= opcode < 2^7
-  // assert: 0 <= rs1 < 2^5
-  // assert: 0 <= rs2 < 2^5
-  // assert: 0 <= funct3 < 2^3
   // assert: -2^11 <= immediate < 2^11
+  // assert: 0 <= rs2 < 2^5
+  // assert: 0 <= rs1 < 2^5
+  // assert: 0 <= funct3 < 2^3
+  // assert: 0 <= opcode < 2^7
   uint64_t imm1;
   uint64_t imm2;
 
@@ -4461,6 +4465,25 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   imm2 = getBits(immediate, 0, 5);
 
   return leftShift(leftShift(leftShift(leftShift(leftShift(imm1, 5) + rs2, 5) + rs1, 3) + funct3, 5) + imm2, 7) + opcode;
+}
+
+uint64_t getImmediateSFormat(uint64_t instruction) {
+  uint64_t imm1;
+  uint64_t imm2;
+
+  imm1 = getBits(instruction, 25, 7);
+  imm2 = getBits(instruction,  7, 5);
+
+  return leftShift(imm1, 5) + imm2;
+}
+
+void decodeSFormat() {
+  funct7    = 0;
+  rs2       = getRS2(ir);
+  rs1       = getRS1(ir);
+  funct3    = getFunct3(ir);
+  rd        = 0;
+  immediate = getImmediateSFormat(ir);
 }
 
 //    1        6        5       5      3       4       1       7
@@ -4543,16 +4566,6 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   return leftShift(leftShift(immediate, 5) + rd, 7) + opcode;
 }
 
-uint64_t getImmediateSFormat(uint64_t instruction) {
-  uint64_t imm1;
-  uint64_t imm2;
-
-  imm1 = getBits(instruction, 25, 7);
-  imm2 = getBits(instruction,  7, 5);
-
-  return leftShift(imm1, 5)+ imm2;
-}
-
 uint64_t getImmediateBFormat(uint64_t instruction) {
   uint64_t imm1;
   uint64_t imm2;
@@ -4585,23 +4598,6 @@ uint64_t getImmediateJFormat(uint64_t instruction) {
 
 uint64_t getImmediateUFormat(uint64_t instruction) {
   return getBits(instruction, 12, 20);
-}
-
-// -----------------------------------------------------------------
-// 32 bit
-
-//      7         5       5       3        5        7
-// +----------+-------+-------+--------+-------+---------+
-// |   imm1   |  rs2  |  rs1  | funct3 | imm2  | opcode  |
-// +----------+-------+-------+--------+-------+---------+
-//  imm[11:5]                          imm[4:0]
-void decodeSFormat() {
-  funct7    = 0;
-  rs2       = getRS2(ir);
-  rs1       = getRS1(ir);
-  funct3    = getFunct3(ir);
-  rd        = 0;
-  immediate = getImmediateSFormat(ir);
 }
 
 // -----------------------------------------------------------------
