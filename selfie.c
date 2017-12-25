@@ -3511,8 +3511,7 @@ void gr_if() {
           // if the "if" case was true, we branch to the end
           brForwardToEnd = binaryLength;
 
-          // TODO: replace with JAL
-          emitBEQ(REG_ZR, REG_ZR, 0);
+          emitJAL(REG_ZR, 0);
 
           // if the "if" case was not true, we branch here
           fixup_relative_BFormat(brForwardToElseOrEnd);
@@ -3537,7 +3536,7 @@ void gr_if() {
             gr_statement();
 
           // if the "if" case was true, we branch here
-          fixup_relative_BFormat(brForwardToEnd);
+          fixup_relative_JFormat(brForwardToEnd, binaryLength);
         } else
           // if the "if" case was not true, we branch here
           fixup_relative_BFormat(brForwardToElseOrEnd);
@@ -5402,7 +5401,7 @@ void implementOpen(uint64_t* context) {
   flags = *(getRegs(context)+REG_A1);
 
   if (down_loadString(getPT(context), vaddr, filename_buffer)) {
-    fd = open(filename_buffer, flags, mode); //here
+    fd = open(filename_buffer, flags, mode);
 
     *(getRegs(context)+REG_A0) = fd;
 
