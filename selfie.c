@@ -3394,14 +3394,14 @@ uint64_t gr_expression() {
 }
 
 void gr_while() {
-  uint64_t brBackToWhile;
-  uint64_t brForwardToEnd;
+  uint64_t jumpBackToWhile;
+  uint64_t branchForwardToEnd;
 
   // assert: allocatedTemporaries == 0
 
-  brBackToWhile = binaryLength;
+  jumpBackToWhile = binaryLength;
 
-  brForwardToEnd = 0;
+  branchForwardToEnd = 0;
 
   // while ( expression )
   if (symbol == SYM_WHILE) {
@@ -3413,7 +3413,7 @@ void gr_while() {
       gr_expression();
 
       // we do not know where to branch, fixup later
-      brForwardToEnd = binaryLength;
+      branchForwardToEnd = binaryLength;
 
       emitBEQ(currentTemporary(), REG_ZR, 0);
 
@@ -3446,15 +3446,15 @@ void gr_while() {
   } else
     syntaxErrorSymbol(SYM_WHILE);
 
-  // we use JAL for the unconditional branch back to the loop condition because:
+  // we use JAL for the unconditional jump back to the loop condition because:
   // 1. the RISC-V doc recommends to do so to not disturb branch prediction
-  // 2. GCC also uses JAL for the unconditional branch of a while loop
-  emitJAL(REG_ZR, brBackToWhile - binaryLength);
+  // 2. GCC also uses JAL for the unconditional back jump of a while loop
+  emitJAL(REG_ZR, jumpBackToWhile - binaryLength);
 
-  if (brForwardToEnd != 0)
-    // first instruction after loop comes here
+  if (branchForwardToEnd != 0)
+    // first instruction after loop body will be generated here
     // now we have the address for the conditional branch from above
-    fixup_relative_BFormat(brForwardToEnd);
+    fixup_relative_BFormat(branchForwardToEnd);
 
   // assert: allocatedTemporaries == 0
 
@@ -3462,8 +3462,8 @@ void gr_while() {
 }
 
 void gr_if() {
-  uint64_t brForwardToElseOrEnd;
-  uint64_t brForwardToEnd;
+  uint64_t branchForwardToElseOrEnd;
+  uint64_t jumpForwardToEnd;
 
   // assert: allocatedTemporaries == 0
 
@@ -3476,8 +3476,8 @@ void gr_if() {
 
       gr_expression();
 
-      // if the "if" case is not true, we branch to "else" (if provided)
-      brForwardToElseOrEnd = binaryLength;
+      // if the "if" case is not true we branch to "else" (if provided)
+      branchForwardToElseOrEnd = binaryLength;
 
       emitBEQ(currentTemporary(), REG_ZR, 0);
 
@@ -3508,13 +3508,14 @@ void gr_if() {
         if (symbol == SYM_ELSE) {
           getSymbol();
 
-          // if the "if" case was true, we branch to the end
-          brForwardToEnd = binaryLength;
+          // if the "if" case was true we skip the "else" case
+          // by unconditionally jumping to the end
+          jumpForwardToEnd = binaryLength;
 
           emitJAL(REG_ZR, 0);
 
-          // if the "if" case was not true, we branch here
-          fixup_relative_BFormat(brForwardToElseOrEnd);
+          // if the "if" case was not true we branch here
+          fixup_relative_BFormat(branchForwardToElseOrEnd);
 
           // zero or more statements: { statement }
           if (symbol == SYM_LBRACE) {
@@ -3535,11 +3536,11 @@ void gr_if() {
           } else
             gr_statement();
 
-          // if the "if" case was true, we branch here
-          fixup_relative_JFormat(brForwardToEnd, binaryLength);
+          // if the "if" case was true we unconditionally jump here
+          fixup_relative_JFormat(jumpForwardToEnd, binaryLength);
         } else
-          // if the "if" case was not true, we branch here
-          fixup_relative_BFormat(brForwardToElseOrEnd);
+          // if the "if" case was not true we branch here
+          fixup_relative_BFormat(branchForwardToElseOrEnd);
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -4108,7 +4109,7 @@ void emitMainEntry() {
   // we therefore need at least one not-to-be-fixed-up instruction here
 
   // we generate NOPs to accommodate GP register
-  // initialization code that overwrites the jumps later
+  // initialization code that overwrites the NOPs later
   // when binaryLength is known
   i = 0;
 
