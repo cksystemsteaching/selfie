@@ -5651,29 +5651,21 @@ void print_lui() {
 
 void fct_lui() {
   if (debug) {
-    print_lui();
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(*(registers + rd));
-    }
+    print((uint64_t*) ": ");
+    printRegister(rd);
+    print((uint64_t*) "=");
+    printInteger(*(registers + rd));
   }
 
-  if (interpret) {
-    *(registers + rd) = leftShift(imm, 12);
+  *(registers + rd) = leftShift(imm, 12);
 
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 
   if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printHexadecimal(leftShift(imm, 12), 0);
-    }
-    println();
+    print((uint64_t*) " -> ");
+    printRegister(rd);
+    print((uint64_t*) "=");
+    printHexadecimal(leftShift(imm, 12), 0);
   }
 }
 
@@ -5682,7 +5674,6 @@ void print_addi() {
     if (rs1 == REG_ZR)
       if (imm == 0) {
         print((uint64_t*) "nop");
-        println();
 
         return;
       }
@@ -5703,46 +5694,36 @@ void fct_addi() {
   if (rs1 == REG_ZR)
     if (rd == REG_ZR)
       if (imm == 0) {
-        if (interpret)
-          pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
         return;
       }
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    d  = *(registers + rd);
-  }
+  s1 = *(registers + rs1);
+  d  = *(registers + rd);
 
   if (debug) {
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-    }
+    print((uint64_t*) ": ");
+    printRegister(rd);
+    print((uint64_t*) "=");
+    printInteger(d);
+    print((uint64_t*) ",");
+    printRegister(rs1);
+    print((uint64_t*) "=");
+    printInteger(s1);
   }
 
-  if (interpret) {
-    d = s1 + imm;
+  d = s1 + imm;
 
-    *(registers + rd) = d;
+  *(registers + rd) = d;
 
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 
   if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-    }
-    println();
+    print((uint64_t*) " -> ");
+    printRegister(rd);
+    print((uint64_t*) "=");
+    printInteger(d);
   }
 }
 
@@ -6487,7 +6468,11 @@ void decode_execute() {
       if (debug)
         print_addi();
 
-      fct_addi();
+      if (interpret)
+        fct_addi();
+
+      if (debug)
+        println();
     } else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   } else if (opcode == OP_LD) {
@@ -6525,7 +6510,14 @@ void decode_execute() {
   } else if (opcode == OP_LUI) {
     decodeUFormat();
 
-    fct_lui();
+    if (debug)
+      print_lui();
+
+    if (interpret)
+      fct_lui();
+
+    if (debug)
+      println();
   } else if (opcode == OP_SYSTEM) {
     decodeIFormat();
 
