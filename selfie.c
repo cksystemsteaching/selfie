@@ -732,8 +732,6 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode);
 uint64_t getImmediateUFormat(uint64_t instruction);
 void     decodeUFormat();
 
-void decode();
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // opcodes
@@ -966,8 +964,6 @@ void initMemory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void fct_nop();
-
 void fct_lui();
 void fct_addi();
 
@@ -1002,7 +998,7 @@ void printException(uint64_t exception, uint64_t faultingPage);
 void throwException(uint64_t exception, uint64_t faultingPage);
 
 void fetch();
-void execute();
+void decode_execute();
 void interrupt();
 
 uint64_t* runUntilException();
@@ -4646,39 +4642,6 @@ void decodeUFormat() {
   imm    = getImmediateUFormat(ir);
 }
 
-void decode() {
-  opcode = getOpcode(ir);
-
-  if (opcode == OP_OP)
-    decodeRFormat();
-  else if (opcode == OP_SD)
-    decodeSFormat();
-  else if (opcode == OP_BRANCH)
-    decodeBFormat();
-  else if (opcode == OP_JAL)
-    decodeJFormat();
-  else if (opcode == OP_LUI)
-    decodeUFormat();
-  else if (opcode == OP_IMM)
-    decodeIFormat();
-  else if (opcode == OP_LD)
-    decodeIFormat();
-  else if (opcode == OP_JALR)
-    decodeIFormat();
-  else if (opcode == OP_SYSTEM)
-    decodeIFormat();
-  else {
-    print(selfieName);
-    print((uint64_t*) ": unknown opcode ");
-    printInteger(opcode);
-    print((uint64_t*) " (");
-    printBinary(opcode, 0);
-    print((uint64_t*) ") detected");
-
-    exit(-1);
-  }
-}
-
 // -----------------------------------------------------------------
 // ----------------------------- CODE ------------------------------
 // -----------------------------------------------------------------
@@ -5678,23 +5641,17 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void fct_nop() {
-  if (debug) {
-    print((uint64_t*) "nop");
-    println();
-  }
-
-  if (interpret)
-    pc = pc + INSTRUCTIONSIZE;
+void print_lui() {
+  print((uint64_t*) "lui");
+  print((uint64_t*) " ");
+  printRegister(rd);
+  print((uint64_t*) ",");
+  printHexadecimal(imm, 0);
 }
 
 void fct_lui() {
   if (debug) {
-    print((uint64_t*) "lui");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printHexadecimal(imm, 0);
+    print_lui();
     if (interpret) {
       print((uint64_t*) ": ");
       printRegister(rd);
@@ -5720,6 +5677,24 @@ void fct_lui() {
   }
 }
 
+void print_addi() {
+  if (rd == REG_ZR)
+    if (rs1 == REG_ZR)
+      if (imm == 0) {
+        print((uint64_t*) "nop");
+        println();
+
+        return;
+      }
+
+  print((uint64_t*) "addi ");
+  printRegister(rd);
+  print((uint64_t*) ",");
+  printRegister(rs1);
+  print((uint64_t*) ",");
+  printInteger(imm);
+}
+
 void fct_addi() {
   uint64_t s1;
   uint64_t d;
@@ -5728,7 +5703,9 @@ void fct_addi() {
   if (rs1 == REG_ZR)
     if (rd == REG_ZR)
       if (imm == 0) {
-        fct_nop();
+        if (interpret)
+          pc = pc + INSTRUCTIONSIZE;
+
         return;
       }
 
@@ -5738,13 +5715,6 @@ void fct_addi() {
   }
 
   if (debug) {
-    print((uint64_t*) "addi");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printInteger(imm);
     if (interpret) {
       print((uint64_t*) ": ");
       printRegister(rd);
@@ -5776,6 +5746,16 @@ void fct_addi() {
   }
 }
 
+void print_add() {
+  print((uint64_t*) "add");
+  print((uint64_t*) " ");
+  printRegister(rd);
+  print((uint64_t*) ",");
+  printRegister(rs1);
+  print((uint64_t*) ",");
+  printRegister(rs2);
+}
+
 void fct_add() {
   uint64_t s1;
   uint64_t s2;
@@ -5791,13 +5771,7 @@ void fct_add() {
   }
 
   if (debug) {
-    print((uint64_t*) "add");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printRegister(rs2);
+    print_add();
     if (interpret) {
       print((uint64_t*) ": ");
       printRegister(rd);
@@ -6458,7 +6432,7 @@ void fetch() {
     ir = getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
 }
 
-void execute() {
+void decode_execute() {
   if (debug) {
     if (interpret) {
       print(binaryName);
@@ -6475,7 +6449,11 @@ void execute() {
     print((uint64_t*) ": ");
   }
 
-  if (opcode == OP_OP) {    //could be ADD, SUB, SLT, MUL, DIVU, REMU
+  opcode = getOpcode(ir);
+
+  if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
+    decodeRFormat();
+
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
       if (funct7 == F7_ADD)
         fct_add();
@@ -6483,11 +6461,6 @@ void execute() {
         fct_sub();
       else if (funct7 == F7_MUL)
         fct_mul();
-      else
-        throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-    } else if (funct3 == F3_SLTU) {
-      if (funct7 == F7_SLTU)
-        fct_sltu();
       else
         throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
     } else if (funct3 == F3_DIVU) {
@@ -6500,44 +6473,78 @@ void execute() {
         fct_remu();
       else
         throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+    } else if (funct3 == F3_SLTU) {
+      if (funct7 == F7_SLTU)
+        fct_sltu();
+      else
+        throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
     } else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else if (opcode == OP_LUI) {
-    fct_lui();
-  } else if (opcode == OP_BRANCH) {
-    if (funct3 == F3_BEQ)
-      fct_beq();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   } else if (opcode == OP_IMM) {
-    if (funct3 == F3_ADDI)
+    decodeIFormat();
+
+    if (funct3 == F3_ADDI) {
+      if (debug)
+        print_addi();
+
       fct_addi();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else if (opcode == OP_JAL) {
-    fct_jal();
-  } else if (opcode == OP_JALR) {
-    if (funct3 == F3_JALR)
-      fct_jalr();
-    else
+    } else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   } else if (opcode == OP_LD) {
+    decodeIFormat();
+
     if (funct3 == F3_LD)
       fct_ld();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   } else if (opcode == OP_SD) {
+    decodeSFormat();
+
     if (funct3 == F3_SD)
       fct_sd();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  } else if (opcode == OP_BRANCH) {
+    decodeBFormat();
+
+    if (funct3 == F3_BEQ)
+      fct_beq();
+    else
+      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  } else if (opcode == OP_JAL) {
+    decodeJFormat();
+
+    fct_jal();
+  } else if (opcode == OP_JALR) {
+    decodeIFormat();
+
+    if (funct3 == F3_JALR)
+      fct_jalr();
+    else
+      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  } else if (opcode == OP_LUI) {
+    decodeUFormat();
+
+    fct_lui();
   } else if (opcode == OP_SYSTEM) {
+    decodeIFormat();
+
     if (funct3 == F3_ECALL)
       fct_ecall();
     else
       throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else
+  } else if (interpret)
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  else {
+    print(selfieName);
+    print((uint64_t*) ": unknown opcode ");
+    printInteger(opcode);
+    print((uint64_t*) " (");
+    printBinary(opcode, 0);
+    print((uint64_t*) ") detected");
+
+    exit(-1);
+  }
 }
 
 void interrupt() {
@@ -6561,8 +6568,7 @@ uint64_t* runUntilException() {
 
   while (trap == 0) {
     fetch();
-    decode();
-    execute();
+    decode_execute();
     interrupt();
   }
 
@@ -6683,8 +6689,7 @@ void selfie_disassemble() {
   while (pc < codeLength) {
     ir = loadInstruction(pc);
 
-    decode();
-    execute();
+    decode_execute();
 
     pc = pc + INSTRUCTIONSIZE;
   }
