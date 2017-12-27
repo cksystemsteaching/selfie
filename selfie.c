@@ -974,7 +974,7 @@ void fct_divu();
 void fct_remu();
 void fct_sltu();
 
-void fct_ld();
+uint64_t fct_ld();
 void fct_sd();
 
 void fct_beq();
@@ -5686,7 +5686,7 @@ void print_lui_addi_add_sub_mul_divu_remu_sltu_after() {
 }
 
 void fct_lui() {
-  // assert: -2^19 <= imm < 2^19
+  // load upper immediate
 
   if (rd != REG_ZR)
     // semantics of lui
@@ -5729,7 +5729,7 @@ void print_addi_before() {
 }
 
 void fct_addi() {
-  // assert: -2^11 <= imm < 2^11
+  // add immediate
 
   if (rd != REG_ZR)
     // semantics of addi
@@ -5795,6 +5795,8 @@ void fct_mul() {
 }
 
 void fct_divu() {
+  // division unsigned
+
   if (*(registers + rs2) == 0) {
     if (debug_divisionByZero) {
       print((uint64_t*) "division-by-zero error: ");
@@ -5813,6 +5815,8 @@ void fct_divu() {
 }
 
 void fct_remu() {
+  // remainder unsigned
+
   if (*(registers + rs2) == 0) {
     if (debug_divisionByZero) {
       print((uint64_t*) "division-by-zero error: ");
@@ -5831,6 +5835,8 @@ void fct_remu() {
 }
 
 void fct_sltu() {
+  // set on less than unsigned
+
   if (rd != REG_ZR) {
     // semantics of sltu
     if (*(registers + rs1) < *(registers + rs2))
@@ -5842,77 +5848,77 @@ void fct_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void fct_ld() {
-  uint64_t s1;
-  uint64_t d;
+void print_ld() {
+  print((uint64_t*) "ld");
+  print((uint64_t*) " ");
+  printRegister(rd);
+  print((uint64_t*) ",");
+  printInteger(imm);
+  print((uint64_t*) "(");
+  printRegister(rs1);
+  print((uint64_t*) ")");
+}
+
+void print_ld_before() {
+  print((uint64_t*) ": ");
+
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printInteger(*(registers + rd));
+
+  print((uint64_t*) ",");
+
+  printRegister(rs1);
+  print((uint64_t*) "=");
+  printHexadecimal(*(registers + rs1), 0);
+}
+
+void print_ld_after(uint64_t vaddr) {
+  print((uint64_t*) " -> ");
+
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printInteger(*(registers + rd));
+
+  print((uint64_t*) "=memory[");
+  printHexadecimal(vaddr, 0);
+  print((uint64_t*) "]");
+}
+
+uint64_t fct_ld() {
   uint64_t vaddr;
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    d  = *(registers + rd);
-  }
+  // load double word
 
-  if (debug) {
-    print((uint64_t*) "ld");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printInteger(imm);
-    print((uint64_t*) "(");
-    printRegister(rs1);
-    print((uint64_t*) ")");
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printHexadecimal(s1, 0);
-    }
-  }
+  vaddr = *(registers + rs1) + imm;
 
-  if (interpret) {
-    vaddr = s1 + imm;
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      if (rd != REG_ZR)
+        // semantics of ld
+        *(registers + rd) = loadVirtualMemory(pt, vaddr);
 
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        d = loadVirtualMemory(pt, vaddr);
-        if (rd != REG_ZR)
-          *(registers + rd) = d;
+      // keep track of number of loads
+      loads = loads + 1;
 
-        // keep track of number of loads
-        loads = loads + 1;
+      *(loadsPerAddress + pc / INSTRUCTIONSIZE) = *(loadsPerAddress + pc / INSTRUCTIONSIZE) + 1;
 
-        *(loadsPerAddress + pc / INSTRUCTIONSIZE) = *(loadsPerAddress + pc / INSTRUCTIONSIZE) + 1;
-
-        pc = pc + INSTRUCTIONSIZE;
-      } else
-        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+      pc = pc + INSTRUCTIONSIZE;
     } else
-      // TODO: pass invalid vaddr
-      throwException(EXCEPTION_INVALIDADDRESS, 0);
-  }
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
 
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) "=memory[");
-      printHexadecimal(vaddr, 0);
-      print((uint64_t*) "]");
-    }
-    println();
-  }
+  return vaddr;
 }
 
 void fct_sd() {
   uint64_t s1;
   uint64_t s2;
   uint64_t vaddr;
+
+  // store double word
 
   if (interpret) {
     s1 = *(registers + rs1);
@@ -6006,6 +6012,8 @@ void print_beq_after() {
 }
 
 void fct_beq() {
+  // branch on equal
+
   pc = pc + INSTRUCTIONSIZE;
 
   // semantics of beq
@@ -6015,6 +6023,8 @@ void fct_beq() {
 
 void fct_jal() {
   uint64_t d;
+
+  // jump and link
 
   if (interpret)
     d = *(registers + rd);
@@ -6099,8 +6109,7 @@ void print_jalr_before() {
 }
 
 void print_jalr_after() {
-  print((uint64_t*) " -> $pc=");
-  printHexadecimal(pc, 0);
+  print_beq_after();
 
   if (rd != REG_ZR) {
     print((uint64_t*) ", ");
@@ -6327,7 +6336,18 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_LD) {
-      fct_ld();
+      if (debug) {
+        print_ld();
+
+        if (interpret) {
+          print_ld_before();
+
+          print_ld_after(fct_ld());
+        }
+
+        println();
+      } else
+        fct_ld();
 
       return;
     }
