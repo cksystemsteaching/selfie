@@ -5764,18 +5764,25 @@ void print_add_sub_mul_divu_remu_sltu_syntax(uint64_t *mnemonics) {
 
 void print_add_sub_mul_divu_remu_sltu_semantics() {
   print((uint64_t*) ": ");
+
   printRegister(rd);
   print((uint64_t*) "=");
   printInteger(previous_rd_value);
+
   print((uint64_t*) ",");
+
   printRegister(rs1);
   print((uint64_t*) "=");
   printInteger(previous_rs1_value);
+
   print((uint64_t*) ",");
+
   printRegister(rs2);
   print((uint64_t*) "=");
   printInteger(previous_rs2_value);
+
   print((uint64_t*) " -> ");
+
   printRegister(rd);
   print((uint64_t*) "=");
   printInteger(*(registers + rd));
@@ -6009,52 +6016,42 @@ void fct_sd() {
   }
 }
 
+void print_beq_syntax() {
+  print((uint64_t*) "beq");
+  print((uint64_t*) " ");
+  printRegister(rs1);
+  print((uint64_t*) ",");
+  printRegister(rs2);
+  print((uint64_t*) ",");
+  printInteger(signedDivision(imm, INSTRUCTIONSIZE));
+  print((uint64_t*) "[");
+  printHexadecimal(pc + INSTRUCTIONSIZE + imm, 0);
+  print((uint64_t*) "]");
+}
+
+void print_beq_semantics() {
+  print((uint64_t*) ": ");
+
+  printRegister(rs1);
+  print((uint64_t*) "=");
+  printInteger(*(registers + rs1));
+
+  print((uint64_t*) ",");
+
+  printRegister(rs2);
+  print((uint64_t*) "=");
+  printInteger(*(registers + rs2));
+
+  print((uint64_t*) " -> $pc=");
+  printHexadecimal(pc, 0);
+}
+
 void fct_beq() {
-  uint64_t s1;
-  uint64_t s2;
+  pc = pc + INSTRUCTIONSIZE;
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-  }
-
-  if (debug) {
-    print((uint64_t*) "beq");
-    print((uint64_t*) " ");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printRegister(rs2);
-    print((uint64_t*) ",");
-    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
-    print((uint64_t*) "[");
-    printHexadecimal(pc + INSTRUCTIONSIZE + imm, 0);
-    print((uint64_t*) "]");
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-      print((uint64_t*) ",");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-    }
-  }
-
-  if (interpret) {
-    pc = pc + INSTRUCTIONSIZE;
-
-    if (s1 == s2)
-      pc = pc + imm;
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> $pc=");
-      printHexadecimal(pc, 0);
-    }
-    println();
-  }
+  // semantics of beq
+  if (*(registers + rs1) == *(registers + rs2))
+    pc = pc + imm;
 }
 
 void fct_jal() {
@@ -6117,79 +6114,63 @@ void fct_jal() {
   }
 }
 
-void fct_jalr() {
-  uint64_t s1;
-  uint64_t d;
+void print_jalr_syntax() {
+  print((uint64_t*) "jalr");
+  print((uint64_t*) " ");
+  printRegister(rd);
+  print((uint64_t*) ",");
+  printInteger(signedDivision(imm, INSTRUCTIONSIZE));
+  print((uint64_t*) "(");
+  printRegister(rs1);
+  print((uint64_t*) ")");
+}
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    d  = *(registers + rd);
-  }
+void print_jalr_semantics() {
+  print((uint64_t*) ": ");
 
-  if (debug) {
-    print((uint64_t*) "jalr");
-    print((uint64_t*) " ");
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printHexadecimal(previous_rd_value, 0);
+
+  print((uint64_t*) ",");
+
+  printRegister(rs1);
+  print((uint64_t*) "=");
+  printHexadecimal(previous_rs1_value, 0);
+
+  print((uint64_t*) " -> $pc=");
+  printHexadecimal(pc, 0);
+
+  if (rd != REG_ZR) {
+    print((uint64_t*) ", ");
+    
     printRegister(rd);
-    print((uint64_t*) ",");
-    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
-    print((uint64_t*) "(");
-    printRegister(rs1);
-    print((uint64_t*) ")");
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printHexadecimal(d, 0);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printHexadecimal(s1, 0);
-    }
-  }
-
-  if (interpret) {
-    // if rd == 0, this is a JR instruction -
-    // do not write into REG_ZR!
-    if (rd != REG_ZR) {
-      d = pc + INSTRUCTIONSIZE;
-
-      *(registers + rd) = d;
-    }
-
-    // add 12-bit signed immediate to rs1, then set the
-    // least-signficant bit of the result to zero
-    pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> $pc=");
-      printHexadecimal(pc, 0);
-      if (rd != REG_ZR) {
-        print((uint64_t*) ", ");
-        printRegister(rd);
-        print((uint64_t*) "=");
-        printHexadecimal(d, 0);
-      }
-    }
-    println();
+    print((uint64_t*) "=");
+    printHexadecimal(*(registers + rd), 0);
   }
 }
 
+void fct_jalr() {
+  // jump and link register
+
+  previous_rs1_value = *(registers + rs1);
+  previous_rd_value  = *(registers + rd);
+
+  if (rd != REG_ZR)
+    // link to next instruction
+    *(registers + rd) = pc + INSTRUCTIONSIZE;
+
+  // jump with LSB reset
+  pc = leftShift(rightShift(previous_rs1_value + imm, 1), 1);
+}
+
 void fct_ecall() {
-  if (debug) {
-    print((uint64_t*) "ecall");
-    println();
-  }
+  pc = pc + INSTRUCTIONSIZE;
 
-  if (interpret) {
-    pc = pc + INSTRUCTIONSIZE;
-
-    if (*(registers + REG_A7) == SYSCALL_SWITCH)
-      implementSwitch();
-    else
-      throwException(EXCEPTION_SYSCALL, 0);
-  }
+  if (*(registers + REG_A7) == SYSCALL_SWITCH)
+    implementSwitch();
+  else
+    throwException(EXCEPTION_SYSCALL, 0);
 }
 
 // -----------------------------------------------------------------
@@ -6379,7 +6360,18 @@ void decode_execute() {
     decodeBFormat();
 
     if (funct3 == F3_BEQ) {
-      fct_beq();
+      if (debug) {
+        print_beq_syntax();
+
+        if (interpret) {
+          fct_beq();
+
+          print_beq_semantics();
+        }
+
+        println();
+      } else
+        fct_beq();
 
       return;
     }
@@ -6393,7 +6385,18 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_JALR) {
-      fct_jalr();
+      if (debug) {
+        print_jalr_syntax();
+
+        if (interpret) {
+          fct_jalr();
+
+          print_jalr_semantics();
+        }
+
+        println();
+      } else
+        fct_jalr();
 
       return;
     }
@@ -6418,7 +6421,15 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_ECALL) {
-      fct_ecall();
+      if (debug) {
+        print((uint64_t*) "ecall");
+
+        if (interpret)
+          fct_ecall();
+
+        println();
+      } else
+        fct_ecall();
 
       return;
     }
