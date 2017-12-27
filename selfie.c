@@ -1045,6 +1045,9 @@ uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
 uint64_t* pt = (uint64_t*) 0; // page table
 
+uint64_t previous_rs1_value = 0; // save machine state for debugger
+uint64_t previous_rd_value  = 0; // save machine state for debugger
+
 // core state
 
 uint64_t timer = 0; // counter for timer interrupt
@@ -5641,7 +5644,27 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_lui() {
+void print_instruction_context() {
+  if (interpret) {
+    print(binaryName);
+    print((uint64_t*) ": $pc=");
+  }
+  printHexadecimal(pc, 0);
+
+  if (sourceLineNumber != (uint64_t*) 0) {
+    print((uint64_t*) "(~");
+    printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
+    print((uint64_t*) ")");
+  }
+
+  print((uint64_t*) ": ");
+  printHexadecimal(ir, 8);
+  print((uint64_t*) ": ");
+}
+
+void print_lui_syntax() {
+  //print_instruction_context();
+
   print((uint64_t*) "lui");
   print((uint64_t*) " ");
   printRegister(rd);
@@ -5649,27 +5672,36 @@ void print_lui() {
   printHexadecimal(imm, 0);
 }
 
-void fct_lui() {
-  if (debug) {
-    print((uint64_t*) ": ");
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printInteger(*(registers + rd));
-  }
+void print_lui_semantics() {
+  print((uint64_t*) ": ");
 
-  *(registers + rd) = leftShift(imm, 12);
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printHexadecimal(previous_rd_value, 0);
 
-  pc = pc + INSTRUCTIONSIZE;
+  print((uint64_t*) " -> ");
 
-  if (debug) {
-    print((uint64_t*) " -> ");
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printHexadecimal(leftShift(imm, 12), 0);
-  }
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printHexadecimal(*(registers + rd), 0);
 }
 
-void print_addi() {
+void fct_lui() {
+  // assert: -2^19 <= imm < 2^19
+
+  // save content of rd for debugger output
+  previous_rd_value = *(registers + rd);
+
+  // semantics of lui
+  if (rd != REG_ZR)
+    *(registers + rd) = leftShift(imm, 12);
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void print_addi_syntax() {
+  //print_instruction_context();
+
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
       if (imm == 0) {
@@ -5686,45 +5718,37 @@ void print_addi() {
   printInteger(imm);
 }
 
+void print_addi_semantics() {
+  print((uint64_t*) ": ");
+
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printInteger(previous_rd_value);
+
+  print((uint64_t*) ", ");
+
+  printRegister(rs1);
+  print((uint64_t*) "=");
+  printInteger(previous_rs1_value);
+
+  print((uint64_t*) " -> ");
+
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printInteger(*(registers + rd));
+}
+
 void fct_addi() {
-  uint64_t s1;
-  uint64_t d;
+  // assert: -2^11 <= imm < 2^11
 
-  // check for nop
-  if (rs1 == REG_ZR)
-    if (rd == REG_ZR)
-      if (imm == 0) {
-        pc = pc + INSTRUCTIONSIZE;
+  previous_rs1_value = *(registers + rs1);
+  previous_rd_value  = *(registers + rd);
 
-        return;
-      }
-
-  s1 = *(registers + rs1);
-  d  = *(registers + rd);
-
-  if (debug) {
-    print((uint64_t*) ": ");
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printInteger(d);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) "=");
-    printInteger(s1);
-  }
-
-  d = s1 + imm;
-
-  *(registers + rd) = d;
+  // semantics of addi
+  if (rd != REG_ZR)
+    *(registers + rd) = *(registers + rs1) + imm;
 
   pc = pc + INSTRUCTIONSIZE;
-
-  if (debug) {
-    print((uint64_t*) " -> ");
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printInteger(d);
-  }
 }
 
 void print_add() {
@@ -5775,7 +5799,8 @@ void fct_add() {
   }
 
   if (interpret) {
-    *(registers + rd) = n;
+    if (rd != REG_ZR)
+      *(registers + rd) = n;
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -5825,7 +5850,8 @@ void fct_sub() {
   }
 
   if (interpret) {
-    *(registers + rd) = n;
+    if (rd != REG_ZR)
+      *(registers + rd) = n;
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -5877,7 +5903,8 @@ void fct_mul() {
 
   if (interpret) {
     // TODO: 128-bit resolution currently not supported
-    *(registers + rd) = n;
+    if (rd != REG_ZR)
+      *(registers + rd) = n;
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -5939,7 +5966,8 @@ void fct_divu() {
   }
 
   if (interpret) {
-    *(registers + rd) = n;
+    if (rd != REG_ZR)
+      *(registers + rd) = n;
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -6001,7 +6029,8 @@ void fct_remu() {
   }
 
   if (interpret) {
-    *(registers + rd) = n;
+    if (rd != REG_ZR)
+      *(registers + rd) = n;
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -6054,7 +6083,8 @@ void fct_sltu() {
   }
 
   if (interpret) {
-    *(registers + rd) = n;
+    if (rd != REG_ZR)
+      *(registers + rd) = n;
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -6097,7 +6127,8 @@ void fct_ld() {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
         d = loadVirtualMemory(pt, vaddr);
-        *(registers + rd) = d;
+        if (rd != REG_ZR)
+          *(registers + rd) = d;
 
         // keep track of number of loads
         loads = loads + 1;
@@ -6414,21 +6445,8 @@ void fetch() {
 }
 
 void decode_execute() {
-  if (debug) {
-    if (interpret) {
-      print(binaryName);
-      print((uint64_t*) ": $pc=");
-    }
-    printHexadecimal(pc, 0);
-    if (sourceLineNumber != (uint64_t*) 0) {
-      print((uint64_t*) "(~");
-      printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
-      print((uint64_t*) ")");
-    }
-    print((uint64_t*) ": ");
-    printHexadecimal(ir, 8);
-    print((uint64_t*) ": ");
-  }
+  if (debug)
+    print_instruction_context();
 
   opcode = getOpcode(ir);
 
@@ -6436,96 +6454,123 @@ void decode_execute() {
     decodeRFormat();
 
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
-      if (funct7 == F7_ADD)
+      if (funct7 == F7_ADD) {
         fct_add();
-      else if (funct7 == F7_SUB)
+
+        return;
+      } else if (funct7 == F7_SUB) {
         fct_sub();
-      else if (funct7 == F7_MUL)
+
+        return;
+      } else if (funct7 == F7_MUL) {
         fct_mul();
-      else
-        throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+        return;
+      }
     } else if (funct3 == F3_DIVU) {
-      if (funct7 == F7_DIVU)
+      if (funct7 == F7_DIVU) {
         fct_divu();
-      else
-        throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+        return;
+      }
     } else if (funct3 == F3_REMU) {
-      if (funct7 == F7_REMU)
+      if (funct7 == F7_REMU) {
         fct_remu();
-      else
-        throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+        return;
+      }
     } else if (funct3 == F3_SLTU) {
-      if (funct7 == F7_SLTU)
+      if (funct7 == F7_SLTU) {
         fct_sltu();
-      else
-        throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-    } else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+        return;
+      }
+    }
   } else if (opcode == OP_IMM) {
     decodeIFormat();
 
     if (funct3 == F3_ADDI) {
-      if (debug)
-        print_addi();
-
-      if (interpret)
+      if (interpret) {
         fct_addi();
 
-      if (debug)
+        if (debug) {
+          print_addi_syntax();
+          print_addi_semantics();
+          println();
+        }
+      } else {
+        print_addi_syntax();
         println();
-    } else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+      }
+
+      return;
+    }
   } else if (opcode == OP_LD) {
     decodeIFormat();
 
-    if (funct3 == F3_LD)
+    if (funct3 == F3_LD) {
       fct_ld();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+      return;
+    }
   } else if (opcode == OP_SD) {
     decodeSFormat();
 
-    if (funct3 == F3_SD)
+    if (funct3 == F3_SD) {
       fct_sd();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+      return;
+    }
   } else if (opcode == OP_BRANCH) {
     decodeBFormat();
 
-    if (funct3 == F3_BEQ)
+    if (funct3 == F3_BEQ) {
       fct_beq();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+      return;
+    }
   } else if (opcode == OP_JAL) {
     decodeJFormat();
 
     fct_jal();
+
+    return;
   } else if (opcode == OP_JALR) {
     decodeIFormat();
 
-    if (funct3 == F3_JALR)
+    if (funct3 == F3_JALR) {
       fct_jalr();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+
+      return;
+    }
   } else if (opcode == OP_LUI) {
     decodeUFormat();
 
-    if (debug)
-      print_lui();
-
-    if (interpret)
+    if (interpret) {
       fct_lui();
 
-    if (debug)
+      if (debug) {
+        print_lui_syntax();
+        print_lui_semantics();
+        println();
+      }
+    } else {
+      print_lui_syntax();
       println();
+    }
+
+    return;
   } else if (opcode == OP_SYSTEM) {
     decodeIFormat();
 
-    if (funct3 == F3_ECALL)
+    if (funct3 == F3_ECALL) {
       fct_ecall();
-    else
-      throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  } else if (interpret)
+
+      return;
+    }
+  }
+
+  if (interpret)
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   else {
     print(selfieName);
