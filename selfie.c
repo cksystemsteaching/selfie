@@ -1046,6 +1046,7 @@ uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 uint64_t* pt = (uint64_t*) 0; // page table
 
 uint64_t previous_rs1_value = 0; // save machine state for debugger
+uint64_t previous_rs2_value = 0; // save machine state for debugger
 uint64_t previous_rd_value  = 0; // save machine state for debugger
 
 // core state
@@ -5692,8 +5693,8 @@ void fct_lui() {
   // save content of rd for debugger output
   previous_rd_value = *(registers + rd);
 
-  // semantics of lui
   if (rd != REG_ZR)
+    // semantics of lui
     *(registers + rd) = leftShift(imm, 12);
 
   pc = pc + INSTRUCTIONSIZE;
@@ -5725,7 +5726,7 @@ void print_addi_semantics() {
   print((uint64_t*) "=");
   printInteger(previous_rd_value);
 
-  print((uint64_t*) ", ");
+  print((uint64_t*) ",");
 
   printRegister(rs1);
   print((uint64_t*) "=");
@@ -5744,15 +5745,15 @@ void fct_addi() {
   previous_rs1_value = *(registers + rs1);
   previous_rd_value  = *(registers + rd);
 
-  // semantics of addi
   if (rd != REG_ZR)
-    *(registers + rd) = *(registers + rs1) + imm;
+    // semantics of addi
+    *(registers + rd) = previous_rs1_value + imm;
 
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void print_add() {
-  print((uint64_t*) "add");
+void print_add_sub_mul_divu_remu_sltu_syntax(uint64_t *mnemonics) {
+  print(mnemonics);
   print((uint64_t*) " ");
   printRegister(rd);
   print((uint64_t*) ",");
@@ -5761,333 +5762,120 @@ void print_add() {
   printRegister(rs2);
 }
 
+void print_add_sub_mul_divu_remu_sltu_semantics() {
+  print((uint64_t*) ": ");
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printInteger(previous_rd_value);
+  print((uint64_t*) ",");
+  printRegister(rs1);
+  print((uint64_t*) "=");
+  printInteger(previous_rs1_value);
+  print((uint64_t*) ",");
+  printRegister(rs2);
+  print((uint64_t*) "=");
+  printInteger(previous_rs2_value);
+  print((uint64_t*) " -> ");
+  printRegister(rd);
+  print((uint64_t*) "=");
+  printInteger(*(registers + rd));
+}
+
 void fct_add() {
-  uint64_t s1;
-  uint64_t s2;
-  uint64_t d;
-  uint64_t n;
+  previous_rs1_value = *(registers + rs1);
+  previous_rs2_value = *(registers + rs2);
+  previous_rd_value  = *(registers + rd);
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-    d  = *(registers + rd);
+  if (rd != REG_ZR)
+    // semantics of add
+    *(registers + rd) = previous_rs1_value + previous_rs2_value;
 
-    n = s1 + s2;
-  }
-
-  if (debug) {
-    print_add();
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-      print((uint64_t*) ",");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(n);
-    }
-    println();
-  }
-
-  if (interpret) {
-    if (rd != REG_ZR)
-      *(registers + rd) = n;
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_sub() {
-  uint64_t s1;
-  uint64_t s2;
-  uint64_t d;
-  uint64_t n;
+  previous_rs1_value = *(registers + rs1);
+  previous_rs2_value = *(registers + rs2);
+  previous_rd_value  = *(registers + rd);
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-    d  = *(registers + rd);
+  if (rd != REG_ZR)
+    // semantics of sub
+    *(registers + rd) = previous_rs1_value - previous_rs2_value;
 
-    n = s1 - s2;
-  }
-
-  if (debug) {
-    print((uint64_t*) "sub");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printRegister(rs2);
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-      print((uint64_t*) ",");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(n);
-    }
-    println();
-  }
-
-  if (interpret) {
-    if (rd != REG_ZR)
-      *(registers + rd) = n;
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_mul() {
-  uint64_t s1;
-  uint64_t s2;
-  uint64_t d;
-  uint64_t n;
+  previous_rs1_value = *(registers + rs1);
+  previous_rs2_value = *(registers + rs2);
+  previous_rd_value  = *(registers + rd);
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-    d  = *(registers + rd);
+  if (rd != REG_ZR)
+    // semantics of mul
+    *(registers + rd) = previous_rs1_value * previous_rs2_value;
 
-    n = s1 * s2;
-  }
+  // TODO: 128-bit resolution currently not supported
 
-
-  if (debug) {
-    print((uint64_t*) "mul");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printRegister(rs2);
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-      print((uint64_t*) ",");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(n);
-    }
-    println();
-  }
-
-  if (interpret) {
-    // TODO: 128-bit resolution currently not supported
-    if (rd != REG_ZR)
-      *(registers + rd) = n;
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_divu() {
-  uint64_t s1;
-  uint64_t s2;
-  uint64_t d;
-  uint64_t n;
+  previous_rs1_value = *(registers + rs1);
+  previous_rs2_value = *(registers + rs2);
+  previous_rd_value  = *(registers + rd);
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-    d  = *(registers + rd);
-
-    if (s2 == 0) {
-      // division by zero
-      n = (uint64_t) (-1);
-
-      if (debug_divisionByZero) {
-        print((uint64_t*) "division-by-zero error: ");
-        printInteger(s1);
-        print((uint64_t*) " / ");
-        printInteger(s2);
-        println();
-      }
-    } else
-      n = s1 / s2;
-  }
-
-  if (debug) {
-    print((uint64_t*) "divu");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printRegister(rs2);
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-      print((uint64_t*) ",");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(n);
+  if (previous_rs2_value == 0) {
+    if (debug_divisionByZero) {
+      print((uint64_t*) "division-by-zero error: ");
+      printInteger(previous_rs1_value);
+      print((uint64_t*) " / ");
+      printInteger(previous_rs2_value);
+      println();
     }
-    println();
   }
 
-  if (interpret) {
-    if (rd != REG_ZR)
-      *(registers + rd) = n;
+  if (rd != REG_ZR)
+    // semantics of divu
+    *(registers + rd) = previous_rs1_value / previous_rs2_value;
 
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_remu() {
-  uint64_t s1;
-  uint64_t s2;
-  uint64_t d;
-  uint64_t n;
+  previous_rs1_value = *(registers + rs1);
+  previous_rs2_value = *(registers + rs2);
+  previous_rd_value  = *(registers + rd);
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-    d  = *(registers + rd);
-
-    if (s2 == 0) {
-      // division by zero
-      n = (uint64_t) (-1);
-
-      if (debug_divisionByZero) {
-        print((uint64_t*) "division-by-zero error: ");
-        printInteger(s1);
-        print((uint64_t*) " % ");
-        printInteger(s2);
-        println();
-      }
-    } else
-      n = s1 % s2;
-  }
-
-  if (debug) {
-    print((uint64_t*) "remu");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printRegister(rs2);
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-      print((uint64_t*) ",");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(n);
+  if (previous_rs2_value == 0) {
+    if (debug_divisionByZero) {
+      print((uint64_t*) "division-by-zero error: ");
+      printInteger(previous_rs1_value);
+      print((uint64_t*) " % ");
+      printInteger(previous_rs2_value);
+      println();
     }
-    println();
   }
 
-  if (interpret) {
-    if (rd != REG_ZR)
-      *(registers + rd) = n;
+  if (rd != REG_ZR)
+    // semantics of remu
+    *(registers + rd) = previous_rs1_value % previous_rs2_value;
 
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_sltu() {
-  uint64_t s1;
-  uint64_t s2;
-  uint64_t d;
-  uint64_t n;
+  previous_rs1_value = *(registers + rs1);
+  previous_rs2_value = *(registers + rs2);
+  previous_rd_value  = *(registers + rd);
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-    d  = *(registers + rd);
-
-    if (s1 < s2)
-      n = 1;
+  if (rd != REG_ZR)
+    // semantics of sltu
+    if (previous_rs1_value < previous_rs2_value)
+      *(registers + rd) = 1;
     else
-      n = 0;
-  }
+      *(registers + rd) = 0;
 
-  if (debug) {
-    print((uint64_t*) "sltu");
-    print((uint64_t*) " ");
-    printRegister(rd);
-    print((uint64_t*) ",");
-    printRegister(rs1);
-    print((uint64_t*) ",");
-    printRegister(rs2);
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(d);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printInteger(s1);
-      print((uint64_t*) ",");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-      print((uint64_t*) " -> ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printInteger(n);
-    }
-    println();
-  }
-
-  if (interpret) {
-    if (rd != REG_ZR)
-      *(registers + rd) = n;
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
+  pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_ld() {
@@ -6455,33 +6243,99 @@ void decode_execute() {
 
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
       if (funct7 == F7_ADD) {
-        fct_add();
+        if (debug) {
+          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "add");
+
+          if (interpret) {
+            fct_add();
+
+            print_add_sub_mul_divu_remu_sltu_semantics();
+          }
+
+          println();
+        } else
+          fct_add();
 
         return;
       } else if (funct7 == F7_SUB) {
-        fct_sub();
+        if (debug) {
+          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "sub");
+
+          if (interpret) {
+            fct_sub();
+
+            print_add_sub_mul_divu_remu_sltu_semantics();
+          }
+
+          println();
+        } else
+          fct_sub();
 
         return;
       } else if (funct7 == F7_MUL) {
-        fct_mul();
+        if (debug) {
+          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "mul");
+
+          if (interpret) {
+            fct_mul();
+
+            print_add_sub_mul_divu_remu_sltu_semantics();
+          }
+
+          println();
+        } else
+          fct_mul();
 
         return;
       }
     } else if (funct3 == F3_DIVU) {
       if (funct7 == F7_DIVU) {
-        fct_divu();
+        if (debug) {
+          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "divu");
+
+          if (interpret) {
+            fct_divu();
+
+            print_add_sub_mul_divu_remu_sltu_semantics();
+          }
+
+          println();
+        } else
+          fct_divu();
 
         return;
       }
     } else if (funct3 == F3_REMU) {
       if (funct7 == F7_REMU) {
-        fct_remu();
+        if (debug) {
+          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "remu");
+
+          if (interpret) {
+            fct_remu();
+
+            print_add_sub_mul_divu_remu_sltu_semantics();
+          }
+
+          println();
+        } else
+          fct_remu();
 
         return;
       }
     } else if (funct3 == F3_SLTU) {
       if (funct7 == F7_SLTU) {
-        fct_sltu();
+        if (debug) {
+          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "sltu");
+
+          if (interpret) {
+            fct_sltu();
+
+            print_add_sub_mul_divu_remu_sltu_semantics();
+          }
+
+          println();
+        } else
+          fct_sltu();
 
         return;
       }
@@ -6490,18 +6344,18 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_ADDI) {
-      if (interpret) {
-        fct_addi();
-
-        if (debug) {
-          print_addi_syntax();
-          print_addi_semantics();
-          println();
-        }
-      } else {
+      if (debug) {
         print_addi_syntax();
+
+        if (interpret) {
+          fct_addi();
+
+          print_addi_semantics();
+        }
+
         println();
-      }
+      } else
+        fct_addi();
 
       return;
     }
@@ -6546,18 +6400,18 @@ void decode_execute() {
   } else if (opcode == OP_LUI) {
     decodeUFormat();
 
-    if (interpret) {
-      fct_lui();
-
-      if (debug) {
-        print_lui_syntax();
-        print_lui_semantics();
-        println();
-      }
-    } else {
+    if (debug) {
       print_lui_syntax();
+
+      if (interpret) {
+        fct_lui();
+
+        print_lui_semantics();
+      }
+
       println();
-    }
+    } else
+      fct_lui();
 
     return;
   } else if (opcode == OP_SYSTEM) {
