@@ -1045,10 +1045,6 @@ uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
 uint64_t* pt = (uint64_t*) 0; // page table
 
-uint64_t previous_rs1_value = 0; // save machine state for debugger
-uint64_t previous_rs2_value = 0; // save machine state for debugger
-uint64_t previous_rd_value  = 0; // save machine state for debugger
-
 // core state
 
 uint64_t timer = 0; // counter for timer interrupt
@@ -5663,7 +5659,7 @@ void print_instruction_context() {
   print((uint64_t*) ": ");
 }
 
-void print_lui_syntax() {
+void print_lui() {
   //print_instruction_context();
 
   print((uint64_t*) "lui");
@@ -5673,13 +5669,15 @@ void print_lui_syntax() {
   printHexadecimal(imm, 0);
 }
 
-void print_lui_semantics() {
+void print_lui_before() {
   print((uint64_t*) ": ");
 
   printRegister(rd);
   print((uint64_t*) "=");
-  printHexadecimal(previous_rd_value, 0);
+  printHexadecimal(*(registers + rd), 0);
+}
 
+void print_lui_addi_add_sub_mul_divu_remu_sltu_after() {
   print((uint64_t*) " -> ");
 
   printRegister(rd);
@@ -5690,9 +5688,6 @@ void print_lui_semantics() {
 void fct_lui() {
   // assert: -2^19 <= imm < 2^19
 
-  // save content of rd for debugger output
-  previous_rd_value = *(registers + rd);
-
   if (rd != REG_ZR)
     // semantics of lui
     *(registers + rd) = leftShift(imm, 12);
@@ -5700,7 +5695,7 @@ void fct_lui() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void print_addi_syntax() {
+void print_addi() {
   //print_instruction_context();
 
   if (rd == REG_ZR)
@@ -5719,40 +5714,31 @@ void print_addi_syntax() {
   printInteger(imm);
 }
 
-void print_addi_semantics() {
+void print_addi_before() {
   print((uint64_t*) ": ");
 
   printRegister(rd);
   print((uint64_t*) "=");
-  printInteger(previous_rd_value);
+  printInteger(*(registers + rd));
 
   print((uint64_t*) ",");
 
   printRegister(rs1);
   print((uint64_t*) "=");
-  printInteger(previous_rs1_value);
-
-  print((uint64_t*) " -> ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
+  printInteger(*(registers + rs1));
 }
 
 void fct_addi() {
   // assert: -2^11 <= imm < 2^11
 
-  previous_rs1_value = *(registers + rs1);
-  previous_rd_value  = *(registers + rd);
-
   if (rd != REG_ZR)
     // semantics of addi
-    *(registers + rd) = previous_rs1_value + imm;
+    *(registers + rd) = *(registers + rs1) + imm;
 
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void print_add_sub_mul_divu_remu_sltu_syntax(uint64_t *mnemonics) {
+void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
   print(mnemonics);
   print((uint64_t*) " ");
   printRegister(rd);
@@ -5762,64 +5748,46 @@ void print_add_sub_mul_divu_remu_sltu_syntax(uint64_t *mnemonics) {
   printRegister(rs2);
 }
 
-void print_add_sub_mul_divu_remu_sltu_semantics() {
+void print_add_sub_mul_divu_remu_sltu_before() {
   print((uint64_t*) ": ");
 
   printRegister(rd);
   print((uint64_t*) "=");
-  printInteger(previous_rd_value);
+  printInteger(*(registers + rd));
 
   print((uint64_t*) ",");
 
   printRegister(rs1);
   print((uint64_t*) "=");
-  printInteger(previous_rs1_value);
+  printInteger(*(registers + rs1));
 
   print((uint64_t*) ",");
 
   printRegister(rs2);
   print((uint64_t*) "=");
-  printInteger(previous_rs2_value);
-
-  print((uint64_t*) " -> ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
+  printInteger(*(registers + rs2));
 }
 
 void fct_add() {
-  previous_rs1_value = *(registers + rs1);
-  previous_rs2_value = *(registers + rs2);
-  previous_rd_value  = *(registers + rd);
-
   if (rd != REG_ZR)
     // semantics of add
-    *(registers + rd) = previous_rs1_value + previous_rs2_value;
+    *(registers + rd) = *(registers + rs1) + *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_sub() {
-  previous_rs1_value = *(registers + rs1);
-  previous_rs2_value = *(registers + rs2);
-  previous_rd_value  = *(registers + rd);
-
   if (rd != REG_ZR)
     // semantics of sub
-    *(registers + rd) = previous_rs1_value - previous_rs2_value;
+    *(registers + rd) = *(registers + rs1) - *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_mul() {
-  previous_rs1_value = *(registers + rs1);
-  previous_rs2_value = *(registers + rs2);
-  previous_rd_value  = *(registers + rd);
-
   if (rd != REG_ZR)
     // semantics of mul
-    *(registers + rd) = previous_rs1_value * previous_rs2_value;
+    *(registers + rd) = *(registers + rs1) * *(registers + rs2);
 
   // TODO: 128-bit resolution currently not supported
 
@@ -5827,60 +5795,49 @@ void fct_mul() {
 }
 
 void fct_divu() {
-  previous_rs1_value = *(registers + rs1);
-  previous_rs2_value = *(registers + rs2);
-  previous_rd_value  = *(registers + rd);
-
-  if (previous_rs2_value == 0) {
+  if (*(registers + rs2) == 0) {
     if (debug_divisionByZero) {
       print((uint64_t*) "division-by-zero error: ");
-      printInteger(previous_rs1_value);
+      printInteger(*(registers + rs1));
       print((uint64_t*) " / ");
-      printInteger(previous_rs2_value);
+      printInteger(*(registers + rs2));
       println();
     }
   }
 
   if (rd != REG_ZR)
     // semantics of divu
-    *(registers + rd) = previous_rs1_value / previous_rs2_value;
+    *(registers + rd) = *(registers + rs1) / *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_remu() {
-  previous_rs1_value = *(registers + rs1);
-  previous_rs2_value = *(registers + rs2);
-  previous_rd_value  = *(registers + rd);
-
-  if (previous_rs2_value == 0) {
+  if (*(registers + rs2) == 0) {
     if (debug_divisionByZero) {
       print((uint64_t*) "division-by-zero error: ");
-      printInteger(previous_rs1_value);
+      printInteger(*(registers + rs1));
       print((uint64_t*) " % ");
-      printInteger(previous_rs2_value);
+      printInteger(*(registers + rs2));
       println();
     }
   }
 
   if (rd != REG_ZR)
     // semantics of remu
-    *(registers + rd) = previous_rs1_value % previous_rs2_value;
+    *(registers + rd) = *(registers + rs1) % *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
 }
 
 void fct_sltu() {
-  previous_rs1_value = *(registers + rs1);
-  previous_rs2_value = *(registers + rs2);
-  previous_rd_value  = *(registers + rd);
-
-  if (rd != REG_ZR)
+  if (rd != REG_ZR) {
     // semantics of sltu
-    if (previous_rs1_value < previous_rs2_value)
+    if (*(registers + rs1) < *(registers + rs2))
       *(registers + rd) = 1;
     else
       *(registers + rd) = 0;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 }
@@ -6016,7 +5973,7 @@ void fct_sd() {
   }
 }
 
-void print_beq_syntax() {
+void print_beq() {
   print((uint64_t*) "beq");
   print((uint64_t*) " ");
   printRegister(rs1);
@@ -6029,7 +5986,7 @@ void print_beq_syntax() {
   print((uint64_t*) "]");
 }
 
-void print_beq_semantics() {
+void print_beq_before() {
   print((uint64_t*) ": ");
 
   printRegister(rs1);
@@ -6041,7 +5998,9 @@ void print_beq_semantics() {
   printRegister(rs2);
   print((uint64_t*) "=");
   printInteger(*(registers + rs2));
+}
 
+void print_beq_after() {
   print((uint64_t*) " -> $pc=");
   printHexadecimal(pc, 0);
 }
@@ -6114,7 +6073,7 @@ void fct_jal() {
   }
 }
 
-void print_jalr_syntax() {
+void print_jalr() {
   print((uint64_t*) "jalr");
   print((uint64_t*) " ");
   printRegister(rd);
@@ -6125,25 +6084,27 @@ void print_jalr_syntax() {
   print((uint64_t*) ")");
 }
 
-void print_jalr_semantics() {
+void print_jalr_before() {
   print((uint64_t*) ": ");
 
   printRegister(rd);
   print((uint64_t*) "=");
-  printHexadecimal(previous_rd_value, 0);
+  printHexadecimal(*(registers + rd), 0);
 
   print((uint64_t*) ",");
 
   printRegister(rs1);
   print((uint64_t*) "=");
-  printHexadecimal(previous_rs1_value, 0);
+  printHexadecimal(*(registers + rs1), 0);
+}
 
+void print_jalr_after() {
   print((uint64_t*) " -> $pc=");
   printHexadecimal(pc, 0);
 
   if (rd != REG_ZR) {
     print((uint64_t*) ", ");
-    
+
     printRegister(rd);
     print((uint64_t*) "=");
     printHexadecimal(*(registers + rd), 0);
@@ -6151,17 +6112,25 @@ void print_jalr_semantics() {
 }
 
 void fct_jalr() {
+  uint64_t next_pc;
+
   // jump and link register
 
-  previous_rs1_value = *(registers + rs1);
-  previous_rd_value  = *(registers + rd);
+  if (rd == REG_ZR)
+    // fast path: just return by jumping rs1-relative with LSB reset
+    pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
+  else {
+    // slow path: first prepare jump, then link, just in case rd == rs1
 
-  if (rd != REG_ZR)
+    // prepare jump with LSB reset
+    next_pc = leftShift(rightShift(*(registers + rs1) + imm, 1), 1);
+
     // link to next instruction
     *(registers + rd) = pc + INSTRUCTIONSIZE;
 
-  // jump with LSB reset
-  pc = leftShift(rightShift(previous_rs1_value + imm, 1), 1);
+    // jump
+    pc = next_pc;
+  }
 }
 
 void fct_ecall() {
@@ -6225,12 +6194,14 @@ void decode_execute() {
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
       if (funct7 == F7_ADD) {
         if (debug) {
-          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "add");
+          print_add_sub_mul_divu_remu_sltu((uint64_t*) "add");
 
           if (interpret) {
+            print_add_sub_mul_divu_remu_sltu_before();
+
             fct_add();
 
-            print_add_sub_mul_divu_remu_sltu_semantics();
+            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6240,12 +6211,14 @@ void decode_execute() {
         return;
       } else if (funct7 == F7_SUB) {
         if (debug) {
-          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "sub");
+          print_add_sub_mul_divu_remu_sltu((uint64_t*) "sub");
 
           if (interpret) {
+            print_add_sub_mul_divu_remu_sltu_before();
+
             fct_sub();
 
-            print_add_sub_mul_divu_remu_sltu_semantics();
+            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6255,12 +6228,14 @@ void decode_execute() {
         return;
       } else if (funct7 == F7_MUL) {
         if (debug) {
-          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "mul");
+          print_add_sub_mul_divu_remu_sltu((uint64_t*) "mul");
 
           if (interpret) {
+            print_add_sub_mul_divu_remu_sltu_before();
+
             fct_mul();
 
-            print_add_sub_mul_divu_remu_sltu_semantics();
+            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6272,12 +6247,14 @@ void decode_execute() {
     } else if (funct3 == F3_DIVU) {
       if (funct7 == F7_DIVU) {
         if (debug) {
-          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "divu");
+          print_add_sub_mul_divu_remu_sltu((uint64_t*) "divu");
 
           if (interpret) {
+            print_add_sub_mul_divu_remu_sltu_before();
+
             fct_divu();
 
-            print_add_sub_mul_divu_remu_sltu_semantics();
+            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6289,12 +6266,14 @@ void decode_execute() {
     } else if (funct3 == F3_REMU) {
       if (funct7 == F7_REMU) {
         if (debug) {
-          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "remu");
+          print_add_sub_mul_divu_remu_sltu((uint64_t*) "remu");
 
           if (interpret) {
+            print_add_sub_mul_divu_remu_sltu_before();
+
             fct_remu();
 
-            print_add_sub_mul_divu_remu_sltu_semantics();
+            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6306,12 +6285,14 @@ void decode_execute() {
     } else if (funct3 == F3_SLTU) {
       if (funct7 == F7_SLTU) {
         if (debug) {
-          print_add_sub_mul_divu_remu_sltu_syntax((uint64_t*) "sltu");
+          print_add_sub_mul_divu_remu_sltu((uint64_t*) "sltu");
 
           if (interpret) {
+            print_add_sub_mul_divu_remu_sltu_before();
+
             fct_sltu();
 
-            print_add_sub_mul_divu_remu_sltu_semantics();
+            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6326,12 +6307,14 @@ void decode_execute() {
 
     if (funct3 == F3_ADDI) {
       if (debug) {
-        print_addi_syntax();
+        print_addi();
 
         if (interpret) {
+          print_addi_before();
+
           fct_addi();
 
-          print_addi_semantics();
+          print_lui_addi_add_sub_mul_divu_remu_sltu_after();
         }
 
         println();
@@ -6361,12 +6344,14 @@ void decode_execute() {
 
     if (funct3 == F3_BEQ) {
       if (debug) {
-        print_beq_syntax();
+        print_beq();
 
         if (interpret) {
+          print_beq_before();
+
           fct_beq();
 
-          print_beq_semantics();
+          print_beq_after();
         }
 
         println();
@@ -6386,12 +6371,14 @@ void decode_execute() {
 
     if (funct3 == F3_JALR) {
       if (debug) {
-        print_jalr_syntax();
+        print_jalr();
 
         if (interpret) {
+          print_jalr_before();
+
           fct_jalr();
 
-          print_jalr_semantics();
+          print_jalr_after();
         }
 
         println();
@@ -6404,12 +6391,14 @@ void decode_execute() {
     decodeUFormat();
 
     if (debug) {
-      print_lui_syntax();
+      print_lui();
 
       if (interpret) {
+        print_lui_before();
+
         fct_lui();
 
-        print_lui_semantics();
+        print_lui_addi_add_sub_mul_divu_remu_sltu_after();
       }
 
       println();
