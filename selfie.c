@@ -5987,6 +5987,7 @@ uint64_t execute_sd() {
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
+      // semantics of sd
       storeVirtualMemory(pt, vaddr, *(registers + rs2));
 
       // keep track of number of stores
@@ -6235,9 +6236,7 @@ void decode_execute() {
 
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
-
             execute_add();
-
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
@@ -6252,9 +6251,7 @@ void decode_execute() {
 
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
-
             execute_sub();
-
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
@@ -6269,9 +6266,7 @@ void decode_execute() {
 
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
-
             execute_mul();
-
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
@@ -6288,9 +6283,7 @@ void decode_execute() {
 
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
-
             execute_divu();
-
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
@@ -6307,9 +6300,7 @@ void decode_execute() {
 
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
-
             execute_remu();
-
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
@@ -6326,9 +6317,7 @@ void decode_execute() {
 
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
-
             execute_sltu();
-
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
@@ -6348,9 +6337,7 @@ void decode_execute() {
 
         if (interpret) {
           print_addi_before();
-
           execute_addi();
-
           print_lui_addi_add_sub_mul_divu_remu_sltu_after();
         }
 
@@ -6369,7 +6356,6 @@ void decode_execute() {
 
         if (interpret) {
           print_ld_before();
-
           print_ld_after(execute_ld());
         }
 
@@ -6388,7 +6374,6 @@ void decode_execute() {
 
         if (interpret) {
           print_sd_before();
-
           print_sd_after(execute_sd());
         }
 
@@ -6407,9 +6392,7 @@ void decode_execute() {
 
         if (interpret) {
           print_beq_before();
-
           execute_beq();
-
           print_beq_after();
         }
 
@@ -6427,9 +6410,7 @@ void decode_execute() {
 
       if (interpret) {
         print_jal_before();
-
         execute_jal();
-
         print_jal_after();
       }
 
@@ -6447,9 +6428,7 @@ void decode_execute() {
 
         if (interpret) {
           print_jalr_before();
-
           execute_jalr();
-
           print_jalr_after();
         }
 
@@ -6467,9 +6446,7 @@ void decode_execute() {
 
       if (interpret) {
         print_lui_before();
-
         execute_lui();
-
         print_lui_addi_add_sub_mul_divu_remu_sltu_after();
       }
 
