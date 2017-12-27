@@ -964,24 +964,53 @@ void initMemory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void fct_lui();
-void fct_addi();
+void print_instruction_context();
 
-void fct_add();
-void fct_sub();
-void fct_mul();
-void fct_divu();
-void fct_remu();
-void fct_sltu();
+void print_lui();
+void print_lui_before();
+void print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+void execute_lui();
 
-uint64_t fct_ld();
-void fct_sd();
+void print_addi();
+void print_addi_before();
+void execute_addi();
 
-void fct_beq();
-void fct_jal();
-void fct_jalr();
+void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
+void print_add_sub_mul_divu_remu_sltu_before();
 
-void fct_ecall();
+void execute_add();
+void execute_sub();
+void execute_mul();
+void execute_divu();
+void execute_remu();
+void execute_sltu();
+
+void     print_ld();
+void     print_ld_before();
+void     print_ld_after(uint64_t vaddr);
+uint64_t execute_ld();
+
+void     print_sd();
+void     print_sd_before();
+void     print_sd_after(uint64_t vaddr);
+uint64_t execute_sd();
+
+void print_beq();
+void print_beq_before();
+void print_beq_after();
+void execute_beq();
+
+void print_jal();
+void print_jal_before();
+void print_jal_after();
+void execute_jal();
+
+void print_jalr();
+void print_jalr_before();
+void print_jalr_after();
+void execute_jalr();
+
+void execute_ecall();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -5660,10 +5689,9 @@ void print_instruction_context() {
 }
 
 void print_lui() {
-  //print_instruction_context();
+  print_instruction_context();
 
-  print((uint64_t*) "lui");
-  print((uint64_t*) " ");
+  print((uint64_t*) "lui ");
   printRegister(rd);
   print((uint64_t*) ",");
   printHexadecimal(imm, 0);
@@ -5685,7 +5713,7 @@ void print_lui_addi_add_sub_mul_divu_remu_sltu_after() {
   printHexadecimal(*(registers + rd), 0);
 }
 
-void fct_lui() {
+void execute_lui() {
   // load upper immediate
 
   if (rd != REG_ZR)
@@ -5696,7 +5724,7 @@ void fct_lui() {
 }
 
 void print_addi() {
-  //print_instruction_context();
+  print_instruction_context();
 
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
@@ -5728,7 +5756,7 @@ void print_addi_before() {
   printInteger(*(registers + rs1));
 }
 
-void fct_addi() {
+void execute_addi() {
   // add immediate
 
   if (rd != REG_ZR)
@@ -5739,6 +5767,8 @@ void fct_addi() {
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
+  print_instruction_context();
+
   print(mnemonics);
   print((uint64_t*) " ");
   printRegister(rd);
@@ -5768,7 +5798,7 @@ void print_add_sub_mul_divu_remu_sltu_before() {
   printInteger(*(registers + rs2));
 }
 
-void fct_add() {
+void execute_add() {
   if (rd != REG_ZR)
     // semantics of add
     *(registers + rd) = *(registers + rs1) + *(registers + rs2);
@@ -5776,7 +5806,7 @@ void fct_add() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void fct_sub() {
+void execute_sub() {
   if (rd != REG_ZR)
     // semantics of sub
     *(registers + rd) = *(registers + rs1) - *(registers + rs2);
@@ -5784,7 +5814,7 @@ void fct_sub() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void fct_mul() {
+void execute_mul() {
   if (rd != REG_ZR)
     // semantics of mul
     *(registers + rd) = *(registers + rs1) * *(registers + rs2);
@@ -5794,7 +5824,7 @@ void fct_mul() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void fct_divu() {
+void execute_divu() {
   // division unsigned
 
   if (*(registers + rs2) == 0) {
@@ -5814,7 +5844,7 @@ void fct_divu() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void fct_remu() {
+void execute_remu() {
   // remainder unsigned
 
   if (*(registers + rs2) == 0) {
@@ -5834,7 +5864,7 @@ void fct_remu() {
   pc = pc + INSTRUCTIONSIZE;
 }
 
-void fct_sltu() {
+void execute_sltu() {
   // set on less than unsigned
 
   if (rd != REG_ZR) {
@@ -5849,8 +5879,9 @@ void fct_sltu() {
 }
 
 void print_ld() {
-  print((uint64_t*) "ld");
-  print((uint64_t*) " ");
+  print_instruction_context();
+
+  print((uint64_t*) "ld ");
   printRegister(rd);
   print((uint64_t*) ",");
   printInteger(imm);
@@ -5879,13 +5910,12 @@ void print_ld_after(uint64_t vaddr) {
   printRegister(rd);
   print((uint64_t*) "=");
   printInteger(*(registers + rd));
-
   print((uint64_t*) "=memory[");
   printHexadecimal(vaddr, 0);
   print((uint64_t*) "]");
 }
 
-uint64_t fct_ld() {
+uint64_t execute_ld() {
   uint64_t vaddr;
 
   // load double word
@@ -5913,75 +5943,71 @@ uint64_t fct_ld() {
   return vaddr;
 }
 
-void fct_sd() {
-  uint64_t s1;
-  uint64_t s2;
+void print_sd() {
+  print_instruction_context();
+
+  print((uint64_t*) "sd ");
+  printRegister(rs2);
+  print((uint64_t*) ",");
+  printInteger(imm);
+  print((uint64_t*) "(");
+  printRegister(rs1);
+  print((uint64_t*) ")");
+}
+
+void print_sd_before() {
+  print((uint64_t*) ": ");
+
+  printRegister(rs2);
+  print((uint64_t*) "=");
+  printInteger(*(registers + rs2));
+
+  print((uint64_t*) ",");
+
+  printRegister(rs1);
+  print((uint64_t*) "=");
+  printHexadecimal(*(registers + rs1), 0);
+}
+
+void print_sd_after(uint64_t vaddr) {
+  print((uint64_t*) " -> memory[");
+  printHexadecimal(vaddr, 0);
+  print((uint64_t*) "]=");
+  printInteger(*(registers + rs2));
+  print((uint64_t*) "=");
+  printRegister(rs2);
+}
+
+uint64_t execute_sd() {
   uint64_t vaddr;
 
   // store double word
 
-  if (interpret) {
-    s1 = *(registers + rs1);
-    s2 = *(registers + rs2);
-  }
+  vaddr = *(registers + rs1) + imm;
 
-  if (debug) {
-    print((uint64_t*) "sd");
-    print((uint64_t*) " ");
-    printRegister(rs2);
-    print((uint64_t*) ",");
-    printInteger(imm);
-    print((uint64_t*) "(");
-    printRegister(rs1);
-    print((uint64_t*) ")");
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rs2);
-      print((uint64_t*) "=");
-      printInteger(s2);
-      print((uint64_t*) ",");
-      printRegister(rs1);
-      print((uint64_t*) "=");
-      printHexadecimal(s1, 0);
-    }
-  }
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      storeVirtualMemory(pt, vaddr, *(registers + rs2));
 
-  if (interpret) {
-    vaddr = s1 + imm;
+      // keep track of number of stores
+      stores = stores + 1;
 
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        storeVirtualMemory(pt, vaddr, s2);
+      *(storesPerAddress + pc / INSTRUCTIONSIZE) = *(storesPerAddress + pc / INSTRUCTIONSIZE) + 1;
 
-        // keep track of number of stores
-        stores = stores + 1;
-
-        *(storesPerAddress + pc / INSTRUCTIONSIZE) = *(storesPerAddress + pc / INSTRUCTIONSIZE) + 1;
-
-        pc = pc + INSTRUCTIONSIZE;
-      } else
-        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+      pc = pc + INSTRUCTIONSIZE;
     } else
-      // TODO: pass invalid vaddr
-      throwException(EXCEPTION_INVALIDADDRESS, 0);
-  }
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
 
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> memory[");
-      printHexadecimal(vaddr, 0);
-      print((uint64_t*) "]=");
-      printInteger(s2);
-      print((uint64_t*) "=");
-      printRegister(rs2);
-    }
-    println();
-  }
+  return vaddr;
 }
 
 void print_beq() {
-  print((uint64_t*) "beq");
-  print((uint64_t*) " ");
+  print_instruction_context();
+
+  print((uint64_t*) "beq ");
   printRegister(rs1);
   print((uint64_t*) ",");
   printRegister(rs2);
@@ -6011,7 +6037,7 @@ void print_beq_after() {
   printHexadecimal(pc, 0);
 }
 
-void fct_beq() {
+void execute_beq() {
   // branch on equal
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6021,71 +6047,76 @@ void fct_beq() {
     pc = pc + imm;
 }
 
-void fct_jal() {
-  uint64_t d;
+void print_jal() {
+  print_instruction_context();
 
-  // jump and link
+  print((uint64_t*) "jal ");
+  printRegister(rd);
+  print((uint64_t*) ",");
+  printInteger(signedDivision(imm, INSTRUCTIONSIZE));
+  print((uint64_t*) "[");
+  printHexadecimal(pc + imm, 0);
+  print((uint64_t*) "]");
+}
 
-  if (interpret)
-    d = *(registers + rd);
+void print_jal_before() {
+  if (rd == REG_ZR)
+    print((uint64_t*) ":");
+  else {
+    print((uint64_t*) ": ");
 
-  if (debug) {
-    print((uint64_t*) "jal");
-    print((uint64_t*) " ");
     printRegister(rd);
-    print((uint64_t*) ",");
-    printInteger(signedDivision(imm, INSTRUCTIONSIZE));
-    print((uint64_t*) "[");
-    printHexadecimal(pc + imm, 0);
-    print((uint64_t*) "]");
-    if (interpret) {
-      print((uint64_t*) ": ");
-      printRegister(rd);
-      print((uint64_t*) "=");
-      printHexadecimal(d, 0);
-    }
-  }
-
-  if (interpret) {
-    d = pc + INSTRUCTIONSIZE;
-
-    if (rd != REG_ZR)
-      *(registers + rd) = d;
-
-    pc = pc + imm;
-
-    if (rd != REG_ZR) {
-      // keep track of number of procedure calls
-      calls = calls + 1;
-
-      *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
-    } else if (signedLessThan(imm, 0)) {
-      // keep track of number of loop iterations
-      loops = loops + 1;
-
-      *(loopsPerAddress + pc / INSTRUCTIONSIZE) = *(loopsPerAddress + pc / INSTRUCTIONSIZE) + 1;
-    }
-  }
-
-  if (debug) {
-    if (interpret) {
-      print((uint64_t*) " -> ");
-      if (rd != REG_ZR) {
-        printRegister(rd);
-        print((uint64_t*) "=");
-        printHexadecimal(d, 0);
-        print((uint64_t*) ",");
-      }
-      print((uint64_t*) "$pc=");
-      printHexadecimal(pc, 0);
-    }
-    println();
+    print((uint64_t*) "=");
+    printHexadecimal(*(registers + rd), 0);
   }
 }
 
+void print_jal_after() {
+  print((uint64_t*) " -> ");
+
+  if (rd != REG_ZR) {
+    printRegister(rd);
+    print((uint64_t*) "=");
+    printHexadecimal(*(registers + rd), 0);
+
+    print((uint64_t*) ",");
+  }
+
+  print((uint64_t*) "$pc=");
+  printHexadecimal(pc, 0);
+}
+
+void execute_jal() {
+  // jump and link
+
+  if (rd != REG_ZR) {
+    // first link
+    *(registers + rd) = pc + INSTRUCTIONSIZE;
+
+    // then jump for procedure calls
+    pc = pc + imm;
+
+    // keep track of number of procedure calls
+    calls = calls + 1;
+
+    *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+  } else if (signedLessThan(imm, 0)) {
+    // just jump backwards to check for another loop iteration
+    pc = pc + imm;
+
+    // keep track of number of loop iterations
+    loops = loops + 1;
+
+    *(loopsPerAddress + pc / INSTRUCTIONSIZE) = *(loopsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+  } else
+    // just jump forward
+    pc = pc + imm;
+}
+
 void print_jalr() {
-  print((uint64_t*) "jalr");
-  print((uint64_t*) " ");
+  print_instruction_context();
+
+  print((uint64_t*) "jalr ");
   printRegister(rd);
   print((uint64_t*) ",");
   printInteger(signedDivision(imm, INSTRUCTIONSIZE));
@@ -6112,7 +6143,7 @@ void print_jalr_after() {
   print_beq_after();
 
   if (rd != REG_ZR) {
-    print((uint64_t*) ", ");
+    print((uint64_t*) ",");
 
     printRegister(rd);
     print((uint64_t*) "=");
@@ -6120,7 +6151,7 @@ void print_jalr_after() {
   }
 }
 
-void fct_jalr() {
+void execute_jalr() {
   uint64_t next_pc;
 
   // jump and link register
@@ -6142,7 +6173,7 @@ void fct_jalr() {
   }
 }
 
-void fct_ecall() {
+void execute_ecall() {
   pc = pc + INSTRUCTIONSIZE;
 
   if (*(registers + REG_A7) == SYSCALL_SWITCH)
@@ -6192,9 +6223,6 @@ void fetch() {
 }
 
 void decode_execute() {
-  if (debug)
-    print_instruction_context();
-
   opcode = getOpcode(ir);
 
   if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
@@ -6208,14 +6236,14 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
 
-            fct_add();
+            execute_add();
 
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
         } else
-          fct_add();
+          execute_add();
 
         return;
       } else if (funct7 == F7_SUB) {
@@ -6225,14 +6253,14 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
 
-            fct_sub();
+            execute_sub();
 
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
         } else
-          fct_sub();
+          execute_sub();
 
         return;
       } else if (funct7 == F7_MUL) {
@@ -6242,14 +6270,14 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
 
-            fct_mul();
+            execute_mul();
 
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
         } else
-          fct_mul();
+          execute_mul();
 
         return;
       }
@@ -6261,14 +6289,14 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
 
-            fct_divu();
+            execute_divu();
 
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
         } else
-          fct_divu();
+          execute_divu();
 
         return;
       }
@@ -6280,14 +6308,14 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
 
-            fct_remu();
+            execute_remu();
 
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
         } else
-          fct_remu();
+          execute_remu();
 
         return;
       }
@@ -6299,14 +6327,14 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
 
-            fct_sltu();
+            execute_sltu();
 
             print_lui_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
         } else
-          fct_sltu();
+          execute_sltu();
 
         return;
       }
@@ -6321,14 +6349,14 @@ void decode_execute() {
         if (interpret) {
           print_addi_before();
 
-          fct_addi();
+          execute_addi();
 
           print_lui_addi_add_sub_mul_divu_remu_sltu_after();
         }
 
         println();
       } else
-        fct_addi();
+        execute_addi();
 
       return;
     }
@@ -6342,12 +6370,12 @@ void decode_execute() {
         if (interpret) {
           print_ld_before();
 
-          print_ld_after(fct_ld());
+          print_ld_after(execute_ld());
         }
 
         println();
       } else
-        fct_ld();
+        execute_ld();
 
       return;
     }
@@ -6355,7 +6383,18 @@ void decode_execute() {
     decodeSFormat();
 
     if (funct3 == F3_SD) {
-      fct_sd();
+      if (debug) {
+        print_sd();
+
+        if (interpret) {
+          print_sd_before();
+
+          print_sd_after(execute_sd());
+        }
+
+        println();
+      } else
+        execute_sd();
 
       return;
     }
@@ -6369,21 +6408,34 @@ void decode_execute() {
         if (interpret) {
           print_beq_before();
 
-          fct_beq();
+          execute_beq();
 
           print_beq_after();
         }
 
         println();
       } else
-        fct_beq();
+        execute_beq();
 
       return;
     }
   } else if (opcode == OP_JAL) {
     decodeJFormat();
 
-    fct_jal();
+    if (debug) {
+      print_jal();
+
+      if (interpret) {
+        print_jal_before();
+
+        execute_jal();
+
+        print_jal_after();
+      }
+
+      println();
+    } else
+      execute_jal();
 
     return;
   } else if (opcode == OP_JALR) {
@@ -6396,14 +6448,14 @@ void decode_execute() {
         if (interpret) {
           print_jalr_before();
 
-          fct_jalr();
+          execute_jalr();
 
           print_jalr_after();
         }
 
         println();
       } else
-        fct_jalr();
+        execute_jalr();
 
       return;
     }
@@ -6416,14 +6468,14 @@ void decode_execute() {
       if (interpret) {
         print_lui_before();
 
-        fct_lui();
+        execute_lui();
 
         print_lui_addi_add_sub_mul_divu_remu_sltu_after();
       }
 
       println();
     } else
-      fct_lui();
+      execute_lui();
 
     return;
   } else if (opcode == OP_SYSTEM) {
@@ -6431,14 +6483,16 @@ void decode_execute() {
 
     if (funct3 == F3_ECALL) {
       if (debug) {
+        print_instruction_context();
+
         print((uint64_t*) "ecall");
 
         if (interpret)
-          fct_ecall();
+          execute_ecall();
 
         println();
       } else
-        fct_ecall();
+        execute_ecall();
 
       return;
     }
