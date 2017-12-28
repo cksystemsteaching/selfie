@@ -9,7 +9,7 @@ selfie: selfie.c
 .PHONY : test sat all clean
 
 # Test self-compilation, self-execution, and self-hosting
-test: selfie vipster
+test: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 4 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
@@ -31,12 +31,8 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
-vipster: selfie
-	./selfie -c example.c -v 1
-	./selfie -c selfie.c -v 2
-
 # Test everything
-all: test sat vipster
+all: test sat
 
 # Clean up
 clean:
