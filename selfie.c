@@ -537,20 +537,20 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
 void     help_procedure_prologue(uint64_t localVariables);
 void     help_procedure_epilogue(uint64_t parameters);
 
-uint64_t gr_call(uint64_t* procedure);
-uint64_t gr_factor();
-uint64_t gr_term();
-uint64_t gr_simpleExpression();
-uint64_t gr_expression();
-void     gr_while();
-void     gr_if();
-void     gr_return();
-void     gr_statement();
-uint64_t gr_type();
-void     gr_variable(uint64_t offset);
-uint64_t gr_initialization(uint64_t type);
-void     gr_procedure(uint64_t* procedure, uint64_t type);
-void     gr_cstar();
+uint64_t compile_call(uint64_t* procedure);
+uint64_t compile_factor();
+uint64_t compile_term();
+uint64_t compile_simpleExpression();
+uint64_t compile_expression();
+void     compile_while();
+void     compile_if();
+void     compile_return();
+void     compile_statement();
+uint64_t compile_type();
+void     compile_variable(uint64_t offset);
+uint64_t compile_initialization(uint64_t type);
+void     compile_procedure(uint64_t* procedure, uint64_t type);
+void     compile_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2992,7 +2992,7 @@ void help_procedure_epilogue(uint64_t parameters) {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
-uint64_t gr_call(uint64_t* procedure) {
+uint64_t compile_call(uint64_t* procedure) {
   uint64_t* entry;
   uint64_t numberOfTemporaries;
   uint64_t type;
@@ -3008,7 +3008,7 @@ uint64_t gr_call(uint64_t* procedure) {
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
-    gr_expression();
+    compile_expression();
 
     // TODO: check if types/number of parameters is correct
 
@@ -3021,7 +3021,7 @@ uint64_t gr_call(uint64_t* procedure) {
     while (symbol == SYM_COMMA) {
       getSymbol();
 
-      gr_expression();
+      compile_expression();
 
       // push more parameters onto stack
       emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
@@ -3060,7 +3060,7 @@ uint64_t gr_call(uint64_t* procedure) {
   return type;
 }
 
-uint64_t gr_factor() {
+uint64_t compile_factor() {
   uint64_t hasCast;
   uint64_t cast;
   uint64_t type;
@@ -3090,7 +3090,7 @@ uint64_t gr_factor() {
     if (symbol == SYM_UINT64) {
       hasCast = 1;
 
-      cast = gr_type();
+      cast = compile_type();
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3099,7 +3099,7 @@ uint64_t gr_factor() {
 
     // not a cast: "(" expression ")"
     } else {
-      type = gr_expression();
+      type = compile_expression();
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3126,7 +3126,7 @@ uint64_t gr_factor() {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      type = gr_expression();
+      type = compile_expression();
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3153,7 +3153,7 @@ uint64_t gr_factor() {
       getSymbol();
 
       // procedure call: identifier "(" ... ")"
-      type = gr_call(variableOrProcedureName);
+      type = compile_call(variableOrProcedureName);
 
       talloc();
 
@@ -3197,7 +3197,7 @@ uint64_t gr_factor() {
   } else if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
-    type = gr_expression();
+    type = compile_expression();
 
     if (symbol == SYM_RPARENTHESIS)
       getSymbol();
@@ -3214,14 +3214,14 @@ uint64_t gr_factor() {
     return type;
 }
 
-uint64_t gr_term() {
+uint64_t compile_term() {
   uint64_t ltype;
   uint64_t operatorSymbol;
   uint64_t rtype;
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_factor();
+  ltype = compile_factor();
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3231,7 +3231,7 @@ uint64_t gr_term() {
 
     getSymbol();
 
-    rtype = gr_factor();
+    rtype = compile_factor();
 
     // assert: allocatedTemporaries == n + 2
 
@@ -3253,7 +3253,7 @@ uint64_t gr_term() {
   return ltype;
 }
 
-uint64_t gr_simpleExpression() {
+uint64_t compile_simpleExpression() {
   uint64_t ltype;
   uint64_t operatorSymbol;
   uint64_t rtype;
@@ -3268,7 +3268,7 @@ uint64_t gr_simpleExpression() {
 
     mayBeINTMIN = 0;
 
-    ltype = gr_term();
+    ltype = compile_term();
 
     if (ltype != UINT64_T) {
       typeWarning(UINT64_T, ltype);
@@ -3278,7 +3278,7 @@ uint64_t gr_simpleExpression() {
 
     emitSUB(currentTemporary(), REG_ZR, currentTemporary());
   } else
-    ltype = gr_term();
+    ltype = compile_term();
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3288,7 +3288,7 @@ uint64_t gr_simpleExpression() {
 
     getSymbol();
 
-    rtype = gr_term();
+    rtype = compile_term();
 
     // assert: allocatedTemporaries == n + 2
 
@@ -3343,14 +3343,14 @@ uint64_t gr_simpleExpression() {
   return ltype;
 }
 
-uint64_t gr_expression() {
+uint64_t compile_expression() {
   uint64_t ltype;
   uint64_t operatorSymbol;
   uint64_t rtype;
 
   // assert: n = allocatedTemporaries
 
-  ltype = gr_simpleExpression();
+  ltype = compile_simpleExpression();
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3360,7 +3360,7 @@ uint64_t gr_expression() {
 
     getSymbol();
 
-    rtype = gr_simpleExpression();
+    rtype = compile_simpleExpression();
 
     // assert: allocatedTemporaries == n + 2
 
@@ -3418,7 +3418,7 @@ uint64_t gr_expression() {
   return ltype;
 }
 
-void gr_while() {
+void compile_while() {
   uint64_t jumpBackToWhile;
   uint64_t branchForwardToEnd;
 
@@ -3435,7 +3435,7 @@ void gr_while() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      compile_expression();
 
       // we do not know where to branch, fixup later
       branchForwardToEnd = binaryLength;
@@ -3452,7 +3452,7 @@ void gr_while() {
           getSymbol();
 
           while (isNotRbraceOrEOF())
-            gr_statement();
+            compile_statement();
 
           if (symbol == SYM_RBRACE)
             getSymbol();
@@ -3463,7 +3463,7 @@ void gr_while() {
           }
         } else
           // only one statement without {}
-          gr_statement();
+          compile_statement();
       } else
         syntaxErrorSymbol(SYM_RPARENTHESIS);
     } else
@@ -3486,7 +3486,7 @@ void gr_while() {
   numberOfWhile = numberOfWhile + 1;
 }
 
-void gr_if() {
+void compile_if() {
   uint64_t branchForwardToElseOrEnd;
   uint64_t jumpForwardToEnd;
 
@@ -3499,7 +3499,7 @@ void gr_if() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_expression();
+      compile_expression();
 
       // if the "if" case is not true we branch to "else" (if provided)
       branchForwardToElseOrEnd = binaryLength;
@@ -3516,7 +3516,7 @@ void gr_if() {
           getSymbol();
 
           while (isNotRbraceOrEOF())
-            gr_statement();
+            compile_statement();
 
           if (symbol == SYM_RBRACE)
             getSymbol();
@@ -3527,7 +3527,7 @@ void gr_if() {
           }
         } else
         // only one statement without {}
-          gr_statement();
+          compile_statement();
 
         //optional: else
         if (symbol == SYM_ELSE) {
@@ -3547,7 +3547,7 @@ void gr_if() {
             getSymbol();
 
             while (isNotRbraceOrEOF())
-              gr_statement();
+              compile_statement();
 
             if (symbol == SYM_RBRACE)
               getSymbol();
@@ -3559,7 +3559,7 @@ void gr_if() {
 
           // only one statement without {}
           } else
-            gr_statement();
+            compile_statement();
 
           // if the "if" case was true we unconditionally jump here
           fixup_relative_JFormat(jumpForwardToEnd, binaryLength);
@@ -3578,7 +3578,7 @@ void gr_if() {
   numberOfIf = numberOfIf + 1;
 }
 
-void gr_return() {
+void compile_return() {
   uint64_t type;
 
   // assert: allocatedTemporaries == 0
@@ -3590,7 +3590,7 @@ void gr_return() {
 
   // optional: expression
   if (symbol != SYM_SEMICOLON) {
-    type = gr_expression();
+    type = compile_expression();
 
     if (type != returnType)
       typeWarning(returnType, type);
@@ -3613,7 +3613,7 @@ void gr_return() {
   numberOfReturn = numberOfReturn + 1;
 }
 
-void gr_statement() {
+void compile_statement() {
   uint64_t ltype;
   uint64_t rtype;
   uint64_t* variableOrProcedureName;
@@ -3648,7 +3648,7 @@ void gr_statement() {
       if (symbol == SYM_ASSIGN) {
         getSymbol();
 
-        rtype = gr_expression();
+        rtype = compile_expression();
 
         if (rtype != UINT64_T)
           typeWarning(UINT64_T, rtype);
@@ -3673,7 +3673,7 @@ void gr_statement() {
     } else if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      ltype = gr_expression();
+      ltype = compile_expression();
 
       if (ltype != UINT64STAR_T)
         typeWarning(UINT64STAR_T, ltype);
@@ -3685,7 +3685,7 @@ void gr_statement() {
         if (symbol == SYM_ASSIGN) {
           getSymbol();
 
-          rtype = gr_expression();
+          rtype = compile_expression();
 
           if (rtype != UINT64_T)
             typeWarning(UINT64_T, rtype);
@@ -3720,7 +3720,7 @@ void gr_statement() {
     if (symbol == SYM_LPARENTHESIS) {
       getSymbol();
 
-      gr_call(variableOrProcedureName);
+      compile_call(variableOrProcedureName);
 
       // reset return register to initial return value
       // for missing return expressions
@@ -3739,7 +3739,7 @@ void gr_statement() {
 
       getSymbol();
 
-      rtype = gr_expression();
+      rtype = compile_expression();
 
       if (ltype != rtype)
         typeWarning(ltype, rtype);
@@ -3770,15 +3770,15 @@ void gr_statement() {
   }
   // while statement?
   else if (symbol == SYM_WHILE) {
-    gr_while();
+    compile_while();
   }
   // if statement?
   else if (symbol == SYM_IF) {
-    gr_if();
+    compile_if();
   }
   // return statement?
   else if (symbol == SYM_RETURN) {
-    gr_return();
+    compile_return();
 
     if (symbol == SYM_SEMICOLON)
       getSymbol();
@@ -3787,7 +3787,7 @@ void gr_statement() {
   }
 }
 
-uint64_t gr_type() {
+uint64_t compile_type() {
   uint64_t type;
 
   type = UINT64_T;
@@ -3806,10 +3806,10 @@ uint64_t gr_type() {
   return type;
 }
 
-void gr_variable(uint64_t offset) {
+void compile_variable(uint64_t offset) {
   uint64_t type;
 
-  type = gr_type();
+  type = compile_type();
 
   if (symbol == SYM_IDENTIFIER) {
     // TODO: check if identifier has already been declared
@@ -3823,7 +3823,7 @@ void gr_variable(uint64_t offset) {
   }
 }
 
-uint64_t gr_initialization(uint64_t type) {
+uint64_t compile_initialization(uint64_t type) {
   uint64_t initialValue;
   uint64_t hasCast;
   uint64_t cast;
@@ -3841,7 +3841,7 @@ uint64_t gr_initialization(uint64_t type) {
 
       getSymbol();
 
-      cast = gr_type();
+      cast = compile_type();
 
       if (symbol == SYM_RPARENTHESIS)
         getSymbol();
@@ -3882,7 +3882,7 @@ uint64_t gr_initialization(uint64_t type) {
   return initialValue;
 }
 
-void gr_procedure(uint64_t* procedure, uint64_t type) {
+void compile_procedure(uint64_t* procedure, uint64_t type) {
   uint64_t isUndefined;
   uint64_t numberOfParameters;
   uint64_t parameters;
@@ -3899,14 +3899,14 @@ void gr_procedure(uint64_t* procedure, uint64_t type) {
     getSymbol();
 
     if (symbol != SYM_RPARENTHESIS) {
-      gr_variable(0);
+      compile_variable(0);
 
       numberOfParameters = 1;
 
       while (symbol == SYM_COMMA) {
         getSymbol();
 
-        gr_variable(0);
+        compile_variable(0);
 
         numberOfParameters = numberOfParameters + 1;
       }
@@ -3994,7 +3994,7 @@ void gr_procedure(uint64_t* procedure, uint64_t type) {
     while (symbol == SYM_UINT64) {
       localVariables = localVariables + 1;
 
-      gr_variable(-localVariables * REGISTERSIZE);
+      compile_variable(-localVariables * REGISTERSIZE);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -4010,7 +4010,7 @@ void gr_procedure(uint64_t* procedure, uint64_t type) {
     returnType = type;
 
     while (isNotRbraceOrEOF())
-      gr_statement();
+      compile_statement();
 
     returnType = 0;
 
@@ -4036,7 +4036,7 @@ void gr_procedure(uint64_t* procedure, uint64_t type) {
   // assert: allocatedTemporaries == 0
 }
 
-void gr_cstar() {
+void compile_cstar() {
   uint64_t type;
   uint64_t* variableOrProcedureName;
   uint64_t currentLineNumber;
@@ -4065,11 +4065,11 @@ void gr_cstar() {
 
         getSymbol();
 
-        gr_procedure(variableOrProcedureName, type);
+        compile_procedure(variableOrProcedureName, type);
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
     } else {
-      type = gr_type();
+      type = compile_type();
 
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
@@ -4079,7 +4079,7 @@ void gr_cstar() {
         if (symbol == SYM_LPARENTHESIS)
           // type identifier "(" ...
           // procedure declaration or definition
-          gr_procedure(variableOrProcedureName, type);
+          compile_procedure(variableOrProcedureName, type);
         else {
           currentLineNumber = lineNumber;
 
@@ -4092,7 +4092,7 @@ void gr_cstar() {
           } else
             // type identifier "=" ...
             // global variable definition
-            initialValue = gr_initialization(type);
+            initialValue = compile_initialization(type);
 
           entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE);
 
@@ -4296,8 +4296,7 @@ void selfie_compile() {
       resetScanner();
       resetParser();
 
-      // compile
-      gr_cstar();
+      compile_cstar();
 
       print(selfieName);
       print((uint64_t*) ": ");
