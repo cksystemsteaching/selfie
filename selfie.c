@@ -968,11 +968,12 @@ void print_instruction_context();
 
 void print_lui();
 void print_lui_before();
-void print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+void print_lui_after();
 void execute_lui();
 
 void print_addi();
 void print_addi_before();
+void print_addi_add_sub_mul_divu_remu_sltu_after();
 void execute_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
@@ -1002,12 +1003,11 @@ void execute_beq();
 
 void print_jal();
 void print_jal_before();
-void print_jal_after();
+void print_jal_jalr_after();
 void execute_jal();
 
 void print_jalr();
 void print_jalr_before();
-void print_jalr_after();
 void execute_jalr();
 
 void execute_ecall();
@@ -1022,6 +1022,9 @@ uint64_t debug_divisionByZero = 1;
 
 void initInterpreter();
 void resetInterpreter();
+
+void printRegisterHex(uint64_t r);
+void printRegisterDec(uint64_t r);
 
 void printException(uint64_t exception, uint64_t faultingPage);
 void throwException(uint64_t exception, uint64_t faultingPage);
@@ -5697,19 +5700,13 @@ void print_lui() {
 }
 
 void print_lui_before() {
-  print((uint64_t*) ": ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rd), 0);
+  print((uint64_t*) ": |- ");
+  printRegisterHex(rd);
 }
 
-void print_lui_addi_add_sub_mul_divu_remu_sltu_after() {
+void print_lui_after() {
   print((uint64_t*) " -> ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rd), 0);
+  printRegisterHex(rd);
 }
 
 void execute_lui() {
@@ -5743,16 +5740,14 @@ void print_addi() {
 
 void print_addi_before() {
   print((uint64_t*) ": ");
+  printRegisterDec(rs1);
+  print((uint64_t*) " |- ");
+  printRegisterDec(rd);
+}
 
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
-
-  print((uint64_t*) ",");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs1));
+void print_addi_add_sub_mul_divu_remu_sltu_after() {
+  print((uint64_t*) " -> ");
+  printRegisterDec(rd);
 }
 
 void execute_addi() {
@@ -5779,22 +5774,11 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
 
 void print_add_sub_mul_divu_remu_sltu_before() {
   print((uint64_t*) ": ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
-
+  printRegisterDec(rs1);
   print((uint64_t*) ",");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs1));
-
-  print((uint64_t*) ",");
-
-  printRegister(rs2);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs2));
+  printRegisterDec(rs2);
+  print((uint64_t*) " |- ");
+  printRegisterDec(rd);
 }
 
 void execute_add() {
@@ -5890,28 +5874,37 @@ void print_ld() {
 }
 
 void print_ld_before() {
+  uint64_t vaddr;
+
+  vaddr = *(registers + rs1) + imm;
+
   print((uint64_t*) ": ");
+  printRegisterHex(rs1);
 
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) ",memory[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]=");
+      printInteger(loadVirtualMemory(pt, vaddr));
+      print((uint64_t*) " |- ");
+      printRegisterDec(rd);
 
-  print((uint64_t*) ",");
+      return;
+    }
 
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rs1), 0);
+  print((uint64_t*) " |-");
 }
 
 void print_ld_after(uint64_t vaddr) {
-  print((uint64_t*) " -> ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
-  print((uint64_t*) "=memory[");
-  printHexadecimal(vaddr, 0);
-  print((uint64_t*) "]");
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) " -> ");
+      printRegisterDec(rd);
+      print((uint64_t*) "=memory[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]");
+    }
 }
 
 uint64_t execute_ld() {
@@ -5955,26 +5948,36 @@ void print_sd() {
 }
 
 void print_sd_before() {
+  uint64_t vaddr;
+
+  vaddr = *(registers + rs1) + imm;
+
   print((uint64_t*) ": ");
+  printRegisterHex(rs1);
 
-  printRegister(rs2);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs2));
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) ",");
+      printRegisterDec(rs2);
+      print((uint64_t*) " |- memory[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]=");
+      printInteger(loadVirtualMemory(pt, vaddr));
 
-  print((uint64_t*) ",");
+      return;
+    }
 
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rs1), 0);
+  print((uint64_t*) " |-");
 }
 
 void print_sd_after(uint64_t vaddr) {
-  print((uint64_t*) " -> memory[");
-  printHexadecimal(vaddr, 0);
-  print((uint64_t*) "]=");
-  printInteger(*(registers + rs2));
-  print((uint64_t*) "=");
-  printRegister(rs2);
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) " -> memory[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]=");
+      printRegisterDec(rs2);
+    }
 }
 
 uint64_t execute_sd() {
@@ -6020,16 +6023,11 @@ void print_beq() {
 
 void print_beq_before() {
   print((uint64_t*) ": ");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs1));
-
+  printRegisterDec(rs1);
   print((uint64_t*) ",");
-
-  printRegister(rs2);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs2));
+  printRegisterDec(rs2);
+  print((uint64_t*) " |- $pc=");
+  printHexadecimal(pc, 0);
 }
 
 void print_beq_after() {
@@ -6060,30 +6058,21 @@ void print_jal() {
 }
 
 void print_jal_before() {
-  if (rd == REG_ZR)
-    print((uint64_t*) ":");
-  else {
-    print((uint64_t*) ": ");
-
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printHexadecimal(*(registers + rd), 0);
-  }
-}
-
-void print_jal_after() {
-  print((uint64_t*) " -> ");
-
+  print((uint64_t*) ": |- ");
   if (rd != REG_ZR) {
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printHexadecimal(*(registers + rd), 0);
-
+    printRegisterHex(rd);
     print((uint64_t*) ",");
   }
-
   print((uint64_t*) "$pc=");
   printHexadecimal(pc, 0);
+}
+
+void print_jal_jalr_after() {
+  print_beq_after();
+  if (rd != REG_ZR) {
+    print((uint64_t*) ",");
+    printRegisterHex(rd);
+  }
 }
 
 void execute_jal() {
@@ -6127,28 +6116,14 @@ void print_jalr() {
 
 void print_jalr_before() {
   print((uint64_t*) ": ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rd), 0);
-
-  print((uint64_t*) ",");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rs1), 0);
-}
-
-void print_jalr_after() {
-  print_beq_after();
-
+  printRegisterHex(rs1);
+  print((uint64_t*) " |- ");
   if (rd != REG_ZR) {
+    printRegisterHex(rd);
     print((uint64_t*) ",");
-
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printHexadecimal(*(registers + rd), 0);
   }
+  print((uint64_t*) "$pc=");
+  printHexadecimal(pc, 0);
 }
 
 void execute_jalr() {
@@ -6185,6 +6160,18 @@ void execute_ecall() {
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
+
+void printRegisterHex(uint64_t r) {
+  printRegister(r);
+  print((uint64_t*) "=");
+  printHexadecimal(*(registers + r), 0);
+}
+
+void printRegisterDec(uint64_t r) {
+  printRegister(r);
+  print((uint64_t*) "=");
+  printInteger(*(registers + r));
+}
 
 void printException(uint64_t exception, uint64_t faultingPage) {
   print((uint64_t*) *(EXCEPTIONS + exception));
@@ -6236,7 +6223,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_add();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6251,7 +6238,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_sub();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6266,7 +6253,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_mul();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6283,7 +6270,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_divu();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6300,7 +6287,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_remu();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6317,7 +6304,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_sltu();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6337,7 +6324,7 @@ void decode_execute() {
         if (interpret) {
           print_addi_before();
           execute_addi();
-          print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+          print_addi_add_sub_mul_divu_remu_sltu_after();
         }
 
         println();
@@ -6410,7 +6397,7 @@ void decode_execute() {
       if (interpret) {
         print_jal_before();
         execute_jal();
-        print_jal_after();
+        print_jal_jalr_after();
       }
 
       println();
@@ -6428,7 +6415,7 @@ void decode_execute() {
         if (interpret) {
           print_jalr_before();
           execute_jalr();
-          print_jalr_after();
+          print_jal_jalr_after();
         }
 
         println();
@@ -6446,7 +6433,7 @@ void decode_execute() {
       if (interpret) {
         print_lui_before();
         execute_lui();
-        print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+        print_lui_after();
       }
 
       println();
