@@ -5073,7 +5073,7 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  setExitCode(context, signShrink(*(getRegs(context)+REG_A0), SYSCALL_BITWIDTH));
+  setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -5118,9 +5118,9 @@ void implementRead(uint64_t* context) {
 
   // assert: read buffer is mapped
 
-  size  = *(getRegs(context)+REG_A2);
-  fd    = *(getRegs(context)+REG_A0);
-  vaddr = *(getRegs(context)+REG_A1);
+  size  = *(getRegs(context) + REG_A2);
+  fd    = *(getRegs(context) + REG_A0);
+  vaddr = *(getRegs(context) + REG_A1);
 
   if (debug_read) {
     print(selfieName);
@@ -5190,9 +5190,9 @@ void implementRead(uint64_t* context) {
   }
 
   if (failed == 0)
-    *(getRegs(context)+REG_A0) = readTotal;
+    *(getRegs(context) + REG_A0) = readTotal;
   else
-    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (debug_read) {
     print(selfieName);
@@ -5235,9 +5235,9 @@ void implementWrite(uint64_t* context) {
 
   // assert: write buffer is mapped
 
-  size  = *(getRegs(context)+REG_A2);
-  fd    = *(getRegs(context)+REG_A0);
-  vaddr = *(getRegs(context)+REG_A1);
+  size  = *(getRegs(context) + REG_A2);
+  fd    = *(getRegs(context) + REG_A0);
+  vaddr = *(getRegs(context) + REG_A1);
 
   if (debug_write) {
     print(selfieName);
@@ -5307,9 +5307,9 @@ void implementWrite(uint64_t* context) {
   }
 
   if (failed == 0)
-    *(getRegs(context)+REG_A0) = writtenTotal;
+    *(getRegs(context) + REG_A0) = writtenTotal;
   else
-    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (debug_write) {
     print(selfieName);
@@ -5395,14 +5395,14 @@ void implementOpen(uint64_t* context) {
   uint64_t vaddr;
   uint64_t fd;
 
-  mode  = *(getRegs(context)+REG_A2);
-  vaddr = *(getRegs(context)+REG_A0);
-  flags = *(getRegs(context)+REG_A1);
+  mode  = *(getRegs(context) + REG_A2);
+  vaddr = *(getRegs(context) + REG_A0);
+  flags = *(getRegs(context) + REG_A1);
 
   if (down_loadString(getPT(context), vaddr, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
-    *(getRegs(context)+REG_A0) = fd;
+    *(getRegs(context) + REG_A0) = fd;
 
     if (debug_open) {
       print(selfieName);
@@ -5417,7 +5417,7 @@ void implementOpen(uint64_t* context) {
       println();
     }
   } else {
-    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open) {
       print(selfieName);
@@ -5524,9 +5524,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
   if (getParent(fromContext) != MY_CONTEXT)
-    *(registers+REG_A1) = (uint64_t) getVirtualContext(fromContext);
+    *(registers + REG_A1) = (uint64_t) getVirtualContext(fromContext);
   else
-    *(registers+REG_A1) = (uint64_t) fromContext;
+    *(registers + REG_A1) = (uint64_t) fromContext;
 
   currentContext = toContext;
 
@@ -5551,7 +5551,7 @@ void implementSwitch() {
   saveContext(currentContext);
 
   // cache context on my boot level before switching
-  doSwitch(cacheContext((uint64_t*) *(registers+REG_A0)), *(registers+REG_A1));
+  doSwitch(cacheContext((uint64_t*) *(registers + REG_A0)), *(registers + REG_A1));
 }
 
 uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout) {
@@ -7070,7 +7070,7 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   mapAndStore(context, SP, vargv);
 
   // store stack pointer value into the register
-  *(getRegs(context)+REG_SP) = SP;
+  *(getRegs(context) + REG_SP) = SP;
 }
 
 void mapUnmappedPages(uint64_t* context) {
@@ -7114,7 +7114,7 @@ uint64_t handleSystemCalls(uint64_t* context) {
   uint64_t a7;
 
   if (getException(context) == EXCEPTION_SYSCALL) {
-    a7 = *(getRegs(context)+REG_A7);
+    a7 = *(getRegs(context) + REG_A7);
 
     if (a7 == SYSCALL_MALLOC)
       return implementMalloc(context);
