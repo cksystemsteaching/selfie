@@ -1023,8 +1023,9 @@ uint64_t debug_divisionByZero = 1;
 void initInterpreter();
 void resetInterpreter();
 
-void printRegisterHex(uint64_t r);
-void printRegisterDec(uint64_t r);
+void     printRegisterHexadecimal(uint64_t r);
+uint64_t isSystemRegister(uint64_t r);
+void     printRegisterValue(uint64_t r);
 
 void printException(uint64_t exception, uint64_t faultingPage);
 void throwException(uint64_t exception, uint64_t faultingPage);
@@ -5705,12 +5706,12 @@ void print_lui() {
 
 void print_lui_before() {
   print((uint64_t*) ": |- ");
-  printRegisterHex(rd);
+  printRegisterHexadecimal(rd);
 }
 
 void print_lui_after() {
   print((uint64_t*) " -> ");
-  printRegisterHex(rd);
+  printRegisterHexadecimal(rd);
 }
 
 void execute_lui() {
@@ -5744,14 +5745,14 @@ void print_addi() {
 
 void print_addi_before() {
   print((uint64_t*) ": ");
-  printRegisterDec(rs1);
+  printRegisterValue(rs1);
   print((uint64_t*) " |- ");
-  printRegisterDec(rd);
+  printRegisterValue(rd);
 }
 
 void print_addi_add_sub_mul_divu_remu_sltu_after() {
   print((uint64_t*) " -> ");
-  printRegisterDec(rd);
+  printRegisterValue(rd);
 }
 
 void execute_addi() {
@@ -5778,11 +5779,11 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
 
 void print_add_sub_mul_divu_remu_sltu_before() {
   print((uint64_t*) ": ");
-  printRegisterDec(rs1);
+  printRegisterValue(rs1);
   print((uint64_t*) ",");
-  printRegisterDec(rs2);
+  printRegisterValue(rs2);
   print((uint64_t*) " |- ");
-  printRegisterDec(rd);
+  printRegisterValue(rd);
 }
 
 void execute_add() {
@@ -5883,16 +5884,19 @@ void print_ld_before() {
   vaddr = *(registers + rs1) + imm;
 
   print((uint64_t*) ": ");
-  printRegisterHex(rs1);
+  printRegisterHexadecimal(rs1);
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr)) {
-      print((uint64_t*) ",memory[");
+      print((uint64_t*) ",mem[");
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
-      printInteger(loadVirtualMemory(pt, vaddr));
+      if (isSystemRegister(rd))
+        printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
+      else
+        printInteger(loadVirtualMemory(pt, vaddr));
       print((uint64_t*) " |- ");
-      printRegisterDec(rd);
+      printRegisterValue(rd);
 
       return;
     }
@@ -5904,8 +5908,8 @@ void print_ld_after(uint64_t vaddr) {
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr)) {
       print((uint64_t*) " -> ");
-      printRegisterDec(rd);
-      print((uint64_t*) "=memory[");
+      printRegisterValue(rd);
+      print((uint64_t*) "=mem[");
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]");
     }
@@ -5957,16 +5961,19 @@ void print_sd_before() {
   vaddr = *(registers + rs1) + imm;
 
   print((uint64_t*) ": ");
-  printRegisterHex(rs1);
+  printRegisterHexadecimal(rs1);
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr)) {
       print((uint64_t*) ",");
-      printRegisterDec(rs2);
-      print((uint64_t*) " |- memory[");
+      printRegisterValue(rs2);
+      print((uint64_t*) " |- mem[");
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
-      printInteger(loadVirtualMemory(pt, vaddr));
+      if (isSystemRegister(rd))
+        printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
+      else
+        printInteger(loadVirtualMemory(pt, vaddr));
 
       return;
     }
@@ -5977,10 +5984,10 @@ void print_sd_before() {
 void print_sd_after(uint64_t vaddr) {
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr)) {
-      print((uint64_t*) " -> memory[");
+      print((uint64_t*) " -> mem[");
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
-      printRegisterDec(rs2);
+      printRegisterValue(rs2);
     }
 }
 
@@ -6027,9 +6034,9 @@ void print_beq() {
 
 void print_beq_before() {
   print((uint64_t*) ": ");
-  printRegisterDec(rs1);
+  printRegisterValue(rs1);
   print((uint64_t*) ",");
-  printRegisterDec(rs2);
+  printRegisterValue(rs2);
   print((uint64_t*) " |- $pc=");
   printHexadecimal(pc, 0);
 }
@@ -6064,7 +6071,7 @@ void print_jal() {
 void print_jal_before() {
   print((uint64_t*) ": |- ");
   if (rd != REG_ZR) {
-    printRegisterHex(rd);
+    printRegisterHexadecimal(rd);
     print((uint64_t*) ",");
   }
   print((uint64_t*) "$pc=");
@@ -6075,7 +6082,7 @@ void print_jal_jalr_after() {
   print_beq_after();
   if (rd != REG_ZR) {
     print((uint64_t*) ",");
-    printRegisterHex(rd);
+    printRegisterHexadecimal(rd);
   }
 }
 
@@ -6120,10 +6127,10 @@ void print_jalr() {
 
 void print_jalr_before() {
   print((uint64_t*) ": ");
-  printRegisterHex(rs1);
+  printRegisterHexadecimal(rs1);
   print((uint64_t*) " |- ");
   if (rd != REG_ZR) {
-    printRegisterHex(rd);
+    printRegisterHexadecimal(rd);
     print((uint64_t*) ",");
   }
   print((uint64_t*) "$pc=");
@@ -6165,16 +6172,36 @@ void execute_ecall() {
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
-void printRegisterHex(uint64_t r) {
+void printRegisterHexadecimal(uint64_t r) {
   printRegister(r);
   print((uint64_t*) "=");
   printHexadecimal(*(registers + r), 0);
 }
 
-void printRegisterDec(uint64_t r) {
-  printRegister(r);
-  print((uint64_t*) "=");
-  printInteger(*(registers + r));
+uint64_t isSystemRegister(uint64_t r) {
+  if (r == REG_GP)
+    return 1;
+  else if (r == REG_FP)
+    return 1;
+  else if (r == REG_RA)
+    return 1;
+  else if (r == REG_SP)
+    return 1;
+  else
+    return 0;
+}
+
+void printRegisterValue(uint64_t r) {
+  if (isSystemRegister(r))
+    printRegisterHexadecimal(r);
+  else {
+    printRegister(r);
+    print((uint64_t*) "=");
+    printInteger(*(registers + r));
+    print((uint64_t*) "(");
+    printHexadecimal(*(registers + r), 0);
+    print((uint64_t*) ")");
+  }
 }
 
 void printException(uint64_t exception, uint64_t faultingPage) {
