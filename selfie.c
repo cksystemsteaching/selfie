@@ -964,7 +964,8 @@ void initMemory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_instruction_context();
+void printSourceLineNumberOfInstruction(uint64_t a);
+void printInstructionContext();
 
 void print_lui();
 void print_lui_before();
@@ -5672,26 +5673,34 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_instruction_context() {
+void printSourceLineNumberOfInstruction(uint64_t a) {
+  if (sourceLineNumber != (uint64_t*) 0) {
+    print((uint64_t*) "(~");
+    if (interpret)
+      printInteger(*(sourceLineNumber + (a - *(ELF_header + 10)) / INSTRUCTIONSIZE));
+    else
+      printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
+    print((uint64_t*) ")");
+  }
+}
+
+void printInstructionContext() {
   if (interpret) {
     print(binaryName);
     print((uint64_t*) ": $pc=");
   }
-  printHexadecimal(pc, 0);
 
-  if (sourceLineNumber != (uint64_t*) 0) {
-    print((uint64_t*) "(~");
-    printInteger(*(sourceLineNumber + (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE));
-    print((uint64_t*) ")");
-  }
+  printHexadecimal(pc, 0);
+  printSourceLineNumberOfInstruction(pc);
 
   print((uint64_t*) ": ");
   printHexadecimal(ir, 8);
+
   print((uint64_t*) ": ");
 }
 
 void print_lui() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "lui ");
   printRegister(rd);
@@ -5720,7 +5729,7 @@ void execute_lui() {
 }
 
 void print_addi() {
-  print_instruction_context();
+  printInstructionContext();
 
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
@@ -5761,7 +5770,7 @@ void execute_addi() {
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
-  print_instruction_context();
+  printInstructionContext();
 
   print(mnemonics);
   print((uint64_t*) " ");
@@ -5862,7 +5871,7 @@ void execute_sltu() {
 }
 
 void print_ld() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "ld ");
   printRegister(rd);
@@ -5942,7 +5951,7 @@ uint64_t execute_ld() {
 }
 
 void print_sd() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "sd ");
   printRegister(rs2);
@@ -6020,7 +6029,7 @@ uint64_t execute_sd() {
 }
 
 void print_beq() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "beq ");
   printRegister(rs1);
@@ -6058,7 +6067,7 @@ void execute_beq() {
 }
 
 void print_jal() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "jal ");
   printRegister(rd);
@@ -6121,7 +6130,7 @@ void execute_jal() {
 }
 
 void print_jalr() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "jalr ");
   printRegister(rd);
@@ -6484,7 +6493,7 @@ void decode_execute() {
 
     if (funct3 == F3_ECALL) {
       if (debug) {
-        print_instruction_context();
+        printInstructionContext();
 
         print((uint64_t*) "ecall");
 
@@ -6590,11 +6599,7 @@ uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max) {
   if (ratio != 0) {
     print((uint64_t*) "@");
     printHexadecimal(a, 0);
-    if (sourceLineNumber != (uint64_t*) 0) {
-      print((uint64_t*) "(~");
-      printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
-      print((uint64_t*) ")");
-    }
+    printSourceLineNumberOfInstruction(a);
   }
 
   return ratio;
