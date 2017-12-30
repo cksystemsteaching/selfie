@@ -445,12 +445,12 @@ uint64_t reportUndefinedProcedures();
 
 uint64_t* getNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
 uint64_t* getString(uint64_t* entry)     { return (uint64_t*) *(entry + 1); }
-uint64_t  getLineNumber(uint64_t* entry) { return        *(entry + 2); }
-uint64_t  getClass(uint64_t* entry)      { return        *(entry + 3); }
-uint64_t  getType(uint64_t* entry)       { return        *(entry + 4); }
-uint64_t  getValue(uint64_t* entry)      { return        *(entry + 5); }
-uint64_t  getAddress(uint64_t* entry)    { return        *(entry + 6); }
-uint64_t  getScope(uint64_t* entry)      { return        *(entry + 7); }
+uint64_t  getLineNumber(uint64_t* entry) { return             *(entry + 2); }
+uint64_t  getClass(uint64_t* entry)      { return             *(entry + 3); }
+uint64_t  getType(uint64_t* entry)       { return             *(entry + 4); }
+uint64_t  getValue(uint64_t* entry)      { return             *(entry + 5); }
+uint64_t  getAddress(uint64_t* entry)    { return             *(entry + 6); }
+uint64_t  getScope(uint64_t* entry)      { return             *(entry + 7); }
 
 void setNextEntry(uint64_t* entry, uint64_t* next)    { *entry       = (uint64_t) next; }
 void setString(uint64_t* entry, uint64_t* identifier) { *(entry + 1) = (uint64_t) identifier; }
@@ -5681,7 +5681,7 @@ void print_instruction_context() {
 
   if (sourceLineNumber != (uint64_t*) 0) {
     print((uint64_t*) "(~");
-    printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
+    printInteger(*(sourceLineNumber + (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE));
     print((uint64_t*) ")");
   }
 
@@ -5912,6 +5912,7 @@ void print_ld_after(uint64_t vaddr) {
 
 uint64_t execute_ld() {
   uint64_t vaddr;
+  uint64_t a;
 
   // load double word
 
@@ -5926,7 +5927,9 @@ uint64_t execute_ld() {
       // keep track of number of loads
       loads = loads + 1;
 
-      *(loadsPerAddress + pc / INSTRUCTIONSIZE) = *(loadsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(loadsPerAddress + a) = *(loadsPerAddress + a) + 1;
 
       pc = pc + INSTRUCTIONSIZE;
     } else
@@ -5988,6 +5991,7 @@ void print_sd_after(uint64_t vaddr) {
 
 uint64_t execute_sd() {
   uint64_t vaddr;
+  uint64_t a;
 
   // store double word
 
@@ -6001,7 +6005,9 @@ uint64_t execute_sd() {
       // keep track of number of stores
       stores = stores + 1;
 
-      *(storesPerAddress + pc / INSTRUCTIONSIZE) = *(storesPerAddress + pc / INSTRUCTIONSIZE) + 1;
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(storesPerAddress + a) = *(storesPerAddress + a) + 1;
 
       pc = pc + INSTRUCTIONSIZE;
     } else
@@ -6082,6 +6088,8 @@ void print_jal_jalr_after() {
 }
 
 void execute_jal() {
+  uint64_t a;
+
   // jump and link
 
   if (rd != REG_ZR) {
@@ -6094,7 +6102,9 @@ void execute_jal() {
     // keep track of number of procedure calls
     calls = calls + 1;
 
-    *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+    *(callsPerAddress + a) = *(callsPerAddress + a) + 1;
   } else if (signedLessThan(imm, 0)) {
     // just jump backwards to check for another loop iteration
     pc = pc + imm;
@@ -6102,7 +6112,9 @@ void execute_jal() {
     // keep track of number of loop iterations
     loops = loops + 1;
 
-    *(loopsPerAddress + pc / INSTRUCTIONSIZE) = *(loopsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+    *(loopsPerAddress + a) = *(loopsPerAddress + a) + 1;
   } else
     // just jump forward
     pc = pc + imm;
@@ -6596,7 +6608,7 @@ void printProfile(uint64_t* message, uint64_t total, uint64_t* counters) {
     print(message);
     printInteger(total);
     print((uint64_t*) ",");
-    max = printCounters(total, counters, INT64_MAX); // max counter
+    max = printCounters(total, counters, UINT64_MAX); // max counter
     print((uint64_t*) ",");
     max = printCounters(total, counters, max); // 2nd max
     print((uint64_t*) ",");
