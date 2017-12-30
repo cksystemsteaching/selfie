@@ -1085,14 +1085,14 @@ uint64_t timer = 0; // counter for timer interrupt
 
 uint64_t trap = 0; // flag for creating a trap
 
-uint64_t  calls           = 0;              // total number of executed procedure calls
-uint64_t* callsPerAddress = (uint64_t*) 0;  // number of executed calls of each procedure
+uint64_t  calls            = 0;             // total number of executed procedure calls
+uint64_t* callsPerAddress  = (uint64_t*) 0; // number of executed calls of each procedure
 
-uint64_t  loops           = 0;              // total number of executed loop iterations
-uint64_t* loopsPerAddress = (uint64_t*) 0;  // number of executed iterations of each loop
+uint64_t  loops            = 0;             // total number of executed loop iterations
+uint64_t* loopsPerAddress  = (uint64_t*) 0; // number of executed iterations of each loop
 
-uint64_t  loads           = 0;              // total number of executed memory loads
-uint64_t* loadsPerAddress = (uint64_t*) 0;  // number of executed loads per load operation
+uint64_t  loads            = 0;             // total number of executed memory loads
+uint64_t* loadsPerAddress  = (uint64_t*) 0; // number of executed loads per load operation
 
 uint64_t  stores           = 0;             // total number of executed memory stores
 uint64_t* storesPerAddress = (uint64_t*) 0; // number of executed stores per store operation
@@ -4865,9 +4865,9 @@ void emitGlobalsStrings() {
       storeData(binaryLength, getValue(entry));
 
       binaryLength = binaryLength + REGISTERSIZE;
-    } else if (getClass(entry) == STRING) {
+    } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
-    } else if (getClass(entry) == BIGINT) {
+    else if (getClass(entry) == BIGINT) {
       storeData(binaryLength, getValue(entry));
 
       binaryLength = binaryLength + REGISTERSIZE;
@@ -5106,20 +5106,21 @@ void emitRead() {
 }
 
 void implementRead(uint64_t* context) {
-  uint64_t size;
-  uint64_t vaddr;
+  // parameters
   uint64_t fd;
+  uint64_t vbuffer;
+  uint64_t size;
+
+  // local variables
   uint64_t readTotal;
   uint64_t bytesToRead;
+  uint64_t failed;
   uint64_t* buffer;
   uint64_t actuallyRead;
-  uint64_t failed;
 
-  // assert: read buffer is mapped
-
-  size  = *(getRegs(context) + REG_A2);
-  fd    = *(getRegs(context) + REG_A0);
-  vaddr = *(getRegs(context) + REG_A1);
+  fd      = *(getRegs(context) + REG_A0);
+  vbuffer = *(getRegs(context) + REG_A1);
+  size    = *(getRegs(context) + REG_A2);
 
   if (debug_read) {
     print(selfieName);
@@ -5128,7 +5129,7 @@ void implementRead(uint64_t* context) {
     print((uint64_t*) " bytes from file with descriptor ");
     printInteger(fd);
     print((uint64_t*) " into buffer at virtual address ");
-    printHexadecimal(vaddr, 8);
+    printHexadecimal(vbuffer, 8);
     println();
   }
 
@@ -5138,9 +5139,9 @@ void implementRead(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(getPT(context), vaddr)) {
-        buffer = tlb(getPT(context), vaddr);
+    if (isValidVirtualAddress(vbuffer)) {
+      if (isVirtualAddressMapped(getPT(context), vbuffer)) {
+        buffer = tlb(getPT(context), vbuffer);
 
         if (size < bytesToRead)
           bytesToRead = size;
@@ -5153,7 +5154,7 @@ void implementRead(uint64_t* context) {
           size = size - actuallyRead;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFUINT64;
+            vbuffer = vbuffer + SIZEOFUINT64;
         } else {
           if (signedLessThan(0, actuallyRead))
             readTotal = readTotal + actuallyRead;
@@ -5168,7 +5169,7 @@ void implementRead(uint64_t* context) {
         if (debug_read) {
           print(selfieName);
           print((uint64_t*) ": reading into virtual address ");
-          printHexadecimal(vaddr, 8);
+          printHexadecimal(vbuffer, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
         }
@@ -5181,7 +5182,7 @@ void implementRead(uint64_t* context) {
       if (debug_read) {
         print(selfieName);
         print((uint64_t*) ": reading into virtual address ");
-        printHexadecimal(vaddr, 8);
+        printHexadecimal(vbuffer, 8);
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
@@ -5223,27 +5224,28 @@ void emitWrite() {
 }
 
 void implementWrite(uint64_t* context) {
-  uint64_t size;
-  uint64_t vaddr;
+  // parameters
   uint64_t fd;
+  uint64_t vbuffer;
+  uint64_t size;
+
+  // local variables
   uint64_t writtenTotal;
   uint64_t bytesToWrite;
+  uint64_t failed;
   uint64_t* buffer;
   uint64_t actuallyWritten;
-  uint64_t failed;
 
-  // assert: write buffer is mapped
-
-  size  = *(getRegs(context) + REG_A2);
-  fd    = *(getRegs(context) + REG_A0);
-  vaddr = *(getRegs(context) + REG_A1);
+  fd      = *(getRegs(context) + REG_A0);
+  vbuffer = *(getRegs(context) + REG_A1);
+  size    = *(getRegs(context) + REG_A2);
 
   if (debug_write) {
     print(selfieName);
     print((uint64_t*) ": trying to write ");
     printInteger(size);
     print((uint64_t*) " bytes from buffer at virtual address ");
-    printHexadecimal(vaddr, 8);
+    printHexadecimal(vbuffer, 8);
     print((uint64_t*) " into file with descriptor ");
     printInteger(fd);
     println();
@@ -5255,9 +5257,9 @@ void implementWrite(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(getPT(context), vaddr)) {
-        buffer = tlb(getPT(context), vaddr);
+    if (isValidVirtualAddress(vbuffer)) {
+      if (isVirtualAddressMapped(getPT(context), vbuffer)) {
+        buffer = tlb(getPT(context), vbuffer);
 
         if (size < bytesToWrite)
           bytesToWrite = size;
@@ -5270,7 +5272,7 @@ void implementWrite(uint64_t* context) {
           size = size - actuallyWritten;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFUINT64;
+            vbuffer = vbuffer + SIZEOFUINT64;
         } else {
           if (signedLessThan(0, actuallyWritten))
             writtenTotal = writtenTotal + actuallyWritten;
@@ -5285,7 +5287,7 @@ void implementWrite(uint64_t* context) {
         if (debug_write) {
           print(selfieName);
           print((uint64_t*) ": writing into virtual address ");
-          printHexadecimal(vaddr, 8);
+          printHexadecimal(vbuffer, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
         }
@@ -5298,7 +5300,7 @@ void implementWrite(uint64_t* context) {
       if (debug_write) {
         print(selfieName);
         print((uint64_t*) ": writing into virtual address ");
-        printHexadecimal(vaddr, 8);
+        printHexadecimal(vbuffer, 8);
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
@@ -5389,16 +5391,19 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 }
 
 void implementOpen(uint64_t* context) {
-  uint64_t mode;
+  // parameters
+  uint64_t vfilename;
   uint64_t flags;
-  uint64_t vaddr;
+  uint64_t mode;
+
+  // return value
   uint64_t fd;
 
-  mode  = *(getRegs(context) + REG_A2);
-  vaddr = *(getRegs(context) + REG_A0);
-  flags = *(getRegs(context) + REG_A1);
+  vfilename = *(getRegs(context) + REG_A0);
+  flags     = *(getRegs(context) + REG_A1);
+  mode      = *(getRegs(context) + REG_A2);
 
-  if (down_loadString(getPT(context), vaddr, filename_buffer)) {
+  if (down_loadString(getPT(context), vfilename, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
     *(getRegs(context) + REG_A0) = fd;
@@ -5421,7 +5426,7 @@ void implementOpen(uint64_t* context) {
     if (debug_open) {
       print(selfieName);
       print((uint64_t*) ": opening file with name at virtual address ");
-      printHexadecimal(vaddr, 8);
+      printHexadecimal(vfilename, 8);
       print((uint64_t*) " failed because the name is too long");
       println();
     }
@@ -5446,7 +5451,10 @@ void emitMalloc() {
 }
 
 uint64_t implementMalloc(uint64_t* context) {
+  // parameter
   uint64_t size;
+
+  // local variable
   uint64_t bump;
 
   size = *(getRegs(context) + REG_A0);
