@@ -735,15 +735,15 @@ void     decodeUFormat();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // opcodes
-uint64_t OP_LD     = 3;   // 0000011, IF (LD)
-uint64_t OP_IMM    = 19;  // 0010011, IF (ADDI, NOP)
-uint64_t OP_SD     = 35;  // 0100011, SF (SD)
-uint64_t OP_OP     = 51;  // 0110011, RF (ADD, SUB, MUL, DIVU, REMU, SLTU)
-uint64_t OP_LUI    = 55;  // 0110111, UT (LUI)
-uint64_t OP_BRANCH = 99;  // 1100011, BF (BEQ)
-uint64_t OP_JALR   = 103; // 1100111, IF (JALR)
-uint64_t OP_JAL    = 111; // 1101111, JF (JAL)
-uint64_t OP_SYSTEM = 115; // 1110011, IF (ECALL)
+uint64_t OP_LD     = 3;   // 0000011, I format (LD)
+uint64_t OP_IMM    = 19;  // 0010011, I format (ADDI, NOP)
+uint64_t OP_SD     = 35;  // 0100011, S format (SD)
+uint64_t OP_OP     = 51;  // 0110011, R format (ADD, SUB, MUL, DIVU, REMU, SLTU)
+uint64_t OP_LUI    = 55;  // 0110111, U format (LUI)
+uint64_t OP_BRANCH = 99;  // 1100011, B format (BEQ)
+uint64_t OP_JALR   = 103; // 1100111, I format (JALR)
+uint64_t OP_JAL    = 111; // 1101111, J format (JAL)
+uint64_t OP_SYSTEM = 115; // 1110011, I format (ECALL)
 
 // f3-codes
 uint64_t F3_NOP   = 0; // 000
@@ -837,18 +837,18 @@ uint64_t maxBinaryLength = 262144; // 256KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* binary = (uint64_t*) 0; // binary of emitted instructions
+uint64_t* binary = (uint64_t*) 0; // binary of emitted instructions and data segment
 
-uint64_t binaryLength = 0; // length of binary in bytes incl. globals & strings
+uint64_t binaryLength = 0; // length of binary in bytes including data segment
 
-uint64_t codeLength = 0; // length of code portion of binary in bytes
+uint64_t codeLength = 0; // length of code segment in binary in bytes
 
 uint64_t* binaryName = (uint64_t*) 0; // file name of binary
 
 uint64_t* sourceLineNumber = (uint64_t*) 0; // source line number per emitted instruction
 
 uint64_t* assemblyName = (uint64_t*) 0; // name of assembly file
-uint64_t  assemblyFD   = 0;        // file descriptor of open assembly file
+uint64_t  assemblyFD   = 0;             // file descriptor of open assembly file
 
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
@@ -1355,7 +1355,7 @@ uint64_t* dimacsName = (uint64_t*) 0;
 
 uint64_t numberOfSATVariables = 0;
 
- // numberOfSATVariables
+// numberOfSATVariables
 uint64_t* SATAssignment = (uint64_t*) 0;
 
 uint64_t numberOfSATClauses = 0;
