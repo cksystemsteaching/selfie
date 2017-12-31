@@ -1345,11 +1345,20 @@ void initKernel() {
 // -------------------------- SAT Solver ---------------------------
 // -----------------------------------------------------------------
 
+uint64_t clauseMayBeTrue(uint64_t* clauseAddress, uint64_t depth);
+uint64_t instanceMayBeTrue(uint64_t depth);
+
+uint64_t babysat(uint64_t depth);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
 uint64_t FALSE = 0;
 uint64_t TRUE  = 1;
 
 uint64_t UNSAT = 0;
 uint64_t SAT   = 1;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t* dimacsName = (uint64_t*) 0;
 
@@ -1362,11 +1371,6 @@ uint64_t numberOfSATClauses = 0;
 
 // numberOfSATClauses * 2 * numberOfSATVariables
 uint64_t* SATInstance = (uint64_t*) 0;
-
-uint64_t clauseMayBeTrue(uint64_t* clauseAddress, uint64_t depth);
-uint64_t instanceMayBeTrue(uint64_t depth);
-
-uint64_t babysat(uint64_t depth);
 
 // -----------------------------------------------------------------
 // ----------------------- DIMACS CNF PARSER -----------------------
