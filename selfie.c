@@ -445,12 +445,12 @@ uint64_t reportUndefinedProcedures();
 
 uint64_t* getNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
 uint64_t* getString(uint64_t* entry)     { return (uint64_t*) *(entry + 1); }
-uint64_t  getLineNumber(uint64_t* entry) { return        *(entry + 2); }
-uint64_t  getClass(uint64_t* entry)      { return        *(entry + 3); }
-uint64_t  getType(uint64_t* entry)       { return        *(entry + 4); }
-uint64_t  getValue(uint64_t* entry)      { return        *(entry + 5); }
-uint64_t  getAddress(uint64_t* entry)    { return        *(entry + 6); }
-uint64_t  getScope(uint64_t* entry)      { return        *(entry + 7); }
+uint64_t  getLineNumber(uint64_t* entry) { return             *(entry + 2); }
+uint64_t  getClass(uint64_t* entry)      { return             *(entry + 3); }
+uint64_t  getType(uint64_t* entry)       { return             *(entry + 4); }
+uint64_t  getValue(uint64_t* entry)      { return             *(entry + 5); }
+uint64_t  getAddress(uint64_t* entry)    { return             *(entry + 6); }
+uint64_t  getScope(uint64_t* entry)      { return             *(entry + 7); }
 
 void setNextEntry(uint64_t* entry, uint64_t* next)    { *entry       = (uint64_t) next; }
 void setString(uint64_t* entry, uint64_t* identifier) { *(entry + 1) = (uint64_t) identifier; }
@@ -735,15 +735,15 @@ void     decodeUFormat();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // opcodes
-uint64_t OP_LD     = 3;   // 0000011, IF (LD)
-uint64_t OP_IMM    = 19;  // 0010011, IF (ADDI, NOP)
-uint64_t OP_SD     = 35;  // 0100011, SF (SD)
-uint64_t OP_OP     = 51;  // 0110011, RF (ADD, SUB, MUL, DIVU, REMU, SLTU)
-uint64_t OP_LUI    = 55;  // 0110111, UT (LUI)
-uint64_t OP_BRANCH = 99;  // 1100011, BF (BEQ)
-uint64_t OP_JALR   = 103; // 1100111, IF (JALR)
-uint64_t OP_JAL    = 111; // 1101111, JF (JAL)
-uint64_t OP_SYSTEM = 115; // 1110011, IF (ECALL)
+uint64_t OP_LD     = 3;   // 0000011, I format (LD)
+uint64_t OP_IMM    = 19;  // 0010011, I format (ADDI, NOP)
+uint64_t OP_SD     = 35;  // 0100011, S format (SD)
+uint64_t OP_OP     = 51;  // 0110011, R format (ADD, SUB, MUL, DIVU, REMU, SLTU)
+uint64_t OP_LUI    = 55;  // 0110111, U format (LUI)
+uint64_t OP_BRANCH = 99;  // 1100011, B format (BEQ)
+uint64_t OP_JALR   = 103; // 1100111, I format (JALR)
+uint64_t OP_JAL    = 111; // 1101111, J format (JAL)
+uint64_t OP_SYSTEM = 115; // 1110011, I format (ECALL)
 
 // f3-codes
 uint64_t F3_NOP   = 0; // 000
@@ -837,18 +837,18 @@ uint64_t maxBinaryLength = 262144; // 256KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* binary = (uint64_t*) 0; // binary of emitted instructions
+uint64_t* binary = (uint64_t*) 0; // binary of emitted instructions and data segment
 
-uint64_t binaryLength = 0; // length of binary in bytes incl. globals & strings
+uint64_t binaryLength = 0; // length of binary in bytes including data segment
 
-uint64_t codeLength = 0; // length of code portion of binary in bytes
+uint64_t codeLength = 0; // length of code segment in binary in bytes
 
 uint64_t* binaryName = (uint64_t*) 0; // file name of binary
 
 uint64_t* sourceLineNumber = (uint64_t*) 0; // source line number per emitted instruction
 
 uint64_t* assemblyName = (uint64_t*) 0; // name of assembly file
-uint64_t  assemblyFD   = 0;        // file descriptor of open assembly file
+uint64_t  assemblyFD   = 0;             // file descriptor of open assembly file
 
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
@@ -864,7 +864,7 @@ void emitWrite();
 void implementWrite(uint64_t* context);
 
 void     emitOpen();
-uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s);
+uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s);
 void     implementOpen(uint64_t* context);
 
 void     emitMalloc();
@@ -964,15 +964,17 @@ void initMemory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_instruction_context();
+void printSourceLineNumberOfInstruction(uint64_t a);
+void printInstructionContext();
 
 void print_lui();
 void print_lui_before();
-void print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+void print_lui_after();
 void execute_lui();
 
 void print_addi();
 void print_addi_before();
+void print_addi_add_sub_mul_divu_remu_sltu_after();
 void execute_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
@@ -1002,12 +1004,11 @@ void execute_beq();
 
 void print_jal();
 void print_jal_before();
-void print_jal_after();
+void print_jal_jalr_after();
 void execute_jal();
 
 void print_jalr();
 void print_jalr_before();
-void print_jalr_after();
 void execute_jalr();
 
 void execute_ecall();
@@ -1022,6 +1023,10 @@ uint64_t debug_divisionByZero = 1;
 
 void initInterpreter();
 void resetInterpreter();
+
+void     printRegisterHexadecimal(uint64_t r);
+uint64_t isSystemRegister(uint64_t r);
+void     printRegisterValue(uint64_t r);
 
 void printException(uint64_t exception, uint64_t faultingPage);
 void throwException(uint64_t exception, uint64_t faultingPage);
@@ -1080,14 +1085,14 @@ uint64_t timer = 0; // counter for timer interrupt
 
 uint64_t trap = 0; // flag for creating a trap
 
-uint64_t  calls           = 0;              // total number of executed procedure calls
-uint64_t* callsPerAddress = (uint64_t*) 0;  // number of executed calls of each procedure
+uint64_t  calls            = 0;             // total number of executed procedure calls
+uint64_t* callsPerAddress  = (uint64_t*) 0; // number of executed calls of each procedure
 
-uint64_t  loops           = 0;              // total number of executed loop iterations
-uint64_t* loopsPerAddress = (uint64_t*) 0;  // number of executed iterations of each loop
+uint64_t  loops            = 0;             // total number of executed loop iterations
+uint64_t* loopsPerAddress  = (uint64_t*) 0; // number of executed iterations of each loop
 
-uint64_t  loads           = 0;              // total number of executed memory loads
-uint64_t* loadsPerAddress = (uint64_t*) 0;  // number of executed loads per load operation
+uint64_t  loads            = 0;             // total number of executed memory loads
+uint64_t* loadsPerAddress  = (uint64_t*) 0; // number of executed loads per load operation
 
 uint64_t  stores           = 0;             // total number of executed memory stores
 uint64_t* storesPerAddress = (uint64_t*) 0; // number of executed stores per store operation
@@ -1153,13 +1158,14 @@ uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 // |  5 | loPage         | lowest low unmapped page
 // |  6 | mePage         | highest low unmapped page
 // |  7 | hiPage         | highest high unmapped page
-// |  8 | brk            | break between code, data, and heap
-// |  9 | exception      | exception ID
-// | 10 | faultingPage   | faulting page
-// | 11 | exitCode       | exit code
-// | 12 | parent         | context that created this context
-// | 13 | virtualContext | virtual context address
-// | 14 | name           | binary name loaded into context
+// |  8 | program break  | program break between code, data, and heap
+// |  9 | bump pointer   | bump pointer for malloc
+// | 10 | exception      | exception ID
+// | 11 | faultingPage   | faulting page
+// | 12 | exitCode       | exit code
+// | 13 | parent         | context that created this context
+// | 14 | virtualContext | virtual context address
+// | 15 | name           | binary name loaded into context
 // +----+----------------+
 
 uint64_t nextContext(uint64_t* context)    { return (uint64_t) context; }
@@ -1171,12 +1177,13 @@ uint64_t LoPage(uint64_t* context)         { return (uint64_t) (context + 5); }
 uint64_t MePage(uint64_t* context)         { return (uint64_t) (context + 6); }
 uint64_t HiPage(uint64_t* context)         { return (uint64_t) (context + 7); }
 uint64_t ProgramBreak(uint64_t* context)   { return (uint64_t) (context + 8); }
-uint64_t Exception(uint64_t* context)      { return (uint64_t) (context + 9); }
-uint64_t FaultingPage(uint64_t* context)   { return (uint64_t) (context + 10); }
-uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 11); }
-uint64_t Parent(uint64_t* context)         { return (uint64_t) (context + 12); }
-uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 13); }
-uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 14); }
+uint64_t BumpPointer(uint64_t* context)    { return (uint64_t) (context + 9); }
+uint64_t Exception(uint64_t* context)      { return (uint64_t) (context + 10); }
+uint64_t FaultingPage(uint64_t* context)   { return (uint64_t) (context + 11); }
+uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 12); }
+uint64_t Parent(uint64_t* context)         { return (uint64_t) (context + 13); }
+uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 14); }
+uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 15); }
 
 uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1187,12 +1194,13 @@ uint64_t  getLoPage(uint64_t* context)         { return             *(context + 
 uint64_t  getMePage(uint64_t* context)         { return             *(context + 6); }
 uint64_t  getHiPage(uint64_t* context)         { return             *(context + 7); }
 uint64_t  getProgramBreak(uint64_t* context)   { return             *(context + 8); }
-uint64_t  getException(uint64_t* context)      { return             *(context + 9); }
-uint64_t  getFaultingPage(uint64_t* context)   { return             *(context + 10); }
-uint64_t  getExitCode(uint64_t* context)       { return             *(context + 11); }
-uint64_t* getParent(uint64_t* context)         { return (uint64_t*) *(context + 12); }
-uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 13); }
-uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 14); }
+uint64_t  getBumpPointer(uint64_t* context)    { return             *(context + 9); }
+uint64_t  getException(uint64_t* context)      { return             *(context + 10); }
+uint64_t  getFaultingPage(uint64_t* context)   { return             *(context + 11); }
+uint64_t  getExitCode(uint64_t* context)       { return             *(context + 12); }
+uint64_t* getParent(uint64_t* context)         { return (uint64_t*) *(context + 13); }
+uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 14); }
+uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 15); }
 
 void setNextContext(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
 void setPrevContext(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
@@ -1203,12 +1211,13 @@ void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 5)  = l
 void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 6)  = mePage; }
 void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 7)  = hiPage; }
 void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 8) = brk; }
-void setException(uint64_t* context, uint64_t exception)   { *(context + 9) = exception; }
-void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 10) = page; }
-void setExitCode(uint64_t* context, uint64_t code)         { *(context + 11) = code; }
-void setParent(uint64_t* context, uint64_t* parent)        { *(context + 12) = (uint64_t) parent; }
-void setVirtualContext(uint64_t* context, uint64_t* vctxt) { *(context + 13) = (uint64_t) vctxt; }
-void setName(uint64_t* context, uint64_t* name)            { *(context + 14) = (uint64_t) name; }
+void setBumpPointer(uint64_t* context, uint64_t brk)       { *(context + 9) = brk; }
+void setException(uint64_t* context, uint64_t exception)   { *(context + 10) = exception; }
+void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 11) = page; }
+void setExitCode(uint64_t* context, uint64_t code)         { *(context + 12) = code; }
+void setParent(uint64_t* context, uint64_t* parent)        { *(context + 13) = (uint64_t) parent; }
+void setVirtualContext(uint64_t* context, uint64_t* vctxt) { *(context + 14) = (uint64_t) vctxt; }
+void setName(uint64_t* context, uint64_t* name)            { *(context + 15) = (uint64_t) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1336,28 +1345,32 @@ void initKernel() {
 // -------------------------- SAT Solver ---------------------------
 // -----------------------------------------------------------------
 
+uint64_t clauseMayBeTrue(uint64_t* clauseAddress, uint64_t depth);
+uint64_t instanceMayBeTrue(uint64_t depth);
+
+uint64_t babysat(uint64_t depth);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
 uint64_t FALSE = 0;
 uint64_t TRUE  = 1;
 
 uint64_t UNSAT = 0;
 uint64_t SAT   = 1;
 
+// ------------------------ GLOBAL VARIABLES -----------------------
+
 uint64_t* dimacsName = (uint64_t*) 0;
 
 uint64_t numberOfSATVariables = 0;
 
- // numberOfSATVariables
+// numberOfSATVariables
 uint64_t* SATAssignment = (uint64_t*) 0;
 
 uint64_t numberOfSATClauses = 0;
 
 // numberOfSATClauses * 2 * numberOfSATVariables
 uint64_t* SATInstance = (uint64_t*) 0;
-
-uint64_t clauseMayBeTrue(uint64_t* clauseAddress, uint64_t depth);
-uint64_t instanceMayBeTrue(uint64_t depth);
-
-uint64_t babysat(uint64_t depth);
 
 // -----------------------------------------------------------------
 // ----------------------- DIMACS CNF PARSER -----------------------
@@ -4862,9 +4875,9 @@ void emitGlobalsStrings() {
       storeData(binaryLength, getValue(entry));
 
       binaryLength = binaryLength + REGISTERSIZE;
-    } else if (getClass(entry) == STRING) {
+    } else if (getClass(entry) == STRING)
       binaryLength = copyStringToBinary(getString(entry), binaryLength);
-    } else if (getClass(entry) == BIGINT) {
+    else if (getClass(entry) == BIGINT) {
       storeData(binaryLength, getValue(entry));
 
       binaryLength = binaryLength + REGISTERSIZE;
@@ -4999,7 +5012,7 @@ void selfie_load() {
     exit(EXITCODE_IOERROR);
   }
 
-  // make sure binary is mapped
+  // make sure binary is mapped for reading into it
   binary = touch(smalloc(maxBinaryLength), maxBinaryLength);
 
   binaryLength = 0;
@@ -5008,19 +5021,16 @@ void selfie_load() {
   // no source line numbers in binaries
   sourceLineNumber = (uint64_t*) 0;
 
+  // make sure ELF_header is mapped for reading into it
   ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 
-  // assert: ELF_header is mapped
-
-  // read elf header first
+  // read ELF_header first
   numberOfReadBytes = read(fd, ELF_header, ELF_HEADER_LEN);
 
   if (numberOfReadBytes == ELF_HEADER_LEN) {
     codeLength = *(ELF_header + 12);
 
     if (codeLength <= maxBinaryLength) {
-      // assert: binary is mapped
-
       // now read binary including global variables and strings
       numberOfReadBytes = signExtend(read(fd, binary, codeLength), SYSCALL_BITWIDTH);
 
@@ -5072,7 +5082,7 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  setExitCode(context, signShrink(*(getRegs(context)+REG_A0), SYSCALL_BITWIDTH));
+  setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -5080,7 +5090,7 @@ void implementExit(uint64_t* context) {
   print((uint64_t*) " exiting with exit code ");
   printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
   print((uint64_t*) " and ");
-  printFixedPointRatio(getProgramBreak(context) - maxBinaryLength, MEGABYTE);
+  printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
   print((uint64_t*) "MB of mallocated memory");
   println();
 }
@@ -5106,20 +5116,21 @@ void emitRead() {
 }
 
 void implementRead(uint64_t* context) {
-  uint64_t size;
-  uint64_t vaddr;
+  // parameters
   uint64_t fd;
+  uint64_t vbuffer;
+  uint64_t size;
+
+  // local variables
   uint64_t readTotal;
   uint64_t bytesToRead;
+  uint64_t failed;
   uint64_t* buffer;
   uint64_t actuallyRead;
-  uint64_t failed;
 
-  // assert: read buffer is mapped
-
-  size  = *(getRegs(context)+REG_A2);
-  fd    = *(getRegs(context)+REG_A0);
-  vaddr = *(getRegs(context)+REG_A1);
+  fd      = *(getRegs(context) + REG_A0);
+  vbuffer = *(getRegs(context) + REG_A1);
+  size    = *(getRegs(context) + REG_A2);
 
   if (debug_read) {
     print(selfieName);
@@ -5128,7 +5139,7 @@ void implementRead(uint64_t* context) {
     print((uint64_t*) " bytes from file with descriptor ");
     printInteger(fd);
     print((uint64_t*) " into buffer at virtual address ");
-    printHexadecimal(vaddr, 8);
+    printHexadecimal(vbuffer, 8);
     println();
   }
 
@@ -5138,9 +5149,9 @@ void implementRead(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(getPT(context), vaddr)) {
-        buffer = tlb(getPT(context), vaddr);
+    if (isValidVirtualAddress(vbuffer)) {
+      if (isVirtualAddressMapped(getPT(context), vbuffer)) {
+        buffer = tlb(getPT(context), vbuffer);
 
         if (size < bytesToRead)
           bytesToRead = size;
@@ -5153,7 +5164,7 @@ void implementRead(uint64_t* context) {
           size = size - actuallyRead;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFUINT64;
+            vbuffer = vbuffer + SIZEOFUINT64;
         } else {
           if (signedLessThan(0, actuallyRead))
             readTotal = readTotal + actuallyRead;
@@ -5168,7 +5179,7 @@ void implementRead(uint64_t* context) {
         if (debug_read) {
           print(selfieName);
           print((uint64_t*) ": reading into virtual address ");
-          printHexadecimal(vaddr, 8);
+          printHexadecimal(vbuffer, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
         }
@@ -5181,7 +5192,7 @@ void implementRead(uint64_t* context) {
       if (debug_read) {
         print(selfieName);
         print((uint64_t*) ": reading into virtual address ");
-        printHexadecimal(vaddr, 8);
+        printHexadecimal(vbuffer, 8);
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
@@ -5189,9 +5200,9 @@ void implementRead(uint64_t* context) {
   }
 
   if (failed == 0)
-    *(getRegs(context)+REG_A0) = readTotal;
+    *(getRegs(context) + REG_A0) = readTotal;
   else
-    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (debug_read) {
     print(selfieName);
@@ -5223,27 +5234,28 @@ void emitWrite() {
 }
 
 void implementWrite(uint64_t* context) {
-  uint64_t size;
-  uint64_t vaddr;
+  // parameters
   uint64_t fd;
+  uint64_t vbuffer;
+  uint64_t size;
+
+  // local variables
   uint64_t writtenTotal;
   uint64_t bytesToWrite;
+  uint64_t failed;
   uint64_t* buffer;
   uint64_t actuallyWritten;
-  uint64_t failed;
 
-  // assert: write buffer is mapped
-
-  size  = *(getRegs(context)+REG_A2);
-  fd    = *(getRegs(context)+REG_A0);
-  vaddr = *(getRegs(context)+REG_A1);
+  fd      = *(getRegs(context) + REG_A0);
+  vbuffer = *(getRegs(context) + REG_A1);
+  size    = *(getRegs(context) + REG_A2);
 
   if (debug_write) {
     print(selfieName);
     print((uint64_t*) ": trying to write ");
     printInteger(size);
     print((uint64_t*) " bytes from buffer at virtual address ");
-    printHexadecimal(vaddr, 8);
+    printHexadecimal(vbuffer, 8);
     print((uint64_t*) " into file with descriptor ");
     printInteger(fd);
     println();
@@ -5255,9 +5267,9 @@ void implementWrite(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(getPT(context), vaddr)) {
-        buffer = tlb(getPT(context), vaddr);
+    if (isValidVirtualAddress(vbuffer)) {
+      if (isVirtualAddressMapped(getPT(context), vbuffer)) {
+        buffer = tlb(getPT(context), vbuffer);
 
         if (size < bytesToWrite)
           bytesToWrite = size;
@@ -5270,7 +5282,7 @@ void implementWrite(uint64_t* context) {
           size = size - actuallyWritten;
 
           if (size > 0)
-            vaddr = vaddr + SIZEOFUINT64;
+            vbuffer = vbuffer + SIZEOFUINT64;
         } else {
           if (signedLessThan(0, actuallyWritten))
             writtenTotal = writtenTotal + actuallyWritten;
@@ -5285,7 +5297,7 @@ void implementWrite(uint64_t* context) {
         if (debug_write) {
           print(selfieName);
           print((uint64_t*) ": writing into virtual address ");
-          printHexadecimal(vaddr, 8);
+          printHexadecimal(vbuffer, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
         }
@@ -5298,7 +5310,7 @@ void implementWrite(uint64_t* context) {
       if (debug_write) {
         print(selfieName);
         print((uint64_t*) ": writing into virtual address ");
-        printHexadecimal(vaddr, 8);
+        printHexadecimal(vbuffer, 8);
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
@@ -5306,9 +5318,9 @@ void implementWrite(uint64_t* context) {
   }
 
   if (failed == 0)
-    *(getRegs(context)+REG_A0) = writtenTotal;
+    *(getRegs(context) + REG_A0) = writtenTotal;
   else
-    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (debug_write) {
     print(selfieName);
@@ -5339,37 +5351,42 @@ void emitOpen() {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
-uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
+uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
   uint64_t i;
   uint64_t j;
-  uint64_t* paddr;
+
+  // physical address of string
+  uint64_t* pstring;
 
   i = 0;
 
   while (i < maxFilenameLength / SIZEOFUINT64) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(table, vaddr)) {
-        paddr = tlb(table, vaddr);
+    if (isValidVirtualAddress(vstring)) {
+      if (isVirtualAddressMapped(table, vstring)) {
+        pstring = tlb(table, vstring);
 
-        *(s + i) = loadPhysicalMemory(paddr);
+        *(s + i) = loadPhysicalMemory(pstring);
 
         j = 0;
 
+        // check if string ends in the current machine word
         while (j < SIZEOFUINT64) {
-          if (loadCharacter(paddr, j) == 0)
+          if (loadCharacter(pstring, j) == 0)
             return 1;
 
           j = j + 1;
         }
 
-        vaddr = vaddr + SIZEOFUINT64;
+        // advance to the next machine word in virtual memory
+        vstring = vstring + SIZEOFUINT64;
 
+        // advance to the next machine word in our memory
         i = i + 1;
       } else {
         if (debug_open) {
           print(selfieName);
           print((uint64_t*) ": opening file with name at virtual address ");
-          printHexadecimal(vaddr, 8);
+          printHexadecimal(vstring, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
         }
@@ -5378,7 +5395,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
       if (debug_open) {
         print(selfieName);
         print((uint64_t*) ": opening file with name at virtual address ");
-        printHexadecimal(vaddr, 8);
+        printHexadecimal(vstring, 8);
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
@@ -5389,19 +5406,22 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 }
 
 void implementOpen(uint64_t* context) {
-  uint64_t mode;
+  // parameters
+  uint64_t vfilename;
   uint64_t flags;
-  uint64_t vaddr;
+  uint64_t mode;
+
+  // return value
   uint64_t fd;
 
-  mode  = *(getRegs(context)+REG_A2);
-  vaddr = *(getRegs(context)+REG_A0);
-  flags = *(getRegs(context)+REG_A1);
+  vfilename = *(getRegs(context) + REG_A0);
+  flags     = *(getRegs(context) + REG_A1);
+  mode      = *(getRegs(context) + REG_A2);
 
-  if (down_loadString(getPT(context), vaddr, filename_buffer)) {
+  if (down_loadString(getPT(context), vfilename, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
-    *(getRegs(context)+REG_A0) = fd;
+    *(getRegs(context) + REG_A0) = fd;
 
     if (debug_open) {
       print(selfieName);
@@ -5416,12 +5436,12 @@ void implementOpen(uint64_t* context) {
       println();
     }
   } else {
-    *(getRegs(context)+REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open) {
       print(selfieName);
       print((uint64_t*) ": opening file with name at virtual address ");
-      printHexadecimal(vaddr, 8);
+      printHexadecimal(vfilename, 8);
       print((uint64_t*) " failed because the name is too long");
       println();
     }
@@ -5446,32 +5466,33 @@ void emitMalloc() {
 }
 
 uint64_t implementMalloc(uint64_t* context) {
+  // parameter
   uint64_t size;
+
+  // local variable
   uint64_t bump;
-  uint64_t stackptr;
+
+  size = *(getRegs(context) + REG_A0);
 
   if (debug_malloc) {
     print(selfieName);
     print((uint64_t*) ": trying to malloc ");
-    printInteger(*(getRegs(context)+REG_A0));
-    print((uint64_t*) " bytes");
+    printInteger(size);
+    print((uint64_t*) " bytes net");
     println();
   }
 
-  size = roundUp(*(getRegs(context)+REG_A0), SIZEOFUINT64);
+  size = roundUp(size, SIZEOFUINT64);
+  bump = getBumpPointer(context);
 
-  bump = getProgramBreak(context);
-
-  stackptr = *(getRegs(context)+REG_SP);
-
-  if (size > stackptr - bump) {
+  if (bump + size > *(getRegs(context) + REG_SP)) {
     setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
 
     return EXIT;
   } else {
-    *(getRegs(context)+REG_A0) = bump;
+    *(getRegs(context) + REG_A0) = bump;
 
-    setProgramBreak(context, bump + size);
+    setBumpPointer(context, bump + size);
 
     if (debug_malloc) {
       print(selfieName);
@@ -5523,9 +5544,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
   if (getParent(fromContext) != MY_CONTEXT)
-    *(registers+REG_A1) = (uint64_t) getVirtualContext(fromContext);
+    *(registers + REG_A1) = (uint64_t) getVirtualContext(fromContext);
   else
-    *(registers+REG_A1) = (uint64_t) fromContext;
+    *(registers + REG_A1) = (uint64_t) fromContext;
 
   currentContext = toContext;
 
@@ -5550,7 +5571,7 @@ void implementSwitch() {
   saveContext(currentContext);
 
   // cache context on my boot level before switching
-  doSwitch(cacheContext((uint64_t*) *(registers+REG_A0)), *(registers+REG_A1));
+  doSwitch(cacheContext((uint64_t*) *(registers + REG_A0)), *(registers + REG_A1));
 }
 
 uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout) {
@@ -5675,26 +5696,34 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_instruction_context() {
+void printSourceLineNumberOfInstruction(uint64_t a) {
+  if (sourceLineNumber != (uint64_t*) 0) {
+    print((uint64_t*) "(~");
+    if (interpret)
+      printInteger(*(sourceLineNumber + (a - *(ELF_header + 10)) / INSTRUCTIONSIZE));
+    else
+      printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
+    print((uint64_t*) ")");
+  }
+}
+
+void printInstructionContext() {
   if (interpret) {
     print(binaryName);
     print((uint64_t*) ": $pc=");
   }
-  printHexadecimal(pc, 0);
 
-  if (sourceLineNumber != (uint64_t*) 0) {
-    print((uint64_t*) "(~");
-    printInteger(*(sourceLineNumber + pc / INSTRUCTIONSIZE));
-    print((uint64_t*) ")");
-  }
+  printHexadecimal(pc, 0);
+  printSourceLineNumberOfInstruction(pc);
 
   print((uint64_t*) ": ");
   printHexadecimal(ir, 8);
+
   print((uint64_t*) ": ");
 }
 
 void print_lui() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "lui ");
   printRegister(rd);
@@ -5703,19 +5732,13 @@ void print_lui() {
 }
 
 void print_lui_before() {
-  print((uint64_t*) ": ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rd), 0);
+  print((uint64_t*) ": |- ");
+  printRegisterHexadecimal(rd);
 }
 
-void print_lui_addi_add_sub_mul_divu_remu_sltu_after() {
+void print_lui_after() {
   print((uint64_t*) " -> ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rd), 0);
+  printRegisterHexadecimal(rd);
 }
 
 void execute_lui() {
@@ -5729,7 +5752,7 @@ void execute_lui() {
 }
 
 void print_addi() {
-  print_instruction_context();
+  printInstructionContext();
 
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
@@ -5749,16 +5772,14 @@ void print_addi() {
 
 void print_addi_before() {
   print((uint64_t*) ": ");
+  printRegisterValue(rs1);
+  print((uint64_t*) " |- ");
+  printRegisterValue(rd);
+}
 
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
-
-  print((uint64_t*) ",");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs1));
+void print_addi_add_sub_mul_divu_remu_sltu_after() {
+  print((uint64_t*) " -> ");
+  printRegisterValue(rd);
 }
 
 void execute_addi() {
@@ -5772,7 +5793,7 @@ void execute_addi() {
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
-  print_instruction_context();
+  printInstructionContext();
 
   print(mnemonics);
   print((uint64_t*) " ");
@@ -5785,22 +5806,11 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
 
 void print_add_sub_mul_divu_remu_sltu_before() {
   print((uint64_t*) ": ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
-
+  printRegisterValue(rs1);
   print((uint64_t*) ",");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs1));
-
-  print((uint64_t*) ",");
-
-  printRegister(rs2);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs2));
+  printRegisterValue(rs2);
+  print((uint64_t*) " |- ");
+  printRegisterValue(rd);
 }
 
 void execute_add() {
@@ -5884,7 +5894,7 @@ void execute_sltu() {
 }
 
 void print_ld() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "ld ");
   printRegister(rd);
@@ -5896,32 +5906,45 @@ void print_ld() {
 }
 
 void print_ld_before() {
+  uint64_t vaddr;
+
+  vaddr = *(registers + rs1) + imm;
+
   print((uint64_t*) ": ");
+  printRegisterHexadecimal(rs1);
 
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) ",mem[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]=");
+      if (isSystemRegister(rd))
+        printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
+      else
+        printInteger(loadVirtualMemory(pt, vaddr));
+      print((uint64_t*) " |- ");
+      printRegisterValue(rd);
 
-  print((uint64_t*) ",");
+      return;
+    }
 
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rs1), 0);
+  print((uint64_t*) " |-");
 }
 
 void print_ld_after(uint64_t vaddr) {
-  print((uint64_t*) " -> ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rd));
-  print((uint64_t*) "=memory[");
-  printHexadecimal(vaddr, 0);
-  print((uint64_t*) "]");
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) " -> ");
+      printRegisterValue(rd);
+      print((uint64_t*) "=mem[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]");
+    }
 }
 
 uint64_t execute_ld() {
   uint64_t vaddr;
+  uint64_t a;
 
   // load double word
 
@@ -5936,7 +5959,9 @@ uint64_t execute_ld() {
       // keep track of number of loads
       loads = loads + 1;
 
-      *(loadsPerAddress + pc / INSTRUCTIONSIZE) = *(loadsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(loadsPerAddress + a) = *(loadsPerAddress + a) + 1;
 
       pc = pc + INSTRUCTIONSIZE;
     } else
@@ -5949,7 +5974,7 @@ uint64_t execute_ld() {
 }
 
 void print_sd() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "sd ");
   printRegister(rs2);
@@ -5961,30 +5986,44 @@ void print_sd() {
 }
 
 void print_sd_before() {
+  uint64_t vaddr;
+
+  vaddr = *(registers + rs1) + imm;
+
   print((uint64_t*) ": ");
+  printRegisterHexadecimal(rs1);
 
-  printRegister(rs2);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs2));
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) ",");
+      printRegisterValue(rs2);
+      print((uint64_t*) " |- mem[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]=");
+      if (isSystemRegister(rd))
+        printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
+      else
+        printInteger(loadVirtualMemory(pt, vaddr));
 
-  print((uint64_t*) ",");
+      return;
+    }
 
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rs1), 0);
+  print((uint64_t*) " |-");
 }
 
 void print_sd_after(uint64_t vaddr) {
-  print((uint64_t*) " -> memory[");
-  printHexadecimal(vaddr, 0);
-  print((uint64_t*) "]=");
-  printInteger(*(registers + rs2));
-  print((uint64_t*) "=");
-  printRegister(rs2);
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      print((uint64_t*) " -> mem[");
+      printHexadecimal(vaddr, 0);
+      print((uint64_t*) "]=");
+      printRegisterValue(rs2);
+    }
 }
 
 uint64_t execute_sd() {
   uint64_t vaddr;
+  uint64_t a;
 
   // store double word
 
@@ -5998,7 +6037,9 @@ uint64_t execute_sd() {
       // keep track of number of stores
       stores = stores + 1;
 
-      *(storesPerAddress + pc / INSTRUCTIONSIZE) = *(storesPerAddress + pc / INSTRUCTIONSIZE) + 1;
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(storesPerAddress + a) = *(storesPerAddress + a) + 1;
 
       pc = pc + INSTRUCTIONSIZE;
     } else
@@ -6011,7 +6052,7 @@ uint64_t execute_sd() {
 }
 
 void print_beq() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "beq ");
   printRegister(rs1);
@@ -6026,16 +6067,11 @@ void print_beq() {
 
 void print_beq_before() {
   print((uint64_t*) ": ");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs1));
-
+  printRegisterValue(rs1);
   print((uint64_t*) ",");
-
-  printRegister(rs2);
-  print((uint64_t*) "=");
-  printInteger(*(registers + rs2));
+  printRegisterValue(rs2);
+  print((uint64_t*) " |- $pc=");
+  printHexadecimal(pc, 0);
 }
 
 void print_beq_after() {
@@ -6054,7 +6090,7 @@ void execute_beq() {
 }
 
 void print_jal() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "jal ");
   printRegister(rd);
@@ -6066,33 +6102,26 @@ void print_jal() {
 }
 
 void print_jal_before() {
-  if (rd == REG_ZR)
-    print((uint64_t*) ":");
-  else {
-    print((uint64_t*) ": ");
-
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printHexadecimal(*(registers + rd), 0);
-  }
-}
-
-void print_jal_after() {
-  print((uint64_t*) " -> ");
-
+  print((uint64_t*) ": |- ");
   if (rd != REG_ZR) {
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printHexadecimal(*(registers + rd), 0);
-
+    printRegisterHexadecimal(rd);
     print((uint64_t*) ",");
   }
-
   print((uint64_t*) "$pc=");
   printHexadecimal(pc, 0);
 }
 
+void print_jal_jalr_after() {
+  print_beq_after();
+  if (rd != REG_ZR) {
+    print((uint64_t*) ",");
+    printRegisterHexadecimal(rd);
+  }
+}
+
 void execute_jal() {
+  uint64_t a;
+
   // jump and link
 
   if (rd != REG_ZR) {
@@ -6105,7 +6134,9 @@ void execute_jal() {
     // keep track of number of procedure calls
     calls = calls + 1;
 
-    *(callsPerAddress + pc / INSTRUCTIONSIZE) = *(callsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+    *(callsPerAddress + a) = *(callsPerAddress + a) + 1;
   } else if (signedLessThan(imm, 0)) {
     // just jump backwards to check for another loop iteration
     pc = pc + imm;
@@ -6113,14 +6144,16 @@ void execute_jal() {
     // keep track of number of loop iterations
     loops = loops + 1;
 
-    *(loopsPerAddress + pc / INSTRUCTIONSIZE) = *(loopsPerAddress + pc / INSTRUCTIONSIZE) + 1;
+    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+    *(loopsPerAddress + a) = *(loopsPerAddress + a) + 1;
   } else
     // just jump forward
     pc = pc + imm;
 }
 
 void print_jalr() {
-  print_instruction_context();
+  printInstructionContext();
 
   print((uint64_t*) "jalr ");
   printRegister(rd);
@@ -6133,28 +6166,14 @@ void print_jalr() {
 
 void print_jalr_before() {
   print((uint64_t*) ": ");
-
-  printRegister(rd);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rd), 0);
-
-  print((uint64_t*) ",");
-
-  printRegister(rs1);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + rs1), 0);
-}
-
-void print_jalr_after() {
-  print_beq_after();
-
+  printRegisterHexadecimal(rs1);
+  print((uint64_t*) " |- ");
   if (rd != REG_ZR) {
+    printRegisterHexadecimal(rd);
     print((uint64_t*) ",");
-
-    printRegister(rd);
-    print((uint64_t*) "=");
-    printHexadecimal(*(registers + rd), 0);
   }
+  print((uint64_t*) "$pc=");
+  printHexadecimal(pc, 0);
 }
 
 void execute_jalr() {
@@ -6191,6 +6210,38 @@ void execute_ecall() {
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
+
+void printRegisterHexadecimal(uint64_t r) {
+  printRegister(r);
+  print((uint64_t*) "=");
+  printHexadecimal(*(registers + r), 0);
+}
+
+uint64_t isSystemRegister(uint64_t r) {
+  if (r == REG_GP)
+    return 1;
+  else if (r == REG_FP)
+    return 1;
+  else if (r == REG_RA)
+    return 1;
+  else if (r == REG_SP)
+    return 1;
+  else
+    return 0;
+}
+
+void printRegisterValue(uint64_t r) {
+  if (isSystemRegister(r))
+    printRegisterHexadecimal(r);
+  else {
+    printRegister(r);
+    print((uint64_t*) "=");
+    printInteger(*(registers + r));
+    print((uint64_t*) "(");
+    printHexadecimal(*(registers + r), 0);
+    print((uint64_t*) ")");
+  }
+}
 
 void printException(uint64_t exception, uint64_t faultingPage) {
   print((uint64_t*) *(EXCEPTIONS + exception));
@@ -6242,7 +6293,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_add();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6257,7 +6308,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_sub();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6272,7 +6323,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_mul();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6289,7 +6340,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_divu();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6306,7 +6357,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_remu();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6323,7 +6374,7 @@ void decode_execute() {
           if (interpret) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_sltu();
-            print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
           }
 
           println();
@@ -6343,7 +6394,7 @@ void decode_execute() {
         if (interpret) {
           print_addi_before();
           execute_addi();
-          print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+          print_addi_add_sub_mul_divu_remu_sltu_after();
         }
 
         println();
@@ -6416,7 +6467,7 @@ void decode_execute() {
       if (interpret) {
         print_jal_before();
         execute_jal();
-        print_jal_after();
+        print_jal_jalr_after();
       }
 
       println();
@@ -6434,7 +6485,7 @@ void decode_execute() {
         if (interpret) {
           print_jalr_before();
           execute_jalr();
-          print_jalr_after();
+          print_jal_jalr_after();
         }
 
         println();
@@ -6452,7 +6503,7 @@ void decode_execute() {
       if (interpret) {
         print_lui_before();
         execute_lui();
-        print_lui_addi_add_sub_mul_divu_remu_sltu_after();
+        print_lui_after();
       }
 
       println();
@@ -6465,7 +6516,7 @@ void decode_execute() {
 
     if (funct3 == F3_ECALL) {
       if (debug) {
-        print_instruction_context();
+        printInstructionContext();
 
         print((uint64_t*) "ecall");
 
@@ -6571,11 +6622,7 @@ uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max) {
   if (ratio != 0) {
     print((uint64_t*) "@");
     printHexadecimal(a, 0);
-    if (sourceLineNumber != (uint64_t*) 0) {
-      print((uint64_t*) "(~");
-      printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
-      print((uint64_t*) ")");
-    }
+    printSourceLineNumberOfInstruction(a);
   }
 
   return ratio;
@@ -6589,7 +6636,7 @@ void printProfile(uint64_t* message, uint64_t total, uint64_t* counters) {
     print(message);
     printInteger(total);
     print((uint64_t*) ",");
-    max = printCounters(total, counters, INT64_MAX); // max counter
+    max = printCounters(total, counters, UINT64_MAX); // max counter
     print((uint64_t*) ",");
     max = printCounters(total, counters, max); // 2nd max
     print((uint64_t*) ",");
@@ -6664,7 +6711,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(7 * SIZEOFUINT64STAR + 8 * SIZEOFUINT64);
+    context = smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
@@ -6691,9 +6738,6 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   setLoPage(context, 0);
   setMePage(context, 0);
   setHiPage(context, getPageOfVirtualAddress(VIRTUALMEMORYSIZE - REGISTERSIZE));
-
-  // heap starts where it is safe to start
-  setProgramBreak(context, maxBinaryLength);
 
   setException(context, EXCEPTION_NOEXCEPTION);
   setFaultingPage(context, 0);
@@ -6810,7 +6854,7 @@ void saveContext(uint64_t* context) {
       r = r + 1;
     }
 
-    storeVirtualMemory(parentTable, ProgramBreak(vctxt), getProgramBreak(context));
+    storeVirtualMemory(parentTable, BumpPointer(vctxt), getBumpPointer(context));
 
     storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
     storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
@@ -6886,7 +6930,7 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    setProgramBreak(context, loadVirtualMemory(parentTable, ProgramBreak(vctxt)));
+    setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
 
     setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
@@ -7001,6 +7045,8 @@ void up_loadBinary(uint64_t* context) {
 
   entryPoint = *(ELF_header + 10);
 
+  // assert: entryPoint is multiple of PAGESIZE and SIZEOFUINT64
+
   setPC(context, entryPoint);
   setLoPage(context, getPageOfVirtualAddress(entryPoint));
   setMePage(context, getPageOfVirtualAddress(entryPoint));
@@ -7014,7 +7060,8 @@ void up_loadBinary(uint64_t* context) {
     baddr = baddr + SIZEOFUINT64;
   }
 
-  setProgramBreak(context, roundUp(entryPoint + baddr, PAGESIZE));
+  setProgramBreak(context, entryPoint + baddr);
+  setBumpPointer(context, getProgramBreak(context));
 }
 
 uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
@@ -7045,17 +7092,16 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   uint64_t i_argc;
   uint64_t i_vargv;
 
-  // arguments are pushed onto stack which starts at highest virtual address
-  SP = VIRTUALMEMORYSIZE - REGISTERSIZE;
+  // the call stack grows top down
+  SP = VIRTUALMEMORYSIZE;
 
-  // allocate memory for storing stack pointer later
-  SP = SP - REGISTERSIZE;
+  // assert: argc > 0
 
   // allocate memory for storing *argv array
   SP = SP - argc * REGISTERSIZE;
 
-  // vargv invalid if argc == 0
-  vargv = SP + REGISTERSIZE;
+  // caution: vargv invalid if argc == 0
+  vargv = SP;
 
   i_vargv = vargv;
   i_argc  = argc;
@@ -7073,20 +7119,20 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
     i_argc = i_argc - 1;
   }
 
-  // allocate memory for one word on the stack
+  // allocate memory for argc
   SP = SP - REGISTERSIZE;
 
   // push argc
   mapAndStore(context, SP, argc);
 
-  // allocate memory for one word on the stack
+  // allocate memory for pointer to virtual argv
   SP = SP - REGISTERSIZE;
 
   // push virtual argv
   mapAndStore(context, SP, vargv);
 
-  // store stack pointer value into the register
-  *(getRegs(context)+REG_SP) = SP;
+  // store stack pointer value in stack pointer register
+  *(getRegs(context) + REG_SP) = SP;
 }
 
 void mapUnmappedPages(uint64_t* context) {
@@ -7130,7 +7176,7 @@ uint64_t handleSystemCalls(uint64_t* context) {
   uint64_t a7;
 
   if (getException(context) == EXCEPTION_SYSCALL) {
-    a7 = *(getRegs(context)+REG_A7);
+    a7 = *(getRegs(context) + REG_A7);
 
     if (a7 == SYSCALL_MALLOC)
       return implementMalloc(context);
