@@ -1014,6 +1014,29 @@ void execute_jalr();
 
 void execute_ecall();
 
+// ---------------------- VIPSTER INSTRUCTIONS ---------------------
+
+uint64_t hasThreeArgs(uint64_t reg);
+
+void     vipster_lui();
+void     vipster_addi();
+
+void     vipster_add();
+void     vipster_sub();
+void     vipster_mul();
+void     vipster_divu();
+void     vipster_remu();
+void     vipster_sltu();
+
+uint64_t vipster_ld();
+uint64_t vipster_sd();
+
+void     vipster_beq();
+void     vipster_jal();
+void     vipster_jalr();
+
+void     vipster_ecall();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_divisionByZero = 1;
@@ -5594,9 +5617,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   restoreContext(toContext);
 
   // restore machine state
-  pc        = getPC(toContext);
-  registers = getRegs(toContext);
-  pt        = getPT(toContext);
+  pc          = getPC(toContext);
+  registers   = getRegs(toContext);
+  pt          = getPT(toContext);
   vipsterRegs = getVipsterRegs(toContext);
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
@@ -6290,6 +6313,388 @@ void execute_ecall() {
     throwException(EXCEPTION_SYSCALL, 0);
 }
 
+// ---------------------- VIPSTER INSTRUCTIONS ---------------------
+
+uint64_t hasThreeArgs(uint64_t reg) {
+  if (reg == SYSCALL_READ)
+    return 1;
+  else if (reg == SYSCALL_WRITE)
+    return 1;
+  else if (reg == SYSCALL_OPEN)
+    return 1;
+
+  return 0;
+}
+
+void vipster_lui() {
+  uint64_t* container_rd;
+
+  container_rd = (uint64_t*) *(vipsterRegs + rd);
+
+  if (rd != REG_ZR) {
+    setLowerBound(container_rd, leftShift(imm, 12));
+    setUpperBound(container_rd, leftShift(imm, 12));
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void vipster_addi() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+
+  if (rd != REG_ZR) {
+    setLowerBound(container_rd, getLowerBound(container_rs1) + imm);
+    setUpperBound(container_rd, getUpperBound(container_rs1) + imm);
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void vipster_add() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  if (rd != REG_ZR) {
+    setLowerBound(container_rd, getLowerBound(container_rs1) + getLowerBound(container_rs2));
+    setUpperBound(container_rd, getUpperBound(container_rs1) + getUpperBound(container_rs2));
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void vipster_sub() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  if (rd != REG_ZR) {
+    setLowerBound(container_rd, getLowerBound(container_rs1) - getLowerBound(container_rs2));
+    setUpperBound(container_rd, getUpperBound(container_rs1) - getUpperBound(container_rs2));
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void vipster_mul() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  if (rd != REG_ZR) {
+    setLowerBound(container_rd, getLowerBound(container_rs1) * getLowerBound(container_rs2));
+    setUpperBound(container_rd, getUpperBound(container_rs1) * getUpperBound(container_rs2));
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void vipster_divu() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  if (getLowerBound(container_rs2) == 0) {
+    if (debug_divisionByZero) {
+      print((uint64_t*) "division-by-zero error: ");
+      printInteger(getLowerBound(container_rs1));
+      print((uint64_t*) " / ");
+      printInteger(getLowerBound(container_rs2));
+      println();
+    }
+  } else if (getUpperBound(container_rs2) == 0) {
+    if (debug_divisionByZero) {
+      print((uint64_t*) "division-by-zero error: ");
+      printInteger(getUpperBound(container_rs1));
+      print((uint64_t*) " / ");
+      printInteger(getUpperBound(container_rs2));
+      println();
+    }
+  }
+
+  if (rd != REG_ZR) {
+    setLowerBound(container_rd, getLowerBound(container_rs1) / getLowerBound(container_rs2));
+    setUpperBound(container_rd, getUpperBound(container_rs1) / getUpperBound(container_rs2));
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void vipster_remu() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  if (getLowerBound(container_rs2) == 0) {
+    if (debug_divisionByZero) {
+      print((uint64_t*) "division-by-zero error: ");
+      printInteger(getLowerBound(container_rs1));
+      print((uint64_t*) " % ");
+      printInteger(getLowerBound(container_rs2));
+      println();
+    }
+  } else if (getUpperBound(container_rs2) == 0) {
+    if (debug_divisionByZero) {
+      print((uint64_t*) "division-by-zero error: ");
+      printInteger(getUpperBound(container_rs1));
+      print((uint64_t*) " % ");
+      printInteger(getUpperBound(container_rs2));
+      println();
+    }
+  }
+
+  if (rd != REG_ZR) {
+    setLowerBound(container_rd, getLowerBound(container_rs1) % getLowerBound(container_rs2));
+    setUpperBound(container_rd, getUpperBound(container_rs1) % getUpperBound(container_rs2));
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+void vipster_sltu() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  if (rd != REG_ZR) {
+    if (getLowerBound(container_rs1) < getLowerBound(container_rs2))
+      setLowerBound(container_rd, 1);
+    else
+      setLowerBound(container_rd, 0);
+
+    if (getUpperBound(container_rs1) < getUpperBound(container_rs2))
+      setUpperBound(container_rd, 1);
+    else
+      setUpperBound(container_rd, 0);
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+}
+
+uint64_t vipster_ld() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t* tempContainer;
+  uint64_t vaddr;
+  uint64_t a;
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+
+  // assert: virtual address is constant
+  vaddr = getLowerBound(container_rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      if (rd != REG_ZR) {
+        if (getContainerFlag(currentContext, vaddr))
+          tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
+
+        // constant, virtual address gets its own container
+        else {
+          tempContainer = allocateContainer(loadVirtualMemory(pt, vaddr), loadVirtualMemory(pt, vaddr));
+          storeVirtualMemory(pt, vaddr, (uint64_t) tempContainer);
+          setContainerFlag(currentContext, vaddr);
+        }
+      }
+
+      setLowerBound(container_rd, getLowerBound(tempContainer));
+      setUpperBound(container_rd, getUpperBound(tempContainer));
+
+      // keep track of number of loads
+      loads = loads + 1;
+
+      *(loadsPerAddress + a) = *(loadsPerAddress + a) + 1;
+
+      pc = pc + INSTRUCTIONSIZE;
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  return vaddr;
+}
+
+uint64_t vipster_sd() {
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+  uint64_t* tempContainer;
+  uint64_t vaddr;
+  uint64_t a;
+
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  // assert: virtual address is constant
+  vaddr = getLowerBound(container_rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+
+      // each virtual address has its own container - allocate on demand
+      if (getContainerFlag(currentContext, vaddr)) {
+        tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
+        setLowerBound(tempContainer, getLowerBound(container_rs2));
+        setUpperBound(tempContainer, getUpperBound(container_rs2));
+
+      } else {
+        tempContainer = allocateContainer(getLowerBound(container_rs2), getUpperBound(container_rs2));
+        storeVirtualMemory(pt, vaddr, (uint64_t) tempContainer);
+        setContainerFlag(currentContext, vaddr);
+      }
+
+      // keep track of number of stores
+      stores = stores + 1;
+
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(storesPerAddress + a) = *(storesPerAddress + a) + 1;
+
+      pc = pc + INSTRUCTIONSIZE;
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  return vaddr;
+}
+
+void vipster_beq() {
+  uint64_t* container_rs1;
+  uint64_t* container_rs2;
+
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+  container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  if (getLowerBound(container_rs1) == getLowerBound(container_rs2))
+    if (getUpperBound(container_rs1) == getUpperBound(container_rs2))
+      pc = pc + imm;
+}
+
+void vipster_jal() {
+  uint64_t* container_rd;
+  uint64_t a;
+
+  // assert: address is constant
+
+  container_rd = (uint64_t*) *(vipsterRegs + rd);
+
+  if (rd != REG_ZR) {
+    // first link
+    setLowerBound(container_rd, pc + INSTRUCTIONSIZE);
+    setUpperBound(container_rd, pc + INSTRUCTIONSIZE);
+
+    // then jump for procedure calls
+    pc = pc + imm;
+
+    // keep track of number of procedure calls
+    calls = calls + 1;
+
+    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+    *(callsPerAddress + a) = *(callsPerAddress + a) + 1;
+  } else if (signedLessThan(imm, 0)) {
+    // just jump backwards to check for another loop iteration
+    pc = pc + imm;
+
+    // keep track of number of loop iterations
+    loops = loops + 1;
+
+    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+    *(loopsPerAddress + a) = *(loopsPerAddress + a) + 1;
+  } else
+    // just jump forward
+    pc = pc + imm;
+}
+
+void vipster_jalr() {
+  uint64_t* container_rd;
+  uint64_t* container_rs1;
+  uint64_t next_pc;
+
+  // assert: everything is constant
+
+  container_rd  = (uint64_t*) *(vipsterRegs + rd);
+  container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
+
+  if (rd == REG_ZR)
+    // fast path: just return by jumping rs1-relative with LSB reset
+    pc = leftShift(rightShift(getLowerBound(container_rs1) + imm, 1), 1);
+  else {
+    // slow path: first prepare jump, then link, just in case rd == rs1
+
+    // prepare jump with LSB reset
+    next_pc = leftShift(rightShift(getLowerBound(container_rs1) + imm, 1), 1);
+
+    // link to next instruction
+    setLowerBound(container_rd, pc + INSTRUCTIONSIZE);
+    setUpperBound(container_rd, pc + INSTRUCTIONSIZE);
+
+    // jump
+    pc = next_pc;
+  }
+}
+
+void vipster_ecall() {
+  uint64_t a7;
+
+  // assert: actual ecall arguments are constant
+  // assert: return value of an ecall is constant
+
+  a7 = getLowerBound((uint64_t*) *(vipsterRegs + REG_A7));
+  *(registers + REG_A7) = a7;
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  *(registers + REG_A0) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A0));
+
+  if (a7 == SYSCALL_SWITCH) {
+    *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
+
+    implementSwitch();
+    return;
+
+  } else if (hasThreeArgs(a7)) {
+    *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
+    *(registers + REG_A2) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A2));
+  }
+
+  throwException(EXCEPTION_SYSCALL, 0);
+}
+
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
@@ -6645,7 +7050,108 @@ void interrupt() {
 }
 
 void vipster_decode_execute() {
+  opcode = getOpcode(ir);
 
+  if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
+    decodeRFormat();
+
+    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
+      if (funct7 == F7_ADD) {
+        vipster_add();
+        return;
+
+      } else if (funct7 == F7_SUB) {
+        vipster_sub();
+        return;
+
+      } else if (funct7 == F7_MUL) {
+        vipster_mul();
+        return;
+      }
+    } else if (funct3 == F3_DIVU) {
+      if (funct7 == F7_DIVU) {
+        vipster_divu();
+        return;
+      }
+    } else if (funct3 == F3_REMU) {
+      if (funct7 == F7_REMU) {
+        vipster_remu();
+        return;
+      }
+    } else if (funct3 == F3_SLTU) {
+      if (funct7 == F7_SLTU) {
+        vipster_sltu();
+        return;
+      }
+    }
+  } else if (opcode == OP_IMM) {
+    decodeIFormat();
+
+    if (funct3 == F3_ADDI) {
+      vipster_addi();
+      return;
+    }
+  } else if (opcode == OP_LD) {
+    decodeIFormat();
+
+    if (funct3 == F3_LD) {
+      vipster_ld();
+      return;
+    }
+  } else if (opcode == OP_SD) {
+    decodeSFormat();
+
+    if (funct3 == F3_SD) {
+      vipster_sd();
+      return;
+    }
+  } else if (opcode == OP_BRANCH) {
+    decodeBFormat();
+
+    if (funct3 == F3_BEQ) {
+      vipster_beq();
+      return;
+    }
+  } else if (opcode == OP_JAL) {
+    decodeJFormat();
+
+    vipster_jal();
+    return;
+
+  } else if (opcode == OP_JALR) {
+    decodeIFormat();
+
+    if (funct3 == F3_JALR) {
+      vipster_jalr();
+      return;
+    }
+  } else if (opcode == OP_LUI) {
+    decodeUFormat();
+
+    vipster_lui();
+    return;
+
+  } else if (opcode == OP_SYSTEM) {
+    decodeIFormat();
+
+    if (funct3 == F3_ECALL) {
+      vipster_ecall();
+      return;
+    }
+  }
+
+  if (interpret)
+    throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+  else {
+    print(selfieName);
+    print((uint64_t*) ": unknown opcode ");
+    printInteger(opcode);
+    print((uint64_t*) " (");
+    printBinary(opcode, 0);
+    print((uint64_t*) ") detected");
+
+    exit(-1);
+  }
 }
 
 uint64_t* runUntilException() {
