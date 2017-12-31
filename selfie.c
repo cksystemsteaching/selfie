@@ -864,7 +864,7 @@ void emitWrite();
 void implementWrite(uint64_t* context);
 
 void     emitOpen();
-uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s);
+uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s);
 void     implementOpen(uint64_t* context);
 
 void     emitMalloc();
@@ -5341,37 +5341,42 @@ void emitOpen() {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
-uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
+uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
   uint64_t i;
   uint64_t j;
-  uint64_t* paddr;
+
+  // physical address of string
+  uint64_t* pstring;
 
   i = 0;
 
   while (i < maxFilenameLength / SIZEOFUINT64) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(table, vaddr)) {
-        paddr = tlb(table, vaddr);
+    if (isValidVirtualAddress(vstring)) {
+      if (isVirtualAddressMapped(table, vstring)) {
+        pstring = tlb(table, vstring);
 
-        *(s + i) = loadPhysicalMemory(paddr);
+        *(s + i) = loadPhysicalMemory(pstring);
 
         j = 0;
 
+        // check if string ends in the current machine word
         while (j < SIZEOFUINT64) {
-          if (loadCharacter(paddr, j) == 0)
+          if (loadCharacter(pstring, j) == 0)
             return 1;
 
           j = j + 1;
         }
 
-        vaddr = vaddr + SIZEOFUINT64;
+        // advance to the next machine word in virtual memory
+        vstring = vstring + SIZEOFUINT64;
 
+        // advance to the next machine word in our memory
         i = i + 1;
       } else {
         if (debug_open) {
           print(selfieName);
           print((uint64_t*) ": opening file with name at virtual address ");
-          printHexadecimal(vaddr, 8);
+          printHexadecimal(vstring, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
         }
@@ -5380,7 +5385,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
       if (debug_open) {
         print(selfieName);
         print((uint64_t*) ": opening file with name at virtual address ");
-        printHexadecimal(vaddr, 8);
+        printHexadecimal(vstring, 8);
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
