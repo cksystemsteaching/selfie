@@ -1081,6 +1081,8 @@ uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
 uint64_t* pt = (uint64_t*) 0; // page table
 
+uint64_t* vipsterRegs = (uint64_t*) 0; // containers
+
 // core state
 
 uint64_t timer = 0; // counter for timer interrupt
@@ -1120,6 +1122,8 @@ void resetInterpreter() {
 
   pt = (uint64_t*) 0;
 
+  vipsterRegs = (uint64_t*) 0;
+
   trap = 0;
 
   timer = TIMEROFF;
@@ -1144,6 +1148,7 @@ void resetInterpreter() {
 // -----------------------------------------------------------------
 
 uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
+void      allocateVipsterRegs(uint64_t* context);
 
 uint64_t* findContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
 
@@ -1168,6 +1173,8 @@ uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 // | 13 | parent         | context that created this context
 // | 14 | virtualContext | virtual context address
 // | 15 | name           | binary name loaded into context
+// | 16 | vipsterRegs    | pointer to register containers
+// | 17 | containerFlags | pointer to container flag array
 // +----+----------------+
 
 uint64_t nextContext(uint64_t* context)    { return (uint64_t) context; }
@@ -1186,6 +1193,8 @@ uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 12); }
 uint64_t Parent(uint64_t* context)         { return (uint64_t) (context + 13); }
 uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 14); }
 uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 15); }
+uint64_t VipsterRegs(uint64_t* context)    { return (uint64_t) (context + 16); }
+uint64_t ContainerFlags(uint64_t* context) { return (uint64_t) (context + 17); }
 
 uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1203,23 +1212,28 @@ uint64_t  getExitCode(uint64_t* context)       { return             *(context + 
 uint64_t* getParent(uint64_t* context)         { return (uint64_t*) *(context + 13); }
 uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 14); }
 uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 15); }
+uint64_t* getVipsterRegs(uint64_t* context)    { return (uint64_t*) *(context + 16); }
+uint64_t* getContainerFlags(uint64_t* context) { return (uint64_t*) *(context + 17); }
 
-void setNextContext(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
-void setPrevContext(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
-void setPC(uint64_t* context, uint64_t pc)                 { *(context + 2)  = pc; }
-void setRegs(uint64_t* context, uint64_t* regs)            { *(context + 3)  = (uint64_t) regs; }
-void setPT(uint64_t* context, uint64_t* pt)                { *(context + 4)  = (uint64_t) pt; }
-void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 5)  = loPage; }
-void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 6)  = mePage; }
-void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 7)  = hiPage; }
-void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 8) = brk; }
-void setBumpPointer(uint64_t* context, uint64_t brk)       { *(context + 9) = brk; }
-void setException(uint64_t* context, uint64_t exception)   { *(context + 10) = exception; }
-void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 11) = page; }
-void setExitCode(uint64_t* context, uint64_t code)         { *(context + 12) = code; }
-void setParent(uint64_t* context, uint64_t* parent)        { *(context + 13) = (uint64_t) parent; }
-void setVirtualContext(uint64_t* context, uint64_t* vctxt) { *(context + 14) = (uint64_t) vctxt; }
-void setName(uint64_t* context, uint64_t* name)            { *(context + 15) = (uint64_t) name; }
+void setNextContext(uint64_t* context, uint64_t* next)       { *context        = (uint64_t) next; }
+void setPrevContext(uint64_t* context, uint64_t* prev)       { *(context + 1)  = (uint64_t) prev; }
+void setPC(uint64_t* context, uint64_t pc)                   { *(context + 2)  = pc; }
+void setRegs(uint64_t* context, uint64_t* regs)              { *(context + 3)  = (uint64_t) regs; }
+void setPT(uint64_t* context, uint64_t* pt)                  { *(context + 4)  = (uint64_t) pt; }
+void setLoPage(uint64_t* context, uint64_t loPage)           { *(context + 5)  = loPage; }
+void setMePage(uint64_t* context, uint64_t mePage)           { *(context + 6)  = mePage; }
+void setHiPage(uint64_t* context, uint64_t hiPage)           { *(context + 7)  = hiPage; }
+void setProgramBreak(uint64_t* context, uint64_t brk)        { *(context + 8) = brk; }
+void setBumpPointer(uint64_t* context, uint64_t brk)         { *(context + 9) = brk; }
+void setException(uint64_t* context, uint64_t exception)     { *(context + 10) = exception; }
+void setFaultingPage(uint64_t* context, uint64_t page)       { *(context + 11) = page; }
+void setExitCode(uint64_t* context, uint64_t code)           { *(context + 12) = code; }
+void setParent(uint64_t* context, uint64_t* parent)          { *(context + 13) = (uint64_t) parent; }
+void setVirtualContext(uint64_t* context, uint64_t* vctxt)   { *(context + 14) = (uint64_t) vctxt; }
+void setName(uint64_t* context, uint64_t* name)              { *(context + 15) = (uint64_t) name; }
+void setVipsterRegs(uint64_t* context, uint64_t* containers) { *(context + 16) = (uint64_t) containers; }
+void setContainerFlags(uint64_t* context, uint64_t* flags)   { *(context + 17) = (uint64_t) flags; }
+
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1231,9 +1245,13 @@ uint64_t* createContext(uint64_t* parent, uint64_t* vctxt);
 
 uint64_t* cacheContext(uint64_t* vctxt);
 
+void saveVipsterRegs(uint64_t* context);
+
 void saveContext(uint64_t* context);
 
 void mapPage(uint64_t* context, uint64_t page, uint64_t frame);
+
+void restoreVipsterRegs(uint64_t* context);
 
 void restoreContext(uint64_t* context);
 
@@ -1400,6 +1418,38 @@ void selfie_sat();
 // ------------------   L N - E X E C U T I O N   ------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// --------------------------- CONTAINERS --------------------------
+// -----------------------------------------------------------------
+
+uint64_t  getContainerFlag(uint64_t* context, uint64_t vaddr);
+void      setContainerFlag(uint64_t* context, uint64_t vaddr);
+
+uint64_t* allocateContainer(uint64_t lower, uint64_t upper);
+
+// container struct:
+// +----+---------------+
+// |  0 | overflow      |
+// |  1 | lowerBound    |
+// |  2 | upperBound    |
+// +----+---------------+
+
+uint64_t getOverflow(uint64_t* container)    { return  *container; }
+uint64_t getLowerBound(uint64_t* container)  { return  *(container + 1); }
+uint64_t getUpperBound(uint64_t* container)  { return  *(container + 2); }
+
+void setOverflow(uint64_t* container, uint64_t overflow) { *container = overflow; }
+void setLowerBound(uint64_t* container, uint64_t low)    { *(container + 1) = low; }
+void setUpperBound(uint64_t* container, uint64_t upper)  { *(container + 2) = upper; }
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t NUMBEROFREGCONTAINERS = 32;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t allocatedContainers = 0; // number of actual allocated containers
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -5547,12 +5597,21 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   pc        = getPC(toContext);
   registers = getRegs(toContext);
   pt        = getPT(toContext);
+  vipsterRegs = getVipsterRegs(toContext);
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
-  if (getParent(fromContext) != MY_CONTEXT)
+  if (getParent(fromContext) != MY_CONTEXT) {
     *(registers + REG_A1) = (uint64_t) getVirtualContext(fromContext);
-  else
+
+    setLowerBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) getVirtualContext(fromContext));
+    setUpperBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) getVirtualContext(fromContext));
+
+  } else {
     *(registers + REG_A1) = (uint64_t) fromContext;
+
+    setLowerBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) fromContext);
+    setUpperBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) fromContext);
+  }
 
   currentContext = toContext;
 
@@ -6739,7 +6798,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
+    context = smalloc(9 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
@@ -6777,7 +6836,30 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   setName(context, (uint64_t*) 0);
 
+  // allocate zeroed memory for register containers (vipster)
+  setVipsterRegs(context, zalloc(NUMBEROFREGCONTAINERS * SIZEOFUINT64));
+  allocateVipsterRegs(context);
+
+  // allocate zeroed memory for flag array,
+  // which indicates if vaddr has already a container
+  setContainerFlags(context, zalloc(VIRTUALMEMORYSIZE / DOUBLEWORDSIZE / DOUBLEWORDSIZE));
+
   return context;
+}
+
+void allocateVipsterRegs(uint64_t* context) {
+  uint64_t* containers;
+  uint64_t r;
+
+  containers = getVipsterRegs(context);
+
+  r = 0;
+
+  while (r < NUMBEROFREGCONTAINERS) {
+    *(containers + r) = (uint64_t) allocateContainer(0, 0);
+
+    r = r + 1;
+  }
 }
 
 uint64_t* findContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
@@ -6853,6 +6935,33 @@ uint64_t* cacheContext(uint64_t* vctxt) {
   return context;
 }
 
+void saveVipsterRegs(uint64_t* context) {
+  uint64_t* parentTable;
+  uint64_t* vctxt;
+  uint64_t r;
+  uint64_t* container;
+  uint64_t* containers;
+  uint64_t* vcontainers;
+
+  parentTable = getPT(getParent(context));
+  vctxt = getVirtualContext(context);
+
+  containers = getVipsterRegs(context);
+  vcontainers = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
+
+  r = 0;
+
+  // TODO: check if this is sufficient enough
+  while (r < NUMBEROFREGCONTAINERS) {
+    // TODO: check in container-flags if vaddr has already a container and update values
+    container = allocateContainer(getLowerBound(*(containers + r)), getUpperBound(*(containers + r)));
+
+    storeVirtualMemory(parentTable, (uint64_t) (vcontainers + r), (uint64_t) container);
+
+    r = r + 1;
+  }
+}
+
 void saveContext(uint64_t* context) {
   uint64_t* parentTable;
   uint64_t* vctxt;
@@ -6882,11 +6991,16 @@ void saveContext(uint64_t* context) {
       r = r + 1;
     }
 
+    saveVipsterRegs(context);
+
     storeVirtualMemory(parentTable, BumpPointer(vctxt), getBumpPointer(context));
 
     storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
     storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
     storeVirtualMemory(parentTable, ExitCode(vctxt), getExitCode(context));
+
+    // TODO: check if this is sufficient enough
+    storeVirtualMemory(parentTable, ContainerFlags(vctxt), getContainerFlags(context));
   }
 }
 
@@ -6928,6 +7042,29 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 }
 
+void restoreVipsterRegs(uint64_t* context) {
+  uint64_t* parentTable;
+  uint64_t* vctxt;
+  uint64_t r;
+  uint64_t* containers;
+  uint64_t* vcontainers;
+
+  parentTable = getPT(getParent(context));
+  vctxt = getVirtualContext(context);
+
+  containers = getVipsterRegs(context);
+  vcontainers = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
+
+  r = 0;
+
+  // TODO: check if this is sufficient enough
+  while (r < NUMBEROFREGISTERS) {
+    *(containers + r) = loadVirtualMemory(parentTable, (uint64_t) (vcontainers + r));
+
+    r = r + 1;
+  }
+}
+
 void restoreContext(uint64_t* context) {
   uint64_t* parentTable;
   uint64_t* vctxt;
@@ -6958,11 +7095,16 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
+    restoreVipsterRegs(context);
+
     setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
 
     setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
     setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
+
+    // TODO: check if this is sufficient enough
+    setContainerFlags(context, loadVirtualMemory(parentTable, ContainerFlags(vctxt)));
 
     table = (uint64_t*) loadVirtualMemory(parentTable, PT(vctxt));
 
@@ -7161,6 +7303,10 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // store stack pointer value in stack pointer register
   *(getRegs(context) + REG_SP) = SP;
+
+  // store stack pointer value into vipster register
+  setLowerBound((uint64_t*) *(getVipsterRegs(context) + REG_SP), SP);
+  setUpperBound((uint64_t*) *(getVipsterRegs(context) + REG_SP), SP);
 }
 
 void mapUnmappedPages(uint64_t* context) {
@@ -7541,6 +7687,11 @@ uint64_t selfie_run(uint64_t machine) {
   print((uint64_t*) " and ");
   printFixedPointRatio(pused(), MEGABYTE);
   print((uint64_t*) "MB of mapped memory");
+  if (vipsterIsRunning) {
+    print((uint64_t*) " and ");
+    printInteger(allocatedContainers);
+    print((uint64_t*) " allocated containers");
+  }
   println();
 
   if (calls > 0) {
@@ -7918,6 +8069,48 @@ void selfie_sat() {
 // ------------------   L N - E X E C U T I O N   ------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+uint64_t getContainerFlag(uint64_t* context, uint64_t vaddr) {
+  uint64_t* containerFlags;
+  uint64_t offset;
+  uint64_t index;
+
+  containerFlags = getContainerFlags(context);
+
+  offset = vaddr / DOUBLEWORDSIZE / DOUBLEWORDSIZE / DOUBLEWORDSIZE;
+  index = vaddr / DOUBLEWORDSIZE % (DOUBLEWORDSIZE * DOUBLEWORDSIZE);
+
+  return rightShift(leftShift(*(containerFlags + offset), index), DOUBLEWORDSIZE * DOUBLEWORDSIZE - 1);
+}
+
+void setContainerFlag(uint64_t* context, uint64_t vaddr) {
+  uint64_t* containerFlags;
+  uint64_t offset;
+  uint64_t index;
+
+  containerFlags = getContainerFlags(context);
+
+  offset = vaddr / DOUBLEWORDSIZE / DOUBLEWORDSIZE / DOUBLEWORDSIZE;
+  index = vaddr / DOUBLEWORDSIZE % (DOUBLEWORDSIZE * DOUBLEWORDSIZE);
+
+  *(containerFlags + offset) = *(containerFlags + offset) + leftShift(1, DOUBLEWORDSIZE * DOUBLEWORDSIZE - 1 - index);
+}
+
+uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
+  uint64_t* container;
+
+  container = smalloc(SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+
+  setOverflow(container, 0);
+
+  setLowerBound(container, lower);
+  setUpperBound(container, upper);
+
+  // keep track of allocated containers
+  allocatedContainers = allocatedContainers + 1;
+
+  return container;
+}
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
