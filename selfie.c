@@ -1465,19 +1465,9 @@ void setMemLocation(uint64_t* container, uint64_t memloc) { *(container + 1) = m
 void setLowerBound(uint64_t* container, uint64_t low)     { *(container + 2) = low; }
 void setUpperBound(uint64_t* container, uint64_t upper)   { *(container + 3) = upper; }
 
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t NUMBEROFREGCONTAINERS = 32;
-
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t allocatedContainers = 0; // number of actual allocated containers
-
-// -----------------------------------------------------------------
-// ----------------------------- MEMORY ----------------------------
-// -----------------------------------------------------------------
-
-uint64_t* zeroPage(uint64_t* page); // helper
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -6531,7 +6521,6 @@ uint64_t vipster_ld() {
         if (getContainerFlag(currentContext, vaddr))
           tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
 
-        
         else { // constant, virtual address gets its own container
           tempContainer = allocateContainer(loadVirtualMemory(pt, vaddr), loadVirtualMemory(pt, vaddr));
           storeVirtualMemory(pt, vaddr, (uint64_t) tempContainer);
@@ -7363,7 +7352,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   setName(context, (uint64_t*) 0);
 
   // allocate zeroed memory for register containers (vipster)
-  setVipsterRegs(context, zalloc(NUMBEROFREGCONTAINERS * SIZEOFUINT64STAR));
+  setVipsterRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR));
   allocateVipsterRegs(context);
 
   // allocate zeroed memory for flag array,
@@ -7381,7 +7370,7 @@ void allocateVipsterRegs(uint64_t* context) {
 
   r = 0;
 
-  while (r < NUMBEROFREGCONTAINERS) {
+  while (r < NUMBEROFREGISTERS) {
     *(containers + r) = (uint64_t) allocateContainer(0, 0);
 
     r = r + 1;
@@ -7583,8 +7572,6 @@ void restoreContext(uint64_t* context) {
 
       r = r + 1;
     }
-
-    // restoreVipsterRegs(context); causes segfault
 
     setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
 
@@ -8604,25 +8591,6 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
   allocatedContainers = allocatedContainers + 1;
 
   return container;
-}
-
-// -----------------------------------------------------------------
-// ----------------------------- MEMORY ----------------------------
-// -----------------------------------------------------------------
-
-uint64_t* zeroPage(uint64_t* page) {
-  // assert: pointer is pointing to valid page
-
-  uint64_t i;
-
-  i = 0;
-
-  while (i < PAGESIZE/DOUBLEWORDSIZE) {
-    *(page + i) = 0;
-    i = i + 1;
-  }
-
-  return page;
 }
 
 // -----------------------------------------------------------------
