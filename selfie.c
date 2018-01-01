@@ -1454,17 +1454,20 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper);
 // container struct:
 // +----+---------------+
 // |  0 | overflow      |
-// |  1 | lowerBound    |
-// |  2 | upperBound    |
+// |  1 | memLocation   |
+// |  2 | lowerBound    |
+// |  3 | upperBound    |
 // +----+---------------+
 
 uint64_t getOverflow(uint64_t* container)    { return  *container; }
-uint64_t getLowerBound(uint64_t* container)  { return  *(container + 1); }
-uint64_t getUpperBound(uint64_t* container)  { return  *(container + 2); }
+uint64_t getMemLocation(uint64_t* container) { return  *(container + 1); }
+uint64_t getLowerBound(uint64_t* container)  { return  *(container + 2); }
+uint64_t getUpperBound(uint64_t* container)  { return  *(container + 3); }
 
-void setOverflow(uint64_t* container, uint64_t overflow) { *container = overflow; }
-void setLowerBound(uint64_t* container, uint64_t low)    { *(container + 1) = low; }
-void setUpperBound(uint64_t* container, uint64_t upper)  { *(container + 2) = upper; }
+void setOverflow(uint64_t* container, uint64_t overflow)  { *container = overflow; }
+void setMemLocation(uint64_t* container, uint64_t memloc) { *(container + 1) = memloc; }
+void setLowerBound(uint64_t* container, uint64_t low)     { *(container + 2) = low; }
+void setUpperBound(uint64_t* container, uint64_t upper)   { *(container + 3) = upper; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -7349,8 +7352,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   setName(context, (uint64_t*) 0);
 
   // allocate zeroed memory for register containers (vipster)
-  setVipsterRegs(context, zalloc(NUMBEROFREGCONTAINERS * SIZEOFUINT64));
-  // TODO: only do this if vipster is executed
+  setVipsterRegs(context, zalloc(NUMBEROFREGCONTAINERS * SIZEOFUINT64STAR));
   allocateVipsterRegs(context);
 
   // allocate zeroed memory for flag array,
@@ -7464,10 +7466,12 @@ void saveVipsterRegs(uint64_t* context) {
 
   r = 0;
 
-  // TODO: check if this is sufficient enough
   while (r < NUMBEROFREGCONTAINERS) {
     // TODO: check in container-flags if vaddr has already a container and update values
-    container = allocateContainer(getLowerBound(*(containers + r)), getUpperBound(*(containers + r)));
+    container = allocateContainer(getLowerBound((uint64_t*) *(containers + r)), getUpperBound((uint64_t*) *(containers + r)));
+
+    setOverflow(container, getOverflow((uint64_t*) *(containers + r)));
+    setMemLocation(container, getMemLocation((uint64_t*) *(containers + r)));
 
     storeVirtualMemory(parentTable, (uint64_t) (vcontainers + r), (uint64_t) container);
 
@@ -7512,8 +7516,8 @@ void saveContext(uint64_t* context) {
     storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
     storeVirtualMemory(parentTable, ExitCode(vctxt), getExitCode(context));
 
-    // TODO: check if this is sufficient enough
-    storeVirtualMemory(parentTable, ContainerFlags(vctxt), getContainerFlags(context));
+    // TODO: this is not sufficient enough
+    // storeVirtualMemory(parentTable, ContainerFlags(vctxt), getContainerFlags(context));
   }
 }
 
@@ -7561,6 +7565,7 @@ void restoreVipsterRegs(uint64_t* context) {
   uint64_t r;
   uint64_t* containers;
   uint64_t* vcontainers;
+  uint64_t* vcontainer;
 
   parentTable = getPT(getParent(context));
   vctxt = getVirtualContext(context);
@@ -7570,9 +7575,15 @@ void restoreVipsterRegs(uint64_t* context) {
 
   r = 0;
 
-  // TODO: check if this is sufficient enough
-  while (r < NUMBEROFREGISTERS) {
-    *(containers + r) = loadVirtualMemory(parentTable, (uint64_t) (vcontainers + r));
+  // TODO: vcontainer loads incorrectly - segfault occurs
+  while (r < NUMBEROFREGCONTAINERS) {
+    vcontainer = (uint64_t*) loadVirtualMemory(parentTable, (uint64_t) (vcontainers + r));
+
+    setOverflow((uint64_t*) *(containers + r), getOverflow(vcontainer));
+    setMemLocation((uint64_t*) *(containers + r), getMemLocation(vcontainer));
+
+    setLowerBound((uint64_t*) *(containers + r), getLowerBound(vcontainer));
+    setUpperBound((uint64_t*) *(containers + r), getUpperBound(vcontainer));
 
     r = r + 1;
   }
@@ -7626,7 +7637,7 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    // restoreVipsterRegs(context);
+    // restoreVipsterRegs(context); causes segfault
 
     setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
 
@@ -7634,8 +7645,8 @@ void restoreContext(uint64_t* context) {
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
     setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
 
-    // TODO: check if this is sufficient enough
-    setContainerFlags(context, loadVirtualMemory(parentTable, ContainerFlags(vctxt)));
+    // TODO: this is not sufficient enough
+    // setContainerFlags(context, loadVirtualMemory(parentTable, ContainerFlags(vctxt)));
 
     table = (uint64_t*) loadVirtualMemory(parentTable, PT(vctxt));
 
@@ -8634,9 +8645,10 @@ void setContainerFlag(uint64_t* context, uint64_t vaddr) {
 uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
   uint64_t* container;
 
-  container = smalloc(SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  container = smalloc(4 * SIZEOFUINT64);
 
   setOverflow(container, 0);
+  setMemLocation(container, 0);
 
   setLowerBound(container, lower);
   setUpperBound(container, upper);
