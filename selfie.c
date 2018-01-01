@@ -143,6 +143,7 @@ void printOctal(uint64_t n, uint64_t a);
 void printBinary(uint64_t n, uint64_t a);
 
 uint64_t roundUp(uint64_t n, uint64_t m);
+uint64_t floorTo(uint64_t n, uint64_t m);
 
 uint64_t* smalloc(uint64_t size);
 uint64_t* zalloc(uint64_t size);
@@ -1442,7 +1443,7 @@ void selfie_sat();
 // -----------------------------------------------------------------
 
 uint64_t  getContainerFlag(uint64_t* context, uint64_t vaddr);
-void      setContainerFlag(uint64_t* context, uint64_t vaddr);
+void      setContainerFlag(uint64_t* context, uint64_t vaddr, uint64_t flag);
 
 uint64_t* allocateContainer(uint64_t lower, uint64_t upper);
 
@@ -1997,6 +1998,10 @@ uint64_t roundUp(uint64_t n, uint64_t m) {
     return n;
   else
     return n - n % m + m;
+}
+
+uint64_t floorTo(uint64_t n, uint64_t m) {
+  return n - (n % m);
 }
 
 uint64_t* smalloc(uint64_t size) {
@@ -6519,14 +6524,18 @@ uint64_t vipster_ld() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
+        if (getParent(currentContext) != MY_CONTEXT) {
+          print((uint64_t*) "ERROR @ vipster_ld"); println(); exit(-1);
+        }
+
         if (getContainerFlag(currentContext, vaddr))
           tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
 
-        // constant, virtual address gets its own container
-        else {
+        
+        else { // constant, virtual address gets its own container
           tempContainer = allocateContainer(loadVirtualMemory(pt, vaddr), loadVirtualMemory(pt, vaddr));
           storeVirtualMemory(pt, vaddr, (uint64_t) tempContainer);
-          setContainerFlag(currentContext, vaddr);
+          setContainerFlag(currentContext, vaddr, 1);
         }
       }
 
@@ -6563,6 +6572,9 @@ uint64_t vipster_sd() {
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
+      if (getParent(currentContext) != MY_CONTEXT) {
+        print((uint64_t*) "ERROR @ vipster_ld"); println(); exit(-1);
+      }
 
       // each virtual address has its own container - allocate on demand
       if (getContainerFlag(currentContext, vaddr)) {
@@ -6570,10 +6582,10 @@ uint64_t vipster_sd() {
         setLowerBound(tempContainer, getLowerBound(container_rs2));
         setUpperBound(tempContainer, getUpperBound(container_rs2));
 
-      } else {
+      } else { // no container added yet
         tempContainer = allocateContainer(getLowerBound(container_rs2), getUpperBound(container_rs2));
         storeVirtualMemory(pt, vaddr, (uint64_t) tempContainer);
-        setContainerFlag(currentContext, vaddr);
+        setContainerFlag(currentContext, vaddr, 1);
       }
 
       // keep track of number of stores
@@ -6683,14 +6695,18 @@ void vipster_ecall() {
 
   pc = pc + INSTRUCTIONSIZE;
 
-  *(registers + REG_A0) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A0));
+  *(registers + REG_A0) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A0)); // in case of exit call
 
   if (a7 == SYSCALL_SWITCH) {
+    print((uint64_t*) "hypervisor not supported!");
+    println(); exit(-1);
+
     *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
 
     implementSwitch();
     return;
 
+    // TODO: model syscalls
   } else if (isEnvironmentAccess(a7)) {
     *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
     *(registers + REG_A2) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A2));
@@ -7563,7 +7579,7 @@ void restoreContext(uint64_t* context) {
 
     while (r < NUMBEROFREGISTERS) {
       // loadVirtualMemory returns pointer into virtual address space! - resolve this pointer into own address space
-      *(regs + r) = tlb(parentTable, loadVirtualMemory(parentTable, (uint64_t) (vregs + r)));
+      *(regs + r) = (uint64_t) tlb(parentTable, loadVirtualMemory(parentTable, (uint64_t) (vregs + r)));
 
       r = r + 1;
     }
@@ -8554,23 +8570,23 @@ uint64_t getContainerFlag(uint64_t* context, uint64_t vaddr) {
 
   containerFlags = getContainerFlags(context);
 
-  offset = vaddr / DOUBLEWORDSIZE / DOUBLEWORDSIZE / DOUBLEWORDSIZE;
-  index = vaddr / DOUBLEWORDSIZE % (DOUBLEWORDSIZE * DOUBLEWORDSIZE);
+  offset = floorTo(vaddr / (SIZEOFUINT64 * 8), SIZEOFUINT64) / SIZEOFUINT64;
+  index = (vaddr / SIZEOFUINT64) % (SIZEOFUINT64 * 8);
 
-  return rightShift(leftShift(*(containerFlags + offset), index), DOUBLEWORDSIZE * DOUBLEWORDSIZE - 1);
+  return rightShift(leftShift(*(containerFlags + offset), (SIZEOFUINT64 * 8 - 1) - index), SIZEOFUINT64 * 8 - 1);
 }
 
-void setContainerFlag(uint64_t* context, uint64_t vaddr) {
+void setContainerFlag(uint64_t* context, uint64_t vaddr, uint64_t flag) {
   uint64_t* containerFlags;
   uint64_t offset;
   uint64_t index;
 
   containerFlags = getContainerFlags(context);
 
-  offset = vaddr / DOUBLEWORDSIZE / DOUBLEWORDSIZE / DOUBLEWORDSIZE;
-  index = vaddr / DOUBLEWORDSIZE % (DOUBLEWORDSIZE * DOUBLEWORDSIZE);
+  offset = floorTo(vaddr / (SIZEOFUINT64 * 8), SIZEOFUINT64) / SIZEOFUINT64;
+  index = (vaddr / SIZEOFUINT64) % (SIZEOFUINT64 * 8);
 
-  *(containerFlags + offset) = *(containerFlags + offset) + leftShift(1, DOUBLEWORDSIZE * DOUBLEWORDSIZE - 1 - index);
+  *(containerFlags + offset) = (*(containerFlags + offset) - leftShift(getContainerFlag(context, vaddr), index)) + leftShift(flag, index);
 }
 
 uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
