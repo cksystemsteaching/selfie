@@ -1016,7 +1016,7 @@ void execute_ecall();
 
 // ---------------------- VIPSTER INSTRUCTIONS ---------------------
 
-uint64_t hasThreeArgs(uint64_t reg);
+uint64_t isEnvironmentAccess(uint64_t reg);
 
 void     vipster_lui();
 void     vipster_addi();
@@ -1257,7 +1257,6 @@ void setName(uint64_t* context, uint64_t* name)              { *(context + 15) =
 void setVipsterRegs(uint64_t* context, uint64_t* containers) { *(context + 16) = (uint64_t) containers; }
 void setContainerFlags(uint64_t* context, uint64_t* flags)   { *(context + 17) = (uint64_t) flags; }
 
-
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
 // -----------------------------------------------------------------
@@ -1268,13 +1267,9 @@ uint64_t* createContext(uint64_t* parent, uint64_t* vctxt);
 
 uint64_t* cacheContext(uint64_t* vctxt);
 
-void saveVipsterRegs(uint64_t* context);
-
 void saveContext(uint64_t* context);
 
 void mapPage(uint64_t* context, uint64_t page, uint64_t frame);
-
-void restoreVipsterRegs(uint64_t* context);
 
 void restoreContext(uint64_t* context);
 
@@ -6324,7 +6319,7 @@ void execute_ecall() {
 
 // ---------------------- VIPSTER INSTRUCTIONS ---------------------
 
-uint64_t hasThreeArgs(uint64_t reg) {
+uint64_t isEnvironmentAccess(uint64_t reg) {
   if (reg == SYSCALL_READ)
     return 1;
   else if (reg == SYSCALL_WRITE)
@@ -6696,7 +6691,7 @@ void vipster_ecall() {
     implementSwitch();
     return;
 
-  } else if (hasThreeArgs(a7)) {
+  } else if (isEnvironmentAccess(a7)) {
     *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
     *(registers + REG_A2) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A2));
   }
@@ -7450,35 +7445,6 @@ uint64_t* cacheContext(uint64_t* vctxt) {
   return context;
 }
 
-void saveVipsterRegs(uint64_t* context) {
-  uint64_t* parentTable;
-  uint64_t* vctxt;
-  uint64_t r;
-  uint64_t* container;
-  uint64_t* containers;
-  uint64_t* vcontainers;
-
-  parentTable = getPT(getParent(context));
-  vctxt = getVirtualContext(context);
-
-  containers = getVipsterRegs(context);
-  vcontainers = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
-
-  r = 0;
-
-  while (r < NUMBEROFREGCONTAINERS) {
-    // TODO: check in container-flags if vaddr has already a container and update values
-    container = allocateContainer(getLowerBound((uint64_t*) *(containers + r)), getUpperBound((uint64_t*) *(containers + r)));
-
-    setOverflow(container, getOverflow((uint64_t*) *(containers + r)));
-    setMemLocation(container, getMemLocation((uint64_t*) *(containers + r)));
-
-    storeVirtualMemory(parentTable, (uint64_t) (vcontainers + r), (uint64_t) container);
-
-    r = r + 1;
-  }
-}
-
 void saveContext(uint64_t* context) {
   uint64_t* parentTable;
   uint64_t* vctxt;
@@ -7508,16 +7474,11 @@ void saveContext(uint64_t* context) {
       r = r + 1;
     }
 
-    // saveVipsterRegs(context);
-
     storeVirtualMemory(parentTable, BumpPointer(vctxt), getBumpPointer(context));
 
     storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
     storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
     storeVirtualMemory(parentTable, ExitCode(vctxt), getExitCode(context));
-
-    // TODO: this is not sufficient enough
-    // storeVirtualMemory(parentTable, ContainerFlags(vctxt), getContainerFlags(context));
   }
 }
 
@@ -7556,36 +7517,6 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
     print((uint64_t*) " in context ");
     printHexadecimal((uint64_t) context, 8);
     println();
-  }
-}
-
-void restoreVipsterRegs(uint64_t* context) {
-  uint64_t* parentTable;
-  uint64_t* vctxt;
-  uint64_t r;
-  uint64_t* containers;
-  uint64_t* vcontainers;
-  uint64_t* vcontainer;
-
-  parentTable = getPT(getParent(context));
-  vctxt = getVirtualContext(context);
-
-  containers = getVipsterRegs(context);
-  vcontainers = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
-
-  r = 0;
-
-  // TODO: vcontainer loads incorrectly - segfault occurs
-  while (r < NUMBEROFREGCONTAINERS) {
-    vcontainer = (uint64_t*) loadVirtualMemory(parentTable, (uint64_t) (vcontainers + r));
-
-    setOverflow((uint64_t*) *(containers + r), getOverflow(vcontainer));
-    setMemLocation((uint64_t*) *(containers + r), getMemLocation(vcontainer));
-
-    setLowerBound((uint64_t*) *(containers + r), getLowerBound(vcontainer));
-    setUpperBound((uint64_t*) *(containers + r), getUpperBound(vcontainer));
-
-    r = r + 1;
   }
 }
 
@@ -7631,7 +7562,7 @@ void restoreContext(uint64_t* context) {
     vregs = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      // loadVirtualMemory returns pointer into virtual address space! - resolve this pointer
+      // loadVirtualMemory returns pointer into virtual address space! - resolve this pointer into own address space
       *(regs + r) = tlb(parentTable, loadVirtualMemory(parentTable, (uint64_t) (vregs + r)));
 
       r = r + 1;
@@ -7645,8 +7576,8 @@ void restoreContext(uint64_t* context) {
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
     setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
 
-    // TODO: this is not sufficient enough
-    // setContainerFlags(context, loadVirtualMemory(parentTable, ContainerFlags(vctxt)));
+    // link flag array
+    setContainerFlags(context, tlb(parentTable, loadVirtualMemory(parentTable, ContainerFlags(vctxt))));
 
     table = (uint64_t*) loadVirtualMemory(parentTable, PT(vctxt));
 
