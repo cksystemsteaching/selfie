@@ -1475,6 +1475,12 @@ uint64_t NUMBEROFREGCONTAINERS = 32;
 uint64_t allocatedContainers = 0; // number of actual allocated containers
 
 // -----------------------------------------------------------------
+// ----------------------------- MEMORY ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t* zeroPage(uint64_t* page); // helper
+
+// -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
@@ -7344,6 +7350,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   // allocate zeroed memory for register containers (vipster)
   setVipsterRegs(context, zalloc(NUMBEROFREGCONTAINERS * SIZEOFUINT64));
+  // TODO: only do this if vipster is executed
   allocateVipsterRegs(context);
 
   // allocate zeroed memory for flag array,
@@ -7497,7 +7504,7 @@ void saveContext(uint64_t* context) {
       r = r + 1;
     }
 
-    saveVipsterRegs(context);
+    // saveVipsterRegs(context);
 
     storeVirtualMemory(parentTable, BumpPointer(vctxt), getBumpPointer(context));
 
@@ -7589,6 +7596,8 @@ void restoreContext(uint64_t* context) {
 
     setPC(context, loadVirtualMemory(parentTable, PC(vctxt)));
 
+    // copy normal registers
+
     r = 0;
 
     regs = getRegs(context);
@@ -7601,7 +7610,23 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    restoreVipsterRegs(context);
+    // TODO: this only needs to be done once (not every restoreContext)
+    // link vipster register containers
+
+    r = 0;
+
+    regs = getVipsterRegs(context);
+
+    vregs = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
+
+    while (r < NUMBEROFREGISTERS) {
+      // loadVirtualMemory returns pointer into virtual address space! - resolve this pointer
+      *(regs + r) = tlb(parentTable, loadVirtualMemory(parentTable, (uint64_t) (vregs + r)));
+
+      r = r + 1;
+    }
+
+    // restoreVipsterRegs(context);
 
     setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
 
@@ -8576,6 +8601,10 @@ void selfie_sat() {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+// -----------------------------------------------------------------
+// --------------------------- CONTAINERS --------------------------
+// -----------------------------------------------------------------
+
 uint64_t getContainerFlag(uint64_t* context, uint64_t vaddr) {
   uint64_t* containerFlags;
   uint64_t offset;
@@ -8616,6 +8645,25 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
   allocatedContainers = allocatedContainers + 1;
 
   return container;
+}
+
+// -----------------------------------------------------------------
+// ----------------------------- MEMORY ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t* zeroPage(uint64_t* page) {
+  // assert: pointer is pointing to valid page
+
+  uint64_t i;
+
+  i = 0;
+
+  while (i < PAGESIZE/DOUBLEWORDSIZE) {
+    *(page + i) = 0;
+    i = i + 1;
+  }
+
+  return page;
 }
 
 // -----------------------------------------------------------------
