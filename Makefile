@@ -31,8 +31,12 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
+# Test Vipster
+vipster: selfie
+	./selfie -c vipstest.c -v 4
+
 # Test everything
-all: test sat
+all: test sat vipster
 
 # Clean up
 clean:
