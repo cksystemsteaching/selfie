@@ -874,6 +874,7 @@ void     vipster_implementOpen(uint64_t* context);
 
 void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
+uint64_t vipster_implementMalloc(uint64_t* context);
 
 // TODO
 // void vipster_emitSymbolic();
@@ -5343,14 +5344,17 @@ void vipster_implementRead(uint64_t* context) {
     println(); exit(-1);
   } else size = getLowerBound(*(vipRegs + REG_A2));
 
-  
-
   while (size > 0) {
     bytesToRead = SIZEOFUINT64;
     if (size < bytesToRead) bytesToRead = size;
 
     if (isValidVirtualAddress(vbuffer)) {
       if (isVirtualAddressMapped(table, vbuffer)) {
+        if(getContainerFlag(context, vbuffer) == 0) {
+          storeVirtualMemory(table, vbuffer, (uint64_t) allocateContainer(0, 0));
+          setContainerFlag(context, vbuffer, 1);
+        }
+
         container = (uint64_t*) loadVirtualMemory(table, vbuffer);
         upper = 0;
 
@@ -5366,6 +5370,8 @@ void vipster_implementRead(uint64_t* context) {
         if (bytesToRead > 6) upper = upper + leftShift(255, 48);
         if (bytesToRead > 7) upper = upper + leftShift(255, 56);
         setUpperBound(container, upper);
+
+        size = size - bytesToRead;
 
         if (size > 0)
           vbuffer = vbuffer + SIZEOFUINT64;
@@ -5640,6 +5646,24 @@ void implementOpen(uint64_t* context) {
   }
 }
 
+void vipster_implementOpen (uint64_t* context) {
+  uint64_t size; // REG_A0
+  uint64_t* vipRegs;
+
+  vipRegs = getVipsterRegs(context);
+
+  if (0 == isConstantContainer(*(vipRegs + REG_A0))) {
+    print((uint64_t*) "VIPSTER: open call recieved a symbolic size");
+    println(); exit(-1);
+  } else size = getLowerBound(*(vipRegs + REG_A0));
+
+  fakeFD = fakeFD + 1;
+
+  // opening just works for now
+  setUpperBound(*(vipRegs + REG_A0), fakeFD);
+  setLowerBound(*(vipRegs + REG_A0), fakeFD);
+}
+
 void emitMalloc() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
@@ -5699,22 +5723,50 @@ uint64_t implementMalloc(uint64_t* context) {
   }
 }
 
-void vipster_implementOpen (uint64_t* context) {
-  uint64_t size; // REG_A0
-  uint64_t* vipRegs;
+uint64_t vipster_implementMalloc(uint64_t* context) {
+  // parameter
+  uint64_t size;
 
-  vipRegs = getVipsterRegs(context);
+  // local variable
+  uint64_t bump;
 
-  if (0 == isConstantContainer(*(vipRegs + REG_A0))) {
-    print((uint64_t*) "VIPSTER: open call recieved a symbolic size");
+  if (0 == isConstantContainer(*(getVipsterRegs(context) + REG_A0))) {
+    print((uint64_t*) "VIPSTER: malloc call recieved a symbolic size");
     println(); exit(-1);
-  } else size = getLowerBound(*(vipRegs + REG_A0));
+  } else size = getLowerBound(*(getVipsterRegs(context) + REG_A0));
 
-  fakeFD = fakeFD + 1;
+  if (debug_malloc) {
+    print(selfieName);
+    print((uint64_t*) ": trying to malloc ");
+    printInteger(size);
+    print((uint64_t*) " bytes net");
+    println();
+  }
 
-  // opening just works for now
-  setUpperBound(*(vipRegs + REG_A0), fakeFD);
-  setLowerBound(*(vipRegs + REG_A0), fakeFD);
+  size = roundUp(size, SIZEOFUINT64);
+  bump = getBumpPointer(context);
+
+  if (bump + size > getLowerBound(*(getVipsterRegs(context) + REG_SP))) {
+    setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
+
+    return EXIT;
+  } else {
+    setLowerBound(*(getVipsterRegs(context) + REG_A0),bump);
+    setUpperBound(*(getVipsterRegs(context) + REG_A0),bump);
+
+    setBumpPointer(context, bump + size);
+
+    if (debug_malloc) {
+      print(selfieName);
+      print((uint64_t*) ": actually mallocating ");
+      printInteger(size);
+      print((uint64_t*) " bytes at virtual address ");
+      printHexadecimal(bump, 8);
+      println();
+    }
+
+    return DONOTEXIT;
+  }
 }
 
 // -----------------------------------------------------------------
@@ -6665,6 +6717,8 @@ uint64_t vipster_ld() {
 
       // keep track of number of loads
       loads = loads + 1;
+
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
       *(loadsPerAddress + a) = *(loadsPerAddress + a) + 1;
 
@@ -7992,8 +8046,7 @@ uint64_t vipster_handleSystemCalls(uint64_t* context) {
     a7 = getLowerBound(*(vipsterRegs + REG_A7));
 
     if (a7 == SYSCALL_MALLOC) {
-      print((uint64_t*) "VIPSTER: malloc not supported");
-      println(); exit(-1);
+      return vipster_implementMalloc(context);
     }
     else if (a7 == SYSCALL_READ)
       vipster_implementRead(context);
