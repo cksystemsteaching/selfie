@@ -857,19 +857,27 @@ uint64_t  assemblyFD   = 0;             // file descriptor of open assembly file
 
 void emitExit();
 void implementExit(uint64_t* context);
+void vipster_implementExit(uint64_t* context);
 
 void emitRead();
 void implementRead(uint64_t* context);
+void vipster_implementRead(uint64_t* context);
 
 void emitWrite();
 void implementWrite(uint64_t* context);
+void vipster_implementWrite(uint64_t* context);
 
 void     emitOpen();
 uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s);
 void     implementOpen(uint64_t* context);
+void     vipster_implementOpen(uint64_t* context);
 
 void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
+
+// TODO
+void vipster_emitSymbolic();
+void vipster_implementSymbolic();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1319,6 +1327,7 @@ void mapUnmappedPages(uint64_t* context);
 uint64_t isBootLevelZero();
 
 uint64_t handleSystemCalls(uint64_t* context);
+uint64_t vipster_handleSystemCalls(uint64_t* context);
 
 uint64_t mipster(uint64_t* toContext);
 uint64_t minster(uint64_t* toContext);
@@ -1446,6 +1455,7 @@ uint64_t  getContainerFlag(uint64_t* context, uint64_t vaddr);
 void      setContainerFlag(uint64_t* context, uint64_t vaddr, uint64_t flag);
 
 uint64_t* allocateContainer(uint64_t lower, uint64_t upper);
+uint64_t  isConstantContainer(uint64_t* container);
 
 // container struct:
 // +----+---------------+
@@ -1468,6 +1478,7 @@ void setUpperBound(uint64_t* container, uint64_t upper)   { *(container + 3) = u
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t allocatedContainers = 0; // number of actual allocated containers
+uint64_t fakeFD = 4; // fake fd bump allocator
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -5173,6 +5184,25 @@ void implementExit(uint64_t* context) {
   println();
 }
 
+void vipster_implementExit(uint64_t* context) {
+  uint64_t upper;
+  uint64_t lower;
+  
+  upper = getUpperBound(*(getVipsterRegs(context) + REG_A0));
+  lower = getLowerBound(*(getVipsterRegs(context) + REG_A0));
+
+  print(selfieName);
+  print((uint64_t*) ": ");
+  print(getName(context));
+  print((uint64_t*) " exiting with bounds: "); println();
+  print((uint64_t*) "upper = "); printInteger(upper); println();
+  print((uint64_t*) "lower = "); printInteger(lower); println();
+  print((uint64_t*) "using ");
+  printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
+  print((uint64_t*) "MB of mallocated memory");
+  println();
+}
+
 void emitRead() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
@@ -5292,6 +5322,74 @@ void implementRead(uint64_t* context) {
   }
 }
 
+void vipster_implementRead(uint64_t* context) {
+  uint64_t vbuffer; // REG_A1
+  uint64_t size;    // REG_A2
+  uint64_t bytesToRead;
+  uint64_t upper;
+  uint64_t* vipRegs;
+  uint64_t* container;
+  uint64_t* table;
+
+  vipRegs = getVipsterRegs(context);
+  table = getPT(context);
+
+  if (0 == isConstantContainer(*(vipRegs + REG_A1))) {
+    print((uint64_t*) "VIPSTER: read call recieved a symbolic buffer pointer");
+    println(); exit(-1);
+  } else vbuffer = getLowerBound(*(vipRegs + REG_A1));
+  if ( 0 == isConstantContainer(*(vipRegs + REG_A2))) {
+    print((uint64_t*) "VIPSTER: read call recieved a symbolic size");
+    println(); exit(-1);
+  } else size = getLowerBound(*(vipRegs + REG_A2));
+
+  
+
+  while (size > 0) {
+    bytesToRead = SIZEOFUINT64;
+    if (size < bytesToRead) bytesToRead = size;
+
+    if (isValidVirtualAddress(vbuffer)) {
+      if (isVirtualAddressMapped(table, vbuffer)) {
+        container = (uint64_t*) loadVirtualMemory(table, vbuffer);
+        upper = 0;
+
+        // reads at most 8x UTF-8 characters
+        // each has possible value 0-255
+        setLowerBound(container, 0);
+        if (bytesToRead > 0) upper = upper + 255;
+        if (bytesToRead > 1) upper = upper + leftShift(255, 8);
+        if (bytesToRead > 2) upper = upper + leftShift(255, 16);
+        if (bytesToRead > 3) upper = upper + leftShift(255, 24);
+        if (bytesToRead > 4) upper = upper + leftShift(255, 32);
+        if (bytesToRead > 5) upper = upper + leftShift(255, 40);
+        if (bytesToRead > 6) upper = upper + leftShift(255, 48);
+        if (bytesToRead > 7) upper = upper + leftShift(255, 56);
+        setUpperBound(container, upper);
+
+        if (size > 0)
+          vbuffer = vbuffer + SIZEOFUINT64;
+      } else {
+        if (debug_read) {
+          print(selfieName);
+          print((uint64_t*) ": reading into virtual address ");
+          printHexadecimal(vbuffer, 8);
+          print((uint64_t*) " failed because the address is unmapped");
+          println();
+        }
+      }
+    } else {
+      if (debug_read) {
+        print(selfieName);
+        print((uint64_t*) ": reading into virtual address ");
+        printHexadecimal(vbuffer, 8);
+        print((uint64_t*) " failed because the address is invalid");
+        println();
+      }
+    }
+  }
+}
+
 void emitWrite() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
@@ -5408,6 +5506,22 @@ void implementWrite(uint64_t* context) {
     printInteger(fd);
     println();
   }
+}
+
+void vipster_implementWrite (uint64_t* context) {
+  uint64_t size; // REG_A2
+  uint64_t* vipRegs;
+
+  vipRegs = getVipsterRegs(context);
+
+  if (0 == isConstantContainer(*(vipRegs + REG_A2))) {
+    print((uint64_t*) "VIPSTER: write call recieved a symbolic size");
+    println(); exit(-1);
+  } else size = getLowerBound(*(vipRegs + REG_A2));
+
+  // writing just works for now
+  setUpperBound(*(vipRegs + REG_A0), size);
+  setLowerBound(*(vipRegs + REG_A0), size);
 }
 
 void emitOpen() {
@@ -5583,6 +5697,24 @@ uint64_t implementMalloc(uint64_t* context) {
 
     return DONOTEXIT;
   }
+}
+
+void vipster_implementOpen (uint64_t* context) {
+  uint64_t size; // REG_A0
+  uint64_t* vipRegs;
+
+  vipRegs = getVipsterRegs(context);
+
+  if (0 == isConstantContainer(*(vipRegs + REG_A0))) {
+    print((uint64_t*) "VIPSTER: open call recieved a symbolic size");
+    println(); exit(-1);
+  } else size = getLowerBound(*(vipRegs + REG_A0));
+
+  fakeFD = fakeFD + 1;
+
+  // opening just works for now
+  setUpperBound(*(vipRegs + REG_A0), fakeFD);
+  setLowerBound(*(vipRegs + REG_A0), fakeFD);
 }
 
 // -----------------------------------------------------------------
@@ -6674,34 +6806,17 @@ void vipster_jalr() {
 }
 
 void vipster_ecall() {
-  uint64_t a7;
-
-  // assert: actual ecall arguments are constant
-  // assert: return value of an ecall is constant
-
-  a7 = getLowerBound((uint64_t*) *(vipsterRegs + REG_A7));
-  *(registers + REG_A7) = a7;
-
   pc = pc + INSTRUCTIONSIZE;
 
-  *(registers + REG_A0) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A0)); // in case of exit call
+  // assert: upperBound == lowerBound
 
-  if (a7 == SYSCALL_SWITCH) {
-    print((uint64_t*) "hypervisor not supported!");
+  if (getLowerBound(*(vipsterRegs + REG_A7)) == SYSCALL_SWITCH) {
+    print((uint64_t*) "VIPSTER: hypervisor not supported");
     println(); exit(-1);
-
-    *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
-
-    implementSwitch();
-    return;
-
-    // TODO: model syscalls
-  } else if (isEnvironmentAccess(a7)) {
-    *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
-    *(registers + REG_A2) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A2));
+    //implementSwitch();
   }
-
-  throwException(EXCEPTION_SYSCALL, 0);
+  else
+    throwException(EXCEPTION_SYSCALL, 0);
 }
 
 // -----------------------------------------------------------------
@@ -7867,6 +7982,56 @@ uint64_t handleSystemCalls(uint64_t* context) {
   return DONOTEXIT;
 }
 
+uint64_t vipster_handleSystemCalls(uint64_t* context) {
+  uint64_t a7;
+  uint64_t mem;
+
+  // assert: upperBound == lowerBound
+
+  if (getException(context) == EXCEPTION_SYSCALL) {
+    a7 = getLowerBound(*(vipsterRegs + REG_A7));
+
+    if (a7 == SYSCALL_MALLOC) {
+      print((uint64_t*) "VIPSTER: malloc not supported");
+      println(); exit(-1);
+    }
+    else if (a7 == SYSCALL_READ)
+      vipster_implementRead(context);
+    else if (a7 == SYSCALL_WRITE)
+      vipster_implementWrite(context);
+    else if (a7 == SYSCALL_OPEN)
+      vipster_implementOpen(context);
+    else if (a7 == SYSCALL_EXIT) {
+      vipster_implementExit(context);
+
+      // TODO: exit only if all contexts have exited
+      return EXIT;
+    } else {
+      print(selfieName);
+      print((uint64_t*) ": unknown system call ");
+      printInteger(a7);
+      println();
+
+      setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
+
+      return EXIT;
+    }
+  } else if (getException(context) != EXCEPTION_TIMER) {
+    print(selfieName);
+    print((uint64_t*) ": context ");
+    print(getName(context));
+    print((uint64_t*) " throws uncaught ");
+    printException(getException(context), getFaultingPage(context));
+    println();
+
+    setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
+
+    return EXIT;
+  }
+
+  return DONOTEXIT;
+}
+
 uint64_t mipster(uint64_t* toContext) {
   uint64_t timeout;
   uint64_t* fromContext;
@@ -7994,8 +8159,8 @@ uint64_t vipster(uint64_t* toContext) {
       if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-      else if (handleSystemCalls(fromContext) == EXIT)
-        return getExitCode(fromContext);
+      else if (vipster_handleSystemCalls(fromContext) == EXIT)
+        return 0; // execution finished without error
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
@@ -8591,6 +8756,10 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
   allocatedContainers = allocatedContainers + 1;
 
   return container;
+}
+
+uint64_t  isConstantContainer(uint64_t* container) {
+  return getUpperBound(container) == getLowerBound(container);
 }
 
 // -----------------------------------------------------------------
