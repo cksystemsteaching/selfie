@@ -876,8 +876,8 @@ void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
 
 // TODO
-void vipster_emitSymbolic();
-void vipster_implementSymbolic();
+// void vipster_emitSymbolic();
+// void vipster_implementSymbolic();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
