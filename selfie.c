@@ -876,9 +876,8 @@ void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
 uint64_t vipster_implementMalloc(uint64_t* context);
 
-// TODO
-// void vipster_emitSymbolic();
-// void vipster_implementSymbolic();
+void vipster_emitSymbolic();
+void vipster_implementSymbolic(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -894,6 +893,8 @@ uint64_t SYSCALL_OPEN  = 1024;
 
 // TODO: fix this syscall for spike
 uint64_t SYSCALL_MALLOC = 222;
+
+uint64_t SYSCALL_SYMBOLIC = 1234;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -4371,6 +4372,8 @@ void selfie_compile() {
   emitOpen();
   emitMalloc();
 
+  vipster_emitSymbolic();
+
   emitSwitch();
 
   while (link) {
@@ -5767,6 +5770,21 @@ uint64_t vipster_implementMalloc(uint64_t* context) {
 
     return DONOTEXIT;
   }
+}
+
+void vipster_emitSymbolic() {
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "symbolic", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+
+  emitADDI(REG_A7, REG_ZR, SYSCALL_SYMBOLIC);
+
+  emitECALL();
+
+  emitJALR(REG_ZR, REG_RA, 0);
+}
+
+void vipster_implementSymbolic(uint64_t* context) {
+  setLowerBound(*(getVipsterRegs(context) + REG_A0), 0);
+  setUpperBound(*(getVipsterRegs(context) + REG_A0), INT64_MAX);
 }
 
 // -----------------------------------------------------------------
@@ -8054,6 +8072,8 @@ uint64_t vipster_handleSystemCalls(uint64_t* context) {
       vipster_implementWrite(context);
     else if (a7 == SYSCALL_OPEN)
       vipster_implementOpen(context);
+    else if (a7 == SYSCALL_SYMBOLIC)
+      vipster_implementSymbolic(context);
     else if (a7 == SYSCALL_EXIT) {
       vipster_implementExit(context);
 
