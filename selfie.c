@@ -1039,10 +1039,9 @@ uint64_t* runUntilException();
 
 void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics);
 
-uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max);
-
-uint64_t printPerAddressCounter(uint64_t total, uint64_t* counters, uint64_t max);
-void     printProfile(uint64_t* message, uint64_t total, uint64_t* counters);
+uint64_t instructionWithMaxCounter(uint64_t* counters, uint64_t max);
+uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t max);
+void     printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* counters);
 
 void selfie_disassemble();
 
@@ -1068,8 +1067,7 @@ uint64_t TIMEROFF = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t execute = 0; // flag for executing code
-
+uint64_t execute            = 0; // flag for executing code
 uint64_t disassembleOrDebug = 0; // flag for disassembling and debugging code
 
 // hardware thread state
@@ -1077,7 +1075,17 @@ uint64_t disassembleOrDebug = 0; // flag for disassembling and debugging code
 uint64_t pc = 0; // program counter
 uint64_t ir = 0; // instruction register
 
-// instruction counters
+uint64_t* registers = (uint64_t*) 0; // general-purpose registers
+
+uint64_t* pt = (uint64_t*) 0; // page table
+
+// core state
+
+uint64_t timer = 0; // counter for timer interrupt
+
+uint64_t trap = 0; // flag for creating a trap
+
+// counters
 
 uint64_t ic_lui   = 0;
 uint64_t ic_addi  = 0;
@@ -1094,27 +1102,14 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
-uint64_t* registers = (uint64_t*) 0; // general-purpose registers
+uint64_t* loadsPerInstruction  = (uint64_t*) 0; // number of executed loads per load instruction
+uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per store instruction
 
-uint64_t* pt = (uint64_t*) 0; // page table
+uint64_t  calls             = 0;             // total number of executed procedure calls
+uint64_t* callsPerProcedure = (uint64_t*) 0; // number of executed calls of each procedure
 
-// core state
-
-uint64_t timer = 0; // counter for timer interrupt
-
-uint64_t trap = 0; // flag for creating a trap
-
-uint64_t  calls            = 0;             // total number of executed procedure calls
-uint64_t* callsPerAddress  = (uint64_t*) 0; // number of executed calls of each procedure
-
-uint64_t  loops            = 0;             // total number of executed loop iterations
-uint64_t* loopsPerAddress  = (uint64_t*) 0; // number of executed iterations of each loop
-
-uint64_t  loads            = 0;             // total number of executed memory loads
-uint64_t* loadsPerAddress  = (uint64_t*) 0; // number of executed loads per load operation
-
-uint64_t  stores           = 0;             // total number of executed memory stores
-uint64_t* storesPerAddress = (uint64_t*) 0; // number of executed stores per store operation
+uint64_t  iterations        = 0;             // total number of executed loop iterations
+uint64_t* iterationsPerLoop = (uint64_t*) 0; // number of executed iterations of each loop
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1133,21 +1128,6 @@ void resetInterpreter() {
   pc = 0;
   ir = 0;
 
-  ic_lui   = 0;
-  ic_addi  = 0;
-  ic_add   = 0;
-  ic_sub   = 0;
-  ic_mul   = 0;
-  ic_divu  = 0;
-  ic_remu  = 0;
-  ic_sltu  = 0;
-  ic_ld    = 0;
-  ic_sd    = 0;
-  ic_beq   = 0;
-  ic_jal   = 0;
-  ic_jalr  = 0;
-  ic_ecall = 0;
-
   registers = (uint64_t*) 0;
 
   pt = (uint64_t*) 0;
@@ -1157,17 +1137,29 @@ void resetInterpreter() {
   timer = TIMEROFF;
 
   if (execute) {
-    calls           = 0;
-    callsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+    ic_lui   = 0;
+    ic_addi  = 0;
+    ic_add   = 0;
+    ic_sub   = 0;
+    ic_mul   = 0;
+    ic_divu  = 0;
+    ic_remu  = 0;
+    ic_sltu  = 0;
+    ic_ld    = 0;
+    ic_sd    = 0;
+    ic_beq   = 0;
+    ic_jal   = 0;
+    ic_jalr  = 0;
+    ic_ecall = 0;
 
-    loops           = 0;
-    loopsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+    loadsPerInstruction  = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+    storesPerInstruction = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-    loads           = 0;
-    loadsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+    calls             = 0;
+    callsPerProcedure = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-    stores           = 0;
-    storesPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+    iterations        = 0;
+    iterationsPerLoop = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
 }
 
@@ -6004,16 +5996,14 @@ uint64_t execute_ld() {
         // semantics of ld
         *(registers + rd) = loadVirtualMemory(pt, vaddr);
 
-      // keep track of number of loads
-      loads = loads + 1;
-
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
-
-      *(loadsPerAddress + a) = *(loadsPerAddress + a) + 1;
-
       pc = pc + INSTRUCTIONSIZE;
 
       ic_ld = ic_ld + 1;
+
+      // keep track of number of loads per instruction
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
@@ -6084,16 +6074,14 @@ uint64_t execute_sd() {
       // semantics of sd
       storeVirtualMemory(pt, vaddr, *(registers + rs2));
 
-      // keep track of number of stores
-      stores = stores + 1;
-
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
-
-      *(storesPerAddress + a) = *(storesPerAddress + a) + 1;
-
       pc = pc + INSTRUCTIONSIZE;
 
       ic_sd = ic_sd + 1;
+
+      // keep track of number of stores per instruction
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
@@ -6190,17 +6178,17 @@ void execute_jal() {
 
     a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
-    *(callsPerAddress + a) = *(callsPerAddress + a) + 1;
+    *(callsPerProcedure + a) = *(callsPerProcedure + a) + 1;
   } else if (signedLessThan(imm, 0)) {
     // just jump backwards to check for another loop iteration
     pc = pc + imm;
 
     // keep track of number of loop iterations
-    loops = loops + 1;
+    iterations = iterations + 1;
 
     a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
-    *(loopsPerAddress + a) = *(loopsPerAddress + a) + 1;
+    *(iterationsPerLoop + a) = *(iterationsPerLoop + a) + 1;
   } else
     // just jump forward
     pc = pc + imm;
@@ -6643,7 +6631,7 @@ void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemoni
   print((uint64_t*) "%)");
 }
 
-uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max) {
+uint64_t instructionWithMaxCounter(uint64_t* counters, uint64_t max) {
   uint64_t a;
   uint64_t n;
   uint64_t i;
@@ -6670,11 +6658,11 @@ uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max) {
   return a;
 }
 
-uint64_t printPerAddressCounter(uint64_t total, uint64_t* counters, uint64_t max) {
+uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t max) {
   uint64_t a;
   uint64_t ratio;
 
-  a = addressWithMaxCounter(counters, max);
+  a = instructionWithMaxCounter(counters, max);
 
   if (a == (uint64_t) (-1))
     ratio = 0;
@@ -6696,21 +6684,19 @@ uint64_t printPerAddressCounter(uint64_t total, uint64_t* counters, uint64_t max
   return ratio;
 }
 
-void printProfile(uint64_t* message, uint64_t total, uint64_t* counters) {
+void printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* counters) {
   uint64_t max;
 
-  if (total > 0) {
-    print(selfieName);
-    print(message);
-    printInteger(total);
-    print((uint64_t*) ",");
-    max = printPerAddressCounter(total, counters, UINT64_MAX); // max counter
-    print((uint64_t*) ",");
-    max = printPerAddressCounter(total, counters, max); // 2nd max
-    print((uint64_t*) ",");
-    printPerAddressCounter(total, counters, max); // 3rd max
-    println();
-  }
+  print(selfieName);
+  print(message);
+  printInteger(total);
+  print((uint64_t*) ",");
+  max = printPerInstructionCounter(total, counters, UINT64_MAX); // max counter
+  print((uint64_t*) ",");
+  max = printPerInstructionCounter(total, counters, max); // 2nd max
+  print((uint64_t*) ",");
+  printPerInstructionCounter(total, counters, max); // 3rd max
+  println();
 }
 
 void selfie_disassemble() {
@@ -7543,49 +7529,53 @@ uint64_t selfie_run(uint64_t machine) {
   print(getName(currentContext));
   print((uint64_t*) " with exit code ");
   printInteger(signExtend(exitCode, SYSCALL_BITWIDTH));
-  print((uint64_t*) ", ");
+  println();
+
+  print(selfieName);
+  print((uint64_t*) ": summary: ");
   printInteger(ic);
-  print((uint64_t*) " executed instructions, and ");
+  print((uint64_t*) " executed instructions and ");
   printFixedPointRatio(pused(), MEGABYTE);
   print((uint64_t*) "MB mapped memory");
   println();
 
   print(selfieName);
+  if (sourceLineNumber != (uint64_t*) 0)
+    print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max");
+  else
+    print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max");
+  println();
+
+  printPerInstructionProfile((uint64_t*) ": calls: ", calls, callsPerProcedure);
+  printPerInstructionProfile((uint64_t*) ": loops: ", iterations, iterationsPerLoop);
+  printPerInstructionProfile((uint64_t*) ": loads: ", ic_ld, loadsPerInstruction);
+  printPerInstructionProfile((uint64_t*) ": stores: ", ic_sd, storesPerInstruction);
+
+  print(selfieName);
   print((uint64_t*) ":");
-  printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
   printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
+  printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
+  printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
+  printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
+  println();
+
+  print(selfieName);
+  print((uint64_t*) ":");
   printInstructionCounter(ic, ic_add, (uint64_t*) "add");
   printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
   printInstructionCounter(ic, ic_mul, (uint64_t*) "mul");
-  println();
-  print(selfieName);
-  print((uint64_t*) ":");
   printInstructionCounter(ic, ic_divu, (uint64_t*) "divu");
   printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
-  printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
-  printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
-  printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
   println();
+
   print(selfieName);
   print((uint64_t*) ":");
+  printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
   printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
   printInstructionCounter(ic, ic_jal, (uint64_t*) "jal");
   printInstructionCounter(ic, ic_jalr, (uint64_t*) "jalr");
   printInstructionCounter(ic, ic_ecall, (uint64_t*) "ecall");
   println();
-
-  if (calls > 0) {
-    print(selfieName);
-    if (sourceLineNumber != (uint64_t*) 0)
-      print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
-    else
-      print((uint64_t*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
-    println();
-    printProfile((uint64_t*) ": calls: ", calls, callsPerAddress);
-    printProfile((uint64_t*) ": loops: ", loops, loopsPerAddress);
-    printProfile((uint64_t*) ": loads: ", loads, loadsPerAddress);
-    printProfile((uint64_t*) ": stores: ", stores, storesPerAddress);
-  }
 
   return exitCode;
 }
