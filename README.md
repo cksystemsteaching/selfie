@@ -6,7 +6,7 @@ The Selfie Project provides an educational platform for teaching undergraduate a
 
 There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
 
-Selfie is a self-contained 7k-line, 64-bit C implementation of:
+Selfie is a self-contained 8k-line, 64-bit C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to

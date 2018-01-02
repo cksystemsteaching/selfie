@@ -16,7 +16,7 @@
 // resolve self-reference in systems code which is seen as the key
 // challenge when teaching systems engineering, hence the name.
 //
-// Selfie is a self-contained 7k-line, 64-bit C implementation of:
+// Selfie is a self-contained 8k-line, 64-bit C implementation of:
 //
 // 1. a self-compiling compiler called starc that compiles
 //    a tiny but still fast subset of C called C Star (C*) to
@@ -1037,9 +1037,11 @@ void interrupt();
 
 uint64_t* runUntilException();
 
+void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics);
+
 uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max);
 
-uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max);
+uint64_t printPerAddressCounter(uint64_t total, uint64_t* counters, uint64_t max);
 void     printProfile(uint64_t* message, uint64_t total, uint64_t* counters);
 
 void selfie_disassemble();
@@ -1066,14 +1068,31 @@ uint64_t TIMEROFF = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t interpret = 0; // flag for executing or disassembling code
+uint64_t execute = 0; // flag for executing code
 
-uint64_t debug = 0; // flag for logging code execution
+uint64_t disassembleOrDebug = 0; // flag for disassembling and debugging code
 
 // hardware thread state
 
 uint64_t pc = 0; // program counter
 uint64_t ir = 0; // instruction register
+
+// instruction counters
+
+uint64_t ic_lui   = 0;
+uint64_t ic_addi  = 0;
+uint64_t ic_add   = 0;
+uint64_t ic_sub   = 0;
+uint64_t ic_mul   = 0;
+uint64_t ic_divu  = 0;
+uint64_t ic_remu  = 0;
+uint64_t ic_sltu  = 0;
+uint64_t ic_ld    = 0;
+uint64_t ic_sd    = 0;
+uint64_t ic_beq   = 0;
+uint64_t ic_jal   = 0;
+uint64_t ic_jalr  = 0;
+uint64_t ic_ecall = 0;
 
 uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
@@ -1114,6 +1133,21 @@ void resetInterpreter() {
   pc = 0;
   ir = 0;
 
+  ic_lui   = 0;
+  ic_addi  = 0;
+  ic_add   = 0;
+  ic_sub   = 0;
+  ic_mul   = 0;
+  ic_divu  = 0;
+  ic_remu  = 0;
+  ic_sltu  = 0;
+  ic_ld    = 0;
+  ic_sd    = 0;
+  ic_beq   = 0;
+  ic_jal   = 0;
+  ic_jalr  = 0;
+  ic_ecall = 0;
+
   registers = (uint64_t*) 0;
 
   pt = (uint64_t*) 0;
@@ -1122,7 +1156,7 @@ void resetInterpreter() {
 
   timer = TIMEROFF;
 
-  if (interpret) {
+  if (execute) {
     calls           = 0;
     callsPerAddress = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
@@ -1298,12 +1332,14 @@ uint64_t EXIT = 1;
 
 // signed 32-bit exit codes [int]
 uint64_t EXITCODE_NOERROR = 0;
+uint64_t EXITCODE_BADARGUMENTS;
 uint64_t EXITCODE_IOERROR;
 uint64_t EXITCODE_SCANNERERROR;
 uint64_t EXITCODE_PARSERERROR;
 uint64_t EXITCODE_COMPILERERROR;
 uint64_t EXITCODE_OUTOFVIRTUALMEMORY;
 uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
 
@@ -1325,14 +1361,16 @@ uint64_t freePageFrameMemory = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initKernel() {
-  EXITCODE_IOERROR = signShrink(-1, SYSCALL_BITWIDTH);
-  EXITCODE_SCANNERERROR = signShrink(-2, SYSCALL_BITWIDTH);
-  EXITCODE_PARSERERROR = signShrink(-3, SYSCALL_BITWIDTH);
-  EXITCODE_COMPILERERROR = signShrink(-4, SYSCALL_BITWIDTH);
-  EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-5, SYSCALL_BITWIDTH);
-  EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-6, SYSCALL_BITWIDTH);
-  EXITCODE_UNKNOWNSYSCALL = signShrink(-7, SYSCALL_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-8, SYSCALL_BITWIDTH);
+  EXITCODE_BADARGUMENTS = signShrink(-1, SYSCALL_BITWIDTH);
+  EXITCODE_IOERROR = signShrink(-2, SYSCALL_BITWIDTH);
+  EXITCODE_SCANNERERROR = signShrink(-3, SYSCALL_BITWIDTH);
+  EXITCODE_PARSERERROR = signShrink(-4, SYSCALL_BITWIDTH);
+  EXITCODE_COMPILERERROR = signShrink(-5, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-6, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-7, SYSCALL_BITWIDTH);
+  EXITCODE_UNKNOWNINSTRUCTION = signShrink(-8, SYSCALL_BITWIDTH);
+  EXITCODE_UNKNOWNSYSCALL = signShrink(-9, SYSCALL_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-10, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -4288,7 +4326,7 @@ void selfie_compile() {
       numberOfSourceFiles = numberOfSourceFiles + 1;
 
       print(selfieName);
-      print((uint64_t*) ": this is selfie compiling ");
+      print((uint64_t*) ": selfie compiling ");
       print(sourceName);
       print((uint64_t*) " with starc");
       println();
@@ -5061,7 +5099,7 @@ void selfie_load() {
 void emitExit() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
-  // load argument for exit
+  // load signed 32-bit integer argument for exit
   emitLD(REG_A0, REG_SP, 0);
 
   // remove the argument from the stack
@@ -5076,7 +5114,7 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
+  setExitCode(context, *(getRegs(context) + REG_A0));
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -5085,7 +5123,7 @@ void implementExit(uint64_t* context) {
   printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
   print((uint64_t*) " and ");
   printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
-  print((uint64_t*) "MB of mallocated memory");
+  print((uint64_t*) "MB mallocated memory");
   println();
 }
 
@@ -5693,7 +5731,7 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 void printSourceLineNumberOfInstruction(uint64_t a) {
   if (sourceLineNumber != (uint64_t*) 0) {
     print((uint64_t*) "(~");
-    if (interpret)
+    if (execute)
       printInteger(*(sourceLineNumber + (a - *(ELF_header + 10)) / INSTRUCTIONSIZE));
     else
       printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
@@ -5702,7 +5740,7 @@ void printSourceLineNumberOfInstruction(uint64_t a) {
 }
 
 void printInstructionContext() {
-  if (interpret) {
+  if (execute) {
     print(binaryName);
     print((uint64_t*) ": $pc=");
   }
@@ -5743,6 +5781,8 @@ void execute_lui() {
     *(registers + rd) = leftShift(imm, 12);
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_lui = ic_lui + 1;
 }
 
 void print_addi() {
@@ -5784,6 +5824,8 @@ void execute_addi() {
     *(registers + rd) = *(registers + rs1) + imm;
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_addi = ic_addi + 1;
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
@@ -5813,6 +5855,8 @@ void execute_add() {
     *(registers + rd) = *(registers + rs1) + *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_add = ic_add + 1;
 }
 
 void execute_sub() {
@@ -5821,6 +5865,8 @@ void execute_sub() {
     *(registers + rd) = *(registers + rs1) - *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_sub = ic_sub + 1;
 }
 
 void execute_mul() {
@@ -5831,6 +5877,8 @@ void execute_mul() {
   // TODO: 128-bit resolution currently not supported
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_mul = ic_mul + 1;
 }
 
 void execute_divu() {
@@ -5851,6 +5899,8 @@ void execute_divu() {
     *(registers + rd) = *(registers + rs1) / *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_divu = ic_divu + 1;
 }
 
 void execute_remu() {
@@ -5871,6 +5921,8 @@ void execute_remu() {
     *(registers + rd) = *(registers + rs1) % *(registers + rs2);
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_remu = ic_remu + 1;
 }
 
 void execute_sltu() {
@@ -5885,6 +5937,8 @@ void execute_sltu() {
   }
 
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_sltu = ic_sltu + 1;
 }
 
 void print_ld() {
@@ -5958,6 +6012,8 @@ uint64_t execute_ld() {
       *(loadsPerAddress + a) = *(loadsPerAddress + a) + 1;
 
       pc = pc + INSTRUCTIONSIZE;
+
+      ic_ld = ic_ld + 1;
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
@@ -6036,6 +6092,8 @@ uint64_t execute_sd() {
       *(storesPerAddress + a) = *(storesPerAddress + a) + 1;
 
       pc = pc + INSTRUCTIONSIZE;
+
+      ic_sd = ic_sd + 1;
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
@@ -6081,6 +6139,8 @@ void execute_beq() {
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
     pc = pc + imm;
+
+  ic_beq = ic_beq + 1;
 }
 
 void print_jal() {
@@ -6144,6 +6204,8 @@ void execute_jal() {
   } else
     // just jump forward
     pc = pc + imm;
+
+  ic_jal = ic_jal + 1;
 }
 
 void print_jalr() {
@@ -6190,10 +6252,14 @@ void execute_jalr() {
     // jump
     pc = next_pc;
   }
+
+  ic_jalr = ic_jalr + 1;
 }
 
 void execute_ecall() {
   pc = pc + INSTRUCTIONSIZE;
+
+  ic_ecall = ic_ecall + 1;
 
   if (*(registers + REG_A7) == SYSCALL_SWITCH)
     implementSwitch();
@@ -6281,10 +6347,10 @@ void decode_execute() {
 
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
       if (funct7 == F7_ADD) {
-        if (debug) {
+        if (disassembleOrDebug) {
           print_add_sub_mul_divu_remu_sltu((uint64_t*) "add");
 
-          if (interpret) {
+          if (execute) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_add();
             print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6296,10 +6362,10 @@ void decode_execute() {
 
         return;
       } else if (funct7 == F7_SUB) {
-        if (debug) {
+        if (disassembleOrDebug) {
           print_add_sub_mul_divu_remu_sltu((uint64_t*) "sub");
 
-          if (interpret) {
+          if (execute) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_sub();
             print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6311,10 +6377,10 @@ void decode_execute() {
 
         return;
       } else if (funct7 == F7_MUL) {
-        if (debug) {
+        if (disassembleOrDebug) {
           print_add_sub_mul_divu_remu_sltu((uint64_t*) "mul");
 
-          if (interpret) {
+          if (execute) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_mul();
             print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6328,10 +6394,10 @@ void decode_execute() {
       }
     } else if (funct3 == F3_DIVU) {
       if (funct7 == F7_DIVU) {
-        if (debug) {
+        if (disassembleOrDebug) {
           print_add_sub_mul_divu_remu_sltu((uint64_t*) "divu");
 
-          if (interpret) {
+          if (execute) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_divu();
             print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6345,10 +6411,10 @@ void decode_execute() {
       }
     } else if (funct3 == F3_REMU) {
       if (funct7 == F7_REMU) {
-        if (debug) {
+        if (disassembleOrDebug) {
           print_add_sub_mul_divu_remu_sltu((uint64_t*) "remu");
 
-          if (interpret) {
+          if (execute) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_remu();
             print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6362,10 +6428,10 @@ void decode_execute() {
       }
     } else if (funct3 == F3_SLTU) {
       if (funct7 == F7_SLTU) {
-        if (debug) {
+        if (disassembleOrDebug) {
           print_add_sub_mul_divu_remu_sltu((uint64_t*) "sltu");
 
-          if (interpret) {
+          if (execute) {
             print_add_sub_mul_divu_remu_sltu_before();
             execute_sltu();
             print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6382,10 +6448,10 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_ADDI) {
-      if (debug) {
+      if (disassembleOrDebug) {
         print_addi();
 
-        if (interpret) {
+        if (execute) {
           print_addi_before();
           execute_addi();
           print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6401,10 +6467,10 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_LD) {
-      if (debug) {
+      if (disassembleOrDebug) {
         print_ld();
 
-        if (interpret) {
+        if (execute) {
           print_ld_before();
           print_ld_after(execute_ld());
         }
@@ -6419,10 +6485,10 @@ void decode_execute() {
     decodeSFormat();
 
     if (funct3 == F3_SD) {
-      if (debug) {
+      if (disassembleOrDebug) {
         print_sd();
 
-        if (interpret) {
+        if (execute) {
           print_sd_before();
           print_sd_after(execute_sd());
         }
@@ -6437,10 +6503,10 @@ void decode_execute() {
     decodeBFormat();
 
     if (funct3 == F3_BEQ) {
-      if (debug) {
+      if (disassembleOrDebug) {
         print_beq();
 
-        if (interpret) {
+        if (execute) {
           print_beq_before();
           execute_beq();
           print_beq_after();
@@ -6455,10 +6521,10 @@ void decode_execute() {
   } else if (opcode == OP_JAL) {
     decodeJFormat();
 
-    if (debug) {
+    if (disassembleOrDebug) {
       print_jal();
 
-      if (interpret) {
+      if (execute) {
         print_jal_before();
         execute_jal();
         print_jal_jalr_after();
@@ -6473,10 +6539,10 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_JALR) {
-      if (debug) {
+      if (disassembleOrDebug) {
         print_jalr();
 
-        if (interpret) {
+        if (execute) {
           print_jalr_before();
           execute_jalr();
           print_jal_jalr_after();
@@ -6491,10 +6557,10 @@ void decode_execute() {
   } else if (opcode == OP_LUI) {
     decodeUFormat();
 
-    if (debug) {
+    if (disassembleOrDebug) {
       print_lui();
 
-      if (interpret) {
+      if (execute) {
         print_lui_before();
         execute_lui();
         print_lui_after();
@@ -6509,12 +6575,12 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_ECALL) {
-      if (debug) {
+      if (disassembleOrDebug) {
         printInstructionContext();
 
         print((uint64_t*) "ecall");
 
-        if (interpret)
+        if (execute)
           execute_ecall();
 
         println();
@@ -6525,17 +6591,15 @@ void decode_execute() {
     }
   }
 
-  if (interpret)
+  if (execute)
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   else {
     print(selfieName);
-    print((uint64_t*) ": unknown opcode ");
-    printInteger(opcode);
-    print((uint64_t*) " (");
+    print((uint64_t*) ": unknown instruction with ");
     printBinary(opcode, 0);
-    print((uint64_t*) ") detected");
+    print((uint64_t*) " opcode detected");
 
-    exit(-1);
+    exit(EXITCODE_UNKNOWNINSTRUCTION);
   }
 }
 
@@ -6569,6 +6633,16 @@ uint64_t* runUntilException() {
   return currentContext;
 }
 
+void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
+  print((uint64_t*) " ");
+  printInteger(counter);
+  print((uint64_t*) " ");
+  print(mnemonics);
+  print((uint64_t*) " (");
+  printFixedPointPercentage(total, counter);
+  print((uint64_t*) "%)");
+}
+
 uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max) {
   uint64_t a;
   uint64_t n;
@@ -6596,7 +6670,7 @@ uint64_t addressWithMaxCounter(uint64_t* counters, uint64_t max) {
   return a;
 }
 
-uint64_t printCounters(uint64_t total, uint64_t* counters, uint64_t max) {
+uint64_t printPerAddressCounter(uint64_t total, uint64_t* counters, uint64_t max) {
   uint64_t a;
   uint64_t ratio;
 
@@ -6630,11 +6704,11 @@ void printProfile(uint64_t* message, uint64_t total, uint64_t* counters) {
     print(message);
     printInteger(total);
     print((uint64_t*) ",");
-    max = printCounters(total, counters, UINT64_MAX); // max counter
+    max = printPerAddressCounter(total, counters, UINT64_MAX); // max counter
     print((uint64_t*) ",");
-    max = printCounters(total, counters, max); // 2nd max
+    max = printPerAddressCounter(total, counters, max); // 2nd max
     print((uint64_t*) ",");
-    printCounters(total, counters, max); // 3rd max
+    printPerAddressCounter(total, counters, max); // 3rd max
     println();
   }
 }
@@ -6667,12 +6741,12 @@ void selfie_disassemble() {
   outputName = assemblyName;
   outputFD   = assemblyFD;
 
-  interpret = 0;
+  execute = 0;
 
   resetLibrary();
   resetInterpreter();
 
-  debug = 1;
+  disassembleOrDebug = 1;
 
   while (pc < codeLength) {
     ir = loadInstruction(pc);
@@ -6682,7 +6756,7 @@ void selfie_disassemble() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  debug = 0;
+  disassembleOrDebug = 0;
 
   outputName = (uint64_t*) 0;
   outputFD   = 1;
@@ -7409,18 +7483,19 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
 
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exitCode;
+  uint64_t ic;
 
   if (binaryLength == 0) {
     print(selfieName);
     print((uint64_t*) ": nothing to run, debug, or host");
     println();
 
-    return -1;
+    return EXITCODE_BADARGUMENTS;
   }
 
   initMemory(atoi(peekArgument()));
 
-  interpret = 1;
+  execute = 1;
 
   resetInterpreter();
   resetMicrokernel();
@@ -7435,11 +7510,11 @@ uint64_t selfie_run(uint64_t machine) {
   up_loadArguments(currentContext, numberOfRemainingArguments(), remainingArguments());
 
   print(selfieName);
-  print((uint64_t*) ": this is selfie executing ");
+  print((uint64_t*) ": selfie executing ");
   print(binaryName);
   print((uint64_t*) " with ");
   printInteger(pageFrameMemory / MEGABYTE);
-  print((uint64_t*) "MB of physical memory on ");
+  print((uint64_t*) "MB physical memory on ");
 
   if (machine == MIPSTER)
     exitCode = mipster(currentContext);
@@ -7457,18 +7532,46 @@ uint64_t selfie_run(uint64_t machine) {
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
 
-  interpret = 0;
+  execute = 0;
 
-  debug = 0;
+  disassembleOrDebug = 0;
+
+  ic = ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
 
   print(selfieName);
-  print((uint64_t*) ": this is selfie terminating ");
+  print((uint64_t*) ": selfie terminating ");
   print(getName(currentContext));
   print((uint64_t*) " with exit code ");
-  printInteger(exitCode);
-  print((uint64_t*) " and ");
+  printInteger(signExtend(exitCode, SYSCALL_BITWIDTH));
+  print((uint64_t*) ", ");
+  printInteger(ic);
+  print((uint64_t*) " executed instructions, and ");
   printFixedPointRatio(pused(), MEGABYTE);
-  print((uint64_t*) "MB of mapped memory");
+  print((uint64_t*) "MB mapped memory");
+  println();
+
+  print(selfieName);
+  print((uint64_t*) ":");
+  printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
+  printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
+  printInstructionCounter(ic, ic_add, (uint64_t*) "add");
+  printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
+  printInstructionCounter(ic, ic_mul, (uint64_t*) "mul");
+  println();
+  print(selfieName);
+  print((uint64_t*) ":");
+  printInstructionCounter(ic, ic_divu, (uint64_t*) "divu");
+  printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
+  printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
+  printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
+  printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
+  println();
+  print(selfieName);
+  print((uint64_t*) ":");
+  printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
+  printInstructionCounter(ic, ic_jal, (uint64_t*) "jal");
+  printInstructionCounter(ic, ic_jalr, (uint64_t*) "jalr");
+  printInstructionCounter(ic, ic_ecall, (uint64_t*) "ecall");
   println();
 
   if (calls > 0) {
@@ -7750,7 +7853,7 @@ void selfie_loadDimacs() {
   sourceName = getArgument();
 
   print(selfieName);
-  print((uint64_t*) ": this is selfie loading SAT instance ");
+  print((uint64_t*) ": selfie loading SAT instance ");
   print(sourceName);
   println();
 
@@ -7906,7 +8009,7 @@ uint64_t selfie() {
         // remaining options have at least one argument
         printUsage();
 
-        return -1;
+        return EXITCODE_BADARGUMENTS;
       } else if (stringCompare(option, (uint64_t*) "-o"))
         selfie_output();
       else if (stringCompare(option, (uint64_t*) "-s"))
@@ -7918,7 +8021,7 @@ uint64_t selfie() {
       else if (stringCompare(option, (uint64_t*) "-m"))
         return selfie_run(MIPSTER);
       else if (stringCompare(option, (uint64_t*) "-d")) {
-        debug = 1;
+        disassembleOrDebug = 1;
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-y"))
@@ -7930,12 +8033,12 @@ uint64_t selfie() {
       else {
         printUsage();
 
-        return -1;
+        return EXITCODE_BADARGUMENTS;
       }
     }
   }
 
-  return 0;
+  return EXITCODE_NOERROR;
 }
 
 uint64_t main(uint64_t argc, uint64_t* argv) {
