@@ -7517,9 +7517,9 @@ uint64_t selfie_run(uint64_t machine) {
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
 
-  execute = 0;
-
   disassembleOrDebug = 0;
+
+  execute = 0;
 
   print(selfieName);
   print((uint64_t*) ": selfie terminating ");
@@ -7538,61 +7538,59 @@ uint64_t selfie_run(uint64_t machine) {
   print((uint64_t*) "MB mapped memory");
   println();
 
-  print(selfieName);
-  if (sourceLineNumber != (uint64_t*) 0)
-    print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max");
-  else
-    print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max");
-  println();
+  if (ic > 0) {
+    print(selfieName);
+    print((uint64_t*) ": init:    ");
+    printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
+    println();
 
-  printPerInstructionProfile((uint64_t*) ": calls:   ", calls, callsPerProcedure);
-  printPerInstructionProfile((uint64_t*) ": loops:   ", iterations, iterationsPerLoop);
-  printPerInstructionProfile((uint64_t*) ": loads:   ", ic_ld, loadsPerInstruction);
-  printPerInstructionProfile((uint64_t*) ": stores:  ", ic_sd, storesPerInstruction);
+    print(selfieName);
+    print((uint64_t*) ": memory:  ");
+    printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
+    println();
 
-  print(selfieName);
-  print((uint64_t*) ": profile: total per instruction type");
-  println();
+    print(selfieName);
+    print((uint64_t*) ": compute: ");
+    printInstructionCounter(ic, ic_add, (uint64_t*) "add");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_mul, (uint64_t*) "mul");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_divu, (uint64_t*) "divu");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
+    println();
 
-  print(selfieName);
-  print((uint64_t*) ": init:    ");
-  printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
-  println();
+    print(selfieName);
+    print((uint64_t*) ": control: ");
+    printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_jal, (uint64_t*) "jal");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_jalr, (uint64_t*) "jalr");
+    print((uint64_t*) ", ");
+    printInstructionCounter(ic, ic_ecall, (uint64_t*) "ecall");
+    println();
 
-  print(selfieName);
-  print((uint64_t*) ": memory:  ");
-  printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
-  println();
+    print(selfieName);
+    if (sourceLineNumber != (uint64_t*) 0)
+      print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max");
+    else
+      print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max");
+    println();
 
-  print(selfieName);
-  print((uint64_t*) ": compute: ");
-  printInstructionCounter(ic, ic_add, (uint64_t*) "add");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_mul, (uint64_t*) "mul");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_divu, (uint64_t*) "divu");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
-  println();
-
-  print(selfieName);
-  print((uint64_t*) ": control: ");
-  printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_jal, (uint64_t*) "jal");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_jalr, (uint64_t*) "jalr");
-  print((uint64_t*) ", ");
-  printInstructionCounter(ic, ic_ecall, (uint64_t*) "ecall");
-  println();
+    printPerInstructionProfile((uint64_t*) ": calls:   ", calls, callsPerProcedure);
+    printPerInstructionProfile((uint64_t*) ": loops:   ", iterations, iterationsPerLoop);
+    printPerInstructionProfile((uint64_t*) ": loads:   ", ic_ld, loadsPerInstruction);
+    printPerInstructionProfile((uint64_t*) ": stores:  ", ic_sd, storesPerInstruction);
+  }
 
   return exitCode;
 }
