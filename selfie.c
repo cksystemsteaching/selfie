@@ -1027,8 +1027,6 @@ void execute_ecall();
 
 // ---------------------- VIPSTER INSTRUCTIONS ---------------------
 
-uint64_t isEnvironmentAccess(uint64_t reg);
-
 void     vipster_lui();
 void     vipster_addi();
 
@@ -5189,21 +5187,20 @@ void implementExit(uint64_t* context) {
 }
 
 void vipster_implementExit(uint64_t* context) {
-  uint64_t upper;
   uint64_t lower;
-  
-  upper = getUpperBound(*(getVipsterRegs(context) + REG_A0));
+  uint64_t upper;
+
   lower = getLowerBound(*(getVipsterRegs(context) + REG_A0));
+  upper = getUpperBound(*(getVipsterRegs(context) + REG_A0));
 
   print(selfieName);
   print((uint64_t*) ": ");
   print(getName(context));
-  print((uint64_t*) " exiting with bounds: "); println();
-  print((uint64_t*) "upper = "); printInteger(upper); println();
-  print((uint64_t*) "lower = "); printInteger(lower); println();
-  print((uint64_t*) "using ");
+  print((uint64_t*) " exiting with ");
   printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
-  print((uint64_t*) "MB of mallocated memory");
+  print((uint64_t*) "MB of mallocated memory and bounds:"); println();
+  print((uint64_t*) "          lower = "); printInteger(lower);
+  print((uint64_t*) ", upper = "); printInteger(upper);
   println();
 }
 
@@ -5338,18 +5335,26 @@ void vipster_implementRead(uint64_t* context) {
   vipRegs = getVipsterRegs(context);
   table = getPT(context);
 
-  if (0 == isConstantContainer(*(vipRegs + REG_A1))) {
-    print((uint64_t*) "VIPSTER: read call recieved a symbolic buffer pointer");
-    println(); exit(-1);
-  } else vbuffer = getLowerBound(*(vipRegs + REG_A1));
-  if ( 0 == isConstantContainer(*(vipRegs + REG_A2))) {
-    print((uint64_t*) "VIPSTER: read call recieved a symbolic size");
-    println(); exit(-1);
-  } else size = getLowerBound(*(vipRegs + REG_A2));
+  if (isConstantContainer(*(vipRegs + REG_A1)))
+    vbuffer = getLowerBound(*(vipRegs + REG_A1));
+  else {
+    print((uint64_t*) "VIPSTER: read call received a symbolic buffer pointer");
+    println();
+    exit(-1);
+  }
+  if (isConstantContainer(*(vipRegs + REG_A2)))
+    size = getLowerBound(*(vipRegs + REG_A2));
+  else {
+    print((uint64_t*) "VIPSTER: read call received a symbolic size");
+    println();
+    exit(-1);
+  }
 
   while (size > 0) {
     bytesToRead = SIZEOFUINT64;
-    if (size < bytesToRead) bytesToRead = size;
+
+    if (size < bytesToRead)
+      bytesToRead = size;
 
     if (isValidVirtualAddress(vbuffer)) {
       if (isVirtualAddressMapped(table, vbuffer)) {
@@ -5362,32 +5367,40 @@ void vipster_implementRead(uint64_t* context) {
         upper = 0;
 
         // reads at most 8x UTF-8 characters
-        // each has possible value 0-255
+        // each has possible value 0 - 255
+        if (bytesToRead > 0)
+          upper = upper + 255;
+        if (bytesToRead > 1)
+          upper = upper + leftShift(255, 8);
+        if (bytesToRead > 2)
+          upper = upper + leftShift(255, 16);
+        if (bytesToRead > 3)
+          upper = upper + leftShift(255, 24);
+        if (bytesToRead > 4)
+          upper = upper + leftShift(255, 32);
+        if (bytesToRead > 5)
+          upper = upper + leftShift(255, 40);
+        if (bytesToRead > 6)
+          upper = upper + leftShift(255, 48);
+        if (bytesToRead > 7)
+          upper = upper + leftShift(255, 56);
+
         setLowerBound(container, 0);
-        if (bytesToRead > 0) upper = upper + 255;
-        if (bytesToRead > 1) upper = upper + leftShift(255, 8);
-        if (bytesToRead > 2) upper = upper + leftShift(255, 16);
-        if (bytesToRead > 3) upper = upper + leftShift(255, 24);
-        if (bytesToRead > 4) upper = upper + leftShift(255, 32);
-        if (bytesToRead > 5) upper = upper + leftShift(255, 40);
-        if (bytesToRead > 6) upper = upper + leftShift(255, 48);
-        if (bytesToRead > 7) upper = upper + leftShift(255, 56);
         setUpperBound(container, upper);
 
         size = size - bytesToRead;
 
         if (size > 0)
           vbuffer = vbuffer + SIZEOFUINT64;
-      } else {
+      } else
         if (debug_read) {
           print(selfieName);
           print((uint64_t*) ": reading into virtual address ");
           printHexadecimal(vbuffer, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
-        }
       }
-    } else {
+    } else
       if (debug_read) {
         print(selfieName);
         print((uint64_t*) ": reading into virtual address ");
@@ -5395,7 +5408,6 @@ void vipster_implementRead(uint64_t* context) {
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
-    }
   }
 }
 
@@ -5523,14 +5535,17 @@ void vipster_implementWrite (uint64_t* context) {
 
   vipRegs = getVipsterRegs(context);
 
-  if (0 == isConstantContainer(*(vipRegs + REG_A2))) {
-    print((uint64_t*) "VIPSTER: write call recieved a symbolic size");
-    println(); exit(-1);
-  } else size = getLowerBound(*(vipRegs + REG_A2));
+  if (isConstantContainer(*(vipRegs + REG_A2)))
+    size = getLowerBound(*(vipRegs + REG_A2));
+  else {
+    print((uint64_t*) "VIPSTER: write call received a symbolic size");
+    println();
+    exit(-1);
+  }
 
   // writing just works for now
-  setUpperBound(*(vipRegs + REG_A0), size);
   setLowerBound(*(vipRegs + REG_A0), size);
+  setUpperBound(*(vipRegs + REG_A0), size);
 }
 
 void emitOpen() {
@@ -5655,16 +5670,19 @@ void vipster_implementOpen (uint64_t* context) {
 
   vipRegs = getVipsterRegs(context);
 
-  if (0 == isConstantContainer(*(vipRegs + REG_A0))) {
-    print((uint64_t*) "VIPSTER: open call recieved a symbolic size");
-    println(); exit(-1);
-  } else size = getLowerBound(*(vipRegs + REG_A0));
+  if (isConstantContainer(*(vipRegs + REG_A0)))
+    size = getLowerBound(*(vipRegs + REG_A0));
+  else {
+    print((uint64_t*) "VIPSTER: open call received a symbolic size");
+    println();
+    exit(-1);
+  }
 
   fakeFD = fakeFD + 1;
 
   // opening just works for now
-  setUpperBound(*(vipRegs + REG_A0), fakeFD);
   setLowerBound(*(vipRegs + REG_A0), fakeFD);
+  setUpperBound(*(vipRegs + REG_A0), fakeFD);
 }
 
 void emitMalloc() {
@@ -5733,10 +5751,13 @@ uint64_t vipster_implementMalloc(uint64_t* context) {
   // local variable
   uint64_t bump;
 
-  if (0 == isConstantContainer(*(getVipsterRegs(context) + REG_A0))) {
-    print((uint64_t*) "VIPSTER: malloc call recieved a symbolic size");
-    println(); exit(-1);
-  } else size = getLowerBound(*(getVipsterRegs(context) + REG_A0));
+  if (isConstantContainer(*(getVipsterRegs(context) + REG_A0)))
+    size = getLowerBound(*(getVipsterRegs(context) + REG_A0));
+  else {
+    print((uint64_t*) "VIPSTER: malloc call received a symbolic size");
+    println();
+    exit(-1);
+  }
 
   if (debug_malloc) {
     print(selfieName);
@@ -5754,8 +5775,8 @@ uint64_t vipster_implementMalloc(uint64_t* context) {
 
     return EXIT;
   } else {
-    setLowerBound(*(getVipsterRegs(context) + REG_A0),bump);
-    setUpperBound(*(getVipsterRegs(context) + REG_A0),bump);
+    setLowerBound(*(getVipsterRegs(context) + REG_A0), bump);
+    setUpperBound(*(getVipsterRegs(context) + REG_A0), bump);
 
     setBumpPointer(context, bump + size);
 
@@ -6516,17 +6537,6 @@ void execute_ecall() {
 
 // ---------------------- VIPSTER INSTRUCTIONS ---------------------
 
-uint64_t isEnvironmentAccess(uint64_t reg) {
-  if (reg == SYSCALL_READ)
-    return 1;
-  else if (reg == SYSCALL_WRITE)
-    return 1;
-  else if (reg == SYSCALL_OPEN)
-    return 1;
-
-  return 0;
-}
-
 void vipster_lui() {
   uint64_t* container_rd;
 
@@ -6883,9 +6893,9 @@ void vipster_ecall() {
   // assert: upperBound == lowerBound
 
   if (getLowerBound(*(vipsterRegs + REG_A7)) == SYSCALL_SWITCH) {
-    print((uint64_t*) "VIPSTER: hypervisor not supported");
-    println(); exit(-1);
-    //implementSwitch();
+    print((uint64_t*) "VIPSTER: hypervisor not supported for now");
+    println();
+    exit(-1);
   }
   else
     throwException(EXCEPTION_SYSCALL, 0);
@@ -8063,9 +8073,8 @@ uint64_t vipster_handleSystemCalls(uint64_t* context) {
   if (getException(context) == EXCEPTION_SYSCALL) {
     a7 = getLowerBound(*(vipsterRegs + REG_A7));
 
-    if (a7 == SYSCALL_MALLOC) {
+    if (a7 == SYSCALL_MALLOC)
       return vipster_implementMalloc(context);
-    }
     else if (a7 == SYSCALL_READ)
       vipster_implementRead(context);
     else if (a7 == SYSCALL_WRITE)
