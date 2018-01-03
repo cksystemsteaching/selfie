@@ -1078,6 +1078,8 @@ uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 5;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
+uint64_t maxTraceLength = 100;
+
 uint64_t debug_exception = 0;
 
 // number of instructions from context switch to timer interrupt
@@ -1089,8 +1091,11 @@ uint64_t TIMEROFF = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t execute            = 0; // flag for executing code
-uint64_t disassembleOrDebug = 0; // flag for disassembling and debugging code
+uint64_t execute     = 0; // flag for executing code
+uint64_t record      = 0; // flag for recording code execution
+uint64_t disassemble = 0; // flag for disassembling code
+
+uint64_t debug = 0; // flag for enabling recording, disassembling, and debugging code
 
 // hardware thread state
 
@@ -1101,10 +1106,17 @@ uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
 uint64_t* pt = (uint64_t*) 0; // page table
 
+uint64_t tc = 0; // trace counter
+
+uint64_t* pcTrace   = (uint64_t*) 0; // trace of program counter values
+uint64_t* dataTrace = (uint64_t*) 0; // trace of changed register and memory values
+
 // core state
 
 uint64_t timer = 0; // counter for timer interrupt
 uint64_t trap  = 0; // flag for creating a trap
+
+// profile
 
 uint64_t  calls             = 0;             // total number of executed procedure calls
 uint64_t* callsPerProcedure = (uint64_t*) 0; // number of executed calls of each procedure
@@ -1126,6 +1138,9 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_TIMER)              = (uint64_t) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
+
+  pcTrace   = zalloc(maxTraceLength * REGISTERSIZE);
+  dataTrace = zalloc(maxTraceLength * REGISTERSIZE);
 }
 
 void resetInterpreter() {
@@ -1135,6 +1150,8 @@ void resetInterpreter() {
   registers = (uint64_t*) 0;
 
   pt = (uint64_t*) 0;
+
+  tc = 0;
 
   trap = 0;
 
@@ -5882,6 +5899,19 @@ void execute_lui() {
   ic_lui = ic_lui + 1;
 }
 
+void recordTraceEvent(uint64_t oldValue) {
+  *(pcTrace + tc)   = pc;
+  *(dataTrace + tc) = oldValue;
+
+  tc = (tc + 1) % maxTraceLength;
+}
+
+void record_lui() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_lui();
+}
+
 void print_addi() {
   printInstructionContext();
 
@@ -5925,6 +5955,12 @@ void execute_addi() {
   ic_addi = ic_addi + 1;
 }
 
+void record_addi() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_addi();
+}
+
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
   printInstructionContext();
 
@@ -5956,6 +5992,12 @@ void execute_add() {
   ic_add = ic_add + 1;
 }
 
+void record_add() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_add();
+}
+
 void execute_sub() {
   if (rd != REG_ZR)
     // semantics of sub
@@ -5964,6 +6006,12 @@ void execute_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
+}
+
+void record_sub() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_sub();
 }
 
 void execute_mul() {
@@ -5976,6 +6024,12 @@ void execute_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
+}
+
+void record_mul() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_mul();
 }
 
 void execute_divu() {
@@ -6000,6 +6054,12 @@ void execute_divu() {
   ic_divu = ic_divu + 1;
 }
 
+void record_divu() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_divu();
+}
+
 void execute_remu() {
   // remainder unsigned
 
@@ -6022,6 +6082,12 @@ void execute_remu() {
   ic_remu = ic_remu + 1;
 }
 
+void record_remu() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_remu();
+}
+
 void execute_sltu() {
   // set on less than unsigned
 
@@ -6036,6 +6102,12 @@ void execute_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
+}
+
+void record_sltu() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_sltu();
 }
 
 void print_ld() {
@@ -6118,6 +6190,18 @@ uint64_t execute_ld() {
   return vaddr;
 }
 
+void record_ld() {
+  uint64_t vaddr;
+
+  vaddr = *(registers + rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr))
+      recordTraceEvent(*(registers + rd));
+
+  execute_ld();
+}
+
 void print_sd() {
   printInstructionContext();
 
@@ -6194,6 +6278,18 @@ uint64_t execute_sd() {
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
   return vaddr;
+}
+
+void record_sd() {
+  uint64_t vaddr;
+
+  vaddr = *(registers + rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr))
+      recordTraceEvent(loadVirtualMemory(pt, vaddr));
+
+  execute_sd();
 }
 
 void print_beq() {
@@ -6301,6 +6397,12 @@ void execute_jal() {
   ic_jal = ic_jal + 1;
 }
 
+void record_jal() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_jal();
+}
+
 void print_jalr() {
   printInstructionContext();
 
@@ -6347,6 +6449,12 @@ void execute_jalr() {
   }
 
   ic_jalr = ic_jalr + 1;
+}
+
+void record_jalr() {
+  recordTraceEvent(*(registers + rd));
+
+  execute_jalr();
 }
 
 void execute_ecall() {
@@ -6435,122 +6543,22 @@ void fetch() {
 void decode_execute() {
   opcode = getOpcode(ir);
 
-  if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
-    decodeRFormat();
-
-    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
-      if (funct7 == F7_ADD) {
-        if (disassembleOrDebug) {
-          print_add_sub_mul_divu_remu_sltu((uint64_t*) "add");
-
-          if (execute) {
-            print_add_sub_mul_divu_remu_sltu_before();
-            execute_add();
-            print_addi_add_sub_mul_divu_remu_sltu_after();
-          }
-
-          println();
-        } else
-          execute_add();
-
-        return;
-      } else if (funct7 == F7_SUB) {
-        if (disassembleOrDebug) {
-          print_add_sub_mul_divu_remu_sltu((uint64_t*) "sub");
-
-          if (execute) {
-            print_add_sub_mul_divu_remu_sltu_before();
-            execute_sub();
-            print_addi_add_sub_mul_divu_remu_sltu_after();
-          }
-
-          println();
-        } else
-          execute_sub();
-
-        return;
-      } else if (funct7 == F7_MUL) {
-        if (disassembleOrDebug) {
-          print_add_sub_mul_divu_remu_sltu((uint64_t*) "mul");
-
-          if (execute) {
-            print_add_sub_mul_divu_remu_sltu_before();
-            execute_mul();
-            print_addi_add_sub_mul_divu_remu_sltu_after();
-          }
-
-          println();
-        } else
-          execute_mul();
-
-        return;
-      }
-    } else if (funct3 == F3_DIVU) {
-      if (funct7 == F7_DIVU) {
-        if (disassembleOrDebug) {
-          print_add_sub_mul_divu_remu_sltu((uint64_t*) "divu");
-
-          if (execute) {
-            print_add_sub_mul_divu_remu_sltu_before();
-            execute_divu();
-            print_addi_add_sub_mul_divu_remu_sltu_after();
-          }
-
-          println();
-        } else
-          execute_divu();
-
-        return;
-      }
-    } else if (funct3 == F3_REMU) {
-      if (funct7 == F7_REMU) {
-        if (disassembleOrDebug) {
-          print_add_sub_mul_divu_remu_sltu((uint64_t*) "remu");
-
-          if (execute) {
-            print_add_sub_mul_divu_remu_sltu_before();
-            execute_remu();
-            print_addi_add_sub_mul_divu_remu_sltu_after();
-          }
-
-          println();
-        } else
-          execute_remu();
-
-        return;
-      }
-    } else if (funct3 == F3_SLTU) {
-      if (funct7 == F7_SLTU) {
-        if (disassembleOrDebug) {
-          print_add_sub_mul_divu_remu_sltu((uint64_t*) "sltu");
-
-          if (execute) {
-            print_add_sub_mul_divu_remu_sltu_before();
-            execute_sltu();
-            print_addi_add_sub_mul_divu_remu_sltu_after();
-          }
-
-          println();
-        } else
-          execute_sltu();
-
-        return;
-      }
-    }
-  } else if (opcode == OP_IMM) {
+  if (opcode == OP_IMM) {
     decodeIFormat();
 
     if (funct3 == F3_ADDI) {
-      if (disassembleOrDebug) {
-        print_addi();
-
-        if (execute) {
-          print_addi_before();
-          execute_addi();
-          print_addi_add_sub_mul_divu_remu_sltu_after();
+      if (debug) {
+        if (record)
+          record_addi();
+        else if (disassemble) {
+          print_addi();
+          if (execute) {
+            print_addi_before();
+            execute_addi();
+            print_addi_add_sub_mul_divu_remu_sltu_after();
+          }
+          println();
         }
-
-        println();
       } else
         execute_addi();
 
@@ -6560,15 +6568,17 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_LD) {
-      if (disassembleOrDebug) {
-        print_ld();
-
-        if (execute) {
-          print_ld_before();
-          print_ld_after(execute_ld());
+      if (debug) {
+        if (record)
+          record_ld();
+        else if (disassemble) {
+          print_ld();
+          if (execute) {
+            print_ld_before();
+            print_ld_after(execute_ld());
+          }
+          println();
         }
-
-        println();
       } else
         execute_ld();
 
@@ -6578,34 +6588,150 @@ void decode_execute() {
     decodeSFormat();
 
     if (funct3 == F3_SD) {
-      if (disassembleOrDebug) {
-        print_sd();
-
-        if (execute) {
-          print_sd_before();
-          print_sd_after(execute_sd());
+      if (debug) {
+        if (record)
+          record_sd();
+        else if (disassemble) {
+          print_sd();
+          if (execute) {
+            print_sd_before();
+            print_sd_after(execute_sd());
+          }
+          println();
         }
-
-        println();
       } else
         execute_sd();
 
       return;
     }
+  } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
+    decodeRFormat();
+
+    if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
+      if (funct7 == F7_ADD) {
+        if (debug) {
+          if (record)
+            record_add();
+          else if (disassemble) {
+            print_add_sub_mul_divu_remu_sltu((uint64_t*) "add");
+            if (execute) {
+              print_add_sub_mul_divu_remu_sltu_before();
+              execute_add();
+              print_addi_add_sub_mul_divu_remu_sltu_after();
+            }
+            println();
+          }
+        } else
+          execute_add();
+
+        return;
+      } else if (funct7 == F7_SUB) {
+        if (debug) {
+          if (record)
+            record_sub();
+          else if (disassemble) {
+            print_add_sub_mul_divu_remu_sltu((uint64_t*) "sub");
+            if (execute) {
+              print_add_sub_mul_divu_remu_sltu_before();
+              execute_sub();
+              print_addi_add_sub_mul_divu_remu_sltu_after();
+            }
+            println();
+          }
+        } else
+          execute_sub();
+
+        return;
+      } else if (funct7 == F7_MUL) {
+        if (debug) {
+          if (record)
+            record_mul();
+          else if (disassemble) {
+            print_add_sub_mul_divu_remu_sltu((uint64_t*) "mul");
+            if (execute) {
+              print_add_sub_mul_divu_remu_sltu_before();
+              execute_mul();
+              print_addi_add_sub_mul_divu_remu_sltu_after();
+            }
+            println();
+          }
+        } else
+          execute_mul();
+
+        return;
+      }
+    } else if (funct3 == F3_DIVU) {
+      if (funct7 == F7_DIVU) {
+        if (debug) {
+          if (record)
+            record_divu();
+          else if (disassemble) {
+            print_add_sub_mul_divu_remu_sltu((uint64_t*) "divu");
+            if (execute) {
+              print_add_sub_mul_divu_remu_sltu_before();
+              execute_divu();
+              print_addi_add_sub_mul_divu_remu_sltu_after();
+            }
+            println();
+          }
+        } else
+          execute_divu();
+
+        return;
+      }
+    } else if (funct3 == F3_REMU) {
+      if (funct7 == F7_REMU) {
+        if (debug) {
+          if (record)
+            record_remu();
+          else if (disassemble) {
+            print_add_sub_mul_divu_remu_sltu((uint64_t*) "remu");
+            if (execute) {
+              print_add_sub_mul_divu_remu_sltu_before();
+              execute_remu();
+              print_addi_add_sub_mul_divu_remu_sltu_after();
+            }
+            println();
+          }
+        } else
+          execute_remu();
+
+        return;
+      }
+    } else if (funct3 == F3_SLTU) {
+      if (funct7 == F7_SLTU) {
+        if (debug) {
+          if (record)
+            record_sltu();
+          else if (disassemble) {
+            print_add_sub_mul_divu_remu_sltu((uint64_t*) "sltu");
+            if (execute) {
+              print_add_sub_mul_divu_remu_sltu_before();
+              execute_sltu();
+              print_addi_add_sub_mul_divu_remu_sltu_after();
+            }
+            println();
+          }
+        } else
+          execute_sltu();
+
+        return;
+      }
+    }
   } else if (opcode == OP_BRANCH) {
     decodeBFormat();
 
     if (funct3 == F3_BEQ) {
-      if (disassembleOrDebug) {
-        print_beq();
-
-        if (execute) {
-          print_beq_before();
-          execute_beq();
-          print_beq_after();
+      if (debug) {
+        if (disassemble) {
+          print_beq();
+          if (execute) {
+            print_beq_before();
+            execute_beq();
+            print_beq_after();
+          }
+          println();
         }
-
-        println();
       } else
         execute_beq();
 
@@ -6614,16 +6740,18 @@ void decode_execute() {
   } else if (opcode == OP_JAL) {
     decodeJFormat();
 
-    if (disassembleOrDebug) {
-      print_jal();
-
-      if (execute) {
-        print_jal_before();
-        execute_jal();
-        print_jal_jalr_after();
+    if (debug) {
+      if (record)
+        record_jal();
+      else if (disassemble) {
+        print_jal();
+        if (execute) {
+          print_jal_before();
+          execute_jal();
+          print_jal_jalr_after();
+        }
+        println();
       }
-
-      println();
     } else
       execute_jal();
 
@@ -6632,16 +6760,18 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_JALR) {
-      if (disassembleOrDebug) {
-        print_jalr();
-
-        if (execute) {
-          print_jalr_before();
-          execute_jalr();
-          print_jal_jalr_after();
+      if (debug) {
+        if (record)
+          record_jalr();
+        else if (disassemble) {
+          print_jalr();
+          if (execute) {
+            print_jalr_before();
+            execute_jalr();
+            print_jal_jalr_after();
+          }
+          println();
         }
-
-        println();
       } else
         execute_jalr();
 
@@ -6650,16 +6780,18 @@ void decode_execute() {
   } else if (opcode == OP_LUI) {
     decodeUFormat();
 
-    if (disassembleOrDebug) {
-      print_lui();
-
-      if (execute) {
-        print_lui_before();
-        execute_lui();
-        print_lui_after();
+    if (debug) {
+      if (record)
+        record_lui();
+      else if (disassemble) {
+        print_lui();
+        if (execute) {
+          print_lui_before();
+          execute_lui();
+          print_lui_after();
+        }
+        println();
       }
-
-      println();
     } else
       execute_lui();
 
@@ -6668,15 +6800,15 @@ void decode_execute() {
     decodeIFormat();
 
     if (funct3 == F3_ECALL) {
-      if (disassembleOrDebug) {
-        printInstructionContext();
+      if (debug) {
+        if (disassemble) {
+          printInstructionContext();
+          print((uint64_t*) "ecall");
+          if (execute)
+            execute_ecall();
 
-        print((uint64_t*) "ecall");
-
-        if (execute)
-          execute_ecall();
-
-        println();
+          println();
+        }
       } else
         execute_ecall();
 
@@ -6853,7 +6985,8 @@ void selfie_disassemble() {
   resetLibrary();
   resetInterpreter();
 
-  disassembleOrDebug = 1;
+  debug       = 1;
+  disassemble = 1;
 
   while (pc < codeLength) {
     ir = loadInstruction(pc);
@@ -6863,7 +6996,8 @@ void selfie_disassemble() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  disassembleOrDebug = 0;
+  disassemble = 0;
+  debug       = 0;
 
   outputName = (uint64_t*) 0;
   outputFD   = 1;
@@ -7638,8 +7772,6 @@ uint64_t selfie_run(uint64_t machine) {
     // change 0 to anywhere between 0% to 100% mipster
     exitCode = mixter(currentContext, 0);
 
-  disassembleOrDebug = 0;
-
   execute = 0;
 
   print(selfieName);
@@ -7650,6 +7782,9 @@ uint64_t selfie_run(uint64_t machine) {
   println();
 
   printProfile();
+
+  disassemble = 0;
+  debug       = 0;
 
   return exitCode;
 }
@@ -8085,7 +8220,8 @@ uint64_t selfie() {
       else if (stringCompare(option, (uint64_t*) "-m"))
         return selfie_run(MIPSTER);
       else if (stringCompare(option, (uint64_t*) "-d")) {
-        disassembleOrDebug = 1;
+        debug       = 1;
+        disassemble = 1;
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-y"))
