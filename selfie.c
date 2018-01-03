@@ -5198,8 +5198,8 @@ void vipster_implementExit(uint64_t* context) {
   print(getName(context));
   print((uint64_t*) " exiting with ");
   printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
-  print((uint64_t*) "MB of mallocated memory and bounds:"); println();
-  print((uint64_t*) "          lower = "); printInteger(lower);
+  print((uint64_t*) "MB of mallocated memory and bounds: ");
+  print((uint64_t*) "lower = "); printInteger(lower);
   print((uint64_t*) ", upper = "); printInteger(upper);
   println();
 }
@@ -5845,13 +5845,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   vipsterRegs = getVipsterRegs(toContext);
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
-  if (getParent(fromContext) != MY_CONTEXT) {
+  if (getParent(fromContext) != MY_CONTEXT)
     *(registers + REG_A1) = (uint64_t) getVirtualContext(fromContext);
-
-    setLowerBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) getVirtualContext(fromContext));
-    setUpperBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) getVirtualContext(fromContext));
-
-  } else {
+  else {
     *(registers + REG_A1) = (uint64_t) fromContext;
 
     setLowerBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) fromContext);
@@ -6608,6 +6604,8 @@ void vipster_mul() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
+  // TODO: one has to be constant
+
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) * getLowerBound(container_rs2));
     setUpperBound(container_rd, getUpperBound(container_rs1) * getUpperBound(container_rs2));
@@ -6624,6 +6622,8 @@ void vipster_divu() {
   container_rd  = (uint64_t*) *(vipsterRegs + rd);
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  // TODO: one has to be constant
 
   if (getLowerBound(container_rs2) == 0) {
     if (debug_divisionByZero) {
@@ -6660,6 +6660,8 @@ void vipster_remu() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
+  // TODO: one has to be constant
+
   if (getLowerBound(container_rs2) == 0) {
     if (debug_divisionByZero) {
       print((uint64_t*) "division-by-zero error: ");
@@ -6695,6 +6697,8 @@ void vipster_sltu() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
+  // TODO: one has to be constant
+
   if (rd != REG_ZR) {
     if (getLowerBound(container_rs1) < getLowerBound(container_rs2))
       setLowerBound(container_rd, 1);
@@ -6726,11 +6730,7 @@ uint64_t vipster_ld() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
-        if (getParent(currentContext) != MY_CONTEXT) {
-          print((uint64_t*) "ERROR @ vipster_ld"); println(); exit(-1);
-        }
-
-        if (getContainerFlag(currentContext, vaddr))
+         if (getContainerFlag(currentContext, vaddr))
           tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
 
         else { // constant, virtual address gets its own container
@@ -6775,10 +6775,6 @@ uint64_t vipster_sd() {
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
-      if (getParent(currentContext) != MY_CONTEXT) {
-        print((uint64_t*) "ERROR @ vipster_ld"); println(); exit(-1);
-      }
-
       // each virtual address has its own container - allocate on demand
       if (getContainerFlag(currentContext, vaddr)) {
         tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
@@ -6893,7 +6889,7 @@ void vipster_ecall() {
   // assert: upperBound == lowerBound
 
   if (getLowerBound(*(vipsterRegs + REG_A7)) == SYSCALL_SWITCH) {
-    print((uint64_t*) "VIPSTER: hypervisor not supported for now");
+    print((uint64_t*) "VIPSTER: hypervisor not supported");
     println();
     exit(-1);
   }
@@ -7740,8 +7736,6 @@ void restoreContext(uint64_t* context) {
 
     setPC(context, loadVirtualMemory(parentTable, PC(vctxt)));
 
-    // copy normal registers
-
     r = 0;
 
     regs = getRegs(context);
@@ -7754,30 +7748,11 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    // TODO: this only needs to be done once (not every restoreContext)
-    // link vipster register containers
-
-    r = 0;
-
-    regs = getVipsterRegs(context);
-
-    vregs = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
-
-    while (r < NUMBEROFREGISTERS) {
-      // loadVirtualMemory returns pointer into virtual address space! - resolve this pointer into own address space
-      *(regs + r) = (uint64_t) tlb(parentTable, loadVirtualMemory(parentTable, (uint64_t) (vregs + r)));
-
-      r = r + 1;
-    }
-
     setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
 
     setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
     setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
-
-    // link flag array
-    setContainerFlags(context, tlb(parentTable, loadVirtualMemory(parentTable, ContainerFlags(vctxt))));
 
     table = (uint64_t*) loadVirtualMemory(parentTable, PT(vctxt));
 
