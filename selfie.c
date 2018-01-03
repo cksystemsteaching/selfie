@@ -782,14 +782,21 @@ uint64_t funct3 = 0;
 uint64_t funct7 = 0;
 
 // -----------------------------------------------------------------
-// ----------------------------- CODE ------------------------------
+// ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
 
+void resetInstructionCounters();
+
+uint64_t getTotalNumberOfInstructions();
+
+void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics);
+void printInstructionCounters();
+
 uint64_t loadInstruction(uint64_t baddr);
-void storeInstruction(uint64_t baddr, uint64_t instruction);
+void     storeInstruction(uint64_t baddr, uint64_t instruction);
 
 uint64_t loadData(uint64_t baddr);
-void storeData(uint64_t baddr, uint64_t data);
+void     storeData(uint64_t baddr, uint64_t data);
 
 void emitInstruction(uint64_t instruction);
 
@@ -837,13 +844,28 @@ uint64_t maxBinaryLength = 262144; // 256KB
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* binary = (uint64_t*) 0; // binary of emitted instructions and data segment
+// instruction counters
 
-uint64_t binaryLength = 0; // length of binary in bytes including data segment
+uint64_t ic_lui   = 0;
+uint64_t ic_addi  = 0;
+uint64_t ic_add   = 0;
+uint64_t ic_sub   = 0;
+uint64_t ic_mul   = 0;
+uint64_t ic_divu  = 0;
+uint64_t ic_remu  = 0;
+uint64_t ic_sltu  = 0;
+uint64_t ic_ld    = 0;
+uint64_t ic_sd    = 0;
+uint64_t ic_beq   = 0;
+uint64_t ic_jal   = 0;
+uint64_t ic_jalr  = 0;
+uint64_t ic_ecall = 0;
+
+uint64_t* binary       = (uint64_t*) 0; // binary of emitted instructions and data segment
+uint64_t  binaryLength = 0;             // length of binary in bytes including data segment
+uint64_t* binaryName   = (uint64_t*) 0; // file name of binary
 
 uint64_t codeLength = 0; // length of code segment in binary in bytes
-
-uint64_t* binaryName = (uint64_t*) 0; // file name of binary
 
 uint64_t* sourceLineNumber = (uint64_t*) 0; // source line number per emitted instruction
 
@@ -1037,11 +1059,11 @@ void interrupt();
 
 uint64_t* runUntilException();
 
-void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics);
-
 uint64_t instructionWithMaxCounter(uint64_t* counters, uint64_t max);
 uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t max);
 void     printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* counters);
+
+void printProfile();
 
 void selfie_disassemble();
 
@@ -1082,34 +1104,16 @@ uint64_t* pt = (uint64_t*) 0; // page table
 // core state
 
 uint64_t timer = 0; // counter for timer interrupt
-
-uint64_t trap = 0; // flag for creating a trap
-
-// counters
-
-uint64_t ic_lui   = 0;
-uint64_t ic_addi  = 0;
-uint64_t ic_add   = 0;
-uint64_t ic_sub   = 0;
-uint64_t ic_mul   = 0;
-uint64_t ic_divu  = 0;
-uint64_t ic_remu  = 0;
-uint64_t ic_sltu  = 0;
-uint64_t ic_ld    = 0;
-uint64_t ic_sd    = 0;
-uint64_t ic_beq   = 0;
-uint64_t ic_jal   = 0;
-uint64_t ic_jalr  = 0;
-uint64_t ic_ecall = 0;
-
-uint64_t* loadsPerInstruction  = (uint64_t*) 0; // number of executed loads per load instruction
-uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per store instruction
+uint64_t trap  = 0; // flag for creating a trap
 
 uint64_t  calls             = 0;             // total number of executed procedure calls
 uint64_t* callsPerProcedure = (uint64_t*) 0; // number of executed calls of each procedure
 
 uint64_t  iterations        = 0;             // total number of executed loop iterations
 uint64_t* iterationsPerLoop = (uint64_t*) 0; // number of executed iterations of each loop
+
+uint64_t* loadsPerInstruction  = (uint64_t*) 0; // number of executed loads per load instruction
+uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per store instruction
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1137,29 +1141,16 @@ void resetInterpreter() {
   timer = TIMEROFF;
 
   if (execute) {
-    ic_lui   = 0;
-    ic_addi  = 0;
-    ic_add   = 0;
-    ic_sub   = 0;
-    ic_mul   = 0;
-    ic_divu  = 0;
-    ic_remu  = 0;
-    ic_sltu  = 0;
-    ic_ld    = 0;
-    ic_sd    = 0;
-    ic_beq   = 0;
-    ic_jal   = 0;
-    ic_jalr  = 0;
-    ic_ecall = 0;
-
-    loadsPerInstruction  = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
-    storesPerInstruction = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+    resetInstructionCounters();
 
     calls             = 0;
     callsPerProcedure = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     iterations        = 0;
     iterationsPerLoop = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+
+    loadsPerInstruction  = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
+    storesPerInstruction = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
 }
 
@@ -4225,8 +4216,13 @@ void bootstrapCode() {
   if (upper != 0) {
     emitLUI(REG_GP, upper);
     emitADDI(REG_GP, REG_GP, lower);
-  } else
+
+    ic_addi = ic_addi - 2;
+  } else {
     emitADDI(REG_GP, REG_ZR, lower);
+
+    ic_addi = ic_addi - 1;
+  }
 
   binaryLength = savedBinaryLength;
 
@@ -4292,6 +4288,7 @@ void selfie_compile() {
   sourceLineNumber = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   resetSymbolTables();
+  resetInstructionCounters();
 
   // jump and link to main
   emitMainEntry();
@@ -4408,6 +4405,8 @@ void selfie_compile() {
   printInteger(binaryLength - codeLength);
   print((uint64_t*) " bytes of data");
   println();
+
+  printInstructionCounters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -4714,8 +4713,84 @@ void decodeUFormat() {
 }
 
 // -----------------------------------------------------------------
-// ----------------------------- CODE ------------------------------
+// ---------------------------- BINARY -----------------------------
 // -----------------------------------------------------------------
+
+void resetInstructionCounters() {
+  ic_lui   = 0;
+  ic_addi  = 0;
+  ic_add   = 0;
+  ic_sub   = 0;
+  ic_mul   = 0;
+  ic_divu  = 0;
+  ic_remu  = 0;
+  ic_sltu  = 0;
+  ic_ld    = 0;
+  ic_sd    = 0;
+  ic_beq   = 0;
+  ic_jal   = 0;
+  ic_jalr  = 0;
+  ic_ecall = 0;
+}
+
+uint64_t getTotalNumberOfInstructions() {
+  return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
+}
+
+void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
+  print(mnemonics);
+  print((uint64_t*) ": ");
+  printInteger(counter);
+  print((uint64_t*) "(");
+  printFixedPointPercentage(total, counter);
+  print((uint64_t*) "%)");
+}
+
+void printInstructionCounters() {
+  uint64_t ic;
+
+  ic = getTotalNumberOfInstructions();
+
+  print(selfieName);
+  print((uint64_t*) ": init:    ");
+  printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
+  println();
+
+  print(selfieName);
+  print((uint64_t*) ": memory:  ");
+  printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
+  println();
+
+  print(selfieName);
+  print((uint64_t*) ": compute: ");
+  printInstructionCounter(ic, ic_add, (uint64_t*) "add");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_mul, (uint64_t*) "mul");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_divu, (uint64_t*) "divu");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
+  println();
+
+  print(selfieName);
+  print((uint64_t*) ": control: ");
+  printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_jal, (uint64_t*) "jal");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_jalr, (uint64_t*) "jalr");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_ecall, (uint64_t*) "ecall");
+  println();
+}
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
@@ -4770,62 +4845,92 @@ void emitInstruction(uint64_t instruction) {
 
 void emitNOP() {
   emitInstruction(encodeIFormat(0, REG_ZR, F3_NOP, REG_ZR, OP_IMM));
+
+  ic_addi = ic_addi + 1;
 }
 
 void emitLUI(uint64_t rd, uint64_t immediate) {
   emitInstruction(encodeUFormat(immediate, rd, OP_LUI));
+
+  ic_lui = ic_lui + 1;
 }
 
 void emitADDI(uint64_t rd, uint64_t rs1, uint64_t immediate) {
   emitInstruction(encodeIFormat(immediate, rs1, F3_ADDI, rd, OP_IMM));
+
+  ic_addi = ic_addi + 1;
 }
 
 void emitADD(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_ADD, rs2, rs1, F3_ADD, rd, OP_OP));
+
+  ic_add = ic_add + 1;
 }
 
 void emitSUB(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_SUB, rs2, rs1, F3_SUB, rd, OP_OP));
+
+  ic_sub = ic_sub + 1;
 }
 
 void emitMUL(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_MUL, rs2, rs1, F3_MUL, rd, OP_OP));
+
+  ic_mul = ic_mul + 1;
 }
 
 void emitDIVU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_DIVU, rs2, rs1, F3_DIVU, rd, OP_OP));
+
+  ic_divu = ic_divu + 1;
 }
 
 void emitREMU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_REMU, rs2, rs1, F3_REMU, rd, OP_OP));
+
+  ic_remu = ic_remu + 1;
 }
 
 void emitSLTU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_SLTU, rs2, rs1, F3_SLTU, rd, OP_OP));
+
+  ic_sltu = ic_sltu + 1;
 }
 
 void emitLD(uint64_t rd, uint64_t rs1, uint64_t immediate) {
   emitInstruction(encodeIFormat(immediate, rs1, F3_LD, rd, OP_LD));
+
+  ic_ld = ic_ld + 1;
 }
 
 void emitSD(uint64_t rs1, uint64_t immediate, uint64_t rs2) {
   emitInstruction(encodeSFormat(immediate, rs2, rs1, F3_SD, OP_SD));
+
+  ic_sd = ic_sd + 1;
 }
 
 void emitBEQ(uint64_t rs1, uint64_t rs2, uint64_t immediate) {
   emitInstruction(encodeBFormat(immediate, rs2, rs1, F3_BEQ, OP_BRANCH));
+
+  ic_beq = ic_beq + 1;
 }
 
 void emitJAL(uint64_t rd, uint64_t immediate) {
   emitInstruction(encodeJFormat(immediate, rd, OP_JAL));
+
+  ic_jal = ic_jal + 1;
 }
 
 void emitJALR(uint64_t rd, uint64_t rs1, uint64_t immediate) {
   emitInstruction(encodeIFormat(immediate, rs1, F3_JALR, rd, OP_JALR));
+
+  ic_jalr = ic_jalr + 1;
 }
 
 void emitECALL() {
   emitInstruction(encodeIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM));
+
+  ic_ecall = ic_ecall + 1;
 }
 
 void fixup_relative_BFormat(uint64_t fromAddress) {
@@ -6621,15 +6726,6 @@ uint64_t* runUntilException() {
   return currentContext;
 }
 
-void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
-  print(mnemonics);
-  print((uint64_t*) ": ");
-  printInteger(counter);
-  print((uint64_t*) "(");
-  printFixedPointPercentage(total, counter);
-  print((uint64_t*) "%)");
-}
-
 uint64_t instructionWithMaxCounter(uint64_t* counters, uint64_t max) {
   uint64_t a;
   uint64_t n;
@@ -6696,6 +6792,32 @@ void printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* cou
   print((uint64_t*) ",");
   printPerInstructionCounter(total, counters, max); // 3rd max
   println();
+}
+
+void printProfile() {
+  print(selfieName);
+  print((uint64_t*) ": summary: ");
+  printInteger(getTotalNumberOfInstructions());
+  print((uint64_t*) " executed instructions and ");
+  printFixedPointRatio(pused(), MEGABYTE);
+  print((uint64_t*) "MB mapped memory");
+  println();
+
+  if (getTotalNumberOfInstructions() > 0) {
+    printInstructionCounters();
+
+    print(selfieName);
+    if (sourceLineNumber != (uint64_t*) 0)
+      print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max");
+    else
+      print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max");
+    println();
+
+    printPerInstructionProfile((uint64_t*) ": calls:   ", calls, callsPerProcedure);
+    printPerInstructionProfile((uint64_t*) ": loops:   ", iterations, iterationsPerLoop);
+    printPerInstructionProfile((uint64_t*) ": loads:   ", ic_ld, loadsPerInstruction);
+    printPerInstructionProfile((uint64_t*) ": stores:  ", ic_sd, storesPerInstruction);
+  }
 }
 
 void selfie_disassemble() {
@@ -7468,7 +7590,6 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
 
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exitCode;
-  uint64_t ic;
 
   if (binaryLength == 0) {
     print(selfieName);
@@ -7528,69 +7649,7 @@ uint64_t selfie_run(uint64_t machine) {
   printInteger(signExtend(exitCode, SYSCALL_BITWIDTH));
   println();
 
-  ic = ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
-
-  print(selfieName);
-  print((uint64_t*) ": summary: ");
-  printInteger(ic);
-  print((uint64_t*) " executed instructions and ");
-  printFixedPointRatio(pused(), MEGABYTE);
-  print((uint64_t*) "MB mapped memory");
-  println();
-
-  if (ic > 0) {
-    print(selfieName);
-    print((uint64_t*) ": init:    ");
-    printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
-    println();
-
-    print(selfieName);
-    print((uint64_t*) ": memory:  ");
-    printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
-    println();
-
-    print(selfieName);
-    print((uint64_t*) ": compute: ");
-    printInstructionCounter(ic, ic_add, (uint64_t*) "add");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_mul, (uint64_t*) "mul");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_divu, (uint64_t*) "divu");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
-    println();
-
-    print(selfieName);
-    print((uint64_t*) ": control: ");
-    printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_jal, (uint64_t*) "jal");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_jalr, (uint64_t*) "jalr");
-    print((uint64_t*) ", ");
-    printInstructionCounter(ic, ic_ecall, (uint64_t*) "ecall");
-    println();
-
-    print(selfieName);
-    if (sourceLineNumber != (uint64_t*) 0)
-      print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max");
-    else
-      print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max");
-    println();
-
-    printPerInstructionProfile((uint64_t*) ": calls:   ", calls, callsPerProcedure);
-    printPerInstructionProfile((uint64_t*) ": loops:   ", iterations, iterationsPerLoop);
-    printPerInstructionProfile((uint64_t*) ": loads:   ", ic_ld, loadsPerInstruction);
-    printPerInstructionProfile((uint64_t*) ": stores:  ", ic_sd, storesPerInstruction);
-  }
+  printProfile();
 
   return exitCode;
 }
