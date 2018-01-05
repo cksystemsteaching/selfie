@@ -6794,7 +6794,7 @@ uint64_t vipster_ld() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
-         if (getContainerFlag(currentContext, vaddr))
+        if (getContainerFlag(currentContext, vaddr))
           tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
 
         else { // constant, virtual address gets its own container
@@ -6848,9 +6848,9 @@ uint64_t vipster_sd() {
         setUpperBound(tempContainer, getUpperBound(container_rs2));
 
       } else { // no container added yet
+        tempContainer = allocateContainer(getLowerBound(container_rs2), getUpperBound(container_rs2));
         traceInstruction(pc, vaddr, *vipsterRegs, 0, 0);
 
-        tempContainer = allocateContainer(getLowerBound(container_rs2), getUpperBound(container_rs2));
         storeVirtualMemory(pt, vaddr, (uint64_t) tempContainer);
         setContainerFlag(currentContext, vaddr, 1);
       }
@@ -8921,6 +8921,7 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
 
 uint64_t  isConstantContainer(uint64_t* container) {
   return getUpperBound(container) == getLowerBound(container);
+}
 
 void copyContainer(uint64_t* from, uint64_t* to) {
   setOverflow(to, getOverflow(from));
