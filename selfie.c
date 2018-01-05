@@ -857,19 +857,27 @@ uint64_t  assemblyFD   = 0;             // file descriptor of open assembly file
 
 void emitExit();
 void implementExit(uint64_t* context);
+void vipster_implementExit(uint64_t* context);
 
 void emitRead();
 void implementRead(uint64_t* context);
+void vipster_implementRead(uint64_t* context);
 
 void emitWrite();
 void implementWrite(uint64_t* context);
+void vipster_implementWrite(uint64_t* context);
 
 void     emitOpen();
 uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s);
 void     implementOpen(uint64_t* context);
+void     vipster_implementOpen(uint64_t* context);
 
 void     emitMalloc();
 uint64_t implementMalloc(uint64_t* context);
+uint64_t vipster_implementMalloc(uint64_t* context);
+
+void vipster_emitSymbolic();
+void vipster_implementSymbolic(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -885,6 +893,8 @@ uint64_t SYSCALL_OPEN  = 1024;
 
 // TODO: fix this syscall for spike
 uint64_t SYSCALL_MALLOC = 222;
+
+uint64_t SYSCALL_SYMBOLIC = 1234;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1016,8 +1026,6 @@ void execute_jalr();
 void execute_ecall();
 
 // ---------------------- VIPSTER INSTRUCTIONS ---------------------
-
-uint64_t isEnvironmentAccess(uint64_t reg);
 
 void     vipster_lui();
 void     vipster_addi();
@@ -1337,6 +1345,7 @@ void mapUnmappedPages(uint64_t* context);
 uint64_t isBootLevelZero();
 
 uint64_t handleSystemCalls(uint64_t* context);
+uint64_t vipster_handleSystemCalls(uint64_t* context);
 
 uint64_t mipster(uint64_t* toContext);
 uint64_t minster(uint64_t* toContext);
@@ -1468,6 +1477,9 @@ void      copyContainer(uint64_t* from, uint64_t* to);
 
 void      printContainer(uint64_t* container);
 
+uint64_t  isConstantContainer(uint64_t* container);
+
+
 // container struct:
 // +----+---------------+
 // |  0 | overflow      |
@@ -1489,6 +1501,7 @@ void setUpperBound(uint64_t* container, uint64_t upper)   { *(container + 3) = u
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t allocatedContainers = 0; // number of actual allocated containers
+uint64_t fakeFD = 4; // fake fd bump allocator
 
 
 // -----------------------------------------------------------------
@@ -4419,6 +4432,8 @@ void selfie_compile() {
   emitOpen();
   emitMalloc();
 
+  vipster_emitSymbolic();
+
   emitSwitch();
 
   while (link) {
@@ -5233,6 +5248,24 @@ void implementExit(uint64_t* context) {
   println();
 }
 
+void vipster_implementExit(uint64_t* context) {
+  uint64_t lower;
+  uint64_t upper;
+
+  lower = getLowerBound(*(getVipsterRegs(context) + REG_A0));
+  upper = getUpperBound(*(getVipsterRegs(context) + REG_A0));
+
+  print(selfieName);
+  print((uint64_t*) ": ");
+  print(getName(context));
+  print((uint64_t*) " exiting with ");
+  printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
+  print((uint64_t*) "MB of mallocated memory and bounds: ");
+  print((uint64_t*) "lower = "); printInteger(lower);
+  print((uint64_t*) ", upper = "); printInteger(upper);
+  println();
+}
+
 void emitRead() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
@@ -5349,6 +5382,94 @@ void implementRead(uint64_t* context) {
     print((uint64_t*) " bytes from file with descriptor ");
     printInteger(fd);
     println();
+  }
+}
+
+void vipster_implementRead(uint64_t* context) {
+  uint64_t vbuffer; // REG_A1
+  uint64_t size;    // REG_A2
+  uint64_t bytesToRead;
+  uint64_t upper;
+  uint64_t* vipRegs;
+  uint64_t* container;
+  uint64_t* table;
+
+  vipRegs = getVipsterRegs(context);
+  table = getPT(context);
+
+  if (isConstantContainer(*(vipRegs + REG_A1)))
+    vbuffer = getLowerBound(*(vipRegs + REG_A1));
+  else {
+    print((uint64_t*) "VIPSTER: read call received a symbolic buffer pointer");
+    println();
+    exit(-1);
+  }
+  if (isConstantContainer(*(vipRegs + REG_A2)))
+    size = getLowerBound(*(vipRegs + REG_A2));
+  else {
+    print((uint64_t*) "VIPSTER: read call received a symbolic size");
+    println();
+    exit(-1);
+  }
+
+  while (size > 0) {
+    bytesToRead = SIZEOFUINT64;
+
+    if (size < bytesToRead)
+      bytesToRead = size;
+
+    if (isValidVirtualAddress(vbuffer)) {
+      if (isVirtualAddressMapped(table, vbuffer)) {
+        if(getContainerFlag(context, vbuffer) == 0) {
+          storeVirtualMemory(table, vbuffer, (uint64_t) allocateContainer(0, 0));
+          setContainerFlag(context, vbuffer, 1);
+        }
+
+        container = (uint64_t*) loadVirtualMemory(table, vbuffer);
+        upper = 0;
+
+        // reads at most 8x UTF-8 characters
+        // each has possible value 0 - 255
+        if (bytesToRead > 0)
+          upper = upper + 255;
+        if (bytesToRead > 1)
+          upper = upper + leftShift(255, 8);
+        if (bytesToRead > 2)
+          upper = upper + leftShift(255, 16);
+        if (bytesToRead > 3)
+          upper = upper + leftShift(255, 24);
+        if (bytesToRead > 4)
+          upper = upper + leftShift(255, 32);
+        if (bytesToRead > 5)
+          upper = upper + leftShift(255, 40);
+        if (bytesToRead > 6)
+          upper = upper + leftShift(255, 48);
+        if (bytesToRead > 7)
+          upper = upper + leftShift(255, 56);
+
+        setLowerBound(container, 0);
+        setUpperBound(container, upper);
+
+        size = size - bytesToRead;
+
+        if (size > 0)
+          vbuffer = vbuffer + SIZEOFUINT64;
+      } else
+        if (debug_read) {
+          print(selfieName);
+          print((uint64_t*) ": reading into virtual address ");
+          printHexadecimal(vbuffer, 8);
+          print((uint64_t*) " failed because the address is unmapped");
+          println();
+      }
+    } else
+      if (debug_read) {
+        print(selfieName);
+        print((uint64_t*) ": reading into virtual address ");
+        printHexadecimal(vbuffer, 8);
+        print((uint64_t*) " failed because the address is invalid");
+        println();
+      }
   }
 }
 
@@ -5470,6 +5591,25 @@ void implementWrite(uint64_t* context) {
   }
 }
 
+void vipster_implementWrite (uint64_t* context) {
+  uint64_t size; // REG_A2
+  uint64_t* vipRegs;
+
+  vipRegs = getVipsterRegs(context);
+
+  if (isConstantContainer(*(vipRegs + REG_A2)))
+    size = getLowerBound(*(vipRegs + REG_A2));
+  else {
+    print((uint64_t*) "VIPSTER: write call received a symbolic size");
+    println();
+    exit(-1);
+  }
+
+  // writing just works for now
+  setLowerBound(*(vipRegs + REG_A0), size);
+  setUpperBound(*(vipRegs + REG_A0), size);
+}
+
 void emitOpen() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
@@ -5586,6 +5726,27 @@ void implementOpen(uint64_t* context) {
   }
 }
 
+void vipster_implementOpen (uint64_t* context) {
+  uint64_t size; // REG_A0
+  uint64_t* vipRegs;
+
+  vipRegs = getVipsterRegs(context);
+
+  if (isConstantContainer(*(vipRegs + REG_A0)))
+    size = getLowerBound(*(vipRegs + REG_A0));
+  else {
+    print((uint64_t*) "VIPSTER: open call received a symbolic size");
+    println();
+    exit(-1);
+  }
+
+  fakeFD = fakeFD + 1;
+
+  // opening just works for now
+  setLowerBound(*(vipRegs + REG_A0), fakeFD);
+  setUpperBound(*(vipRegs + REG_A0), fakeFD);
+}
+
 void emitMalloc() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
@@ -5645,6 +5806,70 @@ uint64_t implementMalloc(uint64_t* context) {
   }
 }
 
+uint64_t vipster_implementMalloc(uint64_t* context) {
+  // parameter
+  uint64_t size;
+
+  // local variable
+  uint64_t bump;
+
+  if (isConstantContainer(*(getVipsterRegs(context) + REG_A0)))
+    size = getLowerBound(*(getVipsterRegs(context) + REG_A0));
+  else {
+    print((uint64_t*) "VIPSTER: malloc call received a symbolic size");
+    println();
+    exit(-1);
+  }
+
+  if (debug_malloc) {
+    print(selfieName);
+    print((uint64_t*) ": trying to malloc ");
+    printInteger(size);
+    print((uint64_t*) " bytes net");
+    println();
+  }
+
+  size = roundUp(size, SIZEOFUINT64);
+  bump = getBumpPointer(context);
+
+  if (bump + size > getLowerBound(*(getVipsterRegs(context) + REG_SP))) {
+    setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
+
+    return EXIT;
+  } else {
+    setLowerBound(*(getVipsterRegs(context) + REG_A0), bump);
+    setUpperBound(*(getVipsterRegs(context) + REG_A0), bump);
+
+    setBumpPointer(context, bump + size);
+
+    if (debug_malloc) {
+      print(selfieName);
+      print((uint64_t*) ": actually mallocating ");
+      printInteger(size);
+      print((uint64_t*) " bytes at virtual address ");
+      printHexadecimal(bump, 8);
+      println();
+    }
+
+    return DONOTEXIT;
+  }
+}
+
+void vipster_emitSymbolic() {
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "symbolic", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+
+  emitADDI(REG_A7, REG_ZR, SYSCALL_SYMBOLIC);
+
+  emitECALL();
+
+  emitJALR(REG_ZR, REG_RA, 0);
+}
+
+void vipster_implementSymbolic(uint64_t* context) {
+  setLowerBound(*(getVipsterRegs(context) + REG_A0), 0);
+  setUpperBound(*(getVipsterRegs(context) + REG_A0), INT64_MAX);
+}
+
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
 // -----------------------------------------------------------------
@@ -5684,13 +5909,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   traceSP     = getTraceSP(toContext);
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
-  if (getParent(fromContext) != MY_CONTEXT) {
+  if (getParent(fromContext) != MY_CONTEXT)
     *(registers + REG_A1) = (uint64_t) getVirtualContext(fromContext);
-
-    setLowerBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) getVirtualContext(fromContext));
-    setUpperBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) getVirtualContext(fromContext));
-
-  } else {
+  else {
     *(registers + REG_A1) = (uint64_t) fromContext;
 
     setLowerBound((uint64_t*) *(vipsterRegs + REG_A1), (uint64_t) fromContext);
@@ -6376,17 +6597,6 @@ void execute_ecall() {
 
 // ---------------------- VIPSTER INSTRUCTIONS ---------------------
 
-uint64_t isEnvironmentAccess(uint64_t reg) {
-  if (reg == SYSCALL_READ)
-    return 1;
-  else if (reg == SYSCALL_WRITE)
-    return 1;
-  else if (reg == SYSCALL_OPEN)
-    return 1;
-
-  return 0;
-}
-
 void vipster_lui() {
   uint64_t* container_rd;
 
@@ -6458,6 +6668,8 @@ void vipster_mul() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
+  // TODO: one has to be constant
+
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) * getLowerBound(container_rs2));
     setUpperBound(container_rd, getUpperBound(container_rs1) * getUpperBound(container_rs2));
@@ -6474,6 +6686,8 @@ void vipster_divu() {
   container_rd  = (uint64_t*) *(vipsterRegs + rd);
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
+
+  // TODO: one has to be constant
 
   if (getLowerBound(container_rs2) == 0) {
     if (debug_divisionByZero) {
@@ -6510,6 +6724,8 @@ void vipster_remu() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
+  // TODO: one has to be constant
+
   if (getLowerBound(container_rs2) == 0) {
     if (debug_divisionByZero) {
       print((uint64_t*) "division-by-zero error: ");
@@ -6545,6 +6761,8 @@ void vipster_sltu() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
+  // TODO: one has to be constant
+
   if (rd != REG_ZR) {
     if (getLowerBound(container_rs1) < getLowerBound(container_rs2))
       setLowerBound(container_rd, 1);
@@ -6576,11 +6794,7 @@ uint64_t vipster_ld() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
-        if (getParent(currentContext) != MY_CONTEXT) {
-          print((uint64_t*) "ERROR @ vipster_ld"); println(); exit(-1);
-        }
-
-        if (getContainerFlag(currentContext, vaddr))
+         if (getContainerFlag(currentContext, vaddr))
           tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
 
         else { // constant, virtual address gets its own container
@@ -6595,6 +6809,8 @@ uint64_t vipster_ld() {
 
       // keep track of number of loads
       loads = loads + 1;
+
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
       *(loadsPerAddress + a) = *(loadsPerAddress + a) + 1;
 
@@ -6623,10 +6839,6 @@ uint64_t vipster_sd() {
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
-      if (getParent(currentContext) != MY_CONTEXT) {
-        print((uint64_t*) "ERROR @ vipster_ld"); println(); exit(-1);
-      }
-
       // each virtual address has its own container - allocate on demand
       if (getContainerFlag(currentContext, vaddr)) {
         tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
@@ -6743,34 +6955,17 @@ void vipster_jalr() {
 }
 
 void vipster_ecall() {
-  uint64_t a7;
-
-  // assert: actual ecall arguments are constant
-  // assert: return value of an ecall is constant
-
-  a7 = getLowerBound((uint64_t*) *(vipsterRegs + REG_A7));
-  *(registers + REG_A7) = a7;
-
   pc = pc + INSTRUCTIONSIZE;
 
-  *(registers + REG_A0) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A0)); // in case of exit call
+  // assert: upperBound == lowerBound
 
-  if (a7 == SYSCALL_SWITCH) {
-    print((uint64_t*) "hypervisor not supported!");
-    println(); exit(-1);
-
-    *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
-
-    implementSwitch();
-    return;
-
-    // TODO: model syscalls
-  } else if (isEnvironmentAccess(a7)) {
-    *(registers + REG_A1) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A1));
-    *(registers + REG_A2) = getLowerBound((uint64_t*) *(vipsterRegs + REG_A2));
+  if (getLowerBound(*(vipsterRegs + REG_A7)) == SYSCALL_SWITCH) {
+    print((uint64_t*) "VIPSTER: hypervisor not supported");
+    println();
+    exit(-1);
   }
-
-  throwException(EXCEPTION_SYSCALL, 0);
+  else
+    throwException(EXCEPTION_SYSCALL, 0);
 }
 
 // -----------------------------------------------------------------
@@ -7637,8 +7832,6 @@ void restoreContext(uint64_t* context) {
 
     setPC(context, loadVirtualMemory(parentTable, PC(vctxt)));
 
-    // copy normal registers
-
     r = 0;
 
     regs = getRegs(context);
@@ -7651,30 +7844,11 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    // TODO: this only needs to be done once (not every restoreContext)
-    // link vipster register containers
-
-    r = 0;
-
-    regs = getVipsterRegs(context);
-
-    vregs = (uint64_t*) loadVirtualMemory(parentTable, VipsterRegs(vctxt));
-
-    while (r < NUMBEROFREGISTERS) {
-      // loadVirtualMemory returns pointer into virtual address space! - resolve this pointer into own address space
-      *(regs + r) = (uint64_t) tlb(parentTable, loadVirtualMemory(parentTable, (uint64_t) (vregs + r)));
-
-      r = r + 1;
-    }
-
     setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
 
     setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
     setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
-
-    // link flag array
-    setContainerFlags(context, tlb(parentTable, loadVirtualMemory(parentTable, ContainerFlags(vctxt))));
 
     table = (uint64_t*) loadVirtualMemory(parentTable, PT(vctxt));
 
@@ -7961,6 +8135,56 @@ uint64_t handleSystemCalls(uint64_t* context) {
   return DONOTEXIT;
 }
 
+uint64_t vipster_handleSystemCalls(uint64_t* context) {
+  uint64_t a7;
+  uint64_t mem;
+
+  // assert: upperBound == lowerBound
+
+  if (getException(context) == EXCEPTION_SYSCALL) {
+    a7 = getLowerBound(*(vipsterRegs + REG_A7));
+
+    if (a7 == SYSCALL_MALLOC)
+      return vipster_implementMalloc(context);
+    else if (a7 == SYSCALL_READ)
+      vipster_implementRead(context);
+    else if (a7 == SYSCALL_WRITE)
+      vipster_implementWrite(context);
+    else if (a7 == SYSCALL_OPEN)
+      vipster_implementOpen(context);
+    else if (a7 == SYSCALL_SYMBOLIC)
+      vipster_implementSymbolic(context);
+    else if (a7 == SYSCALL_EXIT) {
+      vipster_implementExit(context);
+
+      // TODO: exit only if all contexts have exited
+      return EXIT;
+    } else {
+      print(selfieName);
+      print((uint64_t*) ": unknown system call ");
+      printInteger(a7);
+      println();
+
+      setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
+
+      return EXIT;
+    }
+  } else if (getException(context) != EXCEPTION_TIMER) {
+    print(selfieName);
+    print((uint64_t*) ": context ");
+    print(getName(context));
+    print((uint64_t*) " throws uncaught ");
+    printException(getException(context), getFaultingPage(context));
+    println();
+
+    setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
+
+    return EXIT;
+  }
+
+  return DONOTEXIT;
+}
+
 uint64_t mipster(uint64_t* toContext) {
   uint64_t timeout;
   uint64_t* fromContext;
@@ -8088,14 +8312,11 @@ uint64_t vipster(uint64_t* toContext) {
       if (getException(fromContext) == EXCEPTION_PAGEFAULT) {
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-
       } else if (getException(fromContext) == EXCEPTION_TRACELIMIT) {
         // TODO: handle tracelimit, traceBack,...
 
-      } else if (handleSystemCalls(fromContext) == EXIT) {
-        // TODO: handle path exit, traceBack,...
-        return getExitCode(fromContext);
-      }
+      } else if (vipster_handleSystemCalls(fromContext) == EXIT)
+        return 0; // execution finished without error
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
@@ -8697,6 +8918,9 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
 
   return container;
 }
+
+uint64_t  isConstantContainer(uint64_t* container) {
+  return getUpperBound(container) == getLowerBound(container);
 
 void copyContainer(uint64_t* from, uint64_t* to) {
   setOverflow(to, getOverflow(from));
