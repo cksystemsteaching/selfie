@@ -1076,8 +1076,10 @@ uint64_t EXCEPTION_NOEXCEPTION        = 0;
 uint64_t EXCEPTION_PAGEFAULT          = 1;
 uint64_t EXCEPTION_SYSCALL            = 2;
 uint64_t EXCEPTION_TIMER              = 3;
-uint64_t EXCEPTION_INVALIDADDRESS     = 4;
-uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 5;
+uint64_t EXCEPTION_TRACELIMIT         = 4;
+uint64_t EXCEPTION_INVALIDADDRESS     = 5;
+uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
+
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1107,6 +1109,9 @@ uint64_t* pt = (uint64_t*) 0; // page table
 
 uint64_t* vipsterRegs = (uint64_t*) 0; // containers
 
+uint64_t* trace   = (uint64_t*) 0;
+uint64_t* traceSP = (uint64_t*) 0;
+
 // core state
 
 uint64_t timer = 0; // counter for timer interrupt
@@ -1134,6 +1139,7 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
   *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (uint64_t) "syscall";
   *(EXCEPTIONS + EXCEPTION_TIMER)              = (uint64_t) "timer interrupt";
+  *(EXCEPTIONS + EXCEPTION_TRACELIMIT)         = (uint64_t) "tracelimit reached";
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 }
@@ -1147,6 +1153,9 @@ void resetInterpreter() {
   pt = (uint64_t*) 0;
 
   vipsterRegs = (uint64_t*) 0;
+
+  trace = (uint64_t*) 0;
+  traceSP = (uint64_t*) 0;
 
   trap = 0;
 
@@ -1199,6 +1208,8 @@ uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 // | 15 | name           | binary name loaded into context
 // | 16 | vipsterRegs    | pointer to register containers
 // | 17 | containerFlags | pointer to container flag array
+// | 18 | trace          | pointer to trace
+// | 19 | traceSP        | pointer to last trace entry
 // +----+----------------+
 
 uint64_t nextContext(uint64_t* context)    { return (uint64_t) context; }
@@ -1219,6 +1230,9 @@ uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 14); }
 uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 15); }
 uint64_t VipsterRegs(uint64_t* context)    { return (uint64_t) (context + 16); }
 uint64_t ContainerFlags(uint64_t* context) { return (uint64_t) (context + 17); }
+uint64_t Trace(uint64_t* context)          { return (uint64_t) (context + 18); }
+uint64_t TraceSP(uint64_t* context)        { return (uint64_t) (context + 19); }
+
 
 uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1238,6 +1252,8 @@ uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 
 uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 15); }
 uint64_t* getVipsterRegs(uint64_t* context)    { return (uint64_t*) *(context + 16); }
 uint64_t* getContainerFlags(uint64_t* context) { return (uint64_t*) *(context + 17); }
+uint64_t* getTrace(uint64_t* context)          { return (uint64_t*) *(context + 18); }
+uint64_t* getTraceSP(uint64_t* context)        { return (uint64_t*) *(context + 19); }
 
 void setNextContext(uint64_t* context, uint64_t* next)       { *context        = (uint64_t) next; }
 void setPrevContext(uint64_t* context, uint64_t* prev)       { *(context + 1)  = (uint64_t) prev; }
@@ -1257,6 +1273,8 @@ void setVirtualContext(uint64_t* context, uint64_t* vctxt)   { *(context + 14) =
 void setName(uint64_t* context, uint64_t* name)              { *(context + 15) = (uint64_t) name; }
 void setVipsterRegs(uint64_t* context, uint64_t* containers) { *(context + 16) = (uint64_t) containers; }
 void setContainerFlags(uint64_t* context, uint64_t* flags)   { *(context + 17) = (uint64_t) flags; }
+void setTrace(uint64_t* context, uint64_t* trace)            { *(context + 18) = (uint64_t) trace; }
+void setTraceSP(uint64_t* context, uint64_t* traceSP)        { *(context + 19) = (uint64_t) traceSP; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1446,6 +1464,9 @@ uint64_t  getContainerFlag(uint64_t* context, uint64_t vaddr);
 void      setContainerFlag(uint64_t* context, uint64_t vaddr, uint64_t flag);
 
 uint64_t* allocateContainer(uint64_t lower, uint64_t upper);
+void      copyContainer(uint64_t* from, uint64_t* to);
+
+void      printContainer(uint64_t* container);
 
 // container struct:
 // +----+---------------+
@@ -1468,6 +1489,45 @@ void setUpperBound(uint64_t* container, uint64_t upper)   { *(container + 3) = u
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t allocatedContainers = 0; // number of actual allocated containers
+
+
+// -----------------------------------------------------------------
+// ----------------------------- TRACE -----------------------------
+// -----------------------------------------------------------------
+
+void traceInstruction(uint64_t pc, uint64_t where, uint64_t* history, uint64_t path, uint64_t options);
+
+void printTrace();
+void printLocation(uint64_t loc);
+
+uint64_t traceBack(uint64_t* context);
+
+// +------+---------+
+// |  0   | pc      | pc
+// |  1   | loc     | where
+// | 2-5  | history | container before execution [overflow, memLocation, lower, upper]
+// |  6   | path    | currently explored  path
+// |  7   | options | max. number of paths
+// +------+---------+
+
+uint64_t  getTracePC(uint64_t* trace)            { return *trace; }
+uint64_t  getTraceLoc(uint64_t* trace)           { return *(trace + 1); }
+uint64_t* getTraceHistory(uint64_t* trace)       { return   trace + 2;  }
+uint64_t  getTracePath(uint64_t* trace)          { return *(trace + 6); }
+uint64_t  getTraceOptions(uint64_t* trace)       { return *(trace + 7); }
+
+void setTracePC(uint64_t* trace, uint64_t pc)             { *trace = pc; }
+void setTraceLoc(uint64_t* trace, uint64_t loc)           { *(trace + 1) = loc; }
+void setTraceHistory(uint64_t* trace, uint64_t* history)  { copyContainer(history, getTraceHistory(trace)); }
+void setTracePath(uint64_t* trace, uint64_t path)         { *(trace + 6) = path; }
+void setTraceOptions(uint64_t* trace, uint64_t options)   { *(trace + 7) = options; }
+
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t TRACESIZE = 8;
+uint64_t NUMOFTRACEINSTRUCTIONS = 1000;   // max. number of instruction
+
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -5620,6 +5680,8 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   registers   = getRegs(toContext);
   pt          = getPT(toContext);
   vipsterRegs = getVipsterRegs(toContext);
+  trace       = getTrace(toContext);
+  traceSP     = getTraceSP(toContext);
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
   if (getParent(fromContext) != MY_CONTEXT) {
@@ -6568,10 +6630,14 @@ uint64_t vipster_sd() {
       // each virtual address has its own container - allocate on demand
       if (getContainerFlag(currentContext, vaddr)) {
         tempContainer = (uint64_t*) loadVirtualMemory(pt, vaddr);
+        traceInstruction(pc, vaddr, tempContainer, 0, 0);
+
         setLowerBound(tempContainer, getLowerBound(container_rs2));
         setUpperBound(tempContainer, getUpperBound(container_rs2));
 
       } else { // no container added yet
+        traceInstruction(pc, vaddr, *vipsterRegs, 0, 0);
+
         tempContainer = allocateContainer(getLowerBound(container_rs2), getUpperBound(container_rs2));
         storeVirtualMemory(pt, vaddr, (uint64_t) tempContainer);
         setContainerFlag(currentContext, vaddr, 1);
@@ -6606,6 +6672,9 @@ void vipster_beq() {
   if (getLowerBound(container_rs1) == getLowerBound(container_rs2))
     if (getUpperBound(container_rs1) == getUpperBound(container_rs2))
       pc = pc + imm;
+
+  setTracePath(traceSP, 0);
+  setTraceOptions(traceSP, 1);
 }
 
 void vipster_jal() {
@@ -7064,6 +7133,8 @@ void vipster_decode_execute() {
   if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
     decodeRFormat();
 
+    traceInstruction(pc, rd, (uint64_t*) *(vipsterRegs + rd), 0, 0);
+
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
       if (funct7 == F7_ADD) {
         vipster_add();
@@ -7096,12 +7167,16 @@ void vipster_decode_execute() {
   } else if (opcode == OP_IMM) {
     decodeIFormat();
 
+    traceInstruction(pc, rd, (uint64_t*) *(vipsterRegs + rd), 0, 0);
+
     if (funct3 == F3_ADDI) {
       vipster_addi();
       return;
     }
   } else if (opcode == OP_LD) {
     decodeIFormat();
+
+    traceInstruction(pc, rd, (uint64_t*) *(vipsterRegs + rd), 0, 0);
 
     if (funct3 == F3_LD) {
       vipster_ld();
@@ -7110,12 +7185,16 @@ void vipster_decode_execute() {
   } else if (opcode == OP_SD) {
     decodeSFormat();
 
+    //TODO
+
     if (funct3 == F3_SD) {
       vipster_sd();
       return;
     }
   } else if (opcode == OP_BRANCH) {
     decodeBFormat();
+
+    traceInstruction(pc, REG_ZR, (uint64_t*) *(vipsterRegs + REG_ZR), 0, 0);
 
     if (funct3 == F3_BEQ) {
       vipster_beq();
@@ -7124,11 +7203,15 @@ void vipster_decode_execute() {
   } else if (opcode == OP_JAL) {
     decodeJFormat();
 
+    traceInstruction(pc, rd, (uint64_t*) *(vipsterRegs + rd), 0, 0);
+
     vipster_jal();
     return;
 
   } else if (opcode == OP_JALR) {
     decodeIFormat();
+
+    traceInstruction(pc, rd, (uint64_t*) *(vipsterRegs + rd), 0, 0);
 
     if (funct3 == F3_JALR) {
       vipster_jalr();
@@ -7137,11 +7220,15 @@ void vipster_decode_execute() {
   } else if (opcode == OP_LUI) {
     decodeUFormat();
 
+    traceInstruction(pc, rd, (uint64_t*) *(vipsterRegs + rd), 0, 0);
+
     vipster_lui();
     return;
 
   } else if (opcode == OP_SYSTEM) {
     decodeIFormat();
+
+    traceInstruction(pc, REG_ZR, (uint64_t*) *(vipsterRegs + REG_ZR), 0, 0);
 
     if (funct3 == F3_ECALL) {
       vipster_ecall();
@@ -7313,7 +7400,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (freeContexts == (uint64_t*) 0)
-    context = smalloc(9 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
+    context = smalloc(11 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
   else {
     context = freeContexts;
 
@@ -7359,6 +7446,10 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   // which indicates if vaddr has already a container
   setContainerFlags(context, zalloc(VIRTUALMEMORYSIZE / DOUBLEWORDSIZE / DOUBLEWORDSIZE));
 
+  // allocate zeroed memory for trace
+  setTrace(context, zalloc(TRACESIZE * SIZEOFUINT64 * NUMOFTRACEINSTRUCTIONS));
+  setTraceSP(context, getTrace(context) - TRACESIZE);
+
   return context;
 }
 
@@ -7368,10 +7459,12 @@ void allocateVipsterRegs(uint64_t* context) {
 
   containers = getVipsterRegs(context);
 
-  r = 0;
+  *containers = (uint64_t) allocateContainer(0,0);
+
+  r = 1;
 
   while (r < NUMBEROFREGISTERS) {
-    *(containers + r) = (uint64_t) allocateContainer(0, 0);
+    *(containers + r) = (uint64_t) allocateContainer(0, UINT64_MAX);
 
     r = r + 1;
   }
@@ -7459,6 +7552,7 @@ void saveContext(uint64_t* context) {
 
   // save machine state
   setPC(context, pc);
+  setTraceSP(context, traceSP);
 
   if (getParent(context) != MY_CONTEXT) {
     parentTable = getPT(getParent(context));
@@ -7991,11 +8085,17 @@ uint64_t vipster(uint64_t* toContext) {
       timeout = TIMEROFF;
     } else {
        // we are the parent in charge of handling exceptions
-      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
+      if (getException(fromContext) == EXCEPTION_PAGEFAULT) {
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-      else if (handleSystemCalls(fromContext) == EXIT)
+
+      } else if (getException(fromContext) == EXCEPTION_TRACELIMIT) {
+        // TODO: handle tracelimit, traceBack,...
+
+      } else if (handleSystemCalls(fromContext) == EXIT) {
+        // TODO: handle path exit, traceBack,...
         return getExitCode(fromContext);
+      }
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
@@ -8182,6 +8282,11 @@ uint64_t selfie_run(uint64_t machine) {
     printProfile((uint64_t*) ": loads: ", loads, loadsPerAddress);
     printProfile((uint64_t*) ": stores: ", stores, storesPerAddress);
   }
+
+  println();
+
+  if (vipsterIsRunning)
+    printTrace();
 
   return exitCode;
 }
@@ -8591,6 +8696,118 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
   allocatedContainers = allocatedContainers + 1;
 
   return container;
+}
+
+void copyContainer(uint64_t* from, uint64_t* to) {
+  setOverflow(to, getOverflow(from));
+  setMemLocation(to, getMemLocation(from));
+  setLowerBound(to, getLowerBound(from));
+  setUpperBound(to, getUpperBound(from));
+}
+
+void printContainer(uint64_t* container) {
+  print((uint64_t*) "MemLocation: ");
+  printHexadecimal(getMemLocation(container), 8);
+  print((uint64_t*) ", Overflow: ");
+  printInteger(getOverflow(container));
+  print((uint64_t*) ", [");
+  printInteger(getLowerBound(container));
+  print((uint64_t*) ", ");
+  printInteger(getUpperBound(container));
+  print((uint64_t*) "]");
+}
+
+// -----------------------------------------------------------------
+// ----------------------------- TRACE -----------------------------
+// -----------------------------------------------------------------
+
+void traceInstruction(uint64_t pc, uint64_t where, uint64_t* history, uint64_t path, uint64_t options) {
+
+  if (traceSP + TRACESIZE < trace + TRACESIZE * NUMOFTRACEINSTRUCTIONS) {
+
+    traceSP = traceSP + TRACESIZE;
+
+    setTracePC(traceSP, pc);
+    setTraceLoc(traceSP, where);
+    setTraceHistory(traceSP, history);
+    setTracePath(traceSP, path);
+    setTraceOptions(traceSP, options);
+
+  } else {
+    //throwException(EXCEPTION_TRACELIMIT, 0);
+  }
+}
+
+void printTrace() {
+  uint64_t* walker;
+
+  walker = trace;
+
+  while (walker <= traceSP) {
+    print((uint64_t*) "$pc=");
+    printHexadecimal(getTracePC(walker), 8);
+    print((uint64_t*) ", ");
+    printLocation(getTraceLoc(walker));
+    print((uint64_t*) "   ->    ");
+    printContainer(getTraceHistory(walker));
+    print((uint64_t*) ", ");
+    printInteger(getTracePath(walker));
+    print((uint64_t*) ", ");
+    printInteger(getTraceOptions(walker));
+    println();
+
+    walker = walker + TRACESIZE;
+  }
+}
+
+void printLocation(uint64_t loc) {
+  if (loc < NUMBEROFREGISTERS) {
+    printRegister(loc);
+    if (loc == REG_ZR)
+      print((uint64_t*) "             ");
+    else
+      print((uint64_t*) "               ");
+
+  } else {
+    print((uint64_t*) "memory[");
+    printHexadecimal(loc, 8);
+    print((uint64_t*) "]");
+  }
+}
+
+// grobe idee??
+uint64_t traceBack(uint64_t* context) {
+  uint64_t  currentPath;
+  uint64_t* traceSP;
+
+  traceSP = getTraceSP(context);
+
+  while (getTracePath(traceSP) == getTraceOptions(traceSP)) {
+    setPC(context, getTracePC(traceSP));
+
+    if (getTraceLoc(traceSP) < NUMBEROFREGISTERS)
+      copyContainer(traceSP, getVipsterRegs(context) + getTraceLoc(traceSP));
+    else
+      copyContainer(traceSP, getTraceLoc(traceSP));
+
+    traceSP = traceSP - TRACESIZE;
+
+    if (traceSP < getTrace(context))
+      return EXIT;
+  }
+
+  // undo instruction
+  currentPath = getTracePath(traceSP);
+  setPC(context, getTracePC(traceSP));
+
+  if (getTraceLoc(traceSP) < NUMBEROFREGISTERS)
+    copyContainer(traceSP, vipsterRegs + getTraceLoc(traceSP));
+  else
+    copyContainer(traceSP, getTraceLoc(traceSP));
+
+  setTraceSP(context, traceSP - TRACESIZE);
+
+  return DONOTEXIT;
 }
 
 // -----------------------------------------------------------------
