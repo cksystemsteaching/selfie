@@ -1115,10 +1115,9 @@ uint64_t* pt = (uint64_t*) 0; // page table
 
 uint64_t tc = 0; // trace counter
 
-uint64_t* trace  = (uint64_t*) 0; // trace of program counter values
-uint64_t* values = (uint64_t*) 0; // trace of changed register and memory values
-
-uint64_t traceLength = 0;
+uint64_t* pcs    = (uint64_t*) 0; // trace of program counter values
+uint64_t* tcs    = (uint64_t*) 0; // trace of trace counters to previous register and memory values
+uint64_t* values = (uint64_t*) 0; // trace of register and memory values
 
 // core state
 
@@ -1148,7 +1147,8 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 
-  trace  = zalloc(maxTraceLength * REGISTERSIZE);
+  pcs    = zalloc(maxTraceLength * REGISTERSIZE);
+  tcs    = zalloc(maxTraceLength * REGISTERSIZE);
   values = zalloc(maxTraceLength * REGISTERSIZE);
 }
 
@@ -1160,9 +1160,7 @@ void resetInterpreter() {
 
   pt = (uint64_t*) 0;
 
-  tc = 0;
-
-  traceLength = 0;
+  tc = 1; // tc == 0 reserved for initial state with symbolic execution
 
   trap = 0;
 
@@ -5852,32 +5850,41 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void recordTraceEvent(uint64_t value) {
-  *(trace  + tc) = pc;
-  *(values + tc) = value;
+void recordState(uint64_t value) {
+  *(pcs + (tc % maxTraceLength))    = pc;
+  *(values + (tc % maxTraceLength)) = value;
 
-  tc = (tc + 1) % maxTraceLength;
+  tc = tc + 1;
+}
 
-  if (traceLength < maxTraceLength)
-    traceLength = traceLength + 1;
+void saveState(uint64_t counter) {
+  *(pcs + (tc % maxTraceLength)) = pc;
+  *(tcs + (tc % maxTraceLength)) = counter;
+}
+
+void updateState(uint64_t value) {
+  *(values + (tc % maxTraceLength)) = value;
+
+  tc = tc + 1;
 }
 
 void rollbackTrace() {
+  uint64_t traceLength;
+
+  traceLength = (tc - 1) % maxTraceLength;
+
   undo = 1;
 
   while (traceLength > 0) {
-    if (tc > 0)
-      tc = tc - 1;
-    else
-      tc = maxTraceLength - 1;
+    tc = tc - 1;
 
-    pc = *(trace + tc);
+    pc = *(pcs + (tc % maxTraceLength));
 
     fetch();
     decode_execute();
 
-    *(trace  + tc) = 0;
-    *(values + tc) = 0;
+    *(pcs + (tc % maxTraceLength))    = 0;
+    *(values + (tc % maxTraceLength)) = 0;
 
     traceLength = traceLength - 1;
   }
@@ -5931,7 +5938,7 @@ void print_lui_after() {
 }
 
 void record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr() {
-  recordTraceEvent(*(registers + rd));
+  recordState(*(registers + rd));
 }
 
 void do_lui() {
@@ -5947,7 +5954,7 @@ void do_lui() {
 }
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
-  *(registers + rd) = *(values + tc);
+  *(registers + rd) = *(values + (tc % maxTraceLength));
 }
 
 void print_addi() {
@@ -6162,7 +6169,7 @@ void record_ld() {
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
-      recordTraceEvent(*(registers + rd));
+      recordState(*(registers + rd));
 }
 
 uint64_t do_ld() {
@@ -6251,7 +6258,7 @@ void record_sd() {
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
-      recordTraceEvent(loadVirtualMemory(pt, vaddr));
+      recordState(loadVirtualMemory(pt, vaddr));
 }
 
 uint64_t do_sd() {
@@ -6289,7 +6296,7 @@ void undo_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  storeVirtualMemory(pt, vaddr, *(values + tc));
+  storeVirtualMemory(pt, vaddr, *(values + (tc % maxTraceLength)));
 }
 
 void print_beq() {
@@ -6321,7 +6328,7 @@ void print_beq_after() {
 }
 
 void record_beq() {
-  recordTraceEvent(0);
+  recordState(0);
 }
 
 void do_beq() {
