@@ -1085,9 +1085,9 @@ uint64_t EXCEPTION_PAGEFAULT          = 1;
 uint64_t EXCEPTION_SYSCALL            = 2;
 uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_TRACELIMIT         = 4;
-uint64_t EXCEPTION_INVALIDADDRESS     = 5;
-uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
-
+uint64_t EXCEPTION_NOTVIPSBURGER      = 5;
+uint64_t EXCEPTION_INVALIDADDRESS     = 6;
+uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 7;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1148,6 +1148,7 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (uint64_t) "syscall";
   *(EXCEPTIONS + EXCEPTION_TIMER)              = (uint64_t) "timer interrupt";
   *(EXCEPTIONS + EXCEPTION_TRACELIMIT)         = (uint64_t) "tracelimit reached";
+  *(EXCEPTIONS + EXCEPTION_NOTVIPSBURGER)      = (uint64_t) "not vipsburger expression";
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 }
@@ -1478,6 +1479,7 @@ void      copyContainer(uint64_t* from, uint64_t* to);
 void      printContainer(uint64_t* container);
 
 uint64_t  isConstantContainer(uint64_t* container);
+uint64_t  allSymbolicContainers(uint64_t* cA, uint64_t* cB);
 
 
 // container struct:
@@ -6605,6 +6607,7 @@ void vipster_lui() {
   if (rd != REG_ZR) {
     setLowerBound(container_rd, leftShift(imm, 12));
     setUpperBound(container_rd, leftShift(imm, 12));
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6620,6 +6623,7 @@ void vipster_addi() {
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) + imm);
     setUpperBound(container_rd, getUpperBound(container_rs1) + imm);
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6637,6 +6641,7 @@ void vipster_add() {
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) + getLowerBound(container_rs2));
     setUpperBound(container_rd, getUpperBound(container_rs1) + getUpperBound(container_rs2));
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6654,6 +6659,7 @@ void vipster_sub() {
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) - getLowerBound(container_rs2));
     setUpperBound(container_rd, getUpperBound(container_rs1) - getUpperBound(container_rs2));
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6668,11 +6674,12 @@ void vipster_mul() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
-  // TODO: one has to be constant
+  if (allSymbolicContainers(container_rs1, container_rs2)) throwException(EXCEPTION_NOTVIPSBURGER, 0);
 
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) * getLowerBound(container_rs2));
     setUpperBound(container_rd, getUpperBound(container_rs1) * getUpperBound(container_rs2));
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6687,7 +6694,7 @@ void vipster_divu() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
-  // TODO: one has to be constant
+  if (allSymbolicContainers(container_rs1, container_rs2)) throwException(EXCEPTION_NOTVIPSBURGER, 0);
 
   if (getLowerBound(container_rs2) == 0) {
     if (debug_divisionByZero) {
@@ -6710,6 +6717,7 @@ void vipster_divu() {
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) / getLowerBound(container_rs2));
     setUpperBound(container_rd, getUpperBound(container_rs1) / getUpperBound(container_rs2));
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6724,7 +6732,7 @@ void vipster_remu() {
   container_rs1 = (uint64_t*) *(vipsterRegs + rs1);
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
-  // TODO: one has to be constant
+  if (allSymbolicContainers(container_rs1, container_rs2)) throwException(EXCEPTION_NOTVIPSBURGER, 0);
 
   if (getLowerBound(container_rs2) == 0) {
     if (debug_divisionByZero) {
@@ -6747,6 +6755,7 @@ void vipster_remu() {
   if (rd != REG_ZR) {
     setLowerBound(container_rd, getLowerBound(container_rs1) % getLowerBound(container_rs2));
     setUpperBound(container_rd, getUpperBound(container_rs1) % getUpperBound(container_rs2));
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6762,6 +6771,7 @@ void vipster_sltu() {
   container_rs2 = (uint64_t*) *(vipsterRegs + rs2);
 
   // TODO: one has to be constant
+  // TODO: detect comparison operation type
 
   if (rd != REG_ZR) {
     if (getLowerBound(container_rs1) < getLowerBound(container_rs2))
@@ -6773,6 +6783,8 @@ void vipster_sltu() {
       setUpperBound(container_rd, 1);
     else
       setUpperBound(container_rd, 0);
+
+    setMemLocation(container_rd, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6806,6 +6818,7 @@ uint64_t vipster_ld() {
 
       setLowerBound(container_rd, getLowerBound(tempContainer));
       setUpperBound(container_rd, getUpperBound(tempContainer));
+      setMemLocation(container_rd, vaddr);
 
       // keep track of number of loads
       loads = loads + 1;
@@ -8921,6 +8934,16 @@ uint64_t* allocateContainer(uint64_t lower, uint64_t upper) {
 
 uint64_t  isConstantContainer(uint64_t* container) {
   return getUpperBound(container) == getLowerBound(container);
+}
+
+uint64_t  allSymbolicContainers(uint64_t* cA, uint64_t* cB) {
+  if (isConstantContainer(cA) == 0) {
+    if (isConstantContainer(cB) == 0) {
+      return 1;
+    }
+  }
+
+  return 0;
 }
 
 void copyContainer(uint64_t* from, uint64_t* to) {

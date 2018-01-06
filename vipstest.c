@@ -16,5 +16,11 @@ uint64_t main(uint64_t argc, uint64_t *argv) {
     p = malloc(8);
     read(1, p, 2);
 
+    a = symbolic();
+    b = 3;
+    // b = symbolic(); // throws exception
+
+    a = a * b;
+
     return *p + c;
 }
