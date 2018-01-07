@@ -986,6 +986,12 @@ void initMemory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
+void recordState(uint64_t value);
+void saveState(uint64_t counter);
+void updateState(uint64_t value);
+
+void replayTrace();
+
 void printSourceLineNumberOfInstruction(uint64_t a);
 void printInstructionContext();
 
@@ -1030,7 +1036,7 @@ void     undo_sd();
 void print_beq();
 void print_beq_before();
 void print_beq_after();
-void record_beq_ecall();
+void record_beq();
 void do_beq();
 
 void print_jal();
@@ -1042,7 +1048,12 @@ void print_jalr();
 void print_jalr_before();
 void do_jalr();
 
+void print_ecall();
+void print_ecall_before();
+void print_ecall_after();
+void record_ecall();
 void do_ecall();
+void undo_ecall();
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1084,7 +1095,7 @@ uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
-uint64_t maxTraceLength = 100;
+uint64_t maxTraceLength = 20;
 
 uint64_t debug_exception = 0;
 
@@ -1100,6 +1111,7 @@ uint64_t TIMEROFF = 0;
 uint64_t execute     = 0; // flag for executing code
 uint64_t record      = 0; // flag for recording code execution
 uint64_t undo        = 0; // flag for undoing code execution
+uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
 
 uint64_t debug = 0; // flag for enabling recording, disassembling, and debugging code
@@ -1323,6 +1335,7 @@ void mapUnmappedPages(uint64_t* context);
 
 uint64_t isBootLevelZero();
 
+uint64_t handleDivisionByZero();
 uint64_t handleSystemCalls(uint64_t* context);
 
 uint64_t mipster(uint64_t* toContext);
@@ -1349,6 +1362,7 @@ uint64_t EXITCODE_PARSERERROR;
 uint64_t EXITCODE_COMPILERERROR;
 uint64_t EXITCODE_OUTOFVIRTUALMEMORY;
 uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
+uint64_t EXITCODE_DIVISIONBYZERO;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
@@ -1378,9 +1392,10 @@ void initKernel() {
   EXITCODE_COMPILERERROR = signShrink(-5, SYSCALL_BITWIDTH);
   EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-6, SYSCALL_BITWIDTH);
   EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-7, SYSCALL_BITWIDTH);
-  EXITCODE_UNKNOWNINSTRUCTION = signShrink(-8, SYSCALL_BITWIDTH);
-  EXITCODE_UNKNOWNSYSCALL = signShrink(-9, SYSCALL_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-10, SYSCALL_BITWIDTH);
+  EXITCODE_DIVISIONBYZERO = signShrink(-8, SYSCALL_BITWIDTH);
+  EXITCODE_UNKNOWNINSTRUCTION = signShrink(-9, SYSCALL_BITWIDTH);
+  EXITCODE_UNKNOWNSYSCALL = signShrink(-10, SYSCALL_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-11, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5869,14 +5884,23 @@ void updateState(uint64_t value) {
   tc = tc + 1;
 }
 
-void rollbackTrace() {
+void replayTrace() {
   uint64_t traceLength;
+  uint64_t tl;
 
-  traceLength = (tc - 1) % maxTraceLength;
+  if (tc - 1 < maxTraceLength)
+    traceLength = tc - 1;
+  else
+    traceLength = maxTraceLength;
+
+  record = 0;
 
   undo = 1;
 
-  while (traceLength > 0) {
+  tl = traceLength;
+
+  // undo traceLength number of instructions
+  while (tl > 0) {
     tc = tc - 1;
 
     pc = *(pcs + (tc % maxTraceLength));
@@ -5884,13 +5908,32 @@ void rollbackTrace() {
     fetch();
     decode_execute();
 
-    *(pcs + (tc % maxTraceLength))    = 0;
-    *(values + (tc % maxTraceLength)) = 0;
-
-    traceLength = traceLength - 1;
+    tl = tl - 1;
   }
 
   undo = 0;
+  redo = 1;
+
+  disassemble = 1;
+
+  tl = traceLength;
+
+  // redo traceLength number of instructions
+  while (tl > 0) {
+    // assert: pc == *(pcs + (tc % maxTraceLength))
+
+    fetch();
+    decode_execute();
+
+    tc = tc + 1;
+    tl = tl - 1;
+  }
+
+  disassemble = 0;
+
+  redo = 0;
+
+  record = 1;
 }
 
 void printSourceLineNumberOfInstruction(uint64_t a) {
@@ -6055,8 +6098,8 @@ void do_mul() {
 }
 
 void record_divu_remu() {
-  if (*(registers + rs2) != 0)
-    recordState(*(registers + rd));
+  // record even for division by zero
+  recordState(*(registers + rd));
 }
 
 void do_divu() {
@@ -6319,7 +6362,7 @@ void print_beq_after() {
   printHexadecimal(pc, 0);
 }
 
-void record_beq_ecall() {
+void record_beq() {
   recordState(0);
 }
 
@@ -6448,15 +6491,57 @@ void do_jalr() {
   ic_jalr = ic_jalr + 1;
 }
 
+void print_ecall() {
+  printInstructionContext();
+  print((uint64_t*) "ecall");
+}
+
+void print_ecall_before() {
+  print((uint64_t*) ": |- ");
+  printRegisterHexadecimal(REG_A0);
+}
+
+void print_ecall_after() {
+  print((uint64_t*) " -> ");
+  printRegisterHexadecimal(REG_A0);
+}
+
+void record_ecall() {
+  // TODO: record all side effects
+  recordState(*(registers + REG_A0));
+}
+
 void do_ecall() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_ecall = ic_ecall + 1;
 
-  if (*(registers + REG_A7) == SYSCALL_SWITCH)
-    implementSwitch();
+  if (redo)
+    // TODO: redo all side effects
+    *(registers + REG_A0) = *(values + (tc % maxTraceLength));
+  else if (*(registers + REG_A7) == SYSCALL_SWITCH)
+    if (record) {
+      print(selfieName);
+      print((uint64_t*) ": context switching during recording is unsupported");
+      println();
+
+      exit(EXITCODE_BADARGUMENTS);
+    } else
+      implementSwitch();
   else
     throwException(EXCEPTION_SYSCALL, 0);
+}
+
+void undo_ecall() {
+  uint64_t a0;
+
+  a0 = *(registers + REG_A0);
+
+  // TODO: undo all side effects
+  *(registers + REG_A0) = *(values + (tc % maxTraceLength));
+
+  // save register a0 for redoing system call
+  *(values + (tc % maxTraceLength)) = a0;
 }
 
 // -----------------------------------------------------------------
@@ -6740,7 +6825,7 @@ void decode_execute() {
     if (funct3 == F3_BEQ) {
       if (debug) {
         if (record) {
-          record_beq_ecall();
+          record_beq();
           do_beq();
         } if (disassemble) {
           print_beq();
@@ -6830,14 +6915,17 @@ void decode_execute() {
     if (funct3 == F3_ECALL) {
       if (debug) {
         if (record) {
-          record_beq_ecall();
+          record_ecall();
           do_ecall();
-        } else if (disassemble) {
-          printInstructionContext();
-          print((uint64_t*) "ecall");
-          if (execute)
+        } else if (undo)
+          undo_ecall();
+        else if (disassemble) {
+          print_ecall();
+          if (execute) {
+            print_ecall_before();
             do_ecall();
-
+            print_ecall_after();
+          }
           println();
         }
       } else
@@ -7512,6 +7600,17 @@ uint64_t isBootLevelZero() {
   return 0;
 }
 
+uint64_t handleDivisionByZero() {
+  if (record)
+    replayTrace();
+
+  print(selfieName);
+  print((uint64_t*) ": division by zero");
+  println();
+
+  return EXITCODE_DIVISIONBYZERO;
+}
+
 uint64_t handleSystemCalls(uint64_t* context) {
   uint64_t a7;
 
@@ -7579,6 +7678,8 @@ uint64_t mipster(uint64_t* toContext) {
       if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
+      else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
+        return handleDivisionByZero();
       else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
@@ -7614,9 +7715,11 @@ uint64_t minster(uint64_t* toContext) {
 
       timeout = TIMEROFF;
     } else {
-      // we are the parent in charge of handling exit exceptions
+      // we are the parent in charge of handling exceptions
 
-      if (handleSystemCalls(fromContext) == EXIT)
+      if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
+        return handleDivisionByZero();
+      else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
@@ -7646,9 +7749,11 @@ uint64_t mobster(uint64_t* toContext) {
 
       timeout = TIMEROFF;
     } else {
-      // we are the parent in charge of handling exit exceptions
+      // we are the parent in charge of handling exceptions
 
-      if (handleSystemCalls(fromContext) == EXIT)
+      if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
+        return handleDivisionByZero();
+      else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
@@ -7672,6 +7777,8 @@ uint64_t hypster(uint64_t* toContext) {
     if (getException(fromContext) == EXCEPTION_PAGEFAULT)
       // TODO: use this table to unmap and reuse frames
       mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
+    else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
+      return handleDivisionByZero();
     else if (handleSystemCalls(fromContext) == EXIT)
       return getExitCode(fromContext);
 
@@ -7730,6 +7837,8 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
       if (getException(fromContext) == EXCEPTION_PAGEFAULT)
         // TODO: use this table to unmap and reuse frames
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
+      else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
+        return handleDivisionByZero();
       else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
 
@@ -8248,12 +8357,9 @@ uint64_t selfie() {
         selfie_load();
       else if (stringCompare(option, (uint64_t*) "-sat"))
         selfie_sat();
-      else if (stringCompare(option, (uint64_t*) "-m")) {
-        debug  = 1;
-        record = 1;
-
+      else if (stringCompare(option, (uint64_t*) "-m"))
         return selfie_run(MIPSTER);
-      } else if (stringCompare(option, (uint64_t*) "-d")) {
+      else if (stringCompare(option, (uint64_t*) "-d")) {
         debug       = 1;
         disassemble = 1;
 
