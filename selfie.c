@@ -7297,23 +7297,16 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-  // on boot level zero frame may be any signed integer
-
   *(table + page) = frame;
 
   // exploit spatial locality in page table caching
-  if (page != getHiPage(context)) {
-    if (page < getLoPage(context)) {
-      // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + page, (getLoPage(context) - page) * SIZEOFUINT64);
+  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - SIZEOFUINT64)) {
+    // page is for code or data
 
+    if (page < getLoPage(context))
       setLoPage(context, page);
-    } else if (getMePage(context) < page) {
-      // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFUINT64);
-
+    else if (page > getMePage(context))
       setMePage(context, page);
-    }
   }
 
   if (debug_map) {
@@ -7372,10 +7365,11 @@ void restoreContext(uint64_t* context) {
     me   = loadVirtualMemory(parentTable, MePage(vctxt));
 
     while (page <= me) {
-      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+      if (isVirtualAddressMapped(parentTable, FrameForPage(table, page))) {
+        frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
-      if (frame != 0)
         mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
+      }
 
       page = page + 1;
     }
@@ -7487,6 +7481,9 @@ void up_loadBinary(uint64_t* context) {
   setLoPage(context, getPageOfVirtualAddress(entryPoint));
   setMePage(context, getPageOfVirtualAddress(entryPoint));
   setName(context, binaryName);
+
+  // every newly mapped page is in the code/data section
+  setBumpPointer(context, VIRTUALMEMORYSIZE);
 
   baddr = 0;
 
