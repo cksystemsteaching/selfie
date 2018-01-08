@@ -55,8 +55,8 @@
 // without going through the file system.
 //
 // RISC-U is a tiny Turing-complete subset of the RISC-V instruction set.
-// It only features unsigned 64-bit arithmetic, double-word memory, and
-// simple control-flow instructions but neither bitwise nor byte- and
+// It only features unsigned 64-bit integer arithmetic, double-word memory,
+// and simple control-flow instructions but neither bitwise nor byte- and
 // word-level instructions. RISC-U can be taught in one week of classes.
 //
 // The emulator implements minimal operating system support that is meant
