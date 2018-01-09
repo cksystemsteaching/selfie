@@ -4341,6 +4341,7 @@ void createELFHeader() {
   // | 32 | binaryLength     | size of segment in file
   // | 40 | binaryLength     | size of segment in memory
   // | 48 | PAGESIZE         | alignemnt of segment
+  // +----+------------------+
   *(ELF_header + 8)  = 30064771073;
   *(ELF_header + 9)  = ELF_HEADER_LEN;
   *(ELF_header + 10) = ELF_ENTRY_POINT;
