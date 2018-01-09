@@ -8148,7 +8148,11 @@ void dimacs_getClause(uint64_t clause) {
     }
 
     if (symbol == SYM_INTEGER) {
-      if (literal > numberOfSATVariables) {
+      if (literal == 0) {
+        dimacs_getSymbol();
+
+        return;
+      } else if (literal > numberOfSATVariables) {
         syntaxErrorMessage((uint64_t*) "clause exceeds declared number of variables");
 
         exit(EXITCODE_PARSERERROR);
