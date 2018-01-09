@@ -339,7 +339,7 @@ uint64_t SYM_STRING       = 27; // string
 uint64_t* SYMBOLS; // strings representing symbols
 
 uint64_t maxIdentifierLength = 64;  // maximum number of characters in an identifier
-uint64_t maxIntegerLength    = 19;  // maximum number of characters in an integer
+uint64_t maxIntegerLength    = 20;  // maximum number of characters in an unsigned integer
 uint64_t maxStringLength     = 128; // maximum number of characters in a string
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -352,7 +352,7 @@ uint64_t* string     = (uint64_t*) 0; // stores scanned string
 
 uint64_t literal = 0; // stores numerical value of scanned integer or character
 
-uint64_t mayBeINTMIN = 0; // allow INT64_MIN if '-' was scanned before
+uint64_t integerIsSigned = 0; // enforce INT64_MIN limit if '-' was scanned before
 
 uint64_t character; // most recently read character
 
@@ -1676,8 +1676,8 @@ uint64_t atoi(uint64_t* s) {
   // and the numerical value 0 for n
   n = 0;
 
-  // load character (one byte) at index i in s from memory
-  // requires bit shifting since memory access is in words
+  // load character (one byte) at index i in s from memory requires
+  // bit shifting since memory access can only be done in double words
   c = loadCharacter(s, i);
 
   // loop until s is terminated
@@ -1686,39 +1686,48 @@ uint64_t atoi(uint64_t* s) {
     // is offset by the ASCII code of '0' (which is 48)
     c = c - '0';
 
-    if (c > 9)
-      // c was not a decimal digit
-      return -1;
+    if (c > 9) {
+      print(selfieName);
+      print((uint64_t*) ": cannot convert non-decimal number ");
+      print(s);
+      println();
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
 
     // assert: s contains a decimal number
 
-    // use base 10 but avoid integer overflow
-    if (n < INT64_MAX / 10)
+    // use base 10 but detect wrap around
+    if (n < UINT64_MAX / 10)
       n = n * 10 + c;
-    else if (n == INT64_MAX / 10) {
-      if (c <= INT64_MAX % 10)
+    else if (n == UINT64_MAX / 10)
+      if (c <= UINT64_MAX % 10)
         n = n * 10 + c;
-      else if (c == (INT64_MAX % 10) + 1)
-        // s must be terminated next, check below
-        n = INT64_MIN;
-      else
-        // s contains a decimal number larger than INT64_MAX
-        return -1;
-    } else
-      // s contains a decimal number larger than INT64_MAX
-      return -1;
+      else {
+        // s contains a decimal number larger than UINT64_MAX
+        print(selfieName);
+        print((uint64_t*) ": cannot convert out-of-bound number ");
+        print(s);
+        println();
+
+        exit(EXITCODE_BADARGUMENTS);
+      }
+    else {
+      // s contains a decimal number larger than UINT64_MAX
+      print(selfieName);
+      print((uint64_t*) ": cannot convert out-of-bound number ");
+      print(s);
+      println();
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
 
     // go to the next digit
     i = i + 1;
 
-    // load character (one byte) at index i in s from memory
-    // requires bit shifting since memory access is in words
+    // load character (one byte) at index i in s from memory requires
+    // bit shifting since memory access can only be done in double words
     c = loadCharacter(s, i);
-
-    if (n == INT64_MIN)
-      if (c != 0)
-        // n == INT64_MIN but s is not terminated yet
-        return -1;
   }
 
   return n;
@@ -1841,12 +1850,12 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
 uint64_t fixedPointRatio(uint64_t a, uint64_t b) {
   // compute fixed point ratio with 2 fractional digits
 
-  // multiply a/b with 100 but avoid overflow
+  // multiply a/b with 100 but avoid wrap around
 
-  if (a <= INT64_MAX / 100) {
+  if (a <= UINT64_MAX / 100) {
     if (b != 0)
       return a * 100 / b;
-  } else if (a <= INT64_MAX / 10) {
+  } else if (a <= UINT64_MAX / 10) {
     if (b / 10 != 0)
       return a * 10 / (b / 10);
   } else {
@@ -2296,7 +2305,10 @@ void getSymbol() {
 
         while (isCharacterDigit()) {
           if (i >= maxIntegerLength) {
-            syntaxErrorMessage((uint64_t*) "integer out of bound");
+            if (integerIsSigned)
+              syntaxErrorMessage((uint64_t*) "signed integer out of bound");
+            else
+              syntaxErrorMessage((uint64_t*) "integer out of bound");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2312,19 +2324,12 @@ void getSymbol() {
 
         literal = atoi(integer);
 
-        if (signedLessThan(literal, 0)) {
-          if (literal == INT64_MIN) {
-            if (mayBeINTMIN == 0) {
-              syntaxErrorMessage((uint64_t*) "integer out of bound");
+        if (integerIsSigned)
+          if (literal > INT64_MIN) {
+              syntaxErrorMessage((uint64_t*) "signed integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
             }
-          } else {
-            syntaxErrorMessage((uint64_t*) "integer out of bound");
-
-            exit(EXITCODE_SCANNERERROR);
-          }
-        }
 
         symbol = SYM_INTEGER;
 
@@ -2356,9 +2361,9 @@ void getSymbol() {
       } else if (character == CHAR_DOUBLEQUOTE) {
         getCharacter();
 
-        // accommodate string and null for termination
+        // accommodate string and null for termination,
         // allocate zeroed memory since strings are emitted
-        // in whole words but may end non-word-aligned
+        // in double words but may end non-word-aligned
         string = zalloc(maxStringLength + 1);
 
         i = 0;
@@ -3344,11 +3349,11 @@ uint64_t compile_simpleExpression() {
 
   // optional: -
   if (symbol == SYM_MINUS) {
-    mayBeINTMIN = 1;
+    integerIsSigned = 1;
 
     getSymbol();
 
-    mayBeINTMIN = 0;
+    integerIsSigned = 0;
 
     ltype = compile_term();
 
@@ -3933,11 +3938,11 @@ uint64_t compile_initialization(uint64_t type) {
 
     // optional: -
     if (symbol == SYM_MINUS) {
-      mayBeINTMIN = 1;
+      integerIsSigned = 1;
 
       getSymbol();
 
-      mayBeINTMIN = 0;
+      integerIsSigned = 0;
 
       initialValue = -literal;
     } else
@@ -8143,12 +8148,7 @@ void dimacs_getClause(uint64_t clause) {
     }
 
     if (symbol == SYM_INTEGER) {
-      if (literal <= 0) {
-        // if literal < 0 it is equal to INT64_MIN which we treat here as 0
-        dimacs_getSymbol();
-
-        return;
-      } else if (literal > numberOfSATVariables) {
+      if (literal > numberOfSATVariables) {
         syntaxErrorMessage((uint64_t*) "clause exceeds declared number of variables");
 
         exit(EXITCODE_PARSERERROR);
