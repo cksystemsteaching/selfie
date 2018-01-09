@@ -339,7 +339,7 @@ uint64_t SYM_STRING       = 27; // string
 uint64_t* SYMBOLS; // strings representing symbols
 
 uint64_t maxIdentifierLength = 64;  // maximum number of characters in an identifier
-uint64_t maxIntegerLength    = 19;  // maximum number of characters in an integer
+uint64_t maxIntegerLength    = 20;  // maximum number of characters in an unsigned integer
 uint64_t maxStringLength     = 128; // maximum number of characters in a string
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -352,7 +352,7 @@ uint64_t* string     = (uint64_t*) 0; // stores scanned string
 
 uint64_t literal = 0; // stores numerical value of scanned integer or character
 
-uint64_t mayBeINTMIN = 0; // allow INT64_MIN if '-' was scanned before
+uint64_t integerIsSigned = 0; // enforce INT64_MIN limit if '-' was scanned before
 
 uint64_t character; // most recently read character
 
@@ -959,13 +959,11 @@ uint64_t MEGABYTE = 1048576; // 1MB
 
 uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 
-uint64_t WORDSIZE       = 4;
+uint64_t WORDSIZE       = 4; // in bytes
 uint64_t WORDSIZEINBITS = 32;
 
-uint64_t DOUBLEWORDSIZE = 8;
-
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
-uint64_t REGISTERSIZE    = 8; // must be the same as DOUBLEWORDSIZE
+uint64_t REGISTERSIZE    = 8; // must be twice of WORDSIZE
 
 uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
@@ -1160,9 +1158,9 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 
-  pcs    = zalloc(maxTraceLength * REGISTERSIZE);
-  tcs    = zalloc(maxTraceLength * REGISTERSIZE);
-  values = zalloc(maxTraceLength * REGISTERSIZE);
+  pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
+  tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
+  values = zalloc(maxTraceLength * SIZEOFUINT64);
 }
 
 void resetInterpreter() {
@@ -1678,8 +1676,8 @@ uint64_t atoi(uint64_t* s) {
   // and the numerical value 0 for n
   n = 0;
 
-  // load character (one byte) at index i in s from memory
-  // requires bit shifting since memory access is in words
+  // load character (one byte) at index i in s from memory requires
+  // bit shifting since memory access can only be done in double words
   c = loadCharacter(s, i);
 
   // loop until s is terminated
@@ -1688,39 +1686,48 @@ uint64_t atoi(uint64_t* s) {
     // is offset by the ASCII code of '0' (which is 48)
     c = c - '0';
 
-    if (c > 9)
-      // c was not a decimal digit
-      return -1;
+    if (c > 9) {
+      print(selfieName);
+      print((uint64_t*) ": cannot convert non-decimal number ");
+      print(s);
+      println();
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
 
     // assert: s contains a decimal number
 
-    // use base 10 but avoid integer overflow
-    if (n < INT64_MAX / 10)
+    // use base 10 but detect wrap around
+    if (n < UINT64_MAX / 10)
       n = n * 10 + c;
-    else if (n == INT64_MAX / 10) {
-      if (c <= INT64_MAX % 10)
+    else if (n == UINT64_MAX / 10)
+      if (c <= UINT64_MAX % 10)
         n = n * 10 + c;
-      else if (c == (INT64_MAX % 10) + 1)
-        // s must be terminated next, check below
-        n = INT64_MIN;
-      else
-        // s contains a decimal number larger than INT64_MAX
-        return -1;
-    } else
-      // s contains a decimal number larger than INT64_MAX
-      return -1;
+      else {
+        // s contains a decimal number larger than UINT64_MAX
+        print(selfieName);
+        print((uint64_t*) ": cannot convert out-of-bound number ");
+        print(s);
+        println();
+
+        exit(EXITCODE_BADARGUMENTS);
+      }
+    else {
+      // s contains a decimal number larger than UINT64_MAX
+      print(selfieName);
+      print((uint64_t*) ": cannot convert out-of-bound number ");
+      print(s);
+      println();
+
+      exit(EXITCODE_BADARGUMENTS);
+    }
 
     // go to the next digit
     i = i + 1;
 
-    // load character (one byte) at index i in s from memory
-    // requires bit shifting since memory access is in words
+    // load character (one byte) at index i in s from memory requires
+    // bit shifting since memory access can only be done in double words
     c = loadCharacter(s, i);
-
-    if (n == INT64_MIN)
-      if (c != 0)
-        // n == INT64_MIN but s is not terminated yet
-        return -1;
   }
 
   return n;
@@ -1843,12 +1850,12 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
 uint64_t fixedPointRatio(uint64_t a, uint64_t b) {
   // compute fixed point ratio with 2 fractional digits
 
-  // multiply a/b with 100 but avoid overflow
+  // multiply a/b with 100 but avoid wrap around
 
-  if (a <= INT64_MAX / 100) {
+  if (a <= UINT64_MAX / 100) {
     if (b != 0)
       return a * 100 / b;
-  } else if (a <= INT64_MAX / 10) {
+  } else if (a <= UINT64_MAX / 10) {
     if (b / 10 != 0)
       return a * 10 / (b / 10);
   } else {
@@ -2002,11 +2009,11 @@ uint64_t* zalloc(uint64_t size) {
   uint64_t* memory;
   uint64_t  i;
 
-  size = roundUp(size, SIZEOFUINT64);
+  size = roundUp(size, REGISTERSIZE);
 
   memory = smalloc(size);
 
-  size = size / SIZEOFUINT64;
+  size = size / REGISTERSIZE;
 
   i = 0;
 
@@ -2298,7 +2305,10 @@ void getSymbol() {
 
         while (isCharacterDigit()) {
           if (i >= maxIntegerLength) {
-            syntaxErrorMessage((uint64_t*) "integer out of bound");
+            if (integerIsSigned)
+              syntaxErrorMessage((uint64_t*) "signed integer out of bound");
+            else
+              syntaxErrorMessage((uint64_t*) "integer out of bound");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2314,19 +2324,12 @@ void getSymbol() {
 
         literal = atoi(integer);
 
-        if (signedLessThan(literal, 0)) {
-          if (literal == INT64_MIN) {
-            if (mayBeINTMIN == 0) {
-              syntaxErrorMessage((uint64_t*) "integer out of bound");
+        if (integerIsSigned)
+          if (literal > INT64_MIN) {
+              syntaxErrorMessage((uint64_t*) "signed integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
             }
-          } else {
-            syntaxErrorMessage((uint64_t*) "integer out of bound");
-
-            exit(EXITCODE_SCANNERERROR);
-          }
-        }
 
         symbol = SYM_INTEGER;
 
@@ -2358,9 +2361,9 @@ void getSymbol() {
       } else if (character == CHAR_DOUBLEQUOTE) {
         getCharacter();
 
-        // accommodate string and null for termination
+        // accommodate string and null for termination,
         // allocate zeroed memory since strings are emitted
-        // in whole words but may end non-word-aligned
+        // in double words but may end non-word-aligned
         string = zalloc(maxStringLength + 1);
 
         i = 0;
@@ -3053,7 +3056,7 @@ void help_procedure_prologue(uint64_t localVariables) {
 
   // allocate memory for callee's local variables
   if (localVariables != 0)
-    emitADDI(REG_SP, REG_SP, -localVariables * DOUBLEWORDSIZE);
+    emitADDI(REG_SP, REG_SP, -localVariables * REGISTERSIZE);
 }
 
 void help_procedure_epilogue(uint64_t parameters) {
@@ -3070,7 +3073,7 @@ void help_procedure_epilogue(uint64_t parameters) {
   emitLD(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and parameters
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE + parameters * DOUBLEWORDSIZE);
+  emitADDI(REG_SP, REG_SP, REGISTERSIZE + parameters * REGISTERSIZE);
 
   // return
   emitJALR(REG_ZR, REG_RA, 0);
@@ -3346,11 +3349,11 @@ uint64_t compile_simpleExpression() {
 
   // optional: -
   if (symbol == SYM_MINUS) {
-    mayBeINTMIN = 1;
+    integerIsSigned = 1;
 
     getSymbol();
 
-    mayBeINTMIN = 0;
+    integerIsSigned = 0;
 
     ltype = compile_term();
 
@@ -3935,11 +3938,11 @@ uint64_t compile_initialization(uint64_t type) {
 
     // optional: -
     if (symbol == SYM_MINUS) {
-      mayBeINTMIN = 1;
+      integerIsSigned = 1;
 
       getSymbol();
 
-      mayBeINTMIN = 0;
+      integerIsSigned = 0;
 
       initialValue = -literal;
     } else
@@ -4844,9 +4847,9 @@ void printInstructionCounters() {
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
-    return getLowWord(*(binary + baddr / SIZEOFUINT64));
+    return getLowWord(*(binary + baddr / REGISTERSIZE));
   else
-    return getHighWord(*(binary + baddr / SIZEOFUINT64));
+    return getHighWord(*(binary + baddr / REGISTERSIZE));
 }
 
 void storeInstruction(uint64_t baddr, uint64_t instruction) {
@@ -4858,20 +4861,20 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  temp = *(binary + baddr / SIZEOFUINT64);
+  temp = *(binary + baddr / REGISTERSIZE);
 
-  if (baddr % SIZEOFUINT64 == 0)
+  if (baddr % REGISTERSIZE == 0)
     // replace low word
     temp = leftShift(getHighWord(temp), WORDSIZEINBITS) + instruction;
   else
     // replace high word
     temp = leftShift(instruction, WORDSIZEINBITS) + getLowWord(temp);
 
-  *(binary + baddr / SIZEOFUINT64) = temp;
+  *(binary + baddr / REGISTERSIZE) = temp;
 }
 
 uint64_t loadData(uint64_t baddr) {
-  return *(binary + baddr / SIZEOFUINT64);
+  return *(binary + baddr / REGISTERSIZE);
 }
 
 void storeData(uint64_t baddr, uint64_t data) {
@@ -4881,7 +4884,7 @@ void storeData(uint64_t baddr, uint64_t data) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  *(binary + baddr / SIZEOFUINT64) = data;
+  *(binary + baddr / REGISTERSIZE) = data;
 }
 
 void emitInstruction(uint64_t instruction) {
@@ -5022,14 +5025,14 @@ void fixlink_relative(uint64_t fromAddress, uint64_t toAddress) {
 uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
   uint64_t next;
 
-  next = baddr + roundUp(stringLength(s) + 1, SIZEOFUINT64);
+  next = baddr + roundUp(stringLength(s) + 1, REGISTERSIZE);
 
   while (baddr < next) {
     storeData(baddr, *s);
 
     s = s + 1;
 
-    baddr = baddr + SIZEOFUINT64;
+    baddr = baddr + REGISTERSIZE;
   }
 
   return next;
@@ -5153,14 +5156,14 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
   while (length > PAGESIZE) {
     length = length - PAGESIZE;
 
-    m = m + PAGESIZE / SIZEOFUINT64;
+    m = m + PAGESIZE / REGISTERSIZE;
 
     // touch every following page
     n = *m;
   }
 
   if (length > 0) {
-    m = m + (length - 1) / SIZEOFUINT64;
+    m = m + (length - 1) / REGISTERSIZE;
 
     // touch at end
     n = *m;
@@ -7164,11 +7167,11 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  setRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
+  setRegs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFUINT64));
+  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
@@ -7305,24 +7308,14 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-  // on boot level zero frame may be any signed integer
-
   *(table + page) = frame;
 
-  // exploit spatial locality in page table caching
-  if (page != getHiPage(context)) {
-    if (page < getLoPage(context)) {
-      // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + page, (getLoPage(context) - page) * SIZEOFUINT64);
-
+  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE))
+    // exploit spatial locality in page table caching
+    if (page < getLoPage(context))
       setLoPage(context, page);
-    } else if (getMePage(context) < page) {
-      // strictly, touching is only necessary on boot levels higher than zero
-      touch(table + getMePage(context), (page - getMePage(context)) * SIZEOFUINT64);
-
+    else if (page > getMePage(context))
       setMePage(context, page);
-    }
-  }
 
   if (debug_map) {
     print(selfieName);
@@ -7380,24 +7373,33 @@ void restoreContext(uint64_t* context) {
     me   = loadVirtualMemory(parentTable, MePage(vctxt));
 
     while (page <= me) {
-      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+      if (isVirtualAddressMapped(parentTable, FrameForPage(table, page))) {
+        frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
 
-      if (frame != 0)
         mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
+      }
 
       page = page + 1;
     }
 
     storeVirtualMemory(parentTable, LoPage(vctxt), page);
 
-    page  = loadVirtualMemory(parentTable, HiPage(vctxt));
-    frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+    page = loadVirtualMemory(parentTable, HiPage(vctxt));
+
+    if (isVirtualAddressMapped(parentTable, FrameForPage(table, page)))
+      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+    else
+      frame = 0;
 
     while (frame != 0) {
       mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
 
       page  = page - 1;
-      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+
+      if (isVirtualAddressMapped(parentTable, FrameForPage(table, page)))
+        frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+      else
+        frame = 0;
     }
 
     storeVirtualMemory(parentTable, HiPage(vctxt), page);
@@ -7481,23 +7483,23 @@ void up_loadBinary(uint64_t* context) {
 
   entryPoint = *(ELF_header + 10);
 
-  // assert: entryPoint is multiple of PAGESIZE and SIZEOFUINT64
+  // assert: entryPoint is multiple of PAGESIZE and REGISTERSIZE
 
   setPC(context, entryPoint);
   setLoPage(context, getPageOfVirtualAddress(entryPoint));
   setMePage(context, getPageOfVirtualAddress(entryPoint));
-  setName(context, binaryName);
+  setProgramBreak(context, entryPoint + binaryLength);
+  setBumpPointer(context, getProgramBreak(context));
 
   baddr = 0;
 
   while (baddr < binaryLength) {
     mapAndStore(context, entryPoint + baddr, loadData(baddr));
 
-    baddr = baddr + SIZEOFUINT64;
+    baddr = baddr + REGISTERSIZE;
   }
 
-  setProgramBreak(context, entryPoint + baddr);
-  setBumpPointer(context, getProgramBreak(context));
+  setName(context, binaryName);
 }
 
 uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
@@ -8146,12 +8148,7 @@ void dimacs_getClause(uint64_t clause) {
     }
 
     if (symbol == SYM_INTEGER) {
-      if (literal <= 0) {
-        // if literal < 0 it is equal to INT64_MIN which we treat here as 0
-        dimacs_getSymbol();
-
-        return;
-      } else if (literal > numberOfSATVariables) {
+      if (literal > numberOfSATVariables) {
         syntaxErrorMessage((uint64_t*) "clause exceeds declared number of variables");
 
         exit(EXITCODE_PARSERERROR);
