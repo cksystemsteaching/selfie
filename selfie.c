@@ -4989,7 +4989,7 @@ void fixup_relative_BFormat(uint64_t fromAddress) {
   instruction = loadInstruction(fromAddress);
 
   storeInstruction(fromAddress,
-    encodeBFormat(binaryLength - fromAddress - INSTRUCTIONSIZE,
+    encodeBFormat(binaryLength - fromAddress,
       getRS2(instruction),
       getRS1(instruction),
       getFunct3(instruction),
@@ -6373,11 +6373,11 @@ void record_beq() {
 void do_beq() {
   // branch on equal
 
-  pc = pc + INSTRUCTIONSIZE;
-
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
     pc = pc + imm;
+  else
+    pc = pc + INSTRUCTIONSIZE;
 
   ic_beq = ic_beq + 1;
 }
