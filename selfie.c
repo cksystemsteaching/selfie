@@ -562,8 +562,6 @@ uint64_t returnBranches = 0; // fixup chain for return statements
 
 uint64_t returnType = 0; // return type of currently parsed procedure
 
-uint64_t mainJump = 0; // address where JAL instruction to main procedure is
-
 uint64_t numberOfCalls       = 0;
 uint64_t numberOfAssignments = 0;
 uint64_t numberOfWhile       = 0;
@@ -587,8 +585,8 @@ void resetParser() {
 // -----------------------------------------------------------------
 
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
-void emitMainEntry();
-void bootstrapCode();
+void emitProgramEntry();
+void emitStart();
 void createELFHeader();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -4214,50 +4212,34 @@ void emitLeftShiftBy(uint64_t reg, uint64_t b) {
   emitMUL(reg, reg, nextTemporary());
 }
 
-void emitMainEntry() {
-  uint64_t i;
-
-  // the instruction at address zero cannot be fixed up
-  // we therefore need at least one not-to-be-fixed-up instruction here
-
-  // we generate NOPs to accommodate GP register
-  // initialization code that overwrites the NOPs later
-  // when binaryLength is known
-  i = 0;
-
-  // 15 instructions is enough for initialization of GP, see load_integer
-  while (i < 15) {
-    emitNOP();
-
-    i = i + 1;
-  }
-
-  mainJump = binaryLength;
-
-  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, mainJump);
-
-  // jump and link to main, will return here only if there is no exit call
+void emitProgramEntry() {
+  // jump and link to the _start procedure
   emitJAL(REG_RA, 0);
-
-  // we exit with exit code in return register pushed onto the stack
-  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
-  emitSD(REG_SP, 0, REG_A0);
-
-  // no need to reset return register here
 }
 
-void bootstrapCode() {
-  uint64_t savedBinaryLength;
+void emitStart() {
+  // initializes the program and calls the main procedure
   uint64_t upper;
   uint64_t lower;
+  uint64_t* entry;
+  uint64_t GP;
+  uint64_t paddingBytes;
 
-  savedBinaryLength = binaryLength;
+  // fixup jump to _start on address 0
+  fixup_relative_JFormat(0, binaryLength);
 
-  binaryLength = 0;
+  // calculate the global pointer value
+  GP = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
 
-  // load binaryLength into GP register
-  lower = getBits(savedBinaryLength + ELF_ENTRY_POINT,  0, 12);
-  upper = getBits(savedBinaryLength + ELF_ENTRY_POINT, 12, 52);
+  paddingBytes = GP % REGISTERSIZE;
+
+  GP = GP + paddingBytes;
+
+  // assert: GP is a multiple of REGISTERSIZE
+
+  // load the calculated value into GP register
+  lower = getBits(GP,  0, 12);
+  upper = getBits(GP, 12, 52);
 
   // setting of bit 11 can only be reached by increasing upper by 1 and
   // adding a negativ offset instead of lower
@@ -4272,19 +4254,32 @@ void bootstrapCode() {
 
     ic_addi = ic_addi - 2;
   } else {
+    emitNOP();
     emitADDI(REG_GP, REG_ZR, lower);
 
     ic_addi = ic_addi - 1;
   }
 
-  binaryLength = savedBinaryLength;
-
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
     // exit by continuing to the next instruction
-    fixup_relative_JFormat(mainJump, mainJump + INSTRUCTIONSIZE);
+    emitNOP();
+  else {
+    entry = getScopedSymbolTableEntry((uint64_t*) "main", PROCEDURE);
 
-  mainJump = 0;
+    help_call_codegen(entry, (uint64_t*) "main");
+  }
+
+  // we exit with exit code in return register pushed onto the stack
+  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+  emitSD(REG_SP, 0, REG_A0);
+
+  entry = getScopedSymbolTableEntry((uint64_t*) "exit", PROCEDURE);
+
+  help_call_codegen(entry, (uint64_t*) "exit");
+
+  if (paddingBytes != 0)
+    emitNOP();
 }
 
 void createELFHeader() {
@@ -4343,8 +4338,7 @@ void selfie_compile() {
   resetSymbolTables();
   resetInstructionCounters();
 
-  // jump and link to main
-  emitMainEntry();
+  emitProgramEntry();
 
   // library:
   // exit must be first to exit main
@@ -4356,6 +4350,9 @@ void selfie_compile() {
   emitMalloc();
 
   emitSwitch();
+
+  // declare mandatory main procedure
+  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -4443,9 +4440,9 @@ void selfie_compile() {
     println();
   }
 
-  emitGlobalsStrings();
+  emitStart();
 
-  bootstrapCode();
+  emitGlobalsStrings();
 
   createELFHeader();
 
@@ -5040,10 +5037,6 @@ uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
 
 void emitGlobalsStrings() {
   uint64_t* entry;
-
-  // align data section for register access
-  if (binaryLength % REGISTERSIZE != 0)
-    emitNOP();
 
   codeLength = binaryLength;
 
