@@ -1509,7 +1509,7 @@ uint64_t rightShift(uint64_t n, uint64_t b) {
 }
 
 uint64_t getBits(uint64_t n, uint64_t i, uint64_t b) {
-  // assert: 0 <= i < i + b <= CPUBITWIDTH
+  // assert: 0 < b <= i + b < CPUBITWIDTH
   if (i == 0)
     return n % twoToThePowerOf(b);
   else
@@ -1578,7 +1578,7 @@ uint64_t isSignedInteger(uint64_t n, uint64_t b) {
 }
 
 uint64_t signExtend(uint64_t n, uint64_t b) {
-  // assert: -2^(b - 1) <= n < 2^(b - 1)
+  // assert: 0 <= n <= 2^b
   // assert: 0 < b < CPUBITWIDTH
   if (n < twoToThePowerOf(b - 1))
     return n;
@@ -2948,14 +2948,22 @@ void load_integer(uint64_t value) {
     lower = getBits(value,  0, 12);
     upper = getBits(value, 12, 20);
 
-    // adding 1 which is effectively 2^12 to cancel sign extension of lower
-    if (lower >= twoToThePowerOf(11))
-      upper = upper + 1;
-
     talloc();
 
-    // assert: 0 < upper < 2^(32-12)
-    emitLUI(currentTemporary(), signExtend(upper, 20));
+    if (lower >= twoToThePowerOf(11)) {
+      // add 1 which is effectively 2^12 to cancel sign extension of lower
+      upper = upper + 1;
+
+      // assert: 0 < upper <= 2^(32-12)
+      emitLUI(currentTemporary(), signExtend(upper, 20));
+
+      if (upper == twoToThePowerOf(19))
+        // upper overflowed, cancel sign extension
+        emitSUB(currentTemporary(), REG_ZR, currentTemporary());
+    } else
+      // assert: 0 < upper < 2^(32-12)
+      emitLUI(currentTemporary(), signExtend(upper, 20));
+
     emitADDI(currentTemporary(), currentTemporary(), signExtend(lower, 12));
 
   } else {
