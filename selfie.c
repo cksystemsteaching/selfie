@@ -959,13 +959,11 @@ uint64_t MEGABYTE = 1048576; // 1MB
 
 uint64_t VIRTUALMEMORYSIZE = 4294967296; // 4GB of virtual memory
 
-uint64_t WORDSIZE       = 4;
+uint64_t WORDSIZE       = 4; // in bytes
 uint64_t WORDSIZEINBITS = 32;
 
-uint64_t DOUBLEWORDSIZE = 8;
-
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
-uint64_t REGISTERSIZE    = 8; // must be the same as DOUBLEWORDSIZE
+uint64_t REGISTERSIZE    = 8; // must be twice of WORDSIZE
 
 uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
@@ -1160,9 +1158,9 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 
-  pcs    = zalloc(maxTraceLength * REGISTERSIZE);
-  tcs    = zalloc(maxTraceLength * REGISTERSIZE);
-  values = zalloc(maxTraceLength * REGISTERSIZE);
+  pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
+  tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
+  values = zalloc(maxTraceLength * SIZEOFUINT64);
 }
 
 void resetInterpreter() {
@@ -2002,11 +2000,11 @@ uint64_t* zalloc(uint64_t size) {
   uint64_t* memory;
   uint64_t  i;
 
-  size = roundUp(size, SIZEOFUINT64);
+  size = roundUp(size, REGISTERSIZE);
 
   memory = smalloc(size);
 
-  size = size / SIZEOFUINT64;
+  size = size / REGISTERSIZE;
 
   i = 0;
 
@@ -3053,7 +3051,7 @@ void help_procedure_prologue(uint64_t localVariables) {
 
   // allocate memory for callee's local variables
   if (localVariables != 0)
-    emitADDI(REG_SP, REG_SP, -localVariables * DOUBLEWORDSIZE);
+    emitADDI(REG_SP, REG_SP, -localVariables * REGISTERSIZE);
 }
 
 void help_procedure_epilogue(uint64_t parameters) {
@@ -3070,7 +3068,7 @@ void help_procedure_epilogue(uint64_t parameters) {
   emitLD(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and parameters
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE + parameters * DOUBLEWORDSIZE);
+  emitADDI(REG_SP, REG_SP, REGISTERSIZE + parameters * REGISTERSIZE);
 
   // return
   emitJALR(REG_ZR, REG_RA, 0);
@@ -4844,9 +4842,9 @@ void printInstructionCounters() {
 
 uint64_t loadInstruction(uint64_t baddr) {
   if (baddr % REGISTERSIZE == 0)
-    return getLowWord(*(binary + baddr / SIZEOFUINT64));
+    return getLowWord(*(binary + baddr / REGISTERSIZE));
   else
-    return getHighWord(*(binary + baddr / SIZEOFUINT64));
+    return getHighWord(*(binary + baddr / REGISTERSIZE));
 }
 
 void storeInstruction(uint64_t baddr, uint64_t instruction) {
@@ -4858,20 +4856,20 @@ void storeInstruction(uint64_t baddr, uint64_t instruction) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  temp = *(binary + baddr / SIZEOFUINT64);
+  temp = *(binary + baddr / REGISTERSIZE);
 
-  if (baddr % SIZEOFUINT64 == 0)
+  if (baddr % REGISTERSIZE == 0)
     // replace low word
     temp = leftShift(getHighWord(temp), WORDSIZEINBITS) + instruction;
   else
     // replace high word
     temp = leftShift(instruction, WORDSIZEINBITS) + getLowWord(temp);
 
-  *(binary + baddr / SIZEOFUINT64) = temp;
+  *(binary + baddr / REGISTERSIZE) = temp;
 }
 
 uint64_t loadData(uint64_t baddr) {
-  return *(binary + baddr / SIZEOFUINT64);
+  return *(binary + baddr / REGISTERSIZE);
 }
 
 void storeData(uint64_t baddr, uint64_t data) {
@@ -4881,7 +4879,7 @@ void storeData(uint64_t baddr, uint64_t data) {
     exit(EXITCODE_COMPILERERROR);
   }
 
-  *(binary + baddr / SIZEOFUINT64) = data;
+  *(binary + baddr / REGISTERSIZE) = data;
 }
 
 void emitInstruction(uint64_t instruction) {
@@ -5022,14 +5020,14 @@ void fixlink_relative(uint64_t fromAddress, uint64_t toAddress) {
 uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
   uint64_t next;
 
-  next = baddr + roundUp(stringLength(s) + 1, SIZEOFUINT64);
+  next = baddr + roundUp(stringLength(s) + 1, REGISTERSIZE);
 
   while (baddr < next) {
     storeData(baddr, *s);
 
     s = s + 1;
 
-    baddr = baddr + SIZEOFUINT64;
+    baddr = baddr + REGISTERSIZE;
   }
 
   return next;
@@ -5153,14 +5151,14 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
   while (length > PAGESIZE) {
     length = length - PAGESIZE;
 
-    m = m + PAGESIZE / SIZEOFUINT64;
+    m = m + PAGESIZE / REGISTERSIZE;
 
     // touch every following page
     n = *m;
   }
 
   if (length > 0) {
-    m = m + (length - 1) / SIZEOFUINT64;
+    m = m + (length - 1) / REGISTERSIZE;
 
     // touch at end
     n = *m;
@@ -7164,11 +7162,11 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
-  setRegs(context, zalloc(NUMBEROFREGISTERS * SIZEOFUINT64));
+  setRegs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * SIZEOFUINT64));
+  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
@@ -7307,15 +7305,12 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   *(table + page) = frame;
 
-  // exploit spatial locality in page table caching
-  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - SIZEOFUINT64)) {
-    // page is for code or data
-
+  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE))
+    // exploit spatial locality in page table caching
     if (page < getLoPage(context))
       setLoPage(context, page);
     else if (page > getMePage(context))
       setMePage(context, page);
-  }
 
   if (debug_map) {
     print(selfieName);
@@ -7384,7 +7379,7 @@ void restoreContext(uint64_t* context) {
 
     storeVirtualMemory(parentTable, LoPage(vctxt), page);
 
-    page  = loadVirtualMemory(parentTable, HiPage(vctxt));
+    page = loadVirtualMemory(parentTable, HiPage(vctxt));
 
     if (isVirtualAddressMapped(parentTable, FrameForPage(table, page)))
       frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
@@ -7483,26 +7478,23 @@ void up_loadBinary(uint64_t* context) {
 
   entryPoint = *(ELF_header + 10);
 
-  // assert: entryPoint is multiple of PAGESIZE and SIZEOFUINT64
+  // assert: entryPoint is multiple of PAGESIZE and REGISTERSIZE
 
   setPC(context, entryPoint);
   setLoPage(context, getPageOfVirtualAddress(entryPoint));
   setMePage(context, getPageOfVirtualAddress(entryPoint));
-  setName(context, binaryName);
-
-  // every newly mapped page is in the code/data section
-  setBumpPointer(context, VIRTUALMEMORYSIZE);
+  setProgramBreak(context, entryPoint + binaryLength);
+  setBumpPointer(context, getProgramBreak(context));
 
   baddr = 0;
 
   while (baddr < binaryLength) {
     mapAndStore(context, entryPoint + baddr, loadData(baddr));
 
-    baddr = baddr + SIZEOFUINT64;
+    baddr = baddr + REGISTERSIZE;
   }
 
-  setProgramBreak(context, entryPoint + baddr);
-  setBumpPointer(context, getProgramBreak(context));
+  setName(context, binaryName);
 }
 
 uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
