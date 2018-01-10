@@ -526,7 +526,6 @@ void syntaxErrorSymbol(uint64_t expected);
 void syntaxErrorUnexpected();
 void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
-void encodingError(uint64_t found, uint64_t bits);
 
 uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
 uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
@@ -700,6 +699,8 @@ void initRegister() {
 // -----------------------------------------------------------------
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
+
+void immediateError(uint64_t found, uint64_t bits);
 
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode);
 uint64_t getFunct7(uint64_t instruction);
@@ -2058,7 +2059,7 @@ void printLineNumber(uint64_t* message, uint64_t line) {
 }
 
 void syntaxErrorMessage(uint64_t* message) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   print(message);
 
@@ -2066,7 +2067,7 @@ void syntaxErrorMessage(uint64_t* message) {
 }
 
 void syntaxErrorCharacter(uint64_t expected) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   printCharacter(expected);
   print((uint64_t*) " expected but ");
@@ -2078,7 +2079,7 @@ void syntaxErrorCharacter(uint64_t expected) {
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   print(expected);
   print((uint64_t*) " expected but ");
@@ -2483,7 +2484,7 @@ void getSymbol() {
         symbol = SYM_MOD;
 
       } else {
-        printLineNumber((uint64_t*) "error", lineNumber);
+        printLineNumber((uint64_t*) "syntax error", lineNumber);
         print((uint64_t*) "found unknown character ");
         printCharacter(character);
 
@@ -2601,7 +2602,7 @@ uint64_t reportUndefinedProcedures() {
     if (isUndefinedProcedure(entry)) {
       undefined = 1;
 
-      printLineNumber((uint64_t*) "error", getLineNumber(entry));
+      printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
       print((uint64_t*) "procedure ");
       print(getString(entry));
       print((uint64_t*) " undefined");
@@ -2821,7 +2822,7 @@ void restore_temporaries(uint64_t numberOfTemporaries) {
 }
 
 void syntaxErrorSymbol(uint64_t expected) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   printSymbol(expected);
   print((uint64_t*) " expected but ");
@@ -2833,24 +2834,12 @@ void syntaxErrorSymbol(uint64_t expected) {
 }
 
 void syntaxErrorUnexpected() {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   print((uint64_t*) "unexpected symbol ");
   printSymbol(symbol);
   print((uint64_t*) " found");
 
-  println();
-}
-
-void encodingError(uint64_t found, uint64_t bits) {
-  print((uint64_t*) "Encoding error: Immediate overflow in structure around line ");
-  printInteger(lineNumber);
-  print((uint64_t*) ": Expected immediate in range from ");
-  printInteger(-twoToThePowerOf(bits - 1));
-  print((uint64_t*) " to ");
-  printInteger(twoToThePowerOf(bits - 1) - 1);
-  print((uint64_t*) ", but found: ");
-  printInteger(found);
   println();
 }
 
@@ -2890,7 +2879,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
     entry = getScopedSymbolTableEntry(variableOrBigInt, class);
 
     if (entry == (uint64_t*) 0) {
-      printLineNumber((uint64_t*) "error", lineNumber);
+      printLineNumber((uint64_t*) "syntax error", lineNumber);
       print(variableOrBigInt);
       print((uint64_t*) " undeclared");
       println();
@@ -4218,52 +4207,41 @@ void emitProgramEntry() {
 }
 
 void emitStart() {
-  // initializes the program and calls the main procedure
-  uint64_t upper;
+  // initializes the global pointer and calls the main procedure
+  uint64_t gp;
+  uint64_t padding;
   uint64_t lower;
+  uint64_t upper;
   uint64_t* entry;
-  uint64_t GP;
-  uint64_t paddingBytes;
 
-  // fixup jump to _start on address 0
+  // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // calculate the global pointer value
-  GP = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
+  // calculate the global pointer value accommodating 6 more instructions
+  gp = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
 
-  paddingBytes = GP % REGISTERSIZE;
+  // make sure gp is double-word-aligned
+  padding = gp % REGISTERSIZE;
+  gp      = gp + padding;
 
-  GP = GP + paddingBytes;
+  // assert: 0 <= gp < 2^31-2^11 (to avoid sign extension for upper)
 
-  // assert: GP is a multiple of REGISTERSIZE
+  lower = getBits(gp,  0, 12);
+  upper = getBits(gp, 12, 19);
 
-  // load the calculated value into GP register
-  lower = getBits(GP,  0, 12);
-  upper = getBits(GP, 12, 52);
-
-  // setting of bit 11 can only be reached by increasing upper by 1 and
-  // adding a negativ offset instead of lower
   if (lower >= twoToThePowerOf(11)) {
-    upper = upper + 1;
-    lower = lower - twoToThePowerOf(12);
-  }
-
-  if (upper != 0) {
+    // add 1 which is effectively 2^12 to cancel sign extension of lower
+    emitLUI(REG_GP, upper + 1);
+    emitADDI(REG_GP, REG_GP, signExtend(lower, 12));
+  } else {
     emitLUI(REG_GP, upper);
     emitADDI(REG_GP, REG_GP, lower);
-
-    ic_addi = ic_addi - 2;
-  } else {
-    emitNOP();
-    emitADDI(REG_GP, REG_ZR, lower);
-
-    ic_addi = ic_addi - 1;
   }
 
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
     // exit by continuing to the next instruction
-    emitNOP();
+    emitADDI(REG_A0, REG_ZR, 0);
   else {
     entry = getScopedSymbolTableEntry((uint64_t*) "main", PROCEDURE);
 
@@ -4278,8 +4256,10 @@ void emitStart() {
 
   help_call_codegen(entry, (uint64_t*) "exit");
 
-  if (paddingBytes != 0)
+  if (padding != 0)
     emitNOP();
+
+  codeLength = binaryLength;
 }
 
 void createELFHeader() {
@@ -4340,15 +4320,12 @@ void selfie_compile() {
 
   emitProgramEntry();
 
-  // library:
-  // exit must be first to exit main
-  // if exit call in main is missing
+  // emit system call wrappers
   emitExit();
   emitRead();
   emitWrite();
   emitOpen();
   emitMalloc();
-
   emitSwitch();
 
   // declare mandatory main procedure
@@ -4477,6 +4454,16 @@ void printRegister(uint64_t reg) {
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
 
+void immediateError(uint64_t found, uint64_t bits) {
+  printLineNumber((uint64_t*) "encoding error", lineNumber);
+  printInteger(found);
+  print((uint64_t*) " expected between ");
+  printInteger(-twoToThePowerOf(bits - 1));
+  print((uint64_t*) " and ");
+  printInteger(twoToThePowerOf(bits - 1) - 1);
+  println();
+}
+
 // RISC-V R Format
 // ----------------------------------------------------------------
 // |        7         |  5  |  5  |  3   |        5        |  7   |
@@ -4547,7 +4534,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= opcode < 2^7
 
   if (isSignedInteger(immediate, 12) == 0)
-    encodingError(immediate, 12);
+    immediateError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4586,7 +4573,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm2;
 
   if (isSignedInteger(immediate, 12) == 0)
-    encodingError(immediate, 12);
+    immediateError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4636,7 +4623,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm4;
 
   if (isSignedInteger(immediate, 13) == 0)
-    encodingError(immediate, 13);
+    immediateError(immediate, 13);
 
   immediate = signShrink(immediate, 13);
 
@@ -4691,7 +4678,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   uint64_t imm4;
 
   if (isSignedInteger(immediate, 21) == 0)
-    encodingError(immediate, 21);
+    immediateError(immediate, 21);
 
   immediate = signShrink(immediate, 21);
 
@@ -4742,7 +4729,7 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= opcode < 2^7
 
   if (isSignedInteger(immediate, 20) == 0)
-    encodingError(immediate, 20);
+    immediateError(immediate, 20);
 
   immediate = signShrink(immediate, 20);
 
@@ -5037,8 +5024,6 @@ uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
 
 void emitGlobalsStrings() {
   uint64_t* entry;
-
-  codeLength = binaryLength;
 
   entry = global_symbol_table;
 
