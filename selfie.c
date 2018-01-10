@@ -591,11 +591,13 @@ void createELFHeader();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
+
+// is determined by RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t *ELF_header = (uint64_t*) 0;
+uint64_t* ELF_header = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -4263,29 +4265,65 @@ void emitStart() {
 }
 
 void createELFHeader() {
-  // store all numbers necessary to create a valid
-  // ELF header incl. program header and section headers.
-  // For more info about specific fields, consult ELF documentation.
-  ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+  // store all numbers necessary to create a minimal and valid
+  // ELF64 header incl. program header.
+  ELF_header = smalloc(ELF_HEADER_LEN);
 
-  // ELF Header
-  *(ELF_header + 0)  = 282584257676671;    // part 1 of ELF magic number
-  *(ELF_header + 1)  = 0;                  // part 2 of ELF magic number
-  *(ELF_header + 2)  = 15925250 + leftShift(1, 32); // type,machine fields (16 bit each) and version number
+  // RISC-U ELF64 file header:
+  //  byte value
+  // +----+------------------+
+  // | 0  | '\0x7f'          | magic number part 0
+  // | 1  | 'E'              | magic number part 1
+  // | 2  | 'L'              | magic number part 2
+  // | 3  | 'F'              | magic number part 3
+  // | 4  | ELFCLASS64       | file class
+  // | 5  | ELFDATA2LSB      | object file data structures endianess
+  // | 6  | 1                | version of the object file format
+  // | 7  | ELFOSABI_SYSV    | operating system ABI
+  // | 8  | 0                | ABI version
+  // | 9  | 0                | start of padding bytes
+  // | 16 | ET_EXEC          | object file type
+  // | 18 | RV64             | target architecture
+  // | 20 | 1                | version of the object file format
+  // | 24 | ELF_ENTRY_POINT  | entry point address
+  // | 32 | 64               | program header offset
+  // | 40 | 0                | section header offset
+  // | 48 | 0                | processor specific flags
+  // | 52 | 64               | elf header size
+  // | 54 | 56               | size of program header entry
+  // | 56 | 1                | number of program header entries
+  // | 58 | 0                | size of section header entry
+  // | 60 | 0                | number of section header entries
+  // | 62 | 0                | section name string table index
+  // +----+------------------+
+  *(ELF_header + 0)  = 282584257676671;
+  *(ELF_header + 1)  = 0;
+  *(ELF_header + 2)  = 2163408898;
   *(ELF_header + 3)  = ELF_ENTRY_POINT;
-  *(ELF_header + 4)  = 8 * SIZEOFUINT64;
+  *(ELF_header + 4)  = 64;
   *(ELF_header + 5)  = 0;
-  *(ELF_header + 6)  = leftShift(8 * SIZEOFUINT64 + leftShift(7 * SIZEOFUINT64, 16), 32); // flags and the size of ELF header and size of program header
+  *(ELF_header + 6)  = 15762873573703680;
   *(ELF_header + 7)  = 1;
 
-  // Program Header
-  *(ELF_header + 8)  = 1 + leftShift(7, 32);  // type of program header (LOAD) and access flags (RWX)
-  *(ELF_header + 9)  = ELF_HEADER_LEN;        // offset to 1. byte of segment
-  *(ELF_header + 10) = ELF_ENTRY_POINT;       // virtual address
-  *(ELF_header + 11) = 0;                     // physical address
-  *(ELF_header + 12) = binaryLength;          // file size
-  *(ELF_header + 13) = binaryLength;          // memory size
-  *(ELF_header + 14) = PAGESIZE;              // alignment of segments
+  // RISC-U ELF64 program header table:
+  //  byte value
+  // +----+------------------+
+  // | 0  | LOAD             | type of segment
+  // | 4  | RWX              | segment attributes
+  // | 8  | ELF_HEADER_LEN   | segment offset in file
+  // | 16 | ELF_ENTRY_POINT  | virtual address in memory
+  // | 24 | 0                | physical address
+  // | 32 | binaryLength     | size of segment in file
+  // | 40 | binaryLength     | size of segment in memory
+  // | 48 | PAGESIZE         | alignemnt of segment
+  // +----+------------------+
+  *(ELF_header + 8)  = 30064771073;
+  *(ELF_header + 9)  = ELF_HEADER_LEN;
+  *(ELF_header + 10) = ELF_ENTRY_POINT;
+  *(ELF_header + 11) = 0;
+  *(ELF_header + 12) = binaryLength;
+  *(ELF_header + 13) = binaryLength;
+  *(ELF_header + 14) = PAGESIZE;
 }
 
 // -----------------------------------------------------------------
