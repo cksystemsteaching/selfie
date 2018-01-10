@@ -526,7 +526,6 @@ void syntaxErrorSymbol(uint64_t expected);
 void syntaxErrorUnexpected();
 void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
-void encodingError(uint64_t found, uint64_t bits);
 
 uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
 uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
@@ -562,8 +561,6 @@ uint64_t returnBranches = 0; // fixup chain for return statements
 
 uint64_t returnType = 0; // return type of currently parsed procedure
 
-uint64_t mainJump = 0; // address where JAL instruction to main procedure is
-
 uint64_t numberOfCalls       = 0;
 uint64_t numberOfAssignments = 0;
 uint64_t numberOfWhile       = 0;
@@ -587,8 +584,8 @@ void resetParser() {
 // -----------------------------------------------------------------
 
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
-void emitMainEntry();
-void bootstrapCode();
+void emitProgramEntry();
+void emitStart();
 void createELFHeader();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -704,6 +701,8 @@ void initRegister() {
 // -----------------------------------------------------------------
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
+
+void immediateError(uint64_t found, uint64_t bits);
 
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode);
 uint64_t getFunct7(uint64_t instruction);
@@ -2062,7 +2061,7 @@ void printLineNumber(uint64_t* message, uint64_t line) {
 }
 
 void syntaxErrorMessage(uint64_t* message) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   print(message);
 
@@ -2070,7 +2069,7 @@ void syntaxErrorMessage(uint64_t* message) {
 }
 
 void syntaxErrorCharacter(uint64_t expected) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   printCharacter(expected);
   print((uint64_t*) " expected but ");
@@ -2082,7 +2081,7 @@ void syntaxErrorCharacter(uint64_t expected) {
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   print(expected);
   print((uint64_t*) " expected but ");
@@ -2487,7 +2486,7 @@ void getSymbol() {
         symbol = SYM_MOD;
 
       } else {
-        printLineNumber((uint64_t*) "error", lineNumber);
+        printLineNumber((uint64_t*) "syntax error", lineNumber);
         print((uint64_t*) "found unknown character ");
         printCharacter(character);
 
@@ -2605,7 +2604,7 @@ uint64_t reportUndefinedProcedures() {
     if (isUndefinedProcedure(entry)) {
       undefined = 1;
 
-      printLineNumber((uint64_t*) "error", getLineNumber(entry));
+      printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
       print((uint64_t*) "procedure ");
       print(getString(entry));
       print((uint64_t*) " undefined");
@@ -2825,7 +2824,7 @@ void restore_temporaries(uint64_t numberOfTemporaries) {
 }
 
 void syntaxErrorSymbol(uint64_t expected) {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   printSymbol(expected);
   print((uint64_t*) " expected but ");
@@ -2837,24 +2836,12 @@ void syntaxErrorSymbol(uint64_t expected) {
 }
 
 void syntaxErrorUnexpected() {
-  printLineNumber((uint64_t*) "error", lineNumber);
+  printLineNumber((uint64_t*) "syntax error", lineNumber);
 
   print((uint64_t*) "unexpected symbol ");
   printSymbol(symbol);
   print((uint64_t*) " found");
 
-  println();
-}
-
-void encodingError(uint64_t found, uint64_t bits) {
-  print((uint64_t*) "Encoding error: Immediate overflow in structure around line ");
-  printInteger(lineNumber);
-  print((uint64_t*) ": Expected immediate in range from ");
-  printInteger(-twoToThePowerOf(bits - 1));
-  print((uint64_t*) " to ");
-  printInteger(twoToThePowerOf(bits - 1) - 1);
-  print((uint64_t*) ", but found: ");
-  printInteger(found);
   println();
 }
 
@@ -2894,7 +2881,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
     entry = getScopedSymbolTableEntry(variableOrBigInt, class);
 
     if (entry == (uint64_t*) 0) {
-      printLineNumber((uint64_t*) "error", lineNumber);
+      printLineNumber((uint64_t*) "syntax error", lineNumber);
       print(variableOrBigInt);
       print((uint64_t*) " undeclared");
       println();
@@ -4216,77 +4203,65 @@ void emitLeftShiftBy(uint64_t reg, uint64_t b) {
   emitMUL(reg, reg, nextTemporary());
 }
 
-void emitMainEntry() {
-  uint64_t i;
+void emitProgramEntry() {
+  // jump and link to the _start procedure
+  emitJAL(REG_RA, 0);
+}
 
-  // the instruction at address zero cannot be fixed up
-  // we therefore need at least one not-to-be-fixed-up instruction here
+void emitStart() {
+  // initializes the global pointer and calls the main procedure
+  uint64_t gp;
+  uint64_t padding;
+  uint64_t lower;
+  uint64_t upper;
+  uint64_t* entry;
 
-  // we generate NOPs to accommodate GP register
-  // initialization code that overwrites the NOPs later
-  // when binaryLength is known
-  i = 0;
+  // fixup jump at address 0 to here
+  fixup_relative_JFormat(0, binaryLength);
 
-  // 15 instructions is enough for initialization of GP, see load_integer
-  while (i < 15) {
-    emitNOP();
+  // calculate the global pointer value accommodating 6 more instructions
+  gp = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
 
-    i = i + 1;
+  // make sure gp is double-word-aligned
+  padding = gp % REGISTERSIZE;
+  gp      = gp + padding;
+
+  // assert: 0 <= gp < 2^31-2^11 (to avoid sign extension for upper)
+
+  lower = getBits(gp,  0, 12);
+  upper = getBits(gp, 12, 19);
+
+  if (lower >= twoToThePowerOf(11)) {
+    // add 1 which is effectively 2^12 to cancel sign extension of lower
+    emitLUI(REG_GP, upper + 1);
+    emitADDI(REG_GP, REG_GP, signExtend(lower, 12));
+  } else {
+    emitLUI(REG_GP, upper);
+    emitADDI(REG_GP, REG_GP, lower);
   }
 
-  mainJump = binaryLength;
+  if (reportUndefinedProcedures())
+    // rather than jump and link to the main procedure
+    // exit by continuing to the next instruction
+    emitADDI(REG_A0, REG_ZR, 0);
+  else {
+    entry = getScopedSymbolTableEntry((uint64_t*) "main", PROCEDURE);
 
-  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, mainJump);
-
-  // jump and link to main, will return here only if there is no exit call
-  emitJAL(REG_RA, 0);
+    help_call_codegen(entry, (uint64_t*) "main");
+  }
 
   // we exit with exit code in return register pushed onto the stack
   emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
   emitSD(REG_SP, 0, REG_A0);
 
-  // no need to reset return register here
-}
+  entry = getScopedSymbolTableEntry((uint64_t*) "exit", PROCEDURE);
 
-void bootstrapCode() {
-  uint64_t savedBinaryLength;
-  uint64_t upper;
-  uint64_t lower;
+  help_call_codegen(entry, (uint64_t*) "exit");
 
-  savedBinaryLength = binaryLength;
+  if (padding != 0)
+    emitNOP();
 
-  binaryLength = 0;
-
-  // load binaryLength into GP register
-  lower = getBits(savedBinaryLength + ELF_ENTRY_POINT,  0, 12);
-  upper = getBits(savedBinaryLength + ELF_ENTRY_POINT, 12, 52);
-
-  // setting of bit 11 can only be reached by increasing upper by 1 and
-  // adding a negativ offset instead of lower
-  if (lower >= twoToThePowerOf(11)) {
-    upper = upper + 1;
-    lower = lower - twoToThePowerOf(12);
-  }
-
-  if (upper != 0) {
-    emitLUI(REG_GP, upper);
-    emitADDI(REG_GP, REG_GP, lower);
-
-    ic_addi = ic_addi - 2;
-  } else {
-    emitADDI(REG_GP, REG_ZR, lower);
-
-    ic_addi = ic_addi - 1;
-  }
-
-  binaryLength = savedBinaryLength;
-
-  if (reportUndefinedProcedures())
-    // rather than jump and link to the main procedure
-    // exit by continuing to the next instruction
-    fixup_relative_JFormat(mainJump, mainJump + INSTRUCTIONSIZE);
-
-  mainJump = 0;
+  codeLength = binaryLength;
 }
 
 void createELFHeader() {
@@ -4381,19 +4356,18 @@ void selfie_compile() {
   resetSymbolTables();
   resetInstructionCounters();
 
-  // jump and link to main
-  emitMainEntry();
+  emitProgramEntry();
 
-  // library:
-  // exit must be first to exit main
-  // if exit call in main is missing
+  // emit system call wrappers
   emitExit();
   emitRead();
   emitWrite();
   emitOpen();
   emitMalloc();
-
   emitSwitch();
+
+  // declare mandatory main procedure
+  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -4481,9 +4455,9 @@ void selfie_compile() {
     println();
   }
 
-  emitGlobalsStrings();
+  emitStart();
 
-  bootstrapCode();
+  emitGlobalsStrings();
 
   createELFHeader();
 
@@ -4517,6 +4491,16 @@ void printRegister(uint64_t reg) {
 // -----------------------------------------------------------------
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
+
+void immediateError(uint64_t found, uint64_t bits) {
+  printLineNumber((uint64_t*) "encoding error", lineNumber);
+  printInteger(found);
+  print((uint64_t*) " expected between ");
+  printInteger(-twoToThePowerOf(bits - 1));
+  print((uint64_t*) " and ");
+  printInteger(twoToThePowerOf(bits - 1) - 1);
+  println();
+}
 
 // RISC-V R Format
 // ----------------------------------------------------------------
@@ -4588,7 +4572,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= opcode < 2^7
 
   if (isSignedInteger(immediate, 12) == 0)
-    encodingError(immediate, 12);
+    immediateError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4627,7 +4611,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm2;
 
   if (isSignedInteger(immediate, 12) == 0)
-    encodingError(immediate, 12);
+    immediateError(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4677,7 +4661,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm4;
 
   if (isSignedInteger(immediate, 13) == 0)
-    encodingError(immediate, 13);
+    immediateError(immediate, 13);
 
   immediate = signShrink(immediate, 13);
 
@@ -4732,7 +4716,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   uint64_t imm4;
 
   if (isSignedInteger(immediate, 21) == 0)
-    encodingError(immediate, 21);
+    immediateError(immediate, 21);
 
   immediate = signShrink(immediate, 21);
 
@@ -4783,7 +4767,7 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= opcode < 2^7
 
   if (isSignedInteger(immediate, 20) == 0)
-    encodingError(immediate, 20);
+    immediateError(immediate, 20);
 
   immediate = signShrink(immediate, 20);
 
@@ -5030,7 +5014,7 @@ void fixup_relative_BFormat(uint64_t fromAddress) {
   instruction = loadInstruction(fromAddress);
 
   storeInstruction(fromAddress,
-    encodeBFormat(binaryLength - fromAddress - INSTRUCTIONSIZE,
+    encodeBFormat(binaryLength - fromAddress,
       getRS2(instruction),
       getRS1(instruction),
       getFunct3(instruction),
@@ -5078,12 +5062,6 @@ uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
 
 void emitGlobalsStrings() {
   uint64_t* entry;
-
-  // align data section for register access
-  if (binaryLength % REGISTERSIZE != 0)
-    emitNOP();
-
-  codeLength = binaryLength;
 
   entry = global_symbol_table;
 
@@ -6418,11 +6396,11 @@ void record_beq() {
 void do_beq() {
   // branch on equal
 
-  pc = pc + INSTRUCTIONSIZE;
-
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
     pc = pc + imm;
+  else
+    pc = pc + INSTRUCTIONSIZE;
 
   ic_beq = ic_beq + 1;
 }
