@@ -580,6 +580,101 @@ void resetParser() {
 }
 
 // -----------------------------------------------------------------
+// ---------------------- BINARY TRANSLATOR -- ---------------------
+// -----------------------------------------------------------------
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+//prefix
+uint64_t REX_W  = 72;   //Operand size is 64 bit wide
+uint64_t REX_WR = 76;   //64bit Operands + Register Field extension Second Operand
+uint64_t REX_WB = 73;   //64bit Operands + Register Field extension First Operand
+uint64_t REX_WRB = 77;  //64bit Operands + Register Field extension First and Second Operand
+uint64_t TWO_BYTE_INSTRUCTION = 15;           //                                         0x0f
+
+// one byte opcodes
+uint64_t X86_ADD     = 1;                     //add  x,y      (r/m(x) = r/m(x) + r(y))   0x01
+uint64_t X86_SUB     = 41;                    //sub  x,y      (r/m(x) = r/m(x) - r(y))   0x29
+uint64_t X86_PUSH    = 80;                    //push x        (m(rsp) = r(x))            0x50
+uint64_t X86_POP     = 88;                    //pop  x        (r(x) = m(rsp))            0x58
+uint64_t X86_ADDI    = 129;                   //addi x,imm    (r/m(x) = r/m(x) + imm)    0x81
+uint64_t X86_TEST    = 133;                   //test x,y      (if x==y; ZF = 0)          0x85
+uint64_t X86_MOV     = 137;                   //mov  x,y      (r/m(x) = r(y))            0x89
+uint64_t X86_NOP     = 144;                   //                                         0x90
+uint64_t X86_MOVI    = 184;                   //mov  x,imm    (r(x) = imm)               0xb8
+uint64_t X86_RET     = 195;                   //mov  x,y      (r/m(x) = r(y))            0xc3
+uint64_t X86_CALL    = 232;                   //call x        (rip = m(x))               0xe8
+uint64_t X86_TESTI   = 246;                   //test x,imm                               0xf6
+uint64_t X86_DIV     = 247;                   //div  x        (rax = rdx:rax / r(x))     0xf7
+uint64_t X86_JMP     = 255;                   //jmp  x        (rip = r(x))               0xff
+//two byte opcodes
+uint64_t X86_SYSCALL = 5;                     //syscall                                  0x05
+uint64_t X86_JZ      = 132;                   //jz   imm                                 0x84
+uint64_t X86_IMUL    = 175;                   //imul x,y      (r(x) = r(x) * r(y))       0xaf 
+
+uint64_t  X86_NUMBEROFREGISTERS = 16;
+
+uint64_t REG_RAX  = 0;
+uint64_t REG_RCX  = 1;
+uint64_t REG_RDX  = 2;
+uint64_t REG_RBX  = 3;
+uint64_t REG_RSP  = 4;
+uint64_t REG_RBP  = 5;
+uint64_t REG_RSI  = 6;
+uint64_t REG_RDI  = 7;
+uint64_t REG_R8   = 8;
+uint64_t REG_R9   = 9;
+uint64_t REG_R10  = 10;
+uint64_t REG_R11  = 11;
+uint64_t REG_R12  = 12;
+uint64_t REG_R13  = 13;
+uint64_t REG_R14  = 14;
+uint64_t REG_R15  = 15;
+
+uint64_t* X86_REGISTERS;
+
+void initX86Register() {
+  X86_REGISTERS = smalloc(X86_NUMBEROFREGISTERS * SIZEOFUINT64STAR);
+
+  *(X86_REGISTERS + 0)   = (uint64_t) "$rax";
+  *(X86_REGISTERS + 1)   = (uint64_t) "$rcx";
+  *(X86_REGISTERS + 2)   = (uint64_t) "$rdx";
+  *(X86_REGISTERS + 3)   = (uint64_t) "$rbx";
+  *(X86_REGISTERS + 4)   = (uint64_t) "$rsp";
+  *(X86_REGISTERS + 5)   = (uint64_t) "$rbp";
+  *(X86_REGISTERS + 6)   = (uint64_t) "$rsi";
+  *(X86_REGISTERS + 7)   = (uint64_t) "$rdi";
+  *(X86_REGISTERS + 8)   = (uint64_t) "$r8";
+  *(X86_REGISTERS + 9)   = (uint64_t) "$r9";
+  *(X86_REGISTERS + 10)  = (uint64_t) "$r10";
+  *(X86_REGISTERS + 11)  = (uint64_t) "$r11";
+  *(X86_REGISTERS + 12)  = (uint64_t) "$r12";
+  *(X86_REGISTERS + 13)  = (uint64_t) "$r13";
+  *(X86_REGISTERS + 14)  = (uint64_t) "$r14";
+  *(X86_REGISTERS + 15)  = (uint64_t) "$r15";
+}
+
+uint64_t* x86Binary = (uint64_t*) 0;
+//uint64_t* instruction_buffer = (uint64_t*)0;
+uint64_t* instr_bytes = (uint64_t*)0;
+uint64_t* x86AdressTable = (uint64_t*) 0;
+uint64_t  x86BinaryLength = 0;
+uint64_t  x86ByteCount = 0;
+
+uint64_t* x86GetNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
+void x86SetNextEntry(uint64_t* entry, uint64_t* next) { *entry = (uint64_t) next; }
+
+void x86Translate();
+void x86CreateAdressTableEntry(uint64_t original, uint64_t translated, uint64_t instr_count);
+void x86CheckAdressFix();
+void x86AdressFixup(uint64_t* entry);
+//uint64_t x86OneRegisters(uint64_t x, uint64_t y);
+uint64_t x86GetModRMValue(uint64_t x, uint64_t y);
+uint64_t x86GetPrefix(uint64_t x, uint64_t y);
+uint64_t x86GetRegister(uint64_t reg);
+void x86emitInstructionBuffer(uint64_t length);
+
+// -----------------------------------------------------------------
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
@@ -1112,6 +1207,7 @@ uint64_t record      = 0; // flag for recording code execution
 uint64_t undo        = 0; // flag for undoing code execution
 uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
+uint64_t translate   = 0; // flag for translating code to x86 instructions
 
 uint64_t debug = 0; // flag for enabling recording, disassembling, and debugging code
 
@@ -4192,6 +4288,179 @@ void compile_cstar() {
 }
 
 // -----------------------------------------------------------------
+// ------------------------ BINARY TRANSLATOR CODE -----------------
+// -----------------------------------------------------------------
+
+void x86Translate(){
+  uint64_t size;
+  uint64_t i;
+
+  size = 15;
+  x86Binary = malloc(maxBinaryLength);
+  instr_bytes = malloc(size * SIZEOFUINT64);
+
+  initMemory(2);
+  resetInterpreter();
+  resetMicrokernel();
+  createContext(MY_CONTEXT, 0);
+  up_loadBinary(currentContext);
+
+  doSwitch(currentContext,TIMEROFF);
+  
+  while(pc < codeLength){
+
+    //i = 0;
+    //while (i < size) {
+      // erase memory by setting it to 0
+    //  *(instr_bytes + i) = 0;
+
+    //  i = i + 1;
+    //}
+  
+    fetch();
+    x86SaveAddress();
+    pc = pc + INSTRUCTIONSIZE;
+    decode_execute();
+    //x86CheckAdressFix();
+  }
+}
+
+void x86SaveAddress() {
+  uint64_t temp;
+  uint64_t address;
+
+  address = x86BinaryLength * SIZEOFUINT64 + x86ByteCount;
+  temp = loadVirtualMemory(pt, pc);
+  //temp = *(binary + baddr / REGISTERSIZE);
+
+  if (pc % REGISTERSIZE == 0)
+    // replace low word
+    temp = leftShift(getHighWord(temp), WORDSIZEINBITS) + address;
+  else
+    // replace high word
+    temp = leftShift(address, WORDSIZEINBITS) + getLowWord(temp);
+
+  //*(binary + baddr / REGISTERSIZE) = temp;
+  storeVirtualMemory(pt, pc, temp);
+}
+
+//oid x86CreateAdressTableEntry(uint64_t opcode, uint64_t translated, uint64_t instr_count) {
+// uint64_t* newEntry;
+//
+// newEntry = smalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+//
+// *(newEntry + 1) = opcode;
+// *(newEntry + 2) = translated;
+// *(newEntry + 3) = instr_count;
+//
+// x86SetNextEntry(newEntry, x86AdressTable);
+// x86AdressTable = newEntry;
+//
+//
+//oid x86CheckAdressFix() {
+// uint64_t* entry;
+// 
+// entry = x86AdressTable;
+// while (entry != (uint64_t*) 0) {
+//   *(entry + 3) = *(entry + 3) - INSTRUCTIONSIZE;
+//   if (*(entry + 3) == 0)
+//     x86AdressFixup(entry);
+//
+//   // next entry
+//   entry = x86GetNextEntry(entry);
+// }
+//
+//
+//oid x86AdressFixup(uint64_t* entry) {
+// uint64_t w_offset;
+// uint64_t b_offset;
+// uint64_t rel_adress;
+// uint64_t skip;
+// uint64_t i;
+//
+// if(*(entry + 1) == OP_JAL)
+//   skip = 1;
+// else
+//   skip = 2;
+//
+// w_offset = (*(entry + 2) + skip) / SIZEOFUINT64;
+// b_offset = (*(entry + 2) + skip) % SIZEOFUINT64;
+// rel_adress = x86BinaryLength * SIZEOFUINT64 + x86ByteCount - *(entry + 2) + skip + 4;
+//
+// *(instr_bytes + 0) = rightShift(leftShift(rel_adress, 56), 56);
+// *(instr_bytes + 1) = rightShift(leftShift(rel_adress, 48), 56); 
+// *(instr_bytes + 2) = rightShift(leftShift(rel_adress, 40), 56);
+// *(instr_bytes + 3) = rightShift(leftShift(rel_adress, 32), 56);
+// 
+// i = 0;
+// while(i < 4) {
+//   //*(x86Binary + w_offset) = *(x86Binary + w_offset) - leftShift(rightShift(leftShift(*(x86Binary + w_offset), b_offset * 8), (8 - (b_offset + 1)) * 8), (8 - (b_offset + 1)) * 8);
+//   *(x86Binary + w_offset) = *(x86Binary + w_offset) - leftShift(rightShift(leftShift(*(x86Binary + w_offset), (8 - (b_offset + 1)) * 8), 56) , b_offset * 8);
+//   *(x86Binary + w_offset) = *(x86Binary + w_offset) + leftShift(*(instr_bytes + i), b_offset * 8);
+//   b_offset = b_offset + 1;
+//   i = i + 1;
+//   if(b_offset == 8){
+//     w_offset = w_offset + 1;
+//     b_offset = 0;
+//   }
+// }
+
+
+uint64_t x86GetModRMValue(uint64_t x, uint64_t y) {
+  return rightShift(leftShift(y,61),58) + rightShift(leftShift(x,61),61); //FIXME: does not handle values > 16 properly!
+//  return leftShift(y,3) + x;
+}
+
+uint64_t x86GetPrefix(uint64_t op1, uint64_t op2) {
+  uint64_t prefix;
+    
+  prefix = REX_W;
+  if (op1 > 7) {
+    prefix = prefix + 1; //setting REX.B bit
+  }
+  if (op2 > 7) {
+    prefix = prefix + 4; //setting REX.R bit
+  }
+
+  return prefix;
+}
+
+uint64_t x86GetRegister(uint64_t reg) {
+  if(reg == REG_SP) return REG_RSP;
+  if(reg == REG_T0) return REG_RAX;
+  //if(reg == REG_T1) return REG_RDX;
+  if(reg == REG_A0) return REG_RDI;
+  if(reg == REG_A1) return REG_RSI;
+  if(reg == REG_A2) return REG_RDX;
+  if(reg == REG_A3) return REG_R10;
+  if(reg == REG_A4) return REG_R8;
+  if(reg == REG_A5) return REG_R9;
+
+  if(reg == REG_ZR) {
+    print((uint64_t*) "Register $zero encounterd in x86GetTegister(). This should not happen! ");
+    println();
+  }
+
+  return reg;
+}
+
+void x86emitInstructionBuffer(uint64_t length) {
+  uint64_t i;
+  
+  i = 0;
+  while(i < length) {
+    *(x86Binary + x86BinaryLength) = *(x86Binary + x86BinaryLength) + leftShift(*(instr_bytes + i), x86ByteCount * 8);
+    x86ByteCount = x86ByteCount + 1;
+    i = i + 1;
+    if(x86ByteCount == 8){
+      x86BinaryLength = x86BinaryLength + 1;
+      x86ByteCount = 0;
+    }
+  }
+}
+
+
+// -----------------------------------------------------------------
 // ------------------------ MACHINE CODE LIBRARY -------------------
 // -----------------------------------------------------------------
 
@@ -4298,7 +4567,7 @@ void createELFHeader() {
   // +----+------------------+
   *(ELF_header + 0)  = 282584257676671;
   *(ELF_header + 1)  = 0;
-  *(ELF_header + 2)  = 2163408898;
+  *(ELF_header + 2)  = 15925250; //2163408898;
   *(ELF_header + 3)  = ELF_ENTRY_POINT;
   *(ELF_header + 4)  = 64;
   *(ELF_header + 5)  = 0;
@@ -6102,6 +6371,35 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
+void translat_add() {
+  uint64_t op1;
+  uint64_t op2;
+  uint64_t op3;
+  uint64_t length;
+  
+  op1 = x86GetRegister(rd);
+  op3 = x86GetRegister(rs2);
+  if(rs1 == 0) {
+    length = 3;
+    *(instr_bytes + 0) = x86GetPrefix(op1, op3);
+    *(instr_bytes + 1) = X86_MOV;
+    *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op3);
+  }
+  else {
+    op2 = x86GetRegister(rs1);
+    length = 6;
+    *(instr_bytes + 0) = x86GetPrefix(op1, op2);
+    *(instr_bytes + 1) = X86_MOV;
+    *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op2); //rd = rs1
+    
+    *(instr_bytes + 3) = x86GetPrefix(op1, op3);
+    *(instr_bytes + 4) = X86_ADD;
+    *(instr_bytes + 5) = 192 + x86GetModRMValue(op1, op3);
+  }
+
+  x86emitInstructionBuffer(length);  
+}
+
 void do_sub() {
   if (rd != REG_ZR)
     // semantics of sub
@@ -6110,6 +6408,26 @@ void do_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
+}
+
+void translate_sub() {
+  uint64_t op1;
+  uint64_t op2;
+  uint64_t op3;
+
+  op1 = x86GetRegister(rd);
+  op2 = x86GetRegister(rs1);
+  op3 = x86GetRegister(rs2);
+  
+  *(instr_bytes + 0) = x86GetPrefix(op1, op2);
+  *(instr_bytes + 1) = X86_MOV;
+  *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op2); //rd = rs1
+    
+  *(instr_bytes + 3) = x86GetPrefix(op1, op3);
+  *(instr_bytes + 4) = X86_SUB;
+  *(instr_bytes + 5) = 192 + x86GetModRMValue(op1, op3);
+
+  x86emitInstructionBuffer(6);
 }
 
 void do_mul() {
@@ -6122,6 +6440,27 @@ void do_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
+}
+
+void translate_mul() {
+  uint64_t op1;
+  uint64_t op2;
+  uint64_t op3;
+
+  op1 = x86GetRegister(rd);
+  op2 = x86GetRegister(rs1);
+  op3 = x86GetRegister(rs2);
+  
+  *(instr_bytes + 0) = x86GetPrefix(op1, op2);
+  *(instr_bytes + 1) = X86_MOV;
+  *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op2); //rd = rs1
+    
+  *(instr_bytes + 3) = x86GetPrefix(op1, op3);
+  *(instr_bytes + 4) = TWO_BYTE_INSTRUCTION;
+  *(instr_bytes + 5) = X86_IMUL;
+  *(instr_bytes + 6) = 192 + x86GetModRMValue(op1, op3);
+
+  x86emitInstructionBuffer(7);
 }
 
 void record_divu_remu() {
@@ -6144,6 +6483,41 @@ void do_divu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
+void translate_divu() {
+  uint64_t op1;
+  uint64_t op2;
+  uint64_t op3;
+
+  op1 = x86GetRegister(rd);
+  op2 = x86GetRegister(rs1);
+  op3 = x86GetRegister(rs2);
+  if (op1 != REG_RAX) {
+    print((uint64_t*) "divu used with other register than t0 ");
+    println();
+  }
+  *(instr_bytes + 0) = REX_W;
+  *(instr_bytes + 1) = X86_PUSH + REG_RDX;
+    
+  *(instr_bytes + 2) = X86_MOVI + REG_RDX;
+  *(instr_bytes + 3) = 0;
+  *(instr_bytes + 4) = 0;
+  *(instr_bytes + 5) = 0;
+  *(instr_bytes + 6) = 0;
+
+  *(instr_bytes + 7) = x86GetPrefix(op3, 0); //div rs2
+  *(instr_bytes + 8) = X86_DIV;
+  *(instr_bytes + 9) = x86GetModRMValue(op3, 0) + leftShift(6, 3);
+
+  *(instr_bytes + 10) = x86GetPrefix(op1, 0); //mov rd,rax
+  *(instr_bytes + 11) = X86_MOV;
+  *(instr_bytes + 12) = 192 + x86GetModRMValue(op1, 0);
+
+  *(instr_bytes + 13) = REX_W;
+  *(instr_bytes + 14) = X86_POP + REG_RDX;
+
+  x86emitInstructionBuffer(15);
+}
+
 void do_remu() {
   // remainder unsigned
 
@@ -6157,6 +6531,41 @@ void do_remu() {
     ic_remu = ic_remu + 1;
   } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
+}
+
+void translate_remu() {
+  uint64_t op1;
+  uint64_t op2;
+  uint64_t op3;
+
+  op1 = x86GetRegister(rd);
+  op2 = x86GetRegister(rs1);
+  op3 = x86GetRegister(rs2);
+  if (op1 != REG_RAX) {
+    print((uint64_t*) "divu used with other register than t0 ");
+    println();
+  }
+  *(instr_bytes + 0) = REX_W;
+  *(instr_bytes + 1) = X86_PUSH + REG_RDX;
+    
+  *(instr_bytes + 2) = X86_MOVI + REG_RDX;
+  *(instr_bytes + 3) = 0;
+  *(instr_bytes + 4) = 0;
+  *(instr_bytes + 5) = 0;
+  *(instr_bytes + 6) = 0;
+
+  *(instr_bytes + 7) = x86GetPrefix(op3, 0);
+  *(instr_bytes + 8) = X86_DIV;
+  *(instr_bytes + 9) = x86GetModRMValue(op3, 0) + leftShift(6, 3);
+
+  *(instr_bytes + 10) = x86GetPrefix(op1, 0) + REG_RDX;
+  *(instr_bytes + 11) = X86_MOV;
+  *(instr_bytes + 12) = 192 + x86GetModRMValue(op1, 0); 
+
+  *(instr_bytes + 13) = REX_W;
+  *(instr_bytes + 14) = X86_POP + REG_RDX;
+
+  x86emitInstructionBuffer(15);
 }
 
 void do_sltu() {
@@ -6173,6 +6582,10 @@ void do_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
+}
+
+void translate_sltu() {
+
 }
 
 void print_ld() {
@@ -6265,6 +6678,10 @@ uint64_t do_ld() {
   return vaddr;
 }
 
+void translate_ld() {
+
+}
+
 void print_sd() {
   printInstructionContext();
 
@@ -6353,6 +6770,10 @@ uint64_t do_sd() {
   return vaddr;
 }
 
+void translat_sd() {
+
+}
+
 void undo_sd() {
   uint64_t vaddr;
 
@@ -6403,6 +6824,10 @@ void do_beq() {
     pc = pc + INSTRUCTIONSIZE;
 
   ic_beq = ic_beq + 1;
+}
+
+void translate_beq() {
+
 }
 
 void print_jal() {
@@ -6470,6 +6895,19 @@ void do_jal() {
   ic_jal = ic_jal + 1;
 }
 
+void translate_jal() {
+  uint64_t offset;
+
+  offset = pc + imm;
+  *(instr_bytes + 0)  = X86_CALL;
+  *(instr_bytes + 1)  = rightShift(leftShift(offset, 56), 56); 
+  *(instr_bytes + 2)  = rightShift(leftShift(offset, 48), 56); 
+  *(instr_bytes + 3)  = rightShift(leftShift(offset, 40), 56);
+  *(instr_bytes + 4)  = rightShift(leftShift(offset, 32), 56);
+
+  x86emitInstructionBuffer(5);
+}
+
 void print_jalr() {
   printInstructionContext();
 
@@ -6518,6 +6956,10 @@ void do_jalr() {
   ic_jalr = ic_jalr + 1;
 }
 
+void translate_jalr() {
+  
+}
+
 void print_ecall() {
   printInstructionContext();
   print((uint64_t*) "ecall");
@@ -6557,6 +6999,10 @@ void do_ecall() {
       implementSwitch();
   else
     throwException(EXCEPTION_SYSCALL, 0);
+}
+
+void translate_ecall() {
+
 }
 
 void undo_ecall() {
@@ -6665,7 +7111,9 @@ void decode_execute() {
           }
           println();
         }
-      } else
+      } else if (translate)
+	translate_addi();
+      else
         do_addi();
 
       return;
@@ -6688,7 +7136,9 @@ void decode_execute() {
           }
           println();
         }
-      } else
+      } else if (translate)
+	translate_ld();
+      else
         do_ld();
 
       return;
@@ -6711,7 +7161,9 @@ void decode_execute() {
           }
           println();
         }
-      } else
+      } else if (translate)
+	translate_sd();
+      else
         do_sd();
 
       return;
@@ -6734,7 +7186,9 @@ void decode_execute() {
             }
             println();
           }
-        } else
+        } else if (translate)
+	  translate_add();
+	else
           do_add();
 
         return;
@@ -6754,7 +7208,9 @@ void decode_execute() {
             }
             println();
           }
-        } else
+        } else if (translate)
+	  translate_sub();
+	else
           do_sub();
 
         return;
@@ -6774,7 +7230,9 @@ void decode_execute() {
             }
             println();
           }
-        } else
+        } else if (translate)
+	  translate_mul();
+	else
           do_mul();
 
         return;
@@ -6796,7 +7254,9 @@ void decode_execute() {
             }
             println();
           }
-        } else
+        } else if (translate)
+	  translate_divu();
+	else
           do_divu();
 
         return;
@@ -6818,7 +7278,9 @@ void decode_execute() {
             }
             println();
           }
-        } else
+        } else if (translate)
+	  translate_remu();
+	else
           do_remu();
 
         return;
@@ -6840,7 +7302,9 @@ void decode_execute() {
             }
             println();
           }
-        } else
+        } else if (translate)
+	  translate_sltu();
+	else
           do_sltu();
 
         return;
@@ -6863,7 +7327,9 @@ void decode_execute() {
           }
           println();
         }
-      } else
+      } else if (translate)
+	translate_beq();
+      else
         do_beq();
 
       return;
@@ -6886,7 +7352,9 @@ void decode_execute() {
         }
         println();
       }
-    } else
+    } else if (translate)
+      translate_jal();
+    else
       do_jal();
 
     return;
@@ -6909,7 +7377,9 @@ void decode_execute() {
           }
           println();
         }
-      } else
+      } else if (translate)
+	translate_jalr();
+      else
         do_jalr();
 
       return;
@@ -6932,7 +7402,9 @@ void decode_execute() {
         }
         println();
       }
-    } else
+    } else if (translate)
+      translate_lui();
+    else
       do_lui();
 
     return;
@@ -6955,7 +7427,9 @@ void decode_execute() {
           }
           println();
         }
-      } else
+      } else if (translate)
+	translate_ecall();
+      else
         do_ecall();
 
       return;
@@ -8391,6 +8865,12 @@ uint64_t selfie() {
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-y"))
         return selfie_run(HYPSTER);
+      else if (stringCompare(option, (uint64_t*) "-t")) {
+	selfie_load();
+	translate = 1;
+	x86Translate();
+	translate = 0;
+      }
       else if (stringCompare(option, (uint64_t*) "-min"))
         return selfie_run(MINSTER);
       else if (stringCompare(option, (uint64_t*) "-mob"))
