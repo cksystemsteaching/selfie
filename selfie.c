@@ -602,7 +602,7 @@ uint64_t X86_TEST    = 133;                   //test x,y      (if x==y; ZF = 0) 
 uint64_t X86_MOV     = 137;                   //mov  x,y      (r/m(x) = r(y))            0x89
 uint64_t X86_NOP     = 144;                   //                                         0x90
 uint64_t X86_MOVI    = 184;                   //mov  x,imm    (r(x) = imm)               0xb8
-uint64_t X86_RET     = 195;                   //mov  x,y      (r/m(x) = r(y))            0xc3
+uint64_t X86_RET     = 195;                   //ret                                      0xc3
 uint64_t X86_CALL    = 232;                   //call x        (rip = m(x))               0xe8
 uint64_t X86_TESTI   = 246;                   //test x,imm                               0xf6
 uint64_t X86_DIV     = 247;                   //div  x        (rax = rdx:rax / r(x))     0xf7
@@ -654,11 +654,11 @@ void initX86Register() {
   *(X86_REGISTERS + 15)  = (uint64_t) "$r15";
 }
 
-uint64_t* x86Binary = (uint64_t*) 0;
+//uint64_t* x86Binary = (uint64_t*) 0;
 //uint64_t* instruction_buffer = (uint64_t*)0;
 uint64_t* instr_bytes = (uint64_t*)0;
 uint64_t* x86AdressTable = (uint64_t*) 0;
-uint64_t  x86BinaryLength = 0;
+//uint64_t  x86BinaryLength = 0;
 uint64_t  x86ByteCount = 0;
 
 uint64_t* x86GetNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
@@ -1094,37 +1094,47 @@ void print_lui_before();
 void print_lui_after();
 void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void do_lui();
+void translate_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 
 void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
 void do_addi();
+void translate_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void do_add();
+void translate_add();
 void do_sub();
+void translate_sub();
 void do_mul();
+void translate_mul();
 
 void record_divu_remu();
 void do_divu();
+void translate_divu();
 void do_remu();
+void translate_remu();
 
 void do_sltu();
+void translate_sltu();
 
 void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
 uint64_t do_ld();
+void     translate_ld();
 
 void     print_sd();
 void     print_sd_before();
 void     print_sd_after(uint64_t vaddr);
 void     record_sd();
 uint64_t do_sd();
+void     translate_sd();
 void     undo_sd();
 
 void print_beq();
@@ -1132,21 +1142,25 @@ void print_beq_before();
 void print_beq_after();
 void record_beq();
 void do_beq();
+void translate_beq();
 
 void print_jal();
 void print_jal_before();
 void print_jal_jalr_after();
 void do_jal();
+void translate_jal();
 
 void print_jalr();
 void print_jalr_before();
 void do_jalr();
+void translate_jalr();
 
 void print_ecall();
 void print_ecall_before();
 void print_ecall_after();
 void record_ecall();
 void do_ecall();
+void translate_ecall();
 void undo_ecall();
 
 // -----------------------------------------------------------------
@@ -4296,9 +4310,8 @@ void x86Translate(){
   uint64_t i;
 
   size = 15;
-  x86Binary = malloc(maxBinaryLength);
   instr_bytes = malloc(size * SIZEOFUINT64);
-
+  
   initMemory(2);
   resetInterpreter();
   resetMicrokernel();
@@ -4306,42 +4319,50 @@ void x86Translate(){
   up_loadBinary(currentContext);
 
   doSwitch(currentContext,TIMEROFF);
-  
-  while(pc < codeLength){
 
-    //i = 0;
-    //while (i < size) {
-      // erase memory by setting it to 0
-    //  *(instr_bytes + i) = 0;
-
-    //  i = i + 1;
-    //}
+  binaryLength = 0;
   
+  i = 0;
+  while (i < maxBinaryLength / SIZEOFUINT64STAR) {  //reuse binary
+    *(binary + i) = 0;
+
+     i = i + 1;
+  }
+  
+  while(pc < codeLength + ELF_ENTRY_POINT){
     fetch();
     x86SaveAddress();
     pc = pc + INSTRUCTIONSIZE;
     decode_execute();
     //x86CheckAdressFix();
   }
+
+  *(ELF_header + 2) = 4299030530; //machine flag 0x3e
 }
 
 void x86SaveAddress() {
   uint64_t temp;
   uint64_t address;
 
-  address = x86BinaryLength * SIZEOFUINT64 + x86ByteCount;
-  temp = loadVirtualMemory(pt, pc);
+  address = binaryLength * SIZEOFUINT64 + x86ByteCount;
+  //temp = loadVirtualMemory(pt, pc);
   //temp = *(binary + baddr / REGISTERSIZE);
 
-  if (pc % REGISTERSIZE == 0)
+  if (pc % REGISTERSIZE == 0) {
     // replace low word
+    temp = loadVirtualMemory(pt, pc);
     temp = leftShift(getHighWord(temp), WORDSIZEINBITS) + address;
-  else
+    storeVirtualMemory(pt, pc, temp);
+  }
+  else {
     // replace high word
+    temp = loadVirtualMemory(pt, pc - INSTRUCTIONSIZE);
     temp = leftShift(address, WORDSIZEINBITS) + getLowWord(temp);
+    storeVirtualMemory(pt, pc - INSTRUCTIONSIZE, temp);
+  }
 
   //*(binary + baddr / REGISTERSIZE) = temp;
-  storeVirtualMemory(pt, pc, temp);
+  //storeVirtualMemory(pt, pc, temp);
 }
 
 //oid x86CreateAdressTableEntry(uint64_t opcode, uint64_t translated, uint64_t instr_count) {
@@ -4385,7 +4406,7 @@ void x86SaveAddress() {
 //
 // w_offset = (*(entry + 2) + skip) / SIZEOFUINT64;
 // b_offset = (*(entry + 2) + skip) % SIZEOFUINT64;
-// rel_adress = x86BinaryLength * SIZEOFUINT64 + x86ByteCount - *(entry + 2) + skip + 4;
+// rel_adress = binaryLength * SIZEOFUINT64 + x86ByteCount - *(entry + 2) + skip + 4;
 //
 // *(instr_bytes + 0) = rightShift(leftShift(rel_adress, 56), 56);
 // *(instr_bytes + 1) = rightShift(leftShift(rel_adress, 48), 56); 
@@ -4394,9 +4415,9 @@ void x86SaveAddress() {
 // 
 // i = 0;
 // while(i < 4) {
-//   //*(x86Binary + w_offset) = *(x86Binary + w_offset) - leftShift(rightShift(leftShift(*(x86Binary + w_offset), b_offset * 8), (8 - (b_offset + 1)) * 8), (8 - (b_offset + 1)) * 8);
-//   *(x86Binary + w_offset) = *(x86Binary + w_offset) - leftShift(rightShift(leftShift(*(x86Binary + w_offset), (8 - (b_offset + 1)) * 8), 56) , b_offset * 8);
-//   *(x86Binary + w_offset) = *(x86Binary + w_offset) + leftShift(*(instr_bytes + i), b_offset * 8);
+//   //*(binary + w_offset) = *(binary + w_offset) - leftShift(rightShift(leftShift(*(binary + w_offset), b_offset * 8), (8 - (b_offset + 1)) * 8), (8 - (b_offset + 1)) * 8);
+//   *(binary + w_offset) = *(binary + w_offset) - leftShift(rightShift(leftShift(*(binary + w_offset), (8 - (b_offset + 1)) * 8), 56) , b_offset * 8);
+//   *(binary + w_offset) = *(binary + w_offset) + leftShift(*(instr_bytes + i), b_offset * 8);
 //   b_offset = b_offset + 1;
 //   i = i + 1;
 //   if(b_offset == 8){
@@ -4449,11 +4470,11 @@ void x86emitInstructionBuffer(uint64_t length) {
   
   i = 0;
   while(i < length) {
-    *(x86Binary + x86BinaryLength) = *(x86Binary + x86BinaryLength) + leftShift(*(instr_bytes + i), x86ByteCount * 8);
+    *(binary + binaryLength) = *(binary + binaryLength) + leftShift(*(instr_bytes + i), x86ByteCount * 8);
     x86ByteCount = x86ByteCount + 1;
     i = i + 1;
     if(x86ByteCount == 8){
-      x86BinaryLength = x86BinaryLength + 1;
+      binaryLength = binaryLength + 1;
       x86ByteCount = 0;
     }
   }
@@ -6293,6 +6314,10 @@ void do_lui() {
   ic_lui = ic_lui + 1;
 }
 
+void translate_lui() {
+
+}
+
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
 }
@@ -6340,6 +6365,45 @@ void do_addi() {
   ic_addi = ic_addi + 1;
 }
 
+void translate_addi() {
+  uint64_t op1;
+  uint64_t op2;
+  uint64_t length;
+
+  op1 = x86GetRegister(rd);
+  if(rs1 == REG_ZR) {
+    length = 10;
+    *(instr_bytes + 0)  = x86GetPrefix(op1, 0); 
+    *(instr_bytes + 1)  = X86_MOVI + rightShift(leftShift(op1,61),61);
+    *(instr_bytes + 2)  = rightShift(leftShift(imm, 56), 56);
+    *(instr_bytes + 3)  = rightShift(leftShift(imm, 48), 56); 
+    *(instr_bytes + 4)  = rightShift(leftShift(imm, 40), 56);
+    *(instr_bytes + 5)  = rightShift(leftShift(imm, 32), 56);
+    *(instr_bytes + 6)  = rightShift(leftShift(imm, 24), 56); 
+    *(instr_bytes + 7)  = rightShift(leftShift(imm, 16), 56); 
+    *(instr_bytes + 8)  = rightShift(leftShift(imm, 8),  56);
+    *(instr_bytes + 9)  = rightShift(imm,56);
+  }
+  else {
+    op2 = x86GetRegister(rs1);
+    length = 10;
+    *(instr_bytes + 0) = x86GetPrefix(op1, op2);
+    *(instr_bytes + 1) = X86_MOV;
+    *(instr_bytes + 2) = 192 + x86GetModRMValue(op1,op2); //mov rd,rs1
+
+    *(instr_bytes + 3)   = x86GetPrefix(op1, 0);
+    *(instr_bytes + 4)   = X86_ADDI;
+    *(instr_bytes + 5)   = 192 + x86GetModRMValue(op1, 0);
+    *(instr_bytes + 6)   = rightShift(leftShift(imm, 56), 56);
+    *(instr_bytes + 7)   = rightShift(leftShift(imm, 48), 56); 
+    *(instr_bytes + 8)   = rightShift(leftShift(imm, 40), 56);
+    *(instr_bytes + 9)   = rightShift(leftShift(imm, 32), 56);
+  }
+
+  x86emitInstructionBuffer(length);
+  
+}
+
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
   printInstructionContext();
 
@@ -6371,7 +6435,7 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void translat_add() {
+void translate_add() {
   uint64_t op1;
   uint64_t op2;
   uint64_t op3;
@@ -6770,7 +6834,7 @@ uint64_t do_sd() {
   return vaddr;
 }
 
-void translat_sd() {
+void translate_sd() {
 
 }
 
@@ -6957,7 +7021,14 @@ void do_jalr() {
 }
 
 void translate_jalr() {
-  
+  if (imm == 0) {
+    *(instr_bytes + 0) = X86_RET;
+
+    x86emitInstructionBuffer(1);
+  } else {
+    print((uint64_t*) "jalr found with imm != 0");
+    println();
+  }
 }
 
 void print_ecall() {
