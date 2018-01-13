@@ -4283,7 +4283,7 @@ void createELFHeader() {
   // | 8  | 0                | ABI version
   // | 9  | 0                | start of padding bytes
   // | 16 | ET_EXEC          | object file type
-  // | 18 | RV64             | target architecture
+  // | 18 | EM_RISCV         | target architecture
   // | 20 | 1                | version of the object file format
   // | 24 | ELF_ENTRY_POINT  | entry point address
   // | 32 | 64               | program header offset
@@ -4298,7 +4298,7 @@ void createELFHeader() {
   // +----+------------------+
   *(ELF_header + 0)  = 282584257676671;
   *(ELF_header + 1)  = 0;
-  *(ELF_header + 2)  = 2163408898;
+  *(ELF_header + 2)  = 15925250;
   *(ELF_header + 3)  = ELF_ENTRY_POINT;
   *(ELF_header + 4)  = 64;
   *(ELF_header + 5)  = 0;
