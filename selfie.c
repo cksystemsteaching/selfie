@@ -6432,6 +6432,7 @@ void print_ld_before() {
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
       printMemoryValue(vaddr);
+      printMemoryTc(vaddr);
       print((uint64_t*) " |- ");
       printRegisterValue(rd);
       printRegisterTc(rd);
@@ -6976,13 +6977,13 @@ void symbolic_do_ecall() {
 
   ic_ecall = ic_ecall + 1;
 
-  if (getLower(REG_A7) == SYSCALL_SWITCH)
+  if (getLower(REG_A7) == SYSCALL_SWITCH) {
     print(selfieName);
     print((uint64_t*) ": switch during symbolic execution not supported");
     println();
 
     exit(EXITCODE_BADARGUMENTS);
-  else
+  } else
     throwException(EXCEPTION_SYSCALL, 0);
   // TODO: support syscalls
 }
@@ -7091,8 +7092,16 @@ void printMemoryValue(uint64_t vaddr) {
       print((uint64_t*) "]");
     } else
       printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
-  } else
-    printInteger(loadVirtualMemory(pt, vaddr));
+  } else {
+    if (symbolic) {
+      print((uint64_t*) "[");
+      printInteger(*(valuesLower + loadVirtualMemory(pt, vaddr)));
+      print((uint64_t*) ",");
+      printInteger(*(valuesUpper + loadVirtualMemory(pt, vaddr)));
+      print((uint64_t*) "]");
+    } else
+      printInteger(loadVirtualMemory(pt, vaddr));
+  }
 }
 
 void printMemoryTc(uint64_t vaddr) {
