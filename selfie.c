@@ -1208,7 +1208,6 @@ void initInterpreter() {
 }
 
 void resetInterpreter() {
-
   pc = 0;
   ir = 0;
 
@@ -6257,6 +6256,7 @@ void do_sub() {
 void symbolic_do_mul() {
   if (rd != REG_ZR) {
     // semantics of mul
+    // TODO: check if vipsburger
     setLower(getLower(rs1) * getLower(rs2));
     setUpper(getUpper(rs1) * getUpper(rs2));
   }
@@ -6302,7 +6302,7 @@ void symbolic_do_divu() {
     } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
   } else
-  throwException(EXCEPTION_NOEXCEPTION, 0);
+  throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
 
 }
 
@@ -6338,7 +6338,7 @@ void symbolic_do_remu() {
     } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
   } else
-  throwException(EXCEPTION_NOEXCEPTION, 0);
+  throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
 }
 
 void do_remu() {
@@ -6363,6 +6363,7 @@ void symbolic_do_sltu() {
 
   invalid = 0;
 
+  // TODO: symbolic semantics
   if (getLower(rs1) != getUpper(rs1))
     if (getLower(rs2) != getUpper(rs2))
       invalid = 1;
@@ -6465,6 +6466,7 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
+  // TODO: check concrete
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6482,6 +6484,7 @@ uint64_t symbolic_do_ld() {
 
   // load double word
 
+  // TODO: check concrete
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
@@ -6605,6 +6608,7 @@ void record_sd() {
 void symbolic_record_sd_before() {
   uint64_t vaddr;
 
+  // TODO: check concrete
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6615,6 +6619,7 @@ void symbolic_record_sd_before() {
 void symbolic_record_sd_after() {
   uint64_t vaddr;
 
+  // TODO: check concrete
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6626,6 +6631,7 @@ uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
 
+  // TODO: check concrete
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
@@ -6733,6 +6739,7 @@ void symbolic_do_beq() {
   // branch on equal
 
   // semantics of beq
+  // TODO: symbolic semantics
   if (getLower(rs1) == getLower(rs2))
     pc = pc + imm;
   else
@@ -6970,9 +6977,14 @@ void symbolic_do_ecall() {
   ic_ecall = ic_ecall + 1;
 
   if (getLower(REG_A7) == SYSCALL_SWITCH)
-    implementSwitch();
+    print(selfieName);
+    print((uint64_t*) ": switch during symbolic execution not supported");
+    println();
+
+    exit(EXITCODE_BADARGUMENTS);
   else
     throwException(EXCEPTION_SYSCALL, 0);
+  // TODO: support syscalls
 }
 
 void do_ecall() {
