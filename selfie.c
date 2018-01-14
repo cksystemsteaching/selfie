@@ -990,7 +990,8 @@ void saveState(uint64_t counter);
 void updateRegState(uint64_t reg, uint64_t value);
 void updateMemState(uint64_t vaddr, uint64_t value);
 
-void symbolic_prepare_registers(uint64_t context);
+void symbolic_prepare_memory(uint64_t* context);
+void symbolic_prepare_registers(uint64_t* context);
 
 void replayTrace();
 
@@ -5965,8 +5966,28 @@ void updateMemState(uint64_t vaddr, uint64_t value) {
   tc = tc + 1;
 }
 
-void symbolic_prepare_registers(uint64_t context) {
-  // save values of system registers in trace - vipster expects a tc value
+void symbolic_prepare_memory(uint64_t* context) {
+  uint64_t* table;
+  uint64_t  SP;
+
+  table = getPT(context);
+  SP    = *(getRegs(context) + REG_SP);
+
+  while (SP < VIRTUALMEMORYSIZE) {
+    if (isValidVirtualAddress(SP))
+      if (isVirtualAddressMapped(table, SP)) {
+        setLower(loadVirtualMemory(table, SP));
+        setUpper(loadVirtualMemory(table, SP));
+
+        storeVirtualMemory(table, SP, tc);
+        tc = tc + 1;
+      }
+
+    SP = SP + REGISTERSIZE;
+  }
+}
+
+void symbolic_prepare_registers(uint64_t* context) {
   uint64_t reg;
 
   reg = 0;
@@ -8310,7 +8331,10 @@ uint64_t vipster(uint64_t* toContext) {
 
   timeout = TIMESLICE;
 
-  // save values of system registers in trace
+  // store stack arguments in trace
+  symbolic_prepare_memory(toContext);
+
+  // store values of registers in trace
   symbolic_prepare_registers(toContext);
 
   while (1) {
