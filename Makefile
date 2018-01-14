@@ -31,9 +31,9 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
-# Test Vipster
+# Test vipster
 vipster: selfie
-	./selfie -c vipstest.c -v 4
+	./selfie -c traceex.c -v 4
 
 # Test everything
 all: test sat vipster

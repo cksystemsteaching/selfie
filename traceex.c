@@ -5,5 +5,5 @@ uint64_t main() {
   x = 5;
   y = 10;
 
-  return x + y;
+  return x + y - 15;
 }

@@ -1036,8 +1036,8 @@ void do_sltu();
 void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
-void     symbolic_ld_before();
-void     symbolic_ld_after();
+// void     symbolic_ld_before();
+// void     symbolic_ld_after();
 void     record_ld();
 uint64_t symbolic_do_ld();
 uint64_t do_ld();
@@ -1179,6 +1179,13 @@ uint64_t* iterationsPerLoop = (uint64_t*) 0; // number of executed iterations of
 uint64_t* loadsPerInstruction  = (uint64_t*) 0; // number of executed loads per load instruction
 uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per store instruction
 
+// ---------------------------- TRACE API --------------------------
+
+uint64_t getLower(uint64_t reg)   { return *(valuesLower + *(registers + reg)); }
+uint64_t getUpper(uint64_t reg)   { return *(valuesUpper + *(registers + reg)); }
+void     setLower(uint64_t value) { *(valuesLower + tc) = value; }
+void     setUpper(uint64_t value) { *(valuesUpper + tc) = value; }
+
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
@@ -1198,7 +1205,7 @@ void initInterpreter() {
 
   valuesLower = zalloc(maxTraceLength * SIZEOFUINT64);
   valuesUpper = zalloc(maxTraceLength * SIZEOFUINT64);
-  values = zalloc(maxTraceLength * SIZEOFUINT64);
+  values      = zalloc(maxTraceLength * SIZEOFUINT64);
 
 }
 
@@ -5969,8 +5976,8 @@ void symbolic_prepare_registers(uint64_t context) {
 
   while (reg < NUMBEROFREGISTERS) {
     if (isSystemRegister(reg)) {
-      *(valuesLower + tc) = *(getRegs(context) + reg);
-      *(valuesUpper + tc) = *(getRegs(context) + reg);
+      setLower(*(getRegs(context) + reg));
+      setUpper(*(getRegs(context) + reg));
 
       *(getRegs(context) + reg) = tc;
       tc = tc + 1;
@@ -6097,8 +6104,8 @@ void symbolic_do_lui() {
 
   if (rd != REG_ZR) {
     // semantics of lui
-    *(valuesLower + tc) = leftShift(imm, 12);
-    *(valuesUpper + tc) = leftShift(imm, 12);
+    setLower(leftShift(imm, 12));
+    setUpper(leftShift(imm, 12));
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6161,8 +6168,8 @@ void symbolic_do_addi() {
 
   if (rd != REG_ZR) {
     // semantics of addi
-    *(valuesLower + tc) = *(valuesLower + *(registers + rs1)) + imm;
-    *(valuesUpper + tc) = *(valuesUpper + *(registers + rs1)) + imm;
+    setLower(getLower(rs1) + imm);
+    setUpper(getUpper(rs1) + imm);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6208,8 +6215,8 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 void symbolic_do_add() {
   if (rd != REG_ZR) {
     // semantics of add
-    *(valuesLower + tc) = *(valuesLower + *(registers + rs1)) + *(valuesLower + *(registers + rs2));
-    *(valuesUpper + tc) = *(valuesUpper + *(registers + rs1)) + *(valuesUpper + *(registers + rs2));
+    setLower(getLower(rs1) + getLower(rs2));
+    setUpper(getUpper(rs1) + getUpper(rs2));
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6230,8 +6237,8 @@ void do_add() {
 void symbolic_do_sub() {
   if (rd != REG_ZR) {
     // semantics of sub
-    *(valuesLower + tc) = *(valuesLower + *(registers + rs1)) - *(valuesLower + *(registers + rs2));
-    *(valuesUpper + tc) = *(valuesUpper + *(registers + rs1)) - *(valuesUpper + *(registers + rs1));
+    setLower(getLower(rs1) - getLower(rs2));
+    setUpper(getUpper(rs1) - getUpper(rs2));
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6252,8 +6259,8 @@ void do_sub() {
 void symbolic_do_mul() {
   if (rd != REG_ZR) {
     // semantics of mul
-    *(valuesLower + tc) = *(valuesLower + *(registers + rs1)) * *(valuesLower + *(registers + rs2));
-    *(valuesUpper + tc) = *(valuesUpper + *(registers + rs1)) * *(valuesUpper + *(registers + rs2));
+    setLower(getLower(rs1) * getLower(rs2));
+    setUpper(getUpper(rs1) * getUpper(rs2));
   }
 
   // TODO: 128-bit resolution currently not supported
@@ -6283,12 +6290,12 @@ void record_divu_remu() {
 void symbolic_do_divu() {
   // division unsigned
 
-  if (*(valuesLower + *(registers + rs2)) == *(valuesUpper + *(registers + rs2))) {
-    if (*(valuesLower + *(registers + rs2)) != 0) {
+  if (getLower(rs2) == getUpper(rs2)) {
+    if (getLower(rs2) != 0) {
       if (rd != REG_ZR) {
         // semantics of divu
-        *(valuesLower + tc) = *(valuesLower + *(registers + rs1)) / *(valuesLower + *(registers + rs2));
-        *(valuesUpper + tc) = *(valuesUpper + *(registers + rs1)) / *(valuesUpper + *(registers + rs2));
+        setLower(getLower(rs1) / getLower(rs2));
+        setUpper(getUpper(rs1) / getUpper(rs2));
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -6319,17 +6326,17 @@ void do_divu() {
 void symbolic_do_remu() {
   // remainder unsigned
 
-  if (*(valuesLower + *(registers + rs2)) == *(valuesUpper + *(registers + rs2))) {
-    if (*(valuesLower + *(registers + rs2)) != 0) {
+  if (getLower(rs2) == getUpper(rs2)) {
+    if (getLower(rs2) != 0) {
       if (rd != REG_ZR) {
-        // semantics of divu
-        *(valuesLower + tc) = *(valuesLower + *(registers + rs1)) % *(valuesLower + *(registers + rs2));
-        *(valuesUpper + tc) = *(valuesUpper + *(registers + rs1)) % *(valuesUpper + *(registers + rs2));
+        // semantics of remu
+        setLower(getLower(rs1) % getLower(rs2));
+        setUpper(getUpper(rs1) % getUpper(rs2));
       }
 
       pc = pc + INSTRUCTIONSIZE;
 
-      ic_remu= ic_remu + 1;
+      ic_remu = ic_remu + 1;
     } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
   } else
@@ -6358,20 +6365,19 @@ void symbolic_do_sltu() {
 
   invalid = 0;
 
-  if (*(valuesLower + *(registers + rs1)) != *(valuesUpper + *(registers + rs1)))
-    if (*(valuesLower + *(registers + rs2)) != *(valuesUpper + *(registers + rs2)))
+  if (getLower(rs1) != getUpper(rs1))
+    if (getLower(rs2) != getUpper(rs2))
       invalid = 1;
 
   if (invalid == 0) {
     if (rd != REG_ZR) {
       // semantics of sltu
-
-      if (*(valuesUpper + *(registers + rs1)) < *(valuesLower + *(registers + rs2))) {
-        *(valuesLower + tc) = 1;
-        *(valuesUpper + tc) = 1;
+      if (getUpper(rs1) < getLower(rs2)) {
+        setLower(1);
+        setUpper(1);
       } else {
-        *(valuesLower + tc) = 0;
-        *(valuesUpper + tc) = 0;
+        setLower(0);
+        setUpper(0);
       }
     }
   }
@@ -6413,7 +6419,7 @@ void print_ld_before() {
   uint64_t vaddr;
 
   if (symbolic)
-    vaddr = *(valuesLower + *(registers + rs1)) + imm;
+    vaddr = getLower(rs1) + imm;
   else
     vaddr = *(registers + rs1) + imm;
 
@@ -6461,7 +6467,7 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
-  vaddr = *(values + *(registers + rs1)) + imm;
+  vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
@@ -6478,14 +6484,14 @@ uint64_t symbolic_do_ld() {
 
   // load double word
 
-  vaddr = *(valuesLower + *(registers + rs1)) + imm;
+  vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
         // semantics of ld
-        *(valuesLower + tc) = *(valuesLower + loadVirtualMemory(pt, vaddr));
-        *(valuesUpper + tc) = *(valuesUpper + loadVirtualMemory(pt, vaddr));
+        setLower(*(valuesLower + loadVirtualMemory(pt, vaddr)));
+        setUpper(*(valuesUpper + loadVirtualMemory(pt, vaddr)));
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -6552,7 +6558,7 @@ void print_sd_before() {
   uint64_t vaddr;
 
   if (symbolic)
-    vaddr = *(valuesLower + *(registers + rs1)) + imm;
+    vaddr = getLower(rs1) + imm;
   else
     vaddr = *(registers + rs1) + imm;
 
@@ -6601,7 +6607,7 @@ void record_sd() {
 void symbolic_record_sd_before() {
   uint64_t vaddr;
 
-  vaddr = *(valuesLower + *(registers + rs1)) + imm;
+  vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
@@ -6611,7 +6617,7 @@ void symbolic_record_sd_before() {
 void symbolic_record_sd_after() {
   uint64_t vaddr;
 
-  vaddr = *(valuesLower + *(registers + rs1)) + imm;
+  vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
@@ -6622,13 +6628,13 @@ uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
 
-  vaddr = *(valuesLower + *(registers + rs1)) + imm;
+  vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       // semantics of sd
-      *(valuesLower + tc) = *(valuesLower + *(registers + rs2));
-      *(valuesUpper + tc) = *(valuesUpper + *(registers + rs2));
+      setLower(getLower(rs2));
+      setUpper(getUpper(rs2));
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -6729,7 +6735,7 @@ void symbolic_do_beq() {
   // branch on equal
 
   // semantics of beq
-  if (*(valuesLower + *(registers + rs1)) == *(valuesLower + *(registers + rs2)))
+  if (getLower(rs1) == getLower(rs2))
     pc = pc + imm;
   else
     pc = pc + INSTRUCTIONSIZE;
@@ -6789,8 +6795,8 @@ void symbolic_do_jal() {
 
   if (rd != REG_ZR) {
     // first link
-    *(valuesLower + tc) = pc + INSTRUCTIONSIZE;
-    *(valuesUpper + tc) = pc + INSTRUCTIONSIZE;
+    setLower(pc + INSTRUCTIONSIZE);
+    setUpper(pc + INSTRUCTIONSIZE);
 
     // then jump for procedure calls
     pc = pc + imm;
@@ -6887,16 +6893,16 @@ void symbolic_do_jalr() {
 
   if (rd == REG_ZR)
     // fast path: just return by jumping rs1-relative with LSB reset
-    pc = leftShift(rightShift(*(valuesLower + *(registers + rs1)) + imm, 1), 1);
+    pc = leftShift(rightShift(getLower(rs1) + imm, 1), 1);
   else {
     // slow path: first prepare jump, then link, just in case rd == rs1
 
     // prepare jump with LSB reset
-    next_pc = leftShift(rightShift(*(valuesLower + *(registers + rs1)) + imm, 1), 1);
+    next_pc = leftShift(rightShift(getLower(rs1) + imm, 1), 1);
 
     // link to next instruction
-    *(valuesLower + tc) = pc + INSTRUCTIONSIZE;
-    *(valuesUpper + tc) = pc + INSTRUCTIONSIZE;
+    setLower(pc + INSTRUCTIONSIZE);
+    setUpper(pc + INSTRUCTIONSIZE);
 
     // jump
     pc = next_pc;
@@ -6965,7 +6971,7 @@ void symbolic_do_ecall() {
 
   ic_ecall = ic_ecall + 1;
 
-  if (*(valuesLower + *(registers + REG_A7)) == SYSCALL_SWITCH)
+  if (getLower(REG_A7) == SYSCALL_SWITCH)
     implementSwitch();
   else
     throwException(EXCEPTION_SYSCALL, 0);
@@ -7014,9 +7020,9 @@ void printRegisterHexadecimal(uint64_t r) {
 
   if (symbolic) {
     print((uint64_t*) "[");
-    printHexadecimal(*(valuesLower + *(registers + r)), 0);
+    printHexadecimal(getLower(r), 0);
     print((uint64_t*) ",");
-    printHexadecimal(*(valuesUpper + *(registers + r)), 0);
+    printHexadecimal(getUpper(r), 0);
     print((uint64_t*) "]");
 
   } else
@@ -7045,9 +7051,9 @@ void printRegisterValue(uint64_t r) {
     print((uint64_t*) "=");
     if (symbolic) {
       print((uint64_t*) "[");
-      printInteger(*(valuesLower + *(registers + r)));
+      printInteger(getLower(r));
       print((uint64_t*) ",");
-      printInteger(*(valuesUpper + *(registers + r)));
+      printInteger(getUpper(r));
       print((uint64_t*) "]");
     } else {
       printInteger(*(registers + r));
@@ -7081,7 +7087,7 @@ void printMemoryValue(uint64_t vaddr) {
 
 void printMemoryTc(uint64_t vaddr) {
   if (symbolic) {
-    print((uint64_t*) "tc:");
+    print((uint64_t*) ",tc:");
     printInteger(loadVirtualMemory(pt, vaddr));
   }
 }
@@ -8285,6 +8291,7 @@ uint64_t vipster(uint64_t* toContext) {
 
   timeout = TIMESLICE;
 
+  // save values of system registers in trace
   symbolic_prepare_registers(toContext);
 
   while (1) {
