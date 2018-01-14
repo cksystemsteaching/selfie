@@ -1036,8 +1036,6 @@ void do_sltu();
 void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
-// void     symbolic_ld_before();
-// void     symbolic_ld_after();
 void     record_ld();
 uint64_t symbolic_do_ld();
 uint64_t do_ld();
@@ -6590,7 +6588,7 @@ void print_sd_after(uint64_t vaddr) {
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
       printRegisterValue(rs2);
-      printRegisterTc(rd);
+      printMemoryTc(vaddr);
     }
 }
 
