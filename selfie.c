@@ -5327,6 +5327,7 @@ void emitExit() {
 
 void implementExit(uint64_t* context) {
   if (symbolic)
+    // legacy (only use lower bound)
     setExitCode(context, *(valuesLower + *(getRegs(context) + REG_A0)));
   else
     setExitCode(context, *(getRegs(context) + REG_A0));
@@ -5335,7 +5336,14 @@ void implementExit(uint64_t* context) {
   print((uint64_t*) ": ");
   print(getName(context));
   print((uint64_t*) " exiting with exit code ");
-  printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
+  if (symbolic) {
+    print((uint64_t*) "[");
+    printInteger(signExtend(*(valuesLower + *(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
+    print((uint64_t*) ",");
+    printInteger(signExtend(*(valuesUpper + *(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
+    print((uint64_t*) "]");
+  } else
+    printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
   print((uint64_t*) " and ");
   printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
   print((uint64_t*) "MB mallocated memory");
@@ -5968,7 +5976,11 @@ void updateMemState(uint64_t vaddr, uint64_t value) {
 
 void symbolic_prepare_memory(uint64_t* context) {
   uint64_t* table;
+  uint64_t  entryPoint;
   uint64_t  SP;
+  uint64_t  GP;
+  uint64_t  globals;
+  uint64_t  code;
 
   table = getPT(context);
   SP    = *(getRegs(context) + REG_SP);
@@ -5984,6 +5996,38 @@ void symbolic_prepare_memory(uint64_t* context) {
       }
 
     SP = SP + REGISTERSIZE;
+  }
+
+  GP = binaryLength;
+  globals = numberOfGlobalVariables;
+
+  if (GP == 0) {
+    print((uint64_t*) "warning: binary length not available - undefined behaviour for global variables");
+    println();
+    return;
+  }
+  if (globals == 0) {
+    print((uint64_t*) "warning: zero global variables detected - possible undefined behaviour for global variables");
+    println();
+    return;
+  }
+
+  code = binaryLength - globals * REGISTERSIZE;
+  entryPoint = *(ELF_header + 10);
+  GP = GP - REGISTERSIZE;
+
+  while (code <= GP) {
+    if (isValidVirtualAddress(GP + entryPoint)) {
+      if (isVirtualAddressMapped(table, GP + entryPoint)) {
+        setLower(loadVirtualMemory(table, GP + entryPoint));
+        setUpper(loadVirtualMemory(table, GP + entryPoint));
+        println();
+
+        storeVirtualMemory(table, GP + entryPoint, tc);
+        tc = tc + 1;
+      }
+    }
+    GP = GP - REGISTERSIZE;
   }
 }
 
@@ -6076,6 +6120,11 @@ void printInstructionContext() {
 
   printHexadecimal(pc, 0);
   printSourceLineNumberOfInstruction(pc);
+
+  if (symbolic) {
+    print((uint64_t*) "/tc=");
+    printInteger(tc);
+  }
 
   print((uint64_t*) ": ");
   printHexadecimal(ir, 8);
