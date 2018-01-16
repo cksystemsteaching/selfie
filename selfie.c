@@ -8387,7 +8387,7 @@ uint64_t vipster(uint64_t* toContext) {
 
   timeout = TIMESLICE;
 
-  // store stack arguments in trace
+  // store stack arguments, global variables and strings in trace
   symbolic_prepare_memory(toContext);
 
   // store values of registers in trace
@@ -8671,8 +8671,6 @@ void symbolic_prepare_memory(uint64_t* context) {
   uint64_t  entryPoint;
   uint64_t  SP;
   uint64_t  GP;
-  uint64_t  globals;
-  uint64_t  code;
 
   table = getPT(context);
   SP    = *(getRegs(context) + REG_SP);
@@ -8680,8 +8678,7 @@ void symbolic_prepare_memory(uint64_t* context) {
   while (SP < VIRTUALMEMORYSIZE) {
     if (isValidVirtualAddress(SP))
       if (isVirtualAddressMapped(table, SP)) {
-        setLower(loadVirtualMemory(table, SP));
-        setUpper(loadVirtualMemory(table, SP));
+        setConcrete(loadVirtualMemory(table, SP));
 
         storeVirtualMemory(table, SP, tc);
         tc = tc + 1;
@@ -8691,29 +8688,20 @@ void symbolic_prepare_memory(uint64_t* context) {
   }
 
   GP = binaryLength;
-  globals = numberOfGlobalVariables;
 
   if (GP == 0) {
     print((uint64_t*) "warning: binary length not available - undefined behaviour for global variables");
     println();
     return;
   }
-  if (globals == 0) {
-    print((uint64_t*) "warning: zero global variables detected - possible undefined behaviour for global variables");
-    println();
-    return;
-  }
 
-  code = binaryLength - globals * REGISTERSIZE;
   entryPoint = *(ELF_header + 10);
   GP = GP - REGISTERSIZE;
 
-  while (code <= GP) {
+  while (codeLength <= GP) {
     if (isValidVirtualAddress(GP + entryPoint)) {
       if (isVirtualAddressMapped(table, GP + entryPoint)) {
-        setLower(loadVirtualMemory(table, GP + entryPoint));
-        setUpper(loadVirtualMemory(table, GP + entryPoint));
-        println();
+        setConcrete(loadVirtualMemory(table, GP + entryPoint));
 
         storeVirtualMemory(table, GP + entryPoint, tc);
         tc = tc + 1;
