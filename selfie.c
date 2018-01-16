@@ -990,9 +990,6 @@ void saveState(uint64_t counter);
 void updateRegState(uint64_t reg, uint64_t value);
 void updateMemState(uint64_t vaddr, uint64_t value);
 
-void symbolic_prepare_memory(uint64_t* context);
-void symbolic_prepare_registers(uint64_t* context);
-
 void replayTrace();
 
 void printSourceLineNumberOfInstruction(uint64_t a);
@@ -1123,6 +1120,7 @@ uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 7;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
+// TODO: catch tracelimit exception
 uint64_t maxTraceLength = 100000;
 
 uint64_t debug_exception = 0;
@@ -1177,13 +1175,6 @@ uint64_t* iterationsPerLoop = (uint64_t*) 0; // number of executed iterations of
 
 uint64_t* loadsPerInstruction  = (uint64_t*) 0; // number of executed loads per load instruction
 uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per store instruction
-
-// ---------------------------- TRACE API --------------------------
-
-uint64_t getLower(uint64_t reg)   { return *(valuesLower + *(registers + reg)); }
-uint64_t getUpper(uint64_t reg)   { return *(valuesUpper + *(registers + reg)); }
-void     setLower(uint64_t value) { *(valuesLower + tc) = value; }
-void     setUpper(uint64_t value) { *(valuesUpper + tc) = value; }
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1442,6 +1433,24 @@ void initKernel() {
   EXITCODE_UNKNOWNSYSCALL = signShrink(-10, SYSCALL_BITWIDTH);
   EXITCODE_UNCAUGHTEXCEPTION = signShrink(-11, SYSCALL_BITWIDTH);
 }
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ------------   S Y M B O L I C  E X E C U T I O N   -------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+void symbolic_prepare_memory(uint64_t* context);
+void symbolic_prepare_registers(uint64_t* context);
+
+void concretenessCheck(uint64_t* context, uint64_t reg);
+
+// ---------------------------- TRACE API --------------------------
+
+uint64_t getLower(uint64_t reg)   { return *(valuesLower + *(registers + reg)); }
+uint64_t getUpper(uint64_t reg)   { return *(valuesUpper + *(registers + reg)); }
+void     setLower(uint64_t value) { *(valuesLower + tc) = value; }
+void     setUpper(uint64_t value) { *(valuesUpper + tc) = value; }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5974,81 +5983,6 @@ void updateMemState(uint64_t vaddr, uint64_t value) {
   tc = tc + 1;
 }
 
-void symbolic_prepare_memory(uint64_t* context) {
-  uint64_t* table;
-  uint64_t  entryPoint;
-  uint64_t  SP;
-  uint64_t  GP;
-  uint64_t  globals;
-  uint64_t  code;
-
-  table = getPT(context);
-  SP    = *(getRegs(context) + REG_SP);
-
-  while (SP < VIRTUALMEMORYSIZE) {
-    if (isValidVirtualAddress(SP))
-      if (isVirtualAddressMapped(table, SP)) {
-        setLower(loadVirtualMemory(table, SP));
-        setUpper(loadVirtualMemory(table, SP));
-
-        storeVirtualMemory(table, SP, tc);
-        tc = tc + 1;
-      }
-
-    SP = SP + REGISTERSIZE;
-  }
-
-  GP = binaryLength;
-  globals = numberOfGlobalVariables;
-
-  if (GP == 0) {
-    print((uint64_t*) "warning: binary length not available - undefined behaviour for global variables");
-    println();
-    return;
-  }
-  if (globals == 0) {
-    print((uint64_t*) "warning: zero global variables detected - possible undefined behaviour for global variables");
-    println();
-    return;
-  }
-
-  code = binaryLength - globals * REGISTERSIZE;
-  entryPoint = *(ELF_header + 10);
-  GP = GP - REGISTERSIZE;
-
-  while (code <= GP) {
-    if (isValidVirtualAddress(GP + entryPoint)) {
-      if (isVirtualAddressMapped(table, GP + entryPoint)) {
-        setLower(loadVirtualMemory(table, GP + entryPoint));
-        setUpper(loadVirtualMemory(table, GP + entryPoint));
-        println();
-
-        storeVirtualMemory(table, GP + entryPoint, tc);
-        tc = tc + 1;
-      }
-    }
-    GP = GP - REGISTERSIZE;
-  }
-}
-
-void symbolic_prepare_registers(uint64_t* context) {
-  uint64_t reg;
-
-  reg = 0;
-
-  while (reg < NUMBEROFREGISTERS) {
-    if (isSystemRegister(reg)) {
-      setLower(*(getRegs(context) + reg));
-      setUpper(*(getRegs(context) + reg));
-
-      *(getRegs(context) + reg) = tc;
-      tc = tc + 1;
-    }
-    reg = reg + 1;
-  }
-  println();
-}
-
 void replayTrace() {
   uint64_t traceLength;
   uint64_t tl;
@@ -6537,7 +6471,7 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
-  // TODO: check concrete
+  concretenessCheck(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6555,7 +6489,7 @@ uint64_t symbolic_do_ld() {
 
   // load double word
 
-  // TODO: check concrete
+  concretenessCheck(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
@@ -6679,7 +6613,7 @@ void record_sd() {
 void symbolic_record_sd_before() {
   uint64_t vaddr;
 
-  // TODO: check concrete
+  concretenessCheck(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6690,7 +6624,7 @@ void symbolic_record_sd_before() {
 void symbolic_record_sd_after() {
   uint64_t vaddr;
 
-  // TODO: check concrete
+  concretenessCheck(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6702,7 +6636,7 @@ uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
 
-  // TODO: check concrete
+  concretenessCheck(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
@@ -8651,6 +8585,105 @@ uint64_t selfie_run(uint64_t machine) {
   debug       = 0;
 
   return exitCode;
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ------------   S Y M B O L I C  E X E C U T I O N    ------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+void symbolic_prepare_memory(uint64_t* context) {
+  uint64_t* table;
+  uint64_t  entryPoint;
+  uint64_t  SP;
+  uint64_t  GP;
+  uint64_t  globals;
+  uint64_t  code;
+
+  table = getPT(context);
+  SP    = *(getRegs(context) + REG_SP);
+
+  while (SP < VIRTUALMEMORYSIZE) {
+    if (isValidVirtualAddress(SP))
+      if (isVirtualAddressMapped(table, SP)) {
+        setLower(loadVirtualMemory(table, SP));
+        setUpper(loadVirtualMemory(table, SP));
+
+        storeVirtualMemory(table, SP, tc);
+        tc = tc + 1;
+      }
+
+    SP = SP + REGISTERSIZE;
+  }
+
+  GP = binaryLength;
+  globals = numberOfGlobalVariables;
+
+  if (GP == 0) {
+    print((uint64_t*) "warning: binary length not available - undefined behaviour for global variables");
+    println();
+    return;
+  }
+  if (globals == 0) {
+    print((uint64_t*) "warning: zero global variables detected - possible undefined behaviour for global variables");
+    println();
+    return;
+  }
+
+  code = binaryLength - globals * REGISTERSIZE;
+  entryPoint = *(ELF_header + 10);
+  GP = GP - REGISTERSIZE;
+
+  while (code <= GP) {
+    if (isValidVirtualAddress(GP + entryPoint)) {
+      if (isVirtualAddressMapped(table, GP + entryPoint)) {
+        setLower(loadVirtualMemory(table, GP + entryPoint));
+        setUpper(loadVirtualMemory(table, GP + entryPoint));
+
+        storeVirtualMemory(table, GP + entryPoint, tc);
+        tc = tc + 1;
+      }
+    }
+    GP = GP - REGISTERSIZE;
+  }
+}
+
+void symbolic_prepare_registers(uint64_t* context) {
+  uint64_t reg;
+
+  reg = 0;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (isSystemRegister(reg)) {
+      setLower(*(getRegs(context) + reg));
+      setUpper(*(getRegs(context) + reg));
+
+      *(getRegs(context) + reg) = tc;
+      tc = tc + 1;
+    }
+    reg = reg + 1;
+  }
+}
+
+void concretenessCheck(uint64_t* context, uint64_t reg) {
+  uint64_t lower;
+  uint64_t upper;
+
+  lower = *(valuesLower + *(getRegs(context) + reg));
+  upper = *(valuesLower + *(getRegs(context) + reg));
+
+  if (lower != upper) {
+    print((uint64_t*) "values [");
+    printInteger(lower);
+    print((uint64_t*) ",");
+    printInteger(upper);
+    print((uint64_t*) "] in register ");
+    printRegister(reg);
+    print((uint64_t*) " have to be concrete");
+    println();
+    exit(EXITCODE_BADARGUMENTS);
+  }
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
