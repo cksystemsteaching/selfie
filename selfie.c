@@ -1447,10 +1447,11 @@ void concretenessCheck(uint64_t* context, uint64_t reg);
 
 // ---------------------------- TRACE API --------------------------
 
-uint64_t getLower(uint64_t reg)   { return *(valuesLower + *(registers + reg)); }
-uint64_t getUpper(uint64_t reg)   { return *(valuesUpper + *(registers + reg)); }
-void     setLower(uint64_t value) { *(valuesLower + tc) = value; }
-void     setUpper(uint64_t value) { *(valuesUpper + tc) = value; }
+uint64_t getLower(uint64_t reg)      { return *(valuesLower + *(registers + reg)); }
+uint64_t getUpper(uint64_t reg)      { return *(valuesUpper + *(registers + reg)); }
+void     setLower(uint64_t value)    { *(valuesLower + tc) = value; }
+void     setUpper(uint64_t value)    { *(valuesUpper + tc) = value; }
+void     setConcrete(uint64_t value) { setLower(value); setUpper(value); }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5392,9 +5393,21 @@ void implementRead(uint64_t* context) {
   uint64_t* buffer;
   uint64_t actuallyRead;
 
-  fd      = *(getRegs(context) + REG_A0);
-  vbuffer = *(getRegs(context) + REG_A1);
-  size    = *(getRegs(context) + REG_A2);
+  // TODO: symbolic buffer implementation
+
+  if (symbolic) {
+    concretenessCheck(context, REG_A0);
+    concretenessCheck(context, REG_A1);
+    concretenessCheck(context, REG_A2);
+
+    fd      = *(valuesLower + *(getRegs(context) + REG_A0));
+    vbuffer = *(valuesLower + *(getRegs(context) + REG_A1));
+    size    = *(valuesLower + *(getRegs(context) + REG_A2));
+  } else {
+    fd      = *(getRegs(context) + REG_A0);
+    vbuffer = *(getRegs(context) + REG_A1);
+    size    = *(getRegs(context) + REG_A2);
+  }
 
   if (debug_read) {
     print(selfieName);
@@ -5463,10 +5476,20 @@ void implementRead(uint64_t* context) {
     }
   }
 
-  if (failed == 0)
-    *(getRegs(context) + REG_A0) = readTotal;
-  else
-    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+  if (symbolic) {
+    if (failed == 0)
+      setConcrete(readTotal);
+    else
+      setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
+
+    *(getRegs(context) + REG_A0) = tc;
+    tc = tc + 1;
+  } else {
+    if (failed == 0)
+      *(getRegs(context) + REG_A0) = readTotal;
+    else
+      *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+  }
 
   if (debug_read) {
     print(selfieName);
@@ -5510,9 +5533,19 @@ void implementWrite(uint64_t* context) {
   uint64_t* buffer;
   uint64_t actuallyWritten;
 
-  fd      = *(getRegs(context) + REG_A0);
-  vbuffer = *(getRegs(context) + REG_A1);
-  size    = *(getRegs(context) + REG_A2);
+  if (symbolic) {
+    concretenessCheck(context, REG_A0);
+    concretenessCheck(context, REG_A1);
+    concretenessCheck(context, REG_A2);
+
+    fd      = *(valuesLower + *(getRegs(context) + REG_A0));
+    vbuffer = *(valuesLower + *(getRegs(context) + REG_A1));
+    size    = *(valuesLower + *(getRegs(context) + REG_A2));
+  } else {
+    fd      = *(getRegs(context) + REG_A0);
+    vbuffer = *(getRegs(context) + REG_A1);
+    size    = *(getRegs(context) + REG_A2);
+  }
 
   if (debug_write) {
     print(selfieName);
@@ -5581,10 +5614,20 @@ void implementWrite(uint64_t* context) {
     }
   }
 
-  if (failed == 0)
-    *(getRegs(context) + REG_A0) = writtenTotal;
-  else
-    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+  if (symbolic) {
+    if (failed == 0)
+      setConcrete(writtenTotal);
+    else
+      setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
+
+    *(getRegs(context) + REG_A0) = tc;
+    tc = tc + 1;
+  } else {
+    if (failed == 0)
+      *(getRegs(context) + REG_A0) = writtenTotal;
+    else
+      *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+  }
 
   if (debug_write) {
     print(selfieName);
@@ -5678,14 +5721,30 @@ void implementOpen(uint64_t* context) {
   // return value
   uint64_t fd;
 
-  vfilename = *(getRegs(context) + REG_A0);
-  flags     = *(getRegs(context) + REG_A1);
-  mode      = *(getRegs(context) + REG_A2);
+  if (symbolic) {
+    concretenessCheck(context, REG_A0);
+    concretenessCheck(context, REG_A1);
+    concretenessCheck(context, REG_A2);
+
+    vfilename = *(valuesLower + *(getRegs(context) + REG_A0));
+    flags     = *(valuesLower + *(getRegs(context) + REG_A1));
+    mode      = *(valuesLower + *(getRegs(context) + REG_A2));
+  } else {
+    vfilename = *(getRegs(context) + REG_A0);
+    flags     = *(getRegs(context) + REG_A1);
+    mode      = *(getRegs(context) + REG_A2);
+  }
 
   if (down_loadString(getPT(context), vfilename, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
-    *(getRegs(context) + REG_A0) = fd;
+    if (symbolic) {
+      setConcrete(fd);
+
+      *(getRegs(context) + REG_A0) = tc;
+      tc = tc + 1;
+    } else
+      *(getRegs(context) + REG_A0) = fd;
 
     if (debug_open) {
       print(selfieName);
@@ -5700,7 +5759,13 @@ void implementOpen(uint64_t* context) {
       println();
     }
   } else {
-    *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+    if (symbolic) {
+      setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
+
+      *(getRegs(context) + REG_A0) = tc;
+      tc = tc + 1;
+    } else
+      *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open) {
       print(selfieName);
@@ -5733,10 +5798,18 @@ uint64_t implementMalloc(uint64_t* context) {
   // parameter
   uint64_t size;
 
-  // local variable
+  // local variables
   uint64_t bump;
+  uint64_t SP;
 
-  size = *(getRegs(context) + REG_A0);
+  if (symbolic) {
+    concretenessCheck(context, REG_A0);
+    SP   = *(valuesLower + *(getRegs(context) + REG_SP));
+    size = *(valuesLower + *(getRegs(context) + REG_A0));
+  } else {
+    SP   = *(getRegs(context) + REG_SP);
+    size = *(getRegs(context) + REG_A0);
+  }
 
   if (debug_malloc) {
     print(selfieName);
@@ -5749,12 +5822,18 @@ uint64_t implementMalloc(uint64_t* context) {
   size = roundUp(size, SIZEOFUINT64);
   bump = getBumpPointer(context);
 
-  if (bump + size > *(getRegs(context) + REG_SP)) {
+  if (bump + size > SP) {
     setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
 
     return EXIT;
   } else {
-    *(getRegs(context) + REG_A0) = bump;
+    if (symbolic) {
+      setConcrete(bump);
+
+      *(getRegs(context) + REG_A0) = tc;
+      tc = tc + 1;
+    } else
+      *(getRegs(context) + REG_A0) = bump;
 
     setBumpPointer(context, bump + size);
 
@@ -6103,11 +6182,9 @@ void sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after() {
 void symbolic_do_lui() {
   // load upper immediate
 
-  if (rd != REG_ZR) {
+  if (rd != REG_ZR)
     // semantics of lui
-    setLower(leftShift(imm, 12));
-    setUpper(leftShift(imm, 12));
-  }
+    setConcrete(leftShift(imm, 12));
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6375,13 +6452,10 @@ void symbolic_do_sltu() {
   if (invalid == 0) {
     if (rd != REG_ZR) {
       // semantics of sltu
-      if (getUpper(rs1) < getLower(rs2)) {
-        setLower(1);
-        setUpper(1);
-      } else {
-        setLower(0);
-        setUpper(0);
-      }
+      if (getUpper(rs1) < getLower(rs2))
+        setConcrete(1);
+      else
+        setConcrete(0);
     }
   }
 
@@ -6437,9 +6511,10 @@ void print_ld_before() {
       print((uint64_t*) "]=");
       printMemoryValue(vaddr);
       printMemoryTc(vaddr);
-      print((uint64_t*) " |- ");
-      printRegisterValue(rd);
-      printRegisterTc(rd);
+      // TODO: segfault occurs if argument is an address
+      // print((uint64_t*) " |- ");
+      // printRegisterValue(rd);
+      // printRegisterTc(rd);
 
       return;
     }
@@ -6805,8 +6880,7 @@ void symbolic_do_jal() {
 
   if (rd != REG_ZR) {
     // first link
-    setLower(pc + INSTRUCTIONSIZE);
-    setUpper(pc + INSTRUCTIONSIZE);
+    setConcrete(pc + INSTRUCTIONSIZE);
 
     // then jump for procedure calls
     pc = pc + imm;
@@ -6911,8 +6985,7 @@ void symbolic_do_jalr() {
     next_pc = leftShift(rightShift(getLower(rs1) + imm, 1), 1);
 
     // link to next instruction
-    setLower(pc + INSTRUCTIONSIZE);
-    setUpper(pc + INSTRUCTIONSIZE);
+    setConcrete(pc + INSTRUCTIONSIZE);
 
     // jump
     pc = next_pc;
@@ -8640,6 +8713,7 @@ void symbolic_prepare_memory(uint64_t* context) {
       if (isVirtualAddressMapped(table, GP + entryPoint)) {
         setLower(loadVirtualMemory(table, GP + entryPoint));
         setUpper(loadVirtualMemory(table, GP + entryPoint));
+        println();
 
         storeVirtualMemory(table, GP + entryPoint, tc);
         tc = tc + 1;
@@ -8649,6 +8723,7 @@ void symbolic_prepare_memory(uint64_t* context) {
   }
 }
 
+
 void symbolic_prepare_registers(uint64_t* context) {
   uint64_t reg;
 
@@ -8656,8 +8731,7 @@ void symbolic_prepare_registers(uint64_t* context) {
 
   while (reg < NUMBEROFREGISTERS) {
     if (isSystemRegister(reg)) {
-      setLower(*(getRegs(context) + reg));
-      setUpper(*(getRegs(context) + reg));
+      setConcrete(*(getRegs(context) + reg));
 
       *(getRegs(context) + reg) = tc;
       tc = tc + 1;
