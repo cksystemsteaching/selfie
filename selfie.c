@@ -4035,10 +4035,6 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
         if (getOpcode(loadInstruction(getAddress(entry))) == OP_JAL) {
           // procedure already called but not defined
           fixlink_relative(getAddress(entry), binaryLength);
-
-          if (stringCompare(procedure, (uint64_t*) "main"))
-            // first source containing main procedure provides binary name
-            binaryName = sourceName;
         } else
           // procedure already defined
           isUndefined = 0;
@@ -4053,6 +4049,10 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
         setType(entry, type);
         setAddress(entry, binaryLength);
+
+        if (stringCompare(procedure, (uint64_t*) "main"))
+          // first source containing main procedure provides binary name
+          binaryName = sourceName;
       } else {
         // procedure already defined
         printLineNumber((uint64_t*) "warning", lineNumber);
