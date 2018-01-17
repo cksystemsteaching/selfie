@@ -5593,6 +5593,9 @@ void implementWrite(uint64_t* context) {
       if (isVirtualAddressMapped(getPT(context), vbuffer)) {
         buffer = tlb(getPT(context), vbuffer);
 
+        if (symbolic)
+          buffer = valuesLower + *buffer;
+
         if (size < bytesToWrite)
           bytesToWrite = size;
 
