@@ -883,6 +883,7 @@ void implementExit(uint64_t* context);
 void emitRead();
 void implementRead(uint64_t* context);
 
+
 void emitWrite();
 void implementWrite(uint64_t* context);
 
@@ -1442,6 +1443,8 @@ void initKernel() {
 
 void symbolic_prepare_memory(uint64_t* context);
 void symbolic_prepare_registers(uint64_t* context);
+
+uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead);
 
 void concretenessCheck(uint64_t* context, uint64_t reg);
 
@@ -5392,6 +5395,7 @@ void implementRead(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actuallyRead;
+  uint64_t pt;
 
   // TODO: symbolic buffer implementation
 
@@ -5428,12 +5432,16 @@ void implementRead(uint64_t* context) {
   while (size > 0) {
     if (isValidVirtualAddress(vbuffer)) {
       if (isVirtualAddressMapped(getPT(context), vbuffer)) {
+
         buffer = tlb(getPT(context), vbuffer);
 
         if (size < bytesToRead)
           bytesToRead = size;
 
-        actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
+        if (symbolic)
+          actuallyRead = symbolic_read(context, fd, vbuffer, bytesToRead);
+        else
+          actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
         if (actuallyRead == bytesToRead) {
           readTotal = readTotal + actuallyRead;
@@ -5499,6 +5507,23 @@ void implementRead(uint64_t* context) {
     printInteger(fd);
     println();
   }
+}
+
+uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead) {
+  uint64_t upperBound;
+
+  upperBound = UINT64_MAX;
+
+  if (bytesToRead < SIZEOFUINT64)
+    upperBound = twoToThePowerOf(bytesToRead*8 - 1);
+
+  setLower(0);
+  setUpper(upperBound);
+  storeVirtualMemory(getPT(context), vbuffer, tc);
+
+  tc = tc + 1;
+
+  return bytesToRead;
 }
 
 void emitWrite() {
