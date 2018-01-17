@@ -5515,7 +5515,7 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
   upperBound = UINT64_MAX;
 
   if (bytesToRead < SIZEOFUINT64)
-    upperBound = twoToThePowerOf(bytesToRead*8 - 1);
+    upperBound = twoToThePowerOf(bytesToRead*8) - 1;
 
   setLower(0);
   setUpper(upperBound);
@@ -6536,11 +6536,6 @@ void print_ld_before() {
       print((uint64_t*) "]=");
       printMemoryValue(vaddr);
       printMemoryTc(vaddr);
-      // TODO: segfault occurs if argument is an address
-      // print((uint64_t*) " |- ");
-      // printRegisterValue(rd);
-      // printRegisterTc(rd);
-
       return;
     }
   print((uint64_t*) " |-");
