@@ -7276,6 +7276,10 @@ void decode_execute() {
           }
           println();
         }
+      } else if (symbolic) {
+        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+        symbolic_do_addi();
+        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
       } else
         do_addi();
 
@@ -7306,6 +7310,10 @@ void decode_execute() {
           }
           println();
         }
+      } else if (symbolic) {
+        symbolic_record_ld_before();
+        vaddr = symbolic_do_ld();
+        symbolic_record_ld_after();
       } else
         do_ld();
 
@@ -7335,6 +7343,10 @@ void decode_execute() {
           }
           println();
         }
+      } else if (symbolic) {
+        symbolic_record_sd_before();
+        vaddr = symbolic_do_sd();
+        symbolic_record_sd_after();
       } else
         do_sd();
 
@@ -7363,6 +7375,10 @@ void decode_execute() {
             }
             println();
           }
+        } else if (symbolic) {
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+          symbolic_do_add();
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_add();
 
@@ -7388,6 +7404,10 @@ void decode_execute() {
             }
             println();
           }
+        } else if (symbolic) {
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+          symbolic_do_sub();
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_sub();
 
@@ -7413,6 +7433,10 @@ void decode_execute() {
             }
             println();
           }
+        } else if (symbolic) {
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+          symbolic_do_mul();
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_mul();
 
@@ -7440,6 +7464,10 @@ void decode_execute() {
             }
             println();
           }
+        } else if (symbolic) {
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+          symbolic_do_divu();
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_divu();
 
@@ -7467,6 +7495,10 @@ void decode_execute() {
             }
             println();
           }
+        } else if (symbolic) {
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+          symbolic_do_remu();
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_remu();
 
@@ -7494,6 +7526,10 @@ void decode_execute() {
             }
             println();
           }
+        } else if (symbolic) {
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+          symbolic_do_sltu();
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_sltu();
 
@@ -7522,6 +7558,10 @@ void decode_execute() {
           }
           println();
         }
+      } else if (symbolic) {
+        symbolic_record_beq_before();
+        symbolic_do_beq();
+        symbolic_record_beq_after();
       } else
         do_beq();
 
@@ -7550,6 +7590,10 @@ void decode_execute() {
         }
         println();
       }
+    } else if (symbolic) {
+      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+      symbolic_do_jal();
+      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
     } else
       do_jal();
 
@@ -7578,6 +7622,10 @@ void decode_execute() {
           }
           println();
         }
+      } else if (symbolic) {
+        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+        symbolic_do_jalr();
+        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
       } else
         do_jalr();
 
@@ -7606,6 +7654,10 @@ void decode_execute() {
         }
         println();
       }
+    } else if (symbolic) {
+      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
+      symbolic_do_lui();
+      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
     } else
       do_lui();
 
@@ -7634,6 +7686,10 @@ void decode_execute() {
           }
           println();
         }
+      } else if (symbolic) {
+        symbolic_record_ecall_before();
+        symbolic_do_ecall();
+        symbolic_record_ecall_after();
       } else
         do_ecall();
 
@@ -9167,7 +9223,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -y | -v | -min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -y | -v | -vd |-min | -mob ) size ... ]");
   println();
 }
 
@@ -9211,6 +9267,10 @@ uint64_t selfie() {
       } else if (stringCompare(option, (uint64_t*) "-y"))
         return selfie_run(HYPSTER);
       else if (stringCompare(option, (uint64_t*) "-v")) {
+        symbolic     = 1;
+
+        return selfie_run(VIPSTER);
+      } else if (stringCompare(option, (uint64_t*) "-vd")) {
         debug        = 1;
         disassemble  = 1;
         symbolic     = 1;
