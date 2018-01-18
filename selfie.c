@@ -590,7 +590,7 @@ void createELFHeader();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
+uint64_t ELF_HEADER_LEN  = 336;   // = 64 + 56 + 3*64 bytes + string table (file + program header + 3 * section header + 24)
 
 // is determined by RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
@@ -4287,23 +4287,23 @@ void createELFHeader() {
   // | 20 | 1                | version of the object file format
   // | 24 | ELF_ENTRY_POINT  | entry point address
   // | 32 | 64               | program header offset
-  // | 40 | 0                | section header offset
+  // | 40 | 120              | section header offset
   // | 48 | 0                | processor specific flags
   // | 52 | 64               | elf header size
   // | 54 | 56               | size of program header entry
   // | 56 | 1                | number of program header entries
-  // | 58 | 0                | size of section header entry
-  // | 60 | 0                | number of section header entries
-  // | 62 | 0                | section name string table index
+  // | 58 | 64               | size of section header entry
+  // | 60 | 3                | number of section header entries
+  // | 62 | 2                | section name string table index
   // +----+------------------+
   *(ELF_header + 0)  = 282584257676671;
   *(ELF_header + 1)  = 0;
   *(ELF_header + 2)  = 4310892546;
-  *(ELF_header + 3)  = ELF_ENTRY_POINT;
+  *(ELF_header + 3)  = ELF_ENTRY_POINT + ELF_HEADER_LEN;
   *(ELF_header + 4)  = 64;
-  *(ELF_header + 5)  = 0;
+  *(ELF_header + 5)  = 120;
   *(ELF_header + 6)  = 15762873573703680;
-  *(ELF_header + 7)  = 1;
+  *(ELF_header + 7)  = 562962842517505;
 
   // RISC-U ELF64 program header table:
   //  byte value
@@ -4318,12 +4318,78 @@ void createELFHeader() {
   // | 48 | PAGESIZE         | alignemnt of segment
   // +----+------------------+
   *(ELF_header + 8)  = 30064771073;
-  *(ELF_header + 9)  = ELF_HEADER_LEN;
+  *(ELF_header + 9)  = 0;
   *(ELF_header + 10) = ELF_ENTRY_POINT;
-  *(ELF_header + 11) = 0;
-  *(ELF_header + 12) = binaryLength;
-  *(ELF_header + 13) = binaryLength;
+  *(ELF_header + 11) = ELF_ENTRY_POINT;
+  *(ELF_header + 12) = ELF_HEADER_LEN + binaryLength;
+  *(ELF_header + 13) = ELF_HEADER_LEN + binaryLength;
   *(ELF_header + 14) = PAGESIZE;
+
+  // RISC-U ELF64 section header table:
+  //This NULL Section is required because 0 means undefined, hence
+  //everything at index 0 is undefined
+
+  *(ELF_header + 15)  = 0;
+  *(ELF_header + 16)  = 0;
+  *(ELF_header + 17)  = 0;
+  *(ELF_header + 18)  = 0;
+  *(ELF_header + 19)  = 0;
+  *(ELF_header + 20)  = 0;
+  *(ELF_header + 21)  = 0;
+  *(ELF_header + 22)  = 0;
+
+  //.text section
+  //  byte value
+  // +----+------------------+
+  // | 0  | 1                | offset into .shstrtab
+  // | 4  | PROGBITS         | type
+  // | 8  | EXECINSTR+ALLOC  | flags
+  // | 16 | ELF_ENTRY_POINT  | virtual address in memory
+  // | 24 | ELF_HEADER_LEN   | section offset in file
+  // | 32 | binaryLength     | size of section
+  // | 40 | 0                | link 
+  // | 44 | 0                | info
+  // | 48 | 2                | alignemnt of section
+  // | 56 | 0                | fixed entry size
+  // +----+------------------+
+
+  *(ELF_header + 23)  = 4294967297;
+  *(ELF_header + 24)  = 6;
+  *(ELF_header + 25)  = ELF_ENTRY_POINT+ ELF_HEADER_LEN;
+  *(ELF_header + 26)  = ELF_HEADER_LEN;
+  *(ELF_header + 27)  = binaryLength;
+  *(ELF_header + 28)  = 0;
+  *(ELF_header + 29)  = 2;
+  *(ELF_header + 30)  = 0;
+  
+  //.shstrtab section
+  //  byte value
+  // +----+------------------+
+  // | 0  | 7                | offset into .shstrtab
+  // | 4  | STRTAB           | type
+  // | 8  | 0                | flags
+  // | 16 | 0                | virtual address in memory
+  // | 24 | 248              | section offset in file
+  // | 32 | 24               | size of section
+  // | 40 | 0                | link 
+  // | 44 | 0                | info
+  // | 48 | 1                | alignemnt of section
+  // | 56 | 0                | fixed entry size
+  // +----+------------------+
+
+  *(ELF_header + 31)  = 12884901895;
+  *(ELF_header + 32)  = 0;
+  *(ELF_header + 33)  = 0;
+  *(ELF_header + 34)  = 312;
+  *(ELF_header + 35)  = 24;
+  *(ELF_header + 36)  = 0;
+  *(ELF_header + 37)  = 1;
+  *(ELF_header + 38)  = 0;
+
+  //content of section .shstrtab
+  *(ELF_header + 39)  = 3314777386191695360; //0.text0.
+  *(ELF_header + 40)  = 7089075323386685555; //shstrtab
+  *(ELF_header + 41)  = 0;
 }
 
 // -----------------------------------------------------------------
@@ -5226,7 +5292,7 @@ void selfie_load() {
   numberOfReadBytes = read(fd, ELF_header, ELF_HEADER_LEN);
 
   if (numberOfReadBytes == ELF_HEADER_LEN) {
-    codeLength = *(ELF_header + 12);
+    codeLength = *(ELF_header + 12) - ELF_HEADER_LEN;
 
     if (codeLength <= maxBinaryLength) {
       // now read binary including global variables and strings
