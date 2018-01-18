@@ -8694,6 +8694,7 @@ void symbolic_prepare_memory(uint64_t* context) {
   uint64_t  entryPoint;
   uint64_t  SP;
   uint64_t  GP;
+  uint64_t  instrLength;
 
   table = getPT(context);
   SP    = *(getRegs(context) + REG_SP);
@@ -8711,9 +8712,11 @@ void symbolic_prepare_memory(uint64_t* context) {
   }
 
   GP = binaryLength;
+  instrLength = codeLength; // for now get this from the compiler
 
-  if (GP == 0) {
-    print((uint64_t*) "warning: binary length not available - undefined behaviour for global variables");
+  // if codeLength not available (due to loading the binary), we cannot prepare strings and globals
+  if (instrLength == binaryLength) { // this can also occur if no globals or strings are used
+    print((uint64_t*) "warning: code length equals binary length - possible undefined behaviour for global variables and strings");
     println();
     return;
   }
@@ -8721,7 +8724,7 @@ void symbolic_prepare_memory(uint64_t* context) {
   entryPoint = *(ELF_header + 10);
   GP = GP - REGISTERSIZE;
 
-  while (codeLength <= GP) {
+  while (instrLength <= GP) {
     if (isValidVirtualAddress(GP + entryPoint)) {
       if (isVirtualAddressMapped(table, GP + entryPoint)) {
         setConcrete(loadVirtualMemory(table, GP + entryPoint));
