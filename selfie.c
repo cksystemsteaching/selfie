@@ -6371,7 +6371,7 @@ void print_beq() {
   print((uint64_t*) ",");
   printInteger(signedDivision(imm, INSTRUCTIONSIZE));
   print((uint64_t*) "[");
-  printHexadecimal(pc + INSTRUCTIONSIZE + imm, 0);
+  printHexadecimal(pc + imm, 0);
   print((uint64_t*) "]");
 }
 
