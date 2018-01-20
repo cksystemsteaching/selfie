@@ -4032,10 +4032,10 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
       // procedure already called or declared or defined
       if (getAddress(entry) != 0) {
         // procedure already called or defined
-        if (getOpcode(loadInstruction(getAddress(entry))) == OP_JAL) {
+        if (getOpcode(loadInstruction(getAddress(entry))) == OP_JAL)
           // procedure already called but not defined
           fixlink_relative(getAddress(entry), binaryLength);
-        } else
+        else
           // procedure already defined
           isUndefined = 0;
       }
@@ -7326,12 +7326,13 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   *(table + page) = frame;
 
-  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE))
+  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE)) {
     // exploit spatial locality in page table caching
     if (page < getLoPage(context))
       setLoPage(context, page);
     else if (page > getMePage(context))
       setMePage(context, page);
+  }
 
   if (debug_map) {
     print(selfieName);
