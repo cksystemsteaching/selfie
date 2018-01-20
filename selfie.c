@@ -5700,7 +5700,10 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
       if (isVirtualAddressMapped(table, vstring)) {
         pstring = tlb(table, vstring);
 
-        *(s + i) = loadPhysicalMemory(pstring);
+        if (symbolic)
+          *(s + i) = *(valuesLower + loadPhysicalMemory(pstring));
+        else
+          *(s + i) = loadPhysicalMemory(pstring);
 
         j = 0;
 
