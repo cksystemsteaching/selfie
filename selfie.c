@@ -1448,6 +1448,10 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
 
 void concretenessCheck(uint64_t* context, uint64_t reg);
 
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t redundantIs = 0; // number of redundant instructions
+
 // ---------------------------- TRACE API --------------------------
 
 uint64_t getLower(uint64_t reg)      { return *(valuesLower + *(registers + reg)); }
@@ -6082,15 +6086,41 @@ void saveState(uint64_t counter) {
 }
 
 void updateRegState(uint64_t reg, uint64_t value) {
-  *(registers + reg) = value;
+  uint64_t beforeLower;
+  uint64_t beforeUpper;
 
+  // ignore redundancy check for $a1, fails if
+  // argument is a concrete pointer (ecall: read/write)
+  if (reg != REG_A1) {
+    beforeLower = getLower(reg);
+    beforeUpper = getUpper(reg);
+  }
+
+  *(registers + reg) = value;
   tc = tc + 1;
+
+  // redundancy check
+  if (reg != REG_ZR)
+    if (reg != REG_A1)
+      if (beforeLower == getLower(reg))
+        if (beforeUpper == getUpper(reg))
+          redundantIs = redundantIs + 1;
 }
 
 void updateMemState(uint64_t vaddr, uint64_t value) {
-  storeVirtualMemory(pt, vaddr, value);
+  uint64_t beforeLower;
+  uint64_t beforeUpper;
 
+  beforeLower = *(valuesLower + loadVirtualMemory(pt, vaddr));
+  beforeUpper = *(valuesUpper + loadVirtualMemory(pt, vaddr));
+
+  storeVirtualMemory(pt, vaddr, value);
   tc = tc + 1;
+
+  // redundancy check
+  if (beforeLower == *(valuesLower + value))
+    if (beforeUpper == *(valuesUpper + value))
+      redundantIs = redundantIs + 1;
 }
 
 void replayTrace() {
@@ -7814,7 +7844,14 @@ void printProfile() {
   print(selfieName);
   print((uint64_t*) ": summary: ");
   printInteger(getTotalNumberOfInstructions());
-  print((uint64_t*) " executed instructions and ");
+  if (symbolic) {
+    print((uint64_t*) " executed instructions, ");
+    printInteger(redundantIs);
+    print((uint64_t*) " of them were redundant: ~");
+    printFixedPointPercentage(getTotalNumberOfInstructions(), redundantIs);
+    print((uint64_t*) "% and ");
+  } else
+    print((uint64_t*) " executed instructions and ");
   printFixedPointRatio(pused(), MEGABYTE);
   print((uint64_t*) "MB mapped memory");
   println();
