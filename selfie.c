@@ -991,6 +991,8 @@ void saveState(uint64_t counter);
 void updateRegState(uint64_t reg, uint64_t value);
 void updateMemState(uint64_t vaddr, uint64_t value);
 
+void incrementTc();
+
 void replayTrace();
 
 void printSourceLineNumberOfInstruction(uint64_t a);
@@ -5495,7 +5497,7 @@ void implementRead(uint64_t* context) {
       setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
 
     *(getRegs(context) + REG_A0) = tc;
-    tc = tc + 1;
+    incrementTc();
   } else {
     if (failed == 0)
       *(getRegs(context) + REG_A0) = readTotal;
@@ -5525,7 +5527,7 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
   setUpper(upperBound);
   storeVirtualMemory(getPT(context), vbuffer, tc);
 
-  tc = tc + 1;
+  incrementTc();
 
   return bytesToRead;
 }
@@ -5653,7 +5655,7 @@ void implementWrite(uint64_t* context) {
       setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
 
     *(getRegs(context) + REG_A0) = tc;
-    tc = tc + 1;
+    incrementTc();
   } else {
     if (failed == 0)
       *(getRegs(context) + REG_A0) = writtenTotal;
@@ -5777,7 +5779,7 @@ void implementOpen(uint64_t* context) {
       setConcrete(fd);
 
       *(getRegs(context) + REG_A0) = tc;
-      tc = tc + 1;
+      incrementTc();
     } else
       *(getRegs(context) + REG_A0) = fd;
 
@@ -5798,7 +5800,7 @@ void implementOpen(uint64_t* context) {
       setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
 
       *(getRegs(context) + REG_A0) = tc;
-      tc = tc + 1;
+      incrementTc();
     } else
       *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
@@ -5866,7 +5868,7 @@ uint64_t implementMalloc(uint64_t* context) {
       setConcrete(bump);
 
       *(getRegs(context) + REG_A0) = tc;
-      tc = tc + 1;
+      incrementTc();
     } else
       *(getRegs(context) + REG_A0) = bump;
 
@@ -6077,7 +6079,7 @@ void recordState(uint64_t value) {
   *(pcs + (tc % maxTraceLength))    = pc;
   *(values + (tc % maxTraceLength)) = value;
 
-  tc = tc + 1;
+  incrementTc();
 }
 
 void saveState(uint64_t counter) {
@@ -6097,7 +6099,7 @@ void updateRegState(uint64_t reg, uint64_t value) {
   }
 
   *(registers + reg) = value;
-  tc = tc + 1;
+  incrementTc();
 
   // redundancy check
   if (reg != REG_ZR)
@@ -6115,12 +6117,22 @@ void updateMemState(uint64_t vaddr, uint64_t value) {
   beforeUpper = *(valuesUpper + loadVirtualMemory(pt, vaddr));
 
   storeVirtualMemory(pt, vaddr, value);
-  tc = tc + 1;
+  incrementTc();
 
   // redundancy check
   if (beforeLower == *(valuesLower + value))
     if (beforeUpper == *(valuesUpper + value))
       redundantIs = redundantIs + 1;
+}
+
+void incrementTc() {
+  tc = tc + 1;
+
+  if (symbolic) {
+    if (tc >= maxTraceLength) {
+      throwException(EXCEPTION_TRACELIMIT, 0);
+    }
+  }
 }
 
 void replayTrace() {
@@ -6164,7 +6176,7 @@ void replayTrace() {
     fetch();
     decode_execute();
 
-    tc = tc + 1;
+    incrementTc();
     tl = tl - 1;
   }
 
@@ -8801,7 +8813,7 @@ void symbolic_prepare_memory(uint64_t* context) {
         setConcrete(loadVirtualMemory(table, SP));
 
         storeVirtualMemory(table, SP, tc);
-        tc = tc + 1;
+        incrementTc();
       }
 
     SP = SP + REGISTERSIZE;
@@ -8826,7 +8838,7 @@ void symbolic_prepare_memory(uint64_t* context) {
         setConcrete(loadVirtualMemory(table, GP + entryPoint));
 
         storeVirtualMemory(table, GP + entryPoint, tc);
-        tc = tc + 1;
+        incrementTc();
       }
     }
     GP = GP - REGISTERSIZE;
@@ -8844,7 +8856,7 @@ void symbolic_prepare_registers(uint64_t* context) {
       setConcrete(*(getRegs(context) + reg));
 
       *(getRegs(context) + reg) = tc;
-      tc = tc + 1;
+      incrementTc();
     }
     reg = reg + 1;
   }
