@@ -1107,6 +1107,7 @@ uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t
 void     printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* counters);
 
 void printProfile();
+void printTrace();
 
 void selfie_disassemble();
 
@@ -1124,7 +1125,7 @@ uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 7;
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
 // TODO: catch tracelimit exception
-uint64_t maxTraceLength = 100000;
+uint64_t maxTraceLength = 10000000;
 
 uint64_t debug_exception = 0;
 
@@ -5517,6 +5518,20 @@ void implementRead(uint64_t* context) {
 
 uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead) {
   uint64_t upperBound;
+  uint64_t r;
+
+  // read into trace
+  // ==== test purposes ====
+
+  // r = signExtend(read(fd, valuesLower + tc, bytesToRead), SYSCALL_BITWIDTH);
+  // setUpper(*(valuesLower + tc));
+  // storeVirtualMemory(getPT(context), vbuffer, tc);
+
+  // incrementTc();
+
+  // return r;
+
+  // =======================
 
   upperBound = UINT64_MAX;
 
@@ -5715,8 +5730,13 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
 
         // check if string ends in the current machine word
         while (j < SIZEOFUINT64) {
-          if (loadCharacter(pstring, j) == 0)
-            return 1;
+          if (symbolic) {
+            if (loadCharacter(valuesLower + loadPhysicalMemory(pstring), j) == 0)
+              return 1;
+          } else {
+            if (loadCharacter(pstring, j) == 0)
+              return 1;
+          }
 
           j = j + 1;
         }
@@ -7130,7 +7150,6 @@ void symbolic_do_ecall() {
     exit(EXITCODE_BADARGUMENTS);
   } else
     throwException(EXCEPTION_SYSCALL, 0);
-  // TODO: support syscalls
 }
 
 void do_ecall() {
@@ -7885,6 +7904,37 @@ void printProfile() {
   }
 }
 
+void printTrace() {
+  uint64_t i;
+
+  i = 0;
+
+  print((uint64_t*) "====================[ TRACE ]====================");
+  println();
+
+  while (i < tc) {
+    print((uint64_t*) "tc= ");
+    printInteger(i);
+    print((uint64_t*) " (prev= ");
+    printInteger(*(tcs + i));
+    print((uint64_t*) ") pc= ");
+    printHexadecimal(*(pcs + i), 0);
+    print((uint64_t*) " value= ");
+    printInteger(*(values + i));
+    print((uint64_t*) " [");
+    printInteger(*(valuesLower + i));
+    print((uint64_t*) ",");
+    printInteger(*(valuesUpper + i));
+    print((uint64_t*) "]");
+    println();
+
+    i = i + 1;
+  }
+
+  print((uint64_t*) "=================================================");
+  println();
+}
+
 void selfie_disassemble() {
   assemblyName = getArgument();
 
@@ -8539,8 +8589,10 @@ uint64_t vipster(uint64_t* toContext) {
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
       else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
         return handleDivisionByZero();
-      else if (handleSystemCalls(fromContext) == EXIT)
+      else if (handleSystemCalls(fromContext) == EXIT) {
+        // printTrace();
         return getExitCode(fromContext);
+      }
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
