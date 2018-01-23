@@ -1125,7 +1125,7 @@ uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 7;
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
 // TODO: catch tracelimit exception
-uint64_t maxTraceLength = 10000000;
+uint64_t maxTraceLength = 250000;
 
 uint64_t debug_exception = 0;
 
