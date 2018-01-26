@@ -6584,53 +6584,43 @@ void do_remu() {
 }
 
 void symbolic_confine_sltu() {
-  uint64_t invalid;
+  // uint64_t invalid;
 
-  invalid = 0;
+  // invalid = 0;
 
-  if (getLower(rd) == getUpper(rd)) {
-    // case: [0, 0]
-    if (getLower(rd) == 0) {
-      if (getUpper(rs2) >= getLower(rs1))
-        // setUpper(rs2, getLower(rs1) - 1);
+  // if (getLower(rd) == getUpper(rd)) {
+  //   // case: [0, 0]
+  //   if (getLower(rd) == 0) {
+  //     if (getUpper(rs2) >= getLower(rs1))
+  //       // setUpper(rs2, getLower(rs1) - 1);
 
-    } else {
-      // case: [0, 1]
-      if (getUpper(rs1) >= getLower(rs2))
-        // setUpper(rs1, getLower(rs2) - 1);
-    }
+  //   } else {
+  //     // case: [0, 1]
+  //     if (getUpper(rs1) >= getLower(rs2))
+  //       // setUpper(rs1, getLower(rs2) - 1);
+  //   }
 
-  } else {
-    // case: [0, 1]
-  }
+  // } else {
+  //   // case: [0, 1]
+  // }
 }
 
 void symbolic_do_sltu() {
   // set on less than unsigned
 
-  uint64_t invalid;
+  forcePrecise(currentContext, rs1, rs2);
 
-  invalid = 0;
-
-  // sTODO: symbolic semantics
-  if (getLower(rs1) != getUpper(rs1))
-    if (getLower(rs2) != getUpper(rs2))
-      invalid = 1;
-
-  if (invalid == 0) {
-    if (rd != REG_ZR) {
-      // semantics of sltu
-      if (getUpper(rs1) < getLower(rs2))
-        setConcrete(tc, 1);
-      else if (getLower(rs1) >= getUpper(rs2))
-        setConcrete(tc, 0);
-      else {
-        setLower(tc, 0);
-        setUpper(tc, 1);
-      }
+  if (rd != REG_ZR) {
+    // semantics of sltu
+    if (getUpper(rs1) < getLower(rs2))
+      setConcrete(1);
+    else if (getLower(rs1) >= getUpper(rs2))
+      setConcrete(0);
+    else {
+      setLower(0);
+      setUpper(1);
     }
-  } else
-    throwException(EXITCODE_BADARGUMENTS, 0);
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
