@@ -1135,11 +1135,11 @@ uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_TRACELIMIT         = 6;
 uint64_t EXCEPTION_SYMBOLICBRANCH     = 7;
-uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 8;
+uint64_t EXCEPTION_IMPRECISE          = 8;
+uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 9;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
-// TODO: catch tracelimit exception
 uint64_t maxTraceLength = 250000;
 
 uint64_t debug_exception = 0;
@@ -1209,6 +1209,7 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_TRACELIMIT)         = (uint64_t) "tracelimit reached";
   *(EXCEPTIONS + EXCEPTION_SYMBOLICBRANCH)     = (uint64_t) "symbolic branch undecidable";
+  *(EXCEPTIONS + EXCEPTION_IMPRECISE)          = (uint64_t) "imprecise execution";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1467,6 +1468,11 @@ void symbolic_prepare_registers(uint64_t* context);
 uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead);
 
 void symbolic_confine();
+
+void forceConcrete(uint64_t* context, uint64_t reg);
+void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
+
+uint64_t isConcrete(uint64_t* context, uint64_t reg);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -5421,12 +5427,12 @@ void implementRead(uint64_t* context) {
   uint64_t actuallyRead;
   uint64_t pt;
 
-  // TODO: symbolic buffer implementation
+  // sTODO: symbolic buffer implementation
 
   if (symbolic) {
-    concretenessCheck(context, REG_A0);
-    concretenessCheck(context, REG_A1);
-    concretenessCheck(context, REG_A2);
+    forceConcrete(context, REG_A0);
+    forceConcrete(context, REG_A1);
+    forceConcrete(context, REG_A2);
 
     fd      = *(valuesLower + *(getRegs(context) + REG_A0));
     vbuffer = *(valuesLower + *(getRegs(context) + REG_A1));
@@ -5597,9 +5603,9 @@ void implementWrite(uint64_t* context) {
   uint64_t actuallyWritten;
 
   if (symbolic) {
-    concretenessCheck(context, REG_A0);
-    concretenessCheck(context, REG_A1);
-    concretenessCheck(context, REG_A2);
+    forceConcrete(context, REG_A0);
+    forceConcrete(context, REG_A1);
+    forceConcrete(context, REG_A2);
 
     fd      = *(valuesLower + *(getRegs(context) + REG_A0));
     vbuffer = *(valuesLower + *(getRegs(context) + REG_A1));
@@ -5796,9 +5802,9 @@ void implementOpen(uint64_t* context) {
   uint64_t fd;
 
   if (symbolic) {
-    concretenessCheck(context, REG_A0);
-    concretenessCheck(context, REG_A1);
-    concretenessCheck(context, REG_A2);
+    forceConcrete(context, REG_A0);
+    forceConcrete(context, REG_A1);
+    forceConcrete(context, REG_A2);
 
     vfilename = *(valuesLower + *(getRegs(context) + REG_A0));
     flags     = *(valuesLower + *(getRegs(context) + REG_A1));
@@ -5877,7 +5883,7 @@ uint64_t implementMalloc(uint64_t* context) {
   uint64_t SP;
 
   if (symbolic) {
-    concretenessCheck(context, REG_A0);
+    forceConcrete(context, REG_A0);
     SP   = *(valuesLower + *(getRegs(context) + REG_SP));
     size = *(valuesLower + *(getRegs(context) + REG_A0));
   } else {
@@ -6467,7 +6473,7 @@ void symbolic_confine_mul() {
 void symbolic_do_mul() {
   if (rd != REG_ZR) {
     // semantics of mul
-    // TODO: check if vipsburger
+    forcePrecise(currentContext, rs1, rs2);
     setLower(getLower(rs1) * getLower(rs2));
     setUpper(getUpper(rs1) * getUpper(rs2));
   }
@@ -6507,6 +6513,7 @@ void symbolic_do_divu() {
     if (getLower(rs2) != 0) {
       if (rd != REG_ZR) {
         // semantics of divu
+        forcePrecise(currentContext, rs1, rs2);
         setLower(getLower(rs1) / getLower(rs2));
         setUpper(getUpper(rs1) / getUpper(rs2));
       }
@@ -6547,6 +6554,7 @@ void symbolic_do_remu() {
     if (getLower(rs2) != 0) {
       if (rd != REG_ZR) {
         // semantics of remu
+        forcePrecise(currentContext, rs1, rs2);
         setLower(getLower(rs1) % getLower(rs2));
         setUpper(getUpper(rs1) % getUpper(rs2));
       }
@@ -6604,7 +6612,7 @@ void symbolic_do_sltu() {
 
   invalid = 0;
 
-  // TODO: symbolic semantics
+  // sTODO: symbolic semantics
   if (getLower(rs1) != getUpper(rs1))
     if (getLower(rs2) != getUpper(rs2))
       invalid = 1;
@@ -6706,7 +6714,7 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
-  concretenessCheck(currentContext, rs1);
+  forceConcrete(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6728,7 +6736,7 @@ uint64_t symbolic_do_ld() {
 
   // load double word
 
-  concretenessCheck(currentContext, rs1);
+  forceConcrete(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
@@ -6852,7 +6860,7 @@ void record_sd() {
 void symbolic_record_sd_before() {
   uint64_t vaddr;
 
-  concretenessCheck(currentContext, rs1);
+  forceConcrete(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6863,7 +6871,7 @@ void symbolic_record_sd_before() {
 void symbolic_record_sd_after() {
   uint64_t vaddr;
 
-  concretenessCheck(currentContext, rs1);
+  forceConcrete(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -6879,7 +6887,7 @@ uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
 
-  concretenessCheck(currentContext, rs1);
+  forceConcrete(currentContext, rs1);
   vaddr = getLower(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
@@ -7166,6 +7174,7 @@ void symbolic_do_jalr() {
     pc = leftShift(rightShift(getLower(rs1) + imm, 1), 1);
   else {
     // slow path: first prepare jump, then link, just in case rd == rs1
+    forceConcrete(currentContext, rs1);
 
     // prepare jump with LSB reset
     next_pc = leftShift(rightShift(getLower(rs1) + imm, 1), 1);
@@ -9016,12 +9025,7 @@ void symbolic_prepare_registers(uint64_t* context) {
   }
 }
 
-void symbolic_confine() {
-
-}
-
-
-void concretenessCheck(uint64_t* context, uint64_t reg) {
+void forceConcrete(uint64_t* context, uint64_t reg) {
   uint64_t lower;
   uint64_t upper;
 
@@ -9029,36 +9033,32 @@ void concretenessCheck(uint64_t* context, uint64_t reg) {
   upper = *(valuesUpper + *(getRegs(context) + reg));
 
   if (lower != upper) {
-    print((uint64_t*) "values [");
-    printInteger(lower);
-    print((uint64_t*) ",");
-    printInteger(upper);
-    print((uint64_t*) "] in register ");
-    printRegister(reg);
+    print((uint64_t*) "values in ");
+    printRegisterValue(reg);
     print((uint64_t*) " have to be concrete");
     println();
     exit(EXITCODE_BADARGUMENTS);
   }
 }
 
-void validIntervalCheck(uint64_t reg) {
-  uint64_t lower;
-  uint64_t upper;
-
-  lower = getLower(reg);
-  upper = getUpper(reg);
-
-  if (lower > upper) {
-    print((uint64_t*) "values [");
-    printInteger(lower);
-    print((uint64_t*) ",");
-    printInteger(upper);
-    print((uint64_t*) "] in register ");
-    printRegister(reg);
-    print((uint64_t*) " are not a valid interval");
-    println();
-    exit(EXITCODE_BADARGUMENTS);
+void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
+  // check if at least one is concrete
+  if (isConcrete(context, rs1) == 0) {
+    if (isConcrete(context, rs2) == 0) {
+      print((uint64_t*) "execution imprecise at pc= ");
+      printHexadecimal(pc, 0);
+      print((uint64_t*) " with ");
+      printRegisterValue(reg1);
+      print((uint64_t*) " ");
+      printRegisterValue(reg2);
+      println();
+      throwException(EXCEPTION_IMPRECISE, 0);
+    }
   }
+}
+
+uint64_t isConcrete(uint64_t* context, uint64_t reg) {
+  return *(valuesLower + *(getRegs(context) + reg)) == *(valuesUpper + *(getRegs(context) + reg));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
