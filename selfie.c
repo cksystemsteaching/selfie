@@ -1003,6 +1003,7 @@ void print_lui_before();
 void print_lui_after();
 void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
+void symbolic_confine_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 
@@ -1013,25 +1014,32 @@ void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
 void symbolic_do_addi();
+void symbolic_confine_addi();
 void do_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void symbolic_do_add();
+void symbolic_confine_add();
 void do_add();
 void symbolic_do_sub();
+void symbolic_confine_sub();
 void do_sub();
 void symbolic_do_mul();
+void symbolic_confine_mul();
 void do_mul();
 
 void record_divu_remu();
 void symbolic_do_divu();
+void symbolic_confine_divu();
 void do_divu();
 void symbolic_do_remu();
+void symbolic_confine_remu();
 void do_remu();
 
 void symbolic_do_sltu();
+void symbolic_confine_sltu();
 void do_sltu();
 
 void     print_ld();
@@ -1039,6 +1047,7 @@ void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
 uint64_t symbolic_do_ld();
+uint64_t symbolic_confine_ld();
 uint64_t do_ld();
 
 void     print_sd();
@@ -1046,6 +1055,7 @@ void     print_sd_before();
 void     print_sd_after(uint64_t vaddr);
 void     record_sd();
 uint64_t symbolic_do_sd();
+uint64_t symbolic_confine_sd();
 uint64_t do_sd();
 void     undo_sd();
 
@@ -1056,17 +1066,20 @@ void record_beq();
 void symbolic_record_beq_before();
 void symbolic_record_beq_after();
 void symbolic_do_beq();
+void symbolic_confine_beq();
 void do_beq();
 
 void print_jal();
 void print_jal_before();
 void print_jal_jalr_after();
 void symbolic_do_jal();
+void symbolic_confine_jal();
 void do_jal();
 
 void print_jalr();
 void print_jalr_before();
 void symbolic_do_jalr();
+void symbolic_confine_jalr();
 void do_jalr();
 
 void print_ecall();
@@ -1076,6 +1089,7 @@ void record_ecall();
 void symbolic_record_ecall_before();
 void symbolic_record_ecall_after();
 void symbolic_do_ecall();
+void symbolic_confine_ecall();
 void do_ecall();
 void undo_ecall();
 
@@ -1120,7 +1134,8 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_TRACELIMIT         = 6;
-uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 7;
+uint64_t EXCEPTION_SYMBOLICBRANCH     = 7;
+uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 8;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1142,6 +1157,7 @@ uint64_t execute     = 0; // flag for executing code
 uint64_t record      = 0; // flag for recording code execution
 uint64_t undo        = 0; // flag for undoing code execution
 uint64_t redo        = 0; // flag for redoing code execution
+uint64_t confine     = 0; // flag for confining symbolic values backwards
 uint64_t disassemble = 0; // flag for disassembling code
 uint64_t symbolic    = 0; // flag for symbolic code execution
 
@@ -1192,6 +1208,7 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_TRACELIMIT)         = (uint64_t) "tracelimit reached";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICBRANCH)     = (uint64_t) "symbolic branch undecidable";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1449,7 +1466,7 @@ void symbolic_prepare_registers(uint64_t* context);
 
 uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead);
 
-void concretenessCheck(uint64_t* context, uint64_t reg);
+void symbolic_confine();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -6272,6 +6289,10 @@ void sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after() {
   updateRegState(rd, tc);
 }
 
+void symbolic_confine_lui() {
+
+}
+
 void symbolic_do_lui() {
   // load upper immediate
 
@@ -6334,6 +6355,10 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
   printRegisterTc(rd);
 }
 
+void symbolic_confine_addi() {
+
+}
+
 void symbolic_do_addi() {
   // add immediate
 
@@ -6383,6 +6408,10 @@ void print_add_sub_mul_divu_remu_sltu_before() {
   printRegisterTc(rd);
 }
 
+void symbolic_confine_add() {
+
+}
+
 void symbolic_do_add() {
   if (rd != REG_ZR) {
     // semantics of add
@@ -6405,6 +6434,10 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
+void symbolic_confine_sub() {
+
+}
+
 void symbolic_do_sub() {
   if (rd != REG_ZR) {
     // semantics of sub
@@ -6425,6 +6458,10 @@ void do_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
+}
+
+void symbolic_confine_mul() {
+
 }
 
 void symbolic_do_mul() {
@@ -6457,6 +6494,10 @@ void do_mul() {
 void record_divu_remu() {
   // record even for division by zero
   recordState(*(registers + rd));
+}
+
+void symbolic_confine_divu() {
+
 }
 
 void symbolic_do_divu() {
@@ -6495,6 +6536,10 @@ void do_divu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
+void symbolic_confine_remu() {
+
+}
+
 void symbolic_do_remu() {
   // remainder unsigned
 
@@ -6530,6 +6575,28 @@ void do_remu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
+void symbolic_confine_sltu() {
+  uint64_t invalid;
+
+  invalid = 0;
+
+  if (getLower(rd) == getUpper(rd)) {
+    // case: [0, 0]
+    if (getLower(rd) == 0) {
+      if (getUpper(rs2) >= getLower(rs1))
+        // setUpper(rs2, getLower(rs1) - 1);
+
+    } else {
+      // case: [0, 1]
+      if (getUpper(rs1) >= getLower(rs2))
+        // setUpper(rs1, getLower(rs2) - 1);
+    }
+
+  } else {
+    // case: [0, 1]
+  }
+}
+
 void symbolic_do_sltu() {
   // set on less than unsigned
 
@@ -6546,11 +6613,16 @@ void symbolic_do_sltu() {
     if (rd != REG_ZR) {
       // semantics of sltu
       if (getUpper(rs1) < getLower(rs2))
-        setConcrete(1);
-      else
-        setConcrete(0);
+        setConcrete(tc, 1);
+      else if (getLower(rs1) >= getUpper(rs2))
+        setConcrete(tc, 0);
+      else {
+        setLower(tc, 0);
+        setUpper(tc, 1);
+      }
     }
-  }
+  } else
+    throwException(EXITCODE_BADARGUMENTS, 0);
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6644,6 +6716,10 @@ void symbolic_record_ld_before() {
 
 void symbolic_record_ld_after() {
   updateRegState(rd, tc);
+}
+
+uint64_t symbolic_confine_ld() {
+
 }
 
 uint64_t symbolic_do_ld() {
@@ -6795,6 +6871,10 @@ void symbolic_record_sd_after() {
       updateMemState(vaddr, tc);
 }
 
+uint64_t symbolic_confine_sd () {
+
+}
+
 uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
@@ -6903,15 +6983,25 @@ void symbolic_record_beq_after() {
   updateRegState(REG_ZR, 0);
 }
 
+void symbolic_confine_beq() {
+
+}
+
 void symbolic_do_beq() {
   // branch on equal
 
   // semantics of beq
   // TODO: symbolic semantics
-  if (getLower(rs1) == getLower(rs2))
-    pc = pc + imm;
-  else
-    pc = pc + INSTRUCTIONSIZE;
+  if (getLower(rs1) == getUpper(rs1)) {
+    if (getLower(rs1) == getLower(rs2))
+      pc = pc + imm;
+    else
+      pc = pc + INSTRUCTIONSIZE;
+
+  } else {
+    // Always false/true? setConcrete(1);
+    throwException(EXCEPTION_SYMBOLICBRANCH, 0);
+  }
 
   ic_beq = ic_beq + 1;
 }
@@ -6959,6 +7049,10 @@ void print_jal_jalr_after() {
     printRegisterHexadecimal(rd);
   }
   printRegisterTc(rd);
+}
+
+void symbolic_confine_jal() {
+
 }
 
 void symbolic_do_jal() {
@@ -7058,6 +7152,10 @@ void print_jalr_before() {
   printRegisterTc(rd);
 }
 
+void symbolic_confine_jalr() {
+
+}
+
 void symbolic_do_jalr() {
   uint64_t next_pc;
 
@@ -7135,6 +7233,10 @@ void symbolic_record_ecall_before() {
 
 void symbolic_record_ecall_after() {
   updateRegState(REG_ZR, 0);
+}
+
+void symbolic_confine_ecall() {
+
 }
 
 void symbolic_do_ecall() {
@@ -8914,12 +9016,17 @@ void symbolic_prepare_registers(uint64_t* context) {
   }
 }
 
+void symbolic_confine() {
+
+}
+
+
 void concretenessCheck(uint64_t* context, uint64_t reg) {
   uint64_t lower;
   uint64_t upper;
 
   lower = *(valuesLower + *(getRegs(context) + reg));
-  upper = *(valuesLower + *(getRegs(context) + reg));
+  upper = *(valuesUpper + *(getRegs(context) + reg));
 
   if (lower != upper) {
     print((uint64_t*) "values [");
@@ -8929,6 +9036,26 @@ void concretenessCheck(uint64_t* context, uint64_t reg) {
     print((uint64_t*) "] in register ");
     printRegister(reg);
     print((uint64_t*) " have to be concrete");
+    println();
+    exit(EXITCODE_BADARGUMENTS);
+  }
+}
+
+void validIntervalCheck(uint64_t reg) {
+  uint64_t lower;
+  uint64_t upper;
+
+  lower = getLower(reg);
+  upper = getUpper(reg);
+
+  if (lower > upper) {
+    print((uint64_t*) "values [");
+    printInteger(lower);
+    print((uint64_t*) ",");
+    printInteger(upper);
+    print((uint64_t*) "] in register ");
+    printRegister(reg);
+    print((uint64_t*) " are not a valid interval");
     println();
     exit(EXITCODE_BADARGUMENTS);
   }
