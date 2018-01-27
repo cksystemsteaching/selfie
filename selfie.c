@@ -1474,6 +1474,9 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 
 uint64_t isConcrete(uint64_t* context, uint64_t reg);
 
+void constraintSLTU(uint64_t sltTc, uint64_t branch);
+uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t redundantIs = 0; // number of redundant instructions
@@ -6607,7 +6610,8 @@ void symbolic_confine_sltu() {
 
 void symbolic_do_sltu() {
   // set on less than unsigned
-
+  // assert: was compiled as true smaller/greater than expression
+  // sTODO: support all comparisons
   forcePrecise(currentContext, rs1, rs2);
 
   if (rd != REG_ZR) {
@@ -6987,9 +6991,14 @@ void symbolic_confine_beq() {
 
 void symbolic_do_beq() {
   // branch on equal
+  uint64_t branch;
+  uint64_t sltuTc;
+
+  // allways take TRUE / FALSE branch
+  branch = 1;
 
   // semantics of beq
-  // TODO: symbolic semantics
+  // sTODO: symbolic semantics - done (quite inefficient)
   if (getLower(rs1) == getUpper(rs1)) {
     if (getLower(rs1) == getLower(rs2))
       pc = pc + imm;
@@ -6997,8 +7006,17 @@ void symbolic_do_beq() {
       pc = pc + INSTRUCTIONSIZE;
 
   } else {
-    // Always false/true? setConcrete(1);
-    throwException(EXCEPTION_SYMBOLICBRANCH, 0);
+    // assert: rs2 == $zero
+    // assert: getLower(rs1) == 0 && getUppder(rs1) == 1
+
+    sltuTc = *(registers + rs1);
+
+    constraintSLTU(sltuTc, branch);
+    // inverted semantics!
+    if (branch)
+      pc = pc + INSTRUCTIONSIZE;
+    else
+      pc = pc + imm;
   }
 
   ic_beq = ic_beq + 1;
@@ -7343,7 +7361,7 @@ void printRegisterValue(uint64_t r) {
 void printRegisterTc(uint64_t r) {
   if (symbolic) {
     print((uint64_t*) ",tc:");
-    printInteger(*(registers + rd));
+    printInteger(*(registers + r));
   }
 }
 
@@ -9049,6 +9067,93 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
 
 uint64_t isConcrete(uint64_t* context, uint64_t reg) {
   return *(valuesLower + *(getRegs(context) + reg)) == *(valuesUpper + *(getRegs(context) + reg));
+}
+
+// constraints whatever happend at the given sltu instruction (tc)
+// TRUE or FALSE according to branch
+void constraintSLTU(uint64_t sltTc, uint64_t branch) {
+  uint64_t r1;
+  uint64_t r2;
+  uint64_t immediate;
+  uint64_t mem;
+  uint64_t symReg;
+  uint64_t instr;
+  uint64_t sltPc;
+  uint64_t ldPc;
+  uint64_t vaddr;
+  uint64_t addrReg;
+
+  // get pc from slt instruction
+  sltPc = *(pcs + sltTc);
+  if (sltPc % REGISTERSIZE == 0)
+    instr = getLowWord(loadVirtualMemory(pt, sltPc));
+  else
+    instr = getHighWord(loadVirtualMemory(pt, sltPc - INSTRUCTIONSIZE));
+  
+  // get rs1, rs2 from slt instruction
+  r1 = getTcFromRegFromPast(getRS1(instr), sltPc);
+  r2 = getTcFromRegFromPast(getRS2(instr), sltPc);
+
+  // find out which operand was symbolic
+  if (*(valuesLower + r1) == *(valuesUpper + r1))
+    symReg = r2;
+  else if (*(valuesLower + r2) == *(valuesUpper + r2))
+    symReg = r1;
+  else // should not happen
+    exit(-1);
+
+  // find ld instruction from symbolic operand
+  ldPc = *(pcs + symReg);
+  if (ldPc % REGISTERSIZE == 0)
+    instr = getLowWord(loadVirtualMemory(pt, ldPc));
+  else
+    instr = getHighWord(loadVirtualMemory(pt, ldPc - INSTRUCTIONSIZE));
+
+  // verify that it was a load
+  if (getOpcode(instr) == OP_LD) {
+    // get rs1, imm from ld instruction
+    addrReg = getTcFromRegFromPast(getRS1(instr), ldPc);
+    immediate = getImmediateIFormat(instr);
+
+    // assert: *(valuesLower + addrReg) == *(valuesUpper + addrReg)
+    // find memory tc of symbolic operand
+    vaddr = *(valuesLower + addrReg) + immediate;
+    mem = loadVirtualMemory(getPT(currentContext), vaddr);
+
+    // constraint operand
+    if (symReg == r1) { // symReg < r2
+      if (branch) // symReg < r2
+        *(valuesUpper + mem) = *(valuesLower + r2) - 1;
+      else // symReg >= r2
+        *(valuesLower + mem) = *(valuesUpper + r2);
+    } else { // r1 < symReg
+      if (branch) // r1 < symReg
+        *(valuesLower + mem) = *(valuesUpper + r1) + 1;
+      else // r1 >= symReg
+        *(valuesUpper + mem) = *(valuesLower + r1);
+    }
+  } else {
+    throwException(EXCEPTION_SYMBOLICBRANCH, 0); // cannot constraint
+  }
+
+  //printTrace();
+}
+
+// takes a reg and finds the tc with the most recent change
+// relative to the given pc
+uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc) {
+  uint64_t invTc;
+  uint64_t oldPc;
+
+  invTc = *(registers + reg);
+  oldPc = *(pcs + invTc);
+
+  while (oldPc >= pc) {
+    invTc = *(tcs + invTc); // get prev tc
+    oldPc = *(pcs + invTc); // get coresponding pc
+    if (invTc <= 0) return -1;
+  }
+  return invTc;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
