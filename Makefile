@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS := -w -g -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
+CFLAGS := -w -o3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
@@ -33,7 +33,9 @@ sat: selfie
 
 # Test vipster
 vipster: selfie
-	./selfie -c traceex.c -v 4
+	./selfie -c testfiles/traceex.c -v 4
+	./selfie -c testfiles/vipstest.c -v 4
+	./selfie -c testfiles/constraint.c -v 4
 
 # Test everything
 all: test sat vipster
