@@ -1467,8 +1467,6 @@ void symbolic_prepare_registers(uint64_t* context);
 
 uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead);
 
-void symbolic_confine();
-
 void forceConcrete(uint64_t* context, uint64_t reg);
 void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 
@@ -1483,11 +1481,14 @@ uint64_t redundantIs = 0; // number of redundant instructions
 
 // ---------------------------- TRACE API --------------------------
 
-uint64_t getLower(uint64_t reg)      { return *(valuesLower + *(registers + reg)); }
-uint64_t getUpper(uint64_t reg)      { return *(valuesUpper + *(registers + reg)); }
-void     setLower(uint64_t value)    { *(valuesLower + tc) = value; }
-void     setUpper(uint64_t value)    { *(valuesUpper + tc) = value; }
-void     setConcrete(uint64_t value) { setLower(value); setUpper(value); }
+uint64_t getLower(uint64_t tc)         { return *(valuesLower + tc); }
+uint64_t getUpper(uint64_t tc)         { return *(valuesUpper + tc); }
+uint64_t getLowerFromReg(uint64_t reg) { return *(valuesLower + *(registers + reg)); }
+uint64_t getUpperFromReg(uint64_t reg) { return *(valuesUpper + *(registers + reg)); }
+
+void setLower(uint64_t value, uint64_t tc) { *(valuesLower + tc) = value; }
+void setUpper(uint64_t value, uint64_t tc) { *(valuesUpper + tc) = value; }
+void setConcrete(uint64_t value)           { setLower(value, tc); setUpper(value, tc); }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5374,7 +5375,7 @@ void emitExit() {
 void implementExit(uint64_t* context) {
   if (symbolic)
     // legacy (only use lower bound)
-    setExitCode(context, *(valuesLower + *(getRegs(context) + REG_A0)));
+    setExitCode(context, getLower(*(getRegs(context) + REG_A0)));
   else
     setExitCode(context, *(getRegs(context) + REG_A0));
 
@@ -5384,9 +5385,9 @@ void implementExit(uint64_t* context) {
   print((uint64_t*) " exiting with exit code ");
   if (symbolic) {
     print((uint64_t*) "[");
-    printInteger(signExtend(*(valuesLower + *(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
+    printInteger(signExtend(getLower(*(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
     print((uint64_t*) ",");
-    printInteger(signExtend(*(valuesUpper + *(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
+    printInteger(signExtend(getUpper(*(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
     print((uint64_t*) "]");
   } else
     printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
@@ -5437,9 +5438,9 @@ void implementRead(uint64_t* context) {
     forceConcrete(context, REG_A1);
     forceConcrete(context, REG_A2);
 
-    fd      = *(valuesLower + *(getRegs(context) + REG_A0));
-    vbuffer = *(valuesLower + *(getRegs(context) + REG_A1));
-    size    = *(valuesLower + *(getRegs(context) + REG_A2));
+    fd      = getLower(*(getRegs(context) + REG_A0));
+    vbuffer = getLower(*(getRegs(context) + REG_A1));
+    size    = getLower(*(getRegs(context) + REG_A2));
   } else {
     fd      = *(getRegs(context) + REG_A0);
     vbuffer = *(getRegs(context) + REG_A1);
@@ -5550,7 +5551,7 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
   // ==== test purposes ====
 
   // r = signExtend(read(fd, valuesLower + tc, bytesToRead), SYSCALL_BITWIDTH);
-  // setUpper(*(valuesLower + tc));
+  // setUpper(getLower(tc), tc);
   // storeVirtualMemory(getPT(context), vbuffer, tc);
 
   // incrementTc();
@@ -5562,10 +5563,10 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
   upperBound = UINT64_MAX;
 
   if (bytesToRead < SIZEOFUINT64)
-    upperBound = twoToThePowerOf(bytesToRead*8) - 1;
+    upperBound = twoToThePowerOf(bytesToRead * 8) - 1;
 
-  setLower(0);
-  setUpper(upperBound);
+  setLower(0, tc);
+  setUpper(upperBound, tc);
   storeVirtualMemory(getPT(context), vbuffer, tc);
 
   incrementTc();
@@ -5610,9 +5611,9 @@ void implementWrite(uint64_t* context) {
     forceConcrete(context, REG_A1);
     forceConcrete(context, REG_A2);
 
-    fd      = *(valuesLower + *(getRegs(context) + REG_A0));
-    vbuffer = *(valuesLower + *(getRegs(context) + REG_A1));
-    size    = *(valuesLower + *(getRegs(context) + REG_A2));
+    fd      = getLower(*(getRegs(context) + REG_A0));
+    vbuffer = getLower(*(getRegs(context) + REG_A1));
+    size    = getLower(*(getRegs(context) + REG_A2));
   } else {
     fd      = *(getRegs(context) + REG_A0);
     vbuffer = *(getRegs(context) + REG_A1);
@@ -5748,7 +5749,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
         pstring = tlb(table, vstring);
 
         if (symbolic)
-          *(s + i) = *(valuesLower + loadPhysicalMemory(pstring));
+          *(s + i) = getLower(loadPhysicalMemory(pstring));
         else
           *(s + i) = loadPhysicalMemory(pstring);
 
@@ -5809,9 +5810,9 @@ void implementOpen(uint64_t* context) {
     forceConcrete(context, REG_A1);
     forceConcrete(context, REG_A2);
 
-    vfilename = *(valuesLower + *(getRegs(context) + REG_A0));
-    flags     = *(valuesLower + *(getRegs(context) + REG_A1));
-    mode      = *(valuesLower + *(getRegs(context) + REG_A2));
+    vfilename = getLower(*(getRegs(context) + REG_A0));
+    flags     = getLower(*(getRegs(context) + REG_A1));
+    mode      = getLower(*(getRegs(context) + REG_A2));
   } else {
     vfilename = *(getRegs(context) + REG_A0);
     flags     = *(getRegs(context) + REG_A1);
@@ -5887,8 +5888,8 @@ uint64_t implementMalloc(uint64_t* context) {
 
   if (symbolic) {
     forceConcrete(context, REG_A0);
-    SP   = *(valuesLower + *(getRegs(context) + REG_SP));
-    size = *(valuesLower + *(getRegs(context) + REG_A0));
+    SP   = getLower(*(getRegs(context) + REG_SP));
+    size = getLower(*(getRegs(context) + REG_A0));
   } else {
     SP   = *(getRegs(context) + REG_SP);
     size = *(getRegs(context) + REG_A0);
@@ -6140,8 +6141,8 @@ void updateRegState(uint64_t reg, uint64_t value) {
   // ignore redundancy check for $a1, fails if
   // argument is a concrete pointer (ecall: read/write)
   if (reg != REG_A1) {
-    beforeLower = getLower(reg);
-    beforeUpper = getUpper(reg);
+    beforeLower = getLowerFromReg(reg);
+    beforeUpper = getUpperFromReg(reg);
   }
 
   *(registers + reg) = value;
@@ -6150,8 +6151,8 @@ void updateRegState(uint64_t reg, uint64_t value) {
   // redundancy check
   if (reg != REG_ZR)
     if (reg != REG_A1)
-      if (beforeLower == getLower(reg))
-        if (beforeUpper == getUpper(reg))
+      if (beforeLower == getLowerFromReg(reg))
+        if (beforeUpper == getUpperFromReg(reg))
           redundantIs = redundantIs + 1;
 }
 
@@ -6159,15 +6160,15 @@ void updateMemState(uint64_t vaddr, uint64_t value) {
   uint64_t beforeLower;
   uint64_t beforeUpper;
 
-  beforeLower = *(valuesLower + loadVirtualMemory(pt, vaddr));
-  beforeUpper = *(valuesUpper + loadVirtualMemory(pt, vaddr));
+  beforeLower = getLower(loadVirtualMemory(pt, vaddr));
+  beforeUpper = getUpper(loadVirtualMemory(pt, vaddr));
 
   storeVirtualMemory(pt, vaddr, value);
   incrementTc();
 
   // redundancy check
-  if (beforeLower == *(valuesLower + value))
-    if (beforeUpper == *(valuesUpper + value))
+  if (beforeLower == getLower(value))
+    if (beforeUpper == getUpper(value))
       redundantIs = redundantIs + 1;
 }
 
@@ -6373,8 +6374,8 @@ void symbolic_do_addi() {
 
   if (rd != REG_ZR) {
     // semantics of addi
-    setLower(getLower(rs1) + imm);
-    setUpper(getUpper(rs1) + imm);
+    setLower(getLowerFromReg(rs1) + imm, tc);
+    setUpper(getUpperFromReg(rs1) + imm, tc);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6424,8 +6425,8 @@ void symbolic_confine_add() {
 void symbolic_do_add() {
   if (rd != REG_ZR) {
     // semantics of add
-    setLower(getLower(rs1) + getLower(rs2));
-    setUpper(getUpper(rs1) + getUpper(rs2));
+    setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6450,8 +6451,8 @@ void symbolic_confine_sub() {
 void symbolic_do_sub() {
   if (rd != REG_ZR) {
     // semantics of sub
-    setLower(getLower(rs1) - getLower(rs2));
-    setUpper(getUpper(rs1) - getUpper(rs2));
+    setLower(getLowerFromReg(rs1) - getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) - getUpperFromReg(rs2), tc);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6477,8 +6478,8 @@ void symbolic_do_mul() {
   if (rd != REG_ZR) {
     // semantics of mul
     forcePrecise(currentContext, rs1, rs2);
-    setLower(getLower(rs1) * getLower(rs2));
-    setUpper(getUpper(rs1) * getUpper(rs2));
+    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
   }
 
   // TODO: 128-bit resolution currently not supported
@@ -6512,13 +6513,13 @@ void symbolic_confine_divu() {
 void symbolic_do_divu() {
   // division unsigned
 
-  if (getLower(rs2) == getUpper(rs2)) {
-    if (getLower(rs2) != 0) {
+  if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
+    if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
         // semantics of divu
         forcePrecise(currentContext, rs1, rs2);
-        setLower(getLower(rs1) / getLower(rs2));
-        setUpper(getUpper(rs1) / getUpper(rs2));
+        setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -6553,13 +6554,13 @@ void symbolic_confine_remu() {
 void symbolic_do_remu() {
   // remainder unsigned
 
-  if (getLower(rs2) == getUpper(rs2)) {
-    if (getLower(rs2) != 0) {
+  if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
+    if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
         // semantics of remu
         forcePrecise(currentContext, rs1, rs2);
-        setLower(getLower(rs1) % getLower(rs2));
-        setUpper(getUpper(rs1) % getUpper(rs2));
+        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -6591,16 +6592,16 @@ void symbolic_confine_sltu() {
 
   // invalid = 0;
 
-  // if (getLower(rd) == getUpper(rd)) {
+  // if (getLowerFromReg(rd) == getUpperFromReg(rd)) {
   //   // case: [0, 0]
-  //   if (getLower(rd) == 0) {
-  //     if (getUpper(rs2) >= getLower(rs1))
-  //       // setUpper(rs2, getLower(rs1) - 1);
+  //   if (getLowerFromReg(rd) == 0) {
+  //     if (getUpperFromReg(rs2) >= getLowerFromReg(rs1))
+  //       // setUpper(rs2, getLowerFromReg(rs1) - 1, tc);
 
   //   } else {
   //     // case: [0, 1]
-  //     if (getUpper(rs1) >= getLower(rs2))
-  //       // setUpper(rs1, getLower(rs2) - 1);
+  //     if (getUpperFromReg(rs1) >= getLowerFromReg(rs2))
+  //       // setUpper(rs1, getLowerFromReg(rs2) - 1, tc);
   //   }
 
   // } else {
@@ -6616,13 +6617,13 @@ void symbolic_do_sltu() {
 
   if (rd != REG_ZR) {
     // semantics of sltu
-    if (getUpper(rs1) < getLower(rs2))
+    if (getUpperFromReg(rs1) < getLowerFromReg(rs2))
       setConcrete(1);
-    else if (getLower(rs1) >= getUpper(rs2))
+    else if (getLowerFromReg(rs1) >= getUpperFromReg(rs2))
       setConcrete(0);
     else {
-      setLower(0);
-      setUpper(1);
+      setLower(0, tc);
+      setUpper(1, tc);
     }
   }
 
@@ -6663,7 +6664,7 @@ void print_ld_before() {
   uint64_t vaddr;
 
   if (symbolic)
-    vaddr = getLower(rs1) + imm;
+    vaddr = getLowerFromReg(rs1) + imm;
   else
     vaddr = *(registers + rs1) + imm;
 
@@ -6709,7 +6710,7 @@ void symbolic_record_ld_before() {
   uint64_t vaddr;
 
   forceConcrete(currentContext, rs1);
-  vaddr = getLower(rs1) + imm;
+  vaddr = getLowerFromReg(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
@@ -6731,14 +6732,14 @@ uint64_t symbolic_do_ld() {
   // load double word
 
   forceConcrete(currentContext, rs1);
-  vaddr = getLower(rs1) + imm;
+  vaddr = getLowerFromReg(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
         // semantics of ld
-        setLower(*(valuesLower + loadVirtualMemory(pt, vaddr)));
-        setUpper(*(valuesUpper + loadVirtualMemory(pt, vaddr)));
+        setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+        setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -6805,7 +6806,7 @@ void print_sd_before() {
   uint64_t vaddr;
 
   if (symbolic)
-    vaddr = getLower(rs1) + imm;
+    vaddr = getLowerFromReg(rs1) + imm;
   else
     vaddr = *(registers + rs1) + imm;
 
@@ -6855,7 +6856,7 @@ void symbolic_record_sd_before() {
   uint64_t vaddr;
 
   forceConcrete(currentContext, rs1);
-  vaddr = getLower(rs1) + imm;
+  vaddr = getLowerFromReg(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
@@ -6866,7 +6867,7 @@ void symbolic_record_sd_after() {
   uint64_t vaddr;
 
   forceConcrete(currentContext, rs1);
-  vaddr = getLower(rs1) + imm;
+  vaddr = getLowerFromReg(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
@@ -6882,13 +6883,13 @@ uint64_t symbolic_do_sd() {
   uint64_t a;
 
   forceConcrete(currentContext, rs1);
-  vaddr = getLower(rs1) + imm;
+  vaddr = getLowerFromReg(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       // semantics of sd
-      setLower(getLower(rs2));
-      setUpper(getUpper(rs2));
+      setLower(getLowerFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rs2), tc);
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -6999,15 +7000,15 @@ void symbolic_do_beq() {
 
   // semantics of beq
   // sTODO: symbolic semantics - done (quite inefficient)
-  if (getLower(rs1) == getUpper(rs1)) {
-    if (getLower(rs1) == getLower(rs2))
+  if (getLowerFromReg(rs1) == getUpperFromReg(rs1)) {
+    if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
       pc = pc + imm;
     else
       pc = pc + INSTRUCTIONSIZE;
 
   } else {
     // assert: rs2 == $zero
-    // assert: getLower(rs1) == 0 && getUppder(rs1) == 1
+    // assert: getLowerFromReg(rs1) == 0 && getUppder(rs1) == 1
 
     sltuTc = *(registers + rs1);
 
@@ -7179,13 +7180,13 @@ void symbolic_do_jalr() {
 
   if (rd == REG_ZR)
     // fast path: just return by jumping rs1-relative with LSB reset
-    pc = leftShift(rightShift(getLower(rs1) + imm, 1), 1);
+    pc = leftShift(rightShift(getLowerFromReg(rs1) + imm, 1), 1);
   else {
     // slow path: first prepare jump, then link, just in case rd == rs1
     forceConcrete(currentContext, rs1);
 
     // prepare jump with LSB reset
-    next_pc = leftShift(rightShift(getLower(rs1) + imm, 1), 1);
+    next_pc = leftShift(rightShift(getLowerFromReg(rs1) + imm, 1), 1);
 
     // link to next instruction
     setConcrete(pc + INSTRUCTIONSIZE);
@@ -7261,7 +7262,7 @@ void symbolic_do_ecall() {
 
   ic_ecall = ic_ecall + 1;
 
-  if (getLower(REG_A7) == SYSCALL_SWITCH) {
+  if (getLowerFromReg(REG_A7) == SYSCALL_SWITCH) {
     print(selfieName);
     print((uint64_t*) ": switch during symbolic execution not supported");
     println();
@@ -7314,9 +7315,9 @@ void printRegisterHexadecimal(uint64_t r) {
 
   if (symbolic) {
     print((uint64_t*) "[");
-    printHexadecimal(getLower(r), 0);
+    printHexadecimal(getLowerFromReg(r), 0);
     print((uint64_t*) ",");
-    printHexadecimal(getUpper(r), 0);
+    printHexadecimal(getUpperFromReg(r), 0);
     print((uint64_t*) "]");
 
   } else
@@ -7345,9 +7346,9 @@ void printRegisterValue(uint64_t r) {
     print((uint64_t*) "=");
     if (symbolic) {
       print((uint64_t*) "[");
-      printInteger(getLower(r));
+      printInteger(getLowerFromReg(r));
       print((uint64_t*) ",");
-      printInteger(getUpper(r));
+      printInteger(getUpperFromReg(r));
       print((uint64_t*) "]");
     } else {
       printInteger(*(registers + r));
@@ -7369,18 +7370,18 @@ void printMemoryValue(uint64_t vaddr) {
   if (isSystemRegister(rd)) {
     if (symbolic) {
       print((uint64_t*) "[");
-      printHexadecimal(*(valuesLower + loadVirtualMemory(pt, vaddr)), 0);
+      printHexadecimal(getLower(loadVirtualMemory(pt, vaddr)), 0);
       print((uint64_t*) ",");
-      printHexadecimal(*(valuesUpper + loadVirtualMemory(pt, vaddr)), 0);
+      printHexadecimal(getUpper(loadVirtualMemory(pt, vaddr)), 0);
       print((uint64_t*) "]");
     } else
       printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
   } else {
     if (symbolic) {
       print((uint64_t*) "[");
-      printInteger(*(valuesLower + loadVirtualMemory(pt, vaddr)));
+      printInteger(getLower(loadVirtualMemory(pt, vaddr)));
       print((uint64_t*) ",");
-      printInteger(*(valuesUpper + loadVirtualMemory(pt, vaddr)));
+      printInteger(getUpper(loadVirtualMemory(pt, vaddr)));
       print((uint64_t*) "]");
     } else
       printInteger(loadVirtualMemory(pt, vaddr));
@@ -8041,9 +8042,9 @@ void printTrace() {
     print((uint64_t*) " value= ");
     printInteger(*(values + i));
     print((uint64_t*) " [");
-    printInteger(*(valuesLower + i));
+    printInteger(getLower(i));
     print((uint64_t*) ",");
-    printInteger(*(valuesUpper + i));
+    printInteger(getUpper(i));
     print((uint64_t*) "]");
     println();
 
@@ -8599,7 +8600,7 @@ uint64_t handleSystemCalls(uint64_t* context) {
   if (getException(context) == EXCEPTION_SYSCALL) {
 
     if (symbolic)
-      a7 = *(valuesLower + *(getRegs(context) + REG_A7));
+      a7 = getLower(*(getRegs(context) + REG_A7));
     else
       a7 = *(getRegs(context) + REG_A7);
 
@@ -9037,8 +9038,8 @@ void forceConcrete(uint64_t* context, uint64_t reg) {
   uint64_t lower;
   uint64_t upper;
 
-  lower = *(valuesLower + *(getRegs(context) + reg));
-  upper = *(valuesUpper + *(getRegs(context) + reg));
+  lower = getLower(*(getRegs(context) + reg));
+  upper = getUpper(*(getRegs(context) + reg));
 
   if (lower != upper) {
     print((uint64_t*) "values in ");
@@ -9066,7 +9067,7 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
 }
 
 uint64_t isConcrete(uint64_t* context, uint64_t reg) {
-  return *(valuesLower + *(getRegs(context) + reg)) == *(valuesUpper + *(getRegs(context) + reg));
+  return getLower(*(getRegs(context) + reg)) == getUpper(*(getRegs(context) + reg));
 }
 
 // constraints whatever happend at the given sltu instruction (tc)
@@ -9089,15 +9090,15 @@ void constraintSLTU(uint64_t sltTc, uint64_t branch) {
     instr = getLowWord(loadVirtualMemory(pt, sltPc));
   else
     instr = getHighWord(loadVirtualMemory(pt, sltPc - INSTRUCTIONSIZE));
-  
+
   // get rs1, rs2 from slt instruction
   r1 = getTcFromRegFromPast(getRS1(instr), sltPc);
   r2 = getTcFromRegFromPast(getRS2(instr), sltPc);
 
   // find out which operand was symbolic
-  if (*(valuesLower + r1) == *(valuesUpper + r1))
+  if (getLower(r1) == getUpper(r1))
     symReg = r2;
-  else if (*(valuesLower + r2) == *(valuesUpper + r2))
+  else if (getLower(r2) == getUpper(r2))
     symReg = r1;
   else // should not happen
     exit(-1);
@@ -9115,22 +9116,22 @@ void constraintSLTU(uint64_t sltTc, uint64_t branch) {
     addrReg = getTcFromRegFromPast(getRS1(instr), ldPc);
     immediate = getImmediateIFormat(instr);
 
-    // assert: *(valuesLower + addrReg) == *(valuesUpper + addrReg)
+    // assert: getLower(addrReg) == getUpper(addrReg)
     // find memory tc of symbolic operand
-    vaddr = *(valuesLower + addrReg) + immediate;
+    vaddr = getLower(addrReg) + immediate;
     mem = loadVirtualMemory(getPT(currentContext), vaddr);
 
     // constraint operand
     if (symReg == r1) { // symReg < r2
       if (branch) // symReg < r2
-        *(valuesUpper + mem) = *(valuesLower + r2) - 1;
+        setUpper(getLower(r2) - 1, mem);
       else // symReg >= r2
-        *(valuesLower + mem) = *(valuesUpper + r2);
+        setLower(getUpper(r2), mem);
     } else { // r1 < symReg
       if (branch) // r1 < symReg
-        *(valuesLower + mem) = *(valuesUpper + r1) + 1;
+        setLower(getUpper(r1) + 1, mem);
       else // r1 >= symReg
-        *(valuesUpper + mem) = *(valuesLower + r1);
+        setUpper(getLower(r1), mem);
     }
   } else {
     throwException(EXCEPTION_SYMBOLICBRANCH, 0); // cannot constraint
