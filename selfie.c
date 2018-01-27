@@ -1471,8 +1471,10 @@ void forceConcrete(uint64_t* context, uint64_t reg);
 void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 
 uint64_t isConcrete(uint64_t* context, uint64_t reg);
+uint64_t fetchFromTC(uint64_t tc);
 
-void constraintSLTU(uint64_t sltTc, uint64_t branch);
+void     constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
+void     constraintSLTU(uint64_t sltTc, uint64_t branch);
 uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -9070,6 +9072,36 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg) {
   return getLower(*(getRegs(context) + reg)) == getUpper(*(getRegs(context) + reg));
 }
 
+uint64_t fetchFromTC(uint64_t tc) {
+  uint64_t pc;
+
+  pc = *(pcs + tc);
+
+  if (pc % REGISTERSIZE == 0)
+    return getLowWord(loadVirtualMemory(pt, pc));
+  else
+    return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
+}
+
+void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
+  // assert:    v1 is symbolic
+  // semantics: constrain v1 by v2
+
+  // sTODO: enhance operators
+
+  if (operator == SYM_LT)
+    if (branch)
+      setUpper(getLower(v2) - 1, v1);
+    else
+      setLower(getUpper(v2), v1);
+
+  else if (operator == SYM_GT)
+    if (branch)
+      setLower(getUpper(v2) + 1, v1);
+    else
+      setUpper(getLower(v2), v1);
+}
+
 // constraints whatever happend at the given sltu instruction (tc)
 // TRUE or FALSE according to branch
 void constraintSLTU(uint64_t sltTc, uint64_t branch) {
@@ -9086,10 +9118,7 @@ void constraintSLTU(uint64_t sltTc, uint64_t branch) {
 
   // get pc from slt instruction
   sltPc = *(pcs + sltTc);
-  if (sltPc % REGISTERSIZE == 0)
-    instr = getLowWord(loadVirtualMemory(pt, sltPc));
-  else
-    instr = getHighWord(loadVirtualMemory(pt, sltPc - INSTRUCTIONSIZE));
+  instr = fetchFromTC(sltTc);
 
   // get rs1, rs2 from slt instruction
   r1 = getTcFromRegFromPast(getRS1(instr), sltPc);
@@ -9105,10 +9134,7 @@ void constraintSLTU(uint64_t sltTc, uint64_t branch) {
 
   // find ld instruction from symbolic operand
   ldPc = *(pcs + symReg);
-  if (ldPc % REGISTERSIZE == 0)
-    instr = getLowWord(loadVirtualMemory(pt, ldPc));
-  else
-    instr = getHighWord(loadVirtualMemory(pt, ldPc - INSTRUCTIONSIZE));
+  instr = fetchFromTC(symReg);
 
   // verify that it was a load
   if (getOpcode(instr) == OP_LD) {
@@ -9121,23 +9147,15 @@ void constraintSLTU(uint64_t sltTc, uint64_t branch) {
     vaddr = getLower(addrReg) + immediate;
     mem = loadVirtualMemory(getPT(currentContext), vaddr);
 
-    // constraint operand
-    if (symReg == r1) { // symReg < r2
-      if (branch) // symReg < r2
-        setUpper(getLower(r2) - 1, mem);
-      else // symReg >= r2
-        setLower(getUpper(r2), mem);
-    } else { // r1 < symReg
-      if (branch) // r1 < symReg
-        setLower(getUpper(r1) + 1, mem);
-      else // r1 >= symReg
-        setUpper(getLower(r1), mem);
-    }
-  } else {
-    throwException(EXCEPTION_SYMBOLICBRANCH, 0); // cannot constraint
-  }
+    if (symReg == r1)
+      // symReg < r2
+      constrain(mem, r2, SYM_LT, branch);
+    else
+      // symReg > r1
+      constrain(mem, r1, SYM_GT, branch);
 
-  //printTrace();
+  } else
+    throwException(EXCEPTION_SYMBOLICBRANCH, 0); // cannot constrain
 }
 
 // takes a reg and finds the tc with the most recent change
