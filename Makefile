@@ -34,8 +34,8 @@ sat: selfie
 # Test vipster
 vipster: selfie
 	./selfie -c testfiles/traceex.c -v 4
-	./selfie -c testfiles/vipstest.c -v 4
-	./selfie -c testfiles/constraint.c -v 4
+#	./selfie -c testfiles/vipstest.c -v 4
+#	./selfie -c testfiles/constraint.c -v 4
 
 # Test everything
 all: test sat vipster

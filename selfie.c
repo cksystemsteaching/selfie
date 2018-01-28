@@ -1473,13 +1473,26 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t fetchFromTC(uint64_t tc);
 
-void     constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
+void checkSatisfiability(uint64_t tc);
+void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
+
+// ------------------ FORWARD CONSTRAINING APPROACH ----------------
+
 void     constraintSLTU(uint64_t sltTc, uint64_t branch);
 uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 
+// ----------------- BACKWARD CONSTRAINING APPROACH ----------------
+
+void symbolic_confine();
+void undoValues();
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t redundantIs = 0; // number of redundant instructions
+uint64_t btc    = 0;          // trace counter for backwards execution
+uint64_t branch = 1;          // always take TRUE branch for now
+
+uint64_t redundantIs       = 0; // number of redundant instructions
+uint64_t numberOfSymbolics = 0; // number of symbolic variables
 
 // ---------------------------- TRACE API --------------------------
 
@@ -5562,6 +5575,8 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
 
   // =======================
 
+  numberOfSymbolics = numberOfSymbolics + 1;
+
   upperBound = UINT64_MAX;
 
   if (bytesToRead < SIZEOFUINT64)
@@ -6177,11 +6192,9 @@ void updateMemState(uint64_t vaddr, uint64_t value) {
 void incrementTc() {
   tc = tc + 1;
 
-  if (symbolic) {
-    if (tc >= maxTraceLength) {
+  if (symbolic)
+    if (tc >= maxTraceLength)
       throwException(EXCEPTION_TRACELIMIT, 0);
-    }
-  }
 }
 
 void replayTrace() {
@@ -6368,7 +6381,23 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
 }
 
 void symbolic_confine_addi() {
+  if (rd == rs1) {
+    setLower(getLowerFromReg(rd) - imm, tc);
+    setUpper(getUpperFromReg(rd) - imm, tc);
+  } else
+    undoValues();
 
+  // sTODO: symbolic read?
+  if (rd == REG_A7) {
+    if (imm == SYSCALL_READ) {
+      // confining ends here?
+      checkSatisfiability(tc);
+      numberOfSymbolics = numberOfSymbolics - 1;
+
+      print("SYMBOLIC READ CALL REACHED");
+      println();
+    }
+  }
 }
 
 void symbolic_do_addi() {
@@ -6421,7 +6450,14 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void symbolic_confine_add() {
-
+  if (rd == rs1) {
+    setLower(getLowerFromReg(rd) - getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rd) - getUpperFromReg(rs2), tc);
+  } else if (rd == rs2) {
+    setLower(getLowerFromReg(rd) - getLowerFromReg(rs1), tc);
+    setUpper(getUpperFromReg(rd) - getUpperFromReg(rs1), tc);
+  } else
+    undoValues();
 }
 
 void symbolic_do_add() {
@@ -6590,25 +6626,30 @@ void do_remu() {
 }
 
 void symbolic_confine_sltu() {
-  // uint64_t invalid;
+  uint64_t sym_tc;
 
-  // invalid = 0;
+  // sTODO: adjust for <=, >=, ==, !=
 
-  // if (getLowerFromReg(rd) == getUpperFromReg(rd)) {
-  //   // case: [0, 0]
-  //   if (getLowerFromReg(rd) == 0) {
-  //     if (getUpperFromReg(rs2) >= getLowerFromReg(rs1))
-  //       // setUpper(rs2, getLowerFromReg(rs1) - 1, tc);
+  // [0,1]: symbolic
+  if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
+    undoValues();
 
-  //   } else {
-  //     // case: [0, 1]
-  //     if (getUpperFromReg(rs1) >= getLowerFromReg(rs2))
-  //       // setUpper(rs1, getLowerFromReg(rs2) - 1, tc);
-  //   }
+    // assert: current tc refers to symbolic values
+    sym_tc = tc;
 
-  // } else {
-  //   // case: [0, 1]
-  // }
+    if (rd == rs1)
+      // symbolic values < rs2
+      constrain(tc, *(registers + rs2), SYM_LT, branch);
+    else
+      // symbolic values > rs1
+      constrain(tc, *(registers + rs1), SYM_GT, branch);
+
+    checkSatisfiability(tc);
+
+  // [0,0] or [1,1]: concrete (symbolic value can neither
+  // be smaller than 0 nor greater than UINT64_MAX)
+  } else
+    undoValues();
 }
 
 void symbolic_do_sltu() {
@@ -6711,12 +6752,16 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
-  forceConcrete(currentContext, rs1);
-  vaddr = getLowerFromReg(rs1) + imm;
+  if (confine)
+    saveState(*(registers + rd));
+  else {
+    forceConcrete(currentContext, rs1);
+    vaddr = getLowerFromReg(rs1) + imm;
 
-  if (isValidVirtualAddress(vaddr))
-    if (isVirtualAddressMapped(pt, vaddr))
-      saveState(*(registers + rd));
+    if (isValidVirtualAddress(vaddr))
+      if (isVirtualAddressMapped(pt, vaddr))
+        saveState(*(registers + rd));
+  }
 }
 
 void symbolic_record_ld_after() {
@@ -6724,7 +6769,7 @@ void symbolic_record_ld_after() {
 }
 
 uint64_t symbolic_confine_ld() {
-
+  undoValues();
 }
 
 uint64_t symbolic_do_ld() {
@@ -6877,7 +6922,8 @@ void symbolic_record_sd_after() {
 }
 
 uint64_t symbolic_confine_sd () {
-
+  // sTODO: how to store a constrained value?
+  undoValues();
 }
 
 uint64_t symbolic_do_sd() {
@@ -6989,16 +7035,12 @@ void symbolic_record_beq_after() {
 }
 
 void symbolic_confine_beq() {
-
+  // sTODO: nothing to do?
 }
 
 void symbolic_do_beq() {
   // branch on equal
-  uint64_t branch;
   uint64_t sltuTc;
-
-  // allways take TRUE / FALSE branch
-  branch = 1;
 
   // semantics of beq
   // sTODO: symbolic semantics - done (quite inefficient)
@@ -7010,11 +7052,12 @@ void symbolic_do_beq() {
 
   } else {
     // assert: rs2 == $zero
-    // assert: getLowerFromReg(rs1) == 0 && getUppder(rs1) == 1
+    // assert: rs1 == [0,1]
 
-    sltuTc = *(registers + rs1);
+    // forwards approach:
+    // sltuTc = *(registers + rs1);
+    // constraintSLTU(sltuTc, branch);
 
-    constraintSLTU(sltuTc, branch);
     // inverted semantics!
     if (branch)
       pc = pc + INSTRUCTIONSIZE;
@@ -7071,7 +7114,7 @@ void print_jal_jalr_after() {
 }
 
 void symbolic_confine_jal() {
-
+  undoValues();
 }
 
 void symbolic_do_jal() {
@@ -7172,7 +7215,7 @@ void print_jalr_before() {
 }
 
 void symbolic_confine_jalr() {
-
+  undoValues();
 }
 
 void symbolic_do_jalr() {
@@ -7256,7 +7299,10 @@ void symbolic_record_ecall_after() {
 }
 
 void symbolic_confine_ecall() {
+  *(registers + REG_A0) = *(tcs + btc);
 
+  setLower(getLowerFromReg(REG_A0), tc);
+  setUpper(getUpperFromReg(REG_A0), tc);
 }
 
 void symbolic_do_ecall() {
@@ -7464,7 +7510,10 @@ void decode_execute() {
         }
       } else if (symbolic) {
         sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-        symbolic_do_addi();
+        if (confine)
+          symbolic_confine_addi();
+        else
+          symbolic_do_addi();
         sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
       } else
         do_addi();
@@ -7498,7 +7547,10 @@ void decode_execute() {
         }
       } else if (symbolic) {
         symbolic_record_ld_before();
-        vaddr = symbolic_do_ld();
+        if (confine)
+          symbolic_confine_ld();
+        else
+          vaddr = symbolic_do_ld();
         symbolic_record_ld_after();
       } else
         do_ld();
@@ -7531,7 +7583,10 @@ void decode_execute() {
         }
       } else if (symbolic) {
         symbolic_record_sd_before();
-        vaddr = symbolic_do_sd();
+        if (confine)
+          symbolic_confine_sd();
+        else
+          vaddr = symbolic_do_sd();
         symbolic_record_sd_after();
       } else
         do_sd();
@@ -7563,7 +7618,10 @@ void decode_execute() {
           }
         } else if (symbolic) {
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-          symbolic_do_add();
+          if (confine)
+            symbolic_confine_add();
+          else
+            symbolic_do_add();
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_add();
@@ -7592,7 +7650,10 @@ void decode_execute() {
           }
         } else if (symbolic) {
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-          symbolic_do_sub();
+          if (confine)
+            symbolic_confine_sub();
+          else
+            symbolic_do_sub();
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_sub();
@@ -7621,7 +7682,10 @@ void decode_execute() {
           }
         } else if (symbolic) {
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-          symbolic_do_mul();
+          if (confine)
+            symbolic_confine_mul();
+          else
+            symbolic_do_mul();
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_mul();
@@ -7652,7 +7716,10 @@ void decode_execute() {
           }
         } else if (symbolic) {
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-          symbolic_do_divu();
+          if (confine)
+            symbolic_confine_divu();
+          else
+            symbolic_do_divu();
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_divu();
@@ -7683,7 +7750,10 @@ void decode_execute() {
           }
         } else if (symbolic) {
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-          symbolic_do_remu();
+          if (confine)
+            symbolic_confine_remu();
+          else
+            symbolic_do_remu();
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_remu();
@@ -7714,7 +7784,10 @@ void decode_execute() {
           }
         } else if (symbolic) {
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-          symbolic_do_sltu();
+          if (confine)
+            symbolic_confine_sltu();
+          else
+            symbolic_do_sltu();
           sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_sltu();
@@ -7746,7 +7819,10 @@ void decode_execute() {
         }
       } else if (symbolic) {
         symbolic_record_beq_before();
-        symbolic_do_beq();
+        if (confine)
+          symbolic_confine_beq();
+        else
+          symbolic_do_beq();
         symbolic_record_beq_after();
       } else
         do_beq();
@@ -7778,7 +7854,10 @@ void decode_execute() {
       }
     } else if (symbolic) {
       sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-      symbolic_do_jal();
+      if (confine)
+        symbolic_confine_jal();
+      else
+        symbolic_do_jal();
       sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
     } else
       do_jal();
@@ -7810,7 +7889,10 @@ void decode_execute() {
         }
       } else if (symbolic) {
         sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-        symbolic_do_jalr();
+        if (confine)
+          symbolic_confine_jalr();
+        else
+          symbolic_do_jalr();
         sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
       } else
         do_jalr();
@@ -7842,7 +7924,10 @@ void decode_execute() {
       }
     } else if (symbolic) {
       sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-      symbolic_do_lui();
+      if (confine)
+        symbolic_confine_lui();
+      else
+        symbolic_do_lui();
       sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
     } else
       do_lui();
@@ -7874,7 +7959,10 @@ void decode_execute() {
         }
       } else if (symbolic) {
         symbolic_record_ecall_before();
-        symbolic_do_ecall();
+        if (confine)
+          symbolic_confine_ecall();
+        else
+          symbolic_do_ecall();
         symbolic_record_ecall_after();
       } else
         do_ecall();
@@ -8712,7 +8800,8 @@ uint64_t vipster(uint64_t* toContext) {
       else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
         return handleDivisionByZero();
       else if (handleSystemCalls(fromContext) == EXIT) {
-        // printTrace();
+        symbolic_confine();
+        printTrace();
         return getExitCode(fromContext);
       }
 
@@ -9083,6 +9172,15 @@ uint64_t fetchFromTC(uint64_t tc) {
     return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
 }
 
+void checkSatisfiability(uint64_t tc) {
+  // sTODO: exception, better output
+  if (getLower(tc) > getUpper(tc)) {
+    print((uint64_t*) "UNSAT");
+    println();
+    exit(-1);
+  }
+}
+
 void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
   // assert:    v1 is symbolic
   // semantics: constrain v1 by v2
@@ -9101,6 +9199,8 @@ void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
     else
       setUpper(getLower(v2), v1);
 }
+
+// ----------------- FORWARD CONSTRAINING APPROACH -----------------
 
 // constraints whatever happend at the given sltu instruction (tc)
 // TRUE or FALSE according to branch
@@ -9173,6 +9273,40 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc) {
     if (invTc <= 0) return -1;
   }
   return invTc;
+}
+
+// ----------------- BACKWARD CONSTRAINING APPROACH ----------------
+
+void symbolic_confine() {
+  uint64_t final_tc;
+  uint64_t i;
+
+  i = 0;
+
+  confine = 1;
+
+  // entry point for algorithm
+  final_tc = tc - 1;
+  btc = final_tc;
+
+  // while (numberOfSymbolics != 0) {
+  // debugging purpose:
+  while (i < 19) {
+    pc = *(pcs + btc);
+    fetch();
+    decode_execute();
+    btc = btc - 1;
+    i = i + 1;
+  }
+}
+
+void undoValues() {
+  uint64_t tc_before;
+
+  tc_before = *(tcs + btc);
+
+  setLower(getLower(tc_before), tc);
+  setUpper(getUpper(tc_before), tc);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
