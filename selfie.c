@@ -6965,6 +6965,9 @@ void decode_execute() {
   if (execute)
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   else {
+    //report the error on the console
+    outputFD = 1;
+
     print(selfieName);
     print((uint64_t*) ": unknown instruction with ");
     printBinary(opcode, 0);
