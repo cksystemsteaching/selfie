@@ -6386,18 +6386,6 @@ void symbolic_confine_addi() {
     setUpper(getUpperFromReg(rd) - imm, tc);
   } else
     undoValues();
-
-  // sTODO: symbolic read?
-  if (rd == REG_A7) {
-    if (imm == SYSCALL_READ) {
-      // confining ends here?
-      checkSatisfiability(tc);
-      numberOfSymbolics = numberOfSymbolics - 1;
-
-      print("SYMBOLIC READ CALL REACHED");
-      println();
-    }
-  }
 }
 
 void symbolic_do_addi() {
@@ -6450,6 +6438,7 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void symbolic_confine_add() {
+  // possibly imprecise
   if (rd == rs1) {
     setLower(getLowerFromReg(rd) - getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(rs2), tc);
@@ -6752,9 +6741,12 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
-  if (confine)
-    saveState(*(registers + rd));
-  else {
+  if (confine) {
+    vaddr = getLowerFromReg(rs1) + imm;
+    if (isValidVirtualAddress(vaddr))
+      if (isVirtualAddressMapped(pt, vaddr))
+        saveState(loadVirtualMemory(pt, vaddr));
+  } else {
     forceConcrete(currentContext, rs1);
     vaddr = getLowerFromReg(rs1) + imm;
 
@@ -6765,11 +6757,37 @@ void symbolic_record_ld_before() {
 }
 
 void symbolic_record_ld_after() {
-  updateRegState(rd, tc);
+  uint64_t vaddr;
+  
+  if (confine) {
+    vaddr = getLowerFromReg(rs1) + imm;
+
+    if (isValidVirtualAddress(vaddr))
+      if (isVirtualAddressMapped(pt, vaddr))
+        updateMemState(vaddr, tc);
+  } else
+    updateRegState(rd, tc);
 }
 
 uint64_t symbolic_confine_ld() {
-  undoValues();
+  uint64_t vaddr;
+  uint64_t a;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      // semantics of sd
+      setLower(getLowerFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rs2), tc);
+
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  return vaddr;
 }
 
 uint64_t symbolic_do_ld() {
@@ -6901,29 +6919,56 @@ void record_sd() {
 
 void symbolic_record_sd_before() {
   uint64_t vaddr;
-
-  forceConcrete(currentContext, rs1);
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  if (isValidVirtualAddress(vaddr))
-    if (isVirtualAddressMapped(pt, vaddr))
-      saveState(loadVirtualMemory(pt, vaddr));
+  
+  if (confine) {
+    vaddr = getLowerFromReg(rs1) + imm;
+    if (isValidVirtualAddress(vaddr))
+      if (isVirtualAddressMapped(pt, vaddr))
+        saveState(*(registers + rd));
+  } else {
+    forceConcrete(currentContext, rs1);
+    vaddr = getLowerFromReg(rs1) + imm;
+    if (isValidVirtualAddress(vaddr))
+      if (isVirtualAddressMapped(pt, vaddr))
+        saveState(loadVirtualMemory(pt, vaddr));
+  }
 }
 
 void symbolic_record_sd_after() {
   uint64_t vaddr;
 
-  forceConcrete(currentContext, rs1);
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  if (isValidVirtualAddress(vaddr))
-    if (isVirtualAddressMapped(pt, vaddr))
-      updateMemState(vaddr, tc);
+  if (confine)
+    updateRegState(rd, tc);
+  else {
+    forceConcrete(currentContext, rs1);
+    vaddr = getLowerFromReg(rs1) + imm;
+    if (isValidVirtualAddress(vaddr))
+      if (isVirtualAddressMapped(pt, vaddr))
+        updateMemState(vaddr, tc);
+  }
 }
 
 uint64_t symbolic_confine_sd () {
-  // sTODO: how to store a constrained value?
-  undoValues();
+  uint64_t vaddr;
+  uint64_t a;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      if (rd != REG_ZR) {
+        // semantics of ld
+        setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+        setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+      }
+
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  return vaddr;
 }
 
 uint64_t symbolic_do_sd() {
@@ -7299,6 +7344,18 @@ void symbolic_record_ecall_after() {
 }
 
 void symbolic_confine_ecall() {
+  // sTODO: detect if REG_A7 == SYSCALL_READ
+  // for that: find proper REG_A7 in trace/time!
+
+  // sTODO: find out what confined value was read here
+
+  if (getLowerFromReg(REG_A7) != SYSCALL_EXIT) { // ignore exit calls
+    printTrace();
+    print((uint64_t*) ">>> reached syscall while confining");
+    println();
+    exit(0);
+  }
+
   *(registers + REG_A0) = *(tcs + btc);
 
   setLower(getLowerFromReg(REG_A0), tc);
@@ -9291,12 +9348,15 @@ void symbolic_confine() {
 
   // while (numberOfSymbolics != 0) {
   // debugging purpose:
-  while (i < 19) {
+  while (i < 34) {
     pc = *(pcs + btc);
-    fetch();
-    decode_execute();
+    if (pc != 0) {
+      fetch();
+      decode_execute();
+    }
     btc = btc - 1;
     i = i + 1;
+    //printTrace();
   }
 }
 
