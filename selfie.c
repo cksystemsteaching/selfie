@@ -6778,8 +6778,8 @@ uint64_t symbolic_confine_ld() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       // semantics of sd
-      setLower(getLowerFromReg(rs2), tc);
-      setUpper(getUpperFromReg(rs2), tc);
+      setLower(getLowerFromReg(rd), tc);
+      setUpper(getUpperFromReg(rd), tc);
 
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
@@ -6924,7 +6924,7 @@ void symbolic_record_sd_before() {
     vaddr = getLowerFromReg(rs1) + imm;
     if (isValidVirtualAddress(vaddr))
       if (isVirtualAddressMapped(pt, vaddr))
-        saveState(*(registers + rd));
+        saveState(*(registers + rs2));
   } else {
     forceConcrete(currentContext, rs1);
     vaddr = getLowerFromReg(rs1) + imm;
@@ -6938,7 +6938,7 @@ void symbolic_record_sd_after() {
   uint64_t vaddr;
 
   if (confine)
-    updateRegState(rd, tc);
+    updateRegState(rs2, tc);
   else {
     forceConcrete(currentContext, rs1);
     vaddr = getLowerFromReg(rs1) + imm;
@@ -6956,7 +6956,7 @@ uint64_t symbolic_confine_sd () {
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
-      if (rd != REG_ZR) {
+      if (rs2 != REG_ZR) {
         // semantics of ld
         setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
         setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
