@@ -1007,9 +1007,6 @@ void symbolic_confine_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 
-void sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
-void sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
-
 void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -6306,19 +6303,13 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
   recordState(*(registers + rd));
 }
 
-void sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before() {
-  saveState(*(registers + rd));
-}
-
-void sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after() {
-  updateRegState(rd, tc);
-}
-
 void symbolic_confine_lui() {
 
 }
 
 void symbolic_do_lui() {
+
+  saveState(*(registers + rd));
   // load upper immediate
 
   if (rd != REG_ZR)
@@ -6328,6 +6319,8 @@ void symbolic_do_lui() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_lui = ic_lui + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_lui() {
@@ -6389,6 +6382,8 @@ void symbolic_confine_addi() {
 }
 
 void symbolic_do_addi() {
+
+  saveState(*(registers + rd));
   // add immediate
 
   if (rd != REG_ZR) {
@@ -6400,6 +6395,8 @@ void symbolic_do_addi() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_addi = ic_addi + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_addi() {
@@ -6450,6 +6447,9 @@ void symbolic_confine_add() {
 }
 
 void symbolic_do_add() {
+
+  saveState(*(registers + rd));
+
   if (rd != REG_ZR) {
     // semantics of add
     setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
@@ -6459,6 +6459,8 @@ void symbolic_do_add() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_add = ic_add + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_add() {
@@ -6476,6 +6478,9 @@ void symbolic_confine_sub() {
 }
 
 void symbolic_do_sub() {
+
+  saveState(*(registers + rd));
+
   if (rd != REG_ZR) {
     // semantics of sub
     setLower(getLowerFromReg(rs1) - getLowerFromReg(rs2), tc);
@@ -6485,6 +6490,8 @@ void symbolic_do_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_sub() {
@@ -6502,6 +6509,9 @@ void symbolic_confine_mul() {
 }
 
 void symbolic_do_mul() {
+
+  saveState(*(registers + rd));
+
   if (rd != REG_ZR) {
     // semantics of mul
     forcePrecise(currentContext, rs1, rs2);
@@ -6514,6 +6524,8 @@ void symbolic_do_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_mul() {
@@ -6538,6 +6550,8 @@ void symbolic_confine_divu() {
 }
 
 void symbolic_do_divu() {
+
+  saveState(*(registers + rd));
   // division unsigned
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
@@ -6557,6 +6571,7 @@ void symbolic_do_divu() {
   } else
   throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
 
+  updateRegState(rd, tc);
 }
 
 void do_divu() {
@@ -6579,6 +6594,8 @@ void symbolic_confine_remu() {
 }
 
 void symbolic_do_remu() {
+
+  saveState(*(registers + rd));
   // remainder unsigned
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
@@ -6597,6 +6614,8 @@ void symbolic_do_remu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
   } else
   throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
+
+  updateRegState(rd, tc);
 }
 
 void do_remu() {
@@ -6642,6 +6661,10 @@ void symbolic_confine_sltu() {
 }
 
 void symbolic_do_sltu() {
+
+  saveState(*(registers + rd));
+
+
   // set on less than unsigned
   // assert: was compiled as true smaller/greater than expression
   // sTODO: support all comparisons
@@ -6662,6 +6685,8 @@ void symbolic_do_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_sltu() {
@@ -6758,7 +6783,7 @@ void symbolic_record_ld_before() {
 
 void symbolic_record_ld_after() {
   uint64_t vaddr;
-  
+
   if (confine) {
     vaddr = getLowerFromReg(rs1) + imm;
 
@@ -6919,7 +6944,7 @@ void record_sd() {
 
 void symbolic_record_sd_before() {
   uint64_t vaddr;
-  
+
   if (confine) {
     vaddr = getLowerFromReg(rs1) + imm;
     if (isValidVirtualAddress(vaddr))
@@ -7165,6 +7190,8 @@ void symbolic_confine_jal() {
 void symbolic_do_jal() {
   uint64_t a;
 
+  saveState(*(registers + rd));
+
   // jump and link
 
   if (rd != REG_ZR) {
@@ -7196,6 +7223,8 @@ void symbolic_do_jal() {
     pc = pc + imm;
 
   ic_jal = ic_jal + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_jal() {
@@ -7266,6 +7295,7 @@ void symbolic_confine_jalr() {
 void symbolic_do_jalr() {
   uint64_t next_pc;
 
+  saveState(*(registers + rd));
   // jump and link register
 
   if (rd == REG_ZR)
@@ -7286,6 +7316,8 @@ void symbolic_do_jalr() {
   }
 
   ic_jalr = ic_jalr + 1;
+
+  updateRegState(rd, tc);
 }
 
 void do_jalr() {
@@ -7556,9 +7588,7 @@ void decode_execute() {
           if (execute) {
             print_addi_before();
             if (symbolic) {
-              sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
               symbolic_do_addi();
-              sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
             } else
               do_addi();
             print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -7566,12 +7596,10 @@ void decode_execute() {
           println();
         }
       } else if (symbolic) {
-        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
         if (confine)
           symbolic_confine_addi();
         else
           symbolic_do_addi();
-        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
       } else
         do_addi();
 
@@ -7592,9 +7620,7 @@ void decode_execute() {
           if (execute) {
             print_ld_before();
             if (symbolic) {
-              symbolic_record_ld_before();
               vaddr = symbolic_do_ld();
-              symbolic_record_ld_after();
             } else
               vaddr = do_ld();
 
@@ -7603,12 +7629,10 @@ void decode_execute() {
           println();
         }
       } else if (symbolic) {
-        symbolic_record_ld_before();
         if (confine)
           symbolic_confine_ld();
         else
           vaddr = symbolic_do_ld();
-        symbolic_record_ld_after();
       } else
         do_ld();
 
@@ -7629,9 +7653,7 @@ void decode_execute() {
           if (execute) {
             print_sd_before();
             if (symbolic) {
-              symbolic_record_sd_before();
               vaddr = symbolic_do_sd();
-              symbolic_record_sd_after();
             } else
               vaddr = do_sd();
             print_sd_after(vaddr);
@@ -7639,12 +7661,10 @@ void decode_execute() {
           println();
         }
       } else if (symbolic) {
-        symbolic_record_sd_before();
         if (confine)
           symbolic_confine_sd();
         else
           vaddr = symbolic_do_sd();
-        symbolic_record_sd_after();
       } else
         do_sd();
 
@@ -7664,9 +7684,7 @@ void decode_execute() {
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               if (symbolic) {
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
                 symbolic_do_add();
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
               } else
                 do_add();
               print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -7674,12 +7692,10 @@ void decode_execute() {
             println();
           }
         } else if (symbolic) {
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
           if (confine)
             symbolic_confine_add();
           else
             symbolic_do_add();
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_add();
 
@@ -7696,9 +7712,7 @@ void decode_execute() {
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               if (symbolic) {
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
                 symbolic_do_sub();
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
               } else
                 do_sub();
               print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -7706,12 +7720,10 @@ void decode_execute() {
             println();
           }
         } else if (symbolic) {
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
           if (confine)
             symbolic_confine_sub();
           else
             symbolic_do_sub();
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_sub();
 
@@ -7728,9 +7740,7 @@ void decode_execute() {
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               if (symbolic) {
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
                 symbolic_do_mul();
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
               } else
                 do_mul();
               print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -7738,12 +7748,10 @@ void decode_execute() {
             println();
           }
         } else if (symbolic) {
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
           if (confine)
             symbolic_confine_mul();
           else
             symbolic_do_mul();
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_mul();
 
@@ -7762,9 +7770,7 @@ void decode_execute() {
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               if (symbolic) {
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
                 symbolic_do_divu();
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
               } else
                 do_divu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -7772,12 +7778,10 @@ void decode_execute() {
             println();
           }
         } else if (symbolic) {
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
           if (confine)
             symbolic_confine_divu();
           else
             symbolic_do_divu();
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_divu();
 
@@ -7796,9 +7800,7 @@ void decode_execute() {
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               if (symbolic) {
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
                 symbolic_do_remu();
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
               } else
                 do_remu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -7806,12 +7808,10 @@ void decode_execute() {
             println();
           }
         } else if (symbolic) {
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
           if (confine)
             symbolic_confine_remu();
           else
             symbolic_do_remu();
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_remu();
 
@@ -7830,9 +7830,7 @@ void decode_execute() {
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               if (symbolic) {
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
                 symbolic_do_sltu();
-                sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
               } else
                 do_sltu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -7840,12 +7838,10 @@ void decode_execute() {
             println();
           }
         } else if (symbolic) {
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
           if (confine)
             symbolic_confine_sltu();
           else
             symbolic_do_sltu();
-          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
         } else
           do_sltu();
 
@@ -7865,9 +7861,7 @@ void decode_execute() {
           if (execute) {
             print_beq_before();
             if (symbolic) {
-              symbolic_record_beq_before();
               symbolic_do_beq();
-              symbolic_record_beq_after();
             } else
               do_beq();
             print_beq_after();
@@ -7875,12 +7869,10 @@ void decode_execute() {
           println();
         }
       } else if (symbolic) {
-        symbolic_record_beq_before();
         if (confine)
           symbolic_confine_beq();
         else
           symbolic_do_beq();
-        symbolic_record_beq_after();
       } else
         do_beq();
 
@@ -7900,9 +7892,7 @@ void decode_execute() {
         if (execute) {
           print_jal_before();
           if (symbolic) {
-            sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
             symbolic_do_jal();
-            sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
           } else
             do_jal();
           print_jal_jalr_after();
@@ -7910,12 +7900,10 @@ void decode_execute() {
         println();
       }
     } else if (symbolic) {
-      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
       if (confine)
         symbolic_confine_jal();
       else
         symbolic_do_jal();
-      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
     } else
       do_jal();
 
@@ -7935,9 +7923,7 @@ void decode_execute() {
           if (execute) {
             print_jalr_before();
             if (symbolic) {
-              sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
               symbolic_do_jalr();
-              sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
             } else
               do_jalr();
             print_jal_jalr_after();
@@ -7945,12 +7931,10 @@ void decode_execute() {
           println();
         }
       } else if (symbolic) {
-        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
         if (confine)
           symbolic_confine_jalr();
         else
           symbolic_do_jalr();
-        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
       } else
         do_jalr();
 
@@ -7970,9 +7954,7 @@ void decode_execute() {
         if (execute) {
           print_lui_before();
           if (symbolic) {
-            sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
             symbolic_do_lui();
-            sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
           } else
             do_lui();
           print_lui_after();
@@ -7980,12 +7962,10 @@ void decode_execute() {
         println();
       }
     } else if (symbolic) {
-      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
       if (confine)
         symbolic_confine_lui();
       else
         symbolic_do_lui();
-      sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
     } else
       do_lui();
 
@@ -8005,9 +7985,7 @@ void decode_execute() {
           if (execute) {
             print_ecall_before();
             if (symbolic) {
-              symbolic_record_ecall_before();
               symbolic_do_ecall();
-              symbolic_record_ecall_after();
             } else
               do_ecall();
             print_ecall_after();
@@ -8015,12 +7993,10 @@ void decode_execute() {
           println();
         }
       } else if (symbolic) {
-        symbolic_record_ecall_before();
         if (confine)
           symbolic_confine_ecall();
         else
           symbolic_do_ecall();
-        symbolic_record_ecall_after();
       } else
         do_ecall();
 
