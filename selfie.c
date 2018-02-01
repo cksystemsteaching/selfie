@@ -6370,11 +6370,15 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
 }
 
 void symbolic_confine_addi() {
-  if (rd == rs1) {
-    setLower(getLowerFromReg(rd) - imm, tc);
-    setUpper(getUpperFromReg(rd) - imm, tc);
-  } else
-    undoValues();
+  saveState(*(registers + rd));
+
+  setLower(getLowerFromReg(rd) - imm, tc);
+  setUpper(getUpperFromReg(rd) - imm, tc);
+
+  if (rd != rs1)
+    *(registers + rd) = *(tcs + btc);
+
+  updateRegState(*(registers + rs1), tc);
 }
 
 void symbolic_do_addi() {
@@ -6431,15 +6435,7 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void symbolic_confine_add() {
-  // possibly imprecise
-  if (rd == rs1) {
-    setLower(getLowerFromReg(rd) - getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rd) - getUpperFromReg(rs2), tc);
-  } else if (rd == rs2) {
-    setLower(getLowerFromReg(rd) - getLowerFromReg(rs1), tc);
-    setUpper(getUpperFromReg(rd) - getUpperFromReg(rs1), tc);
-  } else
-    undoValues();
+
 }
 
 void symbolic_do_add() {
