@@ -6308,9 +6308,9 @@ void symbolic_confine_lui() {
 }
 
 void symbolic_do_lui() {
+  // load upper immediate
 
   saveState(*(registers + rd));
-  // load upper immediate
 
   if (rd != REG_ZR)
     // semantics of lui
@@ -6386,9 +6386,9 @@ void symbolic_confine_addi() {
 }
 
 void symbolic_do_addi() {
+  // add immediate
 
   saveState(*(registers + rd));
-  // add immediate
 
   if (rd != REG_ZR) {
     // semantics of addi
@@ -6443,7 +6443,6 @@ void symbolic_confine_add() {
 }
 
 void symbolic_do_add() {
-
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6474,7 +6473,6 @@ void symbolic_confine_sub() {
 }
 
 void symbolic_do_sub() {
-
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6505,7 +6503,6 @@ void symbolic_confine_mul() {
 }
 
 void symbolic_do_mul() {
-
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6546,9 +6543,9 @@ void symbolic_confine_divu() {
 }
 
 void symbolic_do_divu() {
+  // division unsigned
 
   saveState(*(registers + rd));
-  // division unsigned
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
     if (getLowerFromReg(rs2) != 0) {
@@ -6590,9 +6587,9 @@ void symbolic_confine_remu() {
 }
 
 void symbolic_do_remu() {
+  // remainder unsigned
 
   saveState(*(registers + rd));
-  // remainder unsigned
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
     if (getLowerFromReg(rs2) != 0) {
@@ -6657,9 +6654,7 @@ void symbolic_confine_sltu() {
 }
 
 void symbolic_do_sltu() {
-
   saveState(*(registers + rd));
-
 
   // set on less than unsigned
   // assert: was compiled as true smaller/greater than expression
@@ -6802,13 +6797,13 @@ uint64_t symbolic_confine_ld() {
       setLower(getLowerFromReg(rd), tc);
       setUpper(getUpperFromReg(rd), tc);
 
+      *(registers + rd) = *(tcs + btc);
+
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
     // TODO: pass invalid vaddr
     throwException(EXCEPTION_INVALIDADDRESS, 0);
-
-  //undoValues();
 
   return vaddr;
 }
@@ -6983,6 +6978,8 @@ uint64_t symbolic_confine_sd () {
         // semantics of ld
         setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
         setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+
+        updateMemState(vaddr, *(tcs + btc));
       }
 
     } else
