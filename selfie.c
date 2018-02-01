@@ -6381,11 +6381,15 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
 }
 
 void symbolic_confine_addi() {
-  if (rd == rs1) {
-    setLower(getLowerFromReg(rd) - imm, tc);
-    setUpper(getUpperFromReg(rd) - imm, tc);
-  } else
-    undoValues();
+  saveState(*(registers + rd));
+
+  setLower(getLowerFromReg(rd) - imm, tc);
+  setUpper(getUpperFromReg(rd) - imm, tc);
+
+  if (rd != rs1)
+    *(registers + rd) = *(tcs + btc);
+
+  updateRegState(*(registers + rs1), tc);
 }
 
 void symbolic_do_addi() {
@@ -6438,15 +6442,7 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void symbolic_confine_add() {
-  // possibly imprecise
-  if (rd == rs1) {
-    setLower(getLowerFromReg(rd) - getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rd) - getUpperFromReg(rs2), tc);
-  } else if (rd == rs2) {
-    setLower(getLowerFromReg(rd) - getLowerFromReg(rs1), tc);
-    setUpper(getUpperFromReg(rd) - getUpperFromReg(rs1), tc);
-  } else
-    undoValues();
+
 }
 
 void symbolic_do_add() {
@@ -6758,7 +6754,7 @@ void symbolic_record_ld_before() {
 
 void symbolic_record_ld_after() {
   uint64_t vaddr;
-  
+
   if (confine) {
     vaddr = getLowerFromReg(rs1) + imm;
 
@@ -6786,6 +6782,8 @@ uint64_t symbolic_confine_ld() {
   } else
     // TODO: pass invalid vaddr
     throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  //undoValues();
 
   return vaddr;
 }
@@ -6919,7 +6917,7 @@ void record_sd() {
 
 void symbolic_record_sd_before() {
   uint64_t vaddr;
-  
+
   if (confine) {
     vaddr = getLowerFromReg(rs1) + imm;
     if (isValidVirtualAddress(vaddr))
@@ -7566,12 +7564,13 @@ void decode_execute() {
           println();
         }
       } else if (symbolic) {
-        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
         if (confine)
           symbolic_confine_addi();
-        else
+        else {
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_before();
           symbolic_do_addi();
-        sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
+          sym_record_lui_addi_add_sub_mul_sltu_jal_jalr_divu_remu_after();
+        }
       } else
         do_addi();
 
