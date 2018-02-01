@@ -1060,8 +1060,6 @@ void print_beq();
 void print_beq_before();
 void print_beq_after();
 void record_beq();
-void symbolic_record_beq_before();
-void symbolic_record_beq_after();
 void symbolic_do_beq();
 void symbolic_confine_beq();
 void do_beq();
@@ -1083,8 +1081,6 @@ void print_ecall();
 void print_ecall_before();
 void print_ecall_after();
 void record_ecall();
-void symbolic_record_ecall_before();
-void symbolic_record_ecall_after();
 void symbolic_do_ecall();
 void symbolic_confine_ecall();
 void do_ecall();
@@ -6798,6 +6794,8 @@ uint64_t symbolic_confine_ld() {
   uint64_t vaddr;
   uint64_t a;
 
+  symbolic_record_ld_before();
+
   vaddr = getLowerFromReg(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr)) {
@@ -6812,6 +6810,8 @@ uint64_t symbolic_confine_ld() {
     // TODO: pass invalid vaddr
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
+  symbolic_record_ld_after();
+
   return vaddr;
 }
 
@@ -6820,6 +6820,7 @@ uint64_t symbolic_do_ld() {
   uint64_t a;
 
   // load double word
+  symbolic_record_ld_before();
 
   forceConcrete(currentContext, rs1);
   vaddr = getLowerFromReg(rs1) + imm;
@@ -6845,6 +6846,8 @@ uint64_t symbolic_do_ld() {
   } else
     // TODO: pass invalid vaddr
     throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  symbolic_record_ld_after();
 
   return vaddr;
 }
@@ -7000,6 +7003,8 @@ uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
 
+  symbolic_record_sd_before();
+
   forceConcrete(currentContext, rs1);
   vaddr = getLowerFromReg(rs1) + imm;
 
@@ -7014,7 +7019,7 @@ uint64_t symbolic_do_sd() {
       ic_sd = ic_sd + 1;
 
       // keep track of number of stores per instruction
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;(
 
       *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
     } else
@@ -7022,6 +7027,8 @@ uint64_t symbolic_do_sd() {
   } else
     // TODO: pass invalid vaddr
     throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  symbolic_record_sd_after();
 
   return vaddr;
 }
@@ -7097,13 +7104,6 @@ void record_beq() {
   recordState(0);
 }
 
-void symbolic_record_beq_before() {
-  saveState(0);
-}
-void symbolic_record_beq_after() {
-  updateRegState(REG_ZR, 0);
-}
-
 void symbolic_confine_beq() {
   // sTODO: nothing to do?
 }
@@ -7111,6 +7111,8 @@ void symbolic_confine_beq() {
 void symbolic_do_beq() {
   // branch on equal
   uint64_t sltuTc;
+
+  saveState(0);
 
   // semantics of beq
   // sTODO: symbolic semantics - done (quite inefficient)
@@ -7136,6 +7138,8 @@ void symbolic_do_beq() {
   }
 
   ic_beq = ic_beq + 1;
+
+  updateRegState(REG_ZR, 0);
 }
 
 void do_beq() {
@@ -7367,14 +7371,6 @@ void record_ecall() {
   recordState(*(registers + REG_A0));
 }
 
-void symbolic_record_ecall_before() {
-  saveState(*(registers + REG_A0));
-}
-
-void symbolic_record_ecall_after() {
-  updateRegState(REG_ZR, 0);
-}
-
 void symbolic_confine_ecall() {
   // sTODO: detect if REG_A7 == SYSCALL_READ
   // for that: find proper REG_A7 in trace/time!
@@ -7395,6 +7391,9 @@ void symbolic_confine_ecall() {
 }
 
 void symbolic_do_ecall() {
+
+  saveState(*(registers + REG_A0));
+
   pc = pc + INSTRUCTIONSIZE;
 
   ic_ecall = ic_ecall + 1;
@@ -7407,6 +7406,8 @@ void symbolic_do_ecall() {
     exit(EXITCODE_BADARGUMENTS);
   } else
     throwException(EXCEPTION_SYSCALL, 0);
+
+  updateRegState(REG_ZR, 0);
 }
 
 void do_ecall() {
