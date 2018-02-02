@@ -1112,6 +1112,7 @@ uint64_t record      = 0; // flag for recording code execution
 uint64_t undo        = 0; // flag for undoing code execution
 uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
+uint64_t constrain   = 0; // flag for constraining code
 
 uint64_t debug = 0; // flag for enabling recording, disassembling, and debugging code
 
@@ -1129,6 +1130,13 @@ uint64_t tc = 1; // trace counter
 uint64_t* pcs    = (uint64_t*) 0; // trace of program counter values
 uint64_t* tcs    = (uint64_t*) 0; // trace of trace counters to previous register and memory values
 uint64_t* values = (uint64_t*) 0; // trace of register and memory values
+
+uint64_t* ceilings = (uint64_t*) 0; // trace of memory ceilings
+
+uint64_t* reg_ceiling = (uint64_t*) 0; // register ceilings
+uint64_t* reg_constrain = (uint64_t*) 0; // constrained memory
+
+uint64_t mrc = 0; // most recent constraint
 
 // core state
 
@@ -1159,9 +1167,13 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 
-  pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
-  tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
-  values = zalloc(maxTraceLength * SIZEOFUINT64);
+  pcs      = zalloc(maxTraceLength * SIZEOFUINT64);
+  tcs      = zalloc(maxTraceLength * SIZEOFUINT64);
+  values   = zalloc(maxTraceLength * SIZEOFUINT64);
+  ceilings = zalloc(maxTraceLength * SIZEOFUINT64);
+
+  reg_ceiling   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_constrain = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 }
 
 void resetInterpreter() {
@@ -1173,6 +1185,8 @@ void resetInterpreter() {
   pt = (uint64_t*) 0;
 
   tc = 1; // tc == 0 reserved for initial state with symbolic execution
+
+  mrc = 0;
 
   trap = 0;
 
@@ -6024,6 +6038,15 @@ void do_lui() {
   ic_lui = ic_lui + 1;
 }
 
+void constrain_lui() {
+  if (rd != REG_ZR) {
+    // numerical constraint of lui
+    *(reg_ceiling + rd) = leftShift(imm, 12);
+
+    *(reg_constrain + rd) = 0;
+  }
+}
+
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
 }
@@ -6071,6 +6094,15 @@ void do_addi() {
   ic_addi = ic_addi + 1;
 }
 
+void constrain_addi() {
+  if (rd != REG_ZR) {
+    // numerical constraint of addi
+    *(reg_ceiling + rd) = *(reg_ceiling + rs1) + imm;
+
+    *(reg_constrain + rd) = *(reg_constrain + rs1);
+  }
+}
+
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
   printInstructionContext();
 
@@ -6100,6 +6132,20 @@ void do_add() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_add = ic_add + 1;
+}
+
+void constrain_add() {
+  if (rd != REG_ZR) {
+    // numerical constraint of add
+    *(reg_ceiling + rd) = *(reg_ceiling + rs1) + *(reg_ceiling + rs2);
+
+    if (*(reg_constrain + rs1) == 0)
+      *(reg_constrain + rd) = *(reg_constrain + rs2);
+    else if (*(reg_constrain + rs2) == 0)
+      *(reg_constrain + rd) = *(reg_constrain + rs1);
+    else
+      *(reg_constrain + rd) = 0;
+  }
 }
 
 void do_sub() {
@@ -6168,6 +6214,60 @@ void do_sltu() {
       *(registers + rd) = 1;
     else
       *(registers + rd) = 0;
+  }
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_sltu = ic_sltu + 1;
+}
+
+void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t ceiling) {
+  if (vaddr != 0) {
+    mrc = tc;
+
+    *(pcs + tc) = pc;
+
+    *(tcs + tc) = loadVirtualMemory(pt, vaddr);
+
+    *(values + tc)   = value;
+    *(ceilings + tc) = ceiling;
+
+    storeVirtualMemory(pt, vaddr, tc);
+
+    tc = tc + 1;
+  } else {
+    // we cannot handle more than one variable occurrence in comparison
+  }
+}
+
+void constrain_sltu() {
+  if (rd != REG_ZR) {
+    // numerical constraint of sltu
+    if (*(registers + rs1) < *(registers + rs2)) {
+      if (*(reg_ceiling + rs1) < *(registers + rs2))
+        *(registers + rd) = 1;
+      else if (*(registers + rs2) == *(reg_ceiling + rs2)) {
+        // construct constraint for true case
+        *(reg_ceiling + rs1) = *(registers + rs2) - 1;
+
+        constrain_memory(*(reg_constrain + rs1), *(registers + rs1), *(reg_ceiling + rs1));
+
+        *(registers + rd) = 1;
+      } else {
+        // we cannot handle overlapping non-constant intervals
+      }
+    } else if (*(reg_ceiling + rs2) < *(registers + rs1))
+      *(registers + rd) = 0;
+    else if (*(registers + rs1) == *(reg_ceiling + rs1)) {
+      // construct constraint for false case
+      *(reg_ceiling + rs2) = *(registers + rs1) - 1;
+
+      constrain_memory(*(reg_constrain + rs2), *(registers + rs2), *(reg_ceiling + rs2));
+
+      *(registers + rd) = 0;
+    } else {
+      // we cannot handle overlapping non-constant intervals
+    }
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6664,6 +6764,9 @@ void decode_execute() {
             print_addi_add_sub_mul_divu_remu_sltu_after();
           }
           println();
+        } else if (constrain) {
+          do_addi();
+          constrain_addi();
         }
       } else
         do_addi();
@@ -6733,6 +6836,9 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
+          } else if (constrain) {
+            do_add();
+            constrain_add();
           }
         } else
           do_add();
@@ -6839,7 +6945,8 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          }
+          } else if (constrain)
+            constrain_sltu();
         } else
           do_sltu();
 
@@ -6931,6 +7038,9 @@ void decode_execute() {
           print_lui_after();
         }
         println();
+      } else if (constrain) {
+        do_lui();
+        constrain_lui();
       }
     } else
       do_lui();
@@ -7953,6 +8063,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   printProfile();
 
+  constrain   = 0;
   disassemble = 0;
   debug       = 0;
 
@@ -8391,6 +8502,11 @@ uint64_t selfie() {
       else if (stringCompare(option, (uint64_t*) "-d")) {
         debug       = 1;
         disassemble = 1;
+
+        return selfie_run(MIPSTER);
+      } else if (stringCompare(option, (uint64_t*) "-n")) {
+        debug     = 1;
+        constrain = 1;
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-y"))
