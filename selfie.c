@@ -6046,6 +6046,7 @@ void constrain_lui() {
     // numerical constraint of lui
     *(reg_vceil + rd) = leftShift(imm, 12);
 
+    // rd has no constraint
     *(reg_vaddr + rd) = 0;
   }
 }
@@ -6102,6 +6103,7 @@ void constrain_addi() {
     // numerical constraint of addi
     *(reg_vceil + rd) = *(reg_vceil + rs1) + imm;
 
+    // rd inherits rs1 constraint
     *(reg_vaddr + rd) = *(reg_vaddr + rs1);
   }
 }
@@ -6137,17 +6139,24 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
+void inherit_add_sub_mul_divu_remu() {
+  if (*(reg_vaddr + rs1) == 0)
+    // rd inherits rs2 constraint if rs1 has none
+    *(reg_vaddr + rd) = *(reg_vaddr + rs2);
+  else if (*(reg_vaddr + rs2) == 0)
+    // rd inherits rs1 constraint if rs2 has none
+    *(reg_vaddr + rd) = *(reg_vaddr + rs1);
+  else
+    // rd has no constraint if both rs1 and rs2 have constraints
+    *(reg_vaddr + rd) = 0;
+}
+
 void constrain_add() {
   if (rd != REG_ZR) {
     // numerical constraint of add
     *(reg_vceil + rd) = *(reg_vceil + rs1) + *(reg_vceil + rs2);
 
-    if (*(reg_vaddr + rs1) == 0)
-      *(reg_vaddr + rd) = *(reg_vaddr + rs2);
-    else if (*(reg_vaddr + rs2) == 0)
-      *(reg_vaddr + rd) = *(reg_vaddr + rs1);
-    else
-      *(reg_vaddr + rd) = 0;
+    inherit_add_sub_mul_divu_remu();
   }
 }
 
@@ -6161,6 +6170,15 @@ void do_sub() {
   ic_sub = ic_sub + 1;
 }
 
+void constrain_sub() {
+  if (rd != REG_ZR) {
+    // numerical constraint of sub
+    *(reg_vceil + rd) = *(reg_vceil + rs1) - *(reg_vceil + rs2);
+
+    inherit_add_sub_mul_divu_remu();
+  }
+}
+
 void do_mul() {
   if (rd != REG_ZR)
     // semantics of mul
@@ -6171,6 +6189,20 @@ void do_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
+}
+
+void constrain_mul() {
+  if (rd != REG_ZR) {
+    // numerical constraint of mul
+    *(reg_vceil + rd) = *(reg_vceil + rs1) * *(reg_vceil + rs2);
+
+    if (*(registers + rs1) != *(reg_vceil + rs1))
+      if (*(registers + rs2) != *(reg_vceil + rs2)) {
+        // non-linear expressions are not supported
+      }
+
+    inherit_add_sub_mul_divu_remu();
+  }
 }
 
 void record_divu_remu() {
@@ -6193,6 +6225,26 @@ void do_divu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
+void constrain_divu() {
+  if (*(registers + rs2) != 0) {
+    if (*(reg_vceil + rs2) >= *(registers + rs2)) {
+      // 0 is not in interval
+      if (rd != REG_ZR) {
+        // numerical constraint of divu
+        *(reg_vceil + rd) = *(reg_vceil + rs1) / *(reg_vceil + rs2);
+
+        if (*(registers + rs1) != *(reg_vceil + rs1))
+          if (*(registers + rs2) != *(reg_vceil + rs2)) {
+            // non-linear expressions are not supported
+          }
+
+        inherit_add_sub_mul_divu_remu();
+      }
+    } else
+      throwException(EXCEPTION_DIVISIONBYZERO, 0);
+  }
+}
+
 void do_remu() {
   // remainder unsigned
 
@@ -6206,6 +6258,26 @@ void do_remu() {
     ic_remu = ic_remu + 1;
   } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
+}
+
+void constrain_remu() {
+  if (*(registers + rs2) != 0) {
+    if (*(reg_vceil + rs2) >= *(registers + rs2)) {
+      // 0 is not in interval
+      if (rd != REG_ZR) {
+        // numerical constraint of remu
+        *(reg_vceil + rd) = *(reg_vceil + rs1) % *(reg_vceil + rs2);
+
+        if (*(registers + rs1) != *(reg_vceil + rs1))
+          if (*(registers + rs2) != *(reg_vceil + rs2)) {
+            // non-linear expressions are not supported
+          }
+
+        inherit_add_sub_mul_divu_remu();
+      }
+    } else
+      throwException(EXCEPTION_DIVISIONBYZERO, 0);
+  }
 }
 
 void do_sltu() {
@@ -6391,11 +6463,14 @@ void constrain_ld() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
+        // rd contains trace counter
         mrv = *(registers + rd);
 
+        // get interval stored for vaddr
         *(registers + rd) = *(values + mrv);
         *(reg_vceil + rd) = *(vceils + mrv);
 
+        // vaddr may be constrained by rd
         *(reg_vaddr + rd) = vaddr;
       }
     }
@@ -6899,6 +6974,9 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
+          } else if (constrain) {
+            do_sub();
+            constrain_sub();
           }
         } else
           do_sub();
@@ -6919,6 +6997,9 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
+          } else if (constrain) {
+            do_mul();
+            constrain_mul();
           }
         } else
           do_mul();
@@ -6941,6 +7022,9 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
+          } else if (constrain) {
+            do_divu();
+            constrain_divu();
           }
         } else
           do_divu();
@@ -6963,6 +7047,9 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
+          } else if (constrain) {
+            do_remu();
+            constrain_remu();
           }
         } else
           do_remu();
