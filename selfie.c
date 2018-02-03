@@ -1114,7 +1114,8 @@ uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
 uint64_t constrain   = 0; // flag for constraining code
 
-uint64_t debug = 0; // flag for enabling recording, disassembling, and debugging code
+// enables recording, disassembling, debugging, and symbolically executing code
+uint64_t debug = 0;
 
 // hardware thread state
 
@@ -1125,23 +1126,25 @@ uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
 uint64_t* pt = (uint64_t*) 0; // page table
 
-uint64_t tc = 1; // trace counter
-
-uint64_t* pcs    = (uint64_t*) 0; // trace of program counter values
-uint64_t* tcs    = (uint64_t*) 0; // trace of trace counters to previous register and memory values
-uint64_t* values = (uint64_t*) 0; // trace of register and memory values
-
-uint64_t* ceilings = (uint64_t*) 0; // trace of memory ceilings
-
-uint64_t* reg_ceiling = (uint64_t*) 0; // register ceilings
-uint64_t* reg_constrain = (uint64_t*) 0; // constrained memory
-
-uint64_t mrc = 0; // most recent constraint
-
 // core state
 
 uint64_t timer = 0; // counter for timer interrupt
 uint64_t trap  = 0; // flag for creating a trap
+
+// trace data structure
+
+uint64_t tc = 1; // trace counter
+
+uint64_t* pcs    = (uint64_t*) 0; // trace of program counter values
+uint64_t* tcs    = (uint64_t*) 0; // trace of trace counters to previous register and memory values
+
+uint64_t* values = (uint64_t*) 0; // trace of register and memory values
+uint64_t* vceils = (uint64_t*) 0; // trace of value ceilings
+
+uint64_t* reg_vceil = (uint64_t*) 0; // value ceilings
+uint64_t* reg_vaddr = (uint64_t*) 0; // constrained memory
+
+uint64_t mrc = 0; // most recent constraint
 
 // profile
 
@@ -1167,13 +1170,13 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
 
-  pcs      = zalloc(maxTraceLength * SIZEOFUINT64);
-  tcs      = zalloc(maxTraceLength * SIZEOFUINT64);
-  values   = zalloc(maxTraceLength * SIZEOFUINT64);
-  ceilings = zalloc(maxTraceLength * SIZEOFUINT64);
+  pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
+  tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
+  values = zalloc(maxTraceLength * SIZEOFUINT64);
+  vceils = zalloc(maxTraceLength * SIZEOFUINT64);
 
-  reg_ceiling   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_constrain = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_vceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 }
 
 void resetInterpreter() {
@@ -6041,9 +6044,9 @@ void do_lui() {
 void constrain_lui() {
   if (rd != REG_ZR) {
     // numerical constraint of lui
-    *(reg_ceiling + rd) = leftShift(imm, 12);
+    *(reg_vceil + rd) = leftShift(imm, 12);
 
-    *(reg_constrain + rd) = 0;
+    *(reg_vaddr + rd) = 0;
   }
 }
 
@@ -6097,9 +6100,9 @@ void do_addi() {
 void constrain_addi() {
   if (rd != REG_ZR) {
     // numerical constraint of addi
-    *(reg_ceiling + rd) = *(reg_ceiling + rs1) + imm;
+    *(reg_vceil + rd) = *(reg_vceil + rs1) + imm;
 
-    *(reg_constrain + rd) = *(reg_constrain + rs1);
+    *(reg_vaddr + rd) = *(reg_vaddr + rs1);
   }
 }
 
@@ -6137,14 +6140,14 @@ void do_add() {
 void constrain_add() {
   if (rd != REG_ZR) {
     // numerical constraint of add
-    *(reg_ceiling + rd) = *(reg_ceiling + rs1) + *(reg_ceiling + rs2);
+    *(reg_vceil + rd) = *(reg_vceil + rs1) + *(reg_vceil + rs2);
 
-    if (*(reg_constrain + rs1) == 0)
-      *(reg_constrain + rd) = *(reg_constrain + rs2);
-    else if (*(reg_constrain + rs2) == 0)
-      *(reg_constrain + rd) = *(reg_constrain + rs1);
+    if (*(reg_vaddr + rs1) == 0)
+      *(reg_vaddr + rd) = *(reg_vaddr + rs2);
+    else if (*(reg_vaddr + rs2) == 0)
+      *(reg_vaddr + rd) = *(reg_vaddr + rs1);
     else
-      *(reg_constrain + rd) = 0;
+      *(reg_vaddr + rd) = 0;
   }
 }
 
@@ -6221,7 +6224,7 @@ void do_sltu() {
   ic_sltu = ic_sltu + 1;
 }
 
-void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t ceiling) {
+void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
   if (vaddr != 0) {
     mrc = tc;
 
@@ -6229,8 +6232,8 @@ void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t ceiling) {
 
     *(tcs + tc) = loadVirtualMemory(pt, vaddr);
 
-    *(values + tc)   = value;
-    *(ceilings + tc) = ceiling;
+    *(values + tc) = value;
+    *(vceils + tc) = vceil;
 
     storeVirtualMemory(pt, vaddr, tc);
 
@@ -6243,30 +6246,44 @@ void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t ceiling) {
 void constrain_sltu() {
   if (rd != REG_ZR) {
     // numerical constraint of sltu
-    if (*(registers + rs1) < *(registers + rs2)) {
-      if (*(reg_ceiling + rs1) < *(registers + rs2))
-        *(registers + rd) = 1;
-      else if (*(registers + rs2) == *(reg_ceiling + rs2)) {
-        // construct constraint for true case
-        *(reg_ceiling + rs1) = *(registers + rs2) - 1;
+    if (*(registers + rs1) <= *(reg_vceil + rs1)) {
+      // rs1 interval is not wrapped around
+      if (*(registers + rs2) <= *(reg_vceil + rs2)) {
+        // rs2 interval is not wrapped around
+        if (*(reg_vceil + rs1) < *(registers + rs2))
+          // rs1 interval is strictly less than rs2 interval
+          *(registers + rd) = 1;
+        else if (*(reg_vceil + rs2) <= *(registers + rs1))
+          // rs2 interval is less than or equal to rs1 interval
+          *(registers + rd) = 0;
+        else if (*(registers + rs2) == *(reg_vceil + rs2)) {
+          // rs2 interval is a singleton
 
-        constrain_memory(*(reg_constrain + rs1), *(registers + rs1), *(reg_ceiling + rs1));
+          // first construct constraint for false case for later use
+          constrain_memory(*(reg_vaddr + rs1), *(registers + rs2), *(reg_vceil + rs1));
 
-        *(registers + rd) = 1;
+          // then construct constraint for true case to be used now
+          constrain_memory(*(reg_vaddr + rs1), *(registers + rs1), *(registers + rs2) - 1);
+
+          *(registers + rd) = 1;
+        } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
+          // rs1 interval is a singleton
+
+          // first construct constraint for false case for later use
+          constrain_memory(*(reg_vaddr + rs2), *(registers + rs2), *(registers + rs1));
+
+          // then construct constraint for true case to be used now
+          constrain_memory(*(reg_vaddr + rs2), *(registers + rs1) + 1, *(reg_vceil + rs2));
+
+          *(registers + rd) = 1;
+        } else {
+          // we cannot handle non-singleton interval intersections in comparison
+        }
       } else {
-        // we cannot handle overlapping non-constant intervals
+        // we cannot handle wrapped-around intervals in comparison
       }
-    } else if (*(reg_ceiling + rs2) < *(registers + rs1))
-      *(registers + rd) = 0;
-    else if (*(registers + rs1) == *(reg_ceiling + rs1)) {
-      // construct constraint for false case
-      *(reg_ceiling + rs2) = *(registers + rs1) - 1;
-
-      constrain_memory(*(reg_constrain + rs2), *(registers + rs2), *(reg_ceiling + rs2));
-
-      *(registers + rd) = 0;
     } else {
-      // we cannot handle overlapping non-constant intervals
+      // we cannot handle wrapped-around intervals in comparison
     }
   }
 
@@ -6363,6 +6380,26 @@ uint64_t do_ld() {
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
   return vaddr;
+}
+
+void constrain_ld() {
+  uint64_t vaddr;
+  uint64_t mrv;
+
+  vaddr = *(registers + rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      if (rd != REG_ZR) {
+        mrv = *(registers + rd);
+
+        *(registers + rd) = *(values + mrv);
+        *(reg_vceil + rd) = *(vceils + mrv);
+
+        *(reg_vaddr + rd) = vaddr;
+      }
+    }
+  }
 }
 
 void print_sd() {
@@ -6790,6 +6827,9 @@ void decode_execute() {
             print_ld_after(do_ld());
           }
           println();
+        } else if (constrain) {
+          do_ld();
+          constrain_ld();
         }
       } else
         do_ld();
