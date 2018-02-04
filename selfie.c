@@ -1465,6 +1465,8 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 
 uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t fetchFromTC(uint64_t tc);
+uint64_t areSourceRegsConcrete();
+uint64_t isOneSourceRegConcrete();
 
 void checkSatisfiability(uint64_t tc);
 void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
@@ -6304,12 +6306,9 @@ void symbolic_confine_lui() {
 }
 
 void symbolic_do_lui() {
-  // load upper immediate
-
   saveState(*(registers + rd));
 
   if (rd != REG_ZR)
-    // semantics of lui
     setConcrete(leftShift(imm, 12));
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6382,12 +6381,9 @@ void symbolic_confine_addi() {
 }
 
 void symbolic_do_addi() {
-  // add immediate
-
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    // semantics of addi
     setLower(getLowerFromReg(rs1) + imm, tc);
     setUpper(getUpperFromReg(rs1) + imm, tc);
   }
@@ -6435,14 +6431,42 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void symbolic_confine_add() {
+  uint64_t conReg;
+  uint64_t symReg;
 
+  if (areSourceRegsConcrete()) {
+    saveState(*(registers + rd));
+
+    // nothing to constrain
+    *(registers + rd) = *(tcs + btc);
+
+  } else if (isOneSourceRegConcrete()) {
+    if (isConcrete(currentContext, rs1)) {
+      conReg = rs1;
+      symReg = rs2;
+    } else {
+      conReg = rs2;
+      symReg = rs1;
+    }
+
+    saveState(*(registers + symReg));
+
+    setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
+    setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
+
+    updateRegState(*(registers + symReg), tc);
+    *(registers + rd) = *(tcs + btc);
+
+  // both source registers contain symbolic values
+  } else {
+    // sTODO: which one should we constrain?
+  }
 }
 
 void symbolic_do_add() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    // semantics of add
     setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
   }
@@ -6472,7 +6496,6 @@ void symbolic_do_sub() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    // semantics of sub
     setLower(getLowerFromReg(rs1) - getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) - getUpperFromReg(rs2), tc);
   }
@@ -6502,13 +6525,11 @@ void symbolic_do_mul() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    // semantics of mul
     forcePrecise(currentContext, rs1, rs2);
+
     setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
   }
-
-  // TODO: 128-bit resolution currently not supported
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6539,15 +6560,13 @@ void symbolic_confine_divu() {
 }
 
 void symbolic_do_divu() {
-  // division unsigned
-
   saveState(*(registers + rd));
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
     if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
-        // semantics of divu
         forcePrecise(currentContext, rs1, rs2);
+
         setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
       }
@@ -6583,15 +6602,13 @@ void symbolic_confine_remu() {
 }
 
 void symbolic_do_remu() {
-  // remainder unsigned
-
   saveState(*(registers + rd));
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
     if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
-        // semantics of remu
         forcePrecise(currentContext, rs1, rs2);
+
         setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
       }
@@ -6650,15 +6667,13 @@ void symbolic_confine_sltu() {
 }
 
 void symbolic_do_sltu() {
-  saveState(*(registers + rd));
-
-  // set on less than unsigned
   // assert: was compiled as true smaller/greater than expression
   // sTODO: support all comparisons
+
+  saveState(*(registers + rd));
   forcePrecise(currentContext, rs1, rs2);
 
   if (rd != REG_ZR) {
-    // semantics of sltu
     if (getUpperFromReg(rs1) < getLowerFromReg(rs2))
       setConcrete(1);
     else if (getLowerFromReg(rs1) >= getUpperFromReg(rs2))
@@ -6812,7 +6827,6 @@ uint64_t symbolic_do_ld() {
   uint64_t vaddr;
   uint64_t a;
 
-  // load double word
   symbolic_record_ld_before();
 
   forceConcrete(currentContext, rs1);
@@ -6821,7 +6835,6 @@ uint64_t symbolic_do_ld() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rd != REG_ZR) {
-        // semantics of ld
         setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
         setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
       }
@@ -7009,7 +7022,6 @@ uint64_t symbolic_do_sd() {
 
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
-      // semantics of sd
       setLower(getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs2), tc);
 
@@ -7108,12 +7120,10 @@ void symbolic_confine_beq() {
 }
 
 void symbolic_do_beq() {
-  // branch on equal
   uint64_t sltuTc;
 
   saveState(0);
 
-  // semantics of beq
   // sTODO: symbolic semantics - done (quite inefficient)
   if (getLowerFromReg(rs1) == getUpperFromReg(rs1)) {
     if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
@@ -7194,8 +7204,6 @@ void symbolic_do_jal() {
   uint64_t a;
 
   saveState(*(registers + rd));
-
-  // jump and link
 
   if (rd != REG_ZR) {
     // first link
@@ -7299,7 +7307,6 @@ void symbolic_do_jalr() {
   uint64_t next_pc;
 
   saveState(*(registers + rd));
-  // jump and link register
 
   if (rd == REG_ZR)
     // fast path: just return by jumping rs1-relative with LSB reset
@@ -9202,6 +9209,23 @@ uint64_t fetchFromTC(uint64_t tc) {
     return getLowWord(loadVirtualMemory(pt, pc));
   else
     return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
+}
+
+uint64_t areSourceRegsConcrete() {
+  if (isConcrete(currentContext, rs1))
+    if (isConcrete(currentContext, rs2))
+      return 1;
+
+  return 0;
+}
+
+uint64_t isOneSourceRegConcrete() {
+  if (isConcrete(currentContext, rs1))
+    return 1;
+  else if (isConcrete(currentContext, rs2))
+    return 1;
+
+  return 0;
 }
 
 void checkSatisfiability(uint64_t tc) {
