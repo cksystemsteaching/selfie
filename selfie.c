@@ -1142,7 +1142,12 @@ uint64_t* values = (uint64_t*) 0; // trace of register and memory values
 uint64_t* vceils = (uint64_t*) 0; // trace of value ceilings
 
 uint64_t* reg_vceil = (uint64_t*) 0; // value ceilings
-uint64_t* reg_vaddr = (uint64_t*) 0; // constrained memory
+
+uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
+uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
+uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
+uint64_t* reg_coval = (uint64_t*) 0; // value of constraint
+uint64_t* reg_cceil = (uint64_t*) 0; // ceiling of constraint
 
 uint64_t mrc = 0; // most recent constraint
 
@@ -1176,7 +1181,12 @@ void initInterpreter() {
   vceils = zalloc(maxTraceLength * SIZEOFUINT64);
 
   reg_vceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  reg_hasco = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_hasmn = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_coval = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_cceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 }
 
 void resetInterpreter() {
@@ -6047,7 +6057,11 @@ void constrain_lui() {
     *(reg_vceil + rd) = leftShift(imm, 12);
 
     // rd has no constraint
+    *(reg_hasco + rd) = 0;
     *(reg_vaddr + rd) = 0;
+    *(reg_hasmn + rd) = 0;
+    *(reg_coval + rd) = 0;
+    *(reg_cceil + rd) = 0;
   }
 }
 
@@ -6103,8 +6117,25 @@ void constrain_addi() {
     // numerical constraint of addi
     *(reg_vceil + rd) = *(reg_vceil + rs1) + imm;
 
-    // rd inherits rs1 constraint
-    *(reg_vaddr + rd) = *(reg_vaddr + rs1);
+    if (*(reg_hasco + rs1)) {
+      if (*(reg_hasmn + rs1)) {
+        // rs1 constraint has already minuend and cannot have another addend
+      } else {
+        // rd inherits rs1 constraint
+        *(reg_hasco + rd) = 1;
+        *(reg_vaddr + rd) = *(reg_vaddr + rs1);
+        *(reg_hasmn + rd) = 0;
+        *(reg_coval + rd) = *(reg_coval + rs1) - imm;
+        *(reg_cceil + rd) = *(reg_cceil + rs1) - imm;
+      }
+    } else {
+      // rd has no constraint if rs1 has none
+      *(reg_hasco + rd) = 0;
+      *(reg_vaddr + rd) = 0;
+      *(reg_hasmn + rd) = 0;
+      *(reg_coval + rd) = 0;
+      *(reg_cceil + rd) = 0;
+    }
   }
 }
 
@@ -6139,16 +6170,44 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void inherit_add_sub_mul_divu_remu() {
-  if (*(reg_vaddr + rs1) == 0)
-    // rd inherits rs2 constraint if rs1 has none
-    *(reg_vaddr + rd) = *(reg_vaddr + rs2);
-  else if (*(reg_vaddr + rs2) == 0)
-    // rd inherits rs1 constraint if rs2 has none
-    *(reg_vaddr + rd) = *(reg_vaddr + rs1);
-  else
-    // rd has no constraint if both rs1 and rs2 have constraints
+void inherit_add() {
+  if (*(reg_hasco + rs1)) {
+    if (*(reg_hasco + rs2)) {
+      // rd has no constraint if both rs1 and rs2 have constraints
+      *(reg_hasco + rd) = 0;
+      *(reg_vaddr + rd) = 0;
+      *(reg_hasmn + rd) = 0;
+      *(reg_coval + rd) = 0;
+      *(reg_cceil + rd) = 0;
+    } else if (*(reg_hasmn + rs1)) {
+      // rs1 constraint has already minuend and cannot have another addend
+    } else {
+      // rd inherits rs1 constraint since rs2 has none
+      *(reg_hasco + rd) = 1;
+      *(reg_vaddr + rd) = *(reg_vaddr + rs1);
+      *(reg_hasmn + rd) = 0;
+      *(reg_coval + rd) = *(reg_coval + rs1) - *(registers + rs2);
+      *(reg_cceil + rd) = *(reg_cceil + rs1) - *(reg_vceil + rs2);
+    }
+  } else if (*(reg_hasco + rs2)) {
+    if (*(reg_hasmn + rs2)) {
+      // rs2 constraint has already minuend and cannot have another addend
+    } else {
+      // rd inherits rs2 constraint since rs1 has none
+      *(reg_hasco + rd) = 1;
+      *(reg_vaddr + rd) = *(reg_vaddr + rs2);
+      *(reg_hasmn + rd) = 0;
+      *(reg_coval + rd) = *(reg_coval + rs2) - *(registers + rs1);
+      *(reg_cceil + rd) = *(reg_cceil + rs2) - *(reg_vceil + rs1);
+    }
+  } else {
+    // rd has no constraint if both rs1 and rs2 have no constraints
+    *(reg_hasco + rd) = 0;
     *(reg_vaddr + rd) = 0;
+    *(reg_hasmn + rd) = 0;
+    *(reg_coval + rd) = 0;
+    *(reg_cceil + rd) = 0;
+  }
 }
 
 void constrain_add() {
@@ -6156,7 +6215,7 @@ void constrain_add() {
     // numerical constraint of add
     *(reg_vceil + rd) = *(reg_vceil + rs1) + *(reg_vceil + rs2);
 
-    inherit_add_sub_mul_divu_remu();
+    inherit_add();
   }
 }
 
@@ -6170,12 +6229,52 @@ void do_sub() {
   ic_sub = ic_sub + 1;
 }
 
+void inherit_sub() {
+  if (*(reg_hasco + rs1)) {
+    if (*(reg_hasco + rs2)) {
+      // rd has no constraint if both rs1 and rs2 have constraints
+      *(reg_hasco + rd) = 0;
+      *(reg_vaddr + rd) = 0;
+      *(reg_hasmn + rd) = 0;
+      *(reg_coval + rd) = 0;
+      *(reg_cceil + rd) = 0;
+    } else if (*(reg_hasmn + rs1)) {
+      // rs1 constraint has already minuend and cannot have another subtrahend
+    } else {
+      // rd inherits rs1 constraint since rs2 has none
+      *(reg_hasco + rd) = 1;
+      *(reg_vaddr + rd) = *(reg_vaddr + rs1);
+      *(reg_hasmn + rd) = 0;
+      *(reg_coval + rd) = *(reg_coval + rs1) + *(registers + rs2);
+      *(reg_cceil + rd) = *(reg_cceil + rs1) + *(reg_vceil + rs2);
+    }
+  } else if (*(reg_hasco + rs2)) {
+    if (*(reg_hasmn + rs2)) {
+      // rs2 constraint has already minuend and cannot have another minuend
+    } else {
+      // rd inherits rs2 constraint since rs1 has none
+      *(reg_hasco + rd) = 1;
+      *(reg_vaddr + rd) = *(reg_vaddr + rs2);
+      *(reg_hasmn + rd) = 1;
+      *(reg_coval + rd) = - *(reg_coval + rs2) + *(registers + rs1);
+      *(reg_cceil + rd) = - *(reg_cceil + rs2) + *(reg_vceil + rs1);
+    }
+  } else {
+    // rd has no constraint if both rs1 and rs2 have no constraints
+    *(reg_hasco + rd) = 0;
+    *(reg_vaddr + rd) = 0;
+    *(reg_hasmn + rd) = 0;
+    *(reg_coval + rd) = 0;
+    *(reg_cceil + rd) = 0;
+  }
+}
+
 void constrain_sub() {
   if (rd != REG_ZR) {
     // numerical constraint of sub
     *(reg_vceil + rd) = *(reg_vceil + rs1) - *(reg_vceil + rs2);
 
-    inherit_add_sub_mul_divu_remu();
+    inherit_sub();
   }
 }
 
@@ -6191,6 +6290,15 @@ void do_mul() {
   ic_mul = ic_mul + 1;
 }
 
+void inherit_mul_divu_remu() {
+  // we cannot keep track of constraints for mul, divu, and remu
+  *(reg_hasco + rd) = 0;
+  *(reg_vaddr + rd) = 0;
+  *(reg_hasmn + rd) = 0;
+  *(reg_coval + rd) = 0;
+  *(reg_cceil + rd) = 0;
+}
+
 void constrain_mul() {
   if (rd != REG_ZR) {
     // numerical constraint of mul
@@ -6201,7 +6309,7 @@ void constrain_mul() {
         // non-linear expressions are not supported
       }
 
-    inherit_add_sub_mul_divu_remu();
+    inherit_mul_divu_remu();
   }
 }
 
@@ -6238,7 +6346,7 @@ void constrain_divu() {
             // non-linear expressions are not supported
           }
 
-        inherit_add_sub_mul_divu_remu();
+        inherit_mul_divu_remu();
       }
     } else
       throwException(EXCEPTION_DIVISIONBYZERO, 0);
@@ -6273,7 +6381,7 @@ void constrain_remu() {
             // non-linear expressions are not supported
           }
 
-        inherit_add_sub_mul_divu_remu();
+        inherit_mul_divu_remu();
       }
     } else
       throwException(EXCEPTION_DIVISIONBYZERO, 0);
@@ -6546,6 +6654,36 @@ uint64_t do_sd() {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       // semantics of sd
+      storeVirtualMemory(pt, vaddr, *(registers + rs2));
+
+      pc = pc + INSTRUCTIONSIZE;
+
+      ic_sd = ic_sd + 1;
+
+      // keep track of number of stores per instruction
+      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+      *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  return vaddr;
+}
+
+uint64_t constrain_sd() {
+  uint64_t vaddr;
+  uint64_t mrv;
+  uint64_t a;
+
+  vaddr = *(registers + rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      mrv = loadVirtualMemory(pt, vaddr);
+
       storeVirtualMemory(pt, vaddr, *(registers + rs2));
 
       pc = pc + INSTRUCTIONSIZE;
