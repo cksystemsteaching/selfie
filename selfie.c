@@ -6369,7 +6369,7 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
 }
 
 void symbolic_confine_addi() {
-  saveState(*(registers + rd));
+  saveState(*(registers + rs1));
 
   setLower(getLowerFromReg(rd) - imm, tc);
   setUpper(getUpperFromReg(rd) - imm, tc);
@@ -6377,7 +6377,7 @@ void symbolic_confine_addi() {
   if (rd != rs1)
     *(registers + rd) = *(tcs + btc);
 
-  updateRegState(*(registers + rs1), tc);
+  updateRegState(rs1, tc);
 }
 
 void symbolic_do_addi() {
@@ -6439,6 +6439,7 @@ void symbolic_confine_add() {
 
     // nothing to constrain
     *(registers + rd) = *(tcs + btc);
+    incrementTc();
 
   } else if (isOneSourceRegConcrete()) {
     if (isConcrete(currentContext, rs1)) {
@@ -6454,8 +6455,10 @@ void symbolic_confine_add() {
     setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
-    updateRegState(*(registers + symReg), tc);
-    *(registers + rd) = *(tcs + btc);
+    updateRegState(symReg, tc);
+
+    if (rd != symReg)
+      *(registers + rd) = *(tcs + btc);
 
   // both source registers contain symbolic values
   } else {
@@ -6768,15 +6771,14 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
+  forceConcrete(currentContext, rs1);
+  vaddr = getLowerFromReg(rs1) + imm;
+
   if (confine) {
-    vaddr = getLowerFromReg(rs1) + imm;
     if (isValidVirtualAddress(vaddr))
       if (isVirtualAddressMapped(pt, vaddr))
         saveState(loadVirtualMemory(pt, vaddr));
   } else {
-    forceConcrete(currentContext, rs1);
-    vaddr = getLowerFromReg(rs1) + imm;
-
     if (isValidVirtualAddress(vaddr))
       if (isVirtualAddressMapped(pt, vaddr))
         saveState(*(registers + rd));
