@@ -6562,27 +6562,52 @@ uint64_t do_ld() {
   return vaddr;
 }
 
-void constrain_ld() {
+uint64_t constrain_ld() {
   uint64_t vaddr;
   uint64_t mrv;
+  uint64_t a;
+
+  // load double word
 
   vaddr = *(registers + rs1) + imm;
 
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      if (rd != REG_ZR) {
-        // rd contains trace counter
-        mrv = *(registers + rd);
+  if (*(registers + rs1) == *(reg_vceil + rs1)) {
+    if (isValidVirtualAddress(vaddr)) {
+      if (isVirtualAddressMapped(pt, vaddr)) {
+        if (rd != REG_ZR) {
+          // memory contains trace counters, not values
+          mrv = loadVirtualMemory(pt, vaddr);
 
-        // get interval stored for vaddr
-        *(registers + rd) = *(values + mrv);
-        *(reg_vceil + rd) = *(vceils + mrv);
+          // get interval stored for vaddr
+          *(registers + rd) = *(values + mrv);
+          *(reg_vceil + rd) = *(vceils + mrv);
 
-        // vaddr may be constrained by rd
-        *(reg_vaddr + rd) = vaddr;
-      }
-    }
+          // vaddr is constrained by rd
+          *(reg_hasco + rd) = 1;
+          *(reg_vaddr + rd) = vaddr;
+          *(reg_hasmn + rd) = 0;
+          *(reg_coval + rd) = 0;
+          *(reg_cceil + rd) = 0;
+        }
+
+        pc = pc + INSTRUCTIONSIZE;
+
+        ic_ld = ic_ld + 1;
+
+        // keep track of number of loads per instruction
+        a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+
+        *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
+      } else
+        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+    } else
+      // TODO: pass invalid vaddr
+      throwException(EXCEPTION_INVALIDADDRESS, 0);
+  } else {
+    // TODO: support loading memory intervals
   }
+
+  return vaddr;
 }
 
 void print_sd() {
@@ -6678,27 +6703,33 @@ uint64_t constrain_sd() {
   uint64_t mrv;
   uint64_t a;
 
+  // store double word
+
   vaddr = *(registers + rs1) + imm;
 
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      mrv = loadVirtualMemory(pt, vaddr);
+  if (*(registers + rs1) == *(reg_vceil + rs1)) {
+    if (isValidVirtualAddress(vaddr)) {
+      if (isVirtualAddressMapped(pt, vaddr)) {
+        mrv = loadVirtualMemory(pt, vaddr);
 
-      storeVirtualMemory(pt, vaddr, *(registers + rs2));
+        storeVirtualMemory(pt, vaddr, *(registers + rs2));
 
-      pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
-      ic_sd = ic_sd + 1;
+        ic_sd = ic_sd + 1;
 
-      // keep track of number of stores per instruction
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+        // keep track of number of stores per instruction
+        a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
-      *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
+        *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
+      } else
+        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
     } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
+      // TODO: pass invalid vaddr
+      throwException(EXCEPTION_INVALIDADDRESS, 0);
+  } else {
+    // TODO: support loading memory intervals
+  }
 
   return vaddr;
 }
@@ -7040,10 +7071,8 @@ void decode_execute() {
             print_ld_after(do_ld());
           }
           println();
-        } else if (constrain) {
-          do_ld();
+        } else if (constrain)
           constrain_ld();
-        }
       } else
         do_ld();
 
@@ -7066,7 +7095,8 @@ void decode_execute() {
             print_sd_after(do_sd());
           }
           println();
-        }
+        } else if (constrain)
+          constrain_sd();
       } else
         do_sd();
 
