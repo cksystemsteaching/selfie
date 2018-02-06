@@ -685,7 +685,7 @@ void createELFHeader();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
+uint64_t ELF_HEADER_LEN  = 336;   // = 64 + 56 + 3*64 bytes + string table (file + program header + 3 * section header + 24)
 
 // is determined by RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
@@ -4334,10 +4334,16 @@ void x86Translate(){
     x86SaveAddress();
     pc = pc + INSTRUCTIONSIZE;
     decode_execute();
-    //x86CheckAdressFix();
   }
 
-  *(ELF_header + 2) = 4299030530; //machine flag 0x3e
+  x86AdressFix();
+
+  binaryLength = (binaryLength - 1) * SIZEOFUINT64 + x86ByteCount;
+  codeLength = binaryLength; //FIXME
+  *(ELF_header + 2)  = 4299030530;    //machine flag 0x3e
+  *(ELF_header + 12) = codeLength + ELF_HEADER_LEN;
+  *(ELF_header + 13) = codeLength + ELF_HEADER_LEN;
+  *(ELF_header + 27) = codeLength;
 }
 
 void x86SaveAddress() {
@@ -4376,22 +4382,21 @@ void x86SaveAddress() {
 //
 // x86SetNextEntry(newEntry, x86AdressTable);
 // x86AdressTable = newEntry;
-//
-//
-//oid x86CheckAdressFix() {
-// uint64_t* entry;
-// 
-// entry = x86AdressTable;
-// while (entry != (uint64_t*) 0) {
-//   *(entry + 3) = *(entry + 3) - INSTRUCTIONSIZE;
-//   if (*(entry + 3) == 0)
-//     x86AdressFixup(entry);
-//
-//   // next entry
-//   entry = x86GetNextEntry(entry);
-// }
-//
-//
+
+
+void x86AdressFix() {
+  uint64_t value;
+  
+  pc = ELF_ENTRY_POINT;
+  
+  while(pc < codeLength + ELF_ENTRY_POINT){
+    fetch();
+    pc = pc + INSTRUCTIONSIZE;
+    value = *(binary + ir);
+  }
+}
+
+
 //oid x86AdressFixup(uint64_t* entry) {
 // uint64_t w_offset;
 // uint64_t b_offset;
@@ -4588,12 +4593,12 @@ void createELFHeader() {
   // +----+------------------+
   *(ELF_header + 0)  = 282584257676671;
   *(ELF_header + 1)  = 0;
-  *(ELF_header + 2)  = 15925250; //2163408898;
-  *(ELF_header + 3)  = ELF_ENTRY_POINT;
+  *(ELF_header + 2)  = 4310892546;
+  *(ELF_header + 3)  = ELF_ENTRY_POINT + ELF_HEADER_LEN;
   *(ELF_header + 4)  = 64;
-  *(ELF_header + 5)  = 0;
+  *(ELF_header + 5)  = 120;
   *(ELF_header + 6)  = 15762873573703680;
-  *(ELF_header + 7)  = 1;
+  *(ELF_header + 7)  = 562962842517505;
 
   // RISC-U ELF64 program header table:
   //  byte value
@@ -4608,12 +4613,78 @@ void createELFHeader() {
   // | 48 | PAGESIZE         | alignemnt of segment
   // +----+------------------+
   *(ELF_header + 8)  = 30064771073;
-  *(ELF_header + 9)  = ELF_HEADER_LEN;
+  *(ELF_header + 9)  = 0;
   *(ELF_header + 10) = ELF_ENTRY_POINT;
-  *(ELF_header + 11) = 0;
-  *(ELF_header + 12) = binaryLength;
-  *(ELF_header + 13) = binaryLength;
+  *(ELF_header + 11) = ELF_ENTRY_POINT;
+  *(ELF_header + 12) = ELF_HEADER_LEN + binaryLength;
+  *(ELF_header + 13) = ELF_HEADER_LEN + binaryLength;
   *(ELF_header + 14) = PAGESIZE;
+
+  // RISC-U ELF64 section header table:
+  //This NULL Section is required because 0 means undefined, hence
+  //everything at index 0 is undefined
+
+  *(ELF_header + 15)  = 0;
+  *(ELF_header + 16)  = 0;
+  *(ELF_header + 17)  = 0;
+  *(ELF_header + 18)  = 0;
+  *(ELF_header + 19)  = 0;
+  *(ELF_header + 20)  = 0;
+  *(ELF_header + 21)  = 0;
+  *(ELF_header + 22)  = 0;
+
+  //.text section
+  //  byte value
+  // +----+------------------+
+  // | 0  | 1                | offset into .shstrtab
+  // | 4  | PROGBITS         | type
+  // | 8  | EXECINSTR+ALLOC  | flags
+  // | 16 | ELF_ENTRY_POINT  | virtual address in memory
+  // | 24 | ELF_HEADER_LEN   | section offset in file
+  // | 32 | binaryLength     | size of section
+  // | 40 | 0                | link 
+  // | 44 | 0                | info
+  // | 48 | 2                | alignemnt of section
+  // | 56 | 0                | fixed entry size
+  // +----+------------------+
+
+  *(ELF_header + 23)  = 4294967297;
+  *(ELF_header + 24)  = 6;
+  *(ELF_header + 25)  = ELF_ENTRY_POINT+ ELF_HEADER_LEN;
+  *(ELF_header + 26)  = ELF_HEADER_LEN;
+  *(ELF_header + 27)  = binaryLength;
+  *(ELF_header + 28)  = 0;
+  *(ELF_header + 29)  = 2;
+  *(ELF_header + 30)  = 0;
+  
+  //.shstrtab section
+  //  byte value
+  // +----+------------------+
+  // | 0  | 7                | offset into .shstrtab
+  // | 4  | STRTAB           | type
+  // | 8  | 0                | flags
+  // | 16 | 0                | virtual address in memory
+  // | 24 | 248              | section offset in file
+  // | 32 | 24               | size of section
+  // | 40 | 0                | link 
+  // | 44 | 0                | info
+  // | 48 | 1                | alignemnt of section
+  // | 56 | 0                | fixed entry size
+  // +----+------------------+
+
+  *(ELF_header + 31)  = 12884901895;
+  *(ELF_header + 32)  = 0;
+  *(ELF_header + 33)  = 0;
+  *(ELF_header + 34)  = 312;
+  *(ELF_header + 35)  = 24;
+  *(ELF_header + 36)  = 0;
+  *(ELF_header + 37)  = 1;
+  *(ELF_header + 38)  = 0;
+
+  //content of section .shstrtab
+  *(ELF_header + 39)  = 3314777386191695360; //0.text0.
+  *(ELF_header + 40)  = 7089075323386685555; //shstrtab
+  *(ELF_header + 41)  = 0;
 }
 
 // -----------------------------------------------------------------
@@ -5516,7 +5587,7 @@ void selfie_load() {
   numberOfReadBytes = read(fd, ELF_header, ELF_HEADER_LEN);
 
   if (numberOfReadBytes == ELF_HEADER_LEN) {
-    codeLength = *(ELF_header + 12);
+    codeLength = *(ELF_header + 12) - ELF_HEADER_LEN;
 
     if (codeLength <= maxBinaryLength) {
       // now read binary including global variables and strings
@@ -6891,7 +6962,46 @@ void do_beq() {
 }
 
 void translate_beq() {
+  uint64_t length;
+  uint64_t offset;
+  uint64_t op1;
+  uint64_t op2;
+  
+  if(rs2 == 0) {
+    if(rs1 == 0) {
+      length = 2;
+      *(instr_bytes + 0)  = X86_TEST;                  //test eax,eax
+      *(instr_bytes + 1)  = 192 + x86GetModRMValue(0, 0); 
+    }
+    else {
+      op1 = x86GetRegister(rs1);
+      length = 4;
+      *(instr_bytes + 0)  = x86GetPrefix(op1, 0);      //test rX,0
+      *(instr_bytes + 1)  = X86_TESTI;
+      *(instr_bytes + 2)  = 192 + x86GetModRMValue(op1, 0);
+      *(instr_bytes + 3)  = 0;
+    }
+  }
+  else {
+    op1 = x86GetRegister(rs1);
+    op2 = x86GetRegister(rs2);
+    length = 3;
+    *(instr_bytes + 0)  = x86GetPrefix(op1, op2);     //test rX,rY
+    *(instr_bytes + 1)  = X86_TEST; 
+    *(instr_bytes + 2)  = 192 + x86GetModRMValue(op1, op2);
+  }
 
+  x86emitInstructionBuffer(length);
+  offset = pc + imm;
+
+  *(instr_bytes + 0)  = TWO_BYTE_INSTRUCTION;
+  *(instr_bytes + 1)  = X86_JZ;
+  *(instr_bytes + 2)  = rightShift(leftShift(offset, 56), 56); //FIXME adress fixup chain
+  *(instr_bytes + 3)  = rightShift(leftShift(offset, 48), 56); 
+  *(instr_bytes + 4)  = rightShift(leftShift(offset, 40), 56);
+  *(instr_bytes + 5)  = rightShift(leftShift(offset, 32), 56);
+
+  x86emitInstructionBuffer(6);
 }
 
 void print_jal() {
@@ -6960,14 +7070,14 @@ void do_jal() {
 }
 
 void translate_jal() {
-  uint64_t offset;
-
-  offset = pc + imm;
+  uint64_t address;
+  
+  address = pc + imm;  
   *(instr_bytes + 0)  = X86_CALL;
-  *(instr_bytes + 1)  = rightShift(leftShift(offset, 56), 56); 
-  *(instr_bytes + 2)  = rightShift(leftShift(offset, 48), 56); 
-  *(instr_bytes + 3)  = rightShift(leftShift(offset, 40), 56);
-  *(instr_bytes + 4)  = rightShift(leftShift(offset, 32), 56);
+  *(instr_bytes + 1)  = rightShift(leftShift(address, 56), 56); 
+  *(instr_bytes + 2)  = rightShift(leftShift(address, 48), 56); 
+  *(instr_bytes + 3)  = rightShift(leftShift(address, 40), 56);
+  *(instr_bytes + 4)  = rightShift(leftShift(address, 32), 56);
 
   x86emitInstructionBuffer(5);
 }
@@ -7073,7 +7183,10 @@ void do_ecall() {
 }
 
 void translate_ecall() {
+  *(instr_bytes + 0) = TWO_BYTE_INSTRUCTION;
+  *(instr_bytes + 1) = X86_SYSCALL;
 
+  x86emitInstructionBuffer(2);
 }
 
 void undo_ecall() {
