@@ -1043,6 +1043,8 @@ void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
+void     symbolic_record_ld_before();
+void     symbolic_record_ld_after();
 uint64_t symbolic_do_ld();
 uint64_t symbolic_confine_ld();
 uint64_t do_ld();
@@ -1467,6 +1469,7 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t fetchFromTC(uint64_t tc);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
+uint64_t retrieveAddress();
 
 void checkSatisfiability(uint64_t tc);
 void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
@@ -6771,13 +6774,15 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
-  forceConcrete(currentContext, rs1);
+  //forceConcrete(currentContext, rs1);
   vaddr = getLowerFromReg(rs1) + imm;
+  //vaddr = retrieveAddress();
 
   if (confine) {
     if (isValidVirtualAddress(vaddr))
       if (isVirtualAddressMapped(pt, vaddr))
         saveState(loadVirtualMemory(pt, vaddr));
+
   } else {
     if (isValidVirtualAddress(vaddr))
       if (isVirtualAddressMapped(pt, vaddr))
@@ -6786,16 +6791,7 @@ void symbolic_record_ld_before() {
 }
 
 void symbolic_record_ld_after() {
-  uint64_t vaddr;
-
-  if (confine) {
-    vaddr = getLowerFromReg(rs1) + imm;
-
-    if (isValidVirtualAddress(vaddr))
-      if (isVirtualAddressMapped(pt, vaddr))
-        updateMemState(vaddr, tc);
-  } else
-    updateRegState(rd, tc);
+  updateRegState(rd, tc);
 }
 
 uint64_t symbolic_confine_ld() {
@@ -6806,21 +6802,14 @@ uint64_t symbolic_confine_ld() {
 
   vaddr = getLowerFromReg(rs1) + imm;
 
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      // semantics of sd
-      setLower(getLowerFromReg(rd), tc);
-      setUpper(getUpperFromReg(rd), tc);
+  // semantics of sd
+  setLower(getLowerFromReg(rd), tc);
+  setUpper(getUpperFromReg(rd), tc);
 
-      *(registers + rd) = *(tcs + btc);
+  *(registers + rd) = *(tcs + btc);
 
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
-
-  symbolic_record_ld_after();
+  if (isVirtualAddressMapped(pt, vaddr)) // sTODO: remove if
+    updateMemState(vaddr, tc);
 
   return vaddr;
 }
@@ -6956,39 +6945,34 @@ void record_sd() {
 void symbolic_record_sd_before() {
   uint64_t vaddr;
 
-  if (confine) {
-    vaddr = getLowerFromReg(rs1) + imm;
-    if (isValidVirtualAddress(vaddr))
-      if (isVirtualAddressMapped(pt, vaddr))
-        saveState(*(registers + rs2));
-  } else {
-    forceConcrete(currentContext, rs1);
-    vaddr = getLowerFromReg(rs1) + imm;
-    if (isValidVirtualAddress(vaddr))
-      if (isVirtualAddressMapped(pt, vaddr))
-        saveState(loadVirtualMemory(pt, vaddr));
-  }
+  forceConcrete(currentContext, rs1);
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr))
+      saveState(loadVirtualMemory(pt, vaddr));
 }
 
 void symbolic_record_sd_after() {
   uint64_t vaddr;
 
-  if (confine)
-    updateRegState(rs2, tc);
-  else {
-    forceConcrete(currentContext, rs1);
-    vaddr = getLowerFromReg(rs1) + imm;
-    if (isValidVirtualAddress(vaddr))
-      if (isVirtualAddressMapped(pt, vaddr))
-        updateMemState(vaddr, tc);
-  }
+  forceConcrete(currentContext, rs1);
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr))
+      updateMemState(vaddr, tc);
+    else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  else
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
 }
 
 uint64_t symbolic_confine_sd () {
   uint64_t vaddr;
   uint64_t a;
 
-  symbolic_record_sd_before();
+  saveState(*(registers + rs2));
 
   vaddr = getLowerFromReg(rs1) + imm;
 
@@ -7001,14 +6985,13 @@ uint64_t symbolic_confine_sd () {
 
         updateMemState(vaddr, *(tcs + btc));
       }
-
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
     // TODO: pass invalid vaddr
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
-  symbolic_record_sd_after();
+  *(registers + rs2) = tc - 1; // updateMemState increments already
 
   return vaddr;
 }
@@ -7020,26 +7003,17 @@ uint64_t symbolic_do_sd() {
   symbolic_record_sd_before();
 
   forceConcrete(currentContext, rs1);
-  vaddr = getLowerFromReg(rs1) + imm;
 
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      setLower(getLowerFromReg(rs2), tc);
-      setUpper(getUpperFromReg(rs2), tc);
+  setLower(getLowerFromReg(rs2), tc);
+  setUpper(getUpperFromReg(rs2), tc);
 
-      pc = pc + INSTRUCTIONSIZE;
+  pc    = pc + INSTRUCTIONSIZE;
+  ic_sd = ic_sd + 1;
 
-      ic_sd = ic_sd + 1;
+  // keep track of number of stores per instruction
+  a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
-      // keep track of number of stores per instruction
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
-
-      *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
+  *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
 
   symbolic_record_sd_after();
 
@@ -7199,7 +7173,7 @@ void print_jal_jalr_after() {
 }
 
 void symbolic_confine_jal() {
-  undoValues();
+  *(registers + rd) = *(tcs + btc);
 }
 
 void symbolic_do_jal() {
@@ -7302,7 +7276,7 @@ void print_jalr_before() {
 }
 
 void symbolic_confine_jalr() {
-  undoValues();
+  *(registers + rd) = *(tcs + btc);
 }
 
 void symbolic_do_jalr() {
@@ -7393,9 +7367,6 @@ void symbolic_confine_ecall() {
   }
 
   *(registers + REG_A0) = *(tcs + btc);
-
-  setLower(getLowerFromReg(REG_A0), tc);
-  setUpper(getUpperFromReg(REG_A0), tc);
 }
 
 void symbolic_do_ecall() {
@@ -9228,6 +9199,24 @@ uint64_t isOneSourceRegConcrete() {
     return 1;
 
   return 0;
+}
+
+uint64_t retrieveAddress() {
+  uint64_t vaddr;
+  uint64_t htc;
+
+  // follows the old tcs until a valid address appears
+
+  htc   = *(registers + rs1);
+  vaddr = getLower(htc) + imm;
+
+  // sTODO: check if address is valid
+  while (isVirtualAddressMapped(pt, vaddr) == 0) {
+    htc   = *(tcs + htc);
+    vaddr = getLower(htc) + imm;
+  }
+
+  return vaddr;
 }
 
 void checkSatisfiability(uint64_t tc) {
