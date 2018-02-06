@@ -665,9 +665,11 @@ uint64_t* x86GetNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
 void x86SetNextEntry(uint64_t* entry, uint64_t* next) { *entry = (uint64_t) next; }
 
 void x86Translate();
-void x86CreateAdressTableEntry(uint64_t original, uint64_t translated, uint64_t instr_count);
-void x86CheckAdressFix();
-void x86AdressFixup(uint64_t* entry);
+//void x86CreateAdressTableEntry(uint64_t original, uint64_t translated, uint64_t instr_count);
+void x86SaveAddress();
+void x86AdressFix();
+//void x86CheckAdressFix();
+//void x86AdressFixup(uint64_t* entry);
 //uint64_t x86OneRegisters(uint64_t x, uint64_t y);
 uint64_t x86GetModRMValue(uint64_t x, uint64_t y);
 uint64_t x86GetPrefix(uint64_t x, uint64_t y);
