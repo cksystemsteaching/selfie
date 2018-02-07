@@ -1089,7 +1089,8 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
-uint64_t EXCEPTION_MAXTRACE           = 7;
+uint64_t EXCEPTION_INVALIDSLTU        = 7;
+uint64_t EXCEPTION_MAXTRACE           = 8;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1173,8 +1174,8 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_INVALIDSLTU)        = (uint64_t) "invalid sltu";
   *(EXCEPTIONS + EXCEPTION_MAXTRACE)           = (uint64_t) "trace length exceeded";
-
 
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -6163,8 +6164,8 @@ void do_add() {
 void inherit_add() {
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
-      // rd has no constraint if both rs1 and rs2 have constraints
-      *(reg_hasco + rd) = 0;
+      // rd has constraint but with vaddr 0 if both rs1 and rs2 have constraints
+      *(reg_hasco + rd) = 1;
       *(reg_vaddr + rd) = 0;
       *(reg_hasmn + rd) = 0;
       *(reg_coval + rd) = 0;
@@ -6222,8 +6223,8 @@ void do_sub() {
 void inherit_sub() {
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
-      // rd has no constraint if both rs1 and rs2 have constraints
-      *(reg_hasco + rd) = 0;
+      // rd has constraint but with vaddr 0 if both rs1 and rs2 have constraints
+      *(reg_hasco + rd) = 1;
       *(reg_vaddr + rd) = 0;
       *(reg_hasmn + rd) = 0;
       *(reg_coval + rd) = 0;
@@ -6282,7 +6283,11 @@ void do_mul() {
 
 void inherit_mul_divu_remu() {
   // we cannot keep track of constraints for mul, divu, and remu
-  *(reg_hasco + rd) = 0;
+  if (*(reg_hasco + rs1))
+    *(reg_hasco + rd) = 1;
+  else if (*(reg_hasco + rs2))
+    *(reg_hasco + rd) = 1;
+
   *(reg_vaddr + rd) = 0;
   *(reg_hasmn + rd) = 0;
   *(reg_coval + rd) = 0;
@@ -6417,12 +6422,37 @@ void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
 }
 
 void constrain_sltu() {
+  uint64_t value1;
+  uint64_t vceil1;
+  uint64_t value2;
+  uint64_t vceil2;
+
   if (rd != REG_ZR) {
     // numerical constraint of sltu
+    if (*(reg_hasco + rs1)) {
+      if (*(reg_vaddr + rs1) == 0) {
+        // constrained memory at vaddr 0 means that there is more than
+        // one constrained memory location in the sltu operand
+
+        throwException(EXCEPTION_INVALIDSLTU, rs1);
+
+        return;
+      }
+    } else if (*(reg_hasco + rs2)) {
+      if (*(reg_vaddr + rs2) == 0) {
+        // constrained memory at vaddr 0 means that there is more than
+        // one constrained memory location in the sltu operand
+
+        throwException(EXCEPTION_INVALIDSLTU, rs2);
+
+        return;
+      }
+    }
+
     if (*(registers + rs1) <= *(reg_vceil + rs1)) {
       // rs1 interval is not wrapped around
       if (*(registers + rs2) <= *(reg_vceil + rs2)) {
-        // rs2 interval is not wrapped around
+        // both rs1 and rs2 intervals are not wrapped around
         if (*(reg_vceil + rs1) < *(registers + rs2))
           // rs1 interval is strictly less than rs2 interval
           *(registers + rd) = 1;
@@ -6453,10 +6483,66 @@ void constrain_sltu() {
           // we cannot handle non-singleton interval intersections in comparison
         }
       } else {
-        // we cannot handle wrapped-around intervals in comparison
+        // rs1 interval is not wrapped around but rs2 is
+        vceil2             = *(reg_vceil + rs2);
+        *(reg_vceil + rs2) = UINT64_MAX;
+
+        constrain_sltu();
+
+        *(reg_vceil + rs2) = vceil2;
+
+        value2             = *(registers + rs2);
+        *(registers + rs2) = 0;
+
+        constrain_sltu();
+
+        *(registers + rs2) = value2;
       }
+    } else if (*(registers + rs2) <= *(reg_vceil + rs2)) {
+      // rs2 interval is not wrapped around but rs1 is
+      vceil1             = *(reg_vceil + rs1);
+      *(reg_vceil + rs1) = UINT64_MAX;
+
+      constrain_sltu();
+
+      *(reg_vceil + rs1) = vceil1;
+
+      value1             = *(registers + rs1);
+      *(registers + rs1) = 0;
+
+      constrain_sltu();
+
+      *(registers + rs1) = value1;
     } else {
-      // we cannot handle wrapped-around intervals in comparison
+      // both rs1 and rs2 intervals are wrapped around
+      vceil1             = *(reg_vceil + rs1);
+      *(reg_vceil + rs1) = UINT64_MAX;
+      vceil2             = *(reg_vceil + rs2);
+      *(reg_vceil + rs2) = UINT64_MAX;
+
+      constrain_sltu();
+
+      *(reg_vceil + rs2) = vceil2;
+
+      value2             = *(registers + rs2);
+      *(registers + rs2) = 0;
+
+      constrain_sltu();
+
+      *(reg_vceil + rs1) = vceil1;
+
+      value1             = *(registers + rs1);
+      *(registers + rs1) = 0;
+
+      constrain_sltu();
+
+      *(registers + rs2) = value2;
+      *(reg_vceil + rs2) = UINT64_MAX;
+
+      constrain_sltu();
+
+      *(registers + rs1) = value1;
+      *(reg_vceil + rs2) = vceil2;
     }
   }
 
