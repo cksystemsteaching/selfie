@@ -986,8 +986,6 @@ void initMemory(uint64_t megabytes) {
 // -----------------------------------------------------------------
 
 void recordState(uint64_t value);
-void saveState(uint64_t counter);
-void updateState(uint64_t value);
 
 void replayTrace();
 
