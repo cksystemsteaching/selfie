@@ -6287,7 +6287,9 @@ void inherit_mul_divu_remu() {
     *(reg_hasco + rd) = 1;
   else if (*(reg_hasco + rs2))
     *(reg_hasco + rd) = 1;
-
+  else
+    *(reg_hasco + rd) = 0;
+    
   *(reg_vaddr + rd) = 0;
   *(reg_hasmn + rd) = 0;
   *(reg_coval + rd) = 0;
