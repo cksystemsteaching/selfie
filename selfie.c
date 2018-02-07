@@ -1091,6 +1091,7 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
+uint64_t EXCEPTION_MAXTRACE           = 7;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1133,7 +1134,7 @@ uint64_t trap  = 0; // flag for creating a trap
 
 // trace data structure
 
-uint64_t tc = 1; // trace counter
+uint64_t tc = 0; // trace counter
 
 uint64_t* pcs    = (uint64_t*) 0; // trace of program counter values
 uint64_t* tcs    = (uint64_t*) 0; // trace of trace counters to previous register and memory values
@@ -1165,7 +1166,7 @@ uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_MAXTRACE + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1174,6 +1175,8 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_MAXTRACE)           = (uint64_t) "trace length exceeded";
+
 
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1197,7 +1200,7 @@ void resetInterpreter() {
 
   pt = (uint64_t*) 0;
 
-  tc = 1; // tc == 0 reserved for initial state with symbolic execution
+  tc = 0; // caution: tc == 0 reserved for initial state with symbolic execution
 
   mrc = 0;
 
@@ -5927,23 +5930,12 @@ void recordState(uint64_t value) {
   tc = tc + 1;
 }
 
-void saveState(uint64_t counter) {
-  *(pcs + (tc % maxTraceLength)) = pc;
-  *(tcs + (tc % maxTraceLength)) = counter;
-}
-
-void updateState(uint64_t value) {
-  *(values + (tc % maxTraceLength)) = value;
-
-  tc = tc + 1;
-}
-
 void replayTrace() {
   uint64_t traceLength;
   uint64_t tl;
 
-  if (tc - 1 < maxTraceLength)
-    traceLength = tc - 1;
+  if (tc < maxTraceLength)
+    traceLength = tc;
   else
     traceLength = maxTraceLength;
 
@@ -6406,18 +6398,21 @@ void do_sltu() {
 
 void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
   if (vaddr != 0) {
-    mrc = tc;
+    if (tc + 1 < maxTraceLength) {
+      tc = tc + 1;
 
-    *(pcs + tc) = pc;
+      mrc = tc;
 
-    *(tcs + tc) = loadVirtualMemory(pt, vaddr);
+      *(pcs + tc) = pc;
 
-    *(values + tc) = value;
-    *(vceils + tc) = vceil;
+      *(tcs + tc) = loadVirtualMemory(pt, vaddr);
 
-    storeVirtualMemory(pt, vaddr, tc);
+      *(values + tc) = value;
+      *(vceils + tc) = vceil;
 
-    tc = tc + 1;
+      storeVirtualMemory(pt, vaddr, tc);
+    } else
+      throwException(EXCEPTION_MAXTRACE, 0);
   } else {
     // we cannot handle more than one variable occurrence in comparison
   }
@@ -6712,7 +6707,28 @@ uint64_t constrain_sd() {
       if (isVirtualAddressMapped(pt, vaddr)) {
         mrv = loadVirtualMemory(pt, vaddr);
 
-        storeVirtualMemory(pt, vaddr, *(registers + rs2));
+        if (mrv < mrc) {
+          // current value at vaddr is from before last sltu,
+          // keep that value by creating a new trace event
+          if (tc + 1 < maxTraceLength) {
+            tc = tc + 1;
+
+            *(pcs + tc) = pc;
+
+            *(tcs + tc) = mrv;
+
+            *(values + tc) = *(registers + rs2);
+            *(vceils + tc) = *(reg_vceil + rs2);
+
+            storeVirtualMemory(pt, vaddr, tc);
+          } else
+            throwException(EXCEPTION_MAXTRACE, 0);
+        } else {
+          // current value at vaddr does not need to be restored,
+          // just overwrite it in the trace
+          *(values + mrv) = *(registers + rs2);
+          *(vceils + mrv) = *(reg_vceil + rs2);
+        }
 
         pc = pc + INSTRUCTIONSIZE;
 
