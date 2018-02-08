@@ -6121,8 +6121,8 @@ void constrain_addi() {
         *(reg_hasco + rd) = 1;
         *(reg_vaddr + rd) = *(reg_vaddr + rs1);
         *(reg_hasmn + rd) = 0;
-        *(reg_coval + rd) = *(reg_coval + rs1) - imm;
-        *(reg_cceil + rd) = *(reg_cceil + rs1) - imm;
+        *(reg_coval + rd) = *(reg_coval + rs1) + imm;
+        *(reg_cceil + rd) = *(reg_cceil + rs1) + imm;
       }
     } else {
       // rd has no constraint if rs1 has none
@@ -6182,8 +6182,8 @@ void inherit_add() {
       *(reg_hasco + rd) = 1;
       *(reg_vaddr + rd) = *(reg_vaddr + rs1);
       *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = *(reg_coval + rs1) - *(registers + rs2);
-      *(reg_cceil + rd) = *(reg_cceil + rs1) - *(reg_vceil + rs2);
+      *(reg_coval + rd) = *(reg_coval + rs1) + *(registers + rs2);
+      *(reg_cceil + rd) = *(reg_cceil + rs1) + *(reg_vceil + rs2);
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -6193,8 +6193,8 @@ void inherit_add() {
       *(reg_hasco + rd) = 1;
       *(reg_vaddr + rd) = *(reg_vaddr + rs2);
       *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = *(reg_coval + rs2) - *(registers + rs1);
-      *(reg_cceil + rd) = *(reg_cceil + rs2) - *(reg_vceil + rs1);
+      *(reg_coval + rd) = *(registers + rs1) + *(reg_coval + rs2);
+      *(reg_cceil + rd) = *(reg_vceil + rs1) + *(reg_cceil + rs2);
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
@@ -6241,8 +6241,8 @@ void inherit_sub() {
       *(reg_hasco + rd) = 1;
       *(reg_vaddr + rd) = *(reg_vaddr + rs1);
       *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = *(reg_coval + rs1) + *(registers + rs2);
-      *(reg_cceil + rd) = *(reg_cceil + rs1) + *(reg_vceil + rs2);
+      *(reg_coval + rd) = *(reg_coval + rs1) - *(registers + rs2);
+      *(reg_cceil + rd) = *(reg_cceil + rs1) - *(reg_vceil + rs2);
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -6252,9 +6252,9 @@ void inherit_sub() {
       *(reg_hasco + rd) = 1;
       *(reg_vaddr + rd) = *(reg_vaddr + rs2);
       *(reg_hasmn + rd) = 1;
-      *(reg_coval + rd) = - *(reg_coval + rs2) + *(registers + rs1);
-      *(reg_cceil + rd) = - *(reg_cceil + rs2) + *(reg_vceil + rs1);
-    }
+      *(reg_coval + rd) = *(registers + rs1) - *(reg_coval + rs2);
+      *(reg_cceil + rd) = *(reg_vceil + rs1) - *(reg_cceil + rs2);
+    } 
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     *(reg_hasco + rd) = 0;
@@ -6406,31 +6406,57 @@ void do_sltu() {
   ic_sltu = ic_sltu + 1;
 }
 
-void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
+void create_trace_event(uint64_t pc, uint64_t vaddr, uint64_t value, uint64_t vceil) {
+  uint64_t mrv;
+
+  if (vaddr >= getBumpPointer(currentContext))
+    if (vaddr < *(registers + REG_SP))
+      // do not write to free memory
+      return;
+
   if (vaddr != 0) {
-    if (tc + 1 < maxTraceLength) {
-      tc = tc + 1;
+    // assert: vaddr is valid and mapped
+    mrv = loadVirtualMemory(pt, vaddr);
 
-      mrc = tc;
+    if (value == *(values + mrv))
+      if (vceil == *(vceils + mrv))
+        // prevent identical updates
+        return;
+  } else
+    // there is no value history for vaddr 0
+    mrv = 0;
 
-      *(pcs + tc) = pc;
+  if (tc + 1 < maxTraceLength) {
+    tc = tc + 1;
 
-      *(tcs + tc) = loadVirtualMemory(pt, vaddr);
+    *(pcs + tc) = pc;
 
-      *(values + tc) = value;
-      *(vceils + tc) = vceil;
+    *(tcs + tc) = mrv;
 
-      *(vaddrs + tc) = vaddr;
+    *(values + tc) = value;
+    *(vceils + tc) = vceil;
 
+    *(vaddrs + tc) = vaddr;
+
+    if (vaddr != 0)
+      // assert: vaddr is valid and mapped
       storeVirtualMemory(pt, vaddr, tc);
-    } else
-      throwException(EXCEPTION_MAXTRACE, 0);
-  } else {
-    // we cannot handle more than one variable occurrence in comparison
+  } else
+    throwException(EXCEPTION_MAXTRACE, 0);
+}
+
+void constrain_memory(uint64_t rs, uint64_t value, uint64_t vceil) {
+  if (*(reg_hasco + rs)) {
+    // assert: *(reg_vaddr + rs) != 0
+    if (*(reg_hasmn + rs))
+      create_trace_event(0, *(reg_vaddr + rs), *(reg_coval + rs) - value, *(reg_cceil + rs) - vceil);
+    else
+      create_trace_event(0, *(reg_vaddr + rs), value - *(reg_coval + rs), vceil - *(reg_cceil + rs));
   }
 }
 
-void constrain_sltu() {
+void constrain_sltu(uint64_t howManyMore) {
+  uint64_t savetc;
   uint64_t value1;
   uint64_t vceil1;
   uint64_t value2;
@@ -6447,7 +6473,9 @@ void constrain_sltu() {
 
         return;
       }
-    } else if (*(reg_hasco + rs2)) {
+    }
+
+    if (*(reg_hasco + rs2)) {
       if (*(reg_vaddr + rs2) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
@@ -6458,34 +6486,63 @@ void constrain_sltu() {
       }
     }
 
+    // save tc to check later if any constraints were actually generated
+    savetc = tc;
+
     if (*(registers + rs1) <= *(reg_vceil + rs1)) {
       // rs1 interval is not wrapped around
       if (*(registers + rs2) <= *(reg_vceil + rs2)) {
         // both rs1 and rs2 intervals are not wrapped around
-        if (*(reg_vceil + rs1) < *(registers + rs2))
+        if (*(reg_vceil + rs1) < *(registers + rs2)) {
           // rs1 interval is strictly less than rs2 interval
+          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+
+          if (howManyMore > 0)
+            create_trace_event(pc, 0, 1, 1);
+
           *(registers + rd) = 1;
-        else if (*(reg_vceil + rs2) <= *(registers + rs1))
+        } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
           // rs2 interval is less than or equal to rs1 interval
+          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+
+          if (howManyMore > 0)
+            create_trace_event(pc, 0, 0, 0);
+
           *(registers + rd) = 0;
-        else if (*(registers + rs2) == *(reg_vceil + rs2)) {
+        } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
           // rs2 interval is a singleton
 
-          // first construct constraint for false case for later use
-          constrain_memory(*(reg_vaddr + rs1), *(registers + rs2), *(reg_vceil + rs1));
+          // construct constraint for false case
+          constrain_memory(rs1, *(registers + rs2), *(reg_vceil + rs1));
+          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
 
-          // then construct constraint for true case to be used now
-          constrain_memory(*(reg_vaddr + rs1), *(registers + rs1), *(registers + rs2) - 1);
+          create_trace_event(pc, 0, 0, 0);
+
+          // construct constraint for true case
+          constrain_memory(rs1, *(registers + rs1), *(registers + rs2) - 1);
+          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+
+          if (howManyMore > 0)
+            create_trace_event(pc, 0, 1, 1);
 
           *(registers + rd) = 1;
         } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
           // rs1 interval is a singleton
 
-          // first construct constraint for false case for later use
-          constrain_memory(*(reg_vaddr + rs2), *(registers + rs2), *(registers + rs1));
+          // construct constraint for false case
+          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+          constrain_memory(rs2, *(registers + rs2), *(registers + rs1));
 
-          // then construct constraint for true case to be used now
-          constrain_memory(*(reg_vaddr + rs2), *(registers + rs1) + 1, *(reg_vceil + rs2));
+          create_trace_event(pc, 0, 0, 0);
+
+          // construct constraint for true case
+          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+          constrain_memory(rs2, *(registers + rs1) + 1, *(reg_vceil + rs2));
+
+          if (howManyMore > 0)
+            create_trace_event(pc, 0, 1, 1);
 
           *(registers + rd) = 1;
         } else {
@@ -6496,14 +6553,14 @@ void constrain_sltu() {
         vceil2             = *(reg_vceil + rs2);
         *(reg_vceil + rs2) = UINT64_MAX;
 
-        constrain_sltu();
+        constrain_sltu(1);
 
         *(reg_vceil + rs2) = vceil2;
 
         value2             = *(registers + rs2);
         *(registers + rs2) = 0;
 
-        constrain_sltu();
+        constrain_sltu(0);
 
         *(registers + rs2) = value2;
       }
@@ -6512,14 +6569,14 @@ void constrain_sltu() {
       vceil1             = *(reg_vceil + rs1);
       *(reg_vceil + rs1) = UINT64_MAX;
 
-      constrain_sltu();
+      constrain_sltu(1);
 
       *(reg_vceil + rs1) = vceil1;
 
       value1             = *(registers + rs1);
       *(registers + rs1) = 0;
 
-      constrain_sltu();
+      constrain_sltu(0);
 
       *(registers + rs1) = value1;
     } else {
@@ -6529,30 +6586,34 @@ void constrain_sltu() {
       vceil2             = *(reg_vceil + rs2);
       *(reg_vceil + rs2) = UINT64_MAX;
 
-      constrain_sltu();
+      constrain_sltu(3);
 
       *(reg_vceil + rs2) = vceil2;
 
       value2             = *(registers + rs2);
       *(registers + rs2) = 0;
 
-      constrain_sltu();
+      constrain_sltu(2);
 
       *(reg_vceil + rs1) = vceil1;
 
       value1             = *(registers + rs1);
       *(registers + rs1) = 0;
 
-      constrain_sltu();
+      constrain_sltu(1);
 
       *(registers + rs2) = value2;
       *(reg_vceil + rs2) = UINT64_MAX;
 
-      constrain_sltu();
+      constrain_sltu(0);
 
       *(registers + rs1) = value1;
       *(reg_vceil + rs2) = vceil2;
     }
+
+    if (tc != savetc)
+      // update most recent constraint if any constraints were actually generated
+      mrc = tc;
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6802,25 +6863,11 @@ uint64_t constrain_sd() {
       if (isVirtualAddressMapped(pt, vaddr)) {
         mrv = loadVirtualMemory(pt, vaddr);
 
-        if (mrv < mrc) {
+        if (mrv < mrc)
           // current value at vaddr is from before last sltu,
           // keep that value by creating a new trace event
-          if (tc + 1 < maxTraceLength) {
-            tc = tc + 1;
-
-            *(pcs + tc) = pc;
-
-            *(tcs + tc) = mrv;
-
-            *(values + tc) = *(registers + rs2);
-            *(vceils + tc) = *(reg_vceil + rs2);
-
-            *(vaddrs + tc) = vaddr;
-
-            storeVirtualMemory(pt, vaddr, tc);
-          } else
-            throwException(EXCEPTION_MAXTRACE, 0);
-        } else {
+          create_trace_event(pc, vaddr, *(registers + rs2), *(reg_vceil + rs2));
+        else {
           // current value at vaddr does not need to be restored,
           // just overwrite it in the trace
           *(values + mrv) = *(registers + rs2);
@@ -7356,7 +7403,7 @@ void decode_execute() {
             }
             println();
           } else if (constrain)
-            constrain_sltu();
+            constrain_sltu(0);
         } else
           do_sltu();
 
