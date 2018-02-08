@@ -1135,11 +1135,15 @@ uint64_t trap  = 0; // flag for creating a trap
 
 uint64_t tc = 0; // trace counter
 
-uint64_t* pcs    = (uint64_t*) 0; // trace of program counter values
-uint64_t* tcs    = (uint64_t*) 0; // trace of trace counters to previous register and memory values
+uint64_t* pcs = (uint64_t*) 0; // trace of program counter values
+uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous register and memory values
 
 uint64_t* values = (uint64_t*) 0; // trace of register and memory values
 uint64_t* vceils = (uint64_t*) 0; // trace of value ceilings
+
+uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
+
+// register states
 
 uint64_t* reg_vceil = (uint64_t*) 0; // value ceilings
 
@@ -1181,6 +1185,7 @@ void initInterpreter() {
   tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   values = zalloc(maxTraceLength * SIZEOFUINT64);
   vceils = zalloc(maxTraceLength * SIZEOFUINT64);
+  vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
   reg_vceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
@@ -6289,7 +6294,7 @@ void inherit_mul_divu_remu() {
     *(reg_hasco + rd) = 1;
   else
     *(reg_hasco + rd) = 0;
-    
+
   *(reg_vaddr + rd) = 0;
   *(reg_hasmn + rd) = 0;
   *(reg_coval + rd) = 0;
@@ -6414,6 +6419,8 @@ void constrain_memory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
 
       *(values + tc) = value;
       *(vceils + tc) = vceil;
+
+      *(vaddrs + tc) = vaddr;
 
       storeVirtualMemory(pt, vaddr, tc);
     } else
@@ -6663,6 +6670,8 @@ uint64_t constrain_ld() {
           *(registers + rd) = *(values + mrv);
           *(reg_vceil + rd) = *(vceils + mrv);
 
+          // assert: vaddr == *(vaddrs + mrv)
+
           // vaddr is constrained by rd
           *(reg_hasco + rd) = 1;
           *(reg_vaddr + rd) = vaddr;
@@ -6806,6 +6815,8 @@ uint64_t constrain_sd() {
             *(values + tc) = *(registers + rs2);
             *(vceils + tc) = *(reg_vceil + rs2);
 
+            *(vaddrs + tc) = vaddr;
+
             storeVirtualMemory(pt, vaddr, tc);
           } else
             throwException(EXCEPTION_MAXTRACE, 0);
@@ -6814,6 +6825,8 @@ uint64_t constrain_sd() {
           // just overwrite it in the trace
           *(values + mrv) = *(registers + rs2);
           *(vceils + mrv) = *(reg_vceil + rs2);
+
+          // assert: vaddr == *(vaddrs + mrv)
         }
 
         pc = pc + INSTRUCTIONSIZE;
