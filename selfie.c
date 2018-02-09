@@ -7396,7 +7396,8 @@ void decode_execute() {
             print_beq_after();
           }
           println();
-        }
+        } else if (constrain)
+          do_beq();
       } else
         do_beq();
 
@@ -7419,7 +7420,8 @@ void decode_execute() {
           print_jal_jalr_after();
         }
         println();
-      }
+      } else if (constrain)
+        do_jal();
     } else
       do_jal();
 
@@ -7442,7 +7444,8 @@ void decode_execute() {
             print_jal_jalr_after();
           }
           println();
-        }
+        } else if (constrain)
+          do_jalr();
       } else
         do_jalr();
 
@@ -7491,7 +7494,8 @@ void decode_execute() {
             print_ecall_after();
           }
           println();
-        }
+        } else if (constrain)
+          do_ecall();
       } else
         do_ecall();
 
