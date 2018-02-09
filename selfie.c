@@ -1152,7 +1152,7 @@ uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
 uint64_t* reg_coval = (uint64_t*) 0; // value of constraint
 uint64_t* reg_cceil = (uint64_t*) 0; // ceiling of constraint
 
-uint64_t mrc = 0; // most recent constraint
+uint64_t mrc = 1; // trace counter of most recent constraint
 
 // profile
 
@@ -1205,7 +1205,7 @@ void resetInterpreter() {
 
   tc = 0; // caution: tc == 0 reserved for initial state with symbolic execution
 
-  mrc = 0;
+  mrc = 1; // trace events must be created upon first updates to zeroed memory
 
   trap = 0;
 
@@ -6413,12 +6413,143 @@ void constrain_memory(uint64_t reg, uint64_t value, uint64_t vceil) {
   }
 }
 
-void constrain_sltu(uint64_t howManyMore) {
-  uint64_t savetc;
+void create_constraints(uint64_t howManyMore) {
   uint64_t value1;
   uint64_t vceil1;
   uint64_t value2;
   uint64_t vceil2;
+
+  if (*(registers + rs1) <= *(reg_vceil + rs1)) {
+    // rs1 interval is not wrapped around
+    if (*(registers + rs2) <= *(reg_vceil + rs2)) {
+      // both rs1 and rs2 intervals are not wrapped around
+      if (*(reg_vceil + rs1) < *(registers + rs2)) {
+        // rs1 interval is strictly less than rs2 interval
+        constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+        constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+
+        if (howManyMore > 0)
+          // record that we need to set rd to true
+          create_trace_event(pc, 0, 1, 1);
+
+        *(registers + rd) = 1;
+      } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
+        // rs2 interval is less than or equal to rs1 interval
+        constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+        constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+
+        if (howManyMore > 0)
+          // record that we need to set rd to false
+          create_trace_event(pc, 0, 0, 0);
+
+        *(registers + rd) = 0;
+      } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
+        // rs2 interval is a singleton
+
+        // construct constraint for false case
+        constrain_memory(rs1, *(registers + rs2), *(reg_vceil + rs1));
+        constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+
+        // record that we need to set rd to false
+        create_trace_event(pc, 0, 0, 0);
+
+        // construct constraint for true case
+        constrain_memory(rs1, *(registers + rs1), *(registers + rs2) - 1);
+        constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+
+        if (howManyMore > 0)
+          // record that we need to set rd to true
+          create_trace_event(pc, 0, 1, 1);
+
+        *(registers + rd) = 1;
+      } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
+        // rs1 interval is a singleton
+
+        // construct constraint for false case
+        constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+        constrain_memory(rs2, *(registers + rs2), *(registers + rs1));
+
+        // record that we need to set rd to false
+        create_trace_event(pc, 0, 0, 0);
+
+        // construct constraint for true case
+        constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
+        constrain_memory(rs2, *(registers + rs1) + 1, *(reg_vceil + rs2));
+
+        if (howManyMore > 0)
+          // record that we need to set rd to true
+          create_trace_event(pc, 0, 1, 1);
+
+        *(registers + rd) = 1;
+      } else {
+        // we cannot handle non-singleton interval intersections in comparison
+      }
+    } else {
+      // rs1 interval is not wrapped around but rs2 is
+      vceil2             = *(reg_vceil + rs2);
+      *(reg_vceil + rs2) = UINT64_MAX;
+
+      create_constraints(1); // unwrap rs2 interval and use higher portion first
+
+      *(reg_vceil + rs2) = vceil2;
+
+      value2             = *(registers + rs2);
+      *(registers + rs2) = 0;
+
+      create_constraints(0); // then use lower portion of rs2
+
+      *(registers + rs2) = value2;
+    }
+  } else if (*(registers + rs2) <= *(reg_vceil + rs2)) {
+    // rs2 interval is not wrapped around but rs1 is
+    vceil1             = *(reg_vceil + rs1);
+    *(reg_vceil + rs1) = UINT64_MAX;
+
+    create_constraints(1); // unwrap rs1 interval and use higher portion first
+
+    *(reg_vceil + rs1) = vceil1;
+
+    value1             = *(registers + rs1);
+    *(registers + rs1) = 0;
+
+    create_constraints(0); // then use lower portion of rs1
+
+    *(registers + rs1) = value1;
+  } else {
+    // both rs1 and rs2 intervals are wrapped around
+    vceil1             = *(reg_vceil + rs1);
+    *(reg_vceil + rs1) = UINT64_MAX;
+    vceil2             = *(reg_vceil + rs2);
+    *(reg_vceil + rs2) = UINT64_MAX;
+
+    create_constraints(3); // unwrap rs1 and rs2 intervals and use higher portions
+
+    *(reg_vceil + rs2) = vceil2;
+
+    value2             = *(registers + rs2);
+    *(registers + rs2) = 0;
+
+    create_constraints(2); // use higher portion of rs1 and lower portion of rs2
+
+    *(reg_vceil + rs1) = vceil1;
+
+    value1             = *(registers + rs1);
+    *(registers + rs1) = 0;
+
+    create_constraints(1); // use lower portions of rs1 and rs2
+
+    *(registers + rs2) = value2;
+    *(reg_vceil + rs2) = UINT64_MAX;
+
+    create_constraints(0); // use lower portion of rs1 and higher portion of rs2
+
+    *(registers + rs1) = value1;
+    *(reg_vceil + rs2) = vceil2;
+  }
+}
+
+void constrain_sltu() {
+  uint64_t savetc;
 
   if (rd != REG_ZR) {
     // numerical constraint of sltu
@@ -6447,137 +6578,12 @@ void constrain_sltu(uint64_t howManyMore) {
     // save tc to check later if any constraints were actually generated
     savetc = tc;
 
-    if (*(registers + rs1) <= *(reg_vceil + rs1)) {
-      // rs1 interval is not wrapped around
-      if (*(registers + rs2) <= *(reg_vceil + rs2)) {
-        // both rs1 and rs2 intervals are not wrapped around
-        if (*(reg_vceil + rs1) < *(registers + rs2)) {
-          // rs1 interval is strictly less than rs2 interval
-          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
-          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
+    create_constraints(0);
 
-          if (howManyMore > 0)
-            // record that we need to set rd to true
-            create_trace_event(pc, 0, 1, 1);
-
-          *(registers + rd) = 1;
-        } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
-          // rs2 interval is less than or equal to rs1 interval
-          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
-          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
-
-          if (howManyMore > 0)
-            // record that we need to set rd to false
-            create_trace_event(pc, 0, 0, 0);
-
-          *(registers + rd) = 0;
-        } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
-          // rs2 interval is a singleton
-
-          // construct constraint for false case
-          constrain_memory(rs1, *(registers + rs2), *(reg_vceil + rs1));
-          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
-
-          // record that we need to set rd to false
-          create_trace_event(pc, 0, 0, 0);
-
-          // construct constraint for true case
-          constrain_memory(rs1, *(registers + rs1), *(registers + rs2) - 1);
-          constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
-
-          if (howManyMore > 0)
-            // record that we need to set rd to true
-            create_trace_event(pc, 0, 1, 1);
-
-          *(registers + rd) = 1;
-        } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
-          // rs1 interval is a singleton
-
-          // construct constraint for false case
-          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
-          constrain_memory(rs2, *(registers + rs2), *(registers + rs1));
-
-          // record that we need to set rd to false
-          create_trace_event(pc, 0, 0, 0);
-
-          // construct constraint for true case
-          constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
-          constrain_memory(rs2, *(registers + rs1) + 1, *(reg_vceil + rs2));
-
-          if (howManyMore > 0)
-            // record that we need to set rd to true
-            create_trace_event(pc, 0, 1, 1);
-
-          *(registers + rd) = 1;
-        } else {
-          // we cannot handle non-singleton interval intersections in comparison
-        }
-      } else {
-        // rs1 interval is not wrapped around but rs2 is
-        vceil2             = *(reg_vceil + rs2);
-        *(reg_vceil + rs2) = UINT64_MAX;
-
-        constrain_sltu(1); // unwrap rs2 interval and use higher portion first
-
-        *(reg_vceil + rs2) = vceil2;
-
-        value2             = *(registers + rs2);
-        *(registers + rs2) = 0;
-
-        constrain_sltu(0); // then use lower portion of rs2
-
-        *(registers + rs2) = value2;
-      }
-    } else if (*(registers + rs2) <= *(reg_vceil + rs2)) {
-      // rs2 interval is not wrapped around but rs1 is
-      vceil1             = *(reg_vceil + rs1);
-      *(reg_vceil + rs1) = UINT64_MAX;
-
-      constrain_sltu(1); // unwrap rs1 interval and use higher portion first
-
-      *(reg_vceil + rs1) = vceil1;
-
-      value1             = *(registers + rs1);
-      *(registers + rs1) = 0;
-
-      constrain_sltu(0); // then use lower portion of rs1
-
-      *(registers + rs1) = value1;
-    } else {
-      // both rs1 and rs2 intervals are wrapped around
-      vceil1             = *(reg_vceil + rs1);
-      *(reg_vceil + rs1) = UINT64_MAX;
-      vceil2             = *(reg_vceil + rs2);
-      *(reg_vceil + rs2) = UINT64_MAX;
-
-      constrain_sltu(3); // unwrap rs1 and rs2 intervals and use higher portions
-
-      *(reg_vceil + rs2) = vceil2;
-
-      value2             = *(registers + rs2);
-      *(registers + rs2) = 0;
-
-      constrain_sltu(2); // use higher portion of rs1 and lower portion of rs2
-
-      *(reg_vceil + rs1) = vceil1;
-
-      value1             = *(registers + rs1);
-      *(registers + rs1) = 0;
-
-      constrain_sltu(1); // use lower portions of rs1 and rs2
-
-      *(registers + rs2) = value2;
-      *(reg_vceil + rs2) = UINT64_MAX;
-
-      constrain_sltu(0); // use lower portion of rs1 and higher portion of rs2
-
-      *(registers + rs1) = value1;
-      *(reg_vceil + rs2) = vceil2;
-    }
-
-    if (tc != savetc)
-      // update most recent constraint if any constraints were actually generated
-      mrc = tc;
+    if (tc > savetc)
+      // set trace counter of most recent constraint to first constraint
+      // created now if any constraints were actually generated
+      mrc = savetc + 1;
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -7367,7 +7373,7 @@ void decode_execute() {
             }
             println();
           } else if (constrain)
-            constrain_sltu(0);
+            constrain_sltu();
         } else
           do_sltu();
 
