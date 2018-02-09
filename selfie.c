@@ -1123,6 +1123,7 @@ uint64_t pc = 0; // program counter
 uint64_t ir = 0; // instruction register
 
 uint64_t* registers = (uint64_t*) 0; // general-purpose registers
+uint64_t* reg_vceil = (uint64_t*) 0; // register value ceilings
 
 uint64_t* pt = (uint64_t*) 0; // page table
 
@@ -1131,21 +1132,19 @@ uint64_t* pt = (uint64_t*) 0; // page table
 uint64_t timer = 0; // counter for timer interrupt
 uint64_t trap  = 0; // flag for creating a trap
 
-// trace data structure
+// traces
 
 uint64_t tc = 0; // trace counter
 
 uint64_t* pcs = (uint64_t*) 0; // trace of program counter values
-uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous register and memory values
+uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
 
-uint64_t* values = (uint64_t*) 0; // trace of register and memory values
+uint64_t* values = (uint64_t*) 0; // trace of values
 uint64_t* vceils = (uint64_t*) 0; // trace of value ceilings
 
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 
-// register states
-
-uint64_t* reg_vceil = (uint64_t*) 0; // value ceilings
+// register constraints on memory
 
 uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
 uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
@@ -1224,6 +1223,18 @@ void resetInterpreter() {
     loadsPerInstruction  = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
     storesPerInstruction = zalloc(maxBinaryLength / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
+}
+
+// -----------------------------------------------------------------
+// --------------------------- CONSTRAINTS -------------------------
+// -----------------------------------------------------------------
+
+void set_constraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t coval, uint64_t cceil) {
+  *(reg_hasco + reg) = hasco;
+  *(reg_vaddr + reg) = vaddr;
+  *(reg_hasmn + reg) = hasmn;
+  *(reg_coval + reg) = coval;
+  *(reg_cceil + reg) = cceil;
 }
 
 // -----------------------------------------------------------------
@@ -6053,11 +6064,7 @@ void constrain_lui() {
     *(reg_vceil + rd) = leftShift(imm, 12);
 
     // rd has no constraint
-    *(reg_hasco + rd) = 0;
-    *(reg_vaddr + rd) = 0;
-    *(reg_hasmn + rd) = 0;
-    *(reg_coval + rd) = 0;
-    *(reg_cceil + rd) = 0;
+    set_constraint(rd, 0, 0, 0, 0, 0);
   }
 }
 
@@ -6116,22 +6123,12 @@ void constrain_addi() {
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
-      } else {
+      } else
         // rd inherits rs1 constraint
-        *(reg_hasco + rd) = 1;
-        *(reg_vaddr + rd) = *(reg_vaddr + rs1);
-        *(reg_hasmn + rd) = 0;
-        *(reg_coval + rd) = *(reg_coval + rs1) + imm;
-        *(reg_cceil + rd) = *(reg_cceil + rs1) + imm;
-      }
-    } else {
+        set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + imm, *(reg_cceil + rs1) + imm);
+    } else
       // rd has no constraint if rs1 has none
-      *(reg_hasco + rd) = 0;
-      *(reg_vaddr + rd) = 0;
-      *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = 0;
-      *(reg_cceil + rd) = 0;
-    }
+      set_constraint(rd, 0, 0, 0, 0, 0);
   }
 }
 
@@ -6168,42 +6165,24 @@ void do_add() {
 
 void inherit_add() {
   if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2)) {
-      // rd has constraint but with vaddr 0 if both rs1 and rs2 have constraints
-      *(reg_hasco + rd) = 1;
-      *(reg_vaddr + rd) = 0;
-      *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = 0;
-      *(reg_cceil + rd) = 0;
-    } else if (*(reg_hasmn + rs1)) {
+    if (*(reg_hasco + rs2))
+      // we cannot keep track of more than one constraint for add but
+      // need to warn about their earlier presence if used in comparisons
+      set_constraint(rd, 1, 0, 0, 0, 0);
+    else if (*(reg_hasmn + rs1)) {
       // rs1 constraint has already minuend and cannot have another addend
-    } else {
+    } else
       // rd inherits rs1 constraint since rs2 has none
-      *(reg_hasco + rd) = 1;
-      *(reg_vaddr + rd) = *(reg_vaddr + rs1);
-      *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = *(reg_coval + rs1) + *(registers + rs2);
-      *(reg_cceil + rd) = *(reg_cceil + rs1) + *(reg_vceil + rs2);
-    }
+      set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + *(registers + rs2), *(reg_cceil + rs1) + *(reg_vceil + rs2));
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
       // rs2 constraint has already minuend and cannot have another addend
-    } else {
+    } else
       // rd inherits rs2 constraint since rs1 has none
-      *(reg_hasco + rd) = 1;
-      *(reg_vaddr + rd) = *(reg_vaddr + rs2);
-      *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = *(registers + rs1) + *(reg_coval + rs2);
-      *(reg_cceil + rd) = *(reg_vceil + rs1) + *(reg_cceil + rs2);
-    }
-  } else {
+      set_constraint(rd, 1, *(reg_vaddr + rs2), 0, *(registers + rs1) + *(reg_coval + rs2), *(reg_vceil + rs1) + *(reg_cceil + rs2));
+  } else
     // rd has no constraint if both rs1 and rs2 have no constraints
-    *(reg_hasco + rd) = 0;
-    *(reg_vaddr + rd) = 0;
-    *(reg_hasmn + rd) = 0;
-    *(reg_coval + rd) = 0;
-    *(reg_cceil + rd) = 0;
-  }
+    set_constraint(rd, 0, 0, 0, 0, 0);
 }
 
 void constrain_add() {
@@ -6227,42 +6206,24 @@ void do_sub() {
 
 void inherit_sub() {
   if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2)) {
-      // rd has constraint but with vaddr 0 if both rs1 and rs2 have constraints
-      *(reg_hasco + rd) = 1;
-      *(reg_vaddr + rd) = 0;
-      *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = 0;
-      *(reg_cceil + rd) = 0;
-    } else if (*(reg_hasmn + rs1)) {
+    if (*(reg_hasco + rs2))
+      // we cannot keep track of more than one constraint for sub but
+      // need to warn about their earlier presence if used in comparisons
+      set_constraint(rd, 1, 0, 0, 0, 0);
+    else if (*(reg_hasmn + rs1)) {
       // rs1 constraint has already minuend and cannot have another subtrahend
-    } else {
+    } else
       // rd inherits rs1 constraint since rs2 has none
-      *(reg_hasco + rd) = 1;
-      *(reg_vaddr + rd) = *(reg_vaddr + rs1);
-      *(reg_hasmn + rd) = 0;
-      *(reg_coval + rd) = *(reg_coval + rs1) - *(registers + rs2);
-      *(reg_cceil + rd) = *(reg_cceil + rs1) - *(reg_vceil + rs2);
-    }
+      set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) - *(registers + rs2), *(reg_cceil + rs1) - *(reg_vceil + rs2));
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
       // rs2 constraint has already minuend and cannot have another minuend
-    } else {
+    } else
       // rd inherits rs2 constraint since rs1 has none
-      *(reg_hasco + rd) = 1;
-      *(reg_vaddr + rd) = *(reg_vaddr + rs2);
-      *(reg_hasmn + rd) = 1;
-      *(reg_coval + rd) = *(registers + rs1) - *(reg_coval + rs2);
-      *(reg_cceil + rd) = *(reg_vceil + rs1) - *(reg_cceil + rs2);
-    } 
-  } else {
+      set_constraint(rd, 1, *(reg_vaddr + rs2), 1, *(registers + rs1) - *(reg_coval + rs2), *(reg_vceil + rs1) - *(reg_cceil + rs2));
+  } else
     // rd has no constraint if both rs1 and rs2 have no constraints
-    *(reg_hasco + rd) = 0;
-    *(reg_vaddr + rd) = 0;
-    *(reg_hasmn + rd) = 0;
-    *(reg_coval + rd) = 0;
-    *(reg_cceil + rd) = 0;
-  }
+    set_constraint(rd, 0, 0, 0, 0, 0);
 }
 
 void constrain_sub() {
@@ -6289,16 +6250,13 @@ void do_mul() {
 void inherit_mul_divu_remu() {
   // we cannot keep track of constraints for mul, divu, and remu
   if (*(reg_hasco + rs1))
-    *(reg_hasco + rd) = 1;
+    // but need to warn about their earlier presence if used in comparisons
+    set_constraint(rd, 1, 0, 0, 0, 0);
   else if (*(reg_hasco + rs2))
-    *(reg_hasco + rd) = 1;
+    // but need to warn about their earlier presence if used in comparisons
+    set_constraint(rd, 1, 0, 0, 0, 0);
   else
-    *(reg_hasco + rd) = 0;
-
-  *(reg_vaddr + rd) = 0;
-  *(reg_hasmn + rd) = 0;
-  *(reg_coval + rd) = 0;
-  *(reg_cceil + rd) = 0;
+    set_constraint(rd, 0, 0, 0, 0, 0);
 }
 
 void constrain_mul() {
@@ -6445,13 +6403,13 @@ void create_trace_event(uint64_t pc, uint64_t vaddr, uint64_t value, uint64_t vc
     throwException(EXCEPTION_MAXTRACE, 0);
 }
 
-void constrain_memory(uint64_t rs, uint64_t value, uint64_t vceil) {
-  if (*(reg_hasco + rs)) {
-    // assert: *(reg_vaddr + rs) != 0
-    if (*(reg_hasmn + rs))
-      create_trace_event(0, *(reg_vaddr + rs), *(reg_coval + rs) - value, *(reg_cceil + rs) - vceil);
+void constrain_memory(uint64_t reg, uint64_t value, uint64_t vceil) {
+  if (*(reg_hasco + reg)) {
+    // assert: *(reg_vaddr + reg) != 0
+    if (*(reg_hasmn + reg))
+      create_trace_event(0, *(reg_vaddr + reg), *(reg_coval + reg) - value, *(reg_cceil + reg) - vceil);
     else
-      create_trace_event(0, *(reg_vaddr + rs), value - *(reg_coval + rs), vceil - *(reg_cceil + rs));
+      create_trace_event(0, *(reg_vaddr + reg), value - *(reg_coval + reg), vceil - *(reg_cceil + reg));
   }
 }
 
@@ -6499,6 +6457,7 @@ void constrain_sltu(uint64_t howManyMore) {
           constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
 
           if (howManyMore > 0)
+            // record that we need to set rd to true
             create_trace_event(pc, 0, 1, 1);
 
           *(registers + rd) = 1;
@@ -6508,6 +6467,7 @@ void constrain_sltu(uint64_t howManyMore) {
           constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
 
           if (howManyMore > 0)
+            // record that we need to set rd to false
             create_trace_event(pc, 0, 0, 0);
 
           *(registers + rd) = 0;
@@ -6518,6 +6478,7 @@ void constrain_sltu(uint64_t howManyMore) {
           constrain_memory(rs1, *(registers + rs2), *(reg_vceil + rs1));
           constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
 
+          // record that we need to set rd to false
           create_trace_event(pc, 0, 0, 0);
 
           // construct constraint for true case
@@ -6525,6 +6486,7 @@ void constrain_sltu(uint64_t howManyMore) {
           constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
 
           if (howManyMore > 0)
+            // record that we need to set rd to true
             create_trace_event(pc, 0, 1, 1);
 
           *(registers + rd) = 1;
@@ -6535,6 +6497,7 @@ void constrain_sltu(uint64_t howManyMore) {
           constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
           constrain_memory(rs2, *(registers + rs2), *(registers + rs1));
 
+          // record that we need to set rd to false
           create_trace_event(pc, 0, 0, 0);
 
           // construct constraint for true case
@@ -6542,6 +6505,7 @@ void constrain_sltu(uint64_t howManyMore) {
           constrain_memory(rs2, *(registers + rs1) + 1, *(reg_vceil + rs2));
 
           if (howManyMore > 0)
+            // record that we need to set rd to true
             create_trace_event(pc, 0, 1, 1);
 
           *(registers + rd) = 1;
@@ -6553,14 +6517,14 @@ void constrain_sltu(uint64_t howManyMore) {
         vceil2             = *(reg_vceil + rs2);
         *(reg_vceil + rs2) = UINT64_MAX;
 
-        constrain_sltu(1);
+        constrain_sltu(1); // unwrap rs2 interval and use higher portion first
 
         *(reg_vceil + rs2) = vceil2;
 
         value2             = *(registers + rs2);
         *(registers + rs2) = 0;
 
-        constrain_sltu(0);
+        constrain_sltu(0); // then use lower portion of rs2
 
         *(registers + rs2) = value2;
       }
@@ -6569,14 +6533,14 @@ void constrain_sltu(uint64_t howManyMore) {
       vceil1             = *(reg_vceil + rs1);
       *(reg_vceil + rs1) = UINT64_MAX;
 
-      constrain_sltu(1);
+      constrain_sltu(1); // unwrap rs1 interval and use higher portion first
 
       *(reg_vceil + rs1) = vceil1;
 
       value1             = *(registers + rs1);
       *(registers + rs1) = 0;
 
-      constrain_sltu(0);
+      constrain_sltu(0); // then use lower portion of rs1
 
       *(registers + rs1) = value1;
     } else {
@@ -6586,26 +6550,26 @@ void constrain_sltu(uint64_t howManyMore) {
       vceil2             = *(reg_vceil + rs2);
       *(reg_vceil + rs2) = UINT64_MAX;
 
-      constrain_sltu(3);
+      constrain_sltu(3); // unwrap rs1 and rs2 intervals and use higher portions
 
       *(reg_vceil + rs2) = vceil2;
 
       value2             = *(registers + rs2);
       *(registers + rs2) = 0;
 
-      constrain_sltu(2);
+      constrain_sltu(2); // use higher portion of rs1 and lower portion of rs2
 
       *(reg_vceil + rs1) = vceil1;
 
       value1             = *(registers + rs1);
       *(registers + rs1) = 0;
 
-      constrain_sltu(1);
+      constrain_sltu(1); // use lower portions of rs1 and rs2
 
       *(registers + rs2) = value2;
       *(reg_vceil + rs2) = UINT64_MAX;
 
-      constrain_sltu(0);
+      constrain_sltu(0); // use lower portion of rs1 and higher portion of rs2
 
       *(registers + rs1) = value1;
       *(reg_vceil + rs2) = vceil2;
