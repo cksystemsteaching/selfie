@@ -1093,7 +1093,7 @@ uint64_t EXCEPTION_MAXTRACE           = 8;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
-uint64_t maxTraceLength = 20;
+uint64_t maxTraceLength = 2000;
 
 uint64_t debug_exception = 0;
 
@@ -1408,6 +1408,7 @@ uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
 uint64_t EXITCODE_DIVISIONBYZERO;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
+uint64_t EXITCODE_OUTOFTRACEMEMORY;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
@@ -1438,7 +1439,8 @@ void initKernel() {
   EXITCODE_DIVISIONBYZERO = signShrink(-8, SYSCALL_BITWIDTH);
   EXITCODE_UNKNOWNINSTRUCTION = signShrink(-9, SYSCALL_BITWIDTH);
   EXITCODE_UNKNOWNSYSCALL = signShrink(-10, SYSCALL_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-11, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFTRACEMEMORY = signShrink(-11, SYSCALL_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-12, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -6393,7 +6395,16 @@ void do_sltu() {
   ic_sltu = ic_sltu + 1;
 }
 
-void create_trace_event(uint64_t pc, uint64_t vaddr, uint64_t value, uint64_t vceil) {
+uint64_t ealloc() {
+  if (tc + 1 < maxTraceLength) {
+    tc = tc + 1;
+
+    return 1;
+  } else
+    return 0;
+}
+
+void trace_memory(uint64_t pc, uint64_t vaddr, uint64_t value, uint64_t vceil) {
   uint64_t mrv;
 
   if (vaddr >= getBumpPointer(currentContext))
@@ -6413,11 +6424,8 @@ void create_trace_event(uint64_t pc, uint64_t vaddr, uint64_t value, uint64_t vc
     // there is no value history for vaddr 0
     mrv = 0;
 
-  if (tc + 1 < maxTraceLength) {
-    tc = tc + 1;
-
+  if (ealloc()) {
     *(pcs + tc) = pc;
-
     *(tcs + tc) = mrv;
 
     *(values + tc) = value;
@@ -6436,9 +6444,9 @@ void constrain_memory(uint64_t reg, uint64_t value, uint64_t vceil) {
   if (*(reg_hasco + reg)) {
     // assert: *(reg_vaddr + reg) != 0
     if (*(reg_hasmn + reg))
-      create_trace_event(0, *(reg_vaddr + reg), *(reg_coval + reg) - value, *(reg_cceil + reg) - vceil);
+      trace_memory(0, *(reg_vaddr + reg), *(reg_coval + reg) - value, *(reg_cceil + reg) - vceil);
     else
-      create_trace_event(0, *(reg_vaddr + reg), value - *(reg_coval + reg), vceil - *(reg_cceil + reg));
+      trace_memory(0, *(reg_vaddr + reg), value - *(reg_coval + reg), vceil - *(reg_cceil + reg));
   }
 }
 
@@ -6459,7 +6467,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to true
-          create_trace_event(pc, 0, 1, 1);
+          trace_memory(pc, 0, 1, 1);
 
         *(registers + rd) = 1;
       } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
@@ -6469,7 +6477,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to false
-          create_trace_event(pc, 0, 0, 0);
+          trace_memory(pc, 0, 0, 0);
 
         *(registers + rd) = 0;
       } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
@@ -6480,7 +6488,7 @@ void create_constraints(uint64_t howManyMore) {
         constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
 
         // record that we need to set rd to false
-        create_trace_event(pc, 0, 0, 0);
+        trace_memory(pc, 0, 0, 0);
 
         // construct constraint for true case
         constrain_memory(rs1, *(registers + rs1), *(registers + rs2) - 1);
@@ -6488,7 +6496,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to true
-          create_trace_event(pc, 0, 1, 1);
+          trace_memory(pc, 0, 1, 1);
 
         *(registers + rd) = 1;
       } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
@@ -6499,7 +6507,7 @@ void create_constraints(uint64_t howManyMore) {
         constrain_memory(rs2, *(registers + rs2), *(registers + rs1));
 
         // record that we need to set rd to false
-        create_trace_event(pc, 0, 0, 0);
+        trace_memory(pc, 0, 0, 0);
 
         // construct constraint for true case
         constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
@@ -6507,7 +6515,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to true
-          create_trace_event(pc, 0, 1, 1);
+          trace_memory(pc, 0, 1, 1);
 
         *(registers + rd) = 1;
       } else {
@@ -6865,7 +6873,7 @@ uint64_t constrain_sd() {
         if (mrv < mrc)
           // current value at vaddr is from before last sltu,
           // keep that value by creating a new trace event
-          create_trace_event(pc, vaddr, *(registers + rs2), *(reg_vceil + rs2));
+          trace_memory(pc, vaddr, *(registers + rs2), *(reg_vceil + rs2));
         else {
           // current value at vaddr does not need to be restored,
           // just overwrite it in the trace
@@ -8064,6 +8072,26 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
     mapPage(context, getPageOfVirtualAddress(vaddr), (uint64_t) palloc());
 
+  if (constrain) {
+    if (ealloc()) {
+      *(pcs + tc) = 0;
+      *(tcs + tc) = 0;
+
+      *(values + tc) = data;
+      *(vceils + tc) = data;
+
+      *(vaddrs + tc) = vaddr;
+
+      data = tc;
+    } else {
+      print(selfieName);
+      print((uint64_t*) ": ealloc out of memory");
+      println();
+
+      exit(EXITCODE_OUTOFTRACEMEMORY);
+    }
+  }
+
   storeVirtualMemory(getPT(context), vaddr, data);
 }
 
@@ -8079,6 +8107,20 @@ void up_loadBinary(uint64_t* context) {
   setBumpPointer(context, getProgramBreak(context));
 
   baddr = 0;
+
+  if (constrain) {
+    // code is never constrained...
+    constrain = 0;
+
+    while (baddr < codeLength) {
+      mapAndStore(context, entryPoint + baddr, loadData(baddr));
+
+      baddr = baddr + REGISTERSIZE;
+    }
+
+    // ... but data is
+    constrain = 1;
+  }
 
   while (baddr < binaryLength) {
     mapAndStore(context, entryPoint + baddr, loadData(baddr));
@@ -8158,6 +8200,10 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // store stack pointer value in stack pointer register
   *(getRegs(context) + REG_SP) = SP;
+
+  // set ceiling to register value for symbolic execution
+  if (constrain)
+    *(reg_vceil + REG_SP) = SP;
 }
 
 void mapUnmappedPages(uint64_t* context) {
@@ -8920,7 +8966,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -y | -min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -n | -y | -min | -mob ) size ... ]");
   println();
 }
 
