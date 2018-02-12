@@ -1111,7 +1111,7 @@ uint64_t record      = 0; // flag for recording code execution
 uint64_t undo        = 0; // flag for undoing code execution
 uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
-uint64_t constrain   = 0; // flag for constraining code
+uint64_t symbolic    = 0; // flag for symbolically executing code
 
 // enables recording, disassembling, debugging, and symbolically executing code
 uint64_t debug = 0;
@@ -1408,6 +1408,7 @@ uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
 uint64_t EXITCODE_DIVISIONBYZERO;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR;
 uint64_t EXITCODE_OUTOFTRACEMEMORY;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
 
@@ -1439,8 +1440,9 @@ void initKernel() {
   EXITCODE_DIVISIONBYZERO = signShrink(-8, SYSCALL_BITWIDTH);
   EXITCODE_UNKNOWNINSTRUCTION = signShrink(-9, SYSCALL_BITWIDTH);
   EXITCODE_UNKNOWNSYSCALL = signShrink(-10, SYSCALL_BITWIDTH);
-  EXITCODE_OUTOFTRACEMEMORY = signShrink(-11, SYSCALL_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-12, SYSCALL_BITWIDTH);
+  EXITCODE_SYMBOLICEXECUTIONERROR = signShrink(-11, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFTRACEMEMORY = signShrink(-12, SYSCALL_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-13, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5766,6 +5768,9 @@ uint64_t implementMalloc(uint64_t* context) {
   } else {
     *(getRegs(context) + REG_A0) = bump;
 
+    if (symbolic)
+      *(reg_vceil + REG_A0) = bump;
+
     setBumpPointer(context, bump + size);
 
     if (debug_malloc) {
@@ -6091,7 +6096,7 @@ void do_lui() {
 
 void constrain_lui() {
   if (rd != REG_ZR) {
-    // numerical constraint of lui
+    // symbolic value of lui
     *(reg_vceil + rd) = leftShift(imm, 12);
 
     // rd has no constraint
@@ -6148,7 +6153,7 @@ void do_addi() {
 
 void constrain_addi() {
   if (rd != REG_ZR) {
-    // numerical constraint of addi
+    // symbolic value of addi
     *(reg_vceil + rd) = *(reg_vceil + rs1) + imm;
 
     if (*(reg_hasco + rs1)) {
@@ -6194,34 +6199,30 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void inherit_add() {
-  if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2))
-      // we cannot keep track of more than one constraint for add but
-      // need to warn about their earlier presence if used in comparisons
-      set_constraint(rd, 1, 0, 0, 0, 0);
-    else if (*(reg_hasmn + rs1)) {
-      // rs1 constraint has already minuend and cannot have another addend
-    } else
-      // rd inherits rs1 constraint since rs2 has none
-      set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + *(registers + rs2), *(reg_cceil + rs1) + *(reg_vceil + rs2));
-  } else if (*(reg_hasco + rs2)) {
-    if (*(reg_hasmn + rs2)) {
-      // rs2 constraint has already minuend and cannot have another addend
-    } else
-      // rd inherits rs2 constraint since rs1 has none
-      set_constraint(rd, 1, *(reg_vaddr + rs2), 0, *(registers + rs1) + *(reg_coval + rs2), *(reg_vceil + rs1) + *(reg_cceil + rs2));
-  } else
-    // rd has no constraint if both rs1 and rs2 have no constraints
-    set_constraint(rd, 0, 0, 0, 0, 0);
-}
-
 void constrain_add() {
   if (rd != REG_ZR) {
-    // numerical constraint of add
+    // symbolic value of add
     *(reg_vceil + rd) = *(reg_vceil + rs1) + *(reg_vceil + rs2);
 
-    inherit_add();
+    if (*(reg_hasco + rs1)) {
+      if (*(reg_hasco + rs2))
+        // we cannot keep track of more than one constraint for add but
+        // need to warn about their earlier presence if used in comparisons
+        set_constraint(rd, 1, 0, 0, 0, 0);
+      else if (*(reg_hasmn + rs1)) {
+        // rs1 constraint has already minuend and cannot have another addend
+      } else
+        // rd inherits rs1 constraint since rs2 has none
+        set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + *(registers + rs2), *(reg_cceil + rs1) + *(reg_vceil + rs2));
+    } else if (*(reg_hasco + rs2)) {
+      if (*(reg_hasmn + rs2)) {
+        // rs2 constraint has already minuend and cannot have another addend
+      } else
+        // rd inherits rs2 constraint since rs1 has none
+        set_constraint(rd, 1, *(reg_vaddr + rs2), 0, *(registers + rs1) + *(reg_coval + rs2), *(reg_vceil + rs1) + *(reg_cceil + rs2));
+    } else
+      // rd has no constraint if both rs1 and rs2 have no constraints
+      set_constraint(rd, 0, 0, 0, 0, 0);
   }
 }
 
@@ -6235,34 +6236,30 @@ void do_sub() {
   ic_sub = ic_sub + 1;
 }
 
-void inherit_sub() {
-  if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2))
-      // we cannot keep track of more than one constraint for sub but
-      // need to warn about their earlier presence if used in comparisons
-      set_constraint(rd, 1, 0, 0, 0, 0);
-    else if (*(reg_hasmn + rs1)) {
-      // rs1 constraint has already minuend and cannot have another subtrahend
-    } else
-      // rd inherits rs1 constraint since rs2 has none
-      set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) - *(registers + rs2), *(reg_cceil + rs1) - *(reg_vceil + rs2));
-  } else if (*(reg_hasco + rs2)) {
-    if (*(reg_hasmn + rs2)) {
-      // rs2 constraint has already minuend and cannot have another minuend
-    } else
-      // rd inherits rs2 constraint since rs1 has none
-      set_constraint(rd, 1, *(reg_vaddr + rs2), 1, *(registers + rs1) - *(reg_coval + rs2), *(reg_vceil + rs1) - *(reg_cceil + rs2));
-  } else
-    // rd has no constraint if both rs1 and rs2 have no constraints
-    set_constraint(rd, 0, 0, 0, 0, 0);
-}
-
 void constrain_sub() {
   if (rd != REG_ZR) {
-    // numerical constraint of sub
+    // symbolic value of sub
     *(reg_vceil + rd) = *(reg_vceil + rs1) - *(reg_vceil + rs2);
 
-    inherit_sub();
+    if (*(reg_hasco + rs1)) {
+      if (*(reg_hasco + rs2))
+        // we cannot keep track of more than one constraint for sub but
+        // need to warn about their earlier presence if used in comparisons
+        set_constraint(rd, 1, 0, 0, 0, 0);
+      else if (*(reg_hasmn + rs1)) {
+        // rs1 constraint has already minuend and cannot have another subtrahend
+      } else
+        // rd inherits rs1 constraint since rs2 has none
+        set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) - *(registers + rs2), *(reg_cceil + rs1) - *(reg_vceil + rs2));
+    } else if (*(reg_hasco + rs2)) {
+      if (*(reg_hasmn + rs2)) {
+        // rs2 constraint has already minuend and cannot have another minuend
+      } else
+        // rd inherits rs2 constraint since rs1 has none
+        set_constraint(rd, 1, *(reg_vaddr + rs2), 1, *(registers + rs1) - *(reg_coval + rs2), *(reg_vceil + rs1) - *(reg_cceil + rs2));
+    } else
+      // rd has no constraint if both rs1 and rs2 have no constraints
+      set_constraint(rd, 0, 0, 0, 0, 0);
   }
 }
 
@@ -6292,7 +6289,7 @@ void inherit_mul_divu_remu() {
 
 void constrain_mul() {
   if (rd != REG_ZR) {
-    // numerical constraint of mul
+    // symbolic value of mul
     *(reg_vceil + rd) = *(reg_vceil + rs1) * *(reg_vceil + rs2);
 
     if (*(registers + rs1) != *(reg_vceil + rs1))
@@ -6329,7 +6326,7 @@ void constrain_divu() {
     if (*(reg_vceil + rs2) >= *(registers + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
-        // numerical constraint of divu
+        // symbolic value of divu
         *(reg_vceil + rd) = *(reg_vceil + rs1) / *(reg_vceil + rs2);
 
         if (*(registers + rs1) != *(reg_vceil + rs1))
@@ -6364,7 +6361,7 @@ void constrain_remu() {
     if (*(reg_vceil + rs2) >= *(registers + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
-        // numerical constraint of remu
+        // symbolic value of remu
         *(reg_vceil + rd) = *(reg_vceil + rs1) % *(reg_vceil + rs2);
 
         if (*(registers + rs1) != *(reg_vceil + rs1))
@@ -6589,7 +6586,6 @@ void constrain_sltu() {
   uint64_t savetc;
 
   if (rd != REG_ZR) {
-    // numerical constraint of sltu
     if (*(reg_hasco + rs1)) {
       if (*(reg_vaddr + rs1) == 0) {
         // constrained memory at vaddr 0 means that there is more than
@@ -6712,8 +6708,7 @@ uint64_t do_ld() {
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
+    throwException(EXCEPTION_INVALIDADDRESS, vaddr);
 
   return vaddr;
 }
@@ -6740,12 +6735,11 @@ uint64_t constrain_ld() {
 
           // assert: vaddr == *(vaddrs + mrv)
 
-          // vaddr is constrained by rd
-          *(reg_hasco + rd) = 1;
-          *(reg_vaddr + rd) = vaddr;
-          *(reg_hasmn + rd) = 0;
-          *(reg_coval + rd) = 0;
-          *(reg_cceil + rd) = 0;
+          if (*(values + mrv) != *(vceils + mrv))
+            // vaddr is constrained by rd if value at vaddr is symbolic
+            set_constraint(rd, 1, vaddr, 0, 0, 0);
+          else
+            set_constraint(rd, 0, 0, 0, 0, 0);
         }
 
         pc = pc + INSTRUCTIONSIZE;
@@ -6759,10 +6753,13 @@ uint64_t constrain_ld() {
       } else
         throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
     } else
-      // TODO: pass invalid vaddr
-      throwException(EXCEPTION_INVALIDADDRESS, 0);
+      throwException(EXCEPTION_INVALIDADDRESS, vaddr);
   } else {
-    // TODO: support loading memory intervals
+    print(selfieName);
+    print((uint64_t*) ": symbolic loading from memory intervals not supported");
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
   return vaddr;
@@ -6850,8 +6847,7 @@ uint64_t do_sd() {
     } else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
+    throwException(EXCEPTION_INVALIDADDRESS, vaddr);
 
   return vaddr;
 }
@@ -6894,10 +6890,13 @@ uint64_t constrain_sd() {
       } else
         throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
     } else
-      // TODO: pass invalid vaddr
-      throwException(EXCEPTION_INVALIDADDRESS, 0);
+      throwException(EXCEPTION_INVALIDADDRESS, vaddr);
   } else {
-    // TODO: support loading memory intervals
+    print(selfieName);
+    print((uint64_t*) ": symbolic storing in memory intervals not supported");
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
   return vaddr;
@@ -7214,7 +7213,7 @@ void decode_execute() {
             print_addi_add_sub_mul_divu_remu_sltu_after();
           }
           println();
-        } else if (constrain) {
+        } else if (symbolic) {
           do_addi();
           constrain_addi();
         }
@@ -7240,7 +7239,7 @@ void decode_execute() {
             print_ld_after(do_ld());
           }
           println();
-        } else if (constrain)
+        } else if (symbolic)
           constrain_ld();
       } else
         do_ld();
@@ -7264,7 +7263,7 @@ void decode_execute() {
             print_sd_after(do_sd());
           }
           println();
-        } else if (constrain)
+        } else if (symbolic)
           constrain_sd();
       } else
         do_sd();
@@ -7288,7 +7287,7 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (constrain) {
+          } else if (symbolic) {
             do_add();
             constrain_add();
           }
@@ -7311,7 +7310,7 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (constrain) {
+          } else if (symbolic) {
             do_sub();
             constrain_sub();
           }
@@ -7334,7 +7333,7 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (constrain) {
+          } else if (symbolic) {
             do_mul();
             constrain_mul();
           }
@@ -7359,7 +7358,7 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (constrain) {
+          } else if (symbolic) {
             do_divu();
             constrain_divu();
           }
@@ -7384,7 +7383,7 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (constrain) {
+          } else if (symbolic) {
             do_remu();
             constrain_remu();
           }
@@ -7409,7 +7408,7 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (constrain)
+          } else if (symbolic)
             constrain_sltu();
         } else
           do_sltu();
@@ -7433,7 +7432,7 @@ void decode_execute() {
             print_beq_after();
           }
           println();
-        } else if (constrain)
+        } else if (symbolic)
           do_beq();
       } else
         do_beq();
@@ -7457,7 +7456,7 @@ void decode_execute() {
           print_jal_jalr_after();
         }
         println();
-      } else if (constrain)
+      } else if (symbolic)
         do_jal();
     } else
       do_jal();
@@ -7481,7 +7480,7 @@ void decode_execute() {
             print_jal_jalr_after();
           }
           println();
-        } else if (constrain)
+        } else if (symbolic)
           do_jalr();
       } else
         do_jalr();
@@ -7505,7 +7504,7 @@ void decode_execute() {
           print_lui_after();
         }
         println();
-      } else if (constrain) {
+      } else if (symbolic) {
         do_lui();
         constrain_lui();
       }
@@ -7531,7 +7530,7 @@ void decode_execute() {
             print_ecall_after();
           }
           println();
-        } else if (constrain)
+        } else if (symbolic)
           do_ecall();
       } else
         do_ecall();
@@ -8072,7 +8071,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
     mapPage(context, getPageOfVirtualAddress(vaddr), (uint64_t) palloc());
 
-  if (constrain) {
+  if (symbolic) {
     if (ealloc()) {
       *(pcs + tc) = 0;
       *(tcs + tc) = 0;
@@ -8108,9 +8107,9 @@ void up_loadBinary(uint64_t* context) {
 
   baddr = 0;
 
-  if (constrain) {
+  if (symbolic) {
     // code is never constrained...
-    constrain = 0;
+    symbolic = 0;
 
     while (baddr < codeLength) {
       mapAndStore(context, entryPoint + baddr, loadData(baddr));
@@ -8119,7 +8118,7 @@ void up_loadBinary(uint64_t* context) {
     }
 
     // ... but data is
-    constrain = 1;
+    symbolic = 1;
   }
 
   while (baddr < binaryLength) {
@@ -8202,7 +8201,7 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   *(getRegs(context) + REG_SP) = SP;
 
   // set ceiling to register value for symbolic execution
-  if (constrain)
+  if (symbolic)
     *(reg_vceil + REG_SP) = SP;
 }
 
@@ -8566,7 +8565,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   printProfile();
 
-  constrain   = 0;
+  symbolic    = 0;
   disassemble = 0;
   debug       = 0;
 
@@ -9008,8 +9007,8 @@ uint64_t selfie() {
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-n")) {
-        debug     = 1;
-        constrain = 1;
+        debug    = 1;
+        symbolic = 1;
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-y"))
