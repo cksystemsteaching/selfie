@@ -6472,10 +6472,20 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 }
 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
+  uint64_t mrv;
+
   if (vaddr >= getBumpPointer(currentContext))
     if (vaddr < *(registers + REG_SP))
-      // do not write to free memory
+      // do not constrain free memory
       return;
+
+  mrv = loadVirtualMemory(pt, vaddr);
+
+  if (mrv != 0) {
+    if (mrv <= mrc) {
+      // we do not support potentially aliased constrained memory
+    }
+  }
 
   // always track constrained memory by using tc as most recent branch
   storeSymbolicMemory(pt, vaddr, value, vceil, tc);
@@ -6488,7 +6498,6 @@ void storeRegisterMemory(uint64_t value) {
 
 void constrain_memory(uint64_t reg, uint64_t value, uint64_t vceil) {
   if (*(reg_hasco + reg)) {
-    // assert: *(reg_vaddr + reg) != 0
     if (*(reg_hasmn + reg))
       storeConstrainedMemory(*(reg_vaddr + reg), *(reg_coval + reg) - value, *(reg_cceil + reg) - vceil);
     else
@@ -6663,8 +6672,8 @@ void constrain_sltu() {
     create_constraints(0);
 
     if (tc > savetc)
-      // set trace counter of most recent constraint to first constraint
-      // created now if any constraints were actually generated
+      // set trace counter of most recent constraint to right before
+      // first constraint created now if any constraints were generated
       mrc = savetc;
   }
 
@@ -8108,26 +8117,18 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     mapPage(context, getPageOfVirtualAddress(vaddr), (uint64_t) palloc());
 
   if (symbolic) {
-    if (ealloc()) {
-      *(pcs + tc) = 0;
-      *(tcs + tc) = 0;
-
-      *(values + tc) = data;
-      *(vceils + tc) = data;
-
-      *(vaddrs + tc) = vaddr;
-
-      data = tc;
-    } else {
+    if (tc + 1 < maxTraceLength)
+      // always track initialized memory by using tc as most recent branch
+      storeSymbolicMemory(getPT(context), vaddr, data, data, tc);
+    else {
       print(selfieName);
       print((uint64_t*) ": ealloc out of memory");
       println();
 
       exit(EXITCODE_OUTOFTRACEMEMORY);
     }
-  }
-
-  storeVirtualMemory(getPT(context), vaddr, data);
+  } else
+    storeVirtualMemory(getPT(context), vaddr, data);
 }
 
 void up_loadBinary(uint64_t* context) {
