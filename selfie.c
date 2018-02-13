@@ -1114,6 +1114,7 @@ uint64_t undo        = 0; // flag for undoing code execution
 uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
 uint64_t symbolic    = 0; // flag for symbolically executing code
+uint64_t backtrack   = 0; // flag for backtracking symbolic execution
 
 // enables recording, disassembling, debugging, and symbolically executing code
 uint64_t debug = 0;
@@ -6429,6 +6430,10 @@ uint64_t ealloc() {
     return 0;
 }
 
+void efree() {
+  tc = tc - 1;
+}
+
 void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb) {
   uint64_t mrv;
 
@@ -6441,8 +6446,8 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
         // prevent identical updates
         return;
   } else
-    // there is no value history for vaddr 0
-    mrv = 0;
+    // vaddr == 0 means we are tracking the value of the rd register of sltu
+    mrv = mrc;
 
   if (mrv > trb) {
     // current value at vaddr does not need to be tracked,
@@ -6451,24 +6456,24 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(vceils + mrv) = vceil;
 
     // assert: vaddr == *(vaddrs + mrv)
-  } else {
+  } else if (ealloc()) {
     // current value at vaddr is from before most recent branch,
     // track that value by creating a new trace event
-    if (ealloc()) {
-      *(pcs + tc) = pc;
-      *(tcs + tc) = mrv;
+    *(pcs + tc) = pc;
+    *(tcs + tc) = mrv;
 
-      *(values + tc) = value;
-      *(vceils + tc) = vceil;
+    *(values + tc) = value;
+    *(vceils + tc) = vceil;
 
-      *(vaddrs + tc) = vaddr;
+    *(vaddrs + tc) = vaddr;
 
-      if (vaddr != 0)
-        // assert: vaddr is valid and mapped
-        storeVirtualMemory(pt, vaddr, tc);
-    } else
-      throwException(EXCEPTION_MAXTRACE, 0);
-  }
+    if (vaddr != 0)
+      // assert: vaddr is valid and mapped
+      storeVirtualMemory(pt, vaddr, tc);
+    else
+      mrc = tc;
+  } else
+    throwException(EXCEPTION_MAXTRACE, 0);
 }
 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
@@ -6492,7 +6497,7 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
 }
 
 void storeRegisterMemory(uint64_t value) {
-  // always track register memory by using tc as most recent branch
+  // tracking register memory using vaddr == 0
   storeSymbolicMemory(pt, 0, value, value, tc);
 }
 
@@ -6523,8 +6528,8 @@ void create_constraints(uint64_t howManyMore) {
         if (howManyMore > 0)
           // record that we need to set rd to true
           storeRegisterMemory(1);
-
-        *(registers + rd) = 1;
+        else
+          *(registers + rd) = 1;
       } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
         // rs2 interval is less than or equal to rs1 interval
         constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
@@ -6533,8 +6538,8 @@ void create_constraints(uint64_t howManyMore) {
         if (howManyMore > 0)
           // record that we need to set rd to false
           storeRegisterMemory(0);
-
-        *(registers + rd) = 0;
+        else
+          *(registers + rd) = 0;
       } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
         // rs2 interval is a singleton
 
@@ -6552,8 +6557,8 @@ void create_constraints(uint64_t howManyMore) {
         if (howManyMore > 0)
           // record that we need to set rd to true
           storeRegisterMemory(1);
-
-        *(registers + rd) = 1;
+        else
+          *(registers + rd) = 1;
       } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
         // rs1 interval is a singleton
 
@@ -6571,8 +6576,8 @@ void create_constraints(uint64_t howManyMore) {
         if (howManyMore > 0)
           // record that we need to set rd to true
           storeRegisterMemory(1);
-
-        *(registers + rd) = 1;
+        else
+          *(registers + rd) = 1;
       } else {
         // we cannot handle non-singleton interval intersections in comparison
       }
@@ -6641,8 +6646,6 @@ void create_constraints(uint64_t howManyMore) {
 }
 
 void constrain_sltu() {
-  uint64_t savetc;
-
   if (rd != REG_ZR) {
     if (*(reg_hasco + rs1)) {
       if (*(reg_vaddr + rs1) == 0) {
@@ -6666,20 +6669,33 @@ void constrain_sltu() {
       }
     }
 
-    // save tc to check later if any constraints were actually generated
-    savetc = tc;
-
     create_constraints(0);
-
-    if (tc > savetc)
-      // set trace counter of most recent constraint to right before
-      // first constraint created now if any constraints were generated
-      mrc = savetc;
   }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
+}
+
+void backtrack_sltu() {
+  uint64_t vaddr;
+
+  vaddr = *(vaddrs + tc);
+
+  if (vaddr != 0)
+    storeVirtualMemory(pt, vaddr, *(tcs + tc));
+  else {
+    *(registers + rd) = *(values + tc);
+    *(reg_vceil + rd) = *(vceils + tc);
+
+    mrc = *(tcs + tc);
+
+    efree();
+
+    pc = pc + INSTRUCTIONSIZE;
+
+    ic_sltu = ic_sltu + 1;
+  }
 }
 
 void print_ld() {
@@ -6945,6 +6961,12 @@ uint64_t constrain_sd() {
   }
 
   return vaddr;
+}
+
+void backtrack_sd() {
+  storeVirtualMemory(pt, *(vaddrs + tc), *(tcs + tc));
+
+  efree();
 }
 
 void undo_sd() {
@@ -7310,6 +7332,8 @@ void decode_execute() {
           println();
         } else if (symbolic)
           constrain_sd();
+        else if (backtrack)
+          backtrack_sd();
       } else
         do_sd();
 
@@ -7455,6 +7479,8 @@ void decode_execute() {
             println();
           } else if (symbolic)
             constrain_sltu();
+          else if (backtrack)
+            backtrack_sltu();
         } else
           do_sltu();
 
@@ -7577,6 +7603,8 @@ void decode_execute() {
           println();
         } else if (symbolic)
           do_ecall();
+        else if (backtrack)
+          backtrack_sd();
       } else
         do_ecall();
 
@@ -8118,7 +8146,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
 
   if (symbolic) {
     if (tc + 1 < maxTraceLength)
-      // always track initialized memory by using tc as most recent branch
+      // tracking initialized memory
       storeSymbolicMemory(getPT(context), vaddr, data, data, tc);
     else {
       print(selfieName);
@@ -8371,6 +8399,83 @@ uint64_t mipster(uint64_t* toContext) {
   }
 }
 
+void backtrackTrace() {
+  uint64_t savepc;
+
+  symbolic = 0;
+
+  backtrack = 1;
+
+  while (backtrack) {
+    pc = *(pcs + tc);
+
+    if (pc == 0)
+      // we have backtracked all code back to the data segment
+      backtrack = 0;
+    else {
+      savepc = pc;
+
+      fetch();
+      decode_execute();
+
+      if (pc > savepc)
+        backtrack = 0;
+    }
+  }
+
+  symbolic = 1;
+}
+
+uint64_t numster(uint64_t* toContext) {
+  uint64_t timeout;
+  uint64_t* fromContext;
+
+  print((uint64_t*) "numster");
+  println();
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    fromContext = mipster_switch(toContext, timeout);
+
+    if (getParent(fromContext) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      toContext = getParent(fromContext);
+
+      timeout = TIMEROFF;
+    } else {
+       // we are the parent in charge of handling exceptions
+      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
+        // TODO: use this table to unmap and reuse frames
+        mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
+      else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
+        return handleDivisionByZero();
+      else if (handleSystemCalls(fromContext) == EXIT) {
+        if (symbolic) {
+          print(selfieName);
+          print((uint64_t*) ": selfie backtracking ");
+          print(getName(currentContext));
+          print((uint64_t*) " from exit code ");
+          printInteger(signExtend(getExitCode(fromContext), SYSCALL_BITWIDTH));
+          println();
+
+          backtrackTrace();
+
+          if (pc == 0)
+            return EXITCODE_NOERROR;
+        } else
+          return getExitCode(fromContext);
+      }
+
+      setException(fromContext, EXCEPTION_NOEXCEPTION);
+
+      toContext = fromContext;
+
+      timeout = TIMESLICE;
+    }
+  }
+}
+
 uint64_t minster(uint64_t* toContext) {
   uint64_t timeout;
   uint64_t* fromContext;
@@ -8576,7 +8681,10 @@ uint64_t selfie_run(uint64_t machine) {
   print((uint64_t*) "MB physical memory on ");
 
   if (machine == MIPSTER)
-    exitCode = mipster(currentContext);
+    if (symbolic)
+      exitCode = numster(currentContext);
+    else
+      exitCode = mipster(currentContext);
   else if (machine == MINSTER)
     exitCode = minster(currentContext);
   else if (machine == MOBSTER)
