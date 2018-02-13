@@ -190,7 +190,7 @@ uint64_t maxFilenameLength = 128;
 uint64_t* character_buffer; // buffer for reading and writing characters
 uint64_t* integer_buffer;   // buffer for printing integers
 uint64_t* filename_buffer;  // buffer for opening files
-uint64_t* binary_buffer;    // buffer for binary I/O
+uint64_t* io_buffer;        // buffer for I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -259,8 +259,8 @@ void initLibrary() {
   filename_buffer = smalloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  binary_buffer  = smalloc(SIZEOFUINT64);
-  *binary_buffer = 0;
+  io_buffer  = smalloc(SIZEOFUINT64);
+  *io_buffer = 0;
 }
 
 void resetLibrary() {
@@ -1093,7 +1093,7 @@ uint64_t EXCEPTION_MAXTRACE           = 8;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
-uint64_t maxTraceLength = 2000;
+uint64_t maxTraceLength = 100000;
 
 uint64_t debug_exception = 0;
 
@@ -1151,7 +1151,7 @@ uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
 uint64_t* reg_coval = (uint64_t*) 0; // value of constraint
 uint64_t* reg_cceil = (uint64_t*) 0; // ceiling of constraint
 
-uint64_t mrc = 1; // trace counter of most recent constraint
+uint64_t mrc = 0; // trace counter of most recent constraint
 
 // profile
 
@@ -1204,7 +1204,7 @@ void resetInterpreter() {
 
   tc = 0; // caution: tc == 0 reserved for initial state with symbolic execution
 
-  mrc = 1; // trace events must be created upon first updates to zeroed memory
+  mrc = 0; // trace events must be created upon first updates to zeroed memory
 
   trap = 0;
 
@@ -5206,9 +5206,9 @@ void selfie_output() {
   write(fd, ELF_header, ELF_HEADER_LEN);
 
   // then write code length
-  *binary_buffer = codeLength;
+  *io_buffer = codeLength;
 
-  write(fd, binary_buffer, SIZEOFUINT64);
+  write(fd, io_buffer, SIZEOFUINT64);
 
   // assert: binary is mapped
 
@@ -5297,10 +5297,10 @@ void selfie_load() {
   if (numberOfReadBytes == ELF_HEADER_LEN) {
     if (parseELFHeader(ELF_header)) {
       // now read code length
-      numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
+      numberOfReadBytes = read(fd, io_buffer, SIZEOFUINT64);
 
       if (numberOfReadBytes == SIZEOFUINT64) {
-        codeLength = *binary_buffer;
+        codeLength = *io_buffer;
 
         if (binaryLength <= maxBinaryLength) {
           // now read binary including global variables and strings
@@ -5308,7 +5308,7 @@ void selfie_load() {
 
           if (signedLessThan(0, numberOfReadBytes)) {
             // check if we are really at EOF
-            if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
+            if (read(fd, io_buffer, SIZEOFUINT64) == 0) {
               print(selfieName);
               print((uint64_t*) ": ");
               printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
@@ -5391,6 +5391,8 @@ void emitRead() {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb);
+
 void implementRead(uint64_t* context) {
   // parameters
   uint64_t fd;
@@ -5432,7 +5434,12 @@ void implementRead(uint64_t* context) {
         if (size < bytesToRead)
           bytesToRead = size;
 
-        actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
+        actuallyRead = signExtend(read(fd, io_buffer, bytesToRead), SYSCALL_BITWIDTH);
+
+        if (symbolic)
+          storeSymbolicMemory(getPT(context), vbuffer, *io_buffer, *io_buffer, mrc);
+        else
+          storePhysicalMemory(buffer, *io_buffer);
 
         if (actuallyRead == bytesToRead) {
           readTotal = readTotal + actuallyRead;
@@ -5479,6 +5486,9 @@ void implementRead(uint64_t* context) {
     *(getRegs(context) + REG_A0) = readTotal;
   else
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+
+  if (symbolic)
+    *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
 
   if (debug_read) {
     print(selfieName);
@@ -5547,10 +5557,16 @@ void implementWrite(uint64_t* context) {
       if (isVirtualAddressMapped(getPT(context), vbuffer)) {
         buffer = tlb(getPT(context), vbuffer);
 
+        if (symbolic)
+          // buffer points to a trace counter that refers to the actual value
+          *io_buffer = *(values + loadPhysicalMemory(buffer));
+        else
+          *io_buffer = loadPhysicalMemory(buffer);
+
         if (size < bytesToWrite)
           bytesToWrite = size;
 
-        actuallyWritten = signExtend(write(fd, buffer, bytesToWrite), SYSCALL_BITWIDTH);
+        actuallyWritten = signExtend(write(fd, io_buffer, bytesToWrite), SYSCALL_BITWIDTH);
 
         if (actuallyWritten == bytesToWrite) {
           writtenTotal = writtenTotal + actuallyWritten;
@@ -5598,6 +5614,9 @@ void implementWrite(uint64_t* context) {
   else
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
+  if (symbolic)
+    *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
+
   if (debug_write) {
     print(selfieName);
     print((uint64_t*) ": actually wrote ");
@@ -5640,6 +5659,10 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
     if (isValidVirtualAddress(vstring)) {
       if (isVirtualAddressMapped(table, vstring)) {
         pstring = tlb(table, vstring);
+
+        if (symbolic)
+          // pstring points to a trace counter that refers to the actual value
+          storePhysicalMemory(pstring, *(values + loadPhysicalMemory(pstring)));
 
         *(s + i) = loadPhysicalMemory(pstring);
 
@@ -5722,6 +5745,9 @@ void implementOpen(uint64_t* context) {
       println();
     }
   }
+
+  if (symbolic)
+    *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
 }
 
 void emitMalloc() {
@@ -6401,13 +6427,8 @@ uint64_t ealloc() {
     return 0;
 }
 
-void trace_memory(uint64_t pc, uint64_t vaddr, uint64_t value, uint64_t vceil) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb) {
   uint64_t mrv;
-
-  if (vaddr >= getBumpPointer(currentContext))
-    if (vaddr < *(registers + REG_SP))
-      // do not write to free memory
-      return;
 
   if (vaddr != 0) {
     // assert: vaddr is valid and mapped
@@ -6421,29 +6442,55 @@ void trace_memory(uint64_t pc, uint64_t vaddr, uint64_t value, uint64_t vceil) {
     // there is no value history for vaddr 0
     mrv = 0;
 
-  if (ealloc()) {
-    *(pcs + tc) = pc;
-    *(tcs + tc) = mrv;
+  if (mrv > trb) {
+    // current value at vaddr does not need to be tracked,
+    // just overwrite it in the trace
+    *(values + mrv) = value;
+    *(vceils + mrv) = vceil;
 
-    *(values + tc) = value;
-    *(vceils + tc) = vceil;
+    // assert: vaddr == *(vaddrs + mrv)
+  } else {
+    // current value at vaddr is from before most recent branch,
+    // track that value by creating a new trace event
+    if (ealloc()) {
+      *(pcs + tc) = pc;
+      *(tcs + tc) = mrv;
 
-    *(vaddrs + tc) = vaddr;
+      *(values + tc) = value;
+      *(vceils + tc) = vceil;
 
-    if (vaddr != 0)
-      // assert: vaddr is valid and mapped
-      storeVirtualMemory(pt, vaddr, tc);
-  } else
-    throwException(EXCEPTION_MAXTRACE, 0);
+      *(vaddrs + tc) = vaddr;
+
+      if (vaddr != 0)
+        // assert: vaddr is valid and mapped
+        storeVirtualMemory(pt, vaddr, tc);
+    } else
+      throwException(EXCEPTION_MAXTRACE, 0);
+  }
+}
+
+void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil) {
+  if (vaddr >= getBumpPointer(currentContext))
+    if (vaddr < *(registers + REG_SP))
+      // do not write to free memory
+      return;
+
+  // always track constrained memory by using tc as most recent branch
+  storeSymbolicMemory(pt, vaddr, value, vceil, tc);
+}
+
+void storeRegisterMemory(uint64_t value) {
+  // always track register memory by using tc as most recent branch
+  storeSymbolicMemory(pt, 0, value, value, tc);
 }
 
 void constrain_memory(uint64_t reg, uint64_t value, uint64_t vceil) {
   if (*(reg_hasco + reg)) {
     // assert: *(reg_vaddr + reg) != 0
     if (*(reg_hasmn + reg))
-      trace_memory(0, *(reg_vaddr + reg), *(reg_coval + reg) - value, *(reg_cceil + reg) - vceil);
+      storeConstrainedMemory(*(reg_vaddr + reg), *(reg_coval + reg) - value, *(reg_cceil + reg) - vceil);
     else
-      trace_memory(0, *(reg_vaddr + reg), value - *(reg_coval + reg), vceil - *(reg_cceil + reg));
+      storeConstrainedMemory(*(reg_vaddr + reg), value - *(reg_coval + reg), vceil - *(reg_cceil + reg));
   }
 }
 
@@ -6464,7 +6511,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to true
-          trace_memory(pc, 0, 1, 1);
+          storeRegisterMemory(1);
 
         *(registers + rd) = 1;
       } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
@@ -6474,7 +6521,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to false
-          trace_memory(pc, 0, 0, 0);
+          storeRegisterMemory(0);
 
         *(registers + rd) = 0;
       } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
@@ -6485,7 +6532,7 @@ void create_constraints(uint64_t howManyMore) {
         constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2));
 
         // record that we need to set rd to false
-        trace_memory(pc, 0, 0, 0);
+        storeRegisterMemory(0);
 
         // construct constraint for true case
         constrain_memory(rs1, *(registers + rs1), *(registers + rs2) - 1);
@@ -6493,7 +6540,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to true
-          trace_memory(pc, 0, 1, 1);
+          storeRegisterMemory(1);
 
         *(registers + rd) = 1;
       } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
@@ -6504,7 +6551,7 @@ void create_constraints(uint64_t howManyMore) {
         constrain_memory(rs2, *(registers + rs2), *(registers + rs1));
 
         // record that we need to set rd to false
-        trace_memory(pc, 0, 0, 0);
+        storeRegisterMemory(0);
 
         // construct constraint for true case
         constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1));
@@ -6512,7 +6559,7 @@ void create_constraints(uint64_t howManyMore) {
 
         if (howManyMore > 0)
           // record that we need to set rd to true
-          trace_memory(pc, 0, 1, 1);
+          storeRegisterMemory(1);
 
         *(registers + rd) = 1;
       } else {
@@ -6616,7 +6663,7 @@ void constrain_sltu() {
     if (tc > savetc)
       // set trace counter of most recent constraint to first constraint
       // created now if any constraints were actually generated
-      mrc = savetc + 1;
+      mrc = savetc;
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6864,20 +6911,7 @@ uint64_t constrain_sd() {
   if (*(registers + rs1) == *(reg_vceil + rs1)) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
-        mrv = loadVirtualMemory(pt, vaddr);
-
-        if (mrv < mrc)
-          // current value at vaddr is from before last sltu,
-          // keep that value by creating a new trace event
-          trace_memory(pc, vaddr, *(registers + rs2), *(reg_vceil + rs2));
-        else {
-          // current value at vaddr does not need to be restored,
-          // just overwrite it in the trace
-          *(values + mrv) = *(registers + rs2);
-          *(vceils + mrv) = *(reg_vceil + rs2);
-
-          // assert: vaddr == *(vaddrs + mrv)
-        }
+        storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_vceil + rs2), mrc);
 
         pc = pc + INSTRUCTIONSIZE;
 
