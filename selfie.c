@@ -1095,6 +1095,8 @@ uint64_t* EXCEPTIONS; // strings representing exceptions
 
 uint64_t maxTraceLength = 100000;
 
+uint64_t maxReplayLength = 100; // must be less than or equal to maxTraceLength
+
 uint64_t debug_exception = 0;
 
 // number of instructions from context switch to timer interrupt
@@ -6011,10 +6013,10 @@ void replayTrace() {
   uint64_t traceLength;
   uint64_t tl;
 
-  if (tc < maxTraceLength)
+  if (tc < maxReplayLength)
     traceLength = tc;
   else
-    traceLength = maxTraceLength;
+    traceLength = maxReplayLength;
 
   record = 0;
 
