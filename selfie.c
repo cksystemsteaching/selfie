@@ -6064,10 +6064,7 @@ void replayTrace() {
 void printSourceLineNumberOfInstruction(uint64_t a) {
   if (sourceLineNumber != (uint64_t*) 0) {
     print((uint64_t*) "(~");
-    if (execute)
-      printInteger(*(sourceLineNumber + (a - entryPoint) / INSTRUCTIONSIZE));
-    else
-      printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
+    printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
     print((uint64_t*) ")");
   }
 }
@@ -6079,7 +6076,10 @@ void printInstructionContext() {
   }
 
   printHexadecimal(pc, 0);
-  printSourceLineNumberOfInstruction(pc);
+  if (execute)
+    printSourceLineNumberOfInstruction(pc - entryPoint);
+  else
+    printSourceLineNumberOfInstruction(pc);
 
   print((uint64_t*) ": ");
   printHexadecimal(ir, 8);
@@ -7641,7 +7641,7 @@ uint64_t instructionWithMaxCounter(uint64_t* counters, uint64_t max) {
 
   i = 0;
 
-  while (i < maxBinaryLength / INSTRUCTIONSIZE) {
+  while (i < codeLength / INSTRUCTIONSIZE) {
     c = *(counters + i);
 
     if (n < c)
