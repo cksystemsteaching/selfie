@@ -1417,11 +1417,16 @@ uint64_t EXITCODE_UNCAUGHTEXCEPTION;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
-uint64_t MINSTER = 1;
-uint64_t MIPSTER = 2;
-uint64_t MOBSTER = 3;
+uint64_t MIPSTER = 1;
+uint64_t DIPSTER = 2;
+uint64_t RIPSTER = 3;
 
-uint64_t HYPSTER = 4;
+uint64_t NUMSTER = 4;
+
+uint64_t MINSTER = 5;
+uint64_t MOBSTER = 6;
+
+uint64_t HYPSTER = 7;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -5621,7 +5626,7 @@ void implementWrite(uint64_t* context) {
 
   if (symbolic)
     *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
-  
+
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
   if (debug_write) {
@@ -8673,7 +8678,21 @@ uint64_t selfie_run(uint64_t machine) {
     return EXITCODE_BADARGUMENTS;
   }
 
-  initMemory(atoi(peekArgument()));
+  if (machine == DIPSTER) {
+    debug       = 1;
+    disassemble = 1;
+  } else if (machine == RIPSTER) {
+    debug  = 1;
+    record = 1;
+  } else if (machine == NUMSTER) {
+    debug    = 1;
+    symbolic = 1;
+  }
+
+  if (machine == NUMSTER)
+    initMemory(roundUp(maxTraceLength * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
+  else
+    initMemory(atoi(peekArgument()));
 
   execute = 1;
 
@@ -8697,10 +8716,13 @@ uint64_t selfie_run(uint64_t machine) {
   print((uint64_t*) "MB physical memory on ");
 
   if (machine == MIPSTER)
-    if (symbolic)
-      exitCode = numster(currentContext);
-    else
-      exitCode = mipster(currentContext);
+    exitCode = mipster(currentContext);
+  else if (machine == DIPSTER)
+    exitCode = mipster(currentContext);
+  else if (machine == RIPSTER)
+    exitCode = mipster(currentContext);
+  else if (machine == NUMSTER)
+    exitCode = numster(currentContext);
   else if (machine == MINSTER)
     exitCode = minster(currentContext);
   else if (machine == MOBSTER)
@@ -8727,6 +8749,7 @@ uint64_t selfie_run(uint64_t machine) {
   printProfile();
 
   symbolic    = 0;
+  record      = 0;
   disassemble = 0;
   debug       = 0;
 
@@ -9162,22 +9185,13 @@ uint64_t selfie() {
         selfie_sat();
       else if (stringCompare(option, (uint64_t*) "-m"))
         return selfie_run(MIPSTER);
-      else if (stringCompare(option, (uint64_t*) "-d")) {
-        debug       = 1;
-        disassemble = 1;
-
-        return selfie_run(MIPSTER);
-      } else if (stringCompare(option, (uint64_t*) "-r")) {
-        debug  = 1;
-        record = 1;
-
-        return selfie_run(MIPSTER);
-      } else if (stringCompare(option, (uint64_t*) "-n")) {
-        debug    = 1;
-        symbolic = 1;
-
-        return selfie_run(MIPSTER);
-      } else if (stringCompare(option, (uint64_t*) "-y"))
+      else if (stringCompare(option, (uint64_t*) "-d"))
+        return selfie_run(DIPSTER);
+      else if (stringCompare(option, (uint64_t*) "-r"))
+        return selfie_run(RIPSTER);
+      else if (stringCompare(option, (uint64_t*) "-n"))
+        return selfie_run(NUMSTER);
+      else if (stringCompare(option, (uint64_t*) "-y"))
         return selfie_run(HYPSTER);
       else if (stringCompare(option, (uint64_t*) "-min"))
         return selfie_run(MINSTER);
