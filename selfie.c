@@ -985,8 +985,6 @@ void initMemory(uint64_t megabytes) {
 // -----------------------------------------------------------------
 
 void recordState(uint64_t value);
-void saveState(uint64_t counter);
-void updateState(uint64_t value);
 
 void replayTrace();
 
@@ -5432,7 +5430,7 @@ void implementRead(uint64_t* context) {
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
-  
+
   if (debug_read) {
     print(selfieName);
     print((uint64_t*) ": actually read ");
@@ -5932,17 +5930,6 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 
 void recordState(uint64_t value) {
   *(pcs + (tc % maxTraceLength))    = pc;
-  *(values + (tc % maxTraceLength)) = value;
-
-  tc = tc + 1;
-}
-
-void saveState(uint64_t counter) {
-  *(pcs + (tc % maxTraceLength)) = pc;
-  *(tcs + (tc % maxTraceLength)) = counter;
-}
-
-void updateState(uint64_t value) {
   *(values + (tc % maxTraceLength)) = value;
 
   tc = tc + 1;
@@ -7668,11 +7655,16 @@ uint64_t isBootLevelZero() {
 }
 
 uint64_t handleDivisionByZero() {
-  if (record)
-    replayTrace();
-
   print(selfieName);
   print((uint64_t*) ": division by zero");
+  if (record) {
+    print((uint64_t*) ", replaying...");
+    println();
+
+    replayTrace();
+
+    return EXITCODE_NOERROR;
+  }
   println();
 
   return EXITCODE_DIVISIONBYZERO;
@@ -8389,7 +8381,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -y | -min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -r | -y | -min | -mob ) size ... ]");
   println();
 }
 
@@ -8428,6 +8420,11 @@ uint64_t selfie() {
       else if (stringCompare(option, (uint64_t*) "-d")) {
         debug       = 1;
         disassemble = 1;
+
+        return selfie_run(MIPSTER);
+      } else if (stringCompare(option, (uint64_t*) "-r")) {
+        debug  = 1;
+        record = 1;
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-y"))
