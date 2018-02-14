@@ -5493,6 +5493,8 @@ void implementRead(uint64_t* context) {
   if (symbolic)
     *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
 
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+
   if (debug_read) {
     print(selfieName);
     print((uint64_t*) ": actually read ");
@@ -5619,6 +5621,8 @@ void implementWrite(uint64_t* context) {
 
   if (symbolic)
     *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
+  
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
   if (debug_write) {
     print(selfieName);
@@ -5751,6 +5755,8 @@ void implementOpen(uint64_t* context) {
 
   if (symbolic)
     *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
+
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
 }
 
 void emitMalloc() {
@@ -5801,6 +5807,8 @@ uint64_t implementMalloc(uint64_t* context) {
       *(reg_vceil + REG_A0) = bump;
 
     setBumpPointer(context, bump + size);
+
+    setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
     if (debug_malloc) {
       print(selfieName);
@@ -7155,22 +7163,25 @@ void record_ecall() {
 }
 
 void do_ecall() {
-  pc = pc + INSTRUCTIONSIZE;
-
   ic_ecall = ic_ecall + 1;
 
-  if (redo)
+  if (redo) {
     // TODO: redo all side effects
     *(registers + REG_A0) = *(values + (tc % maxTraceLength));
-  else if (*(registers + REG_A7) == SYSCALL_SWITCH)
+
+    pc = pc + INSTRUCTIONSIZE;
+  } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
       print(selfieName);
       print((uint64_t*) ": context switching during recording is unsupported");
       println();
 
       exit(EXITCODE_BADARGUMENTS);
-    } else
+    } else {
+      pc = pc + INSTRUCTIONSIZE;
+
       implementSwitch();
+    }
   else
     throwException(EXCEPTION_SYSCALL, 0);
 }
@@ -8308,11 +8319,16 @@ uint64_t isBootLevelZero() {
 }
 
 uint64_t handleDivisionByZero() {
-  if (record)
-    replayTrace();
-
   print(selfieName);
   print((uint64_t*) ": division by zero");
+  if (record) {
+    print((uint64_t*) ", replaying...");
+    println();
+
+    replayTrace();
+
+    return EXITCODE_NOERROR;
+  }
   println();
 
   return EXITCODE_DIVISIONBYZERO;
@@ -9110,7 +9126,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -n | -y | -min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -r | -n | -y | -min | -mob ) size ... ]");
   println();
 }
 
@@ -9149,6 +9165,11 @@ uint64_t selfie() {
       else if (stringCompare(option, (uint64_t*) "-d")) {
         debug       = 1;
         disassemble = 1;
+
+        return selfie_run(MIPSTER);
+      } else if (stringCompare(option, (uint64_t*) "-r")) {
+        debug  = 1;
+        record = 1;
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-n")) {
