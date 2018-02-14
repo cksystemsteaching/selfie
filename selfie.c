@@ -5431,6 +5431,8 @@ void implementRead(uint64_t* context) {
   else
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+  
   if (debug_read) {
     print(selfieName);
     print((uint64_t*) ": actually read ");
@@ -5548,6 +5550,8 @@ void implementWrite(uint64_t* context) {
     *(getRegs(context) + REG_A0) = writtenTotal;
   else
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
+
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
   if (debug_write) {
     print(selfieName);
@@ -5673,6 +5677,8 @@ void implementOpen(uint64_t* context) {
       println();
     }
   }
+
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
 }
 
 void emitMalloc() {
@@ -5720,6 +5726,8 @@ uint64_t implementMalloc(uint64_t* context) {
     *(getRegs(context) + REG_A0) = bump;
 
     setBumpPointer(context, bump + size);
+
+    setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
     if (debug_malloc) {
       print(selfieName);
@@ -6568,22 +6576,25 @@ void record_ecall() {
 }
 
 void do_ecall() {
-  pc = pc + INSTRUCTIONSIZE;
-
   ic_ecall = ic_ecall + 1;
 
-  if (redo)
+  if (redo) {
     // TODO: redo all side effects
     *(registers + REG_A0) = *(values + (tc % maxTraceLength));
-  else if (*(registers + REG_A7) == SYSCALL_SWITCH)
+
+    pc = pc + INSTRUCTIONSIZE;
+  } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
       print(selfieName);
       print((uint64_t*) ": context switching during recording is unsupported");
       println();
 
       exit(EXITCODE_BADARGUMENTS);
-    } else
+    } else {
+      pc = pc + INSTRUCTIONSIZE;
+
       implementSwitch();
+    }
   else
     throwException(EXCEPTION_SYSCALL, 0);
 }
