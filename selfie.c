@@ -6821,7 +6821,7 @@ uint64_t constrain_ld() {
         ic_ld = ic_ld + 1;
 
         // keep track of number of loads per instruction
-        a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+        a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
         *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
       } else
@@ -6945,7 +6945,7 @@ uint64_t constrain_sd() {
         ic_sd = ic_sd + 1;
 
         // keep track of number of stores per instruction
-        a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+        a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
         *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
       } else
