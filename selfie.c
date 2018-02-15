@@ -6452,16 +6452,25 @@ uint64_t debug_symbolic = 1;
 void printSymbolicMemoryAt(uint64_t sc) {
   print((uint64_t*) "@");
   printInteger(sc);
-  print((uint64_t*) ": ");
-  printHexadecimal(*(pcs + sc), 0);
-  print((uint64_t*) ", @");
+  print((uint64_t*) "[@");
   printInteger(*(tcs + sc));
-  print((uint64_t*) ", ");
-  printInteger(*(values + sc));
-  print((uint64_t*) ", ");
-  printInteger(*(vceils + sc));
-  print((uint64_t*) ", ");
-  printHexadecimal(*(vaddrs + sc), 0);
+  print((uint64_t*) ",");
+  printHexadecimal(*(pcs + sc), 0);
+  printSourceLineNumberOfInstruction(*(pcs + sc) - entryPoint);
+  print((uint64_t*) ",");
+  if (*(vaddrs + sc) == 0) {
+    printRegister(*(vceils + sc));
+    print((uint64_t*) "=");
+    printInteger(*(values + sc));
+    print((uint64_t*) "]");
+  } else {
+    printHexadecimal(*(vaddrs + sc), 0);
+    print((uint64_t*) "=(");
+    printInteger(*(values + sc));
+    print((uint64_t*) ",");
+    printInteger(*(vceils + sc));
+    print((uint64_t*) ")]");
+  }
   println();
 }
 
@@ -6469,7 +6478,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
   uint64_t mrv;
 
   if (vaddr == 0)
-    // tracking the value of the rd register of sltu
+    // tracking a register value for sltu
     mrv = mrc;
   else {
     // assert: vaddr is valid and mapped
@@ -6506,7 +6515,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(vaddrs + tc) = vaddr;
 
     if (vaddr == 0)
-      // value of rd register marks most recent constraint
+      // register tracking marks most recent constraint
       mrc = tc;
     else
       // assert: vaddr is valid and mapped
@@ -6544,9 +6553,9 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil, uint
   storeSymbolicMemory(pt, vaddr, value, vceil, tc);
 }
 
-void storeRegisterMemory(uint64_t value) {
+void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory with vaddr == 0 using tc as most recent branch
-  storeSymbolicMemory(pt, 0, value, value, tc);
+  storeSymbolicMemory(pt, 0, value, reg, tc);
 }
 
 void constrain_memory(uint64_t reg, uint64_t value, uint64_t vceil, uint64_t trb) {
@@ -6573,20 +6582,28 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
         constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
         constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
 
-        if (howManyMore > 0)
+        if (howManyMore > 0) {
           // record that we need to set rd to true
-          storeRegisterMemory(1);
-        else
+          storeRegisterMemory(rd, 1);
+
+          // record frame and stack pointer
+          storeRegisterMemory(REG_FP, *(registers + REG_FP));
+          storeRegisterMemory(REG_SP, *(registers + REG_SP));
+        } else
           *(registers + rd) = 1;
       } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
         // rs2 interval is less than or equal to rs1 interval
         constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
         constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
 
-        if (howManyMore > 0)
+        if (howManyMore > 0) {
           // record that we need to set rd to false
-          storeRegisterMemory(0);
-        else
+          storeRegisterMemory(rd, 0);
+
+          // record frame and stack pointer
+          storeRegisterMemory(REG_FP, *(registers + REG_FP));
+          storeRegisterMemory(REG_SP, *(registers + REG_SP));
+        } else
           *(registers + rd) = 0;
       } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
         // rs2 interval is a singleton
@@ -6596,16 +6613,24 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
         constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
 
         // record that we need to set rd to false
-        storeRegisterMemory(0);
+        storeRegisterMemory(rd, 0);
+
+        // record frame and stack pointer
+        storeRegisterMemory(REG_FP, *(registers + REG_FP));
+        storeRegisterMemory(REG_SP, *(registers + REG_SP));
 
         // construct constraint for true case
         constrain_memory(rs1, *(registers + rs1), *(registers + rs2) - 1, trb);
         constrain_memory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
 
-        if (howManyMore > 0)
+        if (howManyMore > 0) {
           // record that we need to set rd to true
-          storeRegisterMemory(1);
-        else
+          storeRegisterMemory(rd, 1);
+
+          // record frame and stack pointer
+          storeRegisterMemory(REG_FP, *(registers + REG_FP));
+          storeRegisterMemory(REG_SP, *(registers + REG_SP));
+        } else
           *(registers + rd) = 1;
       } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
         // rs1 interval is a singleton
@@ -6615,16 +6640,24 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
         constrain_memory(rs2, *(registers + rs2), *(registers + rs1), trb);
 
         // record that we need to set rd to false
-        storeRegisterMemory(0);
+        storeRegisterMemory(rd, 0);
+
+        // record frame and stack pointer
+        storeRegisterMemory(REG_FP, *(registers + REG_FP));
+        storeRegisterMemory(REG_SP, *(registers + REG_SP));
 
         // construct constraint for true case
         constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
         constrain_memory(rs2, *(registers + rs1) + 1, *(reg_vceil + rs2), trb);
 
-        if (howManyMore > 0)
+        if (howManyMore > 0) {
           // record that we need to set rd to true
-          storeRegisterMemory(1);
-        else
+          storeRegisterMemory(rd, 1);
+
+          // record frame and stack pointer
+          storeRegisterMemory(REG_FP, *(registers + REG_FP));
+          storeRegisterMemory(REG_SP, *(registers + REG_SP));
+        } else
           *(registers + rd) = 1;
       } else {
         // we cannot handle non-singleton interval intersections in comparison
@@ -6730,6 +6763,7 @@ void constrain_sltu() {
       }
     }
 
+    // take local copy of mrc to make sure that alias check considers old mrc
     create_constraints(0, mrc);
   }
 
@@ -6740,6 +6774,7 @@ void constrain_sltu() {
 
 void backtrack_sltu() {
   uint64_t vaddr;
+  uint64_t reg;
 
   if (debug_symbolic) {
     print(selfieName);
@@ -6750,14 +6785,22 @@ void backtrack_sltu() {
   vaddr = *(vaddrs + tc);
 
   if (vaddr == 0) {
-    *(registers + rd) = *(values + tc);
-    *(reg_vceil + rd) = *(vceils + tc);
+    // restoring a register value; the register is identified by vceils value
+    reg = *(vceils + tc);
 
+    *(registers + reg) = *(values + tc);
+    *(reg_vceil + reg) = *(values + tc); // values, not vceils (!)
+
+    // restoring mrc
     mrc = *(tcs + tc);
 
-    pc = pc + INSTRUCTIONSIZE;
+    if (reg != REG_FP)
+      if (reg != REG_SP) {
+        // stop backtracking and try next case
+        pc = pc + INSTRUCTIONSIZE;
 
-    ic_sltu = ic_sltu + 1;
+        ic_sltu = ic_sltu + 1;
+      }
   } else
     storeVirtualMemory(pt, vaddr, *(tcs + tc));
 
@@ -8507,7 +8550,8 @@ void backtrackTrace() {
       fetch();
       decode_execute();
 
-      if (pc > savepc)
+      if (pc != savepc)
+        // backtracking stopped by sltu
         backtrack = 0;
     }
   }
@@ -8542,7 +8586,7 @@ uint64_t numster(uint64_t* toContext) {
       else if (handleSystemCalls(fromContext) == EXIT) {
         if (symbolic) {
           print(selfieName);
-          print((uint64_t*) ": selfie backtracking ");
+          print((uint64_t*) ": backtracking ");
           print(getName(currentContext));
           print((uint64_t*) " from exit code ");
           printInteger(signExtend(getExitCode(fromContext), SYSCALL_BITWIDTH));
@@ -8552,6 +8596,8 @@ uint64_t numster(uint64_t* toContext) {
 
           if (pc == 0)
             return EXITCODE_NOERROR;
+          else
+            setPC(fromContext, pc);
         } else
           return getExitCode(fromContext);
       }
