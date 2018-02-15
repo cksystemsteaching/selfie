@@ -1119,6 +1119,8 @@ uint64_t backtrack   = 0; // flag for backtracking symbolic execution
 // enables recording, disassembling, debugging, and symbolically executing code
 uint64_t debug = 0;
 
+uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
+
 // hardware thread state
 
 uint64_t pc = 0; // program counter
@@ -5401,6 +5403,26 @@ void emitRead() {
 
 void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb);
 
+uint64_t fuzzValue(uint64_t value) {
+  if (fuzz >= CPUBITWIDTH)
+    return 0;
+  else if (value > twoToThePowerOf(fuzz) / 2)
+    return value - twoToThePowerOf(fuzz) / 2;
+  else
+    return 0;
+}
+
+uint64_t fuzzCeiling(uint64_t value) {
+  if (fuzz >= CPUBITWIDTH)
+    return UINT64_MAX;
+  else if (UINT64_MAX - value < twoToThePowerOf(fuzz) / 2)
+    return UINT64_MAX;
+  else if (value > twoToThePowerOf(fuzz) / 2)
+    return value + twoToThePowerOf(fuzz) / 2;
+  else
+    return twoToThePowerOf(fuzz);
+}
+
 void implementRead(uint64_t* context) {
   // parameters
   uint64_t fd;
@@ -5445,7 +5467,11 @@ void implementRead(uint64_t* context) {
         actuallyRead = signExtend(read(fd, io_buffer, bytesToRead), SYSCALL_BITWIDTH);
 
         if (symbolic)
-          storeSymbolicMemory(getPT(context), vbuffer, 0, 255, tc);
+          if (mrc == 0)
+            // no branching yet, we may overwrite symbolic memory
+            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(*io_buffer), fuzzCeiling(*io_buffer), 0);
+          else
+            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(*io_buffer), fuzzCeiling(*io_buffer), tc);
         else
           storePhysicalMemory(buffer, *io_buffer);
 
@@ -6447,7 +6473,7 @@ void efree() {
   tc = tc - 1;
 }
 
-uint64_t debug_symbolic = 1;
+uint64_t debug_symbolic = 0;
 
 void printSymbolicMemoryAt(uint64_t sc) {
   print((uint64_t*) "@");
@@ -8803,9 +8829,11 @@ uint64_t selfie_run(uint64_t machine) {
     symbolic = 1;
   }
 
-  if (machine == NUMSTER)
+  if (machine == NUMSTER) {
     initMemory(roundUp(maxTraceLength * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
-  else
+
+    fuzz = atoi(peekArgument());
+  } else
     initMemory(atoi(peekArgument()));
 
   execute = 1;
@@ -8866,6 +8894,8 @@ uint64_t selfie_run(uint64_t machine) {
   record      = 0;
   disassemble = 0;
   debug       = 0;
+
+  fuzz = 0;
 
   return exitCode;
 }
@@ -9263,7 +9293,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -r | -n | -y | -min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]");
   println();
 }
 
