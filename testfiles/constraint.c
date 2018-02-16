@@ -10,13 +10,13 @@ uint64_t main() {
 
     // supports only < and >
     // also change branch in symbolic_do_beq
-    // if (100 > *p)
-    //     return *p;
+    if (100 > *p)
+        return *p;
 
     *p = *p + 12;
-    *p = *p * 2;
+    //*p = *p * 2;
     r = *p;
-    r = r - c;
-    
+    //r = r - c;
+
     return r;
 }

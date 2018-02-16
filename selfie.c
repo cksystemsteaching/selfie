@@ -6659,16 +6659,35 @@ void symbolic_confine_sltu() {
 
     restoreLastConstraint();
 
-    if (rd == rs1)
-      // symbolic values < rs2
-      constrain(tc, *(registers + rs2), SYM_LT, branch);
-    else
-      // symbolic values > rs1
-      constrain(tc, *(registers + rs1), SYM_GT, branch);
+    // <
+    if (rd == rs1) {
+      // symbolic (rs1) < concrete (rs2)
+      if (isConcrete(currentContext, rs2)) {
+        constrain(tc, *(registers + rs2), SYM_LT, branch);
+        updateRegState(rd, tc);
 
-    checkSatisfiability(tc);
+      // concrete (rs1) < symbolic (rs2)
+      } else {
+        *(registers + rs1) = *(tcs + btc);
+        constrain(tc, *(registers + rs1), SYM_GT, branch);
+        updateRegState(rs2, tc);
+      }
+    // >
+    } else {
+      // symbolic (rs2) > concrete (rs1)
+      if (isConcrete(currentContext, rs1)) {
+        constrain(tc, *(registers + rs1), SYM_GT, branch);
+        updateRegState(rd, tc);
 
-    updateRegState(rd, tc);
+      // concrete (rs2) < symbolic (rs1)
+      } else {
+        *(registers + rs2) = *(tcs + btc);
+        constrain(tc, *(tcs + btc), SYM_LT, branch);
+        updateRegState(rs1, tc);
+      }
+    }
+
+    checkSatisfiability(tc - 1);
 
   // [0,0] or [1,1]: concrete (symbolic value can neither
   // be smaller than 0 nor greater than UINT64_MAX)
