@@ -1088,8 +1088,7 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
-uint64_t EXCEPTION_INVALIDSLTU        = 7;
-uint64_t EXCEPTION_MAXTRACE           = 8;
+uint64_t EXCEPTION_MAXTRACE           = 7;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1162,7 +1161,7 @@ uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
 uint64_t* reg_coval = (uint64_t*) 0; // value of constraint
 uint64_t* reg_cceil = (uint64_t*) 0; // ceiling of constraint
 
-uint64_t mrc = 0; // trace counter of most recent constraint
+uint64_t mrcc = 0; // trace counter of most recent constraint
 
 // profile
 
@@ -1187,7 +1186,6 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
-  *(EXCEPTIONS + EXCEPTION_INVALIDSLTU)        = (uint64_t) "invalid sltu";
   *(EXCEPTIONS + EXCEPTION_MAXTRACE)           = (uint64_t) "trace length exceeded";
 
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1217,7 +1215,7 @@ void resetInterpreter() {
 
   tc = 0; // caution: tc == 0 reserved for initial state with symbolic execution
 
-  mrc = 0; // trace events must be created upon first updates to zeroed memory
+  mrcc = 0; // trace events must be created upon first updates to zeroed memory
 
   trap = 0;
 
@@ -5409,6 +5407,9 @@ void emitRead() {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
+uint64_t loadSymbolicMemoryValue(uint64_t* pt, uint64_t vaddr);
+uint64_t loadSymbolicMemoryCeiling(uint64_t* pt, uint64_t vaddr);
+
 void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb);
 
 uint64_t fuzzValue(uint64_t value) {
@@ -5444,7 +5445,7 @@ void implementRead(uint64_t* context) {
   uint64_t* buffer;
   uint64_t actuallyRead;
   uint64_t value;
-  uint64_t mrv;
+  uint64_t mrvc;
 
   fd      = *(getRegs(context) + REG_A0);
   vbuffer = *(getRegs(context) + REG_A1);
@@ -5483,21 +5484,24 @@ void implementRead(uint64_t* context) {
 
             rc = rc - 1;
           } else {
-            // save mrv in buffer
-            mrv = loadPhysicalMemory(buffer);
+            // save mrvc in buffer
+            mrvc = loadPhysicalMemory(buffer);
 
-            // caution: buffer must be zeroed since read only writes bytesToRead
-            storePhysicalMemory(buffer, 0);
+            // caution: read only overwrites bytesToRead number of bytes
+            // we therefore need to restore the actual value in buffer
+            // to preserve the original read semantics
+            storePhysicalMemory(buffer, loadSymbolicMemoryValue(getPT(context), vbuffer));
 
             actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
+            // retrieve read value
             value = loadPhysicalMemory(buffer);
 
-            // restore mrv in buffer
-            storePhysicalMemory(buffer, mrv);
+            // restore mrvc in buffer
+            storePhysicalMemory(buffer, mrvc);
           }
 
-          if (mrc == 0)
+          if (mrcc == 0)
             // no branching yet, we may overwrite symbolic memory
             storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(value), fuzzCeiling(value), 0);
           else
@@ -6192,7 +6196,7 @@ void do_lui() {
 
 void constrain_lui() {
   if (rd != REG_ZR) {
-    // symbolic value of lui
+    // semantics of lui
     *(reg_vceil + rd) = leftShift(imm, 12);
 
     // rd has no constraint
@@ -6249,7 +6253,7 @@ void do_addi() {
 
 void constrain_addi() {
   if (rd != REG_ZR) {
-    // symbolic value of addi
+    // semantics of addi
     *(reg_vceil + rd) = *(reg_vceil + rs1) + imm;
 
     if (*(reg_hasco + rs1)) {
@@ -6297,7 +6301,7 @@ void do_add() {
 
 void constrain_add() {
   if (rd != REG_ZR) {
-    // symbolic value of add
+    // semantics of add
     *(reg_vceil + rd) = *(reg_vceil + rs1) + *(reg_vceil + rs2);
 
     if (*(reg_hasco + rs1)) {
@@ -6334,7 +6338,7 @@ void do_sub() {
 
 void constrain_sub() {
   if (rd != REG_ZR) {
-    // symbolic value of sub
+    // semantics of sub
     *(reg_vceil + rd) = *(reg_vceil + rs1) - *(reg_vceil + rs2);
 
     if (*(reg_hasco + rs1)) {
@@ -6385,7 +6389,7 @@ void inherit_mul_divu_remu() {
 
 void constrain_mul() {
   if (rd != REG_ZR) {
-    // symbolic value of mul
+    // semantics of mul
     *(reg_vceil + rd) = *(reg_vceil + rs1) * *(reg_vceil + rs2);
 
     if (*(registers + rs1) != *(reg_vceil + rs1))
@@ -6422,7 +6426,7 @@ void constrain_divu() {
     if (*(reg_vceil + rs2) >= *(registers + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
-        // symbolic value of divu
+        // semantics of divu
         *(reg_vceil + rd) = *(reg_vceil + rs1) / *(reg_vceil + rs2);
 
         if (*(registers + rs1) != *(reg_vceil + rs1))
@@ -6457,7 +6461,7 @@ void constrain_remu() {
     if (*(reg_vceil + rs2) >= *(registers + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
-        // symbolic value of remu
+        // semantics of remu
         *(reg_vceil + rd) = *(reg_vceil + rs1) % *(reg_vceil + rs2);
 
         if (*(registers + rs1) != *(reg_vceil + rs1))
@@ -6503,65 +6507,104 @@ void efree() {
 
 uint64_t debug_symbolic = 0;
 
-void printSymbolicMemoryAt(uint64_t sc) {
+void printSymbolicMemory(uint64_t svc) {
   print((uint64_t*) "@");
-  printInteger(sc);
+  printInteger(svc);
   print((uint64_t*) "[@");
-  printInteger(*(tcs + sc));
+  printInteger(*(tcs + svc));
   print((uint64_t*) ",");
-  printHexadecimal(*(pcs + sc), 0);
-  printSourceLineNumberOfInstruction(*(pcs + sc) - entryPoint);
+  printHexadecimal(*(pcs + svc), 0);
+  printSourceLineNumberOfInstruction(*(pcs + svc) - entryPoint);
   print((uint64_t*) ",");
-  if (*(vaddrs + sc) == 0) {
-    printRegister(*(vceils + sc));
+  if (*(vaddrs + svc) == 0) {
+    printRegister(*(vceils + svc));
     print((uint64_t*) "=");
-    printInteger(*(values + sc));
+    printInteger(*(values + svc));
     print((uint64_t*) "]");
   } else {
-    printHexadecimal(*(vaddrs + sc), 0);
+    printHexadecimal(*(vaddrs + svc), 0);
     print((uint64_t*) "=(");
-    printInteger(*(values + sc));
+    printInteger(*(values + svc));
     print((uint64_t*) ",");
-    printInteger(*(vceils + sc));
+    printInteger(*(vceils + svc));
     print((uint64_t*) ")]");
   }
   println();
 }
 
+uint64_t loadSymbolicMemoryValue(uint64_t* pt, uint64_t vaddr) {
+  uint64_t mrvc;
+
+  // assert: vaddr is valid and mapped
+  mrvc = loadVirtualMemory(pt, vaddr);
+
+  if (mrvc <= tc)
+    return *(values + mrvc);
+  else {
+    print(selfieName);
+    print((uint64_t*) ": most recent value counter ");
+    printInteger(mrvc);
+    print((uint64_t*) " at vaddr ");
+    printHexadecimal(vaddr, 0);
+    print((uint64_t*) " greater than current trace counter ");
+    printInteger(tc);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+}
+
+uint64_t loadSymbolicMemoryCeiling(uint64_t* pt, uint64_t vaddr) {
+  uint64_t mrvc;
+
+  // assert: vaddr is valid and mapped
+  mrvc = loadVirtualMemory(pt, vaddr);
+
+  if (mrvc <= tc)
+    return *(vceils + mrvc);
+  else {
+    print(selfieName);
+    print((uint64_t*) ": detected invalid most recent value counter");
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+}
+
 void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb) {
-  uint64_t mrv;
+  uint64_t mrvc;
 
   if (vaddr == 0)
     // tracking a register value for sltu
-    mrv = mrc;
+    mrvc = mrcc;
   else {
     // assert: vaddr is valid and mapped
-    mrv = loadVirtualMemory(pt, vaddr);
-
-    if (value == *(values + mrv))
-      if (vceil == *(vceils + mrv))
+    if (value == loadSymbolicMemoryValue(pt, vaddr))
+      if (vceil == loadSymbolicMemoryCeiling(pt, vaddr))
         // prevent tracking identical updates
         return;
+
+    mrvc = loadVirtualMemory(pt, vaddr);
   }
 
-  if (trb < mrv) {
+  if (trb < mrvc) {
     // current value at vaddr does not need to be tracked,
     // just overwrite it in the trace
-    *(values + mrv) = value;
-    *(vceils + mrv) = vceil;
+    *(values + mrvc) = value;
+    *(vceils + mrvc) = vceil;
 
-    // assert: vaddr == *(vaddrs + mrv)
+    // assert: vaddr == *(vaddrs + mrvc)
 
     if (debug_symbolic) {
       print(selfieName);
       print((uint64_t*) ": overwriting ");
-      printSymbolicMemoryAt(mrv);
+      printSymbolicMemory(mrvc);
     }
   } else if (ealloc()) {
     // current value at vaddr is from before most recent branch,
     // track that value by creating a new trace event
     *(pcs + tc) = pc;
-    *(tcs + tc) = mrv;
+    *(tcs + tc) = mrvc;
 
     *(values + tc) = value;
     *(vceils + tc) = vceil;
@@ -6570,7 +6613,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 
     if (vaddr == 0)
       // register tracking marks most recent constraint
-      mrc = tc;
+      mrcc = tc;
     else
       // assert: vaddr is valid and mapped
       storeVirtualMemory(pt, vaddr, tc);
@@ -6578,23 +6621,23 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     if (debug_symbolic) {
       print(selfieName);
       print((uint64_t*) ": storing ");
-      printSymbolicMemoryAt(tc);
+      printSymbolicMemory(tc);
     }
   } else
     throwException(EXCEPTION_MAXTRACE, 0);
 }
 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb) {
-  uint64_t mrv;
+  uint64_t mrvc;
 
   if (vaddr >= getBumpPointer(currentContext))
     if (vaddr < *(registers + REG_SP))
       // do not constrain free memory
       return;
 
-  mrv = loadVirtualMemory(pt, vaddr);
+  mrvc = loadVirtualMemory(pt, vaddr);
 
-  if (mrv < trb) {
+  if (mrvc < trb) {
     // we do not support potentially aliased constrained memory
     print(selfieName);
     print((uint64_t*) ": detected potentially aliased constrained memory");
@@ -6794,15 +6837,19 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
 }
 
 void constrain_sltu() {
+  // semantics of sltu
   if (rd != REG_ZR) {
     if (*(reg_hasco + rs1)) {
       if (*(reg_vaddr + rs1) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
+        print(selfieName);
+        print((uint64_t*) ": multiple constrained memory locations in left sltu operand at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
 
-        throwException(EXCEPTION_INVALIDSLTU, rs1);
-
-        return;
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
     }
 
@@ -6810,15 +6857,18 @@ void constrain_sltu() {
       if (*(reg_vaddr + rs2) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
+        print(selfieName);
+        print((uint64_t*) ": multiple constrained memory locations in right sltu operand at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
 
-        throwException(EXCEPTION_INVALIDSLTU, rs2);
-
-        return;
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
     }
 
-    // take local copy of mrc to make sure that alias check considers old mrc
-    create_constraints(0, mrc);
+    // take local copy of mrcc to make sure that alias check considers old mrcc
+    create_constraints(0, mrcc);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6833,7 +6883,7 @@ void backtrack_sltu() {
   if (debug_symbolic) {
     print(selfieName);
     print((uint64_t*) ": backtracking sltu ");
-    printSymbolicMemoryAt(tc);
+    printSymbolicMemory(tc);
   }
 
   vaddr = *(vaddrs + tc);
@@ -6845,8 +6895,8 @@ void backtrack_sltu() {
     *(registers + reg) = *(values + tc);
     *(reg_vceil + reg) = *(values + tc); // values, not vceils (!)
 
-    // restoring mrc
-    mrc = *(tcs + tc);
+    // restoring mrcc
+    mrcc = *(tcs + tc);
 
     if (reg != REG_FP)
       if (reg != REG_SP) {
@@ -6952,7 +7002,6 @@ uint64_t do_ld() {
 
 uint64_t constrain_ld() {
   uint64_t vaddr;
-  uint64_t mrv;
   uint64_t a;
 
   // load double word
@@ -6963,17 +7012,14 @@ uint64_t constrain_ld() {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
         if (rd != REG_ZR) {
-          // memory contains trace counters, not values
-          mrv = loadVirtualMemory(pt, vaddr);
+          // semantics of ld
+          *(registers + rd) = loadSymbolicMemoryValue(pt, vaddr);
+          *(reg_vceil + rd) = loadSymbolicMemoryCeiling(pt, vaddr);
 
-          // get interval stored for vaddr
-          *(registers + rd) = *(values + mrv);
-          *(reg_vceil + rd) = *(vceils + mrv);
+          // assert: vaddr == *(vaddrs + loadVirtualMemory(pt, vaddr))
 
-          // assert: vaddr == *(vaddrs + mrv)
-
-          if (*(values + mrv) != *(vceils + mrv))
-            // vaddr is constrained by rd if value at vaddr is symbolic
+          if (*(registers + rd) != *(reg_vceil + rd))
+            // vaddr is constrained by rd if value interval is not singleton
             set_constraint(rd, 1, vaddr, 0, 0, 0);
           else
             set_constraint(rd, 0, 0, 0, 0, 0);
@@ -7091,7 +7137,6 @@ uint64_t do_sd() {
 
 uint64_t constrain_sd() {
   uint64_t vaddr;
-  uint64_t mrv;
   uint64_t a;
 
   // store double word
@@ -7101,7 +7146,8 @@ uint64_t constrain_sd() {
   if (*(registers + rs1) == *(reg_vceil + rs1)) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
-        storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_vceil + rs2), mrc);
+        // semantics of sd
+        storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_vceil + rs2), mrcc);
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -7130,7 +7176,7 @@ void backtrack_sd() {
   if (debug_symbolic) {
     print(selfieName);
     print((uint64_t*) ": backtracking sd ");
-    printSymbolicMemoryAt(tc);
+    printSymbolicMemory(tc);
   }
 
   storeVirtualMemory(pt, *(vaddrs + tc), *(tcs + tc));
@@ -7356,7 +7402,7 @@ void backtrack_ecall() {
   if (debug_symbolic) {
     print(selfieName);
     print((uint64_t*) ": backtracking ecall ");
-    printSymbolicMemoryAt(tc);
+    printSymbolicMemory(tc);
   }
 
   rc = rc + 1;
@@ -8653,23 +8699,33 @@ uint64_t numster(uint64_t* toContext) {
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
       else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
         return handleDivisionByZero();
-      else if (handleSystemCalls(fromContext) == EXIT) {
-        if (symbolic) {
-          print(selfieName);
-          print((uint64_t*) ": backtracking ");
-          print(getName(currentContext));
-          print((uint64_t*) " from exit code ");
-          printInteger(signExtend(getExitCode(fromContext), SYSCALL_BITWIDTH));
-          println();
+      else if (getException(fromContext) == EXCEPTION_MAXTRACE) {
+        print(selfieName);
+        print((uint64_t*) ": backtracking ");
+        print(getName(currentContext));
+        print((uint64_t*) " from maximum trace length");
+        println();
 
-          backtrackTrace();
+        backtrackTrace();
 
-          if (pc == 0)
-            return EXITCODE_NOERROR;
-          else
-            setPC(fromContext, pc);
-        } else
-          return getExitCode(fromContext);
+        if (pc == 0)
+          return EXITCODE_NOERROR;
+        else
+          setPC(fromContext, pc);
+      } else if (handleSystemCalls(fromContext) == EXIT) {
+        print(selfieName);
+        print((uint64_t*) ": backtracking ");
+        print(getName(currentContext));
+        print((uint64_t*) " from exit code ");
+        printInteger(signExtend(getExitCode(fromContext), SYSCALL_BITWIDTH));
+        println();
+
+        backtrackTrace();
+
+        if (pc == 0)
+          return EXITCODE_NOERROR;
+        else
+          setPC(fromContext, pc);
       }
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
