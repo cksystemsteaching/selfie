@@ -9329,6 +9329,8 @@ void symbolic_confine() {
 
   confine = 1;
 
+  print((uint64_t*) "confining backwards\n");
+
   // entry point for algorithm
   final_tc = tc - 1;
   btc = final_tc;
