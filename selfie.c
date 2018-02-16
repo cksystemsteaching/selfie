@@ -1151,7 +1151,8 @@ uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 
 uint64_t rc = 0; // read counter
 
-uint64_t* reads = (uint64_t*) 0;
+uint64_t* read_values = (uint64_t*) 0;
+uint64_t* read_vceils = (uint64_t*) 0;
 
 // register constraints on memory
 
@@ -1194,7 +1195,8 @@ void initInterpreter() {
   vceils = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
-  reads = zalloc(maxTraceLength * SIZEOFUINT64);
+  read_values = zalloc(maxTraceLength * SIZEOFUINT64);
+  read_vceils = zalloc(maxTraceLength * SIZEOFUINT64);
 
   reg_vceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
@@ -5445,6 +5447,7 @@ void implementRead(uint64_t* context) {
   uint64_t* buffer;
   uint64_t actuallyRead;
   uint64_t value;
+  uint64_t vceil;
   uint64_t mrvc;
 
   fd      = *(getRegs(context) + REG_A0);
@@ -5477,8 +5480,9 @@ void implementRead(uint64_t* context) {
 
         if (symbolic) {
           if (rc > 0) {
-            // do not read but reuse value read before
-            value = *(reads + rc);
+            // do not read but reuse value and ceiling
+            value = *(read_values + rc);
+            vceil = *(read_vceils + rc);
 
             actuallyRead = bytesToRead;
 
@@ -5497,15 +5501,19 @@ void implementRead(uint64_t* context) {
             // retrieve read value
             value = loadPhysicalMemory(buffer);
 
+            // fuzz read value, ceiling first, then value
+            vceil = fuzzCeiling(value);
+            value = fuzzValue(value);
+
             // restore mrvc in buffer
             storePhysicalMemory(buffer, mrvc);
           }
 
           if (mrcc == 0)
             // no branching yet, we may overwrite symbolic memory
-            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(value), fuzzCeiling(value), 0);
+            storeSymbolicMemory(getPT(context), vbuffer, value, vceil, 0);
           else
-            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(value), fuzzCeiling(value), tc);
+            storeSymbolicMemory(getPT(context), vbuffer, value, vceil, tc);
         } else
           actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
@@ -5866,8 +5874,13 @@ uint64_t implementMalloc(uint64_t* context) {
   } else {
     *(getRegs(context) + REG_A0) = bump;
 
-    if (symbolic)
+    if (symbolic) {
       *(reg_vceil + REG_A0) = bump;
+
+      if (mrcc > 0)
+        // since there has been branching record malloc using vaddr == 1
+        storeSymbolicMemory(getPT(context), 1, bump, size, tc);
+    }
 
     setBumpPointer(context, bump + size);
 
@@ -6584,6 +6597,9 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
   if (vaddr == 0)
     // tracking a register value for sltu
     mrvc = mrcc;
+  else if (vaddr == 1)
+    // tracking bump pointer and size for malloc
+    mrvc = 0;
   else {
     // assert: vaddr is valid and mapped
     if (value == loadSymbolicMemoryValue(pt, vaddr))
@@ -6621,7 +6637,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     if (vaddr == 0)
       // register tracking marks most recent constraint
       mrcc = tc;
-    else
+    else if (vaddr != 1)
       // assert: vaddr is valid and mapped
       storeVirtualMemory(pt, vaddr, tc);
 
@@ -7412,11 +7428,29 @@ void backtrack_ecall() {
     printSymbolicMemory(tc);
   }
 
-  rc = rc + 1;
+  if (*(vaddrs + tc) == 1) {
+    // backtracking malloc
+    if (getBumpPointer(currentContext) == *(values + tc) + *(vceils + tc))
+      setBumpPointer(currentContext, *(values + tc));
+    else {
+      print(selfieName);
+      print((uint64_t*) ": malloc backtracking error at ");
+      printHexadecimal(pc, 0);
+      printSourceLineNumberOfInstruction(pc - entryPoint);
+      println();
 
-  *(reads + rc) = *(values + tc);
+      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+  } else {
+    // backtracking read
+    rc = rc + 1;
 
-  storeVirtualMemory(pt, *(vaddrs + tc), *(tcs + tc));
+    // record value and ceiling
+    *(read_values + rc) = *(values + tc);
+    *(read_vceils + rc) = *(vceils + tc);
+
+    storeVirtualMemory(pt, *(vaddrs + tc), *(tcs + tc));
+  }
 
   efree();
 }
