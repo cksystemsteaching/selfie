@@ -6395,6 +6395,13 @@ void constrain_mul() {
     if (*(registers + rs1) != *(reg_vceil + rs1))
       if (*(registers + rs2) != *(reg_vceil + rs2)) {
         // non-linear expressions are not supported
+        print(selfieName);
+        print((uint64_t*) ": detected non-linear expression in symbolic execution at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
 
     inherit_mul_divu_remu();
