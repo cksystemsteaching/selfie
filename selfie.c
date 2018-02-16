@@ -1482,7 +1482,8 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 // ----------------- BACKWARD CONSTRAINING APPROACH ----------------
 
 void symbolic_confine();
-void undoValues();
+void keepLastConstraint();
+void restoreLastConstraint();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1491,6 +1492,8 @@ uint64_t branch = 1;          // always take TRUE branch for now
 
 uint64_t redundantIs       = 0; // number of redundant instructions
 uint64_t numberOfSymbolics = 0; // number of symbolic variables
+
+uint64_t lastConstraint = 0;    // last tc where constraining occured
 
 // ---------------------------- TRACE API --------------------------
 
@@ -6380,6 +6383,7 @@ void symbolic_confine_addi() {
   if (rd != rs1)
     *(registers + rd) = *(tcs + btc);
 
+  keepLastConstraint();
   updateRegState(rs1, tc);
 }
 
@@ -6458,6 +6462,7 @@ void symbolic_confine_add() {
     setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
+    keepLastConstraint();
     updateRegState(symReg, tc);
 
     if (rd != symReg)
@@ -6646,16 +6651,13 @@ void do_remu() {
 }
 
 void symbolic_confine_sltu() {
-  uint64_t sym_tc;
-
   // sTODO: adjust for <=, >=, ==, !=
 
   // [0,1]: symbolic
   if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
-    undoValues();
+    saveState(*(registers + rd));
 
-    // assert: current tc refers to symbolic values
-    sym_tc = tc;
+    restoreLastConstraint();
 
     if (rd == rs1)
       // symbolic values < rs2
@@ -6666,10 +6668,16 @@ void symbolic_confine_sltu() {
 
     checkSatisfiability(tc);
 
+    updateRegState(rd, tc);
+
   // [0,0] or [1,1]: concrete (symbolic value can neither
   // be smaller than 0 nor greater than UINT64_MAX)
-  } else
-    undoValues();
+  } else {
+    saveState(*(registers + rd));
+
+    *(registers + rd) = *(tcs + btc);
+    incrementTc();
+  }
 }
 
 void symbolic_do_sltu() {
@@ -6774,20 +6782,12 @@ void record_ld() {
 void symbolic_record_ld_before() {
   uint64_t vaddr;
 
-  //forceConcrete(currentContext, rs1);
+  forceConcrete(currentContext, rs1);
   vaddr = getLowerFromReg(rs1) + imm;
-  //vaddr = retrieveAddress();
 
-  if (confine) {
-    if (isValidVirtualAddress(vaddr))
-      if (isVirtualAddressMapped(pt, vaddr))
-        saveState(loadVirtualMemory(pt, vaddr));
-
-  } else {
-    if (isValidVirtualAddress(vaddr))
-      if (isVirtualAddressMapped(pt, vaddr))
-        saveState(*(registers + rd));
-  }
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr))
+      saveState(*(registers + rd));
 }
 
 void symbolic_record_ld_after() {
@@ -6796,20 +6796,17 @@ void symbolic_record_ld_after() {
 
 uint64_t symbolic_confine_ld() {
   uint64_t vaddr;
-  uint64_t a;
 
-  symbolic_record_ld_before();
+  vaddr = retrieveAddress();
 
-  vaddr = getLowerFromReg(rs1) + imm;
+  saveState(loadVirtualMemory(pt, vaddr));
 
   // semantics of sd
   setLower(getLowerFromReg(rd), tc);
   setUpper(getUpperFromReg(rd), tc);
 
   *(registers + rd) = *(tcs + btc);
-
-  if (isVirtualAddressMapped(pt, vaddr)) // sTODO: remove if
-    updateMemState(vaddr, tc);
+  updateMemState(vaddr, tc);
 
   return vaddr;
 }
@@ -7092,7 +7089,7 @@ void record_beq() {
 }
 
 void symbolic_confine_beq() {
-  // sTODO: nothing to do?
+  // sTODO: nothing to do!
 }
 
 void symbolic_do_beq() {
@@ -9205,7 +9202,7 @@ uint64_t retrieveAddress() {
   uint64_t vaddr;
   uint64_t htc;
 
-  // follows the old tcs until a valid address appears
+  // follows the old tcs until a valid address occurs
 
   htc   = *(registers + rs1);
   vaddr = getLower(htc) + imm;
@@ -9338,7 +9335,7 @@ void symbolic_confine() {
 
   // while (numberOfSymbolics != 0) {
   // debugging purpose:
-  while (i < 34) {
+  while (i < 80) {
     pc = *(pcs + btc);
     if (pc != 0) {
       fetch();
@@ -9346,14 +9343,24 @@ void symbolic_confine() {
     }
     btc = btc - 1;
     i = i + 1;
-    //printTrace();
   }
 }
 
-void undoValues() {
+void keepLastConstraint() {
+  // caution: this may work for constraining only one
+  // symbolic value correctly atm
+
+  if (getLower(tc) != getUpper(tc))
+    lastConstraint = tc;
+}
+
+void restoreLastConstraint() {
   uint64_t tc_before;
 
-  tc_before = *(tcs + btc);
+  if (lastConstraint != 0)
+    tc_before = lastConstraint;
+  else
+    tc_before = *(tcs + btc);
 
   setLower(getLower(tc_before), tc);
   setUpper(getUpper(tc_before), tc);
