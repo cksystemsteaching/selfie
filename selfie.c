@@ -190,7 +190,7 @@ uint64_t maxFilenameLength = 128;
 uint64_t* character_buffer; // buffer for reading and writing characters
 uint64_t* integer_buffer;   // buffer for printing integers
 uint64_t* filename_buffer;  // buffer for opening files
-uint64_t* io_buffer;        // buffer for I/O
+uint64_t* binary_buffer;    // buffer for binary I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -259,8 +259,8 @@ void initLibrary() {
   filename_buffer = smalloc(maxFilenameLength);
 
   // allocate and touch to make sure memory is mapped for read calls
-  io_buffer  = smalloc(SIZEOFUINT64);
-  *io_buffer = 0;
+  binary_buffer  = smalloc(SIZEOFUINT64);
+  *binary_buffer = 0;
 }
 
 void resetLibrary() {
@@ -1148,6 +1148,12 @@ uint64_t* vceils = (uint64_t*) 0; // trace of value ceilings
 
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 
+// read history
+
+uint64_t rc = 0; // read counter
+
+uint64_t* reads = (uint64_t*) 0;
+
 // register constraints on memory
 
 uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
@@ -1189,6 +1195,8 @@ void initInterpreter() {
   values = zalloc(maxTraceLength * SIZEOFUINT64);
   vceils = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
+
+  reads = zalloc(maxTraceLength * SIZEOFUINT64);
 
   reg_vceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
@@ -5216,9 +5224,9 @@ void selfie_output() {
   write(fd, ELF_header, ELF_HEADER_LEN);
 
   // then write code length
-  *io_buffer = codeLength;
+  *binary_buffer = codeLength;
 
-  write(fd, io_buffer, SIZEOFUINT64);
+  write(fd, binary_buffer, SIZEOFUINT64);
 
   // assert: binary is mapped
 
@@ -5307,10 +5315,10 @@ void selfie_load() {
   if (numberOfReadBytes == ELF_HEADER_LEN) {
     if (parseELFHeader(ELF_header)) {
       // now read code length
-      numberOfReadBytes = read(fd, io_buffer, SIZEOFUINT64);
+      numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
 
       if (numberOfReadBytes == SIZEOFUINT64) {
-        codeLength = *io_buffer;
+        codeLength = *binary_buffer;
 
         if (binaryLength <= maxBinaryLength) {
           // now read binary including global variables and strings
@@ -5318,7 +5326,7 @@ void selfie_load() {
 
           if (signedLessThan(0, numberOfReadBytes)) {
             // check if we are really at EOF
-            if (read(fd, io_buffer, SIZEOFUINT64) == 0) {
+            if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
               print(selfieName);
               print((uint64_t*) ": ");
               printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
@@ -5435,6 +5443,8 @@ void implementRead(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actuallyRead;
+  uint64_t value;
+  uint64_t mrv;
 
   fd      = *(getRegs(context) + REG_A0);
   vbuffer = *(getRegs(context) + REG_A1);
@@ -5464,16 +5474,36 @@ void implementRead(uint64_t* context) {
         if (size < bytesToRead)
           bytesToRead = size;
 
-        actuallyRead = signExtend(read(fd, io_buffer, bytesToRead), SYSCALL_BITWIDTH);
+        if (symbolic) {
+          if (rc > 0) {
+            // do not read but reuse value read before
+            value = *(reads + rc);
 
-        if (symbolic)
+            actuallyRead = bytesToRead;
+
+            rc = rc - 1;
+          } else {
+            // save mrv in buffer
+            mrv = loadPhysicalMemory(buffer);
+
+            // caution: buffer must be zeroed since read only writes bytesToRead
+            storePhysicalMemory(buffer, 0);
+
+            actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
+
+            value = loadPhysicalMemory(buffer);
+
+            // restore mrv in buffer
+            storePhysicalMemory(buffer, mrv);
+          }
+
           if (mrc == 0)
             // no branching yet, we may overwrite symbolic memory
-            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(*io_buffer), fuzzCeiling(*io_buffer), 0);
+            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(value), fuzzCeiling(value), 0);
           else
-            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(*io_buffer), fuzzCeiling(*io_buffer), tc);
-        else
-          storePhysicalMemory(buffer, *io_buffer);
+            storeSymbolicMemory(getPT(context), vbuffer, fuzzValue(value), fuzzCeiling(value), tc);
+        } else
+          actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
         if (actuallyRead == bytesToRead) {
           readTotal = readTotal + actuallyRead;
@@ -5593,16 +5623,14 @@ void implementWrite(uint64_t* context) {
       if (isVirtualAddressMapped(getPT(context), vbuffer)) {
         buffer = tlb(getPT(context), vbuffer);
 
-        if (symbolic)
-          // buffer points to a trace counter that refers to the actual value
-          *io_buffer = *(values + loadPhysicalMemory(buffer));
-        else
-          *io_buffer = loadPhysicalMemory(buffer);
-
         if (size < bytesToWrite)
           bytesToWrite = size;
 
-        actuallyWritten = signExtend(write(fd, io_buffer, bytesToWrite), SYSCALL_BITWIDTH);
+        if (symbolic)
+          // buffer points to a trace counter that refers to the actual value
+          actuallyWritten = signExtend(write(fd, values + loadPhysicalMemory(buffer), bytesToWrite), SYSCALL_BITWIDTH);
+        else
+          actuallyWritten = signExtend(write(fd, buffer, bytesToWrite), SYSCALL_BITWIDTH);
 
         if (actuallyWritten == bytesToWrite) {
           writtenTotal = writtenTotal + actuallyWritten;
@@ -7324,6 +7352,22 @@ void do_ecall() {
     throwException(EXCEPTION_SYSCALL, 0);
 }
 
+void backtrack_ecall() {
+  if (debug_symbolic) {
+    print(selfieName);
+    print((uint64_t*) ": backtracking ecall ");
+    printSymbolicMemoryAt(tc);
+  }
+
+  rc = rc + 1;
+
+  *(reads + rc) = *(values + tc);
+
+  storeVirtualMemory(pt, *(vaddrs + tc), *(tcs + tc));
+
+  efree();
+}
+
 void undo_ecall() {
   uint64_t a0;
 
@@ -7757,7 +7801,7 @@ void decode_execute() {
         } else if (symbolic)
           do_ecall();
         else if (backtrack)
-          backtrack_sd();
+          backtrack_ecall();
       } else
         do_ecall();
 
