@@ -51,7 +51,7 @@ tc.pcs = pc // current pc
 tc.tcs = rd // old tc
 
 tc.upper = rs1.upper + rs2.upper
-tc.lower = rs1.lower + rs2.upper
+tc.lower = rs1.lower + rs2.lower
 pc++
 
 rd = tc
@@ -73,7 +73,7 @@ if (bothConcrete) { // restore old rd
     if (symReg == rd) {
         tc.tcs = symReg // old forward tc
         tc.upper = rd.upper - con.upper
-        tc.lower = rd.lower - con.upper
+        tc.lower = rd.lower - con.lower
         symReg = tc
     } else if (conReg == rd) {
         // constraint symbolic reg anyway
@@ -142,7 +142,7 @@ pc++
 
 load(vaddr) = tc
 tc++
-``` 
+```
 
 ### sSW backwards
 ```c

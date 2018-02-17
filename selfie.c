@@ -947,6 +947,7 @@ uint64_t isPageMapped(uint64_t* table, uint64_t page);
 uint64_t isValidVirtualAddress(uint64_t vaddr);
 uint64_t getPageOfVirtualAddress(uint64_t vaddr);
 uint64_t isVirtualAddressMapped(uint64_t* table, uint64_t vaddr);
+uint64_t isVaddrValidAndMapped(uint64_t* table, uint64_t vaddr);
 
 uint64_t* tlb(uint64_t* table, uint64_t vaddr);
 
@@ -1404,6 +1405,7 @@ uint64_t EXITCODE_DIVISIONBYZERO;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
+uint64_t EXITCODE_UNSATISFIABILITY;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1424,17 +1426,18 @@ uint64_t freePageFrameMemory = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void initKernel() {
-  EXITCODE_BADARGUMENTS = signShrink(-1, SYSCALL_BITWIDTH);
-  EXITCODE_IOERROR = signShrink(-2, SYSCALL_BITWIDTH);
-  EXITCODE_SCANNERERROR = signShrink(-3, SYSCALL_BITWIDTH);
-  EXITCODE_PARSERERROR = signShrink(-4, SYSCALL_BITWIDTH);
-  EXITCODE_COMPILERERROR = signShrink(-5, SYSCALL_BITWIDTH);
-  EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-6, SYSCALL_BITWIDTH);
+  EXITCODE_BADARGUMENTS        = signShrink(-1, SYSCALL_BITWIDTH);
+  EXITCODE_IOERROR             = signShrink(-2, SYSCALL_BITWIDTH);
+  EXITCODE_SCANNERERROR        = signShrink(-3, SYSCALL_BITWIDTH);
+  EXITCODE_PARSERERROR         = signShrink(-4, SYSCALL_BITWIDTH);
+  EXITCODE_COMPILERERROR       = signShrink(-5, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFVIRTUALMEMORY  = signShrink(-6, SYSCALL_BITWIDTH);
   EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-7, SYSCALL_BITWIDTH);
-  EXITCODE_DIVISIONBYZERO = signShrink(-8, SYSCALL_BITWIDTH);
-  EXITCODE_UNKNOWNINSTRUCTION = signShrink(-9, SYSCALL_BITWIDTH);
-  EXITCODE_UNKNOWNSYSCALL = signShrink(-10, SYSCALL_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-11, SYSCALL_BITWIDTH);
+  EXITCODE_DIVISIONBYZERO      = signShrink(-8, SYSCALL_BITWIDTH);
+  EXITCODE_UNKNOWNINSTRUCTION  = signShrink(-9, SYSCALL_BITWIDTH);
+  EXITCODE_UNKNOWNSYSCALL      = signShrink(-10, SYSCALL_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION   = signShrink(-11, SYSCALL_BITWIDTH);
+  EXITCODE_UNSATISFIABILITY    = signShrink(-12, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -6087,6 +6090,14 @@ uint64_t isVirtualAddressMapped(uint64_t* table, uint64_t vaddr) {
   return isPageMapped(table, getPageOfVirtualAddress(vaddr));
 }
 
+uint64_t isVaddrValidAndMapped(uint64_t* table, uint64_t vaddr) {
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(table, vaddr))
+      return 1;
+
+  return 0;
+}
+
 uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   uint64_t page;
   uint64_t frame;
@@ -6689,6 +6700,10 @@ void symbolic_record_ld_before() {
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
       saveState(*(registers + rd));
+    else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  else
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
 }
 
 void symbolic_record_ld_after() {
@@ -6701,29 +6716,21 @@ uint64_t symbolic_do_ld() {
 
   symbolic_record_ld_before();
 
-  forceConcrete(currentContext, rs1);
   vaddr = getLowerFromReg(rs1) + imm;
 
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      if (rd != REG_ZR) {
-        setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
-        setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
-      }
+  if (rd != REG_ZR) {
+    setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+    setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+  }
 
-      pc = pc + INSTRUCTIONSIZE;
+  pc = pc + INSTRUCTIONSIZE;
 
-      ic_ld = ic_ld + 1;
+  ic_ld = ic_ld + 1;
 
-      // keep track of number of loads per instruction
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+  // keep track of number of loads per instruction
+  a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
-      *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
+  *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
 
   symbolic_record_ld_after();
 
@@ -6832,30 +6839,26 @@ void symbolic_record_sd_before() {
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr))
       saveState(loadVirtualMemory(pt, vaddr));
-}
-
-void symbolic_record_sd_after() {
-  uint64_t vaddr;
-
-  forceConcrete(currentContext, rs1);
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  if (isValidVirtualAddress(vaddr))
-    if (isVirtualAddressMapped(pt, vaddr))
-      updateMemState(vaddr, tc);
     else
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   else
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 }
 
+void symbolic_record_sd_after() {
+  uint64_t vaddr;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+  updateMemState(vaddr, tc);
+}
+
 uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
 
-  symbolic_record_sd_before();
+  vaddr = getLowerFromReg(rs1) + imm;
 
-  forceConcrete(currentContext, rs1);
+  symbolic_record_sd_before();
 
   setLower(getLowerFromReg(rs2), tc);
   setUpper(getUpperFromReg(rs2), tc);
@@ -8522,6 +8525,7 @@ uint64_t handleDivisionByZero() {
 }
 
 uint64_t handleSystemCalls(uint64_t* context) {
+  uint64_t a0;
   uint64_t a7;
 
   if (getException(context) == EXCEPTION_SYSCALL) {
@@ -8540,6 +8544,15 @@ uint64_t handleSystemCalls(uint64_t* context) {
     else if (a7 == SYSCALL_OPEN)
       implementOpen(context);
     else if (a7 == SYSCALL_EXIT) {
+      if (symbolic) {
+        a0 = *(getRegs(context) + REG_A0);
+
+        // start backwards confining
+        symbolic_confine();
+        // restore exit code
+        *(getRegs(context) + REG_A0) = a0;
+      }
+
       implementExit(context);
 
       // TODO: exit only if all contexts have exited
@@ -8636,11 +8649,8 @@ uint64_t vipster(uint64_t* toContext) {
         mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
       else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
         return handleDivisionByZero();
-      else if (handleSystemCalls(fromContext) == EXIT) {
-        symbolic_confine();
-        printTrace();
+      else if (handleSystemCalls(fromContext) == EXIT)
         return getExitCode(fromContext);
-      }
 
       setException(fromContext, EXCEPTION_NOEXCEPTION);
 
@@ -8970,10 +8980,12 @@ void forceConcrete(uint64_t* context, uint64_t reg) {
   upper = getUpper(*(getRegs(context) + reg));
 
   if (lower != upper) {
-    print((uint64_t*) "values in ");
+    print(selfieName);
+    print((uint64_t*) ": values in ");
     printRegisterValue(reg);
     print((uint64_t*) " have to be concrete");
     println();
+
     exit(EXITCODE_BADARGUMENTS);
   }
 }
@@ -8982,13 +8994,15 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
   // check if at least one is concrete
   if (isConcrete(context, rs1) == 0) {
     if (isConcrete(context, rs2) == 0) {
-      print((uint64_t*) "execution imprecise at pc= ");
+      print(selfieName);
+      print((uint64_t*) ": execution imprecise at pc= ");
       printHexadecimal(pc, 0);
       print((uint64_t*) " with ");
       printRegisterValue(reg1);
       print((uint64_t*) " ");
       printRegisterValue(reg2);
       println();
+
       throwException(EXCEPTION_IMPRECISE, 0);
     }
   }
@@ -9030,13 +9044,12 @@ uint64_t retrieveAddress() {
   uint64_t vaddr;
   uint64_t htc;
 
-  // follows the old tcs until a valid address occurs
+  // follows the old tcs until a valid and mapped address occurs
 
   htc   = *(registers + rs1);
   vaddr = getLower(htc) + imm;
 
-  // sTODO: check if address is valid
-  while (isVirtualAddressMapped(pt, vaddr) == 0) {
+  while (isVaddrValidAndMapped(pt, vaddr) == 0) {
     htc   = *(tcs + htc);
     vaddr = getLower(htc) + imm;
   }
@@ -9045,11 +9058,20 @@ uint64_t retrieveAddress() {
 }
 
 void checkSatisfiability(uint64_t tc) {
-  // sTODO: exception, better output
   if (getLower(tc) > getUpper(tc)) {
-    print((uint64_t*) "UNSAT");
-    println();
-    exit(-1);
+    printTrace();
+
+    print(selfieName);
+    print((uint64_t*) ": symbolic value [");
+    printInteger(getLower(tc));
+    print((uint64_t*) ",");
+    printInteger(getUpper(tc));
+    print((uint64_t*) "] is unsatisfiable, tc: ");
+    printInteger(btc);
+    println(); println();
+
+    numberOfSymbolics = numberOfSymbolics - 1 ;
+    //exit(EXITCODE_UNSATISFIABILITY);
   }
 }
 
@@ -9150,29 +9172,28 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc) {
 // ----------------- BACKWARD CONSTRAINING APPROACH ----------------
 
 void symbolic_confine() {
-  uint64_t final_tc;
   uint64_t i;
 
   i = 0;
-
   confine = 1;
 
-  print((uint64_t*) "confining backwards\n");
+  print(selfieName);
+  print((uint64_t*) ": vipster confining backwards...");
+  println();
 
   // entry point for algorithm
-  final_tc = tc - 1;
-  btc = final_tc;
+  btc = tc - 1;
 
-  // while (numberOfSymbolics != 0) {
-  // debugging purpose:
-  while (i < 80) {
+  while (numberOfSymbolics != 0) {
     pc = *(pcs + btc);
+
     if (pc != 0) {
       fetch();
       decode_execute();
     }
+
     btc = btc - 1;
-    i = i + 1;
+    i   = i + 1;
   }
 }
 
@@ -9221,8 +9242,7 @@ void confine_add() {
     saveState(*(registers + rd));
 
     // nothing to constrain
-    *(registers + rd) = *(tcs + btc);
-    incrementTc();
+    updateRegState(rd, *(tcs + btc));
 
   } else if (isOneSourceRegConcrete()) {
     if (isConcrete(currentContext, rs1)) {
@@ -9303,6 +9323,7 @@ void confine_sltu() {
       }
     }
 
+    keepLastConstraint();
     checkSatisfiability(tc - 1);
 
   // [0,0] or [1,1]: concrete (symbolic value can neither
@@ -9310,8 +9331,7 @@ void confine_sltu() {
   } else {
     saveState(*(registers + rd));
 
-    *(registers + rd) = *(tcs + btc);
-    incrementTc();
+    updateRegState(rd, *(tcs + btc));
   }
 }
 
@@ -9352,7 +9372,7 @@ void confine_sd () {
     // TODO: pass invalid vaddr
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
-  *(registers + rs2) = tc - 1; // updateMemState increments already
+  *(registers + rs2) = tc - 1; // updateMemState already incremented tc
 }
 
 void confine_beq() {
@@ -9368,16 +9388,22 @@ void confine_jalr() {
 }
 
 void confine_ecall() {
-  // sTODO: detect if REG_A7 == SYSCALL_READ
-  // for that: find proper REG_A7 in trace/time!
-
   // sTODO: find out what confined value was read here
 
-  if (getLowerFromReg(REG_A7) != SYSCALL_EXIT) { // ignore exit calls
+  // before each ecall is an addi instruction, which
+  // stores the syscall value on the trace
+  if (getLower(btc - 1) == SYSCALL_READ) {
     printTrace();
-    print((uint64_t*) ">>> reached syscall while confining");
-    println();
-    exit(0);
+    checkSatisfiability(lastConstraint);
+
+    print(selfieName);
+    print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
+    printInteger(getLower(lastConstraint));
+    print((uint64_t*) ",..,");
+    printInteger(getUpper(lastConstraint));
+    println(); println();
+
+    numberOfSymbolics = numberOfSymbolics - 1;
   }
 
   *(registers + REG_A0) = *(tcs + btc);

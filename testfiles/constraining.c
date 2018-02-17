@@ -7,7 +7,7 @@ uint64_t main() {
   *x = *x + 5;   // [5, 260]       |  [0, 4]  => SAT
 
   // satisfiable:
-                   //  | forwards  |  backwards ^
+                  //  | forwards   |  backwards ^
   if (*x < 10) {  //  | [5, 260]   |  [5, 9]    |
     *x = *x + 5;  //  | [10, 265]  |  [5, 14]   |
 
@@ -23,7 +23,7 @@ uint64_t main() {
 
   //   if (*x > 20)  //  | [10, 265]  |  [21, 265] |
   //     return *x;  //  | [10, 265]  |  [10, 265] |
-  // }               //               v            
+  // }               //               v
 
 
   return -1;
