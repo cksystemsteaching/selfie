@@ -5546,6 +5546,8 @@ void implementRead(uint64_t* context) {
 
     *(getRegs(context) + REG_A0) = tc;
     incrementTc();
+
+    numberOfSymbolics = numberOfSymbolics + 1;
   } else {
     if (failed == 0)
       *(getRegs(context) + REG_A0) = readTotal;
@@ -5579,8 +5581,6 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
   // return r;
 
   // =======================
-
-  numberOfSymbolics = numberOfSymbolics + 1;
 
   upperBound = UINT64_MAX;
 
