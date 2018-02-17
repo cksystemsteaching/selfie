@@ -1471,7 +1471,8 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 // ----------------- BACKWARD CONSTRAINING APPROACH ----------------
 
 void symbolic_confine();
-void keepLastConstraint();
+
+void keepLastConstraint(uint64_t tc);
 void restoreLastConstraint();
 
 void confine_lui();
@@ -1491,13 +1492,16 @@ void confine_ecall();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t btc    = 0;          // trace counter for backwards execution
-uint64_t branch = 1;          // always take TRUE branch for now
+uint64_t btc    = 0;            // trace counter for backwards execution
+uint64_t branch = 1;            // always take TRUE branch for now
 
 uint64_t redundantIs       = 0; // number of redundant instructions
 uint64_t numberOfSymbolics = 0; // number of symbolic variables
 
-uint64_t lastConstraint = 0;    // last tc where constraining occured
+uint64_t lastConstraint    = 0; // last tc where constraining occured
+uint64_t secLastConstraint = 0; // second last tc where constraining occured
+
+uint64_t identifyOperator  = 0; // helps distinguishing < (>) and <= (>=)
 
 // ---------------------------- TRACE API --------------------------
 
@@ -9079,7 +9083,7 @@ void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
   // assert:    v1 is symbolic
   // semantics: constrain v1 by v2
 
-  // sTODO: enhance operators
+  // sTODO: enhance == and !=
 
   if (operator == SYM_LT)
     if (branch)
@@ -9092,6 +9096,18 @@ void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
       setLower(getUpper(v2) + 1, v1);
     else
       setUpper(getLower(v2), v1);
+
+  else if (operator == SYM_LEQ)
+    if (branch)
+      setUpper(getLower(v2), v1);
+    else
+      setLower(getUpper(v2) + 1, v1);
+
+  else if (operator == SYM_GEQ)
+    if (branch)
+      setLower(getUpper(v2), v1);
+    else
+      setUpper(getLower(v2) - 1, v1);
 }
 
 // ----------------- FORWARD CONSTRAINING APPROACH -----------------
@@ -9197,12 +9213,14 @@ void symbolic_confine() {
   }
 }
 
-void keepLastConstraint() {
+void keepLastConstraint(uint64_t tc) {
   // caution: this may work for constraining only one
   // symbolic value correctly atm
 
-  if (getLower(tc) != getUpper(tc))
-    lastConstraint = tc;
+  if (getLower(tc) != getUpper(tc)) {
+    secLastConstraint = lastConstraint;
+    lastConstraint    = tc;
+  }
 }
 
 void restoreLastConstraint() {
@@ -9230,7 +9248,7 @@ void confine_addi() {
   if (rd != rs1)
     *(registers + rd) = *(tcs + btc);
 
-  keepLastConstraint();
+  keepLastConstraint(tc);
   updateRegState(rs1, tc);
 }
 
@@ -9258,7 +9276,7 @@ void confine_add() {
     setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
-    keepLastConstraint();
+    keepLastConstraint(tc);
     updateRegState(symReg, tc);
 
     if (rd != symReg)
@@ -9271,7 +9289,39 @@ void confine_add() {
 }
 
 void confine_sub() {
+  uint64_t conReg;
+  uint64_t symReg;
 
+  if (areSourceRegsConcrete()) {
+    saveState(*(registers + rd));
+
+    // nothing to constrain
+    updateRegState(rd, *(tcs + btc));
+
+  } else if (isOneSourceRegConcrete()) {
+    if (isConcrete(currentContext, rs1)) {
+      conReg = rs1;
+      symReg = rs2;
+    } else {
+      conReg = rs2;
+      symReg = rs1;
+    }
+
+    saveState(*(registers + symReg));
+
+    setLower(getLowerFromReg(rd) + getLowerFromReg(conReg), tc);
+    setUpper(getUpperFromReg(rd) + getUpperFromReg(conReg), tc);
+
+    keepLastConstraint(tc);
+    updateRegState(symReg, tc);
+
+    if (rd != symReg)
+      *(registers + rd) = *(tcs + btc);
+
+  // both source registers contain symbolic values
+  } else {
+    // sTODO: which one should we constrain?
+  }
 }
 
 void confine_mul() {
@@ -9287,43 +9337,101 @@ void confine_remu() {
 }
 
 void confine_sltu() {
-  // sTODO: adjust for <=, >=, ==, !=
+  // sTODO: adjust for ==, !=
+
+  identifyOperator = tc - identifyOperator;
 
   // [0,1]: symbolic
   if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
     saveState(*(registers + rd));
 
-    restoreLastConstraint();
+    // <, >, ==, !=
+    if (identifyOperator == 0) {
+      restoreLastConstraint();
+      // <
+      if (rd == rs1) {
+        // symbolic (rs1) < concrete (rs2)
+        if (isConcrete(currentContext, rs2)) {
+          constrain(tc, *(registers + rs2), SYM_LT, branch);
+          updateRegState(rd, tc);
 
-    // <
-    if (rd == rs1) {
-      // symbolic (rs1) < concrete (rs2)
-      if (isConcrete(currentContext, rs2)) {
-        constrain(tc, *(registers + rs2), SYM_LT, branch);
-        updateRegState(rd, tc);
+        // concrete (rs1) < symbolic (rs2)
+        } else {
+          if (lastConstraint == 0) {
+            setLower(getLowerFromReg(rs2), tc);
+            setUpper(getUpperFromReg(rs2), tc);
+          }
 
-      // concrete (rs1) < symbolic (rs2)
+          *(registers + rs1) = *(tcs + btc);
+          constrain(tc, *(registers + rs1), SYM_GT, branch);
+          updateRegState(rs2, tc);
+        }
+      // >
       } else {
-        *(registers + rs1) = *(tcs + btc);
-        constrain(tc, *(registers + rs1), SYM_GT, branch);
-        updateRegState(rs2, tc);
+        // symbolic (rs2) > concrete (rs1)
+        if (isConcrete(currentContext, rs1)) {
+          constrain(tc, *(registers + rs1), SYM_GT, branch);
+          updateRegState(rd, tc);
+
+        // concrete (rs2) > symbolic (rs1)
+        } else {
+          if (lastConstraint == 0) {
+            setLower(getLowerFromReg(rs1), tc);
+            setUpper(getUpperFromReg(rs1), tc);
+          }
+
+          *(registers + rs2) = *(tcs + btc);
+          constrain(tc, *(registers + rs2), SYM_LT, branch);
+          updateRegState(rs1, tc);
+        }
       }
-    // >
-    } else {
-      // symbolic (rs2) > concrete (rs1)
-      if (isConcrete(currentContext, rs1)) {
-        constrain(tc, *(registers + rs1), SYM_GT, branch);
-        updateRegState(rd, tc);
+    // <=, >=
+    } else if (identifyOperator == 2) {
+      // last constraint is always [2,1] due to SLTU:[0,1] -(+) [1,1]
+      // (compiler semantics of <= / >=), thus we need the one before
+      lastConstraint = secLastConstraint;
+      restoreLastConstraint();
 
-      // concrete (rs2) < symbolic (rs1)
+      // <=
+      if (rd == rs2) {
+        // symbolic (rs2) <= concrete (rs1)
+        if (isConcrete(currentContext, rs1)) {
+          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
+          updateRegState(rd, tc);
+
+        // concrete (rs2) <= symbolic (rs1)
+        } else {
+          if (lastConstraint == 0) {
+            setLower(getLowerFromReg(rs1), tc);
+            setUpper(getUpperFromReg(rs1), tc);
+          }
+
+          *(registers + rs2) = *(tcs + btc);
+          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
+          updateRegState(rs1, tc);
+        }
+      // >=
       } else {
-        *(registers + rs2) = *(tcs + btc);
-        constrain(tc, *(tcs + btc), SYM_LT, branch);
-        updateRegState(rs1, tc);
+        // symbolic (rs1) >= concrete (rs2)
+        if (isConcrete(currentContext, rs2)) {
+          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
+          updateRegState(rd, tc);
+
+        // concrete (rs1) >= symbolic (rs2)
+        } else {
+          if (lastConstraint == 0) {
+            setLower(getLowerFromReg(rs2), tc);
+            setUpper(getUpperFromReg(rs2), tc);
+          }
+
+          *(registers + rs1) = *(tcs + btc);
+          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
+          updateRegState(rs2, tc);
+        }
       }
     }
 
-    keepLastConstraint();
+    keepLastConstraint(tc - 1);
     checkSatisfiability(tc - 1);
 
   // [0,0] or [1,1]: concrete (symbolic value can neither
@@ -9376,7 +9484,7 @@ void confine_sd () {
 }
 
 void confine_beq() {
-  // sTODO: nothing to do!
+  identifyOperator = tc;
 }
 
 void confine_jal() {
