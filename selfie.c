@@ -1003,7 +1003,6 @@ void print_lui_before();
 void print_lui_after();
 void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
-void symbolic_confine_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 
@@ -1011,32 +1010,25 @@ void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
 void symbolic_do_addi();
-void symbolic_confine_addi();
 void do_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void symbolic_do_add();
-void symbolic_confine_add();
 void do_add();
 void symbolic_do_sub();
-void symbolic_confine_sub();
 void do_sub();
 void symbolic_do_mul();
-void symbolic_confine_mul();
 void do_mul();
 
 void record_divu_remu();
 void symbolic_do_divu();
-void symbolic_confine_divu();
 void do_divu();
 void symbolic_do_remu();
-void symbolic_confine_remu();
 void do_remu();
 
 void symbolic_do_sltu();
-void symbolic_confine_sltu();
 void do_sltu();
 
 void     print_ld();
@@ -1046,7 +1038,6 @@ void     record_ld();
 void     symbolic_record_ld_before();
 void     symbolic_record_ld_after();
 uint64_t symbolic_do_ld();
-uint64_t symbolic_confine_ld();
 uint64_t do_ld();
 
 void     print_sd();
@@ -1054,7 +1045,6 @@ void     print_sd_before();
 void     print_sd_after(uint64_t vaddr);
 void     record_sd();
 uint64_t symbolic_do_sd();
-uint64_t symbolic_confine_sd();
 uint64_t do_sd();
 void     undo_sd();
 
@@ -1063,20 +1053,17 @@ void print_beq_before();
 void print_beq_after();
 void record_beq();
 void symbolic_do_beq();
-void symbolic_confine_beq();
 void do_beq();
 
 void print_jal();
 void print_jal_before();
 void print_jal_jalr_after();
 void symbolic_do_jal();
-void symbolic_confine_jal();
 void do_jal();
 
 void print_jalr();
 void print_jalr_before();
 void symbolic_do_jalr();
-void symbolic_confine_jalr();
 void do_jalr();
 
 void print_ecall();
@@ -1084,7 +1071,6 @@ void print_ecall_before();
 void print_ecall_after();
 void record_ecall();
 void symbolic_do_ecall();
-void symbolic_confine_ecall();
 void do_ecall();
 void undo_ecall();
 
@@ -1484,6 +1470,21 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 void symbolic_confine();
 void keepLastConstraint();
 void restoreLastConstraint();
+
+void confine_lui();
+void confine_addi();
+void confine_add();
+void confine_sub();
+void confine_mul();
+void confine_divu();
+void confine_remu();
+void confine_sltu();
+void confine_ld();
+void confine_sd();
+void confine_beq();
+void confine_jal();
+void confine_jalr();
+void confine_ecall();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -6307,10 +6308,6 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
   recordState(*(registers + rd));
 }
 
-void symbolic_confine_lui() {
-
-}
-
 void symbolic_do_lui() {
   saveState(*(registers + rd));
 
@@ -6374,19 +6371,6 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
   printRegisterTc(rd);
 }
 
-void symbolic_confine_addi() {
-  saveState(*(registers + rs1));
-
-  setLower(getLowerFromReg(rd) - imm, tc);
-  setUpper(getUpperFromReg(rd) - imm, tc);
-
-  if (rd != rs1)
-    *(registers + rd) = *(tcs + btc);
-
-  keepLastConstraint();
-  updateRegState(rs1, tc);
-}
-
 void symbolic_do_addi() {
   saveState(*(registers + rd));
 
@@ -6437,43 +6421,6 @@ void print_add_sub_mul_divu_remu_sltu_before() {
   printRegisterTc(rd);
 }
 
-void symbolic_confine_add() {
-  uint64_t conReg;
-  uint64_t symReg;
-
-  if (areSourceRegsConcrete()) {
-    saveState(*(registers + rd));
-
-    // nothing to constrain
-    *(registers + rd) = *(tcs + btc);
-    incrementTc();
-
-  } else if (isOneSourceRegConcrete()) {
-    if (isConcrete(currentContext, rs1)) {
-      conReg = rs1;
-      symReg = rs2;
-    } else {
-      conReg = rs2;
-      symReg = rs1;
-    }
-
-    saveState(*(registers + symReg));
-
-    setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
-    setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
-
-    keepLastConstraint();
-    updateRegState(symReg, tc);
-
-    if (rd != symReg)
-      *(registers + rd) = *(tcs + btc);
-
-  // both source registers contain symbolic values
-  } else {
-    // sTODO: which one should we constrain?
-  }
-}
-
 void symbolic_do_add() {
   saveState(*(registers + rd));
 
@@ -6499,10 +6446,6 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void symbolic_confine_sub() {
-
-}
-
 void symbolic_do_sub() {
   saveState(*(registers + rd));
 
@@ -6526,10 +6469,6 @@ void do_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
-}
-
-void symbolic_confine_mul() {
-
 }
 
 void symbolic_do_mul() {
@@ -6564,10 +6503,6 @@ void do_mul() {
 void record_divu_remu() {
   // record even for division by zero
   recordState(*(registers + rd));
-}
-
-void symbolic_confine_divu() {
-
 }
 
 void symbolic_do_divu() {
@@ -6608,10 +6543,6 @@ void do_divu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
-void symbolic_confine_remu() {
-
-}
-
 void symbolic_do_remu() {
   saveState(*(registers + rd));
 
@@ -6648,55 +6579,6 @@ void do_remu() {
     ic_remu = ic_remu + 1;
   } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
-}
-
-void symbolic_confine_sltu() {
-  // sTODO: adjust for <=, >=, ==, !=
-
-  // [0,1]: symbolic
-  if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
-    saveState(*(registers + rd));
-
-    restoreLastConstraint();
-
-    // <
-    if (rd == rs1) {
-      // symbolic (rs1) < concrete (rs2)
-      if (isConcrete(currentContext, rs2)) {
-        constrain(tc, *(registers + rs2), SYM_LT, branch);
-        updateRegState(rd, tc);
-
-      // concrete (rs1) < symbolic (rs2)
-      } else {
-        *(registers + rs1) = *(tcs + btc);
-        constrain(tc, *(registers + rs1), SYM_GT, branch);
-        updateRegState(rs2, tc);
-      }
-    // >
-    } else {
-      // symbolic (rs2) > concrete (rs1)
-      if (isConcrete(currentContext, rs1)) {
-        constrain(tc, *(registers + rs1), SYM_GT, branch);
-        updateRegState(rd, tc);
-
-      // concrete (rs2) < symbolic (rs1)
-      } else {
-        *(registers + rs2) = *(tcs + btc);
-        constrain(tc, *(tcs + btc), SYM_LT, branch);
-        updateRegState(rs1, tc);
-      }
-    }
-
-    checkSatisfiability(tc - 1);
-
-  // [0,0] or [1,1]: concrete (symbolic value can neither
-  // be smaller than 0 nor greater than UINT64_MAX)
-  } else {
-    saveState(*(registers + rd));
-
-    *(registers + rd) = *(tcs + btc);
-    incrementTc();
-  }
 }
 
 void symbolic_do_sltu() {
@@ -6811,23 +6693,6 @@ void symbolic_record_ld_before() {
 
 void symbolic_record_ld_after() {
   updateRegState(rd, tc);
-}
-
-uint64_t symbolic_confine_ld() {
-  uint64_t vaddr;
-
-  vaddr = retrieveAddress();
-
-  saveState(loadVirtualMemory(pt, vaddr));
-
-  // semantics of sd
-  setLower(getLowerFromReg(rd), tc);
-  setUpper(getUpperFromReg(rd), tc);
-
-  *(registers + rd) = *(tcs + btc);
-  updateMemState(vaddr, tc);
-
-  return vaddr;
 }
 
 uint64_t symbolic_do_ld() {
@@ -6984,34 +6849,6 @@ void symbolic_record_sd_after() {
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 }
 
-uint64_t symbolic_confine_sd () {
-  uint64_t vaddr;
-  uint64_t a;
-
-  saveState(*(registers + rs2));
-
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      if (rs2 != REG_ZR) {
-        // semantics of ld
-        setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
-        setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
-
-        updateMemState(vaddr, *(tcs + btc));
-      }
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
-
-  *(registers + rs2) = tc - 1; // updateMemState increments already
-
-  return vaddr;
-}
-
 uint64_t symbolic_do_sd() {
   uint64_t vaddr;
   uint64_t a;
@@ -7107,10 +6944,6 @@ void record_beq() {
   recordState(0);
 }
 
-void symbolic_confine_beq() {
-  // sTODO: nothing to do!
-}
-
 void symbolic_do_beq() {
   uint64_t sltuTc;
 
@@ -7186,10 +7019,6 @@ void print_jal_jalr_after() {
     printRegisterHexadecimal(rd);
   }
   printRegisterTc(rd);
-}
-
-void symbolic_confine_jal() {
-  *(registers + rd) = *(tcs + btc);
 }
 
 void symbolic_do_jal() {
@@ -7291,10 +7120,6 @@ void print_jalr_before() {
   printRegisterTc(rd);
 }
 
-void symbolic_confine_jalr() {
-  *(registers + rd) = *(tcs + btc);
-}
-
 void symbolic_do_jalr() {
   uint64_t next_pc;
 
@@ -7367,22 +7192,6 @@ void print_ecall_after() {
 void record_ecall() {
   // TODO: record all side effects
   recordState(*(registers + REG_A0));
-}
-
-void symbolic_confine_ecall() {
-  // sTODO: detect if REG_A7 == SYSCALL_READ
-  // for that: find proper REG_A7 in trace/time!
-
-  // sTODO: find out what confined value was read here
-
-  if (getLowerFromReg(REG_A7) != SYSCALL_EXIT) { // ignore exit calls
-    printTrace();
-    print((uint64_t*) ">>> reached syscall while confining");
-    println();
-    exit(0);
-  }
-
-  *(registers + REG_A0) = *(tcs + btc);
 }
 
 void symbolic_do_ecall() {
@@ -7592,7 +7401,7 @@ void decode_execute() {
         }
       } else if (symbolic) {
         if (confine)
-          symbolic_confine_addi();
+          confine_addi();
         else
           symbolic_do_addi();
       } else
@@ -7625,7 +7434,7 @@ void decode_execute() {
         }
       } else if (symbolic) {
         if (confine)
-          symbolic_confine_ld();
+          confine_ld();
         else
           vaddr = symbolic_do_ld();
       } else
@@ -7657,7 +7466,7 @@ void decode_execute() {
         }
       } else if (symbolic) {
         if (confine)
-          symbolic_confine_sd();
+          confine_sd();
         else
           vaddr = symbolic_do_sd();
       } else
@@ -7688,7 +7497,7 @@ void decode_execute() {
           }
         } else if (symbolic) {
           if (confine)
-            symbolic_confine_add();
+            confine_add();
           else
             symbolic_do_add();
         } else
@@ -7716,7 +7525,7 @@ void decode_execute() {
           }
         } else if (symbolic) {
           if (confine)
-            symbolic_confine_sub();
+            confine_sub();
           else
             symbolic_do_sub();
         } else
@@ -7744,7 +7553,7 @@ void decode_execute() {
           }
         } else if (symbolic) {
           if (confine)
-            symbolic_confine_mul();
+            confine_mul();
           else
             symbolic_do_mul();
         } else
@@ -7774,7 +7583,7 @@ void decode_execute() {
           }
         } else if (symbolic) {
           if (confine)
-            symbolic_confine_divu();
+            confine_divu();
           else
             symbolic_do_divu();
         } else
@@ -7804,7 +7613,7 @@ void decode_execute() {
           }
         } else if (symbolic) {
           if (confine)
-            symbolic_confine_remu();
+            confine_remu();
           else
             symbolic_do_remu();
         } else
@@ -7834,7 +7643,7 @@ void decode_execute() {
           }
         } else if (symbolic) {
           if (confine)
-            symbolic_confine_sltu();
+            confine_sltu();
           else
             symbolic_do_sltu();
         } else
@@ -7865,7 +7674,7 @@ void decode_execute() {
         }
       } else if (symbolic) {
         if (confine)
-          symbolic_confine_beq();
+          confine_beq();
         else
           symbolic_do_beq();
       } else
@@ -7896,7 +7705,7 @@ void decode_execute() {
       }
     } else if (symbolic) {
       if (confine)
-        symbolic_confine_jal();
+        confine_jal();
       else
         symbolic_do_jal();
     } else
@@ -7927,7 +7736,7 @@ void decode_execute() {
         }
       } else if (symbolic) {
         if (confine)
-          symbolic_confine_jalr();
+          confine_jalr();
         else
           symbolic_do_jalr();
       } else
@@ -7958,7 +7767,7 @@ void decode_execute() {
       }
     } else if (symbolic) {
       if (confine)
-        symbolic_confine_lui();
+        confine_lui();
       else
         symbolic_do_lui();
     } else
@@ -7989,7 +7798,7 @@ void decode_execute() {
         }
       } else if (symbolic) {
         if (confine)
-          symbolic_confine_ecall();
+          confine_ecall();
         else
           symbolic_do_ecall();
       } else
@@ -9385,6 +9194,193 @@ void restoreLastConstraint() {
 
   setLower(getLower(tc_before), tc);
   setUpper(getUpper(tc_before), tc);
+}
+
+void confine_lui() {
+
+}
+
+void confine_addi() {
+  saveState(*(registers + rs1));
+
+  setLower(getLowerFromReg(rd) - imm, tc);
+  setUpper(getUpperFromReg(rd) - imm, tc);
+
+  if (rd != rs1)
+    *(registers + rd) = *(tcs + btc);
+
+  keepLastConstraint();
+  updateRegState(rs1, tc);
+}
+
+void confine_add() {
+  uint64_t conReg;
+  uint64_t symReg;
+
+  if (areSourceRegsConcrete()) {
+    saveState(*(registers + rd));
+
+    // nothing to constrain
+    *(registers + rd) = *(tcs + btc);
+    incrementTc();
+
+  } else if (isOneSourceRegConcrete()) {
+    if (isConcrete(currentContext, rs1)) {
+      conReg = rs1;
+      symReg = rs2;
+    } else {
+      conReg = rs2;
+      symReg = rs1;
+    }
+
+    saveState(*(registers + symReg));
+
+    setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
+    setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
+
+    keepLastConstraint();
+    updateRegState(symReg, tc);
+
+    if (rd != symReg)
+      *(registers + rd) = *(tcs + btc);
+
+  // both source registers contain symbolic values
+  } else {
+    // sTODO: which one should we constrain?
+  }
+}
+
+void confine_sub() {
+
+}
+
+void confine_mul() {
+
+}
+
+void confine_divu() {
+
+}
+
+void confine_remu() {
+
+}
+
+void confine_sltu() {
+  // sTODO: adjust for <=, >=, ==, !=
+
+  // [0,1]: symbolic
+  if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
+    saveState(*(registers + rd));
+
+    restoreLastConstraint();
+
+    // <
+    if (rd == rs1) {
+      // symbolic (rs1) < concrete (rs2)
+      if (isConcrete(currentContext, rs2)) {
+        constrain(tc, *(registers + rs2), SYM_LT, branch);
+        updateRegState(rd, tc);
+
+      // concrete (rs1) < symbolic (rs2)
+      } else {
+        *(registers + rs1) = *(tcs + btc);
+        constrain(tc, *(registers + rs1), SYM_GT, branch);
+        updateRegState(rs2, tc);
+      }
+    // >
+    } else {
+      // symbolic (rs2) > concrete (rs1)
+      if (isConcrete(currentContext, rs1)) {
+        constrain(tc, *(registers + rs1), SYM_GT, branch);
+        updateRegState(rd, tc);
+
+      // concrete (rs2) < symbolic (rs1)
+      } else {
+        *(registers + rs2) = *(tcs + btc);
+        constrain(tc, *(tcs + btc), SYM_LT, branch);
+        updateRegState(rs1, tc);
+      }
+    }
+
+    checkSatisfiability(tc - 1);
+
+  // [0,0] or [1,1]: concrete (symbolic value can neither
+  // be smaller than 0 nor greater than UINT64_MAX)
+  } else {
+    saveState(*(registers + rd));
+
+    *(registers + rd) = *(tcs + btc);
+    incrementTc();
+  }
+}
+
+void confine_ld() {
+  uint64_t vaddr;
+
+  vaddr = retrieveAddress();
+
+  saveState(loadVirtualMemory(pt, vaddr));
+
+  // semantics of sd
+  setLower(getLowerFromReg(rd), tc);
+  setUpper(getUpperFromReg(rd), tc);
+
+  *(registers + rd) = *(tcs + btc);
+  updateMemState(vaddr, tc);
+}
+
+void confine_sd () {
+  uint64_t vaddr;
+
+  saveState(*(registers + rs2));
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      if (rs2 != REG_ZR) {
+        // semantics of ld
+        setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+        setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+
+        updateMemState(vaddr, *(tcs + btc));
+      }
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  *(registers + rs2) = tc - 1; // updateMemState increments already
+}
+
+void confine_beq() {
+  // sTODO: nothing to do!
+}
+
+void confine_jal() {
+  *(registers + rd) = *(tcs + btc);
+}
+
+void confine_jalr() {
+  *(registers + rd) = *(tcs + btc);
+}
+
+void confine_ecall() {
+  // sTODO: detect if REG_A7 == SYSCALL_READ
+  // for that: find proper REG_A7 in trace/time!
+
+  // sTODO: find out what confined value was read here
+
+  if (getLowerFromReg(REG_A7) != SYSCALL_EXIT) { // ignore exit calls
+    printTrace();
+    print((uint64_t*) ">>> reached syscall while confining");
+    println();
+    exit(0);
+  }
+
+  *(registers + REG_A0) = *(tcs + btc);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
