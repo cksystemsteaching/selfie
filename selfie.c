@@ -6272,6 +6272,13 @@ void constrain_addi() {
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
+        print(selfieName);
+        print((uint64_t*) ": detected invalid minuend expression in operand of addi at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint
         set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + imm, *(reg_cceil + rs1) + imm);
@@ -6324,12 +6331,26 @@ void constrain_add() {
         set_constraint(rd, 1, 0, 0, 0, 0);
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
+        print(selfieName);
+        print((uint64_t*) ": detected invalid minuend expression in left operand of add at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint since rs2 has none
         set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + *(registers + rs2), *(reg_cceil + rs1) + *(reg_vceil + rs2));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another addend
+        print(selfieName);
+        print((uint64_t*) ": detected invalid minuend expression in right operand of add at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs2 constraint since rs1 has none
         set_constraint(rd, 1, *(reg_vaddr + rs2), 0, *(registers + rs1) + *(reg_coval + rs2), *(reg_vceil + rs1) + *(reg_cceil + rs2));
@@ -6361,12 +6382,26 @@ void constrain_sub() {
         set_constraint(rd, 1, 0, 0, 0, 0);
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another subtrahend
+        print(selfieName);
+        print((uint64_t*) ": detected invalid minuend expression in left operand of sub at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint since rs2 has none
         set_constraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) - *(registers + rs2), *(reg_cceil + rs1) - *(reg_vceil + rs2));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another minuend
+        print(selfieName);
+        print((uint64_t*) ": detected invalid minuend expression in right operand of sub at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs2 constraint since rs1 has none
         set_constraint(rd, 1, *(reg_vaddr + rs2), 1, *(registers + rs1) - *(reg_coval + rs2), *(reg_vceil + rs1) - *(reg_cceil + rs2));
@@ -6709,8 +6744,12 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
           // record frame and stack pointer
           storeRegisterMemory(REG_FP, *(registers + REG_FP));
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else
+        } else {
           *(registers + rd) = 1;
+          *(reg_vceil + rd) = 1;
+
+          set_constraint(rd, 0, 0, 0, 0, 0);
+        }
       } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
         // rs2 interval is less than or equal to rs1 interval
         constrain_memory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
@@ -6723,8 +6762,12 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
           // record frame and stack pointer
           storeRegisterMemory(REG_FP, *(registers + REG_FP));
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else
+        } else {
           *(registers + rd) = 0;
+          *(reg_vceil + rd) = 0;
+
+          set_constraint(rd, 0, 0, 0, 0, 0);
+        }
       } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
         // rs2 interval is a singleton
 
@@ -6750,8 +6793,12 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
           // record frame and stack pointer
           storeRegisterMemory(REG_FP, *(registers + REG_FP));
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else
+        } else {
           *(registers + rd) = 1;
+          *(reg_vceil + rd) = 1;
+
+          set_constraint(rd, 0, 0, 0, 0, 0);
+        }
       } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
         // rs1 interval is a singleton
 
@@ -6777,8 +6824,12 @@ void create_constraints(uint64_t howManyMore, uint64_t trb) {
           // record frame and stack pointer
           storeRegisterMemory(REG_FP, *(registers + REG_FP));
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else
+        } else {
           *(registers + rd) = 1;
+          *(reg_vceil + rd) = 1;
+
+          set_constraint(rd, 0, 0, 0, 0, 0);
+        }
       } else {
         // we cannot handle non-singleton interval intersections in comparison
         print(selfieName);
@@ -6917,6 +6968,8 @@ void backtrack_sltu() {
 
     *(registers + reg) = *(values + tc);
     *(reg_vceil + reg) = *(values + tc); // values, not vceils (!)
+
+    set_constraint(reg, 0, 0, 0, 0, 0);
 
     // restoring mrcc
     mrcc = *(tcs + tc);
