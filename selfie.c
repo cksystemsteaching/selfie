@@ -5884,9 +5884,16 @@ uint64_t implementMalloc(uint64_t* context) {
     if (symbolic) {
       *(reg_vceil + REG_A0) = bump;
 
-      if (mrcc > 0)
-        // since there has been branching record malloc using vaddr == 1
-        storeSymbolicMemory(getPT(context), 1, bump, size, tc);
+      if (mrcc > 0) {
+        if (tc + 1 < maxTraceLength)
+          // since there has been branching record malloc using vaddr == 1
+          storeSymbolicMemory(getPT(context), 1, bump, size, tc);
+        else {
+          setExitCode(context, EXITCODE_OUTOFTRACEMEMORY);
+
+          return EXIT;
+        }
+      }
     }
 
     setBumpPointer(context, bump + size);
@@ -6521,12 +6528,54 @@ void constrain_divu() {
         // semantics of divu
         *(reg_vceil + rd) = *(reg_vceil + rs1) / *(reg_vceil + rs2);
 
-        if (*(registers + rs1) != *(reg_vceil + rs1))
-          if (*(registers + rs2) != *(reg_vceil + rs2)) {
+        if (*(reg_hasco + rs1)) {
+          if (*(reg_hasco + rs2)) {
             // non-linear expressions are not supported
-          }
+            print(selfieName);
+            print((uint64_t*) ": detected non-linear expression in divu at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
 
-        inherit_mul_divu_remu();
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          } else if (*(reg_hasmn + rs1)) {
+            // rs1 constraint has already minuend and cannot have another divisor
+            print(selfieName);
+            print((uint64_t*) ": detected invalid minuend expression in left operand of divu at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          } else
+            // rd inherits rs1 constraint since rs2 has none
+            // assert: rs2 interval is singleton
+            set_constraint(rd, 1, *(reg_vaddr + rs1), 0,
+              *(reg_coval + rs1) -
+                (*(registers + rs1) - *(registers + rs1) / *(registers + rs2)),
+              *(reg_cceil + rs1) -
+                (*(reg_vceil + rs1) - *(reg_vceil + rs1) / *(reg_vceil + rs2)));
+        } else if (*(reg_hasco + rs2)) {
+          if (*(reg_hasmn + rs2)) {
+            // rs2 constraint has already minuend and cannot have another dividend
+            print(selfieName);
+            print((uint64_t*) ": detected invalid minuend expression in right operand of divu at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          } else
+            // rd inherits rs2 constraint since rs1 has none
+            // assert: rs1 interval is singleton
+            set_constraint(rd, 1, *(reg_vaddr + rs2), 0,
+              *(reg_coval + rs2) -
+                (*(registers + rs2) - *(registers + rs1) / *(registers + rs2)),
+              *(reg_cceil + rs2) -
+                (*(reg_vceil + rs2) - *(reg_vceil + rs1) / *(reg_vceil + rs2)));
+        } else
+          // rd has no constraint if both rs1 and rs2 have no constraints
+          set_constraint(rd, 0, 0, 0, 0, 0);
       }
     } else
       throwException(EXCEPTION_DIVISIONBYZERO, 0);
@@ -6556,12 +6605,54 @@ void constrain_remu() {
         // semantics of remu
         *(reg_vceil + rd) = *(reg_vceil + rs1) % *(reg_vceil + rs2);
 
-        if (*(registers + rs1) != *(reg_vceil + rs1))
-          if (*(registers + rs2) != *(reg_vceil + rs2)) {
+        if (*(reg_hasco + rs1)) {
+          if (*(reg_hasco + rs2)) {
             // non-linear expressions are not supported
-          }
+            print(selfieName);
+            print((uint64_t*) ": detected non-linear expression in remu at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
 
-        inherit_mul_divu_remu();
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          } else if (*(reg_hasmn + rs1)) {
+            // rs1 constraint has already minuend and cannot have another divisor
+            print(selfieName);
+            print((uint64_t*) ": detected invalid minuend expression in left operand of remu at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          } else
+            // rd inherits rs1 constraint since rs2 has none
+            // assert: rs2 interval is singleton
+            set_constraint(rd, 1, *(reg_vaddr + rs1), 0,
+              *(reg_coval + rs1) -
+                (*(registers + rs1) - *(registers + rs1) % *(registers + rs2)),
+              *(reg_cceil + rs1) -
+                (*(reg_vceil + rs1) - *(reg_vceil + rs1) % *(reg_vceil + rs2)));
+        } else if (*(reg_hasco + rs2)) {
+          if (*(reg_hasmn + rs2)) {
+            // rs2 constraint has already minuend and cannot have another dividend
+            print(selfieName);
+            print((uint64_t*) ": detected invalid minuend expression in right operand of remu at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          } else
+            // rd inherits rs2 constraint since rs1 has none
+            // assert: rs1 interval is singleton
+            set_constraint(rd, 1, *(reg_vaddr + rs2), 0,
+              *(reg_coval + rs2) -
+                (*(registers + rs2) - *(registers + rs1) % *(registers + rs2)),
+              *(reg_cceil + rs2) -
+                (*(reg_vceil + rs2) - *(reg_vceil + rs1) % *(reg_vceil + rs2)));
+        } else
+          // rd has no constraint if both rs1 and rs2 have no constraints
+          set_constraint(rd, 0, 0, 0, 0, 0);
       }
     } else
       throwException(EXCEPTION_DIVISIONBYZERO, 0);
@@ -7526,8 +7617,15 @@ void backtrack_ecall() {
     else {
       print(selfieName);
       print((uint64_t*) ": malloc backtracking error at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
+      printSymbolicMemory(tc);
+      print((uint64_t*) " with current bump pointer ");
+      printHexadecimal(getBumpPointer(currentContext), 0);
+      print((uint64_t*) " unequal ");
+      printHexadecimal(*(values + tc) + *(vceils + tc), 0);
+      print((uint64_t*) " which is previous bump pointer ");
+      printHexadecimal(*(values + tc), 0);
+      print((uint64_t*) " plus size ");
+      printInteger(*(vceils + tc));
       println();
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -8847,12 +8945,14 @@ uint64_t numster(uint64_t* toContext) {
         else
           setPC(fromContext, pc);
       } else if (handleSystemCalls(fromContext) == EXIT) {
-        print(selfieName);
-        print((uint64_t*) ": backtracking ");
-        print(getName(currentContext));
-        print((uint64_t*) " from exit code ");
-        printInteger(signExtend(getExitCode(fromContext), SYSCALL_BITWIDTH));
-        println();
+        if (debug_symbolic) {
+          print(selfieName);
+          print((uint64_t*) ": backtracking ");
+          print(getName(currentContext));
+          print((uint64_t*) " from exit code ");
+          printInteger(signExtend(getExitCode(fromContext), SYSCALL_BITWIDTH));
+          println();
+        }
 
         backtrackTrace();
 
