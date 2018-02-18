@@ -5417,8 +5417,8 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 uint64_t fuzzValue(uint64_t value) {
   if (fuzz >= CPUBITWIDTH)
     return 0;
-  else if (value > twoToThePowerOf(fuzz) / 2)
-    return value - twoToThePowerOf(fuzz) / 2;
+  else if (value > (twoToThePowerOf(fuzz) - 1) / 2)
+    return value - (twoToThePowerOf(fuzz) - 1) / 2;
   else
     return 0;
 }
@@ -5428,10 +5428,10 @@ uint64_t fuzzCeiling(uint64_t value) {
     return UINT64_MAX;
   else if (UINT64_MAX - value < twoToThePowerOf(fuzz) / 2)
     return UINT64_MAX;
-  else if (value > twoToThePowerOf(fuzz) / 2)
+  else if (value > (twoToThePowerOf(fuzz) - 1) / 2)
     return value + twoToThePowerOf(fuzz) / 2;
   else
-    return twoToThePowerOf(fuzz);
+    return twoToThePowerOf(fuzz) - 1;
 }
 
 void implementRead(uint64_t* context) {
@@ -8832,11 +8832,13 @@ uint64_t numster(uint64_t* toContext) {
       else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
         return handleDivisionByZero();
       else if (getException(fromContext) == EXCEPTION_MAXTRACE) {
-        print(selfieName);
-        print((uint64_t*) ": backtracking ");
-        print(getName(currentContext));
-        print((uint64_t*) " from maximum trace length");
-        println();
+        if (debug_symbolic) {
+          print(selfieName);
+          print((uint64_t*) ": backtracking ");
+          print(getName(currentContext));
+          print((uint64_t*) " from maximum trace length");
+          println();
+        }
 
         backtrackTrace();
 
