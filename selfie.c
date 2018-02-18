@@ -5724,38 +5724,45 @@ void emitOpen() {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
-uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
+void printSymbolicMemory(uint64_t svc);
+
+uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
   uint64_t i;
   uint64_t j;
-
-  // physical address of string
-  uint64_t* pstring;
 
   i = 0;
 
   while (i < maxFilenameLength / SIZEOFUINT64) {
-    if (isValidVirtualAddress(vstring)) {
-      if (isVirtualAddressMapped(table, vstring)) {
-        pstring = tlb(table, vstring);
+    if (isValidVirtualAddress(vaddr)) {
+      if (isVirtualAddressMapped(table, vaddr)) {
+        if (symbolic) {
+          *(s + i) = loadSymbolicMemoryValue(table, vaddr);
 
-        if (symbolic)
-          // pstring points to a trace counter that refers to the actual value
-          storePhysicalMemory(pstring, *(values + loadPhysicalMemory(pstring)));
+          if (*(s + i) != loadSymbolicMemoryCeiling(table, vaddr)) {
+            print(selfieName);
+            print((uint64_t*) ": detected in open call symbolic value ");
+            printSymbolicMemory(loadVirtualMemory(table, vaddr));
+            print((uint64_t*) " in filename");
+            printInteger(tc);
+            println();
 
-        *(s + i) = loadPhysicalMemory(pstring);
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          }
+        } else
+          *(s + i) = loadVirtualMemory(table, vaddr);
 
         j = 0;
 
         // check if string ends in the current machine word
         while (j < SIZEOFUINT64) {
-          if (loadCharacter(pstring, j) == 0)
+          if (loadCharacter(s + i, j) == 0)
             return 1;
 
           j = j + 1;
         }
 
         // advance to the next machine word in virtual memory
-        vstring = vstring + SIZEOFUINT64;
+        vaddr = vaddr + SIZEOFUINT64;
 
         // advance to the next machine word in our memory
         i = i + 1;
@@ -5763,7 +5770,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
         if (debug_open) {
           print(selfieName);
           print((uint64_t*) ": opening file with name at virtual address ");
-          printHexadecimal(vstring, 8);
+          printHexadecimal(vaddr, 8);
           print((uint64_t*) " failed because the address is unmapped");
           println();
         }
@@ -5772,7 +5779,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s) {
       if (debug_open) {
         print(selfieName);
         print((uint64_t*) ": opening file with name at virtual address ");
-        printHexadecimal(vstring, 8);
+        printHexadecimal(vaddr, 8);
         print((uint64_t*) " failed because the address is invalid");
         println();
       }
@@ -6440,19 +6447,49 @@ void constrain_mul() {
     // semantics of mul
     *(reg_vceil + rd) = *(reg_vceil + rs1) * *(reg_vceil + rs2);
 
-    if (*(registers + rs1) != *(reg_vceil + rs1))
-      if (*(registers + rs2) != *(reg_vceil + rs2)) {
+    if (*(reg_hasco + rs1)) {
+      if (*(reg_hasco + rs2)) {
         // non-linear expressions are not supported
         print(selfieName);
-        print((uint64_t*) ": detected non-linear expression in symbolic execution at ");
+        print((uint64_t*) ": detected non-linear expression in mul at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
+      } else if (*(reg_hasmn + rs1)) {
+        // rs1 constraint has already minuend and cannot have another multiplier
+        print(selfieName);
+        print((uint64_t*) ": detected invalid minuend expression in left operand of mul at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
 
-    inherit_mul_divu_remu();
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      } else
+        // rd inherits rs1 constraint since rs2 has none
+        // assert: rs2 interval is singleton
+        set_constraint(rd, 1, *(reg_vaddr + rs1), 0,
+          *(reg_coval + rs1) + *(registers + rs1) * (*(registers + rs2) - 1), *(reg_cceil + rs1) + *(reg_vceil + rs2) * (*(reg_vceil + rs2) - 1));
+    } else if (*(reg_hasco + rs2)) {
+      if (*(reg_hasmn + rs2)) {
+        // rs2 constraint has already minuend and cannot have another multiplicand
+        print(selfieName);
+        print((uint64_t*) ": detected invalid minuend expression in right operand of mul at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      } else
+        // rd inherits rs2 constraint since rs1 has none
+        // assert: rs1 interval is singleton
+        set_constraint(rd, 1, *(reg_vaddr + rs2), 0,
+          (*(registers + rs1) - 1) * *(registers + rs2) + *(reg_coval + rs2),
+          (*(reg_vceil + rs1) - 1) * *(reg_vceil + rs2) + *(reg_cceil + rs2));
+    } else
+      // rd has no constraint if both rs1 and rs2 have no constraints
+      set_constraint(rd, 0, 0, 0, 0, 0);
   }
 }
 
@@ -6569,7 +6606,8 @@ void printSymbolicMemory(uint64_t svc) {
   printInteger(*(tcs + svc));
   print((uint64_t*) ",");
   printHexadecimal(*(pcs + svc), 0);
-  printSourceLineNumberOfInstruction(*(pcs + svc) - entryPoint);
+  if (*(pcs + svc) >= entryPoint)
+    printSourceLineNumberOfInstruction(*(pcs + svc) - entryPoint);
   print((uint64_t*) ",");
   if (*(vaddrs + svc) == 0) {
     printRegister(*(vceils + svc));
@@ -6597,7 +6635,7 @@ uint64_t loadSymbolicMemoryValue(uint64_t* pt, uint64_t vaddr) {
     return *(values + mrvc);
   else {
     print(selfieName);
-    print((uint64_t*) ": most recent value counter ");
+    print((uint64_t*) ": detected most recent value counter ");
     printInteger(mrvc);
     print((uint64_t*) " at vaddr ");
     printHexadecimal(vaddr, 0);
