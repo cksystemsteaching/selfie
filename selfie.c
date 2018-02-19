@@ -1036,8 +1036,6 @@ void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
-void     symbolic_record_ld_before();
-void     symbolic_record_ld_after();
 uint64_t symbolic_do_ld();
 uint64_t do_ld();
 
