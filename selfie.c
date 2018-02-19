@@ -1458,6 +1458,8 @@ uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t retrieveAddress();
 
+uint64_t findPrevFuncCall(uint64_t traceCounter);
+
 void checkSatisfiability(uint64_t tc);
 void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
 
@@ -9037,10 +9039,10 @@ uint64_t isOneSourceRegConcrete() {
   // exclusive OR
 
   if (isConcrete(currentContext, rs1)) {
-    if (!isConcrete(currentContext, rs2))
+    if (isConcrete(currentContext, rs2) == 0)
       return 1;
   } else if (isConcrete(currentContext, rs2)) {
-    if (!isConcrete(currentContext, rs1))
+    if (isConcrete(currentContext, rs1) == 0)
       return 1;
   }
 
@@ -9062,6 +9064,25 @@ uint64_t retrieveAddress() {
   }
 
   return vaddr;
+}
+
+uint64_t findPrevFuncCall(uint64_t traceCounter) {
+  uint64_t itPC;
+  uint64_t instr;
+
+  while (traceCounter >= 0) {
+    itPC = *(pcs + traceCounter);
+    if (itPC % REGISTERSIZE == 0)
+      instr = getLowWord(loadVirtualMemory(pt, itPC));
+    else
+      instr = getHighWord(loadVirtualMemory(pt, itPC - INSTRUCTIONSIZE));
+
+    if(getOpcode(instr) == OP_JAL) {
+      return itPC;
+    }
+    traceCounter = traceCounter - 1;
+  }
+  return 0;
 }
 
 void checkSatisfiability(uint64_t tc) {
@@ -9197,7 +9218,7 @@ void symbolic_confine() {
   confine = 1;
 
   print(selfieName);
-  print((uint64_t*) ": vipster confining backwards...");
+  print((uint64_t*) ": vipster reached end of branch - confining backwards...");
   println();
 
   // entry point for algorithm
@@ -9504,7 +9525,7 @@ void confine_ecall() {
   // before each ecall is an addi instruction, which
   // stores the syscall value on the trace
   if (getLower(btc - 1) == SYSCALL_READ) {
-    printTrace();
+    // printTrace();
     checkSatisfiability(lastConstraint);
 
     print(selfieName);
@@ -9512,6 +9533,11 @@ void confine_ecall() {
     printInteger(getLower(lastConstraint));
     print((uint64_t*) ",..,");
     printInteger(getUpper(lastConstraint));
+    if (sourceLineNumber != (uint64_t*) 0) {
+      // find the JAL that occured before the ECALL in the trace
+      print((uint64_t*) " read in line ");
+      printSourceLineNumberOfInstruction(findPrevFuncCall(btc));
+    }
     println(); println();
 
     numberOfSymbolics = numberOfSymbolics - 1;
