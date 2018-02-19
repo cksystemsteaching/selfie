@@ -1006,6 +1006,7 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+void symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 
 void print_addi();
 void print_addi_before();
@@ -1030,6 +1031,7 @@ void symbolic_do_remu();
 void do_remu();
 
 void symbolic_do_sltu();
+void symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 void do_sltu();
 
 void     print_ld();
@@ -1044,6 +1046,7 @@ void     print_sd_before();
 void     print_sd_after(uint64_t vaddr);
 void     record_sd();
 uint64_t symbolic_do_sd();
+void     symbolic_undo_sd();
 uint64_t do_sd();
 void     undo_sd();
 
@@ -1052,6 +1055,7 @@ void print_beq_before();
 void print_beq_after();
 void record_beq();
 void symbolic_do_beq();
+void symbolic_undo_beq();
 void do_beq();
 
 void print_jal();
@@ -1070,8 +1074,10 @@ void print_ecall_before();
 void print_ecall_after();
 void record_ecall();
 void symbolic_do_ecall();
+void symbolic_undo_ecall();
 void do_ecall();
 void undo_ecall();
+
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1470,7 +1476,8 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 
 // ----------------- BACKWARD CONSTRAINING APPROACH ----------------
 
-void symbolic_confine();
+void     symbolic_confine();
+uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
 
 void keepLastConstraint(uint64_t tc);
 void restoreLastConstraint();
@@ -1492,8 +1499,9 @@ void confine_ecall();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t btc    = 0;            // trace counter for backwards execution
-uint64_t branch = 1;            // always take TRUE branch for now
+uint64_t btc          = 0;     // trace counter for backwards execution
+uint64_t branch       = 1;     // always take TRUE branch for now
+uint64_t executionBrk = 0;     // trace counter before beckward execution
 
 uint64_t redundantIs       = 0; // number of redundant instructions
 uint64_t numberOfSymbolics = 0; // number of symbolic variables
@@ -1510,9 +1518,11 @@ uint64_t getUpper(uint64_t tc)         { return *(valuesUpper + tc); }
 uint64_t getLowerFromReg(uint64_t reg) { return *(valuesLower + *(registers + reg)); }
 uint64_t getUpperFromReg(uint64_t reg) { return *(valuesUpper + *(registers + reg)); }
 
-void setLower(uint64_t value, uint64_t tc) { *(valuesLower + tc) = value; }
-void setUpper(uint64_t value, uint64_t tc) { *(valuesUpper + tc) = value; }
-void setConcrete(uint64_t value)           { setLower(value, tc); setUpper(value, tc); }
+void setLower(uint64_t value, uint64_t tc)        { *(valuesLower + tc) = value; }
+void setUpper(uint64_t value, uint64_t tc)        { *(valuesUpper + tc) = value; }
+void setLowerForReg(uint64_t value, uint64_t reg) { *(valuesLower + *(registers + reg)) = value; }
+void setUpperForReg(uint64_t value, uint64_t reg) { *(valuesUpper + *(registers + reg)) = value; }
+void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -6179,7 +6189,9 @@ void updateRegState(uint64_t reg, uint64_t value) {
     beforeUpper = getUpperFromReg(reg);
   }
 
-  *(registers + reg) = value;
+  if (rd != REG_ZR)
+    *(registers + reg) = value;
+
   incrementTc();
 
   // redundancy check
@@ -6350,6 +6362,11 @@ void do_lui() {
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
+}
+
+void symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
 }
 
 void print_addi() {
@@ -6918,6 +6935,13 @@ void undo_sd() {
   storeVirtualMemory(pt, vaddr, *(values + (tc % maxTraceLength)));
 }
 
+void symbolic_undo_sd() {
+  uint64_t vaddr;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+  storeVirtualMemory(pt, vaddr,  *(tcs + tc));
+}
+
 void print_beq() {
   printInstructionContext();
 
@@ -6952,6 +6976,8 @@ void record_beq() {
 }
 
 void symbolic_do_beq() {
+  // assert: rs2 == $zero
+  // assert: rs1 == [0,1]
   uint64_t sltuTc;
 
   saveState(0);
@@ -6964,23 +6990,36 @@ void symbolic_do_beq() {
       pc = pc + INSTRUCTIONSIZE;
 
   } else {
-    // assert: rs2 == $zero
-    // assert: rs1 == [0,1]
-
     // forwards approach:
     // sltuTc = *(registers + rs1);
     // constraintSLTU(sltuTc, branch);
 
     // inverted semantics!
-    if (branch)
+    if (getUpperFromReg(rs1)) {
+      print((uint64_t*) "(true branch)");
+      println();
       pc = pc + INSTRUCTIONSIZE;
-    else
+    } else {
+      print((uint64_t*) "(false branch)");
+      println();
       pc = pc + imm;
+    }
   }
 
   ic_beq = ic_beq + 1;
 
   updateRegState(REG_ZR, 0);
+}
+
+void symbolic_undo_beq() {
+
+  if (tc <= executionBrk)
+    if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
+      if (getLowerFromReg(rs1) == 0) {
+        setLowerForReg(1, rs1);
+        setUpperForReg(0, rs1);
+        undo = 0;
+      }
 }
 
 void do_beq() {
@@ -7217,7 +7256,6 @@ void symbolic_do_ecall() {
   } else
     throwException(EXCEPTION_SYSCALL, 0);
 
-  updateRegState(REG_ZR, 0);
 }
 
 void do_ecall() {
@@ -7251,6 +7289,18 @@ void undo_ecall() {
 
   // save register a0 for redoing system call
   *(values + (tc % maxTraceLength)) = a0;
+}
+
+void symbolic_undo_ecall() {
+  *(registers + REG_A0) = *(tcs + tc);
+
+  if (tc >= executionBrk) {
+    if (getLowerFromReg(REG_A7) == SYSCALL_READ)
+      numberOfSymbolics = numberOfSymbolics + 1;
+  }
+  else
+    if (getLowerFromReg(REG_A7) == SYSCALL_READ)
+      numberOfSymbolics = numberOfSymbolics - 1;
 }
 
 // -----------------------------------------------------------------
@@ -7409,6 +7459,8 @@ void decode_execute() {
       } else if (symbolic) {
         if (confine)
           confine_addi();
+        else if (undo)
+          symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
         else
           symbolic_do_addi();
       } else
@@ -7442,6 +7494,8 @@ void decode_execute() {
       } else if (symbolic) {
         if (confine)
           confine_ld();
+        else if (undo)
+          symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
         else
           vaddr = symbolic_do_ld();
       } else
@@ -7474,6 +7528,8 @@ void decode_execute() {
       } else if (symbolic) {
         if (confine)
           confine_sd();
+        else if (undo)
+          symbolic_undo_sd();
         else
           vaddr = symbolic_do_sd();
       } else
@@ -7505,6 +7561,8 @@ void decode_execute() {
         } else if (symbolic) {
           if (confine)
             confine_add();
+          else if (undo)
+            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else
             symbolic_do_add();
         } else
@@ -7533,6 +7591,8 @@ void decode_execute() {
         } else if (symbolic) {
           if (confine)
             confine_sub();
+          else if (undo)
+            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else
             symbolic_do_sub();
         } else
@@ -7561,6 +7621,8 @@ void decode_execute() {
         } else if (symbolic) {
           if (confine)
             confine_mul();
+          else if (undo)
+            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else
             symbolic_do_mul();
         } else
@@ -7591,6 +7653,8 @@ void decode_execute() {
         } else if (symbolic) {
           if (confine)
             confine_divu();
+          else if (undo)
+            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else
             symbolic_do_divu();
         } else
@@ -7621,6 +7685,8 @@ void decode_execute() {
         } else if (symbolic) {
           if (confine)
             confine_remu();
+          else if (undo)
+            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else
             symbolic_do_remu();
         } else
@@ -7651,6 +7717,8 @@ void decode_execute() {
         } else if (symbolic) {
           if (confine)
             confine_sltu();
+          else if (undo)
+            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else
             symbolic_do_sltu();
         } else
@@ -7682,6 +7750,8 @@ void decode_execute() {
       } else if (symbolic) {
         if (confine)
           confine_beq();
+        else if (undo)
+          symbolic_undo_beq();
         else
           symbolic_do_beq();
       } else
@@ -7713,6 +7783,8 @@ void decode_execute() {
     } else if (symbolic) {
       if (confine)
         confine_jal();
+      else if (undo)
+        symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
       else
         symbolic_do_jal();
     } else
@@ -7744,6 +7816,8 @@ void decode_execute() {
       } else if (symbolic) {
         if (confine)
           confine_jalr();
+        else if (undo)
+          symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
         else
           symbolic_do_jalr();
       } else
@@ -7775,6 +7849,8 @@ void decode_execute() {
     } else if (symbolic) {
       if (confine)
         confine_lui();
+      else if (undo)
+        symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
       else
         symbolic_do_lui();
     } else
@@ -7806,6 +7882,8 @@ void decode_execute() {
       } else if (symbolic) {
         if (confine)
           confine_ecall();
+        else if (undo)
+          symbolic_undo_ecall();
         else
           symbolic_do_ecall();
       } else
@@ -8548,13 +8626,17 @@ uint64_t handleSystemCalls(uint64_t* context) {
     else if (a7 == SYSCALL_OPEN)
       implementOpen(context);
     else if (a7 == SYSCALL_EXIT) {
+
+      // path exit
       if (symbolic) {
         a0 = *(getRegs(context) + REG_A0);
-
         // start backwards confining
         symbolic_confine();
         // restore exit code
         *(getRegs(context) + REG_A0) = a0;
+        implementExit(context);
+
+        return symbolic_prepareNextPathOrExit(context);
       }
 
       implementExit(context);
@@ -9086,9 +9168,9 @@ uint64_t findPrevFuncCall(uint64_t traceCounter) {
 }
 
 void checkSatisfiability(uint64_t tc) {
-  if (getLower(tc) > getUpper(tc)) {
-    printTrace();
+  printTrace();
 
+  if (getLower(tc) > getUpper(tc)) {
     print(selfieName);
     print((uint64_t*) ": symbolic value [");
     printInteger(getLower(tc));
@@ -9096,10 +9178,17 @@ void checkSatisfiability(uint64_t tc) {
     printInteger(getUpper(tc));
     print((uint64_t*) "] is unsatisfiable, tc: ");
     printInteger(btc);
-    println(); println();
+    println();
 
-    numberOfSymbolics = numberOfSymbolics - 1 ;
+    //numberOfSymbolics = numberOfSymbolics - 1 ;
     //exit(EXITCODE_UNSATISFIABILITY);
+  } else {
+    print(selfieName);
+    print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
+    printInteger(getLower(lastConstraint));
+    print((uint64_t*) ",..,");
+    printInteger(getUpper(lastConstraint));
+    println(); println();
   }
 }
 
@@ -9108,7 +9197,6 @@ void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
   // semantics: constrain v1 by v2
 
   // sTODO: enhance == and !=
-
   if (operator == SYM_LT)
     if (branch)
       setUpper(getLower(v2) - 1, v1);
@@ -9216,6 +9304,8 @@ void symbolic_confine() {
 
   i = 0;
   confine = 1;
+  lastConstraint = 0;
+  secLastConstraint = 0;
 
   print(selfieName);
   print((uint64_t*) ": vipster reached end of branch - confining backwards...");
@@ -9223,8 +9313,9 @@ void symbolic_confine() {
 
   // entry point for algorithm
   btc = tc - 1;
+  executionBrk = tc - 1;
 
-  while (numberOfSymbolics != 0) {
+  while (numberOfSymbolics > 0) {
     pc = *(pcs + btc);
 
     if (pc != 0) {
@@ -9234,6 +9325,54 @@ void symbolic_confine() {
 
     btc = btc - 1;
     i   = i + 1;
+  }
+
+  lastConstraint = 0;
+  secLastConstraint = 0;
+}
+
+// undo confining and execution until most recent branching point
+uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
+
+  confine = 0;
+  undo = 1;
+
+  println();
+  print(selfieName);
+  print((uint64_t*) ": ");
+  print(getName(context));
+  print((uint64_t*) " undoing and ");
+
+  // entry point for undoing
+  tc = tc - 1;
+
+  while (undo == 1) {
+
+    pc = *(pcs + tc);
+
+    if (pc != 0) {
+      fetch();
+      decode_execute();
+    }
+
+    tc = tc - 1;
+
+    if (tc == 0)
+      undo = 0;
+  }
+
+  // continue with instruction after branch
+  tc = tc + 1;
+  pc = *(pcs + tc);
+
+  if (tc == 1) {
+    print((uint64_t*) " finished execution with all paths explored");
+    return EXIT;
+  } else {
+    print((uint64_t*) " resuming execution at pc: ");
+    printHexadecimal(pc, 8);
+    setPC(context, pc);
+    return DONOTEXIT;
   }
 }
 
@@ -9376,7 +9515,7 @@ void confine_sltu() {
       if (rd == rs1) {
         // symbolic (rs1) < concrete (rs2)
         if (isConcrete(currentContext, rs2)) {
-          constrain(tc, *(registers + rs2), SYM_LT, branch);
+          constrain(tc, *(registers + rs2), SYM_LT, getUpperFromReg(rd));
           updateRegState(rd, tc);
 
         // concrete (rs1) < symbolic (rs2)
@@ -9387,14 +9526,14 @@ void confine_sltu() {
           }
 
           *(registers + rs1) = *(tcs + btc);
-          constrain(tc, *(registers + rs1), SYM_GT, branch);
+          constrain(tc, *(registers + rs1), SYM_GT, getUpperFromReg(rd));
           updateRegState(rs2, tc);
         }
       // >
       } else {
         // symbolic (rs2) > concrete (rs1)
         if (isConcrete(currentContext, rs1)) {
-          constrain(tc, *(registers + rs1), SYM_GT, branch);
+          constrain(tc, *(registers + rs1), SYM_GT, getUpperFromReg(rd));
           updateRegState(rd, tc);
 
         // concrete (rs2) > symbolic (rs1)
@@ -9405,7 +9544,7 @@ void confine_sltu() {
           }
 
           *(registers + rs2) = *(tcs + btc);
-          constrain(tc, *(registers + rs2), SYM_LT, branch);
+          constrain(tc, *(registers + rs2), SYM_LT, getUpperFromReg(rd));
           updateRegState(rs1, tc);
         }
       }
@@ -9420,7 +9559,7 @@ void confine_sltu() {
       if (rd == rs2) {
         // symbolic (rs2) <= concrete (rs1)
         if (isConcrete(currentContext, rs1)) {
-          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
+          constrain(tc, *(registers + rs1), SYM_LEQ, getUpperFromReg(rd));
           updateRegState(rd, tc);
 
         // concrete (rs2) <= symbolic (rs1)
@@ -9431,14 +9570,14 @@ void confine_sltu() {
           }
 
           *(registers + rs2) = *(tcs + btc);
-          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
+          constrain(tc, *(registers + rs2), SYM_GEQ, getUpperFromReg(rd));
           updateRegState(rs1, tc);
         }
       // >=
       } else {
         // symbolic (rs1) >= concrete (rs2)
         if (isConcrete(currentContext, rs2)) {
-          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
+          constrain(tc, *(registers + rs2), SYM_GEQ, getUpperFromReg(rd));
           updateRegState(rd, tc);
 
         // concrete (rs1) >= symbolic (rs2)
@@ -9449,14 +9588,13 @@ void confine_sltu() {
           }
 
           *(registers + rs1) = *(tcs + btc);
-          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
+          constrain(tc, *(registers + rs1), SYM_LEQ, getUpperFromReg(rd));
           updateRegState(rs2, tc);
         }
       }
     }
 
     keepLastConstraint(tc - 1);
-    checkSatisfiability(tc - 1);
 
   // [0,0] or [1,1]: concrete (symbolic value can neither
   // be smaller than 0 nor greater than UINT64_MAX)
@@ -9512,11 +9650,13 @@ void confine_beq() {
 }
 
 void confine_jal() {
-  *(registers + rd) = *(tcs + btc);
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + btc);
 }
 
 void confine_jalr() {
-  *(registers + rd) = *(tcs + btc);
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + btc);
 }
 
 void confine_ecall() {
@@ -9524,26 +9664,17 @@ void confine_ecall() {
 
   // before each ecall is an addi instruction, which
   // stores the syscall value on the trace
-  if (getLower(btc - 1) == SYSCALL_READ) {
-    // printTrace();
-    checkSatisfiability(lastConstraint);
+  saveState(*(registers + REG_A0));
 
-    print(selfieName);
-    print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
-    printInteger(getLower(lastConstraint));
-    print((uint64_t*) ",..,");
-    printInteger(getUpper(lastConstraint));
-    if (sourceLineNumber != (uint64_t*) 0) {
-      // find the JAL that occured before the ECALL in the trace
-      print((uint64_t*) " read in line ");
-      printSourceLineNumberOfInstruction(findPrevFuncCall(btc));
-    }
-    println(); println();
+  if (getLower(btc - 1) == SYSCALL_READ) {
+    checkSatisfiability(lastConstraint);
 
     numberOfSymbolics = numberOfSymbolics - 1;
   }
 
   *(registers + REG_A0) = *(tcs + btc);
+
+  updateRegState(REG_ZR, 0);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
