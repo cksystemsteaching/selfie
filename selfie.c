@@ -1038,8 +1038,6 @@ void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
-void     symbolic_record_ld_before();
-void     symbolic_record_ld_after();
 uint64_t symbolic_do_ld();
 uint64_t do_ld();
 
@@ -1465,6 +1463,8 @@ uint64_t fetchFromTC(uint64_t tc);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t retrieveAddress();
+
+uint64_t findPrevFuncCall(uint64_t traceCounter);
 
 void checkSatisfiability(uint64_t tc);
 void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
@@ -9118,10 +9118,15 @@ uint64_t areSourceRegsConcrete() {
 }
 
 uint64_t isOneSourceRegConcrete() {
-  if (isConcrete(currentContext, rs1))
-    return 1;
-  else if (isConcrete(currentContext, rs2))
-    return 1;
+  // exclusive OR
+
+  if (isConcrete(currentContext, rs1)) {
+    if (isConcrete(currentContext, rs2) == 0)
+      return 1;
+  } else if (isConcrete(currentContext, rs2)) {
+    if (isConcrete(currentContext, rs1) == 0)
+      return 1;
+  }
 
   return 0;
 }
@@ -9141,6 +9146,25 @@ uint64_t retrieveAddress() {
   }
 
   return vaddr;
+}
+
+uint64_t findPrevFuncCall(uint64_t traceCounter) {
+  uint64_t itPC;
+  uint64_t instr;
+
+  while (traceCounter >= 0) {
+    itPC = *(pcs + traceCounter);
+    if (itPC % REGISTERSIZE == 0)
+      instr = getLowWord(loadVirtualMemory(pt, itPC));
+    else
+      instr = getHighWord(loadVirtualMemory(pt, itPC - INSTRUCTIONSIZE));
+
+    if(getOpcode(instr) == OP_JAL) {
+      return itPC;
+    }
+    traceCounter = traceCounter - 1;
+  }
+  return 0;
 }
 
 void checkSatisfiability(uint64_t tc) {
@@ -9284,7 +9308,7 @@ void symbolic_confine() {
   secLastConstraint = 0;
 
   print(selfieName);
-  print((uint64_t*) ": vipster confining backwards...");
+  print((uint64_t*) ": vipster reached end of branch - confining backwards...");
   println();
 
   // entry point for algorithm
