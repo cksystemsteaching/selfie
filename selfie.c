@@ -9034,10 +9034,15 @@ uint64_t areSourceRegsConcrete() {
 }
 
 uint64_t isOneSourceRegConcrete() {
-  if (isConcrete(currentContext, rs1))
-    return 1;
-  else if (isConcrete(currentContext, rs2))
-    return 1;
+  // exclusive OR
+
+  if (isConcrete(currentContext, rs1)) {
+    if (!isConcrete(currentContext, rs2))
+      return 1;
+  } else if (isConcrete(currentContext, rs2)) {
+    if (!isConcrete(currentContext, rs1))
+      return 1;
+  }
 
   return 0;
 }
