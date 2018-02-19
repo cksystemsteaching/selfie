@@ -6957,7 +6957,7 @@ void symbolic_do_beq() {
   saveState(0);
 
   // sTODO: symbolic semantics - done (quite inefficient)
-  if (getLowerFromReg(rs1) == getUpperFromReg(rs1)) {
+  if (areSourceRegsConcrete()) {
     if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
       pc = pc + imm;
     else
