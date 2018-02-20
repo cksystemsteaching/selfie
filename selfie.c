@@ -899,6 +899,7 @@ uint64_t debug_read   = 0;
 uint64_t debug_write  = 0;
 uint64_t debug_open   = 0;
 uint64_t debug_malloc = 0;
+uint64_t debug_vipster= 0;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
@@ -1037,6 +1038,7 @@ void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
+void     symbolic_record_ld_before();
 uint64_t symbolic_do_ld();
 void     symbolic_undo_ld();
 uint64_t do_ld();
@@ -1146,6 +1148,7 @@ uint64_t redo        = 0; // flag for redoing code execution
 uint64_t confine     = 0; // flag for confining symbolic values backwards
 uint64_t disassemble = 0; // flag for disassembling code
 uint64_t symbolic    = 0; // flag for symbolic code execution
+uint64_t trace       = 0; // flag for printing symbolic trace
 
 uint64_t debug = 0; // flag for enabling recording, disassembling, and debugging code
 
@@ -1409,7 +1412,6 @@ uint64_t EXITCODE_DIVISIONBYZERO;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
-uint64_t EXITCODE_UNSATISFIABILITY;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1441,7 +1443,6 @@ void initKernel() {
   EXITCODE_UNKNOWNINSTRUCTION  = signShrink(-9, SYSCALL_BITWIDTH);
   EXITCODE_UNKNOWNSYSCALL      = signShrink(-10, SYSCALL_BITWIDTH);
   EXITCODE_UNCAUGHTEXCEPTION   = signShrink(-11, SYSCALL_BITWIDTH);
-  EXITCODE_UNSATISFIABILITY    = signShrink(-12, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1502,8 +1503,7 @@ void confine_ecall();
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t btc          = 0;     // trace counter for backwards execution
-uint64_t branch       = 1;     // always take TRUE branch for now
-uint64_t executionBrk = 0;     // trace counter before beckward execution
+uint64_t executionBrk = 0;     // trace counter before backward execution
 
 uint64_t redundantIs       = 0; // number of redundant instructions
 uint64_t numberOfSymbolics = 0; // number of symbolic variables
@@ -1511,7 +1511,7 @@ uint64_t numberOfSymbolics = 0; // number of symbolic variables
 uint64_t lastConstraint    = 0; // last tc where constraining occured
 uint64_t secLastConstraint = 0; // second last tc where constraining occured
 
-uint64_t identifyOperator  = 0; // helps distinguishing < (>) and <= (>=)
+uint64_t identifyOperator  = 0; // helps distinguishing < (>) from <= (>=)
 
 // ---------------------------- TRACE API --------------------------
 
@@ -5431,6 +5431,7 @@ void implementExit(uint64_t* context) {
   printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
   print((uint64_t*) "MB mallocated memory");
   println();
+  println();
 }
 
 void emitRead() {
@@ -6731,10 +6732,6 @@ void symbolic_record_ld_before() {
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 }
 
-void symbolic_record_ld_after() {
-  updateRegState(rd, tc);
-}
-
 uint64_t symbolic_do_ld() {
   uint64_t vaddr;
   uint64_t a;
@@ -6757,7 +6754,7 @@ uint64_t symbolic_do_ld() {
 
   *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
 
-  symbolic_record_ld_after();
+  updateRegState(rd, tc);
 
   return vaddr;
 }
@@ -6994,13 +6991,12 @@ void record_beq() {
 
 void symbolic_do_beq() {
   // assert: rs2 == $zero
-  // assert: rs1 == [0,1]
+  // assert: rs1 == [0,1] or [1,0]
   uint64_t sltuTc;
 
   saveState(0);
 
-  // sTODO: symbolic semantics - done (quite inefficient)
-  if (getLowerFromReg(rs1) == getUpperFromReg(rs1)) {
+  if (areSourceRegsConcrete()) {
     if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
       pc = pc + imm;
     else
@@ -7009,21 +7005,23 @@ void symbolic_do_beq() {
   } else {
     // forwards approach:
     // sltuTc = *(registers + rs1);
-    // constraintSLTU(sltuTc, branch);
-
+    // constraintSLTU(sltuTc, 1);
     // inverted semantics!
-    print(selfieName);
-    print((uint64_t*) ": vipster exploring ");
 
-    if (getUpperFromReg(rs1)) {
-      print((uint64_t*) "true branch");
+    if (debug_vipster){
+      print(selfieName);
+      print((uint64_t*) ": vipster exploring ");
+      if (getUpperFromReg(rs1))
+        print((uint64_t*) ": exploring true branch...");
+      else
+        print((uint64_t*) ": exploring false branch...");
       println();
-      pc = pc + INSTRUCTIONSIZE;
-    } else {
-      print((uint64_t*) "false branch");
-      println();
-      pc = pc + imm;
     }
+
+    if (getUpperFromReg(rs1))
+      pc = pc + INSTRUCTIONSIZE;
+    else
+      pc = pc + imm;
   }
 
   ic_beq = ic_beq + 1;
@@ -9038,8 +9036,10 @@ void symbolic_prepare_memory(uint64_t* context) {
   instrLength = codeLength; // for now get this from the compiler
 
   // if codeLength not available (due to loading the binary), we cannot prepare strings and globals
+  // sTODO: fix by merging master branch
   if (instrLength == binaryLength) { // this can also occur if no globals or strings are used
-    print((uint64_t*) "warning: code length equals binary length - possible undefined behaviour for global variables and strings");
+    print(selfieName);
+    print((uint64_t*) ": warning: code length equals binary length - possible undefined behaviour for global variables and strings");
     println();
     return;
   }
@@ -9187,7 +9187,6 @@ uint64_t findPrevFuncCall(uint64_t traceCounter) {
 }
 
 void checkSatisfiability(uint64_t tc) {
-  //printTrace();
 
   if (getLower(tc) > getUpper(tc)) {
     print(selfieName);
@@ -9200,14 +9199,13 @@ void checkSatisfiability(uint64_t tc) {
     println();
 
     //numberOfSymbolics = numberOfSymbolics - 1 ;
-    //exit(EXITCODE_UNSATISFIABILITY);
   } else {
     print(selfieName);
     print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
     printInteger(getLower(tc));
     print((uint64_t*) ",..,");
     printInteger(getUpper(tc));
-    println(); println();
+    println();
   }
 }
 
@@ -9322,11 +9320,14 @@ void symbolic_confine() {
 
   confine = 1;
 
-  print(selfieName);
-  print((uint64_t*) ": vipster reached end of branch - confining backwards...");
-  println();
+  if (debug_vipster) {
+    print(selfieName);
+    print((uint64_t*) ": vipster reached end of branch - confining backwards...");
+    println();
+  }
 
-  printTrace();
+  if (trace)
+    printTrace();
 
   // entry point for algorithm
   btc = tc - 1;
@@ -9347,18 +9348,19 @@ void symbolic_confine() {
 // undo confining and execution until most recent branching point
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
 
+  undo    = 1;
   confine = 0;
-  undo = 1;
 
-  println();
-  print(selfieName);
-  print((uint64_t*) ": vipster undoing and ");
+  if(debug_vipster){
+    println();
+    print(selfieName);
+    print((uint64_t*) ": vipster undoing and ");
+  }
 
   // entry point for undoing
   tc = tc - 1;
 
   while (undo == 1) {
-
     pc = *(pcs + tc);
 
     if (pc != 0) {
@@ -9376,15 +9378,21 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
   tc = tc + 1;
   pc = *(pcs + tc);
 
+  if (debug_vipster) {
+    if (tc == 1) {
+      print((uint64_t*) "finished execution with all paths explored");
+      println();
+      println();
+    } else {
+      print((uint64_t*) "resuming execution at pc: ");
+      printHexadecimal(pc, 8);
+      println();
+    }
+  }
+
   if (tc == 1) {
-    print((uint64_t*) "finished execution with all paths explored");
-    println();
-    println();
     return EXIT;
   } else {
-    print((uint64_t*) "resuming execution at pc: ");
-    printHexadecimal(pc, 8);
-    println();
     setPC(context, pc);
     return DONOTEXIT;
   }
@@ -9525,7 +9533,7 @@ void confine_sltu() {
 
   identifyOperator = tc - identifyOperator;
 
-  // [0,1]: symbolic
+  // symbolic: [0,1] (true path) or [1,0] (false path)
   if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
     saveState(*(registers + rd));
 
@@ -9610,7 +9618,6 @@ void confine_sltu() {
   // be smaller than 0 nor greater than UINT64_MAX)
   } else {
     saveState(*(registers + rd));
-
     updateRegState(rd, *(tcs + btc));
   }
 }
@@ -10106,7 +10113,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -y | -v | -vd |-min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -y | -v | -vd | -vt |-min | -mob ) size ... ]");
   println();
 }
 
@@ -10150,13 +10157,18 @@ uint64_t selfie() {
       } else if (stringCompare(option, (uint64_t*) "-y"))
         return selfie_run(HYPSTER);
       else if (stringCompare(option, (uint64_t*) "-v")) {
-        symbolic     = 1;
+        symbolic = 1;
 
         return selfie_run(VIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-vd")) {
-        debug        = 1;
-        disassemble  = 1;
-        symbolic     = 1;
+        debug       = 1;
+        disassemble = 1;
+        symbolic    = 1;
+
+        return selfie_run(VIPSTER);
+      } else if (stringCompare(option, (uint64_t*) "-vt")) {
+        trace    = 1;
+        symbolic = 1;
 
         return selfie_run(VIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-min"))

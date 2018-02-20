@@ -159,3 +159,70 @@ rs2 = tc
 tc++
 btc--
 ```
+
+## SLTU
+### SLTU forwards
+```c
+tc.pcs = pc // current pc
+tc.tcs = rd // old forward tc
+
+if (rs1.upper < rs2.lower) {
+    tc.upper = 1
+    tc.lower = 1
+} else if (rs1.lower >= rs2.upper) {
+    tc.upper = 0
+    tc.lower = 0
+} else {
+    tc.lower = 0
+    tc.upper = 1
+    // [0,1]
+}
+
+pc++
+rd = tc
+tc++
+```
+
+### cSLTU backwards
+```c
+if (rd.upper != rd.lower) {
+    // [0,1] symbolic
+    tc.pcs = pc // current pc
+    tc.tcs = rd // old forward tc
+
+    // sTODO
+
+} else {
+    tc.pcs = pc // current pc
+    tc.tcs = rd // old forward tc
+    rd = btc.tcs // old backwards tc
+    tc++
+    btc--
+}
+```
+
+## BEQ
+### BEQ forward
+```c
+tc.pcs = pc // current pc
+tc.tcs = 0 // old forward tc
+
+if (bothConcrete) {
+    if (rs1.lower == rs2.lower)
+        pc += imm
+    else
+        pc++
+} else {
+    if (branch)
+        pc++
+    else 
+        pc += imm
+}
+
+tc++
+```
+
+### sBEQ backwards
+```c
+btc--
+```
