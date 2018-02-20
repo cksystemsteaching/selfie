@@ -883,7 +883,6 @@ void implementExit(uint64_t* context);
 void emitRead();
 void implementRead(uint64_t* context);
 
-
 void emitWrite();
 void implementWrite(uint64_t* context);
 
@@ -1039,6 +1038,7 @@ void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
 uint64_t symbolic_do_ld();
+void     symbolic_undo_ld();
 uint64_t do_ld();
 
 void     print_sd();
@@ -1478,6 +1478,8 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 
 void     symbolic_confine();
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
+
+uint64_t compareIntervalls(uint64_t tc1, uint64_t tc2);
 
 void keepLastConstraint(uint64_t tc);
 void restoreLastConstraint();
@@ -6191,6 +6193,8 @@ void updateRegState(uint64_t reg, uint64_t value) {
 
   if (rd != REG_ZR)
     *(registers + reg) = value;
+  else
+    *(registers+ reg) = 0;
 
   incrementTc();
 
@@ -6758,6 +6762,19 @@ uint64_t symbolic_do_ld() {
   return vaddr;
 }
 
+void symbolic_undo_ld() {
+  uint64_t vaddr;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  *(registers + rd) = *(tcs + tc);
+
+  if (*(pcs + tc-1) == pc) {
+    tc = tc - 1;
+    storeVirtualMemory(pt, vaddr, *(tcs + tc));
+  }
+}
+
 uint64_t do_ld() {
   uint64_t vaddr;
   uint64_t a;
@@ -6995,12 +7012,15 @@ void symbolic_do_beq() {
     // constraintSLTU(sltuTc, branch);
 
     // inverted semantics!
+    print(selfieName);
+    print((uint64_t*) ": vipster exploring ");
+
     if (getUpperFromReg(rs1)) {
-      print((uint64_t*) "(true branch)");
+      print((uint64_t*) "true branch");
       println();
       pc = pc + INSTRUCTIONSIZE;
     } else {
-      print((uint64_t*) "(false branch)");
+      print((uint64_t*) "false branch");
       println();
       pc = pc + imm;
     }
@@ -7012,7 +7032,6 @@ void symbolic_do_beq() {
 }
 
 void symbolic_undo_beq() {
-
   if (tc <= executionBrk)
     if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
       if (getLowerFromReg(rs1) == 0) {
@@ -7255,7 +7274,6 @@ void symbolic_do_ecall() {
     exit(EXITCODE_BADARGUMENTS);
   } else
     throwException(EXCEPTION_SYSCALL, 0);
-
 }
 
 void do_ecall() {
@@ -7495,7 +7513,7 @@ void decode_execute() {
         if (confine)
           confine_ld();
         else if (undo)
-          symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+          symbolic_undo_ld();
         else
           vaddr = symbolic_do_ld();
       } else
@@ -8720,6 +8738,7 @@ uint64_t vipster(uint64_t* toContext) {
   // store values of registers in trace
   symbolic_prepare_registers(toContext);
 
+
   while (1) {
     fromContext = mipster_switch(toContext, timeout);
 
@@ -9168,7 +9187,7 @@ uint64_t findPrevFuncCall(uint64_t traceCounter) {
 }
 
 void checkSatisfiability(uint64_t tc) {
-  printTrace();
+  //printTrace();
 
   if (getLower(tc) > getUpper(tc)) {
     print(selfieName);
@@ -9185,9 +9204,9 @@ void checkSatisfiability(uint64_t tc) {
   } else {
     print(selfieName);
     print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
-    printInteger(getLower(lastConstraint));
+    printInteger(getLower(tc));
     print((uint64_t*) ",..,");
-    printInteger(getUpper(lastConstraint));
+    printInteger(getUpper(tc));
     println(); println();
   }
 }
@@ -9300,16 +9319,14 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc) {
 // ----------------- BACKWARD CONSTRAINING APPROACH ----------------
 
 void symbolic_confine() {
-  uint64_t i;
 
-  i = 0;
   confine = 1;
-  lastConstraint = 0;
-  secLastConstraint = 0;
 
   print(selfieName);
   print((uint64_t*) ": vipster reached end of branch - confining backwards...");
   println();
+
+  printTrace();
 
   // entry point for algorithm
   btc = tc - 1;
@@ -9324,11 +9341,7 @@ void symbolic_confine() {
     }
 
     btc = btc - 1;
-    i   = i + 1;
   }
-
-  lastConstraint = 0;
-  secLastConstraint = 0;
 }
 
 // undo confining and execution until most recent branching point
@@ -9339,9 +9352,7 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
 
   println();
   print(selfieName);
-  print((uint64_t*) ": ");
-  print(getName(context));
-  print((uint64_t*) " undoing and ");
+  print((uint64_t*) ": vipster undoing and ");
 
   // entry point for undoing
   tc = tc - 1;
@@ -9366,16 +9377,26 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
   pc = *(pcs + tc);
 
   if (tc == 1) {
-    print((uint64_t*) " finished execution with all paths explored");
+    print((uint64_t*) "finished execution with all paths explored");
+    println();
+    println();
     return EXIT;
   } else {
-    print((uint64_t*) " resuming execution at pc: ");
+    print((uint64_t*) "resuming execution at pc: ");
     printHexadecimal(pc, 8);
+    println();
     setPC(context, pc);
     return DONOTEXIT;
   }
 }
 
+uint64_t compareIntervalls(uint64_t tc1, uint64_t tc2) {
+  if (getLower(tc1) != getLower(tc1))
+    return 0;
+  else if (getUpper(tc2) != getUpper(tc2))
+    return 0;
+  return 1;
+}
 void keepLastConstraint(uint64_t tc) {
   // caution: this may work for constraining only one
   // symbolic value correctly atm
@@ -9510,7 +9531,9 @@ void confine_sltu() {
 
     // <, >, ==, !=
     if (identifyOperator == 0) {
-      restoreLastConstraint();
+      setLower(getLower(*(tcs + btc)), tc);
+      setUpper(getUpper(*(tcs + btc)), tc);
+
       // <
       if (rd == rs1) {
         // symbolic (rs1) < concrete (rs2)
@@ -9520,10 +9543,8 @@ void confine_sltu() {
 
         // concrete (rs1) < symbolic (rs2)
         } else {
-          if (lastConstraint == 0) {
-            setLower(getLowerFromReg(rs2), tc);
-            setUpper(getUpperFromReg(rs2), tc);
-          }
+          setLower(getLowerFromReg(rs2), tc);
+          setUpper(getUpperFromReg(rs2), tc);
 
           *(registers + rs1) = *(tcs + btc);
           constrain(tc, *(registers + rs1), SYM_GT, getUpperFromReg(rd));
@@ -9538,10 +9559,8 @@ void confine_sltu() {
 
         // concrete (rs2) > symbolic (rs1)
         } else {
-          if (lastConstraint == 0) {
-            setLower(getLowerFromReg(rs1), tc);
-            setUpper(getUpperFromReg(rs1), tc);
-          }
+          setLower(getLowerFromReg(rs1), tc);
+          setUpper(getUpperFromReg(rs1), tc);
 
           *(registers + rs2) = *(tcs + btc);
           constrain(tc, *(registers + rs2), SYM_LT, getUpperFromReg(rd));
@@ -9552,9 +9571,6 @@ void confine_sltu() {
     } else if (identifyOperator == 2) {
       // last constraint is always [2,1] due to SLTU:[0,1] -(+) [1,1]
       // (compiler semantics of <= / >=), thus we need the one before
-      lastConstraint = secLastConstraint;
-      restoreLastConstraint();
-
       // <=
       if (rd == rs2) {
         // symbolic (rs2) <= concrete (rs1)
@@ -9564,10 +9580,8 @@ void confine_sltu() {
 
         // concrete (rs2) <= symbolic (rs1)
         } else {
-          if (lastConstraint == 0) {
-            setLower(getLowerFromReg(rs1), tc);
-            setUpper(getUpperFromReg(rs1), tc);
-          }
+          setLower(getLowerFromReg(rs1), tc);
+          setUpper(getUpperFromReg(rs1), tc);
 
           *(registers + rs2) = *(tcs + btc);
           constrain(tc, *(registers + rs2), SYM_GEQ, getUpperFromReg(rd));
@@ -9582,10 +9596,8 @@ void confine_sltu() {
 
         // concrete (rs1) >= symbolic (rs2)
         } else {
-          if (lastConstraint == 0) {
-            setLower(getLowerFromReg(rs2), tc);
-            setUpper(getUpperFromReg(rs2), tc);
-          }
+          setLower(getLowerFromReg(rs2), tc);
+          setUpper(getUpperFromReg(rs2), tc);
 
           *(registers + rs1) = *(tcs + btc);
           constrain(tc, *(registers + rs1), SYM_LEQ, getUpperFromReg(rd));
@@ -9593,8 +9605,6 @@ void confine_sltu() {
         }
       }
     }
-
-    keepLastConstraint(tc - 1);
 
   // [0,0] or [1,1]: concrete (symbolic value can neither
   // be smaller than 0 nor greater than UINT64_MAX)
@@ -9607,17 +9617,40 @@ void confine_sltu() {
 
 void confine_ld() {
   uint64_t vaddr;
+  uint64_t memTc;
+  uint64_t regTc;
 
-  vaddr = retrieveAddress();
+  // vaddr = retrieveAddress();
 
-  saveState(loadVirtualMemory(pt, vaddr));
+  if (rs1 == rd)
+    vaddr = getLower(*(tcs + btc));
+  else
+    vaddr = getLowerFromReg(rs1) + imm;
 
-  // semantics of sd
-  setLower(getLowerFromReg(rd), tc);
-  setUpper(getUpperFromReg(rd), tc);
+  memTc = loadVirtualMemory(pt, vaddr);
+  regTc = getLowerFromReg(rd);
 
-  *(registers + rd) = *(tcs + btc);
-  updateMemState(vaddr, tc);
+  // memTc != regTc or compareIntervalls(memTc, regTc)
+
+  if (memTc != regTc) {
+    saveState(loadVirtualMemory(pt, vaddr));
+    // semantics of sd
+    if (getLower(loadVirtualMemory(pt, vaddr)) < getLowerFromReg(rd))
+      setLower(getLowerFromReg(rd), tc);
+    else
+      setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+
+    if (getUpper(loadVirtualMemory(pt, vaddr)) > getUpperFromReg(rd))
+      setUpper(getUpperFromReg(rd), tc);
+    else
+      setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+
+    lastConstraint = tc;
+    updateMemState(vaddr, tc);
+  }
+
+  saveState(*(registers + rd));
+  updateRegState(rd, *(tcs + btc));
 }
 
 void confine_sd () {
@@ -9660,14 +9693,17 @@ void confine_jalr() {
 }
 
 void confine_ecall() {
+  uint64_t vaddr;
   // sTODO: find out what confined value was read here
 
   // before each ecall is an addi instruction, which
   // stores the syscall value on the trace
   saveState(*(registers + REG_A0));
 
+  // lastConstraint just for now
   if (getLower(btc - 1) == SYSCALL_READ) {
-    checkSatisfiability(lastConstraint);
+    vaddr = getLower(btc - 5);
+    checkSatisfiability(loadVirtualMemory(pt, vaddr));
 
     numberOfSymbolics = numberOfSymbolics - 1;
   }
