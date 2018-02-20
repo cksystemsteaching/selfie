@@ -895,11 +895,11 @@ uint64_t implementMalloc(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t debug_read   = 0;
-uint64_t debug_write  = 0;
-uint64_t debug_open   = 0;
-uint64_t debug_malloc = 0;
-uint64_t debug_vipster= 0;
+uint64_t debug_read    = 0;
+uint64_t debug_write   = 0;
+uint64_t debug_open    = 0;
+uint64_t debug_malloc  = 0;
+uint64_t debug_vipster = 1;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
@@ -1168,6 +1168,7 @@ uint64_t* tcs         = (uint64_t*) 0; // trace of trace counters to previous re
 uint64_t* values      = (uint64_t*) 0; // trace of register and memory values
 uint64_t* valuesLower = (uint64_t*) 0; // trace of lower bounds on register and memory values for symbolic execution
 uint64_t* valuesUpper = (uint64_t*) 0; // trace of upper bounds on register and memory values for symbolic execution
+uint64_t* operators   = (uint64_t*) 0; // trace of comparison operators, < / >: 1, <= / >=: 2, ==: 3, !=: 4
 
 // core state
 
@@ -1207,7 +1208,7 @@ void initInterpreter() {
   valuesLower = zalloc(maxTraceLength * SIZEOFUINT64);
   valuesUpper = zalloc(maxTraceLength * SIZEOFUINT64);
   values      = zalloc(maxTraceLength * SIZEOFUINT64);
-
+  operators   = zalloc(maxTraceLength * SIZEOFUINT64);
 }
 
 void resetInterpreter() {
@@ -1484,6 +1485,7 @@ uint64_t compareIntervalls(uint64_t tc1, uint64_t tc2);
 
 void keepLastConstraint(uint64_t tc);
 void restoreLastConstraint();
+void resetInstructions(uint64_t count);
 
 void confine_lui();
 void confine_addi();
@@ -6633,6 +6635,8 @@ void symbolic_do_sltu() {
     else {
       setLower(0, tc);
       setUpper(1, tc);
+
+      identifyOperator = tc;
     }
   }
 
@@ -6990,8 +6994,6 @@ void record_beq() {
 }
 
 void symbolic_do_beq() {
-  // assert: rs2 == $zero
-  // assert: rs1 == [0,1] or [1,0]
   uint64_t sltuTc;
 
   saveState(0);
@@ -7003,18 +7005,43 @@ void symbolic_do_beq() {
       pc = pc + INSTRUCTIONSIZE;
 
   } else {
+    // assert: rs2 == $zero
+    // assert: rs1 == [0,1] or [1,0]
+
     // forwards approach:
+    // ----------------------------
     // sltuTc = *(registers + rs1);
     // constraintSLTU(sltuTc, 1);
-    // inverted semantics!
+    // ----------------------------
+
+    // if 1: <, >, != or ==, if 3: <= or >=,
+    // if 0: after undo (values were correctly set)
+    identifyOperator = tc - identifyOperator;
+
+    if (identifyOperator == 1)
+      // sTODO: distinguish between < / >, !=, ==
+      *(operators + tc) = 1;
+
+    // the marker [0,1] became another valeu, compiler semantics of <= / >=
+    // remove and undo the last 2 instructions and set the marker properly
+    else if (identifyOperator == 3) {
+      resetInstructions(2);
+      decodeBFormat();
+
+      saveState(0);
+      *(operators + tc) = 2;
+
+      setLowerForReg(0, rs1);
+      setUpperForReg(1, rs1);
+    }
 
     if (debug_vipster){
       print(selfieName);
       print((uint64_t*) ": vipster exploring ");
       if (getUpperFromReg(rs1))
-        print((uint64_t*) ": exploring true branch...");
+        print((uint64_t*) "true branch...");
       else
-        print((uint64_t*) ": exploring false branch...");
+        print((uint64_t*) "false branch...");
       println();
     }
 
@@ -7030,11 +7057,14 @@ void symbolic_do_beq() {
 }
 
 void symbolic_undo_beq() {
+  identifyOperator = tc;
+
   if (tc <= executionBrk)
     if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
       if (getLowerFromReg(rs1) == 0) {
         setLowerForReg(1, rs1);
         setUpperForReg(0, rs1);
+
         undo = 0;
       }
 }
@@ -9187,7 +9217,6 @@ uint64_t findPrevFuncCall(uint64_t traceCounter) {
 }
 
 void checkSatisfiability(uint64_t tc) {
-
   if (getLower(tc) > getUpper(tc)) {
     print(selfieName);
     print((uint64_t*) ": symbolic value [");
@@ -9198,7 +9227,6 @@ void checkSatisfiability(uint64_t tc) {
     printInteger(btc);
     println();
 
-    //numberOfSymbolics = numberOfSymbolics - 1 ;
   } else {
     print(selfieName);
     print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
@@ -9345,14 +9373,13 @@ void symbolic_confine() {
   }
 }
 
-// undo confining and execution until most recent branching point
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
-
   undo    = 1;
   confine = 0;
 
+  // undo confining and execution until most recent branching point
+
   if(debug_vipster){
-    println();
     print(selfieName);
     print((uint64_t*) ": vipster undoing and ");
   }
@@ -9379,20 +9406,18 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
   pc = *(pcs + tc);
 
   if (debug_vipster) {
-    if (tc == 1) {
+    if (tc == 1)
       print((uint64_t*) "finished execution with all paths explored");
-      println();
-      println();
-    } else {
+    else {
       print((uint64_t*) "resuming execution at pc: ");
       printHexadecimal(pc, 8);
-      println();
     }
+    println();
   }
 
-  if (tc == 1) {
+  if (tc == 1)
     return EXIT;
-  } else {
+  else {
     setPC(context, pc);
     return DONOTEXIT;
   }
@@ -9425,6 +9450,30 @@ void restoreLastConstraint() {
 
   setLower(getLower(tc_before), tc);
   setUpper(getUpper(tc_before), tc);
+}
+
+void resetInstructions(uint64_t count) {
+  uint64_t prev_pc;
+
+  prev_pc = pc;
+  undo    = 1;
+
+  while (count > 0) {
+    tc = tc - 1;
+    pc = *(pcs + tc);
+
+    fetch();
+    decode_execute();
+
+    count = count - 1;
+  }
+
+  undo = 0;
+  pc   = prev_pc;
+
+  fetch();
+  setLower(0, tc);
+  setUpper(0, tc);
 }
 
 void confine_lui() {
@@ -9529,24 +9578,28 @@ void confine_remu() {
 }
 
 void confine_sltu() {
-  // sTODO: adjust for ==, !=
+  uint64_t operator;
+  uint64_t branch;
 
-  identifyOperator = tc - identifyOperator;
+  operator = *(operators + btc + 1);
+  branch   = getUpperFromReg(rd);
+
+  // sTODO: adjust for ==, !=
 
   // symbolic: [0,1] (true path) or [1,0] (false path)
   if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
     saveState(*(registers + rd));
 
-    // <, >, ==, !=
-    if (identifyOperator == 0) {
-      setLower(getLower(*(tcs + btc)), tc);
-      setUpper(getUpper(*(tcs + btc)), tc);
+    setLower(getLower(*(tcs + btc)), tc);
+    setUpper(getUpper(*(tcs + btc)), tc);
 
+    // <, >, ==, !=
+    if (operator == 1) {
       // <
       if (rd == rs1) {
         // symbolic (rs1) < concrete (rs2)
         if (isConcrete(currentContext, rs2)) {
-          constrain(tc, *(registers + rs2), SYM_LT, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs2), SYM_LT, branch);
           updateRegState(rd, tc);
 
         // concrete (rs1) < symbolic (rs2)
@@ -9555,14 +9608,14 @@ void confine_sltu() {
           setUpper(getUpperFromReg(rs2), tc);
 
           *(registers + rs1) = *(tcs + btc);
-          constrain(tc, *(registers + rs1), SYM_GT, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs1), SYM_GT, branch);
           updateRegState(rs2, tc);
         }
       // >
       } else {
         // symbolic (rs2) > concrete (rs1)
         if (isConcrete(currentContext, rs1)) {
-          constrain(tc, *(registers + rs1), SYM_GT, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs1), SYM_GT, branch);
           updateRegState(rd, tc);
 
         // concrete (rs2) > symbolic (rs1)
@@ -9571,19 +9624,18 @@ void confine_sltu() {
           setUpper(getUpperFromReg(rs1), tc);
 
           *(registers + rs2) = *(tcs + btc);
-          constrain(tc, *(registers + rs2), SYM_LT, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs2), SYM_LT, branch);
           updateRegState(rs1, tc);
         }
       }
+
     // <=, >=
-    } else if (identifyOperator == 2) {
-      // last constraint is always [2,1] due to SLTU:[0,1] -(+) [1,1]
-      // (compiler semantics of <= / >=), thus we need the one before
+    } else if (operator == 2) {
       // <=
       if (rd == rs2) {
         // symbolic (rs2) <= concrete (rs1)
         if (isConcrete(currentContext, rs1)) {
-          constrain(tc, *(registers + rs1), SYM_LEQ, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
           updateRegState(rd, tc);
 
         // concrete (rs2) <= symbolic (rs1)
@@ -9592,14 +9644,14 @@ void confine_sltu() {
           setUpper(getUpperFromReg(rs1), tc);
 
           *(registers + rs2) = *(tcs + btc);
-          constrain(tc, *(registers + rs2), SYM_GEQ, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
           updateRegState(rs1, tc);
         }
       // >=
       } else {
         // symbolic (rs1) >= concrete (rs2)
         if (isConcrete(currentContext, rs2)) {
-          constrain(tc, *(registers + rs2), SYM_GEQ, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
           updateRegState(rd, tc);
 
         // concrete (rs1) >= symbolic (rs2)
@@ -9608,14 +9660,13 @@ void confine_sltu() {
           setUpper(getUpperFromReg(rs2), tc);
 
           *(registers + rs1) = *(tcs + btc);
-          constrain(tc, *(registers + rs1), SYM_LEQ, getUpperFromReg(rd));
+          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
           updateRegState(rs2, tc);
         }
       }
     }
 
-  // [0,0] or [1,1]: concrete (symbolic value can neither
-  // be smaller than 0 nor greater than UINT64_MAX)
+  // concrete: [0,0] or [1,1]
   } else {
     saveState(*(registers + rd));
     updateRegState(rd, *(tcs + btc));
@@ -9624,8 +9675,8 @@ void confine_sltu() {
 
 void confine_ld() {
   uint64_t vaddr;
-  uint64_t memTc;
-  uint64_t regTc;
+  uint64_t mem_tc;
+  uint64_t reg_tc;
 
   // vaddr = retrieveAddress();
 
@@ -9634,23 +9685,23 @@ void confine_ld() {
   else
     vaddr = getLowerFromReg(rs1) + imm;
 
-  memTc = loadVirtualMemory(pt, vaddr);
-  regTc = getLowerFromReg(rd);
+  mem_tc = loadVirtualMemory(pt, vaddr);
+  reg_tc = *(registers + rd);
 
-  // memTc != regTc or compareIntervalls(memTc, regTc)
+  // mem_tc != reg_tc or compareIntervalls(mem_tc, reg_tc)
 
-  if (memTc != regTc) {
-    saveState(loadVirtualMemory(pt, vaddr));
+  if (mem_tc != reg_tc) {
+    saveState(mem_tc);
     // semantics of sd
-    if (getLower(loadVirtualMemory(pt, vaddr)) < getLowerFromReg(rd))
-      setLower(getLowerFromReg(rd), tc);
+    if (getLower(mem_tc) < getLower(reg_tc))
+      setLower(getLower(reg_tc), tc);
     else
-      setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+      setLower(getLower(mem_tc), tc);
 
-    if (getUpper(loadVirtualMemory(pt, vaddr)) > getUpperFromReg(rd))
-      setUpper(getUpperFromReg(rd), tc);
+    if (getUpper(mem_tc) > getUpper(reg_tc))
+      setUpper(getUpper(reg_tc), tc);
     else
-      setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+      setUpper(getUpper(mem_tc), tc);
 
     lastConstraint = tc;
     updateMemState(vaddr, tc);
@@ -9686,7 +9737,7 @@ void confine_sd () {
 }
 
 void confine_beq() {
-  identifyOperator = tc;
+  // nothing to do
 }
 
 void confine_jal() {
