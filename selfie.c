@@ -1006,7 +1006,7 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-void symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+void symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
 
 void print_addi();
 void print_addi_before();
@@ -1019,6 +1019,7 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void symbolic_do_add();
+void symbolic_undo_add();
 void do_add();
 void symbolic_do_sub();
 void do_sub();
@@ -6364,7 +6365,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
 }
 
-void symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr() {
+void symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 }
@@ -6476,6 +6477,19 @@ void symbolic_do_add() {
   ic_add = ic_add + 1;
 
   updateRegState(rd, tc);
+}
+
+void symbolic_undo_add() {
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
+
+  if (pc == *(pcs + tc - 1)) {
+    tc = tc - 1;
+    if (isConcrete(currentContext, rs1))
+      *(registers + rs2) = *(tcs + tc);
+    else
+      *(registers + rs1) = *(tcs + tc);
+  }
 }
 
 void do_add() {
@@ -7611,7 +7625,7 @@ void decode_execute() {
           if (confine)
             confine_add();
           else if (undo)
-            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_add();
           else
             symbolic_do_add();
         } else
@@ -7641,7 +7655,7 @@ void decode_execute() {
           if (confine)
             confine_sub();
           else if (undo)
-            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_sub();
         } else
@@ -7671,7 +7685,7 @@ void decode_execute() {
           if (confine)
             confine_mul();
           else if (undo)
-            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_mul();
         } else
@@ -7703,7 +7717,7 @@ void decode_execute() {
           if (confine)
             confine_divu();
           else if (undo)
-            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_divu();
         } else
@@ -7735,7 +7749,7 @@ void decode_execute() {
           if (confine)
             confine_remu();
           else if (undo)
-            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_remu();
         } else
@@ -7767,7 +7781,7 @@ void decode_execute() {
           if (confine)
             confine_sltu();
           else if (undo)
-            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_sltu();
         } else
@@ -7833,7 +7847,7 @@ void decode_execute() {
       if (confine)
         confine_jal();
       else if (undo)
-        symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+        symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
       else
         symbolic_do_jal();
     } else
@@ -7866,7 +7880,7 @@ void decode_execute() {
         if (confine)
           confine_jalr();
         else if (undo)
-          symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+          symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
         else
           symbolic_do_jalr();
       } else
@@ -7899,7 +7913,7 @@ void decode_execute() {
       if (confine)
         confine_lui();
       else if (undo)
-        symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
+        symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
       else
         symbolic_do_lui();
     } else
@@ -9486,15 +9500,26 @@ void confine_add() {
       symReg = rs1;
     }
 
-    saveState(*(registers + symReg));
-
     setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
-    updateRegState(symReg, tc);
-
     if (rd != symReg)
       *(registers + rd) = *(tcs + btc);
+
+    if (rd != symReg) {
+      if (compareIntervalls(tc, *(registers + symReg)) == 0) {
+        saveState(*(registers + symReg));
+        updateRegState(symReg, tc);
+      }
+      saveState(*(registers + rd));
+      updateRegState(rd, *(tcs + btc));
+
+    } else {
+      if (compareIntervalls(tc, *(tcs + btc)) == 0) {
+        saveState(*(registers + rd));
+        updateRegState(rd, *(tcs + btc));
+      }
+    }
 
   // both source registers contain symbolic values
   } else {
