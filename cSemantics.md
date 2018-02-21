@@ -115,17 +115,45 @@ tc++
 
 ### sLD backwards
 ```c
-vaddr = rs1.lower + imm
+if (rs1 == rd) {
+    vaddr = btc.lower // get old address
+} else {
+    vaddr = rs1.lower + imm
+}
+// get respective tcs
+mem_tc = load(vaddr)
+reg_tc = rd
+
+if (!sameIntervalls(mem_tc, reg_tc)) { // do we have a newer value in memory?
+    tc.pcs = pc // current pc
+    tc.tcs = load(vaddr) // previous forward tc
+
+    if (mem_tc.lower < reg_tc.lower) { // reg value more constrained
+        tc.lower = reg_tc.lower
+    } else { // mem value more constrained
+        tc.lower = mem_tc.lower
+    }
+
+    if (mem_tc.upper > reg_tc.upper) { // reg value more constrained
+        tc.upper = reg_tc.upper
+    } else { // mem value more constrained
+        tc.upper = reg_tc.upper
+    }
+
+    load(vaddr) = tc
+    tc++
+}
+
+tc.pcs = pc // current pc
+tc.tcs = rd // previous forward tc
+
+
 tc.pcs = pc // current pc
 tc.tcs = load(vaddr) // old forward tc
 
-tc.upper = rd.upper
-tc.lower = tc.lower
-rd = btc.tcs // old backwards tc
-pc--
-
-load(vaddr) = tc
+rd = btc.tcs // old backward tc
 tc++
+pc--
 btc--
 ```
 
