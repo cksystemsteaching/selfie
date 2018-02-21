@@ -1006,12 +1006,13 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-void symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+void symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
 
 void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
 void symbolic_do_addi();
+void symbolic_undo_addi();
 void do_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
@@ -1031,7 +1032,6 @@ void symbolic_do_remu();
 void do_remu();
 
 void symbolic_do_sltu();
-void symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 void do_sltu();
 
 void     print_ld();
@@ -1464,7 +1464,6 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t fetchFromTC(uint64_t tc);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
-uint64_t retrieveAddress();
 
 uint64_t findPrevFuncCall(uint64_t traceCounter);
 
@@ -1482,10 +1481,7 @@ void     symbolic_confine();
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
 
 uint64_t compareIntervalls(uint64_t tc1, uint64_t tc2);
-
-void keepLastConstraint(uint64_t tc);
-void restoreLastConstraint();
-void resetInstructions(uint64_t count);
+void     resetInstructions(uint64_t count);
 
 void confine_lui();
 void confine_addi();
@@ -1509,9 +1505,6 @@ uint64_t executionBrk = 0;     // trace counter before backward execution
 
 uint64_t redundantIs       = 0; // number of redundant instructions
 uint64_t numberOfSymbolics = 0; // number of symbolic variables
-
-uint64_t lastConstraint    = 0; // last tc where constraining occured
-uint64_t secLastConstraint = 0; // second last tc where constraining occured
 
 uint64_t identifyOperator  = 0; // helps distinguishing < (>) from <= (>=)
 
@@ -6371,7 +6364,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
 }
 
-void symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
+void symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 }
@@ -6423,6 +6416,16 @@ void symbolic_do_addi() {
   ic_addi = ic_addi + 1;
 
   updateRegState(rd, tc);
+}
+
+void symbolic_undo_addi() {
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
+
+  if (pc == *(pcs + tc - 1)) {
+    tc = tc - 1;
+    *(registers + rs1) = *(tcs + tc);
+  }
 }
 
 void do_addi() {
@@ -7506,7 +7509,7 @@ void decode_execute() {
         if (confine)
           confine_addi();
         else if (undo)
-          symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+          symbolic_undo_addi();
         else
           symbolic_do_addi();
       } else
@@ -7608,7 +7611,7 @@ void decode_execute() {
           if (confine)
             confine_add();
           else if (undo)
-            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_add();
         } else
@@ -7638,7 +7641,7 @@ void decode_execute() {
           if (confine)
             confine_sub();
           else if (undo)
-            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_sub();
         } else
@@ -7668,7 +7671,7 @@ void decode_execute() {
           if (confine)
             confine_mul();
           else if (undo)
-            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_mul();
         } else
@@ -7700,7 +7703,7 @@ void decode_execute() {
           if (confine)
             confine_divu();
           else if (undo)
-            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_divu();
         } else
@@ -7732,7 +7735,7 @@ void decode_execute() {
           if (confine)
             confine_remu();
           else if (undo)
-            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_remu();
         } else
@@ -7764,7 +7767,7 @@ void decode_execute() {
           if (confine)
             confine_sltu();
           else if (undo)
-            symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+            symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
           else
             symbolic_do_sltu();
         } else
@@ -7830,7 +7833,7 @@ void decode_execute() {
       if (confine)
         confine_jal();
       else if (undo)
-        symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+        symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
       else
         symbolic_do_jal();
     } else
@@ -7863,7 +7866,7 @@ void decode_execute() {
         if (confine)
           confine_jalr();
         else if (undo)
-          symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+          symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
         else
           symbolic_do_jalr();
       } else
@@ -7896,7 +7899,7 @@ void decode_execute() {
       if (confine)
         confine_lui();
       else if (undo)
-        symbolic_undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+        symbolic_undo_lui_add_sub_mul_divu_remu_sltu_jal_jalr();
       else
         symbolic_do_lui();
     } else
@@ -9180,23 +9183,6 @@ uint64_t isOneSourceRegConcrete() {
   return 0;
 }
 
-uint64_t retrieveAddress() {
-  uint64_t vaddr;
-  uint64_t htc;
-
-  // follows the old tcs until a valid and mapped address occurs
-
-  htc   = *(registers + rs1);
-  vaddr = getLower(htc) + imm;
-
-  while (isVaddrValidAndMapped(pt, vaddr) == 0) {
-    htc   = *(tcs + htc);
-    vaddr = getLower(htc) + imm;
-  }
-
-  return vaddr;
-}
-
 uint64_t findPrevFuncCall(uint64_t traceCounter) {
   uint64_t itPC;
   uint64_t instr;
@@ -9424,32 +9410,12 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
 }
 
 uint64_t compareIntervalls(uint64_t tc1, uint64_t tc2) {
-  if (getLower(tc1) != getLower(tc1))
+  if (getLower(tc1) != getLower(tc2))
     return 0;
-  else if (getUpper(tc2) != getUpper(tc2))
+  else if (getUpper(tc1) != getUpper(tc2))
     return 0;
+
   return 1;
-}
-void keepLastConstraint(uint64_t tc) {
-  // caution: this may work for constraining only one
-  // symbolic value correctly atm
-
-  if (getLower(tc) != getUpper(tc)) {
-    secLastConstraint = lastConstraint;
-    lastConstraint    = tc;
-  }
-}
-
-void restoreLastConstraint() {
-  uint64_t tc_before;
-
-  if (lastConstraint != 0)
-    tc_before = lastConstraint;
-  else
-    tc_before = *(tcs + btc);
-
-  setLower(getLower(tc_before), tc);
-  setUpper(getUpper(tc_before), tc);
 }
 
 void resetInstructions(uint64_t count) {
@@ -9481,16 +9447,24 @@ void confine_lui() {
 }
 
 void confine_addi() {
-  saveState(*(registers + rs1));
+  if (rd != REG_ZR) {
+    setLower(getLowerFromReg(rd) - imm, tc);
+    setUpper(getUpperFromReg(rd) - imm, tc);
+  }
 
-  setLower(getLowerFromReg(rd) - imm, tc);
-  setUpper(getUpperFromReg(rd) - imm, tc);
-
-  if (rd != rs1)
-    *(registers + rd) = *(tcs + btc);
-
-  keepLastConstraint(tc);
-  updateRegState(rs1, tc);
+  if (rd != rs1) {
+    if (compareIntervalls(tc, *(registers + rs1)) == 0) {
+      saveState(*(registers + rs1));
+      updateRegState(rs1, tc);
+    }
+    saveState(*(registers + rd));
+    updateRegState(rd, *(tcs + btc));
+  } else {
+    if (compareIntervalls(tc, *(registers + rd)) == 0) {
+      saveState(*(registers + rd));
+      updateRegState(rd, tc);
+    }
+  }
 }
 
 void confine_add() {
@@ -9517,7 +9491,6 @@ void confine_add() {
     setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
-    keepLastConstraint(tc);
     updateRegState(symReg, tc);
 
     if (rd != symReg)
@@ -9553,7 +9526,6 @@ void confine_sub() {
     setLower(getLowerFromReg(rd) + getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) + getUpperFromReg(conReg), tc);
 
-    keepLastConstraint(tc);
     updateRegState(symReg, tc);
 
     if (rd != symReg)
@@ -9678,8 +9650,6 @@ void confine_ld() {
   uint64_t mem_tc;
   uint64_t reg_tc;
 
-  // vaddr = retrieveAddress();
-
   if (rs1 == rd)
     vaddr = getLower(*(tcs + btc));
   else
@@ -9688,9 +9658,7 @@ void confine_ld() {
   mem_tc = loadVirtualMemory(pt, vaddr);
   reg_tc = *(registers + rd);
 
-  // mem_tc != reg_tc or compareIntervalls(mem_tc, reg_tc)
-
-  if (mem_tc != reg_tc) {
+  if (compareIntervalls(mem_tc, reg_tc) == 0) {
     saveState(mem_tc);
     // semantics of sd
     if (getLower(mem_tc) < getLower(reg_tc))
@@ -9703,7 +9671,6 @@ void confine_ld() {
     else
       setUpper(getUpper(mem_tc), tc);
 
-    lastConstraint = tc;
     updateMemState(vaddr, tc);
   }
 
@@ -9766,9 +9733,7 @@ void confine_ecall() {
     numberOfSymbolics = numberOfSymbolics - 1;
   }
 
-  *(registers + REG_A0) = *(tcs + btc);
-
-  updateRegState(REG_ZR, 0);
+  updateRegState(REG_A0, *(tcs + btc));
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
