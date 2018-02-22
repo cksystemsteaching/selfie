@@ -9461,20 +9461,24 @@ void confine_lui() {
 }
 
 void confine_addi() {
+
   if (rd != REG_ZR) {
     setLower(getLowerFromReg(rd) - imm, tc);
     setUpper(getUpperFromReg(rd) - imm, tc);
-  }
 
-  if (rd != rs1) {
-    if (compareIntervalls(tc, *(registers + rs1)) == 0) {
-      saveState(*(registers + rs1));
-      updateRegState(rs1, tc);
-    }
-    saveState(*(registers + rd));
-    updateRegState(rd, *(tcs + btc));
-  } else {
-    if (compareIntervalls(tc, *(registers + rd)) == 0) {
+    if (rd != rs1) {
+      if (compareIntervalls(tc, *(registers + rs1)) == 0) {
+        saveState(*(registers + rs1));
+        updateRegState(rs1, tc);
+      }
+      saveState(*(registers + rd));
+      updateRegState(rd, *(tcs + btc));
+
+    } else {
+      if (compareIntervalls(tc, *(tcs + btc)) == 0) {
+        saveState(*(tcs + btc));
+        updateRegState(rd, tc);
+      }
       saveState(*(registers + rd));
       updateRegState(rd, tc);
     }
@@ -9503,9 +9507,6 @@ void confine_add() {
     setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
-    if (rd != symReg)
-      *(registers + rd) = *(tcs + btc);
-
     if (rd != symReg) {
       if (compareIntervalls(tc, *(registers + symReg)) == 0) {
         saveState(*(registers + symReg));
@@ -9516,11 +9517,12 @@ void confine_add() {
 
     } else {
       if (compareIntervalls(tc, *(tcs + btc)) == 0) {
-        saveState(*(registers + rd));
-        updateRegState(rd, *(tcs + btc));
+        saveState(*(tcs + btc));
+        updateRegState(rd, tc);
       }
+      saveState(*(registers + rd));
+      updateRegState(rd, tc);
     }
-
   // both source registers contain symbolic values
   } else {
     // sTODO: which one should we constrain?
