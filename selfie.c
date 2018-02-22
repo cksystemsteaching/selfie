@@ -7594,6 +7594,12 @@ void do_ecall() {
       println();
 
       exit(EXITCODE_BADARGUMENTS);
+    } else if (symbolic) {
+      print(selfieName);
+      print((uint64_t*) ": context switching during symbolic execution is unsupported");
+      println();
+
+      exit(EXITCODE_BADARGUMENTS);
     } else {
       pc = pc + INSTRUCTIONSIZE;
 
