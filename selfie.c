@@ -5886,8 +5886,8 @@ uint64_t implementMalloc(uint64_t* context) {
 
       if (mrcc > 0) {
         if (tc + 1 < maxTraceLength)
-          // since there has been branching record malloc using vaddr == 1
-          storeSymbolicMemory(getPT(context), 1, bump, size, tc);
+          // since there has been branching record malloc using vaddr == 0
+          storeSymbolicMemory(getPT(context), 0, bump, size, tc);
         else {
           setExitCode(context, EXITCODE_OUTOFTRACEMEMORY);
 
@@ -6701,18 +6701,21 @@ void printSymbolicMemory(uint64_t svc) {
     printSourceLineNumberOfInstruction(*(pcs + svc) - entryPoint);
   print((uint64_t*) ",");
   if (*(vaddrs + svc) == 0) {
-    printRegister(*(vceils + svc));
-    print((uint64_t*) "=");
-    printInteger(*(values + svc));
-    print((uint64_t*) "]");
-  } else {
-    printHexadecimal(*(vaddrs + svc), 0);
-    print((uint64_t*) "=(");
-    printInteger(*(values + svc));
-    print((uint64_t*) ",");
+    printHexadecimal(*(values + svc), 0);
+    print((uint64_t*) "=malloc(");
     printInteger(*(vceils + svc));
     print((uint64_t*) ")]");
-  }
+    println();
+    return;
+  } else if (*(vaddrs + svc) < NUMBEROFREGISTERS)
+    printRegister(*(vaddrs + svc));
+  else
+    printHexadecimal(*(vaddrs + svc), 0);
+  print((uint64_t*) "=(");
+  printInteger(*(values + svc));
+  print((uint64_t*) ",");
+  printInteger(*(vceils + svc));
+  print((uint64_t*) ")]");
   println();
 }
 
@@ -6759,11 +6762,11 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
   uint64_t mrvc;
 
   if (vaddr == 0)
-    // tracking a register value for sltu
-    mrvc = mrcc;
-  else if (vaddr == 1)
     // tracking bump pointer and size for malloc
     mrvc = 0;
+  else if (vaddr < NUMBEROFREGISTERS)
+    // tracking a register value for sltu
+    mrvc = mrcc;
   else {
     // assert: vaddr is valid and mapped
     if (value == loadSymbolicMemoryValue(pt, vaddr))
@@ -6793,15 +6796,16 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(pcs + tc) = pc;
     *(tcs + tc) = mrvc;
 
+    *(vaddrs + tc) = vaddr;
+
     *(values + tc) = value;
     *(vceils + tc) = vceil;
 
-    *(vaddrs + tc) = vaddr;
-
-    if (vaddr == 0)
-      // register tracking marks most recent constraint
-      mrcc = tc;
-    else if (vaddr != 1)
+    if (vaddr < NUMBEROFREGISTERS) {
+      if (vaddr > 0)
+        // register tracking marks most recent constraint
+        mrcc = tc;
+    } else
       // assert: vaddr is valid and mapped
       storeVirtualMemory(pt, vaddr, tc);
 
@@ -6838,8 +6842,8 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil, uint
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
-  // always track register memory with vaddr == 0 using tc as most recent branch
-  storeSymbolicMemory(pt, 0, value, reg, tc);
+  // always track register memory by using tc as most recent branch
+  storeSymbolicMemory(pt, reg, value, value, tc);
 }
 
 void constrain_memory(uint64_t reg, uint64_t value, uint64_t vceil, uint64_t trb) {
@@ -7081,7 +7085,6 @@ void constrain_sltu() {
 
 void backtrack_sltu() {
   uint64_t vaddr;
-  uint64_t reg;
 
   if (debug_symbolic) {
     print(selfieName);
@@ -7091,25 +7094,25 @@ void backtrack_sltu() {
 
   vaddr = *(vaddrs + tc);
 
-  if (vaddr == 0) {
-    // restoring a register value; the register is identified by vceils value
-    reg = *(vceils + tc);
+  if (vaddr < NUMBEROFREGISTERS) {
+    if (vaddr > 0) {
+      // the register is identified by vaddr
+      *(registers + vaddr) = *(values + tc);
+      *(reg_vceil + vaddr) = *(vceils + tc);
 
-    *(registers + reg) = *(values + tc);
-    *(reg_vceil + reg) = *(values + tc); // values, not vceils (!)
+      set_constraint(vaddr, 0, 0, 0, 0, 0);
 
-    set_constraint(reg, 0, 0, 0, 0, 0);
+      // restoring mrcc
+      mrcc = *(tcs + tc);
 
-    // restoring mrcc
-    mrcc = *(tcs + tc);
+      if (vaddr != REG_FP)
+        if (vaddr != REG_SP) {
+          // stop backtracking and try next case
+          pc = pc + INSTRUCTIONSIZE;
 
-    if (reg != REG_FP)
-      if (reg != REG_SP) {
-        // stop backtracking and try next case
-        pc = pc + INSTRUCTIONSIZE;
-
-        ic_sltu = ic_sltu + 1;
-      }
+          ic_sltu = ic_sltu + 1;
+        }
+    }
   } else
     storeVirtualMemory(pt, vaddr, *(tcs + tc));
 
@@ -7616,7 +7619,7 @@ void backtrack_ecall() {
     printSymbolicMemory(tc);
   }
 
-  if (*(vaddrs + tc) == 1) {
+  if (*(vaddrs + tc) == 0) {
     // backtracking malloc
     if (getBumpPointer(currentContext) == *(values + tc) + *(vceils + tc))
       setBumpPointer(currentContext, *(values + tc));
