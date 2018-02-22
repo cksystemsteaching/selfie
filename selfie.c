@@ -1481,7 +1481,7 @@ uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
 void     symbolic_confine();
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
 
-uint64_t compareIntervalls(uint64_t tc1, uint64_t tc2);
+uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 void     resetInstructions(uint64_t count);
 
 void confine_lui();
@@ -7056,9 +7056,10 @@ void symbolic_do_beq() {
       print(selfieName);
       print((uint64_t*) ": vipster exploring ");
       if (getUpperFromReg(rs1))
-        print((uint64_t*) "true branch...");
+        print((uint64_t*) "true branch from pc= ");
       else
-        print((uint64_t*) "false branch...");
+        print((uint64_t*) "false branch from pc= ");
+      printHexadecimal(pc, 8);
       println();
     }
 
@@ -9371,6 +9372,12 @@ void symbolic_confine() {
 
     btc = btc - 1;
   }
+
+  if (debug_vipster) {
+    print(selfieName);
+    print((uint64_t*) ": vipster done confining - resuming branch exploration...");
+    println();
+  }
 }
 
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
@@ -9423,7 +9430,7 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
   }
 }
 
-uint64_t compareIntervalls(uint64_t tc1, uint64_t tc2) {
+uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2) {
   if (getLower(tc1) != getLower(tc2))
     return 0;
   else if (getUpper(tc1) != getUpper(tc2))
@@ -9457,7 +9464,9 @@ void resetInstructions(uint64_t count) {
 }
 
 void confine_lui() {
-
+  // restore old value
+  saveState(*(registers + rd));
+  updateRegState(rd, *(tcs + btc));
 }
 
 void confine_addi() {
@@ -9465,9 +9474,10 @@ void confine_addi() {
   if (rd != REG_ZR) {
     setLower(getLowerFromReg(rd) - imm, tc);
     setUpper(getUpperFromReg(rd) - imm, tc);
-
+  
     if (rd != rs1) {
-      if (compareIntervalls(tc, *(registers + rs1)) == 0) {
+      // optimization, don't save if values already there
+      if (sameIntervalls(tc, *(registers + rs1)) == 0) {
         saveState(*(registers + rs1));
         updateRegState(rs1, tc);
       }
@@ -9475,7 +9485,7 @@ void confine_addi() {
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      if (compareIntervalls(tc, *(tcs + btc)) == 0) {
+      if (sameIntervalls(tc, *(tcs + btc)) == 0) {
         saveState(*(tcs + btc));
         updateRegState(rd, tc);
       }
@@ -9492,7 +9502,7 @@ void confine_add() {
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
 
-    // nothing to constrain
+    // only restore old value
     updateRegState(rd, *(tcs + btc));
 
   } else if (isOneSourceRegConcrete()) {
@@ -9508,7 +9518,7 @@ void confine_add() {
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
     if (rd != symReg) {
-      if (compareIntervalls(tc, *(registers + symReg)) == 0) {
+      if (sameIntervalls(tc, *(registers + symReg)) == 0) {
         saveState(*(registers + symReg));
         updateRegState(symReg, tc);
       }
@@ -9516,7 +9526,7 @@ void confine_add() {
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      if (compareIntervalls(tc, *(tcs + btc)) == 0) {
+      if (sameIntervalls(tc, *(tcs + btc)) == 0) {
         saveState(*(tcs + btc));
         updateRegState(rd, tc);
       }
@@ -9548,15 +9558,21 @@ void confine_sub() {
       symReg = rs1;
     }
 
-    saveState(*(registers + symReg));
-
     setLower(getLowerFromReg(rd) + getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) + getUpperFromReg(conReg), tc);
 
-    updateRegState(symReg, tc);
+    if (rd != symReg) {
+      if (sameIntervalls(tc, *(registers + symReg)) == 0) {
+        saveState(*(registers + symReg));
+        updateRegState(symReg, tc);
+      }
+      saveState(*(registers + rd));
+      updateRegState(rd, *(tcs + btc));
 
-    if (rd != symReg)
-      *(registers + rd) = *(tcs + btc);
+    } else {
+      saveState(*(registers + rd));
+      updateRegState(rd, tc);
+    }
 
   // both source registers contain symbolic values
   } else {
@@ -9579,18 +9595,20 @@ void confine_remu() {
 void confine_sltu() {
   uint64_t operator;
   uint64_t branch;
+  uint64_t tempReg;
 
   operator = *(operators + btc + 1);
   branch   = getUpperFromReg(rd);
 
   // sTODO: adjust for ==, !=
+  // sTODO: proper undo RS1 / RS2 values!
 
   // symbolic: [0,1] (true path) or [1,0] (false path)
   if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
-    saveState(*(registers + rd));
 
-    setLower(getLower(*(tcs + btc)), tc);
-    setUpper(getUpper(*(tcs + btc)), tc);
+    // assumes that rd was symbolic and was constrained in any case
+    // setLower(getLower(*(tcs + btc)), tc);
+    // setUpper(getUpper(*(tcs + btc)), tc);
 
     // <, >, ==, !=
     if (operator == 1) {
@@ -9598,33 +9616,79 @@ void confine_sltu() {
       if (rd == rs1) {
         // symbolic (rs1) < concrete (rs2)
         if (isConcrete(currentContext, rs2)) {
+          // we will constrain RD/RS1
+          saveState(*(registers + rs1));
+
+          // perpare previous value of RD/RS1
+          setLower(getLower(*(tcs + btc)), tc);
+          setUpper(getUpper(*(tcs + btc)), tc);
+
+          // constrain RD/RS1 by RS2
           constrain(tc, *(registers + rs2), SYM_LT, branch);
-          updateRegState(rd, tc);
+          updateRegState(rs1, tc);
+
+          // RS2 unchanged
 
         // concrete (rs1) < symbolic (rs2)
         } else {
+          // we will constrain RS2
+          saveState(*(registers + rs2));
+
+          // prepare previous value of RS2
           setLower(getLowerFromReg(rs2), tc);
           setUpper(getUpperFromReg(rs2), tc);
 
+          // remember old RD/RS1
+          tempReg = *(registers + rs1);
+          // restore old RD/RS1
           *(registers + rs1) = *(tcs + btc);
+
+          // constrain RS2 by RD/RS1
           constrain(tc, *(registers + rs1), SYM_GT, branch);
           updateRegState(rs2, tc);
+
+          // push old RD/RS1 to trace afterwards
+          saveState(tempReg);
+          updateRegState(rs1, *(tcs + btc));
         }
       // >
-      } else {
+      } else { // rd == rs2
         // symbolic (rs2) > concrete (rs1)
         if (isConcrete(currentContext, rs1)) {
+          // we will constrain RD/RS2
+          saveState(*(registers + rs2));
+
+          // prepare previous value of RS2/RD
+          setLower(getLower(*(tcs + btc)), tc);
+          setUpper(getUpper(*(tcs + btc)), tc);
+
+          // constrain RS2/RD by RD
           constrain(tc, *(registers + rs1), SYM_GT, branch);
-          updateRegState(rd, tc);
+          updateRegState(rs2, tc);
+
+          // RS1 unchanged
 
         // concrete (rs2) > symbolic (rs1)
         } else {
+          // we will constrain RS1
+          saveState(*(registers + rs1));
+
+          // prepare previous value of RS1
           setLower(getLowerFromReg(rs1), tc);
           setUpper(getUpperFromReg(rs1), tc);
 
+          // remember old RD/RS2
+          tempReg = *(registers + rs2);
+          // restore old RD/RS2
           *(registers + rs2) = *(tcs + btc);
+
+          // constrain RS1 by RD/RS2
           constrain(tc, *(registers + rs2), SYM_LT, branch);
           updateRegState(rs1, tc);
+
+          // puch old RD/RS2 to trace afterwards
+          saveState(tempReg);
+          updateRegState(rs2, *(tcs + btc));
         }
       }
 
@@ -9634,39 +9698,86 @@ void confine_sltu() {
       if (rd == rs2) {
         // symbolic (rs2) <= concrete (rs1)
         if (isConcrete(currentContext, rs1)) {
+          // we will constrain RD/RS2
+          saveState(*(registers + rs2));
+
+          // perpare previous value of RD/RS2
+          setLower(getLower(*(tcs + btc)), tc);
+          setUpper(getUpper(*(tcs + btc)), tc);
+
+          // constrain RD/RS2 by RS1
           constrain(tc, *(registers + rs1), SYM_LEQ, branch);
-          updateRegState(rd, tc);
+          updateRegState(rs2, tc);
+
+          // RS1 unchanged
 
         // concrete (rs2) <= symbolic (rs1)
         } else {
+          // we will constrain RS1
+          saveState(*(registers + rs1));
+
+          // prepare previous value of RS1
           setLower(getLowerFromReg(rs1), tc);
           setUpper(getUpperFromReg(rs1), tc);
 
+          // remember old RD/RS2
+          tempReg = *(registers + rs2);
+          // restore old RD/RS2
           *(registers + rs2) = *(tcs + btc);
+
+          // constrain RS1 by RD/RS2
           constrain(tc, *(registers + rs2), SYM_GEQ, branch);
           updateRegState(rs1, tc);
+
+          // restore old RD/RS2 afterwards
+          saveState(tempReg);
+          updateRegState(rs2, *(tcs + btc));
         }
       // >=
-      } else {
+      } else { // rd == rs1
         // symbolic (rs1) >= concrete (rs2)
         if (isConcrete(currentContext, rs2)) {
+          // we will constrain RD/RS1
+          saveState(*(registers + rs1));
+
+          // perpare previous value of RD/RS1
+          setLower(getLower(*(tcs + btc)), tc);
+          setUpper(getUpper(*(tcs + btc)), tc);
+
+          // constrain RD/RS1 by RS2
           constrain(tc, *(registers + rs2), SYM_GEQ, branch);
-          updateRegState(rd, tc);
+          updateRegState(rs1, tc);
+
+          // RS2 unchanged
 
         // concrete (rs1) >= symbolic (rs2)
         } else {
+          // we will constrain RS2
+          saveState(*(registers + rs2));
+
+          // prepare previous value of RS2
           setLower(getLowerFromReg(rs2), tc);
           setUpper(getUpperFromReg(rs2), tc);
 
+          // remember old RD/RS1
+          tempReg = *(registers + rs1);
+          // restore old RD/RS1
           *(registers + rs1) = *(tcs + btc);
+
+          // constrain RS2 by RD/RS1
           constrain(tc, *(registers + rs1), SYM_LEQ, branch);
           updateRegState(rs2, tc);
+
+          // push old RD/RS1 to trace afterwards
+          saveState(tempReg);
+          updateRegState(rs1, *(tcs + btc));
         }
       }
     }
 
   // concrete: [0,0] or [1,1]
   } else {
+    // only restore RD
     saveState(*(registers + rd));
     updateRegState(rd, *(tcs + btc));
   }
@@ -9685,7 +9796,7 @@ void confine_ld() {
   mem_tc = loadVirtualMemory(pt, vaddr);
   reg_tc = *(registers + rd);
 
-  if (compareIntervalls(mem_tc, reg_tc) == 0) {
+  if (sameIntervalls(mem_tc, reg_tc) == 0) {
     saveState(mem_tc);
     // semantics of sd
     if (getLower(mem_tc) < getLower(reg_tc))
