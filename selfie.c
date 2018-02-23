@@ -8779,6 +8779,8 @@ uint64_t handleSystemCalls(uint64_t* context) {
 
       // path exit
       if (symbolic) {
+        incrementTc();
+
         a0 = *(getRegs(context) + REG_A0);
         // start backwards confining
         symbolic_confine();
