@@ -7146,7 +7146,7 @@ void symbolic_do_beq() {
 void symbolic_undo_beq() {
   identifyOperator = tc;
 
-  *(operators + tc) = 0;
+  //*(operators + tc) = 0;
 
   if (tc <= executionBrk)
     if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
