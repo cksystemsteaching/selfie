@@ -1093,6 +1093,7 @@ void resetInterpreter();
 void     printRegisterHexadecimal(uint64_t r);
 uint64_t isSystemRegister(uint64_t r);
 void     printRegisterValue(uint64_t r);
+void     printRegisterValues();
 void     printRegisterTc(uint64_t r);
 void     printMemoryValue(uint64_t vaddr);
 void     printMemoryTc(uint64_t vaddr);
@@ -7138,6 +7139,8 @@ void symbolic_do_beq() {
   ic_beq = ic_beq + 1;
 
   updateRegState(REG_ZR, 0);
+
+  //printRegisterValues();
 }
 
 void symbolic_undo_beq() {
@@ -7374,6 +7377,7 @@ void record_ecall() {
 }
 
 void symbolic_do_ecall() {
+  // might be changed when syscall is handled
   saveState(*(registers + REG_A0));
 
   pc = pc + INSTRUCTIONSIZE;
@@ -7424,6 +7428,7 @@ void undo_ecall() {
 }
 
 void symbolic_undo_ecall() {
+  // has A0 been updated in any case???
   *(registers + REG_A0) = *(tcs + tc);
 
   if (tc >= executionBrk) {
@@ -7475,6 +7480,8 @@ void printRegisterValue(uint64_t r) {
     printRegister(r);
     print((uint64_t*) "=");
     if (symbolic) {
+      // if random init value in register, avoid segfault
+      if (*(registers + r) >= maxTraceLength) return;
       print((uint64_t*) "[");
       printInteger(getLowerFromReg(r));
       print((uint64_t*) ",");
@@ -7486,6 +7493,17 @@ void printRegisterValue(uint64_t r) {
       printHexadecimal(*(registers + r), 0);
       print((uint64_t*) ")");
     }
+  }
+}
+
+void printRegisterValues() {
+  uint64_t reg;
+
+  reg = 0;
+  while (reg < NUMBEROFREGISTERS) {
+    printRegisterValue(reg);
+    println();
+    reg = reg + 1;
   }
 }
 
