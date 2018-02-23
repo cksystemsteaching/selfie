@@ -1006,7 +1006,7 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-void symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+void symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
 
 void print_addi();
 void print_addi_before();
@@ -1033,6 +1033,7 @@ void symbolic_do_remu();
 void do_remu();
 
 void symbolic_do_sltu();
+void symbolic_undo_sltu();
 void do_sltu();
 
 void     print_ld();
@@ -6365,7 +6366,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
 }
 
-void symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr() {
+void symbolic_undo_lui_sub_mul_divu_remu_jal_jalr() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 }
@@ -6662,6 +6663,61 @@ void symbolic_do_sltu() {
   ic_sltu = ic_sltu + 1;
 
   updateRegState(rd, tc);
+}
+
+void symbolic_undo_sltu() {
+  uint64_t operator;
+  uint64_t twoTraceVals;
+
+  twoTraceVals = pc == *(pcs + tc - 1);
+
+  // get operator type we remebered in confine_sltu
+  // if we pushed two values to the trace, it is at the first value
+  if (twoTraceVals)
+    operator = *(operators + tc -1);
+  else
+    operator = *(operators + tc);
+
+  if (rd != REG_ZR) {
+    if (operator == 1) { // < / >
+      if (rd == rs1) { // <
+        if (twoTraceVals) { // concrete (rs1) < symbolic (rs2)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs2) = *(tcs + tc);
+        } else { // symbolic (rs1) < concrete (rs2)
+          *(registers + rd) = *(tcs + tc);
+        }
+      } else { // rd == rs2 | >
+        if (twoTraceVals) { // concrete (rs2) > symbolic (rs1)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs1) = *(tcs + tc);
+        } else { // symbolic (rs2) > concrete (rs1)
+          *(registers + rd) = *(tcs + tc);
+        }
+      }
+    } else if (operator == 2) { // <= / >=
+      if (rd == rs2) { // <=
+        if (twoTraceVals) { // concrete (rs2) <= symbolic (rs1)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs1) = *(tcs + tc);
+        } else { // symbolic (rs2) <= concrete (rs1)
+          *(registers + rd) = *(tcs + tc);
+        }
+      } else { // rd == rs1 | >=
+        if (twoTraceVals) { // concrete (rs1) >= symbolic (rs2)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs2) = *(tcs + tc);
+        } else { // symbolic (rs1) >= concrete (rs2)
+          *(registers + rd) = *(tcs + tc);
+        }
+      }
+    }
+    // also works for both concrete as twoTraceVals == 0 and RD gets undone
+  }
 }
 
 void do_sltu() {
@@ -7656,7 +7712,7 @@ void decode_execute() {
           if (confine)
             confine_sub();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
           else
             symbolic_do_sub();
         } else
@@ -7686,7 +7742,7 @@ void decode_execute() {
           if (confine)
             confine_mul();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
           else
             symbolic_do_mul();
         } else
@@ -7718,7 +7774,7 @@ void decode_execute() {
           if (confine)
             confine_divu();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
           else
             symbolic_do_divu();
         } else
@@ -7750,7 +7806,7 @@ void decode_execute() {
           if (confine)
             confine_remu();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
           else
             symbolic_do_remu();
         } else
@@ -7782,7 +7838,7 @@ void decode_execute() {
           if (confine)
             confine_sltu();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+            symbolic_undo_sltu();
           else
             symbolic_do_sltu();
         } else
@@ -7848,7 +7904,7 @@ void decode_execute() {
       if (confine)
         confine_jal();
       else if (undo)
-        symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+        symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
       else
         symbolic_do_jal();
     } else
@@ -7881,7 +7937,7 @@ void decode_execute() {
         if (confine)
           confine_jalr();
         else if (undo)
-          symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+          symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
         else
           symbolic_do_jalr();
       } else
@@ -7914,7 +7970,7 @@ void decode_execute() {
       if (confine)
         confine_lui();
       else if (undo)
-        symbolic_undo_lui_sub_mul_divu_remu_sltu_jal_jalr();
+        symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
       else
         symbolic_do_lui();
     } else
@@ -9570,6 +9626,10 @@ void confine_sub() {
       updateRegState(rd, *(tcs + btc));
 
     } else {
+      if (sameIntervalls(tc, *(tcs + btc)) == 0) {
+        saveState(*(tcs + btc));
+        updateRegState(rd, tc);
+      }
       saveState(*(registers + rd));
       updateRegState(rd, tc);
     }
@@ -9598,6 +9658,7 @@ void confine_sltu() {
   uint64_t tempReg;
 
   operator = *(operators + btc + 1);
+  *(operators + tc) = operator; // remember for undo
   branch   = getUpperFromReg(rd);
 
   // sTODO: adjust for ==, !=

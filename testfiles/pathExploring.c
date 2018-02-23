@@ -8,8 +8,8 @@ uint64_t main() {
 
     read(0, x, 1); // symbolic [0,255]
 
-    if (*x < y) { // T: [0,14]          - F: [15,255]
-      if (*x > y) // T: [16,14] (unsat) - F: [0,14]
+    if (y > *x) { // T: [0,14]          - F: [15,255]
+      if (y < *x) // T: [16,14] (unsat) - F: [0,14]
         z = 1;
     } else
       z = 0;
