@@ -1006,7 +1006,7 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-void symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+void symbolic_undo_lui_mul_divu_remu_jal_jalr();
 
 void print_addi();
 void print_addi_before();
@@ -1019,7 +1019,7 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void symbolic_do_add();
-void symbolic_undo_add();
+void symbolic_undo_add_sub();
 void do_add();
 void symbolic_do_sub();
 void do_sub();
@@ -6366,7 +6366,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
 }
 
-void symbolic_undo_lui_sub_mul_divu_remu_jal_jalr() {
+void symbolic_undo_lui_mul_divu_remu_jal_jalr() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 }
@@ -6422,10 +6422,12 @@ void symbolic_do_addi() {
 
 void symbolic_undo_addi() {
   if (rd != REG_ZR)
+    // undo RD
     *(registers + rd) = *(tcs + tc);
 
   if (pc == *(pcs + tc - 1)) {
     tc = tc - 1;
+    // undo RS1
     *(registers + rs1) = *(tcs + tc);
   }
 }
@@ -6480,12 +6482,13 @@ void symbolic_do_add() {
   updateRegState(rd, tc);
 }
 
-void symbolic_undo_add() {
+void symbolic_undo_add_sub() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 
   if (pc == *(pcs + tc - 1)) {
     tc = tc - 1;
+    // undo either RS1 or RS2 depending on which one is symbolic
     if (isConcrete(currentContext, rs1))
       *(registers + rs2) = *(tcs + tc);
     else
@@ -6673,10 +6676,14 @@ void symbolic_undo_sltu() {
 
   // get operator type we remebered in confine_sltu
   // if we pushed two values to the trace, it is at the first value
-  if (twoTraceVals)
+  if (twoTraceVals) {
     operator = *(operators + tc -1);
-  else
+    *(operators + tc -1) = 0; // reset operator
+  }
+  else {
     operator = *(operators + tc);
+    *(operators + tc -1) = 0; // reset operator
+  }
 
   if (rd != REG_ZR) {
     if (operator == 1) { // < / >
@@ -6715,6 +6722,9 @@ void symbolic_undo_sltu() {
           *(registers + rd) = *(tcs + tc);
         }
       }
+    } else if (operator == 0) {
+      // we are undoing a non-confine operation
+      *(registers + rd) = *(tcs + tc);
     }
     // also works for both concrete as twoTraceVals == 0 and RD gets undone
   }
@@ -7132,6 +7142,8 @@ void symbolic_do_beq() {
 
 void symbolic_undo_beq() {
   identifyOperator = tc;
+
+  *(operators + tc) = 0;
 
   if (tc <= executionBrk)
     if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
@@ -7682,7 +7694,7 @@ void decode_execute() {
           if (confine)
             confine_add();
           else if (undo)
-            symbolic_undo_add();
+            symbolic_undo_add_sub();
           else
             symbolic_do_add();
         } else
@@ -7712,7 +7724,7 @@ void decode_execute() {
           if (confine)
             confine_sub();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+            symbolic_undo_add_sub();
           else
             symbolic_do_sub();
         } else
@@ -7742,7 +7754,7 @@ void decode_execute() {
           if (confine)
             confine_mul();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+            symbolic_undo_lui_mul_divu_remu_jal_jalr();
           else
             symbolic_do_mul();
         } else
@@ -7774,7 +7786,7 @@ void decode_execute() {
           if (confine)
             confine_divu();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+            symbolic_undo_lui_mul_divu_remu_jal_jalr();
           else
             symbolic_do_divu();
         } else
@@ -7806,7 +7818,7 @@ void decode_execute() {
           if (confine)
             confine_remu();
           else if (undo)
-            symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+            symbolic_undo_lui_mul_divu_remu_jal_jalr();
           else
             symbolic_do_remu();
         } else
@@ -7904,7 +7916,7 @@ void decode_execute() {
       if (confine)
         confine_jal();
       else if (undo)
-        symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+        symbolic_undo_lui_mul_divu_remu_jal_jalr();
       else
         symbolic_do_jal();
     } else
@@ -7937,7 +7949,7 @@ void decode_execute() {
         if (confine)
           confine_jalr();
         else if (undo)
-          symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+          symbolic_undo_lui_mul_divu_remu_jal_jalr();
         else
           symbolic_do_jalr();
       } else
@@ -7970,7 +7982,7 @@ void decode_execute() {
       if (confine)
         confine_lui();
       else if (undo)
-        symbolic_undo_lui_sub_mul_divu_remu_jal_jalr();
+        symbolic_undo_lui_mul_divu_remu_jal_jalr();
       else
         symbolic_do_lui();
     } else
@@ -9526,27 +9538,27 @@ void confine_lui() {
 }
 
 void confine_addi() {
-
   if (rd != REG_ZR) {
+    // prepare value
     setLower(getLowerFromReg(rd) - imm, tc);
     setUpper(getUpperFromReg(rd) - imm, tc);
   
     if (rd != rs1) {
-      // optimization, don't save if values already there
+      // confine RS1 (if necessary)
       if (sameIntervalls(tc, *(registers + rs1)) == 0) {
         saveState(*(registers + rs1));
         updateRegState(rs1, tc);
       }
+      // restore RD
       saveState(*(registers + rd));
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      if (sameIntervalls(tc, *(tcs + btc)) == 0) {
+      // confine RD/RS1 (if necessary and remember old value)
+      if (sameIntervalls(tc, *(registers + rd)) == 0) {
         saveState(*(tcs + btc));
         updateRegState(rd, tc);
       }
-      saveState(*(registers + rd));
-      updateRegState(rd, tc);
     }
   }
 }
@@ -9557,8 +9569,7 @@ void confine_add() {
 
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
-
-    // only restore old value
+    // only restore old RD
     updateRegState(rd, *(tcs + btc));
 
   } else if (isOneSourceRegConcrete()) {
@@ -9570,24 +9581,26 @@ void confine_add() {
       symReg = rs1;
     }
 
+    // prepare value
     setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
     setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
 
     if (rd != symReg) {
+      // confine symbolic REG (if necessary)
       if (sameIntervalls(tc, *(registers + symReg)) == 0) {
         saveState(*(registers + symReg));
         updateRegState(symReg, tc);
       }
+      // restore RD
       saveState(*(registers + rd));
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      if (sameIntervalls(tc, *(tcs + btc)) == 0) {
+      // confine RD/RS1 (if necessary and remember old value)
+      if (sameIntervalls(tc, *(registers + rd)) == 0) {
         saveState(*(tcs + btc));
         updateRegState(rd, tc);
       }
-      saveState(*(registers + rd));
-      updateRegState(rd, tc);
     }
   // both source registers contain symbolic values
   } else {
@@ -9618,20 +9631,21 @@ void confine_sub() {
     setUpper(getUpperFromReg(rd) + getUpperFromReg(conReg), tc);
 
     if (rd != symReg) {
+      // confine symbolic REG (if necessary)
       if (sameIntervalls(tc, *(registers + symReg)) == 0) {
         saveState(*(registers + symReg));
         updateRegState(symReg, tc);
       }
+      // restore RD
       saveState(*(registers + rd));
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      if (sameIntervalls(tc, *(tcs + btc)) == 0) {
+      // confine RD/RS1 (if necessary and remember old value)
+      if (sameIntervalls(tc, *(registers + rd)) == 0) {
         saveState(*(tcs + btc));
         updateRegState(rd, tc);
       }
-      saveState(*(registers + rd));
-      updateRegState(rd, tc);
     }
 
   // both source registers contain symbolic values
@@ -9641,15 +9655,15 @@ void confine_sub() {
 }
 
 void confine_mul() {
-
+  // sTODO
 }
 
 void confine_divu() {
-
+  // sTODO
 }
 
 void confine_remu() {
-
+  // sTODO
 }
 
 void confine_sltu() {
@@ -9907,13 +9921,17 @@ void confine_beq() {
 }
 
 void confine_jal() {
-  if (rd != REG_ZR)
-    *(registers + rd) = *(tcs + btc);
+  if (rd != REG_ZR) {
+    saveState(*(registers + rd));
+    updateRegState(rd, *(tcs + btc));
+  }
 }
 
 void confine_jalr() {
-  if (rd != REG_ZR)
-    *(registers + rd) = *(tcs + btc);
+  if (rd != REG_ZR) {
+    saveState(*(registers + rd));
+    updateRegState(rd, *(tcs + btc));
+  }
 }
 
 void confine_ecall() {
