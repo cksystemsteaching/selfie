@@ -9562,7 +9562,7 @@ void confine_addi() {
     // prepare value
     setLower(getLowerFromReg(rd) - imm, tc);
     setUpper(getUpperFromReg(rd) - imm, tc);
-  
+
     if (rd != rs1) {
       // confine RS1 (if necessary)
       if (sameIntervalls(tc, *(registers + rs1)) == 0) {
@@ -9574,11 +9574,9 @@ void confine_addi() {
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      // confine RD/RS1 (if necessary and remember old value)
-      if (sameIntervalls(tc, *(registers + rd)) == 0) {
-        saveState(*(tcs + btc));
-        updateRegState(rd, tc);
-      }
+      // confine RD/RS1 and remember old value (btc)
+      saveState(btc);
+      updateRegState(rd, tc);
     }
   }
 }
@@ -9616,11 +9614,9 @@ void confine_add() {
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      // confine RD/RS1 (if necessary and remember old value)
-      if (sameIntervalls(tc, *(registers + rd)) == 0) {
-        saveState(*(tcs + btc));
-        updateRegState(rd, tc);
-      }
+      // confine RD/RS1 and remember old value (btc)
+      saveState(btc);
+      updateRegState(rd, tc);
     }
   // both source registers contain symbolic values
   } else {
@@ -9661,11 +9657,9 @@ void confine_sub() {
       updateRegState(rd, *(tcs + btc));
 
     } else {
-      // confine RD/RS1 (if necessary and remember old value)
-      if (sameIntervalls(tc, *(registers + rd)) == 0) {
-        saveState(*(tcs + btc));
-        updateRegState(rd, tc);
-      }
+      // confine RD/RS1 and remember old value (btc)
+      saveState(btc);
+      updateRegState(rd, tc);
     }
 
   // both source registers contain symbolic values
