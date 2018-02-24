@@ -992,6 +992,7 @@ void saveState(uint64_t counter);
 void updateRegState(uint64_t reg, uint64_t value);
 void updateMemState(uint64_t vaddr, uint64_t value);
 
+void redundancyCheck();
 void incrementTc();
 
 void replayTrace();
@@ -6180,45 +6181,24 @@ void saveState(uint64_t counter) {
 }
 
 void updateRegState(uint64_t reg, uint64_t value) {
-  uint64_t beforeLower;
-  uint64_t beforeUpper;
-
-  // ignore redundancy check for $a1, fails if
-  // argument is a concrete pointer (ecall: read/write)
-  if (reg != REG_A1) {
-    beforeLower = getLowerFromReg(reg);
-    beforeUpper = getUpperFromReg(reg);
-  }
-
   if (rd != REG_ZR)
     *(registers + reg) = value;
   else
     *(registers+ reg) = 0;
 
   incrementTc();
-
-  // redundancy check
-  if (reg != REG_ZR)
-    if (reg != REG_A1)
-      if (beforeLower == getLowerFromReg(reg))
-        if (beforeUpper == getUpperFromReg(reg))
-          redundantIs = redundantIs + 1;
 }
 
-void updateMemState(uint64_t vaddr, uint64_t value) {
-  uint64_t beforeLower;
-  uint64_t beforeUpper;
+void updateMemState(uint64_t vaddr, uint64_t tc) {
+  // assume valid virtual address
+  storeVirtualMemory(pt, vaddr,tc);
 
-  beforeLower = getLower(loadVirtualMemory(pt, vaddr));
-  beforeUpper = getUpper(loadVirtualMemory(pt, vaddr));
-
-  storeVirtualMemory(pt, vaddr, value);
   incrementTc();
+}
 
-  // redundancy check
-  if (beforeLower == getLower(value))
-    if (beforeUpper == getUpper(value))
-      redundantIs = redundantIs + 1;
+void redundancyCheck() {
+  if (sameIntervalls(tc, *(tcs + tc)))
+    redundantIs = redundantIs + 1;
 }
 
 void incrementTc() {
@@ -6341,8 +6321,11 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
 void symbolic_do_lui() {
   saveState(*(registers + rd));
 
-  if (rd != REG_ZR)
+  if (rd != REG_ZR) {
     setConcrete(leftShift(imm, 12));
+
+    redundancyCheck();
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6412,6 +6395,8 @@ void symbolic_do_addi() {
   if (rd != REG_ZR) {
     setLower(getLowerFromReg(rs1) + imm, tc);
     setUpper(getUpperFromReg(rs1) + imm, tc);
+
+    redundancyCheck();
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6474,6 +6459,8 @@ void symbolic_do_add() {
   if (rd != REG_ZR) {
     setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
+
+    redundancyCheck();
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6513,6 +6500,8 @@ void symbolic_do_sub() {
   if (rd != REG_ZR) {
     setLower(getLowerFromReg(rs1) - getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) - getUpperFromReg(rs2), tc);
+
+    redundancyCheck();
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6540,6 +6529,8 @@ void symbolic_do_mul() {
 
     setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+
+    redundancyCheck();
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6576,6 +6567,8 @@ void symbolic_do_divu() {
 
         setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
+
+        redundancyCheck();
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -6614,6 +6607,8 @@ void symbolic_do_remu() {
 
         setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
+
+        redundancyCheck();
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -6660,8 +6655,8 @@ void symbolic_do_sltu() {
 
       identifyOperator = tc;
     }
+    redundancyCheck();
   }
-
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
@@ -6831,6 +6826,9 @@ uint64_t symbolic_do_ld() {
   if (rd != REG_ZR) {
     setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
     setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+
+    if (rd != REG_A1)
+      redundancyCheck();
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6985,6 +6983,8 @@ uint64_t symbolic_do_sd() {
 
   setLower(getLowerFromReg(rs2), tc);
   setUpper(getUpperFromReg(rs2), tc);
+
+  redundancyCheck();
 
   pc    = pc + INSTRUCTIONSIZE;
   ic_sd = ic_sd + 1;
@@ -7212,6 +7212,8 @@ void symbolic_do_jal() {
     // first link
     setConcrete(pc + INSTRUCTIONSIZE);
 
+    redundancyCheck();
+
     // then jump for procedure calls
     pc = pc + imm;
 
@@ -7319,6 +7321,8 @@ void symbolic_do_jalr() {
 
     // link to next instruction
     setConcrete(pc + INSTRUCTIONSIZE);
+
+    redundancyCheck();
 
     // jump
     pc = next_pc;
