@@ -595,11 +595,13 @@ uint64_t TWO_BYTE_INSTRUCTION = 15;           //                                
 // one byte opcodes
 uint64_t X86_ADD     = 1;                     //add  x,y      (r/m(x) = r/m(x) + r(y))   0x01
 uint64_t X86_SUB     = 41;                    //sub  x,y      (r/m(x) = r/m(x) - r(y))   0x29
+uint64_t X86_CMP     = 57;                    //cmp  x,y                                 0x39
 uint64_t X86_PUSH    = 80;                    //push x        (m(rsp) = r(x))            0x50
 uint64_t X86_POP     = 88;                    //pop  x        (r(x) = m(rsp))            0x58
 uint64_t X86_ADDI    = 129;                   //addi x,imm    (r/m(x) = r/m(x) + imm)    0x81
 uint64_t X86_TEST    = 133;                   //test x,y      (if x==y; ZF = 0)          0x85
-uint64_t X86_MOV     = 137;                   //mov  x,y      (r/m(x) = r(y))            0x89
+uint64_t X86_MOV_R   = 137;                   //mov  x,y      (r/m(x) = r(y))            0x89
+uint64_t X86_MOV_M   = 139;                   //mov  x,y      (r(x) = r/m(y))            0x8b
 uint64_t X86_NOP     = 144;                   //                                         0x90
 uint64_t X86_MOVI    = 184;                   //mov  x,imm    (r(x) = imm)               0xb8
 uint64_t X86_RET     = 195;                   //ret                                      0xc3
@@ -610,6 +612,7 @@ uint64_t X86_JMP     = 255;                   //jmp  x        (rip = r(x))      
 //two byte opcodes
 uint64_t X86_SYSCALL = 5;                     //syscall                                  0x05
 uint64_t X86_JZ      = 132;                   //jz   imm                                 0x84
+uint64_t X86_JG      = 143;                   //jg   imm                                 0x8f
 uint64_t X86_IMUL    = 175;                   //imul x,y      (r(x) = r(x) * r(y))       0xaf 
 
 uint64_t  X86_NUMBEROFREGISTERS = 16;
@@ -654,20 +657,21 @@ void initX86Register() {
   *(X86_REGISTERS + 15)  = (uint64_t) "$r15";
 }
 
-//uint64_t* x86Binary = (uint64_t*) 0;
-//uint64_t* instruction_buffer = (uint64_t*)0;
-uint64_t* instr_bytes = (uint64_t*)0;
+uint64_t* instr_bytes = (uint64_t*) 0;
 uint64_t* x86AdressTable = (uint64_t*) 0;
-//uint64_t  x86BinaryLength = 0;
 uint64_t  x86ByteCount = 0;
 
-uint64_t* x86GetNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
-void x86SetNextEntry(uint64_t* entry, uint64_t* next) { *entry = (uint64_t) next; }
+//uint64_t* x86GetNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
+//void x86SetNextEntry(uint64_t* entry, uint64_t* next) { *entry = (uint64_t) next; }
 
 void x86Translate();
 //void x86CreateAdressTableEntry(uint64_t original, uint64_t translated, uint64_t instr_count);
 void x86SaveAddress();
 void x86AdressFix();
+uint64_t x86NextByte();
+uint64_t x86NextWord();
+void x86WriteByte(uint64_t byte);
+void x86WriteWord(uint64_t word); 
 //void x86CheckAdressFix();
 //void x86AdressFixup(uint64_t* entry);
 //uint64_t x86OneRegisters(uint64_t x, uint64_t y);
@@ -4340,7 +4344,7 @@ void x86Translate(){
 
   x86AdressFix();
 
-  binaryLength = (binaryLength - 1) * SIZEOFUINT64 + x86ByteCount;
+  binaryLength = binaryLength * SIZEOFUINT64 + x86ByteCount;
   codeLength = binaryLength; //FIXME
   *(ELF_header + 2)  = 4299030530;    //machine flag 0x3e
   *(ELF_header + 12) = codeLength + ELF_HEADER_LEN;
@@ -4350,22 +4354,22 @@ void x86Translate(){
 
 void x86SaveAddress() {
   uint64_t temp;
-  uint64_t address;
+  uint64_t offset;
 
-  address = binaryLength * SIZEOFUINT64 + x86ByteCount;
+  offset = binaryLength * SIZEOFUINT64 + x86ByteCount; //FIXME 
   //temp = loadVirtualMemory(pt, pc);
   //temp = *(binary + baddr / REGISTERSIZE);
 
   if (pc % REGISTERSIZE == 0) {
     // replace low word
     temp = loadVirtualMemory(pt, pc);
-    temp = leftShift(getHighWord(temp), WORDSIZEINBITS) + address;
+    temp = leftShift(getHighWord(temp), WORDSIZEINBITS) + offset;
     storeVirtualMemory(pt, pc, temp);
   }
   else {
     // replace high word
     temp = loadVirtualMemory(pt, pc - INSTRUCTIONSIZE);
-    temp = leftShift(address, WORDSIZEINBITS) + getLowWord(temp);
+    temp = leftShift(offset, WORDSIZEINBITS) + getLowWord(temp);
     storeVirtualMemory(pt, pc - INSTRUCTIONSIZE, temp);
   }
 
@@ -4387,15 +4391,111 @@ void x86SaveAddress() {
 
 
 void x86AdressFix() {
-  uint64_t value;
+  uint64_t opcode;
+  uint64_t pointer;
+  uint64_t pcbackup;
+  //  uint64_t addressval;
+  uint64_t wordoffset;
+  uint64_t byteoffset;
   
   pc = ELF_ENTRY_POINT;
+  //addressval = (uint64_t) binary;
   
   while(pc < codeLength + ELF_ENTRY_POINT){
     fetch();
     pc = pc + INSTRUCTIONSIZE;
-    value = *(binary + ir);
+    
+    binaryLength = ir / SIZEOFUINT64;
+    x86ByteCount = ir % SIZEOFUINT64;
+
+    pcbackup = pc;
+
+    opcode = x86NextByte();
+
+    if (opcode == X86_CALL) {
+	pc = x86NextWord();
+	if (isVirtualAddressMapped(pt, pc)) {
+	  fetch();
+	  x86WriteWord(ir);
+	}
+    }
+    else if (opcode == X86_JG) {
+
+    }
+    else if (opcode == X86_JMP) {
+
+    }
+    else if (rightShift(opcode,3) == 9) { //some REX prefix
+      
+    }
+
+    pc = pcbackup;
   }
+}
+
+void x86WriteWord(uint64_t word) {
+  uint64_t i;
+  uint64_t byte;
+
+  i = 0;
+  while(i < 4) {
+    byte = rightShift(leftShift(word, (7 - i) * 8), 56);
+    x86WriteByte(byte);
+    i = i + 1;
+  }
+}
+
+void x86WriteByte(uint64_t byte) {
+  uint64_t tmp;
+
+  //set targetbyte to 0
+  tmp = *(binary + binaryLength) - leftShift(rightShift(leftShift(*(binary + binaryLength),
+								  (8 - x86ByteCount - 1) * 8), 56), x86ByteCount * 8);
+  
+  *(binary + binaryLength) = tmp + leftShift(byte, x86ByteCount * 8);
+
+  x86ByteCount = x86ByteCount + 1;
+  if (x86ByteCount == 8) {
+    x86ByteCount = 0;
+    binaryLength = binaryLength + 1;
+  }
+  
+}
+
+uint64_t x86NextByte() {
+  uint64_t byte;
+  
+  byte = rightShift(leftShift(*(binary + binaryLength), (SIZEOFUINT64 - x86ByteCount - 1) * SIZEOFUINT64), (SIZEOFUINT64 - 1) * SIZEOFUINT64);
+    
+  x86ByteCount = x86ByteCount + 1;
+  if (x86ByteCount == 8) {
+    x86ByteCount = 0;
+    binaryLength = binaryLength + 1;
+  }
+
+  return byte;
+}
+
+uint64_t x86NextWord() {
+  uint64_t i;
+  uint64_t word;
+  uint64_t bLengthbackup;
+  uint64_t bytecountbackup;
+
+  word = 0;
+  bLengthbackup = binaryLength;
+  bytecountbackup = x86ByteCount;
+  
+  i = 0;
+  while(i < 4) {
+    word = word + leftShift(x86NextByte(), i * SIZEOFUINT64);
+    i = i + 1;
+  }
+
+  binaryLength = bLengthbackup;
+  x86ByteCount = bytecountbackup;
+  
+  return word;
 }
 
 
@@ -4444,10 +4544,13 @@ uint64_t x86GetPrefix(uint64_t op1, uint64_t op2) {
     
   prefix = REX_W;
   if (op1 > 7) {
-    prefix = prefix + 1; //setting REX.B bit
+    prefix = REX_WB; //setting REX.B bit
+    if (op2 > 7) {
+      prefix = REX_WRB; //setting REX.R bit
+    }
   }
-  if (op2 > 7) {
-    prefix = prefix + 4; //setting REX.R bit
+  else if (op2 > 7) {
+    prefix = REX_WR; //setting REX.R bit
   }
 
   return prefix;
@@ -4455,6 +4558,8 @@ uint64_t x86GetPrefix(uint64_t op1, uint64_t op2) {
 
 uint64_t x86GetRegister(uint64_t reg) {
   if(reg == REG_SP) return REG_RSP;
+  if(reg == REG_FP) return REG_RBP;
+  if(reg == REG_GP) return REG_RBX;
   if(reg == REG_T0) return REG_RAX;
   //if(reg == REG_T1) return REG_RDX;
   if(reg == REG_A0) return REG_RDI;
@@ -4465,7 +4570,7 @@ uint64_t x86GetRegister(uint64_t reg) {
   if(reg == REG_A5) return REG_R9;
 
   if(reg == REG_ZR) {
-    print((uint64_t*) "Register $zero encounterd in x86GetTegister(). This should not happen! ");
+    print((uint64_t*) "Register $zero encounterd in x86GetRegister(). This should not happen! ");
     println();
   }
 
@@ -6388,7 +6493,29 @@ void do_lui() {
 }
 
 void translate_lui() {
+  uint64_t op1;
+  uint64_t upper_imm;
+  
+  if (rd == REG_ZR) {
+    return;
+  }
 
+  upper_imm = leftShift(imm, 12);
+  op1 = x86GetRegister(rd);
+
+  *(instr_bytes + 0)  = x86GetPrefix(op1, 0); 
+  *(instr_bytes + 1)  = X86_MOVI + rightShift(leftShift(op1,61),61);
+  *(instr_bytes + 2)  = rightShift(leftShift(upper_imm, 56), 56);
+  *(instr_bytes + 3)  = rightShift(leftShift(upper_imm, 48), 56); 
+  *(instr_bytes + 4)  = rightShift(leftShift(upper_imm, 40), 56);
+  *(instr_bytes + 5)  = rightShift(leftShift(upper_imm, 32), 56);
+  *(instr_bytes + 6)  = rightShift(leftShift(upper_imm, 24), 56); 
+  *(instr_bytes + 7)  = rightShift(leftShift(upper_imm, 16), 56); 
+  *(instr_bytes + 8)  = rightShift(leftShift(upper_imm, 8),  56);
+  *(instr_bytes + 9)  = rightShift(upper_imm,56);
+
+  x86emitInstructionBuffer(10);
+    
 }
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
@@ -6443,38 +6570,68 @@ void translate_addi() {
   uint64_t op2;
   uint64_t length;
 
+  if (rd == REG_ZR) {
+    translate_nop();
+    return;
+  }
+
+  //if (ir == 4286644499) { //addi $sp,$sp,-8
+  //  x86SaveAddress();
+  //  pc = pc + INSTRUCTIONSIZE;
+  //  return;
+  //}//call instruction already pushed return address
+
+  //if this is an allocation of a word on the stack we can skip translating this
+  if (imm == -8) {
+    if (rs1 == REG_SP) {
+      if (rd == REG_SP) {
+	fetch();
+
+	if (getOpcode(ir) == OP_SD) {
+	  return;
+	}
+      }
+    }
+  }
+
   op1 = x86GetRegister(rd);
   if(rs1 == REG_ZR) {
     length = 10;
-    *(instr_bytes + 0)  = x86GetPrefix(op1, 0); 
-    *(instr_bytes + 1)  = X86_MOVI + rightShift(leftShift(op1,61),61);
-    *(instr_bytes + 2)  = rightShift(leftShift(imm, 56), 56);
-    *(instr_bytes + 3)  = rightShift(leftShift(imm, 48), 56); 
-    *(instr_bytes + 4)  = rightShift(leftShift(imm, 40), 56);
-    *(instr_bytes + 5)  = rightShift(leftShift(imm, 32), 56);
-    *(instr_bytes + 6)  = rightShift(leftShift(imm, 24), 56); 
-    *(instr_bytes + 7)  = rightShift(leftShift(imm, 16), 56); 
-    *(instr_bytes + 8)  = rightShift(leftShift(imm, 8),  56);
-    *(instr_bytes + 9)  = rightShift(imm,56);
+    *(instr_bytes + 0) = x86GetPrefix(op1, 0); 
+    *(instr_bytes + 1) = X86_MOVI + rightShift(leftShift(op1, 61), 61);
+    *(instr_bytes + 2) = rightShift(leftShift(imm, 56), 56);
+    *(instr_bytes + 3) = rightShift(leftShift(imm, 48), 56); 
+    *(instr_bytes + 4) = rightShift(leftShift(imm, 40), 56);
+    *(instr_bytes + 5) = rightShift(leftShift(imm, 32), 56);
+    *(instr_bytes + 6) = rightShift(leftShift(imm, 24), 56); 
+    *(instr_bytes + 7) = rightShift(leftShift(imm, 16), 56); 
+    *(instr_bytes + 8) = rightShift(leftShift(imm, 8),  56);
+    *(instr_bytes + 9) = rightShift(imm,56);
   }
   else {
     op2 = x86GetRegister(rs1);
     length = 10;
     *(instr_bytes + 0) = x86GetPrefix(op1, op2);
-    *(instr_bytes + 1) = X86_MOV;
+    *(instr_bytes + 1) = X86_MOV_R;
     *(instr_bytes + 2) = 192 + x86GetModRMValue(op1,op2); //mov rd,rs1
 
-    *(instr_bytes + 3)   = x86GetPrefix(op1, 0);
-    *(instr_bytes + 4)   = X86_ADDI;
-    *(instr_bytes + 5)   = 192 + x86GetModRMValue(op1, 0);
-    *(instr_bytes + 6)   = rightShift(leftShift(imm, 56), 56);
-    *(instr_bytes + 7)   = rightShift(leftShift(imm, 48), 56); 
-    *(instr_bytes + 8)   = rightShift(leftShift(imm, 40), 56);
-    *(instr_bytes + 9)   = rightShift(leftShift(imm, 32), 56);
+    *(instr_bytes + 3) = x86GetPrefix(op1, 0);
+    *(instr_bytes + 4) = X86_ADDI;
+    *(instr_bytes + 5) = 192 + x86GetModRMValue(op1, 0);
+    *(instr_bytes + 6) = rightShift(leftShift(imm, 56), 56);
+    *(instr_bytes + 7) = rightShift(leftShift(imm, 48), 56); 
+    *(instr_bytes + 8) = rightShift(leftShift(imm, 40), 56);
+    *(instr_bytes + 9) = rightShift(leftShift(imm, 32), 56);
   }
 
   x86emitInstructionBuffer(length);
   
+}
+
+void translate_nop() {
+  *(instr_bytes + 0) = X86_NOP;
+
+  x86emitInstructionBuffer(1);
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
@@ -6519,14 +6676,14 @@ void translate_add() {
   if(rs1 == 0) {
     length = 3;
     *(instr_bytes + 0) = x86GetPrefix(op1, op3);
-    *(instr_bytes + 1) = X86_MOV;
+    *(instr_bytes + 1) = X86_MOV_R;
     *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op3);
   }
   else {
     op2 = x86GetRegister(rs1);
     length = 6;
     *(instr_bytes + 0) = x86GetPrefix(op1, op2);
-    *(instr_bytes + 1) = X86_MOV;
+    *(instr_bytes + 1) = X86_MOV_R;
     *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op2); //rd = rs1
     
     *(instr_bytes + 3) = x86GetPrefix(op1, op3);
@@ -6557,7 +6714,7 @@ void translate_sub() {
   op3 = x86GetRegister(rs2);
   
   *(instr_bytes + 0) = x86GetPrefix(op1, op2);
-  *(instr_bytes + 1) = X86_MOV;
+  *(instr_bytes + 1) = X86_MOV_R;
   *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op2); //rd = rs1
     
   *(instr_bytes + 3) = x86GetPrefix(op1, op3);
@@ -6589,7 +6746,7 @@ void translate_mul() {
   op3 = x86GetRegister(rs2);
   
   *(instr_bytes + 0) = x86GetPrefix(op1, op2);
-  *(instr_bytes + 1) = X86_MOV;
+  *(instr_bytes + 1) = X86_MOV_R;
   *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op2); //rd = rs1
     
   *(instr_bytes + 3) = x86GetPrefix(op1, op3);
@@ -6646,7 +6803,7 @@ void translate_divu() {
   *(instr_bytes + 9) = x86GetModRMValue(op3, 0) + leftShift(6, 3);
 
   *(instr_bytes + 10) = x86GetPrefix(op1, 0); //mov rd,rax
-  *(instr_bytes + 11) = X86_MOV;
+  *(instr_bytes + 11) = X86_MOV_R;
   *(instr_bytes + 12) = 192 + x86GetModRMValue(op1, 0);
 
   *(instr_bytes + 13) = REX_W;
@@ -6696,7 +6853,7 @@ void translate_remu() {
   *(instr_bytes + 9) = x86GetModRMValue(op3, 0) + leftShift(6, 3);
 
   *(instr_bytes + 10) = x86GetPrefix(op1, 0) + REG_RDX;
-  *(instr_bytes + 11) = X86_MOV;
+  *(instr_bytes + 11) = X86_MOV_R;
   *(instr_bytes + 12) = 192 + x86GetModRMValue(op1, 0); 
 
   *(instr_bytes + 13) = REX_W;
@@ -6721,8 +6878,22 @@ void do_sltu() {
   ic_sltu = ic_sltu + 1;
 }
 
-void translate_sltu() {
+void translate_sltu() { 
+  uint64_t op1;
+  uint64_t op2;
+  
+  if (rd != REG_ZR) {
+    op1 = x86GetRegister(rs1);
+    op2 = x86GetRegister(rs2);
+    
+    *(instr_bytes + 0) = x86GetPrefix(op1, op2); //FIXME rd is not set
+    *(instr_bytes + 1) = X86_CMP;
+    *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, op2);
 
+    x86emitInstructionBuffer(3);
+  }
+  else
+    translate_nop();
 }
 
 void print_ld() {
@@ -6816,7 +6987,52 @@ uint64_t do_ld() {
 }
 
 void translate_ld() {
+  uint64_t op1;
+  uint64_t op2;
+  
+  if (rd == REG_ZR) {
+    translate_nop();
+    return;
+  }
+  
+  op1 = x86GetRegister(rd);
+  op2 = x86GetRegister(rs1);
 
+  if (imm == 0) {
+    if (rs1 == REG_SP) {
+      //*(instr_bytes + 0) = REX_W;
+      *(instr_bytes + 0) = X86_POP + op1;
+
+      fetch();
+
+      if (ir == 8454419) { //addi $sp,$sp,8
+	x86SaveAddress();
+	pc = pc + INSTRUCTIONSIZE;
+      }
+
+      x86emitInstructionBuffer(1);
+
+      return;
+    }
+  }
+
+  *(instr_bytes + 0) = x86GetPrefix(op1, op2);
+  *(instr_bytes + 1) = X86_MOV_R;
+  *(instr_bytes + 2) = 192 + x86GetModRMValue(op1,op2); //mov rd,rs1
+  
+  *(instr_bytes + 3) = x86GetPrefix(op1, 0);
+  *(instr_bytes + 4) = X86_ADDI;
+  *(instr_bytes + 5) = 192 + x86GetModRMValue(op1, 0);
+  *(instr_bytes + 6) = rightShift(leftShift(imm, 56), 56);
+  *(instr_bytes + 7) = rightShift(leftShift(imm, 48), 56); 
+  *(instr_bytes + 8) = rightShift(leftShift(imm, 40), 56);
+  *(instr_bytes + 9) = rightShift(leftShift(imm, 32), 56);
+
+  *(instr_bytes + 10) = x86GetPrefix(op1, op2);
+  *(instr_bytes + 11) = X86_MOV_M;
+  *(instr_bytes + 12) = x86GetModRMValue(op1, op2);
+
+  x86emitInstructionBuffer(13);
 }
 
 void print_sd() {
@@ -6908,7 +7124,40 @@ uint64_t do_sd() {
 }
 
 void translate_sd() {
+  uint64_t op1;
+  uint64_t op2;
 
+  op1 = x86GetRegister(rs1);
+  op2 = x86GetRegister(rs2);
+
+  if (imm == 0) {
+    if (rs1 == REG_SP) {
+      *(instr_bytes + 0) = X86_PUSH + op2;
+
+      x86emitInstructionBuffer(1);
+
+      return;
+    }
+  }
+  
+  //*(instr_bytes + 0) = x86GetPrefix(op1, op2);
+  //*(instr_bytes + 1) = X86_MOV;
+  //*(instr_bytes + 2) = 192 + x86GetModRMValue(op1,op2); //mov rd,rs1
+  
+  //*(instr_bytes + 0) = x86GetPrefix(op1, 0); //FIXME rs1 value not preserved
+  //*(instr_bytes + 1) = X86_ADDI;
+  //*(instr_bytes + 2) = 192 + x86GetModRMValue(op1, 0);
+  //*(instr_bytes + 3) = rightShift(leftShift(imm, 56), 56);
+  //*(instr_bytes + 4) = rightShift(leftShift(imm, 48), 56); 
+  //*(instr_bytes + 5) = rightShift(leftShift(imm, 40), 56);
+  //*(instr_bytes + 6) = rightShift(leftShift(imm, 32), 56);
+
+  *(instr_bytes + 0) = x86GetPrefix(op1, op2);
+  *(instr_bytes + 1) = X86_MOV_R;
+  *(instr_bytes + 2) = 64 + x86GetModRMValue(op1, op2);
+  *(instr_bytes + 3) = rightShift(leftShift(imm, 56), 56);
+
+  x86emitInstructionBuffer(4);
 }
 
 void undo_sd() {
@@ -6969,35 +7218,35 @@ void translate_beq() {
   uint64_t op1;
   uint64_t op2;
   
-  if(rs2 == 0) {
-    if(rs1 == 0) {
-      length = 2;
-      *(instr_bytes + 0)  = X86_TEST;                  //test eax,eax
-      *(instr_bytes + 1)  = 192 + x86GetModRMValue(0, 0); 
-    }
-    else {
-      op1 = x86GetRegister(rs1);
-      length = 4;
-      *(instr_bytes + 0)  = x86GetPrefix(op1, 0);      //test rX,0
-      *(instr_bytes + 1)  = X86_TESTI;
-      *(instr_bytes + 2)  = 192 + x86GetModRMValue(op1, 0);
-      *(instr_bytes + 3)  = 0;
-    }
-  }
-  else {
-    op1 = x86GetRegister(rs1);
-    op2 = x86GetRegister(rs2);
-    length = 3;
-    *(instr_bytes + 0)  = x86GetPrefix(op1, op2);     //test rX,rY
-    *(instr_bytes + 1)  = X86_TEST; 
-    *(instr_bytes + 2)  = 192 + x86GetModRMValue(op1, op2);
-  }
+  //if(rs2 == 0) {
+  //  if(rs1 == 0) {
+  //    length = 2;
+  //    *(instr_bytes + 0)  = X86_TEST;                  //test eax,eax
+  //    *(instr_bytes + 1)  = 192 + x86GetModRMValue(0, 0); 
+  //  }
+  //  else {
+  //    op1 = x86GetRegister(rs1);
+  //    length = 4;
+  //    *(instr_bytes + 0)  = x86GetPrefix(op1, 0);      //test rX,0
+  //    *(instr_bytes + 1)  = X86_TESTI;
+  //    *(instr_bytes + 2)  = 192 + x86GetModRMValue(op1, 0);
+  //    *(instr_bytes + 3)  = 0;
+  //  }
+  // }
+  //else {
+  //  op1 = x86GetRegister(rs1);
+  //  op2 = x86GetRegister(rs2);
+  //  length = 3;
+  //  *(instr_bytes + 0)  = x86GetPrefix(op1, op2);     //test rX,rY
+  //  *(instr_bytes + 1)  = X86_TEST; 
+  //  *(instr_bytes + 2)  = 192 + x86GetModRMValue(op1, op2);
+  //}
 
-  x86emitInstructionBuffer(length);
+  //x86emitInstructionBuffer(length);
   offset = pc + imm;
 
   *(instr_bytes + 0)  = TWO_BYTE_INSTRUCTION;
-  *(instr_bytes + 1)  = X86_JZ;
+  *(instr_bytes + 1)  = X86_JG;
   *(instr_bytes + 2)  = rightShift(leftShift(offset, 56), 56); //FIXME adress fixup chain
   *(instr_bytes + 3)  = rightShift(leftShift(offset, 48), 56); 
   *(instr_bytes + 4)  = rightShift(leftShift(offset, 40), 56);
