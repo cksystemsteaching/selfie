@@ -1,3 +1,5 @@
+//TODO: consistency - confine(uint64_t* context) context specific like implements ?
+
 // Copyright (c) 2015-2018, the Selfie Project authors. All rights reserved.
 // Please see the AUTHORS file for details. Use of this source code is
 // governed by a BSD license that can be found in the LICENSE file.
@@ -989,8 +991,10 @@ void initMemory(uint64_t megabytes) {
 
 void recordState(uint64_t value);
 void saveState(uint64_t counter);
+void saveStateEcall(uint64_t counter);
 void updateRegState(uint64_t reg, uint64_t value);
 void updateMemState(uint64_t vaddr, uint64_t value);
+void updateRegStateEcall(uint64_t context, uint64_t reg, uint64_t value);
 
 void redundancyCheck();
 void incrementTc();
@@ -1485,6 +1489,7 @@ void     symbolic_confine();
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
 
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
+uint64_t isConfinedInstruction();
 void     resetInstructions(uint64_t count);
 
 void confine_lui();
@@ -1503,6 +1508,8 @@ void confine_jalr();
 void confine_ecall();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t ecallPC      = 0;     // pc of current ecall
 
 uint64_t btc          = 0;     // trace counter for backwards execution
 uint64_t executionBrk = 0;     // trace counter before backward execution
@@ -5408,16 +5415,23 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  if (symbolic)
+
+  if (symbolic) {
+    saveStateEcall(0);
+    setConcrete(0);
+    incrementTc();
+
     // legacy (only use lower bound)
     setExitCode(context, getLower(*(getRegs(context) + REG_A0)));
+  }
+
   else
     setExitCode(context, *(getRegs(context) + REG_A0));
 
   print(selfieName);
   print((uint64_t*) ": ");
   print(getName(context));
-  print((uint64_t*) " exiting with exit code ");
+  print((uint64_t*) " exiting branch with exit code ");
   if (symbolic) {
     print((uint64_t*) "[");
     printInteger(signExtend(getLower(*(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
@@ -5429,7 +5443,6 @@ void implementExit(uint64_t* context) {
   print((uint64_t*) " and ");
   printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
   print((uint64_t*) "MB mallocated memory");
-  println();
   println();
 }
 
@@ -5468,6 +5481,10 @@ void implementRead(uint64_t* context) {
   uint64_t pt;
 
   // sTODO: symbolic buffer implementation
+
+  //----------------------------------------------------------------------------
+  // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
+  //----------------------------------------------------------------------------
 
   if (symbolic) {
     forceConcrete(context, REG_A0);
@@ -5555,13 +5572,14 @@ void implementRead(uint64_t* context) {
   }
 
   if (symbolic) {
+    saveStateEcall(*(getRegs(context) + REG_A0));
+
     if (failed == 0)
       setConcrete(readTotal);
     else
       setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
 
-    *(getRegs(context) + REG_A0) = tc;
-    incrementTc();
+    updateRegStateEcall(context, REG_A0, tc);
 
     numberOfSymbolics = numberOfSymbolics + 1;
   } else {
@@ -5603,11 +5621,12 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
   if (bytesToRead < SIZEOFUINT64)
     upperBound = twoToThePowerOf(bytesToRead * 8) - 1;
 
+  saveStateEcall(loadVirtualMemory(getPT(context), vbuffer));
+
   setLower(0, tc);
   setUpper(upperBound, tc);
-  storeVirtualMemory(getPT(context), vbuffer, tc);
 
-  incrementTc();
+  updateMemState(vbuffer, tc);
 
   return bytesToRead;
 }
@@ -5729,13 +5748,15 @@ void implementWrite(uint64_t* context) {
   }
 
   if (symbolic) {
+    saveStateEcall(*(getRegs(context) + REG_A0));
+
     if (failed == 0)
       setConcrete(writtenTotal);
     else
       setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
 
-    *(getRegs(context) + REG_A0) = tc;
-    incrementTc();
+    updateRegStateEcall(context, REG_A0, tc);
+
   } else {
     if (failed == 0)
       *(getRegs(context) + REG_A0) = writtenTotal;
@@ -5857,15 +5878,15 @@ void implementOpen(uint64_t* context) {
     mode      = *(getRegs(context) + REG_A2);
   }
 
+  if (symbolic)
+    saveStateEcall(*(getRegs(context) + REG_A0));
+
   if (down_loadString(getPT(context), vfilename, filename_buffer)) {
     fd = open(filename_buffer, flags, mode);
 
-    if (symbolic) {
+    if (symbolic)
       setConcrete(fd);
-
-      *(getRegs(context) + REG_A0) = tc;
-      incrementTc();
-    } else
+    else
       *(getRegs(context) + REG_A0) = fd;
 
     if (debug_open) {
@@ -5881,12 +5902,9 @@ void implementOpen(uint64_t* context) {
       println();
     }
   } else {
-    if (symbolic) {
+    if (symbolic)
       setConcrete(signShrink(-1, SYSCALL_BITWIDTH));
-
-      *(getRegs(context) + REG_A0) = tc;
-      incrementTc();
-    } else
+    else
       *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open) {
@@ -5897,6 +5915,8 @@ void implementOpen(uint64_t* context) {
       println();
     }
   }
+  if (symbolic)
+    updateRegStateEcall(context, REG_A0, tc);
 }
 
 void emitMalloc() {
@@ -5950,10 +5970,9 @@ uint64_t implementMalloc(uint64_t* context) {
     return EXIT;
   } else {
     if (symbolic) {
+      saveStateEcall(*(getRegs(context) + REG_A0));
       setConcrete(bump);
-
-      *(getRegs(context) + REG_A0) = tc;
-      incrementTc();
+      updateRegStateEcall(context, REG_A0, tc);
     } else
       *(getRegs(context) + REG_A0) = bump;
 
@@ -5990,7 +6009,7 @@ void emitSwitch() {
   emitECALL();
 
   // save context from which we are switching here in return register
-  emitADD(REG_A0, REG_ZR, REG_A1);
+  emitADD(REG_A0, REG_ZR, REG_A4);
 
   emitJALR(REG_ZR, REG_RA, 0);
 }
@@ -6009,9 +6028,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
   if (getParent(fromContext) != MY_CONTEXT)
-    *(registers + REG_A1) = (uint64_t) getVirtualContext(fromContext);
+    *(registers + REG_A4) = (uint64_t) getVirtualContext(fromContext);
   else
-    *(registers + REG_A1) = (uint64_t) fromContext;
+    *(registers + REG_A4) = (uint64_t) fromContext;
 
   currentContext = toContext;
 
@@ -6180,11 +6199,25 @@ void saveState(uint64_t counter) {
   *(tcs + (tc % maxTraceLength)) = counter;
 }
 
+void saveStateEcall(uint64_t counter) {
+  *(pcs + (tc % maxTraceLength)) = ecallPC;
+  *(tcs + (tc % maxTraceLength)) = counter;
+}
+
 void updateRegState(uint64_t reg, uint64_t value) {
-  if (rd != REG_ZR)
+  if (reg != REG_ZR)
     *(registers + reg) = value;
   else
     *(registers+ reg) = 0;
+
+  incrementTc();
+}
+
+void updateRegStateEcall(uint64_t context, uint64_t reg, uint64_t value) {
+  if (reg != REG_ZR)
+    *(getRegs(context) + reg) = value;
+  else
+    *(getRegs(context) + reg) = 0;
 
   incrementTc();
 }
@@ -6411,7 +6444,7 @@ void symbolic_undo_addi() {
     // undo RD
     *(registers + rd) = *(tcs + tc);
 
-  if (pc == *(pcs + tc - 1)) {
+  if (isConfinedInstruction()) {
     tc = tc - 1;
     // undo RS1
     *(registers + rs1) = *(tcs + tc);
@@ -6461,7 +6494,8 @@ void symbolic_do_add() {
     setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
 
     redundancyCheck();
-  }
+  } else
+    setConcrete(0);
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6474,7 +6508,7 @@ void symbolic_undo_add_sub() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 
-  if (pc == *(pcs + tc - 1)) {
+  if (isConfinedInstruction()) {
     tc = tc - 1;
     // undo either RS1 or RS2 depending on which one is symbolic
     if (isConcrete(currentContext, rs1))
@@ -6502,7 +6536,8 @@ void symbolic_do_sub() {
     setUpper(getUpperFromReg(rs1) - getUpperFromReg(rs2), tc);
 
     redundancyCheck();
-  }
+  } else
+    setConcrete(0);
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6531,7 +6566,8 @@ void symbolic_do_mul() {
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
 
     redundancyCheck();
-  }
+  } else
+    setConcrete(0);
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6569,7 +6605,8 @@ void symbolic_do_divu() {
         setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
 
         redundancyCheck();
-      }
+      } else
+        setConcrete(0);
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -6609,7 +6646,8 @@ void symbolic_do_remu() {
         setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
 
         redundancyCheck();
-      }
+      } else
+        setConcrete(0);
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -6656,7 +6694,9 @@ void symbolic_do_sltu() {
       identifyOperator = tc;
     }
     redundancyCheck();
-  }
+  } else
+    setConcrete(0);
+
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
@@ -6827,9 +6867,10 @@ uint64_t symbolic_do_ld() {
     setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
     setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
 
-    if (rd != REG_A1)
-      redundancyCheck();
-  }
+    redundancyCheck();
+
+  } else
+    setConcrete(0);
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6852,7 +6893,7 @@ void symbolic_undo_ld() {
 
   *(registers + rd) = *(tcs + tc);
 
-  if (*(pcs + tc-1) == pc) {
+  if (isConfinedInstruction()) {
     tc = tc - 1;
     storeVirtualMemory(pt, vaddr, *(tcs + tc));
   }
@@ -7112,7 +7153,6 @@ void symbolic_do_beq() {
       resetInstructions(2);
       decodeBFormat();
 
-      saveState(0);
       *(operators + tc) = 2;
 
       setLowerForReg(0, rs1);
@@ -7138,6 +7178,7 @@ void symbolic_do_beq() {
 
   ic_beq = ic_beq + 1;
 
+  setConcrete(0);
   updateRegState(REG_ZR, 0);
 
   //printRegisterValues();
@@ -7381,8 +7422,8 @@ void record_ecall() {
 }
 
 void symbolic_do_ecall() {
-  // might be changed when syscall is handled
-  saveState(*(registers + REG_A0));
+
+  ecallPC =  pc;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -7432,16 +7473,30 @@ void undo_ecall() {
 }
 
 void symbolic_undo_ecall() {
-  // has A0 been updated in any case???
+  uint64_t vaddr;
+
+  //----------------------------------------------------------------------------
+  // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
+  //----------------------------------------------------------------------------
+
+  // restore A0
   *(registers + REG_A0) = *(tcs + tc);
 
-  if (tc >= executionBrk) {
-    if (getLowerFromReg(REG_A7) == SYSCALL_READ)
-      numberOfSymbolics = numberOfSymbolics + 1;
+  // successfull syscall read (2 trace entries)
+  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
+    if (pc == *(pcs + tc - 1)) {
+      if (tc >= executionBrk)
+        numberOfSymbolics = numberOfSymbolics + 1;
+      else
+        numberOfSymbolics = numberOfSymbolics - 1;
+
+      tc = tc - 1;
+
+      // undo (confined) read
+      vaddr = getLowerFromReg(REG_A1);
+      storeVirtualMemory(pt, vaddr, *(tcs + tc));
+    }
   }
-  else
-    if (getLowerFromReg(REG_A7) == SYSCALL_READ)
-      numberOfSymbolics = numberOfSymbolics - 1;
 }
 
 // -----------------------------------------------------------------
@@ -8780,22 +8835,18 @@ uint64_t handleSystemCalls(uint64_t* context) {
     else if (a7 == SYSCALL_OPEN)
       implementOpen(context);
     else if (a7 == SYSCALL_EXIT) {
+      implementExit(context);
 
       // path exit
       if (symbolic) {
-        incrementTc();
-
         a0 = *(getRegs(context) + REG_A0);
         // start backwards confining
         symbolic_confine();
         // restore exit code
         *(getRegs(context) + REG_A0) = a0;
-        implementExit(context);
 
         return symbolic_prepareNextPathOrExit(context);
       }
-
-      implementExit(context);
 
       // TODO: exit only if all contexts have exited
       return EXIT;
@@ -9443,7 +9494,7 @@ void symbolic_confine() {
 
   if (debug_vipster) {
     print(selfieName);
-    print((uint64_t*) ": vipster reached end of branch - confining backwards...");
+    print((uint64_t*) ": vipster confining backwards...");
     println();
   }
 
@@ -9529,6 +9580,15 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2) {
     return 0;
 
   return 1;
+}
+
+uint64_t isConfinedInstruction() {
+  // assume only used when executionBrk is set
+  if (pc > executionBrk + 1)
+    if (pc == *(pcs + tc - 1))
+      return 1;
+
+  return 0;
 }
 
 void resetInstructions(uint64_t count) {
@@ -9954,21 +10014,31 @@ void confine_jalr() {
 
 void confine_ecall() {
   uint64_t vaddr;
-  // sTODO: find out what confined value was read here
 
-  // before each ecall is an addi instruction, which
-  // stores the syscall value on the trace
+  //----------------------------------------------------------------------------
+  // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
+  //----------------------------------------------------------------------------
+
+  if (getLowerFromReg(REG_A7) == SYSCALL_READ)
+    // 1. save and restore bounds
+    if (*(pcs + btc - 1) == pc) {
+
+      vaddr = getLowerFromReg(REG_A1);
+
+      checkSatisfiability(loadVirtualMemory(pt, vaddr));
+
+      // undo symbolic_read
+      saveState(loadVirtualMemory(pt, vaddr));
+      updateMemState(vaddr, *(tcs + btc - 1));
+
+      numberOfSymbolics = numberOfSymbolics - 1;
+    }
+  // 2. save and restore A0
   saveState(*(registers + REG_A0));
-
-  // lastConstraint just for now
-  if (getLower(btc - 1) == SYSCALL_READ) {
-    vaddr = getLower(btc - 5);
-    checkSatisfiability(loadVirtualMemory(pt, vaddr));
-
-    numberOfSymbolics = numberOfSymbolics - 1;
-  }
-
   updateRegState(REG_A0, *(tcs + btc));
+
+  if (*(pcs + btc - 1) == pc)
+    btc = btc - 1;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
