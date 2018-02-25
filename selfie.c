@@ -901,7 +901,7 @@ uint64_t debug_read    = 0;
 uint64_t debug_write   = 0;
 uint64_t debug_open    = 0;
 uint64_t debug_malloc  = 0;
-uint64_t debug_vipster = 1;
+uint64_t debug_vipster = 0;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
@@ -5431,7 +5431,7 @@ void implementExit(uint64_t* context) {
   print(selfieName);
   print((uint64_t*) ": ");
   print(getName(context));
-  print((uint64_t*) " exiting branch with exit code ");
+  print((uint64_t*) " exiting with exit code ");
   if (symbolic) {
     print((uint64_t*) "[");
     printInteger(signExtend(getLower(*(getRegs(context) + REG_A0)), SYSCALL_BITWIDTH));
@@ -9521,6 +9521,7 @@ void symbolic_confine() {
     print((uint64_t*) ": vipster done confining - resuming branch exploration...");
     println();
   }
+  println();
 }
 
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
