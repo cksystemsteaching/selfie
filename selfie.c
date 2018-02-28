@@ -9242,13 +9242,12 @@ uint64_t selfie_run(uint64_t machine) {
 
 void symbolic_prepare_memory(uint64_t* context) {
   uint64_t* table;
-  uint64_t  entryPoint;
   uint64_t  SP;
   uint64_t  GP;
-  uint64_t  instrLength;
 
   table = getPT(context);
   SP    = *(getRegs(context) + REG_SP);
+  GP    = binaryLength - REGISTERSIZE;
 
   while (SP < VIRTUALMEMORYSIZE) {
     if (isValidVirtualAddress(SP))
@@ -9258,26 +9257,10 @@ void symbolic_prepare_memory(uint64_t* context) {
         storeVirtualMemory(table, SP, tc);
         incrementTc();
       }
-
     SP = SP + REGISTERSIZE;
   }
 
-  GP = binaryLength;
-  instrLength = codeLength; // for now get this from the compiler
-
-  // if codeLength not available (due to loading the binary), we cannot prepare strings and globals
-  // sTODO: fix by merging master branch
-  if (instrLength == binaryLength) { // this can also occur if no globals or strings are used
-    print(selfieName);
-    print((uint64_t*) ": warning: code length equals binary length - possible undefined behaviour for global variables and strings");
-    println();
-    return;
-  }
-
-  entryPoint = *(ELF_header + 10);
-  GP = GP - REGISTERSIZE;
-
-  while (instrLength <= GP) {
+  while (codeLength <= GP) {
     if (isValidVirtualAddress(GP + entryPoint)) {
       if (isVirtualAddressMapped(table, GP + entryPoint)) {
         setConcrete(loadVirtualMemory(table, GP + entryPoint));
@@ -9289,7 +9272,6 @@ void symbolic_prepare_memory(uint64_t* context) {
     GP = GP - REGISTERSIZE;
   }
 }
-
 
 void symbolic_prepare_registers(uint64_t* context) {
   uint64_t reg;

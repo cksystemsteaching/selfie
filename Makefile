@@ -10,12 +10,12 @@ selfie: selfie.c
 
 # Test self-compilation, self-execution, and self-hosting
 test: selfie
-	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 4 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 	./selfie -c manuscript/code/division-by-zero.c -r 1
-	./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -m 1
-	./selfie -c selfie.c -o selfie3.m -s selfie3.s -m 3 -l selfie3.m -y 3 -l selfie3.m -y 2 -c selfie.c -o selfie4.m -s selfie4.s
+	./selfie -c selfie.c -o selfie.m -m 6 -l selfie.m -m 1
+	./selfie -c selfie.c -o selfie3.m -s selfie3.s -m 16 -l selfie3.m -y 8 -l selfie3.m -y 8 -c selfie.c -o selfie4.m -s selfie4.s
 	diff -q selfie3.m selfie4.m
 	diff -q selfie3.s selfie4.s
 	diff -q selfie1.m selfie3.m
