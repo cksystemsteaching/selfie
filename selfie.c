@@ -586,18 +586,6 @@ void resetParser() {
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
 void emitProgramEntry();
 void emitStart();
-void createELFHeader();
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
-
-// is determined by RISC-V pk
-uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t* ELF_header = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -831,6 +819,9 @@ uint64_t copyStringToBinary(uint64_t* s, uint64_t a);
 
 void emitGlobalsStrings();
 
+uint64_t* createELFHeader(uint64_t binaryLength);
+uint64_t  parseELFHeader(uint64_t* header);
+
 uint64_t openWriteOnly(uint64_t* name);
 
 void selfie_output();
@@ -842,6 +833,11 @@ void selfie_load();
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t maxBinaryLength = 262144; // 256KB
+
+uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
+
+// is determined by RISC-V pk
+uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -867,11 +863,14 @@ uint64_t  binaryLength = 0;             // length of binary in bytes including d
 uint64_t* binaryName   = (uint64_t*) 0; // file name of binary
 
 uint64_t codeLength = 0; // length of code segment in binary in bytes
+uint64_t entryPoint = 0; // entry point of code segment in virtual address space
 
 uint64_t* sourceLineNumber = (uint64_t*) 0; // source line number per emitted instruction
 
 uint64_t* assemblyName = (uint64_t*) 0; // name of assembly file
 uint64_t  assemblyFD   = 0;             // file descriptor of open assembly file
+
+uint64_t* ELF_header = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
@@ -4171,14 +4170,10 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
       // procedure already called or declared or defined
       if (getAddress(entry) != 0) {
         // procedure already called or defined
-        if (getOpcode(loadInstruction(getAddress(entry))) == OP_JAL) {
+        if (getOpcode(loadInstruction(getAddress(entry))) == OP_JAL)
           // procedure already called but not defined
           fixlink_relative(getAddress(entry), binaryLength);
-
-          if (stringCompare(procedure, (uint64_t*) "main"))
-            // first source containing main procedure provides binary name
-            binaryName = sourceName;
-        } else
+        else
           // procedure already defined
           isUndefined = 0;
       }
@@ -4192,6 +4187,10 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
         setType(entry, type);
         setAddress(entry, binaryLength);
+
+        if (stringCompare(procedure, (uint64_t*) "main"))
+          // first source containing main procedure provides binary name
+          binaryName = sourceName;
       } else {
         // procedure already defined
         printLineNumber((uint64_t*) "warning", lineNumber);
@@ -4403,68 +4402,6 @@ void emitStart() {
   codeLength = binaryLength;
 }
 
-void createELFHeader() {
-  // store all numbers necessary to create a minimal and valid
-  // ELF64 header incl. program header.
-  ELF_header = smalloc(ELF_HEADER_LEN);
-
-  // RISC-U ELF64 file header:
-  //  byte value
-  // +----+------------------+
-  // | 0  | '\0x7f'          | magic number part 0
-  // | 1  | 'E'              | magic number part 1
-  // | 2  | 'L'              | magic number part 2
-  // | 3  | 'F'              | magic number part 3
-  // | 4  | ELFCLASS64       | file class
-  // | 5  | ELFDATA2LSB      | object file data structures endianess
-  // | 6  | 1                | version of the object file format
-  // | 7  | ELFOSABI_SYSV    | operating system ABI
-  // | 8  | 0                | ABI version
-  // | 9  | 0                | start of padding bytes
-  // | 16 | ET_EXEC          | object file type
-  // | 18 | RV64             | target architecture
-  // | 20 | 1                | version of the object file format
-  // | 24 | ELF_ENTRY_POINT  | entry point address
-  // | 32 | 64               | program header offset
-  // | 40 | 0                | section header offset
-  // | 48 | 0                | processor specific flags
-  // | 52 | 64               | elf header size
-  // | 54 | 56               | size of program header entry
-  // | 56 | 1                | number of program header entries
-  // | 58 | 0                | size of section header entry
-  // | 60 | 0                | number of section header entries
-  // | 62 | 0                | section name string table index
-  // +----+------------------+
-  *(ELF_header + 0)  = 282584257676671;
-  *(ELF_header + 1)  = 0;
-  *(ELF_header + 2)  = 2163408898;
-  *(ELF_header + 3)  = ELF_ENTRY_POINT;
-  *(ELF_header + 4)  = 64;
-  *(ELF_header + 5)  = 0;
-  *(ELF_header + 6)  = 15762873573703680;
-  *(ELF_header + 7)  = 1;
-
-  // RISC-U ELF64 program header table:
-  //  byte value
-  // +----+------------------+
-  // | 0  | LOAD             | type of segment
-  // | 4  | RWX              | segment attributes
-  // | 8  | ELF_HEADER_LEN   | segment offset in file
-  // | 16 | ELF_ENTRY_POINT  | virtual address in memory
-  // | 24 | 0                | physical address
-  // | 32 | binaryLength     | size of segment in file
-  // | 40 | binaryLength     | size of segment in memory
-  // | 48 | PAGESIZE         | alignemnt of segment
-  // +----+------------------+
-  *(ELF_header + 8)  = 30064771073;
-  *(ELF_header + 9)  = ELF_HEADER_LEN;
-  *(ELF_header + 10) = ELF_ENTRY_POINT;
-  *(ELF_header + 11) = 0;
-  *(ELF_header + 12) = binaryLength;
-  *(ELF_header + 13) = binaryLength;
-  *(ELF_header + 14) = PAGESIZE;
-}
-
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
 // -----------------------------------------------------------------
@@ -4598,11 +4535,13 @@ void selfie_compile() {
 
   emitGlobalsStrings();
 
-  createELFHeader();
+  ELF_header = createELFHeader(binaryLength);
+
+  entryPoint = ELF_ENTRY_POINT;
 
   print(selfieName);
   print((uint64_t*) ": ");
-  printInteger(binaryLength);
+  printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
   print((uint64_t*) " bytes generated with ");
   printInteger(codeLength / INSTRUCTIONSIZE);
   print((uint64_t*) " instructions and ");
@@ -5228,6 +5167,81 @@ void emitGlobalsStrings() {
   allocatedMemory = 0;
 }
 
+uint64_t* createELFHeader(uint64_t binaryLength) {
+  uint64_t* header;
+
+  // store all numbers necessary to create a minimal and valid
+  // ELF64 header incl. program header.
+  header = smalloc(ELF_HEADER_LEN);
+
+  // RISC-U ELF64 file header:
+  *(header + 0) = 127                              // magic number part 0 is 0x7F
+                + leftShift((uint64_t) 'E', 8)     // magic number part 1
+                + leftShift((uint64_t) 'L', 16)    // magic number part 2
+                + leftShift((uint64_t) 'F', 24)    // magic number part 3
+                + leftShift(2, 32)                 // file class is ELFCLASS64
+                + leftShift(1, 40)                 // object file data structures endianess is ELFDATA2LSB
+                + leftShift(1, 48);                // version of the object file format
+  *(header + 1) = 0;                               // ABI version and start of padding bytes
+  *(header + 2) = 2                                // object file type is ET_EXEC
+                + leftShift(243, 16)               // target architecture is RV64
+                + leftShift(1, 32);                // version of the object file format
+  *(header + 3) = ELF_ENTRY_POINT;                 // entry point address
+  *(header + 4) = 8 * SIZEOFUINT64;                // program header offset
+  *(header + 5) = 0;                               // section header offset
+  *(header + 6) = leftShift(8 * SIZEOFUINT64, 32)  // elf header size
+                + leftShift(7 * SIZEOFUINT64, 48); // size of program header entry
+  *(header + 7) = 1;                               // number of program header entries
+
+  // RISC-U ELF64 program header table:
+  *(header + 8)  = 1                              // type of segment is LOAD
+                 + leftShift(7, 32);              // segment attributes is RWX
+  *(header + 9)  = ELF_HEADER_LEN + SIZEOFUINT64; // segment offset in file
+  *(header + 10) = ELF_ENTRY_POINT;               // virtual address in memory
+  *(header + 11) = 0;                             // physical address (reserved)
+  *(header + 12) = binaryLength;                  // size of segment in file
+  *(header + 13) = binaryLength;                  // size of segment in memory
+  *(header + 14) = PAGESIZE;                      // alignment of segment
+
+  return header;
+}
+
+uint64_t parseELFHeader(uint64_t* header) {
+  uint64_t  newEntryPoint;
+  uint64_t  newBinaryLength;
+  uint64_t  position;
+  uint64_t* valid;
+
+  newEntryPoint = *(header + 10);
+
+  newBinaryLength = *(header + 12);
+
+  if (newBinaryLength != *(header + 13))
+    // segment size in file is not the same as segement size in memory
+    return 0;
+
+  if (newEntryPoint > VIRTUALMEMORYSIZE - PAGESIZE - newBinaryLength)
+    // binary does not fit into virtual address space
+    return 0;
+
+  valid = createELFHeader(newBinaryLength);
+
+  position = 0;
+
+  while (position < ELF_HEADER_LEN / SIZEOFUINT64) {
+    if (*(header + position) != *(valid + position))
+      return 0;
+
+    position = position + 1;
+  }
+
+  entryPoint = newEntryPoint;
+
+  binaryLength = newBinaryLength;
+
+  return 1;
+}
+
 uint64_t openWriteOnly(uint64_t* name) {
   // we try opening write-only files using platform-specific flags
   // to make selfie platform-independent, this may nevertheless
@@ -5281,6 +5295,11 @@ void selfie_output() {
   // first write ELF header
   write(fd, ELF_header, ELF_HEADER_LEN);
 
+  // then write code length
+  *binary_buffer = codeLength;
+
+  write(fd, binary_buffer, SIZEOFUINT64);
+
   // assert: binary is mapped
 
   // then write binary
@@ -5288,7 +5307,7 @@ void selfie_output() {
 
   print(selfieName);
   print((uint64_t*) ": ");
-  printInteger(binaryLength);
+  printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
   print((uint64_t*) " bytes with ");
   printInteger(codeLength / INSTRUCTIONSIZE);
   print((uint64_t*) " instructions and ");
@@ -5354,6 +5373,7 @@ void selfie_load() {
 
   binaryLength = 0;
   codeLength   = 0;
+  entryPoint   = 0;
 
   // no source line numbers in binaries
   sourceLineNumber = (uint64_t*) 0;
@@ -5365,25 +5385,34 @@ void selfie_load() {
   numberOfReadBytes = read(fd, ELF_header, ELF_HEADER_LEN);
 
   if (numberOfReadBytes == ELF_HEADER_LEN) {
-    codeLength = *(ELF_header + 12);
+    if (parseELFHeader(ELF_header)) {
+      // now read code length
+      numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
 
-    if (codeLength <= maxBinaryLength) {
-      // now read binary including global variables and strings
-      numberOfReadBytes = signExtend(read(fd, binary, codeLength), SYSCALL_BITWIDTH);
+      if (numberOfReadBytes == SIZEOFUINT64) {
+        codeLength = *binary_buffer;
 
-      if (signedLessThan(0, numberOfReadBytes)) {
-        binaryLength = numberOfReadBytes;
+        if (binaryLength <= maxBinaryLength) {
+          // now read binary including global variables and strings
+          numberOfReadBytes = signExtend(read(fd, binary, binaryLength), SYSCALL_BITWIDTH);
 
-        // check if we are really at EOF
-        if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-          print(selfieName);
-          print((uint64_t*) ": ");
-          printInteger(binaryLength);
-          print((uint64_t*) " bytes loaded from ");
-          print(binaryName);
-          println();
+          if (signedLessThan(0, numberOfReadBytes)) {
+            // check if we are really at EOF
+            if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
+              print(selfieName);
+              print((uint64_t*) ": ");
+              printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
+              print((uint64_t*) " bytes with ");
+              printInteger(codeLength / INSTRUCTIONSIZE);
+              print((uint64_t*) " instructions and ");
+              printInteger(binaryLength - codeLength);
+              print((uint64_t*) " bytes of data loaded from ");
+              print(binaryName);
+              println();
 
-          return;
+              return;
+            }
+          }
         }
       }
     }
@@ -5593,6 +5622,8 @@ void implementRead(uint64_t* context) {
       *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
   }
 
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+
   if (debug_read) {
     print(selfieName);
     print((uint64_t*) ": actually read ");
@@ -5768,6 +5799,8 @@ void implementWrite(uint64_t* context) {
       *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
   }
 
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+
   if (debug_write) {
     print(selfieName);
     print((uint64_t*) ": actually wrote ");
@@ -5921,6 +5954,8 @@ void implementOpen(uint64_t* context) {
   }
   if (symbolic)
     updateRegStateEcall(context, REG_A0, tc);
+
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
 }
 
 void emitMalloc() {
@@ -5981,6 +6016,8 @@ uint64_t implementMalloc(uint64_t* context) {
       *(getRegs(context) + REG_A0) = bump;
 
     setBumpPointer(context, bump + size);
+
+    setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
     if (debug_malloc) {
       print(selfieName);
@@ -6301,10 +6338,7 @@ void replayTrace() {
 void printSourceLineNumberOfInstruction(uint64_t a) {
   if (sourceLineNumber != (uint64_t*) 0) {
     print((uint64_t*) "(~");
-    if (execute)
-      printInteger(*(sourceLineNumber + (a - *(ELF_header + 10)) / INSTRUCTIONSIZE));
-    else
-      printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
+    printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
     print((uint64_t*) ")");
   }
 }
@@ -6316,7 +6350,10 @@ void printInstructionContext() {
   }
 
   printHexadecimal(pc, 0);
-  printSourceLineNumberOfInstruction(pc);
+  if (execute)
+    printSourceLineNumberOfInstruction(pc - entryPoint);
+  else
+    printSourceLineNumberOfInstruction(pc);
 
   if (symbolic) {
     print((uint64_t*) "/tc=");
@@ -6883,7 +6920,7 @@ uint64_t symbolic_do_ld() {
   ic_ld = ic_ld + 1;
 
   // keep track of number of loads per instruction
-  a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+  a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
   *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
 
@@ -6924,7 +6961,7 @@ uint64_t do_ld() {
       ic_ld = ic_ld + 1;
 
       // keep track of number of loads per instruction
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+      a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
       *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
     } else
@@ -7021,7 +7058,7 @@ uint64_t symbolic_do_sd() {
   ic_sd = ic_sd + 1;
 
   // keep track of number of stores per instruction
-  a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+  a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
   *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
 
@@ -7048,7 +7085,7 @@ uint64_t do_sd() {
       ic_sd = ic_sd + 1;
 
       // keep track of number of stores per instruction
-      a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+      a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
       *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
     } else
@@ -7085,7 +7122,7 @@ void print_beq() {
   print((uint64_t*) ",");
   printInteger(signedDivision(imm, INSTRUCTIONSIZE));
   print((uint64_t*) "[");
-  printHexadecimal(pc + INSTRUCTIONSIZE + imm, 0);
+  printHexadecimal(pc + imm, 0);
   print((uint64_t*) "]");
 }
 
@@ -7137,12 +7174,13 @@ void symbolic_do_beq() {
       // sTODO: distinguish between < / >, !=, ==
       *(operators + tc) = 1;
 
-    // the marker [0,1] became another valeu, compiler semantics of <= / >=
+    // the marker [0,1] became another value, compiler semantics of <= / >=
     // remove and undo the last 2 instructions and set the marker properly
     else if (identifyOperator == 3) {
       resetInstructions(2);
       decodeBFormat();
 
+      saveState(0);
       *(operators + tc) = 2;
 
       setLowerForReg(0, rs1);
@@ -7170,14 +7208,10 @@ void symbolic_do_beq() {
 
   clearTrace();
   updateRegState(REG_ZR, 0);
-
-  //printRegisterValues();
 }
 
 void symbolic_undo_beq() {
   identifyOperator = tc;
-
-  //*(operators + tc) = 0;
 
   if (tc <= executionBrk)
     if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
@@ -7251,7 +7285,7 @@ void symbolic_do_jal() {
     // keep track of number of procedure calls
     calls = calls + 1;
 
-    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+    a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
     *(callsPerProcedure + a) = *(callsPerProcedure + a) + 1;
 
@@ -7264,7 +7298,7 @@ void symbolic_do_jal() {
     // keep track of number of loop iterations
     iterations = iterations + 1;
 
-    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+    a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
     *(iterationsPerLoop + a) = *(iterationsPerLoop + a) + 1;
   } else {
@@ -7293,7 +7327,7 @@ void do_jal() {
     // keep track of number of procedure calls
     calls = calls + 1;
 
-    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+    a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
     *(callsPerProcedure + a) = *(callsPerProcedure + a) + 1;
   } else if (signedLessThan(imm, 0)) {
@@ -7303,7 +7337,7 @@ void do_jal() {
     // keep track of number of loop iterations
     iterations = iterations + 1;
 
-    a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
+    a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
     *(iterationsPerLoop + a) = *(iterationsPerLoop + a) + 1;
   } else
@@ -7418,11 +7452,7 @@ void record_ecall() {
 }
 
 void symbolic_do_ecall() {
-
-  ecallPC =  pc;
-
-  pc = pc + INSTRUCTIONSIZE;
-
+  ecallPC  =  pc;
   ic_ecall = ic_ecall + 1;
 
   if (getLowerFromReg(REG_A7) == SYSCALL_SWITCH) {
@@ -7436,22 +7466,25 @@ void symbolic_do_ecall() {
 }
 
 void do_ecall() {
-  pc = pc + INSTRUCTIONSIZE;
-
   ic_ecall = ic_ecall + 1;
 
-  if (redo)
+  if (redo) {
     // TODO: redo all side effects
     *(registers + REG_A0) = *(values + (tc % maxTraceLength));
-  else if (*(registers + REG_A7) == SYSCALL_SWITCH)
+
+    pc = pc + INSTRUCTIONSIZE;
+  } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
       print(selfieName);
       print((uint64_t*) ": context switching during recording is unsupported");
       println();
 
       exit(EXITCODE_BADARGUMENTS);
-    } else
+    } else {
+      pc = pc + INSTRUCTIONSIZE;
+
       implementSwitch();
+    }
   else
     throwException(EXCEPTION_SYSCALL, 0);
 }
@@ -7653,9 +7686,9 @@ void decode_execute() {
           print_addi();
           if (execute) {
             print_addi_before();
-            if (symbolic) {
+            if (symbolic)
               symbolic_do_addi();
-            } else
+            else
               do_addi();
             print_addi_add_sub_mul_divu_remu_sltu_after();
           }
@@ -7687,9 +7720,9 @@ void decode_execute() {
           print_ld();
           if (execute) {
             print_ld_before();
-            if (symbolic) {
+            if (symbolic)
               vaddr = symbolic_do_ld();
-            } else
+            else
               vaddr = do_ld();
 
             print_ld_after(vaddr);
@@ -7722,9 +7755,9 @@ void decode_execute() {
           print_sd();
           if (execute) {
             print_sd_before();
-            if (symbolic) {
+            if (symbolic)
               vaddr = symbolic_do_sd();
-            } else
+            else
               vaddr = do_sd();
             print_sd_after(vaddr);
           }
@@ -7755,9 +7788,9 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "add");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic) {
+              if (symbolic)
                 symbolic_do_add();
-              } else
+              else
                 do_add();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
@@ -7785,9 +7818,9 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "sub");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic) {
+              if (symbolic)
                 symbolic_do_sub();
-              } else
+              else
                 do_sub();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
@@ -7815,9 +7848,9 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "mul");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic) {
+              if (symbolic)
                 symbolic_do_mul();
-              } else
+              else
                 do_mul();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
@@ -7847,9 +7880,9 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "divu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic) {
+              if (symbolic)
                 symbolic_do_divu();
-              } else
+              else
                 do_divu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
@@ -7879,9 +7912,9 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "remu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic) {
+              if (symbolic)
                 symbolic_do_remu();
-              } else
+              else
                 do_remu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
@@ -7911,9 +7944,9 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "sltu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic) {
+              if (symbolic)
                 symbolic_do_sltu();
-              } else
+              else
                 do_sltu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
@@ -7944,9 +7977,9 @@ void decode_execute() {
           print_beq();
           if (execute) {
             print_beq_before();
-            if (symbolic) {
+            if (symbolic)
               symbolic_do_beq();
-            } else
+            else
               do_beq();
             print_beq_after();
           }
@@ -7977,9 +8010,9 @@ void decode_execute() {
         print_jal();
         if (execute) {
           print_jal_before();
-          if (symbolic) {
+          if (symbolic)
             symbolic_do_jal();
-          } else
+          else
             do_jal();
           print_jal_jalr_after();
         }
@@ -8010,9 +8043,9 @@ void decode_execute() {
           print_jalr();
           if (execute) {
             print_jalr_before();
-            if (symbolic) {
+            if (symbolic)
               symbolic_do_jalr();
-            } else
+            else
               do_jalr();
             print_jal_jalr_after();
           }
@@ -8043,9 +8076,9 @@ void decode_execute() {
         print_lui();
         if (execute) {
           print_lui_before();
-          if (symbolic) {
+          if (symbolic)
             symbolic_do_lui();
-          } else
+          else
             do_lui();
           print_lui_after();
         }
@@ -8076,9 +8109,9 @@ void decode_execute() {
           print_ecall();
           if (execute) {
             print_ecall_before();
-            if (symbolic) {
+            if (symbolic)
               symbolic_do_ecall();
-            } else
+            else
               do_ecall();
             print_ecall_after();
           }
@@ -8101,6 +8134,9 @@ void decode_execute() {
   if (execute)
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   else {
+    //report the error on the console
+    outputFD = 1;
+
     print(selfieName);
     print((uint64_t*) ": unknown instruction with ");
     printBinary(opcode, 0);
@@ -8152,7 +8188,7 @@ uint64_t instructionWithMaxCounter(uint64_t* counters, uint64_t max) {
 
   i = 0;
 
-  while (i < maxBinaryLength / INSTRUCTIONSIZE) {
+  while (i < codeLength / INSTRUCTIONSIZE) {
     c = *(counters + i);
 
     if (n < c)
@@ -8500,12 +8536,13 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   *(table + page) = frame;
 
-  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE))
+  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE)) {
     // exploit spatial locality in page table caching
     if (page < getLoPage(context))
       setLoPage(context, page);
     else if (page > getMePage(context))
       setMePage(context, page);
+  }
 
   if (debug_map) {
     print(selfieName);
@@ -8668,10 +8705,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
 }
 
 void up_loadBinary(uint64_t* context) {
-  uint64_t entryPoint;
   uint64_t baddr;
-
-  entryPoint = *(ELF_header + 10);
 
   // assert: entryPoint is multiple of PAGESIZE and REGISTERSIZE
 
@@ -8801,11 +8835,16 @@ uint64_t isBootLevelZero() {
 }
 
 uint64_t handleDivisionByZero() {
-  if (record)
-    replayTrace();
-
   print(selfieName);
   print((uint64_t*) ": division by zero");
+  if (record) {
+    print((uint64_t*) ", replaying...");
+    println();
+
+    replayTrace();
+
+    return EXITCODE_NOERROR;
+  }
   println();
 
   return EXITCODE_DIVISIONBYZERO;
@@ -9199,13 +9238,12 @@ uint64_t selfie_run(uint64_t machine) {
 
 void symbolic_prepare_memory(uint64_t* context) {
   uint64_t* table;
-  uint64_t  entryPoint;
   uint64_t  SP;
   uint64_t  GP;
-  uint64_t  instrLength;
 
   table = getPT(context);
   SP    = *(getRegs(context) + REG_SP);
+  GP    = binaryLength - REGISTERSIZE;
 
   while (SP < VIRTUALMEMORYSIZE) {
     if (isValidVirtualAddress(SP))
@@ -9215,26 +9253,10 @@ void symbolic_prepare_memory(uint64_t* context) {
         storeVirtualMemory(table, SP, tc);
         incrementTc();
       }
-
     SP = SP + REGISTERSIZE;
   }
 
-  GP = binaryLength;
-  instrLength = codeLength; // for now get this from the compiler
-
-  // if codeLength not available (due to loading the binary), we cannot prepare strings and globals
-  // sTODO: fix by merging master branch
-  if (instrLength == binaryLength) { // this can also occur if no globals or strings are used
-    print(selfieName);
-    print((uint64_t*) ": warning: code length equals binary length - possible undefined behaviour for global variables and strings");
-    println();
-    return;
-  }
-
-  entryPoint = *(ELF_header + 10);
-  GP = GP - REGISTERSIZE;
-
-  while (instrLength <= GP) {
+  while (codeLength <= GP) {
     if (isValidVirtualAddress(GP + entryPoint)) {
       if (isVirtualAddressMapped(table, GP + entryPoint)) {
         setConcrete(loadVirtualMemory(table, GP + entryPoint));
@@ -9246,7 +9268,6 @@ void symbolic_prepare_memory(uint64_t* context) {
     GP = GP - REGISTERSIZE;
   }
 }
-
 
 void symbolic_prepare_registers(uint64_t* context) {
   uint64_t reg;
@@ -9798,7 +9819,7 @@ void confine_sltu() {
           // we will constrain RD/RS1
           saveState(*(registers + rs1));
 
-          // perpare previous value of RD/RS1
+          // prepare previous value of RD/RS1
           setLower(getLower(*(tcs + btc)), tc);
           setUpper(getUpper(*(tcs + btc)), tc);
 
@@ -9882,7 +9903,7 @@ void confine_sltu() {
           // we will constrain RD/RS2
           saveState(*(registers + rs2));
 
-          // perpare previous value of RD/RS2
+          // prepare previous value of RD/RS2
           setLower(getLower(*(tcs + btc)), tc);
           setUpper(getUpper(*(tcs + btc)), tc);
 
@@ -9922,7 +9943,7 @@ void confine_sltu() {
           // we will constrain RD/RS1
           saveState(*(registers + rs1));
 
-          // perpare previous value of RD/RS1
+          // prepare previous value of RD/RS1
           setLower(getLower(*(tcs + btc)), tc);
           setUpper(getUpper(*(tcs + btc)), tc);
 
@@ -10494,7 +10515,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -y | -v | -vd | -vt |-min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -r | -y | -v | -vd | -vt |-min | -mob ) size ... ]");
   println();
 }
 
@@ -10533,6 +10554,11 @@ uint64_t selfie() {
       else if (stringCompare(option, (uint64_t*) "-d")) {
         debug       = 1;
         disassemble = 1;
+
+        return selfie_run(MIPSTER);
+      } else if (stringCompare(option, (uint64_t*) "-r")) {
+        debug  = 1;
+        record = 1;
 
         return selfie_run(MIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-y"))
