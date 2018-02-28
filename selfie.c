@@ -7147,12 +7147,13 @@ void symbolic_do_beq() {
       // sTODO: distinguish between < / >, !=, ==
       *(operators + tc) = 1;
 
-    // the marker [0,1] became another valeu, compiler semantics of <= / >=
+    // the marker [0,1] became another value, compiler semantics of <= / >=
     // remove and undo the last 2 instructions and set the marker properly
     else if (identifyOperator == 3) {
       resetInstructions(2);
       decodeBFormat();
 
+      saveState(0);
       *(operators + tc) = 2;
 
       setLowerForReg(0, rs1);
@@ -7180,14 +7181,10 @@ void symbolic_do_beq() {
 
   setConcrete(0);
   updateRegState(REG_ZR, 0);
-
-  //printRegisterValues();
 }
 
 void symbolic_undo_beq() {
   identifyOperator = tc;
-
-  //*(operators + tc) = 0;
 
   if (tc <= executionBrk)
     if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
@@ -9773,7 +9770,7 @@ void confine_sltu() {
           // we will constrain RD/RS1
           saveState(*(registers + rs1));
 
-          // perpare previous value of RD/RS1
+          // prepare previous value of RD/RS1
           setLower(getLower(*(tcs + btc)), tc);
           setUpper(getUpper(*(tcs + btc)), tc);
 
@@ -9855,7 +9852,7 @@ void confine_sltu() {
           // we will constrain RD/RS2
           saveState(*(registers + rs2));
 
-          // perpare previous value of RD/RS2
+          // prepare previous value of RD/RS2
           setLower(getLower(*(tcs + btc)), tc);
           setUpper(getUpper(*(tcs + btc)), tc);
 
@@ -9894,7 +9891,7 @@ void confine_sltu() {
           // we will constrain RD/RS1
           saveState(*(registers + rs1));
 
-          // perpare previous value of RD/RS1
+          // prepare previous value of RD/RS1
           setLower(getLower(*(tcs + btc)), tc);
           setUpper(getUpper(*(tcs + btc)), tc);
 
