@@ -1489,7 +1489,7 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 uint64_t isConfinedInstruction();
 void     resetInstructions(uint64_t count);
 
-void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t toTc);
+void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
 
 void confine_lui();
 void confine_addi();
@@ -7110,6 +7110,11 @@ void symbolic_undo_sd() {
 
   vaddr = getLowerFromReg(rs1) + imm;
   storeVirtualMemory(pt, vaddr,  *(tcs + tc));
+
+  if (isConfinedInstruction()) {
+    tc = tc - 1;
+    *(registers + rs2) = *(tcs + tc);
+  }
 }
 
 void print_beq() {
@@ -8883,6 +8888,7 @@ uint64_t handleSystemCalls(uint64_t* context) {
         return symbolic_prepareNextPathOrExit(context);
       }
 
+
       // TODO: exit only if all contexts have exited
       return EXIT;
     } else {
@@ -9633,23 +9639,18 @@ void resetInstructions(uint64_t count) {
   setUpper(0, tc);
 }
 
-void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t toTc) {
+void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 
-  if (sameIntervalls(fromTc, toTc) == 0) {
-    saveState(fromTc);
-    // semantics of sd
-    if (getLower(fromTc) < getLower(toTc))
-      setLower(getLower(toTc), tc);
-    else
-      setLower(getLower(fromTc), tc);
+  if (getLower(fromTc) < getLower(withTc))
+    setLower(getLower(withTc), tc);
+  else
+    setLower(getLower(fromTc), tc);
 
-    if (getUpper(mem_tc) > getUpper(reg_tc))
-      setUpper(getUpper(reg_tc), tc);
-    else
-      setUpper(getUpper(mem_tc), tc);
+  if (getUpper(fromTc) > getUpper(withTc))
+    setUpper(getUpper(withTc), tc);
+  else
+    setUpper(getUpper(fromTc), tc);
 
-    updateMemState(vaddr, tc);
-  }
 }
 
 void confine_lui() {
@@ -10001,39 +10002,46 @@ void confine_ld() {
   mem_tc = loadVirtualMemory(pt, vaddr);
   reg_tc = *(registers + rd);
 
+  // semantics of sd - sync from mem to register
+  if (sameIntervalls(mem_tc, reg_tc) == 0) {
+    saveState(mem_tc);
 
+    syncSymbolicIntervallsOnTrace(mem_tc, reg_tc);
+
+    updateMemState(vaddr, tc);
+  }
 
   saveState(*(registers + rd));
   clearTrace();
   updateRegState(rd, *(tcs + btc));
 }
 
-void confine_sd () {
-  uint64_t vaddr;
+// void confine_sd () {
+//   uint64_t vaddr;
+//
+//   saveState(*(registers + rs2));
+//
+//   vaddr = getLowerFromReg(rs1) + imm;
+//
+//   if (isValidVirtualAddress(vaddr)) {
+//     if (isVirtualAddressMapped(pt, vaddr)) {
+//       if (rs2 != REG_ZR) {
+//         // semantics of ld
+//         setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+//         setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+//
+//         updateMemState(vaddr, *(tcs + btc));
+//       }
+//     } else
+//       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+//   } else
+//     // TODO: pass invalid vaddr
+//     throwException(EXCEPTION_INVALIDADDRESS, 0);
+//
+//   *(registers + rs2) = tc - 1; // updateMemState already incremented tc
+// }
 
-  saveState(*(registers + rs2));
-
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      if (rs2 != REG_ZR) {
-        // semantics of ld
-        setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
-        setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
-
-        updateMemState(vaddr, *(tcs + btc));
-      }
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
-
-  *(registers + rs2) = tc - 1; // updateMemState already incremented tc
-}
-
-void confine_sd2 () {
+void confine_sd() {
   uint64_t vaddr;
   uint64_t mem_tc;
   uint64_t reg_tc;
@@ -10043,23 +10051,15 @@ void confine_sd2 () {
   if (isValidVirtualAddress(vaddr)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       if (rs2 != REG_ZR) {
-        // semantics of ld
+
         mem_tc = loadVirtualMemory(pt, vaddr);
         reg_tc = *(registers + rs2);
 
-        //
+        // semantics of ld - sync from register to mem
         if (sameIntervalls(mem_tc, reg_tc) == 0) {
           saveState(reg_tc);
 
-          if (getLower(reg_tc) < getLower(mem_tc))
-            setLower(getLower(mem_tc), tc);
-          else
-            setLower(getLower(reg_tc), tc);
-
-          if (getUpper(reg_tc) > getUpper(mem_tc))
-            setUpper(getUpper(mem_tc), tc);
-          else
-            setUpper(getUpper(reg_tc), tc);
+          syncSymbolicIntervallsOnTrace(reg_tc, mem_tc);
 
           updateRegState(rs2, tc);
         }
