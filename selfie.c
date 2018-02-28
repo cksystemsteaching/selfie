@@ -1,5 +1,3 @@
-//TODO: consistency - confine(uint64_t* context) context specific like implements ?
-
 // Copyright (c) 2015-2018, the Selfie Project authors. All rights reserved.
 // Please see the AUTHORS file for details. Use of this source code is
 // governed by a BSD license that can be found in the LICENSE file.
@@ -1492,6 +1490,8 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 uint64_t isConfinedInstruction();
 void     resetInstructions(uint64_t count);
 
+void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t toTc);
+
 void confine_lui();
 void confine_addi();
 void confine_add();
@@ -1531,6 +1531,10 @@ void setUpper(uint64_t value, uint64_t tc)        { *(valuesUpper + tc) = value;
 void setLowerForReg(uint64_t value, uint64_t reg) { *(valuesLower + *(registers + reg)) = value; }
 void setUpperForReg(uint64_t value, uint64_t reg) { *(valuesUpper + *(registers + reg)) = value; }
 void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); }
+
+void setFromTrace(uint64_t fromTc, uint64_t toTc) { setLower(getLower(fromTc), toTc); setUpper(getUpper(fromTc), toTc); }
+
+void clearTrace() { setConcrete(0); }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5418,7 +5422,7 @@ void implementExit(uint64_t* context) {
 
   if (symbolic) {
     saveStateEcall(0);
-    setConcrete(0);
+    clearTrace();
     incrementTc();
 
     // legacy (only use lower bound)
@@ -6358,7 +6362,8 @@ void symbolic_do_lui() {
     setConcrete(leftShift(imm, 12));
 
     redundancyCheck();
-  }
+  } else
+    clearTrace();
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6430,7 +6435,8 @@ void symbolic_do_addi() {
     setUpper(getUpperFromReg(rs1) + imm, tc);
 
     redundancyCheck();
-  }
+  } else
+    clearTrace();
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6495,7 +6501,7 @@ void symbolic_do_add() {
 
     redundancyCheck();
   } else
-    setConcrete(0);
+    clearTrace();
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6537,7 +6543,7 @@ void symbolic_do_sub() {
 
     redundancyCheck();
   } else
-    setConcrete(0);
+    clearTrace();
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6567,7 +6573,7 @@ void symbolic_do_mul() {
 
     redundancyCheck();
   } else
-    setConcrete(0);
+    clearTrace();
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6606,7 +6612,7 @@ void symbolic_do_divu() {
 
         redundancyCheck();
       } else
-        setConcrete(0);
+        clearTrace();
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -6647,7 +6653,7 @@ void symbolic_do_remu() {
 
         redundancyCheck();
       } else
-        setConcrete(0);
+        clearTrace();
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -6695,7 +6701,7 @@ void symbolic_do_sltu() {
     }
     redundancyCheck();
   } else
-    setConcrete(0);
+    clearTrace();
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6870,7 +6876,7 @@ uint64_t symbolic_do_ld() {
     redundancyCheck();
 
   } else
-    setConcrete(0);
+    clearTrace();
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6992,10 +6998,10 @@ void record_sd() {
       recordState(loadVirtualMemory(pt, vaddr));
 }
 
-void symbolic_record_sd_before() {
+uint64_t symbolic_do_sd() {
   uint64_t vaddr;
+  uint64_t a;
 
-  forceConcrete(currentContext, rs1);
   vaddr = getLowerFromReg(rs1) + imm;
 
   if (isValidVirtualAddress(vaddr))
@@ -7005,22 +7011,6 @@ void symbolic_record_sd_before() {
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   else
     throwException(EXCEPTION_INVALIDADDRESS, 0);
-}
-
-void symbolic_record_sd_after() {
-  uint64_t vaddr;
-
-  vaddr = getLowerFromReg(rs1) + imm;
-  updateMemState(vaddr, tc);
-}
-
-uint64_t symbolic_do_sd() {
-  uint64_t vaddr;
-  uint64_t a;
-
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  symbolic_record_sd_before();
 
   setLower(getLowerFromReg(rs2), tc);
   setUpper(getUpperFromReg(rs2), tc);
@@ -7035,7 +7025,7 @@ uint64_t symbolic_do_sd() {
 
   *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
 
-  symbolic_record_sd_after();
+  updateMemState(vaddr, tc);
 
   return vaddr;
 }
@@ -7178,7 +7168,7 @@ void symbolic_do_beq() {
 
   ic_beq = ic_beq + 1;
 
-  setConcrete(0);
+  clearTrace();
   updateRegState(REG_ZR, 0);
 
   //printRegisterValues();
@@ -7267,6 +7257,8 @@ void symbolic_do_jal() {
 
   } else if (signedLessThan(imm, 0)) {
     // just jump backwards to check for another loop iteration
+    clearTrace();
+
     pc = pc + imm;
 
     // keep track of number of loop iterations
@@ -7275,10 +7267,12 @@ void symbolic_do_jal() {
     a = (pc - *(ELF_header + 10)) / INSTRUCTIONSIZE;
 
     *(iterationsPerLoop + a) = *(iterationsPerLoop + a) + 1;
-  } else
+  } else {
     // just jump forward
-    pc = pc + imm;
+    clearTrace();
 
+    pc = pc + imm;
+  }
   ic_jal = ic_jal + 1;
 
   updateRegState(rd, tc);
@@ -7350,10 +7344,12 @@ void symbolic_do_jalr() {
 
   saveState(*(registers + rd));
 
-  if (rd == REG_ZR)
+  if (rd == REG_ZR) {
     // fast path: just return by jumping rs1-relative with LSB reset
+    clearTrace();
+
     pc = leftShift(rightShift(getLowerFromReg(rs1) + imm, 1), 1);
-  else {
+  } else {
     // slow path: first prepare jump, then link, just in case rd == rs1
     forceConcrete(currentContext, rs1);
 
@@ -9616,10 +9612,34 @@ void resetInstructions(uint64_t count) {
   setUpper(0, tc);
 }
 
+void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t toTc) {
+
+  if (sameIntervalls(fromTc, toTc) == 0) {
+    saveState(fromTc);
+    // semantics of sd
+    if (getLower(fromTc) < getLower(toTc))
+      setLower(getLower(toTc), tc);
+    else
+      setLower(getLower(fromTc), tc);
+
+    if (getUpper(mem_tc) > getUpper(reg_tc))
+      setUpper(getUpper(reg_tc), tc);
+    else
+      setUpper(getUpper(mem_tc), tc);
+
+    updateMemState(vaddr, tc);
+  }
+}
+
 void confine_lui() {
   // restore old value
   saveState(*(registers + rd));
+  clearTrace();
   updateRegState(rd, *(tcs + btc));
+
+  // or:
+  // setFromTrace(*(tcs + btc), tc);
+  // updateRegState(rd, tc);
 }
 
 void confine_addi() {
@@ -9636,11 +9656,13 @@ void confine_addi() {
       }
       // restore RD
       saveState(*(registers + rd));
+      clearTrace();
       updateRegState(rd, *(tcs + btc));
 
     } else {
       // confine RD/RS1 and remember old value (btc)
       saveState(btc);
+      clearTrace();
       updateRegState(rd, tc);
     }
   }
@@ -9652,7 +9674,7 @@ void confine_add() {
 
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
-    // only restore old RD
+    clearTrace();
     updateRegState(rd, *(tcs + btc));
 
   } else if (isOneSourceRegConcrete()) {
@@ -9676,6 +9698,7 @@ void confine_add() {
       }
       // restore RD
       saveState(*(registers + rd));
+      clearTrace();
       updateRegState(rd, *(tcs + btc));
 
     } else {
@@ -9697,6 +9720,7 @@ void confine_sub() {
     saveState(*(registers + rd));
 
     // nothing to constrain
+    clearTrace();
     updateRegState(rd, *(tcs + btc));
 
   } else if (isOneSourceRegConcrete()) {
@@ -9719,6 +9743,7 @@ void confine_sub() {
       }
       // restore RD
       saveState(*(registers + rd));
+      clearTrace();
       updateRegState(rd, *(tcs + btc));
 
     } else {
@@ -9803,6 +9828,7 @@ void confine_sltu() {
 
           // push old RD/RS1 to trace afterwards
           saveState(tempReg);
+          clearTrace();
           updateRegState(rs1, *(tcs + btc));
         }
       // >
@@ -9842,6 +9868,7 @@ void confine_sltu() {
 
           // puch old RD/RS2 to trace afterwards
           saveState(tempReg);
+          clearTrace();
           updateRegState(rs2, *(tcs + btc));
         }
       }
@@ -9885,6 +9912,7 @@ void confine_sltu() {
 
           // restore old RD/RS2 afterwards
           saveState(tempReg);
+          clearTrace();
           updateRegState(rs2, *(tcs + btc));
         }
       // >=
@@ -9924,6 +9952,7 @@ void confine_sltu() {
 
           // push old RD/RS1 to trace afterwards
           saveState(tempReg);
+          clearTrace();
           updateRegState(rs1, *(tcs + btc));
         }
       }
@@ -9933,6 +9962,7 @@ void confine_sltu() {
   } else {
     // only restore RD
     saveState(*(registers + rd));
+    clearTrace();
     updateRegState(rd, *(tcs + btc));
   }
 }
@@ -9950,23 +9980,10 @@ void confine_ld() {
   mem_tc = loadVirtualMemory(pt, vaddr);
   reg_tc = *(registers + rd);
 
-  if (sameIntervalls(mem_tc, reg_tc) == 0) {
-    saveState(mem_tc);
-    // semantics of sd
-    if (getLower(mem_tc) < getLower(reg_tc))
-      setLower(getLower(reg_tc), tc);
-    else
-      setLower(getLower(mem_tc), tc);
 
-    if (getUpper(mem_tc) > getUpper(reg_tc))
-      setUpper(getUpper(reg_tc), tc);
-    else
-      setUpper(getUpper(mem_tc), tc);
-
-    updateMemState(vaddr, tc);
-  }
 
   saveState(*(registers + rd));
+  clearTrace();
   updateRegState(rd, *(tcs + btc));
 }
 
@@ -9993,6 +10010,48 @@ void confine_sd () {
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
   *(registers + rs2) = tc - 1; // updateMemState already incremented tc
+}
+
+void confine_sd2 () {
+  uint64_t vaddr;
+  uint64_t mem_tc;
+  uint64_t reg_tc;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      if (rs2 != REG_ZR) {
+        // semantics of ld
+        mem_tc = loadVirtualMemory(pt, vaddr);
+        reg_tc = *(registers + rs2);
+
+        //
+        if (sameIntervalls(mem_tc, reg_tc) == 0) {
+          saveState(reg_tc);
+
+          if (getLower(reg_tc) < getLower(mem_tc))
+            setLower(getLower(mem_tc), tc);
+          else
+            setLower(getLower(reg_tc), tc);
+
+          if (getUpper(reg_tc) > getUpper(mem_tc))
+            setUpper(getUpper(mem_tc), tc);
+          else
+            setUpper(getUpper(reg_tc), tc);
+
+          updateRegState(rs2, tc);
+        }
+
+        saveState(loadVirtualMemory(pt, vaddr));
+        clearTrace();
+        updateMemState(vaddr, *(tcs + btc));
+      }
+    } else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    // TODO: pass invalid vaddr
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
 }
 
 void confine_beq() {
