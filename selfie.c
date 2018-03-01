@@ -9439,29 +9439,33 @@ void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
   // semantics: constrain v1 by v2
 
   // sTODO: enhance == and !=
+
+  // [true <=] iff [false >]
+  if (operator == SYM_LEQ) {
+    operator = SYM_GT;
+    branch   = branch < 1;
+  // [true >=] iff [false <]
+  } else if (operator == SYM_GEQ) {
+    operator = SYM_LT;
+    branch   = branch < 1;
+  }
+
   if (operator == SYM_LT)
-    if (branch)
-      setUpper(getLower(v2) - 1, v1);
-    else
-      setLower(getUpper(v2), v1);
-
+    if (branch) {
+      if (getUpper(v1) >= getLower(v2))
+        setUpper(getLower(v2) - 1, v1);
+    } else {
+      if (getLower(v1) < getUpper(v2))
+        setLower(getUpper(v2), v1);
+    }
   else if (operator == SYM_GT)
-    if (branch)
-      setLower(getUpper(v2) + 1, v1);
-    else
-      setUpper(getLower(v2), v1);
-
-  else if (operator == SYM_LEQ)
-    if (branch)
-      setUpper(getLower(v2), v1);
-    else
-      setLower(getUpper(v2) + 1, v1);
-
-  else if (operator == SYM_GEQ)
-    if (branch)
-      setLower(getUpper(v2), v1);
-    else
-      setUpper(getLower(v2) - 1, v1);
+    if (branch) {
+      if (getLower(v1) <= getUpper(v2))
+        setLower(getUpper(v2) + 1, v1);
+    } else {
+      if (getUpper(v1) > getLower(v2))
+        setUpper(getLower(v2), v1);
+    }
 }
 
 // ----------------- FORWARD CONSTRAINING APPROACH -----------------
