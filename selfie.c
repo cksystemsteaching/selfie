@@ -1465,6 +1465,9 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
 void forceConcrete(uint64_t* context, uint64_t reg);
 void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 
+uint64_t isConcreteRegister(uint64_t reg);
+uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg);
+
 uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t fetchFromTC(uint64_t tc);
 uint64_t areSourceRegsConcrete();
@@ -6554,7 +6557,7 @@ void symbolic_undo_add_sub() {
   if (isConfinedInstruction()) {
     tc = tc - 1;
     // undo either RS1 or RS2 depending on which one is symbolic
-    if (isConcrete(currentContext, rs1))
+    if (wasNeverSymbolic(currentContext, rs1))
       *(registers + rs2) = *(tcs + tc);
     else
       *(registers + rs1) = *(tcs + tc);
@@ -9331,6 +9334,33 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg) {
   return getLower(*(getRegs(context) + reg)) == getUpper(*(getRegs(context) + reg));
 }
 
+uint64_t isConcreteRegister(uint64_t reg) {
+  if (isSystemRegister(reg))
+    return 1;
+  else if (reg == REG_ZR)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg) {
+  uint64_t tc;
+
+  // quick check
+  if (isConcreteRegister(reg))
+    return 1;
+
+  tc = *(getRegs(context) + reg);
+
+  while (tc != 0) {
+    if (getLower(tc) != getUpper(tc))
+      return 0;
+
+    tc = *(tcs + tc);
+  }
+  return 1;
+}
+
 uint64_t fetchFromTC(uint64_t tc) {
   uint64_t pc;
 
@@ -9343,8 +9373,8 @@ uint64_t fetchFromTC(uint64_t tc) {
 }
 
 uint64_t areSourceRegsConcrete() {
-  if (isConcrete(currentContext, rs1))
-    if (isConcrete(currentContext, rs2))
+  if (wasNeverSymbolic(currentContext, rs1))
+    if (wasNeverSymbolic(currentContext, rs2))
       return 1;
 
   return 0;
@@ -9353,11 +9383,11 @@ uint64_t areSourceRegsConcrete() {
 uint64_t isOneSourceRegConcrete() {
   // exclusive OR
 
-  if (isConcrete(currentContext, rs1)) {
-    if (isConcrete(currentContext, rs2) == 0)
+  if (wasNeverSymbolic(currentContext, rs1)) {
+    if (wasNeverSymbolic(currentContext, rs2) == 0)
       return 1;
-  } else if (isConcrete(currentContext, rs2)) {
-    if (isConcrete(currentContext, rs1) == 0)
+  } else if (wasNeverSymbolic(currentContext, rs2)) {
+    if (wasNeverSymbolic(currentContext, rs1) == 0)
       return 1;
   }
 
@@ -9521,9 +9551,6 @@ void symbolic_confine() {
     println();
   }
 
-  if (trace)
-    printTrace();
-    
   // entry point for algorithm
   btc = tc - 1;
   executionBrk = tc - 1;
@@ -9538,6 +9565,9 @@ void symbolic_confine() {
 
     btc = btc - 1;
   }
+
+  if (trace)
+    printTrace();
 
   if (debug_vipster) {
     print(selfieName);
@@ -9675,6 +9705,7 @@ void confine_lui() {
 void confine_addi() {
   if (rd != REG_ZR) {
     // prepare value
+
     setLower(getLowerFromReg(rd) - imm, tc);
     setUpper(getUpperFromReg(rd) - imm, tc);
 
@@ -9707,7 +9738,7 @@ void confine_add() {
     updateRegState(rd, *(tcs + btc));
 
   } else if (isOneSourceRegConcrete()) {
-    if (isConcrete(currentContext, rs1)) {
+    if (wasNeverSymbolic(currentContext, rs1)) {
       conReg = rs1;
       symReg = rs2;
     } else {
@@ -9753,7 +9784,7 @@ void confine_sub() {
     updateRegState(rd, *(tcs + btc));
 
   } else if (isOneSourceRegConcrete()) {
-    if (isConcrete(currentContext, rs1)) {
+    if (wasNeverSymbolic(currentContext, rs1)) {
       conReg = rs1;
       symReg = rs2;
     } else {
