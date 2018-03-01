@@ -5450,7 +5450,7 @@ void emitExit() {
 void implementExit(uint64_t* context) {
 
   if (symbolic) {
-    saveStateEcall(0);
+    saveStateEcall(*(registers + REG_A0));
     clearTrace();
     incrementTc();
 
@@ -7109,6 +7109,7 @@ void symbolic_undo_sd() {
   uint64_t vaddr;
 
   vaddr = getLowerFromReg(rs1) + imm;
+
   storeVirtualMemory(pt, vaddr,  *(tcs + tc));
 
   if (isConfinedInstruction()) {
@@ -8888,7 +8889,6 @@ uint64_t handleSystemCalls(uint64_t* context) {
         return symbolic_prepareNextPathOrExit(context);
       }
 
-
       // TODO: exit only if all contexts have exited
       return EXIT;
     } else {
@@ -9523,7 +9523,7 @@ void symbolic_confine() {
 
   if (trace)
     printTrace();
-
+    
   // entry point for algorithm
   btc = tc - 1;
   executionBrk = tc - 1;
@@ -9641,6 +9641,14 @@ void resetInstructions(uint64_t count) {
 
 void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 
+  // println();
+  // printInteger(getLower(fromTc)); println();
+  // printInteger(getUpper(fromTc)); println();
+  // print("..............................."); println();
+  // printInteger(getLower(withTc)); println();
+  // printInteger(getUpper(withTc)); println();
+  // println();
+
   if (getLower(fromTc) < getLower(withTc))
     setLower(getLower(withTc), tc);
   else
@@ -9684,7 +9692,6 @@ void confine_addi() {
     } else {
       // confine RD/RS1 and remember old value (btc)
       saveState(btc);
-      clearTrace();
       updateRegState(rd, tc);
     }
   }
