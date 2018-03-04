@@ -14,7 +14,7 @@ uint64_t main() {
     read(0, x, 1); // symbolic [0,255]
     read(0, a, 1);
 
-    if (* a < z) {
+    if (*a < z) {
       if (*x < y) { // T: [0,14]          - F: [15,255]
         if (*x > y) // T: [16,14] (unsat) - F: [0,14]
           z = 1;
