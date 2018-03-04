@@ -994,7 +994,6 @@ void updateMemState(uint64_t vaddr, uint64_t value);
 void updateRegStateEcall(uint64_t context, uint64_t reg, uint64_t value);
 
 void redundancyCheck();
-void incrementTc();
 
 void replayTrace();
 
@@ -1114,7 +1113,6 @@ uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t
 void     printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* counters);
 
 void printProfile();
-void printTrace();
 
 void selfie_disassemble();
 
@@ -1457,42 +1455,68 @@ void initKernel() {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+// ------------------------- INITIALIZATION ------------------------
+
+// init memory on trace
 void symbolic_prepare_memory(uint64_t* context);
+// init regs on trace
 void symbolic_prepare_registers(uint64_t* context);
 
-uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead);
+// ---------------------------- UTILITIES --------------------------
 
+// precise execution
 void forceConcrete(uint64_t* context, uint64_t reg);
 void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 
-uint64_t isConcreteRegister(uint64_t reg);
-uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg);
-
+// register information
 uint64_t isConcrete(uint64_t* context, uint64_t reg);
-uint64_t fetchFromTC(uint64_t tc);
+uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
+uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 
-uint64_t findPrevFuncCall(uint64_t traceCounter);
+// ------------------------------ PRINT ----------------------------
 
-void checkSatisfiability(uint64_t tc);
-void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
+void printTrace();
+// sTODO: move other prints here too
 
-// ------------------ FORWARD CONSTRAINING APPROACH ----------------
+// -----------------------------------------------------------------
+// ------------------ SYMBOLIC FORWARD EXECUTION -------------------
+// -----------------------------------------------------------------
 
-void     constraintSLTU(uint64_t sltTc, uint64_t branch);
-uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc);
+// -------------------------- INSTRUCTIONS -------------------------
 
-// ----------------- BACKWARD CONSTRAINING APPROACH ----------------
+// sTODO move symbolic forward instructions here
+
+// ---------------------------- SYSCALLS ---------------------------
+
+uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead);
+
+// -----------------------------------------------------------------
+// ------------------------- SYMBOLIC UNDO -------------------------
+// -----------------------------------------------------------------
+
+// -------------------------- INSTRUCTIONS -------------------------
+
+// sTODO move symbolic forward instructions here
+
+// -----------------------------------------------------------------
+// ------------------ SYMBOLIC BACKWARDS CONFINE -------------------
+// -----------------------------------------------------------------
+
+// ---------------------------- ALGORITHM --------------------------
 
 void     symbolic_confine();
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
 
-uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
-uint64_t isConfinedInstruction();
-void     resetInstructions(uint64_t count);
+void checkSatisfiability(uint64_t tc);
+void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
 
-void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
+// ---------------------------- UTILITIES --------------------------
+
+uint64_t isConfinedInstruction();
+
+// -------------------------- INSTRUCTIONS -------------------------
 
 void confine_lui();
 void confine_addi();
@@ -1521,7 +1545,9 @@ uint64_t numberOfSymbolics = 0; // number of symbolic variables
 
 uint64_t identifyOperator  = 0; // helps distinguishing < (>) from <= (>=)
 
-// ---------------------------- TRACE API --------------------------
+// -----------------------------------------------------------------
+// -------------------------- TRACE API ----------------------------
+// -----------------------------------------------------------------
 
 uint64_t getLower(uint64_t tc)         { return *(valuesLower + tc); }
 uint64_t getUpper(uint64_t tc)         { return *(valuesUpper + tc); }
@@ -1532,11 +1558,19 @@ void setLower(uint64_t value, uint64_t tc)        { *(valuesLower + tc) = value;
 void setUpper(uint64_t value, uint64_t tc)        { *(valuesUpper + tc) = value; }
 void setLowerForReg(uint64_t value, uint64_t reg) { *(valuesLower + *(registers + reg)) = value; }
 void setUpperForReg(uint64_t value, uint64_t reg) { *(valuesUpper + *(registers + reg)) = value; }
-void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); }
 
 void setFromTrace(uint64_t fromTc, uint64_t toTc) { setLower(getLower(fromTc), toTc); setUpper(getUpper(fromTc), toTc); }
 
+void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); }
 void clearTrace() { setConcrete(0); }
+
+// ---------------------------- UTILITIES --------------------------
+
+uint64_t fetchFromTC(uint64_t tc);
+void     resetInstructions(uint64_t count);
+void     syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
+
+void incrementTc();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5637,38 +5671,6 @@ void implementRead(uint64_t* context) {
   }
 }
 
-uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead) {
-  uint64_t upperBound;
-  uint64_t r;
-
-  // read into trace
-  // ==== test purposes ====
-
-  // r = signExtend(read(fd, valuesLower + tc, bytesToRead), SYSCALL_BITWIDTH);
-  // setUpper(getLower(tc), tc);
-  // storeVirtualMemory(getPT(context), vbuffer, tc);
-
-  // incrementTc();
-
-  // return r;
-
-  // =======================
-
-  upperBound = UINT64_MAX;
-
-  if (bytesToRead < SIZEOFUINT64)
-    upperBound = twoToThePowerOf(bytesToRead * 8) - 1;
-
-  saveStateEcall(loadVirtualMemory(getPT(context), vbuffer));
-
-  setLower(0, tc);
-  setUpper(upperBound, tc);
-
-  updateMemState(vbuffer, tc);
-
-  return bytesToRead;
-}
-
 void emitWrite() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
@@ -6278,14 +6280,6 @@ void redundancyCheck() {
     redundantIs = redundantIs + 1;
 }
 
-void incrementTc() {
-  tc = tc + 1;
-
-  if (symbolic)
-    if (tc >= maxTraceLength)
-      throwException(EXCEPTION_TRACELIMIT, 0);
-}
-
 void replayTrace() {
   uint64_t traceLength;
   uint64_t tl;
@@ -6327,7 +6321,7 @@ void replayTrace() {
     fetch();
     decode_execute();
 
-    incrementTc();
+    tc = tc + 1;
     tl = tl - 1;
   }
 
@@ -6722,7 +6716,6 @@ void do_remu() {
 }
 
 void symbolic_do_sltu() {
-  // assert: was compiled as true smaller/greater than expression
   // sTODO: support all comparisons
 
   saveState(*(registers + rd));
@@ -7155,7 +7148,6 @@ void record_beq() {
 }
 
 void symbolic_do_beq() {
-  uint64_t sltuTc;
 
   saveState(0);
 
@@ -7168,12 +7160,6 @@ void symbolic_do_beq() {
   } else {
     // assert: rs2 == $zero
     // assert: rs1 == [0,1] or [1,0]
-
-    // forwards approach:
-    // ----------------------------
-    // sltuTc = *(registers + rs1);
-    // constraintSLTU(sltuTc, 1);
-    // ----------------------------
 
     // if 1: <, >, != or ==, if 3: <= or >=,
     // if 0: after undo (values were correctly set)
@@ -8286,37 +8272,6 @@ void printProfile() {
   }
 }
 
-void printTrace() {
-  uint64_t i;
-
-  i = 0;
-
-  print((uint64_t*) "====================[ TRACE ]====================");
-  println();
-
-  while (i < tc) {
-    print((uint64_t*) "tc= ");
-    printInteger(i);
-    print((uint64_t*) " (prev= ");
-    printInteger(*(tcs + i));
-    print((uint64_t*) ") pc= ");
-    printHexadecimal(*(pcs + i), 0);
-    print((uint64_t*) " value= ");
-    printInteger(*(values + i));
-    print((uint64_t*) " [");
-    printInteger(getLower(i));
-    print((uint64_t*) ",");
-    printInteger(getUpper(i));
-    print((uint64_t*) "]");
-    println();
-
-    i = i + 1;
-  }
-
-  print((uint64_t*) "=================================================");
-  println();
-}
-
 void selfie_disassemble() {
   assemblyName = getArgument();
 
@@ -9245,6 +9200,8 @@ uint64_t selfie_run(uint64_t machine) {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+// ------------------------- INITIALIZATION ------------------------
+
 void symbolic_prepare_memory(uint64_t* context) {
   uint64_t* table;
   uint64_t  SP;
@@ -9294,6 +9251,8 @@ void symbolic_prepare_registers(uint64_t* context) {
   }
 }
 
+// ---------------------------- UTILITIES --------------------------
+
 void forceConcrete(uint64_t* context, uint64_t reg) {
   uint64_t lower;
   uint64_t upper;
@@ -9305,7 +9264,8 @@ void forceConcrete(uint64_t* context, uint64_t reg) {
     print(selfieName);
     print((uint64_t*) ": values in ");
     printRegisterValue(reg);
-    print((uint64_t*) " have to be concrete");
+    print((uint64_t*) " have to be concrete at pc= ");
+    printHexadecimal(pc, 0);
     println();
 
     exit(EXITCODE_BADARGUMENTS);
@@ -9313,7 +9273,7 @@ void forceConcrete(uint64_t* context, uint64_t reg) {
 }
 
 void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
-  // check if at least one is concrete
+  // execution remains precise iff only one is symbolic
   if (isConcrete(context, rs1) == 0) {
     if (isConcrete(context, rs2) == 0) {
       print(selfieName);
@@ -9334,20 +9294,13 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg) {
   return getLower(*(getRegs(context) + reg)) == getUpper(*(getRegs(context) + reg));
 }
 
-uint64_t isConcreteRegister(uint64_t reg) {
-  if (isSystemRegister(reg))
-    return 1;
-  else if (reg == REG_ZR)
-    return 1;
-  else
-    return 0;
-}
-
 uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg) {
   uint64_t tc;
 
   // quick check
-  if (isConcreteRegister(reg))
+  if (isSystemRegister(reg))
+    return 1;
+  else if (reg == REG_ZR)
     return 1;
 
   tc = *(getRegs(context) + reg);
@@ -9359,17 +9312,6 @@ uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg) {
     tc = *(tcs + tc);
   }
   return 1;
-}
-
-uint64_t fetchFromTC(uint64_t tc) {
-  uint64_t pc;
-
-  pc = *(pcs + tc);
-
-  if (pc % REGISTERSIZE == 0)
-    return getLowWord(loadVirtualMemory(pt, pc));
-  else
-    return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
 }
 
 uint64_t areSourceRegsConcrete() {
@@ -9394,156 +9336,103 @@ uint64_t isOneSourceRegConcrete() {
   return 0;
 }
 
-uint64_t findPrevFuncCall(uint64_t traceCounter) {
-  uint64_t itPC;
-  uint64_t instr;
+uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2) {
+  if (getLower(tc1) != getLower(tc2))
+    return 0;
+  else if (getUpper(tc1) != getUpper(tc2))
+    return 0;
 
-  while (traceCounter >= 0) {
-    itPC = *(pcs + traceCounter);
-    if (itPC % REGISTERSIZE == 0)
-      instr = getLowWord(loadVirtualMemory(pt, itPC));
-    else
-      instr = getHighWord(loadVirtualMemory(pt, itPC - INSTRUCTIONSIZE));
-
-    if(getOpcode(instr) == OP_JAL) {
-      return itPC;
-    }
-    traceCounter = traceCounter - 1;
-  }
-  return 0;
+  return 1;
 }
 
-void checkSatisfiability(uint64_t tc) {
-  if (getLower(tc) > getUpper(tc)) {
-    print(selfieName);
-    print((uint64_t*) ": symbolic value [");
-    printInteger(getLower(tc));
+// ------------------------------ PRINT ----------------------------
+
+void printTrace() {
+  uint64_t i;
+
+  i = 0;
+
+  print((uint64_t*) "====================[ TRACE ]====================");
+  println();
+
+  while (i < tc) {
+    print((uint64_t*) "tc= ");
+    printInteger(i);
+    print((uint64_t*) " (prev= ");
+    printInteger(*(tcs + i));
+    print((uint64_t*) ") pc= ");
+    printHexadecimal(*(pcs + i), 0);
+    print((uint64_t*) " value= ");
+    printInteger(*(values + i));
+    print((uint64_t*) " [");
+    printInteger(getLower(i));
     print((uint64_t*) ",");
-    printInteger(getUpper(tc));
-    print((uint64_t*) "] is unsatisfiable, tc: ");
-    printInteger(btc);
+    printInteger(getUpper(i));
+    print((uint64_t*) "]");
     println();
 
-  } else {
-    print(selfieName);
-    print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
-    printInteger(getLower(tc));
-    print((uint64_t*) ",..,");
-    printInteger(getUpper(tc));
-    println();
-  }
-}
-
-void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
-  // assert:    v1 is symbolic
-  // semantics: constrain v1 by v2
-
-  // sTODO: enhance == and !=
-
-  // [true <=] iff [false >]
-  if (operator == SYM_LEQ) {
-    operator = SYM_GT;
-    branch   = branch < 1;
-  // [true >=] iff [false <]
-  } else if (operator == SYM_GEQ) {
-    operator = SYM_LT;
-    branch   = branch < 1;
+    i = i + 1;
   }
 
-  if (operator == SYM_LT)
-    if (branch) {
-      if (getUpper(v1) >= getLower(v2))
-        setUpper(getLower(v2) - 1, v1);
-    } else {
-      if (getLower(v1) < getUpper(v2))
-        setLower(getUpper(v2), v1);
-    }
-  else if (operator == SYM_GT)
-    if (branch) {
-      if (getLower(v1) <= getUpper(v2))
-        setLower(getUpper(v2) + 1, v1);
-    } else {
-      if (getUpper(v1) > getLower(v2))
-        setUpper(getLower(v2), v1);
-    }
+  print((uint64_t*) "=================================================");
+  println();
 }
 
-// ----------------- FORWARD CONSTRAINING APPROACH -----------------
+// -----------------------------------------------------------------
+// ------------------ SYMBOLIC FORWARD EXECUTION -------------------
+// -----------------------------------------------------------------
 
-// constraints whatever happend at the given sltu instruction (tc)
-// TRUE or FALSE according to branch
-void constraintSLTU(uint64_t sltTc, uint64_t branch) {
-  uint64_t r1;
-  uint64_t r2;
-  uint64_t immediate;
-  uint64_t mem;
-  uint64_t symReg;
-  uint64_t instr;
-  uint64_t sltPc;
-  uint64_t ldPc;
-  uint64_t vaddr;
-  uint64_t addrReg;
+// -------------------------- INSTRUCTIONS -------------------------
 
-  // get pc from slt instruction
-  sltPc = *(pcs + sltTc);
-  instr = fetchFromTC(sltTc);
+// sTODO move symbolic forward instructions here
 
-  // get rs1, rs2 from slt instruction
-  r1 = getTcFromRegFromPast(getRS1(instr), sltPc);
-  r2 = getTcFromRegFromPast(getRS2(instr), sltPc);
+// ---------------------------- SYSCALLS ---------------------------
 
-  // find out which operand was symbolic
-  if (getLower(r1) == getUpper(r1))
-    symReg = r2;
-  else if (getLower(r2) == getUpper(r2))
-    symReg = r1;
-  else // should not happen
-    exit(-1);
+uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_t bytesToRead) {
+  uint64_t upperBound;
+  uint64_t r;
 
-  // find ld instruction from symbolic operand
-  ldPc = *(pcs + symReg);
-  instr = fetchFromTC(symReg);
+  // read into trace
+  // ==== test purposes ====
 
-  // verify that it was a load
-  if (getOpcode(instr) == OP_LD) {
-    // get rs1, imm from ld instruction
-    addrReg = getTcFromRegFromPast(getRS1(instr), ldPc);
-    immediate = getImmediateIFormat(instr);
+  // r = signExtend(read(fd, valuesLower + tc, bytesToRead), SYSCALL_BITWIDTH);
+  // setUpper(getLower(tc), tc);
+  // storeVirtualMemory(getPT(context), vbuffer, tc);
 
-    // assert: getLower(addrReg) == getUpper(addrReg)
-    // find memory tc of symbolic operand
-    vaddr = getLower(addrReg) + immediate;
-    mem = loadVirtualMemory(getPT(currentContext), vaddr);
+  // incrementTc();
 
-    if (symReg == r1)
-      // symReg < r2
-      constrain(mem, r2, SYM_LT, branch);
-    else
-      // symReg > r1
-      constrain(mem, r1, SYM_GT, branch);
+  // return r;
 
-  } else
-    throwException(EXCEPTION_SYMBOLICBRANCH, 0); // cannot constrain
+  // =======================
+
+  upperBound = UINT64_MAX;
+
+  if (bytesToRead < SIZEOFUINT64)
+    upperBound = twoToThePowerOf(bytesToRead * 8) - 1;
+
+  saveStateEcall(loadVirtualMemory(getPT(context), vbuffer));
+
+  setLower(0, tc);
+  setUpper(upperBound, tc);
+
+  updateMemState(vbuffer, tc);
+
+  return bytesToRead;
 }
 
-// takes a reg and finds the tc with the most recent change
-// relative to the given pc
-uint64_t getTcFromRegFromPast(uint64_t reg, uint64_t pc) {
-  uint64_t invTc;
-  uint64_t oldPc;
+// -----------------------------------------------------------------
+// ------------------------- SYMBOLIC UNDO -------------------------
+// -----------------------------------------------------------------
 
-  invTc = *(registers + reg);
-  oldPc = *(pcs + invTc);
+// -------------------------- INSTRUCTIONS -------------------------
 
-  while (oldPc >= pc) {
-    invTc = *(tcs + invTc); // get prev tc
-    oldPc = *(pcs + invTc); // get coresponding pc
-    if (invTc <= 0) return -1;
-  }
-  return invTc;
-}
+// sTODO move symbolic undo instructions here
 
-// ----------------- BACKWARD CONSTRAINING APPROACH ----------------
+// -----------------------------------------------------------------
+// ------------------ SYMBOLIC BACKWARDS CONFINE -------------------
+// -----------------------------------------------------------------
+
+// ---------------------------- ALGORITHM --------------------------
 
 void symbolic_confine() {
 
@@ -9631,17 +9520,66 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
   }
 }
 
-uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2) {
-  if (getLower(tc1) != getLower(tc2))
-    return 0;
-  else if (getUpper(tc1) != getUpper(tc2))
-    return 0;
+void checkSatisfiability(uint64_t tc) {
+  if (getLower(tc) > getUpper(tc)) {
+    print(selfieName);
+    print((uint64_t*) ": symbolic value [");
+    printInteger(getLower(tc));
+    print((uint64_t*) ",");
+    printInteger(getUpper(tc));
+    print((uint64_t*) "] is unsatisfiable, tc: ");
+    printInteger(btc);
+    println();
 
-  return 1;
+  } else {
+    print(selfieName);
+    print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
+    printInteger(getLower(tc));
+    print((uint64_t*) ",..,");
+    printInteger(getUpper(tc));
+    println();
+  }
 }
 
+void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
+  // assert:    v1 is symbolic
+  // semantics: constrain v1 by v2
+
+  // sTODO: enhance == and !=
+
+  // [true <=] iff [false >]
+  if (operator == SYM_LEQ) {
+    operator = SYM_GT;
+    branch   = branch < 1;
+  // [true >=] iff [false <]
+  } else if (operator == SYM_GEQ) {
+    operator = SYM_LT;
+    branch   = branch < 1;
+  }
+
+  if (operator == SYM_LT)
+    if (branch) {
+      if (getUpper(v1) >= getLower(v2))
+        setUpper(getLower(v2) - 1, v1);
+    } else {
+      if (getLower(v1) < getUpper(v2))
+        setLower(getUpper(v2), v1);
+    }
+  else if (operator == SYM_GT)
+    if (branch) {
+      if (getLower(v1) <= getUpper(v2))
+        setLower(getUpper(v2) + 1, v1);
+    } else {
+      if (getUpper(v1) > getLower(v2))
+        setUpper(getLower(v2), v1);
+    }
+}
+
+// ---------------------------- UTILITIES --------------------------
+
 uint64_t isConfinedInstruction() {
-  // assume only used when executionBrk is set
+  // assert: only used when executionBrk is set
+  // since confinig only takes place above executionBrk
   if (pc > executionBrk + 1)
     if (pc == *(pcs + tc - 1))
       return 1;
@@ -9649,51 +9587,7 @@ uint64_t isConfinedInstruction() {
   return 0;
 }
 
-void resetInstructions(uint64_t count) {
-  uint64_t prev_pc;
-
-  prev_pc = pc;
-  undo    = 1;
-
-  while (count > 0) {
-    tc = tc - 1;
-    pc = *(pcs + tc);
-
-    fetch();
-    decode_execute();
-
-    count = count - 1;
-  }
-
-  undo = 0;
-  pc   = prev_pc;
-
-  fetch();
-  setLower(0, tc);
-  setUpper(0, tc);
-}
-
-void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
-
-  // println();
-  // printInteger(getLower(fromTc)); println();
-  // printInteger(getUpper(fromTc)); println();
-  // print("..............................."); println();
-  // printInteger(getLower(withTc)); println();
-  // printInteger(getUpper(withTc)); println();
-  // println();
-
-  if (getLower(fromTc) < getLower(withTc))
-    setLower(getLower(withTc), tc);
-  else
-    setLower(getLower(fromTc), tc);
-
-  if (getUpper(fromTc) > getUpper(withTc))
-    setUpper(getUpper(withTc), tc);
-  else
-    setUpper(getUpper(fromTc), tc);
-
-}
+// -------------------------- INSTRUCTIONS -------------------------
 
 void confine_lui() {
   // restore old value
@@ -10162,6 +10056,76 @@ void confine_ecall() {
 
   if (*(pcs + btc - 1) == pc)
     btc = btc - 1;
+}
+
+// -----------------------------------------------------------------
+// -------------------------- TRACE API ----------------------------
+// -----------------------------------------------------------------
+
+// ---------------------------- UTILITIES --------------------------
+
+uint64_t fetchFromTC(uint64_t tc) {
+  uint64_t pc;
+
+  pc = *(pcs + tc);
+
+  if (pc % REGISTERSIZE == 0)
+    return getLowWord(loadVirtualMemory(pt, pc));
+  else
+    return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
+}
+
+void resetInstructions(uint64_t count) {
+  uint64_t prev_pc;
+
+  prev_pc = pc;
+  undo    = 1;
+
+  while (count > 0) {
+    tc = tc - 1;
+    pc = *(pcs + tc);
+
+    fetch();
+    decode_execute();
+
+    count = count - 1;
+  }
+
+  undo = 0;
+  pc   = prev_pc;
+
+  fetch();
+  setLower(0, tc);
+  setUpper(0, tc);
+}
+
+void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
+
+  // println();
+  // printInteger(getLower(fromTc)); println();
+  // printInteger(getUpper(fromTc)); println();
+  // print("..............................."); println();
+  // printInteger(getLower(withTc)); println();
+  // printInteger(getUpper(withTc)); println();
+  // println();
+
+  if (getLower(fromTc) < getLower(withTc))
+    setLower(getLower(withTc), tc);
+  else
+    setLower(getLower(fromTc), tc);
+
+  if (getUpper(fromTc) > getUpper(withTc))
+    setUpper(getUpper(withTc), tc);
+  else
+    setUpper(getUpper(fromTc), tc);
+}
+
+void incrementTc() {
+  tc = tc + 1;
+
+  if (symbolic)
+    if (tc >= maxTraceLength)
+      throwException(EXCEPTION_TRACELIMIT, 0);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
