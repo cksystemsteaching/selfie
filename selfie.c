@@ -889,8 +889,8 @@ void     emitOpen();
 uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s);
 void     implementOpen(uint64_t* context);
 
-void     emitMalloc();
-uint64_t implementMalloc(uint64_t* context);
+void emitMalloc();
+void implementMalloc(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1103,8 +1103,10 @@ void printSymbolicMemory(uint64_t svc);
 uint64_t loadSymbolicMemoryValue(uint64_t* pt, uint64_t vaddr);
 uint64_t loadSymbolicMemoryCeiling(uint64_t* pt, uint64_t vaddr);
 
-uint64_t ealloc();
-void     efree();
+uint64_t isTraceSpaceAvailable();
+
+void ealloc();
+void efree();
 
 void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb);
 
@@ -1451,18 +1453,28 @@ void up_loadBinary(uint64_t* context);
 uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP);
 void     up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv);
 
-void mapUnmappedPages(uint64_t* context);
+uint64_t handleSystemCall(uint64_t* context);
+uint64_t handlePageFault(uint64_t* context);
+uint64_t handleDivisionByZero(uint64_t* context);
+uint64_t handleMaxTrace(uint64_t* context);
+uint64_t handleTimer(uint64_t* context);
 
-uint64_t isBootLevelZero();
-
-uint64_t handleDivisionByZero();
-uint64_t handleSystemCalls(uint64_t* context);
+uint64_t handleException(uint64_t* context);
 
 uint64_t mipster(uint64_t* toContext);
+uint64_t hypster(uint64_t* toContext);
+
+uint64_t mixter(uint64_t* toContext, uint64_t mix);
+
+uint64_t minmob(uint64_t* toContext);
+void     mapUnmappedPages(uint64_t* context);
 uint64_t minster(uint64_t* toContext);
 uint64_t mobster(uint64_t* toContext);
-uint64_t hypster(uint64_t* toContext);
-uint64_t mixter(uint64_t* toContext, uint64_t mix);
+
+void     backtrackTrace(uint64_t* context);
+uint64_t numster(uint64_t* toContext);
+
+uint64_t isBootLevelZero();
 
 uint64_t selfie_run(uint64_t machine);
 
@@ -1485,6 +1497,7 @@ uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
 uint64_t EXITCODE_DIVISIONBYZERO;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION;
 uint64_t EXITCODE_UNKNOWNSYSCALL;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR;
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR;
 uint64_t EXITCODE_OUTOFTRACEMEMORY;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION;
@@ -1522,9 +1535,10 @@ void initKernel() {
   EXITCODE_DIVISIONBYZERO = signShrink(-8, SYSCALL_BITWIDTH);
   EXITCODE_UNKNOWNINSTRUCTION = signShrink(-9, SYSCALL_BITWIDTH);
   EXITCODE_UNKNOWNSYSCALL = signShrink(-10, SYSCALL_BITWIDTH);
-  EXITCODE_SYMBOLICEXECUTIONERROR = signShrink(-11, SYSCALL_BITWIDTH);
-  EXITCODE_OUTOFTRACEMEMORY = signShrink(-12, SYSCALL_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-13, SYSCALL_BITWIDTH);
+  EXITCODE_MULTIPLEEXCEPTIONERROR = signShrink(-11, SYSCALL_BITWIDTH);
+  EXITCODE_SYMBOLICEXECUTIONERROR = signShrink(-12, SYSCALL_BITWIDTH);
+  EXITCODE_OUTOFTRACEMEMORY = signShrink(-13, SYSCALL_BITWIDTH);
+  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-14, SYSCALL_BITWIDTH);
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5518,41 +5532,47 @@ void implementRead(uint64_t* context) {
           bytesToRead = size;
 
         if (symbolic) {
-          if (rc > 0) {
-            // do not read but reuse value and ceiling
-            value = *(read_values + rc);
-            vceil = *(read_vceils + rc);
+          if (isTraceSpaceAvailable()) {
+            if (rc > 0) {
+              // do not read but reuse value and ceiling
+              value = *(read_values + rc);
+              vceil = *(read_vceils + rc);
 
-            actuallyRead = bytesToRead;
+              actuallyRead = bytesToRead;
 
-            rc = rc - 1;
+              rc = rc - 1;
+            } else {
+              // save mrvc in buffer
+              mrvc = loadPhysicalMemory(buffer);
+
+              // caution: read only overwrites bytesToRead number of bytes
+              // we therefore need to restore the actual value in buffer
+              // to preserve the original read semantics
+              storePhysicalMemory(buffer, loadSymbolicMemoryValue(getPT(context), vbuffer));
+
+              actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
+
+              // retrieve read value
+              value = loadPhysicalMemory(buffer);
+
+              // fuzz read value, ceiling first, then value
+              vceil = fuzzCeiling(value);
+              value = fuzzValue(value);
+
+              // restore mrvc in buffer
+              storePhysicalMemory(buffer, mrvc);
+            }
+
+            if (mrcc == 0)
+              // no branching yet, we may overwrite symbolic memory
+              storeSymbolicMemory(getPT(context), vbuffer, value, vceil, 0);
+            else
+              storeSymbolicMemory(getPT(context), vbuffer, value, vceil, tc);
           } else {
-            // save mrvc in buffer
-            mrvc = loadPhysicalMemory(buffer);
+            actuallyRead = 0;
 
-            // caution: read only overwrites bytesToRead number of bytes
-            // we therefore need to restore the actual value in buffer
-            // to preserve the original read semantics
-            storePhysicalMemory(buffer, loadSymbolicMemoryValue(getPT(context), vbuffer));
-
-            actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
-
-            // retrieve read value
-            value = loadPhysicalMemory(buffer);
-
-            // fuzz read value, ceiling first, then value
-            vceil = fuzzCeiling(value);
-            value = fuzzValue(value);
-
-            // restore mrvc in buffer
-            storePhysicalMemory(buffer, mrvc);
+            throwException(EXCEPTION_MAXTRACE, 0);
           }
-
-          if (mrcc == 0)
-            // no branching yet, we may overwrite symbolic memory
-            storeSymbolicMemory(getPT(context), vbuffer, value, vceil, 0);
-          else
-            storeSymbolicMemory(getPT(context), vbuffer, value, vceil, tc);
         } else
           actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
@@ -5893,7 +5913,7 @@ void emitMalloc() {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
-uint64_t implementMalloc(uint64_t* context) {
+void implementMalloc(uint64_t* context) {
   // parameter
   uint64_t size;
 
@@ -5913,42 +5933,40 @@ uint64_t implementMalloc(uint64_t* context) {
   size = roundUp(size, SIZEOFUINT64);
   bump = getBumpPointer(context);
 
-  if (bump + size > *(getRegs(context) + REG_SP)) {
-    setExitCode(context, EXITCODE_OUTOFVIRTUALMEMORY);
-
-    return EXIT;
-  } else {
+  if (bump + size > *(getRegs(context) + REG_SP))
+    // out of virtual memory
+    *(getRegs(context) + REG_A0) = 0;
+  else {
     *(getRegs(context) + REG_A0) = bump;
 
     if (symbolic) {
       *(reg_vceil + REG_A0) = bump;
 
       if (mrcc > 0) {
-        if (tc + 1 < maxTraceLength)
+        if (isTraceSpaceAvailable())
           // since there has been branching record malloc using vaddr == 0
           storeSymbolicMemory(getPT(context), 0, bump, size, tc);
         else {
-          setExitCode(context, EXITCODE_OUTOFTRACEMEMORY);
+          throwException(EXCEPTION_MAXTRACE, 0);
 
-          return EXIT;
+          return;
         }
       }
     }
 
+    // set bump pointer to next free space
     setBumpPointer(context, bump + size);
+  }
 
-    setPC(context, getPC(context) + INSTRUCTIONSIZE);
+  setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
-    if (debug_malloc) {
-      print(selfieName);
-      print((uint64_t*) ": actually mallocating ");
-      printInteger(size);
-      print((uint64_t*) " bytes at virtual address ");
-      printHexadecimal(bump, 8);
-      println();
-    }
-
-    return DONOTEXIT;
+  if (debug_malloc) {
+    print(selfieName);
+    print((uint64_t*) ": actually mallocating ");
+    printInteger(size);
+    print((uint64_t*) " bytes at virtual address ");
+    printHexadecimal(bump, 8);
+    println();
   }
 }
 
@@ -6202,7 +6220,7 @@ void do_lui() {
 }
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
-  *(registers + rd) = *(values + (tc % maxTraceLength));
+  *(registers + rd) = *(values + (tc % maxReplayLength));
 }
 
 void constrain_lui() {
@@ -6997,7 +7015,7 @@ void undo_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  storeVirtualMemory(pt, vaddr, *(values + (tc % maxTraceLength)));
+  storeVirtualMemory(pt, vaddr, *(values + (tc % maxReplayLength)));
 }
 
 void print_beq() {
@@ -7187,7 +7205,7 @@ void do_ecall() {
 
   if (redo) {
     // TODO: redo all side effects
-    *(registers + REG_A0) = *(values + (tc % maxTraceLength));
+    *(registers + REG_A0) = *(values + (tc % maxReplayLength));
 
     pc = pc + INSTRUCTIONSIZE;
   } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
@@ -7209,6 +7227,7 @@ void do_ecall() {
       implementSwitch();
     }
   else
+    // all system calls other than switch are handled by exception
     throwException(EXCEPTION_SYSCALL, 0);
 }
 
@@ -7218,10 +7237,10 @@ void undo_ecall() {
   a0 = *(registers + REG_A0);
 
   // TODO: undo all side effects
-  *(registers + REG_A0) = *(values + (tc % maxTraceLength));
+  *(registers + REG_A0) = *(values + (tc % maxReplayLength));
 
   // save register a0 for redoing system call
-  *(values + (tc % maxTraceLength)) = a0;
+  *(values + (tc % maxReplayLength)) = a0;
 }
 
 void backtrack_ecall() {
@@ -7270,8 +7289,8 @@ void backtrack_ecall() {
 // -----------------------------------------------------------------
 
 void recordState(uint64_t value) {
-  *(pcs + (tc % maxTraceLength))    = pc;
-  *(values + (tc % maxTraceLength)) = value;
+  *(pcs + (tc % maxReplayLength))    = pc;
+  *(values + (tc % maxReplayLength)) = value;
 
   tc = tc + 1;
 }
@@ -7286,8 +7305,7 @@ void replayTrace() {
     traceLength = maxReplayLength;
 
   record = 0;
-
-  undo = 1;
+  undo   = 1;
 
   tl = traceLength;
 
@@ -7295,7 +7313,7 @@ void replayTrace() {
   while (tl > 0) {
     tc = tc - 1;
 
-    pc = *(pcs + (tc % maxTraceLength));
+    pc = *(pcs + (tc % maxReplayLength));
 
     fetch();
     decode_execute();
@@ -7312,7 +7330,7 @@ void replayTrace() {
 
   // redo traceLength number of instructions
   while (tl > 0) {
-    // assert: pc == *(pcs + (tc % maxTraceLength))
+    // assert: pc == *(pcs + (tc % maxReplayLength))
 
     fetch();
     decode_execute();
@@ -7323,8 +7341,7 @@ void replayTrace() {
 
   disassemble = 0;
 
-  redo = 0;
-
+  redo   = 0;
   record = 1;
 }
 
@@ -7396,16 +7413,16 @@ uint64_t loadSymbolicMemoryCeiling(uint64_t* pt, uint64_t vaddr) {
     return loadSymbolicMemoryValue(pt, vaddr);
 }
 
-uint64_t ealloc() {
-  if (tc + 1 < maxTraceLength) {
-    tc = tc + 1;
+uint64_t isTraceSpaceAvailable() {
+  return tc + 1 < maxTraceLength;
+}
 
-    return 1;
-  } else
-    return 0;
+void ealloc() {
+  tc = tc + 1;
 }
 
 void efree() {
+  // assert: tc > 0
   tc = tc - 1;
 }
 
@@ -7441,9 +7458,11 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
       print((uint64_t*) ": overwriting ");
       printSymbolicMemory(mrvc);
     }
-  } else if (ealloc()) {
+  } else if (isTraceSpaceAvailable()) {
     // current value at vaddr is from before most recent branch,
     // track that value by creating a new trace event
+    ealloc();
+
     *(pcs + tc) = pc;
     *(tcs + tc) = mrvc;
 
@@ -7768,6 +7787,21 @@ void printException(uint64_t exception, uint64_t faultingPage) {
 }
 
 void throwException(uint64_t exception, uint64_t faultingPage) {
+  if (getException(currentContext) != EXCEPTION_NOEXCEPTION)
+    if (getException(currentContext) != exception) {
+      print(selfieName);
+      print((uint64_t*) ": context ");
+      printHexadecimal((uint64_t) currentContext, 8);
+      print((uint64_t*) " throws ");
+      printException(exception, faultingPage);
+      print((uint64_t*) " exception in presence of ");
+      printException(getException(currentContext), getFaultingPage(currentContext));
+      print((uint64_t*) " exception");
+      println();
+
+      exit(EXITCODE_MULTIPLEEXCEPTIONERROR);
+    }
+
   setException(currentContext, exception);
   setFaultingPage(currentContext, faultingPage);
 
@@ -8684,7 +8718,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     mapPage(context, getPageOfVirtualAddress(vaddr), (uint64_t) palloc());
 
   if (symbolic) {
-    if (tc + 1 < maxTraceLength)
+    if (isTraceSpaceAvailable())
       // always track initialized memory by using tc as most recent branch
       storeSymbolicMemory(getPT(context), vaddr, data, data, tc);
     else {
@@ -8809,44 +8843,58 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
     *(reg_vceil + REG_SP) = SP;
 }
 
-void mapUnmappedPages(uint64_t* context) {
-  uint64_t page;
+uint64_t handleSystemCall(uint64_t* context) {
+  uint64_t a7;
 
-  // assert: page table is only mapped from beginning up and end down
+  setException(context, EXCEPTION_NOEXCEPTION);
 
-  page = getLoPage(context);
+  a7 = *(getRegs(context) + REG_A7);
 
-  while (isPageMapped(getPT(context), page))
-    page = page + 1;
+  if (a7 == SYSCALL_MALLOC)
+    implementMalloc(context);
+  else if (a7 == SYSCALL_READ)
+    implementRead(context);
+  else if (a7 == SYSCALL_WRITE)
+    implementWrite(context);
+  else if (a7 == SYSCALL_OPEN)
+    implementOpen(context);
+  else if (a7 == SYSCALL_EXIT) {
+    implementExit(context);
 
-  while (pavailable()) {
-    mapPage(context, page, (uint64_t) palloc());
+    // TODO: exit only if all contexts have exited
+    return EXIT;
+  } else {
+    print(selfieName);
+    print((uint64_t*) ": unknown system call ");
+    printInteger(a7);
+    println();
 
-    page = page + 1;
+    setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
+
+    return EXIT;
   }
+
+  if (getException(context) == EXCEPTION_MAXTRACE) {
+    // exiting during symbolic execution, no exit code necessary
+    setException(context, EXCEPTION_NOEXCEPTION);
+
+    return EXIT;
+  } else
+    return DONOTEXIT;
 }
 
-uint64_t isBootLevelZero() {
-  // in C99 malloc(0) returns either a null pointer or a unique pointer.
-  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
-  // selfie's malloc implementation, on the other hand,
-  // returns the same not null address, if malloc(0) is called consecutively.
-  uint64_t firstMalloc;
-  uint64_t secondMalloc;
+uint64_t handlePageFault(uint64_t* context) {
+  setException(context, EXCEPTION_NOEXCEPTION);
 
-  firstMalloc = (uint64_t) malloc(0);
-  secondMalloc = (uint64_t) malloc(0);
+  // TODO: use this table to unmap and reuse frames
+  mapPage(context, getFaultingPage(context), (uint64_t) palloc());
 
-  if (firstMalloc == 0)
-    return 1;
-  if (firstMalloc != secondMalloc)
-    return 1;
-
-  // it is selfie's malloc, so it can not be boot level zero.
-  return 0;
+  return DONOTEXIT;
 }
 
-uint64_t handleDivisionByZero() {
+uint64_t handleDivisionByZero(uint64_t* context) {
+  setException(context, EXCEPTION_NOEXCEPTION);
+
   print(selfieName);
   print((uint64_t*) ": division by zero");
   if (record) {
@@ -8855,56 +8903,57 @@ uint64_t handleDivisionByZero() {
 
     replayTrace();
 
-    return EXITCODE_NOERROR;
-  }
-  println();
+    setExitCode(context, EXITCODE_NOERROR);
+  } else {
+    println();
 
-  return EXITCODE_DIVISIONBYZERO;
+    setExitCode(context, EXITCODE_DIVISIONBYZERO);
+  }
+
+  return EXIT;
 }
 
-uint64_t handleSystemCalls(uint64_t* context) {
-  uint64_t a7;
+uint64_t handleMaxTrace(uint64_t* context) {
+  setException(context, EXCEPTION_NOEXCEPTION);
 
-  if (getException(context) == EXCEPTION_SYSCALL) {
-    a7 = *(getRegs(context) + REG_A7);
+  setExitCode(context, EXITCODE_OUTOFTRACEMEMORY);
 
-    if (a7 == SYSCALL_MALLOC)
-      return implementMalloc(context);
-    else if (a7 == SYSCALL_READ)
-      implementRead(context);
-    else if (a7 == SYSCALL_WRITE)
-      implementWrite(context);
-    else if (a7 == SYSCALL_OPEN)
-      implementOpen(context);
-    else if (a7 == SYSCALL_EXIT) {
-      implementExit(context);
+  return EXIT;
+}
 
-      // TODO: exit only if all contexts have exited
-      return EXIT;
-    } else {
-      print(selfieName);
-      print((uint64_t*) ": unknown system call ");
-      printInteger(a7);
-      println();
+uint64_t handleTimer(uint64_t* context) {
+  setException(context, EXCEPTION_NOEXCEPTION);
 
-      setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
+  return DONOTEXIT;
+}
 
-      return EXIT;
-    }
-  } else if (getException(context) != EXCEPTION_TIMER) {
+uint64_t handleException(uint64_t* context) {
+  uint64_t exception;
+
+  exception = getException(context);
+
+  if (exception == EXCEPTION_SYSCALL)
+    return handleSystemCall(context);
+  else if (exception == EXCEPTION_PAGEFAULT)
+    return handlePageFault(context);
+  else if (exception == EXCEPTION_DIVISIONBYZERO)
+    return handleDivisionByZero(context);
+  else if (exception == EXCEPTION_MAXTRACE)
+    return handleMaxTrace(context);
+  else if (exception == EXCEPTION_TIMER)
+    return handleTimer(context);
+  else {
     print(selfieName);
     print((uint64_t*) ": context ");
     print(getName(context));
     print((uint64_t*) " throws uncaught ");
-    printException(getException(context), getFaultingPage(context));
+    printException(exception, getFaultingPage(context));
     println();
 
     setExitCode(context, EXITCODE_UNCAUGHTEXCEPTION);
 
     return EXIT;
   }
-
-  return DONOTEXIT;
 }
 
 uint64_t mipster(uint64_t* toContext) {
@@ -8924,185 +8973,10 @@ uint64_t mipster(uint64_t* toContext) {
       toContext = getParent(fromContext);
 
       timeout = TIMEROFF;
-    } else {
-       // we are the parent in charge of handling exceptions
-      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
-        // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-      else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
-        return handleDivisionByZero();
-      else if (handleSystemCalls(fromContext) == EXIT)
-        return getExitCode(fromContext);
-
-      setException(fromContext, EXCEPTION_NOEXCEPTION);
-
-      toContext = fromContext;
-
-      timeout = TIMESLICE;
-    }
-  }
-}
-
-void backtrackTrace() {
-  uint64_t savepc;
-
-  symbolic = 0;
-
-  backtrack = 1;
-
-  while (backtrack) {
-    pc = *(pcs + tc);
-
-    if (pc == 0)
-      // we have backtracked all code back to the data segment
-      backtrack = 0;
+    } else if (handleException(fromContext) == EXIT)
+      return getExitCode(fromContext);
     else {
-      savepc = pc;
-
-      fetch();
-      decode_execute();
-
-      if (pc != savepc)
-        // backtracking stopped by sltu
-        backtrack = 0;
-    }
-  }
-
-  symbolic = 1;
-}
-
-uint64_t numster(uint64_t* toContext) {
-  uint64_t timeout;
-  uint64_t* fromContext;
-
-  print((uint64_t*) "numster");
-  println();
-
-  timeout = TIMESLICE;
-
-  while (1) {
-    fromContext = mipster_switch(toContext, timeout);
-
-    if (getParent(fromContext) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      toContext = getParent(fromContext);
-
-      timeout = TIMEROFF;
-    } else {
-       // we are the parent in charge of handling exceptions
-      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
-        // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-      else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
-        return handleDivisionByZero();
-      else if (getException(fromContext) == EXCEPTION_MAXTRACE) {
-        if (debug_symbolic) {
-          print(selfieName);
-          print((uint64_t*) ": backtracking ");
-          print(getName(currentContext));
-          print((uint64_t*) " from maximum trace length");
-          println();
-        }
-
-        backtrackTrace();
-
-        if (pc == 0)
-          return EXITCODE_NOERROR;
-        else
-          setPC(fromContext, pc);
-      } else if (handleSystemCalls(fromContext) == EXIT) {
-        if (debug_symbolic) {
-          print(selfieName);
-          print((uint64_t*) ": backtracking ");
-          print(getName(currentContext));
-          print((uint64_t*) " from exit code ");
-          printInteger(signExtend(getExitCode(fromContext), SYSCALL_BITWIDTH));
-          println();
-        }
-
-        backtrackTrace();
-
-        if (pc == 0)
-          return EXITCODE_NOERROR;
-        else
-          setPC(fromContext, pc);
-      }
-
-      setException(fromContext, EXCEPTION_NOEXCEPTION);
-
-      toContext = fromContext;
-
-      timeout = TIMESLICE;
-    }
-  }
-}
-
-uint64_t minster(uint64_t* toContext) {
-  uint64_t timeout;
-  uint64_t* fromContext;
-
-  print((uint64_t*) "minster");
-  println();
-
-  timeout = TIMESLICE;
-
-  // virtual is like physical memory in initial context up to memory size
-  // by mapping unmapped pages (for the heap) to all available page frames
-  // CAUTION: consumes memory even when not accessed
-  mapUnmappedPages(toContext);
-
-  while (1) {
-    fromContext = mipster_switch(toContext, timeout);
-
-    if (getParent(fromContext) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      toContext = getParent(fromContext);
-
-      timeout = TIMEROFF;
-    } else {
-      // we are the parent in charge of handling exceptions
-
-      if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
-        return handleDivisionByZero();
-      else if (handleSystemCalls(fromContext) == EXIT)
-        return getExitCode(fromContext);
-
-      setException(fromContext, EXCEPTION_NOEXCEPTION);
-
-      toContext = fromContext;
-
-      timeout = TIMESLICE;
-    }
-  }
-}
-
-uint64_t mobster(uint64_t* toContext) {
-  uint64_t timeout;
-  uint64_t* fromContext;
-
-  print((uint64_t*) "mobster");
-  println();
-
-  timeout = TIMESLICE;
-
-  while (1) {
-    fromContext = mipster_switch(toContext, TIMESLICE);
-
-    if (getParent(fromContext) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      toContext = getParent(fromContext);
-
-      timeout = TIMEROFF;
-    } else {
-      // we are the parent in charge of handling exceptions
-
-      if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
-        return handleDivisionByZero();
-      else if (handleSystemCalls(fromContext) == EXIT)
-        return getExitCode(fromContext);
-
-      setException(fromContext, EXCEPTION_NOEXCEPTION);
-
+      // TODO: scheduler should go here
       toContext = fromContext;
 
       timeout = TIMESLICE;
@@ -9119,17 +8993,11 @@ uint64_t hypster(uint64_t* toContext) {
   while (1) {
     fromContext = hypster_switch(toContext, TIMESLICE);
 
-    if (getException(fromContext) == EXCEPTION_PAGEFAULT)
-      // TODO: use this table to unmap and reuse frames
-      mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-    else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
-      return handleDivisionByZero();
-    else if (handleSystemCalls(fromContext) == EXIT)
+    if (handleException(fromContext) == EXIT)
       return getExitCode(fromContext);
-
-    setException(fromContext, EXCEPTION_NOEXCEPTION);
-
-    toContext = fromContext;
+    else
+      // TODO: scheduler should go here
+      toContext = fromContext;
   }
 }
 
@@ -9176,19 +9044,9 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
       toContext = getParent(fromContext);
 
       timeout = TIMEROFF;
-    } else {
-      // we are the parent in charge of handling exceptions
-
-      if (getException(fromContext) == EXCEPTION_PAGEFAULT)
-        // TODO: use this table to unmap and reuse frames
-        mapPage(fromContext, getFaultingPage(fromContext), (uint64_t) palloc());
-      else if (getException(fromContext) == EXCEPTION_DIVISIONBYZERO)
-        return handleDivisionByZero();
-      else if (handleSystemCalls(fromContext) == EXIT)
-        return getExitCode(fromContext);
-
-      setException(fromContext, EXCEPTION_NOEXCEPTION);
-
+    } else if (handleException(fromContext) == EXIT)
+      return getExitCode(fromContext);
+    else {
       // TODO: scheduler should go here
       toContext = fromContext;
 
@@ -9205,6 +9063,172 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
       }
     }
   }
+}
+
+uint64_t minmob(uint64_t* toContext) {
+  uint64_t timeout;
+  uint64_t* fromContext;
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    fromContext = mipster_switch(toContext, TIMESLICE);
+
+    if (getParent(fromContext) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      toContext = getParent(fromContext);
+
+      timeout = TIMEROFF;
+    } else {
+      // minster and mobster do not handle page faults
+      if (getException(fromContext) == EXCEPTION_PAGEFAULT) {
+        print(selfieName);
+        print((uint64_t*) ": context ");
+        print(getName(fromContext));
+        print((uint64_t*) " throws uncaught ");
+        printException(getException(fromContext), getFaultingPage(fromContext));
+        println();
+
+        return EXITCODE_UNCAUGHTEXCEPTION;
+      } else if (handleException(fromContext) == EXIT)
+        return getExitCode(fromContext);
+
+      // TODO: scheduler should go here
+      toContext = fromContext;
+
+      timeout = TIMESLICE;
+    }
+  }
+}
+
+void mapUnmappedPages(uint64_t* context) {
+  uint64_t page;
+
+  // assert: page table is only mapped from beginning up and end down
+
+  page = getLoPage(context);
+
+  while (isPageMapped(getPT(context), page))
+    page = page + 1;
+
+  while (pavailable()) {
+    mapPage(context, page, (uint64_t) palloc());
+
+    page = page + 1;
+  }
+}
+
+uint64_t minster(uint64_t* toContext) {
+  print((uint64_t*) "minster");
+  println();
+
+  // virtual is like physical memory in initial context up to memory size
+  // by mapping unmapped pages (for the heap) to all available page frames
+  // CAUTION: consumes memory even when not accessed
+  mapUnmappedPages(toContext);
+
+  // does not handle page faults, works only until running out of mapped pages
+  return minmob(toContext);
+}
+
+uint64_t mobster(uint64_t* toContext) {
+  print((uint64_t*) "mobster");
+  println();
+
+  // does not handle page faults, relies on fancy hypsters to do that
+  return minmob(toContext);
+}
+
+void backtrackTrace(uint64_t* context) {
+  uint64_t savepc;
+
+  if (debug_symbolic) {
+    print(selfieName);
+    print((uint64_t*) ": backtracking ");
+    print(getName(context));
+    print((uint64_t*) " from exit code ");
+    printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
+    println();
+  }
+
+  symbolic = 0;
+
+  backtrack = 1;
+
+  while (backtrack) {
+    pc = *(pcs + tc);
+
+    if (pc == 0)
+      // we have backtracked all code back to the data segment
+      backtrack = 0;
+    else {
+      savepc = pc;
+
+      fetch();
+      decode_execute();
+
+      if (pc != savepc)
+        // backtracking stopped by sltu
+        backtrack = 0;
+    }
+  }
+
+  symbolic = 1;
+
+  setPC(context, pc);
+}
+
+uint64_t numster(uint64_t* toContext) {
+  uint64_t timeout;
+  uint64_t* fromContext;
+
+  print((uint64_t*) "numster");
+  println();
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    fromContext = mipster_switch(toContext, timeout);
+
+    if (getParent(fromContext) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      toContext = getParent(fromContext);
+
+      timeout = TIMEROFF;
+    } else {
+      if (handleException(fromContext) == EXIT) {
+        backtrackTrace(fromContext);
+
+        if (pc == 0)
+          return EXITCODE_NOERROR;
+      }
+
+      // TODO: scheduler should go here
+      toContext = fromContext;
+
+      timeout = TIMESLICE;
+    }
+  }
+}
+
+uint64_t isBootLevelZero() {
+  // in C99 malloc(0) returns either a null pointer or a unique pointer.
+  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
+  // selfie's malloc implementation, on the other hand,
+  // returns the same not null address, if malloc(0) is called consecutively.
+  uint64_t firstMalloc;
+  uint64_t secondMalloc;
+
+  firstMalloc = (uint64_t) malloc(0);
+  secondMalloc = (uint64_t) malloc(0);
+
+  if (firstMalloc == 0)
+    return 1;
+  if (firstMalloc != secondMalloc)
+    return 1;
+
+  // it is selfie's malloc, so it can not be boot level zero.
+  return 0;
 }
 
 uint64_t selfie_run(uint64_t machine) {
