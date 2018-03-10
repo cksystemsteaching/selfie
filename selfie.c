@@ -6293,7 +6293,7 @@ void constrain_addi() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint
-        setConstraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + imm, *(reg_cceil + rs1) + imm);
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + imm, *(reg_cceil + rs1) + imm);
     } else
       // rd has no constraint if rs1 has none
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6340,7 +6340,7 @@ void constrain_add() {
       if (*(reg_hasco + rs2))
         // we cannot keep track of more than one constraint for add but
         // need to warn about their earlier presence if used in comparisons
-        setConstraint(rd, 1, 0, 0, 0, 0);
+        setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
         print(selfieName);
@@ -6352,7 +6352,7 @@ void constrain_add() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint since rs2 has none
-        setConstraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + *(registers + rs2), *(reg_cceil + rs1) + *(reg_vceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + *(registers + rs2), *(reg_cceil + rs1) + *(reg_vceil + rs2));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another addend
@@ -6365,7 +6365,7 @@ void constrain_add() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs2 constraint since rs1 has none
-        setConstraint(rd, 1, *(reg_vaddr + rs2), 0, *(registers + rs1) + *(reg_coval + rs2), *(reg_vceil + rs1) + *(reg_cceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(registers + rs1) + *(reg_coval + rs2), *(reg_vceil + rs1) + *(reg_cceil + rs2));
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6391,7 +6391,7 @@ void constrain_sub() {
       if (*(reg_hasco + rs2))
         // we cannot keep track of more than one constraint for sub but
         // need to warn about their earlier presence if used in comparisons
-        setConstraint(rd, 1, 0, 0, 0, 0);
+        setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another subtrahend
         print(selfieName);
@@ -6403,7 +6403,7 @@ void constrain_sub() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint since rs2 has none
-        setConstraint(rd, 1, *(reg_vaddr + rs1), 0, *(reg_coval + rs1) - *(registers + rs2), *(reg_cceil + rs1) - *(reg_vceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_coval + rs1) - *(registers + rs2), *(reg_cceil + rs1) - *(reg_vceil + rs2));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another minuend
@@ -6416,7 +6416,7 @@ void constrain_sub() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs2 constraint since rs1 has none
-        setConstraint(rd, 1, *(reg_vaddr + rs2), 1, *(registers + rs1) - *(reg_coval + rs2), *(reg_vceil + rs1) - *(reg_cceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(registers + rs1) - *(reg_coval + rs2), *(reg_vceil + rs1) - *(reg_cceil + rs2));
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6462,7 +6462,7 @@ void constrain_mul() {
       } else
         // rd inherits rs1 constraint since rs2 has none
         // assert: rs2 interval is singleton
-        setConstraint(rd, 1, *(reg_vaddr + rs1), 0,
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
           *(reg_coval + rs1) + *(registers + rs1) * (*(registers + rs2) - 1), *(reg_cceil + rs1) + *(reg_vceil + rs2) * (*(reg_vceil + rs2) - 1));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
@@ -6477,7 +6477,7 @@ void constrain_mul() {
       } else
         // rd inherits rs2 constraint since rs1 has none
         // assert: rs1 interval is singleton
-        setConstraint(rd, 1, *(reg_vaddr + rs2), 0,
+        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
           (*(registers + rs1) - 1) * *(registers + rs2) + *(reg_coval + rs2),
           (*(reg_vceil + rs1) - 1) * *(reg_vceil + rs2) + *(reg_cceil + rs2));
     } else
@@ -6536,7 +6536,7 @@ void constrain_divu() {
           } else
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
-            setConstraint(rd, 1, *(reg_vaddr + rs1), 0,
+            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
               *(reg_coval + rs1) -
                 (*(registers + rs1) - *(registers + rs1) / *(registers + rs2)),
               *(reg_cceil + rs1) -
@@ -6554,7 +6554,7 @@ void constrain_divu() {
           } else
             // rd inherits rs2 constraint since rs1 has none
             // assert: rs1 interval is singleton
-            setConstraint(rd, 1, *(reg_vaddr + rs2), 0,
+            setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
               *(reg_coval + rs2) -
                 (*(registers + rs2) - *(registers + rs1) / *(registers + rs2)),
               *(reg_cceil + rs2) -
@@ -6613,7 +6613,7 @@ void constrain_remu() {
           } else
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
-            setConstraint(rd, 1, *(reg_vaddr + rs1), 0,
+            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
               *(reg_coval + rs1) -
                 (*(registers + rs1) - *(registers + rs1) % *(registers + rs2)),
               *(reg_cceil + rs1) -
@@ -6631,7 +6631,7 @@ void constrain_remu() {
           } else
             // rd inherits rs2 constraint since rs1 has none
             // assert: rs1 interval is singleton
-            setConstraint(rd, 1, *(reg_vaddr + rs2), 0,
+            setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
               *(reg_coval + rs2) -
                 (*(registers + rs2) - *(registers + rs1) % *(registers + rs2)),
               *(reg_cceil + rs2) -
@@ -6669,7 +6669,9 @@ void constrain_sltu() {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
         print(selfieName);
-        print((uint64_t*) ": multiple constrained memory locations in left sltu operand at ");
+        print((uint64_t*) ": ");
+        printInteger(*(reg_hasco + rs1));
+        print((uint64_t*) " constrained memory locations in left sltu operand at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
@@ -6683,7 +6685,9 @@ void constrain_sltu() {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
         print(selfieName);
-        print((uint64_t*) ": multiple constrained memory locations in right sltu operand at ");
+        print((uint64_t*) ": ");
+        printInteger(*(reg_hasco + rs2));
+        print((uint64_t*) " constrained memory locations in right sltu operand at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
@@ -6973,6 +6977,22 @@ uint64_t constrain_sd() {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
         // semantics of sd
+        if (*(reg_hasco + rs2)) {
+          if (*(reg_vaddr + rs2) == 0) {
+            // constrained memory at vaddr 0 means that there is more than
+            // one constrained memory location in the sd operand
+            print(selfieName);
+            print((uint64_t*) ": ");
+            printInteger(*(reg_hasco + rs2));
+            print((uint64_t*) " constrained memory locations in sd operand at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+
+            //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          }
+        }
+
         storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_vceil + rs2), mrcc);
 
         pc = pc + INSTRUCTIONSIZE;
