@@ -4318,7 +4318,7 @@ void x86Translate(){
   uint64_t x86binaryLength;
   uint64_t i;
 
-  size = 15;
+  size = 18;
   instr_bytes = malloc(size * SIZEOFUINT64);
   
   initMemory(2);
@@ -4364,7 +4364,7 @@ void x86Translate(){
   
   binaryLength = binary_gp_address / SIZEOFUINT64;
   x86ByteCount = binary_gp_address % SIZEOFUINT64;
-  x86WriteWord(ELF_ENTRY_POINT + ELF_HEADER_LEN + x86codeLength);
+  x86WriteWord(ELF_ENTRY_POINT + ELF_HEADER_LEN + x86binaryLength);
 
   binaryLength = x86binaryLength;
   
@@ -4550,8 +4550,9 @@ uint64_t x86GetRegister(uint64_t reg) {
   if(reg == REG_FP) return REG_RBP;
   if(reg == REG_GP) return REG_RBX;
   if(reg == REG_RA) return REG_R15;
-  if(reg == REG_T0) return REG_RCX;
-  if(reg == REG_A0) return REG_RDI;
+  if(reg == REG_T0) return REG_RAX; //FIXME: RAX because implicit in div instruction
+  if(reg == REG_T1) return REG_RCX;
+  if(reg == REG_A0) return REG_RDI; //RDI because first argument of syscall
   if(reg == REG_A1) return REG_RSI;
   if(reg == REG_A2) return REG_RDX;
   if(reg == REG_A3) return REG_R10;
@@ -4560,7 +4561,7 @@ uint64_t x86GetRegister(uint64_t reg) {
   if(reg == REG_A7) return REG_RAX;
   
   if(reg == REG_ZR) {
-    print((uint64_t*) "Register $zero encounterd in x86GetRegister(). This should not happen! ");
+    print((uint64_t*) "Register $zero encounterd in x86GetRegister(). This should not happen! "); //FIXME: more information
     println();
   }
 
@@ -6176,12 +6177,24 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
+  emitADDI(REG_A0, REG_ZR, 0);
+  emitADDI(REG_A7, REG_ZR, SYSCALL_MALLOC);
+  emitECALL();
+
+  talloc(1);
+
+  emitADD(currentTemporary(), REG_ZR, REG_A0); //current program break
+  
   emitLD(REG_A0, REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+
+  emitADD(REG_A0, currentTemporary(), REG_A0); //new program break
 
   emitADDI(REG_A7, REG_ZR, SYSCALL_MALLOC);
 
   emitECALL();
+
+  tfree(1);
 
   emitJALR(REG_ZR, REG_RA, 0);
 }
@@ -6885,27 +6898,31 @@ void translate_divu() {
     print((uint64_t*) "divu used with other register than t0 ");
     println();
   }
-  //*(instr_bytes + 0) = REX_W;
+
   *(instr_bytes + 0) = X86_PUSH + REG_RDX;
     
-  *(instr_bytes + 1) = X86_MOVI + REG_RDX;
-  *(instr_bytes + 2) = 0;
+  *(instr_bytes + 1) = x86GetPrefix(0, 0, 1);
+  *(instr_bytes + 2) = X86_MOVI + REG_RDX;
   *(instr_bytes + 3) = 0;
   *(instr_bytes + 4) = 0;
   *(instr_bytes + 5) = 0;
+  *(instr_bytes + 6) = 0;
+  *(instr_bytes + 7) = 0;
+  *(instr_bytes + 8) = 0;
+  *(instr_bytes + 9) = 0;
+  *(instr_bytes + 10) = 0;
 
-  *(instr_bytes + 6) = x86GetPrefix(op3, 0, 1); //div rs2
-  *(instr_bytes + 7) = X86_DIV;
-  *(instr_bytes + 8) = x86GetModRMValue(op3, 0) + leftShift(6, 3);
+  *(instr_bytes + 11) = x86GetPrefix(op3, 0, 1); //div rs2
+  *(instr_bytes + 12) = X86_DIV;
+  *(instr_bytes + 13) = 192 + x86GetModRMValue(op3, 0) + leftShift(6, 3);
 
-  *(instr_bytes + 9) = x86GetPrefix(op1, 0, 1); //mov rd,rax
-  *(instr_bytes + 10) = X86_MOV_R;
-  *(instr_bytes + 11) = 192 + x86GetModRMValue(op1, 0);
+  *(instr_bytes + 14) = x86GetPrefix(op1, 0, 1); //mov rd,rax
+  *(instr_bytes + 15) = X86_MOV_R;
+  *(instr_bytes + 16) = 192 + x86GetModRMValue(op1, 0);
 
-  //*(instr_bytes + 13) = REX_W;
-  *(instr_bytes + 12) = X86_POP + REG_RDX;
+  *(instr_bytes + 17) = X86_POP + REG_RDX;
 
-  x86emitInstructionBuffer(13);
+  x86emitInstructionBuffer(18);
 }
 
 void do_remu() {
@@ -7568,10 +7585,11 @@ void translate_ecall() {
   *(instr_bytes + 0) = TWO_BYTE_INSTRUCTION;
   *(instr_bytes + 1) = X86_SYSCALL;
 
-  //*(instr_bytes + 0) = X86_INT;
-  //*(instr_bytes + 1) = 128;
+  *(instr_bytes + 2) = x86GetPrefix(0, 0, 1);
+  *(instr_bytes + 3) = X86_MOV_R;
+  *(instr_bytes + 4) = 192 + x86GetModRMValue(REG_RDI, REG_RAX);
 
-  x86emitInstructionBuffer(2);
+  x86emitInstructionBuffer(5);
 }
 
 void undo_ecall() {
