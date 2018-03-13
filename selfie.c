@@ -6424,6 +6424,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 }
 
 void symbolic_undo_lui_mul_divu_remu_jal_jalr() {
+  // @pop: RD
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 }
@@ -6482,6 +6483,7 @@ void symbolic_do_addi() {
 }
 
 void symbolic_undo_addi() {
+  // @pop: RD, [RS1]
   if (rd != REG_ZR)
     // undo RD
     *(registers + rd) = *(tcs + tc);
@@ -6548,6 +6550,7 @@ void symbolic_do_add() {
 }
 
 void symbolic_undo_add_sub() {
+  // @pop: RD, [constrainedRegister]
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 
@@ -6723,7 +6726,7 @@ void do_remu() {
 }
 
 void symbolic_do_sltu() {
-  // @push: [1,1] or [0,0]
+  // @push: [1,1], [0,0] or [0,1]
   // sTODO: implement new comparisons
 
   saveState(*(registers + rd));
@@ -6752,6 +6755,7 @@ void symbolic_do_sltu() {
 }
 
 void symbolic_undo_sltu() {
+  // @pop: stuff (deprecated anyway)
   uint64_t operator;
   uint64_t twoTraceVals;
 
@@ -6935,6 +6939,7 @@ uint64_t symbolic_do_ld() {
 }
 
 void symbolic_undo_ld() {
+  // @pop: RD, [confinedMemory]
   uint64_t vaddr;
 
   vaddr = getLowerFromReg(rs1) + imm;
@@ -7112,6 +7117,7 @@ void undo_sd() {
 }
 
 void symbolic_undo_sd() {
+  // @pop: RD, [confinedRegister]
   uint64_t vaddr;
 
   vaddr = getLowerFromReg(rs1) + imm;
@@ -7510,6 +7516,7 @@ void undo_ecall() {
 }
 
 void symbolic_undo_ecall() {
+  // @pop: 0+ reads/changes, REG_A0
   uint64_t vaddr;
 
   //----------------------------------------------------------------------------
@@ -9603,6 +9610,7 @@ uint64_t isConfinedInstruction() {
 // -------------------------- INSTRUCTIONS -------------------------
 
 void confine_lui() {
+  // @push: RD
   // restore old value
   saveState(*(registers + rd));
   clearTrace();
@@ -9614,6 +9622,7 @@ void confine_lui() {
 }
 
 void confine_addi() {
+  // @push: [RS1], RD
   if (rd != REG_ZR) {
     // prepare value
 
@@ -9640,6 +9649,7 @@ void confine_addi() {
 }
 
 void confine_add() {
+  // @push: [constrainedRegister], RD
   uint64_t conReg;
   uint64_t symReg;
 
@@ -9690,6 +9700,7 @@ void confine_add() {
 }
 
 void confine_sub() {
+  // @push: [constrainedRegister], RD
   uint64_t conReg;
   uint64_t symReg;
 
@@ -9754,6 +9765,7 @@ void confine_remu() {
 }
 
 void confine_sltu() {
+  // @push: constrainedValue, oldValue (one optional, one always RD)
   uint64_t operator;
   uint64_t branch;
   uint64_t tempReg;
@@ -9951,6 +9963,7 @@ void confine_sltu() {
 }
 
 void confine_ld() {
+  // @push: [confinedMemory], RD
   uint64_t vaddr;
   uint64_t mem_tc;
   uint64_t reg_tc;
@@ -10003,6 +10016,7 @@ void confine_ld() {
 // }
 
 void confine_sd() {
+  // @push: [confinedRegister], RD
   uint64_t vaddr;
   uint64_t mem_tc;
   uint64_t reg_tc;
@@ -10041,6 +10055,7 @@ void confine_beq() {
 }
 
 void confine_jal() {
+  // @push: RD
   if (rd != REG_ZR) {
     saveState(*(registers + rd));
     updateRegState(rd, *(tcs + btc));
@@ -10048,6 +10063,7 @@ void confine_jal() {
 }
 
 void confine_jalr() {
+  // @push: RD
   if (rd != REG_ZR) {
     saveState(*(registers + rd));
     updateRegState(rd, *(tcs + btc));
@@ -10055,6 +10071,8 @@ void confine_jalr() {
 }
 
 void confine_ecall() {
+  // @push: 0+ read changes, REG_A0
+  // sTODO: support more than one word reads
   uint64_t vaddr;
 
   //----------------------------------------------------------------------------
