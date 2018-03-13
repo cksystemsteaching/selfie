@@ -6390,6 +6390,7 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
 }
 
 void symbolic_do_lui() {
+  // @push: RD
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6462,6 +6463,7 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
 }
 
 void symbolic_do_addi() {
+  // @push: RD
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6527,6 +6529,7 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void symbolic_do_add() {
+  // @push: RD
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6569,6 +6572,7 @@ void do_add() {
 }
 
 void symbolic_do_sub() {
+  // @push: RD
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6597,6 +6601,7 @@ void do_sub() {
 }
 
 void symbolic_do_mul() {
+  // @push: RD
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
@@ -6634,6 +6639,7 @@ void record_divu_remu() {
 }
 
 void symbolic_do_divu() {
+  // @push: remainder, RD
   saveState(*(registers + rd));
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
@@ -6675,6 +6681,7 @@ void do_divu() {
 }
 
 void symbolic_do_remu() {
+  // @push: quotient, RD
   saveState(*(registers + rd));
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
@@ -6716,7 +6723,8 @@ void do_remu() {
 }
 
 void symbolic_do_sltu() {
-  // sTODO: support all comparisons
+  // @push: [1,1] or [0,0]
+  // sTODO: implement new comparisons
 
   saveState(*(registers + rd));
   forcePrecise(currentContext, rs1, rs2);
@@ -6895,6 +6903,7 @@ void symbolic_record_ld_before() {
 }
 
 uint64_t symbolic_do_ld() {
+  // @push: RD
   uint64_t vaddr;
   uint64_t a;
 
@@ -7032,6 +7041,7 @@ void record_sd() {
 }
 
 uint64_t symbolic_do_sd() {
+  // @push: VADDR
   uint64_t vaddr;
   uint64_t a;
 
@@ -7148,7 +7158,7 @@ void record_beq() {
 }
 
 void symbolic_do_beq() {
-
+  //@ push: REG_ZR (remove?)
   saveState(0);
 
   if (areSourceRegsConcrete()) {
@@ -7264,6 +7274,7 @@ void print_jal_jalr_after() {
 }
 
 void symbolic_do_jal() {
+  // @push: RD
   uint64_t a;
 
   saveState(*(registers + rd));
@@ -7369,6 +7380,7 @@ void print_jalr_before() {
 }
 
 void symbolic_do_jalr() {
+  // @push: RD
   uint64_t next_pc;
 
   saveState(*(registers + rd));
@@ -7447,6 +7459,7 @@ void record_ecall() {
 }
 
 void symbolic_do_ecall() {
+  // @push: 0+ read values, REG_A0
   ecallPC  =  pc;
   ic_ecall = ic_ecall + 1;
 
