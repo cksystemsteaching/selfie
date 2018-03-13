@@ -9679,7 +9679,13 @@ void confine_add() {
     }
   // both source registers contain symbolic values
   } else {
-    // sTODO: which one should we constrain?
+    print(selfieName);
+    print((uint64_t*) ": execution imprecise at pc= ");
+    printHexadecimal(pc, 0);
+    print((uint64_t*) " with two symbolic values at ADD");
+    println();
+
+    throwException(EXCEPTION_IMPRECISE, 0);
   }
 }
 
@@ -9725,7 +9731,13 @@ void confine_sub() {
 
   // both source registers contain symbolic values
   } else {
-    // sTODO: which one should we constrain?
+    print(selfieName);
+    print((uint64_t*) ": execution imprecise at pc= ");
+    printHexadecimal(pc, 0);
+    print((uint64_t*) " with two symbolic values at SUB");
+    println();
+
+    throwException(EXCEPTION_IMPRECISE, 0);
   }
 }
 
