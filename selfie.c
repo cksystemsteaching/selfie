@@ -1007,7 +1007,7 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr();
 void symbolic_do_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-void symbolic_undo_lui_divu_remu_jal_jalr();
+void symbolic_undo_lui_remu_jal_jalr();
 
 void print_addi();
 void print_addi_before();
@@ -1029,6 +1029,7 @@ void do_mul();
 
 void record_divu_remu();
 void symbolic_do_divu();
+void symbolic_undo_divu();
 void do_divu();
 void symbolic_do_remu();
 void do_remu();
@@ -6423,7 +6424,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
 }
 
-void symbolic_undo_lui_divu_remu_jal_jalr() {
+void symbolic_undo_lui_remu_jal_jalr() {
   // @pop: RD
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
@@ -6643,29 +6644,49 @@ void record_divu_remu() {
 
 void symbolic_do_divu() {
   // @push: remainder, RD
-  saveState(*(registers + rd));
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
     if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
         forcePrecise(currentContext, rs1, rs2);
 
+        // push remainder
+        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
+        tc = tc + 1;
+
+        saveState(*(registers + rd));
         setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
 
         redundancyCheck();
-      } else
+      } else {
+        saveState(*(registers + rd));
         clearTrace();
+      }
 
       pc = pc + INSTRUCTIONSIZE;
 
       ic_divu = ic_divu + 1;
     } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
-  } else
-  throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
+  } else {
+    print((uint64_t*) "symbolic divisor not supported");
+    println();
+    throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
+  }
 
   updateRegState(rd, tc);
+}
+
+void symbolic_undo_divu() {
+  // @pop: RD, [remainder]
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
+
+  // if there is a remainder, undo it
+  if (pc == *(pcs + tc - 1))
+    tc = tc - 1;
 }
 
 void do_divu() {
@@ -7907,7 +7928,7 @@ void decode_execute() {
           if (confine)
             confine_divu();
           else if (undo)
-            symbolic_undo_lui_divu_remu_jal_jalr();
+            symbolic_undo_divu();
           else
             symbolic_do_divu();
         } else
@@ -7939,7 +7960,7 @@ void decode_execute() {
           if (confine)
             confine_remu();
           else if (undo)
-            symbolic_undo_lui_divu_remu_jal_jalr();
+            symbolic_undo_lui_remu_jal_jalr();
           else
             symbolic_do_remu();
         } else
@@ -8037,7 +8058,7 @@ void decode_execute() {
       if (confine)
         confine_jal();
       else if (undo)
-        symbolic_undo_lui_divu_remu_jal_jalr();
+        symbolic_undo_lui_remu_jal_jalr();
       else
         symbolic_do_jal();
     } else
@@ -8070,7 +8091,7 @@ void decode_execute() {
         if (confine)
           confine_jalr();
         else if (undo)
-          symbolic_undo_lui_divu_remu_jal_jalr();
+          symbolic_undo_lui_remu_jal_jalr();
         else
           symbolic_do_jalr();
       } else
@@ -8103,7 +8124,7 @@ void decode_execute() {
       if (confine)
         confine_lui();
       else if (undo)
-        symbolic_undo_lui_divu_remu_jal_jalr();
+        symbolic_undo_lui_remu_jal_jalr();
       else
         symbolic_do_lui();
     } else
@@ -9798,7 +9819,46 @@ void confine_mul() {
 }
 
 void confine_divu() {
-  // sTODO
+  // @push: RD
+  uint64_t remLo;
+  uint64_t remUp;
+  uint64_t div;
+
+  if (areSourceRegsConcrete()) {
+    saveState(*(registers + rd));
+    clearTrace();
+    updateRegState(rd, *(tcs + btc));
+  } else { // starc only compiles with RD == RS1
+    if (wasNeverSymbolic(currentContext, rs2)) { // divisor concrete
+
+      remLo = getLower(btc-1);
+      remUp = getUpper(btc-1);
+      
+      saveState(*(registers + rd));
+      setLower(getLowerFromReg(rd) * getLowerFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rd) * getUpperFromReg(rs2), tc);
+
+      if (getLower(btc) == getLower(tc))
+        // no lower constrain - restore remainder
+        setLower(getLower(tc) + remLo, tc);
+      // nothing to do at lower remainder 
+
+      if (getUpper(btc) == getUpper(tc))
+        // no upper constrain - restore remainder
+        setUpper(getUpper(tc) + remUp, tc);
+      else {
+        // extend upper bound
+        div = getLowerFromReg(rs2);
+        setUpper(getUpper(tc) + div-1, tc);
+      }
+      updateRegState(rd, tc);
+    } else {
+      // should get caught in symbolic_do_divu
+      print((uint64_t*) "symbolic divisor not supported");
+      println();
+      throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
+    }
+  }
 }
 
 void confine_remu() {
