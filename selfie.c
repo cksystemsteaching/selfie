@@ -16,7 +16,7 @@
 // resolve self-reference in systems code which is seen as the key
 // challenge when teaching systems engineering, hence the name.
 //
-// Selfie is a self-contained 8k-line, 64-bit C implementation of:
+// Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 //
 // 1. a self-compiling compiler called starc that compiles
 //    a tiny but still fast subset of C called C Star (C*) to
@@ -1100,27 +1100,29 @@ void initSymbolicEngine();
 
 void printSymbolicMemory(uint64_t svc);
 
-uint64_t loadSymbolicMemoryValue(uint64_t* pt, uint64_t vaddr);
-uint64_t loadSymbolicMemoryCeiling(uint64_t* pt, uint64_t vaddr);
+uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr);
+
+uint64_t loadSymbolicLowerBound(uint64_t* pt, uint64_t vaddr);
+uint64_t loadSymbolicUpperBound(uint64_t* pt, uint64_t vaddr);
 
 uint64_t isTraceSpaceAvailable();
 
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t lo, uint64_t up, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb);
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
-void constrainMemory(uint64_t reg, uint64_t value, uint64_t vceil, uint64_t trb);
+void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
 
-void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t coval, uint64_t cceil);
+void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
 
 void createConstraints(uint64_t howManyMore, uint64_t trb);
 
-uint64_t fuzzValue(uint64_t value);
-uint64_t fuzzCeiling(uint64_t value);
+uint64_t fuzzLo(uint64_t value);
+uint64_t fuzzUp(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1134,7 +1136,8 @@ uint64_t debug_symbolic = 0;
 
 uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
 
-uint64_t* vceils = (uint64_t*) 0; // trace of value ceilings
+uint64_t* los = (uint64_t*) 0; // trace of lower bounds on values
+uint64_t* ups = (uint64_t*) 0; // trace of upper bounds on values
 
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 
@@ -1143,19 +1146,22 @@ uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 uint64_t rc = 0; // read counter
 
 uint64_t* read_values = (uint64_t*) 0;
-uint64_t* read_vceils = (uint64_t*) 0;
+
+uint64_t* read_los = (uint64_t*) 0;
+uint64_t* read_ups = (uint64_t*) 0;
 
 // registers
 
-uint64_t* reg_vceil = (uint64_t*) 0; // register value ceilings
+uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
+uint64_t* reg_ups = (uint64_t*) 0; // upper bound on register value
 
 // register constraints on memory
 
 uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
 uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
 uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
-uint64_t* reg_coval = (uint64_t*) 0; // value of constraint
-uint64_t* reg_cceil = (uint64_t*) 0; // ceiling of constraint
+uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
+uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
 
 // trace counter of most recent constraint
 
@@ -1171,19 +1177,22 @@ void initSymbolicEngine() {
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   values = zalloc(maxTraceLength * SIZEOFUINT64);
-  vceils = zalloc(maxTraceLength * SIZEOFUINT64);
+  los    = zalloc(maxTraceLength * SIZEOFUINT64);
+  ups    = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
   read_values = zalloc(maxTraceLength * SIZEOFUINT64);
-  read_vceils = zalloc(maxTraceLength * SIZEOFUINT64);
+  read_los    = zalloc(maxTraceLength * SIZEOFUINT64);
+  read_ups    = zalloc(maxTraceLength * SIZEOFUINT64);
 
-  reg_vceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_ups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_hasco = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_hasmn = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_coval = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_cceil = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_colos = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_coups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 }
 
 // -----------------------------------------------------------------
@@ -5500,7 +5509,8 @@ void implementRead(uint64_t* context) {
   uint64_t* buffer;
   uint64_t actuallyRead;
   uint64_t value;
-  uint64_t vceil;
+  uint64_t lo;
+  uint64_t up;
   uint64_t mrvc;
 
   fd      = *(getRegs(context) + REG_A0);
@@ -5534,9 +5544,11 @@ void implementRead(uint64_t* context) {
         if (symbolic) {
           if (isTraceSpaceAvailable()) {
             if (rc > 0) {
-              // do not read but reuse value and ceiling
+              // do not read but reuse value, lower and upper bound
               value = *(read_values + rc);
-              vceil = *(read_vceils + rc);
+
+              lo = *(read_los + rc);
+              up = *(read_ups + rc);
 
               actuallyRead = bytesToRead;
 
@@ -5548,16 +5560,16 @@ void implementRead(uint64_t* context) {
               // caution: read only overwrites bytesToRead number of bytes
               // we therefore need to restore the actual value in buffer
               // to preserve the original read semantics
-              storePhysicalMemory(buffer, loadSymbolicMemoryValue(getPT(context), vbuffer));
+              storePhysicalMemory(buffer, loadSymbolicMemory(getPT(context), vbuffer));
 
               actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
               // retrieve read value
               value = loadPhysicalMemory(buffer);
 
-              // fuzz read value, ceiling first, then value
-              vceil = fuzzCeiling(value);
-              value = fuzzValue(value);
+              // fuzz read value
+              lo = fuzzLo(value);
+              up = fuzzUp(value);
 
               // restore mrvc in buffer
               storePhysicalMemory(buffer, mrvc);
@@ -5565,9 +5577,9 @@ void implementRead(uint64_t* context) {
 
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, vceil, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, lo, up, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, vceil, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, lo, up, tc);
           } else {
             actuallyRead = 0;
 
@@ -5622,8 +5634,10 @@ void implementRead(uint64_t* context) {
   else
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
-  if (symbolic)
-    *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
+  if (symbolic) {
+    *(reg_los + REG_A0) = *(getRegs(context) + REG_A0);
+    *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
+  }
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
@@ -5749,8 +5763,10 @@ void implementWrite(uint64_t* context) {
   else
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
-  if (symbolic)
-    *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
+  if (symbolic) {
+    *(reg_los + REG_A0) = *(getRegs(context) + REG_A0);
+    *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
+  }
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
@@ -5795,9 +5811,9 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(table, vaddr)) {
         if (symbolic) {
-          *(s + i) = loadSymbolicMemoryValue(table, vaddr);
+          *(s + i) = loadSymbolicMemory(table, vaddr);
 
-          if (*(s + i) != loadSymbolicMemoryCeiling(table, vaddr)) {
+          if (loadSymbolicLowerBound(table, vaddr) != loadSymbolicUpperBound(table, vaddr)) {
             print(selfieName);
             print((uint64_t*) ": detected in open call symbolic value ");
             printSymbolicMemory(loadVirtualMemory(table, vaddr));
@@ -5890,8 +5906,10 @@ void implementOpen(uint64_t* context) {
     }
   }
 
-  if (symbolic)
-    *(reg_vceil + REG_A0) = *(getRegs(context) + REG_A0);
+  if (symbolic) {
+    *(reg_los + REG_A0) = *(getRegs(context) + REG_A0);
+    *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
+  }
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 }
@@ -5933,19 +5951,27 @@ void implementMalloc(uint64_t* context) {
   size = roundUp(size, SIZEOFUINT64);
   bump = getBumpPointer(context);
 
-  if (bump + size > *(getRegs(context) + REG_SP))
+  if (bump + size > *(getRegs(context) + REG_SP)) {
     // out of virtual memory
     *(getRegs(context) + REG_A0) = 0;
-  else {
+
+    if (symbolic) {
+      *(reg_los + REG_A0) = 0;
+      *(reg_ups + REG_A0) = 0;
+    }
+  } else {
     *(getRegs(context) + REG_A0) = bump;
 
     if (symbolic) {
-      *(reg_vceil + REG_A0) = bump;
+      // remember start and size of memory block for checking memory safety
+      *(reg_los + REG_A0) = bump;
+      *(reg_ups + REG_A0) = bump;
+      // TODO: *(reg_ups + REG_A0) = size;
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, size, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, bump, size, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6226,7 +6252,8 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 void constrain_lui() {
   if (rd != REG_ZR) {
     // semantics of lui
-    *(reg_vceil + rd) = leftShift(imm, 12);
+    *(reg_los + rd) = leftShift(imm, 12);
+    *(reg_ups + rd) = leftShift(imm, 12);
 
     // rd has no constraint
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6279,7 +6306,8 @@ void do_addi() {
 void constrain_addi() {
   if (rd != REG_ZR) {
     // semantics of addi
-    *(reg_vceil + rd) = *(reg_vceil + rs1) + imm;
+    *(reg_los + rd) = *(reg_los + rs1) + imm;
+    *(reg_ups + rd) = *(reg_ups + rs1) + imm;
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasmn + rs1)) {
@@ -6293,7 +6321,7 @@ void constrain_addi() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint
-        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + imm, *(reg_cceil + rs1) + imm);
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
     } else
       // rd has no constraint if rs1 has none
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6334,7 +6362,8 @@ void do_add() {
 void constrain_add() {
   if (rd != REG_ZR) {
     // semantics of add
-    *(reg_vceil + rd) = *(reg_vceil + rs1) + *(reg_vceil + rs2);
+    *(reg_los + rd) = *(reg_los + rs1) + *(reg_los + rs2);
+    *(reg_ups + rd) = *(reg_ups + rs1) + *(reg_ups + rs2);
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2))
@@ -6352,7 +6381,7 @@ void constrain_add() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint since rs2 has none
-        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_coval + rs1) + *(registers + rs2), *(reg_cceil + rs1) + *(reg_vceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another addend
@@ -6365,7 +6394,7 @@ void constrain_add() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs2 constraint since rs1 has none
-        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(registers + rs1) + *(reg_coval + rs2), *(reg_vceil + rs1) + *(reg_cceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6385,7 +6414,8 @@ void do_sub() {
 void constrain_sub() {
   if (rd != REG_ZR) {
     // semantics of sub
-    *(reg_vceil + rd) = *(reg_vceil + rs1) - *(reg_vceil + rs2);
+    *(reg_los + rd) = *(reg_los + rs1) - *(reg_los + rs2);
+    *(reg_ups + rd) = *(reg_ups + rs1) - *(reg_ups + rs2);
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2))
@@ -6403,7 +6433,7 @@ void constrain_sub() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint since rs2 has none
-        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_coval + rs1) - *(registers + rs2), *(reg_cceil + rs1) - *(reg_vceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_los + rs2), *(reg_coups + rs1) - *(reg_ups + rs2));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another minuend
@@ -6416,7 +6446,7 @@ void constrain_sub() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs2 constraint since rs1 has none
-        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(registers + rs1) - *(reg_coval + rs2), *(reg_vceil + rs1) - *(reg_cceil + rs2));
+        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_colos + rs2), *(reg_ups + rs1) - *(reg_coups + rs2));
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6438,7 +6468,8 @@ void do_mul() {
 void constrain_mul() {
   if (rd != REG_ZR) {
     // semantics of mul
-    *(reg_vceil + rd) = *(reg_vceil + rs1) * *(reg_vceil + rs2);
+    *(reg_los + rd) = *(reg_los + rs1) * *(reg_los + rs2);
+    *(reg_ups + rd) = *(reg_ups + rs1) * *(reg_ups + rs2);
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2)) {
@@ -6463,7 +6494,7 @@ void constrain_mul() {
         // rd inherits rs1 constraint since rs2 has none
         // assert: rs2 interval is singleton
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-          *(reg_coval + rs1) + *(registers + rs1) * (*(registers + rs2) - 1), *(reg_cceil + rs1) + *(reg_vceil + rs2) * (*(reg_vceil + rs2) - 1));
+          *(reg_colos + rs1) + *(reg_los + rs1) * (*(reg_los + rs2) - 1), *(reg_coups + rs1) + *(reg_ups + rs2) * (*(reg_ups + rs2) - 1));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another multiplicand
@@ -6478,8 +6509,8 @@ void constrain_mul() {
         // rd inherits rs2 constraint since rs1 has none
         // assert: rs1 interval is singleton
         setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-          (*(registers + rs1) - 1) * *(registers + rs2) + *(reg_coval + rs2),
-          (*(reg_vceil + rs1) - 1) * *(reg_vceil + rs2) + *(reg_cceil + rs2));
+          (*(reg_los + rs1) - 1) * *(reg_los + rs2) + *(reg_colos + rs2),
+          (*(reg_ups + rs1) - 1) * *(reg_ups + rs2) + *(reg_coups + rs2));
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6507,12 +6538,13 @@ void do_divu() {
 }
 
 void constrain_divu() {
-  if (*(registers + rs2) != 0) {
-    if (*(reg_vceil + rs2) >= *(registers + rs2)) {
+  if (*(reg_los + rs2) != 0) {
+    if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
         // semantics of divu
-        *(reg_vceil + rd) = *(reg_vceil + rs1) / *(reg_vceil + rs2);
+        *(reg_los + rd) = *(reg_los + rs1) / *(reg_los + rs2);
+        *(reg_ups + rd) = *(reg_ups + rs1) / *(reg_ups + rs2);
 
         if (*(reg_hasco + rs1)) {
           if (*(reg_hasco + rs2)) {
@@ -6537,10 +6569,10 @@ void constrain_divu() {
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
             setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_coval + rs1) -
-                (*(registers + rs1) - *(registers + rs1) / *(registers + rs2)),
-              *(reg_cceil + rs1) -
-                (*(reg_vceil + rs1) - *(reg_vceil + rs1) / *(reg_vceil + rs2)));
+              *(reg_colos + rs1) -
+                (*(reg_los + rs1) - *(reg_los + rs1) / *(reg_los + rs2)),
+              *(reg_coups + rs1) -
+                (*(reg_ups + rs1) - *(reg_ups + rs1) / *(reg_ups + rs2)));
         } else if (*(reg_hasco + rs2)) {
           if (*(reg_hasmn + rs2)) {
             // rs2 constraint has already minuend and cannot have another dividend
@@ -6555,10 +6587,10 @@ void constrain_divu() {
             // rd inherits rs2 constraint since rs1 has none
             // assert: rs1 interval is singleton
             setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_coval + rs2) -
-                (*(registers + rs2) - *(registers + rs1) / *(registers + rs2)),
-              *(reg_cceil + rs2) -
-                (*(reg_vceil + rs2) - *(reg_vceil + rs1) / *(reg_vceil + rs2)));
+              *(reg_colos + rs2) -
+                (*(reg_los + rs2) - *(reg_los + rs1) / *(reg_los + rs2)),
+              *(reg_coups + rs2) -
+                (*(reg_ups + rs2) - *(reg_ups + rs1) / *(reg_ups + rs2)));
         } else
           // rd has no constraint if both rs1 and rs2 have no constraints
           setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6584,12 +6616,13 @@ void do_remu() {
 }
 
 void constrain_remu() {
-  if (*(registers + rs2) != 0) {
-    if (*(reg_vceil + rs2) >= *(registers + rs2)) {
+  if (*(reg_los + rs2) != 0) {
+    if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
         // semantics of remu
-        *(reg_vceil + rd) = *(reg_vceil + rs1) % *(reg_vceil + rs2);
+        *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
+        *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
 
         if (*(reg_hasco + rs1)) {
           if (*(reg_hasco + rs2)) {
@@ -6614,10 +6647,10 @@ void constrain_remu() {
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
             setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_coval + rs1) -
-                (*(registers + rs1) - *(registers + rs1) % *(registers + rs2)),
-              *(reg_cceil + rs1) -
-                (*(reg_vceil + rs1) - *(reg_vceil + rs1) % *(reg_vceil + rs2)));
+              *(reg_colos + rs1) -
+                (*(reg_los + rs1) - *(reg_los + rs1) % *(reg_los + rs2)),
+              *(reg_coups + rs1) -
+                (*(reg_ups + rs1) - *(reg_ups + rs1) % *(reg_ups + rs2)));
         } else if (*(reg_hasco + rs2)) {
           if (*(reg_hasmn + rs2)) {
             // rs2 constraint has already minuend and cannot have another dividend
@@ -6632,10 +6665,10 @@ void constrain_remu() {
             // rd inherits rs2 constraint since rs1 has none
             // assert: rs1 interval is singleton
             setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_coval + rs2) -
-                (*(registers + rs2) - *(registers + rs1) % *(registers + rs2)),
-              *(reg_cceil + rs2) -
-                (*(reg_vceil + rs2) - *(reg_vceil + rs1) % *(reg_vceil + rs2)));
+              *(reg_colos + rs2) -
+                (*(reg_los + rs2) - *(reg_los + rs1) % *(reg_los + rs2)),
+              *(reg_coups + rs2) -
+                (*(reg_ups + rs2) - *(reg_ups + rs1) % *(reg_ups + rs2)));
         } else
           // rd has no constraint if both rs1 and rs2 have no constraints
           setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6720,7 +6753,9 @@ void backtrack_sltu() {
     if (vaddr > 0) {
       // the register is identified by vaddr
       *(registers + vaddr) = *(values + tc);
-      *(reg_vceil + vaddr) = *(vceils + tc);
+
+      *(reg_los + vaddr) = *(los + tc);
+      *(reg_ups + vaddr) = *(ups + tc);
 
       setConstraint(vaddr, 0, 0, 0, 0, 0);
 
@@ -6838,17 +6873,19 @@ uint64_t constrain_ld() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (*(registers + rs1) == *(reg_vceil + rs1)) {
+  if (*(reg_los + rs1) == *(reg_ups + rs1)) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
         if (rd != REG_ZR) {
           // semantics of ld
-          *(registers + rd) = loadSymbolicMemoryValue(pt, vaddr);
-          *(reg_vceil + rd) = loadSymbolicMemoryCeiling(pt, vaddr);
+          *(registers + rd) = loadSymbolicMemory(pt, vaddr);
+
+          *(reg_los + rd) = loadSymbolicLowerBound(pt, vaddr);
+          *(reg_ups + rd) = loadSymbolicUpperBound(pt, vaddr);
 
           // assert: vaddr == *(vaddrs + loadVirtualMemory(pt, vaddr))
 
-          if (*(registers + rd) != *(reg_vceil + rd))
+          if (*(reg_los + rd) != *(reg_ups + rd))
             // vaddr is constrained by rd if value interval is not singleton
             setConstraint(rd, 1, vaddr, 0, 0, 0);
           else
@@ -6973,7 +7010,7 @@ uint64_t constrain_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (*(registers + rs1) == *(reg_vceil + rs1)) {
+  if (*(reg_los + rs1) == *(reg_ups + rs1)) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(pt, vaddr)) {
         // semantics of sd
@@ -6993,7 +7030,7 @@ uint64_t constrain_sd() {
           }
         }
 
-        storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_vceil + rs2), mrcc);
+        storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_los + rs2), *(reg_ups + rs2), mrcc);
 
         pc = pc + INSTRUCTIONSIZE;
 
@@ -7149,7 +7186,7 @@ void do_jal() {
 
 void constrain_jal_jalr() {
   if (rd != REG_ZR)
-    *(reg_vceil + rd) = *(registers + rd);
+    *(reg_ups + rd) = *(registers + rd);
 }
 
 void print_jalr() {
@@ -7272,8 +7309,8 @@ void backtrack_ecall() {
 
   if (*(vaddrs + tc) == 0) {
     // backtracking malloc
-    if (getBumpPointer(currentContext) == *(values + tc) + *(vceils + tc))
-      setBumpPointer(currentContext, *(values + tc));
+    if (getBumpPointer(currentContext) == *(los + tc) + *(ups + tc))
+      setBumpPointer(currentContext, *(los + tc));
     else {
       print(selfieName);
       print((uint64_t*) ": malloc backtracking error at ");
@@ -7281,11 +7318,11 @@ void backtrack_ecall() {
       print((uint64_t*) " with current bump pointer ");
       printHexadecimal(getBumpPointer(currentContext), 0);
       print((uint64_t*) " unequal ");
-      printHexadecimal(*(values + tc) + *(vceils + tc), 0);
+      printHexadecimal(*(los + tc) + *(ups + tc), 0);
       print((uint64_t*) " which is previous bump pointer ");
-      printHexadecimal(*(values + tc), 0);
+      printHexadecimal(*(los + tc), 0);
       print((uint64_t*) " plus size ");
-      printInteger(*(vceils + tc));
+      printInteger(*(ups + tc));
       println();
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7294,9 +7331,11 @@ void backtrack_ecall() {
     // backtracking read
     rc = rc + 1;
 
-    // record value and ceiling
+    // record value, lower and upper bound
     *(read_values + rc) = *(values + tc);
-    *(read_vceils + rc) = *(vceils + tc);
+
+    *(read_los + rc) = *(los + tc);
+    *(read_ups + rc) = *(ups + tc);
 
     storeVirtualMemory(pt, *(vaddrs + tc), *(tcs + tc));
   }
@@ -7381,8 +7420,10 @@ void printSymbolicMemory(uint64_t svc) {
   print((uint64_t*) ",");
   if (*(vaddrs + svc) == 0) {
     printHexadecimal(*(values + svc), 0);
+    print((uint64_t*) "=");
+    printHexadecimal(*(los + svc), 0);
     print((uint64_t*) "=malloc(");
-    printInteger(*(vceils + svc));
+    printInteger(*(ups + svc));
     print((uint64_t*) ")]");
     println();
     return;
@@ -7390,15 +7431,17 @@ void printSymbolicMemory(uint64_t svc) {
     printRegister(*(vaddrs + svc));
   else
     printHexadecimal(*(vaddrs + svc), 0);
-  print((uint64_t*) "=(");
+  print((uint64_t*) "=");
   printInteger(*(values + svc));
+  print((uint64_t*) "(");
+  printInteger(*(los + svc));
   print((uint64_t*) ",");
-  printInteger(*(vceils + svc));
+  printInteger(*(ups + svc));
   print((uint64_t*) ")]");
   println();
 }
 
-uint64_t loadSymbolicMemoryValue(uint64_t* pt, uint64_t vaddr) {
+uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr) {
   uint64_t mrvc;
 
   // assert: vaddr is valid and mapped
@@ -7420,17 +7463,30 @@ uint64_t loadSymbolicMemoryValue(uint64_t* pt, uint64_t vaddr) {
   }
 }
 
-uint64_t loadSymbolicMemoryCeiling(uint64_t* pt, uint64_t vaddr) {
+uint64_t loadSymbolicLowerBound(uint64_t* pt, uint64_t vaddr) {
   uint64_t mrvc;
 
   // assert: vaddr is valid and mapped
   mrvc = loadVirtualMemory(pt, vaddr);
 
   if (mrvc <= tc)
-    return *(vceils + mrvc);
+    return *(los + mrvc);
   else
     // report error
-    return loadSymbolicMemoryValue(pt, vaddr);
+    return loadSymbolicMemory(pt, vaddr);
+}
+
+uint64_t loadSymbolicUpperBound(uint64_t* pt, uint64_t vaddr) {
+  uint64_t mrvc;
+
+  // assert: vaddr is valid and mapped
+  mrvc = loadVirtualMemory(pt, vaddr);
+
+  if (mrvc <= tc)
+    return *(ups + mrvc);
+  else
+    // report error
+    return loadSymbolicMemory(pt, vaddr);
 }
 
 uint64_t isTraceSpaceAvailable() {
@@ -7446,7 +7502,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr == 0)
@@ -7457,10 +7513,11 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     mrvc = mrcc;
   else {
     // assert: vaddr is valid and mapped
-    if (value == loadSymbolicMemoryValue(pt, vaddr))
-      if (vceil == loadSymbolicMemoryCeiling(pt, vaddr))
-        // prevent tracking identical updates
-        return;
+    if (value == loadSymbolicMemory(pt, vaddr))
+      if (lo == loadSymbolicLowerBound(pt, vaddr))
+        if (up == loadSymbolicUpperBound(pt, vaddr))
+          // prevent tracking identical updates
+          return;
 
     mrvc = loadVirtualMemory(pt, vaddr);
   }
@@ -7469,7 +7526,9 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     // current value at vaddr does not need to be tracked,
     // just overwrite it in the trace
     *(values + mrvc) = value;
-    *(vceils + mrvc) = vceil;
+
+    *(los + mrvc) = lo;
+    *(ups + mrvc) = up;
 
     // assert: vaddr == *(vaddrs + mrvc)
 
@@ -7486,10 +7545,12 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(pcs + tc) = pc;
     *(tcs + tc) = mrvc;
 
-    *(vaddrs + tc) = vaddr;
-
     *(values + tc) = value;
-    *(vceils + tc) = vceil;
+
+    *(los + tc) = lo;
+    *(ups + tc) = up;
+
+    *(vaddrs + tc) = vaddr;
 
     if (vaddr < NUMBEROFREGISTERS) {
       if (vaddr > 0)
@@ -7508,7 +7569,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     throwException(EXCEPTION_MAXTRACE, 0);
 }
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil, uint64_t trb) {
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr >= getBumpPointer(currentContext))
@@ -7528,45 +7589,45 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t value, uint64_t vceil, uint
   }
 
   // always track constrained memory by using tc as most recent branch
-  storeSymbolicMemory(pt, vaddr, value, vceil, tc);
+  storeSymbolicMemory(pt, vaddr, lo, lo, up, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
-  storeSymbolicMemory(pt, reg, value, value, tc);
+  storeSymbolicMemory(pt, reg, value, value, value, tc);
 }
 
-void constrainMemory(uint64_t reg, uint64_t value, uint64_t vceil, uint64_t trb) {
+void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
   if (*(reg_hasco + reg)) {
     if (*(reg_hasmn + reg))
-      storeConstrainedMemory(*(reg_vaddr + reg), *(reg_coval + reg) - value, *(reg_cceil + reg) - vceil, trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), *(reg_colos + reg) - lo, *(reg_coups + reg) - up, trb);
     else
-      storeConstrainedMemory(*(reg_vaddr + reg), value - *(reg_coval + reg), vceil - *(reg_cceil + reg), trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), lo - *(reg_colos + reg), up - *(reg_coups + reg), trb);
   }
 }
 
-void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t coval, uint64_t cceil) {
+void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
   *(reg_hasco + reg) = hasco;
   *(reg_vaddr + reg) = vaddr;
   *(reg_hasmn + reg) = hasmn;
-  *(reg_coval + reg) = coval;
-  *(reg_cceil + reg) = cceil;
+  *(reg_colos + reg) = colos;
+  *(reg_coups + reg) = coups;
 }
 
 void createConstraints(uint64_t howManyMore, uint64_t trb) {
-  uint64_t value1;
-  uint64_t vceil1;
-  uint64_t value2;
-  uint64_t vceil2;
+  uint64_t lo1;
+  uint64_t up1;
+  uint64_t lo2;
+  uint64_t up2;
 
-  if (*(registers + rs1) <= *(reg_vceil + rs1)) {
+  if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
     // rs1 interval is not wrapped around
-    if (*(registers + rs2) <= *(reg_vceil + rs2)) {
+    if (*(reg_los + rs2) <= *(reg_ups + rs2)) {
       // both rs1 and rs2 intervals are not wrapped around
-      if (*(reg_vceil + rs1) < *(registers + rs2)) {
+      if (*(reg_ups + rs1) < *(reg_los + rs2)) {
         // rs1 interval is strictly less than rs2 interval
-        constrainMemory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
-        constrainMemory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
+        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
+        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
 
         if (howManyMore > 0) {
           // record that we need to set rd to true
@@ -7577,14 +7638,16 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
         } else {
           *(registers + rd) = 1;
-          *(reg_vceil + rd) = 1;
+
+          *(reg_los + rd) = 1;
+          *(reg_ups + rd) = 1;
 
           setConstraint(rd, 0, 0, 0, 0, 0);
         }
-      } else if (*(reg_vceil + rs2) <= *(registers + rs1)) {
+      } else if (*(reg_ups + rs2) <= *(reg_los + rs1)) {
         // rs2 interval is less than or equal to rs1 interval
-        constrainMemory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
-        constrainMemory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
+        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
+        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
 
         if (howManyMore > 0) {
           // record that we need to set rd to false
@@ -7595,16 +7658,18 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
         } else {
           *(registers + rd) = 0;
-          *(reg_vceil + rd) = 0;
+
+          *(reg_los + rd) = 0;
+          *(reg_ups + rd) = 0;
 
           setConstraint(rd, 0, 0, 0, 0, 0);
         }
-      } else if (*(registers + rs2) == *(reg_vceil + rs2)) {
+      } else if (*(reg_los + rs2) == *(reg_ups + rs2)) {
         // rs2 interval is a singleton
 
         // construct constraint for false case
-        constrainMemory(rs1, *(registers + rs2), *(reg_vceil + rs1), trb);
-        constrainMemory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
+        constrainMemory(rs1, *(reg_los + rs2), *(reg_ups + rs1), trb);
+        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
 
         // record that we need to set rd to false
         storeRegisterMemory(rd, 0);
@@ -7614,8 +7679,8 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
         storeRegisterMemory(REG_SP, *(registers + REG_SP));
 
         // construct constraint for true case
-        constrainMemory(rs1, *(registers + rs1), *(registers + rs2) - 1, trb);
-        constrainMemory(rs2, *(registers + rs2), *(reg_vceil + rs2), trb);
+        constrainMemory(rs1, *(reg_los + rs1), *(reg_los + rs2) - 1, trb);
+        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
 
         if (howManyMore > 0) {
           // record that we need to set rd to true
@@ -7626,16 +7691,18 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
         } else {
           *(registers + rd) = 1;
-          *(reg_vceil + rd) = 1;
+
+          *(reg_los + rd) = 1;
+          *(reg_ups + rd) = 1;
 
           setConstraint(rd, 0, 0, 0, 0, 0);
         }
-      } else if (*(registers + rs1) == *(reg_vceil + rs1)) {
+      } else if (*(reg_los + rs1) == *(reg_ups + rs1)) {
         // rs1 interval is a singleton
 
         // construct constraint for false case
-        constrainMemory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
-        constrainMemory(rs2, *(registers + rs2), *(registers + rs1), trb);
+        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
+        constrainMemory(rs2, *(reg_los + rs2), *(reg_los + rs1), trb);
 
         // record that we need to set rd to false
         storeRegisterMemory(rd, 0);
@@ -7645,8 +7712,8 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
         storeRegisterMemory(REG_SP, *(registers + REG_SP));
 
         // construct constraint for true case
-        constrainMemory(rs1, *(registers + rs1), *(reg_vceil + rs1), trb);
-        constrainMemory(rs2, *(registers + rs1) + 1, *(reg_vceil + rs2), trb);
+        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
+        constrainMemory(rs2, *(reg_los + rs1) + 1, *(reg_ups + rs2), trb);
 
         if (howManyMore > 0) {
           // record that we need to set rd to true
@@ -7657,7 +7724,9 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
           storeRegisterMemory(REG_SP, *(registers + REG_SP));
         } else {
           *(registers + rd) = 1;
-          *(reg_vceil + rd) = 1;
+
+          *(reg_los + rd) = 1;
+          *(reg_ups + rd) = 1;
 
           setConstraint(rd, 0, 0, 0, 0, 0);
         }
@@ -7671,77 +7740,79 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
       }
     } else {
       // rs1 interval is not wrapped around but rs2 is
-      vceil2             = *(reg_vceil + rs2);
-      *(reg_vceil + rs2) = UINT64_MAX;
+      lo2 = *(reg_los + rs2);
+      up2 = *(reg_ups + rs2);
 
       // unwrap rs2 interval and use higher portion first
+      *(reg_ups + rs2) = UINT64_MAX;
+
       createConstraints(1, trb);
 
-      *(reg_vceil + rs2) = vceil2;
-
-      value2             = *(registers + rs2);
-      *(registers + rs2) = 0;
-
       // then use lower portion of rs2 interval
+      *(reg_ups + rs2) = up2;
+      *(reg_los + rs2) = 0;
+
       createConstraints(0, trb);
 
-      *(registers + rs2) = value2;
+      // restore original interval
+      *(reg_los + rs2) = lo2;
     }
-  } else if (*(registers + rs2) <= *(reg_vceil + rs2)) {
+  } else if (*(reg_los + rs2) <= *(reg_ups + rs2)) {
     // rs2 interval is not wrapped around but rs1 is
-    vceil1             = *(reg_vceil + rs1);
-    *(reg_vceil + rs1) = UINT64_MAX;
+    lo1 = *(reg_los + rs1);
+    up1 = *(reg_ups + rs1);
 
     // unwrap rs1 interval and use higher portion first
+    *(reg_ups + rs1) = UINT64_MAX;
+
     createConstraints(1, trb);
-
-    *(reg_vceil + rs1) = vceil1;
-
-    value1             = *(registers + rs1);
-    *(registers + rs1) = 0;
 
     // then use lower portion of rs1 interval
+    *(reg_ups + rs1) = up1;
+    *(reg_los + rs1) = 0;
+
     createConstraints(0, trb);
 
-    *(registers + rs1) = value1;
+    // restore original interval
+    *(reg_los + rs1) = lo1;
   } else {
     // both rs1 and rs2 intervals are wrapped around
-    vceil1             = *(reg_vceil + rs1);
-    *(reg_vceil + rs1) = UINT64_MAX;
-    vceil2             = *(reg_vceil + rs2);
-    *(reg_vceil + rs2) = UINT64_MAX;
+    lo1 = *(reg_los + rs1);
+    up1 = *(reg_ups + rs1);
+    lo2 = *(reg_los + rs2);
+    up2 = *(reg_ups + rs2);
 
     // unwrap rs1 and rs2 intervals and use higher portions
+    *(reg_ups + rs1) = UINT64_MAX;
+    *(reg_ups + rs2) = UINT64_MAX;
+
     createConstraints(3, trb);
 
-    *(reg_vceil + rs2) = vceil2;
-
-    value2             = *(registers + rs2);
-    *(registers + rs2) = 0;
-
     // use higher portion of rs1 interval and lower portion of rs2 interval
+    *(reg_ups + rs2) = up2;
+    *(reg_los + rs2) = 0;
+
     createConstraints(2, trb);
 
-    *(reg_vceil + rs1) = vceil1;
-
-    value1             = *(registers + rs1);
-    *(registers + rs1) = 0;
-
     // use lower portions of rs1 and rs2 intervals
+    *(reg_ups + rs1) = up1;
+    *(reg_los + rs1) = 0;
+
     createConstraints(1, trb);
 
-    *(registers + rs2) = value2;
-    *(reg_vceil + rs2) = UINT64_MAX;
-
     // use lower portion of rs1 interval and higher portion of rs2 interval
+    *(reg_los + rs2) = lo2;
+    *(reg_ups + rs2) = UINT64_MAX;
+
     createConstraints(0, trb);
 
-    *(registers + rs1) = value1;
-    *(reg_vceil + rs2) = vceil2;
+    // restore original intervals
+    *(reg_los + rs1) = lo1;
+    *(reg_ups + rs2) = up2;
   }
 }
 
-uint64_t fuzzValue(uint64_t value) {
+uint64_t fuzzLo(uint64_t value) {
   if (fuzz >= CPUBITWIDTH)
     return 0;
   else if (value > (twoToThePowerOf(fuzz) - 1) / 2)
@@ -7750,7 +7821,7 @@ uint64_t fuzzValue(uint64_t value) {
     return 0;
 }
 
-uint64_t fuzzCeiling(uint64_t value) {
+uint64_t fuzzUp(uint64_t value) {
   if (fuzz >= CPUBITWIDTH)
     return UINT64_MAX;
   else if (UINT64_MAX - value < twoToThePowerOf(fuzz) / 2)
@@ -8740,7 +8811,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (symbolic) {
     if (isTraceSpaceAvailable())
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, data, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, data, data, tc);
     else {
       print(selfieName);
       print((uint64_t*) ": ealloc out of memory");
@@ -8858,9 +8929,11 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // store stack pointer value in stack pointer register
   *(getRegs(context) + REG_SP) = SP;
 
-  // set ceiling to register value for symbolic execution
-  if (symbolic)
-    *(reg_vceil + REG_SP) = SP;
+  // set bounds to register value for symbolic execution
+  if (symbolic) {
+    *(reg_los + REG_SP) = SP;
+    *(reg_ups + REG_SP) = SP;
+  }
 }
 
 uint64_t handleSystemCall(uint64_t* context) {
