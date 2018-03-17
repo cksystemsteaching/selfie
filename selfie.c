@@ -994,7 +994,6 @@ void updateMemState(uint64_t vaddr, uint64_t value);
 void updateRegStateEcall(uint64_t context, uint64_t reg, uint64_t value);
 
 void redundancyCheck();
-
 void replayTrace();
 
 void printSourceLineNumberOfInstruction(uint64_t a);
@@ -1004,38 +1003,24 @@ void print_lui();
 void print_lui_before();
 void print_lui_after();
 void record_lui_addi_add_sub_mul_sltu_jal_jalr();
-void symbolic_do_lui();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-void symbolic_undo_lui_remu_jal_jalr();
 
 void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
-void symbolic_do_addi();
-void symbolic_undo_addi();
 void do_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
-void symbolic_do_add();
-void symbolic_undo_add_sub_mul();
 void do_add();
-void symbolic_do_sub();
 void do_sub();
-void symbolic_do_mul();
 void do_mul();
 
 void record_divu_remu();
-void symbolic_do_divu();
-void symbolic_undo_divu();
 void do_divu();
-void symbolic_do_remu();
 void do_remu();
-
-void symbolic_do_sltu();
-void symbolic_undo_sltu();
 void do_sltu();
 
 void     print_ld();
@@ -1043,16 +1028,12 @@ void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
 void     symbolic_record_ld_before();
-uint64_t symbolic_do_ld();
-void     symbolic_undo_ld();
 uint64_t do_ld();
 
 void     print_sd();
 void     print_sd_before();
 void     print_sd_after(uint64_t vaddr);
 void     record_sd();
-uint64_t symbolic_do_sd();
-void     symbolic_undo_sd();
 uint64_t do_sd();
 void     undo_sd();
 
@@ -1060,30 +1041,23 @@ void print_beq();
 void print_beq_before();
 void print_beq_after();
 void record_beq();
-void symbolic_do_beq();
-void symbolic_undo_beq();
 void do_beq();
 
 void print_jal();
 void print_jal_before();
 void print_jal_jalr_after();
-void symbolic_do_jal();
 void do_jal();
 
 void print_jalr();
 void print_jalr_before();
-void symbolic_do_jalr();
 void do_jalr();
 
 void print_ecall();
 void print_ecall_before();
 void print_ecall_after();
 void record_ecall();
-void symbolic_do_ecall();
-void symbolic_undo_ecall();
 void do_ecall();
 void undo_ecall();
-
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1479,15 +1453,28 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 // ------------------------------ PRINT ----------------------------
 
 void printTrace();
-// sTODO: move other prints here too
+void printValues(uint64_t tc);
 
 // -----------------------------------------------------------------
 // ------------------ SYMBOLIC FORWARD EXECUTION -------------------
 // -----------------------------------------------------------------
 
-// -------------------------- INSTRUCTIONS -------------------------
+void symbolic_do_lui();
+void symbolic_do_addi();
+void symbolic_do_add();
+void symbolic_do_sub();
+void symbolic_do_mul();
+void symbolic_do_divu();
+void symbolic_do_remu();
+void symbolic_do_sltu();
 
-// sTODO move symbolic forward instructions here
+uint64_t symbolic_do_ld();
+uint64_t symbolic_do_sd();
+
+void symbolic_do_beq();
+void symbolic_do_jal();
+void symbolic_do_jalr();
+void symbolic_do_ecall();
 
 // ---------------------------- SYSCALLS ---------------------------
 
@@ -1497,9 +1484,15 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
 // ------------------------- SYMBOLIC UNDO -------------------------
 // -----------------------------------------------------------------
 
-// -------------------------- INSTRUCTIONS -------------------------
-
-// sTODO move symbolic forward instructions here
+void symbolic_undo_lui_remu_jal_jalr();
+void symbolic_undo_addi();
+void symbolic_undo_add_sub_mul();
+void symbolic_undo_divu();
+void symbolic_undo_sltu();
+void symbolic_undo_ld();
+void symbolic_undo_sd();
+void symbolic_undo_beq();
+void symbolic_undo_ecall();
 
 // -----------------------------------------------------------------
 // ------------------ SYMBOLIC BACKWARDS CONFINE -------------------
@@ -1561,17 +1554,15 @@ void setLowerForReg(uint64_t value, uint64_t reg) { *(valuesLower + *(registers 
 void setUpperForReg(uint64_t value, uint64_t reg) { *(valuesUpper + *(registers + reg)) = value; }
 
 void setFromTrace(uint64_t fromTc, uint64_t toTc) { setLower(getLower(fromTc), toTc); setUpper(getUpper(fromTc), toTc); }
-
 void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); }
-void clearTrace() { setConcrete(0); }
+void clearTrace()                                 { setConcrete(0); }
 
 // ---------------------------- UTILITIES --------------------------
 
 uint64_t fetchFromTC(uint64_t tc);
 void     resetInstructions(uint64_t count);
 void     syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
-
-void incrementTc();
+void     incrementTc();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -6390,24 +6381,6 @@ void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
   recordState(*(registers + rd));
 }
 
-void symbolic_do_lui() {
-  // @push: RD
-  saveState(*(registers + rd));
-
-  if (rd != REG_ZR) {
-    setConcrete(leftShift(imm, 12));
-
-    redundancyCheck();
-  } else
-    clearTrace();
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_lui = ic_lui + 1;
-
-  updateRegState(rd, tc);
-}
-
 void do_lui() {
   // load upper immediate
 
@@ -6422,12 +6395,6 @@ void do_lui() {
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
   *(registers + rd) = *(values + (tc % maxTraceLength));
-}
-
-void symbolic_undo_lui_remu_jal_jalr() {
-  // @pop: RD
-  if (rd != REG_ZR)
-    *(registers + rd) = *(tcs + tc);
 }
 
 void print_addi() {
@@ -6462,38 +6429,6 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
   print((uint64_t*) " -> ");
   printRegisterValue(rd);
   printRegisterTc(rd);
-}
-
-void symbolic_do_addi() {
-  // @push: RD
-  saveState(*(registers + rd));
-
-  if (rd != REG_ZR) {
-    setLower(getLowerFromReg(rs1) + imm, tc);
-    setUpper(getUpperFromReg(rs1) + imm, tc);
-
-    redundancyCheck();
-  } else
-    clearTrace();
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_addi = ic_addi + 1;
-
-  updateRegState(rd, tc);
-}
-
-void symbolic_undo_addi() {
-  // @pop: RD, [RS1]
-  if (rd != REG_ZR)
-    // undo RD
-    *(registers + rd) = *(tcs + tc);
-
-  if (isConfinedInstruction()) {
-    tc = tc - 1;
-    // undo RS1
-    *(registers + rs1) = *(tcs + tc);
-  }
 }
 
 void do_addi() {
@@ -6531,40 +6466,6 @@ void print_add_sub_mul_divu_remu_sltu_before() {
   printRegisterTc(rd);
 }
 
-void symbolic_do_add() {
-  // @push: RD
-  saveState(*(registers + rd));
-
-  if (rd != REG_ZR) {
-    setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
-
-    redundancyCheck();
-  } else
-    clearTrace();
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_add = ic_add + 1;
-
-  updateRegState(rd, tc);
-}
-
-void symbolic_undo_add_sub_mul() {
-  // @pop: RD, [constrainedRegister]
-  if (rd != REG_ZR)
-    *(registers + rd) = *(tcs + tc);
-
-  if (isConfinedInstruction()) {
-    tc = tc - 1;
-    // undo either RS1 or RS2 depending on which one is symbolic
-    if (wasNeverSymbolic(currentContext, rs1))
-      *(registers + rs2) = *(tcs + tc);
-    else
-      *(registers + rs1) = *(tcs + tc);
-  }
-}
-
 void do_add() {
   if (rd != REG_ZR)
     // semantics of add
@@ -6575,25 +6476,6 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void symbolic_do_sub() {
-  // @push: RD
-  saveState(*(registers + rd));
-
-  if (rd != REG_ZR) {
-    setLower(getLowerFromReg(rs1) - getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) - getUpperFromReg(rs2), tc);
-
-    redundancyCheck();
-  } else
-    clearTrace();
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_sub = ic_sub + 1;
-
-  updateRegState(rd, tc);
-}
-
 void do_sub() {
   if (rd != REG_ZR)
     // semantics of sub
@@ -6602,27 +6484,6 @@ void do_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
-}
-
-void symbolic_do_mul() {
-  // @push: RD
-  saveState(*(registers + rd));
-
-  if (rd != REG_ZR) {
-    forcePrecise(currentContext, rs1, rs2);
-
-    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
-
-    redundancyCheck();
-  } else
-    clearTrace();
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_mul = ic_mul + 1;
-
-  updateRegState(rd, tc);
 }
 
 void do_mul() {
@@ -6642,53 +6503,6 @@ void record_divu_remu() {
   recordState(*(registers + rd));
 }
 
-void symbolic_do_divu() {
-  // @push: remainder, RD
-
-  if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
-    if (getLowerFromReg(rs2) != 0) {
-      if (rd != REG_ZR) {
-        forcePrecise(currentContext, rs1, rs2);
-
-        // push remainder
-        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
-        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
-        tc = tc + 1;
-
-        saveState(*(registers + rd));
-        setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
-        setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
-
-        redundancyCheck();
-      } else {
-        saveState(*(registers + rd));
-        clearTrace();
-      }
-
-      pc = pc + INSTRUCTIONSIZE;
-
-      ic_divu = ic_divu + 1;
-    } else
-    throwException(EXCEPTION_DIVISIONBYZERO, 0);
-  } else {
-    print((uint64_t*) "symbolic divisor not supported");
-    println();
-    throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
-  }
-
-  updateRegState(rd, tc);
-}
-
-void symbolic_undo_divu() {
-  // @pop: RD, [remainder]
-  if (rd != REG_ZR)
-    *(registers + rd) = *(tcs + tc);
-
-  // if there is a remainder, undo it
-  if (pc == *(pcs + tc - 1))
-    tc = tc - 1;
-}
-
 void do_divu() {
   // division unsigned
 
@@ -6704,33 +6518,6 @@ void do_divu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
-void symbolic_do_remu() {
-  // @push: quotient, RD
-  saveState(*(registers + rd));
-
-  if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
-    if (getLowerFromReg(rs2) != 0) {
-      if (rd != REG_ZR) {
-        forcePrecise(currentContext, rs1, rs2);
-
-        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
-        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
-
-        redundancyCheck();
-      } else
-        clearTrace();
-
-      pc = pc + INSTRUCTIONSIZE;
-
-      ic_remu = ic_remu + 1;
-    } else
-    throwException(EXCEPTION_DIVISIONBYZERO, 0);
-  } else
-  throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
-
-  updateRegState(rd, tc);
-}
-
 void do_remu() {
   // remainder unsigned
 
@@ -6744,98 +6531,6 @@ void do_remu() {
     ic_remu = ic_remu + 1;
   } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
-}
-
-void symbolic_do_sltu() {
-  // @push: [1,1], [0,0] or [0,1]
-  // sTODO: implement new comparisons
-
-  saveState(*(registers + rd));
-  forcePrecise(currentContext, rs1, rs2);
-
-  if (rd != REG_ZR) {
-    if (getUpperFromReg(rs1) < getLowerFromReg(rs2))
-      setConcrete(1);
-    else if (getLowerFromReg(rs1) >= getUpperFromReg(rs2))
-      setConcrete(0);
-    else {
-      setLower(0, tc);
-      setUpper(1, tc);
-
-      identifyOperator = tc;
-    }
-    redundancyCheck();
-  } else
-    clearTrace();
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_sltu = ic_sltu + 1;
-
-  updateRegState(rd, tc);
-}
-
-void symbolic_undo_sltu() {
-  // @pop: stuff (deprecated anyway)
-  uint64_t operator;
-  uint64_t twoTraceVals;
-
-  twoTraceVals = pc == *(pcs + tc - 1);
-
-  // get operator type we remebered in confine_sltu
-  // if we pushed two values to the trace, it is at the first value
-  if (twoTraceVals) {
-    operator = *(operators + tc -1);
-    *(operators + tc -1) = 0; // reset operator
-  }
-  else {
-    operator = *(operators + tc);
-    *(operators + tc -1) = 0; // reset operator
-  }
-
-  if (rd != REG_ZR) {
-    if (operator == 1) { // < / >
-      if (rd == rs1) { // <
-        if (twoTraceVals) { // concrete (rs1) < symbolic (rs2)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs2) = *(tcs + tc);
-        } else { // symbolic (rs1) < concrete (rs2)
-          *(registers + rd) = *(tcs + tc);
-        }
-      } else { // rd == rs2 | >
-        if (twoTraceVals) { // concrete (rs2) > symbolic (rs1)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs1) = *(tcs + tc);
-        } else { // symbolic (rs2) > concrete (rs1)
-          *(registers + rd) = *(tcs + tc);
-        }
-      }
-    } else if (operator == 2) { // <= / >=
-      if (rd == rs2) { // <=
-        if (twoTraceVals) { // concrete (rs2) <= symbolic (rs1)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs1) = *(tcs + tc);
-        } else { // symbolic (rs2) <= concrete (rs1)
-          *(registers + rd) = *(tcs + tc);
-        }
-      } else { // rd == rs1 | >=
-        if (twoTraceVals) { // concrete (rs1) >= symbolic (rs2)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs2) = *(tcs + tc);
-        } else { // symbolic (rs1) >= concrete (rs2)
-          *(registers + rd) = *(tcs + tc);
-        }
-      }
-    } else if (operator == 0) {
-      // we are undoing a non-confine operation
-      *(registers + rd) = *(tcs + tc);
-    }
-    // also works for both concrete as twoTraceVals == 0 and RD gets undone
-  }
 }
 
 void do_sltu() {
@@ -6925,52 +6620,6 @@ void symbolic_record_ld_before() {
       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
   else
     throwException(EXCEPTION_INVALIDADDRESS, 0);
-}
-
-uint64_t symbolic_do_ld() {
-  // @push: RD
-  uint64_t vaddr;
-  uint64_t a;
-
-  symbolic_record_ld_before();
-
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  if (rd != REG_ZR) {
-    setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
-    setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
-
-    redundancyCheck();
-
-  } else
-    clearTrace();
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_ld = ic_ld + 1;
-
-  // keep track of number of loads per instruction
-  a = (pc - entryPoint) / INSTRUCTIONSIZE;
-
-  *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
-
-  updateRegState(rd, tc);
-
-  return vaddr;
-}
-
-void symbolic_undo_ld() {
-  // @pop: RD, [confinedMemory]
-  uint64_t vaddr;
-
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  *(registers + rd) = *(tcs + tc);
-
-  if (isConfinedInstruction()) {
-    tc = tc - 1;
-    storeVirtualMemory(pt, vaddr, *(tcs + tc));
-  }
 }
 
 uint64_t do_ld() {
@@ -7066,39 +6715,6 @@ void record_sd() {
       recordState(loadVirtualMemory(pt, vaddr));
 }
 
-uint64_t symbolic_do_sd() {
-  // @push: VADDR
-  uint64_t vaddr;
-  uint64_t a;
-
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  if (isValidVirtualAddress(vaddr))
-    if (isVirtualAddressMapped(pt, vaddr))
-      saveState(loadVirtualMemory(pt, vaddr));
-    else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  else
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
-
-  setLower(getLowerFromReg(rs2), tc);
-  setUpper(getUpperFromReg(rs2), tc);
-
-  redundancyCheck();
-
-  pc    = pc + INSTRUCTIONSIZE;
-  ic_sd = ic_sd + 1;
-
-  // keep track of number of stores per instruction
-  a = (pc - entryPoint) / INSTRUCTIONSIZE;
-
-  *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
-
-  updateMemState(vaddr, tc);
-
-  return vaddr;
-}
-
 uint64_t do_sd() {
   uint64_t vaddr;
   uint64_t a;
@@ -7137,20 +6753,6 @@ void undo_sd() {
   storeVirtualMemory(pt, vaddr, *(values + (tc % maxTraceLength)));
 }
 
-void symbolic_undo_sd() {
-  // @pop: RD, [confinedRegister]
-  uint64_t vaddr;
-
-  vaddr = getLowerFromReg(rs1) + imm;
-
-  storeVirtualMemory(pt, vaddr,  *(tcs + tc));
-
-  if (isConfinedInstruction()) {
-    tc = tc - 1;
-    *(registers + rs2) = *(tcs + tc);
-  }
-}
-
 void print_beq() {
   printInstructionContext();
 
@@ -7182,77 +6784,6 @@ void print_beq_after() {
 
 void record_beq() {
   recordState(0);
-}
-
-void symbolic_do_beq() {
-  //@ push: REG_ZR (remove?)
-  saveState(0);
-
-  if (areSourceRegsConcrete()) {
-    if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
-      pc = pc + imm;
-    else
-      pc = pc + INSTRUCTIONSIZE;
-
-  } else {
-    // assert: rs2 == $zero
-    // assert: rs1 == [0,1] or [1,0]
-
-    // if 1: <, >, != or ==, if 3: <= or >=,
-    // if 0: after undo (values were correctly set)
-    identifyOperator = tc - identifyOperator;
-
-    if (identifyOperator == 1)
-      // sTODO: distinguish between < / >, !=, ==
-      *(operators + tc) = 1;
-
-    // the marker [0,1] became another value, compiler semantics of <= / >=
-    // remove and undo the last 2 instructions and set the marker properly
-    else if (identifyOperator == 3) {
-      resetInstructions(2);
-      decodeBFormat();
-
-      saveState(0);
-      *(operators + tc) = 2;
-
-      setLowerForReg(0, rs1);
-      setUpperForReg(1, rs1);
-    }
-
-    if (debug_vipster){
-      print(selfieName);
-      print((uint64_t*) ": vipster exploring ");
-      if (getUpperFromReg(rs1))
-        print((uint64_t*) "true branch from pc= ");
-      else
-        print((uint64_t*) "false branch from pc= ");
-      printHexadecimal(pc, 8);
-      println();
-    }
-
-    if (getUpperFromReg(rs1))
-      pc = pc + INSTRUCTIONSIZE;
-    else
-      pc = pc + imm;
-  }
-
-  ic_beq = ic_beq + 1;
-
-  clearTrace();
-  updateRegState(REG_ZR, 0);
-}
-
-void symbolic_undo_beq() {
-  identifyOperator = tc;
-
-  if (tc <= executionBrk)
-    if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
-      if (getLowerFromReg(rs1) == 0) {
-        setLowerForReg(1, rs1);
-        setUpperForReg(0, rs1);
-
-        undo = 0;
-      }
 }
 
 void do_beq() {
@@ -7298,51 +6829,6 @@ void print_jal_jalr_after() {
     printRegisterHexadecimal(rd);
   }
   printRegisterTc(rd);
-}
-
-void symbolic_do_jal() {
-  // @push: RD
-  uint64_t a;
-
-  saveState(*(registers + rd));
-
-  if (rd != REG_ZR) {
-    // first link
-    setConcrete(pc + INSTRUCTIONSIZE);
-
-    redundancyCheck();
-
-    // then jump for procedure calls
-    pc = pc + imm;
-
-    // keep track of number of procedure calls
-    calls = calls + 1;
-
-    a = (pc - entryPoint) / INSTRUCTIONSIZE;
-
-    *(callsPerProcedure + a) = *(callsPerProcedure + a) + 1;
-
-  } else if (signedLessThan(imm, 0)) {
-    // just jump backwards to check for another loop iteration
-    clearTrace();
-
-    pc = pc + imm;
-
-    // keep track of number of loop iterations
-    iterations = iterations + 1;
-
-    a = (pc - entryPoint) / INSTRUCTIONSIZE;
-
-    *(iterationsPerLoop + a) = *(iterationsPerLoop + a) + 1;
-  } else {
-    // just jump forward
-    clearTrace();
-
-    pc = pc + imm;
-  }
-  ic_jal = ic_jal + 1;
-
-  updateRegState(rd, tc);
 }
 
 void do_jal() {
@@ -7406,38 +6892,6 @@ void print_jalr_before() {
   printRegisterTc(rd);
 }
 
-void symbolic_do_jalr() {
-  // @push: RD
-  uint64_t next_pc;
-
-  saveState(*(registers + rd));
-
-  if (rd == REG_ZR) {
-    // fast path: just return by jumping rs1-relative with LSB reset
-    clearTrace();
-
-    pc = leftShift(rightShift(getLowerFromReg(rs1) + imm, 1), 1);
-  } else {
-    // slow path: first prepare jump, then link, just in case rd == rs1
-    forceConcrete(currentContext, rs1);
-
-    // prepare jump with LSB reset
-    next_pc = leftShift(rightShift(getLowerFromReg(rs1) + imm, 1), 1);
-
-    // link to next instruction
-    setConcrete(pc + INSTRUCTIONSIZE);
-
-    redundancyCheck();
-
-    // jump
-    pc = next_pc;
-  }
-
-  ic_jalr = ic_jalr + 1;
-
-  updateRegState(rd, tc);
-}
-
 void do_jalr() {
   uint64_t next_pc;
 
@@ -7485,21 +6939,6 @@ void record_ecall() {
   recordState(*(registers + REG_A0));
 }
 
-void symbolic_do_ecall() {
-  // @push: 0+ read values, REG_A0
-  ecallPC  =  pc;
-  ic_ecall = ic_ecall + 1;
-
-  if (getLowerFromReg(REG_A7) == SYSCALL_SWITCH) {
-    print(selfieName);
-    print((uint64_t*) ": switch during symbolic execution not supported");
-    println();
-
-    exit(EXITCODE_BADARGUMENTS);
-  } else
-    throwException(EXCEPTION_SYSCALL, 0);
-}
-
 void do_ecall() {
   ic_ecall = ic_ecall + 1;
 
@@ -7534,34 +6973,6 @@ void undo_ecall() {
 
   // save register a0 for redoing system call
   *(values + (tc % maxTraceLength)) = a0;
-}
-
-void symbolic_undo_ecall() {
-  // @pop: 0+ reads/changes, REG_A0
-  uint64_t vaddr;
-
-  //----------------------------------------------------------------------------
-  // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
-  //----------------------------------------------------------------------------
-
-  // restore A0
-  *(registers + REG_A0) = *(tcs + tc);
-
-  // successfull syscall read (2 trace entries)
-  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
-    if (pc == *(pcs + tc - 1)) {
-      if (tc >= executionBrk)
-        numberOfSymbolics = numberOfSymbolics + 1;
-      else
-        numberOfSymbolics = numberOfSymbolics - 1;
-
-      tc = tc - 1;
-
-      // undo (confined) read
-      vaddr = getLowerFromReg(REG_A1);
-      storeVirtualMemory(pt, vaddr, *(tcs + tc));
-    }
-  }
 }
 
 // -----------------------------------------------------------------
@@ -9419,13 +8830,421 @@ void printTrace() {
   println();
 }
 
+void printValues(uint64_t tc) {
+  print((uint64_t*) "[");
+  printInteger(getLower(tc));
+  print((uint64_t*) ",");
+  printInteger(getUpper(tc));
+  print((uint64_t*) "]");
+}
+
 // -----------------------------------------------------------------
 // ------------------ SYMBOLIC FORWARD EXECUTION -------------------
 // -----------------------------------------------------------------
 
-// -------------------------- INSTRUCTIONS -------------------------
+void symbolic_do_lui() {
+  // @push: RD
+  saveState(*(registers + rd));
 
-// sTODO move symbolic forward instructions here
+  if (rd != REG_ZR) {
+    setConcrete(leftShift(imm, 12));
+
+    redundancyCheck();
+  } else
+    clearTrace();
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_lui = ic_lui + 1;
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_addi() {
+  // @push: RD
+  saveState(*(registers + rd));
+
+  if (rd != REG_ZR) {
+    setLower(getLowerFromReg(rs1) + imm, tc);
+    setUpper(getUpperFromReg(rs1) + imm, tc);
+
+    redundancyCheck();
+  } else
+    clearTrace();
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_addi = ic_addi + 1;
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_add() {
+  // @push: RD
+  saveState(*(registers + rd));
+
+  if (rd != REG_ZR) {
+    setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
+
+    redundancyCheck();
+  } else
+    clearTrace();
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_add = ic_add + 1;
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_sub() {
+  // @push: RD
+  saveState(*(registers + rd));
+
+  if (rd != REG_ZR) {
+    setLower(getLowerFromReg(rs1) - getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) - getUpperFromReg(rs2), tc);
+
+    redundancyCheck();
+  } else
+    clearTrace();
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_sub = ic_sub + 1;
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_mul() {
+  // @push: RD
+  saveState(*(registers + rd));
+
+  if (rd != REG_ZR) {
+    forcePrecise(currentContext, rs1, rs2);
+
+    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+
+    redundancyCheck();
+  } else
+    clearTrace();
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_mul = ic_mul + 1;
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_divu() {
+  // @push: remainder, RD
+
+  if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
+    if (getLowerFromReg(rs2) != 0) {
+      if (rd != REG_ZR) {
+        forcePrecise(currentContext, rs1, rs2);
+
+        // push remainder
+        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
+        tc = tc + 1;
+
+        saveState(*(registers + rd));
+        setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
+
+        redundancyCheck();
+      } else {
+        saveState(*(registers + rd));
+        clearTrace();
+      }
+
+      pc = pc + INSTRUCTIONSIZE;
+
+      ic_divu = ic_divu + 1;
+    } else
+    throwException(EXCEPTION_DIVISIONBYZERO, 0);
+  } else {
+    print((uint64_t*) "symbolic divisor not supported");
+    println();
+    throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
+  }
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_remu() {
+  // @push: quotient, RD
+  saveState(*(registers + rd));
+
+  if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
+    if (getLowerFromReg(rs2) != 0) {
+      if (rd != REG_ZR) {
+        forcePrecise(currentContext, rs1, rs2);
+
+        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
+
+        redundancyCheck();
+      } else
+        clearTrace();
+
+      pc = pc + INSTRUCTIONSIZE;
+
+      ic_remu = ic_remu + 1;
+    } else
+    throwException(EXCEPTION_DIVISIONBYZERO, 0);
+  } else
+  throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_sltu() {
+  // @push: [1,1], [0,0] or [0,1]
+  // sTODO: implement new comparisons
+
+  saveState(*(registers + rd));
+  forcePrecise(currentContext, rs1, rs2);
+
+  if (rd != REG_ZR) {
+    if (getUpperFromReg(rs1) < getLowerFromReg(rs2))
+      setConcrete(1);
+    else if (getLowerFromReg(rs1) >= getUpperFromReg(rs2))
+      setConcrete(0);
+    else {
+      setLower(0, tc);
+      setUpper(1, tc);
+
+      identifyOperator = tc;
+    }
+    redundancyCheck();
+  } else
+    clearTrace();
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_sltu = ic_sltu + 1;
+
+  updateRegState(rd, tc);
+}
+
+uint64_t symbolic_do_ld() {
+  // @push: RD
+  uint64_t vaddr;
+  uint64_t a;
+
+  symbolic_record_ld_before();
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (rd != REG_ZR) {
+    setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
+    setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+
+    redundancyCheck();
+
+  } else
+    clearTrace();
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_ld = ic_ld + 1;
+
+  // keep track of number of loads per instruction
+  a = (pc - entryPoint) / INSTRUCTIONSIZE;
+
+  *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
+
+  updateRegState(rd, tc);
+
+  return vaddr;
+}
+
+uint64_t symbolic_do_sd() {
+  // @push: VADDR
+  uint64_t vaddr;
+  uint64_t a;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  if (isValidVirtualAddress(vaddr))
+    if (isVirtualAddressMapped(pt, vaddr))
+      saveState(loadVirtualMemory(pt, vaddr));
+    else
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  else
+    throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+  setLower(getLowerFromReg(rs2), tc);
+  setUpper(getUpperFromReg(rs2), tc);
+
+  redundancyCheck();
+
+  pc    = pc + INSTRUCTIONSIZE;
+  ic_sd = ic_sd + 1;
+
+  // keep track of number of stores per instruction
+  a = (pc - entryPoint) / INSTRUCTIONSIZE;
+
+  *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
+
+  updateMemState(vaddr, tc);
+
+  return vaddr;
+}
+
+void symbolic_do_beq() {
+  //@ push: REG_ZR (remove?)
+  saveState(0);
+
+  if (areSourceRegsConcrete()) {
+    if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
+      pc = pc + imm;
+    else
+      pc = pc + INSTRUCTIONSIZE;
+
+  } else {
+    // assert: rs2 == $zero
+    // assert: rs1 == [0,1] or [1,0]
+
+    // if 1: <, >, != or ==, if 3: <= or >=,
+    // if 0: after undo (values were correctly set)
+    identifyOperator = tc - identifyOperator;
+
+    if (identifyOperator == 1)
+      // sTODO: distinguish between < / >, !=, ==
+      *(operators + tc) = 1;
+
+    // the marker [0,1] became another value, compiler semantics of <= / >=
+    // remove and undo the last 2 instructions and set the marker properly
+    else if (identifyOperator == 3) {
+      resetInstructions(2);
+      decodeBFormat();
+
+      saveState(0);
+      *(operators + tc) = 2;
+
+      setLowerForReg(0, rs1);
+      setUpperForReg(1, rs1);
+    }
+
+    if (debug_vipster){
+      print(selfieName);
+      print((uint64_t*) ": vipster exploring ");
+      if (getUpperFromReg(rs1))
+        print((uint64_t*) "true branch from pc= ");
+      else
+        print((uint64_t*) "false branch from pc= ");
+      printHexadecimal(pc, 8);
+      println();
+    }
+
+    if (getUpperFromReg(rs1))
+      pc = pc + INSTRUCTIONSIZE;
+    else
+      pc = pc + imm;
+  }
+
+  ic_beq = ic_beq + 1;
+
+  clearTrace();
+  updateRegState(REG_ZR, 0);
+}
+
+void symbolic_do_jal() {
+  // @push: RD
+  uint64_t a;
+
+  saveState(*(registers + rd));
+
+  if (rd != REG_ZR) {
+    // first link
+    setConcrete(pc + INSTRUCTIONSIZE);
+
+    redundancyCheck();
+
+    // then jump for procedure calls
+    pc = pc + imm;
+
+    // keep track of number of procedure calls
+    calls = calls + 1;
+
+    a = (pc - entryPoint) / INSTRUCTIONSIZE;
+
+    *(callsPerProcedure + a) = *(callsPerProcedure + a) + 1;
+
+  } else if (signedLessThan(imm, 0)) {
+    // just jump backwards to check for another loop iteration
+    clearTrace();
+
+    pc = pc + imm;
+
+    // keep track of number of loop iterations
+    iterations = iterations + 1;
+
+    a = (pc - entryPoint) / INSTRUCTIONSIZE;
+
+    *(iterationsPerLoop + a) = *(iterationsPerLoop + a) + 1;
+  } else {
+    // just jump forward
+    clearTrace();
+
+    pc = pc + imm;
+  }
+  ic_jal = ic_jal + 1;
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_jalr() {
+  // @push: RD
+  uint64_t next_pc;
+
+  saveState(*(registers + rd));
+
+  if (rd == REG_ZR) {
+    // fast path: just return by jumping rs1-relative with LSB reset
+    clearTrace();
+
+    pc = leftShift(rightShift(getLowerFromReg(rs1) + imm, 1), 1);
+  } else {
+    // slow path: first prepare jump, then link, just in case rd == rs1
+    forceConcrete(currentContext, rs1);
+
+    // prepare jump with LSB reset
+    next_pc = leftShift(rightShift(getLowerFromReg(rs1) + imm, 1), 1);
+
+    // link to next instruction
+    setConcrete(pc + INSTRUCTIONSIZE);
+
+    redundancyCheck();
+
+    // jump
+    pc = next_pc;
+  }
+
+  ic_jalr = ic_jalr + 1;
+
+  updateRegState(rd, tc);
+}
+
+void symbolic_do_ecall() {
+  // @push: 0+ read values, REG_A0
+  ecallPC  =  pc;
+  ic_ecall = ic_ecall + 1;
+
+  if (getLowerFromReg(REG_A7) == SYSCALL_SWITCH) {
+    print(selfieName);
+    print((uint64_t*) ": switch during symbolic execution not supported");
+    println();
+
+    exit(EXITCODE_BADARGUMENTS);
+  } else
+    throwException(EXCEPTION_SYSCALL, 0);
+}
 
 // ---------------------------- SYSCALLS ---------------------------
 
@@ -9465,9 +9284,181 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
 // ------------------------- SYMBOLIC UNDO -------------------------
 // -----------------------------------------------------------------
 
-// -------------------------- INSTRUCTIONS -------------------------
+void symbolic_undo_lui_remu_jal_jalr() {
+  // @pop: RD
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
+}
 
-// sTODO move symbolic undo instructions here
+void symbolic_undo_addi() {
+  // @pop: RD, [RS1]
+  if (rd != REG_ZR)
+    // undo RD
+    *(registers + rd) = *(tcs + tc);
+
+  if (isConfinedInstruction()) {
+    tc = tc - 1;
+    // undo RS1
+    *(registers + rs1) = *(tcs + tc);
+  }
+}
+
+void symbolic_undo_add_sub_mul() {
+  // @pop: RD, [constrainedRegister]
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
+
+  if (isConfinedInstruction()) {
+    tc = tc - 1;
+    // undo either RS1 or RS2 depending on which one is symbolic
+    if (wasNeverSymbolic(currentContext, rs1))
+      *(registers + rs2) = *(tcs + tc);
+    else
+      *(registers + rs1) = *(tcs + tc);
+  }
+}
+
+void symbolic_undo_divu() {
+  // @pop: RD, [remainder]
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
+
+  // if there is a remainder, undo it
+  if (pc == *(pcs + tc - 1))
+    tc = tc - 1;
+}
+
+void symbolic_undo_sltu() {
+  // @pop: stuff (deprecated anyway)
+  uint64_t operator;
+  uint64_t twoTraceVals;
+
+  twoTraceVals = pc == *(pcs + tc - 1);
+
+  // get operator type we remebered in confine_sltu
+  // if we pushed two values to the trace, it is at the first value
+  if (twoTraceVals) {
+    operator = *(operators + tc -1);
+    *(operators + tc -1) = 0; // reset operator
+  }
+  else {
+    operator = *(operators + tc);
+    *(operators + tc -1) = 0; // reset operator
+  }
+
+  if (rd != REG_ZR) {
+    if (operator == 1) { // < / >
+      if (rd == rs1) { // <
+        if (twoTraceVals) { // concrete (rs1) < symbolic (rs2)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs2) = *(tcs + tc);
+        } else { // symbolic (rs1) < concrete (rs2)
+          *(registers + rd) = *(tcs + tc);
+        }
+      } else { // rd == rs2 | >
+        if (twoTraceVals) { // concrete (rs2) > symbolic (rs1)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs1) = *(tcs + tc);
+        } else { // symbolic (rs2) > concrete (rs1)
+          *(registers + rd) = *(tcs + tc);
+        }
+      }
+    } else if (operator == 2) { // <= / >=
+      if (rd == rs2) { // <=
+        if (twoTraceVals) { // concrete (rs2) <= symbolic (rs1)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs1) = *(tcs + tc);
+        } else { // symbolic (rs2) <= concrete (rs1)
+          *(registers + rd) = *(tcs + tc);
+        }
+      } else { // rd == rs1 | >=
+        if (twoTraceVals) { // concrete (rs1) >= symbolic (rs2)
+          *(registers + rd) = *(tcs + tc);
+          tc = tc - 1;
+          *(registers + rs2) = *(tcs + tc);
+        } else { // symbolic (rs1) >= concrete (rs2)
+          *(registers + rd) = *(tcs + tc);
+        }
+      }
+    } else if (operator == 0) {
+      // we are undoing a non-confine operation
+      *(registers + rd) = *(tcs + tc);
+    }
+    // also works for both concrete as twoTraceVals == 0 and RD gets undone
+  }
+}
+
+void symbolic_undo_ld() {
+  // @pop: RD, [confinedMemory]
+  uint64_t vaddr;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  *(registers + rd) = *(tcs + tc);
+
+  if (isConfinedInstruction()) {
+    tc = tc - 1;
+    storeVirtualMemory(pt, vaddr, *(tcs + tc));
+  }
+}
+
+void symbolic_undo_sd() {
+  // @pop: RD, [confinedRegister]
+  uint64_t vaddr;
+
+  vaddr = getLowerFromReg(rs1) + imm;
+
+  storeVirtualMemory(pt, vaddr,  *(tcs + tc));
+
+  if (isConfinedInstruction()) {
+    tc = tc - 1;
+    *(registers + rs2) = *(tcs + tc);
+  }
+}
+
+void symbolic_undo_beq() {
+  identifyOperator = tc;
+
+  if (tc <= executionBrk)
+    if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
+      if (getLowerFromReg(rs1) == 0) {
+        setLowerForReg(1, rs1);
+        setUpperForReg(0, rs1);
+
+        undo = 0;
+      }
+}
+
+void symbolic_undo_ecall() {
+  // @pop: 0+ reads/changes, REG_A0
+  uint64_t vaddr;
+
+  //----------------------------------------------------------------------------
+  // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
+  //----------------------------------------------------------------------------
+
+  // restore A0
+  *(registers + REG_A0) = *(tcs + tc);
+
+  // successfull syscall read (2 trace entries)
+  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
+    if (pc == *(pcs + tc - 1)) {
+      if (tc >= executionBrk)
+        numberOfSymbolics = numberOfSymbolics + 1;
+      else
+        numberOfSymbolics = numberOfSymbolics - 1;
+
+      tc = tc - 1;
+
+      // undo (confined) read
+      vaddr = getLowerFromReg(REG_A1);
+      storeVirtualMemory(pt, vaddr, *(tcs + tc));
+    }
+  }
+}
 
 // -----------------------------------------------------------------
 // ------------------ SYMBOLIC BACKWARDS CONFINE -------------------
@@ -9476,7 +9467,6 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
 // ---------------------------- ALGORITHM --------------------------
 
 void symbolic_confine() {
-
   confine = 1;
 
   if (debug_vipster) {
@@ -9496,7 +9486,6 @@ void symbolic_confine() {
       fetch();
       decode_execute();
     }
-
     btc = btc - 1;
   }
 
@@ -9775,7 +9764,6 @@ void confine_sub() {
 
 void confine_mul() {
   // @push: [confinedRegister], RD
-  
   uint64_t loRem;
   uint64_t oldRD;
 
@@ -9789,7 +9777,7 @@ void confine_mul() {
       // RS2 is multiplier - confine RS1/RD
       saveState(*(registers + rd));
       loRem = getLowerFromReg(rd) % getLowerFromReg(rs2);
-      
+
       setLower(getLowerFromReg(rd) / getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rd) / getUpperFromReg(rs2), tc);
 
@@ -9802,14 +9790,14 @@ void confine_mul() {
 
       saveState(*(registers + rs2));
       loRem = getLowerFromReg(rd) % getLower(oldRD);
-      
+
       setLower(getLowerFromReg(rd) / getLower(oldRD), tc);
       setUpper(getUpperFromReg(rd) / getUpper(oldRD), tc);
 
       if (loRem != 0) // lower++ if remainder != 0
         setLower(getLower(tc) + 1, tc);
       updateRegState(rs2, tc);
-      
+
       // restore RD
       saveState(*(registers + rd));
       clearTrace();
@@ -9833,7 +9821,7 @@ void confine_divu() {
 
       remLo = getLower(btc-1);
       remUp = getUpper(btc-1);
-      
+
       saveState(*(registers + rd));
       setLower(getLowerFromReg(rd) * getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rd) * getUpperFromReg(rs2), tc);
@@ -9841,7 +9829,7 @@ void confine_divu() {
       if (getLower(btc) == getLower(tc))
         // no lower constrain - restore remainder
         setLower(getLower(tc) + remLo, tc);
-      // nothing to do at lower remainder 
+      // nothing to do at lower remainder
 
       if (getUpper(btc) == getUpper(tc))
         // no upper constrain - restore remainder
