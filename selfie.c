@@ -1101,17 +1101,16 @@ void initSymbolicEngine();
 
 void printSymbolicMemory(uint64_t svc);
 
+uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
+uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg);
 uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr);
-
-uint64_t loadSymbolicLowerBound(uint64_t* pt, uint64_t vaddr);
-uint64_t loadSymbolicUpperBound(uint64_t* pt, uint64_t vaddr);
 
 uint64_t isTraceSpaceAvailable();
 
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t lo, uint64_t up, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb);
 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
@@ -1138,6 +1137,8 @@ uint64_t debug_symbolic = 0;
 
 uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
 
+uint64_t* types = (uint64_t*) 0; // memory range or integer interval
+
 uint64_t* los = (uint64_t*) 0; // trace of lower bounds on values
 uint64_t* ups = (uint64_t*) 0; // trace of upper bounds on values
 
@@ -1154,6 +1155,7 @@ uint64_t* read_ups = (uint64_t*) 0;
 
 // registers
 
+uint64_t* reg_typ = (uint64_t*) 0; // memory range or integer interval
 uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
 uint64_t* reg_ups = (uint64_t*) 0; // upper bound on register value
 
@@ -1179,6 +1181,7 @@ void initSymbolicEngine() {
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   values = zalloc(maxTraceLength * SIZEOFUINT64);
+  types  = zalloc(maxTraceLength * SIZEOFUINT64);
   los    = zalloc(maxTraceLength * SIZEOFUINT64);
   ups    = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1187,6 +1190,7 @@ void initSymbolicEngine() {
   read_los    = zalloc(maxTraceLength * SIZEOFUINT64);
   read_ups    = zalloc(maxTraceLength * SIZEOFUINT64);
 
+  reg_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_ups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
@@ -5575,7 +5579,7 @@ void implementRead(uint64_t* context) {
               // caution: read only overwrites bytesToRead number of bytes
               // we therefore need to restore the actual value in buffer
               // to preserve the original read semantics
-              storePhysicalMemory(buffer, loadSymbolicMemory(getPT(context), vbuffer));
+              storePhysicalMemory(buffer, *(values + loadSymbolicMemory(getPT(context), vbuffer)));
 
               actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
@@ -5592,9 +5596,9 @@ void implementRead(uint64_t* context) {
 
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, lo, up, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, lo, up, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, tc);
           } else {
             actuallyRead = 0;
 
@@ -5650,6 +5654,8 @@ void implementRead(uint64_t* context) {
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (symbolic) {
+    *(reg_typ + REG_A0) = 0;
+
     *(reg_los + REG_A0) = *(getRegs(context) + REG_A0);
     *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
   }
@@ -5781,6 +5787,8 @@ void implementWrite(uint64_t* context) {
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
   if (symbolic) {
+    *(reg_typ + REG_A0) = 0;
+
     *(reg_los + REG_A0) = *(getRegs(context) + REG_A0);
     *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
   }
@@ -5816,9 +5824,8 @@ void emitOpen() {
   emitJALR(REG_ZR, REG_RA, 0);
 }
 
-void printSymbolicMemory(uint64_t svc);
-
 uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
+  uint64_t mrvc;
   uint64_t i;
   uint64_t j;
 
@@ -5828,14 +5835,15 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
     if (isValidVirtualAddress(vaddr)) {
       if (isVirtualAddressMapped(table, vaddr)) {
         if (symbolic) {
-          *(s + i) = loadSymbolicMemory(table, vaddr);
+          mrvc = loadSymbolicMemory(table, vaddr);
 
-          if (loadSymbolicLowerBound(table, vaddr) != loadSymbolicUpperBound(table, vaddr)) {
+          *(s + i) = *(values + mrvc);
+
+          if (isSymbolicValue(*(types + mrvc), *(los + mrvc), *(ups + mrvc))) {
             print(selfieName);
-            print((uint64_t*) ": detected in open call symbolic value ");
-            printSymbolicMemory(loadVirtualMemory(table, vaddr));
-            print((uint64_t*) " in filename");
-            printInteger(tc);
+            print((uint64_t*) ": detected symbolic value ");
+            printSymbolicMemory(mrvc);
+            print((uint64_t*) " in filename of open call");
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -5924,6 +5932,8 @@ void implementOpen(uint64_t* context) {
   }
 
   if (symbolic) {
+    *(reg_typ + REG_A0) = 0;
+
     *(reg_los + REG_A0) = *(getRegs(context) + REG_A0);
     *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
   }
@@ -5973,6 +5983,8 @@ void implementMalloc(uint64_t* context) {
     *(getRegs(context) + REG_A0) = 0;
 
     if (symbolic) {
+      *(reg_typ + REG_A0) = 0;
+
       *(reg_los + REG_A0) = 0;
       *(reg_ups + REG_A0) = 0;
     }
@@ -5980,15 +5992,17 @@ void implementMalloc(uint64_t* context) {
     *(getRegs(context) + REG_A0) = bump;
 
     if (symbolic) {
+      // interval is memory range, not symbolic value
+      *(reg_typ + REG_A0) = 1;
+
       // remember start and size of memory block for checking memory safety
       *(reg_los + REG_A0) = bump;
-      *(reg_ups + REG_A0) = bump;
-      // TODO: *(reg_ups + REG_A0) = size;
+      *(reg_ups + REG_A0) = size;
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, bump, size, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6268,7 +6282,9 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 
 void constrain_lui() {
   if (rd != REG_ZR) {
-    // semantics of lui
+    *(reg_typ + rd) = 0;
+
+    // interval semantics of lui
     *(reg_los + rd) = leftShift(imm, 12);
     *(reg_ups + rd) = leftShift(imm, 12);
 
@@ -6322,7 +6338,21 @@ void do_addi() {
 
 void constrain_addi() {
   if (rd != REG_ZR) {
-    // semantics of addi
+    if (*(reg_typ + rs1)) {
+      *(reg_typ + rd) = *(reg_typ + rs1);
+
+      *(reg_los + rd) = *(reg_los + rs1);
+      *(reg_ups + rd) = *(reg_ups + rs1);
+
+      // rd has no constraint if rs1 is memory range
+      setConstraint(rd, 0, 0, 0, 0, 0);
+
+      return;
+    }
+
+    *(reg_typ + rd) = 0;
+
+    // interval semantics of addi
     *(reg_los + rd) = *(reg_los + rs1) + imm;
     *(reg_ups + rd) = *(reg_ups + rs1) + imm;
 
@@ -6378,7 +6408,31 @@ void do_add() {
 
 void constrain_add() {
   if (rd != REG_ZR) {
-    // semantics of add
+    if (*(reg_typ + rs1)) {
+      *(reg_typ + rd) = *(reg_typ + rs1);
+
+      *(reg_los + rd) = *(reg_los + rs1);
+      *(reg_ups + rd) = *(reg_ups + rs1);
+
+      // rd has no constraint if rs1 is memory range
+      setConstraint(rd, 0, 0, 0, 0, 0);
+
+      return;
+    } else if (*(reg_typ + rs2)) {
+      *(reg_typ + rd) = *(reg_typ + rs2);
+
+      *(reg_los + rd) = *(reg_los + rs2);
+      *(reg_ups + rd) = *(reg_ups + rs2);
+
+      // rd has no constraint if rs2 is memory range
+      setConstraint(rd, 0, 0, 0, 0, 0);
+
+      return;
+    }
+
+    *(reg_typ + rd) = 0;
+
+    // interval semantics of add
     *(reg_los + rd) = *(reg_los + rs1) + *(reg_los + rs2);
     *(reg_ups + rd) = *(reg_ups + rs1) + *(reg_ups + rs2);
 
@@ -6430,7 +6484,39 @@ void do_sub() {
 
 void constrain_sub() {
   if (rd != REG_ZR) {
-    // semantics of sub
+    if (*(reg_typ + rs1)) {
+      if (*(reg_typ + rs2)) {
+        if (*(reg_los + rs1) == *(reg_los + rs2))
+          if (*(reg_ups + rs1) == *(reg_ups + rs2)) {
+            *(reg_typ + rd) = 0;
+
+            *(reg_los + rd) = *(registers + rd);
+            *(reg_ups + rd) = *(registers + rd);
+
+            // rd has no constraint if rs1 and rs2 are memory range
+            setConstraint(rd, 0, 0, 0, 0, 0);
+
+            return;
+          }
+
+        // subtracting incompatible pointers
+        throwException(EXCEPTION_INVALIDADDRESS, 0);
+      } else {
+        *(reg_typ + rd) = *(reg_typ + rs1);
+
+        *(reg_los + rd) = *(reg_los + rs1);
+        *(reg_ups + rd) = *(reg_ups + rs1);
+
+        // rd has no constraint if rs1 is memory range
+        setConstraint(rd, 0, 0, 0, 0, 0);
+
+        return;
+      }
+    }
+
+    *(reg_typ + rd) = 0;
+
+    // interval semantics of sub
     *(reg_los + rd) = *(reg_los + rs1) - *(reg_ups + rs2);
     *(reg_ups + rd) = *(reg_ups + rs1) - *(reg_los + rs2);
 
@@ -6484,7 +6570,9 @@ void do_mul() {
 
 void constrain_mul() {
   if (rd != REG_ZR) {
-    // semantics of mul
+    *(reg_typ + rd) = 0;
+
+    // interval semantics of mul
     *(reg_los + rd) = *(reg_los + rs1) * *(reg_los + rs2);
     *(reg_ups + rd) = *(reg_ups + rs1) * *(reg_ups + rs2);
 
@@ -6559,7 +6647,9 @@ void constrain_divu() {
     if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
-        // semantics of divu
+        *(reg_typ + rd) = 0;
+
+        // interval semantics of divu
         *(reg_los + rd) = *(reg_los + rs1) / *(reg_los + rs2);
         *(reg_ups + rd) = *(reg_ups + rs1) / *(reg_ups + rs2);
 
@@ -6637,7 +6727,9 @@ void constrain_remu() {
     if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
-        // semantics of remu
+        *(reg_typ + rd) = 0;
+
+        // interval semantics of remu
         *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
         *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
 
@@ -6712,7 +6804,7 @@ void do_sltu() {
 }
 
 void constrain_sltu() {
-  // semantics of sltu
+  // interval semantics of sltu
   if (rd != REG_ZR) {
     if (*(reg_hasco + rs1)) {
       if (*(reg_vaddr + rs1) == 0) {
@@ -6770,6 +6862,8 @@ void backtrack_sltu() {
     if (vaddr > 0) {
       // the register is identified by vaddr
       *(registers + vaddr) = *(values + tc);
+
+      *(reg_typ + vaddr) = *(types + tc);
 
       *(reg_los + vaddr) = *(los + tc);
       *(reg_ups + vaddr) = *(ups + tc);
@@ -6884,50 +6978,47 @@ uint64_t do_ld() {
 
 uint64_t constrain_ld() {
   uint64_t vaddr;
+  uint64_t mrvc;
   uint64_t a;
 
   // load double word
 
   vaddr = *(registers + rs1) + imm;
 
-  if (*(reg_los + rs1) == *(reg_ups + rs1)) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        if (rd != REG_ZR) {
-          // semantics of ld
-          *(registers + rd) = loadSymbolicMemory(pt, vaddr);
+  if (isSafeAddress(vaddr, rs1)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      if (rd != REG_ZR) {
+        mrvc = loadSymbolicMemory(pt, vaddr);
 
-          *(reg_los + rd) = loadSymbolicLowerBound(pt, vaddr);
-          *(reg_ups + rd) = loadSymbolicUpperBound(pt, vaddr);
+        // interval semantics of ld
+        *(registers + rd) = *(values + mrvc);
 
-          // assert: vaddr == *(vaddrs + loadVirtualMemory(pt, vaddr))
+        *(reg_typ + rd) = *(types + mrvc);
 
-          if (*(reg_los + rd) != *(reg_ups + rd))
-            // vaddr is constrained by rd if value interval is not singleton
-            setConstraint(rd, 1, vaddr, 0, 0, 0);
-          else
-            setConstraint(rd, 0, 0, 0, 0, 0);
-        }
+        *(reg_los + rd) = *(los + mrvc);
+        *(reg_ups + rd) = *(ups + mrvc);
 
-        pc = pc + INSTRUCTIONSIZE;
+        // assert: vaddr == *(vaddrs + mrvc)
 
-        ic_ld = ic_ld + 1;
+        if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd)))
+          // vaddr is constrained by rd if value interval is not singleton
+          setConstraint(rd, 1, vaddr, 0, 0, 0);
+        else
+          setConstraint(rd, 0, 0, 0, 0, 0);
+      }
 
-        // keep track of number of loads per instruction
-        a = (pc - entryPoint) / INSTRUCTIONSIZE;
+      pc = pc + INSTRUCTIONSIZE;
 
-        *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
-      } else
-        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+      ic_ld = ic_ld + 1;
+
+      // keep track of number of loads per instruction
+      a = (pc - entryPoint) / INSTRUCTIONSIZE;
+
+      *(loadsPerInstruction + a) = *(loadsPerInstruction + a) + 1;
     } else
-      throwException(EXCEPTION_INVALIDADDRESS, vaddr);
-  } else {
-    print(selfieName);
-    print((uint64_t*) ": symbolic loading from memory intervals not supported");
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    throwException(EXCEPTION_INVALIDADDRESS, vaddr);
 
   return vaddr;
 }
@@ -7027,47 +7118,39 @@ uint64_t constrain_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  if (*(reg_los + rs1) == *(reg_ups + rs1)) {
-    if (isValidVirtualAddress(vaddr)) {
-      if (isVirtualAddressMapped(pt, vaddr)) {
-        // semantics of sd
-        if (*(reg_hasco + rs2)) {
-          if (*(reg_vaddr + rs2) == 0) {
-            // constrained memory at vaddr 0 means that there is more than
-            // one constrained memory location in the sd operand
-            print(selfieName);
-            print((uint64_t*) ": ");
-            printInteger(*(reg_hasco + rs2));
-            print((uint64_t*) " constrained memory locations in sd operand at ");
-            printHexadecimal(pc, 0);
-            printSourceLineNumberOfInstruction(pc - entryPoint);
-            println();
+  if (isSafeAddress(vaddr, rs1)) {
+    if (isVirtualAddressMapped(pt, vaddr)) {
+      // interval semantics of sd
+      if (*(reg_hasco + rs2)) {
+        if (*(reg_vaddr + rs2) == 0) {
+          // constrained memory at vaddr 0 means that there is more than
+          // one constrained memory location in the sd operand
+          print(selfieName);
+          print((uint64_t*) ": ");
+          printInteger(*(reg_hasco + rs2));
+          print((uint64_t*) " constrained memory locations in sd operand at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
 
-            //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          }
+          //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
         }
+      }
 
-        storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_los + rs2), *(reg_ups + rs2), mrcc);
+      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), mrcc);
 
-        pc = pc + INSTRUCTIONSIZE;
+      pc = pc + INSTRUCTIONSIZE;
 
-        ic_sd = ic_sd + 1;
+      ic_sd = ic_sd + 1;
 
-        // keep track of number of stores per instruction
-        a = (pc - entryPoint) / INSTRUCTIONSIZE;
+      // keep track of number of stores per instruction
+      a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
-        *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
-      } else
-        throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+      *(storesPerInstruction + a) = *(storesPerInstruction + a) + 1;
     } else
-      throwException(EXCEPTION_INVALIDADDRESS, vaddr);
-  } else {
-    print(selfieName);
-    print((uint64_t*) ": symbolic storing in memory intervals not supported");
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
+      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
+  } else
+    throwException(EXCEPTION_INVALIDADDRESS, vaddr);
 
   return vaddr;
 }
@@ -7428,7 +7511,7 @@ void replayTrace() {
 void printSymbolicMemory(uint64_t svc) {
   print((uint64_t*) "@");
   printInteger(svc);
-  print((uint64_t*) "[@");
+  print((uint64_t*) "{@");
   printInteger(*(tcs + svc));
   print((uint64_t*) ",");
   printHexadecimal(*(pcs + svc), 0);
@@ -7441,7 +7524,7 @@ void printSymbolicMemory(uint64_t svc) {
     printHexadecimal(*(los + svc), 0);
     print((uint64_t*) "=malloc(");
     printInteger(*(ups + svc));
-    print((uint64_t*) ")]");
+    print((uint64_t*) ")}");
     println();
     return;
   } else if (*(vaddrs + svc) < NUMBEROFREGISTERS)
@@ -7450,12 +7533,50 @@ void printSymbolicMemory(uint64_t svc) {
     printHexadecimal(*(vaddrs + svc), 0);
   print((uint64_t*) "=");
   printInteger(*(values + svc));
-  print((uint64_t*) "(");
+  if (*(types + svc))
+    print((uint64_t*) "(");
+  else
+    print((uint64_t*) "[");
   printInteger(*(los + svc));
   print((uint64_t*) ",");
   printInteger(*(ups + svc));
-  print((uint64_t*) ")]");
+  if (*(types + svc))
+    print((uint64_t*) ")}");
+  else
+    print((uint64_t*) "]}");
   println();
+}
+
+uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
+  if (type)
+    return 0;
+  else if (lo == up)
+    return 0;
+  else
+    return 1;
+}
+
+uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg) {
+  if (*(reg_typ + reg)) {
+    if (vaddr < *(reg_los + reg))
+      // memory access below start address of mallocated block
+      return 0;
+    else if (vaddr - *(reg_los + reg) >= *(reg_ups + reg))
+      // memory access above end address of mallocated block
+      return 0;
+    else
+      return 1;
+  } else if (*(reg_los + reg) == *(reg_ups + reg))
+    return 1;
+  else {
+    print(selfieName);
+    print((uint64_t*) ": detected unsupported symbolic access of memory interval at ");
+    printHexadecimal(pc, 0);
+    printSourceLineNumberOfInstruction(pc - entryPoint);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
 }
 
 uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr) {
@@ -7465,7 +7586,7 @@ uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr) {
   mrvc = loadVirtualMemory(pt, vaddr);
 
   if (mrvc <= tc)
-    return *(values + mrvc);
+    return mrvc;
   else {
     print(selfieName);
     print((uint64_t*) ": detected most recent value counter ");
@@ -7478,32 +7599,6 @@ uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr) {
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
-}
-
-uint64_t loadSymbolicLowerBound(uint64_t* pt, uint64_t vaddr) {
-  uint64_t mrvc;
-
-  // assert: vaddr is valid and mapped
-  mrvc = loadVirtualMemory(pt, vaddr);
-
-  if (mrvc <= tc)
-    return *(los + mrvc);
-  else
-    // report error
-    return loadSymbolicMemory(pt, vaddr);
-}
-
-uint64_t loadSymbolicUpperBound(uint64_t* pt, uint64_t vaddr) {
-  uint64_t mrvc;
-
-  // assert: vaddr is valid and mapped
-  mrvc = loadVirtualMemory(pt, vaddr);
-
-  if (mrvc <= tc)
-    return *(ups + mrvc);
-  else
-    // report error
-    return loadSymbolicMemory(pt, vaddr);
 }
 
 uint64_t isTraceSpaceAvailable() {
@@ -7519,7 +7614,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t lo, uint64_t up, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr == 0)
@@ -7530,19 +7625,22 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     mrvc = mrcc;
   else {
     // assert: vaddr is valid and mapped
-    if (value == loadSymbolicMemory(pt, vaddr))
-      if (lo == loadSymbolicLowerBound(pt, vaddr))
-        if (up == loadSymbolicUpperBound(pt, vaddr))
-          // prevent tracking identical updates
-          return;
+    mrvc = loadSymbolicMemory(pt, vaddr);
 
-    mrvc = loadVirtualMemory(pt, vaddr);
+    if (value == *(values + mrvc))
+      if (type == *(types + mrvc))
+        if (lo == *(los + mrvc))
+          if (up == *(ups + mrvc))
+            // prevent tracking identical updates
+            return;
   }
 
   if (trb < mrvc) {
     // current value at vaddr does not need to be tracked,
     // just overwrite it in the trace
     *(values + mrvc) = value;
+
+    *(types + mrvc) = type;
 
     *(los + mrvc) = lo;
     *(ups + mrvc) = up;
@@ -7563,6 +7661,8 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(tcs + tc) = mrvc;
 
     *(values + tc) = value;
+
+    *(types + tc) = type;
 
     *(los + tc) = lo;
     *(ups + tc) = up;
@@ -7606,12 +7706,12 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t t
   }
 
   // always track constrained memory by using tc as most recent branch
-  storeSymbolicMemory(pt, vaddr, lo, lo, up, tc);
+  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
-  storeSymbolicMemory(pt, reg, value, value, value, tc);
+  storeSymbolicMemory(pt, reg, value, 0, value, value, tc);
 }
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
@@ -7641,6 +7741,8 @@ void takeBranch(uint64_t b, uint64_t howManyMore) {
     storeRegisterMemory(REG_SP, *(registers + REG_SP));
   } else {
     *(registers + rd) = b;
+
+    *(reg_typ + rd) = 0;
 
     *(reg_los + rd) = b;
     *(reg_ups + rd) = b;
@@ -8790,7 +8892,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (symbolic) {
     if (isTraceSpaceAvailable())
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, data, data, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, tc);
     else {
       print(selfieName);
       print((uint64_t*) ": ealloc out of memory");
@@ -8910,6 +9012,8 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // set bounds to register value for symbolic execution
   if (symbolic) {
+    *(reg_typ + REG_SP) = 0;
+
     *(reg_los + REG_SP) = SP;
     *(reg_ups + REG_SP) = SP;
   }
