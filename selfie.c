@@ -691,7 +691,7 @@ void initRegister() {
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
 
-void immediateError(uint64_t found, uint64_t bits);
+void checkImmediateRange(uint64_t found, uint64_t bits);
 
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode);
 uint64_t getFunct7(uint64_t instruction);
@@ -4598,14 +4598,18 @@ void printRegister(uint64_t reg) {
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
 
-void immediateError(uint64_t found, uint64_t bits) {
-  printLineNumber((uint64_t*) "encoding error", lineNumber);
-  printInteger(found);
-  print((uint64_t*) " expected between ");
-  printInteger(-twoToThePowerOf(bits - 1));
-  print((uint64_t*) " and ");
-  printInteger(twoToThePowerOf(bits - 1) - 1);
-  println();
+void checkImmediateRange(uint64_t immediate, uint64_t bits) {
+  if (isSignedInteger(immediate, bits) == 0) {
+    printLineNumber((uint64_t*) "encoding error", lineNumber);
+    printInteger(immediate);
+    print((uint64_t*) " expected between ");
+    printInteger(-twoToThePowerOf(bits - 1));
+    print((uint64_t*) " and ");
+    printInteger(twoToThePowerOf(bits - 1) - 1);
+    println();
+
+    exit(EXITCODE_COMPILERERROR);
+  }
 }
 
 // RISC-V R Format
@@ -4677,8 +4681,7 @@ uint64_t encodeIFormat(uint64_t immediate, uint64_t rs1, uint64_t funct3, uint64
   // assert: 0 <= rd < 2^5
   // assert: 0 <= opcode < 2^7
 
-  if (isSignedInteger(immediate, 12) == 0)
-    immediateError(immediate, 12);
+  checkImmediateRange(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4716,8 +4719,7 @@ uint64_t encodeSFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm1;
   uint64_t imm2;
 
-  if (isSignedInteger(immediate, 12) == 0)
-    immediateError(immediate, 12);
+  checkImmediateRange(immediate, 12);
 
   immediate = signShrink(immediate, 12);
 
@@ -4766,8 +4768,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
   uint64_t imm3;
   uint64_t imm4;
 
-  if (isSignedInteger(immediate, 13) == 0)
-    immediateError(immediate, 13);
+  checkImmediateRange(immediate, 13);
 
   immediate = signShrink(immediate, 13);
 
@@ -4821,8 +4822,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   uint64_t imm3;
   uint64_t imm4;
 
-  if (isSignedInteger(immediate, 21) == 0)
-    immediateError(immediate, 21);
+  checkImmediateRange(immediate, 21);
 
   immediate = signShrink(immediate, 21);
 
@@ -4872,8 +4872,7 @@ uint64_t encodeUFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
   // assert: 0 <= rd < 2^5
   // assert: 0 <= opcode < 2^7
 
-  if (isSignedInteger(immediate, 20) == 0)
-    immediateError(immediate, 20);
+  checkImmediateRange(immediate, 20);
 
   immediate = signShrink(immediate, 20);
 
