@@ -6414,8 +6414,8 @@ void do_sub() {
 void constrain_sub() {
   if (rd != REG_ZR) {
     // semantics of sub
-    *(reg_los + rd) = *(reg_los + rs1) - *(reg_los + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs1) - *(reg_ups + rs2);
+    *(reg_los + rd) = *(reg_los + rs1) - *(reg_ups + rs2);
+    *(reg_ups + rd) = *(reg_ups + rs1) - *(reg_los + rs2);
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2))
@@ -6433,7 +6433,7 @@ void constrain_sub() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs1 constraint since rs2 has none
-        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_los + rs2), *(reg_coups + rs1) - *(reg_ups + rs2));
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another minuend
@@ -6446,7 +6446,7 @@ void constrain_sub() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else
         // rd inherits rs2 constraint since rs1 has none
-        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_colos + rs2), *(reg_ups + rs1) - *(reg_coups + rs2));
+        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
