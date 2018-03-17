@@ -1560,7 +1560,6 @@ void clearTrace()                                 { setConcrete(0); }
 // ---------------------------- UTILITIES --------------------------
 
 uint64_t fetchFromTC(uint64_t tc);
-void     resetInstructions(uint64_t count);
 void     syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
 void     incrementTc();
 
@@ -9118,18 +9117,8 @@ void symbolic_do_beq() {
       // sTODO: distinguish between < / >, !=, ==
       *(operators + tc) = 1;
 
-    // the marker [0,1] became another value, compiler semantics of <= / >=
-    // remove and undo the last 2 instructions and set the marker properly
-    else if (identifyOperator == 3) {
-      resetInstructions(2);
-      decodeBFormat();
-
-      saveState(0);
+    else if (identifyOperator == 3)
       *(operators + tc) = 2;
-
-      setLowerForReg(0, rs1);
-      setUpperForReg(1, rs1);
-    }
 
     if (debug_vipster){
       print(selfieName);
@@ -10205,30 +10194,6 @@ uint64_t fetchFromTC(uint64_t tc) {
     return getLowWord(loadVirtualMemory(pt, pc));
   else
     return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
-}
-
-void resetInstructions(uint64_t count) {
-  uint64_t prev_pc;
-
-  prev_pc = pc;
-  undo    = 1;
-
-  while (count > 0) {
-    tc = tc - 1;
-    pc = *(pcs + tc);
-
-    fetch();
-    decode_execute();
-
-    count = count - 1;
-  }
-
-  undo = 0;
-  pc   = prev_pc;
-
-  fetch();
-  setLower(0, tc);
-  setUpper(0, tc);
 }
 
 void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
