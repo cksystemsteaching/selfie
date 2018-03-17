@@ -1120,6 +1120,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
 
 void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
 
+void takeBranch(uint64_t b, uint64_t howManyMore);
 void createConstraints(uint64_t howManyMore, uint64_t trb);
 
 uint64_t fuzzLo(uint64_t value);
@@ -7631,6 +7632,24 @@ void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn,
   *(reg_coups + reg) = coups;
 }
 
+void takeBranch(uint64_t b, uint64_t howManyMore) {
+  if (howManyMore > 0) {
+    // record that we need to set rd to true
+    storeRegisterMemory(rd, b);
+
+    // record frame and stack pointer
+    storeRegisterMemory(REG_FP, *(registers + REG_FP));
+    storeRegisterMemory(REG_SP, *(registers + REG_SP));
+  } else {
+    *(registers + rd) = b;
+
+    *(reg_los + rd) = b;
+    *(reg_ups + rd) = b;
+
+    setConstraint(rd, 0, 0, 0, 0, 0);
+  }
+}
+
 void createConstraints(uint64_t howManyMore, uint64_t trb) {
   uint64_t lo1;
   uint64_t up1;
@@ -7646,41 +7665,13 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
         constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
         constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
 
-        if (howManyMore > 0) {
-          // record that we need to set rd to true
-          storeRegisterMemory(rd, 1);
-
-          // record frame and stack pointer
-          storeRegisterMemory(REG_FP, *(registers + REG_FP));
-          storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else {
-          *(registers + rd) = 1;
-
-          *(reg_los + rd) = 1;
-          *(reg_ups + rd) = 1;
-
-          setConstraint(rd, 0, 0, 0, 0, 0);
-        }
+        takeBranch(1, howManyMore);
       } else if (*(reg_ups + rs2) <= *(reg_los + rs1)) {
         // rs2 interval is less than or equal to rs1 interval
         constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
         constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
 
-        if (howManyMore > 0) {
-          // record that we need to set rd to false
-          storeRegisterMemory(rd, 0);
-
-          // record frame and stack pointer
-          storeRegisterMemory(REG_FP, *(registers + REG_FP));
-          storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else {
-          *(registers + rd) = 0;
-
-          *(reg_los + rd) = 0;
-          *(reg_ups + rd) = 0;
-
-          setConstraint(rd, 0, 0, 0, 0, 0);
-        }
+        takeBranch(0, howManyMore);
       } else if (*(reg_los + rs2) == *(reg_ups + rs2)) {
         // rs2 interval is a singleton
 
@@ -7699,21 +7690,7 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
         constrainMemory(rs1, *(reg_los + rs1), *(reg_los + rs2) - 1, trb);
         constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
 
-        if (howManyMore > 0) {
-          // record that we need to set rd to true
-          storeRegisterMemory(rd, 1);
-
-          // record frame and stack pointer
-          storeRegisterMemory(REG_FP, *(registers + REG_FP));
-          storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else {
-          *(registers + rd) = 1;
-
-          *(reg_los + rd) = 1;
-          *(reg_ups + rd) = 1;
-
-          setConstraint(rd, 0, 0, 0, 0, 0);
-        }
+        takeBranch(1, howManyMore);
       } else if (*(reg_los + rs1) == *(reg_ups + rs1)) {
         // rs1 interval is a singleton
 
@@ -7732,21 +7709,7 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
         constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
         constrainMemory(rs2, *(reg_los + rs1) + 1, *(reg_ups + rs2), trb);
 
-        if (howManyMore > 0) {
-          // record that we need to set rd to true
-          storeRegisterMemory(rd, 1);
-
-          // record frame and stack pointer
-          storeRegisterMemory(REG_FP, *(registers + REG_FP));
-          storeRegisterMemory(REG_SP, *(registers + REG_SP));
-        } else {
-          *(registers + rd) = 1;
-
-          *(reg_los + rd) = 1;
-          *(reg_ups + rd) = 1;
-
-          setConstraint(rd, 0, 0, 0, 0, 0);
-        }
+        takeBranch(1, howManyMore);
       } else {
         // we cannot handle non-singleton interval intersections in comparison
         print(selfieName);
@@ -9324,7 +9287,7 @@ uint64_t numster(uint64_t* toContext) {
 
         if (pc == 0) {
           println();
-          
+
           return EXITCODE_NOERROR;
         }
       }
