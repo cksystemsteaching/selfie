@@ -136,6 +136,7 @@ void println();
 void printCharacter(uint64_t c);
 void printString(uint64_t* s);
 void printInteger(uint64_t n);
+void unprintInteger(uint64_t n);
 void printFixedPointPercentage(uint64_t a, uint64_t b);
 void printFixedPointRatio(uint64_t a, uint64_t b);
 void printHexadecimal(uint64_t n, uint64_t a);
@@ -220,7 +221,7 @@ uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 uint64_t numberOfWrittenCharacters = 0;
 
 uint64_t* outputName = (uint64_t*) 0;
-uint64_t  outputFD   = 1;
+uint64_t  outputFD   = 1; // 1 is file descriptor of standard output
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2105,6 +2106,17 @@ void printString(uint64_t* s) {
 // TODO: correct for integers just a bit less than 2^31
 void printInteger(uint64_t n) {
   print(itoa(n, integer_buffer, 10, 0, 0));
+}
+
+void unprintInteger(uint64_t n) {
+  n = stringLength(itoa(n, integer_buffer, 10, 0, 0));
+
+  while (n > 0) {
+    // 8 is ASCII code for backspace
+    putCharacter(8);
+
+    n = n - 1;
+  }
 }
 
 void printFixedPointPercentage(uint64_t a, uint64_t b) {
@@ -5465,6 +5477,9 @@ void emitExit() {
 void implementExit(uint64_t* context) {
   setExitCode(context, *(getRegs(context) + REG_A0));
 
+  if (symbolic)
+    return;
+
   print(selfieName);
   print((uint64_t*) ": ");
   print(getName(context));
@@ -5712,8 +5727,10 @@ void implementWrite(uint64_t* context) {
           bytesToWrite = size;
 
         if (symbolic)
+          // TODO: What should symbolically executed code output?
           // buffer points to a trace counter that refers to the actual value
-          actuallyWritten = signExtend(write(fd, values + loadPhysicalMemory(buffer), bytesToWrite), SYSCALL_BITWIDTH);
+          // actuallyWritten = signExtend(write(fd, values + loadPhysicalMemory(buffer), bytesToWrite), SYSCALL_BITWIDTH);
+          actuallyWritten = bytesToWrite;
         else
           actuallyWritten = signExtend(write(fd, buffer, bytesToWrite), SYSCALL_BITWIDTH);
 
@@ -9272,11 +9289,14 @@ void backtrackTrace(uint64_t* context) {
 }
 
 uint64_t numster(uint64_t* toContext) {
+  uint64_t b;
   uint64_t timeout;
   uint64_t* fromContext;
 
   print((uint64_t*) "numster");
   println();
+
+  b = 0;
 
   timeout = TIMESLICE;
 
@@ -9292,8 +9312,21 @@ uint64_t numster(uint64_t* toContext) {
       if (handleException(fromContext) == EXIT) {
         backtrackTrace(fromContext);
 
-        if (pc == 0)
+        if (b == 0) {
+          print(selfieName);
+          print((uint64_t*) ": backtracking ");
+        } else
+          unprintInteger(b);
+
+        b = b + 1;
+
+        printInteger(b);
+
+        if (pc == 0) {
+          println();
+          
           return EXITCODE_NOERROR;
+        }
       }
 
       // TODO: scheduler should go here
