@@ -1146,7 +1146,6 @@ uint64_t* tcs         = (uint64_t*) 0; // trace of trace counters to previous re
 uint64_t* values      = (uint64_t*) 0; // trace of register and memory values
 uint64_t* valuesLower = (uint64_t*) 0; // trace of lower bounds on register and memory values for symbolic execution
 uint64_t* valuesUpper = (uint64_t*) 0; // trace of upper bounds on register and memory values for symbolic execution
-uint64_t* operators   = (uint64_t*) 0; // trace of comparison operators, < / >: 1, <= / >=: 2, ==: 3, !=: 4
 
 // core state
 
@@ -1186,7 +1185,6 @@ void initInterpreter() {
   valuesLower = zalloc(maxTraceLength * SIZEOFUINT64);
   valuesUpper = zalloc(maxTraceLength * SIZEOFUINT64);
   values      = zalloc(maxTraceLength * SIZEOFUINT64);
-  operators   = zalloc(maxTraceLength * SIZEOFUINT64);
 }
 
 void resetInterpreter() {
@@ -1504,7 +1502,6 @@ void     symbolic_confine();
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
 
 void checkSatisfiability(uint64_t tc);
-void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch);
 
 // ---------------------------- UTILITIES --------------------------
 
@@ -1536,8 +1533,6 @@ uint64_t executionBrk = 0;     // trace counter before backward execution
 
 uint64_t redundantIs       = 0; // number of redundant instructions
 uint64_t numberOfSymbolics = 0; // number of symbolic variables
-
-uint64_t identifyOperator  = 0; // helps distinguishing < (>) from <= (>=)
 
 // -----------------------------------------------------------------
 // -------------------------- TRACE API ----------------------------
@@ -5476,7 +5471,6 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-
   if (symbolic) {
     saveStateEcall(*(registers + REG_A0));
     clearTrace();
@@ -9002,8 +8996,13 @@ void symbolic_do_remu() {
 }
 
 void symbolic_do_sltu() {
-  // @push: [1,1], [0,0] or [0,1]
-  // sTODO: implement new comparisons
+  // @push: [1,1], [0,0] or [a,b], [c,d] and [1,1]
+  //        with a,b,c,d as respective constraints
+  uint64_t tc_rs1;
+  uint64_t tc_rs2;
+
+  tc_rs1 = *(registers + rs1);
+  tc_rs2 = *(registers + rs2);
 
   saveState(*(registers + rd));
   forcePrecise(currentContext, rs1, rs2);
@@ -9013,11 +9012,54 @@ void symbolic_do_sltu() {
       setConcrete(1);
     else if (getLowerFromReg(rs1) >= getUpperFromReg(rs2))
       setConcrete(0);
-    else {
-      setLower(0, tc);
-      setUpper(1, tc);
 
-      identifyOperator = tc;
+    else if (isConcrete(currentContext, rs2)) {
+      // push false constraint
+      setLower(getLower(tc_rs2), tc);
+      setUpper(getUpper(tc_rs1), tc);
+
+      saveState(tc_rs1);
+      updateRegState(rs1, tc);
+
+      // push true constraint
+      setLower(getLower(tc_rs1), tc);
+      setUpper(getLower(tc_rs2) - 1, tc);
+
+      saveState(tc_rs1);
+      updateRegState(rs1, tc);
+
+      // push true branch
+      saveState(*(registers + rd));
+      setConcrete(1);
+
+    } else if (isConcrete(currentContext, rs1)) {
+      // push false constraint
+      setLower(getLower(tc_rs2) ,tc);
+      setUpper(getLower(tc_rs1), tc);
+
+      saveState(tc_rs2);
+      updateRegState(rs2, tc);
+
+      // push true constraint
+      setLower(getLower(tc_rs1) + 1, tc);
+      setUpper(getUpper(tc_rs2), tc);
+
+      saveState(tc_rs2);
+      updateRegState(rs2, tc);
+
+      // push true branch
+      saveState(*(registers + rd));
+      setConcrete(1);
+
+    // both source registers contain symbolic values
+    } else {
+      print(selfieName);
+      print((uint64_t*) ": execution imprecise at pc= ");
+      printHexadecimal(pc, 0);
+      print((uint64_t*) " with two symbolic values at SLTU");
+      println();
+
+      throwException(EXCEPTION_IMPRECISE, 0);
     }
     redundancyCheck();
   } else
@@ -9096,51 +9138,29 @@ uint64_t symbolic_do_sd() {
 }
 
 void symbolic_do_beq() {
-  //@ push: REG_ZR (remove?)
+  //@ push: REG_ZR
   saveState(0);
 
-  if (areSourceRegsConcrete()) {
-    if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
-      pc = pc + imm;
+  if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
+    pc = pc + imm;
+  else
+    pc = pc + INSTRUCTIONSIZE;
+
+  if (debug_vipster) {
+    println();
+    print(selfieName);
+    print((uint64_t*) ": vipster exploring ");
+    if (getLowerFromReg(rs1))
+      print((uint64_t*) "true branch from pc= ");
     else
-      pc = pc + INSTRUCTIONSIZE;
-
-  } else {
-    // assert: rs2 == $zero
-    // assert: rs1 == [0,1] or [1,0]
-
-    // if 1: <, >, != or ==, if 3: <= or >=,
-    // if 0: after undo (values were correctly set)
-    identifyOperator = tc - identifyOperator;
-
-    if (identifyOperator == 1)
-      // sTODO: distinguish between < / >, !=, ==
-      *(operators + tc) = 1;
-
-    else if (identifyOperator == 3)
-      *(operators + tc) = 2;
-
-    if (debug_vipster){
-      print(selfieName);
-      print((uint64_t*) ": vipster exploring ");
-      if (getUpperFromReg(rs1))
-        print((uint64_t*) "true branch from pc= ");
-      else
-        print((uint64_t*) "false branch from pc= ");
-      printHexadecimal(pc, 8);
-      println();
-    }
-
-    if (getUpperFromReg(rs1))
-      pc = pc + INSTRUCTIONSIZE;
-    else
-      pc = pc + imm;
+      print((uint64_t*) "false branch from pc= ");
+    printHexadecimal(pc, 8);
+    println();
   }
 
   ic_beq = ic_beq + 1;
 
-  clearTrace();
-  updateRegState(REG_ZR, 0);
+  incrementTc();
 }
 
 void symbolic_do_jal() {
@@ -9318,65 +9338,22 @@ void symbolic_undo_divu() {
 }
 
 void symbolic_undo_sltu() {
-  // @pop: stuff (deprecated anyway)
-  uint64_t operator;
-  uint64_t twoTraceVals;
+  if (rd != REG_ZR)
+    *(registers + rd) = *(tcs + tc);
 
-  twoTraceVals = pc == *(pcs + tc - 1);
+  if (tc <= executionBrk) {
+    // switch branch and fetch false constraint
+    if (getLower(tc) == 1) {
+      setConcrete(0);
+      *(tcs + tc) = tc - 2;
 
-  // get operator type we remebered in confine_sltu
-  // if we pushed two values to the trace, it is at the first value
-  if (twoTraceVals) {
-    operator = *(operators + tc -1);
-    *(operators + tc -1) = 0; // reset operator
-  }
-  else {
-    operator = *(operators + tc);
-    *(operators + tc -1) = 0; // reset operator
-  }
+      if (isConcrete(currentContext, rs1))
+        *(registers + rs2) = tc - 2;
+      else
+        *(registers + rs1) = tc - 2;
 
-  if (rd != REG_ZR) {
-    if (operator == 1) { // < / >
-      if (rd == rs1) { // <
-        if (twoTraceVals) { // concrete (rs1) < symbolic (rs2)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs2) = *(tcs + tc);
-        } else { // symbolic (rs1) < concrete (rs2)
-          *(registers + rd) = *(tcs + tc);
-        }
-      } else { // rd == rs2 | >
-        if (twoTraceVals) { // concrete (rs2) > symbolic (rs1)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs1) = *(tcs + tc);
-        } else { // symbolic (rs2) > concrete (rs1)
-          *(registers + rd) = *(tcs + tc);
-        }
-      }
-    } else if (operator == 2) { // <= / >=
-      if (rd == rs2) { // <=
-        if (twoTraceVals) { // concrete (rs2) <= symbolic (rs1)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs1) = *(tcs + tc);
-        } else { // symbolic (rs2) <= concrete (rs1)
-          *(registers + rd) = *(tcs + tc);
-        }
-      } else { // rd == rs1 | >=
-        if (twoTraceVals) { // concrete (rs1) >= symbolic (rs2)
-          *(registers + rd) = *(tcs + tc);
-          tc = tc - 1;
-          *(registers + rs2) = *(tcs + tc);
-        } else { // symbolic (rs1) >= concrete (rs2)
-          *(registers + rd) = *(tcs + tc);
-        }
-      }
-    } else if (operator == 0) {
-      // we are undoing a non-confine operation
-      *(registers + rd) = *(tcs + tc);
+      undo = 0;
     }
-    // also works for both concrete as twoTraceVals == 0 and RD gets undone
   }
 }
 
@@ -9409,16 +9386,7 @@ void symbolic_undo_sd() {
 }
 
 void symbolic_undo_beq() {
-  identifyOperator = tc;
-
-  if (tc <= executionBrk)
-    if (getLowerFromReg(rs1) != getUpperFromReg(rs1))
-      if (getLowerFromReg(rs1) == 0) {
-        setLowerForReg(1, rs1);
-        setUpperForReg(0, rs1);
-
-        undo = 0;
-      }
+  // nothing to do
 }
 
 void symbolic_undo_ecall() {
@@ -9485,8 +9453,8 @@ void symbolic_confine() {
     print(selfieName);
     print((uint64_t*) ": vipster done confining - resuming branch exploration...");
     println();
+    println();
   }
-  println();
 }
 
 uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
@@ -9517,7 +9485,7 @@ uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
       undo = 0;
   }
 
-  // continue with instruction after branch
+  // continue with instruction after sltu
   tc = tc + 1;
   pc = *(pcs + tc);
 
@@ -9560,45 +9528,11 @@ void checkSatisfiability(uint64_t tc) {
   }
 }
 
-void constrain(uint64_t v1, uint64_t v2, uint64_t operator, uint64_t branch) {
-  // assert:    v1 is symbolic
-  // semantics: constrain v1 by v2
-
-  // sTODO: enhance == and !=
-
-  // [true <=] iff [false >]
-  if (operator == SYM_LEQ) {
-    operator = SYM_GT;
-    branch   = branch < 1;
-  // [true >=] iff [false <]
-  } else if (operator == SYM_GEQ) {
-    operator = SYM_LT;
-    branch   = branch < 1;
-  }
-
-  if (operator == SYM_LT)
-    if (branch) {
-      if (getUpper(v1) >= getLower(v2))
-        setUpper(getLower(v2) - 1, v1);
-    } else {
-      if (getLower(v1) < getUpper(v2))
-        setLower(getUpper(v2), v1);
-    }
-  else if (operator == SYM_GT)
-    if (branch) {
-      if (getLower(v1) <= getUpper(v2))
-        setLower(getUpper(v2) + 1, v1);
-    } else {
-      if (getUpper(v1) > getLower(v2))
-        setUpper(getLower(v2), v1);
-    }
-}
-
 // ---------------------------- UTILITIES --------------------------
 
 uint64_t isConfinedInstruction() {
   // assert: only used when executionBrk is set
-  // since confinig only takes place above executionBrk
+  // since confining only takes place above executionBrk
   if (pc > executionBrk + 1)
     if (pc == *(pcs + tc - 1))
       return 1;
@@ -9654,8 +9588,8 @@ void confine_add() {
 
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
-    clearTrace();
     updateRegState(rd, *(tcs + btc));
+    clearTrace();
 
   } else if (isOneSourceRegConcrete()) {
     if (wasNeverSymbolic(currentContext, rs1)) {
@@ -9705,10 +9639,8 @@ void confine_sub() {
 
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
-
-    // nothing to constrain
-    clearTrace();
     updateRegState(rd, *(tcs + btc));
+    clearTrace();
 
   } else if (isOneSourceRegConcrete()) {
     if (wasNeverSymbolic(currentContext, rs1)) {
@@ -9843,201 +9775,13 @@ void confine_remu() {
 }
 
 void confine_sltu() {
-  // @push: constrainedValue, oldValue (one optional, one always RD)
-  uint64_t operator;
-  uint64_t branch;
-  uint64_t tempReg;
+  saveState(*(registers + rd));
+  updateRegState(rd, *(tcs + btc));
+  clearTrace();
 
-  operator = *(operators + btc + 1);
-  *(operators + tc) = operator; // remember for undo
-  branch   = getUpperFromReg(rd);
-
-  // sTODO: adjust for ==, !=
-  // sTODO: proper undo RS1 / RS2 values!
-
-  // symbolic: [0,1] (true path) or [1,0] (false path)
-  if (getLowerFromReg(rd) != getUpperFromReg(rd)) {
-
-    // assumes that rd was symbolic and was constrained in any case
-    // setLower(getLower(*(tcs + btc)), tc);
-    // setUpper(getUpper(*(tcs + btc)), tc);
-
-    // <, >, ==, !=
-    if (operator == 1) {
-      // <
-      if (rd == rs1) {
-        // symbolic (rs1) < concrete (rs2)
-        if (isConcrete(currentContext, rs2)) {
-          // we will constrain RD/RS1
-          saveState(*(registers + rs1));
-
-          // prepare previous value of RD/RS1
-          setLower(getLower(*(tcs + btc)), tc);
-          setUpper(getUpper(*(tcs + btc)), tc);
-
-          // constrain RD/RS1 by RS2
-          constrain(tc, *(registers + rs2), SYM_LT, branch);
-          updateRegState(rs1, tc);
-
-          // RS2 unchanged
-
-        // concrete (rs1) < symbolic (rs2)
-        } else {
-          // we will constrain RS2
-          saveState(*(registers + rs2));
-
-          // prepare previous value of RS2
-          setLower(getLowerFromReg(rs2), tc);
-          setUpper(getUpperFromReg(rs2), tc);
-
-          // remember old RD/RS1
-          tempReg = *(registers + rs1);
-          // restore old RD/RS1
-          *(registers + rs1) = *(tcs + btc);
-
-          // constrain RS2 by RD/RS1
-          constrain(tc, *(registers + rs1), SYM_GT, branch);
-          updateRegState(rs2, tc);
-
-          // push old RD/RS1 to trace afterwards
-          saveState(tempReg);
-          clearTrace();
-          updateRegState(rs1, *(tcs + btc));
-        }
-      // >
-      } else { // rd == rs2
-        // symbolic (rs2) > concrete (rs1)
-        if (isConcrete(currentContext, rs1)) {
-          // we will constrain RD/RS2
-          saveState(*(registers + rs2));
-
-          // prepare previous value of RS2/RD
-          setLower(getLower(*(tcs + btc)), tc);
-          setUpper(getUpper(*(tcs + btc)), tc);
-
-          // constrain RS2/RD by RD
-          constrain(tc, *(registers + rs1), SYM_GT, branch);
-          updateRegState(rs2, tc);
-
-          // RS1 unchanged
-
-        // concrete (rs2) > symbolic (rs1)
-        } else {
-          // we will constrain RS1
-          saveState(*(registers + rs1));
-
-          // prepare previous value of RS1
-          setLower(getLowerFromReg(rs1), tc);
-          setUpper(getUpperFromReg(rs1), tc);
-
-          // remember old RD/RS2
-          tempReg = *(registers + rs2);
-          // restore old RD/RS2
-          *(registers + rs2) = *(tcs + btc);
-
-          // constrain RS1 by RD/RS2
-          constrain(tc, *(registers + rs2), SYM_LT, branch);
-          updateRegState(rs1, tc);
-
-          // puch old RD/RS2 to trace afterwards
-          saveState(tempReg);
-          clearTrace();
-          updateRegState(rs2, *(tcs + btc));
-        }
-      }
-
-    // <=, >=
-    } else if (operator == 2) {
-      // <=
-      if (rd == rs2) {
-        // symbolic (rs2) <= concrete (rs1)
-        if (isConcrete(currentContext, rs1)) {
-          // we will constrain RD/RS2
-          saveState(*(registers + rs2));
-
-          // prepare previous value of RD/RS2
-          setLower(getLower(*(tcs + btc)), tc);
-          setUpper(getUpper(*(tcs + btc)), tc);
-
-          // constrain RD/RS2 by RS1
-          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
-          updateRegState(rs2, tc);
-
-          // RS1 unchanged
-
-        // concrete (rs2) <= symbolic (rs1)
-        } else {
-          // we will constrain RS1
-          saveState(*(registers + rs1));
-
-          // prepare previous value of RS1
-          setLower(getLowerFromReg(rs1), tc);
-          setUpper(getUpperFromReg(rs1), tc);
-
-          // remember old RD/RS2
-          tempReg = *(registers + rs2);
-          // restore old RD/RS2
-          *(registers + rs2) = *(tcs + btc);
-
-          // constrain RS1 by RD/RS2
-          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
-          updateRegState(rs1, tc);
-
-          // restore old RD/RS2 afterwards
-          saveState(tempReg);
-          clearTrace();
-          updateRegState(rs2, *(tcs + btc));
-        }
-      // >=
-      } else { // rd == rs1
-        // symbolic (rs1) >= concrete (rs2)
-        if (isConcrete(currentContext, rs2)) {
-          // we will constrain RD/RS1
-          saveState(*(registers + rs1));
-
-          // prepare previous value of RD/RS1
-          setLower(getLower(*(tcs + btc)), tc);
-          setUpper(getUpper(*(tcs + btc)), tc);
-
-          // constrain RD/RS1 by RS2
-          constrain(tc, *(registers + rs2), SYM_GEQ, branch);
-          updateRegState(rs1, tc);
-
-          // RS2 unchanged
-
-        // concrete (rs1) >= symbolic (rs2)
-        } else {
-          // we will constrain RS2
-          saveState(*(registers + rs2));
-
-          // prepare previous value of RS2
-          setLower(getLowerFromReg(rs2), tc);
-          setUpper(getUpperFromReg(rs2), tc);
-
-          // remember old RD/RS1
-          tempReg = *(registers + rs1);
-          // restore old RD/RS1
-          *(registers + rs1) = *(tcs + btc);
-
-          // constrain RS2 by RD/RS1
-          constrain(tc, *(registers + rs1), SYM_LEQ, branch);
-          updateRegState(rs2, tc);
-
-          // push old RD/RS1 to trace afterwards
-          saveState(tempReg);
-          clearTrace();
-          updateRegState(rs1, *(tcs + btc));
-        }
-      }
-    }
-
-  // concrete: [0,0] or [1,1]
-  } else {
-    // only restore RD
-    saveState(*(registers + rd));
-    clearTrace();
-    updateRegState(rd, *(tcs + btc));
-  }
+  // skip stored constraint
+  if (pc == *(pcs + btc - 1))
+    btc = btc - 2;
 }
 
 void confine_ld() {
@@ -10067,31 +9811,6 @@ void confine_ld() {
   clearTrace();
   updateRegState(rd, *(tcs + btc));
 }
-
-// void confine_sd () {
-//   uint64_t vaddr;
-//
-//   saveState(*(registers + rs2));
-//
-//   vaddr = getLowerFromReg(rs1) + imm;
-//
-//   if (isValidVirtualAddress(vaddr)) {
-//     if (isVirtualAddressMapped(pt, vaddr)) {
-//       if (rs2 != REG_ZR) {
-//         // semantics of ld
-//         setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
-//         setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
-//
-//         updateMemState(vaddr, *(tcs + btc));
-//       }
-//     } else
-//       throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-//   } else
-//     // TODO: pass invalid vaddr
-//     throwException(EXCEPTION_INVALIDADDRESS, 0);
-//
-//   *(registers + rs2) = tc - 1; // updateMemState already incremented tc
-// }
 
 void confine_sd() {
   // @push: [confinedRegister], RD
