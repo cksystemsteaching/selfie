@@ -1493,13 +1493,13 @@ void symbolic_undo_beq();
 void symbolic_undo_ecall();
 
 // -----------------------------------------------------------------
-// ------------------ SYMBOLIC BACKWARDS CONFINE -------------------
+// ----------------- SYMBOLIC BACKWARD CONFINING -------------------
 // -----------------------------------------------------------------
 
 // ---------------------------- ALGORITHM --------------------------
 
 void     symbolic_confine();
-uint64_t symbolic_prepareNextPathOrExit(uint64_t* context);
+uint64_t prepareNextPath(uint64_t* context);
 
 void checkSatisfiability(uint64_t tc);
 
@@ -1528,7 +1528,7 @@ void confine_ecall();
 
 uint64_t ecallPC      = 0;     // pc of current ecall
 
-uint64_t btc          = 0;     // trace counter for backwards execution
+uint64_t btc          = 0;     // trace counter for backward execution
 uint64_t executionBrk = 0;     // trace counter before backward execution
 
 uint64_t redundantIs       = 0; // number of redundant instructions
@@ -6239,7 +6239,7 @@ void updateRegState(uint64_t reg, uint64_t value) {
   if (reg != REG_ZR)
     *(registers + reg) = value;
   else
-    *(registers+ reg) = 0;
+    *(registers + reg) = 0;
 
   incrementTc();
 }
@@ -6254,7 +6254,7 @@ void updateRegStateEcall(uint64_t context, uint64_t reg, uint64_t value) {
 }
 
 void updateMemState(uint64_t vaddr, uint64_t tc) {
-  // assume valid virtual address
+  // assert: valid virtual address
   storeVirtualMemory(pt, vaddr,tc);
 
   incrementTc();
@@ -8283,13 +8283,9 @@ uint64_t handleSystemCalls(uint64_t* context) {
 
       // path exit
       if (symbolic) {
-        a0 = *(getRegs(context) + REG_A0);
-        // start backwards confining
         symbolic_confine();
-        // restore exit code
-        *(getRegs(context) + REG_A0) = a0;
 
-        return symbolic_prepareNextPathOrExit(context);
+        return prepareNextPath(context);
       }
 
       // TODO: exit only if all contexts have exited
@@ -8808,12 +8804,7 @@ void printTrace() {
     print((uint64_t*) ") pc= ");
     printHexadecimal(*(pcs + i), 0);
     print((uint64_t*) " value= ");
-    printInteger(*(values + i));
-    print((uint64_t*) " [");
-    printInteger(getLower(i));
-    print((uint64_t*) ",");
-    printInteger(getUpper(i));
-    print((uint64_t*) "]");
+    printValues(i);
     println();
 
     i = i + 1;
@@ -9418,7 +9409,7 @@ void symbolic_undo_ecall() {
 }
 
 // -----------------------------------------------------------------
-// ------------------ SYMBOLIC BACKWARDS CONFINE -------------------
+// ----------------- SYMBOLIC BACKWARD CONFINING -------------------
 // -----------------------------------------------------------------
 
 // ---------------------------- ALGORITHM --------------------------
@@ -9457,7 +9448,7 @@ void symbolic_confine() {
   }
 }
 
-uint64_t symbolic_prepareNextPathOrExit(uint64_t* context) {
+uint64_t prepareNextPath(uint64_t* context) {
   undo    = 1;
   confine = 0;
 
@@ -9740,8 +9731,8 @@ void confine_divu() {
   } else { // starc only compiles with RD == RS1
     if (wasNeverSymbolic(currentContext, rs2)) { // divisor concrete
 
-      remLo = getLower(btc-1);
-      remUp = getUpper(btc-1);
+      remLo = getLower(btc - 1);
+      remUp = getUpper(btc - 1);
 
       saveState(*(registers + rd));
       setLower(getLowerFromReg(rd) * getLowerFromReg(rs2), tc);
@@ -9758,7 +9749,7 @@ void confine_divu() {
       else {
         // extend upper bound
         div = getLowerFromReg(rs2);
-        setUpper(getUpper(tc) + div-1, tc);
+        setUpper(getUpper(tc) + div - 1, tc);
       }
       updateRegState(rd, tc);
     } else {
@@ -9820,31 +9811,23 @@ void confine_sd() {
 
   vaddr = getLowerFromReg(rs1) + imm;
 
-  if (isValidVirtualAddress(vaddr)) {
-    if (isVirtualAddressMapped(pt, vaddr)) {
-      if (rs2 != REG_ZR) {
+  if (rs2 != REG_ZR) {
+    mem_tc = loadVirtualMemory(pt, vaddr);
+    reg_tc = *(registers + rs2);
 
-        mem_tc = loadVirtualMemory(pt, vaddr);
-        reg_tc = *(registers + rs2);
+    // semantics of ld - sync from register to mem
+    if (sameIntervalls(mem_tc, reg_tc) == 0) {
+      saveState(reg_tc);
 
-        // semantics of ld - sync from register to mem
-        if (sameIntervalls(mem_tc, reg_tc) == 0) {
-          saveState(reg_tc);
+      syncSymbolicIntervallsOnTrace(reg_tc, mem_tc);
 
-          syncSymbolicIntervallsOnTrace(reg_tc, mem_tc);
+      updateRegState(rs2, tc);
+    }
 
-          updateRegState(rs2, tc);
-        }
-
-        saveState(loadVirtualMemory(pt, vaddr));
-        clearTrace();
-        updateMemState(vaddr, *(tcs + btc));
-      }
-    } else
-      throwException(EXCEPTION_PAGEFAULT, getPageOfVirtualAddress(vaddr));
-  } else
-    // TODO: pass invalid vaddr
-    throwException(EXCEPTION_INVALIDADDRESS, 0);
+    saveState(loadVirtualMemory(pt, vaddr));
+    clearTrace();
+    updateMemState(vaddr, *(tcs + btc));
+  }
 }
 
 void confine_beq() {
