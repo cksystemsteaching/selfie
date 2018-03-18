@@ -6483,6 +6483,9 @@ void do_sub() {
 }
 
 void constrain_sub() {
+  uint64_t sub_los;
+  uint64_t sub_ups;
+
   if (rd != REG_ZR) {
     if (*(reg_typ + rs1)) {
       if (*(reg_typ + rs2)) {
@@ -6517,8 +6520,12 @@ void constrain_sub() {
     *(reg_typ + rd) = 0;
 
     // interval semantics of sub
-    *(reg_los + rd) = *(reg_los + rs1) - *(reg_ups + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs1) - *(reg_los + rs2);
+    // use temporary variables since rd may be rs1 or rs2
+    sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
+    sub_ups = *(reg_ups + rs1) - *(reg_los + rs2);
+
+    *(reg_los + rd) = sub_los;
+    *(reg_ups + rd) = sub_ups;
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2))
@@ -7285,8 +7292,10 @@ void do_jal() {
 }
 
 void constrain_jal_jalr() {
-  if (rd != REG_ZR)
+  if (rd != REG_ZR) {
+    *(reg_los + rd) = *(registers + rd);
     *(reg_ups + rd) = *(registers + rd);
+  }
 }
 
 void print_jalr() {
@@ -7513,11 +7522,11 @@ void printSymbolicMemory(uint64_t svc) {
   printInteger(svc);
   print((uint64_t*) "{@");
   printInteger(*(tcs + svc));
-  print((uint64_t*) ",");
+  print((uint64_t*) "@");
   printHexadecimal(*(pcs + svc), 0);
   if (*(pcs + svc) >= entryPoint)
     printSourceLineNumberOfInstruction(*(pcs + svc) - entryPoint);
-  print((uint64_t*) ",");
+  print((uint64_t*) ";");
   if (*(vaddrs + svc) == 0) {
     printHexadecimal(*(values + svc), 0);
     print((uint64_t*) "=");
@@ -7538,8 +7547,10 @@ void printSymbolicMemory(uint64_t svc) {
   else
     print((uint64_t*) "[");
   printInteger(*(los + svc));
-  print((uint64_t*) ",");
-  printInteger(*(ups + svc));
+  if (*(los + svc) != *(ups + svc)) {
+    print((uint64_t*) ",");
+    printInteger(*(ups + svc));
+  }
   if (*(types + svc))
     print((uint64_t*) ")}");
   else
