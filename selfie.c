@@ -1101,6 +1101,9 @@ void initSymbolicEngine();
 
 void printSymbolicMemory(uint64_t svc);
 
+uint64_t cardinality(uint64_t lo, uint64_t up);
+uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
+
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg);
 uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr);
@@ -6410,9 +6413,9 @@ void constrain_add() {
   if (rd != REG_ZR) {
     if (*(reg_typ + rs1)) {
       if (*(reg_typ + rs2)) {
-        // adding pointers is undefined
+        // adding two pointers is undefined
         print(selfieName);
-        print((uint64_t*) ": undefined addition of pointers at ");
+        print((uint64_t*) ": undefined addition of two pointers at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
@@ -6444,8 +6447,13 @@ void constrain_add() {
     *(reg_typ + rd) = 0;
 
     // interval semantics of add
-    *(reg_los + rd) = *(reg_los + rs1) + *(reg_los + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs1) + *(reg_ups + rs2);
+    if (combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
+      *(reg_los + rd) = 0;
+      *(reg_ups + rd) = UINT64_MAX;
+    } else {
+      *(reg_los + rd) = *(reg_los + rs1) + *(reg_los + rs2);
+      *(reg_ups + rd) = *(reg_ups + rs1) + *(reg_ups + rs2);
+    }
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2))
@@ -6543,12 +6551,17 @@ void constrain_sub() {
     *(reg_typ + rd) = 0;
 
     // interval semantics of sub
-    // use temporary variables since rd may be rs1 or rs2
-    sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
-    sub_ups = *(reg_ups + rs1) - *(reg_los + rs2);
+    if (combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
+      *(reg_los + rd) = 0;
+      *(reg_ups + rd) = UINT64_MAX;
+    } else {
+      // use temporary variables since rd may be rs1 or rs2
+      sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
+      sub_ups = *(reg_ups + rs1) - *(reg_los + rs2);
 
-    *(reg_los + rd) = sub_los;
-    *(reg_ups + rd) = sub_ups;
+      *(reg_los + rd) = sub_los;
+      *(reg_ups + rd) = sub_ups;
+    }
 
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2))
@@ -7589,12 +7602,37 @@ void printSymbolicMemory(uint64_t svc) {
   println();
 }
 
-uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
-  if (type)
+uint64_t cardinality(uint64_t lo, uint64_t up) {
+  // there are 2^64 values if the result is 0
+  return up - lo + 1;
+}
+
+uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
+  uint64_t c1;
+  uint64_t c2;
+
+  c1 = cardinality(lo1, up1);
+  c2 = cardinality(lo2, up2);
+
+  if (c1 + c2 <= c1)
+    // there are at least 2^64 values
     return 0;
-  else if (lo == up)
+  else if (c1 + c2 <= c2)
+    // there are at least 2^64 values
     return 0;
   else
+    return c1 + c2;
+}
+
+uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
+  if (type)
+    // memory range
+    return 0;
+  else if (lo == up)
+    // singleton interval
+    return 0;
+  else
+    // non-singleton interval
     return 1;
 }
 
