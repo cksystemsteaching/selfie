@@ -1120,7 +1120,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
 void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
 
 void takeBranch(uint64_t b, uint64_t howManyMore);
-void createConstraints(uint64_t howManyMore, uint64_t trb);
+void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t howManyMore);
 
 uint64_t fuzzLo(uint64_t value);
 uint64_t fuzzUp(uint64_t value);
@@ -6409,6 +6409,17 @@ void do_add() {
 void constrain_add() {
   if (rd != REG_ZR) {
     if (*(reg_typ + rs1)) {
+      if (*(reg_typ + rs2)) {
+        // adding pointers is undefined
+        print(selfieName);
+        print((uint64_t*) ": undefined addition of pointers at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      }
+
       *(reg_typ + rd) = *(reg_typ + rs1);
 
       *(reg_los + rd) = *(reg_los + rs1);
@@ -6504,6 +6515,8 @@ void constrain_sub() {
 
         // subtracting incompatible pointers
         throwException(EXCEPTION_INVALIDADDRESS, 0);
+
+        return;
       } else {
         *(reg_typ + rd) = *(reg_typ + rs1);
 
@@ -6515,6 +6528,16 @@ void constrain_sub() {
 
         return;
       }
+    } else if (*(reg_typ + rs2)) {
+      *(reg_typ + rd) = *(reg_typ + rs2);
+
+      *(reg_los + rd) = *(reg_los + rs2);
+      *(reg_ups + rd) = *(reg_ups + rs2);
+
+      // rd has no constraint if rs2 is memory range
+      setConstraint(rd, 0, 0, 0, 0, 0);
+
+      return;
     }
 
     *(reg_typ + rd) = 0;
@@ -6846,7 +6869,15 @@ void constrain_sltu() {
     }
 
     // take local copy of mrcc to make sure that alias check considers old mrcc
-    createConstraints(0, mrcc);
+    if (*(reg_typ + rs1))
+      if (*(reg_typ + rs2))
+        createConstraints(*(registers + rs1), *(registers + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
+      else
+        createConstraints(*(registers + rs1), *(registers + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
+    else if (*(reg_typ + rs2))
+      createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
+    else
+      createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -7762,34 +7793,29 @@ void takeBranch(uint64_t b, uint64_t howManyMore) {
   }
 }
 
-void createConstraints(uint64_t howManyMore, uint64_t trb) {
-  uint64_t lo1;
-  uint64_t up1;
-  uint64_t lo2;
-  uint64_t up2;
-
-  if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
+void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t howManyMore) {
+  if (lo1 <= up1) {
     // rs1 interval is not wrapped around
-    if (*(reg_los + rs2) <= *(reg_ups + rs2)) {
+    if (lo2 <= up2) {
       // both rs1 and rs2 intervals are not wrapped around
-      if (*(reg_ups + rs1) < *(reg_los + rs2)) {
+      if (up1 < lo2) {
         // rs1 interval is strictly less than rs2 interval
-        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
-        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
+        constrainMemory(rs1, lo1, up1, trb);
+        constrainMemory(rs2, lo2, up2, trb);
 
         takeBranch(1, howManyMore);
-      } else if (*(reg_ups + rs2) <= *(reg_los + rs1)) {
+      } else if (up2 <= lo1) {
         // rs2 interval is less than or equal to rs1 interval
-        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
-        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
+        constrainMemory(rs1, lo1, up1, trb);
+        constrainMemory(rs2, lo2, up2, trb);
 
         takeBranch(0, howManyMore);
-      } else if (*(reg_los + rs2) == *(reg_ups + rs2)) {
+      } else if (lo2 == up2) {
         // rs2 interval is a singleton
 
         // construct constraint for false case
-        constrainMemory(rs1, *(reg_los + rs2), *(reg_ups + rs1), trb);
-        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
+        constrainMemory(rs1, lo2, up1, trb);
+        constrainMemory(rs2, lo2, up2, trb);
 
         // record that we need to set rd to false
         storeRegisterMemory(rd, 0);
@@ -7799,16 +7825,16 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
         storeRegisterMemory(REG_SP, *(registers + REG_SP));
 
         // construct constraint for true case
-        constrainMemory(rs1, *(reg_los + rs1), *(reg_los + rs2) - 1, trb);
-        constrainMemory(rs2, *(reg_los + rs2), *(reg_ups + rs2), trb);
+        constrainMemory(rs1, lo1, lo2 - 1, trb);
+        constrainMemory(rs2, lo2, up2, trb);
 
         takeBranch(1, howManyMore);
-      } else if (*(reg_los + rs1) == *(reg_ups + rs1)) {
+      } else if (lo1 == up1) {
         // rs1 interval is a singleton
 
         // construct constraint for false case
-        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
-        constrainMemory(rs2, *(reg_los + rs2), *(reg_los + rs1), trb);
+        constrainMemory(rs1, lo1, up1, trb);
+        constrainMemory(rs2, lo2, lo1, trb);
 
         // record that we need to set rd to false
         storeRegisterMemory(rd, 0);
@@ -7818,8 +7844,8 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
         storeRegisterMemory(REG_SP, *(registers + REG_SP));
 
         // construct constraint for true case
-        constrainMemory(rs1, *(reg_los + rs1), *(reg_ups + rs1), trb);
-        constrainMemory(rs2, *(reg_los + rs1) + 1, *(reg_ups + rs2), trb);
+        constrainMemory(rs1, lo1, up1, trb);
+        constrainMemory(rs2, lo1 + 1, up2, trb);
 
         takeBranch(1, howManyMore);
       } else {
@@ -7832,75 +7858,35 @@ void createConstraints(uint64_t howManyMore, uint64_t trb) {
       }
     } else {
       // rs1 interval is not wrapped around but rs2 is
-      lo2 = *(reg_los + rs2);
-      up2 = *(reg_ups + rs2);
 
       // unwrap rs2 interval and use higher portion first
-      *(reg_ups + rs2) = UINT64_MAX;
-
-      createConstraints(1, trb);
+      createConstraints(lo1, up1, lo2, UINT64_MAX, trb, 1);
 
       // then use lower portion of rs2 interval
-      *(reg_ups + rs2) = up2;
-      *(reg_los + rs2) = 0;
-
-      createConstraints(0, trb);
-
-      // restore original interval
-      *(reg_los + rs2) = lo2;
+      createConstraints(lo1, up1, 0, up2, trb, 0);
     }
-  } else if (*(reg_los + rs2) <= *(reg_ups + rs2)) {
+  } else if (lo2 <= up2) {
     // rs2 interval is not wrapped around but rs1 is
-    lo1 = *(reg_los + rs1);
-    up1 = *(reg_ups + rs1);
 
     // unwrap rs1 interval and use higher portion first
-    *(reg_ups + rs1) = UINT64_MAX;
-
-    createConstraints(1, trb);
+    createConstraints(lo1, UINT64_MAX, lo2, up2, trb, 1);
 
     // then use lower portion of rs1 interval
-    *(reg_ups + rs1) = up1;
-    *(reg_los + rs1) = 0;
-
-    createConstraints(0, trb);
-
-    // restore original interval
-    *(reg_los + rs1) = lo1;
+    createConstraints(0, up1, lo2, up2, trb, 0);
   } else {
     // both rs1 and rs2 intervals are wrapped around
-    lo1 = *(reg_los + rs1);
-    up1 = *(reg_ups + rs1);
-    lo2 = *(reg_los + rs2);
-    up2 = *(reg_ups + rs2);
 
     // unwrap rs1 and rs2 intervals and use higher portions
-    *(reg_ups + rs1) = UINT64_MAX;
-    *(reg_ups + rs2) = UINT64_MAX;
-
-    createConstraints(3, trb);
+    createConstraints(lo1, UINT64_MAX, lo2, UINT64_MAX, trb, 3);
 
     // use higher portion of rs1 interval and lower portion of rs2 interval
-    *(reg_ups + rs2) = up2;
-    *(reg_los + rs2) = 0;
-
-    createConstraints(2, trb);
+    createConstraints(lo1, UINT64_MAX, 0, up2, trb, 2);
 
     // use lower portions of rs1 and rs2 intervals
-    *(reg_ups + rs1) = up1;
-    *(reg_los + rs1) = 0;
-
-    createConstraints(1, trb);
+    createConstraints(0, up1, 0, up2, trb, 1);
 
     // use lower portion of rs1 interval and higher portion of rs2 interval
-    *(reg_los + rs2) = lo2;
-    *(reg_ups + rs2) = UINT64_MAX;
-
-    createConstraints(0, trb);
-
-    // restore original intervals
-    *(reg_los + rs1) = lo1;
-    *(reg_ups + rs2) = up2;
+    createConstraints(0, up1, lo2, UINT64_MAX, trb, 0);
   }
 }
 
