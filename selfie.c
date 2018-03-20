@@ -8987,7 +8987,8 @@ void symbolic_do_remu() {
 }
 
 void symbolic_do_sltu() {
-  // @push: [1,1], [0,0] or [a,b], [c,d] and [1,1]
+  // @push: either [1,1] or [0,0],
+  //        or [a,b], [c,d] and [1,1]
   //        with a,b,c,d as respective constraints
   uint64_t tc_rs1;
   uint64_t tc_rs2;
@@ -9006,6 +9007,7 @@ void symbolic_do_sltu() {
 
     else if (isConcrete(currentContext, rs2)) {
       // push false constraint
+      // symbolic >= concrete
       setLower(getLower(tc_rs2), tc);
       setUpper(getUpper(tc_rs1), tc);
 
@@ -9013,6 +9015,7 @@ void symbolic_do_sltu() {
       updateRegState(rs1, tc);
 
       // push true constraint
+      // symbolic < concrete
       setLower(getLower(tc_rs1), tc);
       setUpper(getLower(tc_rs2) - 1, tc);
 
@@ -9025,6 +9028,7 @@ void symbolic_do_sltu() {
 
     } else if (isConcrete(currentContext, rs1)) {
       // push false constraint
+      // concrete >= symbolic
       setLower(getLower(tc_rs2) ,tc);
       setUpper(getLower(tc_rs1), tc);
 
@@ -9032,6 +9036,7 @@ void symbolic_do_sltu() {
       updateRegState(rs2, tc);
 
       // push true constraint
+      // concrete < symbolic
       setLower(getLower(tc_rs1) + 1, tc);
       setUpper(getUpper(tc_rs2), tc);
 
@@ -9336,6 +9341,7 @@ void symbolic_undo_sltu() {
     // switch branch and fetch false constraint
     if (getLower(tc) == 1) {
       setConcrete(0);
+      // properly set prev of reg
       *(tcs + tc) = tc - 2;
 
       if (isConcrete(currentContext, rs1))
@@ -9766,6 +9772,7 @@ void confine_remu() {
 }
 
 void confine_sltu() {
+  // @push: RD
   saveState(*(registers + rd));
   updateRegState(rd, *(tcs + btc));
   clearTrace();
