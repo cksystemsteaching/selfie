@@ -8756,8 +8756,9 @@ uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg) {
 }
 
 uint64_t areSourceRegsConcrete() {
-  if (wasNeverSymbolic(currentContext, rs1))
-    if (wasNeverSymbolic(currentContext, rs2))
+  // sTODO: use wasNeverSymbolic when it is bugfree
+  if (isConcrete(currentContext, rs1))
+    if (isConcrete(currentContext, rs2))
       return 1;
 
   return 0;
@@ -8887,8 +8888,9 @@ void symbolic_do_sub() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    setLower(getLowerFromReg(rs1) - getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) - getUpperFromReg(rs2), tc);
+    // [a, b] - [c, d] = [a - d, b - c]
+    setLower(getLowerFromReg(rs1) - getUpperFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) - getLowerFromReg(rs2), tc);
 
     redundancyCheck();
   } else
@@ -9641,9 +9643,9 @@ void confine_sub() {
       conReg = rs2;
       symReg = rs1;
     }
-
-    setLower(getLowerFromReg(rd) + getLowerFromReg(conReg), tc);
-    setUpper(getUpperFromReg(rd) + getUpperFromReg(conReg), tc);
+    // backward semantics: [a, b] + [c, d] = [a + d, b + c]
+    setLower(getLowerFromReg(rd) + getUpperFromReg(conReg), tc);
+    setUpper(getUpperFromReg(rd) + getLowerFromReg(conReg), tc);
 
     if (rd != symReg) {
       // confine symbolic REG (if necessary)
