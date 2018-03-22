@@ -9137,13 +9137,6 @@ uint64_t symbolic_do_sd() {
 
 void symbolic_do_beq() {
   //@ push: REG_ZR
-  saveState(0);
-
-  if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
-    pc = pc + imm;
-  else
-    pc = pc + INSTRUCTIONSIZE;
-
   if (debug_vipster) {
     println();
     print(selfieName);
@@ -9155,6 +9148,13 @@ void symbolic_do_beq() {
     printHexadecimal(pc, 8);
     println();
   }
+
+  saveState(0);
+
+  if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
+    pc = pc + imm;
+  else
+    pc = pc + INSTRUCTIONSIZE;
 
   ic_beq = ic_beq + 1;
 
@@ -9352,6 +9352,11 @@ void symbolic_undo_sltu() {
         *(registers + rs1) = tc - 2;
 
       undo = 0;
+      tc = tc + 1;
+      // start with instruction after SLTU
+    } else {
+      // both true and false are explored
+
     }
   }
 }
