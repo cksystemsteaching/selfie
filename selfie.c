@@ -9016,6 +9016,11 @@ void symbolic_do_sltu() {
       saveState(tc_rs1);
       updateRegState(rs1, tc);
 
+      // // push false branch
+      // saveState(*(registers + rd));
+      // setConcrete(0);
+      // updateRegState(rd, tc);
+
       // push true constraint
       // symbolic < concrete
       setLower(getLower(tc_rs1), tc);
@@ -9025,7 +9030,11 @@ void symbolic_do_sltu() {
       updateRegState(rs1, tc);
 
       // push true branch
-      saveState(*(registers + rd));
+      if (rd == rs1)
+        saveState(*(registers + rd));
+      else
+        saveState(tc_rs2);
+
       setConcrete(1);
 
     } else if (isConcrete(currentContext, rs1)) {
@@ -9037,6 +9046,11 @@ void symbolic_do_sltu() {
       saveState(tc_rs2);
       updateRegState(rs2, tc);
 
+      // // push false branch
+      // saveState(*(registers + rd));
+      // setConcrete(0);
+      // updateRegState(rd, tc);
+
       // push true constraint
       // concrete < symbolic
       setLower(getLower(tc_rs1) + 1, tc);
@@ -9046,7 +9060,11 @@ void symbolic_do_sltu() {
       updateRegState(rs2, tc);
 
       // push true branch
-      saveState(*(registers + rd));
+      if (rd == rs1)
+        saveState(tc_rs1);
+      else
+        saveState(*(registers + rd));
+
       setConcrete(1);
 
     // both source registers contain symbolic values
@@ -9137,6 +9155,8 @@ uint64_t symbolic_do_sd() {
 
 void symbolic_do_beq() {
   //@ push: REG_ZR
+  saveState(0);
+
   if (debug_vipster) {
     println();
     print(selfieName);
@@ -9148,8 +9168,6 @@ void symbolic_do_beq() {
     printHexadecimal(pc, 8);
     println();
   }
-
-  saveState(0);
 
   if (getLowerFromReg(rs1) == getLowerFromReg(rs2))
     pc = pc + imm;
@@ -9352,11 +9370,8 @@ void symbolic_undo_sltu() {
         *(registers + rs1) = tc - 2;
 
       undo = 0;
-      tc = tc + 1;
-      // start with instruction after SLTU
     } else {
       // both true and false are explored
-
     }
   }
 }
