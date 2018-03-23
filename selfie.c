@@ -9001,16 +9001,76 @@ void symbolic_do_sltu() {
   tc_rs1 = *(registers + rs1);
   tc_rs2 = *(registers + rs2);
 
-  saveState(*(registers + rd));
   forcePrecise(currentContext, rs1, rs2);
 
   if (rd != REG_ZR) {
-    if (getUpperFromReg(rs1) < getLowerFromReg(rs2))
+    // RS1 is wrapped around
+    if (getLowerFromReg(rs1) > getUpperFromReg(rs1)) {
+      // unwrap from lower to UINT64_MAX
+      setLower(getLower(tc_rs1), tc);
+      setUpper(UINT64_MAX, tc);
+
+      saveState(tc_rs1);
+      updateRegState(rs1, tc);
+
+      symbolic_do_sltu();
+      pc = pc - INSTRUCTIONSIZE;
+
+      // unwrap from 0 to upper
+      setLower(0, tc);
+      setUpper(getUpper(tc_rs1), tc);
+
+      saveState(tc_rs1);
+      updateRegState(rs1, tc);
+
+      symbolic_do_sltu();
+
+      // both registers are wrapped around
+      if (getLowerFromReg(rs2) > getUpperFromReg(rs2)) {
+        print(selfieName);
+        print((uint64_t*) ": both registers are wrapped around at pc= ");
+        printHexadecimal(pc, 0);
+        println();
+        exit(EXITCODE_BADARGUMENTS);
+      }
+
+      return;
+
+    // RS2 is wrapped around
+    } else if (getLowerFromReg(rs2) > getUpperFromReg(rs2)) {
+      // unwrap from lower to UINT64_MAX
+      setLower(getLower(tc_rs2), tc);
+      setUpper(UINT64_MAX, tc);
+
+      saveState(tc_rs2);
+      updateRegState(rs2, tc);
+
+      symbolic_do_sltu();
+      pc = pc - INSTRUCTIONSIZE;
+
+      // unwrap from 0 to upper
+      setLower(0, tc);
+      setUpper(getUpper(tc_rs2), tc);
+
+      saveState(tc_rs2);
+      updateRegState(rs2, tc);
+
+      symbolic_do_sltu();
+      return;
+
+    } else if (getUpperFromReg(rs1) < getLowerFromReg(rs2)) {
       setConcrete(1);
-    else if (getLowerFromReg(rs1) >= getUpperFromReg(rs2))
+
+      saveState(*(registers + rd));
+      updateRegState(rd, tc);
+
+    } else if (getLowerFromReg(rs1) >= getUpperFromReg(rs2)) {
       setConcrete(0);
 
-    else if (isConcrete(currentContext, rs2)) {
+      saveState(*(registers + rd));
+      updateRegState(rd, tc);
+
+    } else if (isConcrete(currentContext, rs2)) {
       // push false constraint
       // symbolic >= concrete
       setLower(getLower(tc_rs2), tc);
@@ -9020,8 +9080,9 @@ void symbolic_do_sltu() {
       updateRegState(rs1, tc);
 
       // push false branch
-      saveState(*(registers + rd));
       setConcrete(0);
+
+      saveState(*(registers + rd));
       incrementTc();
 
       // push true constraint
@@ -9033,9 +9094,10 @@ void symbolic_do_sltu() {
       updateRegState(rs1, tc);
 
       // push true branch
-      saveState(*(registers + rd));
       setConcrete(1);
 
+      saveState(*(registers + rd));
+      updateRegState(rd, tc);
 
     } else if (isConcrete(currentContext, rs1)) {
       // push false constraint
@@ -9047,8 +9109,9 @@ void symbolic_do_sltu() {
       updateRegState(rs2, tc);
 
       // push false branch
-      saveState(*(registers + rd));
       setConcrete(0);
+
+      saveState(*(registers + rd));
       incrementTc();
 
       // push true constraint
@@ -9060,8 +9123,10 @@ void symbolic_do_sltu() {
       updateRegState(rs2, tc);
 
       // push true branch
-      saveState(*(registers + rd));
       setConcrete(1);
+
+      saveState(*(registers + rd));
+      updateRegState(rd, tc);
 
     // both source registers contain symbolic values
     } else {
@@ -9080,8 +9145,6 @@ void symbolic_do_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
-
-  updateRegState(rd, tc);
 }
 
 uint64_t symbolic_do_ld() {
