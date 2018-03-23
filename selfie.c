@@ -1506,6 +1506,9 @@ void checkSatisfiability(uint64_t tc);
 // ---------------------------- UTILITIES --------------------------
 
 uint64_t isConfinedInstruction();
+uint64_t hasAdditionalTraceEntry();
+
+void     skipBranchOps();
 
 // -------------------------- INSTRUCTIONS -------------------------
 
@@ -6306,7 +6309,7 @@ void replayTrace() {
     fetch();
     decode_execute();
 
-    tc = tc + 1;
+    incrementTc();
     tl = tl - 1;
   }
 
@@ -8935,7 +8938,7 @@ void symbolic_do_divu() {
         // push remainder
         setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
-        tc = tc + 1;
+        incrementTc();
 
         saveState(*(registers + rd));
         setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
@@ -9016,10 +9019,10 @@ void symbolic_do_sltu() {
       saveState(tc_rs1);
       updateRegState(rs1, tc);
 
-      // // push false branch
-      // saveState(*(registers + rd));
-      // setConcrete(0);
-      // updateRegState(rd, tc);
+      // push false branch
+      saveState(*(registers + rd));
+      setConcrete(0);
+      incrementTc();
 
       // push true constraint
       // symbolic < concrete
@@ -9030,12 +9033,9 @@ void symbolic_do_sltu() {
       updateRegState(rs1, tc);
 
       // push true branch
-      if (rd == rs1)
-        saveState(*(registers + rd));
-      else
-        saveState(tc_rs2);
-
+      saveState(*(registers + rd));
       setConcrete(1);
+
 
     } else if (isConcrete(currentContext, rs1)) {
       // push false constraint
@@ -9046,10 +9046,10 @@ void symbolic_do_sltu() {
       saveState(tc_rs2);
       updateRegState(rs2, tc);
 
-      // // push false branch
-      // saveState(*(registers + rd));
-      // setConcrete(0);
-      // updateRegState(rd, tc);
+      // push false branch
+      saveState(*(registers + rd));
+      setConcrete(0);
+      incrementTc();
 
       // push true constraint
       // concrete < symbolic
@@ -9060,11 +9060,7 @@ void symbolic_do_sltu() {
       updateRegState(rs2, tc);
 
       // push true branch
-      if (rd == rs1)
-        saveState(tc_rs1);
-      else
-        saveState(*(registers + rd));
-
+      saveState(*(registers + rd));
       setConcrete(1);
 
     // both source registers contain symbolic values
@@ -9156,6 +9152,7 @@ uint64_t symbolic_do_sd() {
 void symbolic_do_beq() {
   //@ push: REG_ZR
   saveState(0);
+  clearTrace();
 
   if (debug_vipster) {
     println();
@@ -9358,20 +9355,32 @@ void symbolic_undo_sltu() {
     *(registers + rd) = *(tcs + tc);
 
   if (tc <= executionBrk) {
-    // switch branch and fetch false constraint
-    if (getLower(tc) == 1) {
-      setConcrete(0);
-      // properly set prev of reg
-      *(tcs + tc) = tc - 2;
+    if (isConcrete(currentContext, rs2)) {
+      // interval of this branch
+      if (hasAdditionalTraceEntry()) {
+        tc = tc - 1;
 
-      if (isConcrete(currentContext, rs1))
-        *(registers + rs2) = tc - 2;
-      else
-        *(registers + rs1) = tc - 2;
+        // has options left -> next instruction executed sltu
+        if (hasAdditionalTraceEntry()) {
+          tc = tc - 1;
+          *(registers + rs1) = tc - 1;
 
-      undo = 0;
-    } else {
-      // both true and false are explored
+          undo = 0;
+        }
+      }
+    } else if (isConcrete(currentContext, rs1)) {
+      // interval of this branch
+      if (hasAdditionalTraceEntry()) {
+        tc = tc - 1;
+
+        // has options left -> next instruction executed sltu
+        if (hasAdditionalTraceEntry()) {
+          tc = tc - 1;
+          *(registers + rs2) = tc - 1;
+
+          undo = 0;
+        }
+      }
     }
   }
 }
@@ -9504,8 +9513,9 @@ uint64_t prepareNextPath(uint64_t* context) {
       undo = 0;
   }
 
-  // continue with instruction after sltu
-  tc = tc + 1;
+  // continue with sltu on unwrapped/split intervals
+  incrementTc();
+
   pc = *(pcs + tc);
 
   if (debug_vipster) {
@@ -9553,8 +9563,19 @@ uint64_t isConfinedInstruction() {
   // assert: only used when executionBrk is set
   // since confining only takes place above executionBrk
   if (pc > executionBrk + 1)
-    if (pc == *(pcs + tc - 1))
-      return 1;
+    return hasAdditionalTraceEntry();
+
+  return 0;
+}
+
+void skipBranchOps() {
+  while (pc == *(pcs + btc - 1))
+    btc = btc - 1;
+}
+
+uint64_t hasAdditionalTraceEntry() {
+  if (pc == *(pcs + tc -1))
+    return 1;
 
   return 0;
 }
@@ -9800,8 +9821,7 @@ void confine_sltu() {
   clearTrace();
 
   // skip stored constraint
-  if (pc == *(pcs + btc - 1))
-    btc = btc - 2;
+  skipBranchOps();
 }
 
 void confine_ld() {
