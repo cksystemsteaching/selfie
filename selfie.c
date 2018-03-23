@@ -1507,8 +1507,12 @@ void checkSatisfiability(uint64_t tc);
 
 uint64_t isConfinedInstruction();
 uint64_t hasAdditionalTraceEntry();
+uint64_t isNestedBranch();
 
-void     skipBranchOps();
+void skipBranchOps();
+void nextOption(uint64_t r);
+
+uint64_t numberOfWrappedAround(uint64_t tc1, uint64_t tc2);
 
 // -------------------------- INSTRUCTIONS -------------------------
 
@@ -1558,7 +1562,11 @@ void clearTrace()                                 { setConcrete(0); }
 // ---------------------------- UTILITIES --------------------------
 
 uint64_t fetchFromTC(uint64_t tc);
-void     syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
+
+void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
+void constrainLowerBound(uint64_t fromTc, uint64_t withTc);
+void constrainUpperBound(uint64_t fromTc, uint64_t withTc);
+
 void     incrementTc();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -9417,32 +9425,31 @@ void symbolic_undo_sltu() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 
-  if (tc <= executionBrk) {
-    if (isConcrete(currentContext, rs2)) {
-      // interval of this branch
-      if (hasAdditionalTraceEntry()) {
+  if (isConcrete(currentContext, rs2)) {
+    if (hasAdditionalTraceEntry()) {
+      tc = tc - 1;
+      // has options left -> next instruction executed sltu
+      if (isNestedBranch()) {
         tc = tc - 1;
 
-        // has options left -> next instruction executed sltu
-        if (hasAdditionalTraceEntry()) {
-          tc = tc - 1;
-          *(registers + rs1) = tc - 1;
+        nextOption(rs1);
 
-          undo = 0;
-        }
+      } else {
+        nextOption(rs1);
       }
-    } else if (isConcrete(currentContext, rs1)) {
-      // interval of this branch
-      if (hasAdditionalTraceEntry()) {
+    }
+  } else if (isConcrete(currentContext, rs1)) {
+    // interval of this branch
+    if (hasAdditionalTraceEntry()) {
+      tc = tc - 1;
+      // has options left -> next instruction executed sltu
+      if (isNestedBranch()) {
         tc = tc - 1;
 
-        // has options left -> next instruction executed sltu
-        if (hasAdditionalTraceEntry()) {
-          tc = tc - 1;
-          *(registers + rs2) = tc - 1;
+        nextOption(rs2);
 
-          undo = 0;
-        }
+      } else {
+        nextOption(rs2);
       }
     }
   }
@@ -9638,6 +9645,37 @@ void skipBranchOps() {
 
 uint64_t hasAdditionalTraceEntry() {
   if (pc == *(pcs + tc -1))
+    return 1;
+
+  return 0;
+}
+
+uint64_t isNestedBranch() {
+  if (hasAdditionalTraceEntry())
+    if (getLower(tc - 1) != getUpper(tc - 1))
+      return 1;
+
+  return 0;
+}
+
+void nextOption(uint64_t r) {
+  if (hasAdditionalTraceEntry()) {
+    tc = tc - 1;
+    *(registers + r) = tc - 1;
+
+    undo = 0;
+  } else {
+    *(registers + r) = *(tcs + tc);
+  }
+}
+
+uint64_t numberOfWrappedAround(uint64_t tc1, uint64_t tc2) {
+  if (getLower(tc1) > getUpper(tc1))
+    if (getLower(tc2) > getUpper(tc2))
+      return 2;
+    else
+      return 1;
+  else if (getLower(tc2) > getUpper(tc2))
     return 1;
 
   return 0;
@@ -10010,21 +10048,74 @@ uint64_t fetchFromTC(uint64_t tc) {
     return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
 }
 
+
 void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
+  uint64_t invalidOverlap;
 
-  // println();
-  // printInteger(getLower(fromTc)); println();
-  // printInteger(getUpper(fromTc)); println();
-  // print("..............................."); println();
-  // printInteger(getLower(withTc)); println();
-  // printInteger(getUpper(withTc)); println();
-  // println();
+  invalidOverlap = 0;
 
+  // one wrap-around
+  if (numberOfWrappedAround(fromTc, withTc) == 1) {
+
+    // from wrap-around
+    if (getLower(fromTc) > getUpper(fromTc)) {
+      // constrain with upper-wrap-around -> only lower needs to be calculated
+      if (getLower(withTc) > getUpper(fromTc)) {
+        constrainLowerBound(fromTc, withTc);
+        setUpper(getUpper(withTc), tc);
+
+      // constrain with lower wrap-around -> only upper needs to be calculated
+      } else if (getUpper(withTc) < getLower(fromTc)) {
+        constrainUpperBound(fromTc, withTc);
+        setLower(getLower(withTc), tc);
+      // overlapping wrap-around
+      } else
+        invalidOverlap = 1;
+
+    // else with wrap-around
+    } else {
+      // constrain with upper wrap-around - only lower needs to be calculated
+      if (getLower(fromTc) > getUpper(withTc)) {
+        constrainLowerBound(withTc, fromTc);
+        setUpper(getUpper(withTc), tc);
+
+      // constrain with lower wrap-around -> only upper needs to be calculated
+      } else if (getUpper(fromTc) < getLower(withTc)) {
+        constrainUpperBound(fromTc, withTc);
+        setLower(getLower(withTc), tc);
+
+      } else
+        invalidOverlap = 1;
+
+    }
+  // no wrap-around / both wrap-around
+  } else {
+    constrainLowerBound(fromTc, withTc);
+    constrainUpperBound(fromTc, withTc);
+  }
+
+  if (invalidOverlap) {
+    print(selfieName);
+    print((uint64_t*) ": execution imprecise at pc= ");
+    printHexadecimal(pc, 0);
+    print((uint64_t*) " with ");
+    printValues(fromTc);
+    print((uint64_t*) " ");
+    printValues(withTc);
+    println();
+
+    throwException(EXCEPTION_IMPRECISE, 0);
+  }
+}
+
+void constrainLowerBound(uint64_t fromTc, uint64_t withTc) {
   if (getLower(fromTc) < getLower(withTc))
     setLower(getLower(withTc), tc);
   else
     setLower(getLower(fromTc), tc);
+}
 
+void constrainUpperBound(uint64_t fromTc, uint64_t withTc) {
   if (getUpper(fromTc) > getUpper(withTc))
     setUpper(getUpper(withTc), tc);
   else
