@@ -1509,6 +1509,8 @@ uint64_t isConfinedInstruction();
 uint64_t hasAdditionalTraceEntry();
 uint64_t isNestedBranch();
 
+uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs);
+
 void skipBranchOps();
 void nextOption(uint64_t r);
 
@@ -9658,6 +9660,13 @@ uint64_t isNestedBranch() {
   return 0;
 }
 
+uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs) {
+  if (rd == rs)
+    return *(tcs + *(registers + rs1));
+  else
+    return *(registers + rs1);
+}
+
 void nextOption(uint64_t r) {
   if (hasAdditionalTraceEntry()) {
     tc = tc - 1;
@@ -9776,6 +9785,20 @@ void confine_add() {
 void confine_sub() {
   // @push: [constrainedRegister], RD
   uint64_t symReg;
+  uint64_t calcInterval;
+  uint64_t orgRs1;
+  uint64_t orgRs2;
+
+  // rd == rs1/rs2
+  orgRs1 = getOverwrittenOperand(rd, rs1);
+  orgRs2 = getOverwrittenOperand(rd ,rs2);
+
+
+
+  if (areSourceRegsConcrete())
+    calcInterval = 1;
+  else if (isOneSourceRegConcrete())
+    calcInterval = 1;
 
   // sTODO: wasNeverSymbolic
   // if (areSourceRegsConcrete()) {
@@ -9784,18 +9807,18 @@ void confine_sub() {
   //   clearTrace();
   //
   // } else
-  if (isOneSourceRegConcrete()) {
+  if (calcInterval) {
     // rs1 concrete [a-d, b-c] = [a, b] - [c, d]   -> [c,d] = [b, a] - [a-d, b-c]
     if (wasNeverSymbolic(currentContext, rs1)) {
       symReg = rs2;
-      setLower(getUpperFromReg(rs1) - getUpperFromReg(rd) ,tc);
-      setUpper(getLowerFromReg(rs1) - getLowerFromReg(rd), tc);
+      setLower(getUpperFromReg(orgRs1) - getUpperFromReg(rd) ,tc);
+      setUpper(getLowerFromReg(orgRs1) - getLowerFromReg(rd), tc);
 
     // rs2 concrete [a-d, b-c] = [a, b] - [c, d]   -> [a,b] = [a-d, b-c] + [d, c]
     } else {
       symReg = rs1;
-      setLower(getLowerFromReg(rd) + getUpperFromReg(rs2), tc);
-      setUpper(getUpperFromReg(rd) + getLowerFromReg(rs2), tc);
+      setLower(getLowerFromReg(rd) + getUpperFromReg(orgRs2), tc);
+      setUpper(getUpperFromReg(rd) + getLowerFromReg(orgRs2), tc);
     }
 
     if (rd != symReg) {
@@ -10111,6 +10134,7 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 }
 
 void constrainLowerBound(uint64_t fromTc, uint64_t withTc) {
+
   if (getLower(fromTc) < getLower(withTc))
     setLower(getLower(withTc), tc);
   else
