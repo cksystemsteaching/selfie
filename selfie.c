@@ -9775,25 +9775,28 @@ void confine_add() {
 
 void confine_sub() {
   // @push: [constrainedRegister], RD
-  uint64_t conReg;
   uint64_t symReg;
 
-  if (areSourceRegsConcrete()) {
-    saveState(*(registers + rd));
-    updateRegState(rd, *(tcs + btc));
-    clearTrace();
-
-  } else if (isOneSourceRegConcrete()) {
+  // sTODO: wasNeverSymbolic
+  // if (areSourceRegsConcrete()) {
+  //   saveState(*(registers + rd));
+  //   updateRegState(rd, *(tcs + btc));
+  //   clearTrace();
+  //
+  // } else
+  if (isOneSourceRegConcrete()) {
+    // rs1 concrete [a-d, b-c] = [a, b] - [c, d]   -> [c,d] = [b, a] - [a-d, b-c]
     if (wasNeverSymbolic(currentContext, rs1)) {
-      conReg = rs1;
       symReg = rs2;
+      setLower(getUpperFromReg(rs1) - getUpperFromReg(rd) ,tc);
+      setUpper(getLowerFromReg(rs1) - getLowerFromReg(rd), tc);
+
+    // rs2 concrete [a-d, b-c] = [a, b] - [c, d]   -> [a,b] = [a-d, b-c] + [d, c]
     } else {
-      conReg = rs2;
       symReg = rs1;
+      setLower(getLowerFromReg(rd) + getUpperFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rd) + getLowerFromReg(rs2), tc);
     }
-    // backward semantics: [a, b] + [c, d] = [a + d, b + c]
-    setLower(getLowerFromReg(rd) + getUpperFromReg(conReg), tc);
-    setUpper(getUpperFromReg(rd) + getLowerFromReg(conReg), tc);
 
     if (rd != symReg) {
       // confine symbolic REG (if necessary)
@@ -9811,7 +9814,6 @@ void confine_sub() {
       saveState(btc);
       updateRegState(rd, tc);
     }
-
   // both source registers contain symbolic values
   } else {
     print(selfieName);
@@ -10076,7 +10078,7 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
     } else {
       // constrain with upper wrap-around - only lower needs to be calculated
       if (getLower(fromTc) > getUpper(withTc)) {
-        constrainLowerBound(withTc, fromTc);
+        constrainLowerBound(fromTc, withTc);
         setUpper(getUpper(withTc), tc);
 
       // constrain with lower wrap-around -> only upper needs to be calculated
