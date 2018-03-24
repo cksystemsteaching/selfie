@@ -9662,9 +9662,9 @@ uint64_t isNestedBranch() {
 
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs) {
   if (rd == rs)
-    return *(tcs + *(registers + rs1));
+    return *(tcs + *(registers + rs));
   else
-    return *(registers + rs1);
+    return *(registers + rs);
 }
 
 void nextOption(uint64_t r) {
@@ -9792,8 +9792,6 @@ void confine_sub() {
   // rd == rs1/rs2
   orgRs1 = getOverwrittenOperand(rd, rs1);
   orgRs2 = getOverwrittenOperand(rd ,rs2);
-
-
 
   if (areSourceRegsConcrete())
     calcInterval = 1;
