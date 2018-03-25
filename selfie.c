@@ -1430,9 +1430,7 @@ void initKernel() {
 
 // ------------------------- INITIALIZATION ------------------------
 
-// init memory on trace
 void symbolic_prepare_memory(uint64_t* context);
-// init regs on trace
 void symbolic_prepare_registers(uint64_t* context);
 
 // ---------------------------- UTILITIES --------------------------
@@ -1508,13 +1506,12 @@ void checkSatisfiability(uint64_t tc);
 uint64_t isConfinedInstruction();
 uint64_t hasAdditionalTraceEntry();
 uint64_t isNestedBranch();
-
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs);
 
-void skipBranchOps();
-void nextOption(uint64_t r);
+void skipConstraints();
+void assignNextConstraint(uint64_t reg);
 
-uint64_t numberOfWrappedAround(uint64_t tc1, uint64_t tc2);
+uint64_t numberOfWrappedArounds(uint64_t tc1, uint64_t tc2);
 
 // -------------------------- INSTRUCTIONS -------------------------
 
@@ -1563,13 +1560,10 @@ void clearTrace()                                 { setConcrete(0); }
 
 // ---------------------------- UTILITIES --------------------------
 
-uint64_t fetchFromTC(uint64_t tc);
-
 void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
 void constrainLowerBound(uint64_t fromTc, uint64_t withTc);
 void constrainUpperBound(uint64_t fromTc, uint64_t withTc);
-
-void     incrementTc();
+void incrementTc();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -8273,7 +8267,6 @@ uint64_t handleDivisionByZero() {
 }
 
 uint64_t handleSystemCalls(uint64_t* context) {
-  uint64_t a0;
   uint64_t a7;
 
   if (getException(context) == EXCEPTION_SYSCALL) {
@@ -8944,15 +8937,16 @@ void symbolic_do_divu() {
     if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
         forcePrecise(currentContext, rs1, rs2);
+        // [a, b] / [c, d] = [a / d, b / c]
 
         // push remainder
-        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
-        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
+        setLower(getLowerFromReg(rs1) % getUpperFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) % getLowerFromReg(rs2), tc);
         incrementTc();
 
         saveState(*(registers + rd));
-        setLower(getLowerFromReg(rs1) / getLowerFromReg(rs2), tc);
-        setUpper(getUpperFromReg(rs1) / getUpperFromReg(rs2), tc);
+        setLower(getLowerFromReg(rs1) / getUpperFromReg(rs2), tc);
+        setUpper(getUpperFromReg(rs1) / getLowerFromReg(rs2), tc);
 
         redundancyCheck();
       } else {
@@ -8966,7 +8960,8 @@ void symbolic_do_divu() {
     } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
   } else {
-    print((uint64_t*) "symbolic divisor not supported");
+    print(selfieName);
+    print((uint64_t*) ": symbolic divisor not supported");
     println();
     throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
   }
@@ -9020,7 +9015,7 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs1), tc);
       setUpper(UINT64_MAX, tc);
 
-      // using prev of interval that is split -> loosing previous original interval (but undo access at tc)
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
@@ -9031,7 +9026,7 @@ void symbolic_do_sltu() {
       setLower(0, tc);
       setUpper(getUpper(tc_rs1), tc);
 
-      // using prev of interval that is split -> loosing previous original interval (but undo access at tc)
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
@@ -9054,7 +9049,7 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs2), tc);
       setUpper(UINT64_MAX, tc);
 
-      // using prev of interval that is split
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
@@ -9065,7 +9060,7 @@ void symbolic_do_sltu() {
       setLower(0, tc);
       setUpper(getUpper(tc_rs2), tc);
 
-      // using prev of interval that is split
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
@@ -9090,7 +9085,7 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs2), tc);
       setUpper(getUpper(tc_rs1), tc);
 
-      // using prev of interval that is split
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
@@ -9105,7 +9100,7 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs1), tc);
       setUpper(getLower(tc_rs2) - 1, tc);
 
-      // using prev of interval that is split
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
@@ -9121,7 +9116,7 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs2) ,tc);
       setUpper(getLower(tc_rs1), tc);
 
-      // using prev of interval that is split
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
@@ -9136,7 +9131,7 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs1) + 1, tc);
       setUpper(getUpper(tc_rs2), tc);
 
-      // using prev of interval that is split
+      // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
@@ -9427,7 +9422,7 @@ void symbolic_undo_divu() {
     *(registers + rd) = *(tcs + tc);
 
   // if there is a remainder, undo it
-  if (pc == *(pcs + tc - 1))
+  if (hasAdditionalTraceEntry())
     tc = tc - 1;
 }
 
@@ -9441,26 +9436,19 @@ void symbolic_undo_sltu() {
       // has options left -> next instruction executed sltu
       if (isNestedBranch()) {
         tc = tc - 1;
-
-        nextOption(rs1);
-
-      } else {
-        nextOption(rs1);
-      }
+        assignNextConstraint(rs1);
+      } else
+        assignNextConstraint(rs1);
     }
   } else if (isConcrete(currentContext, rs1)) {
-    // interval of this branch
     if (hasAdditionalTraceEntry()) {
       tc = tc - 1;
       // has options left -> next instruction executed sltu
       if (isNestedBranch()) {
         tc = tc - 1;
-
-        nextOption(rs2);
-
-      } else {
-        nextOption(rs2);
-      }
+        assignNextConstraint(rs2);
+      } else
+        assignNextConstraint(rs2);
     }
   }
 }
@@ -9510,7 +9498,7 @@ void symbolic_undo_ecall() {
 
   // successfull syscall read (2 trace entries)
   if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
-    if (pc == *(pcs + tc - 1)) {
+    if (hasAdditionalTraceEntry()) {
       if (tc >= executionBrk)
         numberOfSymbolics = numberOfSymbolics + 1;
       else
@@ -9648,13 +9636,8 @@ uint64_t isConfinedInstruction() {
   return 0;
 }
 
-void skipBranchOps() {
-  while (pc == *(pcs + btc - 1))
-    btc = btc - 1;
-}
-
 uint64_t hasAdditionalTraceEntry() {
-  if (pc == *(pcs + tc -1))
+  if (pc == *(pcs + tc - 1))
     return 1;
 
   return 0;
@@ -9675,18 +9658,22 @@ uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs) {
     return *(registers + rs);
 }
 
-void nextOption(uint64_t r) {
-  if (hasAdditionalTraceEntry()) {
-    tc = tc - 1;
-    *(registers + r) = tc - 1;
-
-    undo = 0;
-  } else {
-    *(registers + r) = *(tcs + tc);
-  }
+void skipConstraints() {
+  while (pc == *(pcs + btc - 1))
+    btc = btc - 1;
 }
 
-uint64_t numberOfWrappedAround(uint64_t tc1, uint64_t tc2) {
+void assignNextConstraint(uint64_t reg) {
+  if (hasAdditionalTraceEntry()) {
+    tc = tc - 1;
+    *(registers + reg) = tc - 1;
+
+    undo = 0;
+  } else
+    *(registers + reg) = *(tcs + tc);
+}
+
+uint64_t numberOfWrappedArounds(uint64_t tc1, uint64_t tc2) {
   if (getLower(tc1) > getUpper(tc1))
     if (getLower(tc2) > getUpper(tc2))
       return 2;
@@ -9792,15 +9779,13 @@ void confine_add() {
 
 void confine_sub() {
   // @push: [constrainedRegister], RD
+  uint64_t tc_rs1;
+  uint64_t tc_rs2;
   uint64_t symReg;
   uint64_t calcInterval;
 
-  uint64_t orgTc_rs1;
-  uint64_t orgTc_rs2;
-
-  // rd == rs1/rs2
-  orgTc_rs1 = getOverwrittenOperand(rd, rs1);
-  orgTc_rs2 = getOverwrittenOperand(rd ,rs2);
+  tc_rs1 = getOverwrittenOperand(rd, rs1);
+  tc_rs2 = getOverwrittenOperand(rd ,rs2);
 
   if (areSourceRegsConcrete())
     calcInterval = 1;
@@ -9808,24 +9793,19 @@ void confine_sub() {
     calcInterval = 1;
 
   // sTODO: wasNeverSymbolic
-  // if (areSourceRegsConcrete()) {
-  //   saveState(*(registers + rd));
-  //   updateRegState(rd, *(tcs + btc));
-  //   clearTrace();
-  //
-  // } else
+
   if (calcInterval) {
     // RS1 concrete [a-d, b-c] = [a, b] - [c, d]  -> [c, d] = [b, a] - [a-d, b-c]
     if (wasNeverSymbolic(currentContext, rs1)) {
       symReg = rs2;
-      setLower(getUpper(orgTc_rs1) - getUpperFromReg(rd),tc);
-      setUpper(getLower(orgTc_rs1) - getLowerFromReg(rd), tc);
+      setLower(getUpper(tc_rs1) - getUpperFromReg(rd),tc);
+      setUpper(getLower(tc_rs1) - getLowerFromReg(rd), tc);
 
     // RS2 concrete [a-d, b-c] = [a, b] - [c, d]  -> [a, b] = [a-d, b-c] + [d, c]
     } else {
       symReg = rs1;
-      setLower(getLowerFromReg(rd) + getUpper(orgTc_rs2), tc);
-      setUpper(getUpperFromReg(rd) + getLower(orgTc_rs2), tc);
+      setLower(getLowerFromReg(rd) + getUpper(tc_rs2), tc);
+      setUpper(getUpperFromReg(rd) + getLower(tc_rs2), tc);
     }
 
     if (rd != symReg) {
@@ -9917,8 +9897,10 @@ void confine_divu() {
       remUp = getUpper(btc - 1);
 
       saveState(*(registers + rd));
-      setLower(getLowerFromReg(rd) * getLowerFromReg(rs2), tc);
-      setUpper(getUpperFromReg(rd) * getUpperFromReg(rs2), tc);
+
+      // [a/d, b/c] = [a, b] / [c, d]  -> [a, b] = [a/d, b/c] * [d, c]
+      setLower(getLowerFromReg(rd) * getUpperFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rd) * getLowerFromReg(rs2), tc);
 
       if (getLower(btc) == getLower(tc))
         // no lower constrain - restore remainder
@@ -9936,7 +9918,8 @@ void confine_divu() {
       updateRegState(rd, tc);
     } else {
       // should get caught in symbolic_do_divu
-      print((uint64_t*) "symbolic divisor not supported");
+      print(selfieName);
+      print((uint64_t*) ": symbolic divisor not supported");
       println();
       throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
     }
@@ -9951,10 +9934,9 @@ void confine_sltu() {
   // @push: RD
   saveState(*(registers + rd));
   updateRegState(rd, *(tcs + btc));
-  clearTrace();
 
-  // skip stored constraint
-  skipBranchOps();
+  clearTrace();
+  skipConstraints();
 }
 
 void confine_ld() {
@@ -10069,25 +10051,13 @@ void confine_ecall() {
 
 // ---------------------------- UTILITIES --------------------------
 
-uint64_t fetchFromTC(uint64_t tc) {
-  uint64_t pc;
-
-  pc = *(pcs + tc);
-
-  if (pc % REGISTERSIZE == 0)
-    return getLowWord(loadVirtualMemory(pt, pc));
-  else
-    return getHighWord(loadVirtualMemory(pt, pc - INSTRUCTIONSIZE));
-}
-
-
 void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
   uint64_t invalidOverlap;
 
   invalidOverlap = 0;
 
   // one wrap-around
-  if (numberOfWrappedAround(fromTc, withTc) == 1) {
+  if (numberOfWrappedArounds(fromTc, withTc) == 1) {
 
     // from wrap-around
     if (getLower(fromTc) > getUpper(fromTc)) {
@@ -10118,7 +10088,6 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 
       } else
         invalidOverlap = 1;
-
     }
   // no wrap-around / both wrap-around
   } else {
@@ -10141,7 +10110,6 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 }
 
 void constrainLowerBound(uint64_t fromTc, uint64_t withTc) {
-
   if (getLower(fromTc) < getLower(withTc))
     setLower(getLower(withTc), tc);
   else
