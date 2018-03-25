@@ -9669,10 +9669,9 @@ uint64_t isNestedBranch() {
 }
 
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs) {
-  if (rd == rs) {
+  if (rd == rs)
     return *(tcs + *(registers + rs));
-
-  } else
+  else
     return *(registers + rs);
 }
 
@@ -9795,12 +9794,20 @@ void confine_sub() {
   // @push: [constrainedRegister], RD
   uint64_t symReg;
   uint64_t calcInterval;
+<<<<<<< HEAD
   uint64_t orgTc_rs1;
   uint64_t orgTc_rs2;
 
   // rd == rs1/rs2
   orgTc_rs1 = getOverwrittenOperand(rd, rs1);
   orgTc_rs2 = getOverwrittenOperand(rd ,rs2);
+=======
+  uint64_t tc_rs1;
+  uint64_t tc_rs2;
+
+  tc_rs1 = getOverwrittenOperand(rd, rs1);
+  tc_rs2 = getOverwrittenOperand(rd ,rs2);
+>>>>>>> 368a2584f049cebd38f879eff2f28765d1a37b74
 
   if (areSourceRegsConcrete())
     calcInterval = 1;
@@ -9815,17 +9822,27 @@ void confine_sub() {
   //
   // } else
   if (calcInterval) {
-    // rs1 concrete [a-d, b-c] = [a, b] - [c, d]   -> [c,d] = [b, a] - [a-d, b-c]
+    // RS1 concrete [a-d, b-c] = [a, b] - [c, d]  -> [c, d] = [b, a] - [a-d, b-c]
     if (wasNeverSymbolic(currentContext, rs1)) {
       symReg = rs2;
+<<<<<<< HEAD
       setLower(getUpper(orgTc_rs1) - getUpperFromReg(rd),tc);
       setUpper(getLower(orgTc_rs1) - getLowerFromReg(rd), tc);
+=======
+      setLower(getUpper(tc_rs1) - getUpperFromReg(rd) ,tc);
+      setUpper(getLower(tc_rs1) - getLowerFromReg(rd), tc);
+>>>>>>> 368a2584f049cebd38f879eff2f28765d1a37b74
 
-    // rs2 concrete [a-d, b-c] = [a, b] - [c, d]   -> [a,b] = [a-d, b-c] + [d, c]
+    // RS2 concrete [a-d, b-c] = [a, b] - [c, d]  -> [a, b] = [a-d, b-c] + [d, c]
     } else {
       symReg = rs1;
+<<<<<<< HEAD
       setLower(getLowerFromReg(rd) + getUpper(orgTc_rs2), tc);
       setUpper(getUpperFromReg(rd) + getLower(orgTc_rs2), tc);
+=======
+      setLower(getLowerFromReg(rd) + getUpper(tc_rs2), tc);
+      setUpper(getUpperFromReg(rd) + getLower(tc_rs2), tc);
+>>>>>>> 368a2584f049cebd38f879eff2f28765d1a37b74
     }
 
     if (rd != symReg) {
