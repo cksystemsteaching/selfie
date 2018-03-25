@@ -9020,7 +9020,8 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs1), tc);
       setUpper(UINT64_MAX, tc);
 
-      saveState(tc_rs1);
+      // using prev of interval that is split -> loosing previous original interval (but undo access at tc)
+      saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
       symbolic_do_sltu();
@@ -9030,7 +9031,8 @@ void symbolic_do_sltu() {
       setLower(0, tc);
       setUpper(getUpper(tc_rs1), tc);
 
-      saveState(tc_rs1);
+      // using prev of interval that is split -> loosing previous original interval (but undo access at tc)
+      saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
       symbolic_do_sltu();
@@ -9052,7 +9054,8 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs2), tc);
       setUpper(UINT64_MAX, tc);
 
-      saveState(tc_rs2);
+      // using prev of interval that is split
+      saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
       symbolic_do_sltu();
@@ -9062,7 +9065,8 @@ void symbolic_do_sltu() {
       setLower(0, tc);
       setUpper(getUpper(tc_rs2), tc);
 
-      saveState(tc_rs2);
+      // using prev of interval that is split
+      saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
       symbolic_do_sltu();
@@ -9086,7 +9090,8 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs2), tc);
       setUpper(getUpper(tc_rs1), tc);
 
-      saveState(tc_rs1);
+      // using prev of interval that is split
+      saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
       // push false branch
@@ -9100,7 +9105,8 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs1), tc);
       setUpper(getLower(tc_rs2) - 1, tc);
 
-      saveState(tc_rs1);
+      // using prev of interval that is split
+      saveState(*(tcs + tc_rs1));
       updateRegState(rs1, tc);
 
       // push true branch
@@ -9115,7 +9121,8 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs2) ,tc);
       setUpper(getLower(tc_rs1), tc);
 
-      saveState(tc_rs2);
+      // using prev of interval that is split
+      saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
       // push false branch
@@ -9129,7 +9136,8 @@ void symbolic_do_sltu() {
       setLower(getLower(tc_rs1) + 1, tc);
       setUpper(getUpper(tc_rs2), tc);
 
-      saveState(tc_rs2);
+      // using prev of interval that is split
+      saveState(*(tcs + tc_rs2));
       updateRegState(rs2, tc);
 
       // push true branch
@@ -9661,10 +9669,11 @@ uint64_t isNestedBranch() {
 }
 
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs) {
-  if (rd == rs)
-    return *(tcs + *(registers + rs1));
-  else
-    return *(registers + rs1);
+  if (rd == rs) {
+    return *(tcs + *(registers + rs));
+
+  } else
+    return *(registers + rs);
 }
 
 void nextOption(uint64_t r) {
@@ -9786,14 +9795,12 @@ void confine_sub() {
   // @push: [constrainedRegister], RD
   uint64_t symReg;
   uint64_t calcInterval;
-  uint64_t orgRs1;
-  uint64_t orgRs2;
+  uint64_t orgTc_rs1;
+  uint64_t orgTc_rs2;
 
   // rd == rs1/rs2
-  orgRs1 = getOverwrittenOperand(rd, rs1);
-  orgRs2 = getOverwrittenOperand(rd ,rs2);
-
-
+  orgTc_rs1 = getOverwrittenOperand(rd, rs1);
+  orgTc_rs2 = getOverwrittenOperand(rd ,rs2);
 
   if (areSourceRegsConcrete())
     calcInterval = 1;
@@ -9811,14 +9818,14 @@ void confine_sub() {
     // rs1 concrete [a-d, b-c] = [a, b] - [c, d]   -> [c,d] = [b, a] - [a-d, b-c]
     if (wasNeverSymbolic(currentContext, rs1)) {
       symReg = rs2;
-      setLower(getUpperFromReg(orgRs1) - getUpperFromReg(rd) ,tc);
-      setUpper(getLowerFromReg(orgRs1) - getLowerFromReg(rd), tc);
+      setLower(getUpper(orgTc_rs1) - getUpperFromReg(rd),tc);
+      setUpper(getLower(orgTc_rs1) - getLowerFromReg(rd), tc);
 
     // rs2 concrete [a-d, b-c] = [a, b] - [c, d]   -> [a,b] = [a-d, b-c] + [d, c]
     } else {
       symReg = rs1;
-      setLower(getLowerFromReg(rd) + getUpperFromReg(orgRs2), tc);
-      setUpper(getUpperFromReg(rd) + getLowerFromReg(orgRs2), tc);
+      setLower(getLowerFromReg(rd) + getUpper(orgTc_rs2), tc);
+      setUpper(getUpperFromReg(rd) + getLower(orgTc_rs2), tc);
     }
 
     if (rd != symReg) {
