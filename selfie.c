@@ -9786,12 +9786,11 @@ void confine_sub() {
   // @push: [constrainedRegister], RD
   uint64_t symReg;
   uint64_t calcInterval;
-  uint64_t orgRs1;
-  uint64_t orgRs2;
+  uint64_t tc_rs1;
+  uint64_t tc_rs2;
 
-  // rd == rs1/rs2
-  orgRs1 = getOverwrittenOperand(rd, rs1);
-  orgRs2 = getOverwrittenOperand(rd ,rs2);
+  tc_rs1 = getOverwrittenOperand(rd, rs1);
+  tc_rs2 = getOverwrittenOperand(rd ,rs2);
 
   if (areSourceRegsConcrete())
     calcInterval = 1;
@@ -9806,17 +9805,17 @@ void confine_sub() {
   //
   // } else
   if (calcInterval) {
-    // rs1 concrete [a-d, b-c] = [a, b] - [c, d]   -> [c,d] = [b, a] - [a-d, b-c]
+    // RS1 concrete [a-d, b-c] = [a, b] - [c, d]  -> [c, d] = [b, a] - [a-d, b-c]
     if (wasNeverSymbolic(currentContext, rs1)) {
       symReg = rs2;
-      setLower(getUpperFromReg(orgRs1) - getUpperFromReg(rd) ,tc);
-      setUpper(getLowerFromReg(orgRs1) - getLowerFromReg(rd), tc);
+      setLower(getUpper(tc_rs1) - getUpperFromReg(rd) ,tc);
+      setUpper(getLower(tc_rs1) - getLowerFromReg(rd), tc);
 
-    // rs2 concrete [a-d, b-c] = [a, b] - [c, d]   -> [a,b] = [a-d, b-c] + [d, c]
+    // RS2 concrete [a-d, b-c] = [a, b] - [c, d]  -> [a, b] = [a-d, b-c] + [d, c]
     } else {
       symReg = rs1;
-      setLower(getLowerFromReg(rd) + getUpperFromReg(orgRs2), tc);
-      setUpper(getUpperFromReg(rd) + getLowerFromReg(orgRs2), tc);
+      setLower(getLowerFromReg(rd) + getUpper(tc_rs2), tc);
+      setUpper(getUpperFromReg(rd) + getLower(tc_rs2), tc);
     }
 
     if (rd != symReg) {
