@@ -9741,7 +9741,7 @@ void confine_addi() {
 
 void confine_add() {
   // @push: [constrainedRegister], RD
-  uint64_t conReg;
+  uint64_t orgTc_conReg;
   uint64_t symReg;
 
   if (areSourceRegsConcrete()) {
@@ -9751,16 +9751,16 @@ void confine_add() {
 
   } else if (isOneSourceRegConcrete()) {
     if (wasNeverSymbolic(currentContext, rs1)) {
-      conReg = rs1;
+      orgTc_conReg = getOverwrittenOperand(rd, rs1);
       symReg = rs2;
     } else {
-      conReg = rs2;
+      orgTc_conReg = getOverwrittenOperand(rd, rs2);
       symReg = rs1;
     }
 
     // prepare value
-    setLower(getLowerFromReg(rd) - getLowerFromReg(conReg), tc);
-    setUpper(getUpperFromReg(rd) - getUpperFromReg(conReg), tc);
+    setLower(getLowerFromReg(rd) - getLower(orgTc_conReg), tc);
+    setUpper(getUpperFromReg(rd) - getUpper(orgTc_conReg), tc);
 
     if (rd != symReg) {
       // confine symbolic REG (if necessary)
