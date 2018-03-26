@@ -2905,7 +2905,7 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   talloc();
 
   if (isSignedInteger(offset, 12)) {
-    emitLD(currentTemporary(), getScope(entry), getAddress(entry));
+    emitLD(currentTemporary(), getScope(entry), offset);
 
     return getType(entry);
   }
