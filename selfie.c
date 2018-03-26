@@ -1146,6 +1146,7 @@ uint64_t* tcs         = (uint64_t*) 0; // trace of trace counters to previous re
 uint64_t* values      = (uint64_t*) 0; // trace of register and memory values
 uint64_t* valuesLower = (uint64_t*) 0; // trace of lower bounds on register and memory values for symbolic execution
 uint64_t* valuesUpper = (uint64_t*) 0; // trace of upper bounds on register and memory values for symbolic execution
+uint64_t* states      = (uint64_t*) 0; // trace of symbolic flags
 
 // core state
 
@@ -1184,6 +1185,7 @@ void initInterpreter() {
 
   valuesLower = zalloc(maxTraceLength * SIZEOFUINT64);
   valuesUpper = zalloc(maxTraceLength * SIZEOFUINT64);
+  states     = zalloc(maxTraceLength * SIZEOFUINT64);
   values      = zalloc(maxTraceLength * SIZEOFUINT64);
 }
 
@@ -1428,6 +1430,12 @@ void initKernel() {
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t CONCRETE = 0;
+uint64_t SYMBOLIC = 1;
+uint64_t CONSTRAINED = 2;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void symbolic_prepare_memory(uint64_t* context);
@@ -1441,7 +1449,6 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2);
 
 // register information
 uint64_t isConcrete(uint64_t* context, uint64_t reg);
-uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
@@ -1503,13 +1510,16 @@ void checkSatisfiability(uint64_t tc);
 
 // ---------------------------- UTILITIES --------------------------
 
+void setState(uint64_t tc1, uint64_t tc2, uint64_t atTc);
+void setStateFromReg(uint64_t reg1, uint64_t reg2, uint64_t atTc);
+
 uint64_t isConfinedInstruction();
 uint64_t hasAdditionalTraceEntry();
 uint64_t isNestedBranch();
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs);
 
-void skipConstraints();
-void assignNextConstraint(uint64_t reg);
+void     skipConstraints();
+void     assignNextConstraint(uint64_t reg1, uint64_t reg2);
 
 uint64_t numberOfWrappedArounds(uint64_t tc1, uint64_t tc2);
 
@@ -1544,18 +1554,22 @@ uint64_t numberOfSymbolics = 0; // number of symbolic variables
 // -------------------------- TRACE API ----------------------------
 // -----------------------------------------------------------------
 
-uint64_t getLower(uint64_t tc)         { return *(valuesLower + tc); }
-uint64_t getUpper(uint64_t tc)         { return *(valuesUpper + tc); }
-uint64_t getLowerFromReg(uint64_t reg) { return *(valuesLower + *(registers + reg)); }
-uint64_t getUpperFromReg(uint64_t reg) { return *(valuesUpper + *(registers + reg)); }
+uint64_t getLower(uint64_t tc)            { return *(valuesLower + tc); }
+uint64_t getUpper(uint64_t tc)            { return *(valuesUpper + tc); }
+uint64_t getState(uint64_t tc)            { return *(states     + tc);}
+uint64_t getLowerFromReg(uint64_t reg)    { return *(valuesLower + *(registers + reg)); }
+uint64_t getUpperFromReg(uint64_t reg)    { return *(valuesUpper + *(registers + reg)); }
+uint64_t getStateFromReg(uint64_t reg)    { return *(states     + *(registers + reg)); }
+
 
 void setLower(uint64_t value, uint64_t tc)        { *(valuesLower + tc) = value; }
 void setUpper(uint64_t value, uint64_t tc)        { *(valuesUpper + tc) = value; }
+void setStateFlag(uint64_t value, uint64_t tc)    { *(states     + tc)  = value; }
 void setLowerForReg(uint64_t value, uint64_t reg) { *(valuesLower + *(registers + reg)) = value; }
 void setUpperForReg(uint64_t value, uint64_t reg) { *(valuesUpper + *(registers + reg)) = value; }
 
 void setFromTrace(uint64_t fromTc, uint64_t toTc) { setLower(getLower(fromTc), toTc); setUpper(getUpper(fromTc), toTc); }
-void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); }
+void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); setStateFlag(CONCRETE, tc); }
 void clearTrace()                                 { setConcrete(0); }
 
 // ---------------------------- UTILITIES --------------------------
@@ -8721,6 +8735,7 @@ void forceConcrete(uint64_t* context, uint64_t reg) {
 
 void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
   // execution remains precise iff only one is symbolic
+
   if (isConcrete(context, rs1) == 0) {
     if (isConcrete(context, rs2) == 0) {
       print(selfieName);
@@ -8738,31 +8753,11 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
 }
 
 uint64_t isConcrete(uint64_t* context, uint64_t reg) {
-  return getLower(*(getRegs(context) + reg)) == getUpper(*(getRegs(context) + reg));
-}
-
-uint64_t wasNeverSymbolic(uint64_t* context, uint64_t reg) {
-  uint64_t tc;
-
-  // quick check
-  if (isSystemRegister(reg))
-    return 1;
-  else if (reg == REG_ZR)
-    return 1;
-
-  tc = *(getRegs(context) + reg);
-
-  while (tc != 0) {
-    if (getLower(tc) != getUpper(tc))
-      return 0;
-
-    tc = *(tcs + tc);
-  }
-  return 1;
+  // return getLower(*(getRegs(context) + reg)) == getUpper(*(getRegs(context) + reg));
+  return getStateFromReg(reg) == CONCRETE;
 }
 
 uint64_t areSourceRegsConcrete() {
-  // sTODO: use wasNeverSymbolic when it is bugfree
   if (isConcrete(currentContext, rs1))
     if (isConcrete(currentContext, rs2))
       return 1;
@@ -8772,12 +8767,11 @@ uint64_t areSourceRegsConcrete() {
 
 uint64_t isOneSourceRegConcrete() {
   // exclusive OR
-
-  if (wasNeverSymbolic(currentContext, rs1)) {
-    if (wasNeverSymbolic(currentContext, rs2) == 0)
+  if (isConcrete(currentContext, rs1)) {
+    if (isConcrete(currentContext, rs2) == 0)
       return 1;
-  } else if (wasNeverSymbolic(currentContext, rs2)) {
-    if (wasNeverSymbolic(currentContext, rs1) == 0)
+  } else if (isConcrete(currentContext, rs2)) {
+    if (isConcrete(currentContext, rs1) == 0)
       return 1;
   }
 
@@ -8858,6 +8852,7 @@ void symbolic_do_addi() {
   if (rd != REG_ZR) {
     setLower(getLowerFromReg(rs1) + imm, tc);
     setUpper(getUpperFromReg(rs1) + imm, tc);
+    setStateFromReg(rs1, rs1, tc);
 
     redundancyCheck();
   } else
@@ -8877,6 +8872,7 @@ void symbolic_do_add() {
   if (rd != REG_ZR) {
     setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
+    setStateFromReg(rs1, rs2, tc);
 
     redundancyCheck();
   } else
@@ -8897,6 +8893,7 @@ void symbolic_do_sub() {
     // [a, b] - [c, d] = [a - d, b - c]
     setLower(getLowerFromReg(rs1) - getUpperFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) - getLowerFromReg(rs2), tc);
+    setStateFromReg(rs1, rs2, tc);
 
     redundancyCheck();
   } else
@@ -8918,6 +8915,7 @@ void symbolic_do_mul() {
 
     setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+    setStateFromReg(rs1, rs2, tc);
 
     redundancyCheck();
   } else
@@ -8942,11 +8940,13 @@ void symbolic_do_divu() {
         // push remainder
         setLower(getLowerFromReg(rs1) % getUpperFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) % getLowerFromReg(rs2), tc);
+        setStateFromReg(rs1, rs2, tc);
         incrementTc();
 
         saveState(*(registers + rd));
         setLower(getLowerFromReg(rs1) / getUpperFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) / getLowerFromReg(rs2), tc);
+        setStateFromReg(rs1, rs2, tc);
 
         redundancyCheck();
       } else {
@@ -8980,6 +8980,7 @@ void symbolic_do_remu() {
 
         setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
+        setStateFromReg(rs1, rs2, tc);
 
         redundancyCheck();
       } else
@@ -9014,6 +9015,7 @@ void symbolic_do_sltu() {
       // unwrap from lower to UINT64_MAX
       setLower(getLower(tc_rs1), tc);
       setUpper(UINT64_MAX, tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
@@ -9025,6 +9027,7 @@ void symbolic_do_sltu() {
       // unwrap from 0 to upper
       setLower(0, tc);
       setUpper(getUpper(tc_rs1), tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
@@ -9048,6 +9051,7 @@ void symbolic_do_sltu() {
       // unwrap from lower to UINT64_MAX
       setLower(getLower(tc_rs2), tc);
       setUpper(UINT64_MAX, tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
@@ -9059,6 +9063,7 @@ void symbolic_do_sltu() {
       // unwrap from 0 to upper
       setLower(0, tc);
       setUpper(getUpper(tc_rs2), tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
@@ -9084,6 +9089,7 @@ void symbolic_do_sltu() {
       // symbolic >= concrete
       setLower(getLower(tc_rs2), tc);
       setUpper(getUpper(tc_rs1), tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
@@ -9099,6 +9105,7 @@ void symbolic_do_sltu() {
       // symbolic < concrete
       setLower(getLower(tc_rs1), tc);
       setUpper(getLower(tc_rs2) - 1, tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs1));
@@ -9115,6 +9122,7 @@ void symbolic_do_sltu() {
       // concrete >= symbolic
       setLower(getLower(tc_rs2) ,tc);
       setUpper(getLower(tc_rs1), tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
@@ -9130,6 +9138,7 @@ void symbolic_do_sltu() {
       // concrete < symbolic
       setLower(getLower(tc_rs1) + 1, tc);
       setUpper(getUpper(tc_rs2), tc);
+      setStateFlag(CONSTRAINED, tc);
 
       // point to previous tc of split interval
       saveState(*(tcs + tc_rs2));
@@ -9162,16 +9171,19 @@ void symbolic_do_sltu() {
 
 uint64_t symbolic_do_ld() {
   // @push: RD
+  uint64_t vTc;
   uint64_t vaddr;
   uint64_t a;
 
   symbolic_record_ld_before();
 
   vaddr = getLowerFromReg(rs1) + imm;
+  vTc = loadVirtualMemory(pt, vaddr);
 
   if (rd != REG_ZR) {
-    setLower(getLower(loadVirtualMemory(pt, vaddr)), tc);
-    setUpper(getUpper(loadVirtualMemory(pt, vaddr)), tc);
+    setLower(getLower(vTc), tc);
+    setUpper(getUpper(vTc), tc);
+    setState(vTc, vTc, tc);
 
     redundancyCheck();
 
@@ -9209,6 +9221,7 @@ uint64_t symbolic_do_sd() {
 
   setLower(getLowerFromReg(rs2), tc);
   setUpper(getUpperFromReg(rs2), tc);
+  setStateFromReg(rs2, rs2, tc);
 
   redundancyCheck();
 
@@ -9372,6 +9385,7 @@ uint64_t symbolic_read(uint64_t* context, uint64_t fd, uint64_t vbuffer, uint64_
 
   setLower(0, tc);
   setUpper(upperBound, tc);
+  setStateFlag(SYMBOLIC, tc);
 
   updateMemState(vbuffer, tc);
 
@@ -9409,7 +9423,7 @@ void symbolic_undo_add_sub_mul() {
   if (isConfinedInstruction()) {
     tc = tc - 1;
     // undo either RS1 or RS2 depending on which one is symbolic
-    if (wasNeverSymbolic(currentContext, rs1))
+    if (isConcrete(currentContext, rs1))
       *(registers + rs2) = *(tcs + tc);
     else
       *(registers + rs1) = *(tcs + tc);
@@ -9430,27 +9444,16 @@ void symbolic_undo_sltu() {
   if (rd != REG_ZR)
     *(registers + rd) = *(tcs + tc);
 
-  if (isConcrete(currentContext, rs2)) {
+  if(isOneSourceRegConcrete())
     if (hasAdditionalTraceEntry()) {
       tc = tc - 1;
       // has options left -> next instruction executed sltu
       if (isNestedBranch()) {
         tc = tc - 1;
-        assignNextConstraint(rs1);
+        assignNextConstraint(rs1, rs2);
       } else
-        assignNextConstraint(rs1);
+        assignNextConstraint(rs1, rs2);
     }
-  } else if (isConcrete(currentContext, rs1)) {
-    if (hasAdditionalTraceEntry()) {
-      tc = tc - 1;
-      // has options left -> next instruction executed sltu
-      if (isNestedBranch()) {
-        tc = tc - 1;
-        assignNextConstraint(rs2);
-      } else
-        assignNextConstraint(rs2);
-    }
-  }
 }
 
 void symbolic_undo_ld() {
@@ -9627,6 +9630,17 @@ void checkSatisfiability(uint64_t tc) {
 
 // ---------------------------- UTILITIES --------------------------
 
+void setState(uint64_t tc1, uint64_t tc2, uint64_t atTc) {
+  if (getState(tc1) < getState(tc2))
+    setStateFlag(getState(tc2), atTc);
+  else
+    setStateFlag(getState(tc1), atTc);
+}
+
+void setStateFromReg(uint64_t reg1, uint64_t reg2, uint64_t atTc) {
+  setState(*(registers + reg1), *(registers + reg2), atTc);
+}
+
 uint64_t isConfinedInstruction() {
   // assert: only used when executionBrk is set
   // since confining only takes place above executionBrk
@@ -9644,8 +9658,9 @@ uint64_t hasAdditionalTraceEntry() {
 }
 
 uint64_t isNestedBranch() {
+  // branch result is always concrete
   if (hasAdditionalTraceEntry())
-    if (getLower(tc - 1) != getUpper(tc - 1))
+    if (getState(tc - 1) != CONCRETE)
       return 1;
 
   return 0;
@@ -9663,7 +9678,14 @@ void skipConstraints() {
     btc = btc - 1;
 }
 
-void assignNextConstraint(uint64_t reg) {
+void assignNextConstraint(uint64_t reg1, uint64_t reg2) {
+  uint64_t reg;
+
+  if (getStateFromReg(rs1) == CONCRETE)
+    reg = rs2;
+  else
+    reg = rs1;
+
   if (hasAdditionalTraceEntry()) {
     tc = tc - 1;
     *(registers + reg) = tc - 1;
@@ -9701,11 +9723,16 @@ void confine_lui() {
 
 void confine_addi() {
   // @push: [RS1], RD
+  uint64_t tc_rs1;
+
   if (rd != REG_ZR) {
     // prepare value
 
+    tc_rs1 = getOverwrittenOperand(rd, rs1);
+
     setLower(getLowerFromReg(rd) - imm, tc);
     setUpper(getUpperFromReg(rd) - imm, tc);
+    setState(tc_rs1, tc_rs1, tc);
 
     if (rd != rs1) {
       // confine RS1 (if necessary)
@@ -9728,7 +9755,8 @@ void confine_addi() {
 
 void confine_add() {
   // @push: [constrainedRegister], RD
-  uint64_t orgTc_conReg;
+  uint64_t tc_sym;
+  uint64_t tc_con;
   uint64_t symReg;
 
   if (areSourceRegsConcrete()) {
@@ -9737,17 +9765,20 @@ void confine_add() {
     clearTrace();
 
   } else if (isOneSourceRegConcrete()) {
-    if (wasNeverSymbolic(currentContext, rs1)) {
-      orgTc_conReg = getOverwrittenOperand(rd, rs1);
+    if (isConcrete(currentContext, rs1)) {
+      tc_con = getOverwrittenOperand(rd, rs1);
+      tc_sym = getOverwrittenOperand(rd, rs2);
       symReg = rs2;
     } else {
-      orgTc_conReg = getOverwrittenOperand(rd, rs2);
+      tc_con = getOverwrittenOperand(rd, rs2);
+      tc_sym = getOverwrittenOperand(rd, rs1);
       symReg = rs1;
     }
 
     // prepare value
-    setLower(getLowerFromReg(rd) - getLower(orgTc_conReg), tc);
-    setUpper(getUpperFromReg(rd) - getUpper(orgTc_conReg), tc);
+    setLower(getLowerFromReg(rd) - getLower(tc_con), tc);
+    setUpper(getUpperFromReg(rd) - getUpper(tc_con), tc);
+    setState(tc_con, tc_sym, tc);
 
     if (rd != symReg) {
       // confine symbolic REG (if necessary)
@@ -9787,16 +9818,14 @@ void confine_sub() {
   tc_rs1 = getOverwrittenOperand(rd, rs1);
   tc_rs2 = getOverwrittenOperand(rd ,rs2);
 
-  if (areSourceRegsConcrete())
-    calcInterval = 1;
-  else if (isOneSourceRegConcrete())
-    calcInterval = 1;
+  if (areSourceRegsConcrete()) {
+    saveState(*(registers + rd));
+    updateRegState(rd, *(tcs + btc));
+    clearTrace();
 
-  // sTODO: wasNeverSymbolic
-
-  if (calcInterval) {
+  } else if (isOneSourceRegConcrete()) {
     // RS1 concrete [a-d, b-c] = [a, b] - [c, d]  -> [c, d] = [b, a] - [a-d, b-c]
-    if (wasNeverSymbolic(currentContext, rs1)) {
+    if (isConcrete(currentContext, rs1)) {
       symReg = rs2;
       setLower(getUpper(tc_rs1) - getUpperFromReg(rd),tc);
       setUpper(getLower(tc_rs1) - getLowerFromReg(rd), tc);
@@ -9807,6 +9836,7 @@ void confine_sub() {
       setLower(getLowerFromReg(rd) + getUpper(tc_rs2), tc);
       setUpper(getUpperFromReg(rd) + getLower(tc_rs2), tc);
     }
+    setState(tc_rs1, tc_rs2, tc);
 
     if (rd != symReg) {
       // confine symbolic REG (if necessary)
@@ -9840,6 +9870,11 @@ void confine_mul() {
   // @push: [confinedRegister], RD
   uint64_t loRem;
   uint64_t oldRD;
+  uint64_t tc_rs1;
+  uint64_t tc_rs2;
+
+  tc_rs1 = getOverwrittenOperand(rd, rs1);
+  tc_rs2 = getOverwrittenOperand(rd, rs2);
 
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
@@ -9847,13 +9882,14 @@ void confine_mul() {
     updateRegState(rd, *(tcs + btc));
   } else { // starc only compiles with RD == RS1
 
-    if (wasNeverSymbolic(currentContext, rs2)) {
+    if (isConcrete(currentContext, rs2)) {
       // RS2 is multiplier - confine RS1/RD
       saveState(*(registers + rd));
       loRem = getLowerFromReg(rd) % getLowerFromReg(rs2);
 
       setLower(getLowerFromReg(rd) / getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rd) / getUpperFromReg(rs2), tc);
+      setState(tc_rs1, tc_rs2, tc);
 
       if (loRem != 0) // lower++ if remainder != 0
         setLower(getLower(tc) + 1, tc);
@@ -9867,6 +9903,7 @@ void confine_mul() {
 
       setLower(getLowerFromReg(rd) / getLower(oldRD), tc);
       setUpper(getUpperFromReg(rd) / getUpper(oldRD), tc);
+      setState(tc_rs1, tc_rs2, tc);
 
       if (loRem != 0) // lower++ if remainder != 0
         setLower(getLower(tc) + 1, tc);
@@ -9885,13 +9922,18 @@ void confine_divu() {
   uint64_t remLo;
   uint64_t remUp;
   uint64_t div;
+  uint64_t tc_rs1;
+  uint64_t tc_rs2;
+
+  tc_rs1 = getOverwrittenOperand(rd, rs1);
+  tc_rs2 = getOverwrittenOperand(rd, rs2);
 
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
     clearTrace();
     updateRegState(rd, *(tcs + btc));
   } else { // starc only compiles with RD == RS1
-    if (wasNeverSymbolic(currentContext, rs2)) { // divisor concrete
+    if (isConcrete(currentContext, rs2)) { // divisor concrete
 
       remLo = getLower(btc - 1);
       remUp = getUpper(btc - 1);
@@ -9901,6 +9943,7 @@ void confine_divu() {
       // [a/d, b/c] = [a, b] / [c, d]  -> [a, b] = [a/d, b/c] * [d, c]
       setLower(getLowerFromReg(rd) * getUpperFromReg(rs2), tc);
       setUpper(getUpperFromReg(rd) * getLowerFromReg(rs2), tc);
+      setState(tc_rs1, tc_rs2, tc);
 
       if (getLower(btc) == getLower(tc))
         // no lower constrain - restore remainder
@@ -10107,6 +10150,7 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 
     throwException(EXCEPTION_IMPRECISE, 0);
   }
+  setStateFlag(CONSTRAINED, tc);
 }
 
 void constrainLowerBound(uint64_t fromTc, uint64_t withTc) {
