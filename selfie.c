@@ -1185,8 +1185,8 @@ void initInterpreter() {
 
   valuesLower = zalloc(maxTraceLength * SIZEOFUINT64);
   valuesUpper = zalloc(maxTraceLength * SIZEOFUINT64);
-  states     = zalloc(maxTraceLength * SIZEOFUINT64);
   values      = zalloc(maxTraceLength * SIZEOFUINT64);
+  states      = zalloc(maxTraceLength * SIZEOFUINT64);
 }
 
 void resetInterpreter() {
@@ -1432,8 +1432,8 @@ void initKernel() {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t CONCRETE = 0;
-uint64_t SYMBOLIC = 1;
+uint64_t CONCRETE    = 0;
+uint64_t SYMBOLIC    = 1;
 uint64_t CONSTRAINED = 2;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1452,6 +1452,8 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
+
+uint64_t cardinality(uint64_t reg);
 
 // ------------------------------ PRINT ----------------------------
 
@@ -1518,8 +1520,8 @@ uint64_t hasAdditionalTraceEntry();
 uint64_t isNestedBranch();
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs);
 
-void     skipConstraints();
-void     assignNextConstraint(uint64_t reg1, uint64_t reg2);
+void skipConstraints();
+void assignNextConstraint(uint64_t reg1, uint64_t reg2);
 
 uint64_t numberOfWrappedArounds(uint64_t tc1, uint64_t tc2);
 
@@ -1556,21 +1558,21 @@ uint64_t numberOfSymbolics = 0; // number of symbolic variables
 
 uint64_t getLower(uint64_t tc)            { return *(valuesLower + tc); }
 uint64_t getUpper(uint64_t tc)            { return *(valuesUpper + tc); }
-uint64_t getState(uint64_t tc)            { return *(states     + tc);}
+uint64_t getState(uint64_t tc)            { return *(states      + tc); }
 uint64_t getLowerFromReg(uint64_t reg)    { return *(valuesLower + *(registers + reg)); }
 uint64_t getUpperFromReg(uint64_t reg)    { return *(valuesUpper + *(registers + reg)); }
-uint64_t getStateFromReg(uint64_t reg)    { return *(states     + *(registers + reg)); }
-
+uint64_t getStateFromReg(uint64_t reg)    { return *(states      + *(registers + reg)); }
 
 void setLower(uint64_t value, uint64_t tc)        { *(valuesLower + tc) = value; }
 void setUpper(uint64_t value, uint64_t tc)        { *(valuesUpper + tc) = value; }
-void setStateFlag(uint64_t value, uint64_t tc)    { *(states     + tc)  = value; }
+void setStateFlag(uint64_t state, uint64_t tc)    { *(states      + tc) = state; }
 void setLowerForReg(uint64_t value, uint64_t reg) { *(valuesLower + *(registers + reg)) = value; }
 void setUpperForReg(uint64_t value, uint64_t reg) { *(valuesUpper + *(registers + reg)) = value; }
 
 void setFromTrace(uint64_t fromTc, uint64_t toTc) { setLower(getLower(fromTc), toTc); setUpper(getUpper(fromTc), toTc); }
 void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); setStateFlag(CONCRETE, tc); }
-void clearTrace()                                 { setConcrete(0); }
+void setMaximum()                                 { setLower(0, tc); setUpper(UINT64_MAX, tc); }
+void clearTrace()                                 { setConcrete(0); setStateFlag(0, tc); }
 
 // ---------------------------- UTILITIES --------------------------
 
@@ -8735,7 +8737,6 @@ void forceConcrete(uint64_t* context, uint64_t reg) {
 
 void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
   // execution remains precise iff only one is symbolic
-
   if (isConcrete(context, rs1) == 0) {
     if (isConcrete(context, rs2) == 0) {
       print(selfieName);
@@ -8753,7 +8754,6 @@ void forcePrecise(uint64_t* context, uint64_t reg1, uint64_t reg2) {
 }
 
 uint64_t isConcrete(uint64_t* context, uint64_t reg) {
-  // return getLower(*(getRegs(context) + reg)) == getUpper(*(getRegs(context) + reg));
   return getStateFromReg(reg) == CONCRETE;
 }
 
@@ -8785,6 +8785,11 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2) {
     return 0;
 
   return 1;
+}
+
+uint64_t cardinality(uint64_t reg) {
+  // returns 0 iff |[lower,upper]| = 2^64
+  return getUpperFromReg(reg) - getLowerFromReg(reg) + 1;
 }
 
 // ------------------------------ PRINT ----------------------------
@@ -8833,7 +8838,6 @@ void symbolic_do_lui() {
 
   if (rd != REG_ZR) {
     setConcrete(leftShift(imm, 12));
-
     redundancyCheck();
   } else
     clearTrace();
@@ -8850,10 +8854,13 @@ void symbolic_do_addi() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    setLower(getLowerFromReg(rs1) + imm, tc);
-    setUpper(getUpperFromReg(rs1) + imm, tc);
-    setStateFromReg(rs1, rs1, tc);
+    if (cardinality(rs1) + 1 >= cardinality(rs1)) {
+      setLower(getLowerFromReg(rs1) + imm, tc);
+      setUpper(getUpperFromReg(rs1) + imm, tc);
+    } else
+      setMaximum();
 
+    setStateFromReg(rs1, rs1, tc);
     redundancyCheck();
   } else
     clearTrace();
@@ -8870,10 +8877,13 @@ void symbolic_do_add() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
-    setStateFromReg(rs1, rs2, tc);
+    if (cardinality(rs1) + cardinality(rs2) >= cardinality(rs1)) {
+      setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
+    } else
+      setMaximum();
 
+    setStateFromReg(rs1, rs2, tc);
     redundancyCheck();
   } else
     clearTrace();
@@ -8891,10 +8901,13 @@ void symbolic_do_sub() {
 
   if (rd != REG_ZR) {
     // [a, b] - [c, d] = [a - d, b - c]
-    setLower(getLowerFromReg(rs1) - getUpperFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) - getLowerFromReg(rs2), tc);
-    setStateFromReg(rs1, rs2, tc);
+    if (cardinality(rs1) + cardinality(rs2) >= cardinality(rs1)) {
+      setLower(getLowerFromReg(rs1) - getUpperFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rs1) - getLowerFromReg(rs2), tc);
+    } else
+      setMaximum();
 
+    setStateFromReg(rs1, rs2, tc);
     redundancyCheck();
   } else
     clearTrace();
@@ -8915,8 +8928,8 @@ void symbolic_do_mul() {
 
     setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
-    setStateFromReg(rs1, rs2, tc);
 
+    setStateFromReg(rs1, rs2, tc);
     redundancyCheck();
   } else
     clearTrace();
@@ -8980,8 +8993,8 @@ void symbolic_do_remu() {
 
         setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
         setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
-        setStateFromReg(rs1, rs2, tc);
 
+        setStateFromReg(rs1, rs2, tc);
         redundancyCheck();
       } else
         clearTrace();
@@ -9221,8 +9234,8 @@ uint64_t symbolic_do_sd() {
 
   setLower(getLowerFromReg(rs2), tc);
   setUpper(getUpperFromReg(rs2), tc);
-  setStateFromReg(rs2, rs2, tc);
 
+  setStateFromReg(rs2, rs2, tc);
   redundancyCheck();
 
   pc    = pc + INSTRUCTIONSIZE;
@@ -9827,7 +9840,7 @@ void confine_sub() {
     // RS1 concrete [a-d, b-c] = [a, b] - [c, d]  -> [c, d] = [b, a] - [a-d, b-c]
     if (isConcrete(currentContext, rs1)) {
       symReg = rs2;
-      setLower(getUpper(tc_rs1) - getUpperFromReg(rd),tc);
+      setLower(getUpper(tc_rs1) - getUpperFromReg(rd), tc);
       setUpper(getLower(tc_rs1) - getLowerFromReg(rd), tc);
 
     // RS2 concrete [a-d, b-c] = [a, b] - [c, d]  -> [a, b] = [a-d, b-c] + [d, c]
