@@ -529,6 +529,7 @@ void typeWarning(uint64_t expected, uint64_t found);
 
 uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
 uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
+void      load_upperBaseAddress(uint64_t* entry);
 void      load_integer(uint64_t value);
 void      load_string(uint64_t* string);
 
@@ -2894,7 +2895,6 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   uint64_t* entry;
   uint64_t offset;
   uint64_t lower;
-  uint64_t upper;
 
   // assert: n = allocatedTemporaries
 
@@ -2902,30 +2902,44 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
   offset = getAddress(entry);
 
-  talloc();
-
   if (isSignedInteger(offset, 12)) {
-    emitLD(currentTemporary(), getScope(entry), offset);
+    talloc();
 
-    return getType(entry);
+    emitLD(currentTemporary(), getScope(entry), offset);
+    
+  } else {
+    load_upperBaseAddress(entry);
+
+    lower = getBits(offset, 0, 12);
+    
+    emitLD(currentTemporary(), currentTemporary(), signExtend(lower, 12));  
   }
 
-  lower = getBits(offset,  0, 12);
-  upper = getBits(offset, 12, 20);
+  // assert: allocatedTemporaries == n + 1
+
+  return getType(entry);
+}
+
+void load_upperBaseAddress(uint64_t* entry) {
+  uint64_t lower;
+  uint64_t upper;
+
+  // assert: n = allocatedTemporaries
+
+  lower = getBits(getAddress(entry),  0, 12);
+  upper = getBits(getAddress(entry), 12, 20);
 
   if (lower >= twoToThePowerOf(11))
     // add 1 which is effectively 2^12 to cancel sign extension of lower
     upper = upper + 1;
 
-  // calculate suitable base address
+  talloc();
+
+  // calculate base address by global pointer/frame pointer and upper part of the offset
   emitLUI(currentTemporary(), signExtend(upper, 20));
   emitADD(currentTemporary(), getScope(entry), currentTemporary());
 
-  emitLD(currentTemporary(), currentTemporary(), signExtend(lower, 12));
-
   // assert: allocatedTemporaries == n + 1
-
-  return getType(entry);
 }
 
 void load_integer(uint64_t value) {
@@ -3838,19 +3852,10 @@ void compile_statement() {
         emitSD(getScope(entry), offset, currentTemporary());
 
         tfree(1);
-      } else {
+      } else {        
+        load_upperBaseAddress(entry);
+
         lower = getBits(offset,  0, 12);
-        upper = getBits(offset, 12, 20);
-
-        if (lower >= twoToThePowerOf(11))
-          // add 1 which is effectively 2^12 to cancel sign extension of lower
-          upper = upper + 1;
-
-        talloc();
-
-        // calculate suitable base address
-        emitLUI(currentTemporary(), signExtend(upper, 20));
-        emitADD(currentTemporary(), getScope(entry), currentTemporary());
 
         emitSD(currentTemporary(), signExtend(lower, 12), previousTemporary());
 
