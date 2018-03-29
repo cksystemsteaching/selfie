@@ -1101,8 +1101,7 @@ void initSymbolicEngine();
 
 void printSymbolicMemory(uint64_t svc);
 
-uint64_t cardinality(uint64_t lo, uint64_t up);
-uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
+uint64_t isWOverflow(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg);
@@ -6447,7 +6446,7 @@ void constrain_add() {
     *(reg_typ + rd) = 0;
 
     // interval semantics of add
-    if (combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
+    if (isWOverflow(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2))) {
       *(reg_los + rd) = 0;
       *(reg_ups + rd) = UINT64_MAX;
     } else {
@@ -6551,7 +6550,7 @@ void constrain_sub() {
     *(reg_typ + rd) = 0;
 
     // interval semantics of sub
-    if (combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
+    if (isWOverflow(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2))) {
       *(reg_los + rd) = 0;
       *(reg_ups + rd) = UINT64_MAX;
     } else {
@@ -7602,26 +7601,19 @@ void printSymbolicMemory(uint64_t svc) {
   println();
 }
 
-uint64_t cardinality(uint64_t lo, uint64_t up) {
-  // there are 2^64 values if the result is 0
-  return up - lo + 1;
-}
-
-uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
+uint64_t isWOverflow(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
   uint64_t c1;
   uint64_t c2;
 
-  c1 = cardinality(lo1, up1);
-  c2 = cardinality(lo2, up2);
+  c1 = up1 - lo1;
+  c2 = up2 - lo2;
 
-  if (c1 + c2 <= c1)
-    // there are at least 2^64 values
-    return 0;
-  else if (c1 + c2 <= c2)
-    // there are at least 2^64 values
-    return 0;
-  else
-    return c1 + c2;
+  // there are at least 2^64 values
+  if(UINT64_MAX == c1)  return 1;
+  if(UINT64_MAX == c2)  return 1;
+  if(c1 + c2 < c1)      return 1;
+  // there are less than 2^64 values
+  return 0;
 }
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
