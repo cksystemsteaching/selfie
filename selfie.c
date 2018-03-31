@@ -1312,8 +1312,6 @@ void resetMicrokernel() {
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
 
-void initKernel();
-
 uint64_t pavailable();
 uint64_t pused();
 
@@ -1349,19 +1347,18 @@ uint64_t* MY_CONTEXT = (uint64_t*) 0;
 uint64_t DONOTEXIT = 0;
 uint64_t EXIT = 1;
 
-// signed 32-bit exit codes [int]
 uint64_t EXITCODE_NOERROR = 0;
-uint64_t EXITCODE_BADARGUMENTS;
-uint64_t EXITCODE_IOERROR;
-uint64_t EXITCODE_SCANNERERROR;
-uint64_t EXITCODE_PARSERERROR;
-uint64_t EXITCODE_COMPILERERROR;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY;
-uint64_t EXITCODE_DIVISIONBYZERO;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION;
-uint64_t EXITCODE_UNKNOWNSYSCALL;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION;
+uint64_t EXITCODE_BADARGUMENTS = -1;
+uint64_t EXITCODE_IOERROR = -2;
+uint64_t EXITCODE_SCANNERERROR = -3;
+uint64_t EXITCODE_PARSERERROR = -4;
+uint64_t EXITCODE_COMPILERERROR = -5;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY = -6;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY = -7;
+uint64_t EXITCODE_DIVISIONBYZERO = -8;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION = -9;
+uint64_t EXITCODE_UNKNOWNSYSCALL = -10;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION = -11;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1377,22 +1374,6 @@ uint64_t nextPageFrame = 0;
 
 uint64_t usedPageFrameMemory = 0;
 uint64_t freePageFrameMemory = 0;
-
-// ------------------------- INITIALIZATION ------------------------
-
-void initKernel() {
-  EXITCODE_BADARGUMENTS = signShrink(-1, SYSCALL_BITWIDTH);
-  EXITCODE_IOERROR = signShrink(-2, SYSCALL_BITWIDTH);
-  EXITCODE_SCANNERERROR = signShrink(-3, SYSCALL_BITWIDTH);
-  EXITCODE_PARSERERROR = signShrink(-4, SYSCALL_BITWIDTH);
-  EXITCODE_COMPILERERROR = signShrink(-5, SYSCALL_BITWIDTH);
-  EXITCODE_OUTOFVIRTUALMEMORY = signShrink(-6, SYSCALL_BITWIDTH);
-  EXITCODE_OUTOFPHYSICALMEMORY = signShrink(-7, SYSCALL_BITWIDTH);
-  EXITCODE_DIVISIONBYZERO = signShrink(-8, SYSCALL_BITWIDTH);
-  EXITCODE_UNKNOWNINSTRUCTION = signShrink(-9, SYSCALL_BITWIDTH);
-  EXITCODE_UNKNOWNSYSCALL = signShrink(-10, SYSCALL_BITWIDTH);
-  EXITCODE_UNCAUGHTEXCEPTION = signShrink(-11, SYSCALL_BITWIDTH);
-}
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -5307,7 +5288,7 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  setExitCode(context, *(getRegs(context) + REG_A0));
+  setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -8394,7 +8375,6 @@ uint64_t selfie() {
     initScanner();
     initRegister();
     initInterpreter();
-    initKernel();
 
     while (numberOfRemainingArguments() > 0) {
       option = getArgument();
@@ -8449,5 +8429,5 @@ uint64_t main(uint64_t argc, uint64_t* argv) {
 
   initLibrary();
 
-  return signShrink(selfie(), SYSCALL_BITWIDTH);
+  return selfie();
 }
