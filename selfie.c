@@ -529,6 +529,7 @@ void typeWarning(uint64_t expected, uint64_t found);
 
 uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
 uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
+void      load_upperBaseAddress(uint64_t* entry);
 void      load_integer(uint64_t value);
 void      load_string(uint64_t* string);
 
@@ -2892,27 +2893,53 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
 uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   uint64_t* entry;
+  uint64_t offset;
+  uint64_t lower;
 
   // assert: n = allocatedTemporaries
 
   entry = getVariableOrBigInt(variableOrBigInt, class);
 
-  if (isSignedInteger(getAddress(entry), 12)) {
+  offset = getAddress(entry);
+
+  if (isSignedInteger(offset, 12)) {
     talloc();
 
-    emitLD(currentTemporary(), getScope(entry), getAddress(entry));
+    emitLD(currentTemporary(), getScope(entry), offset);
+    
+  } else {
+    load_upperBaseAddress(entry);
 
-    return getType(entry);
+    lower = getBits(offset, 0, 12);
+    
+    emitLD(currentTemporary(), currentTemporary(), signExtend(lower, 12));  
   }
-
-  load_integer(getAddress(entry));
-
-  emitADD(currentTemporary(), getScope(entry), currentTemporary());
-  emitLD(currentTemporary(), currentTemporary(), 0);
 
   // assert: allocatedTemporaries == n + 1
 
   return getType(entry);
+}
+
+void load_upperBaseAddress(uint64_t* entry) {
+  uint64_t lower;
+  uint64_t upper;
+
+  // assert: n = allocatedTemporaries
+
+  lower = getBits(getAddress(entry),  0, 12);
+  upper = getBits(getAddress(entry), 12, 20);
+
+  if (lower >= twoToThePowerOf(11))
+    // add 1 which is effectively 2^12 to cancel sign extension of lower
+    upper = upper + 1;
+
+  talloc();
+
+  // calculate base address by global pointer/frame pointer and upper part of the offset
+  emitLUI(currentTemporary(), signExtend(upper, 20));
+  emitADD(currentTemporary(), getScope(entry), currentTemporary());
+
+  // assert: allocatedTemporaries == n + 1
 }
 
 void load_integer(uint64_t value) {
@@ -3692,6 +3719,8 @@ void compile_statement() {
   uint64_t* variableOrProcedureName;
   uint64_t* entry;
   uint64_t offset;
+  uint64_t lower;
+  uint64_t upper;
 
   // assert: allocatedTemporaries == 0
 
@@ -3823,11 +3852,12 @@ void compile_statement() {
         emitSD(getScope(entry), offset, currentTemporary());
 
         tfree(1);
-      } else {
-        load_integer(offset);
+      } else {        
+        load_upperBaseAddress(entry);
 
-        emitADD(currentTemporary(), getScope(entry), currentTemporary());
-        emitSD(currentTemporary(), 0, previousTemporary());
+        lower = getBits(offset,  0, 12);
+
+        emitSD(currentTemporary(), signExtend(lower, 12), previousTemporary());
 
         tfree(2);
       }
