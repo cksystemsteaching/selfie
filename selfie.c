@@ -1453,7 +1453,7 @@ uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 
-uint64_t cardinality(uint64_t reg);
+uint64_t cardinalityCheck(uint64_t reg1, uint64_t reg2);
 
 // ------------------------------ PRINT ----------------------------
 
@@ -8787,9 +8787,21 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2) {
   return 1;
 }
 
-uint64_t cardinality(uint64_t reg) {
-  // returns 0 iff |[lower,upper]| = 2^64
-  return getUpperFromReg(reg) - getLowerFromReg(reg) + 1;
+uint64_t cardinalityCheck(uint64_t reg1, uint64_t reg2) {
+  uint64_t diff1;
+  uint64_t diff2;
+
+  diff1 = getUpperFromReg(reg1) - getLowerFromReg(reg1);
+  diff2 = getUpperFromReg(reg2) - getLowerFromReg(reg2);
+
+  if (diff1 == UINT64_MAX)
+    return 0;
+  else if (diff2 == UINT64_MAX)
+    return 0;
+  else if (diff1 + diff2 < diff1)
+    return 0;
+
+  return 1;
 }
 
 // ------------------------------ PRINT ----------------------------
@@ -8854,11 +8866,8 @@ void symbolic_do_addi() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    if (cardinality(rs1) + 1 >= cardinality(rs1)) {
-      setLower(getLowerFromReg(rs1) + imm, tc);
-      setUpper(getUpperFromReg(rs1) + imm, tc);
-    } else
-      setMaximum();
+    setLower(getLowerFromReg(rs1) + imm, tc);
+    setUpper(getUpperFromReg(rs1) + imm, tc);
 
     setStateFromReg(rs1, rs1, tc);
     redundancyCheck();
@@ -8877,7 +8886,7 @@ void symbolic_do_add() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    if (cardinality(rs1) + cardinality(rs2) >= cardinality(rs1)) {
+    if (cardinalityCheck(rs1, rs2)) {
       setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
     } else
@@ -8901,7 +8910,7 @@ void symbolic_do_sub() {
 
   if (rd != REG_ZR) {
     // [a, b] - [c, d] = [a - d, b - c]
-    if (cardinality(rs1) + cardinality(rs2) >= cardinality(rs1)) {
+    if (cardinalityCheck(rs1, rs2)) {
       setLower(getLowerFromReg(rs1) - getUpperFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs1) - getLowerFromReg(rs2), tc);
     } else
@@ -8925,6 +8934,9 @@ void symbolic_do_mul() {
 
   if (rd != REG_ZR) {
     forcePrecise(currentContext, rs1, rs2);
+
+    // sTODO: implement cardinality check like:
+    // if (b*d - a*c >= 2^64) return [0,MAX]
 
     setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
@@ -10132,7 +10144,7 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 
     // else with wrap-around
     } else {
-      // constrain with upper wrap-around - only lower needs to be calculated
+      // constrain with upper wrap-around -> only lower needs to be calculated
       if (getLower(fromTc) > getUpper(withTc)) {
         constrainLowerBound(fromTc, withTc);
         setUpper(getUpper(withTc), tc);
