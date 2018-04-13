@@ -1435,6 +1435,7 @@ void initKernel() {
 uint64_t CONCRETE    = 0;
 uint64_t SYMBOLIC    = 1;
 uint64_t CONSTRAINED = 2;
+uint64_t UNSATISFIABLE = 3;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1454,6 +1455,7 @@ uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 
 uint64_t cardinalityCheck(uint64_t reg1, uint64_t reg2);
+uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 
 // ------------------------------ PRINT ----------------------------
 
@@ -8804,6 +8806,14 @@ uint64_t cardinalityCheck(uint64_t reg1, uint64_t reg2) {
   return 1;
 }
 
+uint64_t sameCardinality(uint64_t tc1, uint64_t tc2) {
+  print("-----------------------------------------------------------------------------------------------");println();
+  printInteger(getUpper(tc1) - getLower(tc1) + 1); println();
+  printInteger(getUpper(tc2) - getLower(tc2) + 1); println();
+  print("-----------------------------------------------------------------------------------------------");println();
+  return (getUpper(tc1) - getLower(tc1) + 1) == (getUpper(tc2) - getLower(tc2) + 1);
+}
+
 // ------------------------------ PRINT ----------------------------
 
 void printTrace() {
@@ -9633,7 +9643,7 @@ uint64_t prepareNextPath(uint64_t* context) {
 }
 
 void checkSatisfiability(uint64_t tc) {
-  if (getLower(tc) > getUpper(tc)) {
+  if (getState(tc) == UNSATISFIABLE) {
     print(selfieName);
     print((uint64_t*) ": symbolic value [");
     printInteger(getLower(tc));
@@ -9654,6 +9664,11 @@ void checkSatisfiability(uint64_t tc) {
 }
 
 // ---------------------------- UTILITIES --------------------------
+
+// CONCRETE = 0;
+// SYMBOLIC = 1;
+// CONSTRAINED = 2;
+// UNSATISFIABLE = 3;
 
 void setState(uint64_t tc1, uint64_t tc2, uint64_t atTc) {
   if (getState(tc1) < getState(tc2))
@@ -10124,8 +10139,16 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
 
   invalidOverlap = 0;
 
+  // confine onto [0,MAX]
+  if (getUpper(fromTc) - getLower(fromTc) + 1 == 0) {
+    setLower(getLower(withTc), tc);
+    setUpper(getUpper(withTc), tc);
+
+    setStateFlag(CONSTRAINED, tc);
+    return;
+
   // one wrap-around
-  if (numberOfWrappedArounds(fromTc, withTc) == 1) {
+  } else if (numberOfWrappedArounds(fromTc, withTc) == 1) {
 
     // from wrap-around
     if (getLower(fromTc) > getUpper(fromTc)) {
@@ -10167,15 +10190,19 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
     print(selfieName);
     print((uint64_t*) ": execution imprecise at pc= ");
     printHexadecimal(pc, 0);
-    print((uint64_t*) " with ");
+    print((uint64_t*) " when syncing ");
     printValues(fromTc);
-    print((uint64_t*) " ");
+    print((uint64_t*) " with ");
     printValues(withTc);
     println();
 
     throwException(EXCEPTION_IMPRECISE, 0);
   }
-  setStateFlag(CONSTRAINED, tc);
+
+  if (getUpper(tc) < getLower(tc))
+    setStateFlag(UNSATISFIABLE, tc);
+  else
+    setStateFlag(CONSTRAINED, tc);
 }
 
 void constrainLowerBound(uint64_t fromTc, uint64_t withTc) {
