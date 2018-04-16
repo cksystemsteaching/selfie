@@ -8807,8 +8807,16 @@ uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2) {
     return 0;
   else if (diff2 == UINT64_MAX)
     return 0;
-  else if (diff1 + diff2 < diff1)
+  else if (diff1 + diff2 < diff1) {
+    print(selfieName);
+    print((uint64_t*) ": interval becomes too large at pc=");
+    printHexadecimal(pc, 0);
+    print((uint64_t*) " with two symbolic values");
+    println();
+
+    throwException(EXCEPTION_IMPRECISE, 0);
     return 0;
+  }
 
   return 1;
 }
@@ -9074,7 +9082,7 @@ void symbolic_do_remu() {
 
 void symbolic_do_sltu() {
   // @push: either [1,1] or [0,0],
-  //        or [a,b], [c,d] and [1,1]
+  //        or [a,b], [0,0], [c,d] and [1,1]
   //        with a,b,c,d as respective constraints
   uint64_t tc_rs1;
   uint64_t tc_rs2;
