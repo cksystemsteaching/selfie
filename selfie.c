@@ -8873,6 +8873,9 @@ void iterative_mul() {
       con_val = getLowerFromReg(rs2);
     }
 
+    // just to be safe
+    setConcrete(0);
+
     if (con_val == 0)
       setConcrete(0);
     else if (cardinality(sym_tc) == 0)
