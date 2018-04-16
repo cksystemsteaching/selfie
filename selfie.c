@@ -1432,9 +1432,9 @@ void initKernel() {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t CONCRETE    = 0;
-uint64_t SYMBOLIC    = 1;
-uint64_t CONSTRAINED = 2;
+uint64_t CONCRETE      = 0;
+uint64_t SYMBOLIC      = 1;
+uint64_t CONSTRAINED   = 2;
 uint64_t UNSATISFIABLE = 3;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1454,8 +1454,8 @@ uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 
-uint64_t cardinalityCheck(uint64_t reg1, uint64_t reg2);
-uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
+uint64_t cardinality(uint64_t tc);
+uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2);
 
 // ------------------------------ PRINT ----------------------------
 
@@ -1465,6 +1465,8 @@ void printValues(uint64_t tc);
 // -----------------------------------------------------------------
 // ------------------ SYMBOLIC FORWARD EXECUTION -------------------
 // -----------------------------------------------------------------
+
+void iterative_mul();
 
 void symbolic_do_lui();
 void symbolic_do_addi();
@@ -8789,12 +8791,17 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2) {
   return 1;
 }
 
-uint64_t cardinalityCheck(uint64_t reg1, uint64_t reg2) {
+uint64_t cardinality(uint64_t tc) {
+  // returns 0 iff |[lower,upper]| = 2^64
+  return getUpper(tc) - getLower(tc) + 1;
+}
+
+uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2) {
   uint64_t diff1;
   uint64_t diff2;
 
-  diff1 = getUpperFromReg(reg1) - getLowerFromReg(reg1);
-  diff2 = getUpperFromReg(reg2) - getLowerFromReg(reg2);
+  diff1 = getUpper(tc1) - getLower(tc1);
+  diff2 = getUpper(tc2) - getLower(tc2);
 
   if (diff1 == UINT64_MAX)
     return 0;
@@ -8804,14 +8811,6 @@ uint64_t cardinalityCheck(uint64_t reg1, uint64_t reg2) {
     return 0;
 
   return 1;
-}
-
-uint64_t sameCardinality(uint64_t tc1, uint64_t tc2) {
-  print("-----------------------------------------------------------------------------------------------");println();
-  printInteger(getUpper(tc1) - getLower(tc1) + 1); println();
-  printInteger(getUpper(tc2) - getLower(tc2) + 1); println();
-  print("-----------------------------------------------------------------------------------------------");println();
-  return (getUpper(tc1) - getLower(tc1) + 1) == (getUpper(tc2) - getLower(tc2) + 1);
 }
 
 // ------------------------------ PRINT ----------------------------
@@ -8853,6 +8852,47 @@ void printValues(uint64_t tc) {
 // -----------------------------------------------------------------
 // ------------------ SYMBOLIC FORWARD EXECUTION -------------------
 // -----------------------------------------------------------------
+
+void iterative_mul() {
+  uint64_t sym_tc;
+  uint64_t con_val;
+
+  // assert: at least one register is concrete
+
+  if (areSourceRegsConcrete()) {
+    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
+    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+  }
+  else {
+    if (isConcrete(currentContext, rs1)) {
+      sym_tc = *(registers + rs2);
+      con_val = getLowerFromReg(rs1);
+    }
+    else {
+      sym_tc = *(registers + rs1);
+      con_val = getLowerFromReg(rs2);
+    }
+
+    if (con_val == 0)
+      setConcrete(0);
+    else if (cardinality(sym_tc) == 0)
+      setMaximum();
+    else {
+      while (con_val > 0) {
+        if (cardinalityCheck(tc, sym_tc)) {
+          setLower(getLower(tc) + getLower(sym_tc), tc);
+          setUpper(getUpper(tc) + getUpper(sym_tc), tc);
+
+          con_val = con_val - 1;
+        }
+        else {
+          setMaximum();
+          return;
+        }
+      }
+    }
+  }
+}
 
 void symbolic_do_lui() {
   // @push: RD
@@ -8896,7 +8936,7 @@ void symbolic_do_add() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
-    if (cardinalityCheck(rs1, rs2)) {
+    if (cardinalityCheck(*(registers + rs1), *(registers + rs2))) {
       setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
     } else
@@ -8920,7 +8960,7 @@ void symbolic_do_sub() {
 
   if (rd != REG_ZR) {
     // [a, b] - [c, d] = [a - d, b - c]
-    if (cardinalityCheck(rs1, rs2)) {
+    if (cardinalityCheck(*(registers + rs1), *(registers + rs2))) {
       setLower(getLowerFromReg(rs1) - getUpperFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs1) - getLowerFromReg(rs2), tc);
     } else
@@ -8945,11 +8985,8 @@ void symbolic_do_mul() {
   if (rd != REG_ZR) {
     forcePrecise(currentContext, rs1, rs2);
 
-    // sTODO: implement cardinality check like:
-    // if (b*d - a*c >= 2^64) return [0,MAX]
-
-    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+    // sets [0,MAX] if (b*d - a*c >= 2^64)
+    iterative_mul();
 
     setStateFromReg(rs1, rs2, tc);
     redundancyCheck();
@@ -9665,12 +9702,8 @@ void checkSatisfiability(uint64_t tc) {
 
 // ---------------------------- UTILITIES --------------------------
 
-// CONCRETE = 0;
-// SYMBOLIC = 1;
-// CONSTRAINED = 2;
-// UNSATISFIABLE = 3;
-
 void setState(uint64_t tc1, uint64_t tc2, uint64_t atTc) {
+  // strict total order of state depends on priority 
   if (getState(tc1) < getState(tc2))
     setStateFlag(getState(tc2), atTc);
   else
@@ -10140,7 +10173,7 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
   invalidOverlap = 0;
 
   // confine onto [0,MAX]
-  if (getUpper(fromTc) - getLower(fromTc) + 1 == 0) {
+  if (cardinality(fromTc) == 0) {
     setLower(getLower(withTc), tc);
     setUpper(getUpper(withTc), tc);
 
