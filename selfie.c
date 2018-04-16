@@ -10197,6 +10197,12 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
       } else if (getUpper(withTc) < getLower(fromTc)) {
         constrainUpperBound(fromTc, withTc);
         setLower(getLower(withTc), tc);
+
+      // symbolic value is already unsatisfiable
+      } else if (getState(fromTc) == UNSATISFIABLE) {
+        setLower(getLower(fromTc), tc);
+        setUpper(getUpper(fromTc), tc);
+
       // overlapping wrap-around
       } else
         invalidOverlap = 1;
@@ -10212,6 +10218,11 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
       } else if (getUpper(fromTc) < getLower(withTc)) {
         constrainUpperBound(fromTc, withTc);
         setLower(getLower(withTc), tc);
+
+      // symbolic value is already unsatisfiable
+      } else if (getState(fromTc) == UNSATISFIABLE) {
+        setLower(getLower(fromTc), tc);
+        setUpper(getUpper(fromTc), tc);
 
       } else
         invalidOverlap = 1;
