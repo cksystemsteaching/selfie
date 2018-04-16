@@ -1070,9 +1070,7 @@ void     printRegisterHexadecimal(uint64_t r);
 uint64_t isSystemRegister(uint64_t r);
 void     printRegisterValue(uint64_t r);
 void     printRegisterValues();
-void     printRegisterTc(uint64_t r);
 void     printMemoryValue(uint64_t vaddr);
-void     printMemoryTc(uint64_t vaddr);
 
 void printException(uint64_t exception, uint64_t faultingPage);
 void throwException(uint64_t exception, uint64_t faultingPage);
@@ -6388,13 +6386,11 @@ void print_lui_before() {
   println();
   print((uint64_t*) ": |- ");
   printRegisterHexadecimal(rd);
-  printRegisterTc(rd);
 }
 
 void print_lui_after() {
   print((uint64_t*) " -> ");
   printRegisterHexadecimal(rd);
-  printRegisterTc(rd);
 }
 
 void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
@@ -6442,13 +6438,11 @@ void print_addi_before() {
   printRegisterValue(rs1);
   print((uint64_t*) " |- ");
   printRegisterValue(rd);
-  printRegisterTc(rd);
 }
 
 void print_addi_add_sub_mul_divu_remu_sltu_after() {
   print((uint64_t*) " -> ");
   printRegisterValue(rd);
-  printRegisterTc(rd);
 }
 
 void do_addi() {
@@ -6483,7 +6477,6 @@ void print_add_sub_mul_divu_remu_sltu_before() {
   printRegisterValue(rs2);
   print((uint64_t*) " |- ");
   printRegisterValue(rd);
-  printRegisterTc(rd);
 }
 
 void do_add() {
@@ -6599,7 +6592,6 @@ void print_ld_before() {
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
       printMemoryValue(vaddr);
-      printMemoryTc(vaddr);
       return;
     }
   print((uint64_t*) " |-");
@@ -6613,7 +6605,6 @@ void print_ld_after(uint64_t vaddr) {
       print((uint64_t*) "=mem[");
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]");
-      printRegisterTc(rd);
     }
 }
 
@@ -6688,10 +6679,7 @@ void print_sd() {
 void print_sd_before() {
   uint64_t vaddr;
 
-  if (symbolic)
-    vaddr = getLowerFromReg(rs1) + imm;
-  else
-    vaddr = *(registers + rs1) + imm;
+  vaddr = *(registers + rs1) + imm;
 
   println();
   print((uint64_t*) ": ");
@@ -6705,11 +6693,8 @@ void print_sd_before() {
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
       printMemoryValue(vaddr);
-      printMemoryTc(vaddr);
-
       return;
     }
-
 
   print((uint64_t*) " |-");
 }
@@ -6721,7 +6706,6 @@ void print_sd_after(uint64_t vaddr) {
       printHexadecimal(vaddr, 0);
       print((uint64_t*) "]=");
       printRegisterValue(rs2);
-      printMemoryTc(vaddr);
     }
 }
 
@@ -6835,7 +6819,6 @@ void print_jal_before() {
   print((uint64_t*) ": |- ");
   if (rd != REG_ZR) {
     printRegisterHexadecimal(rd);
-    printRegisterTc(rd);
     print((uint64_t*) ",");
   }
   print((uint64_t*) "$pc=");
@@ -6848,7 +6831,6 @@ void print_jal_jalr_after() {
     print((uint64_t*) ",");
     printRegisterHexadecimal(rd);
   }
-  printRegisterTc(rd);
 }
 
 void do_jal() {
@@ -6909,7 +6891,6 @@ void print_jalr_before() {
   }
   print((uint64_t*) "$pc=");
   printHexadecimal(pc, 0);
-  printRegisterTc(rd);
 }
 
 void do_jalr() {
@@ -6945,13 +6926,11 @@ void print_ecall_before() {
   println();
   print((uint64_t*) ": |- ");
   printRegisterHexadecimal(REG_A0);
-  printRegisterTc(REG_A0);
 }
 
 void print_ecall_after() {
   print((uint64_t*) " -> ");
   printRegisterHexadecimal(REG_A0);
-  printRegisterTc(REG_A0);
 }
 
 void record_ecall() {
@@ -7062,13 +7041,6 @@ void printRegisterValues() {
   }
 }
 
-void printRegisterTc(uint64_t r) {
-  if (symbolic) {
-    print((uint64_t*) ",tc:");
-    printInteger(*(registers + r));
-  }
-}
-
 void printMemoryValue(uint64_t vaddr) {
   if (isSystemRegister(rd)) {
     if (symbolic) {
@@ -7088,13 +7060,6 @@ void printMemoryValue(uint64_t vaddr) {
       print((uint64_t*) "]");
     } else
       printInteger(loadVirtualMemory(pt, vaddr));
-  }
-}
-
-void printMemoryTc(uint64_t vaddr) {
-  if (symbolic) {
-    print((uint64_t*) ",tc:");
-    printInteger(loadVirtualMemory(pt, vaddr));
   }
 }
 
@@ -7153,10 +7118,7 @@ void decode_execute() {
           print_addi();
           if (execute) {
             print_addi_before();
-            if (symbolic)
-              symbolic_do_addi();
-            else
-              do_addi();
+            do_addi();
             print_addi_add_sub_mul_divu_remu_sltu_after();
           }
           println();
@@ -7187,11 +7149,7 @@ void decode_execute() {
           print_ld();
           if (execute) {
             print_ld_before();
-            if (symbolic)
-              vaddr = symbolic_do_ld();
-            else
-              vaddr = do_ld();
-
+            vaddr = do_ld();
             print_ld_after(vaddr);
           }
           println();
@@ -7222,10 +7180,7 @@ void decode_execute() {
           print_sd();
           if (execute) {
             print_sd_before();
-            if (symbolic)
-              vaddr = symbolic_do_sd();
-            else
-              vaddr = do_sd();
+            vaddr = do_sd();
             print_sd_after(vaddr);
           }
           println();
@@ -7255,10 +7210,7 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "add");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic)
-                symbolic_do_add();
-              else
-                do_add();
+              do_add();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
@@ -7285,10 +7237,7 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "sub");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic)
-                symbolic_do_sub();
-              else
-                do_sub();
+              do_sub();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
@@ -7315,10 +7264,7 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "mul");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic)
-                symbolic_do_mul();
-              else
-                do_mul();
+              do_mul();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
@@ -7347,10 +7293,7 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "divu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic)
-                symbolic_do_divu();
-              else
-                do_divu();
+              do_divu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
@@ -7379,10 +7322,7 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "remu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic)
-                symbolic_do_remu();
-              else
-                do_remu();
+              do_remu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
@@ -7411,10 +7351,7 @@ void decode_execute() {
             print_add_sub_mul_divu_remu_sltu((uint64_t*) "sltu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
-              if (symbolic)
-                symbolic_do_sltu();
-              else
-                do_sltu();
+              do_sltu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
@@ -7444,10 +7381,7 @@ void decode_execute() {
           print_beq();
           if (execute) {
             print_beq_before();
-            if (symbolic)
-              symbolic_do_beq();
-            else
-              do_beq();
+            do_beq();
             print_beq_after();
           }
           println();
@@ -7477,10 +7411,7 @@ void decode_execute() {
         print_jal();
         if (execute) {
           print_jal_before();
-          if (symbolic)
-            symbolic_do_jal();
-          else
-            do_jal();
+          do_jal();
           print_jal_jalr_after();
         }
         println();
@@ -7510,10 +7441,7 @@ void decode_execute() {
           print_jalr();
           if (execute) {
             print_jalr_before();
-            if (symbolic)
-              symbolic_do_jalr();
-            else
-              do_jalr();
+            do_jalr();
             print_jal_jalr_after();
           }
           println();
@@ -7543,10 +7471,7 @@ void decode_execute() {
         print_lui();
         if (execute) {
           print_lui_before();
-          if (symbolic)
-            symbolic_do_lui();
-          else
-            do_lui();
+          do_lui();
           print_lui_after();
         }
         println();
@@ -7576,10 +7501,7 @@ void decode_execute() {
           print_ecall();
           if (execute) {
             print_ecall_before();
-            if (symbolic)
-              symbolic_do_ecall();
-            else
-              do_ecall();
+            do_ecall();
             print_ecall_after();
           }
           println();
@@ -9810,10 +9732,9 @@ void confine_addi() {
   uint64_t tc_rs1;
 
   if (rd != REG_ZR) {
-    // prepare value
-
     tc_rs1 = getOverwrittenOperand(rd, rs1);
 
+    // prepare value
     setLower(getLowerFromReg(rd) - imm, tc);
     setUpper(getUpperFromReg(rd) - imm, tc);
     setState(tc_rs1, tc_rs1, tc);
@@ -10675,7 +10596,7 @@ void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
   print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -r | -y | -v | -vd | -vt |-min | -mob ) size ... ]");
+  print((uint64_t*) "[ ( -m | -d | -r | -y | -v | -vt |-min | -mob ) size ... ]");
   println();
 }
 
@@ -10725,12 +10646,6 @@ uint64_t selfie() {
         return selfie_run(HYPSTER);
       else if (stringCompare(option, (uint64_t*) "-v")) {
         symbolic = 1;
-
-        return selfie_run(VIPSTER);
-      } else if (stringCompare(option, (uint64_t*) "-vd")) {
-        debug       = 1;
-        disassemble = 1;
-        symbolic    = 1;
 
         return selfie_run(VIPSTER);
       } else if (stringCompare(option, (uint64_t*) "-vt")) {
