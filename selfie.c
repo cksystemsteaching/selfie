@@ -1491,7 +1491,7 @@ uint64_t minster(uint64_t* toContext);
 uint64_t mobster(uint64_t* toContext);
 
 void     backtrackTrace(uint64_t* context);
-uint64_t numster(uint64_t* toContext);
+uint64_t monster(uint64_t* toContext);
 
 uint64_t isBootLevelZero();
 
@@ -1527,7 +1527,7 @@ uint64_t MIPSTER = 1;
 uint64_t DIPSTER = 2;
 uint64_t RIPSTER = 3;
 
-uint64_t NUMSTER = 4;
+uint64_t MONSTER = 4;
 
 uint64_t MINSTER = 5;
 uint64_t MOBSTER = 6;
@@ -9411,12 +9411,12 @@ void backtrackTrace(uint64_t* context) {
   setPC(context, pc);
 }
 
-uint64_t numster(uint64_t* toContext) {
+uint64_t monster(uint64_t* toContext) {
   uint64_t b;
   uint64_t timeout;
   uint64_t* fromContext;
 
-  print((uint64_t*) "numster");
+  print((uint64_t*) "monster");
   println();
 
   b = 0;
@@ -9499,14 +9499,14 @@ uint64_t selfie_run(uint64_t machine) {
     record = 1;
 
     initReplayEngine();
-  } else if (machine == NUMSTER) {
+  } else if (machine == MONSTER) {
     debug    = 1;
     symbolic = 1;
 
     initSymbolicEngine();
   }
 
-  if (machine == NUMSTER) {
+  if (machine == MONSTER) {
     initMemory(roundUp(maxTraceLength * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
 
     fuzz = atoi(peekArgument());
@@ -9540,8 +9540,8 @@ uint64_t selfie_run(uint64_t machine) {
     exitCode = mipster(currentContext);
   else if (machine == RIPSTER)
     exitCode = mipster(currentContext);
-  else if (machine == NUMSTER)
-    exitCode = numster(currentContext);
+  else if (machine == MONSTER)
+    exitCode = monster(currentContext);
   else if (machine == MINSTER)
     exitCode = minster(currentContext);
   else if (machine == MOBSTER)
@@ -10011,7 +10011,7 @@ uint64_t selfie() {
       else if (stringCompare(option, (uint64_t*) "-r"))
         return selfie_run(RIPSTER);
       else if (stringCompare(option, (uint64_t*) "-n"))
-        return selfie_run(NUMSTER);
+        return selfie_run(MONSTER);
       else if (stringCompare(option, (uint64_t*) "-y"))
         return selfie_run(HYPSTER);
       else if (stringCompare(option, (uint64_t*) "-min"))
