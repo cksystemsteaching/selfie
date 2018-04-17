@@ -25,15 +25,16 @@
 //    RISC-U code including itself when compiled with starc,
 // 3. a self-hosting hypervisor called hypster that provides
 //    RISC-U virtual machines that can host all of selfie,
-//    that is, starc, mipster, and hypster itself, and
-// 4. a tiny C* library called libcstar utilized by selfie.
+//    that is, starc, mipster, and hypster itself,
+// 4. a prototypical symbolic execution engine called monster
+//    that executes RISC-U code symbolically,
+// 5. a simple SAT solver that reads CNF DIMACS files, and
+// 6. a tiny C* library called libcstar utilized by selfie.
 //
 // Selfie is implemented in a single (!) file and kept minimal for simplicity.
 // There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
-// and a debugger as well as minimal operating system support in the form of
-// RISC-V system calls built into the emulator. As part of an ongoing effort,
-// there is also a simple SAT solver implemented in selfie that may eventually
-// be used in some form of self-verification.
+// and a debugger with replay as well as minimal operating system support in
+// the form of RISC-V system calls built into the emulator.
 //
 // C* is a tiny Turing-complete subset of C that includes dereferencing
 // (the * operator) but excludes composite data types, bitwise and Boolean
