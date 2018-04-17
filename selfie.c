@@ -820,7 +820,7 @@ void fixlink_relative(uint64_t fromAddress, uint64_t toAddress);
 
 uint64_t copyStringToBinary(uint64_t* s, uint64_t a);
 
-void emitGlobalsStrings();
+void emitGlobalsStringsBigIntegers();
 
 uint64_t* createELFHeader(uint64_t binaryLength);
 uint64_t  parseELFHeader(uint64_t* header);
@@ -4591,7 +4591,7 @@ void selfie_compile() {
 
   emitStart();
 
-  emitGlobalsStrings();
+  emitGlobalsStringsBigIntegers();
 
   ELF_header = createELFHeader(binaryLength);
 
@@ -5195,7 +5195,7 @@ uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
   return next;
 }
 
-void emitGlobalsStrings() {
+void emitGlobalsStringsBigIntegers() {
   uint64_t* entry;
 
   entry = global_symbol_table;
