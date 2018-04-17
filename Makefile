@@ -39,6 +39,7 @@ vipster: selfie
 	./selfie -c testfiles/two_symbolics.c -v 4
 	./selfie -c testfiles/overflow.c -v 4
 	./selfie -c testfiles/equality.c -v 4
+	./selfie -c testfiles/long_symbolic.c -v 4
 
 # Test everything
 all: test sat vipster

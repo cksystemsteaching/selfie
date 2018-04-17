@@ -6280,7 +6280,7 @@ void updateRegStateEcall(uint64_t context, uint64_t reg, uint64_t value) {
 
 void updateMemState(uint64_t vaddr, uint64_t tc) {
   // assert: valid virtual address
-  storeVirtualMemory(pt, vaddr,tc);
+  storeVirtualMemory(pt, vaddr, tc);
 
   incrementTc();
 }
@@ -9496,6 +9496,9 @@ void symbolic_undo_beq() {
 void symbolic_undo_ecall() {
   // @pop: 0+ reads/changes, REG_A0
   uint64_t vaddr;
+  uint64_t readInts;
+  uint64_t savedReadInts;
+  uint64_t tcA0;
 
   //----------------------------------------------------------------------------
   // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
@@ -9503,20 +9506,36 @@ void symbolic_undo_ecall() {
 
   // restore A0
   *(registers + REG_A0) = *(tcs + tc);
+  tcA0 = tc;
 
   // successfull syscall read (2 trace entries)
   if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
+
+    readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
+    if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
+      readInts = readInts + 1;
+    savedReadInts = readInts; // remember this for later
+
     if (hasAdditionalTraceEntry()) {
+
+      tc = tc - readInts; // start at the bottom
+
       if (tc >= executionBrk)
         numberOfSymbolics = numberOfSymbolics + 1;
       else
         numberOfSymbolics = numberOfSymbolics - 1;
-
-      tc = tc - 1;
-
-      // undo (confined) read
+      
       vaddr = getLowerFromReg(REG_A1);
-      storeVirtualMemory(pt, vaddr, *(tcs + tc));
+      while (readInts > 0) {
+        // undo (confined) read
+        storeVirtualMemory(pt, vaddr, *(tcs + tc));
+        vaddr = vaddr + SIZEOFUINT64;
+        readInts = readInts - 1;
+        tc = tc + 1;
+      }
+
+      tc = tcA0 - savedReadInts; // reset to bottom
+
     }
   }
 }
@@ -10066,28 +10085,47 @@ void confine_ecall() {
   // @push: 0+ read changes, REG_A0
   // sTODO: support more than one word reads
   uint64_t vaddr;
+  uint64_t readInts;
+  uint64_t savedReadInts;
+  uint64_t btcA0;
 
   //----------------------------------------------------------------------------
   // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
   //----------------------------------------------------------------------------
+
+  btcA0 = btc;
 
   if (getLowerFromReg(REG_A7) == SYSCALL_READ)
     // 1. save and restore bounds
     if (*(pcs + btc - 1) == pc) {
 
       vaddr = getLowerFromReg(REG_A1);
+      readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
+      if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
+        readInts = readInts + 1;
+      
+      btc = btc - readInts; // start from the bottom of read values
+      savedReadInts = readInts; // remember this for later
+      
+      while(readInts > 0) {
+        checkSatisfiability(loadVirtualMemory(pt, vaddr));
 
-      checkSatisfiability(loadVirtualMemory(pt, vaddr));
+        // undo symbolic_read
+        saveState(loadVirtualMemory(pt, vaddr));
+        updateMemState(vaddr, *(tcs + btc));
 
-      // undo symbolic_read
-      saveState(loadVirtualMemory(pt, vaddr));
-      updateMemState(vaddr, *(tcs + btc - 1));
+        readInts = readInts - 1;
+        btc = btc + 1; // count upwards
+        vaddr = vaddr + SIZEOFUINT64STAR;
+      }
+
+      btc = btcA0 - savedReadInts; // set btc to bottom again
 
       numberOfSymbolics = numberOfSymbolics - 1;
     }
   // 2. save and restore A0
   saveState(*(registers + REG_A0));
-  updateRegState(REG_A0, *(tcs + btc));
+  updateRegState(REG_A0, *(tcs + btcA0));
 
   if (*(pcs + btc - 1) == pc)
     btc = btc - 1;
