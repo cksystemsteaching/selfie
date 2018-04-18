@@ -25,10 +25,10 @@ uint64_t getChar(uint64_t * from, uint64_t at) {
 uint64_t main () {
     uint64_t * s;
     s = malloc(8);
-    read(0, s, 1);
+    read(0, s, 2);
     
     // if (*s == 120) // works
-    if (getChar(s, 0) == 'x') // doesn't
+    if (getChar(s, 1) == 'x') // doesn't
         return 0;
     else return 1;
 }

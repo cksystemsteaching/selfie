@@ -8919,7 +8919,9 @@ void symbolic_do_mul() {
     forcePrecise(currentContext, rs1, rs2);
 
     // sets [0,MAX] if (b*d - a*c >= 2^64)
-    iterative_mul();
+    // iterative_mul(); // for now
+    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);	
+    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
 
     setStateFromReg(rs1, rs2, tc);
     redundancyCheck();
