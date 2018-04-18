@@ -9994,7 +9994,16 @@ void confine_divu() {
 }
 
 void confine_remu() {
-  // sTODO
+  if (areSourceRegsConcrete()) {
+    saveState(*(registers + rd));
+    clearTrace();
+    updateRegState(rd, *(tcs + btc));
+  } else {
+    print(selfieName);
+    print((uint64_t*) ": symbolic remainder not supported");
+    println();
+    throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
+  }
 }
 
 void confine_sltu() {
