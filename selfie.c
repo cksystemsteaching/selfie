@@ -142,6 +142,8 @@ void printHexadecimal(uint64_t n, uint64_t a);
 void printOctal(uint64_t n, uint64_t a);
 void printBinary(uint64_t n, uint64_t a);
 
+void printSymbolicString(uint64_t vaddr, uint64_t length, uint64_t * pt);
+
 uint64_t roundUp(uint64_t n, uint64_t m);
 
 uint64_t* smalloc(uint64_t size);
@@ -2158,6 +2160,25 @@ void printOctal(uint64_t n, uint64_t a) {
 
 void printBinary(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 2, a, 0));
+}
+
+void printSymbolicString(uint64_t vaddr, uint64_t length, uint64_t * pt) {
+  uint64_t up;
+  uint64_t lo;
+  uint64_t i;
+  i = 0;
+
+  while (i < length) {
+    up = getBits(getUpper(loadVirtualMemory(pt, vaddr + (i / SIZEOFUINT64) * 8)), (i % SIZEOFUINT64) * 8, 8);
+    lo = getBits(getLower(loadVirtualMemory(pt, vaddr + (i / SIZEOFUINT64) * 8)), (i % SIZEOFUINT64) * 8, 8);
+
+    if (up == lo)
+      printCharacter(up);
+    else
+      print((uint64_t *) "'='");
+
+    i = i + 1;
+  }
 }
 
 uint64_t roundUp(uint64_t n, uint64_t m) {
@@ -10117,6 +10138,11 @@ void confine_ecall() {
       
       btc = btc - readInts; // start from the bottom of read values
       savedReadInts = readInts; // remember this for later
+
+      // also prints when UNSAT
+      // print((uint64_t*) "input: ");
+      // printSymbolicString(vaddr, getLowerFromReg(REG_A0), pt);
+      // println();
       
       while(readInts > 0) {
         checkSatisfiability(loadVirtualMemory(pt, vaddr));
