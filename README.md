@@ -6,7 +6,7 @@ The Selfie Project provides an educational platform for teaching undergraduate a
 
 There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
 
-Selfie is a self-contained 8k-line, 64-bit C implementation of:
+Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to
@@ -15,15 +15,13 @@ Selfie is a self-contained 8k-line, 64-bit C implementation of:
    RISC-U code including itself when compiled with starc,
 3. a self-hosting hypervisor called hypster that provides
    RISC-U virtual machines that can host all of selfie,
-   that is, starc, mipster, and hypster itself, and
-4. a tiny C* library called libcstar utilized by selfie.
+   that is, starc, mipster, and hypster itself,
+4. a prototypical symbolic execution engine called monster
+   that executes RISC-U code symbolically,
+5. a simple SAT solver that reads CNF DIMACS files, and
+6. a tiny C* library called libcstar utilized by selfie.
 
-Selfie is implemented in a single (!) file and kept minimal for simplicity.
-There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
-and a debugger as well as minimal operating system support in the form of
-RISC-V system calls built into the emulator. As part of an ongoing effort,
-there is also a simple SAT solver implemented in selfie that may eventually
-be used in some form of self-verification.
+Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support in the form of RISC-V system calls built into the emulator.
 
 For further information and support please refer to [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
@@ -50,7 +48,7 @@ and compile `selfie.c` into an executable called `selfie` as directed by the `-o
 Once you have successfully compiled selfie you may invoke it in your terminal according to the following pattern:
 
 ```bash
-./selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ (-m | -d | -y | -min | -mob ) size ... ]
+./selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
 ```
 
 The order in which the options are provided matters for taking full advantage of self-referentiality.
@@ -65,7 +63,13 @@ The `-l` option loads RISC-U code from the given `binary` file. The `-o` and `-s
 
 The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The current implementation is naive and only works on small instances.
 
-The `-m` option invokes the mipster emulator to execute RISC-U code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `size` MB of memory. The `source` or `binary` name of the RISC-U code and any remaining `...` arguments are passed to the main function of the code. The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state.
+The `-m` option invokes the mipster emulator to execute RISC-U code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `0-64` MB of memory. The `source` or `binary` name of the RISC-U code and any remaining `...` arguments are passed to the main function of the code.
+
+The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state.
+
+Alternatively, the `-r` option limits the amount of output created with the `-d` option by having mipster merely replay code execution when runtime errors such as division by zero occur. In this case, mipster outputs only the instructions that were executed right before the error occurred.
+
+The `-n` option invokes the symbolic execution engine which interprets the `0-64` value as fuzzing parameter. Value `0` means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The `64` value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value. Note that the current implementation is incomplete and buggy.
 
 The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code.
 
