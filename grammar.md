@@ -57,15 +57,12 @@ call             = identifier "(" [ expression { "," expression } ] ")" .
 
 expression       = simpleExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simpleExpression ] .
 
-simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
+simpleExpression = term { ( "+" | "-" ) term } .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .
 
-factor           = [ cast ]
-                    ( [ "*" ] ( identifier | "(" expression ")" ) |
-                      call |
-                      literal |
-                      string ) .
+factor           = [ cast ] [ "-" ] [ "*" ]
+                    ( identifier | call | literal | string | "(" expression ")" ) .
 
 while            = "while" "(" expression ")"
                              ( statement |

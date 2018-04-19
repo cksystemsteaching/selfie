@@ -2872,9 +2872,9 @@ uint64_t isComparison() {
 }
 
 uint64_t lookForFactor() {
-  if (symbol == SYM_LPARENTHESIS)
+  if (symbol == SYM_ASTERISK)
     return 0;
-  else if (symbol == SYM_ASTERISK)
+  else if (symbol == SYM_MINUS)
     return 0;
   else if (symbol == SYM_IDENTIFIER)
     return 0;
@@ -2883,6 +2883,8 @@ uint64_t lookForFactor() {
   else if (symbol == SYM_CHARACTER)
     return 0;
   else if (symbol == SYM_STRING)
+    return 0;
+  else if (symbol == SYM_LPARENTHESIS)
     return 0;
   else if (symbol == SYM_EOF)
     return 0;
@@ -3337,14 +3339,11 @@ uint64_t compile_factor() {
   uint64_t hasCast;
   uint64_t cast;
   uint64_t type;
-
+  uint64_t negative;
+  uint64_t dereference;
   uint64_t* variableOrProcedureName;
 
   // assert: n = allocatedTemporaries
-
-  hasCast = 0;
-
-  type = UINT64_T;
 
   while (lookForFactor()) {
     syntaxErrorUnexpected();
@@ -3355,7 +3354,7 @@ uint64_t compile_factor() {
       getSymbol();
   }
 
-  // optional cast: [ cast ]
+  // optional: [ cast ]
   if (symbol == SYM_LPARENTHESIS) {
     getSymbol();
 
@@ -3383,41 +3382,31 @@ uint64_t compile_factor() {
 
       return type;
     }
-  }
+  } else
+    hasCast = 0;
 
-  // dereference?
-  if (symbol == SYM_ASTERISK) {
+  // optional: -
+  if (symbol == SYM_MINUS) {
+    negative = 1;
+
+    integerIsSigned = 1;
+
     getSymbol();
 
-    // ["*"] identifier
-    if (symbol == SYM_IDENTIFIER) {
-      type = load_variableOrBigInt(identifier, VARIABLE);
+    integerIsSigned = 0;
+  } else
+    negative = 0;
 
-      getSymbol();
+  // optional: dereference
+  if (symbol == SYM_ASTERISK) {
+    dereference = 1;
 
-    // * "(" expression ")"
-    } else if (symbol == SYM_LPARENTHESIS) {
-      getSymbol();
+    getSymbol();
+  } else
+    dereference = 0;
 
-      type = compile_expression();
-
-      if (symbol == SYM_RPARENTHESIS)
-        getSymbol();
-      else
-        syntaxErrorSymbol(SYM_RPARENTHESIS);
-    } else
-      syntaxErrorUnexpected();
-
-    if (type != UINT64STAR_T)
-      typeWarning(UINT64STAR_T, type);
-
-    // dereference
-    emitLD(currentTemporary(), currentTemporary(), 0);
-
-    type = UINT64_T;
-
-  // identifier?
-  } else if (symbol == SYM_IDENTIFIER) {
+  // identifier or call?
+  if (symbol == SYM_IDENTIFIER) {
     variableOrProcedureName = identifier;
 
     getSymbol();
@@ -3476,8 +3465,31 @@ uint64_t compile_factor() {
       getSymbol();
     else
       syntaxErrorSymbol(SYM_RPARENTHESIS);
-  } else
+  } else {
     syntaxErrorUnexpected();
+
+    type = UINT64_T;
+  }
+
+  if (dereference) {
+    if (type != UINT64STAR_T)
+      typeWarning(UINT64STAR_T, type);
+
+    // dereference
+    emitLD(currentTemporary(), currentTemporary(), 0);
+
+    type = UINT64_T;
+  }
+
+  if (negative) {
+    if (type != UINT64_T) {
+      typeWarning(UINT64_T, type);
+
+      type = UINT64_T;
+    }
+
+    emitSUB(currentTemporary(), REG_ZR, currentTemporary());
+  }
 
   // assert: allocatedTemporaries == n + 1
 
@@ -3533,29 +3545,11 @@ uint64_t compile_simpleExpression() {
 
   // assert: n = allocatedTemporaries
 
-  // optional: -
-  if (symbol == SYM_MINUS) {
-    integerIsSigned = 1;
-
-    getSymbol();
-
-    integerIsSigned = 0;
-
-    ltype = compile_term();
-
-    if (ltype != UINT64_T) {
-      typeWarning(UINT64_T, ltype);
-
-      ltype = UINT64_T;
-    }
-
-    emitSUB(currentTemporary(), REG_ZR, currentTemporary());
-  } else
-    ltype = compile_term();
+  ltype = compile_term();
 
   // assert: allocatedTemporaries == n + 1
 
-  // + or -?
+  // + or - ?
   while (isPlusOrMinus()) {
     operatorSymbol = symbol;
 
@@ -4107,7 +4101,7 @@ uint64_t compile_initialization(uint64_t type) {
   if (symbol == SYM_ASSIGN) {
     getSymbol();
 
-    // optional cast: [ cast ]
+    // optional: [ cast ]
     if (symbol == SYM_LPARENTHESIS) {
       hasCast = 1;
 
