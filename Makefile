@@ -51,8 +51,15 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
+# Compile and run quine, compile the output, and compare the results
+quine: selfie
+	./selfie -c manuscript/code/quine.c selfie.c -m 4 | grep '^[^\.]' > manuscript/code/quineOutput1.c
+	./selfie -c manuscript/code/quineOutput1.c selfie.c -m 4 | grep '^[^\.]' > manuscript/code/quineOutput2.c
+	diff -q manuscript/code/quine.c manuscript/code/quineOutput1.c
+	diff -q manuscript/code/quineOutput1.c manuscript/code/quineOutput2.c
+
 # Run everything
-all: compile debug replay os vm min mob sat
+all: compile debug replay os vm min mob sat quine
 
 # Clean up
 clean:
@@ -60,3 +67,5 @@ clean:
 	rm -rf *.s
 	rm -rf selfie
 	rm -rf selfie.exe
+	rm -f manuscript/code/quineOutput1.c
+	rm -f manuscript/code/quineOutput2.c
