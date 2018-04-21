@@ -51,7 +51,7 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
-# Compile and run quine, compile the output, and compare the results
+# Compile and run quine and compare its output to itself
 quine: selfie
 	./selfie -c manuscript/code/quine.c selfie.c -m 4 | sed -n '/void init[.]*/,/^\}/p' | diff -q manuscript/code/quine.c -
 
