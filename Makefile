@@ -6,13 +6,17 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile debug replay os vm min mob sat all clean
+.PHONY : compile quine debug replay os vm min mob sat all clean
 
 # Self-compile
 compile: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
+
+# Compile and run quine and compare its output to itself
+quine: selfie
+	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' | diff -q manuscript/code/quine.c -
 
 # Run debugger
 debug: selfie
@@ -51,12 +55,8 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
-# Compile and run quine and compare its output to itself
-quine: selfie
-	./selfie -c manuscript/code/quine.c selfie.c -m 4 | sed -n '/void init[.]*/,/^\}/p' | diff -q manuscript/code/quine.c -
-
 # Run everything
-all: compile debug replay os vm min mob sat quine
+all: compile quine debug replay os vm min mob sat
 
 # Clean up
 clean:
