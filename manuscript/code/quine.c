@@ -1,18 +1,18 @@
-void initLibrary();uint64_t* zalloc(uint64_t s);
+void initLibrary();
 void print(uint64_t* s);void println();
 void printInteger(uint64_t i);void printString(uint64_t* s);
 uint64_t main(){
   uint64_t* data;
   uint64_t i; i = 0;
-  data = zalloc(33*8);
+  data = malloc(33*8);
   initLibrary();
-  *(data + 0) = (uint64_t) "void initLibrary();uint64_t* zalloc(uint64_t s);";
+  *(data + 0) = (uint64_t) "void initLibrary();";
   *(data + 1) = (uint64_t) "void print(uint64_t* s);void println();";
   *(data + 2) = (uint64_t) "void printInteger(uint64_t i);void printString(uint64_t* s);";
   *(data + 3) = (uint64_t) "uint64_t main(){";
   *(data + 4) = (uint64_t) "  uint64_t* data;";
   *(data + 5) = (uint64_t) "  uint64_t i; i = 0;";
-  *(data + 6) = (uint64_t) "  data = zalloc(33*8);";
+  *(data + 6) = (uint64_t) "  data = malloc(33*8);";
   *(data + 7) = (uint64_t) "  initLibrary();";
   *(data + 8) = (uint64_t) "  while(i < 8){";
   *(data + 9) = (uint64_t) "    print(*(data + i));println();";
