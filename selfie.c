@@ -5322,17 +5322,38 @@ void selfie_output() {
   // assert: ELF_header is mapped
 
   // first write ELF header
-  write(fd, ELF_header, ELF_HEADER_LEN);
+  if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
+    print(selfieName);
+    print((uint64_t*) ": could not write ELF header of binary output file ");
+    print(binaryName);
+    println();
+
+    exit(EXITCODE_IOERROR);
+  }
 
   // then write code length
   *binary_buffer = codeLength;
 
-  write(fd, binary_buffer, SIZEOFUINT64);
+  if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
+    print(selfieName);
+    print((uint64_t*) ": could not write code length of binary output file ");
+    print(binaryName);
+    println();
+
+    exit(EXITCODE_IOERROR);
+  }
 
   // assert: binary is mapped
 
   // then write binary
-  write(fd, binary, binaryLength);
+  if (write(fd, binary, binaryLength) != binaryLength) {
+    print(selfieName);
+    print((uint64_t*) ": could not write binary into binary output file ");
+    print(binaryName);
+    println();
+
+    exit(EXITCODE_IOERROR);
+  }
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -5901,7 +5922,7 @@ void implementOpen(uint64_t* context) {
   mode      = *(getRegs(context) + REG_A2);
 
   if (down_loadString(getPT(context), vfilename, filename_buffer)) {
-    fd = open(filename_buffer, flags, mode);
+    fd = signExtend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(getRegs(context) + REG_A0) = fd;
 
