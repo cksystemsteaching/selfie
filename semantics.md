@@ -4,33 +4,37 @@ Selfie is a project of the Computational Systems Group at the Department of Comp
 
 http://selfie.cs.uni-salzburg.at
 
-The following describes the semantical differences between C\* and C:  
+Selfie is software written in the programming language C\*. This document provides an overview of the differences in semantics between C\* and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in how integer literals and strings are handled. Note that results presented here were obtained with tools that implement C11 semantics.
 
-## Interpretation of integer literals 
+## Integer Literals
 
-In C integer literals are interpreted as 32-bit signed integers by default, whereas in C\* the literals are interpreted as 64-bit unsigned integers. Therefore expressions including operators with different semantics for 32-bit signed and 64-bit unsigned integers and only literals as operands of those operators have different semantics in C and C\*. In the C\* grammar the following operators are affected by this, because they have different semantics for signed and unsigned operands: `/` `<` `<=` `>` `>=` 
+Integer literals in C\* are interpreted as 64-bit unsigned integers. In C, however, integer literals are interpreted as 32-bit signed integers. As a result, an expression may evaluate to different values in C\* and C if the expression involves integer literals and operators with different semantics for signed and unsigned operands, that is, `/`, `%`, `<`, `<=`, `>`, or `>=`.
 
-### Operator: `/`
-
-Code example:  
+#### Arithmetic:  
 
 ```  
 uint64_t x;
+uint64_t y;
 
-x = 100 / (-20);
+x = 1 / -1;
+y = 1 % -1;
 ```
 
-Result in C\* semantics:
+C\*:
 
-`x == 0`
+```
+x == 0
+y == 1
+```
 
-Result in C semantics:
+C:
 
-`x == -5`
+```
+x == -1
+y == 0
+```
 
-### Comparison operators
-
-Code example:  
+#### Comparison:
 
 ```  
 uint64_t a;
@@ -44,7 +48,7 @@ c = 1 >  -1;
 d = 1 >= -1;
 ```
 
-Result in C\* semantics:
+C\*:
 
 ```
 a == 1
@@ -53,7 +57,7 @@ c == 0
 d == 0
 ```
 
-Result in C semantics:
+C:
 
 ```
 a == 0
@@ -62,30 +66,28 @@ c == 1
 d == 1
 ```
 
-## Interpretation of strings
+## Strings
 
-The basic difference for strings between C and C\* is that strings in C are arrays of type `char` whereas strings in C\* are arrays of type `uint64_t` (each element of the array contains 8 characters). So, as long as the string is directly used in an expression it will behave different whereas pointers to strings behave in the same way.
+Strings in C\* are arrays of type `uint64_t` whereas strings in C are arrays of type `char`. Thus each element of a string in C\* contains 8 characters rather than just 1 character as in C. Dereferencing a string therefore results in different values in C\* and C.
 
-Code example:
+#### Dereferencing:
 
 ```
 uint64_t x;
 
-x = *("Hello World");
+x = *"Hello World!";
 ```
 
-Result in C\* semantics:
+C\*:
 
-`x == 0x6F77206F6C6C6548`
+```
+x == 0x6F57206F6C6C6548
+```
 
-Result in C semantics:
+C:
 
-`x == 0x48`
+```
+x == 0x48
+```
 
-In C\* semantics dereferenciation of a string yields a concatenation of the ASCII codes of the first eight characters whereas the same yields in C semantics just the ASCII code of the first character.
-
-
-
-
-
-
+Note that `0x48` is ASCII for `H`. Moreover, `0x65`, `0x6C`, `0x6F`, `0x20`, and `0x57` are ASCII for `e`, `l`, `o`, ` `, and `W`, respectively.
