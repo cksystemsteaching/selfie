@@ -4,7 +4,7 @@ Selfie is a project of the Computational Systems Group at the Department of Comp
 
 http://selfie.cs.uni-salzburg.at
 
-Selfie is software written in the programming language C\*. This document provides an overview of the differences in semantics between C\* and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in how integer literals and strings are handled. Note that results presented here were obtained with tools that implement C11 semantics.
+Selfie is software written in the programming language C\*. This document provides an overview of the differences in semantics between C\* and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in how integer literals and strings are handled. Note that the results presented here were obtained with tools that implement C11 semantics.
 
 ## Integer Literals
 
