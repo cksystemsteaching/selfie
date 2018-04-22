@@ -4,11 +4,11 @@ Selfie is a project of the Computational Systems Group at the Department of Comp
 
 http://selfie.cs.uni-salzburg.at
 
-Selfie is software written in the programming language C\*. This document provides an overview of the differences in semantics between C\* and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in how integer literals and strings are handled. Note that the results presented here were obtained with tools that implement C11 semantics.
+This document provides an overview of the differences in semantics between the programming language C\* in which selfie is written and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in how integer literals and strings are handled. Note that the results presented here were obtained with tools that implement [C11](https://en.wikipedia.org/wiki/C11_(C_standard_revision)) semantics.
 
 ## Integer Literals
 
-Integer literals in C\* are interpreted as 64-bit unsigned integers. In C, however, integer literals are interpreted as 32-bit signed integers. As a result, an expression may evaluate to different values in C\* and C if the expression involves integer literals and operators with different semantics for signed and unsigned operands, that is, `/`, `%`, `<`, `<=`, `>`, or `>=`.
+Integer literals in C\* are interpreted as 64-bit unsigned integers. In C, however, integer literals are interpreted as 32-bit signed integers. As a result, an expression may evaluate to different values in C\* and C if the expression involves integer literals and operators with different semantics for signed and unsigned operands, that is, `/`, `%`, `<`, `<=`, `>`, and `>=`.
 
 #### Arithmetic:  
 
