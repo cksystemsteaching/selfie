@@ -1,26 +1,5 @@
-uint64_t twoToThePowerOf(uint64_t a) {
-    if (a < 1) {
-        return 1;
-    } else return 2 * twoToThePowerOf(a-1);
-}
-
-uint64_t leftShift(uint64_t n, uint64_t b) {
-  return n * twoToThePowerOf(b);
-}
-
-uint64_t rightShift(uint64_t n, uint64_t b) {
-  return n / twoToThePowerOf(b);
-}
-
-uint64_t getChar(uint64_t * from, uint64_t at) { 
-    uint64_t idx;
-    uint64_t pos;
-
-    idx = at / 8;
-    pos = at % 8;
-
-    return rightShift(leftShift(*(from + idx), 64 - ((pos * 8) + 8)), 56);
-}
+uint64_t twoPow56 = 72057594037927936;
+uint64_t twoPow48 = 281474976710656;
 
 uint64_t main () {
     uint64_t * s;
@@ -30,8 +9,8 @@ uint64_t main () {
     read(0, s, 2);
     *t = 25185;
     
-    if (getChar(s, 0) == 'a'){
-        if (getChar(s, 1) == 'b') {
+    if ((*s * twoPow56) / twoPow56 == 'a'){
+        if ((*s * twoPow48) / twoPow56 == 'b') {
             return 666; // reachable with [25185, 25185]
         }
     }
