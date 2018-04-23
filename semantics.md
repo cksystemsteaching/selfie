@@ -4,9 +4,13 @@ Selfie is a project of the Computational Systems Group at the Department of Comp
 
 http://selfie.cs.uni-salzburg.at
 
-The following table describes the semantical differences between C\* and C:  
+The following describes the semantical differences between C\* and C:  
 
-## Operator: `/` 
+## Interpretation of integer literals 
+
+In C integer literals are interpreted as 32-bit signed integers by default, whereas in C\* the literals are interpreted as 64-bit unsigned integers. Therefore expressions including operators with different semantics for 32-bit signed and 64-bit unsigned integers and only literals as operands of those operators have different semantics in C and C\*. In the C\* grammar the following operators are affected by this, because they have different semantics for signed and unsigned operands: `/` `<` `<=` `>` `>=` 
+
+### Operator: `/`
 
 Code example:  
 
@@ -24,31 +28,7 @@ Result in C semantics:
 
 `x == -5`
 
-Description:  
-The differences between C\* and C semantics result in this case of a different interpretation of the integer literals. In C integer literals are by default interpreted as signed 32-bit integers whereas in C\* the literals are interpreted as 64-bit unsigned integers. Therefor in C a signed division is applied on the two literals and the result afterwards is casted to 64-bit unsigned integer (the type of the variable), while in C\* just an unsigned division is applied and no cast is necessary. So this semantical difference of the `/` operator appears just if both operands are literals.
-
-## Operator: `-` (sign)
-
-Code example:
-
-```
-uint64_t x;
-
-x = ((-4 / 2) == ((-4) / 2));
-```
-
-Result in C\* semantics:
-
-`x == 0`
-
-Result in C semantics:
-
-`x == 1`
-
-Description:  
-This difference results of a difference between the precedences of the sign `-` operator in C\* semantics and C semantics. In standard C the sign operator has a higher precedence than the division operator `/` whereas the sign operator has a lower precedence than the division operator in C\*. Therefore `-4 / 2` in C\* is interpreted such that at first the division is processed and afterwards the sign is applied on the result of the division.  
-
-## Operators: `<` `<=` `>` `>=`
+### Comparison operators
 
 Code example:  
 
@@ -82,5 +62,30 @@ c == 1
 d == 1
 ```
 
-Description:  
-These differences have the same reason as the semantical differences of the `/` operator. In C semantics the literals are treated as 32-bit signed integer and the cast is done after a signed comparison, whereas in C\* semantics the literals are treated as 64-bit unsigned integer and therefor the comparisons are unsigned ones. These differences also appear only for comparisons of two literals.
+## Interpretation of strings
+
+The basic difference for strings between C and C\* is that strings in C are arrays of type `char` whereas strings in C\* are arrays of type `uint64_t` (each element of the array contains 8 characters). So, as long as the string is directly used in an expression it will behave different whereas pointers to strings behave in the same way.
+
+Code example:
+
+```
+uint64_t x;
+
+x = *("Hello World");
+```
+
+Result in C\* semantics:
+
+`x == 0x6F77206F6C6C6548`
+
+Result in C semantics:
+
+`x == 0x48`
+
+In C\* semantics dereferenciation of a string yields a concatenation of the ASCII codes of the first eight characters whereas the same yields in C semantics just the ASCII code of the first character.
+
+
+
+
+
+
