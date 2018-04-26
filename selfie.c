@@ -1437,10 +1437,14 @@ uint64_t SYMBOLIC      = 1;
 uint64_t CONSTRAINED   = 2;
 uint64_t UNSATISFIABLE = 3;
 
+uint64_t* MASKS; // bitmasks for registers
+
 // ------------------------- INITIALIZATION ------------------------
 
 void symbolic_prepare_memory(uint64_t* context);
 void symbolic_prepare_registers(uint64_t* context);
+
+void initMasks();
 
 // ---------------------------- UTILITIES --------------------------
 
@@ -1453,6 +1457,10 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
+
+// bitmask utils
+void setRegMask(uint64_t reg, uint64_t mask) { *(MASKS + reg) = mask; }
+uint64_t getRegMask(uint64_t reg) { return *(MASKS + reg); }
 
 uint64_t cardinality(uint64_t tc);
 uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2);
@@ -8659,6 +8667,10 @@ void symbolic_prepare_registers(uint64_t* context) {
     }
     reg = reg + 1;
   }
+}
+
+void initMasks() {
+  MASKS = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
 }
 
 // ---------------------------- UTILITIES --------------------------
