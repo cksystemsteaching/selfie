@@ -6404,7 +6404,6 @@ void print_lui() {
 }
 
 void print_lui_before() {
-  println();
   print((uint64_t*) ": |- ");
   printRegisterHexadecimal(rd);
 }
@@ -6454,7 +6453,6 @@ void print_addi() {
 }
 
 void print_addi_before() {
-  println();
   print((uint64_t*) ": ");
   printRegisterValue(rs1);
   print((uint64_t*) " |- ");
@@ -6491,7 +6489,6 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
-  println();
   print((uint64_t*) ": ");
   printRegisterValue(rs1);
   print((uint64_t*) ",");
@@ -6603,7 +6600,6 @@ void print_ld_before() {
   else
     vaddr = *(registers + rs1) + imm;
 
-  println();
   print((uint64_t*) ": ");
   printRegisterHexadecimal(rs1);
 
@@ -6702,7 +6698,6 @@ void print_sd_before() {
 
   vaddr = *(registers + rs1) + imm;
 
-  println();
   print((uint64_t*) ": ");
   printRegisterHexadecimal(rs1);
 
@@ -6793,7 +6788,6 @@ void print_beq() {
 }
 
 void print_beq_before() {
-  println();
   print((uint64_t*) ": ");
   printRegisterValue(rs1);
   print((uint64_t*) ",");
@@ -6836,7 +6830,6 @@ void print_jal() {
 }
 
 void print_jal_before() {
-  println();
   print((uint64_t*) ": |- ");
   if (rd != REG_ZR) {
     printRegisterHexadecimal(rd);
@@ -6902,7 +6895,6 @@ void print_jalr() {
 }
 
 void print_jalr_before() {
-  println();
   print((uint64_t*) ": ");
   printRegisterHexadecimal(rs1);
   print((uint64_t*) " |- ");
@@ -6944,7 +6936,6 @@ void print_ecall() {
 }
 
 void print_ecall_before() {
-  println();
   print((uint64_t*) ": |- ");
   printRegisterHexadecimal(REG_A0);
 }
@@ -8941,7 +8932,7 @@ void symbolic_do_mul() {
 
     // sets [0,MAX] if (b*d - a*c >= 2^64)
     // iterative_mul(); // for now
-    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);	
+    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
 
     setStateFromReg(rs1, rs2, tc);
@@ -9547,7 +9538,7 @@ void symbolic_undo_ecall() {
         numberOfSymbolics = numberOfSymbolics + 1;
       else
         numberOfSymbolics = numberOfSymbolics - 1;
-      
+
       vaddr = getLowerFromReg(REG_A1);
       while (readInts > 0) {
         // undo (confined) read
@@ -9678,7 +9669,7 @@ void checkSatisfiability(uint64_t tc) {
 // ---------------------------- UTILITIES --------------------------
 
 void setState(uint64_t tc1, uint64_t tc2, uint64_t atTc) {
-  // strict total order of state depends on priority 
+  // strict total order of state depends on priority
   if (getState(tc1) < getState(tc2))
     setStateFlag(getState(tc2), atTc);
   else
@@ -10135,7 +10126,7 @@ void confine_ecall() {
       readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
       if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
         readInts = readInts + 1;
-      
+
       btc = btc - readInts; // start from the bottom of read values
       savedReadInts = readInts; // remember this for later
 
@@ -10143,7 +10134,7 @@ void confine_ecall() {
       // print((uint64_t*) "input: ");
       // printSymbolicString(vaddr, getLowerFromReg(REG_A0), pt);
       // println();
-      
+
       while(readInts > 0) {
         checkSatisfiability(loadVirtualMemory(pt, vaddr));
 
