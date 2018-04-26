@@ -9540,16 +9540,30 @@ void symbolic_undo_ecall() {
   //----------------------------------------------------------------------------
 
   // restore A0
-  *(registers + REG_A0) = *(tcs + tc);
-  tcA0 = tc;
 
-  // successfull syscall read (2 trace entries)
-  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
-
+  if (tc < executionBrk) {
+    // undoing normal ecall
+    // REG_A0 contains number of read bytes
     readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
     if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
       readInts = readInts + 1;
     savedReadInts = readInts; // remember this for later
+  }
+
+  *(registers + REG_A0) = *(tcs + tc);
+  tcA0 = tc;
+
+  if (tc >= executionBrk) {
+    // undoing confined ecall
+    // previous REG_A0 contains number of read bytes
+    readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
+    if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
+      readInts = readInts + 1;
+    savedReadInts = readInts; // remember this for later
+  }
+
+  // successfull syscall read (2 trace entries)
+  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
 
     if (hasAdditionalTraceEntry()) {
 
