@@ -1437,10 +1437,14 @@ uint64_t SYMBOLIC      = 1;
 uint64_t CONSTRAINED   = 2;
 uint64_t UNSATISFIABLE = 3;
 
+uint64_t* MASKS; // bitmasks for registers
+
 // ------------------------- INITIALIZATION ------------------------
 
 void symbolic_prepare_memory(uint64_t* context);
 void symbolic_prepare_registers(uint64_t* context);
+
+void initMasks();
 
 // ---------------------------- UTILITIES --------------------------
 
@@ -1453,6 +1457,10 @@ uint64_t isConcrete(uint64_t* context, uint64_t reg);
 uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
+
+// bitmask utils
+void setRegMask(uint64_t reg, uint64_t mask) { *(MASKS + reg) = mask; }
+uint64_t getRegMask(uint64_t reg) { return *(MASKS + reg); }
 
 uint64_t cardinality(uint64_t tc);
 uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2);
@@ -8652,6 +8660,10 @@ void symbolic_prepare_registers(uint64_t* context) {
   }
 }
 
+void initMasks() {
+  MASKS = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
+}
+
 // ---------------------------- UTILITIES --------------------------
 
 void forceConcrete(uint64_t* context, uint64_t reg) {
@@ -9519,16 +9531,30 @@ void symbolic_undo_ecall() {
   //----------------------------------------------------------------------------
 
   // restore A0
-  *(registers + REG_A0) = *(tcs + tc);
-  tcA0 = tc;
 
-  // successfull syscall read (2 trace entries)
-  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
-
+  if (tc < executionBrk) {
+    // undoing normal ecall
+    // REG_A0 contains number of read bytes
     readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
     if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
       readInts = readInts + 1;
     savedReadInts = readInts; // remember this for later
+  }
+
+  *(registers + REG_A0) = *(tcs + tc);
+  tcA0 = tc;
+
+  if (tc >= executionBrk) {
+    // undoing confined ecall
+    // previous REG_A0 contains number of read bytes
+    readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
+    if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
+      readInts = readInts + 1;
+    savedReadInts = readInts; // remember this for later
+  }
+
+  // successfull syscall read (2 trace entries)
+  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
 
     if (hasAdditionalTraceEntry()) {
 
