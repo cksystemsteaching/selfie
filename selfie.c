@@ -99,6 +99,7 @@ void initLibrary();
 void resetLibrary();
 
 uint64_t twoToThePowerOf(uint64_t p);
+uint64_t floorLogBaseTwo(uint64_t v);
 
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
@@ -901,6 +902,7 @@ uint64_t debug_write   = 0;
 uint64_t debug_open    = 0;
 uint64_t debug_malloc  = 0;
 uint64_t debug_vipster = 0;
+uint64_t debug_mask    = 1;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
@@ -1437,7 +1439,12 @@ uint64_t SYMBOLIC      = 1;
 uint64_t CONSTRAINED   = 2;
 uint64_t UNSATISFIABLE = 3;
 
-uint64_t* MASKS; // bitmasks for registers
+uint64_t NSET = 0;  // bit not set
+uint64_t SET = 1;   // bit set
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* masks = (uint64_t*) 0; // masks for each register to indicate wich bits valid/used
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1445,7 +1452,7 @@ void symbolic_prepare_memory(uint64_t* context);
 void symbolic_prepare_registers(uint64_t* context);
 
 void initMasks();
-
+void resetMasks();
 // ---------------------------- UTILITIES --------------------------
 
 // precise execution
@@ -1458,10 +1465,6 @@ uint64_t areSourceRegsConcrete();
 uint64_t isOneSourceRegConcrete();
 uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 
-// bitmask utils
-void setRegMask(uint64_t reg, uint64_t mask) { *(MASKS + reg) = mask; }
-uint64_t getRegMask(uint64_t reg) { return *(MASKS + reg); }
-
 uint64_t cardinality(uint64_t tc);
 uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2);
 
@@ -1469,6 +1472,19 @@ uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2);
 
 void printTrace();
 void printValues(uint64_t tc);
+
+// ------------------------------ MASK ----------------------------
+uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg);
+
+uint64_t rightMaskIndex(uint64_t reg) { return maskIndex(SET, 0, reg); }
+uint64_t leftMaskIndex(uint64_t reg) { return maskIndex(NSET, maskIndex(SET, 0, reg), reg) - 1; }
+uint64_t maskSize (uint64_t reg) { return leftMaskIndex(reg) - rightMaskIndex(reg) + 1; }
+
+uint64_t maskedBits(uint64_t value, uint64_t reg);
+uint64_t replaceMaskedBits(uint64_t deprecated, uint64_t update, uint64_t reg);
+
+void updateMask(uint64_t instruction, uint64_t reg, uint64_t n);
+
 
 // -----------------------------------------------------------------
 // ------------------ SYMBOLIC FORWARD EXECUTION -------------------
@@ -1581,16 +1597,15 @@ void setStateFlag(uint64_t state, uint64_t tc)    { *(states      + tc) = state;
 void setLowerForReg(uint64_t value, uint64_t reg) { *(valuesLower + *(registers + reg)) = value; }
 void setUpperForReg(uint64_t value, uint64_t reg) { *(valuesUpper + *(registers + reg)) = value; }
 
-void setFromTrace(uint64_t fromTc, uint64_t toTc) { setLower(getLower(fromTc), toTc); setUpper(getUpper(fromTc), toTc); }
 void setConcrete(uint64_t value)                  { setLower(value, tc); setUpper(value, tc); setStateFlag(CONCRETE, tc); }
 void setMaximum()                                 { setLower(0, tc); setUpper(UINT64_MAX, tc); }
 void clearTrace()                                 { setConcrete(0); setStateFlag(0, tc); }
 
 // ---------------------------- UTILITIES --------------------------
 
-void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc);
-void constrainLowerBound(uint64_t fromTc, uint64_t withTc);
-void constrainUpperBound(uint64_t fromTc, uint64_t withTc);
+void syncSymbolicIntervallsOnTrace(uint64_t deprecated, uint64_t update, uint64_t reg);
+void constrainLowerBound(uint64_t deprecated, uint64_t update, uint64_t reg);
+void constrainUpperBound(uint64_t deprecated, uint64_t update, uint64_t reg);
 void incrementTc();
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1691,6 +1706,17 @@ void initSelfie(uint64_t argc, uint64_t* argv) {
 uint64_t twoToThePowerOf(uint64_t p) {
   // assert: 0 <= p < CPUBITWIDTH
   return *(power_of_two_table + p);
+}
+
+uint64_t floorLogBaseTwo(uint64_t v) {
+  // assert: 0 <= v < twoToThePowerOf(CPUBITWIDTH)
+  uint64_t p = 0;
+
+  while (v >= 2) {
+    v = v / 2;
+    p = p + 1;
+  }
+  return p;
 }
 
 uint64_t leftShift(uint64_t n, uint64_t b) {
@@ -8661,7 +8687,19 @@ void symbolic_prepare_registers(uint64_t* context) {
 }
 
 void initMasks() {
-  MASKS = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
+  uint64_t r;
+
+  masks = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
+
+  r = 0;
+  while (r < NUMBEROFREGISTERS) {
+    *(masks + r) = UINT64_MAX;
+    r = r + 1;
+  }
+}
+
+void resetMask(uint64_t r) {
+  *(masks + r) = UINT64_MAX;
 }
 
 // ---------------------------- UTILITIES --------------------------
@@ -8801,6 +8839,57 @@ void printValues(uint64_t tc) {
   print((uint64_t*) ",");
   printInteger(getUpper(tc));
   print((uint64_t*) "]");
+}
+
+
+// ------------------------------ MASK ----------------------------
+
+// index of the first appearance of a bit in given sate (starting scan at index i)
+uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg) {
+  while (i < CPUBITWIDTH) {
+    if (getBits(*(masks + reg), i, 1) == state)
+      return i;
+    i = i + 1;
+  }
+
+  return CPUBITWIDTH;
+}
+
+// return value of marked portion
+uint64_t maskedBits(uint64_t value, uint64_t reg) {
+  return getBits(value, rightMaskIndex(reg), maskSize(reg));
+}
+
+// replace maksed bits in inValue with bits
+uint64_t replaceMaskedBits(uint64_t deprecated, uint64_t update, uint64_t reg) {
+  // subtract the to-be-overwritten masked bits to reset them in deprecated value
+  // add masked update bits to set them at the marked position
+  return (deprecated - leftShift(maskedBits(deprecated, reg), rightMaskIndex(reg))) + leftShift(maskedBits(update, reg), rightMaskIndex(reg));
+}
+
+// update the mask
+void updateMask(uint64_t instruction, uint64_t reg, uint64_t n) {
+
+  if (debug_mask) {
+    print(selfieName);
+    print((uint64_t*) ": updating mask(");
+    printRegister(reg);
+    print((uint64_t*) "): ");
+    printBinary(*(masks + reg), 64);
+    println();
+  }
+
+  if (instruction == F3_DIVU)
+    *(masks + reg) = leftShift(*(masks + reg), n);
+  else if (instruction == F3_MUL)
+    *(masks + reg) = rightShift(*(masks + reg), n);
+
+  if (debug_mask) {
+    print((uint64_t*) "                           -> ");
+    printBinary(*(masks + reg), 64);
+    println();
+    println();
+  }
 }
 
 // -----------------------------------------------------------------
@@ -9780,10 +9869,6 @@ void confine_lui() {
   saveState(*(registers + rd));
   clearTrace();
   updateRegState(rd, *(tcs + btc));
-
-  // or:
-  // setFromTrace(*(tcs + btc), tc);
-  // updateRegState(rd, tc);
 }
 
 void confine_addi() {
@@ -9958,6 +10043,8 @@ void confine_mul() {
       if (loRem != 0) // lower++ if remainder != 0
         setLower(getLower(tc) + 1, tc);
       updateRegState(rd, tc);
+      updateMask(F3_MUL, rd, floorLogBaseTwo(getLowerFromReg(rs2)));
+
     } else {
       // RD == RS1 was multiplier - confine RS2 and restore RD
       oldRD = *(tcs + btc); // grab multiplier
@@ -9977,6 +10064,8 @@ void confine_mul() {
       saveState(*(registers + rd));
       clearTrace();
       updateRegState(rd, *(tcs + btc));
+      updateMask(F3_MUL, rd, floorLogBaseTwo(getLower(oldRD)));
+
     }
   }
 }
@@ -10023,6 +10112,7 @@ void confine_divu() {
         setUpper(getUpper(tc) + div - 1, tc);
       }
       updateRegState(rd, tc);
+      updateMask(F3_DIVU, rd, floorLogBaseTwo(getLowerFromReg(rs2)));
     } else {
       // should get caught in symbolic_do_divu
       print(selfieName);
@@ -10073,7 +10163,7 @@ void confine_ld() {
   if (sameIntervalls(mem_tc, reg_tc) == 0) {
     saveState(mem_tc);
 
-    syncSymbolicIntervallsOnTrace(mem_tc, reg_tc);
+    syncSymbolicIntervallsOnTrace(mem_tc, reg_tc, rs1);
 
     updateMemState(vaddr, tc);
   }
@@ -10081,6 +10171,7 @@ void confine_ld() {
   saveState(*(registers + rd));
   clearTrace();
   updateRegState(rd, *(tcs + btc));
+  resetMask(rd);
 }
 
 void confine_sd() {
@@ -10099,7 +10190,7 @@ void confine_sd() {
     if (sameIntervalls(mem_tc, reg_tc) == 0) {
       saveState(reg_tc);
 
-      syncSymbolicIntervallsOnTrace(reg_tc, mem_tc);
+      syncSymbolicIntervallsOnTrace(reg_tc, mem_tc, rs2);
 
       updateRegState(rs2, tc);
     }
@@ -10107,6 +10198,7 @@ void confine_sd() {
     saveState(loadVirtualMemory(pt, vaddr));
     clearTrace();
     updateMemState(vaddr, *(tcs + btc));
+    resetMask(rs2);
   }
 }
 
@@ -10191,38 +10283,38 @@ void confine_ecall() {
 
 // ---------------------------- UTILITIES --------------------------
 
-void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
+void syncSymbolicIntervallsOnTrace(uint64_t deprecated, uint64_t update, uint64_t reg) {
   uint64_t invalidOverlap;
 
   invalidOverlap = 0;
 
   // confine onto [0,MAX]
-  if (cardinality(fromTc) == 0) {
-    setLower(getLower(withTc), tc);
-    setUpper(getUpper(withTc), tc);
+  if (cardinality(deprecated) == 0) {
+    setLower(replaceMaskedBits(getLower(deprecated), getLower(update), reg), tc);
+    setUpper(replaceMaskedBits(getUpper(deprecated), getUpper(update), reg), tc);
 
     setStateFlag(CONSTRAINED, tc);
     return;
 
+  // sTODO: haven't looked at this part yet
   // one wrap-around
-  } else if (numberOfWrappedArounds(fromTc, withTc) == 1) {
-
+  } else if (numberOfWrappedArounds(deprecated, update) == 1) {
     // from wrap-around
-    if (getLower(fromTc) > getUpper(fromTc)) {
+    if (getLower(deprecated) > getUpper(deprecated)) {
       // constrain with upper-wrap-around -> only lower needs to be calculated
-      if (getLower(withTc) > getUpper(fromTc)) {
-        constrainLowerBound(fromTc, withTc);
-        setUpper(getUpper(withTc), tc);
+      if (getLower(update) > getUpper(deprecated)) {
+        constrainLowerBound(deprecated, update, reg);
+        setUpper(getUpper(update), tc);
 
       // constrain with lower wrap-around -> only upper needs to be calculated
-      } else if (getUpper(withTc) < getLower(fromTc)) {
-        constrainUpperBound(fromTc, withTc);
-        setLower(getLower(withTc), tc);
+      } else if (getUpper(update) < getLower(deprecated)) {
+        constrainUpperBound(deprecated, update, reg);
+        setLower(getLower(update), tc);
 
       // symbolic value is already unsatisfiable
-      } else if (getState(fromTc) == UNSATISFIABLE) {
-        setLower(getLower(fromTc), tc);
-        setUpper(getUpper(fromTc), tc);
+      } else if (getState(deprecated) == UNSATISFIABLE) {
+        setLower(getLower(deprecated), tc);
+        setUpper(getUpper(deprecated), tc);
 
       // overlapping wrap-around
       } else
@@ -10231,27 +10323,27 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
     // else with wrap-around
     } else {
       // constrain with upper wrap-around -> only lower needs to be calculated
-      if (getLower(fromTc) > getUpper(withTc)) {
-        constrainLowerBound(fromTc, withTc);
-        setUpper(getUpper(withTc), tc);
+      if (getLower(deprecated) > getUpper(update)) {
+        constrainLowerBound(deprecated, update, reg);
+        setUpper(getUpper(update), tc);
 
       // constrain with lower wrap-around -> only upper needs to be calculated
-      } else if (getUpper(fromTc) < getLower(withTc)) {
-        constrainUpperBound(fromTc, withTc);
-        setLower(getLower(withTc), tc);
+      } else if (getUpper(deprecated) < getLower(update)) {
+        constrainUpperBound(deprecated, update, reg);
+        setLower(getLower(update), tc);
 
       // symbolic value is already unsatisfiable
-      } else if (getState(fromTc) == UNSATISFIABLE) {
-        setLower(getLower(fromTc), tc);
-        setUpper(getUpper(fromTc), tc);
+      } else if (getState(deprecated) == UNSATISFIABLE) {
+        setLower(getLower(deprecated), tc);
+        setUpper(getUpper(deprecated), tc);
 
       } else
         invalidOverlap = 1;
     }
   // no wrap-around / both wrap-around
   } else {
-    constrainLowerBound(fromTc, withTc);
-    constrainUpperBound(fromTc, withTc);
+    constrainLowerBound(deprecated, update, reg);
+    constrainUpperBound(deprecated, update, reg);
   }
 
   if (invalidOverlap) {
@@ -10259,9 +10351,9 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
     print((uint64_t*) ": execution imprecise at pc= ");
     printHexadecimal(pc, 0);
     print((uint64_t*) " when syncing ");
-    printValues(fromTc);
+    printValues(deprecated);
     print((uint64_t*) " with ");
-    printValues(withTc);
+    printValues(update);
     println();
 
     throwException(EXCEPTION_IMPRECISE, 0);
@@ -10273,18 +10365,30 @@ void syncSymbolicIntervallsOnTrace(uint64_t fromTc, uint64_t withTc) {
     setStateFlag(CONSTRAINED, tc);
 }
 
-void constrainLowerBound(uint64_t fromTc, uint64_t withTc) {
-  if (getLower(fromTc) < getLower(withTc))
-    setLower(getLower(withTc), tc);
+void constrainLowerBound(uint64_t deprecated, uint64_t update, uint64_t reg) {
+  // if (getLower(deprecated) < getLower(update))
+  //   setLower(getLower(update), tc);
+  // else
+  //   setLower(getLower(deprecated), tc);
+
+  // sTODO: some thinking
+  if (maskedBits(getLower(deprecated), reg) < maskedBits(getLower(update), reg))
+    setLower(replaceMaskedBits(getLower(deprecated), getLower(update), reg), tc);
   else
-    setLower(getLower(fromTc), tc);
+    setLower(getLower(deprecated), tc);
 }
 
-void constrainUpperBound(uint64_t fromTc, uint64_t withTc) {
-  if (getUpper(fromTc) > getUpper(withTc))
-    setUpper(getUpper(withTc), tc);
+void constrainUpperBound(uint64_t deprecated, uint64_t update, uint64_t reg) {
+  // if (getUpper(deprecated) > getUpper(update))
+  //   setUpper(getUpper(update), tc);
+  // else
+  //   setUpper(getUpper(deprecated), tc);
+
+  // sTODO: some thinking
+  if (maskedBits(getUpper(deprecated), reg) > maskedBits(getUpper(update), reg))
+    setUpper(replaceMaskedBits(getUpper(deprecated), getUpper(update), reg), tc);
   else
-    setUpper(getUpper(fromTc), tc);
+    setUpper(getUpper(deprecated), tc);
 }
 
 void incrementTc() {
@@ -10701,6 +10805,7 @@ uint64_t selfie() {
     initScanner();
     initRegister();
     initInterpreter();
+    initMasks();
     initKernel();
 
     while (numberOfRemainingArguments() > 0) {
