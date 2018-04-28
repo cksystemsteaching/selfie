@@ -10043,7 +10043,7 @@ void confine_mul() {
       if (loRem != 0) // lower++ if remainder != 0
         setLower(getLower(tc) + 1, tc);
       updateRegState(rd, tc);
-      updateMask(F3_MUL, rd, floorLogBaseTwo(getLowerFromReg(rs2)));
+      updateMask(F3_MUL, rs1, floorLogBaseTwo(getLowerFromReg(rs2)));
 
     } else {
       // RD == RS1 was multiplier - confine RS2 and restore RD
@@ -10064,7 +10064,7 @@ void confine_mul() {
       saveState(*(registers + rd));
       clearTrace();
       updateRegState(rd, *(tcs + btc));
-      updateMask(F3_MUL, rd, floorLogBaseTwo(getLower(oldRD)));
+      updateMask(F3_MUL, rs2, floorLogBaseTwo(getLower(oldRD)));
 
     }
   }
@@ -10112,7 +10112,7 @@ void confine_divu() {
         setUpper(getUpper(tc) + div - 1, tc);
       }
       updateRegState(rd, tc);
-      updateMask(F3_DIVU, rd, floorLogBaseTwo(getLowerFromReg(rs2)));
+      updateMask(F3_DIVU, rs1, floorLogBaseTwo(getLowerFromReg(rs2)));
     } else {
       // should get caught in symbolic_do_divu
       print(selfieName);
