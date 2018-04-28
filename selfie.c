@@ -1476,8 +1476,13 @@ void printValues(uint64_t tc);
 // ------------------------------ MASK ----------------------------
 uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg);
 
+// values up to CPUBITWIDTH
 uint64_t rightMaskIndex(uint64_t reg) { return maskIndex(SET, 0, reg); }
+
+// values up to CPUBITWIDTH - 1
 uint64_t leftMaskIndex(uint64_t reg) { return maskIndex(NSET, maskIndex(SET, 0, reg), reg) - 1; }
+
+// values in range 0 to CPUBITWIDTH
 uint64_t maskSize (uint64_t reg) { return leftMaskIndex(reg) - rightMaskIndex(reg) + 1; }
 
 uint64_t maskedBits(uint64_t value, uint64_t reg);
@@ -8854,7 +8859,7 @@ uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg) {
     i = i + 1;
   }
 
-  if (leftShift(*(masks + reg), CPUBITWIDTH - 1) == state)
+  if (rightShift(*(masks + reg), CPUBITWIDTH - 1) == state)
     return CPUBITWIDTH - 1;
 
   return CPUBITWIDTH;
@@ -8862,17 +8867,17 @@ uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg) {
 
 // return value of marked portion
 uint64_t maskedBits(uint64_t value, uint64_t reg) {
-
+  // assert: 0 <= #maskedBits <= CPUBITWIDTH
+  // assert: maskSize: left - rigth + 1
   if (maskSize(reg) == CPUBITWIDTH)
     return value;
 
-  else if (maskSize(reg) > 0)
-    if (rightMaskIndex(reg) == CPUBITWIDTH - 1)
-      return leftShift(*(masks + reg), maskSize(reg));
-    else
-      return getBits(value, rightMaskIndex(reg), maskSize(reg));
+  // return 0 if nothing is set
+  if (leftMaskIndex(reg) >= CPUBITWIDTH - 1)
+    return rightShift(*(masks + reg), rightMaskIndex(reg));
   else
-    return 0;
+    return getBits(value, rightMaskIndex(reg), maskSize(reg));
+
 }
 
 // replace maksed bits in inValue with bits
