@@ -1477,7 +1477,7 @@ void printValues(uint64_t tc);
 uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg);
 
 uint64_t rightMaskIndex(uint64_t reg) { return maskIndex(SET, 0, reg); }
-uint64_t leftMaskIndex(uint64_t reg) { return maskIndex(NSET, maskIndex(SET, 0, reg), reg) - 1; }
+uint64_t leftMaskIndex(uint64_t reg) { return maskIndex(NSET, maskIndex(SET, 0, reg), reg); }
 uint64_t maskSize (uint64_t reg) { return leftMaskIndex(reg) - rightMaskIndex(reg) + 1; }
 
 uint64_t maskedBits(uint64_t value, uint64_t reg);
@@ -8848,7 +8848,7 @@ void printValues(uint64_t tc) {
 
 // index of the first appearance of a bit in given sate (starting scan at index i)
 uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg) {
-  while (i < CPUBITWIDTH) {
+  while (i < CPUBITWIDTH - 1) {
     if (getBits(*(masks + reg), i, 1) == state)
       return i;
     i = i + 1;
