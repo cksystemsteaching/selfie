@@ -1452,7 +1452,7 @@ void symbolic_prepare_memory(uint64_t* context);
 void symbolic_prepare_registers(uint64_t* context);
 
 void initMasks();
-void resetMasks();
+void resetMask();
 // ---------------------------- UTILITIES --------------------------
 
 // precise execution
@@ -1710,7 +1710,9 @@ uint64_t twoToThePowerOf(uint64_t p) {
 
 uint64_t floorLogBaseTwo(uint64_t v) {
   // assert: 0 <= v < twoToThePowerOf(CPUBITWIDTH)
-  uint64_t p = 0;
+  uint64_t p;
+
+  p = 0;
 
   while (v >= 2) {
     v = v / 2;
@@ -8689,7 +8691,7 @@ void symbolic_prepare_registers(uint64_t* context) {
 void initMasks() {
   uint64_t r;
 
-  masks = malloc(NUMBEROFREGISTERS * SIZEOFUINT64);
+  masks = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64);
 
   r = 0;
   while (r < NUMBEROFREGISTERS) {
