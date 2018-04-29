@@ -1439,12 +1439,13 @@ uint64_t SYMBOLIC      = 1;
 uint64_t CONSTRAINED   = 2;
 uint64_t UNSATISFIABLE = 3;
 
-uint64_t NSET = 0;  // bit not set
-uint64_t SET = 1;   // bit set
+uint64_t NSET = 0;   // bit not set
+uint64_t SET  = 1;   // bit set
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* masks = (uint64_t*) 0; // masks for each register to indicate wich bits valid/used
+uint64_t* masks = (uint64_t*) 0; // masks for each register to indicate which bits valid/used
+uint64_t  paths = 1;             // number of explored paths
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -7687,6 +7688,14 @@ void printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* cou
 }
 
 void printProfile() {
+  if (symbolic) {
+    print(selfieName);
+    print((uint64_t*) ": vipster explored ");
+    printInteger(paths);
+    print((uint64_t*) " different paths");
+    println();
+  }
+
   print(selfieName);
   print((uint64_t*) ": summary: ");
   printInteger(getTotalNumberOfInstructions());
@@ -8889,7 +8898,6 @@ uint64_t replaceMaskedBits(uint64_t deprecated, uint64_t update, uint64_t reg) {
 
 // update the mask
 void updateMask(uint64_t instruction, uint64_t reg, uint64_t n) {
-
   if (debug_mask) {
     print(selfieName);
     print((uint64_t*) ": updating mask(");
@@ -9052,7 +9060,9 @@ void symbolic_do_mul() {
     forcePrecise(currentContext, rs1, rs2);
 
     // sets [0,MAX] if (b*d - a*c >= 2^64)
-    // iterative_mul(); // for now
+    //iterative_mul(); // for now
+
+    // sTODO: reactivate iterative_mul for correctness
     setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
     setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
 
@@ -9793,7 +9803,7 @@ void checkSatisfiability(uint64_t tc) {
 
   } else {
     print(selfieName);
-    print((uint64_t*) ": symbolic value reached read ecall and is satisfiable with witnesses: ");
+    print((uint64_t*) ": symbolic value is satisfiable with witnesses: ");
     printInteger(getLower(tc));
     print((uint64_t*) ",..,");
     printInteger(getUpper(tc));
@@ -9864,7 +9874,8 @@ void assignNextConstraint(uint64_t reg1, uint64_t reg2) {
     tc = tc - 1;
     *(registers + reg) = tc - 1;
 
-    undo = 0;
+    paths = paths + 1;
+    undo  = 0;
   } else
     *(registers + reg) = *(tcs + tc);
 }
