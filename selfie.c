@@ -1478,13 +1478,13 @@ void printValues(uint64_t tc);
 uint64_t maskIndex(uint64_t state, uint64_t i, uint64_t reg);
 
 // values up to CPUBITWIDTH
-uint64_t rightMaskIndex(uint64_t reg) { return maskIndex(SET, 0, reg); }
+uint64_t LSBmaskIndex(uint64_t reg) { return maskIndex(SET, 0, reg); }
 
 // values up to CPUBITWIDTH - 1
-uint64_t leftMaskIndex(uint64_t reg) { return maskIndex(NSET, maskIndex(SET, 0, reg), reg) - 1; }
+uint64_t MSBmaskIndex(uint64_t reg) { return maskIndex(NSET, maskIndex(SET, 0, reg), reg) - 1; }
 
 // values in range 0 to CPUBITWIDTH
-uint64_t maskSize (uint64_t reg) { return leftMaskIndex(reg) - rightMaskIndex(reg) + 1; }
+uint64_t maskSize (uint64_t reg) { return MSBmaskIndex(reg) - LSBmaskIndex(reg) + 1; }
 
 uint64_t maskedBits(uint64_t value, uint64_t reg);
 uint64_t replaceMaskedBits(uint64_t deprecated, uint64_t update, uint64_t reg);
@@ -8882,10 +8882,10 @@ uint64_t maskedBits(uint64_t value, uint64_t reg) {
     return value;
 
   // return 0 if nothing is set
-  if (leftMaskIndex(reg) >= CPUBITWIDTH - 1)
-    return rightShift(*(masks + reg), rightMaskIndex(reg));
+  if (MSBmaskIndex(reg) >= CPUBITWIDTH - 1)
+    return rightShift(value, LSBmaskIndex(reg));
   else
-    return getBits(value, rightMaskIndex(reg), maskSize(reg));
+    return getBits(value, LSBmaskIndex(reg), maskSize(reg));
 
 }
 
@@ -8893,7 +8893,7 @@ uint64_t maskedBits(uint64_t value, uint64_t reg) {
 uint64_t replaceMaskedBits(uint64_t deprecated, uint64_t update, uint64_t reg) {
   // subtract the to-be-overwritten masked bits to reset them in deprecated value
   // add masked update bits to set them at the marked position
-  return (deprecated - leftShift(maskedBits(deprecated, reg), rightMaskIndex(reg))) + leftShift(maskedBits(update, reg), rightMaskIndex(reg));
+  return (deprecated - leftShift(maskedBits(deprecated, reg), LSBmaskIndex(reg))) + leftShift(maskedBits(update, reg), LSBmaskIndex(reg));
 }
 
 // update the mask
@@ -10194,7 +10194,7 @@ void confine_ld() {
   if (sameIntervalls(mem_tc, reg_tc) == 0) {
     saveState(mem_tc);
 
-    syncSymbolicIntervallsOnTrace(mem_tc, reg_tc, rs1);
+    syncSymbolicIntervallsOnTrace(mem_tc, reg_tc, rd);
 
     updateMemState(vaddr, tc);
   }
@@ -10336,11 +10336,13 @@ void syncSymbolicIntervallsOnTrace(uint64_t deprecated, uint64_t update, uint64_
       if (getLower(update) > getUpper(deprecated)) {
         constrainLowerBound(deprecated, update, reg);
         setUpper(getUpper(update), tc);
+        // setUpper(replaceMaskedBits(getUpper(deprecated), getUpper(update), reg), tc);
 
       // constrain with lower wrap-around -> only upper needs to be calculated
       } else if (getUpper(update) < getLower(deprecated)) {
         constrainUpperBound(deprecated, update, reg);
         setLower(getLower(update), tc);
+        // setLower(replaceMaskedBits(getLower(deprecated), getLower(update), reg), tc);
 
       // symbolic value is already unsatisfiable
       } else if (getState(deprecated) == UNSATISFIABLE) {
@@ -10357,11 +10359,13 @@ void syncSymbolicIntervallsOnTrace(uint64_t deprecated, uint64_t update, uint64_
       if (getLower(deprecated) > getUpper(update)) {
         constrainLowerBound(deprecated, update, reg);
         setUpper(getUpper(update), tc);
+        // setUpper(replaceMaskedBits(getUpper(deprecated), getUpper(update), reg), tc);
 
       // constrain with lower wrap-around -> only upper needs to be calculated
       } else if (getUpper(deprecated) < getLower(update)) {
         constrainUpperBound(deprecated, update, reg);
         setLower(getLower(update), tc);
+        // setLower(replaceMaskedBits(getLower(deprecated), getLower(update), reg), tc);
 
       // symbolic value is already unsatisfiable
       } else if (getState(deprecated) == UNSATISFIABLE) {
