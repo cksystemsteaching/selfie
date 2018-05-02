@@ -356,15 +356,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Von Neumann Machine",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 85.95999999999998,
-              "width" : 852.07999999999993,
-              "height" : 94.679443359375
-            }
-          },
-          {
             "text" : "Key idea - code and data in same memory",
             "targetRectangle" : {
               "y" : 209,
@@ -425,6 +416,15 @@ local_slide( {
               "x" : 140.25,
               "width" : 621.98400000000015,
               "height" : 59.8280029296875
+            }
+          },
+          {
+            "text" : "Von Neumann Machine",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 85.95999999999998,
+              "width" : 852.07999999999993,
+              "height" : 94.679443359375
             }
           }
         ],

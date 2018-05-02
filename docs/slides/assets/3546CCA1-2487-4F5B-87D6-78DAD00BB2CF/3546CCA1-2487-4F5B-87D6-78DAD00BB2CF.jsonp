@@ -378,15 +378,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "This is a draft! To be completed incrementally 2018-2019",
-            "targetRectangle" : {
-              "y" : 24.747997343540192,
-              "x" : 207.89599800109863,
-              "width" : 608.2080000000002,
-              "height" : 28.3280029296875
-            }
-          },
-          {
             "text" : "Selfie: Introduction to the Implementation of Programming Languages, Operating Systems, and Processor Architecture",
             "targetRectangle" : {
               "y" : 138,
@@ -438,6 +429,15 @@ local_slide( {
               "x" : 275.89745000000005,
               "width" : 472.2050999999999,
               "height" : 40.015804290771484
+            }
+          },
+          {
+            "text" : "This is a draft! To be completed incrementally 2018-2019",
+            "targetRectangle" : {
+              "y" : 24.747997343540192,
+              "x" : 207.89599800109863,
+              "width" : 608.2080000000002,
+              "height" : 28.3280029296875
             }
           }
         ],

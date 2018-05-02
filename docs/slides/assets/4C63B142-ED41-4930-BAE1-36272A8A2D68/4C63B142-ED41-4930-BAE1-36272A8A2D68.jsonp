@@ -356,6 +356,15 @@ local_slide( {
         ],
         "accessibility" : [
           {
+            "text" : "Syllabus",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 355.63999999999999,
+              "width" : 312.72000000000003,
+              "height" : 94.679443359375
+            }
+          },
+          {
             "text" : "Programming in C*, the C subset in which selfie is written and compiles.",
             "targetRectangle" : {
               "y" : 218,
@@ -407,15 +416,6 @@ local_slide( {
               "x" : 119.00000059604645,
               "width" : 813.72160000000065,
               "height" : 62.883203625679016
-            }
-          },
-          {
-            "text" : "Syllabus",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 355.63999999999999,
-              "width" : 312.72000000000003,
-              "height" : 94.679443359375
             }
           }
         ],

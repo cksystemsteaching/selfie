@@ -14,9 +14,9 @@
       "width" : 864,
       "height" : 165
     },
-    "6A5A284CB71EE93C815D1EEEA0D85E7E" : {
+    "0A5E09EB55F702E4FC074754DC3171AE" : {
       "type" : "texture",
-      "index" : 4,
+      "index" : 5,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -42,9 +42,9 @@
       "width" : 425,
       "height" : 61
     },
-    "0A5E09EB55F702E4FC074754DC3171AE" : {
+    "09049E7DC289AFCDC096B8A1F9CE9AC1" : {
       "type" : "texture",
-      "index" : 5,
+      "index" : 4,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -266,7 +266,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "6A5A284CB71EE93C815D1EEEA0D85E7E"
+                    "texture" : "09049E7DC289AFCDC096B8A1F9CE9AC1"
                   },
                   {
                     "animations" : [
@@ -386,21 +386,21 @@
           }
         },
         {
-          "text" : "This␣sense␣makes␣!␣no␣sentence",
-          "targetRectangle" : {
-            "y" : 499.79513549804688,
-            "x" : 98.567977905273438,
-            "width" : 825.86400000000003,
-            "height" : 60.54400634765625
-          }
-        },
-        {
           "text" : "Abstraction",
           "targetRectangle" : {
             "y" : 58,
             "x" : 298.59999999999997,
             "width" : 426.80000000000013,
             "height" : 94.679443359375
+          }
+        },
+        {
+          "text" : "This␣sense␣makes␣!␣no␣sentence",
+          "targetRectangle" : {
+            "y" : 499.79513549804688,
+            "x" : 98.567977905273438,
+            "width" : 825.86400000000003,
+            "height" : 60.54400634765625
           }
         }
       ],

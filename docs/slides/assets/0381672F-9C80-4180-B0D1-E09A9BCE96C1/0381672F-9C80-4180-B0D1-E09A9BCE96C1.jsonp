@@ -2,20 +2,6 @@ local_slide( {
   "name" : "0381672F-9C80-4180-B0D1-E09A9BCE96C1",
   "json" : {
     "assets" : {
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
-        "type" : "texture",
-        "index" : 0,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/0381672F-9C80-4180-B0D1-E09A9BCE96C1.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
       "A6207C09B3720D2503610720366CEA0D" : {
         "type" : "texture",
         "index" : 1,
@@ -58,6 +44,20 @@ local_slide( {
         "width" : 851,
         "height" : 303
       },
+      "C0EFED95E51DA92B861B7F409EC6CFF6" : {
+        "type" : "texture",
+        "index" : 5,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/0381672F-9C80-4180-B0D1-E09A9BCE96C1.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
       "312996C1FA86AA3D4169377FAA7430B6" : {
         "type" : "texture",
         "index" : 4,
@@ -72,9 +72,9 @@ local_slide( {
         "width" : 295,
         "height" : 139
       },
-      "3EC70C464CA3A9DA4FE61801C14A6259" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
-        "index" : 5,
+        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -282,7 +282,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "3EC70C464CA3A9DA4FE61801C14A6259"
+                      "texture" : "C0EFED95E51DA92B861B7F409EC6CFF6"
                     },
                     {
                       "animations" : [
@@ -393,6 +393,15 @@ local_slide( {
             }
           },
           {
+            "text" : "Arithmetic Instructions ",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 94.120000000000061,
+              "width" : 857.99999999999977,
+              "height" : 94.679443359375
+            }
+          },
+          {
             "text" : "Set $rd to 1 if $rs1 < $rs2.",
             "targetRectangle" : {
               "y" : 305,
@@ -426,15 +435,6 @@ local_slide( {
               "x" : 181,
               "width" : 542.05037499999992,
               "height" : 54.1630859375
-            }
-          },
-          {
-            "text" : "Arithmetic Instructions ",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 94.120000000000061,
-              "width" : 857.99999999999977,
-              "height" : 94.679443359375
             }
           }
         ],

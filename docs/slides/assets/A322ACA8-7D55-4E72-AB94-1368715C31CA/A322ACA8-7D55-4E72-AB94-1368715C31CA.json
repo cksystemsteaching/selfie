@@ -1,19 +1,5 @@
 {
   "assets" : {
-    "C6CFD304F2608FBB4D0D724120BF86C7" : {
-      "type" : "texture",
-      "index" : 2,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/A322ACA8-7D55-4E72-AB94-1368715C31CA.pdf"
-      },
-      "width" : 379,
-      "height" : 441
-    },
     "4FC34CD688545AB67D27699A7896AD2C" : {
       "type" : "texture",
       "index" : 1,
@@ -56,9 +42,9 @@
       "width" : 191,
       "height" : 52
     },
-    "0C299E7E111B937E67AC7FF3BAB322D3" : {
+    "14EEE688491D106EA3F4927A7D9F21F7" : {
       "type" : "texture",
-      "index" : 6,
+      "index" : 2,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -67,8 +53,8 @@
       "url" : {
         "native" : "assets\/A322ACA8-7D55-4E72-AB94-1368715C31CA.pdf"
       },
-      "width" : 1024,
-      "height" : 768
+      "width" : 379,
+      "height" : 441
     },
     "5FEB5E126E2B344994C6C4ECEAF9B8B4" : {
       "type" : "texture",
@@ -84,6 +70,20 @@
       "width" : 202,
       "height" : 24
     },
+    "0E247B6F5C3DB037ACC2CF6CC53D9CFA" : {
+      "type" : "texture",
+      "index" : 6,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/A322ACA8-7D55-4E72-AB94-1368715C31CA.pdf"
+      },
+      "width" : 1024,
+      "height" : 768
+    },
     "498E23C82CA78A4BCD7BA88E5243B6FC" : {
       "type" : "texture",
       "index" : 0,
@@ -98,7 +98,7 @@
       "width" : 1024,
       "height" : 768
     },
-    "5E8378E1EF58FE69FFAB85A12EABF974" : {
+    "CD807278C31A8C598A631CC0C49F8AA4" : {
       "type" : "texture",
       "index" : 7,
       "assetRequest" : {
@@ -294,7 +294,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "0C299E7E111B937E67AC7FF3BAB322D3"
+                    "texture" : "0E247B6F5C3DB037ACC2CF6CC53D9CFA"
                   },
                   {
                     "animations" : [
@@ -375,7 +375,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "5E8378E1EF58FE69FFAB85A12EABF974"
+                    "texture" : "CD807278C31A8C598A631CC0C49F8AA4"
                   }
                 ]
               }
@@ -1013,7 +1013,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "C6CFD304F2608FBB4D0D724120BF86C7"
+                    "texture" : "14EEE688491D106EA3F4927A7D9F21F7"
                   }
                 ]
               }

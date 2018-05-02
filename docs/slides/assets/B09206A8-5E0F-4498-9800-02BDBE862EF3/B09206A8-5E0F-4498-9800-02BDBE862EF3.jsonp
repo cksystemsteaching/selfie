@@ -16,34 +16,6 @@ local_slide( {
         "width" : 384,
         "height" : 13
       },
-      "B509E439C6FC7ED4775FE844A62574C0" : {
-        "type" : "texture",
-        "index" : 0,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/B09206A8-5E0F-4498-9800-02BDBE862EF3.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
-      "37CEFDE60644C206AEA9B3849B519925" : {
-        "type" : "texture",
-        "index" : 2,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/B09206A8-5E0F-4498-9800-02BDBE862EF3.pdf"
-        },
-        "width" : 493,
-        "height" : 344
-      },
       "34CFECDBEFB04EAFD89BB8E1D33FC800" : {
         "type" : "texture",
         "index" : 5,
@@ -71,6 +43,20 @@ local_slide( {
         },
         "width" : 222,
         "height" : 84
+      },
+      "37CEFDE60644C206AEA9B3849B519925" : {
+        "type" : "texture",
+        "index" : 2,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/B09206A8-5E0F-4498-9800-02BDBE862EF3.pdf"
+        },
+        "width" : 493,
+        "height" : 344
       },
       "F148FCCE8B464971E36B790781766FA6" : {
         "type" : "texture",
@@ -100,7 +86,21 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "251041F14648F86C1AFB05A0062C2002" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+        "type" : "texture",
+        "index" : 0,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/B09206A8-5E0F-4498-9800-02BDBE862EF3.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
+      "1E75BB29D9445E8719AD1E2BAD710654" : {
         "type" : "texture",
         "index" : 6,
         "assetRequest" : {
@@ -296,7 +296,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "251041F14648F86C1AFB05A0062C2002"
+                      "texture" : "1E75BB29D9445E8719AD1E2BAD710654"
                     },
                     {
                       "animations" : [
@@ -398,15 +398,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "The next instruction that is linked is the assignment into a!",
-            "targetRectangle" : {
-              "y" : 465.00476086139679,
-              "x" : 631.72380139160157,
-              "width" : 225.33600000000001,
-              "height" : 86.3997802734375
-            }
-          },
-          {
             "text" : "uint64_t increment(uint64_t inc) {",
             "targetRectangle" : {
               "y" : 238.7069730758667,
@@ -494,6 +485,15 @@ local_slide( {
               "x" : 269.67999999999995,
               "width" : 484.6400000000001,
               "height" : 94.679443359375
+            }
+          },
+          {
+            "text" : "The next instruction that is linked is the assignment into a!",
+            "targetRectangle" : {
+              "y" : 465.00476086139679,
+              "x" : 631.72380139160157,
+              "width" : 225.33600000000001,
+              "height" : 86.3997802734375
             }
           }
         ],
@@ -728,7 +728,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "B509E439C6FC7ED4775FE844A62574C0"
+                      "texture" : "498E23C82CA78A4BCD7BA88E5243B6FC"
                     }
                   ]
                 }

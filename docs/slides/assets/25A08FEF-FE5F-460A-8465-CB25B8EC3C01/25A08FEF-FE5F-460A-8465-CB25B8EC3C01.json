@@ -354,21 +354,21 @@
       ],
       "accessibility" : [
         {
-          "text" : "The problem statement:\\u2028Given a specification of valid symbols where symbols may consist of multiple characters…\\u2028\\u2028…Is a given input (source code) in this specification, or in other words do the characters in the source file form valid symbols according to the specification?",
-          "targetRectangle" : {
-            "y" : 328.5,
-            "x" : 114,
-            "width" : 832.70400000000006,
-            "height" : 246.10400390625
-          }
-        },
-        {
           "text" : "The Scanner",
           "targetRectangle" : {
             "y" : 58,
             "x" : 279.31999999999994,
             "width" : 465.36000000000013,
             "height" : 94.679443359375
+          }
+        },
+        {
+          "text" : "The problem statement:\\u2028Given a specification of valid symbols where symbols may consist of multiple characters…\\u2028\\u2028…Is a given input (source code) in this specification, or in other words do the characters in the source file form valid symbols according to the specification?",
+          "targetRectangle" : {
+            "y" : 328.5,
+            "x" : 114,
+            "width" : 832.70400000000006,
+            "height" : 246.10400390625
           }
         }
       ],

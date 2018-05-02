@@ -2,9 +2,23 @@ local_slide( {
   "name" : "A518883C-2473-4DBD-9AC9-486FE306E205",
   "json" : {
     "assets" : {
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "31D1F0221901D8DB80982D51F506821A" : {
         "type" : "texture",
-        "index" : 0,
+        "index" : 1,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/A518883C-2473-4DBD-9AC9-486FE306E205.pdf"
+        },
+        "width" : 755,
+        "height" : 76
+      },
+      "C0EFED95E51DA92B861B7F409EC6CFF6" : {
+        "type" : "texture",
+        "index" : 5,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -16,23 +30,9 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "48AD3BE867A82D7DA69030A4B80B2C22" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
-        "index" : 2,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/A518883C-2473-4DBD-9AC9-486FE306E205.pdf"
-        },
-        "width" : 855,
-        "height" : 347
-      },
-      "3EC70C464CA3A9DA4FE61801C14A6259" : {
-        "type" : "texture",
-        "index" : 5,
+        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -58,9 +58,9 @@ local_slide( {
         "width" : 657,
         "height" : 94
       },
-      "31D1F0221901D8DB80982D51F506821A" : {
+      "4EA33999C090FC220C4FCAD42EBDFBC0" : {
         "type" : "texture",
-        "index" : 1,
+        "index" : 2,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -69,8 +69,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/A518883C-2473-4DBD-9AC9-486FE306E205.pdf"
         },
-        "width" : 755,
-        "height" : 76
+        "width" : 855,
+        "height" : 347
       },
       "495FADBA73AED76CBD3E1FF98B265C79" : {
         "type" : "texture",
@@ -349,7 +349,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "3EC70C464CA3A9DA4FE61801C14A6259"
+                      "texture" : "C0EFED95E51DA92B861B7F409EC6CFF6"
                     }
                   ]
                 }
@@ -387,11 +387,11 @@ local_slide( {
             }
           },
           {
-            "text" : "Load into  $rd the value that is stored at the address that is obtained by adding the immediate offset to the content of $rs1.",
+            "text" : "Load into $rd the value that is stored at the address that is obtained by adding the immediate offset to the content of $rs1.",
             "targetRectangle" : {
               "y" : 353.58135986328125,
               "x" : 112.24999958276749,
-              "width" : 822.84570624999981,
+              "width" : 814.39450624999984,
               "height" : 111.03952636718748
             }
           },
@@ -405,11 +405,11 @@ local_slide( {
             }
           },
           {
-            "text" : "The addressing mode used for those instructions is called register-relative addressing. ",
+            "text" : "The addressing mode used for these instructions is called register-relative addressing. ",
             "targetRectangle" : {
               "y" : 581.26280467510219,
               "x" : 112.24999958276749,
-              "width" : 792.83199999999999,
+              "width" : 791.70719999999994,
               "height" : 111.04880321025848
             }
           }
@@ -1019,7 +1019,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "48AD3BE867A82D7DA69030A4B80B2C22"
+                      "texture" : "4EA33999C090FC220C4FCAD42EBDFBC0"
                     }
                   ]
                 }

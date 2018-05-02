@@ -354,15 +354,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "Implementing Machine Instructions",
-          "targetRectangle" : {
-            "y" : 25,
-            "x" : 162.70280000000002,
-            "width" : 717.05359999999996,
-            "height" : 160.07393798828127
-          }
-        },
-        {
           "text" : "Extending the Processor - Implementing machine instructions for SLL and SRL.",
           "targetRectangle" : {
             "y" : 257,
@@ -387,6 +378,15 @@
             "x" : 114,
             "width" : 819.20000000000016,
             "height" : 193.10400390625
+          }
+        },
+        {
+          "text" : "Implementing Machine Instructions",
+          "targetRectangle" : {
+            "y" : 25,
+            "x" : 162.70280000000002,
+            "width" : 717.05359999999996,
+            "height" : 160.07393798828127
           }
         }
       ],

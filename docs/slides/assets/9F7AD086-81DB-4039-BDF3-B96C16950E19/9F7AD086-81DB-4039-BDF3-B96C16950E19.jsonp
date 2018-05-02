@@ -30,21 +30,7 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "6A5A284CB71EE93C815D1EEEA0D85E7E" : {
-        "type" : "texture",
-        "index" : 4,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/9F7AD086-81DB-4039-BDF3-B96C16950E19.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
-      "900B15282C6CF179FC0A2FF57D021545" : {
+      "F40B9E922C13403672DF8CF08C192888" : {
         "type" : "texture",
         "index" : 2,
         "assetRequest" : {
@@ -57,6 +43,20 @@ local_slide( {
         },
         "width" : 861,
         "height" : 472
+      },
+      "09049E7DC289AFCDC096B8A1F9CE9AC1" : {
+        "type" : "texture",
+        "index" : 4,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/9F7AD086-81DB-4039-BDF3-B96C16950E19.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
       },
       "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
@@ -335,7 +335,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "6A5A284CB71EE93C815D1EEEA0D85E7E"
+                      "texture" : "09049E7DC289AFCDC096B8A1F9CE9AC1"
                     }
                   ]
                 }
@@ -364,7 +364,16 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Specification\\u2028The specification of valid symbols is a regular expression written in EBNF. It is easier to reason about the correctness of regular expression and it is expressive enough. The number of valid symbols is infinite and their size is unbound.",
+            "text" : "Specification and Implementation",
+            "targetRectangle" : {
+              "y" : 25,
+              "x" : 245.07200000000006,
+              "width" : 552.31519999999978,
+              "height" : 160.07393798828127
+            }
+          },
+          {
+            "text" : "Specification\\u2028The specification of valid symbols is a regular expression written in EBNF. It is easier to reason about the correctness of regular expression and it is expressive enough. The number of valid symbols is infinite and their size is unbounded.",
             "targetRectangle" : {
               "y" : 246,
               "x" : 114,
@@ -379,15 +388,6 @@ local_slide( {
               "x" : 114,
               "width" : 833.53599999999994,
               "height" : 232.10400390625
-            }
-          },
-          {
-            "text" : "Specification and Implementation",
-            "targetRectangle" : {
-              "y" : 25,
-              "x" : 245.07200000000006,
-              "width" : 552.31519999999978,
-              "height" : 160.07393798828127
             }
           }
         ],
@@ -996,7 +996,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "900B15282C6CF179FC0A2FF57D021545"
+                      "texture" : "F40B9E922C13403672DF8CF08C192888"
                     }
                   ]
                 }

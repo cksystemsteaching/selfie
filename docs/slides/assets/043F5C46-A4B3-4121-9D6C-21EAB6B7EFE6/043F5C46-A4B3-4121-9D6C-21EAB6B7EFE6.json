@@ -14,7 +14,7 @@
       "width" : 1024,
       "height" : 768
     },
-    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+    "F1FC982E23D788EF63442EEA80668148" : {
       "type" : "texture",
       "index" : 0,
       "assetRequest" : {
@@ -354,15 +354,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "Realize…",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 337.83999999999997,
-            "width" : 348.32000000000011,
-            "height" : 94.679443359375
-          }
-        },
-        {
           "text" : "This is how virtually every general-purpose processor operates.",
           "targetRectangle" : {
             "y" : 234,
@@ -405,6 +396,15 @@
             "x" : 181,
             "width" : 441.44000000000005,
             "height" : 80.07177734375
+          }
+        },
+        {
+          "text" : "Realize…",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 337.83999999999997,
+            "width" : 348.32000000000011,
+            "height" : 94.679443359375
           }
         }
       ],
@@ -639,7 +639,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "498E23C82CA78A4BCD7BA88E5243B6FC"
+                    "texture" : "F1FC982E23D788EF63442EEA80668148"
                   }
                 ]
               }

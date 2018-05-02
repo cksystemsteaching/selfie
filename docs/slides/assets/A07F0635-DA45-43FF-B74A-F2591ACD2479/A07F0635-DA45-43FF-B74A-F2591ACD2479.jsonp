@@ -2,20 +2,6 @@ local_slide( {
   "name" : "A07F0635-DA45-43FF-B74A-F2591ACD2479",
   "json" : {
     "assets" : {
-      "64B6289C878D7DE62BD5CAEB729F85E8" : {
-        "type" : "texture",
-        "index" : 5,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/A07F0635-DA45-43FF-B74A-F2591ACD2479.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
       "3C3343C1D377858419E3E44CB15C4E67" : {
         "type" : "texture",
         "index" : 3,
@@ -29,6 +15,20 @@ local_slide( {
         },
         "width" : 388,
         "height" : 180
+      },
+      "7C8C575605DA2662C055DC2D28977B2F" : {
+        "type" : "texture",
+        "index" : 5,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/A07F0635-DA45-43FF-B74A-F2591ACD2479.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
       },
       "C17778CF9D54C41757954BF49FF3C9DB" : {
         "type" : "texture",
@@ -72,20 +72,6 @@ local_slide( {
         "width" : 864,
         "height" : 361
       },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
-        "type" : "texture",
-        "index" : 0,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/A07F0635-DA45-43FF-B74A-F2591ACD2479.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
       "569E3E363162D4FA6515075C2B0656E0" : {
         "type" : "texture",
         "index" : 4,
@@ -99,6 +85,20 @@ local_slide( {
         },
         "width" : 48,
         "height" : 21
+      },
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+        "type" : "texture",
+        "index" : 0,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/A07F0635-DA45-43FF-B74A-F2591ACD2479.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
       }
     },
     "events" : [
@@ -282,7 +282,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "64B6289C878D7DE62BD5CAEB729F85E8"
+                      "texture" : "7C8C575605DA2662C055DC2D28977B2F"
                     },
                     {
                       "animations" : [
@@ -381,11 +381,11 @@ local_slide( {
         "automaticPlay" : false,
         "hyperlinks" : [
           {
-            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2138-L2193",
+            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2093-L2118",
             "targetRectangle" : {
-              "y" : 312.4127197265625,
-              "x" : 403.88379669189453,
-              "width" : 296.4482421875,
+              "y" : 244.27395629882812,
+              "x" : 400.70921325683594,
+              "width" : 218.435546875,
               "height" : 31
             }
           },
@@ -399,61 +399,16 @@ local_slide( {
             }
           },
           {
-            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2093-L2118",
-            "targetRectangle" : {
-              "y" : 244.27395629882812,
-              "x" : 400.70921325683594,
-              "width" : 218.435546875,
-              "height" : 31
-            }
-          }
-        ],
-        "accessibility" : [
-          {
-            "text" : "findNextCharacter()",
+            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2138-L2193",
             "targetRectangle" : {
               "y" : 312.4127197265625,
               "x" : 403.88379669189453,
               "width" : 296.4482421875,
               "height" : 31
             }
-          },
-          {
-            "text" : "The Scanner",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 279.31999999999994,
-              "width" : 465.36000000000013,
-              "height" : 94.679443359375
-            }
-          },
-          {
-            "text" : "getSymbol()",
-            "targetRectangle" : {
-              "y" : 180.43054103851318,
-              "x" : 336.88175964355469,
-              "width" : 171.6279296875,
-              "height" : 31
-            }
-          },
-          {
-            "text" : "calls",
-            "targetRectangle" : {
-              "y" : 215.05738824605942,
-              "x" : 310.72735548019409,
-              "width" : 45.336000000000013,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "getCharacter()",
-            "targetRectangle" : {
-              "y" : 244.27395629882812,
-              "x" : 400.70921325683594,
-              "width" : 218.435546875,
-              "height" : 31
-            }
-          },
+          }
+        ],
+        "accessibility" : [
           {
             "text" : "The heart of the scanner is the procedure getSymbol(), which finds the next valid symbol in a sequence of characters and stores it in a global variable (symbol).",
             "targetRectangle" : {
@@ -488,6 +443,51 @@ local_slide( {
               "x" : 107.00000041723251,
               "width" : 718.17870000000016,
               "height" : 63.730469250678993
+            }
+          },
+          {
+            "text" : "getCharacter()",
+            "targetRectangle" : {
+              "y" : 244.27395629882812,
+              "x" : 400.70921325683594,
+              "width" : 218.435546875,
+              "height" : 31
+            }
+          },
+          {
+            "text" : "getSymbol()",
+            "targetRectangle" : {
+              "y" : 180.43054103851318,
+              "x" : 336.88175964355469,
+              "width" : 171.6279296875,
+              "height" : 31
+            }
+          },
+          {
+            "text" : "The Scanner",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 279.31999999999994,
+              "width" : 465.36000000000013,
+              "height" : 94.679443359375
+            }
+          },
+          {
+            "text" : "findNextCharacter()",
+            "targetRectangle" : {
+              "y" : 312.4127197265625,
+              "x" : 403.88379669189453,
+              "width" : 296.4482421875,
+              "height" : 31
+            }
+          },
+          {
+            "text" : "calls",
+            "targetRectangle" : {
+              "y" : 215.05738824605942,
+              "x" : 310.72735548019409,
+              "width" : 45.336000000000013,
+              "height" : 28.3038330078125
             }
           }
         ],

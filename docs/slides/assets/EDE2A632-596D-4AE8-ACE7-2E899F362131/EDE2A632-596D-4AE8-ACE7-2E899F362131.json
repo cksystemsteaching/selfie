@@ -398,6 +398,15 @@
       ],
       "accessibility" : [
         {
+          "text" : "Course Material",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 219.27999999999997,
+            "width" : 585.44000000000005,
+            "height" : 94.679443359375
+          }
+        },
+        {
           "text" : "Website: selfie.cs.uni-salzburg.at",
           "targetRectangle" : {
             "y" : 216,
@@ -449,15 +458,6 @@
             "x" : 107.00000041723251,
             "width" : 781.5168000000001,
             "height" : 92.883203625679016
-          }
-        },
-        {
-          "text" : "Course Material",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 219.27999999999997,
-            "width" : 585.44000000000005,
-            "height" : 94.679443359375
           }
         }
       ],
