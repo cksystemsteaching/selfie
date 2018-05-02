@@ -368,24 +368,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "The scanner performs a membership test on a sequence of characters. It checks whether the symbols it sees are valid symbols of the programming language. ",
-          "targetRectangle" : {
-            "y" : 207.32225036621094,
-            "x" : 105.0372314453125,
-            "width" : 831.48800000000006,
-            "height" : 116.39208984375
-          }
-        },
-        {
-          "text" : "The Scanner",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 279.31999999999994,
-            "width" : 465.36000000000013,
-            "height" : 94.679443359375
-          }
-        },
-        {
           "text" : "Reading only one character at a time the scanner transforms a sequence of characters into a sequence of symbols that has no structure.",
           "targetRectangle" : {
             "y" : 400.73458862304688,
@@ -410,6 +392,24 @@
             "x" : 106.65000075101852,
             "width" : 844.75647999999978,
             "height" : 92.472163987159774
+          }
+        },
+        {
+          "text" : "The scanner performs a membership test on a sequence of characters. It checks whether the symbols it sees are valid symbols of the programming language. ",
+          "targetRectangle" : {
+            "y" : 207.32225036621094,
+            "x" : 105.0372314453125,
+            "width" : 831.48800000000006,
+            "height" : 116.39208984375
+          }
+        },
+        {
+          "text" : "The Scanner",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 279.31999999999994,
+            "width" : 465.36000000000013,
+            "height" : 94.679443359375
           }
         }
       ],

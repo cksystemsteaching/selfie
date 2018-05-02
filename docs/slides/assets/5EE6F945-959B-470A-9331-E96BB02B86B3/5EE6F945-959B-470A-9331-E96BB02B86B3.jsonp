@@ -382,6 +382,15 @@ local_slide( {
         ],
         "accessibility" : [
           {
+            "text" : "Why C?",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 368.27999999999997,
+              "width" : 287.44000000000005,
+              "height" : 94.679443359375
+            }
+          },
+          {
             "text" : "This course aims at much more than just learning how to code.",
             "targetRectangle" : {
               "y" : 218.5,
@@ -433,15 +442,6 @@ local_slide( {
               "x" : 107.00000041723251,
               "width" : 773.40159999999992,
               "height" : 92.883203625679016
-            }
-          },
-          {
-            "text" : "Why C?",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 368.27999999999997,
-              "width" : 287.44000000000005,
-              "height" : 94.679443359375
             }
           }
         ],

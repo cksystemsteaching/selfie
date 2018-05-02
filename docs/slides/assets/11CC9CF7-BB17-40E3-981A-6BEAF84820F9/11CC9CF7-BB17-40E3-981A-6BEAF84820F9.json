@@ -354,15 +354,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "Why?",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 408.27999999999997,
-            "width" : 207.44000000000005,
-            "height" : 94.679443359375
-          }
-        },
-        {
           "text" : "Selfie shows, from first principles, how a minimal but still realistic hardware and software stack works.",
           "targetRectangle" : {
             "y" : 212,
@@ -396,6 +387,15 @@
             "x" : 112.24999958276749,
             "width" : 832.2607999999999,
             "height" : 147.04880321025848
+          }
+        },
+        {
+          "text" : "Why?",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 408.27999999999997,
+            "width" : 207.44000000000005,
+            "height" : 94.679443359375
           }
         }
       ],

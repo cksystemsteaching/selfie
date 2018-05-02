@@ -356,21 +356,21 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Properties",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 321.51999999999998,
-              "width" : 380.96000000000004,
-              "height" : 94.679443359375
-            }
-          },
-          {
             "text" : "The scanner can not recognize structure:\\u2028It just operates on a sequence of characters and turns it into a sequence of symbols. \\u2028To recognize structure, the scanner would need to be able to count and remember (e.g. the number of braces). \\u2028\\u2028Therefore we need something more powerful called a parser.",
             "targetRectangle" : {
               "y" : 299,
               "x" : 114,
               "width" : 838.048,
               "height" : 305.10400390625
+            }
+          },
+          {
+            "text" : "Properties",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 321.51999999999998,
+              "width" : 380.96000000000004,
+              "height" : 94.679443359375
             }
           }
         ],

@@ -2,6 +2,20 @@ local_slide( {
   "name" : "97788254-FE74-4CE0-B77F-D0C6705E174A",
   "json" : {
     "assets" : {
+      "7CEE6ADDD2E7F635CE1F45F2CAF14178" : {
+        "type" : "texture",
+        "index" : 4,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/97788254-FE74-4CE0-B77F-D0C6705E174A.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
       "CFE01521FF2CA38F748C4AAFAB87BC9B" : {
         "type" : "texture",
         "index" : 1,
@@ -16,21 +30,7 @@ local_slide( {
         "width" : 653,
         "height" : 132
       },
-      "42B5283989E51653F79A851E008BDEE9" : {
-        "type" : "texture",
-        "index" : 4,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/97788254-FE74-4CE0-B77F-D0C6705E174A.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
-      "D65B0688D54FCF39D06283DB480DEC0C" : {
+      "448AD8A78B28C37E40CA4FE2D75315B6" : {
         "type" : "texture",
         "index" : 2,
         "assetRequest" : {
@@ -41,8 +41,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/97788254-FE74-4CE0-B77F-D0C6705E174A.pdf"
         },
-        "width" : 859,
-        "height" : 367
+        "width" : 864,
+        "height" : 357
       },
       "D701E742234423AC86D4645F6CD5CD57" : {
         "type" : "texture",
@@ -58,7 +58,7 @@ local_slide( {
         "width" : 657,
         "height" : 94
       },
-      "0C299E7E111B937E67AC7FF3BAB322D3" : {
+      "0E247B6F5C3DB037ACC2CF6CC53D9CFA" : {
         "type" : "texture",
         "index" : 5,
         "assetRequest" : {
@@ -268,7 +268,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "42B5283989E51653F79A851E008BDEE9"
+                      "texture" : "7CEE6ADDD2E7F635CE1F45F2CAF14178"
                     },
                     {
                       "animations" : [
@@ -349,7 +349,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "0C299E7E111B937E67AC7FF3BAB322D3"
+                      "texture" : "0E247B6F5C3DB037ACC2CF6CC53D9CFA"
                     }
                   ]
                 }
@@ -369,10 +369,10 @@ local_slide( {
           {
             "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L2933-L2957",
             "targetRectangle" : {
-              "y" : 598.83089089393616,
-              "x" : 107.00000041723251,
-              "width" : 430.1500000000002,
-              "height" : 30.130468750000091
+              "y" : 593.4247449111939,
+              "x" : 106.29999899864197,
+              "width" : 419.39625000000001,
+              "height" : 30.127207031250009
             }
           }
         ],
@@ -380,37 +380,37 @@ local_slide( {
           {
             "text" : "Load upper immediate loads imm value shifted by 12 bits into $rd and add immediate adds imm to the content of $rs1 and stores the result in $rd. ",
             "targetRectangle" : {
-              "y" : 338.54885864257812,
-              "x" : 107.00000041723251,
-              "width" : 845.40880000000027,
-              "height" : 95.620312500000011
+              "y" : 343.54885864257812,
+              "x" : 106.29999899864197,
+              "width" : 824.27358000000015,
+              "height" : 91.829648437499998
             }
           },
           {
-            "text" : "Those two instructions are used to initialize registers ($rs1 = $zero) and to load addresses into a register in order to read values from memory.",
+            "text" : "These two instructions are used to initialize registers ($rs1 = $zero) and to load addresses into a register in order to read values from memory.",
             "targetRectangle" : {
-              "y" : 434.88596801757814,
-              "x" : 107.00000041723251,
-              "width" : 836.86400000000015,
-              "height" : 96.85742237567905
+              "y" : 436.07738403320315,
+              "x" : 106.29999899864197,
+              "width" : 834.93696000000011,
+              "height" : 93.012127704620355
             }
           },
           {
             "text" : "lui is used to load the upper and addi to load the lower bits - see load_integer(uint64_t value). ",
             "targetRectangle" : {
-              "y" : 532.4859685182571,
-              "x" : 107.00000041723251,
-              "width" : 776.13270000000011,
-              "height" : 96.475391125679153
+              "y" : 529.81352540969851,
+              "x" : 106.29999899864197,
+              "width" : 756.72938250000016,
+              "height" : 93.738426532745393
             }
           },
           {
             "text" : "A special case of addi is nop, with $zero = $zero + 0.",
             "targetRectangle" : {
-              "y" : 629.67815651893613,
-              "x" : 107.00000041723251,
-              "width" : 679.22800000000007,
-              "height" : 63.730469250679107
+              "y" : 624.25082889556893,
+              "x" : 106.29999899864197,
+              "width" : 662.24730000000022,
+              "height" : 62.88720582962037
             }
           },
           {
@@ -919,10 +919,10 @@ local_slide( {
                     "rotation" : 0,
                     "scale" : 1,
                     "position" : {
-                      "pointX" : 504.5,
-                      "pointY" : 516.04885864257812
+                      "pointX" : 507,
+                      "pointY" : 511.04885864257812
                     },
-                    "width" : 859,
+                    "width" : 864,
                     "sublayerTransform" : [
                       1,
                       0,
@@ -949,7 +949,7 @@ local_slide( {
                     },
                     "opacity" : 1,
                     "edgeAntialiasingMask" : 251658240,
-                    "height" : 367,
+                    "height" : 357,
                     "hidden" : false,
                     "anchorPoint" : {
                       "pointX" : 0.5,
@@ -966,8 +966,8 @@ local_slide( {
                       ],
                       "texturedRectangle" : {
                         "singleTextureOpacity" : 1,
-                        "textXHeight" : 0.036063215258855585,
-                        "textBaseline" : 0.96487363969922391,
+                        "textXHeight" : 0.036146554621848744,
+                        "textBaseline" : 0.96357292640109038,
                         "isBackgroundTexture" : true,
                         "isVerticalText" : false,
                         "textColor" : [
@@ -991,10 +991,10 @@ local_slide( {
                         "rotation" : 0,
                         "scale" : 1,
                         "position" : {
-                          "pointX" : 433.5,
-                          "pointY" : 183.95114135742188
+                          "pointX" : 436,
+                          "pointY" : 182.95114135742188
                         },
-                        "width" : 859,
+                        "width" : 864,
                         "sublayerTransform" : [
                           1,
                           0,
@@ -1021,14 +1021,14 @@ local_slide( {
                         },
                         "opacity" : 1,
                         "edgeAntialiasingMask" : 0,
-                        "height" : 367,
+                        "height" : 357,
                         "hidden" : false,
                         "anchorPoint" : {
                           "pointX" : 0.5,
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "D65B0688D54FCF39D06283DB480DEC0C"
+                      "texture" : "448AD8A78B28C37E40CA4FE2D75315B6"
                     }
                   ]
                 }

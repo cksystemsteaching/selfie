@@ -390,21 +390,21 @@
       ],
       "accessibility" : [
         {
-          "text" : "Programming Language C",
-          "targetRectangle" : {
-            "y" : 63,
-            "x" : 81.346799999999973,
-            "width" : 861.30639999999994,
-            "height" : 83.934704589843761
-          }
-        },
-        {
           "text" : "https:\/\/www.tiobe.com\/tiobe-index",
           "targetRectangle" : {
             "y" : 708.71203660964966,
             "x" : 262.02798461914062,
             "width" : 498.94400000000019,
             "height" : 37.10400390625
+          }
+        },
+        {
+          "text" : "Programming Language C",
+          "targetRectangle" : {
+            "y" : 63,
+            "x" : 81.346799999999973,
+            "width" : 861.30639999999994,
+            "height" : 83.934704589843761
           }
         },
         {

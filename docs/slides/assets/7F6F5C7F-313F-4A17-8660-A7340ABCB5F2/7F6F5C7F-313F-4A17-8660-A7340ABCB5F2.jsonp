@@ -471,56 +471,11 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Regular expression is a formalism that defines a regular language (= a set of symbols defined by regular expression)",
-            "targetRectangle" : {
-              "y" : 201.34573364257812,
-              "x" : 105.25,
-              "width" : 818.952,
-              "height" : 57.3280029296875
-            }
-          },
-          {
-            "text" : "The production rules consists of terminal symbols, non-terminal symbols and operators (repetition{}, concatination ␣, xor| , …).",
-            "targetRectangle" : {
-              "y" : 259.34573364257812,
-              "x" : 105.25,
-              "width" : 832.24799999999993,
-              "height" : 89.622314453125
-            }
-          },
-          {
-            "text" : "A regular expression can be reduced to a single rule by replacing every non-terminal symbol with its right-hand side until no non-terminal symbols are left.",
-            "targetRectangle" : {
-              "y" : 349.64004516601562,
-              "x" : 105.25,
-              "width" : 832.22400000000016,
-              "height" : 88.9481201171875
-            }
-          },
-          {
-            "text" : "Regular Expression",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 153.28000000000003,
-              "width" : 717.44000000000005,
-              "height" : 94.679443359375
-            }
-          },
-          {
             "text" : "non-terminal symbol",
             "targetRectangle" : {
               "y" : 468.27099603414536,
               "x" : 280.68735456466675,
               "width" : 210.21600000000001,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "terminal symbol (literals of language)",
-            "targetRectangle" : {
-              "y" : 715.01605218648911,
-              "x" : 199.75935077667236,
-              "width" : 372.072,
               "height" : 28.3038330078125
             }
           },
@@ -549,6 +504,51 @@ local_slide( {
               "x" : 309.84962463378906,
               "width" : 388.86328125,
               "height" : 29
+            }
+          },
+          {
+            "text" : "Regular Expression",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 153.28000000000003,
+              "width" : 717.44000000000005,
+              "height" : 94.679443359375
+            }
+          },
+          {
+            "text" : "Regular expression is a formalism that defines a regular language (= a set of symbols defined by regular expression)",
+            "targetRectangle" : {
+              "y" : 201.34573364257812,
+              "x" : 105.25,
+              "width" : 818.952,
+              "height" : 57.3280029296875
+            }
+          },
+          {
+            "text" : "The production rules consists of terminal symbols, non-terminal symbols and operators (repetition{}, concatination ␣, xor| , …).",
+            "targetRectangle" : {
+              "y" : 259.34573364257812,
+              "x" : 105.25,
+              "width" : 832.24799999999993,
+              "height" : 89.622314453125
+            }
+          },
+          {
+            "text" : "A regular expression can be reduced to a single rule by replacing every non-terminal symbol with its right-hand side until no non-terminal symbols are left.",
+            "targetRectangle" : {
+              "y" : 349.64004516601562,
+              "x" : 105.25,
+              "width" : 832.22400000000016,
+              "height" : 88.9481201171875
+            }
+          },
+          {
+            "text" : "terminal symbol (literals of language)",
+            "targetRectangle" : {
+              "y" : 715.01605218648911,
+              "x" : 199.75935077667236,
+              "width" : 372.072,
+              "height" : 28.3038330078125
             }
           }
         ],

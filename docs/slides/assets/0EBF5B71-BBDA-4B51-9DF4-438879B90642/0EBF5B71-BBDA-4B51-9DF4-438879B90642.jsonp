@@ -58,6 +58,20 @@ local_slide( {
         "width" : 315,
         "height" : 21
       },
+      "4FC9234F1FAAA2AAF7D6FEC375E72D45" : {
+        "type" : "texture",
+        "index" : 13,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/0EBF5B71-BBDA-4B51-9DF4-438879B90642.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
       "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
         "index" : 0,
@@ -142,21 +156,7 @@ local_slide( {
         "width" : 861,
         "height" : 74
       },
-      "E448D85E72E1D7B4F89A0816CCFB287E" : {
-        "type" : "texture",
-        "index" : 13,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/0EBF5B71-BBDA-4B51-9DF4-438879B90642.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
-      "44D4017108AD9A768DE83F3656204742" : {
+      "18F8CFD7D7447E8B9BAD7AA4BED641BB" : {
         "type" : "texture",
         "index" : 8,
         "assetRequest" : {
@@ -461,7 +461,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "E448D85E72E1D7B4F89A0816CCFB287E"
+                      "texture" : "4FC9234F1FAAA2AAF7D6FEC375E72D45"
                     }
                   ]
                 }
@@ -490,12 +490,84 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "64 bit",
+            "text" : "1 000000000…000000000",
             "targetRectangle" : {
-              "y" : 434.79211419820786,
-              "x" : 482.65999937057495,
-              "width" : 58.67999999999995,
+              "y" : 522.29040598869324,
+              "x" : 340.47653341293335,
+              "width" : 316.8515625,
+              "height" : 31
+            }
+          },
+          {
+            "text" : "Adding 1 to ",
+            "targetRectangle" : {
+              "y" : 463.57244992256165,
+              "x" : 803.34642024230959,
+              "width" : 128.21034374999999,
+              "height" : 29.09814453125
+            }
+          },
+          {
+            "text" : "UINT64_MAX leads ",
+            "targetRectangle" : {
+              "y" : 493.36676144599915,
+              "x" : 719.51732649230962,
+              "width" : 212.03943749999996,
+              "height" : 29.09814453125
+            }
+          },
+          {
+            "text" : "to a wrap-around ",
+            "targetRectangle" : {
+              "y" : 523.16107296943665,
+              "x" : 745.70076399230959,
+              "width" : 185.85599999999999,
               "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "where only the ",
+            "targetRectangle" : {
+              "y" : 552.16107296943665,
+              "x" : 774.59676399230955,
+              "width" : 156.96000000000004,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "64 LSB ",
+            "targetRectangle" : {
+              "y" : 581.16107296943665,
+              "x" : 847.50876399230958,
+              "width" : 84.048000000000002,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "are considered.",
+            "targetRectangle" : {
+              "y" : 610.16107296943665,
+              "x" : 765.23676399230953,
+              "width" : 159.64800000000002,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "Cause of unbelievably expensive bugs, e.g. the Ariane 5 Flight 501.",
+            "targetRectangle" : {
+              "y" : 208,
+              "x" : 114,
+              "width" : 808.44799999999998,
+              "height" : 75.10400390625
+            }
+          },
+          {
+            "text" : "264 - 1 is the largest value that can be represented by 64 bits. In selfie this value is denoted UINT64_MAX.",
+            "targetRectangle" : {
+              "y" : 284,
+              "x" : 114,
+              "width" : 811.24266737365724,
+              "height" : 118.16308616733295
             }
           },
           {
@@ -544,60 +616,6 @@ local_slide( {
             }
           },
           {
-            "text" : "Adding 1 to ",
-            "targetRectangle" : {
-              "y" : 463.57244992256165,
-              "x" : 803.34642024230959,
-              "width" : 128.21034374999999,
-              "height" : 29.09814453125
-            }
-          },
-          {
-            "text" : "UINT64_MAX leads ",
-            "targetRectangle" : {
-              "y" : 493.36676144599915,
-              "x" : 719.51732649230962,
-              "width" : 212.03943749999996,
-              "height" : 29.09814453125
-            }
-          },
-          {
-            "text" : "to a wrap-around, ",
-            "targetRectangle" : {
-              "y" : 523.16107296943665,
-              "x" : 739.02876399230956,
-              "width" : 192.52800000000002,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "where only the ",
-            "targetRectangle" : {
-              "y" : 552.16107296943665,
-              "x" : 774.59676399230955,
-              "width" : 156.96000000000004,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "64 LSB ",
-            "targetRectangle" : {
-              "y" : 581.16107296943665,
-              "x" : 847.50876399230958,
-              "width" : 84.048000000000002,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "are considered.",
-            "targetRectangle" : {
-              "y" : 610.16107296943665,
-              "x" : 765.23676399230953,
-              "width" : 159.64800000000002,
-              "height" : 28.3038330078125
-            }
-          },
-          {
             "text" : "111111111…111111111",
             "targetRectangle" : {
               "y" : 469.41333079338074,
@@ -616,30 +634,12 @@ local_slide( {
             }
           },
           {
-            "text" : "Cause of unbelievably expensive bugs, e.g. the Ariane 5 Flight 501.",
+            "text" : "64 bit",
             "targetRectangle" : {
-              "y" : 208,
-              "x" : 114,
-              "width" : 808.44799999999998,
-              "height" : 75.10400390625
-            }
-          },
-          {
-            "text" : "264 - 1 is the largest value that can be represented by 64 bits. In selfie this value is denoted UINT64_MAX.",
-            "targetRectangle" : {
-              "y" : 284,
-              "x" : 114,
-              "width" : 811.24266737365724,
-              "height" : 118.16308616733295
-            }
-          },
-          {
-            "text" : "1 000000000…000000000",
-            "targetRectangle" : {
-              "y" : 522.29040598869324,
-              "x" : 340.47653341293335,
-              "width" : 316.8515625,
-              "height" : 31
+              "y" : 434.79211419820786,
+              "x" : 482.65999937057495,
+              "width" : 58.67999999999995,
+              "height" : 28.3038330078125
             }
           },
           {
@@ -2412,7 +2412,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "44D4017108AD9A768DE83F3656204742"
+                      "texture" : "18F8CFD7D7447E8B9BAD7AA4BED641BB"
                     }
                   ]
                 }

@@ -2,9 +2,9 @@ local_slide( {
   "name" : "F4C00E9F-7FE7-4829-8E97-074CB40FF865",
   "json" : {
     "assets" : {
-      "D175522C85C1F6932EE93B1EE7CFAD19" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
-        "index" : 2,
+        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -13,10 +13,10 @@ local_slide( {
         "url" : {
           "native" : "assets\/F4C00E9F-7FE7-4829-8E97-074CB40FF865.pdf"
         },
-        "width" : 819,
-        "height" : 407
+        "width" : 1024,
+        "height" : 768
       },
-      "ED5D3EC15EFCFAD0EC72B31751EF1B15" : {
+      "3A8E0A29904315FBBDB640F5B0118A5C" : {
         "type" : "texture",
         "index" : 1,
         "assetRequest" : {
@@ -30,9 +30,9 @@ local_slide( {
         "width" : 713,
         "height" : 78
       },
-      "3F5EC9F70E23571AA965054A59B8FD19" : {
+      "DD2859066FDB8381E1DAF34CD2CF98DB" : {
         "type" : "texture",
-        "index" : 3,
+        "index" : 2,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -41,10 +41,10 @@ local_slide( {
         "url" : {
           "native" : "assets\/F4C00E9F-7FE7-4829-8E97-074CB40FF865.pdf"
         },
-        "width" : 1024,
-        "height" : 768
+        "width" : 819,
+        "height" : 407
       },
-      "CD1FD9F2D704E26250D6AD96EB850708" : {
+      "AA8CF7D785779584DBB35E18E865B480" : {
         "type" : "texture",
         "index" : 4,
         "assetRequest" : {
@@ -58,9 +58,9 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "3F5EC9F70E23571AA965054A59B8FD19" : {
         "type" : "texture",
-        "index" : 0,
+        "index" : 3,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -335,7 +335,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "CD1FD9F2D704E26250D6AD96EB850708"
+                      "texture" : "AA8CF7D785779584DBB35E18E865B480"
                     }
                   ]
                 }
@@ -392,7 +392,7 @@ local_slide( {
             }
           },
           {
-            "text" : "Note that 0x48 is ASCII for H while 0x64, 0x6C, 0x6F, 0x20, and 0x57 are ASCII for e, l, o, space, and W, respectively.",
+            "text" : "Note that 0x48 is ASCII for H while 0x65, 0x6C, 0x6F, 0x20, and 0x57 are ASCII for e, l, o, space, and W, respectively.",
             "targetRectangle" : {
               "y" : 492.17724609375,
               "x" : 114,
@@ -819,7 +819,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "ED5D3EC15EFCFAD0EC72B31751EF1B15"
+                      "texture" : "3A8E0A29904315FBBDB640F5B0118A5C"
                     }
                   ]
                 }
@@ -1006,7 +1006,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "D175522C85C1F6932EE93B1EE7CFAD19"
+                      "texture" : "DD2859066FDB8381E1DAF34CD2CF98DB"
                     }
                   ]
                 }

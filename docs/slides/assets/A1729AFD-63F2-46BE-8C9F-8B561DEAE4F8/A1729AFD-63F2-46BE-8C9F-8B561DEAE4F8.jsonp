@@ -801,6 +801,105 @@ local_slide( {
         "automaticPlay" : false,
         "hyperlinks" : [
           {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Parameter_(computer_programming)#Parameters_and_arguments",
+            "targetRectangle" : {
+              "y" : 172.36143487691879,
+              "x" : 705.56527328491211,
+              "width" : 208.00800323486328,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Assignment_(computer_science)",
+            "targetRectangle" : {
+              "y" : 351.57012933492661,
+              "x" : 56.448100566864014,
+              "width" : 141.84000492095947,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Pointer_(computer_programming)",
+            "targetRectangle" : {
+              "y" : 153.69609063863754,
+              "x" : 447.84692716598511,
+              "width" : 146.32799625396729,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Expression_(computer_science)",
+            "targetRectangle" : {
+              "y" : 463.65447992086411,
+              "x" : 772.29855990409851,
+              "width" : 133.87199640274048,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Integer_(computer_science)",
+            "targetRectangle" : {
+              "y" : 524.09661859273911,
+              "x" : 56.526449203491211,
+              "width" : 212.01601028442383,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Integer_(computer_science)",
+            "targetRectangle" : {
+              "y" : 279.74032586812973,
+              "x" : 54.64810585975647,
+              "width" : 145.43999433517456,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Return_type",
+            "targetRectangle" : {
+              "y" : 235.81459039449692,
+              "x" : 46.992724418640137,
+              "width" : 134.37600135803223,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Relational_operator",
+            "targetRectangle" : {
+              "y" : 340.98208612203598,
+              "x" : 474.10176253318787,
+              "width" : 144.93600130081177,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Character_literal",
+            "targetRectangle" : {
+              "y" : 541.78497308492661,
+              "x" : 655.31801414489746,
+              "width" : 189.81599807739258,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Local_variable",
+            "targetRectangle" : {
+              "y" : 265.84378045797348,
+              "x" : 584.52178382873535,
+              "width" : 160.4640007019043,
+              "height" : 36.30383312702179
+            }
+          },
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/Dereference_operator",
+            "targetRectangle" : {
+              "y" : 308.67529290914536,
+              "x" : 769.93588161468506,
+              "width" : 167.66400337219238,
+              "height" : 36.30383312702179
+            }
+          },
+          {
             "url" : "https:\/\/en.wikipedia.org\/wiki\/Return_statement",
             "targetRectangle" : {
               "y" : 697.73046869039536,
@@ -844,168 +943,15 @@ local_slide( {
               "width" : 160.00800132751465,
               "height" : 36.30383312702179
             }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Parameter_(computer_programming)#Parameters_and_arguments",
-            "targetRectangle" : {
-              "y" : 172.36143487691879,
-              "x" : 705.56527328491211,
-              "width" : 208.00800323486328,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Integer_(computer_science)",
-            "targetRectangle" : {
-              "y" : 279.74032586812973,
-              "x" : 54.64810585975647,
-              "width" : 145.43999433517456,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Assignment_(computer_science)",
-            "targetRectangle" : {
-              "y" : 351.57012933492661,
-              "x" : 56.448100566864014,
-              "width" : 141.84000492095947,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Pointer_(computer_programming)",
-            "targetRectangle" : {
-              "y" : 153.69609063863754,
-              "x" : 447.84692716598511,
-              "width" : 146.32799625396729,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Relational_operator",
-            "targetRectangle" : {
-              "y" : 340.98208612203598,
-              "x" : 474.10176253318787,
-              "width" : 144.93600130081177,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Expression_(computer_science)",
-            "targetRectangle" : {
-              "y" : 463.65447992086411,
-              "x" : 772.29855990409851,
-              "width" : 133.87199640274048,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Dereference_operator",
-            "targetRectangle" : {
-              "y" : 308.67529290914536,
-              "x" : 769.93588161468506,
-              "width" : 167.66400337219238,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Integer_(computer_science)",
-            "targetRectangle" : {
-              "y" : 524.09661859273911,
-              "x" : 56.526449203491211,
-              "width" : 212.01601028442383,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Return_type",
-            "targetRectangle" : {
-              "y" : 235.81459039449692,
-              "x" : 46.992724418640137,
-              "width" : 134.37600135803223,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Character_literal",
-            "targetRectangle" : {
-              "y" : 541.78497308492661,
-              "x" : 655.31801414489746,
-              "width" : 189.81599807739258,
-              "height" : 36.30383312702179
-            }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/Local_variable",
-            "targetRectangle" : {
-              "y" : 265.84378045797348,
-              "x" : 584.52178382873535,
-              "width" : 160.4640007019043,
-              "height" : 36.30383312702179
-            }
           }
         ],
         "accessibility" : [
-          {
-            "text" : "return statement",
-            "targetRectangle" : {
-              "y" : 701.73046869039536,
-              "x" : 532.70452117919922,
-              "width" : 191.56799999999998,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "procedure",
-            "targetRectangle" : {
-              "y" : 154.82960504293442,
-              "x" : 68.688103437423706,
-              "width" : 117.35999999999999,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "while loop",
-            "targetRectangle" : {
-              "y" : 409.78457635641098,
-              "x" : 77.767681360244751,
-              "width" : 116.78399999999999,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "pointer arithmetic",
-            "targetRectangle" : {
-              "y" : 633.66741937398911,
-              "x" : 540.82284116744995,
-              "width" : 203.904,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "integer literal",
-            "targetRectangle" : {
-              "y" : 302.53692620992661,
-              "x" : 436.49599933624268,
-              "width" : 151.00800000000004,
-              "height" : 28.3038330078125
-            }
-          },
           {
             "text" : "formal parameter",
             "targetRectangle" : {
               "y" : 176.36143487691879,
               "x" : 710.06527328491211,
               "width" : 199.00800000000004,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "integer type",
-            "targetRectangle" : {
-              "y" : 283.74032586812973,
-              "x" : 59.14810585975647,
-              "width" : 136.44,
               "height" : 28.3038330078125
             }
           },
@@ -1024,15 +970,6 @@ local_slide( {
               "y" : 157.69609063863754,
               "x" : 452.34692716598511,
               "width" : 137.32799999999997,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "comparison",
-            "targetRectangle" : {
-              "y" : 344.98208612203598,
-              "x" : 478.60176253318787,
-              "width" : 135.93600000000004,
               "height" : 28.3038330078125
             }
           },
@@ -1154,15 +1091,6 @@ local_slide( {
             }
           },
           {
-            "text" : "dereferencing",
-            "targetRectangle" : {
-              "y" : 312.67529290914536,
-              "x" : 774.43588161468506,
-              "width" : 158.66399999999999,
-              "height" : 28.3038330078125
-            }
-          },
-          {
             "text" : "integer arithmetic",
             "targetRectangle" : {
               "y" : 528.09661859273911,
@@ -1172,11 +1100,29 @@ local_slide( {
             }
           },
           {
+            "text" : "integer type",
+            "targetRectangle" : {
+              "y" : 283.74032586812973,
+              "x" : 59.14810585975647,
+              "width" : 136.44,
+              "height" : 28.3038330078125
+            }
+          },
+          {
             "text" : "return type",
             "targetRectangle" : {
               "y" : 239.81459039449692,
               "x" : 51.492724418640137,
               "width" : 125.37599999999998,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "comparison",
+            "targetRectangle" : {
+              "y" : 344.98208612203598,
+              "x" : 478.60176253318787,
+              "width" : 135.93600000000004,
               "height" : 28.3038330078125
             }
           },
@@ -1199,12 +1145,66 @@ local_slide( {
             }
           },
           {
+            "text" : "dereferencing",
+            "targetRectangle" : {
+              "y" : 312.67529290914536,
+              "x" : 774.43588161468506,
+              "width" : 158.66399999999999,
+              "height" : 28.3038330078125
+            }
+          },
+          {
             "text" : "C* by Example",
             "targetRectangle" : {
               "y" : 58,
               "x" : 240.83999999999997,
               "width" : 542.32000000000016,
               "height" : 94.679443359375
+            }
+          },
+          {
+            "text" : "return statement",
+            "targetRectangle" : {
+              "y" : 701.73046869039536,
+              "x" : 532.70452117919922,
+              "width" : 191.56799999999998,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "procedure",
+            "targetRectangle" : {
+              "y" : 154.82960504293442,
+              "x" : 68.688103437423706,
+              "width" : 117.35999999999999,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "while loop",
+            "targetRectangle" : {
+              "y" : 409.78457635641098,
+              "x" : 77.767681360244751,
+              "width" : 116.78399999999999,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "pointer arithmetic",
+            "targetRectangle" : {
+              "y" : 633.66741937398911,
+              "x" : 540.82284116744995,
+              "width" : 203.904,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "integer literal",
+            "targetRectangle" : {
+              "y" : 302.53692620992661,
+              "x" : 436.49599933624268,
+              "width" : 151.00800000000004,
+              "height" : 28.3038330078125
             }
           }
         ],

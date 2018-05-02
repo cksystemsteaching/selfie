@@ -1,8 +1,50 @@
 {
   "assets" : {
-    "9417D85E7D9760285D65EFF02E430991" : {
+    "0009E611DCCB907DFFAAE96CF30FFD15" : {
+      "type" : "texture",
+      "index" : 1,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/FA0A3EE9-D91C-4146-A6B0-158C1EDD491D.pdf"
+      },
+      "width" : 643,
+      "height" : 78
+    },
+    "8C7336AA8621A5F3270553AA24DA97D1" : {
+      "type" : "texture",
+      "index" : 2,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/FA0A3EE9-D91C-4146-A6B0-158C1EDD491D.pdf"
+      },
+      "width" : 849,
+      "height" : 359
+    },
+    "2AF86EFE90C1A3B01E3419490FAC87DC" : {
       "type" : "texture",
       "index" : 4,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/FA0A3EE9-D91C-4146-A6B0-158C1EDD491D.pdf"
+      },
+      "width" : 1024,
+      "height" : 768
+    },
+    "BF9FD6DD7E19813B889A4090124C4032" : {
+      "type" : "texture",
+      "index" : 3,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -27,48 +69,6 @@
       },
       "width" : 1024,
       "height" : 768
-    },
-    "95437E5B01848E40E4887FD0FEFCF8B2" : {
-      "type" : "texture",
-      "index" : 2,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/FA0A3EE9-D91C-4146-A6B0-158C1EDD491D.pdf"
-      },
-      "width" : 852,
-      "height" : 359
-    },
-    "BF9FD6DD7E19813B889A4090124C4032" : {
-      "type" : "texture",
-      "index" : 3,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/FA0A3EE9-D91C-4146-A6B0-158C1EDD491D.pdf"
-      },
-      "width" : 1024,
-      "height" : 768
-    },
-    "0009E611DCCB907DFFAAE96CF30FFD15" : {
-      "type" : "texture",
-      "index" : 1,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/FA0A3EE9-D91C-4146-A6B0-158C1EDD491D.pdf"
-      },
-      "width" : 643,
-      "height" : 78
     }
   },
   "events" : [
@@ -333,7 +333,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "9417D85E7D9760285D65EFF02E430991"
+                    "texture" : "2AF86EFE90C1A3B01E3419490FAC87DC"
                   }
                 ]
               }
@@ -380,11 +380,11 @@
           }
         },
         {
-          "text" : "The format of an instruction specifies how the 32-bits are interpreted. It is designed in a way that allows fast decoding of the instructions.",
+          "text" : "The format of an instruction specifies how the 32 bits are interpreted. It is designed in a way that allows fast decoding of the instructions.",
           "targetRectangle" : {
             "y" : 353,
             "x" : 114,
-            "width" : 824.44800000000009,
+            "width" : 820.89600000000007,
             "height" : 155.10400390625
           }
         },
@@ -894,10 +894,10 @@
                   "rotation" : 0,
                   "scale" : 1,
                   "position" : {
-                    "pointX" : 501,
+                    "pointX" : 499.5,
                     "pointY" : 383.5
                   },
-                  "width" : 852,
+                  "width" : 849,
                   "sublayerTransform" : [
                     1,
                     0,
@@ -966,10 +966,10 @@
                       "rotation" : 0,
                       "scale" : 1,
                       "position" : {
-                        "pointX" : 430,
+                        "pointX" : 428.5,
                         "pointY" : 243.5
                       },
-                      "width" : 852,
+                      "width" : 849,
                       "sublayerTransform" : [
                         1,
                         0,
@@ -1003,7 +1003,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "95437E5B01848E40E4887FD0FEFCF8B2"
+                    "texture" : "8C7336AA8621A5F3270553AA24DA97D1"
                   }
                 ]
               }

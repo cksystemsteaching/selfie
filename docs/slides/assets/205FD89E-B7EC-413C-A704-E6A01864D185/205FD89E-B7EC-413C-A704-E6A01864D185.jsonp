@@ -30,6 +30,20 @@ local_slide( {
         "width" : 273,
         "height" : 73
       },
+      "CB1E234A7A4CD846EEEB7765C689EC31" : {
+        "type" : "texture",
+        "index" : 10,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
+        },
+        "width" : 272,
+        "height" : 67
+      },
       "2FF1C9B0484139D3128D15CE6E869280" : {
         "type" : "texture",
         "index" : 15,
@@ -43,20 +57,6 @@ local_slide( {
         },
         "width" : 51,
         "height" : 16
-      },
-      "9FF6D1D69FC26A24FBE44D71FE3CCC9B" : {
-        "type" : "texture",
-        "index" : 17,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
       },
       "209756ADF0B96C803CDB660CEC71FB9A" : {
         "type" : "texture",
@@ -72,9 +72,9 @@ local_slide( {
         "width" : 765,
         "height" : 184
       },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "89C37D6C57393C1A37BBB9BC9D191118" : {
         "type" : "texture",
-        "index" : 0,
+        "index" : 14,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -83,8 +83,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
         },
-        "width" : 1024,
-        "height" : 768
+        "width" : 51,
+        "height" : 16
       },
       "0B04878940A7F557C0B111FD20B96C0F" : {
         "type" : "texture",
@@ -100,20 +100,6 @@ local_slide( {
         "width" : 99,
         "height" : 60
       },
-      "069656084E3A7F156331F8B07A478D30" : {
-        "type" : "texture",
-        "index" : 9,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
-        },
-        "width" : 265,
-        "height" : 115
-      },
       "2887F8802833C3ABE94B7A1E8447FAC4" : {
         "type" : "texture",
         "index" : 13,
@@ -127,6 +113,20 @@ local_slide( {
         },
         "width" : 48,
         "height" : 16
+      },
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+        "type" : "texture",
+        "index" : 0,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
       },
       "223E92D38A4D5F9E16AD1E8A6DE575CA" : {
         "type" : "texture",
@@ -142,9 +142,9 @@ local_slide( {
         "width" : 99,
         "height" : 59
       },
-      "EBCFD89D474F62F384E6F67DE14A4DCC" : {
+      "069656084E3A7F156331F8B07A478D30" : {
         "type" : "texture",
-        "index" : 10,
+        "index" : 9,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -153,8 +153,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
         },
-        "width" : 272,
-        "height" : 67
+        "width" : 265,
+        "height" : 115
       },
       "8C773537DCEEFBC39983ABCB5A5DCF12" : {
         "type" : "texture",
@@ -170,7 +170,7 @@ local_slide( {
         "width" : 808,
         "height" : 76
       },
-      "0082C82757102FFDB19D270D0719FF3D" : {
+      "21479ABCEB960B89C88CF8240C2A7443" : {
         "type" : "texture",
         "index" : 8,
         "assetRequest" : {
@@ -197,20 +197,6 @@ local_slide( {
         },
         "width" : 121,
         "height" : 56
-      },
-      "89C37D6C57393C1A37BBB9BC9D191118" : {
-        "type" : "texture",
-        "index" : 14,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
-        },
-        "width" : 51,
-        "height" : 16
       },
       "C9C72864105E7F75D14506DEAD244AF8" : {
         "type" : "texture",
@@ -243,6 +229,20 @@ local_slide( {
       "176CB9D16C325206E327CD08B10DD752" : {
         "type" : "texture",
         "index" : 16,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/205FD89E-B7EC-413C-A704-E6A01864D185.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
+      "8CA0B50E9A899FFFE45632F657D82224" : {
+        "type" : "texture",
+        "index" : 17,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -517,7 +517,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "9FF6D1D69FC26A24FBE44D71FE3CCC9B"
+                      "texture" : "8CA0B50E9A899FFFE45632F657D82224"
                     }
                   ]
                 }
@@ -564,21 +564,12 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Level 1",
+            "text" : "Decoding Instructions",
             "targetRectangle" : {
-              "y" : 394.81112730503082,
-              "x" : 301.05031141662596,
-              "width" : 48.912000000000035,
-              "height" : 17.535888671875
-            }
-          },
-          {
-            "text" : "The instruction definitely known at this point. Not part of all instruction formats.",
-            "targetRectangle" : {
-              "y" : 664.80093264579773,
-              "x" : 673.7813720703125,
-              "width" : 272.6400000000001,
-              "height" : 71.41986083984375
+              "y" : 58,
+              "x" : 105.19999999999999,
+              "width" : 813.59999999999991,
+              "height" : 94.679443359375
             }
           },
           {
@@ -591,39 +582,39 @@ local_slide( {
             }
           },
           {
-            "text" : "Level 2",
-            "targetRectangle" : {
-              "y" : 472.71020567417145,
-              "x" : 587.52237448120115,
-              "width" : 48.912000000000035,
-              "height" : 17.535888671875
-            }
-          },
-          {
-            "text" : "Decoding Instructions",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 105.19999999999999,
-              "width" : 813.59999999999991,
-              "height" : 94.679443359375
-            }
-          },
-          {
             "text" : "looking further",
             "targetRectangle" : {
-              "y" : 503.02033664021559,
-              "x" : 663.85121477413793,
-              "width" : 96.316155465733459,
-              "height" : 57.350073459643738
+              "y" : 423.32496310505934,
+              "x" : 379.99074114132549,
+              "width" : 96.316155465733402,
+              "height" : 57.350073459643795
             }
           },
           {
-            "text" : "The opcode in combination with the funct3 code might already identify the instruction. Not part of all instruction formats.",
+            "text" : "The opcode specifies the format in which the instruction is encoded. ",
             "targetRectangle" : {
-              "y" : 576.84237456321716,
-              "x" : 379.68218994140625,
-              "width" : 265.60000000000002,
-              "height" : 119.41986083984375
+              "y" : 500.31069946289062,
+              "x" : 85.583000183105469,
+              "width" : 264.10000000000002,
+              "height" : 71.41986083984375
+            }
+          },
+          {
+            "text" : "The opcode might already uniquely identify the instruction that has to be decoded. If not, the funct3 code is looked at next.",
+            "targetRectangle" : {
+              "y" : 572.31069946289062,
+              "x" : 85.583000183105469,
+              "width" : 269.26000000000005,
+              "height" : 139.41986083984375
+            }
+          },
+          {
+            "text" : "Level 3",
+            "targetRectangle" : {
+              "y" : 561.5184942483902,
+              "x" : 883.28983053588865,
+              "width" : 48.912000000000035,
+              "height" : 17.535888671875
             }
           },
           {
@@ -654,12 +645,30 @@ local_slide( {
             }
           },
           {
-            "text" : "looking further",
+            "text" : "The instruction is definitely known at this point. Not part of all instruction formats.",
             "targetRectangle" : {
-              "y" : 423.32496310505934,
-              "x" : 379.99074114132549,
-              "width" : 96.316155465733402,
-              "height" : 57.350073459643795
+              "y" : 664.80093264579773,
+              "x" : 673.7813720703125,
+              "width" : 272.6400000000001,
+              "height" : 71.41986083984375
+            }
+          },
+          {
+            "text" : "Level 1",
+            "targetRectangle" : {
+              "y" : 394.81112730503082,
+              "x" : 301.05031141662596,
+              "width" : 48.912000000000035,
+              "height" : 17.535888671875
+            }
+          },
+          {
+            "text" : "Level 2",
+            "targetRectangle" : {
+              "y" : 472.71020567417145,
+              "x" : 587.52237448120115,
+              "width" : 48.912000000000035,
+              "height" : 17.535888671875
             }
           },
           {
@@ -672,30 +681,21 @@ local_slide( {
             }
           },
           {
-            "text" : "The opcode specifies the format in which the instruction is encoded. ",
+            "text" : "looking further",
             "targetRectangle" : {
-              "y" : 500.31069946289062,
-              "x" : 85.583000183105469,
-              "width" : 264.10000000000002,
-              "height" : 71.41986083984375
+              "y" : 503.02033664021559,
+              "x" : 663.85121477413793,
+              "width" : 96.316155465733459,
+              "height" : 57.350073459643738
             }
           },
           {
-            "text" : "The Opcode might already uniquely identify the instruction that has to be decoded. If not, the funct3 code is looked at next.",
+            "text" : "The opcode in combination with the funct3 code might already identify the instruction. Not part of all instruction formats.",
             "targetRectangle" : {
-              "y" : 572.31069946289062,
-              "x" : 85.583000183105469,
-              "width" : 269.26000000000005,
-              "height" : 139.41986083984375
-            }
-          },
-          {
-            "text" : "Level 3",
-            "targetRectangle" : {
-              "y" : 561.5184942483902,
-              "x" : 883.28983053588865,
-              "width" : 48.912000000000035,
-              "height" : 17.535888671875
+              "y" : 576.84237456321716,
+              "x" : 379.68218994140625,
+              "width" : 265.60000000000002,
+              "height" : 119.41986083984375
             }
           }
         ],
@@ -2660,7 +2660,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "0082C82757102FFDB19D270D0719FF3D"
+                      "texture" : "21479ABCEB960B89C88CF8240C2A7443"
                     }
                   ]
                 }
@@ -3034,7 +3034,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "EBCFD89D474F62F384E6F67DE14A4DCC"
+                      "texture" : "CB1E234A7A4CD846EEEB7765C689EC31"
                     }
                   ]
                 }

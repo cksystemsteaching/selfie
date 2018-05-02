@@ -1,8 +1,8 @@
 {
   "assets" : {
-    "251041F14648F86C1AFB05A0062C2002" : {
+    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
       "type" : "texture",
-      "index" : 5,
+      "index" : 0,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -28,21 +28,7 @@
       "width" : 865,
       "height" : 69
     },
-    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
-      "type" : "texture",
-      "index" : 0,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/7D9738F4-591F-4DD5-8BEF-DF09DD63492B.pdf"
-      },
-      "width" : 1024,
-      "height" : 768
-    },
-    "EF28428FC1DB8630C8D23F33AD7CE883" : {
+    "9C087A23259A7C8E10616C558A0F4D9D" : {
       "type" : "texture",
       "index" : 2,
       "assetRequest" : {
@@ -53,8 +39,22 @@
       "url" : {
         "native" : "assets\/7D9738F4-591F-4DD5-8BEF-DF09DD63492B.pdf"
       },
-      "width" : 861,
-      "height" : 344
+      "width" : 866,
+      "height" : 353
+    },
+    "1E75BB29D9445E8719AD1E2BAD710654" : {
+      "type" : "texture",
+      "index" : 5,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/7D9738F4-591F-4DD5-8BEF-DF09DD63492B.pdf"
+      },
+      "width" : 1024,
+      "height" : 768
     },
     "B1CEA102BA5E9D26587354FC38C478C5" : {
       "type" : "texture",
@@ -347,7 +347,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "251041F14648F86C1AFB05A0062C2002"
+                    "texture" : "1E75BB29D9445E8719AD1E2BAD710654"
                   }
                 ]
               }
@@ -367,41 +367,77 @@
         {
           "url" : "https:\/\/en.wikipedia.org\/wiki\/Operating_system",
           "targetRectangle" : {
-            "y" : 368.04183959960938,
-            "x" : 107.69999974966049,
-            "width" : 778.04224000000022,
-            "height" : 64.265283203125023
+            "y" : 397.17637084960938,
+            "x" : 153.71967908208848,
+            "width" : 207.62112000000002,
+            "height" : 32.247363281249989
           }
         },
         {
           "url" : "https:\/\/en.wikipedia.org\/wiki\/System_call",
           "targetRectangle" : {
-            "y" : 401.04183959960938,
-            "x" : 384.2433597496605,
-            "width" : 131.22624000000008,
-            "height" : 31.265283203125023
+            "y" : 397.17637084960938,
+            "x" : 555.49503908208862,
+            "width" : 134.42687999999987,
+            "height" : 32.247363281249989
           }
         },
         {
           "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L5288-L5741",
           "targetRectangle" : {
-            "y" : 532.350286564827,
-            "x" : 304.02767974966048,
-            "width" : 64.156800000000032,
-            "height" : 66.573730168342536
+            "y" : 532.34599865436553,
+            "x" : 296.07615908208845,
+            "width" : 65.721600000000024,
+            "height" : 68.416991086006192
           }
         },
         {
           "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/0115d85499a1699b72e187003e002a90ef7be640\/selfie.c#L9080-L9118",
           "targetRectangle" : {
-            "y" : 599.65873353004463,
-            "x" : 671.02031974966064,
-            "width" : 225.00799999999981,
-            "height" : 65.705282902717499
+            "y" : 601.51562645912168,
+            "x" : 685.45983908208825,
+            "width" : 230.49600000000021,
+            "height" : 67.52736217975621
           }
         }
       ],
       "accessibility" : [
+        {
+          "text" : "This is not a standard machine instruction but rather a programmable instruction that allows you to request services from the operating system, also known as system call.",
+          "targetRectangle" : {
+            "y" : 331.04183959960938,
+            "x" : 108.39999908208847,
+            "width" : 825.75360000000001,
+            "height" : 98.381894531249998
+          }
+        },
+        {
+          "text" : "The arguments that specify what action we need the OS to take are provided in $a7.",
+          "targetRectangle" : {
+            "y" : 430.17637084960938,
+            "x" : 108.39999908208847,
+            "width" : 815.78111999999999,
+            "height" : 101.41699108600619
+          }
+        },
+        {
+          "text" : "Selfie supports these ecalls: read, write, open, malloc, and exit.",
+          "targetRectangle" : {
+            "y" : 532.34599865436553,
+            "x" : 108.39999908208847,
+            "width" : 835.54453499999988,
+            "height" : 68.416991086006192
+          }
+        },
+        {
+          "text" : "The implementation of each of these ecalls is in handleSystemCall().",
+          "targetRectangle" : {
+            "y" : 601.51562645912168,
+            "x" : 108.39999908208847,
+            "width" : 815.02847999999972,
+            "height" : 67.52736217975621
+          }
+        },
         {
           "text" : "Operating System Support",
           "targetRectangle" : {
@@ -409,42 +445,6 @@
             "x" : 79.075199999999995,
             "width" : 865.84960000000001,
             "height" : 83.957910156250023
-          }
-        },
-        {
-          "text" : "This is not a standard machine instruction, but rather a programmable instruction that allows you to request services from the operating system. Also known as system call.",
-          "targetRectangle" : {
-            "y" : 335.04183959960938,
-            "x" : 107.69999974966049,
-            "width" : 837.84320000000014,
-            "height" : 97.265283203125023
-          }
-        },
-        {
-          "text" : "The arguments that specify what action we need the OS to take are provided in $a7.",
-          "targetRectangle" : {
-            "y" : 433.04183959960938,
-            "x" : 107.69999974966049,
-            "width" : 796.35775999999998,
-            "height" : 98.573730168342536
-          }
-        },
-        {
-          "text" : "Selfies supports these ecalls: read, write, open, malloc, and exit.",
-          "targetRectangle" : {
-            "y" : 532.350286564827,
-            "x" : 107.69999974966049,
-            "width" : 828.7706174999995,
-            "height" : 66.573730168342536
-          }
-        },
-        {
-          "text" : "The implementation of each of these ecalls is in handleSystemCall().",
-          "targetRectangle" : {
-            "y" : 599.65873353004463,
-            "x" : 107.69999974966049,
-            "width" : 795.62304000000006,
-            "height" : 65.705282902717499
           }
         }
       ],
@@ -944,10 +944,10 @@
                   "rotation" : 0,
                   "scale" : 1,
                   "position" : {
-                    "pointX" : 505.5,
-                    "pointY" : 487.04183959960938
+                    "pointX" : 508,
+                    "pointY" : 491.54183959960938
                   },
-                  "width" : 861,
+                  "width" : 866,
                   "sublayerTransform" : [
                     1,
                     0,
@@ -974,7 +974,7 @@
                   },
                   "opacity" : 1,
                   "edgeAntialiasingMask" : 251658240,
-                  "height" : 344,
+                  "height" : 353,
                   "hidden" : false,
                   "anchorPoint" : {
                     "pointX" : 0.5,
@@ -991,8 +991,8 @@
                     ],
                     "texturedRectangle" : {
                       "singleTextureOpacity" : 1,
-                      "textXHeight" : 0.03943627906976744,
-                      "textBaseline" : 0.9615551270301953,
+                      "textXHeight" : 0.039368158640226622,
+                      "textBaseline" : 0.96123970975956896,
                       "isBackgroundTexture" : true,
                       "isVerticalText" : false,
                       "textColor" : [
@@ -1016,10 +1016,10 @@
                       "rotation" : 0,
                       "scale" : 1,
                       "position" : {
-                        "pointX" : 434.5,
-                        "pointY" : 185.95816040039062
+                        "pointX" : 437,
+                        "pointY" : 185.45816040039062
                       },
-                      "width" : 861,
+                      "width" : 866,
                       "sublayerTransform" : [
                         1,
                         0,
@@ -1046,14 +1046,14 @@
                       },
                       "opacity" : 1,
                       "edgeAntialiasingMask" : 0,
-                      "height" : 344,
+                      "height" : 353,
                       "hidden" : false,
                       "anchorPoint" : {
                         "pointX" : 0.5,
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "EF28428FC1DB8630C8D23F33AD7CE883"
+                    "texture" : "9C087A23259A7C8E10616C558A0F4D9D"
                   }
                 ]
               }

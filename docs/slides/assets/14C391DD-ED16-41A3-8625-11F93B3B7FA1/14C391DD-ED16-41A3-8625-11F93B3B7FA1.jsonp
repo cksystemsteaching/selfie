@@ -30,7 +30,7 @@ local_slide( {
         "width" : 860,
         "height" : 58
       },
-      "B509E439C6FC7ED4775FE844A62574C0" : {
+      "E6552F0C2D68D43EA82F4173D4665415" : {
         "type" : "texture",
         "index" : 6,
         "assetRequest" : {
@@ -43,20 +43,6 @@ local_slide( {
         },
         "width" : 1024,
         "height" : 768
-      },
-      "8188C4F447B0116E54AAFC142B4A9A46" : {
-        "type" : "texture",
-        "index" : 2,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/14C391DD-ED16-41A3-8625-11F93B3B7FA1.pdf"
-        },
-        "width" : 854,
-        "height" : 359
       },
       "0DC61590A9D57E19599BA857CB60882A" : {
         "type" : "texture",
@@ -99,6 +85,20 @@ local_slide( {
         },
         "width" : 1024,
         "height" : 768
+      },
+      "30839B50AFC0F49A65717972C3275A92" : {
+        "type" : "texture",
+        "index" : 2,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/14C391DD-ED16-41A3-8625-11F93B3B7FA1.pdf"
+        },
+        "width" : 854,
+        "height" : 359
       }
     },
     "events" : [
@@ -363,7 +363,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "B509E439C6FC7ED4775FE844A62574C0"
+                      "texture" : "E6552F0C2D68D43EA82F4173D4665415"
                     }
                   ]
                 }
@@ -420,11 +420,11 @@ local_slide( {
             }
           },
           {
-            "text" : "Jump and link register is similar to jal, except that it uses register relative addressing in order to jump a little further.",
+            "text" : "Jump and link register is similar to jal, except that it uses register-relative addressing.",
             "targetRectangle" : {
               "y" : 597.50665993690495,
               "x" : 107.00000041723251,
-              "width" : 794.37800000000016,
+              "width" : 787.56590000000006,
               "height" : 95.628125500678948
             }
           }
@@ -1034,7 +1034,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "8188C4F447B0116E54AAFC142B4A9A46"
+                      "texture" : "30839B50AFC0F49A65717972C3275A92"
                     }
                   ]
                 }

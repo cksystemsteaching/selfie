@@ -16,6 +16,20 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
+      "7C8C575605DA2662C055DC2D28977B2F" : {
+        "type" : "texture",
+        "index" : 4,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/9D11D18E-E8F0-4F0E-BD26-F825316D50A6.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
       "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
         "index" : 0,
@@ -30,7 +44,7 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "EEE0B6C57CCCE7141707CA9A81D0340C" : {
+      "1E5130FD8DE71A7A7D1115BFD8A08903" : {
         "type" : "texture",
         "index" : 2,
         "assetRequest" : {
@@ -43,20 +57,6 @@ local_slide( {
         },
         "width" : 867,
         "height" : 401
-      },
-      "64B6289C878D7DE62BD5CAEB729F85E8" : {
-        "type" : "texture",
-        "index" : 4,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/9D11D18E-E8F0-4F0E-BD26-F825316D50A6.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
       },
       "4226A4C33AAA5A41D52F255E195FF952" : {
         "type" : "texture",
@@ -335,7 +335,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "64B6289C878D7DE62BD5CAEB729F85E8"
+                      "texture" : "7C8C575605DA2662C055DC2D28977B2F"
                     }
                   ]
                 }
@@ -356,7 +356,7 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "The procedure getCharacter() is used to read the next byte into the buffer. ",
+            "text" : "The procedure getCharacter() is used to read the next byte into a buffer. ",
             "targetRectangle" : {
               "y" : 256,
               "x" : 114,
@@ -997,7 +997,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "EEE0B6C57CCCE7141707CA9A81D0340C"
+                      "texture" : "1E5130FD8DE71A7A7D1115BFD8A08903"
                     }
                   ]
                 }

@@ -371,15 +371,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "How?",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 406.03999999999996,
-            "width" : 211.92000000000007,
-            "height" : 94.679443359375
-          }
-        },
-        {
           "text" : "We use the selfie code to explain everything. Students will need to read, understand, and modify the code to follow the course.",
           "targetRectangle" : {
             "y" : 277,
@@ -404,6 +395,15 @@
             "x" : 114,
             "width" : 825.05599999999993,
             "height" : 117.10400390625
+          }
+        },
+        {
+          "text" : "How?",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 406.03999999999996,
+            "width" : 211.92000000000007,
+            "height" : 94.679443359375
           }
         }
       ],
