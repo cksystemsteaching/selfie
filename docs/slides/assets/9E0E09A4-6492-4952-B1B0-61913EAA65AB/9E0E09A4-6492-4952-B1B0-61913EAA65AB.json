@@ -14,9 +14,9 @@
       "width" : 444,
       "height" : 116
     },
-    "F98D1CCBA16FB1145D0BCC485EFA3FCE" : {
+    "B8ADE9E2722B27D2CABF75FA79FDC029" : {
       "type" : "texture",
-      "index" : 1,
+      "index" : 4,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -25,8 +25,8 @@
       "url" : {
         "native" : "assets\/9E0E09A4-6492-4952-B1B0-61913EAA65AB.pdf"
       },
-      "width" : 295,
-      "height" : 61
+      "width" : 1024,
+      "height" : 768
     },
     "498E23C82CA78A4BCD7BA88E5243B6FC" : {
       "type" : "texture",
@@ -56,9 +56,9 @@
       "width" : 854,
       "height" : 298
     },
-    "295598566CFCF3CDB45C148B5C351E71" : {
+    "F98D1CCBA16FB1145D0BCC485EFA3FCE" : {
       "type" : "texture",
-      "index" : 4,
+      "index" : 1,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -67,8 +67,8 @@
       "url" : {
         "native" : "assets\/9E0E09A4-6492-4952-B1B0-61913EAA65AB.pdf"
       },
-      "width" : 1024,
-      "height" : 768
+      "width" : 295,
+      "height" : 61
     },
     "F1FC982E23D788EF63442EEA80668148" : {
       "type" : "texture",
@@ -266,7 +266,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "295598566CFCF3CDB45C148B5C351E71"
+                    "texture" : "B8ADE9E2722B27D2CABF75FA79FDC029"
                   },
                   {
                     "animations" : [
@@ -376,24 +376,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "semantics: 64-bit unsigned addition with ",
-          "targetRectangle" : {
-            "y" : 286.51638734340668,
-            "x" : 444.22334684753417,
-            "width" : 424.464,
-            "height" : 28.3038330078125
-          }
-        },
-        {
-          "text" : "wrap-around semantics",
-          "targetRectangle" : {
-            "y" : 315.51638734340668,
-            "x" : 617.52734684753432,
-            "width" : 244.48799999999994,
-            "height" : 28.3038330078125
-          }
-        },
-        {
           "text" : "Example ADDI:",
           "targetRectangle" : {
             "y" : 311,
@@ -427,6 +409,24 @@
             "x" : 149,
             "width" : 785.21600000000024,
             "height" : 79.10400390625
+          }
+        },
+        {
+          "text" : "semantics: 64-bit unsigned addition with ",
+          "targetRectangle" : {
+            "y" : 286.51638734340668,
+            "x" : 444.22334684753417,
+            "width" : 424.464,
+            "height" : 28.3038330078125
+          }
+        },
+        {
+          "text" : "wrap-around semantics",
+          "targetRectangle" : {
+            "y" : 315.51638734340668,
+            "x" : 617.52734684753432,
+            "width" : 244.48799999999994,
+            "height" : 28.3038330078125
           }
         },
         {

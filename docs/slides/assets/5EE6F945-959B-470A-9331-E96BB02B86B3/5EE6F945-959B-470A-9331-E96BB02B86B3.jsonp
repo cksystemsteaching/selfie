@@ -16,6 +16,20 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+        "type" : "texture",
+        "index" : 0,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/5EE6F945-959B-470A-9331-E96BB02B86B3.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
       "7708A5CBE5986BD3871E7C1CA77DD1A8" : {
         "type" : "texture",
         "index" : 1,
@@ -29,20 +43,6 @@ local_slide( {
         },
         "width" : 286,
         "height" : 78
-      },
-      "4832CF2712AD0DEC3E64832685053BFE" : {
-        "type" : "texture",
-        "index" : 3,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/5EE6F945-959B-470A-9331-E96BB02B86B3.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
       },
       "12B6DCC71B799837085B7A4517AFEFDF" : {
         "type" : "texture",
@@ -58,9 +58,9 @@ local_slide( {
         "width" : 848,
         "height" : 477
       },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "F5C4B06616CEF6D93C2374D1D502821F" : {
         "type" : "texture",
-        "index" : 0,
+        "index" : 3,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -254,7 +254,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "4832CF2712AD0DEC3E64832685053BFE"
+                      "texture" : "F5C4B06616CEF6D93C2374D1D502821F"
                     },
                     {
                       "animations" : [
@@ -382,15 +382,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Why C?",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 368.27999999999997,
-              "width" : 287.44000000000005,
-              "height" : 94.679443359375
-            }
-          },
-          {
             "text" : "This course aims at much more than just learning how to code.",
             "targetRectangle" : {
               "y" : 218.5,
@@ -442,6 +433,15 @@ local_slide( {
               "x" : 107.00000041723251,
               "width" : 773.40159999999992,
               "height" : 92.883203625679016
+            }
+          },
+          {
+            "text" : "Why C?",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 368.27999999999997,
+              "width" : 287.44000000000005,
+              "height" : 94.679443359375
             }
           }
         ],

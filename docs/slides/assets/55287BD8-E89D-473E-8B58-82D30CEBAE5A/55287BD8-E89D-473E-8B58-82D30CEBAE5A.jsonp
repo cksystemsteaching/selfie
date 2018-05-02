@@ -2,9 +2,9 @@ local_slide( {
   "name" : "55287BD8-E89D-473E-8B58-82D30CEBAE5A",
   "json" : {
     "assets" : {
-      "96BA70F3BBD69D1E6309E35E0DA912EB" : {
+      "E3066F10CEE2D4FA497B1B0E68416CD4" : {
         "type" : "texture",
-        "index" : 6,
+        "index" : 8,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -13,8 +13,36 @@ local_slide( {
         "url" : {
           "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
         },
-        "width" : 60,
-        "height" : 26
+        "width" : 432,
+        "height" : 73
+      },
+      "9805D4EEE24D9F8109C8F87C0D9AFCB1" : {
+        "type" : "texture",
+        "index" : 10,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
+      "F70FD41DDD65EF9293217EF9C8064B6A" : {
+        "type" : "texture",
+        "index" : 1,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
+        },
+        "width" : 415,
+        "height" : 77
       },
       "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
@@ -30,21 +58,7 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "7C7BF8A2855E84885ACDD47995A1A2E0" : {
-        "type" : "texture",
-        "index" : 9,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
-      "08FB435AA2DEEE3D9D160C379B3B887C" : {
+      "CA132B77C85143EB0DD360965AE0EB8B" : {
         "type" : "texture",
         "index" : 2,
         "assetRequest" : {
@@ -55,36 +69,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
         },
-        "width" : 866,
-        "height" : 287
-      },
-      "3BBA4A57C62D4D60A23A2507138254FE" : {
-        "type" : "texture",
-        "index" : 1,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
-        },
-        "width" : 336,
-        "height" : 77
-      },
-      "7FB0932829F4FAF8655A036DA6ABE9A9" : {
-        "type" : "texture",
-        "index" : 3,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
-        },
-        "width" : 312,
-        "height" : 103
+        "width" : 861,
+        "height" : 282
       },
       "2D283E623AC60C6DE045248CF8EFE13E" : {
         "type" : "texture",
@@ -100,9 +86,9 @@ local_slide( {
         "width" : 312,
         "height" : 103
       },
-      "4D24D47D1DE2B278ADA8C479D0BF7707" : {
+      "7FB0932829F4FAF8655A036DA6ABE9A9" : {
         "type" : "texture",
-        "index" : 10,
+        "index" : 3,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -111,8 +97,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
         },
-        "width" : 1024,
-        "height" : 768
+        "width" : 312,
+        "height" : 103
       },
       "90B216138C150193EEC9DD3C718822DD" : {
         "type" : "texture",
@@ -128,6 +114,20 @@ local_slide( {
         "width" : 125,
         "height" : 22
       },
+      "96BA70F3BBD69D1E6309E35E0DA912EB" : {
+        "type" : "texture",
+        "index" : 6,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
+        },
+        "width" : 60,
+        "height" : 26
+      },
       "D37C9BC192BF792D6F51D63A27A95189" : {
         "type" : "texture",
         "index" : 7,
@@ -142,9 +142,9 @@ local_slide( {
         "width" : 78,
         "height" : 25
       },
-      "E3066F10CEE2D4FA497B1B0E68416CD4" : {
+      "25E20482F0FAE3CE6BE24A796FA44E0F" : {
         "type" : "texture",
-        "index" : 8,
+        "index" : 9,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -153,8 +153,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/55287BD8-E89D-473E-8B58-82D30CEBAE5A.pdf"
         },
-        "width" : 432,
-        "height" : 73
+        "width" : 1024,
+        "height" : 768
       }
     },
     "events" : [
@@ -338,7 +338,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "7C7BF8A2855E84885ACDD47995A1A2E0"
+                      "texture" : "25E20482F0FAE3CE6BE24A796FA44E0F"
                     },
                     {
                       "animations" : [
@@ -419,7 +419,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "4D24D47D1DE2B278ADA8C479D0BF7707"
+                      "texture" : "9805D4EEE24D9F8109C8F87C0D9AFCB1"
                     }
                   ]
                 }
@@ -439,19 +439,19 @@ local_slide( {
           {
             "url" : "https:\/\/en.wikipedia.org\/wiki\/High-level_programming_language",
             "targetRectangle" : {
-              "y" : 435,
-              "x" : 109.45000016689301,
-              "width" : 260.35968000000008,
-              "height" : 69.760483598709129
+              "y" : 437,
+              "x" : 109.10000050067902,
+              "width" : 257.36704000000003,
+              "height" : 68.349443960189831
             }
           },
           {
             "url" : "https:\/\/en.wikipedia.org\/wiki\/Machine_code",
             "targetRectangle" : {
-              "y" : 505.54000020027161,
-              "x" : 109.45000016689301,
-              "width" : 176.3664,
-              "height" : 69.760483598709129
+              "y" : 506.12000060081482,
+              "x" : 109.10000050067902,
+              "width" : 174.33920000000001,
+              "height" : 68.349443960189774
             }
           }
         ],
@@ -475,57 +475,21 @@ local_slide( {
             }
           },
           {
+            "text" : "high-level programming language A",
+            "targetRectangle" : {
+              "y" : 251.5,
+              "x" : 88.670000000000016,
+              "width" : 290.44399999999996,
+              "height" : 67.18780517578125
+            }
+          },
+          {
             "text" : "output",
             "targetRectangle" : {
               "y" : 204.34808343648911,
               "x" : 868.05636010742182,
               "width" : 74.688000000000102,
               "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "The starc compiler written in C* translates C* code (self-referential).",
-            "targetRectangle" : {
-              "y" : 401,
-              "x" : 109.45000016689301,
-              "width" : 833.19551999999942,
-              "height" : 33.220483398437523
-            }
-          },
-          {
-            "text" : "High-level languages have a structure that defines the control flow.",
-            "targetRectangle" : {
-              "y" : 435,
-              "x" : 109.45000016689301,
-              "width" : 828.10079999999982,
-              "height" : 69.760483598709129
-            }
-          },
-          {
-            "text" : "Machine code has no structure, it is just bits.",
-            "targetRectangle" : {
-              "y" : 505.54000020027161,
-              "x" : 109.45000016689301,
-              "width" : 556.96704000000022,
-              "height" : 69.760483598709129
-            }
-          },
-          {
-            "text" : "The compiler reads a sequence of characters (ASCII, UTF-8-encoding).",
-            "targetRectangle" : {
-              "y" : 576.08000040054321,
-              "x" : 109.45000016689301,
-              "width" : 751.76351999999997,
-              "height" : 103.76048359870913
-            }
-          },
-          {
-            "text" : "Compiler",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 344.55999999999995,
-              "width" : 334.88000000000011,
-              "height" : 94.679443359375
             }
           },
           {
@@ -538,12 +502,48 @@ local_slide( {
             }
           },
           {
-            "text" : "high-level programming language A",
+            "text" : "The selfie compiler written in C* translates C* code (self-referential).",
             "targetRectangle" : {
-              "y" : 251.5,
-              "x" : 88.670000000000016,
-              "width" : 290.44399999999996,
-              "height" : 67.18780517578125
+              "y" : 404,
+              "x" : 109.10000050067902,
+              "width" : 826.64576000000011,
+              "height" : 32.229443359375011
+            }
+          },
+          {
+            "text" : "High-level languages have a structure that defines the control flow.",
+            "targetRectangle" : {
+              "y" : 437,
+              "x" : 109.10000050067902,
+              "width" : 818.58239999999978,
+              "height" : 68.349443960189831
+            }
+          },
+          {
+            "text" : "Machine code has no structure, it is just a sequence of instructions.",
+            "targetRectangle" : {
+              "y" : 506.12000060081482,
+              "x" : 109.10000050067902,
+              "width" : 829.89311999999961,
+              "height" : 68.349443960189774
+            }
+          },
+          {
+            "text" : "The compiler reads an input program, which is a sequence of characters (ASCII, UTF-8-encoded), and writes machine code.",
+            "targetRectangle" : {
+              "y" : 575.24000120162964,
+              "x" : 109.10000050067902,
+              "width" : 765.02848000000006,
+              "height" : 101.34944396018977
+            }
+          },
+          {
+            "text" : "A Compiler",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 306.75999999999999,
+              "width" : 410.48000000000002,
+              "height" : 94.679443359375
             }
           }
         ],
@@ -856,10 +856,10 @@ local_slide( {
                     "rotation" : 0,
                     "scale" : 1,
                     "position" : {
-                      "pointX" : 243,
+                      "pointX" : 282.5,
                       "pointY" : 58.5
                     },
-                    "width" : 336,
+                    "width" : 415,
                     "sublayerTransform" : [
                       1,
                       0,
@@ -928,10 +928,10 @@ local_slide( {
                         "rotation" : 0,
                         "scale" : 1,
                         "position" : {
-                          "pointX" : 439,
+                          "pointX" : 437.5,
                           "pointY" : 93.5
                         },
-                        "width" : 336,
+                        "width" : 415,
                         "sublayerTransform" : [
                           1,
                           0,
@@ -965,7 +965,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "3BBA4A57C62D4D60A23A2507138254FE"
+                      "texture" : "F70FD41DDD65EF9293217EF9C8064B6A"
                     }
                   ]
                 }
@@ -1043,10 +1043,10 @@ local_slide( {
                     "rotation" : 0,
                     "scale" : 1,
                     "position" : {
-                      "pointX" : 508,
-                      "pointY" : 524.5
+                      "pointX" : 505.5,
+                      "pointY" : 522
                     },
-                    "width" : 866,
+                    "width" : 861,
                     "sublayerTransform" : [
                       1,
                       0,
@@ -1073,7 +1073,7 @@ local_slide( {
                     },
                     "opacity" : 1,
                     "edgeAntialiasingMask" : 251658240,
-                    "height" : 287,
+                    "height" : 282,
                     "hidden" : false,
                     "anchorPoint" : {
                       "pointX" : 0.5,
@@ -1090,8 +1090,8 @@ local_slide( {
                       ],
                       "texturedRectangle" : {
                         "singleTextureOpacity" : 1,
-                        "textXHeight" : 0.050150801393728225,
-                        "textBaseline" : 0.97529838106773448,
+                        "textXHeight" : 0.050453333333333336,
+                        "textBaseline" : 0.97421189967622157,
                         "isBackgroundTexture" : true,
                         "isVerticalText" : false,
                         "textColor" : [
@@ -1115,10 +1115,10 @@ local_slide( {
                         "rotation" : 0,
                         "scale" : 1,
                         "position" : {
-                          "pointX" : 437,
-                          "pointY" : 156.5
+                          "pointX" : 434.5,
+                          "pointY" : 156
                         },
-                        "width" : 866,
+                        "width" : 861,
                         "sublayerTransform" : [
                           1,
                           0,
@@ -1145,14 +1145,14 @@ local_slide( {
                         },
                         "opacity" : 1,
                         "edgeAntialiasingMask" : 0,
-                        "height" : 287,
+                        "height" : 282,
                         "hidden" : false,
                         "anchorPoint" : {
                           "pointX" : 0.5,
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "08FB435AA2DEEE3D9D160C379B3B887C"
+                      "texture" : "CA132B77C85143EB0DD360965AE0EB8B"
                     }
                   ]
                 }

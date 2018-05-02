@@ -44,9 +44,9 @@ local_slide( {
         "width" : 643,
         "height" : 78
       },
-      "B0F391A9FDC426E066B90FC82747D486" : {
+      "9B97FBA1DA1D13F9EAA15E067AB94EAD" : {
         "type" : "texture",
-        "index" : 4,
+        "index" : 8,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -55,8 +55,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/5EB901C8-2C21-4BF1-AE0A-C4B2C9832A32.pdf"
         },
-        "width" : 766,
-        "height" : 30
+        "width" : 1024,
+        "height" : 768
       },
       "F0064A92F6FB33CB9EF2E07F1C6EAE7A" : {
         "type" : "texture",
@@ -72,9 +72,9 @@ local_slide( {
         "width" : 383,
         "height" : 36
       },
-      "AADD6AA9E5988A425B7284C7FA382B69" : {
+      "5E88FCA8E0884FF48D51292867AB2390" : {
         "type" : "texture",
-        "index" : 2,
+        "index" : 4,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -83,8 +83,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/5EB901C8-2C21-4BF1-AE0A-C4B2C9832A32.pdf"
         },
-        "width" : 853,
-        "height" : 117
+        "width" : 766,
+        "height" : 30
       },
       "6519FF565C25117462BFA025CB45DC08" : {
         "type" : "texture",
@@ -100,9 +100,9 @@ local_slide( {
         "width" : 13,
         "height" : 90
       },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "AADD6AA9E5988A425B7284C7FA382B69" : {
         "type" : "texture",
-        "index" : 0,
+        "index" : 2,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -111,12 +111,12 @@ local_slide( {
         "url" : {
           "native" : "assets\/5EB901C8-2C21-4BF1-AE0A-C4B2C9832A32.pdf"
         },
-        "width" : 1024,
-        "height" : 768
+        "width" : 853,
+        "height" : 117
       },
-      "A2CD60BDCD6A2C2811AE8B30B0C66B5D" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
-        "index" : 8,
+        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -391,7 +391,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "A2CD60BDCD6A2C2811AE8B30B0C66B5D"
+                      "texture" : "9B97FBA1DA1D13F9EAA15E067AB94EAD"
                     }
                   ]
                 }
@@ -429,12 +429,12 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Syntax of RISC-U",
+            "text" : "addi $t02 $t01 4",
             "targetRectangle" : {
-              "y" : 58,
-              "x" : 188.24000000000001,
-              "width" : 647.51999999999998,
-              "height" : 94.679443359375
+              "y" : 452.87442004680634,
+              "x" : 302.1082763671875,
+              "width" : 384.0625,
+              "height" : 48
             }
           },
           {
@@ -447,16 +447,16 @@ local_slide( {
             }
           },
           {
-            "text" : "addi $t02 $t01 4",
+            "text" : "Syntax of RISC-U",
             "targetRectangle" : {
-              "y" : 452.87442004680634,
-              "x" : 302.1082763671875,
-              "width" : 384.0625,
-              "height" : 48
+              "y" : 58,
+              "x" : 188.24000000000001,
+              "width" : 647.51999999999998,
+              "height" : 94.679443359375
             }
           },
           {
-            "text" : "00000000001000110000001110010011",
+            "text" : "00000000010000110000001110010011",
             "targetRectangle" : {
               "y" : 531.93487536907196,
               "x" : 127.93751907348633,
@@ -1444,7 +1444,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "B0F391A9FDC426E066B90FC82747D486"
+                      "texture" : "5E88FCA8E0884FF48D51292867AB2390"
                     }
                   ]
                 }

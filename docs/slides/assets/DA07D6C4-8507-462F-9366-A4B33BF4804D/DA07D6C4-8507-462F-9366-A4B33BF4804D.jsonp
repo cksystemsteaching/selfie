@@ -2,7 +2,7 @@ local_slide( {
   "name" : "DA07D6C4-8507-462F-9366-A4B33BF4804D",
   "json" : {
     "assets" : {
-      "799EDB8E6C28AC9C1916BC83AEFA79DD" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
         "index" : 0,
         "assetRequest" : {
@@ -15,20 +15,6 @@ local_slide( {
         },
         "width" : 1024,
         "height" : 768
-      },
-      "F7D64EECC8706EC1CD70F73E57DC6805" : {
-        "type" : "texture",
-        "index" : 4,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/DA07D6C4-8507-462F-9366-A4B33BF4804D.pdf"
-        },
-        "width" : 976,
-        "height" : 34
       },
       "E887F38899FE3B81913915E883A6C446" : {
         "type" : "texture",
@@ -43,6 +29,20 @@ local_slide( {
         },
         "width" : 501,
         "height" : 39
+      },
+      "F7D64EECC8706EC1CD70F73E57DC6805" : {
+        "type" : "texture",
+        "index" : 4,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/DA07D6C4-8507-462F-9366-A4B33BF4804D.pdf"
+        },
+        "width" : 976,
+        "height" : 34
       },
       "F8D3EE71299A6F7CD993C13FE05337F9" : {
         "type" : "texture",
@@ -392,24 +392,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "C with all its dialects is still the most popular programming language",
-            "targetRectangle" : {
-              "y" : 662.26922655105591,
-              "x" : 24.300018310546875,
-              "width" : 974.40000000000032,
-              "height" : 37.10400390625
-            }
-          },
-          {
-            "text" : "Screen Shot 2018-03-14 at 3.24.37 PM.png",
-            "targetRectangle" : {
-              "y" : 166.96075439453125,
-              "x" : 12.977294921875,
-              "width" : 998.04541015625,
-              "height" : 479.52066040039062
-            }
-          },
-          {
             "text" : "Programming Language C",
             "targetRectangle" : {
               "y" : 63,
@@ -425,6 +407,24 @@ local_slide( {
               "x" : 262.02798461914062,
               "width" : 498.94400000000019,
               "height" : 37.10400390625
+            }
+          },
+          {
+            "text" : "C with all its dialects is still the most popular programming language",
+            "targetRectangle" : {
+              "y" : 662.26922655105591,
+              "x" : 24.300018310546875,
+              "width" : 974.40000000000032,
+              "height" : 37.10400390625
+            }
+          },
+          {
+            "text" : "Screen Shot 2018-03-14 at 3.24.37 PM.png",
+            "targetRectangle" : {
+              "y" : 166.96075439453125,
+              "x" : 12.977294921875,
+              "width" : 998.04541015625,
+              "height" : 479.52066040039062
             }
           }
         ],
@@ -659,7 +659,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "799EDB8E6C28AC9C1916BC83AEFA79DD"
+                      "texture" : "498E23C82CA78A4BCD7BA88E5243B6FC"
                     }
                   ]
                 }

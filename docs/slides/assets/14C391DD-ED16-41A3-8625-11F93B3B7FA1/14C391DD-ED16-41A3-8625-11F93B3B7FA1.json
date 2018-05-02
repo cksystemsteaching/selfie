@@ -382,6 +382,15 @@
       ],
       "accessibility" : [
         {
+          "text" : "Control-Flow Instructions",
+          "targetRectangle" : {
+            "y" : 61,
+            "x" : 81.145600000000002,
+            "width" : 861.70879999999988,
+            "height" : 87.865087890624977
+          }
+        },
+        {
           "text" : "The first two instructions use a different addressing mode called pc-relative addressing at the resolution of 12 bit.",
           "targetRectangle" : {
             "y" : 343.67440795898438,
@@ -415,15 +424,6 @@
             "x" : 107.00000041723251,
             "width" : 794.37800000000016,
             "height" : 95.628125500678948
-          }
-        },
-        {
-          "text" : "Control-Flow Instructions",
-          "targetRectangle" : {
-            "y" : 61,
-            "x" : 81.145600000000002,
-            "width" : 861.70879999999988,
-            "height" : 87.865087890624977
           }
         }
       ],

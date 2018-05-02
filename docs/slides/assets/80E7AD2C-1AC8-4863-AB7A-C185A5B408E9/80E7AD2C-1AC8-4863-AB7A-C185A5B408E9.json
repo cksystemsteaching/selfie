@@ -368,15 +368,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "Abstraction",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 298.59999999999997,
-            "width" : 426.80000000000013,
-            "height" : 94.679443359375
-          }
-        },
-        {
           "text" : "A scanner for the English language accepts this sentence.",
           "targetRectangle" : {
             "y" : 208,
@@ -401,6 +392,15 @@
             "x" : 98.567977905273438,
             "width" : 825.86400000000003,
             "height" : 60.54400634765625
+          }
+        },
+        {
+          "text" : "Abstraction",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 298.59999999999997,
+            "width" : 426.80000000000013,
+            "height" : 94.679443359375
           }
         }
       ],

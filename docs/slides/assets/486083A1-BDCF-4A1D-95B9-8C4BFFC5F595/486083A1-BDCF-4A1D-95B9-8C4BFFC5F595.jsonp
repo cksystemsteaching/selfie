@@ -370,60 +370,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Language Operators",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 132.56,
-              "width" : 758.88000000000011,
-              "height" : 94.679443359375
-            }
-          },
-          {
-            "text" : "gets called by the processor",
-            "targetRectangle" : {
-              "y" : 678.87869203090668,
-              "x" : 474.09897058105469,
-              "width" : 312.048,
-              "height" : 28.4239501953125
-            }
-          },
-          {
-            "text" : "decode",
-            "targetRectangle" : {
-              "y" : 621.18513458967209,
-              "x" : 323.30581359863282,
-              "width" : 106.64999999999998,
-              "height" : 36.129791259765625
-            }
-          },
-          {
-            "text" : "need to match",
-            "targetRectangle" : {
-              "y" : 587.33602911233902,
-              "x" : 589.8669080810547,
-              "width" : 155.18399999999997,
-              "height" : 28.3280029296875
-            }
-          },
-          {
-            "text" : "gets called by the compiler",
-            "targetRectangle" : {
-              "y" : 495.69738709926605,
-              "x" : 481.70697058105469,
-              "width" : 296.83199999999994,
-              "height" : 28.4239501953125
-            }
-          },
-          {
-            "text" : "encode",
-            "targetRectangle" : {
-              "y" : 545.68513458967209,
-              "x" : 323.57581359863281,
-              "width" : 106.11000000000001,
-              "height" : 36.129791259765625
-            }
-          },
-          {
             "text" : "The compiler has to recognize the operator and generate code for it.",
             "targetRectangle" : {
               "y" : 208.5,
@@ -448,6 +394,60 @@ local_slide( {
               "x" : 114.00000023841858,
               "width" : 789.38599999999997,
               "height" : 105.27200317382812
+            }
+          },
+          {
+            "text" : "need to match",
+            "targetRectangle" : {
+              "y" : 587.33602911233902,
+              "x" : 589.8669080810547,
+              "width" : 155.18399999999997,
+              "height" : 28.3280029296875
+            }
+          },
+          {
+            "text" : "decode",
+            "targetRectangle" : {
+              "y" : 621.18513458967209,
+              "x" : 323.30581359863282,
+              "width" : 106.64999999999998,
+              "height" : 36.129791259765625
+            }
+          },
+          {
+            "text" : "Language Operators",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 132.56,
+              "width" : 758.88000000000011,
+              "height" : 94.679443359375
+            }
+          },
+          {
+            "text" : "gets called by the processor",
+            "targetRectangle" : {
+              "y" : 678.87869203090668,
+              "x" : 474.09897058105469,
+              "width" : 312.048,
+              "height" : 28.4239501953125
+            }
+          },
+          {
+            "text" : "gets called by the compiler",
+            "targetRectangle" : {
+              "y" : 495.69738709926605,
+              "x" : 481.70697058105469,
+              "width" : 296.83199999999994,
+              "height" : 28.4239501953125
+            }
+          },
+          {
+            "text" : "encode",
+            "targetRectangle" : {
+              "y" : 545.68513458967209,
+              "x" : 323.57581359863281,
+              "width" : 106.11000000000001,
+              "height" : 36.129791259765625
             }
           }
         ],

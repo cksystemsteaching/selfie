@@ -16,9 +16,9 @@ local_slide( {
         "width" : 544,
         "height" : 410
       },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "A11B7C52692013A45610D1CBE8EBEC19" : {
         "type" : "texture",
-        "index" : 0,
+        "index" : 1,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -27,10 +27,10 @@ local_slide( {
         "url" : {
           "native" : "assets\/2E48E5A2-C976-4F1C-94AA-5094C71F6E39.pdf"
         },
-        "width" : 1024,
-        "height" : 768
+        "width" : 860,
+        "height" : 71
       },
-      "7C7BF8A2855E84885ACDD47995A1A2E0" : {
+      "25E20482F0FAE3CE6BE24A796FA44E0F" : {
         "type" : "texture",
         "index" : 4,
         "assetRequest" : {
@@ -44,9 +44,9 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "C2402D34357991014CD1CBE2C2B6B527" : {
+      "06C8579515B19DAB1E34D44CCB2047C7" : {
         "type" : "texture",
-        "index" : 1,
+        "index" : 3,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -55,12 +55,12 @@ local_slide( {
         "url" : {
           "native" : "assets\/2E48E5A2-C976-4F1C-94AA-5094C71F6E39.pdf"
         },
-        "width" : 864,
-        "height" : 72
+        "width" : 1024,
+        "height" : 768
       },
-      "06C8579515B19DAB1E34D44CCB2047C7" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
-        "index" : 3,
+        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -335,7 +335,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "7C7BF8A2855E84885ACDD47995A1A2E0"
+                      "texture" : "25E20482F0FAE3CE6BE24A796FA44E0F"
                     }
                   ]
                 }
@@ -356,29 +356,11 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Using the selfie compiler",
+            "text" : ".\/selfie -c example.c",
             "targetRectangle" : {
-              "y" : 60,
-              "x" : 79.02800000000002,
-              "width" : 865.94399999999996,
-              "height" : 89.79547119140625
-            }
-          },
-          {
-            "text" : "output binary code",
-            "targetRectangle" : {
-              "y" : 622.86102288961411,
-              "x" : 500.09797430038452,
-              "width" : 194.71199999999999,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "-s example.s",
-            "targetRectangle" : {
-              "y" : 346.34643602371216,
-              "x" : 580.21802449226379,
-              "width" : 183.74400000000003,
+              "y" : 428.17596483230591,
+              "x" : 246.33548355102539,
+              "width" : 288.60800000000006,
               "height" : 37.10400390625
             }
           },
@@ -392,12 +374,12 @@ local_slide( {
             }
           },
           {
-            "text" : "compile to binary code",
+            "text" : "Using the Selfie Compiler",
             "targetRectangle" : {
-              "y" : 332.59460443258286,
-              "x" : 248.17711544036865,
-              "width" : 235.63199999999995,
-              "height" : 28.3038330078125
+              "y" : 61,
+              "x" : 81.844799999999964,
+              "width" : 860.31040000000007,
+              "height" : 87.865087890624977
             }
           },
           {
@@ -410,12 +392,30 @@ local_slide( {
             }
           },
           {
-            "text" : ".\/selfie -c example.c",
+            "text" : "compile to binary code",
             "targetRectangle" : {
-              "y" : 428.17596483230591,
-              "x" : 246.33548355102539,
-              "width" : 288.60800000000006,
+              "y" : 332.59460443258286,
+              "x" : 248.17711544036865,
+              "width" : 235.63199999999995,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "-s example.s",
+            "targetRectangle" : {
+              "y" : 346.34643602371216,
+              "x" : 580.21802449226379,
+              "width" : 183.74400000000003,
               "height" : 37.10400390625
+            }
+          },
+          {
+            "text" : "output binary code",
+            "targetRectangle" : {
+              "y" : 622.86102288961411,
+              "x" : 500.09797430038452,
+              "width" : 194.71199999999999,
+              "height" : 28.3038330078125
             }
           }
         ],
@@ -728,10 +728,10 @@ local_slide( {
                     "rotation" : 0,
                     "scale" : 1,
                     "position" : {
-                      "pointX" : 507,
-                      "pointY" : 56
+                      "pointX" : 505,
+                      "pointY" : 55.5
                     },
-                    "width" : 864,
+                    "width" : 860,
                     "sublayerTransform" : [
                       1,
                       0,
@@ -758,7 +758,7 @@ local_slide( {
                     },
                     "opacity" : 1,
                     "edgeAntialiasingMask" : 251658240,
-                    "height" : 72,
+                    "height" : 71,
                     "hidden" : false,
                     "anchorPoint" : {
                       "pointX" : 0.5,
@@ -775,8 +775,8 @@ local_slide( {
                       ],
                       "texturedRectangle" : {
                         "singleTextureOpacity" : 1,
-                        "textXHeight" : 0.54572222222222222,
-                        "textBaseline" : 0.76810879177517366,
+                        "textXHeight" : 0.53593239436619722,
+                        "textBaseline" : 0.77315828565140843,
                         "isBackgroundTexture" : true,
                         "isVerticalText" : false,
                         "textColor" : [
@@ -801,9 +801,9 @@ local_slide( {
                         "scale" : 1,
                         "position" : {
                           "pointX" : 440,
-                          "pointY" : 94
+                          "pointY" : 93.5
                         },
-                        "width" : 864,
+                        "width" : 860,
                         "sublayerTransform" : [
                           1,
                           0,
@@ -830,14 +830,14 @@ local_slide( {
                         },
                         "opacity" : 1,
                         "edgeAntialiasingMask" : 0,
-                        "height" : 72,
+                        "height" : 71,
                         "hidden" : false,
                         "anchorPoint" : {
                           "pointX" : 0.5,
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "C2402D34357991014CD1CBE2C2B6B527"
+                      "texture" : "A11B7C52692013A45610D1CBE8EBEC19"
                     }
                   ]
                 }

@@ -373,15 +373,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Bitwise Operators",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 180.71999999999997,
-              "width" : 662.55999999999995,
-              "height" : 94.679443359375
-            }
-          },
-          {
             "text" : "Bitwise operators in C perform operations on bit level. There are:",
             "targetRectangle" : {
               "y" : 260,
@@ -415,6 +406,15 @@ local_slide( {
               "x" : 114,
               "width" : 766.27199999999993,
               "height" : 117.10400390625
+            }
+          },
+          {
+            "text" : "Bitwise Operators",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 180.71999999999997,
+              "width" : 662.55999999999995,
+              "height" : 94.679443359375
             }
           }
         ],

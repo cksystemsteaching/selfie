@@ -354,15 +354,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "Sequence of Characters",
-          "targetRectangle" : {
-            "y" : 59,
-            "x" : 83.033600000000149,
-            "width" : 857.93279999999959,
-            "height" : 91.772265624999989
-          }
-        },
-        {
           "text" : "The procedure getCharacter() is used to read the next byte into the buffer. ",
           "targetRectangle" : {
             "y" : 256,
@@ -387,6 +378,15 @@
             "x" : 114,
             "width" : 772.28800000000012,
             "height" : 195.10400390625
+          }
+        },
+        {
+          "text" : "Sequence of Characters",
+          "targetRectangle" : {
+            "y" : 59,
+            "x" : 83.033600000000149,
+            "width" : 857.93279999999959,
+            "height" : 91.772265624999989
           }
         }
       ],

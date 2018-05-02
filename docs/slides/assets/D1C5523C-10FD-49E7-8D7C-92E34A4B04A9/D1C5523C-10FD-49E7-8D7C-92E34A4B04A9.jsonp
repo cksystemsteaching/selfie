@@ -16,20 +16,6 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "AC339D35502160C43B219A88124971BE" : {
-        "type" : "texture",
-        "index" : 4,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/D1C5523C-10FD-49E7-8D7C-92E34A4B04A9.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
       "5835F2813883AA8F75C6BE0D4771CCB6" : {
         "type" : "texture",
         "index" : 1,
@@ -71,6 +57,20 @@ local_slide( {
         },
         "width" : 867,
         "height" : 396
+      },
+      "CFCF4995B72E8E19C59FCA4461B5E538" : {
+        "type" : "texture",
+        "index" : 4,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/D1C5523C-10FD-49E7-8D7C-92E34A4B04A9.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
       },
       "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
@@ -282,7 +282,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "AC339D35502160C43B219A88124971BE"
+                      "texture" : "CFCF4995B72E8E19C59FCA4461B5E538"
                     },
                     {
                       "animations" : [
@@ -380,15 +380,6 @@ local_slide( {
         ],
         "automaticPlay" : false,
         "hyperlinks" : [
-          {
-            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L6676-L6699",
-            "targetRectangle" : {
-              "y" : 395.64000070095062,
-              "x" : 233.34656058412554,
-              "width" : 70.667500000000018,
-              "height" : 73.790039763450636
-            }
-          },
           {
             "url" : "?slideid=205FD89E-B7EC-413C-A704-E6A01864D185",
             "events" : {
@@ -851,7 +842,7 @@ local_slide( {
                               "pointY" : 0.5
                             }
                           },
-                          "texture" : "AC339D35502160C43B219A88124971BE"
+                          "texture" : "CFCF4995B72E8E19C59FCA4461B5E538"
                         },
                         {
                           "animations" : [
@@ -932,9 +923,27 @@ local_slide( {
               "width" : 142.06399999999996,
               "height" : 94.679443359375
             }
+          },
+          {
+            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L6676-L6699",
+            "targetRectangle" : {
+              "y" : 395.64000070095062,
+              "x" : 233.34656058412554,
+              "width" : 70.667500000000018,
+              "height" : 73.790039763450636
+            }
           }
         ],
         "accessibility" : [
+          {
+            "text" : "Decode-Remember",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 297.20799999999997,
+              "width" : 429.58400000000006,
+              "height" : 94.679443359375
+            }
+          },
           {
             "text" : "The opcode specifies the instruction format in which the instruction is encoded.",
             "targetRectangle" : {
@@ -978,15 +987,6 @@ local_slide( {
               "x" : 178.60000050067902,
               "width" : 524.62080000000014,
               "height" : 48.895683860778831
-            }
-          },
-          {
-            "text" : "Decode-Remember",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 297.20799999999997,
-              "width" : 429.58400000000006,
-              "height" : 94.679443359375
             }
           }
         ],

@@ -365,12 +365,21 @@
       "automaticPlay" : false,
       "hyperlinks" : [
         {
-          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L7023-L7035",
+          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L6673-L7005",
           "targetRectangle" : {
-            "y" : 246,
-            "x" : 114,
-            "width" : 364.859375,
-            "height" : 38
+            "y" : 476.70513153076172,
+            "x" : 413.14511823654175,
+            "width" : 93.615234375,
+            "height" : 31
+          }
+        },
+        {
+          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L6673-L7005",
+          "targetRectangle" : {
+            "y" : 562.23162841796875,
+            "x" : 429.01886558532715,
+            "width" : 109.2177734375,
+            "height" : 31
           }
         },
         {
@@ -383,52 +392,16 @@
           }
         },
         {
-          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L6673-L7005",
+          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L7023-L7035",
           "targetRectangle" : {
-            "y" : 562.23162841796875,
-            "x" : 429.01886558532715,
-            "width" : 109.2177734375,
-            "height" : 31
-          }
-        },
-        {
-          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d6c571e7fb5108ed59dd55a4f29014cdb0977ed1\/selfie.c#L6673-L7005",
-          "targetRectangle" : {
-            "y" : 476.70513153076172,
-            "x" : 413.14511823654175,
-            "width" : 93.615234375,
-            "height" : 31
+            "y" : 246,
+            "x" : 114,
+            "width" : 364.859375,
+            "height" : 38
           }
         }
       ],
       "accessibility" : [
-        {
-          "text" : "The heart of the selfie emulator is the procedure runUntilException()",
-          "targetRectangle" : {
-            "y" : 208,
-            "x" : 114,
-            "width" : 692.89599999999973,
-            "height" : 76
-          }
-        },
-        {
-          "text" : "fetch",
-          "targetRectangle" : {
-            "y" : 391.17863082885742,
-            "x" : 444.62140655517578,
-            "width" : 78.0126953125,
-            "height" : 31
-          }
-        },
-        {
-          "text" : "execute",
-          "targetRectangle" : {
-            "y" : 562.23162841796875,
-            "x" : 429.01886558532715,
-            "width" : 109.2177734375,
-            "height" : 31
-          }
-        },
         {
           "text" : "The Processor",
           "targetRectangle" : {
@@ -445,6 +418,33 @@
             "x" : 413.14511823654175,
             "width" : 93.615234375,
             "height" : 31
+          }
+        },
+        {
+          "text" : "execute",
+          "targetRectangle" : {
+            "y" : 562.23162841796875,
+            "x" : 429.01886558532715,
+            "width" : 109.2177734375,
+            "height" : 31
+          }
+        },
+        {
+          "text" : "fetch",
+          "targetRectangle" : {
+            "y" : 391.17863082885742,
+            "x" : 444.62140655517578,
+            "width" : 78.0126953125,
+            "height" : 31
+          }
+        },
+        {
+          "text" : "The heart of the selfie emulator is the procedure runUntilException()",
+          "targetRectangle" : {
+            "y" : 208,
+            "x" : 114,
+            "width" : 692.89599999999973,
+            "height" : 76
           }
         }
       ],

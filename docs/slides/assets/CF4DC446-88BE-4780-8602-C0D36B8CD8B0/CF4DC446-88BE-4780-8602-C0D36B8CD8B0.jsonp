@@ -2,6 +2,20 @@ local_slide( {
   "name" : "CF4DC446-88BE-4780-8602-C0D36B8CD8B0",
   "json" : {
     "assets" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+        "type" : "texture",
+        "index" : 0,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/CF4DC446-88BE-4780-8602-C0D36B8CD8B0.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
       "AA0F12A3412BEBBD4032B8474AB612BC" : {
         "type" : "texture",
         "index" : 1,
@@ -58,7 +72,7 @@ local_slide( {
         "width" : 656,
         "height" : 49
       },
-      "D7692CA89FBCB566CEB38D8D05D61532" : {
+      "0C299E7E111B937E67AC7FF3BAB322D3" : {
         "type" : "texture",
         "index" : 3,
         "assetRequest" : {
@@ -71,20 +85,6 @@ local_slide( {
         },
         "width" : 657,
         "height" : 232
-      },
-      "0C299E7E111B937E67AC7FF3BAB322D3" : {
-        "type" : "texture",
-        "index" : 0,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/CF4DC446-88BE-4780-8602-C0D36B8CD8B0.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
       },
       "622CB4A24D3CA597ACC77236AA1CDB39" : {
         "type" : "texture",
@@ -429,6 +429,15 @@ local_slide( {
         ],
         "accessibility" : [
           {
+            "text" : "$rd = $rs1 +,-,*,\/,% $rs2",
+            "targetRectangle" : {
+              "y" : 488.11627155542374,
+              "x" : 271.4609375,
+              "width" : 456.07421875,
+              "height" : 38
+            }
+          },
+          {
             "text" : "Arithmetic Instructions",
             "targetRectangle" : {
               "y" : 58,
@@ -444,15 +453,6 @@ local_slide( {
               "x" : 114,
               "width" : 839.87200000000041,
               "height" : 75.10400390625
-            }
-          },
-          {
-            "text" : "$rd = $rs1 +,-,*,\/,% $rs2",
-            "targetRectangle" : {
-              "y" : 488.11627155542374,
-              "x" : 271.4609375,
-              "width" : 456.07421875,
-              "height" : 38
             }
           }
         ],
@@ -687,7 +687,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "0C299E7E111B937E67AC7FF3BAB322D3"
+                      "texture" : "498E23C82CA78A4BCD7BA88E5243B6FC"
                     }
                   ]
                 }
@@ -1242,7 +1242,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "D7692CA89FBCB566CEB38D8D05D61532"
+                      "texture" : "0C299E7E111B937E67AC7FF3BAB322D3"
                     }
                   ]
                 }

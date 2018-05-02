@@ -381,6 +381,15 @@ local_slide( {
         "automaticPlay" : false,
         "hyperlinks" : [
           {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/ASCII",
+            "targetRectangle" : {
+              "y" : 350.36746025085449,
+              "x" : 719.11717041015629,
+              "width" : 63.959999999999923,
+              "height" : 28.3038330078125
+            }
+          },
+          {
             "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/8c4b3962682bd6b72632fe229b48fa769950897b\/selfie.c#L1665-L1732",
             "targetRectangle" : {
               "y" : 690.13384866714478,
@@ -397,18 +406,72 @@ local_slide( {
               "width" : 192.03125,
               "height" : 97.00732421875
             }
-          },
-          {
-            "url" : "https:\/\/en.wikipedia.org\/wiki\/ASCII",
-            "targetRectangle" : {
-              "y" : 350.36746025085449,
-              "x" : 719.11717041015629,
-              "width" : 63.959999999999923,
-              "height" : 28.3038330078125
-            }
           }
         ],
         "accessibility" : [
+          {
+            "text" : "atoi stands for",
+            "targetRectangle" : {
+              "y" : 320.66909599304199,
+              "x" : 719.61648291015626,
+              "width" : 179.84137499999997,
+              "height" : 29.002197265625
+            }
+          },
+          {
+            "text" : "ASCII to integer",
+            "targetRectangle" : {
+              "y" : 350.36746025085449,
+              "x" : 719.11717041015629,
+              "width" : 180.84000000000003,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "Given a string s of",
+            "targetRectangle" : {
+              "y" : 408.36746025085449,
+              "x" : 705.44799853515622,
+              "width" : 208.17834374999995,
+              "height" : 29.002197265625
+            }
+          },
+          {
+            "text" : "decimal digits,",
+            "targetRectangle" : {
+              "y" : 438.06582450866699,
+              "x" : 726.28117041015628,
+              "width" : 166.51199999999994,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "the atoi code computes",
+            "targetRectangle" : {
+              "y" : 467.06582450866699,
+              "x" : 666.96048291015632,
+              "width" : 285.15337499999987,
+              "height" : 29.002197265625
+            }
+          },
+          {
+            "text" : "the numerical value n",
+            "targetRectangle" : {
+              "y" : 496.76418876647949,
+              "x" : 687.24399853515627,
+              "width" : 244.58634374999997,
+              "height" : 29.002197265625
+            }
+          },
+          {
+            "text" : "represented by s",
+            "targetRectangle" : {
+              "y" : 526.46255302429199,
+              "x" : 713.19999853515628,
+              "width" : 192.67434374999993,
+              "height" : 29.002197265625
+            }
+          },
           {
             "text" : "Click atoi to see the actual code in selfie.",
             "targetRectangle" : {
@@ -425,24 +488,6 @@ local_slide( {
               "x" : 239.47999858856201,
               "width" : 545.03999999999996,
               "height" : 28.3280029296875
-            }
-          },
-          {
-            "text" : "atoi in C*",
-            "targetRectangle" : {
-              "y" : 41,
-              "x" : 317.46437500000002,
-              "width" : 389.07124999999996,
-              "height" : 97.00732421875
-            }
-          },
-          {
-            "text" : "(proper character and exception handling removed)",
-            "targetRectangle" : {
-              "y" : 140.327880859375,
-              "x" : 227.65999999999997,
-              "width" : 568.68000000000006,
-              "height" : 28.3038330078125
             }
           },
           {
@@ -554,66 +599,21 @@ local_slide( {
             }
           },
           {
-            "text" : "atoi stands for",
+            "text" : "atoi in C*",
             "targetRectangle" : {
-              "y" : 320.66909599304199,
-              "x" : 719.61648291015626,
-              "width" : 179.84137499999997,
-              "height" : 29.002197265625
+              "y" : 41,
+              "x" : 317.46437500000002,
+              "width" : 389.07124999999996,
+              "height" : 97.00732421875
             }
           },
           {
-            "text" : "ASCII to integer",
+            "text" : "(proper character and exception handling removed)",
             "targetRectangle" : {
-              "y" : 350.36746025085449,
-              "x" : 719.11717041015629,
-              "width" : 180.84000000000003,
+              "y" : 140.327880859375,
+              "x" : 227.65999999999997,
+              "width" : 568.68000000000006,
               "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "Given a string s of",
-            "targetRectangle" : {
-              "y" : 408.36746025085449,
-              "x" : 705.44799853515622,
-              "width" : 208.17834374999995,
-              "height" : 29.002197265625
-            }
-          },
-          {
-            "text" : "decimal digits,",
-            "targetRectangle" : {
-              "y" : 438.06582450866699,
-              "x" : 726.28117041015628,
-              "width" : 166.51199999999994,
-              "height" : 28.3038330078125
-            }
-          },
-          {
-            "text" : "the atoi code computes",
-            "targetRectangle" : {
-              "y" : 467.06582450866699,
-              "x" : 666.96048291015632,
-              "width" : 285.15337499999987,
-              "height" : 29.002197265625
-            }
-          },
-          {
-            "text" : "the numerical value n",
-            "targetRectangle" : {
-              "y" : 496.76418876647949,
-              "x" : 687.24399853515627,
-              "width" : 244.58634374999997,
-              "height" : 29.002197265625
-            }
-          },
-          {
-            "text" : "represented by s",
-            "targetRectangle" : {
-              "y" : 526.46255302429199,
-              "x" : 713.19999853515628,
-              "width" : 192.67434374999993,
-              "height" : 29.002197265625
             }
           }
         ],

@@ -396,21 +396,21 @@
       ],
       "accessibility" : [
         {
-          "text" : "Instructions and Formats",
-          "targetRectangle" : {
-            "y" : 61,
-            "x" : 82.005199999999945,
-            "width" : 859.98960000000011,
-            "height" : 88.841882324218773
-          }
-        },
-        {
           "text" : "special case of addi",
           "targetRectangle" : {
             "y" : 643.64892536401749,
             "x" : 130.16636323928833,
             "width" : 199.52659375000002,
             "height" : 27.0899658203125
+          }
+        },
+        {
+          "text" : "Instructions and Formats",
+          "targetRectangle" : {
+            "y" : 61,
+            "x" : 82.005199999999945,
+            "width" : 859.98960000000011,
+            "height" : 88.841882324218773
           }
         }
       ],

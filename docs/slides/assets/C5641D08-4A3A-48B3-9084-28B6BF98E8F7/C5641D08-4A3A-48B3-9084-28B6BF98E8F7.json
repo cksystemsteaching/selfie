@@ -354,6 +354,15 @@
       ],
       "accessibility" : [
         {
+          "text" : "Properties",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 321.51999999999998,
+            "width" : 380.96000000000004,
+            "height" : 94.679443359375
+          }
+        },
+        {
           "text" : "The scanner never crashes and always terminates:\\u2028In code the FSM is simply a huge if\/else if\/else statement that covers every possible case. Syntax errors fall through to the else case.",
           "targetRectangle" : {
             "y" : 208,
@@ -378,15 +387,6 @@
             "x" : 110.14999949932098,
             "width" : 830.87552000000005,
             "height" : 207.58256287574767
-          }
-        },
-        {
-          "text" : "Properties",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 321.51999999999998,
-            "width" : 380.96000000000004,
-            "height" : 94.679443359375
           }
         }
       ],

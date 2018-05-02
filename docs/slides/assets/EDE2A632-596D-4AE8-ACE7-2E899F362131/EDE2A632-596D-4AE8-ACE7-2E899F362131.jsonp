@@ -16,7 +16,21 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "1C729B2E476BDD25562DFDBE4AD58E31" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+        "type" : "texture",
+        "index" : 0,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/EDE2A632-596D-4AE8-ACE7-2E899F362131.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
+      "10339B03176FADB423A9AFE52A3094BC" : {
         "type" : "texture",
         "index" : 2,
         "assetRequest" : {
@@ -27,8 +41,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/EDE2A632-596D-4AE8-ACE7-2E899F362131.pdf"
         },
-        "width" : 831,
-        "height" : 497
+        "width" : 804,
+        "height" : 480
       },
       "F49750C74BCC0EBF884EA2B7A1ADC679" : {
         "type" : "texture",
@@ -44,23 +58,9 @@ local_slide( {
         "width" : 580,
         "height" : 63
       },
-      "429CC0D794A6EAF93B61F4480A5AB0D4" : {
+      "DFC64732B0C06E266CB35B131E25F686" : {
         "type" : "texture",
         "index" : 4,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/EDE2A632-596D-4AE8-ACE7-2E899F362131.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
-        "type" : "texture",
-        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -335,7 +335,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "429CC0D794A6EAF93B61F4480A5AB0D4"
+                      "texture" : "DFC64732B0C06E266CB35B131E25F686"
                     }
                   ]
                 }
@@ -355,41 +355,104 @@ local_slide( {
           {
             "url" : "http:\/\/selfie.cs.uni-salzburg.at",
             "targetRectangle" : {
-              "y" : 208,
-              "x" : 237.77159958276746,
-              "width" : 320.02079999999995,
-              "height" : 35.1488037109375
+              "y" : 216,
+              "x" : 212.70240041723252,
+              "width" : 269.49120000000005,
+              "height" : 29.283203125
             }
           },
           {
-            "url" : "http:\/\/github.com\/cksystemsteaching\/selfie",
+            "url" : "http:\/\/selfie.cs.uni-salzburg.at\/slides",
             "targetRectangle" : {
-              "y" : 244,
-              "x" : 296.92999958276749,
-              "width" : 505.64320000000004,
-              "height" : 75.048803210258484
+              "y" : 246,
+              "x" : 264.38880041723257,
+              "width" : 343.9104000000001,
+              "height" : 62.883203625679016
             }
           },
           {
             "url" : "http:\/\/leanpub.com\/selfie",
             "targetRectangle" : {
-              "y" : 319.89999949932098,
-              "x" : 427.01159958276742,
-              "width" : 257.88319999999987,
-              "height" : 75.048803210258484
+              "y" : 309.60000050067902,
+              "x" : 372.06240041723254,
+              "width" : 217.16480000000013,
+              "height" : 62.883203625679016
+            }
+          },
+          {
+            "url" : "http:\/\/github.com\/cksystemsteaching\/selfie",
+            "targetRectangle" : {
+              "y" : 373.20000100135803,
+              "x" : 445.07360041723251,
+              "width" : 425.80480000000017,
+              "height" : 62.883203625679016
             }
           },
           {
             "url" : "http:\/\/github.com",
             "targetRectangle" : {
-              "y" : 547.59999799728394,
-              "x" : 755.27079958276749,
-              "width" : 153.76319999999987,
-              "height" : 35.1488037109375
+              "y" : 564.00000250339508,
+              "x" : 508.61280041723251,
+              "width" : 129.48480000000006,
+              "height" : 29.283203125
             }
           }
         ],
         "accessibility" : [
+          {
+            "text" : "Website: selfie.cs.uni-salzburg.at",
+            "targetRectangle" : {
+              "y" : 216,
+              "x" : 107.00000041723251,
+              "width" : 375.19360000000006,
+              "height" : 29.283203125
+            }
+          },
+          {
+            "text" : "Slides (draft): selfie.cs.uni-salzburg.at\/slides",
+            "targetRectangle" : {
+              "y" : 246,
+              "x" : 107.00000041723251,
+              "width" : 501.29920000000016,
+              "height" : 62.883203625679016
+            }
+          },
+          {
+            "text" : "Book (draft, outdated): leanpub.com\/selfie ",
+            "targetRectangle" : {
+              "y" : 309.60000050067902,
+              "x" : 107.00000041723251,
+              "width" : 489.34400000000016,
+              "height" : 62.883203625679016
+            }
+          },
+          {
+            "text" : "Sources (code, slides, book): github.com\/cksystemsteaching\/selfie",
+            "targetRectangle" : {
+              "y" : 373.20000100135803,
+              "x" : 107.00000041723251,
+              "width" : 763.87840000000017,
+              "height" : 62.883203625679016
+            }
+          },
+          {
+            "text" : "Install selfie on your machine or in the cloud using the instructions provided in the selfie repository on github.com",
+            "targetRectangle" : {
+              "y" : 500.40000200271606,
+              "x" : 107.00000041723251,
+              "width" : 761.06240000000003,
+              "height" : 92.883203625679016
+            }
+          },
+          {
+            "text" : "Please note that the slides are incomplete as of 2018 and published incrementally as they become available.",
+            "targetRectangle" : {
+              "y" : 594.00000250339508,
+              "x" : 107.00000041723251,
+              "width" : 781.5168000000001,
+              "height" : 92.883203625679016
+            }
+          },
           {
             "text" : "Course Material",
             "targetRectangle" : {
@@ -397,51 +460,6 @@ local_slide( {
               "x" : 219.27999999999997,
               "width" : 585.44000000000005,
               "height" : 94.679443359375
-            }
-          },
-          {
-            "text" : "Website: selfie.cs.uni-salzburg.at",
-            "targetRectangle" : {
-              "y" : 208,
-              "x" : 112.24999958276749,
-              "width" : 445.54239999999993,
-              "height" : 35.1488037109375
-            }
-          },
-          {
-            "text" : "Slides, code: github.com\/cksystemsteaching\/selfie",
-            "targetRectangle" : {
-              "y" : 244,
-              "x" : 112.24999958276749,
-              "width" : 690.32320000000004,
-              "height" : 75.048803210258484
-            }
-          },
-          {
-            "text" : "Book (draft, outdated): leanpub.com\/selfie",
-            "targetRectangle" : {
-              "y" : 319.89999949932098,
-              "x" : 112.24999958276749,
-              "width" : 572.6447999999998,
-              "height" : 75.048803210258484
-            }
-          },
-          {
-            "text" : "Install selfie on your machine or in the cloud using the instructions provided in the selfie repository on github.com",
-            "targetRectangle" : {
-              "y" : 471.69999849796295,
-              "x" : 112.24999958276749,
-              "width" : 796.78399999999988,
-              "height" : 111.04880321025848
-            }
-          },
-          {
-            "text" : "Please note that the slides are incomplete as of 2018 and published incrementally as they become available.",
-            "targetRectangle" : {
-              "y" : 583.59999799728394,
-              "x" : 112.24999958276749,
-              "width" : 786.69119999999998,
-              "height" : 111.04880321025848
             }
           }
         ],
@@ -941,10 +959,10 @@ local_slide( {
                     "rotation" : 0,
                     "scale" : 1,
                     "position" : {
-                      "pointX" : 490.5,
-                      "pointY" : 452.5
+                      "pointX" : 477,
+                      "pointY" : 444
                     },
-                    "width" : 831,
+                    "width" : 804,
                     "sublayerTransform" : [
                       1,
                       0,
@@ -971,7 +989,7 @@ local_slide( {
                     },
                     "opacity" : 1,
                     "edgeAntialiasingMask" : 251658240,
-                    "height" : 497,
+                    "height" : 480,
                     "hidden" : false,
                     "anchorPoint" : {
                       "pointX" : 0.5,
@@ -988,8 +1006,8 @@ local_slide( {
                       ],
                       "texturedRectangle" : {
                         "singleTextureOpacity" : 1,
-                        "textXHeight" : 0.031623340040241449,
-                        "textBaseline" : 0.98425287552762553,
+                        "textXHeight" : 0.027573333333333335,
+                        "textBaseline" : 0.98631348282098774,
                         "isBackgroundTexture" : true,
                         "isVerticalText" : false,
                         "textColor" : [
@@ -1013,10 +1031,10 @@ local_slide( {
                         "rotation" : 0,
                         "scale" : 1,
                         "position" : {
-                          "pointX" : 419.5,
-                          "pointY" : 243.5
+                          "pointX" : 406,
+                          "pointY" : 244
                         },
-                        "width" : 831,
+                        "width" : 804,
                         "sublayerTransform" : [
                           1,
                           0,
@@ -1043,14 +1061,14 @@ local_slide( {
                         },
                         "opacity" : 1,
                         "edgeAntialiasingMask" : 0,
-                        "height" : 497,
+                        "height" : 480,
                         "hidden" : false,
                         "anchorPoint" : {
                           "pointX" : 0.5,
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "1C729B2E476BDD25562DFDBE4AD58E31"
+                      "texture" : "10339B03176FADB423A9AFE52A3094BC"
                     }
                   ]
                 }
