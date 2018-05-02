@@ -142,6 +142,7 @@ void printFixedPointRatio(uint64_t a, uint64_t b);
 void printHexadecimal(uint64_t n, uint64_t a);
 void printOctal(uint64_t n, uint64_t a);
 void printBinary(uint64_t n, uint64_t a);
+void printReturn();
 
 void printSymbolicString(uint64_t vaddr, uint64_t length, uint64_t * pt);
 
@@ -1690,6 +1691,8 @@ uint64_t* selfie_argv = (uint64_t*) 0;
 
 uint64_t* selfieName = (uint64_t*) 0;
 
+uint64_t* CR_string; // string for holding CHAR_CR 
+
 // ------------------------- INITIALIZATION ------------------------
 
 void initSelfie(uint64_t argc, uint64_t* argv) {
@@ -1697,6 +1700,9 @@ void initSelfie(uint64_t argc, uint64_t* argv) {
   selfie_argv = argv;
 
   selfieName = getArgument();
+
+  CR_string  = malloc(SIZEOFUINT64);
+  *CR_string = CHAR_CR;
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2202,6 +2208,10 @@ void printOctal(uint64_t n, uint64_t a) {
 
 void printBinary(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 2, a, 0));
+}
+
+void printReturn() {
+  write(0, CRstring, 1);
 }
 
 void printSymbolicString(uint64_t vaddr, uint64_t length, uint64_t * pt) {
@@ -8928,6 +8938,9 @@ void iterative_mul() {
   uint64_t sym_tc;
   uint64_t con_val;
 
+  uint64_t start_val;
+  uint64_t diff_val;
+
   // assert: at least one register is concrete
 
   if (areSourceRegsConcrete()) {
@@ -8946,6 +8959,7 @@ void iterative_mul() {
 
     // just to be safe
     setConcrete(0);
+    start_val = con_val;
 
     if (con_val == 0)
       setConcrete(0);
@@ -8953,6 +8967,13 @@ void iterative_mul() {
       setMaximum();
     else {
       while (con_val > 0) {
+        diff_val = start_val - con_val;
+        if (diff_val % 80000000 == 0) { // update every 80 Mio
+          print((uint64_t *) "iterative mult in progress: ");
+          printInteger(con_val);
+          printReturn();
+        }
+
         if (cardinalityCheck(tc, sym_tc)) {
           setLower(getLower(tc) + getLower(sym_tc), tc);
           setUpper(getUpper(tc) + getUpper(sym_tc), tc);
@@ -9060,11 +9081,11 @@ void symbolic_do_mul() {
     forcePrecise(currentContext, rs1, rs2);
 
     // sets [0,MAX] if (b*d - a*c >= 2^64)
-    //iterative_mul(); // for now
+    iterative_mul(); // for now
 
     // sTODO: reactivate iterative_mul for correctness
-    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+    // setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
+    // setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
 
     setStateFromReg(rs1, rs2, tc);
     redundancyCheck();
@@ -9852,7 +9873,8 @@ uint64_t isNestedBranch() {
 
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs) {
   if (rd == rs)
-    return *(tcs + *(registers + rs));
+    return *(tcs + btc);
+    // return *(tcs + *(registers + rs));
   else
     return *(registers + rs);
 }
@@ -10182,10 +10204,7 @@ void confine_ld() {
   uint64_t mem_tc;
   uint64_t reg_tc;
 
-  if (rs1 == rd)
-    vaddr = getLower(*(tcs + btc));
-  else
-    vaddr = getLowerFromReg(rs1) + imm;
+  vaddr = getLower(getOverwrittenOperand(rd, rs1)) + imm;
 
   mem_tc = loadVirtualMemory(pt, vaddr);
   reg_tc = *(registers + rd);
