@@ -2211,7 +2211,7 @@ void printBinary(uint64_t n, uint64_t a) {
 }
 
 void printReturn() {
-  write(0, CRstring, 1);
+  write(0, CR_string, 1);
 }
 
 void printSymbolicString(uint64_t vaddr, uint64_t length, uint64_t * pt) {
