@@ -535,20 +535,20 @@ local_slide( {
         "automaticPlay" : false,
         "hyperlinks" : [
           {
-            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L753-L759",
-            "targetRectangle" : {
-              "y" : 601.4697265625,
-              "x" : 769.63867993164058,
-              "width" : 70.304000000000087,
-              "height" : 31.245819091796875
-            }
-          },
-          {
             "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L727-L736",
             "targetRectangle" : {
               "y" : 436.044189453125,
               "x" : 176.33530480957032,
               "width" : 85.748000000000019,
+              "height" : 31.245819091796875
+            }
+          },
+          {
+            "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L753-L759",
+            "targetRectangle" : {
+              "y" : 601.4697265625,
+              "x" : 769.63867993164058,
+              "width" : 70.304000000000087,
               "height" : 31.245819091796875
             }
           },
@@ -564,37 +564,10 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "looking further",
+            "text" : "Level 1",
             "targetRectangle" : {
-              "y" : 503.02033664021559,
-              "x" : 663.85121477413793,
-              "width" : 96.316155465733459,
-              "height" : 57.350073459643738
-            }
-          },
-          {
-            "text" : "looking further",
-            "targetRectangle" : {
-              "y" : 423.32496310505934,
-              "x" : 379.99074114132549,
-              "width" : 96.316155465733402,
-              "height" : 57.350073459643795
-            }
-          },
-          {
-            "text" : "Decoding Instructions",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 105.19999999999999,
-              "width" : 813.59999999999991,
-              "height" : 94.679443359375
-            }
-          },
-          {
-            "text" : "Level 3",
-            "targetRectangle" : {
-              "y" : 561.5184942483902,
-              "x" : 883.28983053588865,
+              "y" : 394.81112730503082,
+              "x" : 301.05031141662596,
               "width" : 48.912000000000035,
               "height" : 17.535888671875
             }
@@ -609,6 +582,69 @@ local_slide( {
             }
           },
           {
+            "text" : "opcode",
+            "targetRectangle" : {
+              "y" : 436.044189453125,
+              "x" : 176.33530480957032,
+              "width" : 85.748000000000019,
+              "height" : 31.245819091796875
+            }
+          },
+          {
+            "text" : "Level 2",
+            "targetRectangle" : {
+              "y" : 472.71020567417145,
+              "x" : 587.52237448120115,
+              "width" : 48.912000000000035,
+              "height" : 17.535888671875
+            }
+          },
+          {
+            "text" : "Decoding Instructions",
+            "targetRectangle" : {
+              "y" : 58,
+              "x" : 105.19999999999999,
+              "width" : 813.59999999999991,
+              "height" : 94.679443359375
+            }
+          },
+          {
+            "text" : "looking further",
+            "targetRectangle" : {
+              "y" : 503.02033664021559,
+              "x" : 663.85121477413793,
+              "width" : 96.316155465733459,
+              "height" : 57.350073459643738
+            }
+          },
+          {
+            "text" : "The opcode in combination with the funct3 code might already identify the instruction. Not part of all instruction formats.",
+            "targetRectangle" : {
+              "y" : 576.84237456321716,
+              "x" : 379.68218994140625,
+              "width" : 265.60000000000002,
+              "height" : 119.41986083984375
+            }
+          },
+          {
+            "text" : "Each instruction can be uniquely identified by certain parts of the 32 bits called opcode, funct3 and funct7 code.",
+            "targetRectangle" : {
+              "y" : 196.3651123046875,
+              "x" : 160.64301602443061,
+              "width" : 737.45280000000002,
+              "height" : 67.330342102050793
+            }
+          },
+          {
+            "text" : "When the instruction is known, the meaning of the remaining bits of the instruction becomes clear. ",
+            "targetRectangle" : {
+              "y" : 264.50474853515624,
+              "x" : 160.64301602443061,
+              "width" : 632.07450000000006,
+              "height" : 106.27880370616913
+            }
+          },
+          {
             "text" : "funct7",
             "targetRectangle" : {
               "y" : 601.4697265625,
@@ -618,12 +654,21 @@ local_slide( {
             }
           },
           {
-            "text" : "Level 1",
+            "text" : "looking further",
             "targetRectangle" : {
-              "y" : 394.81112730503082,
-              "x" : 301.05031141662596,
-              "width" : 48.912000000000035,
-              "height" : 17.535888671875
+              "y" : 423.32496310505934,
+              "x" : 379.99074114132549,
+              "width" : 96.316155465733402,
+              "height" : 57.350073459643795
+            }
+          },
+          {
+            "text" : "funct3",
+            "targetRectangle" : {
+              "y" : 515.73953247070312,
+              "x" : 478.15650219726564,
+              "width" : 70.30400000000003,
+              "height" : 31.245819091796875
             }
           },
           {
@@ -645,57 +690,12 @@ local_slide( {
             }
           },
           {
-            "text" : "The opcode in combination with the funct3 code might already identify the instruction. Not part of all instruction formats.",
+            "text" : "Level 3",
             "targetRectangle" : {
-              "y" : 576.84237456321716,
-              "x" : 379.68218994140625,
-              "width" : 265.60000000000002,
-              "height" : 119.41986083984375
-            }
-          },
-          {
-            "text" : "Level 2",
-            "targetRectangle" : {
-              "y" : 472.71020567417145,
-              "x" : 587.52237448120115,
+              "y" : 561.5184942483902,
+              "x" : 883.28983053588865,
               "width" : 48.912000000000035,
               "height" : 17.535888671875
-            }
-          },
-          {
-            "text" : "opcode",
-            "targetRectangle" : {
-              "y" : 436.044189453125,
-              "x" : 176.33530480957032,
-              "width" : 85.748000000000019,
-              "height" : 31.245819091796875
-            }
-          },
-          {
-            "text" : "funct3",
-            "targetRectangle" : {
-              "y" : 515.73953247070312,
-              "x" : 478.15650219726564,
-              "width" : 70.30400000000003,
-              "height" : 31.245819091796875
-            }
-          },
-          {
-            "text" : "Each instruction can be uniquely identified by certain parts of the 32 bits called opcode, funct3 and funct7 code.",
-            "targetRectangle" : {
-              "y" : 196.3651123046875,
-              "x" : 160.64301602443061,
-              "width" : 737.45280000000002,
-              "height" : 67.330342102050793
-            }
-          },
-          {
-            "text" : "When the instruction is known, the meaning of the remaining bits of the instruction becomes clear. ",
-            "targetRectangle" : {
-              "y" : 264.50474853515624,
-              "x" : 160.64301602443061,
-              "width" : 632.07450000000006,
-              "height" : 106.27880370616913
             }
           }
         ],

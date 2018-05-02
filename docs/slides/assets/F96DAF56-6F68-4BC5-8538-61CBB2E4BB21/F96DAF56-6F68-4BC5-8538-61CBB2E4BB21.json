@@ -362,6 +362,15 @@
       ],
       "accessibility" : [
         {
+          "text" : "Control-Flow Instructions",
+          "targetRectangle" : {
+            "y" : 61,
+            "x" : 81.145600000000002,
+            "width" : 861.70879999999988,
+            "height" : 87.865087890624977
+          }
+        },
+        {
           "text" : "Control flow, at machine code level, is the order in which instructions are executed.",
           "targetRectangle" : {
             "y" : 256,
@@ -386,15 +395,6 @@
             "x" : 114,
             "width" : 759.80799999999999,
             "height" : 117.10400390625
-          }
-        },
-        {
-          "text" : "Control-Flow Instructions",
-          "targetRectangle" : {
-            "y" : 61,
-            "x" : 81.145600000000002,
-            "width" : 861.70879999999988,
-            "height" : 87.865087890624977
           }
         }
       ],

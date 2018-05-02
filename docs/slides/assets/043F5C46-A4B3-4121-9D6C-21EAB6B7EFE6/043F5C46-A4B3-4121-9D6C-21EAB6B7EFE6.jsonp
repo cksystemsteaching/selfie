@@ -16,7 +16,21 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "65ABF50D5CD7BCA66E573489C946E659" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+        "type" : "texture",
+        "index" : 0,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/043F5C46-A4B3-4121-9D6C-21EAB6B7EFE6.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
+      "D6BB3C937CF2EBCC225A793453D569A2" : {
         "type" : "texture",
         "index" : 1,
         "assetRequest" : {
@@ -27,7 +41,7 @@ local_slide( {
         "url" : {
           "native" : "assets\/043F5C46-A4B3-4121-9D6C-21EAB6B7EFE6.pdf"
         },
-        "width" : 339,
+        "width" : 338,
         "height" : 61
       },
       "897B7B7A443B1CC3AC52FCBDB51E7F69" : {
@@ -44,23 +58,9 @@ local_slide( {
         "width" : 856,
         "height" : 444
       },
-      "295598566CFCF3CDB45C148B5C351E71" : {
+      "B8ADE9E2722B27D2CABF75FA79FDC029" : {
         "type" : "texture",
         "index" : 4,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/043F5C46-A4B3-4121-9D6C-21EAB6B7EFE6.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
-      },
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
-        "type" : "texture",
-        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -335,7 +335,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "295598566CFCF3CDB45C148B5C351E71"
+                      "texture" : "B8ADE9E2722B27D2CABF75FA79FDC029"
                     }
                   ]
                 }
@@ -356,11 +356,11 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Realise…",
+            "text" : "Realize…",
             "targetRectangle" : {
               "y" : 58,
-              "x" : 337.07999999999998,
-              "width" : 349.84000000000009,
+              "x" : 337.83999999999997,
+              "width" : 348.32000000000011,
               "height" : 94.679443359375
             }
           },
@@ -719,10 +719,10 @@ local_slide( {
                     "rotation" : 0,
                     "scale" : 1,
                     "position" : {
-                      "pointX" : 244.5,
+                      "pointX" : 244,
                       "pointY" : 50.5
                     },
-                    "width" : 339,
+                    "width" : 338,
                     "sublayerTransform" : [
                       1,
                       0,
@@ -791,10 +791,10 @@ local_slide( {
                         "rotation" : 0,
                         "scale" : 1,
                         "position" : {
-                          "pointX" : 436.5,
+                          "pointX" : 436,
                           "pointY" : 87.5
                         },
-                        "width" : 339,
+                        "width" : 338,
                         "sublayerTransform" : [
                           1,
                           0,
@@ -828,7 +828,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "65ABF50D5CD7BCA66E573489C946E659"
+                      "texture" : "D6BB3C937CF2EBCC225A793453D569A2"
                     }
                   ]
                 }

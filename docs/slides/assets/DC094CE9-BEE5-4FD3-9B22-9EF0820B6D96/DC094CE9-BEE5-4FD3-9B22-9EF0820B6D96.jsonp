@@ -2,7 +2,7 @@ local_slide( {
   "name" : "DC094CE9-BEE5-4FD3-9B22-9EF0820B6D96",
   "json" : {
     "assets" : {
-      "4D36B5FB7DF84C766AE8D603811A31DD" : {
+      "DFEDE555CDC7F3ED3FD1B1CAB540D69F" : {
         "type" : "texture",
         "index" : 2,
         "assetRequest" : {
@@ -13,8 +13,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/DC094CE9-BEE5-4FD3-9B22-9EF0820B6D96.pdf"
         },
-        "width" : 863,
-        "height" : 488
+        "width" : 866,
+        "height" : 449
       },
       "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
@@ -30,7 +30,7 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "AC339D35502160C43B219A88124971BE" : {
+      "CFCF4995B72E8E19C59FCA4461B5E538" : {
         "type" : "texture",
         "index" : 4,
         "assetRequest" : {
@@ -335,7 +335,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "AC339D35502160C43B219A88124971BE"
+                      "texture" : "CFCF4995B72E8E19C59FCA4461B5E538"
                     }
                   ]
                 }
@@ -367,46 +367,46 @@ local_slide( {
           {
             "text" : "The execution of every RISC-U instruction has a well-defined effect. It changes the state of the machine only at a specific location involving little data.",
             "targetRectangle" : {
-              "y" : 212.5,
-              "x" : 108.75000083446503,
-              "width" : 831.23199999999997,
-              "height" : 98.2384033203125
+              "y" : 231.5,
+              "x" : 107.00000041723251,
+              "width" : 804.1472,
+              "height" : 89.283203125
             }
           },
           {
             "text" : "At most two registers or one register and one memory location are modified by an instruction. ",
             "targetRectangle" : {
-              "y" : 311.5,
-              "x" : 108.75000083446503,
-              "width" : 812.11040000000003,
-              "height" : 100.93840432167053
+              "y" : 321.5,
+              "x" : 107.00000041723251,
+              "width" : 764.33920000000001,
+              "height" : 92.883203625679016
             }
           },
           {
             "text" : "Every instruction modifies the PC.",
             "targetRectangle" : {
-              "y" : 413.20000100135803,
-              "x" : 143.75000083446503,
-              "width" : 406.97171250000008,
-              "height" : 69.700001001358032
+              "y" : 415.10000050067902,
+              "x" : 142.00000041723251,
+              "width" : 383.0322000000001,
+              "height" : 63.730469250679107
             }
           },
           {
-            "text" : "Instruction which modify data (another register or memory location) have trivial control flow (pc to next instruction).",
+            "text" : "Most instructions which modify data (another register or memory location) have trivial control flow (pc to next instruction).",
             "targetRectangle" : {
-              "y" : 483.66159868240356,
-              "x" : 143.75000083446503,
-              "width" : 714.8703999999999,
-              "height" : 103.70000100135803
+              "y" : 479.54726662635801,
+              "x" : 142.00000041723251,
+              "width" : 749.64480000000003,
+              "height" : 95.730469250678993
             }
           },
           {
-            "text" : "Control-flow instructions have a more sophisticated control flow, that is, the change the pc using relative or absolute addressing. ",
+            "text" : "Control-flow instructions have a more sophisticated control flow, that is, they may change the pc using relative or absolute addressing. ",
             "targetRectangle" : {
-              "y" : 588.1231963634491,
-              "x" : 143.75000083446503,
-              "width" : 803.97760000000005,
-              "height" : 103.70000100135803
+              "y" : 575.994532752037,
+              "x" : 142.00000041723251,
+              "width" : 807.91040000000032,
+              "height" : 95.730469250679107
             }
           }
         ],
@@ -906,10 +906,10 @@ local_slide( {
                     "rotation" : 0,
                     "scale" : 1,
                     "position" : {
-                      "pointX" : 506.5,
-                      "pointY" : 448.5
+                      "pointX" : 508,
+                      "pointY" : 429
                     },
-                    "width" : 863,
+                    "width" : 866,
                     "sublayerTransform" : [
                       1,
                       0,
@@ -936,7 +936,7 @@ local_slide( {
                     },
                     "opacity" : 1,
                     "edgeAntialiasingMask" : 251658240,
-                    "height" : 488,
+                    "height" : 449,
                     "hidden" : false,
                     "anchorPoint" : {
                       "pointX" : 0.5,
@@ -953,8 +953,8 @@ local_slide( {
                       ],
                       "texturedRectangle" : {
                         "singleTextureOpacity" : 1,
-                        "textXHeight" : 0.028816393442622948,
-                        "textBaseline" : 0.98387181837050641,
+                        "textXHeight" : 0.02947706013363029,
+                        "textBaseline" : 0.98312918040693997,
                         "isBackgroundTexture" : true,
                         "isVerticalText" : false,
                         "textColor" : [
@@ -978,10 +978,10 @@ local_slide( {
                         "rotation" : 0,
                         "scale" : 1,
                         "position" : {
-                          "pointX" : 435.5,
-                          "pointY" : 244.5
+                          "pointX" : 437,
+                          "pointY" : 244
                         },
-                        "width" : 863,
+                        "width" : 866,
                         "sublayerTransform" : [
                           1,
                           0,
@@ -1008,14 +1008,14 @@ local_slide( {
                         },
                         "opacity" : 1,
                         "edgeAntialiasingMask" : 0,
-                        "height" : 488,
+                        "height" : 449,
                         "hidden" : false,
                         "anchorPoint" : {
                           "pointX" : 0.5,
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "4D36B5FB7DF84C766AE8D603811A31DD"
+                      "texture" : "DFEDE555CDC7F3ED3FD1B1CAB540D69F"
                     }
                   ]
                 }

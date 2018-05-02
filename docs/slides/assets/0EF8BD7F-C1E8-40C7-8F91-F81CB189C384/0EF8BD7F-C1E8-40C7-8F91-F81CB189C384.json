@@ -1,5 +1,19 @@
 {
   "assets" : {
+    "CD1FD9F2D704E26250D6AD96EB850708" : {
+      "type" : "texture",
+      "index" : 0,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/0EF8BD7F-C1E8-40C7-8F91-F81CB189C384.pdf"
+      },
+      "width" : 1024,
+      "height" : 768
+    },
     "C457259592508DF0DB10F575B4975352" : {
       "type" : "texture",
       "index" : 2,
@@ -13,6 +27,20 @@
       },
       "width" : 296,
       "height" : 30
+    },
+    "3F5EC9F70E23571AA965054A59B8FD19" : {
+      "type" : "texture",
+      "index" : 8,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/0EF8BD7F-C1E8-40C7-8F91-F81CB189C384.pdf"
+      },
+      "width" : 1024,
+      "height" : 768
     },
     "D62D43E910F269C86A3B10934BBDC994" : {
       "type" : "texture",
@@ -42,20 +70,6 @@
       "width" : 138,
       "height" : 13
     },
-    "3BBA4A57C62D4D60A23A2507138254FE" : {
-      "type" : "texture",
-      "index" : 8,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/0EF8BD7F-C1E8-40C7-8F91-F81CB189C384.pdf"
-      },
-      "width" : 1024,
-      "height" : 768
-    },
     "656403D87FEE1A11ABD3ADC22B81AB00" : {
       "type" : "texture",
       "index" : 3,
@@ -69,20 +83,6 @@
       },
       "width" : 423,
       "height" : 499
-    },
-    "4D24D47D1DE2B278ADA8C479D0BF7707" : {
-      "type" : "texture",
-      "index" : 7,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/0EF8BD7F-C1E8-40C7-8F91-F81CB189C384.pdf"
-      },
-      "width" : 1024,
-      "height" : 768
     },
     "373B4CDA7FC4B7B43A42AA63C2A6068C" : {
       "type" : "texture",
@@ -98,7 +98,7 @@
       "width" : 137,
       "height" : 13
     },
-    "21A0A0BCDAC9D0ACAD6B181F223744C4" : {
+    "C0785F1373F8B16212184895F695F4F7" : {
       "type" : "texture",
       "index" : 1,
       "assetRequest" : {
@@ -109,12 +109,12 @@
       "url" : {
         "native" : "assets\/0EF8BD7F-C1E8-40C7-8F91-F81CB189C384.pdf"
       },
-      "width" : 205,
+      "width" : 789,
       "height" : 63
     },
-    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+    "90D5EED86A3FB506A2EF5576A4099D00" : {
       "type" : "texture",
-      "index" : 0,
+      "index" : 7,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -308,7 +308,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "4D24D47D1DE2B278ADA8C479D0BF7707"
+                    "texture" : "90D5EED86A3FB506A2EF5576A4099D00"
                   },
                   {
                     "animations" : [
@@ -389,7 +389,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "3BBA4A57C62D4D60A23A2507138254FE"
+                    "texture" : "3F5EC9F70E23571AA965054A59B8FD19"
                   }
                 ]
               }
@@ -407,15 +407,6 @@
       "automaticPlay" : false,
       "hyperlinks" : [
         {
-          "url" : "https:\/\/en.wikipedia.org\/wiki\/Processor_(computing)",
-          "targetRectangle" : {
-            "y" : 469.35406500101089,
-            "x" : 748.69914940261845,
-            "width" : 107.11199999999997,
-            "height" : 28.3280029296875
-          }
-        },
-        {
           "url" : "https:\/\/en.wikipedia.org\/wiki\/Operating_system",
           "targetRectangle" : {
             "y" : 531.44744879007339,
@@ -423,25 +414,25 @@
             "width" : 192.048,
             "height" : 28.3280029296875
           }
+        },
+        {
+          "url" : "https:\/\/en.wikipedia.org\/wiki\/Processor_(computing)",
+          "targetRectangle" : {
+            "y" : 469.35406500101089,
+            "x" : 748.69914940261845,
+            "width" : 107.11199999999997,
+            "height" : 28.3280029296875
+          }
         }
       ],
       "accessibility" : [
         {
-          "text" : "backend  ",
+          "text" : "in selfie this is the operating system ",
           "targetRectangle" : {
-            "y" : 372.92426300048828,
-            "x" : 115.34307719421386,
-            "width" : 74.671999999999997,
-            "height" : 18.535888671875
-          }
-        },
-        {
-          "text" : "of compiler",
-          "targetRectangle" : {
-            "y" : 391.92426300048828,
-            "x" : 105.00707719421386,
-            "width" : 86.447999999999993,
-            "height" : 18.535888671875
+            "y" : 531.44744879007339,
+            "x" : 562.20271972274782,
+            "width" : 378.69600000000003,
+            "height" : 28.3280029296875
           }
         },
         {
@@ -451,15 +442,6 @@
             "x" : 562.05114940261842,
             "width" : 300.43200000000002,
             "height" : 28.3280029296875
-          }
-        },
-        {
-          "text" : "Selfie ",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 409.72000000000003,
-            "width" : 226.79999999999995,
-            "height" : 94.679443359375
           }
         },
         {
@@ -481,12 +463,30 @@
           }
         },
         {
-          "text" : "in selfie this is the operating system ",
+          "text" : "Selfie Code Structure ",
           "targetRectangle" : {
-            "y" : 531.44744879007339,
-            "x" : 562.20271972274782,
-            "width" : 378.69600000000003,
-            "height" : 28.3280029296875
+            "y" : 58,
+            "x" : 117.80000000000007,
+            "width" : 810.63999999999987,
+            "height" : 94.679443359375
+          }
+        },
+        {
+          "text" : "backend  ",
+          "targetRectangle" : {
+            "y" : 372.92426300048828,
+            "x" : 115.34307719421386,
+            "width" : 74.671999999999997,
+            "height" : 18.535888671875
+          }
+        },
+        {
+          "text" : "of compiler",
+          "targetRectangle" : {
+            "y" : 391.92426300048828,
+            "x" : 105.00707719421386,
+            "width" : 86.447999999999993,
+            "height" : 18.535888671875
           }
         }
       ],
@@ -721,7 +721,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "498E23C82CA78A4BCD7BA88E5243B6FC"
+                    "texture" : "CD1FD9F2D704E26250D6AD96EB850708"
                   }
                 ]
               }
@@ -799,10 +799,10 @@
                   "rotation" : 0,
                   "scale" : 1,
                   "position" : {
-                    "pointX" : 177.5,
+                    "pointX" : 469.5,
                     "pointY" : 51.5
                   },
-                  "width" : 205,
+                  "width" : 789,
                   "sublayerTransform" : [
                     1,
                     0,
@@ -874,7 +874,7 @@
                         "pointX" : 438.5,
                         "pointY" : 86.5
                       },
-                      "width" : 205,
+                      "width" : 789,
                       "sublayerTransform" : [
                         1,
                         0,
@@ -908,7 +908,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "21A0A0BCDAC9D0ACAD6B181F223744C4"
+                    "texture" : "C0785F1373F8B16212184895F695F4F7"
                   }
                 ]
               }

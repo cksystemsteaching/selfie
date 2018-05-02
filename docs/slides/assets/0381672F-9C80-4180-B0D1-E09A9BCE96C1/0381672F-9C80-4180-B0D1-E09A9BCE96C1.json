@@ -1,5 +1,19 @@
 {
   "assets" : {
+    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "type" : "texture",
+      "index" : 0,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/0381672F-9C80-4180-B0D1-E09A9BCE96C1.pdf"
+      },
+      "width" : 1024,
+      "height" : 768
+    },
     "A6207C09B3720D2503610720366CEA0D" : {
       "type" : "texture",
       "index" : 1,
@@ -27,20 +41,6 @@
       },
       "width" : 657,
       "height" : 48
-    },
-    "21E6B980B93300487A4E8DAA82ED9214" : {
-      "type" : "texture",
-      "index" : 5,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/0381672F-9C80-4180-B0D1-E09A9BCE96C1.pdf"
-      },
-      "width" : 1024,
-      "height" : 768
     },
     "432A86875EEFA6CE17573D35700E605B" : {
       "type" : "texture",
@@ -70,9 +70,9 @@
       "width" : 295,
       "height" : 139
     },
-    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+    "3EC70C464CA3A9DA4FE61801C14A6259" : {
       "type" : "texture",
-      "index" : 0,
+      "index" : 5,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -280,7 +280,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "21E6B980B93300487A4E8DAA82ED9214"
+                    "texture" : "3EC70C464CA3A9DA4FE61801C14A6259"
                   },
                   {
                     "animations" : [
@@ -382,12 +382,12 @@
       ],
       "accessibility" : [
         {
-          "text" : "Arithmetic Instructions ",
+          "text" : "In unsigned arithmetic only 0 satisfies this condition.",
           "targetRectangle" : {
-            "y" : 58,
-            "x" : 94.120000000000061,
-            "width" : 857.99999999999977,
-            "height" : 94.679443359375
+            "y" : 567.19879150390625,
+            "x" : 755.75380328369147,
+            "width" : 176.03999999999996,
+            "height" : 115.3038330078125
           }
         },
         {
@@ -427,12 +427,12 @@
           }
         },
         {
-          "text" : "In unsigned arithmetic only 0 satisfies this condition.",
+          "text" : "Arithmetic Instructions ",
           "targetRectangle" : {
-            "y" : 567.19879150390625,
-            "x" : 755.75380328369147,
-            "width" : 176.03999999999996,
-            "height" : 115.3038330078125
+            "y" : 58,
+            "x" : 94.120000000000061,
+            "width" : 857.99999999999977,
+            "height" : 94.679443359375
           }
         }
       ],

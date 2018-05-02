@@ -379,11 +379,11 @@
       "automaticPlay" : false,
       "hyperlinks" : [
         {
-          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2093-L2118",
+          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2138-L2193",
           "targetRectangle" : {
-            "y" : 244.27395629882812,
-            "x" : 400.70921325683594,
-            "width" : 218.435546875,
+            "y" : 312.4127197265625,
+            "x" : 403.88379669189453,
+            "width" : 296.4482421875,
             "height" : 31
           }
         },
@@ -397,16 +397,25 @@
           }
         },
         {
-          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2138-L2193",
+          "url" : "https:\/\/github.com\/cksystemsteaching\/selfie\/blob\/d164b579928e4d580de02e87ad3a049308d3228c\/selfie.c#L2093-L2118",
+          "targetRectangle" : {
+            "y" : 244.27395629882812,
+            "x" : 400.70921325683594,
+            "width" : 218.435546875,
+            "height" : 31
+          }
+        }
+      ],
+      "accessibility" : [
+        {
+          "text" : "findNextCharacter()",
           "targetRectangle" : {
             "y" : 312.4127197265625,
             "x" : 403.88379669189453,
             "width" : 296.4482421875,
             "height" : 31
           }
-        }
-      ],
-      "accessibility" : [
+        },
         {
           "text" : "The Scanner",
           "targetRectangle" : {
@@ -414,15 +423,6 @@
             "x" : 279.31999999999994,
             "width" : 465.36000000000013,
             "height" : 94.679443359375
-          }
-        },
-        {
-          "text" : "getCharacter()",
-          "targetRectangle" : {
-            "y" : 244.27395629882812,
-            "x" : 400.70921325683594,
-            "width" : 218.435546875,
-            "height" : 31
           }
         },
         {
@@ -435,11 +435,20 @@
           }
         },
         {
-          "text" : "findNextCharacter()",
+          "text" : "calls",
           "targetRectangle" : {
-            "y" : 312.4127197265625,
-            "x" : 403.88379669189453,
-            "width" : 296.4482421875,
+            "y" : 215.05738824605942,
+            "x" : 310.72735548019409,
+            "width" : 45.336000000000013,
+            "height" : 28.3038330078125
+          }
+        },
+        {
+          "text" : "getCharacter()",
+          "targetRectangle" : {
+            "y" : 244.27395629882812,
+            "x" : 400.70921325683594,
+            "width" : 218.435546875,
             "height" : 31
           }
         },
@@ -477,15 +486,6 @@
             "x" : 107.00000041723251,
             "width" : 718.17870000000016,
             "height" : 63.730469250678993
-          }
-        },
-        {
-          "text" : "calls",
-          "targetRectangle" : {
-            "y" : 215.05738824605942,
-            "x" : 310.72735548019409,
-            "width" : 45.336000000000013,
-            "height" : 28.3038330078125
           }
         }
       ],

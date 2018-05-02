@@ -2,9 +2,9 @@ local_slide( {
   "name" : "97788254-FE74-4CE0-B77F-D0C6705E174A",
   "json" : {
     "assets" : {
-      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+      "CFE01521FF2CA38F748C4AAFAB87BC9B" : {
         "type" : "texture",
-        "index" : 0,
+        "index" : 1,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -13,8 +13,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/97788254-FE74-4CE0-B77F-D0C6705E174A.pdf"
         },
-        "width" : 1024,
-        "height" : 768
+        "width" : 653,
+        "height" : 132
       },
       "42B5283989E51653F79A851E008BDEE9" : {
         "type" : "texture",
@@ -72,9 +72,9 @@ local_slide( {
         "width" : 1024,
         "height" : 768
       },
-      "5E8378E1EF58FE69FFAB85A12EABF974" : {
+      "498E23C82CA78A4BCD7BA88E5243B6FC" : {
         "type" : "texture",
-        "index" : 1,
+        "index" : 0,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -83,8 +83,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/97788254-FE74-4CE0-B77F-D0C6705E174A.pdf"
         },
-        "width" : 653,
-        "height" : 132
+        "width" : 1024,
+        "height" : 768
       }
     },
     "events" : [
@@ -378,15 +378,6 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "Immediate Arithmetic Instructions",
-            "targetRectangle" : {
-              "y" : 25,
-              "x" : 184.24960000000004,
-              "width" : 673.95999999999981,
-              "height" : 160.07393798828127
-            }
-          },
-          {
             "text" : "Load upper immediate loads imm value shifted by 12 bits into $rd and add immediate adds imm to the content of $rs1 and stores the result in $rd. ",
             "targetRectangle" : {
               "y" : 338.54885864257812,
@@ -420,6 +411,15 @@ local_slide( {
               "x" : 107.00000041723251,
               "width" : 679.22800000000007,
               "height" : 63.730469250679107
+            }
+          },
+          {
+            "text" : "Immediate Arithmetic Instructions",
+            "targetRectangle" : {
+              "y" : 25,
+              "x" : 184.24960000000004,
+              "width" : 673.95999999999981,
+              "height" : 160.07393798828127
             }
           }
         ],
@@ -841,7 +841,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "5E8378E1EF58FE69FFAB85A12EABF974"
+                      "texture" : "CFE01521FF2CA38F748C4AAFAB87BC9B"
                     }
                   ]
                 }

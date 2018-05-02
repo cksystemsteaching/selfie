@@ -2,9 +2,9 @@ local_slide( {
   "name" : "A130D850-E341-4C97-84DF-94372A179FA7",
   "json" : {
     "assets" : {
-      "2DD7A2291B5CAB61CAEF2AAB61F7DD7A" : {
+      "CD1FD9F2D704E26250D6AD96EB850708" : {
         "type" : "texture",
-        "index" : 2,
+        "index" : 7,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -13,8 +13,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/A130D850-E341-4C97-84DF-94372A179FA7.pdf"
         },
-        "width" : 867,
-        "height" : 477
+        "width" : 1024,
+        "height" : 768
       },
       "657A73F4D77D9F892EAEE42030558929" : {
         "type" : "texture",
@@ -30,6 +30,20 @@ local_slide( {
         "width" : 90,
         "height" : 47
       },
+      "3A8E0A29904315FBBDB640F5B0118A5C" : {
+        "type" : "texture",
+        "index" : 8,
+        "assetRequest" : {
+          "type" : "slide",
+          "state" : "contents",
+          "slide" : "none"
+        },
+        "url" : {
+          "native" : "assets\/A130D850-E341-4C97-84DF-94372A179FA7.pdf"
+        },
+        "width" : 1024,
+        "height" : 768
+      },
       "A3AC9678ACCA7B5D29BA7B8A05887694" : {
         "type" : "texture",
         "index" : 1,
@@ -43,20 +57,6 @@ local_slide( {
         },
         "width" : 864,
         "height" : 71
-      },
-      "3BBA4A57C62D4D60A23A2507138254FE" : {
-        "type" : "texture",
-        "index" : 7,
-        "assetRequest" : {
-          "type" : "slide",
-          "state" : "contents",
-          "slide" : "none"
-        },
-        "url" : {
-          "native" : "assets\/A130D850-E341-4C97-84DF-94372A179FA7.pdf"
-        },
-        "width" : 1024,
-        "height" : 768
       },
       "0DFD416C1659AD7C8FCCA8BA196ED522" : {
         "type" : "texture",
@@ -86,9 +86,9 @@ local_slide( {
         "width" : 191,
         "height" : 84
       },
-      "61C9E5D8FD4FAF4A9880AB82523E2959" : {
+      "88FE7E7D8832AB5504F61648C33F0D1E" : {
         "type" : "texture",
-        "index" : 8,
+        "index" : 2,
         "assetRequest" : {
           "type" : "slide",
           "state" : "contents",
@@ -97,8 +97,8 @@ local_slide( {
         "url" : {
           "native" : "assets\/A130D850-E341-4C97-84DF-94372A179FA7.pdf"
         },
-        "width" : 1024,
-        "height" : 768
+        "width" : 867,
+        "height" : 477
       },
       "1D6467213824B35A1B616AD0127B3B71" : {
         "type" : "texture",
@@ -310,7 +310,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "3BBA4A57C62D4D60A23A2507138254FE"
+                      "texture" : "CD1FD9F2D704E26250D6AD96EB850708"
                     },
                     {
                       "animations" : [
@@ -391,7 +391,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "61C9E5D8FD4FAF4A9880AB82523E2959"
+                      "texture" : "3A8E0A29904315FBBDB640F5B0118A5C"
                     }
                   ]
                 }
@@ -408,9 +408,26 @@ local_slide( {
         ],
         "automaticPlay" : false,
         "hyperlinks" : [
-
+          {
+            "url" : "https:\/\/en.wikipedia.org\/wiki\/ASCII",
+            "targetRectangle" : {
+              "y" : 221,
+              "x" : 338.53111949932099,
+              "width" : 72.225280000000055,
+              "height" : 33.202563476562489
+            }
+          }
         ],
         "accessibility" : [
+          {
+            "text" : "pointer to first word of where the string is stored",
+            "targetRectangle" : {
+              "y" : 642.30010998249054,
+              "x" : 586.75073510742186,
+              "width" : 193.44000000000005,
+              "height" : 86.3997802734375
+            }
+          },
           {
             "text" : "ascii representation",
             "targetRectangle" : {
@@ -472,15 +489,6 @@ local_slide( {
               "x" : 110.14999949932098,
               "width" : 480.33188750000022,
               "height" : 71.525145883560299
-            }
-          },
-          {
-            "text" : "pointer to first word of where the string is stored",
-            "targetRectangle" : {
-              "y" : 642.30010998249054,
-              "x" : 586.75073510742186,
-              "width" : 193.44000000000005,
-              "height" : 86.3997802734375
             }
           },
           {
@@ -1098,7 +1106,7 @@ local_slide( {
                           "pointY" : 0.5
                         }
                       },
-                      "texture" : "2DD7A2291B5CAB61CAEF2AAB61F7DD7A"
+                      "texture" : "88FE7E7D8832AB5504F61648C33F0D1E"
                     }
                   ]
                 }

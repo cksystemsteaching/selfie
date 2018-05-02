@@ -1,5 +1,19 @@
 {
   "assets" : {
+    "BCFB5E87E6709D4E980E75607C57B8B0" : {
+      "type" : "texture",
+      "index" : 0,
+      "assetRequest" : {
+        "type" : "slide",
+        "state" : "contents",
+        "slide" : "none"
+      },
+      "url" : {
+        "native" : "assets\/BD964014-4264-4EA6-9658-024C65112A41.pdf"
+      },
+      "width" : 1024,
+      "height" : 768
+    },
     "4A525E8A47996EC3DA1C1BEF409D855A" : {
       "type" : "texture",
       "index" : 1,
@@ -45,20 +59,6 @@
     "1AD44A193565B5E45F44D9B18673293F" : {
       "type" : "texture",
       "index" : 4,
-      "assetRequest" : {
-        "type" : "slide",
-        "state" : "contents",
-        "slide" : "none"
-      },
-      "url" : {
-        "native" : "assets\/BD964014-4264-4EA6-9658-024C65112A41.pdf"
-      },
-      "width" : 1024,
-      "height" : 768
-    },
-    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
-      "type" : "texture",
-      "index" : 0,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -416,15 +416,6 @@
       ],
       "accessibility" : [
         {
-          "text" : "Programming in C*",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 163.76000000000005,
-            "width" : 696.48000000000002,
-            "height" : 94.679443359375
-          }
-        },
-        {
           "text" : "C* is a tiny subset of the programming language C",
           "targetRectangle" : {
             "y" : 232,
@@ -476,6 +467,15 @@
             "x" : 104.55000066757202,
             "width" : 838.92713249999986,
             "height" : 89.314077949523835
+          }
+        },
+        {
+          "text" : "Programming in C*",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 163.76000000000005,
+            "width" : 696.48000000000002,
+            "height" : 94.679443359375
           }
         }
       ],
@@ -710,7 +710,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "498E23C82CA78A4BCD7BA88E5243B6FC"
+                    "texture" : "BCFB5E87E6709D4E980E75607C57B8B0"
                   }
                 ]
               }

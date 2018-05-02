@@ -362,6 +362,15 @@
       ],
       "accessibility" : [
         {
+          "text" : "EBNF-Niklaus Wirth",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 308.52500000000003,
+            "width" : 406.94999999999987,
+            "height" : 94.679443359375
+          }
+        },
+        {
           "text" : "ebnf = { production } .",
           "targetRectangle" : {
             "y" : 209.5,
@@ -431,15 +440,6 @@
             "x" : 79,
             "width" : 802.69062500000064,
             "height" : 60.919999599456787
-          }
-        },
-        {
-          "text" : "EBNF-Niklaus Wirth",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 308.52500000000003,
-            "width" : 406.94999999999987,
-            "height" : 94.679443359375
           }
         }
       ],

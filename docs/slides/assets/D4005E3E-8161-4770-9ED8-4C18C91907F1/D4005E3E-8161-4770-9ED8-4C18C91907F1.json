@@ -385,6 +385,15 @@
       ],
       "accessibility" : [
         {
+          "text" : "|-",
+          "targetRectangle" : {
+            "y" : 350.0141773223877,
+            "x" : 410.90786628723146,
+            "width" : 18.899999999999977,
+            "height" : 36.129791259765625
+          }
+        },
+        {
           "text" : "Selfie uses special procedures (_before() & _after()) that show on which part of the machine state they depend, which part they modify and the modification itself.",
           "targetRectangle" : {
             "y" : 208,
@@ -412,24 +421,6 @@
           }
         },
         {
-          "text" : "|-",
-          "targetRectangle" : {
-            "y" : 350.0141773223877,
-            "x" : 410.90786628723146,
-            "width" : 18.899999999999977,
-            "height" : 36.129791259765625
-          }
-        },
-        {
-          "text" : "new value after modification",
-          "targetRectangle" : {
-            "y" : 400.36160659790039,
-            "x" : 639.7613588256836,
-            "width" : 162.28800000000001,
-            "height" : 57.3038330078125
-          }
-        },
-        {
           "text" : "read only ",
           "targetRectangle" : {
             "y" : 400.36160659790039,
@@ -444,6 +435,15 @@
             "y" : 429.36160659790039,
             "x" : 230.41062353134157,
             "width" : 158.71199999999999,
+            "height" : 57.3038330078125
+          }
+        },
+        {
+          "text" : "new value after modification",
+          "targetRectangle" : {
+            "y" : 400.36160659790039,
+            "x" : 639.7613588256836,
+            "width" : 162.28800000000001,
             "height" : 57.3038330078125
           }
         },

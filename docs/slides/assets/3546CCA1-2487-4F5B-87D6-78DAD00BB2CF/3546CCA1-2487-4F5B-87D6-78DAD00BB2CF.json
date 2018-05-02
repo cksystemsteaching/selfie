@@ -376,6 +376,24 @@
       ],
       "accessibility" : [
         {
+          "text" : "This is a draft! To be completed incrementally 2018-2019",
+          "targetRectangle" : {
+            "y" : 24.747997343540192,
+            "x" : 207.89599800109863,
+            "width" : 608.2080000000002,
+            "height" : 28.3280029296875
+          }
+        },
+        {
+          "text" : "Selfie: Introduction to the Implementation of Programming Languages, Operating Systems, and Processor Architecture",
+          "targetRectangle" : {
+            "y" : 138,
+            "x" : 130.73919999999998,
+            "width" : 776.75520000000006,
+            "height" : 246.51484375000001
+          }
+        },
+        {
           "text" : "Christoph Kirsch and Sara Seidl",
           "targetRectangle" : {
             "y" : 506.1119384765625,
@@ -418,24 +436,6 @@
             "x" : 275.89745000000005,
             "width" : 472.2050999999999,
             "height" : 40.015804290771484
-          }
-        },
-        {
-          "text" : "This is a draft! To be completed incrementally 2018-2019",
-          "targetRectangle" : {
-            "y" : 24.74799865436546,
-            "x" : 207.89599792003634,
-            "width" : 608.20800000000031,
-            "height" : 28.3280029296875
-          }
-        },
-        {
-          "text" : "Selfie: Introduction to the Implementation of Programming Languages, Operating Systems, and Processor Architecture",
-          "targetRectangle" : {
-            "y" : 138,
-            "x" : 130.73919999999998,
-            "width" : 776.75520000000006,
-            "height" : 246.51484375000001
           }
         }
       ],
@@ -1122,8 +1122,8 @@
                   "rotation" : 0,
                   "scale" : 1,
                   "position" : {
-                    "pointX" : 508.89599792003634,
-                    "pointY" : 34.24799865436546
+                    "pointX" : 508.89599800109863,
+                    "pointY" : 34.247997343540192
                   },
                   "width" : 611,
                   "sublayerTransform" : [
@@ -1170,7 +1170,7 @@
                     "texturedRectangle" : {
                       "singleTextureOpacity" : 1,
                       "textXHeight" : 0.45955555555555555,
-                      "textBaseline" : 0.73940974472186893,
+                      "textBaseline" : 0.73940969617278485,
                       "isBackgroundTexture" : true,
                       "isVerticalText" : false,
                       "textColor" : [
@@ -1194,8 +1194,8 @@
                       "rotation" : 0,
                       "scale" : 1,
                       "position" : {
-                        "pointX" : 308.10400207996366,
-                        "pointY" : 20.75200134563454
+                        "pointX" : 308.10400199890137,
+                        "pointY" : 20.752002656459808
                       },
                       "width" : 611,
                       "sublayerTransform" : [

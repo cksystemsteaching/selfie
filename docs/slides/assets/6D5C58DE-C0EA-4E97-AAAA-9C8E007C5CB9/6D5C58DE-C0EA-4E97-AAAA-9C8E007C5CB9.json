@@ -14,9 +14,9 @@
       "width" : 1024,
       "height" : 768
     },
-    "A01A5F7185B415F3ED96C71CE0EED306" : {
+    "64B6289C878D7DE62BD5CAEB729F85E8" : {
       "type" : "texture",
-      "index" : 2,
+      "index" : 0,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -25,8 +25,8 @@
       "url" : {
         "native" : "assets\/6D5C58DE-C0EA-4E97-AAAA-9C8E007C5CB9.pdf"
       },
-      "width" : 852,
-      "height" : 281
+      "width" : 1024,
+      "height" : 768
     },
     "FC0703FA5308C8BEF2939F6AFCC8F326" : {
       "type" : "texture",
@@ -56,9 +56,9 @@
       "width" : 437,
       "height" : 75
     },
-    "498E23C82CA78A4BCD7BA88E5243B6FC" : {
+    "A01A5F7185B415F3ED96C71CE0EED306" : {
       "type" : "texture",
-      "index" : 0,
+      "index" : 2,
       "assetRequest" : {
         "type" : "slide",
         "state" : "contents",
@@ -67,8 +67,8 @@
       "url" : {
         "native" : "assets\/6D5C58DE-C0EA-4E97-AAAA-9C8E007C5CB9.pdf"
       },
-      "width" : 1024,
-      "height" : 768
+      "width" : 852,
+      "height" : 281
     }
   },
   "events" : [
@@ -380,6 +380,15 @@
       ],
       "accessibility" : [
         {
+          "text" : "Whitespace",
+          "targetRectangle" : {
+            "y" : 58,
+            "x" : 294.15999999999997,
+            "width" : 435.68000000000006,
+            "height" : 94.679443359375
+          }
+        },
+        {
           "text" : "Whitespace and comments do not change the semantics of code and could even be omitted (minification). Their purpose is to make the code more readable. ",
           "targetRectangle" : {
             "y" : 316,
@@ -395,15 +404,6 @@
             "x" : 114,
             "width" : 798.49599999999998,
             "height" : 156.1630859375
-          }
-        },
-        {
-          "text" : "Whitespace",
-          "targetRectangle" : {
-            "y" : 58,
-            "x" : 294.15999999999997,
-            "width" : 435.68000000000006,
-            "height" : 94.679443359375
           }
         }
       ],
@@ -638,7 +638,7 @@
                         "pointY" : 0.5
                       }
                     },
-                    "texture" : "498E23C82CA78A4BCD7BA88E5243B6FC"
+                    "texture" : "64B6289C878D7DE62BD5CAEB729F85E8"
                   }
                 ]
               }

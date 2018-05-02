@@ -454,12 +454,12 @@ local_slide( {
         ],
         "accessibility" : [
           {
-            "text" : "one beginning state",
+            "text" : "FSM",
             "targetRectangle" : {
-              "y" : 454.15896534919739,
-              "x" : 194.0735502243042,
-              "width" : 215.54399999999998,
-              "height" : 28.3997802734375
+              "y" : 58,
+              "x" : 426.80000000000001,
+              "width" : 170.40000000000003,
+              "height" : 94.679443359375
             }
           },
           {
@@ -481,66 +481,12 @@ local_slide( {
             }
           },
           {
-            "text" : "y",
-            "targetRectangle" : {
-              "y" : 388.05833435058594,
-              "x" : 409.30783081054688,
-              "width" : 12,
-              "height" : 28.3280029296875
-            }
-          },
-          {
-            "text" : "FSM",
-            "targetRectangle" : {
-              "y" : 58,
-              "x" : 426.80000000000001,
-              "width" : 170.40000000000003,
-              "height" : 94.679443359375
-            }
-          },
-          {
-            "text" : "Transitions describe how to get from one state to another.",
-            "targetRectangle" : {
-              "y" : 550.63720703125,
-              "x" : 114,
-              "width" : 823.87200000000018,
-              "height" : 37.10400390625
-            }
-          },
-          {
-            "text" : "E.x. When in state B the condition z (may be \\\"reading z\\\") is true, a move to state C happens.",
-            "targetRectangle" : {
-              "y" : 588.63720703125,
-              "x" : 114,
-              "width" : 817.25425000000018,
-              "height" : 119.22216796875
-            }
-          },
-          {
-            "text" : "A",
-            "targetRectangle" : {
-              "y" : 303.13277816772461,
-              "x" : 294.06410156695296,
-              "width" : 19.203125,
-              "height" : 38
-            }
-          },
-          {
             "text" : "z",
             "targetRectangle" : {
               "y" : 229.33367919921875,
               "x" : 621.68232727050781,
               "width" : 11.519999999999982,
               "height" : 28.3280029296875
-            }
-          },
-          {
-            "text" : "transitions   ",
-            "targetRectangle" : {
-              "y" : 191.24343866109848,
-              "x" : 196.66260562705995,
-              "width" : 125.328,
-              "height" : 28.3038330078125
             }
           },
           {
@@ -562,12 +508,66 @@ local_slide( {
             }
           },
           {
+            "text" : "A",
+            "targetRectangle" : {
+              "y" : 303.13277816772461,
+              "x" : 294.06410156695296,
+              "width" : 19.203125,
+              "height" : 38
+            }
+          },
+          {
             "text" : "C",
             "targetRectangle" : {
               "y" : 303.13277816772461,
               "x" : 724.88651977984352,
               "width" : 19.203125,
               "height" : 38
+            }
+          },
+          {
+            "text" : "transitions   ",
+            "targetRectangle" : {
+              "y" : 191.24343866109848,
+              "x" : 196.66260562705995,
+              "width" : 125.328,
+              "height" : 28.3038330078125
+            }
+          },
+          {
+            "text" : "y",
+            "targetRectangle" : {
+              "y" : 388.05833435058594,
+              "x" : 409.30783081054688,
+              "width" : 12,
+              "height" : 28.3280029296875
+            }
+          },
+          {
+            "text" : "one beginning state",
+            "targetRectangle" : {
+              "y" : 454.15896534919739,
+              "x" : 194.0735502243042,
+              "width" : 215.54399999999998,
+              "height" : 28.3997802734375
+            }
+          },
+          {
+            "text" : "Transitions describe how to get from one state to another.",
+            "targetRectangle" : {
+              "y" : 550.63720703125,
+              "x" : 114,
+              "width" : 823.87200000000018,
+              "height" : 37.10400390625
+            }
+          },
+          {
+            "text" : "E.x. When in state B the condition z (may be \\\"reading z\\\") is true, a move to state C happens.",
+            "targetRectangle" : {
+              "y" : 588.63720703125,
+              "x" : 114,
+              "width" : 817.25425000000018,
+              "height" : 119.22216796875
             }
           }
         ],
