@@ -8827,9 +8827,25 @@ uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2) {
 }
 
 uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2) {
+  uint64_t tc_p2;
+  uint64_t tc_other;
   uint64_t p;
 
-  if (getLower(tc2) % 2 != 0) {
+  tc_p2 = 1;
+
+  if (isConcrete(currentContext, tc1))
+    if(getLower(tc1) % 2 == 0) {
+      tc_p2 = tc1;
+      tc_other = tc2;
+    }
+
+  if (isConcrete(currentContext, tc2))
+    if(getLower(tc2) % 2 == 0) {
+      tc_p2 = tc2;
+      tc_other = tc1;
+    }
+
+  if (getLower(tc_p2) % 2 != 0) {
     print(selfieName);
     print((uint64_t*) ": multiplication factor is not a power of 2 at pc=");
     printHexadecimal(pc, 0);
@@ -8839,10 +8855,10 @@ uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2) {
     return 1;
   }
 
-  p = floorLogBaseTwo(getLower(tc2));
+  p = floorLogBaseTwo(getLower(tc_p2));
 
   if (p != 0)
-    if (getUpper(tc1) - getLower(tc1) >= twoToThePowerOf(CPUBITWIDTH - p))
+    if (getUpper(tc_other) - getLower(tc_other) >= twoToThePowerOf(CPUBITWIDTH - p))
       return 0;
 
   return 1;
@@ -9098,9 +9114,8 @@ void symbolic_do_mul() {
     forcePrecise(currentContext, rs1, rs2);
 
     // sets [0,MAX] if (b*d - a*c >= 2^64)
-    iterative_mul(); // for now
+    // iterative_mul(); // for now
 
-    // sTODO: reactivate iterative_mul for correctness
     if (cardinalityCheckMul(*(registers + rs1), *(registers + rs2))) {
       setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
