@@ -902,7 +902,7 @@ uint64_t debug_write   = 0;
 uint64_t debug_open    = 0;
 uint64_t debug_malloc  = 0;
 uint64_t debug_vipster = 0;
-uint64_t debug_mask    = 1;
+uint64_t debug_mask    = 0;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
