@@ -100,6 +100,7 @@ void resetLibrary();
 
 uint64_t twoToThePowerOf(uint64_t p);
 uint64_t floorLogBaseTwo(uint64_t v);
+uint64_t isPowerOfTwo(uint64_t n);
 
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
@@ -1498,8 +1499,6 @@ void updateMask(uint64_t instruction, uint64_t reg, uint64_t n);
 // ------------------ SYMBOLIC FORWARD EXECUTION -------------------
 // -----------------------------------------------------------------
 
-void iterative_mul();
-
 void symbolic_do_lui();
 void symbolic_do_addi();
 void symbolic_do_add();
@@ -1732,6 +1731,25 @@ uint64_t floorLogBaseTwo(uint64_t v) {
     p = p + 1;
   }
   return p;
+}
+
+uint64_t isPowerOfTwo(uint64_t n) {
+  uint64_t i;
+
+  i = 0;
+
+  if (n == 0)
+    return 0;
+
+  else if (n % 2 == 0) {
+    while (i < CPUBITWIDTH) {
+      if (n == twoToThePowerOf(i))
+        return 1;
+
+      i = i + 1;
+    }
+  }
+  return 0;
 }
 
 uint64_t leftShift(uint64_t n, uint64_t b) {
@@ -8827,25 +8845,24 @@ uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2) {
 }
 
 uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2) {
-  uint64_t tc_p2;
-  uint64_t tc_other;
+  // assert: at least one factor is concrete
+  uint64_t tc_con;
+  uint64_t tc_sym;
   uint64_t p;
 
-  tc_p2 = 1;
+  if (areSourceRegsConcrete())
+    return 1;
+  else if (isConcrete(currentContext, rs1)) {
+    tc_con = tc1;
+    tc_sym = tc2;
+  } else {
+    tc_con = tc2;
+    tc_sym = tc1;
+  }
 
-  if (isConcrete(currentContext, tc1))
-    if(getLower(tc1) % 2 == 0) {
-      tc_p2 = tc1;
-      tc_other = tc2;
-    }
-
-  if (isConcrete(currentContext, tc2))
-    if(getLower(tc2) % 2 == 0) {
-      tc_p2 = tc2;
-      tc_other = tc1;
-    }
-
-  if (getLower(tc_p2) % 2 != 0) {
+  if (getLower(tc_con) == 0)
+    return 1;
+  else if (isPowerOfTwo(getLower(tc_con)) == 0) {
     print(selfieName);
     print((uint64_t*) ": multiplication factor is not a power of 2 at pc=");
     printHexadecimal(pc, 0);
@@ -8855,13 +8872,14 @@ uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2) {
     return 1;
   }
 
-  p = floorLogBaseTwo(getLower(tc_p2));
+  p = floorLogBaseTwo(getLower(tc_con));
 
-  if (p != 0)
-    if (getUpper(tc_other) - getLower(tc_other) >= twoToThePowerOf(CPUBITWIDTH - p))
-      return 0;
+  if (p == 0)
+    return 1;
+  else if (getUpper(tc_sym) - getLower(tc_sym) < twoToThePowerOf(CPUBITWIDTH - p))
+    return 1;
 
-  return 1;
+  return 0;
 }
 
 // ------------------------------ PRINT ----------------------------
@@ -8967,61 +8985,6 @@ void updateMask(uint64_t instruction, uint64_t reg, uint64_t n) {
 // ------------------ SYMBOLIC FORWARD EXECUTION -------------------
 // -----------------------------------------------------------------
 
-void iterative_mul() {
-  uint64_t sym_tc;
-  uint64_t con_val;
-
-  uint64_t start_val;
-  uint64_t diff_val;
-
-  // assert: at least one register is concrete
-
-  if (areSourceRegsConcrete()) {
-    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
-  }
-  else {
-    if (isConcrete(currentContext, rs1)) {
-      sym_tc = *(registers + rs2);
-      con_val = getLowerFromReg(rs1);
-    }
-    else {
-      sym_tc = *(registers + rs1);
-      con_val = getLowerFromReg(rs2);
-    }
-
-    // just to be safe
-    setConcrete(0);
-    start_val = con_val;
-
-    if (con_val == 0)
-      setConcrete(0);
-    else if (cardinality(sym_tc) == 0)
-      setMaximum();
-    else {
-      while (con_val > 0) {
-        diff_val = start_val - con_val;
-        if (diff_val % 80000000 == 0) { // update every 80 Mio
-          print((uint64_t *) "iterative mult in progress: ");
-          printInteger(con_val);
-          printReturn();
-        }
-
-        if (cardinalityCheck(tc, sym_tc)) {
-          setLower(getLower(tc) + getLower(sym_tc), tc);
-          setUpper(getUpper(tc) + getUpper(sym_tc), tc);
-
-          con_val = con_val - 1;
-        }
-        else {
-          setMaximum();
-          return;
-        }
-      }
-    }
-  }
-}
-
 void symbolic_do_lui() {
   // @push: RD
   saveState(*(registers + rd));
@@ -9114,8 +9077,6 @@ void symbolic_do_mul() {
     forcePrecise(currentContext, rs1, rs2);
 
     // sets [0,MAX] if (b*d - a*c >= 2^64)
-    // iterative_mul(); // for now
-
     if (cardinalityCheckMul(*(registers + rs1), *(registers + rs2))) {
       setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
