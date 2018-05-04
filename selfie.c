@@ -1468,6 +1468,7 @@ uint64_t sameIntervalls(uint64_t tc1, uint64_t tc2);
 
 uint64_t cardinality(uint64_t tc);
 uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2);
+uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2);
 
 // ------------------------------ PRINT ----------------------------
 
@@ -5559,14 +5560,8 @@ void emitExit() {
 }
 
 void implementExit(uint64_t* context) {
-  if (symbolic) {
-    saveStateEcall(*(registers + REG_A0));
-    clearTrace();
-    incrementTc();
-
-    // legacy (only use lower bound)
+  if (symbolic)
     setExitCode(context, getLower(*(getRegs(context) + REG_A0)));
-  }
 
   else
     setExitCode(context, *(getRegs(context) + REG_A0));
@@ -8821,6 +8816,28 @@ uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2) {
   return 1;
 }
 
+uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2) {
+  uint64_t p;
+
+  if (getLower(tc2) % 2 != 0) {
+    print(selfieName);
+    print((uint64_t*) ": multiplication factor is not a power of 2 at pc=");
+    printHexadecimal(pc, 0);
+    println();
+
+    throwException(EXCEPTION_IMPRECISE, 0);
+    return 1;
+  }
+
+  p = floorLogBaseTwo(getLower(tc2));
+
+  if (p != 0)
+    if (getUpper(tc1) - getLower(tc1) >= twoToThePowerOf(CPUBITWIDTH - p))
+      return 0;
+
+  return 1;
+}
+
 // ------------------------------ PRINT ----------------------------
 
 void printTrace() {
@@ -9063,8 +9080,11 @@ void symbolic_do_mul() {
     //iterative_mul(); // for now
 
     // sTODO: reactivate iterative_mul for correctness
-    setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+    if (cardinalityCheckMul(*(registers + rs1), *(registers + rs2))) {
+      setLower(getLowerFromReg(rs1) * getLowerFromReg(rs2), tc);
+      setUpper(getUpperFromReg(rs1) * getUpperFromReg(rs2), tc);
+    } else
+      setMaximum();
 
     setStateFromReg(rs1, rs2, tc);
     redundancyCheck();
@@ -9596,8 +9616,8 @@ void symbolic_undo_sltu() {
 
   if(isOneSourceRegConcrete())
     if (hasAdditionalTraceEntry()) {
+
       tc = tc - 1;
-      // has options left -> next instruction executed sltu
       if (isNestedBranch()) {
         tc = tc - 1;
         assignNextConstraint(rs1, rs2);
@@ -9641,63 +9661,105 @@ void symbolic_undo_beq() {
 void symbolic_undo_ecall() {
   // @pop: 0+ reads/changes, REG_A0
   uint64_t vaddr;
-  uint64_t readInts;
-  uint64_t savedReadInts;
   uint64_t tcA0;
+  uint64_t bytesToRead;
+
+  tcA0 = *(registers + REG_A0);
 
   //----------------------------------------------------------------------------
   // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
   //----------------------------------------------------------------------------
 
-  // restore A0
-
-  if (tc < executionBrk) {
-    // undoing normal ecall
-    // REG_A0 contains number of read bytes
-    readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
-    if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
-      readInts = readInts + 1;
-    savedReadInts = readInts; // remember this for later
-  }
-
+  // restore A0 -> for confine read A0 holds bytes read
   *(registers + REG_A0) = *(tcs + tc);
-  tcA0 = tc;
-
-  if (tc >= executionBrk) {
-    // undoing confined ecall
-    // previous REG_A0 contains number of read bytes
-    readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
-    if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
-      readInts = readInts + 1;
-    savedReadInts = readInts; // remember this for later
-  }
 
   // successfull syscall read (2 trace entries)
   if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
 
-    if (hasAdditionalTraceEntry()) {
+    if (tc >= executionBrk) {
+      bytesToRead = getLowerFromReg(REG_A0);
+      numberOfSymbolics = numberOfSymbolics + 1;
+    } else {
+      bytesToRead = getLower(tcA0);
+      numberOfSymbolics = numberOfSymbolics - 1;
+    }
 
-      tc = tc - readInts; // start at the bottom
+    if (bytesToRead % SIZEOFUINT64 != 0)
+      vaddr = getLowerFromReg(REG_A1) + bytesToRead + (SIZEOFUINT64 - bytesToRead % SIZEOFUINT64) - SIZEOFUINT64;
+    else
+      vaddr = getLowerFromReg(REG_A1) + bytesToRead - SIZEOFUINT64;
 
-      if (tc >= executionBrk)
-        numberOfSymbolics = numberOfSymbolics + 1;
-      else
-        numberOfSymbolics = numberOfSymbolics - 1;
+    while (hasAdditionalTraceEntry()) {
 
-      vaddr = getLowerFromReg(REG_A1);
-      while (readInts > 0) {
-        // undo (confined) read
-        storeVirtualMemory(pt, vaddr, *(tcs + tc));
-        vaddr = vaddr + SIZEOFUINT64;
-        readInts = readInts - 1;
-        tc = tc + 1;
-      }
+      tc = tc - 1;
 
-      tc = tcA0 - savedReadInts; // reset to bottom
-
+      // undo (confined) read
+      storeVirtualMemory(pt, vaddr, *(tcs + tc));
+      vaddr = vaddr - SIZEOFUINT64;
     }
   }
 }
+
+// void symbolic_undo_ecall() {
+//   // @pop: 0+ reads/changes, REG_A0
+//   uint64_t vaddr;
+//   uint64_t readInts;
+//   uint64_t savedReadInts;
+//   uint64_t tcA0;
+//
+//   //----------------------------------------------------------------------------
+//   // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
+//   //----------------------------------------------------------------------------
+//
+//   // restore A0
+//
+//   if (tc < executionBrk) {
+//     // undoing normal ecall
+//     // REG_A0 contains number of read bytes
+//     readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
+//     if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
+//       readInts = readInts + 1;
+//     savedReadInts = readInts; // remember this for later
+//   }
+//
+//   *(registers + REG_A0) = *(tcs + tc);
+//   tcA0 = tc;
+//
+//   if (tc >= executionBrk) {
+//     // undoing confined ecall
+//     // previous REG_A0 contains number of read bytes
+//     readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
+//     if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
+//       readInts = readInts + 1;
+//     savedReadInts = readInts; // remember this for later
+//   }
+//
+//   // successfull syscall read (2 trace entries)
+//   if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
+//
+//     if (hasAdditionalTraceEntry()) {
+//
+//       tc = tc - readInts; // start at the bottom
+//
+//       if (tc >= executionBrk)
+//         numberOfSymbolics = numberOfSymbolics + 1;
+//       else
+//         numberOfSymbolics = numberOfSymbolics - 1;
+//
+//       vaddr = getLowerFromReg(REG_A1);
+//       while (readInts > 0) {
+//         // undo (confined) read
+//         storeVirtualMemory(pt, vaddr, *(tcs + tc));
+//         vaddr = vaddr + SIZEOFUINT64;
+//         readInts = readInts - 1;
+//         tc = tc + 1;
+//       }
+//
+//       tc = tcA0 - savedReadInts; // reset to bottom
+//
+//     }
+//   }
+// }
 
 // -----------------------------------------------------------------
 // ----------------- SYMBOLIC BACKWARD CONFINING -------------------
@@ -9828,7 +9890,7 @@ void setStateFromReg(uint64_t reg1, uint64_t reg2, uint64_t atTc) {
 uint64_t isConfinedInstruction() {
   // assert: only used when executionBrk is set
   // since confining only takes place above executionBrk
-  if (pc > executionBrk + 1)
+  if (tc > executionBrk + 1)
     return hasAdditionalTraceEntry();
 
   return 0;
@@ -9852,7 +9914,7 @@ uint64_t isNestedBranch() {
 
 uint64_t getOverwrittenOperand(uint64_t rd, uint64_t rs) {
   if (rd == rs)
-    return *(tcs + *(registers + rs));
+    return *(tcs + btc);
   else
     return *(registers + rs);
 }
@@ -9863,6 +9925,7 @@ void skipConstraints() {
 }
 
 void assignNextConstraint(uint64_t reg1, uint64_t reg2) {
+  // assume: tc on current resutl
   uint64_t reg;
 
   if (getStateFromReg(rs1) == CONCRETE)
@@ -10182,10 +10245,7 @@ void confine_ld() {
   uint64_t mem_tc;
   uint64_t reg_tc;
 
-  if (rs1 == rd)
-    vaddr = getLower(*(tcs + btc));
-  else
-    vaddr = getLowerFromReg(rs1) + imm;
+  vaddr = getLower(getOverwrittenOperand(rd, rs1)) + imm;
 
   mem_tc = loadVirtualMemory(pt, vaddr);
   reg_tc = *(registers + rd);
@@ -10257,56 +10317,101 @@ void confine_ecall() {
   // @push: 0+ read changes, REG_A0
   // sTODO: support more than one word reads
   uint64_t vaddr;
-  uint64_t readInts;
-  uint64_t savedReadInts;
+  uint64_t btcStart;
   uint64_t btcA0;
-
   //----------------------------------------------------------------------------
   // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
   //----------------------------------------------------------------------------
 
   btcA0 = btc;
 
-  if (getLowerFromReg(REG_A7) == SYSCALL_READ)
+  if (getLowerFromReg(REG_A7) == SYSCALL_READ) {
+    btcStart = btc - getLowerFromReg(REG_A0) / SIZEOFUINT64;
+
+    if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0)
+      btcStart = btcStart - 1;
+
+    vaddr = getLowerFromReg(REG_A1);
+
+    btc = btcStart;
     // 1. save and restore bounds
-    if (*(pcs + btc - 1) == pc) {
+    while (*(pcs + btc + 1) == pc) {
 
-      vaddr = getLowerFromReg(REG_A1);
-      readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
-      if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
-        readInts = readInts + 1;
+      checkSatisfiability(loadVirtualMemory(pt, vaddr));
 
-      btc = btc - readInts; // start from the bottom of read values
-      savedReadInts = readInts; // remember this for later
+      // undo symbolic_read
+      saveState(loadVirtualMemory(pt, vaddr));
+      updateMemState(vaddr, *(tcs + btc));
 
-      // also prints when UNSAT
-      // print((uint64_t*) "input: ");
-      // printSymbolicString(vaddr, getLowerFromReg(REG_A0), pt);
-      // println();
+      vaddr = vaddr + SIZEOFUINT64STAR;
 
-      while(readInts > 0) {
-        checkSatisfiability(loadVirtualMemory(pt, vaddr));
-
-        // undo symbolic_read
-        saveState(loadVirtualMemory(pt, vaddr));
-        updateMemState(vaddr, *(tcs + btc));
-
-        readInts = readInts - 1;
-        btc = btc + 1; // count upwards
-        vaddr = vaddr + SIZEOFUINT64STAR;
-      }
-
-      btc = btcA0 - savedReadInts; // set btc to bottom again
-
-      numberOfSymbolics = numberOfSymbolics - 1;
+      btc = btc + 1;
     }
+
+    numberOfSymbolics = numberOfSymbolics - 1;
+    btc = btcStart;
+
+  }
   // 2. save and restore A0
   saveState(*(registers + REG_A0));
   updateRegState(REG_A0, *(tcs + btcA0));
 
-  if (*(pcs + btc - 1) == pc)
-    btc = btc - 1;
 }
+
+// void confine_ecall() {
+//   // @push: 0+ read changes, REG_A0
+//   // sTODO: support more than one word reads
+//   uint64_t vaddr;
+//   uint64_t readInts;
+//   uint64_t savedReadInts;
+//   uint64_t btcA0;
+//
+//   //----------------------------------------------------------------------------
+//   // sucessfull read -> 2+ entries in trace - order: 1.[symbolic value] 2. A0
+//   //----------------------------------------------------------------------------
+//
+//   btcA0 = btc;
+//
+//   if (getLowerFromReg(REG_A7) == SYSCALL_READ)
+//     // 1. save and restore bounds
+//     if (*(pcs + btc - 1) == pc) {
+//
+//       vaddr = getLowerFromReg(REG_A1);
+//       readInts = (getLowerFromReg(REG_A0) / SIZEOFUINT64);
+//       if (getLowerFromReg(REG_A0) % SIZEOFUINT64 != 0) // ceiling
+//         readInts = readInts + 1;
+//
+//       btc = btc - readInts; // start from the bottom of read values
+//       savedReadInts = readInts; // remember this for later
+//
+//       // also prints when UNSAT
+//       // print((uint64_t*) "input: ");
+//       // printSymbolicString(vaddr, getLowerFromReg(REG_A0), pt);
+//       // println();
+//
+//       while(readInts > 0) {
+//         checkSatisfiability(loadVirtualMemory(pt, vaddr));
+//
+//         // undo symbolic_read
+//         saveState(loadVirtualMemory(pt, vaddr));
+//         updateMemState(vaddr, *(tcs + btc));
+//
+//         readInts = readInts - 1;
+//         btc = btc + 1; // count upwards
+//         vaddr = vaddr + SIZEOFUINT64STAR;
+//       }
+//
+//       btc = btcA0 - savedReadInts; // set btc to bottom again
+//
+//       numberOfSymbolics = numberOfSymbolics - 1;
+//     }
+//   // 2. save and restore A0
+//   saveState(*(registers + REG_A0));
+//   updateRegState(REG_A0, *(tcs + btcA0));
+//
+//   if (*(pcs + btc - 1) == pc)
+//     btc = btc - 1;
+// }
 
 // -----------------------------------------------------------------
 // -------------------------- TRACE API ----------------------------
