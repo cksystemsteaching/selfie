@@ -45,10 +45,8 @@ void printLab () {
 
 void checkWin () {
     uint64_t c;
-    if (curX >= dimX) exit(-1);
-    if (curY >= dimY) exit(-1);
     c = getChar(*(labyrinth + curY), curX);
-    if (c == '#') exit(-1);
+    if (c == '#') exit(2);
     else if (c == 'O') exit(0);
 
 }
@@ -68,18 +66,23 @@ uint64_t main () {
 
     while (i < steps) {
         c = getChar(input, i);
-        if (c == 's')
+        if (c == 's') // 115
             curY = curY + 1;
-        else if (c == 'a')
+        else if (c == 'a') // 97
             curX = curX - 1;
-        else if (c == 'd')
+        else if (c == 'd') // 100
             curX = curX + 1;
-        else if (c == 'w')
+        else if (c == 'w') // 119
             curY = curY - 1;
         
         checkWin();
         i = i + 1;
     }
 
-    return -1;
+    return 1;
 }
+
+// EXITCODE LOOKUP:
+//     0: reached goal
+//     1: out of steps
+//     2: ran into wall
