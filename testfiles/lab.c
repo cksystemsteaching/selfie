@@ -26,7 +26,7 @@ uint64_t twoToThePowerOf (uint64_t a) {
 uint64_t leftShift (uint64_t n, uint64_t b) { return n * twoToThePowerOf(b); }
 uint64_t rightShift (uint64_t n, uint64_t b) { return n / twoToThePowerOf(b); }
 
-uint64_t getChar (uint64_t * from, uint64_t at) { 
+uint64_t getChar (uint64_t * from, uint64_t at) {
     uint64_t idx;
     uint64_t pos;
     idx = at / 8;
@@ -45,11 +45,11 @@ void printLab () {
 
 void checkWin () {
     uint64_t c;
-    if (curX >= dimX) exit(-1);
-    if (curY >= dimY) exit(-1);
+    if (curX >= dimX) exit(0);
+    if (curY >= dimY) exit(0);
     c = getChar(*(labyrinth + curY), curX);
-    if (c == '#') exit(-1);
-    else if (c == 'O') exit(0);
+    if (c == '#') exit(0);
+    else if (c == 'O') exit(1);
 
 }
 
@@ -76,10 +76,10 @@ uint64_t main () {
             curX = curX + 1;
         else if (c == 'w')
             curY = curY - 1;
-        
+
         checkWin();
         i = i + 1;
     }
 
-    return -1;
+    return 0;
 }
