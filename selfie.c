@@ -1472,6 +1472,14 @@ uint64_t cardinality(uint64_t tc);
 uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2);
 uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2);
 
+// memory range
+void      setRange(uint64_t tc, uint64_t range)     { *(values + tc) = range; }
+uint64_t  getRange(uint64_t tc)                     { return *(values + tc); }
+uint64_t  hasRange(uint64_t tc)                     { return *(values + tc) != 0; }
+void      setRegRange(uint64_t reg, uint64_t range) { *(values + *(registers + reg)) = range; }
+uint64_t  getRegRange(uint64_t reg)                 { return *(values + *(registers + reg)); }
+uint64_t  hasRegRange(uint64_t reg)                 { return *(values + *(registers + reg)) != 0; }
+
 // ------------------------------ PRINT ----------------------------
 
 void printTrace();
@@ -6112,6 +6120,7 @@ uint64_t implementMalloc(uint64_t* context) {
     if (symbolic) {
       saveStateEcall(*(getRegs(context) + REG_A0));
       setConcrete(bump);
+      setRange(tc, size);
       updateRegStateEcall(context, REG_A0, tc);
     } else
       *(getRegs(context) + REG_A0) = bump;
@@ -9007,6 +9016,18 @@ void symbolic_do_addi() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
+    if(hasRegRange(rs1)) {
+      setRange(tc, getRegRange(rs1)); // doesn't account for imm !=0
+      // starc compiles pointer arithmetic with multiplying SIZEOFUINTSTAR
+      // so there should never be an immediate != 0 added
+      if(imm != 0) {
+        print((uint64_t*) "pc= ");
+        printHexadecimal(pc,0);
+        print((uint64_t *) " pointer used with ADDI");
+        println();
+        // exit(EXITCODE_BADARGUMENTS);
+      }
+    }
     setLower(getLowerFromReg(rs1) + imm, tc);
     setUpper(getUpperFromReg(rs1) + imm, tc);
 
@@ -9027,6 +9048,22 @@ void symbolic_do_add() {
   saveState(*(registers + rd));
 
   if (rd != REG_ZR) {
+    // for now just PRINT the range
+    if(hasRange(*(registers + rs1))){
+      print((uint64_t*) "pc= ");
+      printHexadecimal(pc,0);
+      print((uint64_t*) " range@rs1= ");
+      printInteger(getRange(*(registers + rs1)));
+      println();
+    }
+    if(hasRange(*(registers + rs2))){
+      print((uint64_t*) "pc= ");
+      printHexadecimal(pc,0);
+      print((uint64_t*) " range@rs2= ");
+      printInteger(getRange(*(registers + rs2)));
+      println();
+    }
+
     if (cardinalityCheck(*(registers + rs1), *(registers + rs2))) {
       setLower(getLowerFromReg(rs1) + getLowerFromReg(rs2), tc);
       setUpper(getUpperFromReg(rs1) + getUpperFromReg(rs2), tc);
@@ -9180,6 +9217,22 @@ void symbolic_do_sltu() {
   forcePrecise(currentContext, rs1, rs2);
 
   if (rd != REG_ZR) {
+    // for now just PRINT the range
+    if(hasRange(*(registers + rs1))){
+      print((uint64_t*) "pc= ");
+      printHexadecimal(pc,0);
+      print((uint64_t*) " range@rs1= ");
+      printInteger(getRange(*(registers + rs1)));
+      println();
+    }
+    if(hasRange(*(registers + rs2))){
+      print((uint64_t*) "pc= ");
+      printHexadecimal(pc,0);
+      print((uint64_t*) " range@rs2= ");
+      printInteger(getRange(*(registers + rs2)));
+      println();
+    }
+
     // RS1 is wrapped around
     if (getLowerFromReg(rs1) > getUpperFromReg(rs1)) {
       // unwrap from lower to UINT64_MAX
@@ -9351,6 +9404,7 @@ uint64_t symbolic_do_ld() {
   vTc = loadVirtualMemory(pt, vaddr);
 
   if (rd != REG_ZR) {
+    setRange(tc, getRange(vTc));
     setLower(getLower(vTc), tc);
     setUpper(getUpper(vTc), tc);
     setState(vTc, vTc, tc);
@@ -9389,6 +9443,7 @@ uint64_t symbolic_do_sd() {
   else
     throwException(EXCEPTION_INVALIDADDRESS, 0);
 
+  setRange(tc, getRegRange(rs2));
   setLower(getLowerFromReg(rs2), tc);
   setUpper(getUpperFromReg(rs2), tc);
 
