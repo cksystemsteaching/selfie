@@ -1476,6 +1476,8 @@ uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2);
 void      setRange(uint64_t tc, uint64_t range)     { *(values + tc) = range; }
 uint64_t  getRange(uint64_t tc)                     { return *(values + tc); }
 uint64_t  hasRange(uint64_t tc)                     { return *(values + tc) != 0; }
+void      clearRange(uint64_t tc)                   { *(values + tc) = 0; }
+
 void      setRegRange(uint64_t reg, uint64_t range) { *(values + *(registers + reg)) = range; }
 uint64_t  getRegRange(uint64_t reg)                 { return *(values + *(registers + reg)); }
 uint64_t  hasRegRange(uint64_t reg)                 { return *(values + *(registers + reg)) != 0; }
@@ -8910,6 +8912,10 @@ void printTrace() {
     printHexadecimal(*(pcs + i), 0);
     print((uint64_t*) " value= ");
     printValues(i);
+    if (hasRange(i)) {
+      print((uint64_t*) " range= ");
+      printInteger(getRange(i));
+    }
     println();
 
     i = i + 1;
@@ -9049,19 +9055,19 @@ void symbolic_do_add() {
 
   if (rd != REG_ZR) {
     // for now just PRINT the range
-    if(hasRange(*(registers + rs1))){
-      print((uint64_t*) "pc= ");
-      printHexadecimal(pc,0);
-      print((uint64_t*) " range@rs1= ");
-      printInteger(getRange(*(registers + rs1)));
-      println();
+    if(hasRegRange(rs1)){
+      // print((uint64_t*) "pc= ");
+      // printHexadecimal(pc,0);
+      // print((uint64_t*) " range@rs1= ");
+      // printInteger(getRange(*(registers + rs1)));
+      // println();
     }
-    if(hasRange(*(registers + rs2))){
-      print((uint64_t*) "pc= ");
-      printHexadecimal(pc,0);
-      print((uint64_t*) " range@rs2= ");
-      printInteger(getRange(*(registers + rs2)));
-      println();
+    if(hasRegRange(rs2)){
+      // print((uint64_t*) "pc= ");
+      // printHexadecimal(pc,0);
+      // print((uint64_t*) " range@rs2= ");
+      // printInteger(getRange(*(registers + rs2)));
+      // println();
     }
 
     if (cardinalityCheck(*(registers + rs1), *(registers + rs2))) {
@@ -9878,6 +9884,8 @@ uint64_t prepareNextPath(uint64_t* context) {
       decode_execute();
     }
 
+    clearRange(tc);
+    clearTrace(tc);
     tc = tc - 1;
 
     if (tc == 0)
