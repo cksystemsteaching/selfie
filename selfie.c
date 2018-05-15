@@ -9148,7 +9148,7 @@ void symbolic_do_divu() {
         // [a, b] / [c, d] = [a / d, b / c]
 
         // push remainder - only if not CONCRETE
-        if (areSourceRegsConcrete()) {
+        if (areSourceRegsConcrete() == 0) {
           saveState(0);
           setLower(getLowerFromReg(rs1) % getUpperFromReg(rs2), tc);
           setUpper(getUpperFromReg(rs1) % getLowerFromReg(rs2), tc);
@@ -9173,7 +9173,7 @@ void symbolic_do_divu() {
 
       ic_divu = ic_divu + 1;
     } else
-    throwException(EXCEPTION_DIVISIONBYZERO, 0);
+      throwException(EXCEPTION_DIVISIONBYZERO, 0);
   } else {
     print(selfieName);
     print((uint64_t*) ": symbolic divisor not supported");
@@ -10269,7 +10269,6 @@ void confine_divu() {
 
     // starc only compiles with RD == RS1
   } else if (isConcrete(currentContext, rs2)) { // divisor concrete
-
     remLo = getLower(btc - 1);
     remUp = getUpper(btc - 1);
 
@@ -10281,12 +10280,12 @@ void confine_divu() {
     setState(tc_rs1, tc_rs2, tc);
 
     if (getLower(*(tcs + btc)) == getLower(tc))
-      // no lower constrain - restore remainder
+      // no lower constraint - restore remainder
       setLower(getLower(tc) + remLo, tc);
-    // nothing to do at lower remainder
+      // nothing to do at lower remainder
 
     if (getUpper(*(tcs + btc)) == getUpper(tc))
-      // no upper constrain - restore remainder
+      // no upper constraint - restore remainder
       setUpper(getUpper(tc) + remUp, tc);
     else {
       // extend upper bound
