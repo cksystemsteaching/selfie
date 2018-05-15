@@ -9139,26 +9139,28 @@ void symbolic_do_mul() {
 }
 
 void symbolic_do_divu() {
+  uint64_t divisor;
   // @push: remainder, RD
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
     if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
         forcePrecise(currentContext, rs1, rs2);
-        // [a, b] / [c, d] = [a / d, b / c]
+        divisor = getLowerFromReg(rs2);
 
         // push remainder - only if not CONCRETE
         if (areSourceRegsConcrete() == 0) {
           saveState(0);
-          setLower(getLowerFromReg(rs1) % getUpperFromReg(rs2), tc);
-          setUpper(getUpperFromReg(rs1) % getLowerFromReg(rs2), tc);
+          setLower(getLowerFromReg(rs1) % divisor, tc);
+          setUpper(getUpperFromReg(rs1) % divisor, tc);
+
           setStateFromReg(rs1, rs2, tc);
           incrementTc();
         }
 
         saveState(*(registers + rd));
-        setLower(getLowerFromReg(rs1) / getUpperFromReg(rs2), tc);
-        setUpper(getUpperFromReg(rs1) / getLowerFromReg(rs2), tc);
+        setLower(getLowerFromReg(rs1) / divisor, tc);
+        setUpper(getUpperFromReg(rs1) / divisor, tc);
         setStateFromReg(rs1, rs2, tc);
         updateRegState(rd, tc);
 
@@ -9183,31 +9185,61 @@ void symbolic_do_divu() {
 }
 
 void symbolic_do_remu() {
+  uint64_t divisor;
   // @push: quotient, RD
-  saveState(*(registers + rd));
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
     if (getLowerFromReg(rs2) != 0) {
       if (rd != REG_ZR) {
         forcePrecise(currentContext, rs1, rs2);
+        divisor = getLowerFromReg(rs2);
 
-        setLower(getLowerFromReg(rs1) % getLowerFromReg(rs2), tc);
-        setUpper(getUpperFromReg(rs1) % getUpperFromReg(rs2), tc);
+        // push quotient
+        if (areSourceRegsConcrete() == 0) {
+          saveState(0);
+          setLower(getLowerFromReg(rs1) / divisor, tc);
+          setUpper(getUpperFromReg(rs1) / divisor, tc);
+
+          setStateFromReg(rs1, rs2, tc);
+          incrementTc();
+        }
+        saveState(*(registers + rd));
+
+        if (cardinality(*(registers + rs1)) + 1 >= divisor) {
+          setLower(0, tc);
+          setUpper(divisor - 1, tc);
+
+        } else {
+          if (getUpperFromReg(rs1) / divisor - getLowerFromReg(rs1) / divisor == 0) {
+            setLower(getLowerFromReg(rs1) % divisor, tc);
+            setUpper(getUpperFromReg(rs1) % divisor, tc);
+            
+          } else {
+            print(selfieName);
+            print((uint64_t*) ": modulo operation would split interval at pc=");
+            printHexadecimal(pc, 0);
+            println();
+            exit(EXITCODE_BADARGUMENTS);
+          }
+        }
 
         setStateFromReg(rs1, rs2, tc);
+        updateRegState(rd, tc);
+
         redundancyCheck();
-      } else
+      } else {
+        saveState(*(registers + rd));
         clearTrace();
+        updateRegState(rd, tc);
+      }
 
       pc = pc + INSTRUCTIONSIZE;
 
       ic_remu = ic_remu + 1;
     } else
-    throwException(EXCEPTION_DIVISIONBYZERO, 0);
+      throwException(EXCEPTION_DIVISIONBYZERO, 0);
   } else
-  throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
-
-  updateRegState(rd, tc);
+    throwException(EXCEPTION_NOEXCEPTION, 0); // not vipsburger
 }
 
 void symbolic_do_sltu() {
@@ -10255,9 +10287,9 @@ void confine_divu() {
   // @push: RD
   uint64_t remLo;
   uint64_t remUp;
-  uint64_t div;
   uint64_t tc_rs1;
   uint64_t tc_rs2;
+  uint64_t divisor;
 
   tc_rs1 = getOverwrittenOperand(rd, rs1);
   tc_rs2 = getOverwrittenOperand(rd, rs2);
@@ -10269,31 +10301,30 @@ void confine_divu() {
 
     // starc only compiles with RD == RS1
   } else if (isConcrete(currentContext, rs2)) { // divisor concrete
-    remLo = getLower(btc - 1);
-    remUp = getUpper(btc - 1);
+    remLo   = getLower(btc - 1);
+    remUp   = getUpper(btc - 1);
+    divisor = getLowerFromReg(rs2);
 
     saveState(*(registers + rd));
 
-    // [a/d, b/c] = [a, b] / [c, d]  -> [a, b] = [a/d, b/c] * [d, c]
-    setLower(getLowerFromReg(rd) * getUpperFromReg(rs2), tc);
-    setUpper(getUpperFromReg(rd) * getLowerFromReg(rs2), tc);
+    setLower(getLowerFromReg(rd) * divisor, tc);
+    setUpper(getUpperFromReg(rd) * divisor, tc);
     setState(tc_rs1, tc_rs2, tc);
 
-    if (getLower(*(tcs + btc)) == getLower(tc))
+    if (getLower(*(tcs + btc)) == getLower(tc) + remLo)
       // no lower constraint - restore remainder
       setLower(getLower(tc) + remLo, tc);
       // nothing to do at lower remainder
 
-    if (getUpper(*(tcs + btc)) == getUpper(tc))
+    if (getUpper(*(tcs + btc)) == getUpper(tc) + remUp)
       // no upper constraint - restore remainder
       setUpper(getUpper(tc) + remUp, tc);
-    else {
+    else
       // extend upper bound
-      div = getLowerFromReg(rs2);
-      setUpper(getUpper(tc) + div - 1, tc);
-    }
+      setUpper(getUpper(tc) + divisor - 1, tc);
+
     updateRegState(rs1, tc);
-    updateMask(F3_DIVU, rs1, floorLogBaseTwo(getLowerFromReg(rs2)));
+    updateMask(F3_DIVU, rs1, floorLogBaseTwo(divisor));
 
   } else {
     // should get caught in symbolic_do_divu
@@ -10308,10 +10339,43 @@ void confine_divu() {
 }
 
 void confine_remu() {
+  uint64_t quotLo;
+  uint64_t quotHi;
+  uint64_t tc_rs1;
+  uint64_t tc_rs2;
+  uint64_t divisor;
+
+  tc_rs1 = getOverwrittenOperand(rd, rs1);
+  tc_rs2 = getOverwrittenOperand(rd, rs2);
+
   if (areSourceRegsConcrete()) {
     saveState(*(registers + rd));
     clearTrace();
     updateRegState(rd, *(tcs + btc));
+
+  } else if (isConcrete(currentContext, rs2)) {
+    quotLo  = getLower(btc - 1);
+    quotHi  = getUpper(btc - 1);
+    divisor = getLowerFromReg(rs2);
+
+    saveState(*(registers + rd));
+
+    setLower(quotLo * divisor + getLowerFromReg(rd), tc);
+    setUpper(quotHi * divisor + getUpperFromReg(rd), tc);
+    setState(tc_rs1, tc_rs2, tc);
+
+    updateRegState(rd, tc);
+
+    // symbolic value already confined
+    if (getUpperFromReg(rd) < getUpper(*(tcs + btc))) {
+      print(selfieName);
+      print((uint64_t*) ": execution imprecise at pc= ");
+      printHexadecimal(pc, 0);
+      print((uint64_t*) " when confining modulo operation");
+      println();
+
+      throwException(EXCEPTION_IMPRECISE, 0);
+    }
   } else {
     print(selfieName);
     print((uint64_t*) ": symbolic remainder not supported");
