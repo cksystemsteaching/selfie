@@ -9150,6 +9150,16 @@ void symbolic_do_divu() {
 
         // push remainder - only if not CONCRETE
         if (areSourceRegsConcrete() == 0) {
+          if (isPowerOfTwo(divisor) == 0) {
+            print(selfieName);
+            print((uint64_t*) ": execution imprecise at pc= ");
+            printHexadecimal(pc, 0);
+            print((uint64_t*) " due to non-power-of-two divisor");
+            println();
+
+            throwException(EXCEPTION_IMPRECISE, 0);
+          }
+
           saveState(0);
           setLower(getLowerFromReg(rs1) % divisor, tc);
           setUpper(getUpperFromReg(rs1) % divisor, tc);
@@ -9196,6 +9206,15 @@ void symbolic_do_remu() {
 
         // push quotient
         if (areSourceRegsConcrete() == 0) {
+          // check for wrap-around
+          if (getUpperFromReg(rs1) > getLowerFromReg(rs1)) {
+            print(selfieName);
+            print((uint64_t*) ": modulo operation does not support wrapped interval at pc=");
+            printHexadecimal(pc, 0);
+            println();
+            exit(EXITCODE_BADARGUMENTS);
+          }
+
           saveState(0);
           setLower(getLowerFromReg(rs1) / divisor, tc);
           setUpper(getUpperFromReg(rs1) / divisor, tc);
@@ -9205,6 +9224,7 @@ void symbolic_do_remu() {
         }
         saveState(*(registers + rd));
 
+        // semantics of unsigned interval remainder operation
         if (cardinality(*(registers + rs1)) + 1 >= divisor) {
           setLower(0, tc);
           setUpper(divisor - 1, tc);
@@ -9213,7 +9233,7 @@ void symbolic_do_remu() {
           if (getUpperFromReg(rs1) / divisor - getLowerFromReg(rs1) / divisor == 0) {
             setLower(getLowerFromReg(rs1) % divisor, tc);
             setUpper(getUpperFromReg(rs1) % divisor, tc);
-            
+
           } else {
             print(selfieName);
             print((uint64_t*) ": modulo operation would split interval at pc=");
