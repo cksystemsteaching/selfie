@@ -1105,6 +1105,7 @@ void printSymbolicMemory(uint64_t svc);
 
 uint64_t cardinality(uint64_t lo, uint64_t up);
 uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
+uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg);
@@ -6786,27 +6787,93 @@ void do_remu() {
 }
 
 void constrain_remu() {
+  uint64_t a;
+  uint64_t b;
+  uint64_t k;
+  uint64_t rem_typ1;
+  uint64_t rem_typ2;
+
   if (*(reg_los + rs2) != 0) {
-    if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
-      // 0 is not in interval
+    if (*(reg_hasco + rs2) == 0) {
       if (rd != REG_ZR) {
         *(reg_typ + rd) = 0;
 
-        // interval semantics of remu
-        *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
-        *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
-
         if (*(reg_hasco + rs1)) {
-          if (*(reg_hasco + rs2)) {
-            // non-linear expressions are not supported
-            print(selfieName);
-            print((uint64_t*) ": detected non-linear expression in remu at ");
-            printHexadecimal(pc, 0);
-            printSourceLineNumberOfInstruction(pc - entryPoint);
-            println();
+          // interval semantics of remu
+          a = *(reg_los + rs1);
+          b = *(reg_ups + rs1);
+          k = *(reg_los + rs2);
 
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else if (*(reg_hasmn + rs1)) {
+          if (a <= b) {
+            // [a, b] interval is not wrapped-around
+            rem_typ1 = interval_remu(a, b, k);
+            if (rem_typ1 == 0) {
+              *(reg_los + rd) = a % k;
+              *(reg_ups + rd) = b % k;
+            } else if (rem_typ1 == 2) {
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = k - 1;
+            } else if (rem_typ1 == 1) {
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = k - 1;
+
+              print(selfieName);
+              print((uint64_t*) ": over-approximation applied in remu at ");
+              printHexadecimal(pc, 0);
+              printSourceLineNumberOfInstruction(pc - entryPoint);
+              println();
+            }
+          } else {
+            // [a, b] interval is wrapped-around
+            rem_typ1 = interval_remu(0, b, k);           // [0, b]
+            rem_typ2 = interval_remu(a, UINT64_MAX, k);  // [a, UINT64_MAX]
+            if (rem_typ1 == 2) {
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = k - 1;
+            } else if (rem_typ2 == 2) {
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = k - 1;
+            } else if (rem_typ1 == 1) {
+              // unreachable
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = k - 1;
+            } else if (rem_typ2 == 0) {
+              // rem_typ1 == 0 and rem_typ2 == 0
+              if (b % k >= UINT64_MAX % k) {
+                *(reg_los + rd) = 0;
+                *(reg_ups + rd) = b % k;
+              } else if (b % k + 1 >= a % k) {
+                  *(reg_los + rd) = 0;
+                  *(reg_ups + rd) = UINT64_MAX % k;
+              } else {
+                *(reg_los + rd) = 0;
+                *(reg_ups + rd) = UINT64_MAX % k;
+
+                print(selfieName);
+                print((uint64_t*) ": over-approximation applied in remu at ");
+                printHexadecimal(pc, 0);
+                printSourceLineNumberOfInstruction(pc - entryPoint);
+                println();
+              }
+            } else {
+              // rem_typ1 == 0 and rem_typ2 == 1
+              if (b % k + 1 >= a % k) {
+                *(reg_los + rd) = 0;
+                *(reg_ups + rd) = k - 1;
+              } else {
+                *(reg_los + rd) = 0;
+                *(reg_ups + rd) = k - 1;
+
+                print(selfieName);
+                print((uint64_t*) ": over-approximation applied in remu at ");
+                printHexadecimal(pc, 0);
+                printSourceLineNumberOfInstruction(pc - entryPoint);
+                println();
+              }
+            }
+          }
+
+          if (*(reg_hasmn + rs1)) {
             // rs1 constraint has already minuend and cannot have another divisor
             print(selfieName);
             print((uint64_t*) ": detected invalid minuend expression in left operand of remu at ");
@@ -6815,39 +6882,51 @@ void constrain_remu() {
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs1 constraint since rs2 has none
-            // assert: rs2 interval is singleton
-            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1) -
-                (*(reg_los + rs1) - *(reg_los + rs1) % *(reg_los + rs2)),
-              *(reg_coups + rs1) -
-                (*(reg_ups + rs1) - *(reg_ups + rs1) % *(reg_ups + rs2)));
-        } else if (*(reg_hasco + rs2)) {
-          if (*(reg_hasmn + rs2)) {
-            // rs2 constraint has already minuend and cannot have another dividend
+          } else if (a <= b) {
+            if (rem_typ1 == 0)
+              // rd inherits rs1 constraint since rs2 has none
+              // assert: rs2 interval is singleton
+              setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
+                *(reg_colos + rs1) - (*(reg_los + rs1) - *(reg_los + rs1) % *(reg_los + rs2)),
+                *(reg_coups + rs1) - (*(reg_ups + rs1) - *(reg_ups + rs1) % *(reg_ups + rs2)));
+            else {
+              print(selfieName);
+              print((uint64_t*) ": remu interval is not computed from the bounds of its operand at ");
+              printHexadecimal(pc, 0);
+              printSourceLineNumberOfInstruction(pc - entryPoint);
+              println();
+
+              exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+            }
+          } else {
             print(selfieName);
-            print((uint64_t*) ": detected invalid minuend expression in right operand of remu at ");
+            print((uint64_t*) ": remu interval is not computed from the bounds of its operand at ");
             printHexadecimal(pc, 0);
             printSourceLineNumberOfInstruction(pc - entryPoint);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs2 constraint since rs1 has none
-            // assert: rs1 interval is singleton
-            setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_colos + rs2) -
-                (*(reg_los + rs2) - *(reg_los + rs1) % *(reg_los + rs2)),
-              *(reg_coups + rs2) -
-                (*(reg_ups + rs2) - *(reg_ups + rs1) % *(reg_ups + rs2)));
-        } else
+          }
+        } else {
           // rd has no constraint if both rs1 and rs2 have no constraints
           setConstraint(rd, 0, 0, 0, 0, 0);
+
+          *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
+          *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
+        }
       }
-    } else
-      throwException(EXCEPTION_DIVISIONBYZERO, 0);
-  }
+    } else {
+      // rs2 has constraint
+      print(selfieName);
+      print((uint64_t*) ": constrained memory location in right operand of remu at ");
+      printHexadecimal(pc, 0);
+      printSourceLineNumberOfInstruction(pc - entryPoint);
+      println();
+
+      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+  } else
+    throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
 void do_sltu() {
@@ -7642,6 +7721,15 @@ uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t 
     return 0;
   else
     return c1 + c2;
+}
+
+uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k) {
+  if (up - lo >= k - 1)
+    return 2;
+  else if (up/k - lo/k == 0)
+    return 0;
+  else
+    return 1;
 }
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
