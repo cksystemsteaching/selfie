@@ -1105,6 +1105,7 @@ void printSymbolicMemory(uint64_t svc);
 
 uint64_t cardinality(uint64_t lo, uint64_t up);
 uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
+uint64_t mulBoundsDistance(uint64_t lo, uint64_t up, uint64_t k);
 uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
@@ -6659,11 +6660,33 @@ void constrain_mul() {
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
+      } else {
         // rd inherits rs1 constraint since rs2 has none
         // assert: rs2 interval is singleton
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-          *(reg_colos + rs1) + *(reg_los + rs1) * (*(reg_los + rs2) - 1), *(reg_coups + rs1) + *(reg_ups + rs1) * (*(reg_ups + rs2) - 1));
+          *(reg_colos + rs1) + *(reg_los + rs1) * (*(reg_los + rs2) - 1),
+          *(reg_coups + rs1) + *(reg_ups + rs1) * (*(reg_ups + rs2) - 1));
+
+        if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
+          // non-wrapped interval
+          if (mulBoundsDistance(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2))) {
+            *(reg_los + rd) = 0;
+            *(reg_ups + rd) = UINT64_MAX;
+
+            print(selfieName);
+            print((uint64_t*) ": over-approximation applied in mul at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+          }
+        } else {
+          print(selfieName);
+          print((uint64_t*) ": detected multiply of non-wrapped interval at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+        }
+      }
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another multiplicand
@@ -6674,12 +6697,33 @@ void constrain_mul() {
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
+      } else {
         // rd inherits rs2 constraint since rs1 has none
         // assert: rs1 interval is singleton
         setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
           (*(reg_los + rs1) - 1) * *(reg_los + rs2) + *(reg_colos + rs2),
           (*(reg_ups + rs1) - 1) * *(reg_ups + rs2) + *(reg_coups + rs2));
+
+        if (*(reg_los + rs2) <= *(reg_ups + rs2)) {
+          // non-wrapped interval
+          if (mulBoundsDistance(*(reg_los + rs2), *(reg_ups + rs2), *(reg_los + rs1))) {
+            *(reg_los + rd) = 0;
+            *(reg_ups + rd) = UINT64_MAX;
+
+            print(selfieName);
+            print((uint64_t*) ": over-approximation applied in mul at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+          }
+        } else {
+          print(selfieName);
+          print((uint64_t*) ": detected multiply of non-wrapped interval at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+        }
+      }
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7721,6 +7765,19 @@ uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t 
     return 0;
   else
     return c1 + c2;
+}
+
+uint64_t mulBoundsDistance(uint64_t lo, uint64_t up, uint64_t k) {
+  uint64_t c1;
+  uint64_t c2;
+
+  c1 = up - lo;
+  c2 = UINT64_MAX / k;
+
+  if (c1 <= c2)
+    return 0;
+
+  return 1;
 }
 
 uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k) {
