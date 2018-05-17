@@ -2451,6 +2451,10 @@ void getSymbol() {
 
         symbol = identifierOrKeyword();
 
+        // dummy store to avoid potentially aliased constrained memory error
+        character = character - 1;
+        character = character + 1;
+
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
         integer = smalloc(maxIntegerLength + 1);
