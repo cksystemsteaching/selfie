@@ -174,6 +174,7 @@ uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
+uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
 
 uint64_t CPUBITWIDTH = 64;
 
@@ -305,6 +306,8 @@ uint64_t identifierStringMatch(uint64_t stringIndex);
 uint64_t identifierOrKeyword();
 
 void getSymbol();
+
+void handleEscapeSequence();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2529,6 +2532,14 @@ void getSymbol() {
             exit(EXITCODE_SCANNERERROR);
           }
 
+
+          if (character == CHAR_BACKSLASH) {
+            println();
+            printCharacter(character);
+            printInteger(character);
+            handleEscapeSequence();
+          }
+
           storeCharacter(string, i, character);
 
           i = i + 1;
@@ -2653,6 +2664,22 @@ void getSymbol() {
   }
 }
 
+void handleEscapeSequence() {
+  getCharacter();
+
+  if (character == 'n') {
+    character = CHAR_LF;
+  } else if (character == CHAR_DOUBLEQUOTE) {
+    character = CHAR_DOUBLEQUOTE;
+  } else if (character == CHAR_SINGLEQUOTE) {
+    character = CHAR_SINGLEQUOTE;
+  } else if (character == CHAR_BACKSLASH) {
+    character = CHAR_BACKSLASH;
+  } else {
+    syntaxErrorMessage("Unknown escape sequence found.");
+    exit(1);
+  }
+}
 // -----------------------------------------------------------------
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
