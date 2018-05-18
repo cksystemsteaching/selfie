@@ -2532,7 +2532,6 @@ void getSymbol() {
             exit(EXITCODE_SCANNERERROR);
           }
 
-
           if (character == CHAR_BACKSLASH) {
             handleEscapeSequence();
           }
