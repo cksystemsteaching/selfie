@@ -6780,14 +6780,25 @@ void constrain_divu() {
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
+          } else {
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
             setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1) -
-                (*(reg_los + rs1) - *(reg_los + rs1) / *(reg_los + rs2)),
-              *(reg_coups + rs1) -
-                (*(reg_ups + rs1) - *(reg_ups + rs1) / *(reg_ups + rs2)));
+              *(reg_colos + rs1) - (*(reg_los + rs1) - *(reg_los + rs1) / *(reg_los + rs2)),
+              *(reg_coups + rs1) - (*(reg_ups + rs1) - *(reg_ups + rs1) / *(reg_ups + rs2)));
+
+            if (*(reg_los + rs1) > *(reg_ups + rs1)) {
+              // rs1 constrain is wrapped: [lo, UINT64_MAX], [0, up]
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = UINT64_MAX / *(reg_los + rs2);
+
+              print(selfieName);
+              print((uint64_t*) ": over-approximation applied in divu at ");
+              printHexadecimal(pc, 0);
+              printSourceLineNumberOfInstruction(pc - entryPoint);
+              println();
+            }
+          }
         } else if (*(reg_hasco + rs2)) {
           if (*(reg_hasmn + rs2)) {
             // rs2 constraint has already minuend and cannot have another dividend
@@ -6802,10 +6813,8 @@ void constrain_divu() {
             // rd inherits rs2 constraint since rs1 has none
             // assert: rs1 interval is singleton
             setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_colos + rs2) -
-                (*(reg_los + rs2) - *(reg_los + rs1) / *(reg_los + rs2)),
-              *(reg_coups + rs2) -
-                (*(reg_ups + rs2) - *(reg_ups + rs1) / *(reg_ups + rs2)));
+              *(reg_colos + rs2) - (*(reg_los + rs2) - *(reg_los + rs1) / *(reg_los + rs2)),
+              *(reg_coups + rs2) - (*(reg_ups + rs2) - *(reg_ups + rs1) / *(reg_ups + rs2)));
         } else
           // rd has no constraint if both rs1 and rs2 have no constraints
           setConstraint(rd, 0, 0, 0, 0, 0);
