@@ -2534,9 +2534,6 @@ void getSymbol() {
 
 
           if (character == CHAR_BACKSLASH) {
-            println();
-            printCharacter(character);
-            printInteger(character);
             handleEscapeSequence();
           }
 
