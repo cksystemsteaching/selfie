@@ -18,6 +18,10 @@ compile: selfie
 quine: selfie
 	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' | diff -q manuscript/code/quine.c -
 
+# Demonstrate availible escape sequences
+escapesequences: selfie
+	./selfie -c manuscript/code/escape-sequences.c -m 1
+
 # Run debugger
 debug: selfie
 	./selfie -c manuscript/code/pointer.c -d 1

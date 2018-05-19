@@ -1,7 +1,7 @@
 uint64_t main() {
   uint64_t* string;
 
-  string = "\n\nThis is a demonstration of \"escape sequences\".\nPrepending a \'\\\' to specific characters (namely: n, \', \" or \\) alters output.\n\n";
+  string = "\nThis is a demonstration of \"escape sequences\".\nPrepending a \'\\\' to specific characters (namely: n, \', \" or \\) alters output.\n\n";
 
   while (*string != 0) {
     // 1 means that we print to the console
