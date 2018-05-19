@@ -2667,7 +2667,7 @@ void handleEscapeSequence() {
   } else if (character == CHAR_BACKSLASH) {
     character = CHAR_BACKSLASH;
   } else {
-    syntaxErrorMessage("Unknown escape sequence found.");
+    syntaxErrorMessage("Unknown escape sequence found.\n");
     exit(1);
   }
 }
