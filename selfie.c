@@ -1102,9 +1102,11 @@ void initReplayEngine() {
 void initSymbolicEngine();
 
 void printSymbolicMemory(uint64_t svc);
+void printOverApprox();
 
 uint64_t cardinality(uint64_t lo, uint64_t up);
 uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
+uint64_t gcd(uint64_t n1, uint64_t n2);
 uint64_t mulBoundsDistance(uint64_t lo, uint64_t up, uint64_t k);
 uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k);
 
@@ -1146,8 +1148,9 @@ uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
 
 uint64_t* types = (uint64_t*) 0; // memory range or integer interval
 
-uint64_t* los = (uint64_t*) 0; // trace of lower bounds on values
-uint64_t* ups = (uint64_t*) 0; // trace of upper bounds on values
+uint64_t* los   = (uint64_t*) 0; // trace of lower bounds on values
+uint64_t* ups   = (uint64_t*) 0; // trace of upper bounds on values
+uint64_t* steps = (uint64_t*) 0; // trace of steps for intervals
 
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 
@@ -1162,9 +1165,10 @@ uint64_t* read_ups = (uint64_t*) 0;
 
 // registers
 
-uint64_t* reg_typ = (uint64_t*) 0; // memory range or integer interval
-uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
-uint64_t* reg_ups = (uint64_t*) 0; // upper bound on register value
+uint64_t* reg_typ   = (uint64_t*) 0; // memory range or integer interval
+uint64_t* reg_los   = (uint64_t*) 0; // lower bound on register value
+uint64_t* reg_ups   = (uint64_t*) 0; // upper bound on register value
+uint64_t* reg_steps = (uint64_t*) 0; // step of register's interval
 
 // register constraints on memory
 
@@ -1191,15 +1195,17 @@ void initSymbolicEngine() {
   types  = zalloc(maxTraceLength * SIZEOFUINT64);
   los    = zalloc(maxTraceLength * SIZEOFUINT64);
   ups    = zalloc(maxTraceLength * SIZEOFUINT64);
+  steps  = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
   read_values = zalloc(maxTraceLength * SIZEOFUINT64);
   read_los    = zalloc(maxTraceLength * SIZEOFUINT64);
   read_ups    = zalloc(maxTraceLength * SIZEOFUINT64);
 
-  reg_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_ups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_typ   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_los   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_ups   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_steps = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_hasco = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -6432,6 +6438,10 @@ void do_add() {
 }
 
 void constrain_add() {
+  uint64_t ccardinality;
+  uint64_t gcd_steps;
+  uint64_t i_max;
+
   if (rd != REG_ZR) {
     if (*(reg_typ + rs1)) {
       if (*(reg_typ + rs2)) {
@@ -6469,20 +6479,48 @@ void constrain_add() {
     *(reg_typ + rd) = 0;
 
     // interval semantics of add
-    if (combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
-      *(reg_los + rd) = 0;
-      *(reg_ups + rd) = UINT64_MAX;
+    ccardinality = combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
+    if (ccardinality == 0) {
+      *(reg_los + rd)   = 0;
+      *(reg_ups + rd)   = UINT64_MAX;
+      *(reg_steps + rd) = 1;
     } else {
       *(reg_los + rd) = *(reg_los + rs1) + *(reg_los + rs2);
       *(reg_ups + rd) = *(reg_ups + rs1) + *(reg_ups + rs2);
     }
 
     if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2))
+      if (*(reg_hasco + rs2)) {
         // we cannot keep track of more than one constraint for add but
         // need to warn about their earlier presence if used in comparisons
         setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
-      else if (*(reg_hasmn + rs1)) {
+
+        if (ccardinality != 0) {
+          gcd_steps         = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
+          *(reg_steps + rd) = gcd_steps;
+
+          if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
+            if (*(reg_steps + rs1) == gcd_steps) {
+              i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
+              if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
+                printOverApprox();
+              }
+            } else {
+              printOverApprox();
+            }
+          } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
+            if (*(reg_steps + rs2) == gcd_steps) {
+              i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
+              if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
+                printOverApprox();
+              }
+            } else {
+              printOverApprox();
+            }
+          }
+        }
+
+      } else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
         print(selfieName);
         print((uint64_t*) ": detected invalid minuend expression in left operand of add at ");
@@ -6491,9 +6529,14 @@ void constrain_add() {
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
+      } else {
         // rd inherits rs1 constraint since rs2 has none
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
+
+        if (ccardinality != 0) {
+          *(reg_steps + rd) = *(reg_steps + rs1);
+        }
+      }
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another addend
@@ -6504,9 +6547,14 @@ void constrain_add() {
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
+      } else {
         // rd inherits rs2 constraint since rs1 has none
         setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
+
+        if (ccardinality != 0) {
+          *(reg_steps + rd) = *(reg_steps + rs2);
+        }
+      }
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6526,6 +6574,9 @@ void do_sub() {
 void constrain_sub() {
   uint64_t sub_los;
   uint64_t sub_ups;
+  uint64_t ccardinality;
+  uint64_t gcd_steps;
+  uint64_t i_max;
 
   if (rd != REG_ZR) {
     if (*(reg_typ + rs1)) {
@@ -6573,9 +6624,11 @@ void constrain_sub() {
     *(reg_typ + rd) = 0;
 
     // interval semantics of sub
-    if (combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
-      *(reg_los + rd) = 0;
-      *(reg_ups + rd) = UINT64_MAX;
+    ccardinality = combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
+    if (ccardinality == 0) {
+      *(reg_los + rd)   = 0;
+      *(reg_ups + rd)   = UINT64_MAX;
+      *(reg_steps + rd) = 1;
     } else {
       // use temporary variables since rd may be rs1 or rs2
       sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
@@ -6586,11 +6639,37 @@ void constrain_sub() {
     }
 
     if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2))
+      if (*(reg_hasco + rs2)) {
         // we cannot keep track of more than one constraint for sub but
         // need to warn about their earlier presence if used in comparisons
         setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
-      else if (*(reg_hasmn + rs1)) {
+
+        if (ccardinality != 0) {
+          gcd_steps         = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
+          *(reg_steps + rd) = gcd_steps;
+
+          if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
+            if (*(reg_steps + rs1) == gcd_steps) {
+              i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
+              if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
+                printOverApprox();
+              }
+            } else {
+              printOverApprox();
+            }
+          } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
+            if (*(reg_steps + rs2) == gcd_steps) {
+              i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
+              if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
+                printOverApprox();
+              }
+            } else {
+              printOverApprox();
+            }
+          }
+        }
+
+      } else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another subtrahend
         print(selfieName);
         print((uint64_t*) ": detected invalid minuend expression in left operand of sub at ");
@@ -6599,9 +6678,14 @@ void constrain_sub() {
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
+      } else {
         // rd inherits rs1 constraint since rs2 has none
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
+
+        if (ccardinality != 0) {
+          *(reg_steps + rd) = *(reg_steps + rs1);
+        }
+      }
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another minuend
@@ -6612,9 +6696,14 @@ void constrain_sub() {
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
+      } else {
         // rd inherits rs2 constraint since rs1 has none
         setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
+
+        if (ccardinality != 0) {
+          *(reg_steps + rd) = *(reg_steps + rs2);
+        }
+      }
     } else
       // rd has no constraint if both rs1 and rs2 have no constraints
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7754,6 +7843,14 @@ void printSymbolicMemory(uint64_t svc) {
   println();
 }
 
+void printOverApprox() {
+  print(selfieName);
+  print((uint64_t*) ": over-approximation applied at ");
+  printHexadecimal(pc, 0);
+  printSourceLineNumberOfInstruction(pc - entryPoint);
+  println();
+}
+
 uint64_t cardinality(uint64_t lo, uint64_t up) {
   // there are 2^64 values if the result is 0
   return up - lo + 1;
@@ -7774,6 +7871,17 @@ uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t 
     return 0;
   else
     return c1 + c2;
+}
+
+uint64_t gcd(uint64_t n1, uint64_t n2) {
+  while (n1 != n2) {
+    if (n1 > n2)
+      n1 = n1 - n2;
+    else
+      n2 = n2 - n1;
+  }
+
+  return n1;
 }
 
 uint64_t mulBoundsDistance(uint64_t lo, uint64_t up, uint64_t k) {
