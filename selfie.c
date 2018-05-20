@@ -2291,20 +2291,22 @@ uint64_t isCharacterWhitespace() {
 }
 
 uint64_t findNextCharacter() {
-  uint64_t inComment;
+  uint64_t singleLineComment;
+  uint64_t multiLineComment;
 
   // assuming we are not in a comment
-  inComment = 0;
+  singleLineComment = 0;
+  multiLineComment = 0;
 
   // read and discard all whitespace and comments until a character is found
   // that is not whitespace and does not occur in a comment, or the file ends
   while (1) {
-    if (inComment) {
+    if (singleLineComment) {
       getCharacter();
 
       if (isCharacterNewLine())
         // comments end with new line
-        inComment = 0;
+        singleLineComment = 0;
       else if (character == CHAR_EOF)
         return character;
       else
@@ -2312,6 +2314,28 @@ uint64_t findNextCharacter() {
         // line feed and carriage return are counted below
         numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
+    } else if (multiLineComment) {
+      getCharacter();
+
+      // comments end with */
+      if (character == CHAR_ASTERISK) {
+      	getCharacter();
+
+      	if (character == CHAR_SLASH) {
+      	  multiLineComment = 0;
+
+      	  getCharacter(); // next character after */
+      	} else if (character == CHAR_EOF)
+          return character;
+        else
+        	// count * without / as ignored character
+        	numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+      } else if (character == CHAR_EOF)
+      	return character;
+      else
+      	// count characters as ignored characters
+      	numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+      
     } else if (isCharacterWhitespace()) {
       // keep track of line numbers for error reporting and code annotation
       if (character == CHAR_LF)
@@ -2327,9 +2351,18 @@ uint64_t findNextCharacter() {
 
       if (character == CHAR_SLASH) {
         // "//" begins a comment
-        inComment = 1;
+        singleLineComment = 1;
 
         // count both slashes as ignored characters as well
+        numberOfIgnoredCharacters = numberOfIgnoredCharacters + 2;
+
+        // count the number of comments
+        numberOfComments = numberOfComments + 1;
+      } else if (character == CHAR_ASTERISK) {
+      	// "/*" begins a multi line comment
+        multiLineComment = 1;
+
+        // count both slash and asterisk as ignored characters as well
         numberOfIgnoredCharacters = numberOfIgnoredCharacters + 2;
 
         // count the number of comments
@@ -3222,16 +3255,7 @@ void help_procedure_prologue(uint64_t localVariables) {
 
   // allocate memory for callee's local variables
   if (localVariables != 0)
-    if (isSignedInteger(-localVariables * REGISTERSIZE, 12))
-      emitADDI(REG_SP, REG_SP, -localVariables * REGISTERSIZE);
-    else
-    {
-      load_integer(-localVariables * REGISTERSIZE);
-      
-      emitADD(REG_SP, REG_SP, currentTemporary());
-      
-      tfree(1);
-    }
+    emitADDI(REG_SP, REG_SP, -localVariables * REGISTERSIZE);
 }
 
 void help_procedure_epilogue(uint64_t parameters) {
