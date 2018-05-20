@@ -2328,8 +2328,8 @@ uint64_t findNextCharacter() {
       	} else if (character == CHAR_EOF)
           return character;
         else
-        	// count * without / as ignored character
-        	numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+          // count * without / as ignored character
+          numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
       } else if (character == CHAR_EOF)
       	return character;
       else
