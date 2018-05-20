@@ -2325,31 +2325,30 @@ uint64_t findNextCharacter() {
 
       	if (character == CHAR_SLASH) {
       	  multiLineComment = 0;
+         
+         // count */ as two ignored characters
+         numberOfIgnoredCharacters = numberOfIgnoredCharacters + 2;
 
       	  getCharacter(); // next character after */
-      	} else if (isCharacterNewLine()) {
-      	 // since we don't reach the CHAR_LF part
-      	lineNumber = lineNumber + 1;
-
-      	// count line feed in multi line comments as ignored characters
-      	numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
-      } else if (character == CHAR_EOF)
+      	} else if (character == CHAR_EOF)
           return character;
         else
-          // count * without / as ignored character
-          numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
-      } else if (isCharacterNewLine()) {
-      	 // since we don't reach the CHAR_LF part
-      	lineNumber = lineNumber + 1;
-
-      	// count line feed in multi line comments as ignored characters
-      	numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+        {
+          if (isCharacterNewLine())
+           lineNumber = lineNumber + 1;
+         
+          // count * without / as two ignored character (* and something else)
+          numberOfIgnoredCharacters = numberOfIgnoredCharacters + 2;
+        }
       } else if (character == CHAR_EOF)
       	return character;
-      else
+      else {
+       if (isCharacterNewLine())
+        lineNumber = lineNumber + 1;
+       
       	// count characters as ignored characters
       	numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
-      
+      }
     } else if (isCharacterWhitespace()) {
       // keep track of line numbers for error reporting and code annotation
       if (character == CHAR_LF)
