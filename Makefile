@@ -10,7 +10,7 @@ selfie: selfie.c
 
 # Self-compile
 compile: selfie
-	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 8 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 
@@ -28,11 +28,11 @@ replay: selfie
 
 # Run emulator on emulator
 os: selfie
-	./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
+	./selfie -c selfie.c -o selfie.m -m 8 -l selfie.m -m 4
 
 # Self-compile on two virtual machines
 vm: selfie
-	./selfie -c selfie.c -o selfie3.m -s selfie3.s -m 6 -l selfie3.m -y 6 -l selfie3.m -y 4 -c selfie.c -o selfie4.m -s selfie4.s
+	./selfie -c selfie.c -o selfie3.m -s selfie3.s -m 8 -l selfie3.m -y 8 -l selfie3.m -y 6 -c selfie.c -o selfie4.m -s selfie4.s
 	diff -q selfie3.m selfie4.m
 	diff -q selfie3.s selfie4.s
 	diff -q selfie1.m selfie3.m
@@ -40,7 +40,7 @@ vm: selfie
 
 # Self-compile on two virtual machines on fully mapped virtual memory
 min: selfie
-	./selfie -c selfie.c -o selfie5.m -s selfie5.s -min 14 -l selfie5.m -y 6 -l selfie5.m -y 4 -c selfie.c -o selfie6.m -s selfie6.s
+	./selfie -c selfie.c -o selfie5.m -s selfie5.s -min 18 -l selfie5.m -y 8 -l selfie5.m -y 6 -c selfie.c -o selfie6.m -s selfie6.s
 	diff -q selfie5.m selfie6.m
 	diff -q selfie5.s selfie6.s
 	diff -q selfie3.m selfie5.m
@@ -48,12 +48,12 @@ min: selfie
 
 # Run mobster
 mob: selfie
-	./selfie -c -mob 1
+	./selfie -c -mob 4
 
 # Run SAT solver
 sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
-	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
+	./selfie -c selfie.c -m 8 -sat manuscript/cnfs/rivest.cnf
 
 # Run everything
 all: compile quine debug replay os vm min mob sat
