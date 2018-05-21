@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine debug replay os vm min mob sat all clean
+.PHONY : compile quine escape debug replay os vm min mob sat all clean
 
 # Self-compile
 compile: selfie
@@ -18,9 +18,9 @@ compile: selfie
 quine: selfie
 	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' | diff -q manuscript/code/quine.c -
 
-# Demonstrate availible escape sequences
-escapesequences: selfie
-	./selfie -c manuscript/code/escape-sequences.c -m 1
+# Demonstrate available escape sequences
+escape: selfie
+	./selfie -c manuscript/code/escape.c -m 1
 
 # Run debugger
 debug: selfie

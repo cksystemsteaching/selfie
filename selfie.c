@@ -2527,9 +2527,8 @@ void getSymbol() {
             exit(EXITCODE_SCANNERERROR);
           }
 
-          if (character == CHAR_BACKSLASH) {
+          if (character == CHAR_BACKSLASH)
             handleEscapeSequence();
-          }
 
           storeCharacter(string, i, character);
 
@@ -2661,17 +2660,17 @@ void handleEscapeSequence() {
 
   getCharacter();
 
-  if (character == 'n') {
+  if (character == 'n')
     character = CHAR_LF;
-  } else if (character == 't') {
+  else if (character == 't')
     character = CHAR_TAB;
-  } else if (character == CHAR_DOUBLEQUOTE) {
+  else if (character == CHAR_DOUBLEQUOTE)
     character = CHAR_DOUBLEQUOTE;
-  } else if (character == CHAR_SINGLEQUOTE) {
+  else if (character == CHAR_SINGLEQUOTE)
     character = CHAR_SINGLEQUOTE;
-  } else if (character == CHAR_BACKSLASH) {
+  else if (character == CHAR_BACKSLASH)
     character = CHAR_BACKSLASH;
-  } else {
+  else {
     syntaxErrorMessage("Unknown escape sequence found.\n");
 
     exit(EXITCODE_SCANNERERROR);
