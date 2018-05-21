@@ -2656,10 +2656,15 @@ void getSymbol() {
 }
 
 void handleEscapeSequence() {
+  // ignoring the backslash
+  numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+
   getCharacter();
 
   if (character == 'n') {
     character = CHAR_LF;
+  } else if (character == 't') {
+    character = CHAR_TAB;
   } else if (character == CHAR_DOUBLEQUOTE) {
     character = CHAR_DOUBLEQUOTE;
   } else if (character == CHAR_SINGLEQUOTE) {
@@ -2668,7 +2673,8 @@ void handleEscapeSequence() {
     character = CHAR_BACKSLASH;
   } else {
     syntaxErrorMessage("Unknown escape sequence found.\n");
-    exit(1);
+
+    exit(EXITCODE_SCANNERERROR);
   }
 }
 // -----------------------------------------------------------------
