@@ -3224,8 +3224,7 @@ void help_procedure_prologue(uint64_t localVariables) {
   if (localVariables != 0)
     if (isSignedInteger(-localVariables * REGISTERSIZE, 12))
       emitADDI(REG_SP, REG_SP, -localVariables * REGISTERSIZE);
-    else
-    {
+    else {
       load_integer(-localVariables * REGISTERSIZE);
       
       emitADD(REG_SP, REG_SP, currentTemporary());
