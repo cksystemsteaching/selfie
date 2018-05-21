@@ -6759,21 +6759,21 @@ void constrain_mul() {
         if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
           // non-wrapped interval
           if (mulBoundsDistance(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2))) {
-            *(reg_los + rd) = 0;
-            *(reg_ups + rd) = UINT64_MAX;
+            *(reg_los + rd)   = 0;
+            *(reg_ups + rd)   = UINT64_MAX;
+            *(reg_steps + rd) = 1;
 
-            print(selfieName);
-            print((uint64_t*) ": over-approximation applied in mul at ");
-            printHexadecimal(pc, 0);
-            printSourceLineNumberOfInstruction(pc - entryPoint);
-            println();
-          }
+            printOverApprox();
+          } else
+            *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
         } else {
           print(selfieName);
           print((uint64_t*) ": detected multiply of non-wrapped interval at ");
           printHexadecimal(pc, 0);
           printSourceLineNumberOfInstruction(pc - entryPoint);
           println();
+
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
         }
       }
     } else if (*(reg_hasco + rs2)) {
@@ -6796,21 +6796,21 @@ void constrain_mul() {
         if (*(reg_los + rs2) <= *(reg_ups + rs2)) {
           // non-wrapped interval
           if (mulBoundsDistance(*(reg_los + rs2), *(reg_ups + rs2), *(reg_los + rs1))) {
-            *(reg_los + rd) = 0;
-            *(reg_ups + rd) = UINT64_MAX;
+            *(reg_los + rd)   = 0;
+            *(reg_ups + rd)   = UINT64_MAX;
+            *(reg_steps + rd) = 1;
 
-            print(selfieName);
-            print((uint64_t*) ": over-approximation applied in mul at ");
-            printHexadecimal(pc, 0);
-            printSourceLineNumberOfInstruction(pc - entryPoint);
-            println();
-          }
+            printOverApprox();
+          } else
+            *(reg_steps + rd) = *(reg_steps + rs2) * *(reg_los + rs1);
         } else {
           print(selfieName);
           print((uint64_t*) ": detected multiply of non-wrapped interval at ");
           printHexadecimal(pc, 0);
           printSourceLineNumberOfInstruction(pc - entryPoint);
           println();
+
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
         }
       }
     } else
@@ -6847,8 +6847,8 @@ void constrain_divu() {
         *(reg_typ + rd) = 0;
 
         // interval semantics of divu
-        *(reg_los + rd) = *(reg_los + rs1) / *(reg_los + rs2);
-        *(reg_ups + rd) = *(reg_ups + rs1) / *(reg_ups + rs2);
+        *(reg_los + rd) = *(reg_los + rs1) / *(reg_ups + rs2);
+        *(reg_ups + rd) = *(reg_ups + rs1) / *(reg_los + rs2);
 
         if (*(reg_hasco + rs1)) {
           if (*(reg_hasco + rs2)) {
@@ -6876,17 +6876,23 @@ void constrain_divu() {
               *(reg_colos + rs1) - (*(reg_los + rs1) - *(reg_los + rs1) / *(reg_los + rs2)),
               *(reg_coups + rs1) - (*(reg_ups + rs1) - *(reg_ups + rs1) / *(reg_ups + rs2)));
 
-            if (*(reg_los + rs1) > *(reg_ups + rs1)) {
-              // rs1 constrain is wrapped: [lo, UINT64_MAX], [0, up]
-              *(reg_los + rd) = 0;
-              *(reg_ups + rd) = UINT64_MAX / *(reg_los + rs2);
+            *(reg_steps + rd) = *(reg_steps + rs1) / *(reg_los + rs2);
+            if (*(reg_steps + rs1) < *(reg_los + rs2)) {
+              if (*(reg_los + rs2) % *(reg_steps + rs1) != 0)
+                printOverApprox();
+              *(reg_steps + rd) = 1;
+            } else if (*(reg_steps + rs1) % *(reg_los + rs2) != 0)
+              printOverApprox();
 
-              print(selfieName);
-              print((uint64_t*) ": over-approximation applied in divu at ");
-              printHexadecimal(pc, 0);
-              printSourceLineNumberOfInstruction(pc - entryPoint);
-              println();
+            if (*(reg_los + rs1) > *(reg_ups + rs1)) {
+              // rs1 constraint is wrapped: [lo, UINT64_MAX], [0, up]
+              *(reg_los + rd)   = 0;
+              *(reg_ups + rd)   = UINT64_MAX / *(reg_los + rs2);
+              *(reg_steps + rd) = 1;
+
+              printOverApprox();
             }
+
           }
         } else if (*(reg_hasco + rs2)) {
           if (*(reg_hasmn + rs2)) {
@@ -6898,12 +6904,21 @@ void constrain_divu() {
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
+          } else {
             // rd inherits rs2 constraint since rs1 has none
             // assert: rs1 interval is singleton
             setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
               *(reg_colos + rs2) - (*(reg_los + rs2) - *(reg_los + rs1) / *(reg_los + rs2)),
               *(reg_coups + rs2) - (*(reg_ups + rs2) - *(reg_ups + rs1) / *(reg_ups + rs2)));
+
+            *(reg_steps + rd) = 1;
+
+            print(selfieName);
+            print((uint64_t*) ": detected division of constant by interval at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+          }
         } else
           // rd has no constraint if both rs1 and rs2 have no constraints
           setConstraint(rd, 0, 0, 0, 0, 0);
