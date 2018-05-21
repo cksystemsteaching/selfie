@@ -1119,9 +1119,9 @@ uint64_t isTraceSpaceAvailable();
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb);
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
@@ -5627,9 +5627,9 @@ void implementRead(uint64_t* context) {
 
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, tc);
           } else {
             actuallyRead = 0;
 
@@ -6033,7 +6033,7 @@ void implementMalloc(uint64_t* context) {
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -7305,6 +7305,8 @@ uint64_t constrain_ld() {
         *(reg_los + rd) = *(los + mrvc);
         *(reg_ups + rd) = *(ups + mrvc);
 
+        *(reg_steps + rd) = *(steps + mrvc);
+
         // assert: vaddr == *(vaddrs + mrvc)
 
         if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd)))
@@ -7444,7 +7446,7 @@ uint64_t constrain_sd() {
         }
       }
 
-      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), mrcc);
+      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc);
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -7991,7 +7993,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr == 0)
@@ -8008,8 +8010,9 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
       if (type == *(types + mrvc))
         if (lo == *(los + mrvc))
           if (up == *(ups + mrvc))
-            // prevent tracking identical updates
-            return;
+            if (step == *(steps + mrvc))
+              // prevent tracking identical updates
+              return;
   }
 
   if (trb < mrvc) {
@@ -8021,6 +8024,8 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 
     *(los + mrvc) = lo;
     *(ups + mrvc) = up;
+
+    *(steps + mrvc) = step;
 
     // assert: vaddr == *(vaddrs + mrvc)
 
@@ -8044,6 +8049,8 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(los + tc) = lo;
     *(ups + tc) = up;
 
+    *(steps + tc) = step;
+
     *(vaddrs + tc) = vaddr;
 
     if (vaddr < NUMBEROFREGISTERS) {
@@ -8063,7 +8070,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     throwException(EXCEPTION_MAXTRACE, 0);
 }
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb) {
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr >= getBumpPointer(currentContext))
@@ -8083,20 +8090,22 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t t
   }
 
   // always track constrained memory by using tc as most recent branch
-  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, tc);
+  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
-  storeSymbolicMemory(pt, reg, value, 0, value, value, tc);
+  storeSymbolicMemory(pt, reg, value, 0, value, value, 0, tc);
 }
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
+  uint64_t costep; // TODO: step correction offset
+
   if (*(reg_hasco + reg)) {
     if (*(reg_hasmn + reg))
-      storeConstrainedMemory(*(reg_vaddr + reg), *(reg_colos + reg) - lo, *(reg_coups + reg) - up, trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), *(reg_colos + reg) - lo, *(reg_coups + reg) - up, costep, trb);
     else
-      storeConstrainedMemory(*(reg_vaddr + reg), lo - *(reg_colos + reg), up - *(reg_coups + reg), trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), lo - *(reg_colos + reg), up - *(reg_coups + reg), costep, trb);
   }
 }
 
@@ -9224,7 +9233,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (symbolic) {
     if (isTraceSpaceAvailable())
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, tc);
     else {
       print(selfieName);
       print((uint64_t*) ": ealloc out of memory");
