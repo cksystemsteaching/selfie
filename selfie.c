@@ -2272,7 +2272,6 @@ void getCharacter() {
     } else {
       character = loadCharacter(insertingChars, insertingCharsLength - 1);
     }
-    //printCharacter(character);
     return;
   }
 
@@ -2284,8 +2283,6 @@ void getCharacter() {
     // store the read character in the global variable called character
     character = *character_buffer;
     
-    //printCharacter(character);
-
     numberOfReadCharacters = numberOfReadCharacters + 1;
   } else if (numberOfReadBytes == 0)
     // reached end of file
