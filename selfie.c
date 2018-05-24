@@ -76,6 +76,9 @@
 // The design of the hypervisor is inspired by microkernels of
 // Professor Jochen Liedtke from University of Karlsruhe.
 
+#define NULL ((uint64_t*) 0)
+
+
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
 // ---------------------     L I B R A R Y     ---------------------
@@ -174,6 +177,7 @@ uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
+uint64_t CHAR_HASHTAG      = '#';
 
 uint64_t CPUBITWIDTH = 64;
 
@@ -221,7 +225,7 @@ uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
 uint64_t numberOfWrittenCharacters = 0;
 
-uint64_t* outputName = (uint64_t*) 0;
+uint64_t* outputName = NULL;
 uint64_t  outputFD   = 1; // 1 is file descriptor of standard output
 
 // ------------------------- INITIALIZATION ------------------------
@@ -337,6 +341,7 @@ uint64_t SYM_NOTEQ        = 24; // !=
 uint64_t SYM_MOD          = 25; // %
 uint64_t SYM_CHARACTER    = 26; // character
 uint64_t SYM_STRING       = 27; // string
+uint64_t SYM_DEFINE       = 28; // #define
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -348,15 +353,19 @@ uint64_t maxStringLength     = 128; // maximum number of characters in a string
 
 uint64_t lineNumber = 1; // current line number for error reporting
 
-uint64_t* identifier = (uint64_t*) 0; // stores scanned identifier as string
-uint64_t* integer    = (uint64_t*) 0; // stores scanned integer as string
-uint64_t* string     = (uint64_t*) 0; // stores scanned string
+uint64_t* identifier = NULL; // stores scanned identifier as string
+uint64_t* integer    = NULL; // stores scanned integer as string
+uint64_t* string     = NULL; // stores scanned string
 
 uint64_t literal = 0; // stores numerical value of scanned integer or character
 
 uint64_t integerIsSigned = 0; // enforce INT64_MIN limit if '-' was scanned before
 
 uint64_t character; // most recently read character
+
+uint64_t insertingCharsLength = 0;
+uint64_t* insertingChars;
+uint64_t characterSave;
 
 uint64_t numberOfReadCharacters = 0;
 
@@ -366,13 +375,13 @@ uint64_t numberOfIgnoredCharacters = 0;
 uint64_t numberOfComments          = 0;
 uint64_t numberOfScannedSymbols    = 0;
 
-uint64_t* sourceName = (uint64_t*) 0; // name of source file
+uint64_t* sourceName = NULL; // name of source file
 uint64_t  sourceFD   = 0;             // file descriptor of open source file
 
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_DEFINE + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
@@ -402,6 +411,7 @@ void initScanner () {
   *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
   *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+  *(SYMBOLS + SYM_DEFINE)       = (uint64_t) "#define";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -470,6 +480,7 @@ uint64_t VARIABLE  = 1;
 uint64_t BIGINT    = 2;
 uint64_t STRING    = 3;
 uint64_t PROCEDURE = 4;
+uint64_t DEFINE    = 5;
 
 // types
 uint64_t UINT64_T     = 1;
@@ -484,9 +495,9 @@ uint64_t LIBRARY_TABLE = 3;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 // table pointers
-uint64_t* global_symbol_table  = (uint64_t*) 0;
-uint64_t* local_symbol_table   = (uint64_t*) 0;
-uint64_t* library_symbol_table = (uint64_t*) 0;
+uint64_t* global_symbol_table  = NULL;
+uint64_t* local_symbol_table   = NULL;
+uint64_t* library_symbol_table = NULL;
 
 uint64_t numberOfGlobalVariables = 0;
 uint64_t numberOfProcedures      = 0;
@@ -495,9 +506,9 @@ uint64_t numberOfStrings         = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void resetSymbolTables() {
-  global_symbol_table  = (uint64_t*) 0;
-  local_symbol_table   = (uint64_t*) 0;
-  library_symbol_table = (uint64_t*) 0;
+  global_symbol_table  = NULL;
+  local_symbol_table   = NULL;
+  library_symbol_table = NULL;
 
   numberOfGlobalVariables = 0;
   numberOfProcedures      = 0;
@@ -539,6 +550,8 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
 void     help_procedure_prologue(uint64_t localVariables);
 void     help_procedure_epilogue(uint64_t parameters);
 
+uint64_t is_define_ending_char(uint64_t endingChar);
+
 uint64_t compile_call(uint64_t* procedure);
 uint64_t compile_factor();
 uint64_t compile_term();
@@ -551,6 +564,7 @@ void     compile_statement();
 uint64_t compile_type();
 void     compile_variable(uint64_t offset);
 uint64_t compile_initialization(uint64_t type);
+void     compile_define();
 void     compile_procedure(uint64_t* procedure, uint64_t type);
 void     compile_cstar();
 
@@ -861,19 +875,19 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
-uint64_t* binary       = (uint64_t*) 0; // binary of emitted instructions and data segment
+uint64_t* binary       = NULL; // binary of emitted instructions and data segment
 uint64_t  binaryLength = 0;             // length of binary in bytes including data segment
-uint64_t* binaryName   = (uint64_t*) 0; // file name of binary
+uint64_t* binaryName   = NULL; // file name of binary
 
 uint64_t codeLength = 0; // length of code segment in binary in bytes
 uint64_t entryPoint = 0; // entry point of code segment in virtual address space
 
-uint64_t* sourceLineNumber = (uint64_t*) 0; // source line number per emitted instruction
+uint64_t* sourceLineNumber = NULL; // source line number per emitted instruction
 
-uint64_t* assemblyName = (uint64_t*) 0; // name of assembly file
+uint64_t* assemblyName = NULL; // name of assembly file
 uint64_t  assemblyFD   = 0;             // file descriptor of open assembly file
 
-uint64_t* ELF_header = (uint64_t*) 0;
+uint64_t* ELF_header = NULL;
 
 // -----------------------------------------------------------------
 // ----------------------- MIPSTER SYSCALLS ------------------------
@@ -1085,8 +1099,8 @@ uint64_t maxReplayLength = 100;
 
 uint64_t tc = 0; // trace counter
 
-uint64_t* pcs    = (uint64_t*) 0; // trace of program counter values
-uint64_t* values = (uint64_t*) 0; // trace of values
+uint64_t* pcs    = NULL; // trace of program counter values
+uint64_t* values = NULL; // trace of values
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1140,37 +1154,37 @@ uint64_t debug_symbolic = 0;
 
 // trace
 
-uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
+uint64_t* tcs = NULL; // trace of trace counters to previous values
 
-uint64_t* types = (uint64_t*) 0; // memory range or integer interval
+uint64_t* types = NULL; // memory range or integer interval
 
-uint64_t* los = (uint64_t*) 0; // trace of lower bounds on values
-uint64_t* ups = (uint64_t*) 0; // trace of upper bounds on values
+uint64_t* los = NULL; // trace of lower bounds on values
+uint64_t* ups = NULL; // trace of upper bounds on values
 
-uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
+uint64_t* vaddrs = NULL; // trace of virtual addresses
 
 // read history
 
 uint64_t rc = 0; // read counter
 
-uint64_t* read_values = (uint64_t*) 0;
+uint64_t* read_values = NULL;
 
-uint64_t* read_los = (uint64_t*) 0;
-uint64_t* read_ups = (uint64_t*) 0;
+uint64_t* read_los = NULL;
+uint64_t* read_ups = NULL;
 
 // registers
 
-uint64_t* reg_typ = (uint64_t*) 0; // memory range or integer interval
-uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
-uint64_t* reg_ups = (uint64_t*) 0; // upper bound on register value
+uint64_t* reg_typ = NULL; // memory range or integer interval
+uint64_t* reg_los = NULL; // lower bound on register value
+uint64_t* reg_ups = NULL; // upper bound on register value
 
 // register constraints on memory
 
-uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
-uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
-uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
-uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
-uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
+uint64_t* reg_hasco = NULL; // register has constraint
+uint64_t* reg_vaddr = NULL; // vaddr of constrained memory
+uint64_t* reg_hasmn = NULL; // constraint has minuend
+uint64_t* reg_colos = NULL; // offset on lower bound
+uint64_t* reg_coups = NULL; // offset on upper bound
 
 // trace counter of most recent constraint
 
@@ -1274,9 +1288,9 @@ uint64_t TIMEROFF = 0;
 uint64_t pc = 0; // program counter
 uint64_t ir = 0; // instruction register
 
-uint64_t* registers = (uint64_t*) 0; // general-purpose registers
+uint64_t* registers = NULL; // general-purpose registers
 
-uint64_t* pt = (uint64_t*) 0; // page table
+uint64_t* pt = NULL; // page table
 
 // core state
 
@@ -1286,13 +1300,13 @@ uint64_t trap  = 0; // flag for creating a trap
 // profile
 
 uint64_t  calls             = 0;             // total number of executed procedure calls
-uint64_t* callsPerProcedure = (uint64_t*) 0; // number of executed calls of each procedure
+uint64_t* callsPerProcedure = NULL; // number of executed calls of each procedure
 
 uint64_t  iterations        = 0;             // total number of executed loop iterations
-uint64_t* iterationsPerLoop = (uint64_t*) 0; // number of executed iterations of each loop
+uint64_t* iterationsPerLoop = NULL; // number of executed iterations of each loop
 
-uint64_t* loadsPerInstruction  = (uint64_t*) 0; // number of executed loads per load instruction
-uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per store instruction
+uint64_t* loadsPerInstruction  = NULL; // number of executed loads per load instruction
+uint64_t* storesPerInstruction = NULL; // number of executed stores per store instruction
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1313,9 +1327,9 @@ void resetInterpreter() {
   pc = 0;
   ir = 0;
 
-  registers = (uint64_t*) 0;
+  registers = NULL;
 
-  pt = (uint64_t*) 0;
+  pt = NULL;
 
   trap = 0;
 
@@ -1440,17 +1454,17 @@ uint64_t debug_map    = 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* currentContext = (uint64_t*) 0; // context currently running
+uint64_t* currentContext = NULL; // context currently running
 
-uint64_t* usedContexts = (uint64_t*) 0; // doubly-linked list of used contexts
-uint64_t* freeContexts = (uint64_t*) 0; // singly-linked list of free contexts
+uint64_t* usedContexts = NULL; // doubly-linked list of used contexts
+uint64_t* freeContexts = NULL; // singly-linked list of free contexts
 
 // ------------------------- INITIALIZATION ------------------------
 
 void resetMicrokernel() {
-  currentContext = (uint64_t*) 0;
+  currentContext = NULL;
 
-  while (usedContexts != (uint64_t*) 0)
+  while (usedContexts != NULL)
     usedContexts = deleteContext(usedContexts, usedContexts);
 }
 
@@ -1498,7 +1512,7 @@ uint64_t selfie_run(uint64_t machine);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t* MY_CONTEXT = (uint64_t*) 0;
+uint64_t* MY_CONTEXT = NULL;
 
 uint64_t DONOTEXIT = 0;
 uint64_t EXIT = 1;
@@ -1564,17 +1578,17 @@ uint64_t SAT   = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* dimacsName = (uint64_t*) 0;
+uint64_t* dimacsName = NULL;
 
 uint64_t numberOfSATVariables = 0;
 
 // numberOfSATVariables
-uint64_t* SATAssignment = (uint64_t*) 0;
+uint64_t* SATAssignment = NULL;
 
 uint64_t numberOfSATClauses = 0;
 
 // numberOfSATClauses * 2 * numberOfSATVariables
-uint64_t* SATInstance = (uint64_t*) 0;
+uint64_t* SATInstance = NULL;
 
 // -----------------------------------------------------------------
 // ----------------------- DIMACS CNF PARSER -----------------------
@@ -1611,9 +1625,9 @@ void printUsage();
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t  selfie_argc = 0;
-uint64_t* selfie_argv = (uint64_t*) 0;
+uint64_t* selfie_argv = NULL;
 
-uint64_t* selfieName = (uint64_t*) 0;
+uint64_t* selfieName = NULL;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2049,7 +2063,7 @@ void putCharacter(uint64_t c) {
 void print(uint64_t* s) {
   uint64_t i;
 
-  if (s == (uint64_t*) 0)
+  if (s == NULL)
     print((uint64_t*) "NULL");
   else {
     i = 0;
@@ -2249,6 +2263,18 @@ void getCharacter() {
   uint64_t numberOfReadBytes;
 
   // assert: character_buffer is mapped
+  
+  // load chars if inserted by precompiling
+  if (insertingCharsLength) { // equal to insertingCharsLength != 0 but faster
+    insertingCharsLength = insertingCharsLength - 1;
+    if (insertingCharsLength == 0) {
+      character = characterSave;
+    } else {
+      character = loadCharacter(insertingChars, insertingCharsLength - 1);
+    }
+    //printCharacter(character);
+    return;
+  }
 
   // try to read 1 character into character_buffer
   // from file with sourceFD file descriptor
@@ -2257,6 +2283,8 @@ void getCharacter() {
   if (numberOfReadBytes == 1) {
     // store the read character in the global variable called character
     character = *character_buffer;
+    
+    //printCharacter(character);
 
     numberOfReadCharacters = numberOfReadCharacters + 1;
   } else if (numberOfReadBytes == 0)
@@ -2396,6 +2424,7 @@ uint64_t isCharacterNotDoubleQuoteOrNewLineOrEOF() {
     return 1;
 }
 
+
 uint64_t identifierStringMatch(uint64_t keyword) {
   return stringCompare(identifier, (uint64_t*) *(SYMBOLS + keyword));
 }
@@ -2413,12 +2442,14 @@ uint64_t identifierOrKeyword() {
     return SYM_RETURN;
   if (identifierStringMatch(SYM_VOID))
     return SYM_VOID;
+  // keyword SYM_DEFINE not handled here because it starts with # and cannot be an identifier
   else
     return SYM_IDENTIFIER;
 }
 
 void getSymbol() {
-  uint64_t i;
+  uint64_t* entry;
+  uint64_t  i;
 
   // reset previously scanned symbol
   symbol = SYM_EOF;
@@ -2448,8 +2479,23 @@ void getSymbol() {
         }
 
         storeCharacter(identifier, i, 0); // null-terminated string
-
-        symbol = identifierOrKeyword();
+        
+        // check if identifier is define
+        entry = searchSymbolTable(library_symbol_table, identifier, DEFINE);
+        if (entry != NULL) {
+          insertingChars = (uint64_t*) getValue(entry);
+      
+          // the last appended character is the character last read
+          characterSave = character;
+          insertingCharsLength = stringLength(insertingChars) + 1;
+       
+          // also change compile_initialization
+          getCharacter();  
+          getSymbol();
+        } else {
+          // else get symbol
+          symbol = identifierOrKeyword();
+        }
 
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
@@ -2548,6 +2594,39 @@ void getSymbol() {
 
         symbol = SYM_STRING;
 
+      } else if (character == CHAR_HASHTAG) {
+      	// accommodate identifier and null for termination
+        identifier = smalloc(maxIdentifierLength + 1);
+
+		// store #
+        storeCharacter(identifier, 0, character);
+        getCharacter();
+        
+        i = 1;
+
+        while (isCharacterLetterOrDigitOrUnderscore()) {
+          if (i >= 7) { // 7 chars in keyword #define
+            syntaxErrorMessage((uint64_t*) "Error: Expected keyword #define");
+
+            exit(EXITCODE_SCANNERERROR);
+          }
+
+          storeCharacter(identifier, i, character);
+
+          i = i + 1;
+
+          getCharacter();
+        }
+
+        storeCharacter(identifier, i, 0); // null-terminated string
+
+		if (identifierStringMatch(SYM_DEFINE)) {
+		  symbol = SYM_DEFINE;
+		} else {
+		  syntaxErrorMessage((uint64_t*) "Error: Expected keyword #define");
+          exit(EXITCODE_SCANNERERROR);
+		}
+       
       } else if (character == CHAR_SEMICOLON) {
         getCharacter();
 
@@ -2694,7 +2773,7 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
 }
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
-  while (entry != (uint64_t*) 0) {
+  while (entry != NULL) {
     if (stringCompare(string, getString(entry)))
       if (class == getClass(entry))
         return entry;
@@ -2703,7 +2782,7 @@ uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
     entry = getNextEntry(entry);
   }
 
-  return (uint64_t*) 0;
+  return NULL;
 }
 
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class) {
@@ -2716,9 +2795,9 @@ uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class) {
     // library procedures override declared or defined procedures
     entry = searchSymbolTable(library_symbol_table, string, PROCEDURE);
   else
-    entry = (uint64_t*) 0;
+    entry = NULL;
 
-  if (entry == (uint64_t*) 0)
+  if (entry == NULL)
     return searchSymbolTable(global_symbol_table, string, class);
   else
     return entry;
@@ -2731,7 +2810,7 @@ uint64_t isUndefinedProcedure(uint64_t* entry) {
     // library procedures override declared or defined procedures
     libraryEntry = searchSymbolTable(library_symbol_table, getString(entry), PROCEDURE);
 
-    if (libraryEntry != (uint64_t*) 0)
+    if (libraryEntry != NULL)
       // procedure is library procedure
       return 0;
     else if (getAddress(entry) == 0)
@@ -2753,7 +2832,7 @@ uint64_t reportUndefinedProcedures() {
 
   entry = global_symbol_table;
 
-  while (entry != (uint64_t*) 0) {
+  while (entry != NULL) {
     if (isUndefinedProcedure(entry)) {
       undefined = 1;
 
@@ -3035,7 +3114,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   else {
     entry = getScopedSymbolTableEntry(variableOrBigInt, class);
 
-    if (entry == (uint64_t*) 0) {
+    if (entry == NULL) {
       printLineNumber((uint64_t*) "syntax error", lineNumber);
       print(variableOrBigInt);
       print((uint64_t*) " undeclared");
@@ -3139,7 +3218,7 @@ void load_integer(uint64_t value) {
     // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
     entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
 
-    if (entry == (uint64_t*) 0) {
+    if (entry == NULL) {
       allocatedMemory = allocatedMemory + REGISTERSIZE;
 
       createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
@@ -3172,7 +3251,7 @@ void load_string(uint64_t* string) {
 uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
   uint64_t type;
 
-  if (entry == (uint64_t*) 0) {
+  if (entry == NULL) {
     // procedure never called nor declared nor defined
 
     // default return type is "int"
@@ -4126,6 +4205,111 @@ uint64_t compile_initialization(uint64_t type) {
   return initialValue;
 }
 
+uint64_t is_define_ending_char(uint64_t endingChar) {
+  if (character == endingChar) {
+    return 1;
+  } else if (endingChar == 0) { // whitespace
+    if (isCharacterWhitespace()) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+void compile_define() {
+  // compile_define is technical part of precompiling, that is why it 
+  // includes parts from scanner and parser
+  uint64_t* name;
+  uint64_t currentLineNumber;
+  uint64_t endingChar;
+  uint64_t* replace_string;
+  uint64_t openParenthesis;
+  uint64_t i;
+  
+  i = 0;
+  endingChar = 0; // whiteSpaces
+  openParenthesis = 0;
+  replace_string = zalloc(maxStringLength + 1);
+  
+  // #define
+  if (symbol == SYM_DEFINE) {
+    getSymbol();
+  
+  	// #define identifier
+    if (symbol == SYM_IDENTIFIER) {
+      name = identifier;
+    } else {
+      name = "undefined identifier";
+      syntaxErrorSymbol(SYM_SEMICOLON);
+  	}
+  	
+  	currentLineNumber = lineNumber;
+  	
+  	// skip whitespaces
+  	getCharacter();
+    while (isCharacterWhitespace()) {
+  	  getCharacter();
+  	}
+  	
+  	// #define identifier
+  	if (character == CHAR_LPARENTHESIS) {
+  	  endingChar = CHAR_RPARENTHESIS;
+  	  openParenthesis = 1;
+  	  getCharacter();
+  	} else if (character == CHAR_DOUBLEQUOTE) {
+  		endingChar = CHAR_DOUBLEQUOTE;
+  		storeCharacter(replace_string, i, character);
+        i = i + 1;
+  		getCharacter();
+  	} else if (character == CHAR_SINGLEQUOTE) {
+  		endingChar = CHAR_SINGLEQUOTE;
+  		storeCharacter(replace_string, i, character);
+        i = i + 1;
+  		getCharacter();
+  	}
+  	
+  	while (is_define_ending_char(endingChar) == 0) {
+  	  
+  	  // save char
+  	  storeCharacter(replace_string, i, character);
+      i = i + 1;
+      
+      if (character == CHAR_LPARENTHESIS) {
+        openParenthesis = openParenthesis + 1;
+        // not ending until only one parathesis left
+        endingChar = -1;
+      } else if (character == CHAR_RPARENTHESIS) {
+        openParenthesis = openParenthesis - 1;
+        if (openParenthesis == 1) {
+          // now it can end
+          endingChar = CHAR_RPARENTHESIS;
+        }
+      }
+  	  
+  	  getCharacter();
+  	}
+  	
+  	// append single or double quote
+  	if (character == CHAR_DOUBLEQUOTE) {
+  	  storeCharacter(replace_string, i, character);
+  	} else if (character == CHAR_SINGLEQUOTE) {
+  	  storeCharacter(replace_string, i, character);
+  	}
+  	
+  	// reverse string so it can be read better
+  	stringReverse(replace_string);
+  	
+  	// save in symbol table
+  	// saved in library_symbol_table for better performance
+  	createSymbolTableEntry(LIBRARY_TABLE, name, currentLineNumber, DEFINE, 0, (uint64_t) replace_string, 0);
+  	
+  	getCharacter();
+  	getSymbol();
+  	
+  }
+  
+}
+
 void compile_procedure(uint64_t* procedure, uint64_t type) {
   uint64_t isUndefined;
   uint64_t numberOfParameters;
@@ -4181,7 +4365,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
-    if (entry == (uint64_t*) 0)
+    if (entry == NULL)
       // procedure never called nor declared nor defined
       createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, 0);
     else if (getType(entry) != type)
@@ -4193,7 +4377,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
   } else if (symbol == SYM_LBRACE) {
     // this is a procedure definition
-    if (entry == (uint64_t*) 0)
+    if (entry == NULL)
       // procedure never called nor declared nor defined
       createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
     else {
@@ -4275,7 +4459,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
   } else
     syntaxErrorUnexpected();
 
-  local_symbol_table = (uint64_t*) 0;
+  local_symbol_table = NULL;
 
   // assert: allocatedTemporaries == 0
 }
@@ -4288,14 +4472,18 @@ void compile_cstar() {
   uint64_t* entry;
 
   while (symbol != SYM_EOF) {
-    while (lookForType()) {
-      syntaxErrorUnexpected();
+  
+    if (symbol != SYM_DEFINE) {
+      while (lookForType()) {
+        syntaxErrorUnexpected();
 
-      if (symbol == SYM_EOF)
-        exit(EXITCODE_PARSERERROR);
-      else
-        getSymbol();
+        if (symbol == SYM_EOF)
+          exit(EXITCODE_PARSERERROR);
+        else
+          getSymbol();
+      }
     }
+    
 
     if (symbol == SYM_VOID) {
       // void identifier ...
@@ -4312,6 +4500,8 @@ void compile_cstar() {
         compile_procedure(variableOrProcedureName, type);
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
+    } else if (symbol == SYM_DEFINE) {
+      compile_define();
     } else {
       type = compile_type();
 
@@ -4340,7 +4530,7 @@ void compile_cstar() {
 
           entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE);
 
-          if (entry == (uint64_t*) 0) {
+          if (entry == NULL) {
             allocatedMemory = allocatedMemory + REGISTERSIZE;
 
             createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
@@ -5426,7 +5616,7 @@ void selfie_load() {
   entryPoint   = 0;
 
   // no source line numbers in binaries
-  sourceLineNumber = (uint64_t*) 0;
+  sourceLineNumber = NULL;
 
   // make sure ELF_header is mapped for reading into it
   ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
@@ -6235,7 +6425,7 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void printSourceLineNumberOfInstruction(uint64_t a) {
-  if (sourceLineNumber != (uint64_t*) 0) {
+  if (sourceLineNumber != NULL) {
     print((uint64_t*) "(~");
     printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
     print((uint64_t*) ")");
@@ -8534,7 +8724,7 @@ void printProfile() {
     printInstructionCounters();
 
     print(selfieName);
-    if (sourceLineNumber != (uint64_t*) 0)
+    if (sourceLineNumber != NULL)
       print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max");
     else
       print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max");
@@ -8594,7 +8784,7 @@ void selfie_disassemble() {
   disassemble = 0;
   debug       = 0;
 
-  outputName = (uint64_t*) 0;
+  outputName = NULL;
   outputFD   = 1;
 
   print(selfieName);
@@ -8614,7 +8804,7 @@ void selfie_disassemble() {
 uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
-  if (freeContexts == (uint64_t*) 0)
+  if (freeContexts == NULL)
     context = smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
   else {
     context = freeContexts;
@@ -8623,9 +8813,9 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   }
 
   setNextContext(context, in);
-  setPrevContext(context, (uint64_t*) 0);
+  setPrevContext(context, NULL);
 
-  if (in != (uint64_t*) 0)
+  if (in != NULL)
     setPrevContext(in, context);
 
   setPC(context, 0);
@@ -8651,7 +8841,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   setParent(context, parent);
   setVirtualContext(context, vctxt);
 
-  setName(context, (uint64_t*) 0);
+  setName(context, NULL);
 
   return context;
 }
@@ -8661,7 +8851,7 @@ uint64_t* findContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   context = in;
 
-  while (context != (uint64_t*) 0) {
+  while (context != NULL) {
     if (getParent(context) == parent)
       if (getVirtualContext(context) == vctxt)
         return context;
@@ -8669,7 +8859,7 @@ uint64_t* findContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
     context = getNextContext(context);
   }
 
-  return (uint64_t*) 0;
+  return NULL;
 }
 
 void freeContext(uint64_t* context) {
@@ -8679,12 +8869,12 @@ void freeContext(uint64_t* context) {
 }
 
 uint64_t* deleteContext(uint64_t* context, uint64_t* from) {
-  if (getNextContext(context) != (uint64_t*) 0)
+  if (getNextContext(context) != NULL)
     setPrevContext(getNextContext(context), getPrevContext(context));
 
-  if (getPrevContext(context) != (uint64_t*) 0) {
+  if (getPrevContext(context) != NULL) {
     setNextContext(getPrevContext(context), getNextContext(context));
-    setPrevContext(context, (uint64_t*) 0);
+    setPrevContext(context, NULL);
   } else
     from = getNextContext(context);
 
@@ -8701,7 +8891,7 @@ uint64_t* createContext(uint64_t* parent, uint64_t* vctxt) {
   // TODO: check if context already exists
   usedContexts = allocateContext(parent, vctxt, usedContexts);
 
-  if (currentContext == (uint64_t*) 0)
+  if (currentContext == NULL)
     currentContext = usedContexts;
 
   if (debug_create) {
@@ -8722,7 +8912,7 @@ uint64_t* cacheContext(uint64_t* vctxt) {
   // find cached context on my boot level
   context = findContext(currentContext, vctxt, usedContexts);
 
-  if (context == (uint64_t*) 0)
+  if (context == NULL)
     // create cached context on my boot level
     context = createContext(currentContext, vctxt);
 
@@ -9887,7 +10077,7 @@ void selfie_sat() {
 
   selfie_loadDimacs();
 
-  if (dimacsName == (uint64_t*) 0) {
+  if (dimacsName == NULL) {
     print(selfieName);
     print((uint64_t*) ": nothing to SAT solve");
     println();
@@ -9940,7 +10130,7 @@ uint64_t* peekArgument() {
   if (numberOfRemainingArguments() > 0)
     return (uint64_t*) *selfie_argv;
   else
-    return (uint64_t*) 0;
+    return NULL;
 }
 
 uint64_t* getArgument() {
