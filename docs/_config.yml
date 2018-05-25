@@ -6,3 +6,14 @@ theme: jekyll-theme-minimal
 
 gems:
   - jekyll-mentions
+
+collections:
+  redirects:
+    output: true
+
+defaults:
+  -
+    scope:
+      type: redirects
+    values:
+      layout: redirect
