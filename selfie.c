@@ -3221,8 +3221,19 @@ void help_procedure_prologue(uint64_t localVariables) {
   emitADDI(REG_FP, REG_SP, 0);
 
   // allocate memory for callee's local variables
-  if (localVariables != 0)
-    emitADDI(REG_SP, REG_SP, -localVariables * REGISTERSIZE);
+  if (localVariables != 0) {
+    localVariables = -localVariables * REGISTERSIZE;
+    
+    if (isSignedInteger(localVariables, 12))
+      emitADDI(REG_SP, REG_SP, localVariables);
+    else {
+      load_integer(localVariables);
+      
+      emitADD(REG_SP, REG_SP, currentTemporary());
+      
+      tfree(1);
+    }
+  }
 }
 
 void help_procedure_epilogue(uint64_t parameters) {
