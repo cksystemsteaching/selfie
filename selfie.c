@@ -536,8 +536,8 @@ void      load_integer(uint64_t value);
 void      load_string(uint64_t* string);
 
 uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
-void     help_procedure_prologue(uint64_t localVariables);
-void     help_procedure_epilogue(uint64_t parameters);
+void     help_procedure_prologue(uint64_t numberOfLocalVariableBytes);
+void     help_procedure_epilogue(uint64_t numberOfParameterBytes);
 
 uint64_t compile_call(uint64_t* procedure);
 uint64_t compile_factor();
@@ -3204,7 +3204,7 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
   return type;
 }
 
-void help_procedure_prologue(uint64_t localVariables) {
+void help_procedure_prologue(uint64_t numberOfLocalVariableBytes) {
   // allocate memory for return address
   emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
 
@@ -3221,22 +3221,20 @@ void help_procedure_prologue(uint64_t localVariables) {
   emitADDI(REG_FP, REG_SP, 0);
 
   // allocate memory for callee's local variables
-  if (localVariables != 0) {
-    localVariables = -localVariables * REGISTERSIZE;
-    
-    if (isSignedInteger(localVariables, 12))
-      emitADDI(REG_SP, REG_SP, localVariables);
+  if (numberOfLocalVariableBytes > 0) {
+    if (isSignedInteger(-numberOfLocalVariableBytes, 12))
+      emitADDI(REG_SP, REG_SP, -numberOfLocalVariableBytes);
     else {
-      load_integer(localVariables);
-      
+      load_integer(-numberOfLocalVariableBytes);
+
       emitADD(REG_SP, REG_SP, currentTemporary());
-      
+
       tfree(1);
     }
   }
 }
 
-void help_procedure_epilogue(uint64_t parameters) {
+void help_procedure_epilogue(uint64_t numberOfParameterBytes) {
   // deallocate memory for callee's frame pointer and local variables
   emitADDI(REG_SP, REG_FP, 0);
 
@@ -3250,7 +3248,7 @@ void help_procedure_epilogue(uint64_t parameters) {
   emitLD(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and parameters
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE + parameters * REGISTERSIZE);
+  emitADDI(REG_SP, REG_SP, REGISTERSIZE + numberOfParameterBytes);
 
   // return
   emitJALR(REG_ZR, REG_RA, 0);
@@ -4141,7 +4139,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
   uint64_t isUndefined;
   uint64_t numberOfParameters;
   uint64_t parameters;
-  uint64_t localVariables;
+  uint64_t numberOfLocalVariableBytes;
   uint64_t* entry;
 
   // assuming procedure is undefined
@@ -4244,12 +4242,13 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
     getSymbol();
 
-    localVariables = 0;
+    numberOfLocalVariableBytes = 0;
 
     while (symbol == SYM_UINT64) {
-      localVariables = localVariables + 1;
+      numberOfLocalVariableBytes = numberOfLocalVariableBytes + REGISTERSIZE;
 
-      compile_variable(-localVariables * REGISTERSIZE);
+      // offset of local variables relative to frame pointer is negative
+      compile_variable(-numberOfLocalVariableBytes);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -4257,7 +4256,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
         syntaxErrorSymbol(SYM_SEMICOLON);
     }
 
-    help_procedure_prologue(localVariables);
+    help_procedure_prologue(numberOfLocalVariableBytes);
 
     // create a fixup chain for return statements
     returnBranches = 0;
@@ -4281,7 +4280,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
     returnBranches = 0;
 
-    help_procedure_epilogue(numberOfParameters);
+    help_procedure_epilogue(numberOfParameters * REGISTERSIZE);
 
   } else
     syntaxErrorUnexpected();
