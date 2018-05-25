@@ -2292,6 +2292,8 @@ uint64_t isCharacterWhitespace() {
     return 1;
   else if (character == CHAR_TAB)
     return 1;
+  else if (character == CHAR_EOF)
+    return 1;
   else
     return isCharacterNewLine();
 }
@@ -2347,8 +2349,6 @@ uint64_t findNextCharacter() {
     } else if (isCharacterWhitespace()) {
       // count line feed and carriage return as ignored characters
       numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
-
-      getCharacter();
 
     } else if (character == CHAR_SLASH) {
       getCharacter();
