@@ -2333,12 +2333,12 @@ uint64_t findNextCharacter() {
           inMultiLineComment = 0;
 
           getCharacter(); // next character after "*/"
-         
-          // count '*' and '/' as one ignored character, since one character is always ignored
-          numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
         } else if (character == CHAR_EOF)
           return character;
+         
+        // count '/' or something else as ignored character
+        numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
 
       } else if (character == CHAR_EOF)
         return character;
