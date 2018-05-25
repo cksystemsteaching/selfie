@@ -2292,8 +2292,6 @@ uint64_t isCharacterWhitespace() {
     return 1;
   else if (character == CHAR_TAB)
     return 1;
-  else if (character == CHAR_EOF)
-    return 1;
   else
     return isCharacterNewLine();
 }
