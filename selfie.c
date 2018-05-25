@@ -363,9 +363,12 @@ uint64_t integerIsSigned = 0; // enforce INT64_MIN limit if '-' was scanned befo
 
 uint64_t character; // most recently read character
 
-uint64_t insertingCharsLength = 0;
+// used for precompiling (defines)
+uint64_t insertingCharsPos = 0;
 uint64_t* insertingChars;
 uint64_t characterSave;
+
+uint64_t symbolReplacedByDefine = 0; // set true after getSymbol if symbol is replaced
 
 uint64_t numberOfReadCharacters = 0;
 
@@ -537,6 +540,7 @@ void restore_temporaries(uint64_t numberOfTemporaries);
 
 void syntaxErrorSymbol(uint64_t expected);
 void syntaxErrorUnexpected();
+void checkErrorDefine();
 void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
 
@@ -2265,13 +2269,12 @@ void getCharacter() {
   // assert: character_buffer is mapped
   
   // load chars if inserted by precompiling
-  if (insertingCharsLength) { // equal to insertingCharsLength != 0 but faster
-    insertingCharsLength = insertingCharsLength - 1;
-    if (insertingCharsLength == 0) {
+  if (insertingCharsPos) { // equal to insertingCharsPos != 0 but faster
+    insertingCharsPos = insertingCharsPos - 1;
+    if (insertingCharsPos == 0)
       character = characterSave;
-    } else {
-      character = loadCharacter(insertingChars, insertingCharsLength - 1);
-    }
+    else
+      character = loadCharacter(insertingChars, insertingCharsPos - 1);
     return;
   }
 
@@ -2450,6 +2453,8 @@ void getSymbol() {
 
   // reset previously scanned symbol
   symbol = SYM_EOF;
+  
+  symbolReplacedByDefine = 0; // symbol is not replaced by default
 
   if (findNextCharacter() != CHAR_EOF) {
     if (symbol != SYM_DIV) {
@@ -2482,17 +2487,18 @@ void getSymbol() {
         if (entry != NULL) {
           insertingChars = (uint64_t*) getValue(entry);
       
-          // the last appended character is the character last read
+          // also save the last character read
           characterSave = character;
-          insertingCharsLength = stringLength(insertingChars) + 1;
+          insertingCharsPos = stringLength(insertingChars) + 1;
        
-          // also change compile_initialization
+          // read next symbol and set flag
           getCharacter();  
           getSymbol();
-        } else {
-          // else get symbol
+          symbolReplacedByDefine = 1;
+          
+        } else
+        // else get identifier or keyword
           symbol = identifierOrKeyword();
-        }
 
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
@@ -3074,6 +3080,17 @@ void syntaxErrorUnexpected() {
   print((uint64_t*) " found");
 
   println();
+}
+
+void checkErrorDefine() {
+  if (symbolReplacedByDefine) {
+    printLineNumber((uint64_t*) "compile error", lineNumber + 1); // error is in the next line
+
+    print((uint64_t*) "invalid name, identifier is used by define");
+    println();
+    
+    exit(EXITCODE_PARSERERROR);
+  }
 }
 
 void printType(uint64_t type) {
@@ -4130,8 +4147,11 @@ void compile_variable(uint64_t offset) {
   uint64_t type;
 
   type = compile_type();
+  
+  checkErrorDefine(); // check if identifier is used by define
 
   if (symbol == SYM_IDENTIFIER) {
+    
     // TODO: check if identifier has already been declared
     createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
 
@@ -4220,13 +4240,15 @@ void compile_define() {
   uint64_t currentLineNumber;
   uint64_t endingChar;
   uint64_t* replace_string;
+  uint64_t parsingFactor;
   uint64_t openParenthesis;
   uint64_t i;
   
   i = 0;
-  endingChar = 0; // whiteSpaces
+  endingChar = 0; // whiteSpaces expected
   openParenthesis = 0;
   replace_string = zalloc(maxStringLength + 1);
+  parsingFactor = 0;
   
   // #define
   if (symbol == SYM_DEFINE) {
@@ -4248,38 +4270,42 @@ void compile_define() {
   	  getCharacter();
   	}
   	
-  	// #define identifier
+  	// #define identifier ( factor )
   	if (character == CHAR_LPARENTHESIS) {
   	  endingChar = CHAR_RPARENTHESIS;
   	  openParenthesis = 1;
+  	  parsingFactor = 1;
   	  getCharacter();
+  	  
+  	// #define identifier string
   	} else if (character == CHAR_DOUBLEQUOTE) {
   		endingChar = CHAR_DOUBLEQUOTE;
   		storeCharacter(replace_string, i, character);
         i = i + 1;
   		getCharacter();
+  		
+  	// #define identifier character
   	} else if (character == CHAR_SINGLEQUOTE) {
   		endingChar = CHAR_SINGLEQUOTE;
   		storeCharacter(replace_string, i, character);
         i = i + 1;
   		getCharacter();
   	}
+  	// else: #define identifier integer
   	
   	while (is_define_ending_char(endingChar) == 0) {
-  	  
-  	  // save char
+  	  // save char in string
   	  storeCharacter(replace_string, i, character);
       i = i + 1;
       
-      if (character == CHAR_LPARENTHESIS) {
-        openParenthesis = openParenthesis + 1;
-        // not ending until only one parathesis left
-        endingChar = -1;
-      } else if (character == CHAR_RPARENTHESIS) {
-        openParenthesis = openParenthesis - 1;
-        if (openParenthesis == 1) {
-          // now it can end
-          endingChar = CHAR_RPARENTHESIS;
+      if (parsingFactor) {
+        if (character == CHAR_LPARENTHESIS) {
+          openParenthesis = openParenthesis + 1;
+          endingChar = -1;  // not ending until only one parathesis left
+        } else if (character == CHAR_RPARENTHESIS) {
+          openParenthesis = openParenthesis - 1;
+          if (openParenthesis == 1)
+            endingChar = CHAR_RPARENTHESIS;  // now it can end
         }
       }
   	  
@@ -4302,7 +4328,6 @@ void compile_define() {
   	
   	getCharacter();
   	getSymbol();
-  	
   }
   
 }
@@ -4488,10 +4513,12 @@ void compile_cstar() {
       type = VOID_T;
 
       getSymbol();
+      
+      checkErrorDefine(); // check if identifier is used by define
 
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
-
+        
         getSymbol();
 
         compile_procedure(variableOrProcedureName, type);
@@ -4501,10 +4528,13 @@ void compile_cstar() {
       compile_define();
     } else {
       type = compile_type();
+      
+      checkErrorDefine(); // check if identifier is used by define
+
 
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
-
+        
         getSymbol();
 
         if (symbol == SYM_LPARENTHESIS)
