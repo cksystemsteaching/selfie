@@ -9760,9 +9760,9 @@ void dimacs_findNextCharacter(uint64_t newLine) {
         numberOfComments = numberOfComments + 1;
       }
     } else if (isCharacterWhitespace()) {
-      if (isCharacterNewLine()) {
+      if (isCharacterNewLine())
         newLine = 1;
-      } else
+      else
         newLine = 0;
 
       // count whitespace as ignored characters
