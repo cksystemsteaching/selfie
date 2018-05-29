@@ -91,3 +91,21 @@ x == 0x48
 ```
 
 Note that `0x48` is ASCII for `H`. Moreover, `0x65`, `0x6C`, `0x6F`, `0x20`, and `0x57` are ASCII for `e`, `l`, `o`, ` `, and `W`, respectively.
+
+## Library
+
+### malloc
+
+Per C definition, consecutive calls of `malloc` always have to return unique addresses, independent of the actual size parameter. However, allocating memory in C\* with 0 as size parameter, results in no memory allocation at all. Therefore consecutive calls of `malloc` do always return the same address.
+
+C\*:
+
+```
+malloc(0) == malloc(0)
+```
+
+C:
+
+```
+malloc(0) != malloc(0)
+```
