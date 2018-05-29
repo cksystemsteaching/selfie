@@ -2299,10 +2299,14 @@ uint64_t isCharacterWhitespace() {
 uint64_t findNextCharacter() {
   uint64_t inSingleLineComment;
   uint64_t inMultiLineComment;
+  uint64_t multiLineCommentStartLineNumber;
 
   // assuming we are not in a comment
   inSingleLineComment = 0;
   inMultiLineComment = 0;
+
+  // stores the beginning of the multi line comment for error reporting reasons
+  multiLineCommentStartLineNumber = 0;
 
   // read and discard all whitespace and comments until a character is found
   // that is not whitespace and does not occur in a comment, or the file ends
@@ -2330,16 +2334,26 @@ uint64_t findNextCharacter() {
         if (character == CHAR_SLASH) {
           inMultiLineComment = 0;
 
+          multiLineCommentStartLineNumber = 0;
+
           getCharacter(); // next character after "*/"
 
-        } else if (character == CHAR_EOF)
-          return character;
+          // character could be EOF
+          if (character == CHAR_EOF)
+          	return character;
+        }
 
         // count '/' or something else as ignored character
         numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+      }
 
-      } else if (character == CHAR_EOF)
-        return character;
+      // multi line comment is never terminated
+      if (character == CHAR_EOF) {
+      	printLineNumber((uint64_t*) "error", multiLineCommentStartLineNumber);
+      	print("unterminated comment");
+      	println();
+      	exit(EXITCODE_SCANNERERROR);
+      }
 
       // one character is always ignored
       numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
@@ -2365,6 +2379,9 @@ uint64_t findNextCharacter() {
       } else if (character == CHAR_ASTERISK) {
         // "/*" begins a multi line comment
         inMultiLineComment = 1;
+
+        // save the beginning line of the comment for error reporting
+        multiLineCommentStartLineNumber = lineNumber;
 
         // count both slash and asterisk as ignored characters as well
         numberOfIgnoredCharacters = numberOfIgnoredCharacters + 2;
