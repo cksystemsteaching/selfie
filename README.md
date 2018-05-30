@@ -4,7 +4,7 @@ Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzb
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and even virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
-There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
+Slides providing an overview of selfie and an introduction to its design and implementation are made available incrementally [here](http://selfie.cs.uni-salzburg.at/slides). There is also a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
 
 Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 

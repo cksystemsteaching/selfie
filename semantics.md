@@ -4,7 +4,7 @@ Selfie is a project of the Computational Systems Group at the Department of Comp
 
 http://selfie.cs.uni-salzburg.at
 
-This document provides an overview of the differences in semantics between the programming language C\* in which selfie is written and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in how integer literals and strings are handled. Note that the results presented here were obtained with tools that implement [C11](https://en.wikipedia.org/wiki/C11_(C_standard_revision)) semantics.
+This document provides an overview of the differences in semantics between the programming language C\* in which selfie is written and the programming language C. Syntactically, C\* is a strict subset of C. Semantically, however, C\* differs from C in, for example, how integer literals and strings are handled. Note that the results presented here were obtained with tools that implement [C11](https://en.wikipedia.org/wiki/C11_(C_standard_revision)) semantics.
 
 ## Integer Literals
 
@@ -91,3 +91,21 @@ x == 0x48
 ```
 
 Note that `0x48` is ASCII for `H`. Moreover, `0x65`, `0x6C`, `0x6F`, `0x20`, and `0x57` are ASCII for `e`, `l`, `o`, ` `, and `W`, respectively.
+
+## Library
+
+### malloc
+
+Per C standard, consecutive calls of `malloc` always have to return unique addresses independent of the actual size parameter. However, allocating memory in C\* with 0 as size parameter results in no memory allocation at all. Therefore, consecutive calls of `malloc` do always return the same address.
+
+C\*:
+
+```
+malloc(0) == malloc(0)
+```
+
+C:
+
+```
+malloc(0) != malloc(0)
+```
