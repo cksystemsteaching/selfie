@@ -9906,8 +9906,7 @@ void selfie_sat() {
 
   if (dimacsName == (uint64_t*) 0) {
     print(selfieName);
-    print((uint64_t*) ": nothing to SAT solve");
-    println();
+    print((uint64_t*) ": nothing to SAT solve\n");
 
     return;
   }
@@ -9980,9 +9979,7 @@ void setArgument(uint64_t* argv) {
 void printUsage() {
   print(selfieName);
   print((uint64_t*) ": usage: ");
-  print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } ");
-  print((uint64_t*) "[ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]");
-  println();
+  print((uint64_t*) "selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]\n");
 }
 
 uint64_t selfie() {
