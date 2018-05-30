@@ -176,6 +176,7 @@ uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
+uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
 
 uint64_t CPUBITWIDTH = 64;
 
@@ -307,6 +308,8 @@ uint64_t identifierStringMatch(uint64_t stringIndex);
 uint64_t identifierOrKeyword();
 
 void getSymbol();
+
+void handleEscapeSequence();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2148,8 +2151,7 @@ uint64_t* smalloc(uint64_t size) {
     return memory;
   else if ((uint64_t) memory == 0) {
     print(selfieName);
-    print((uint64_t*) ": malloc out of memory");
-    println();
+    print((uint64_t*) ": malloc out of memory\n");
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
@@ -2230,9 +2232,7 @@ void syntaxErrorCharacter(uint64_t expected) {
   print((uint64_t*) " expected but ");
 
   printCharacter(character);
-  print((uint64_t*) " found");
-
-  println();
+  print((uint64_t*) " found\n");
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
@@ -2242,9 +2242,7 @@ void syntaxErrorIdentifier(uint64_t* expected) {
   print((uint64_t*) " expected but ");
 
   print(identifier);
-  print((uint64_t*) " found");
-
-  println();
+  print((uint64_t*) " found\n");
 }
 
 void getCharacter() {
@@ -2570,6 +2568,9 @@ void getSymbol() {
             exit(EXITCODE_SCANNERERROR);
           }
 
+          if (character == CHAR_BACKSLASH)
+            handleEscapeSequence();
+
           storeCharacter(string, i, character);
 
           i = i + 1;
@@ -2694,6 +2695,28 @@ void getSymbol() {
   }
 }
 
+void handleEscapeSequence() {
+  // ignoring the backslash
+  numberOfIgnoredCharacters = numberOfIgnoredCharacters + 1;
+
+  getCharacter();
+
+  if (character == 'n')
+    character = CHAR_LF;
+  else if (character == 't')
+    character = CHAR_TAB;
+  else if (character == CHAR_DOUBLEQUOTE)
+    character = CHAR_DOUBLEQUOTE;
+  else if (character == CHAR_SINGLEQUOTE)
+    character = CHAR_SINGLEQUOTE;
+  else if (character == CHAR_BACKSLASH)
+    character = CHAR_BACKSLASH;
+  else {
+    syntaxErrorMessage("Unknown escape sequence found.\n");
+
+    exit(EXITCODE_SCANNERERROR);
+  }
+}
 // -----------------------------------------------------------------
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
@@ -2801,8 +2824,7 @@ uint64_t reportUndefinedProcedures() {
       printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
       print((uint64_t*) "procedure ");
       print(getString(entry));
-      print((uint64_t*) " undefined");
-      println();
+      print((uint64_t*) " undefined\n");
     }
 
     // keep looking
@@ -3026,9 +3048,7 @@ void syntaxErrorSymbol(uint64_t expected) {
   print((uint64_t*) " expected but ");
 
   printSymbol(symbol);
-  print((uint64_t*) " found");
-
-  println();
+  print((uint64_t*) " found\n");
 }
 
 void syntaxErrorUnexpected() {
@@ -3036,9 +3056,7 @@ void syntaxErrorUnexpected() {
 
   print((uint64_t*) "unexpected symbol ");
   printSymbol(symbol);
-  print((uint64_t*) " found");
-
-  println();
+  print((uint64_t*) " found\n");
 }
 
 void printType(uint64_t type) {
@@ -3063,9 +3081,7 @@ void typeWarning(uint64_t expected, uint64_t found) {
 
   printType(found);
 
-  print((uint64_t*) " found");
-
-  println();
+  print((uint64_t*) " found\n");
 }
 
 uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
@@ -3079,8 +3095,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
     if (entry == (uint64_t*) 0) {
       printLineNumber((uint64_t*) "syntax error", lineNumber);
       print(variableOrBigInt);
-      print((uint64_t*) " undeclared");
-      println();
+      print((uint64_t*) " undeclared\n");
 
       exit(EXITCODE_PARSERERROR);
     }
@@ -4276,8 +4291,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
         printLineNumber((uint64_t*) "warning", lineNumber);
         print((uint64_t*) "redefinition of procedure ");
         print(procedure);
-        print((uint64_t*) " ignored");
-        println();
+        print((uint64_t*) " ignored\n");
       }
     }
 
@@ -4400,8 +4414,7 @@ void compile_cstar() {
             printLineNumber((uint64_t*) "warning", currentLineNumber);
             print((uint64_t*) "redefinition of global variable ");
             print(variableOrProcedureName);
-            print((uint64_t*) " ignored");
-            println();
+            print((uint64_t*) " ignored\n");
           }
         }
       } else
@@ -4539,8 +4552,7 @@ void selfie_compile() {
       print(selfieName);
       print((uint64_t*) ": selfie compiling ");
       print(sourceName);
-      print((uint64_t*) " with starc");
-      println();
+      print((uint64_t*) " with starc\n");
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
@@ -4567,8 +4579,7 @@ void selfie_compile() {
       printInteger(lineNumber);
       print((uint64_t*) " lines and ");
       printInteger(numberOfComments);
-      print((uint64_t*) " comments");
-      println();
+      print((uint64_t*) " comments\n");
 
       print(selfieName);
       print((uint64_t*) ": with ");
@@ -4577,8 +4588,7 @@ void selfie_compile() {
       printFixedPointPercentage(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
       print((uint64_t*) "%) characters in ");
       printInteger(numberOfScannedSymbols);
-      print((uint64_t*) " actual symbols");
-      println();
+      print((uint64_t*) " actual symbols\n");
 
       print(selfieName);
       print((uint64_t*) ": ");
@@ -4587,8 +4597,7 @@ void selfie_compile() {
       printInteger(numberOfProcedures);
       print((uint64_t*) " procedures, ");
       printInteger(numberOfStrings);
-      print((uint64_t*) " string literals");
-      println();
+      print((uint64_t*) " string literals\n");
 
       print(selfieName);
       print((uint64_t*) ": ");
@@ -4601,15 +4610,13 @@ void selfie_compile() {
       printInteger(numberOfIf);
       print((uint64_t*) " if, ");
       printInteger(numberOfReturn);
-      print((uint64_t*) " return");
-      println();
+      print((uint64_t*) " return\n");
     }
   }
 
   if (numberOfSourceFiles == 0) {
     print(selfieName);
-    print((uint64_t*) ": nothing to compile, only library generated");
-    println();
+    print((uint64_t*) ": nothing to compile, only library generated\n");
   }
 
   emitStart();
@@ -4627,8 +4634,7 @@ void selfie_compile() {
   printInteger(codeLength / INSTRUCTIONSIZE);
   print((uint64_t*) " instructions and ");
   printInteger(binaryLength - codeLength);
-  print((uint64_t*) " bytes of data");
-  println();
+  print((uint64_t*) " bytes of data\n");
 
   printInstructionCounters();
 }
@@ -5561,8 +5567,7 @@ void implementExit(uint64_t* context) {
   printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
   print((uint64_t*) " and ");
   printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
-  print((uint64_t*) "MB mallocated memory");
-  println();
+  print((uint64_t*) "MB mallocated memory\n");
 }
 
 void emitRead() {
@@ -5699,8 +5704,7 @@ void implementRead(uint64_t* context) {
           print(selfieName);
           print((uint64_t*) ": reading into virtual address ");
           printHexadecimal(vbuffer, 8);
-          print((uint64_t*) " failed because the address is unmapped");
-          println();
+          print((uint64_t*) " failed because the address is unmapped\n");
         }
       }
     } else {
@@ -5712,8 +5716,7 @@ void implementRead(uint64_t* context) {
         print(selfieName);
         print((uint64_t*) ": reading into virtual address ");
         printHexadecimal(vbuffer, 8);
-        print((uint64_t*) " failed because the address is invalid");
-        println();
+        print((uint64_t*) " failed because the address is invalid\n");
       }
     }
   }
@@ -5832,8 +5835,7 @@ void implementWrite(uint64_t* context) {
           print(selfieName);
           print((uint64_t*) ": writing into virtual address ");
           printHexadecimal(vbuffer, 8);
-          print((uint64_t*) " failed because the address is unmapped");
-          println();
+          print((uint64_t*) " failed because the address is unmapped\n");
         }
       }
     } else {
@@ -5845,8 +5847,7 @@ void implementWrite(uint64_t* context) {
         print(selfieName);
         print((uint64_t*) ": writing into virtual address ");
         printHexadecimal(vbuffer, 8);
-        print((uint64_t*) " failed because the address is invalid");
-        println();
+        print((uint64_t*) " failed because the address is invalid\n");
       }
     }
   }
@@ -5913,8 +5914,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
             print(selfieName);
             print((uint64_t*) ": detected symbolic value ");
             printSymbolicMemory(mrvc);
-            print((uint64_t*) " in filename of open call");
-            println();
+            print((uint64_t*) " in filename of open call\n");
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           }
@@ -5941,8 +5941,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
           print(selfieName);
           print((uint64_t*) ": opening file with name at virtual address ");
           printHexadecimal(vaddr, 8);
-          print((uint64_t*) " failed because the address is unmapped");
-          println();
+          print((uint64_t*) " failed because the address is unmapped\n");
         }
       }
     } else {
@@ -5950,8 +5949,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
         print(selfieName);
         print((uint64_t*) ": opening file with name at virtual address ");
         printHexadecimal(vaddr, 8);
-        print((uint64_t*) " failed because the address is invalid");
-        println();
+        print((uint64_t*) " failed because the address is invalid\n");
       }
     }
   }
@@ -5996,8 +5994,7 @@ void implementOpen(uint64_t* context) {
       print(selfieName);
       print((uint64_t*) ": opening file with name at virtual address ");
       printHexadecimal(vfilename, 8);
-      print((uint64_t*) " failed because the name is too long");
-      println();
+      print((uint64_t*) " failed because the name is too long\n");
     }
   }
 
@@ -6041,8 +6038,7 @@ void implementMalloc(uint64_t* context) {
     print(selfieName);
     print((uint64_t*) ": trying to malloc ");
     printInteger(size);
-    print((uint64_t*) " bytes net");
-    println();
+    print((uint64_t*) " bytes net\n");
   }
 
   size = roundUp(size, SIZEOFUINT64);
@@ -6248,18 +6244,13 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
 
   if (debug_tlb) {
     print(selfieName);
-    print((uint64_t*) ": tlb access:");
-    println();
-    print((uint64_t*) " vaddr: ");
+    print((uint64_t*) ": tlb access:\n vaddr: ");
     printBinary(vaddr, CPUBITWIDTH);
-    println();
-    print((uint64_t*) " page:  ");
+    print((uint64_t*) "\n page:  ");
     printBinary(page * PAGESIZE, CPUBITWIDTH);
-    println();
-    print((uint64_t*) " frame: ");
+    print((uint64_t*) "\n frame: ");
     printBinary(frame, CPUBITWIDTH);
-    println();
-    print((uint64_t*) " paddr: ");
+    print((uint64_t*) "\n paddr: ");
     printBinary(paddr, CPUBITWIDTH);
     println();
   }
@@ -7488,14 +7479,12 @@ void do_ecall() {
   } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
       print(selfieName);
-      print((uint64_t*) ": context switching during recording is unsupported");
-      println();
+      print((uint64_t*) ": context switching during recording is unsupported\n");
 
       exit(EXITCODE_BADARGUMENTS);
     } else if (symbolic) {
       print(selfieName);
-      print((uint64_t*) ": context switching during symbolic execution is unsupported");
-      println();
+      print((uint64_t*) ": context switching during symbolic execution is unsupported\n");
 
       exit(EXITCODE_BADARGUMENTS);
     } else {
@@ -7644,8 +7633,7 @@ void printSymbolicMemory(uint64_t svc) {
     printHexadecimal(*(los + svc), 0);
     print((uint64_t*) "=malloc(");
     printInteger(*(ups + svc));
-    print((uint64_t*) ")}");
-    println();
+    print((uint64_t*) ")}\n");
     return;
   } else if (*(vaddrs + svc) < NUMBEROFREGISTERS)
     printRegister(*(vaddrs + svc));
@@ -7663,10 +7651,9 @@ void printSymbolicMemory(uint64_t svc) {
     printInteger(*(ups + svc));
   }
   if (*(types + svc))
-    print((uint64_t*) ")}");
+    print((uint64_t*) ")}\n");
   else
-    print((uint64_t*) "]}");
-  println();
+    print((uint64_t*) "]}\n");
 }
 
 uint64_t cardinality(uint64_t lo, uint64_t up) {
@@ -7846,8 +7833,7 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t t
   if (mrvc < trb) {
     // we do not support potentially aliased constrained memory
     print(selfieName);
-    print((uint64_t*) ": detected potentially aliased constrained memory");
-    println();
+    print((uint64_t*) ": detected potentially aliased constrained memory\n");
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
@@ -7956,8 +7942,7 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, u
       } else {
         // we cannot handle non-singleton interval intersections in comparison
         print(selfieName);
-        print((uint64_t*) ": detected non-singleton interval intersection");
-        println();
+        print((uint64_t*) ": detected non-singleton interval intersection\n");
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
@@ -8070,8 +8055,7 @@ void throwException(uint64_t exception, uint64_t faultingPage) {
       printException(exception, faultingPage);
       print((uint64_t*) " exception in presence of ");
       printException(getException(currentContext), getFaultingPage(currentContext));
-      print((uint64_t*) " exception");
-      println();
+      print((uint64_t*) " exception\n");
 
       exit(EXITCODE_MULTIPLEEXCEPTIONERROR);
     }
@@ -8087,8 +8071,7 @@ void throwException(uint64_t exception, uint64_t faultingPage) {
     printHexadecimal((uint64_t) currentContext, 8);
     print((uint64_t*) " throws ");
     printException(exception, faultingPage);
-    print((uint64_t*) " exception");
-    println();
+    print((uint64_t*) " exception\n");
   }
 }
 
@@ -8578,18 +8561,16 @@ void printProfile() {
   printInteger(getTotalNumberOfInstructions());
   print((uint64_t*) " executed instructions and ");
   printFixedPointRatio(pused(), MEGABYTE);
-  print((uint64_t*) "MB mapped memory");
-  println();
+  print((uint64_t*) "MB mapped memory\n");
 
   if (getTotalNumberOfInstructions() > 0) {
     printInstructionCounters();
 
     print(selfieName);
     if (sourceLineNumber != (uint64_t*) 0)
-      print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max");
+      print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max\n");
     else
-      print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max");
-    println();
+      print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max\n");
 
     printPerInstructionProfile((uint64_t*) ": calls:   ", calls, callsPerProcedure);
     printPerInstructionProfile((uint64_t*) ": loops:   ", iterations, iterationsPerLoop);
@@ -8964,8 +8945,7 @@ uint64_t* palloc() {
         freePageFrameMemory = freePageFrameMemory - PAGESIZE;
     } else {
       print(selfieName);
-      print((uint64_t*) ": palloc out of physical memory");
-      println();
+      print((uint64_t*) ": palloc out of physical memory\n");
 
       exit(EXITCODE_OUTOFPHYSICALMEMORY);
     }
@@ -8997,8 +8977,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
       storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, tc);
     else {
       print(selfieName);
-      print((uint64_t*) ": ealloc out of memory");
-      println();
+      print((uint64_t*) ": ealloc out of memory\n");
 
       exit(EXITCODE_OUTOFTRACEMEMORY);
     }
@@ -9176,8 +9155,7 @@ uint64_t handleDivisionByZero(uint64_t* context) {
   print(selfieName);
   print((uint64_t*) ": division by zero");
   if (record) {
-    print((uint64_t*) ", replaying...");
-    println();
+    print((uint64_t*) ", replaying...\n");
 
     replayTrace();
 
@@ -9238,8 +9216,7 @@ uint64_t mipster(uint64_t* toContext) {
   uint64_t timeout;
   uint64_t* fromContext;
 
-  print((uint64_t*) "mipster");
-  println();
+  print((uint64_t*) "mipster\n");
 
   timeout = TIMESLICE;
 
@@ -9265,8 +9242,7 @@ uint64_t mipster(uint64_t* toContext) {
 uint64_t hypster(uint64_t* toContext) {
   uint64_t* fromContext;
 
-  print((uint64_t*) "hypster");
-  println();
+  print((uint64_t*) "hypster\n");
 
   while (1) {
     fromContext = hypster_switch(toContext, TIMESLICE);
@@ -9289,8 +9265,7 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
   printInteger(mix);
   print((uint64_t*) "% mipster/");
   printInteger(100 - mix);
-  print((uint64_t*) "% hypster)");
-  println();
+  print((uint64_t*) "% hypster)\n");
 
   mslice = TIMESLICE;
 
@@ -9397,8 +9372,7 @@ void mapUnmappedPages(uint64_t* context) {
 }
 
 uint64_t minster(uint64_t* toContext) {
-  print((uint64_t*) "minster");
-  println();
+  print((uint64_t*) "minster\n");
 
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
@@ -9410,8 +9384,7 @@ uint64_t minster(uint64_t* toContext) {
 }
 
 uint64_t mobster(uint64_t* toContext) {
-  print((uint64_t*) "mobster");
-  println();
+  print((uint64_t*) "mobster\n");
 
   // does not handle page faults, relies on fancy hypsters to do that
   return minmob(toContext);
@@ -9461,8 +9434,7 @@ uint64_t monster(uint64_t* toContext) {
   uint64_t timeout;
   uint64_t* fromContext;
 
-  print((uint64_t*) "monster");
-  println();
+  print((uint64_t*) "monster\n");
 
   b = 0;
 
@@ -9530,8 +9502,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   if (binaryLength == 0) {
     print(selfieName);
-    print((uint64_t*) ": nothing to run, debug, or host");
-    println();
+    print((uint64_t*) ": nothing to run, debug, or host\n");
 
     return EXITCODE_BADARGUMENTS;
   }
@@ -9725,8 +9696,7 @@ void selfie_printDimacs() {
       variable = variable + 1;
     }
 
-    print((uint64_t*) "0");
-    println();
+    print((uint64_t*) "0\n");
 
     clause = clause + 1;
   }
