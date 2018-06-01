@@ -9191,17 +9191,18 @@ void symbolic_do_remu() {
   // @push: quotient, RD
 
   if (getLowerFromReg(rs2) == getUpperFromReg(rs2)) {
-    if (getLowerFromReg(rs2) != 0) {
+    divisor = getLowerFromReg(rs2);
+
+    if (divisor != 0) {
       if (rd != REG_ZR) {
         forcePrecise(currentContext, rs1, rs2);
-        divisor = getLowerFromReg(rs2);
 
         // push quotient
         if (areSourceRegsConcrete() == 0) {
           // check for wrap-around
           if (getUpperFromReg(rs1) > getLowerFromReg(rs1)) {
             print(selfieName);
-            print((uint64_t*) ": modulo operation does not support wrapped interval at pc=");
+            print((uint64_t*) ": modulo operation does not support wrapped-around intervals at pc=");
             printHexadecimal(pc, 0);
             println();
             exit(EXITCODE_BADARGUMENTS);
@@ -9217,24 +9218,27 @@ void symbolic_do_remu() {
         saveState(*(registers + rd));
 
         // semantics of unsigned interval remainder operation
+
+        // legal case 1: most ambigous interval
+        // the interval already contains all possible residues 
         if (cardinality(*(registers + rs1)) + 1 >= divisor) {
           setLower(0, tc);
           setUpper(divisor - 1, tc);
 
-        } else {
-          if (getUpperFromReg(rs1) / divisor - getLowerFromReg(rs1) / divisor == 0) {
-            setLower(getLowerFromReg(rs1) % divisor, tc);
-            setUpper(getUpperFromReg(rs1) % divisor, tc);
+        // legal case 2: the lower and the upper value are in the same residue class
+        } else if (getLowerFromReg(rs1) / divisor == getUpperFromReg(rs1) / divisor) {
+          setLower(getLowerFromReg(rs1) % divisor, tc);
+          setUpper(getUpperFromReg(rs1) % divisor, tc);
 
-          } else {
+        // illegal: operation would cause splitting the interval into two sub-intervals
+        } else {
             print(selfieName);
-            print((uint64_t*) ": modulo operation would split interval at pc=");
+            print((uint64_t*) ": invalid modulo operation at pc=");
             printHexadecimal(pc, 0);
             println();
             exit(EXITCODE_BADARGUMENTS);
-          }
-        }
-
+          } 
+        
         setStateFromReg(rs1, rs2, tc);
         updateRegState(rd, tc);
 
