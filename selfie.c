@@ -8837,22 +8837,14 @@ uint64_t cardinalityCheck(uint64_t tc1, uint64_t tc2) {
   diff1 = getUpper(tc1) - getLower(tc1);
   diff2 = getUpper(tc2) - getLower(tc2);
 
-  if (diff1 == UINT64_MAX)
+  // optimization
+  if (cardinality(tc1) == 0)
     return 0;
-  else if (diff2 == UINT64_MAX)
+  else if (cardinality(tc2) == 0)
     return 0;
-  else if (diff1 + diff2 < diff1) {
-    print(selfieName);
-    print((uint64_t*) ": interval becomes too large at pc=");
-    printHexadecimal(pc, 0);
-    print((uint64_t*) " with two symbolic values");
-    println();
 
-    throwException(EXCEPTION_IMPRECISE, 0);
-    return 0;
-  }
-
-  return 1;
+  // cardinality([a,b] + [c,d]) <= 2^CPUBITWIDTH
+  return diff1 <= UINT64_MAX - diff2;
 }
 
 uint64_t cardinalityCheckMul(uint64_t tc1, uint64_t tc2) {
