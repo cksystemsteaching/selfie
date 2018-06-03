@@ -1021,7 +1021,7 @@ void do_divu();
 void constrain_divu();
 
 void do_remu();
-void constrain_remu_wrapped();
+void constrain_remu_step_1();
 void constrain_remu();
 
 void do_sltu();
@@ -1105,13 +1105,12 @@ void initSymbolicEngine();
 void printSymbolicMemory(uint64_t svc);
 void printOverApprox();
 
-uint64_t cardinality(uint64_t lo, uint64_t up);
-uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
-uint64_t gcd(uint64_t n1, uint64_t n2);
-uint64_t mulBoundsDistance(uint64_t lo, uint64_t up, uint64_t k);
-uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k);
-uint64_t stride_interval_remu(uint64_t lo, uint64_t up, uint64_t step, uint64_t k);
+uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
+uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
+uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k);
+uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t k);
 uint64_t isPowerOfTwo(uint64_t n);
+uint64_t gcd(uint64_t n1, uint64_t n2);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg);
@@ -1130,6 +1129,7 @@ void storeRegisterMemory(uint64_t reg, uint64_t value);
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
 
 void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
+void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone);
 
 void takeBranch(uint64_t b, uint64_t howManyMore);
 void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t howManyMore);
@@ -1181,9 +1181,9 @@ uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
 uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
 uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
 
-uint64_t* reg_mul    = (uint64_t*) 0;
-uint64_t* reg_div    = (uint64_t*) 0;
-uint64_t* reg_rem    = (uint64_t*) 0;
+uint64_t* reg_mul     = (uint64_t*) 0;
+uint64_t* reg_div     = (uint64_t*) 0;
+uint64_t* reg_rem     = (uint64_t*) 0;
 uint64_t* reg_rem_typ = (uint64_t*) 0;
 uint64_t* reg_has_mul_div_mod = (uint64_t*) 0;
 
@@ -6344,6 +6344,8 @@ void constrain_lui() {
 
     // rd has no constraint
     setConstraint(rd, 0, 0, 0, 0, 0);
+
+    setCorrection(rd, 0, 0, 0, 0, 0);
   }
 }
 
@@ -6424,17 +6426,10 @@ void constrain_addi() {
         // rd inherits rs1 constraint
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
 
-        // correction
-        if (*(reg_has_mul_div_mod + rs1) == 0) {
-          *(reg_has_mul_div_mod + rd) = 1;
-          *(reg_mul + rd) = 1;
-        } else {
-          *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1);
-          *(reg_mul + rd) = *(reg_mul + rs1);
-        }
-        *(reg_div + rd) = *(reg_div + rs1);
-        *(reg_rem + rd) = *(reg_rem + rs1);
-        *(reg_rem_typ + rd) = *(reg_rem_typ + rs1);
+        if (*(reg_has_mul_div_mod + rs1) == 0)
+          setCorrection(rd, 1, 0, 0, 0, 1);
+        else
+          setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
 
         //step
         *(reg_steps + rd) = *(reg_steps + rs1);
@@ -6479,7 +6474,7 @@ void do_add() {
 void constrain_add() {
   uint64_t add_los;
   uint64_t add_ups;
-  uint64_t ccardinality;
+  uint64_t cnd;
   uint64_t gcd_steps;
   uint64_t i_max;
 
@@ -6522,11 +6517,11 @@ void constrain_add() {
   *(reg_typ + rd) = 0;
 
   // interval semantics of add
-  ccardinality = combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
-  if (ccardinality == 0) {
+  cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
+  if (cnd == 0) {
     // TODO: improve
-    *(reg_los + rd)   = 0;
-    *(reg_ups + rd)   = UINT64_MAX;
+    add_los = 0;
+    add_ups = UINT64_MAX;
     *(reg_steps + rd) = 1;
 
     printOverApprox((uint64_t*) "add");
@@ -6541,7 +6536,8 @@ void constrain_add() {
       // need to warn about their earlier presence if used in comparisons
       setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
 
-      if (ccardinality != 0) {
+      // interval semantics of add
+      if (cnd != 0) {
         gcd_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
 
         if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
@@ -6564,10 +6560,11 @@ void constrain_add() {
           }
         }
 
-        *(reg_los + rd)   = add_los;
-        *(reg_ups + rd)   = add_ups;
         *(reg_steps + rd) = gcd_steps;
       }
+
+      *(reg_los + rd) = add_los;
+      *(reg_ups + rd) = add_ups;
 
     } else if (*(reg_hasmn + rs1)) {
       // rs1 constraint has already minuend and cannot have another addend
@@ -6582,24 +6579,16 @@ void constrain_add() {
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2),*(reg_coups + rs1) + *(reg_ups + rs2));
 
-      // correction
-      if (*(reg_has_mul_div_mod + rs1) == 0) {
-        *(reg_has_mul_div_mod + rd) = 1;
-        *(reg_mul + rd) = 1;
-      } else {
-        *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1);
-        *(reg_mul + rd) = *(reg_mul + rs1);
-      }
-      *(reg_div + rd) = *(reg_div + rs1);
-      *(reg_rem + rd) = *(reg_rem + rs1);
-      *(reg_rem_typ + rd) = *(reg_rem_typ + rs1);
+      if (*(reg_has_mul_div_mod + rs1) == 0)
+        setCorrection(rd, 1, 0, 0, 0, 1);
+      else
+        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
 
       // interval semantics of add
-      if (ccardinality != 0) {
+      if (cnd != 0)
         *(reg_steps + rd) = *(reg_steps + rs1);
-        *(reg_los + rd)   = add_los;
-        *(reg_ups + rd)   = add_ups;
-      }
+      *(reg_los + rd)   = add_los;
+      *(reg_ups + rd)   = add_ups;
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -6615,24 +6604,16 @@ void constrain_add() {
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2),*(reg_ups + rs1) + *(reg_coups + rs2));
 
-      // correction
-      if (*(reg_has_mul_div_mod + rs2) == 0) {
-        *(reg_has_mul_div_mod + rd) = 1;
-        *(reg_mul + rd) = 1;
-      } else {
-        *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs2);
-        *(reg_mul + rd) = *(reg_mul + rs2);
-      }
-      *(reg_div + rd) = *(reg_div + rs2);
-      *(reg_rem + rd) = *(reg_rem + rs2);
-      *(reg_rem_typ + rd) = *(reg_rem_typ + rs2);
+      if (*(reg_has_mul_div_mod + rs2) == 0)
+        setCorrection(rd, 1, 0, 0, 0, 1);
+      else
+        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_has_mul_div_mod + rs2));
 
       // interval semantics of add
-      if (ccardinality != 0) {
+      if (cnd != 0)
         *(reg_steps + rd) = *(reg_steps + rs2);
-        *(reg_los + rd)   = add_los;
-        *(reg_ups + rd)   = add_ups;
-      }
+      *(reg_los + rd)   = add_los;
+      *(reg_ups + rd)   = add_ups;
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
@@ -6656,7 +6637,7 @@ void do_sub() {
 void constrain_sub() {
   uint64_t sub_los;
   uint64_t sub_ups;
-  uint64_t ccardinality;
+  uint64_t cnd;
   uint64_t gcd_steps;
   uint64_t i_max;
 
@@ -6708,11 +6689,11 @@ void constrain_sub() {
   *(reg_typ + rd) = 0;
 
   // interval semantics of sub
-  ccardinality = combinedCardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
-  if (ccardinality == 0) {
+  cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
+  if (cnd == 0) {
     // TODO: improve
-    *(reg_los + rd)   = 0;
-    *(reg_ups + rd)   = UINT64_MAX;
+    sub_los = 0;
+    sub_ups = UINT64_MAX;
     *(reg_steps + rd) = 1;
 
     printOverApprox((uint64_t*) "sub");
@@ -6728,8 +6709,9 @@ void constrain_sub() {
       // need to warn about their earlier presence if used in comparisons
       setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
 
-      if (ccardinality != 0) {
-        gcd_steps         = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
+      // interval semantics of sub
+      if (cnd != 0) {
+        gcd_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
 
         if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
           if (*(reg_steps + rs1) == gcd_steps) {
@@ -6751,10 +6733,11 @@ void constrain_sub() {
           }
         }
 
-        *(reg_los + rd)   = sub_los;
-        *(reg_ups + rd)   = sub_ups;
         *(reg_steps + rd) = gcd_steps;
       }
+
+      *(reg_los + rd)   = sub_los;
+      *(reg_ups + rd)   = sub_ups;
 
     } else if (*(reg_hasmn + rs1)) {
       // rs1 constraint has already minuend and cannot have another subtrahend
@@ -6769,24 +6752,16 @@ void constrain_sub() {
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
 
-      // corection
-      if (*(reg_has_mul_div_mod + rs1) == 0) {
-        *(reg_has_mul_div_mod + rd) = 1;
-        *(reg_mul + rd) = 1;
-      } else {
-        *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1);
-        *(reg_mul + rd) = *(reg_mul + rs1);
-      }
-      *(reg_div + rd) = *(reg_div + rs1);
-      *(reg_rem + rd) = *(reg_rem + rs1);
-      *(reg_rem_typ + rd) = *(reg_rem_typ + rs1);
+      if (*(reg_has_mul_div_mod + rs1) == 0)
+        setCorrection(rd, 1, 0, 0, 0, 1);
+      else
+        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
 
-      // interval semantics
-      if (ccardinality != 0) {
+      // interval semantics of sub
+      if (cnd != 0)
         *(reg_steps + rd) = *(reg_steps + rs1);
-        *(reg_los + rd)   = sub_los;
-        *(reg_ups + rd)   = sub_ups;
-      }
+      *(reg_los + rd) = sub_los;
+      *(reg_ups + rd) = sub_ups;
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -6802,24 +6777,16 @@ void constrain_sub() {
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
 
-      // correction
-      if (*(reg_has_mul_div_mod + rs2) == 0) {
-        *(reg_has_mul_div_mod + rd) = 1;
-        *(reg_mul + rd) = 1;
-      } else {
-        *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs2);
-        *(reg_mul + rd) = *(reg_mul + rs2);
-      }
-      *(reg_div + rd) = *(reg_div + rs2);
-      *(reg_rem + rd) = *(reg_rem + rs2);
-      *(reg_rem_typ + rd) = *(reg_rem_typ + rs2);
+      if (*(reg_has_mul_div_mod + rs2) == 0)
+        setCorrection(rd, 1, 0, 0, 0, 1);
+      else
+        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_has_mul_div_mod + rs2));
 
       // interval semantics of sub
-      if (ccardinality != 0) {
+      if (cnd != 0)
         *(reg_steps + rd) = *(reg_steps + rs2);
-        *(reg_los + rd)   = sub_los;
-        *(reg_ups + rd)   = sub_ups;
-      }
+      *(reg_los + rd)   = sub_los;
+      *(reg_ups + rd)   = sub_ups;
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
@@ -6874,16 +6841,13 @@ void constrain_mul() {
       } else {
         // rd inherits rs1 constraint since rs2 has none
         // assert: rs2 interval is singleton
-        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-          *(reg_colos + rs1),
-          *(reg_coups + rs1));
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
 
-        // correction
-        *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1) + 1;
-        *(reg_mul + rd) = *(reg_los + rs2);
+        setCorrection(rd, *(reg_los + rs2), 0, 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
         // interval semantics of mul
-        if (mulBoundsDistance(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2))) {
+        if (mul_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2))) {
+          // TODO: improve
           *(reg_steps + rd) = 1;
           *(reg_los + rd)   = 0;
           *(reg_ups + rd)   = UINT64_MAX;
@@ -6908,16 +6872,13 @@ void constrain_mul() {
       } else {
         // rd inherits rs2 constraint since rs1 has none
         // assert: rs1 interval is singleton
-        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-          *(reg_colos + rs2),
-          *(reg_coups + rs2));
+        setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_colos + rs2), *(reg_coups + rs2));
 
-        // correction
-        *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs2) + 1;
-        *(reg_mul + rd) = *(reg_los + rs1);
+        setCorrection(rd, *(reg_los + rs1), 0, 0, 0, *(reg_has_mul_div_mod + rs2) + 1);
 
         // interval semantics of mul
-        if (mulBoundsDistance(*(reg_los + rs2), *(reg_ups + rs2), *(reg_los + rs1))) {
+        if (mul_condition(*(reg_los + rs2), *(reg_ups + rs2), *(reg_los + rs1))) {
+          // TODO: improve
           *(reg_steps + rd) = 1;
           *(reg_los + rd)   = 0;
           *(reg_ups + rd)   = UINT64_MAX;
@@ -6996,15 +6957,11 @@ void constrain_divu() {
           } else {
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
-            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1),
-              *(reg_coups + rs1));
+            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
 
-            // correction
-            *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1) + 1;
-            *(reg_div + rd) = *(reg_los + rs2);
+            setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
-            // step
+            // step computation
             if (*(reg_steps + rs1) < *(reg_los + rs2)) {
               if (*(reg_los + rs2) % *(reg_steps + rs1) != 0)
                 printOverApprox((uint64_t*) "div");
@@ -7026,7 +6983,6 @@ void constrain_divu() {
               if (div_los != div_ups)
                 if (div_los != div_ups + *(reg_steps + rd))
                   printOverApprox((uint64_t*) "div");
-
             } else {
               // rs1 constraint is not wrapped
               *(reg_los + rd) = div_los;
@@ -7083,10 +7039,11 @@ void do_remu() {
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
-void constrain_remu_wrapped() {
+void constrain_remu_step_1() {
   uint64_t rem_lo;
   uint64_t rem_up;
   uint64_t divisor;
+  uint64_t rem_typ;
   uint64_t rem_typ1;
   uint64_t rem_typ2;
 
@@ -7096,25 +7053,22 @@ void constrain_remu_wrapped() {
   divisor = *(reg_los + rs2);
 
   if (rem_lo <= rem_up) {
-    // [lo, up] interval is not wrapped
-    rem_typ1 = interval_remu(rem_lo, rem_up, divisor);
-    if (rem_typ1 == 0) {
+    // rs1 interval is not wrapped
+    rem_typ = remu_condition(rem_lo, rem_up, divisor);
+    if (rem_typ == 0) {
       rem_lo = rem_lo % divisor;
       rem_up = rem_up % divisor;
-    } else if (rem_typ1 == 2) {
-      rem_lo = 0;
-      rem_up = divisor - 1;
-    } else if (rem_typ1 == 1) {
+    } else {
       rem_lo = 0;
       rem_up = divisor - 1;
 
-      printOverApprox((uint64_t*) "rem");
+      if (rem_typ == 1)
+        printOverApprox((uint64_t*) "rem");
     }
   } else {
-    // TODO: improve
     // [lo, up] interval is wrapped
-    rem_typ1 = interval_remu(0, rem_up, divisor);           // [0, up]
-    rem_typ2 = interval_remu(rem_lo, UINT64_MAX, divisor);  // [lo, UINT64_MAX]
+    rem_typ1 = remu_condition(0, rem_up, divisor);           // [0, up]
+    rem_typ2 = remu_condition(rem_lo, UINT64_MAX, divisor);  // [lo, UINT64_MAX]
     if (rem_typ1 == 2) {
       rem_lo = 0;
       rem_up = divisor - 1;
@@ -7127,8 +7081,8 @@ void constrain_remu_wrapped() {
         rem_lo = 0;
         rem_up = rem_up % divisor;
       } else if (rem_up % divisor + 1 >= rem_lo % divisor) {
-          rem_lo = 0;
-          rem_up = UINT64_MAX % divisor;
+        rem_lo = 0;
+        rem_up = UINT64_MAX % divisor;
       } else {
         rem_lo = 0;
         rem_up = UINT64_MAX % divisor;
@@ -7161,17 +7115,13 @@ void constrain_remu_wrapped() {
   } else {
     // rd inherits rs1 constraint since rs2 has none
     // assert: rs2 interval is singleton
-    setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-      *(reg_colos + rs1),
-      *(reg_coups + rs1));
+    setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
 
-    // TODO: improve
-    *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1) + 1;
-    *(reg_rem + rd)     = *(reg_los + rs2);
-    *(reg_rem_typ + rd) = rem_typ1;
+    setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_has_mul_div_mod + rs1) + 1);
 
-    *(reg_los + rd)     = rem_lo;
-    *(reg_ups + rd)     = rem_up;
+    *(reg_los + rd)   = rem_lo;
+    *(reg_ups + rd)   = rem_up;
+    *(reg_steps + rd) = 1;
   }
 
 }
@@ -7182,8 +7132,7 @@ void constrain_remu() {
   uint64_t divisor;
   uint64_t step;
   uint64_t gcd_step_k;
-  uint64_t rem_typ1;
-  uint64_t rem_typ2;
+  uint64_t rem_typ;
   uint64_t lcm;
 
   if (*(reg_los + rs2) != 0) {
@@ -7193,56 +7142,50 @@ void constrain_remu() {
 
         if (*(reg_hasco + rs1)) {
           // interval semantics of remu
+          if (*(reg_steps + rs1) == 1) {
+            constrain_remu_step_1();
+            return;
+          }
+
           rem_lo  = *(reg_los + rs1);
           rem_up  = *(reg_ups + rs1);
           divisor = *(reg_los + rs2);
           step    = *(reg_steps + rs1);
 
-          if (step == 1) {
-            constrain_remu_wrapped();
-            return;
-          }
-
           if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
-            // [rem_lo, rem_up] interval is not wrapped
-            rem_typ1 = stride_interval_remu(rem_lo, rem_up, step, divisor);
-            if (rem_typ1 == 0) {
-              rem_lo   = rem_lo % divisor;
-              rem_up   = rem_up % divisor;
+            // rs1 interval is not wrapped
+            rem_typ = stride_remu_condition(rem_lo, rem_up, step, divisor);
+            if (rem_typ == 0) {
+              rem_lo = rem_lo % divisor;
+              rem_up = rem_up % divisor;
               *(reg_steps + rd) = step;
-            } else if (rem_typ1 == 1) {
-              rem_up = (rem_lo + ((divisor-1- rem_lo%divisor)/step)*step) % divisor;
+            } else if (rem_typ == 1) {
+              rem_up = (rem_lo + ((divisor-1-rem_lo%divisor)/step)*step) % divisor;
               rem_lo = (rem_lo + ((divisor-1-rem_lo%divisor)/step + 1)*step) % divisor;
               *(reg_steps + rd) = step;
 
               printOverApprox((uint64_t*) "rem");
-            } else if (rem_typ1 == 2) {
-              gcd_step_k = gcd(step, divisor);
-              rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
-              rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
-              *(reg_steps + rd) = gcd_step_k;
             } else {
               gcd_step_k = gcd(step, divisor);
               rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
               rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
               *(reg_steps + rd) = gcd_step_k;
 
-              printOverApprox((uint64_t*) "rem");
+              if (rem_typ == 10)
+                printOverApprox((uint64_t*) "rem");
             }
+
           } else if (isPowerOfTwo(divisor)) {
+            // rs1 interval is wrapped
             gcd_step_k = gcd(step, divisor);
             lcm = (rem_up * rem_lo) / gcd_step_k;
-            if (rem_up - rem_lo >= lcm - step) {
-              rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
-              *(reg_ups + rd) = ((divisor - 1)/gcd_step_k)*gcd_step_k;
-              *(reg_steps + rd) = gcd_step_k;
-            } else {
-              rem_up = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
-              *(reg_ups + rd) = ((divisor - 1)/gcd_step_k)*gcd_step_k;
-              *(reg_steps + rd) = gcd_step_k;
 
+            if (rem_up - rem_lo < lcm - step)
               printOverApprox((uint64_t*) "rem^2");
-            }
+
+            rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
+            rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
+            *(reg_steps + rd) = gcd_step_k;
 
           } else {
             print(selfieName);
@@ -7268,26 +7211,16 @@ void constrain_remu() {
           } else if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
-            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1),
-              *(reg_coups + rs1));
+            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
 
-            // TODO: improve
-            *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1) + 1;
-            *(reg_rem + rd)     = *(reg_los + rs2);
-            *(reg_rem_typ + rd) = rem_typ1;
+            setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_has_mul_div_mod + rs1) + 1);
 
           } else if (isPowerOfTwo(divisor)) {
             // rd inherits rs1 constraint since rs2 has none
             // assert: rs2 interval is singleton
-            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1),
-              *(reg_coups + rs1));
+            setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
 
-            // TODO: improve
-            *(reg_has_mul_div_mod + rd) = *(reg_has_mul_div_mod + rs1) + 1;
-            *(reg_rem + rd)     = *(reg_los + rs2);
-            *(reg_rem_typ + rd) = rem_typ1;
+            setCorrection(rd, 0, 0, *(reg_los + rs2), 0, *(reg_has_mul_div_mod + rs1) + 1);
           }
 
           *(reg_los + rd) = rem_lo;
@@ -7404,7 +7337,11 @@ void backtrack_sltu() {
       *(reg_los + vaddr) = *(los + tc);
       *(reg_ups + vaddr) = *(ups + tc);
 
+      *(reg_steps + vaddr) = *(steps + tc);
+
       setConstraint(vaddr, 0, 0, 0, 0, 0);
+
+      setCorrection(vaddr, 0, 0, 0, 0, 0);
 
       // restoring mrcc
       mrcc = *(tcs + tc);
@@ -7551,19 +7488,13 @@ uint64_t constrain_ld() {
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           }
-        }
-        else {
+        } else {
           setConstraint(rd, 0, 0, 0, 0, 0);
 
           *(reg_steps + rd) = 1;
         }
 
-
-        *(reg_mul + rd) = 0;
-        *(reg_div + rd) = 0;
-        *(reg_rem + rd) = 0;
-        *(reg_rem_typ + rd) = 0;
-        *(reg_has_mul_div_mod + rd) = 0;
+        setCorrection(rd, 0, 0, 0, 0, 0);
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -8121,35 +8052,20 @@ void printOverApprox(uint64_t* which) {
   println();
 }
 
-uint64_t cardinality(uint64_t lo, uint64_t up) {
-  // there are 2^64 values if the result is 0
-  return up - lo + 1;
-}
-
-uint64_t combinedCardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
+uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
   uint64_t c1;
   uint64_t c2;
 
-  c1 = cardinality(lo1, up1);
-  c2 = cardinality(lo2, up2);
+  c1 = up1 - lo1;
+  c2 = UINT64_MAX - (up2 - lo2);
 
-  if (c1 + c2 <= c1)
-    // there are at least 2^64 values
-    return 0;
-  else if (c1 + c2 <= c2)
-    // there are at least 2^64 values
-    return 0;
+  if (c1 <= c2)
+    return 1;
   else
-    return c1 + c2;
+    return 0;
 }
 
-uint64_t gcd(uint64_t n1, uint64_t n2) {
-  if (n1 == 0)
-    return n2;
-  return gcd(n2%n1, n1);
-}
-
-uint64_t mulBoundsDistance(uint64_t lo, uint64_t up, uint64_t k) {
+uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k) {
   uint64_t c1;
   uint64_t c2;
 
@@ -8162,7 +8078,14 @@ uint64_t mulBoundsDistance(uint64_t lo, uint64_t up, uint64_t k) {
   return 1;
 }
 
-uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k) {
+uint64_t gcd(uint64_t n1, uint64_t n2) {
+  if (n1 == 0)
+    return n2;
+
+  return gcd(n2%n1, n1);
+}
+
+uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k) {
   if (up - lo >= k - 1)
     return 2;
   else if (up/k - lo/k == 0)
@@ -8171,7 +8094,7 @@ uint64_t interval_remu(uint64_t lo, uint64_t up, uint64_t k) {
     return 1;
 }
 
-uint64_t stride_interval_remu(uint64_t lo, uint64_t up, uint64_t step, uint64_t k) {
+uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t k) {
   uint64_t lcm;
 
   lcm = (up * lo) / gcd(step, k);
@@ -8423,23 +8346,21 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
       up = up * *(reg_div + reg);
       costep = *(steps + mrvc);
     } else if (*(reg_rem + reg)) {
-      // TODO: improve
-      if (*(reg_rem_typ + reg) == 0) {
+      // probably there is no constrainted remu appeard in a condition in Selfie
+      if (*(reg_rem_typ + reg) == 1) {
         tmp1 = (*(los + mrvc) / *(reg_rem + reg)) * *(reg_rem + reg) + lo;
         tmp2 = (*(ups + mrvc) / *(reg_rem + reg)) * *(reg_rem + reg) + up;
         lo = (tmp1 / *(steps + mrvc)) * *(steps + mrvc) + *(steps + mrvc);
         up = (tmp2 / *(steps + mrvc)) * *(steps + mrvc);
         costep = *(reg_steps + reg);
       } else {
-        lo = *(los + mrvc);
-        up = *(ups + mrvc);
-        costep = *(steps + mrvc);
-
         print(selfieName);
-        print((uint64_t*) ": over-opproximation in backwards propagation of rem in a condition at ");
+        print((uint64_t*) ": detected a remu in a condition at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
     } else {
       costep = *(steps + mrvc);
@@ -8447,6 +8368,14 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
 
     storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, trb);
   }
+}
+
+void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone) {
+  *(reg_mul     + reg) = mul;
+  *(reg_div     + reg) = div;
+  *(reg_rem     + reg) = rem;
+  *(reg_rem_typ + reg) = rem_typ;
+  *(reg_has_mul_div_mod + reg) = hasone;
 }
 
 void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
@@ -8474,6 +8403,8 @@ void takeBranch(uint64_t b, uint64_t howManyMore) {
     *(reg_ups + rd) = b;
 
     setConstraint(rd, 0, 0, 0, 0, 0);
+
+    setCorrection(rd, 0, 0, 0, 0, 0);
   }
 }
 
