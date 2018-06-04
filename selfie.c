@@ -1238,6 +1238,65 @@ void initSymbolicEngine() {
 }
 
 // -----------------------------------------------------------------
+// ----------------------- TAINT ANALYSIS  -------------------------
+// -----------------------------------------------------------------
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+// ops
+uint64_t ADD  = 0;
+uint64_t SUB  = 1;
+uint64_t MUL  = 2;
+uint64_t DIVU = 3;
+uint64_t REMU = 4;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+uint64_t do_taint_flag = 0;
+
+uint64_t* taints  = (uint64_t*) 0;           // trace of tainted addresses
+
+uint64_t* reg_istainted   = (uint64_t*) 0;    // is register tainted
+
+uint64_t to_store_taint = 0;
+// symbolic numerical statistics
+// addi
+uint64_t nb_addis = 0;
+// add
+uint64_t nb_addrs1  = 0;
+uint64_t nb_addrs2  = 0;
+uint64_t nb_addss   = 0;
+// sub
+uint64_t nb_subrs1  = 0;
+uint64_t nb_subrs2  = 0;
+uint64_t nb_subss   = 0;
+// mul
+uint64_t nb_mulrs1  = 0;
+uint64_t nb_mulrs2  = 0;
+uint64_t nb_mulss   = 0;
+// div
+uint64_t nb_divurs1 = 0;
+uint64_t nb_divurs2 = 0;
+uint64_t nb_divuss  = 0;
+// mod
+uint64_t nb_remurs1 = 0;
+uint64_t nb_remurs2 = 0;
+uint64_t nb_remuss  = 0;
+
+void printSymbolicCounters();
+void taint_unop();
+void taint_binop(uint64_t op);
+void incr_opss(uint64_t op);
+void incr_oprs1(uint64_t op);
+void incr_oprs2(uint64_t op);
+
+void storeTaintMemory(uint64_t offset);
+// ------------------------- INITIALIZATION ------------------------
+
+void initTaintEngine() {
+  taints = zalloc(maxTraceLength * SIZEOFUINT64);
+
+  reg_istainted   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+}
+// -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
@@ -5648,6 +5707,7 @@ void implementRead(uint64_t* context) {
               storePhysicalMemory(buffer, mrvc);
             }
 
+            to_store_taint = 1;
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
               storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0);
@@ -6054,9 +6114,11 @@ void implementMalloc(uint64_t* context) {
       *(reg_ups + REG_A0) = size;
 
       if (mrcc > 0) {
-        if (isTraceSpaceAvailable())
+        if (isTraceSpaceAvailable()) {
+          to_store_taint = 0;
           // since there has been branching record malloc using vaddr == 0
           storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, tc);
+        }
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6394,6 +6456,9 @@ void do_addi() {
 
 void constrain_addi() {
   if (rd != REG_ZR) {
+
+    if(do_taint_flag) taint_unop();
+
     if (*(reg_typ + rs1)) {
       *(reg_typ + rd) = *(reg_typ + rs1);
 
@@ -6480,6 +6545,8 @@ void constrain_add() {
 
   if (rd == REG_ZR)
     return;
+
+  if(do_taint_flag) taint_binop(ADD);
 
   if (*(reg_typ + rs1)) {
     if (*(reg_typ + rs2)) {
@@ -6643,6 +6710,8 @@ void constrain_sub() {
 
   if (rd == REG_ZR)
     return;
+
+  if(do_taint_flag) taint_binop(SUB);
 
   if (*(reg_typ + rs1)) {
     if (*(reg_typ + rs2)) {
@@ -6814,6 +6883,9 @@ void constrain_mul() {
   uint64_t mul_ups;
 
   if (rd != REG_ZR) {
+
+    if(do_taint_flag) taint_binop(MUL);
+
     *(reg_typ + rd) = 0;
 
     mul_los = *(reg_los + rs1) * *(reg_los + rs2);
@@ -6930,6 +7002,9 @@ void constrain_divu() {
     if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
       // 0 is not in interval
       if (rd != REG_ZR) {
+
+        if(do_taint_flag) taint_binop(DIVU);
+
         *(reg_typ + rd) = 0;
 
         div_los = *(reg_los + rs1) / *(reg_ups + rs2);
@@ -7138,6 +7213,9 @@ void constrain_remu() {
   if (*(reg_los + rs2) != 0) {
     if (*(reg_hasco + rs2) == 0) {
       if (rd != REG_ZR) {
+
+        if(do_taint_flag) taint_binop(REMU);
+
         *(reg_typ + rd) = 0;
 
         if (*(reg_hasco + rs1)) {
@@ -7473,6 +7551,8 @@ uint64_t constrain_ld() {
 
         *(reg_steps + rd) = *(steps + mrvc);
 
+        *(reg_istainted + rd) = *(taints + mrvc);
+
         // assert: vaddr == *(vaddrs + mrvc)
 
         if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd))) {
@@ -7628,6 +7708,7 @@ uint64_t constrain_sd() {
         }
       }
 
+      to_store_taint =  *(reg_istainted + rs2);
       storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc);
 
       pc = pc + INSTRUCTIONSIZE;
@@ -8233,6 +8314,8 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 
     *(steps + mrvc) = step;
 
+    if(do_taint_flag) storeTaintMemory(mrvc);
+
     // assert: vaddr == *(vaddrs + mrvc)
 
     if (debug_symbolic) {
@@ -8258,6 +8341,8 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(steps + tc) = step;
 
     *(vaddrs + tc) = vaddr;
+
+    if(do_taint_flag) storeTaintMemory(tc);
 
     if (vaddr < NUMBEROFREGISTERS) {
       if (vaddr > 0)
@@ -8296,11 +8381,13 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
   }
 
   // always track constrained memory by using tc as most recent branch
+  //assert to_store_taint set
   storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
+  to_store_taint =  *(reg_istainted + reg);
   storeSymbolicMemory(pt, reg, value, 0, value, value, 1, tc);
 }
 
@@ -8366,6 +8453,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
       costep = *(steps + mrvc);
     }
 
+    to_store_taint = *(reg_istainted + reg);
     storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, trb);
   }
 }
@@ -9169,6 +9257,156 @@ void selfie_disassemble() {
 }
 
 // -----------------------------------------------------------------
+// --------------------------TAINT ANALYSIS ------------------------
+// -----------------------------------------------------------------
+
+void taint_unop() {
+  if (*(reg_istainted + rs1)) {
+    *(reg_istainted + rd) = 1;
+    nb_addis = nb_addis + 1;
+  }
+  else                        *(reg_istainted + rd) = 0;
+}
+
+void taint_binop(uint64_t op) {
+  if (*(reg_istainted + rs1)) {
+    *(reg_istainted + rd) = 1;
+
+    if (*(reg_istainted + rs2)) incr_opss(op);          // operation with two symbolics
+    else                        incr_oprs1(op);         // only rs1 symbolic
+  }
+  else if (*(reg_istainted + rs2))  {                   // only rs2 symbolic
+    *(reg_istainted + rd) = 1;
+    incr_oprs2(op);
+  }
+  else *(reg_istainted + rd) = 0;                        // concrete operation
+}
+
+void incr_opss(uint64_t op) {
+  if     (op == ADD)  nb_addss = nb_addss + 1;
+  else if(op == SUB)  nb_subss = nb_subss + 1;
+  else if(op == MUL)  nb_mulss = nb_mulss + 1;
+  else if(op == DIVU) nb_divuss = nb_divuss + 1;
+  else                nb_remuss = nb_remuss + 1;
+}
+
+void incr_oprs1(uint64_t op) {
+  if     (op == ADD)  nb_addrs1 = nb_addrs1 + 1;
+  else if(op == SUB)  nb_subrs1 = nb_subrs1 + 1;
+  else if(op == MUL)  nb_mulrs1 = nb_mulrs1 + 1;
+  else if(op == DIVU) nb_divurs1 = nb_divurs1 + 1;
+  else                nb_remurs1 = nb_remurs1 + 1;
+}
+
+void incr_oprs2(uint64_t op) {
+  if     (op == ADD)  nb_addrs2 = nb_addrs2 + 1;
+  else if(op == SUB)  nb_subrs2 = nb_subrs2 + 1;
+  else if(op == MUL)  nb_mulrs2 = nb_mulrs2 + 1;
+  else if(op == DIVU) nb_divurs2 = nb_divurs2 + 1;
+  else                nb_remurs2 = nb_remurs2 + 1;
+}
+
+void storeTaintMemory(uint64_t offset) {
+  *(taints + offset) = to_store_taint;
+}
+
+
+void printSymbolicCounters() {
+  println();
+  print((uint64_t*)"Symbolic analysis sum-up: ");
+  println();
+
+  print((uint64_t*)"Total immediate additions: ");
+  printInteger(ic_addi);
+  print((uint64_t*)" with ");
+  printInteger(nb_addis);
+  print((uint64_t*)"(");
+  printFixedPointPercentage(ic_addi, nb_addis);
+  print((uint64_t*)"%)");
+  println();
+
+  print((uint64_t*)"Total additions: ");
+  printInteger(ic_add);
+  print((uint64_t*)" with ");
+  printInteger(nb_addrs1 + nb_addrs2 + nb_addss);
+  print((uint64_t*)"(");
+  printFixedPointPercentage(ic_add, nb_addrs1 + nb_addrs2 + nb_addss);
+  print((uint64_t*)"%)");
+  print((uint64_t*)" symbolic implications (rs1:");
+  printInteger(nb_addrs1);
+  print((uint64_t*)", rs2:");
+  printInteger(nb_addrs2);
+  print((uint64_t*)", both:");
+  printInteger(nb_addss);
+  print((uint64_t*)")");
+  println();
+
+  print((uint64_t*)"Total subtractions: ");
+  printInteger(ic_sub);
+  print((uint64_t*)" with ");
+  printInteger(nb_subrs1 + nb_subrs2 + nb_subss);
+  print((uint64_t*)"(");
+  printFixedPointPercentage(ic_sub, nb_subrs1 + nb_subrs2 + nb_subss);
+  print((uint64_t*)"%)");
+  print((uint64_t*)" symbolic implications (rs1:");
+  printInteger(nb_subrs1);
+  print((uint64_t*)", rs2:");
+  printInteger(nb_subrs2);
+  print((uint64_t*)", both:");
+  printInteger(nb_subss);
+  print((uint64_t*)")");
+  println();
+
+  print((uint64_t*)"Total multiplications: ");
+  printInteger(ic_mul);
+  print((uint64_t*)" with ");
+  printInteger(nb_mulrs1 + nb_mulrs2 + nb_mulss);
+  print((uint64_t*)"(");
+  printFixedPointPercentage(ic_mul, nb_mulrs1 + nb_mulrs2 + nb_mulss);
+  print((uint64_t*)"%)");
+  print((uint64_t*)" symbolic implications (rs1:");
+  printInteger(nb_mulrs1);
+  print((uint64_t*)", rs2:");
+  printInteger(nb_mulrs2);
+  print((uint64_t*)", both:");
+  printInteger(nb_mulss);
+  print((uint64_t*)")");
+  println();
+
+  print((uint64_t*)"Total divisions: ");
+  printInteger(ic_divu);
+  print((uint64_t*)" with ");
+  printInteger(nb_divurs1 + nb_divurs2 + nb_divuss);
+  print((uint64_t*)"(");
+  printFixedPointPercentage(ic_divu, nb_divurs1 + nb_divurs2 + nb_divuss);
+  print((uint64_t*)"%)");
+  print((uint64_t*)" symbolic implications (rs1:");
+  printInteger(nb_divurs1);
+  print((uint64_t*)", rs2:");
+  printInteger(nb_divurs2);
+  print((uint64_t*)", both:");
+  printInteger(nb_divuss);
+  print((uint64_t*)")");
+  println();
+
+  print((uint64_t*)"Total remainders: ");
+  printInteger(ic_remu);
+  print((uint64_t*)" with ");
+  printInteger(nb_remurs1 + nb_remurs2 + nb_remuss);
+  print((uint64_t*)"(");
+  printFixedPointPercentage(ic_remu, nb_remurs1 + nb_remurs2 + nb_remuss);
+  print((uint64_t*)"%)");
+  print((uint64_t*)" symbolic implications (rs1:");
+  printInteger(nb_remurs1);
+  print((uint64_t*)"(, rs2:");
+  printInteger(nb_remurs2);
+  print((uint64_t*)", both:");
+  printInteger(nb_remuss);
+  print((uint64_t*)")");
+  println();
+}
+
+// -----------------------------------------------------------------
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
@@ -9502,9 +9740,11 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     mapPage(context, getPageOfVirtualAddress(vaddr), (uint64_t) palloc());
 
   if (symbolic) {
-    if (isTraceSpaceAvailable())
+    if (isTraceSpaceAvailable()) {
+      to_store_taint =  0;
       // always track initialized memory by using tc as most recent branch
       storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, tc);
+    }
     else {
       print(selfieName);
       print((uint64_t*) ": ealloc out of memory");
@@ -10059,6 +10299,7 @@ uint64_t selfie_run(uint64_t machine) {
     symbolic = 1;
 
     initSymbolicEngine();
+    if(do_taint_flag) initTaintEngine();
   }
 
   if (machine == MONSTER) {
@@ -10121,6 +10362,7 @@ uint64_t selfie_run(uint64_t machine) {
   println();
 
   printProfile();
+  if(do_taint_flag) printSymbolicCounters();
 
   symbolic    = 0;
   record      = 0;
@@ -10572,6 +10814,8 @@ uint64_t selfie() {
         return selfie_run(MINSTER);
       else if (stringCompare(option, (uint64_t*) "-mob"))
         return selfie_run(MOBSTER);
+      else if (stringCompare(option, (uint64_t*) "-t"))
+        do_taint_flag = 1;
       else {
         printUsage();
 

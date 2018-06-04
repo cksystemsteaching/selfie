@@ -6,7 +6,7 @@ In `void getSymbol()`:
 Because of the restriction that each condition should restrain only the last assignment.
 
 ## abstract operators
-+ implementation of modular stide intervals
++ implementation of modular stride intervals
 `adding step and restrictions`
 
 + restrictions being for:
