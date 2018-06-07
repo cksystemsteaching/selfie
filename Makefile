@@ -32,7 +32,7 @@ replay: selfie
 
 # Run emulator on emulator
 os: selfie
-	./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
+	./selfie -c selfie.c -o selfie.m -m 3 -l selfie.m -m 1
 
 # Self-compile on two virtual machines
 vm: selfie
