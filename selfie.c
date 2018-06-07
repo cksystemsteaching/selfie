@@ -134,6 +134,8 @@ uint64_t fixedPointRatio(uint64_t a, uint64_t b);
 void putCharacter(uint64_t c);
 
 void print(uint64_t* s);
+void (printf)(uint64_t* s, ...);
+void printf_print(uint64_t* s, uint64_t* a);
 void println();
 
 void printCharacter(uint64_t c);
@@ -177,6 +179,8 @@ uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
+uint64_t CHAR_AMPERSAND    = '&';
+uint64_t CHAR_DOT          = '.';
 
 uint64_t CPUBITWIDTH = 64;
 
@@ -342,6 +346,8 @@ uint64_t SYM_NOTEQ        = 24; // !=
 uint64_t SYM_MOD          = 25; // %
 uint64_t SYM_CHARACTER    = 26; // character
 uint64_t SYM_STRING       = 27; // string
+uint64_t SYM_AMPERSAND    = 28; // &
+uint64_t SYM_DOTS         = 29; // ...
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -377,7 +383,7 @@ uint64_t  sourceFD   = 0;             // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_DOTS + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
@@ -407,6 +413,8 @@ void initScanner () {
   *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
   *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+  *(SYMBOLS + SYM_AMPERSAND)    = (uint64_t) "&";
+  *(SYMBOLS + SYM_DOTS)         = (uint64_t) "...";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -430,7 +438,7 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
+void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address, uint64_t vArgList);
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class);
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class);
@@ -439,16 +447,17 @@ uint64_t isUndefinedProcedure(uint64_t* entry);
 uint64_t reportUndefinedProcedures();
 
 // symbol table entry:
-// +----+---------+
-// |  0 | next    | pointer to next entry
-// |  1 | string  | identifier string, string literal
-// |  2 | line#   | source line number
-// |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
-// |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
-// |  5 | value   | VARIABLE: initial value
-// |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP, REG_FP
-// +----+---------+
+// +----+----------+
+// |  0 | next     | pointer to next entry
+// |  1 | string   | identifier string, string literal
+// |  2 | line#    | source line number
+// |  3 | class    | VARIABLE, BIGINT, STRING, PROCEDURE
+// |  4 | type     | UINT64_T, UINT64STAR_T, VOID_T
+// |  5 | value    | VARIABLE: initial value, PROCEDURE: number of arguments
+// |  6 | address  | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
+// |  7 | scope    | REG_GP, REG_FP
+// |  8 | vArgList | set if it can be part of a variable argument list
+// +----+----------+
 
 uint64_t* getNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
 uint64_t* getString(uint64_t* entry)     { return (uint64_t*) *(entry + 1); }
@@ -458,6 +467,7 @@ uint64_t  getType(uint64_t* entry)       { return             *(entry + 4); }
 uint64_t  getValue(uint64_t* entry)      { return             *(entry + 5); }
 uint64_t  getAddress(uint64_t* entry)    { return             *(entry + 6); }
 uint64_t  getScope(uint64_t* entry)      { return             *(entry + 7); }
+uint64_t  getVArgList(uint64_t* entry)   { return             *(entry + 8); }
 
 void setNextEntry(uint64_t* entry, uint64_t* next)    { *entry       = (uint64_t) next; }
 void setString(uint64_t* entry, uint64_t* identifier) { *(entry + 1) = (uint64_t) identifier; }
@@ -467,6 +477,7 @@ void setType(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
 void setValue(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
 void setAddress(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
 void setScope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
+void setVArgList(uint64_t* entry, uint64_t vArgList)  { *(entry + 8) = vArgList; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -536,13 +547,14 @@ void typeWarning(uint64_t expected, uint64_t found);
 
 uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
 void      load_upperBaseAddress(uint64_t* entry);
+uint64_t  load_addressOfVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class);
 uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
 void      load_integer(uint64_t value);
 void      load_string(uint64_t* string);
 
 uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
 void     help_procedure_prologue(uint64_t numberOfLocalVariableBytes);
-void     help_procedure_epilogue(uint64_t numberOfParameterBytes);
+void     help_procedure_epilogue(uint64_t numberOfParameterBytes, uint64_t hasVariableArguments);
 
 uint64_t compile_call(uint64_t* procedure);
 uint64_t compile_factor();
@@ -2067,6 +2079,137 @@ void print(uint64_t* s) {
   }
 }
 
+// the parenthesis around printf are important otherwise it will be replaced by a define
+void (printf)(uint64_t* s, ...) {
+  uint64_t first;
+  uint64_t last;
+  uint64_t numParameters;
+  uint64_t i;
+  uint64_t c;
+  uint64_t nextIsPlaceholder;
+  uint64_t tmp;
+    
+  first = 0;
+  numParameters = 0;
+  i = 0;
+  nextIsPlaceholder = 0;
+  
+  // count expected variables
+  while (loadCharacter(s, i) != 0) {
+    c = loadCharacter(s, i);
+    
+  	if (nextIsPlaceholder) {
+  	  if (c != CHAR_SPACE)
+  	    if (c != CHAR_PERCENTAGE)
+  	  	  numParameters = numParameters + 1;
+  	  	  
+  	  nextIsPlaceholder = 0;
+  	  
+  	} else {
+  	  if (c == CHAR_PERCENTAGE) {
+  	    nextIsPlaceholder = 1;
+  	  }
+  	}
+  	
+    i = i + 1;
+  }
+  
+  last = numParameters;
+  
+  // reverse order on the stack
+  while (first < last) {
+    // swap arguments
+    tmp = *(&s-1 - first); 
+    *(&s-1 - first) = *(&s - last);
+    *(&s - last) = tmp;
+  
+    first = first + 1;
+    last = last - 1;
+  }
+
+  printf_print(s, &s - numParameters);
+}
+
+void printf_print(uint64_t* s, uint64_t* a) {
+  uint64_t i;
+  uint64_t nextIsPlaceholder;
+  uint64_t argumentNum;
+  uint64_t c;
+
+  i = 0;
+  nextIsPlaceholder = 0;
+  argumentNum = 0;
+  
+  while (loadCharacter(s, i) != 0) {
+    c = loadCharacter(s, i);
+    
+  	if (nextIsPlaceholder) {
+  	  // % 
+  	  if (c == CHAR_SPACE) {
+  	    putCharacter(CHAR_PERCENTAGE);
+  	    putCharacter(CHAR_SPACE);
+  	    
+  	  // %%
+  	  } else if (c == CHAR_PERCENTAGE) {
+  	    putCharacter(CHAR_PERCENTAGE);
+  	    
+  	  // %c
+  	  } else if (c == 'c') {
+  	    putCharacter(*(a + argumentNum));
+  	    argumentNum = argumentNum + 1;
+  	  
+  	  // %d
+  	  } else if (c == 'd') {
+  	    printInteger(*(a + argumentNum));
+  	    argumentNum = argumentNum + 1;
+  	  
+  	  // %o
+  	  } else if (c == 'o') {
+  	    printOctal(*(a + argumentNum), 0);
+  	    argumentNum = argumentNum + 1;
+  	    
+  	  // %s
+  	  } else if (c == 's') {
+  	    print((uint64_t*) *(a + argumentNum));
+  	    argumentNum = argumentNum + 1;
+  	    
+  	  // %x
+  	  } else if (c == 'x') {
+  	    printHexadecimal(*(a + argumentNum), 0);
+  	    argumentNum = argumentNum + 1;
+  	    
+  	  // %p
+  	  } else if (c == 'p') {
+  	    printHexadecimal(*(a + argumentNum), 8);
+  	    argumentNum = argumentNum + 1;
+  	  
+  	  // unknown placeholder
+  	  } else {
+  	    putCharacter(CHAR_PERCENTAGE);
+        putCharacter(c);
+        
+        // print warning
+        printLineNumber((uint64_t*) "unknown placeholder", lineNumber);
+        printf((uint64_t*) "%c%c is not a known placeholder", CHAR_PERCENTAGE, c);
+  	  }
+  	  
+  	  nextIsPlaceholder = 0;
+  	  
+  	} else {
+  	  if (c == CHAR_PERCENTAGE)
+  	    nextIsPlaceholder = 1;
+  	  else
+  	    putCharacter(c);
+  	}
+  	
+    i = i + 1;
+  }
+  
+  if (nextIsPlaceholder)
+    // print closing %
+    putCharacter(CHAR_PERCENTAGE);
+}
+
 void println() {
   putCharacter(CHAR_LF);
 }
@@ -2680,6 +2823,33 @@ void getSymbol() {
 
         symbol = SYM_MOD;
 
+      } else if (character == CHAR_AMPERSAND) {
+        getCharacter();
+
+        symbol = SYM_AMPERSAND;
+
+      } else if (character == CHAR_DOT) {
+        getCharacter();
+        
+        if (character == CHAR_DOT) {
+          getCharacter();
+          
+            if (character == CHAR_DOT) {
+              getCharacter();
+              
+              symbol = SYM_DOTS;
+              
+            } else {
+              syntaxErrorCharacter(CHAR_DOT);
+
+              exit(EXITCODE_SCANNERERROR);
+            }
+        } else {
+          syntaxErrorCharacter(CHAR_DOT);
+
+          exit(EXITCODE_SCANNERERROR);
+        }
+
       } else {
         printLineNumber((uint64_t*) "syntax error", lineNumber);
         print((uint64_t*) "found unknown character ");
@@ -2721,10 +2891,10 @@ void handleEscapeSequence() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
+void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address, uint64_t vArgList) {
   uint64_t* newEntry;
 
-  newEntry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  newEntry = smalloc(2 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
 
   setString(newEntry, string);
   setLineNumber(newEntry, line);
@@ -2732,6 +2902,7 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
   setType(newEntry, type);
   setValue(newEntry, value);
   setAddress(newEntry, address);
+  setVArgList(newEntry, vArgList);
 
   // create entry at head of symbol table
   if (whichTable == GLOBAL_TABLE) {
@@ -2928,6 +3099,8 @@ uint64_t lookForFactor() {
   else if (symbol == SYM_LPARENTHESIS)
     return 0;
   else if (symbol == SYM_EOF)
+    return 0;
+  else if (symbol == SYM_AMPERSAND)
     return 0;
   else
     return 1;
@@ -3126,6 +3299,34 @@ void load_upperBaseAddress(uint64_t* entry) {
   // assert: allocatedTemporaries == n + 1
 }
 
+uint64_t load_addressOfVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
+  uint64_t* entry;
+  uint64_t offset;
+
+  entry = getVariableOrBigInt(variableOrBigInt, class);
+  offset = getAddress(entry);
+  
+  // TODO: change to new way to load addresses and integrate in load_variableOrBigInt
+  
+  if (getVArgList(entry)) {
+    load_integer(REGISTERSIZE * 2);
+    emitADD(currentTemporary(), getScope(entry), currentTemporary());
+    emitLD(currentTemporary(), currentTemporary(), 0);
+    
+    load_integer(offset);
+    emitADD(previousTemporary(), currentTemporary(), previousTemporary());
+    tfree(1);
+
+    emitADD(currentTemporary(), getScope(entry), currentTemporary());
+    
+  } else {
+    load_integer(offset);
+    emitADD(currentTemporary(), getScope(entry), currentTemporary());
+  }
+  
+  return UINT64STAR_T;
+}
+
 uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   uint64_t* entry;
   uint64_t offset;
@@ -3138,10 +3339,26 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
   if (isSignedInteger(offset, 12)) {
     talloc();
+    
+    if (getVArgList(entry)) {
+      // load additional offset caused by variable arguments
+      load_integer(REGISTERSIZE * 2);
+      emitADD(currentTemporary(), getScope(entry), currentTemporary());
+      emitLD(currentTemporary(), currentTemporary(), 0);
+      
+      load_integer(offset);
+      emitADD(previousTemporary(), currentTemporary(), previousTemporary());
+      tfree(1);
 
-    emitLD(currentTemporary(), getScope(entry), offset);
+      emitADD(currentTemporary(), getScope(entry), currentTemporary());
+      emitLD(currentTemporary(), currentTemporary(), 0);
+    } else
+       emitLD(currentTemporary(), getScope(entry), offset);
+      
   } else {
     load_upperBaseAddress(entry);
+    
+    // TODO: Also add support for variable argument here
 
     emitLD(currentTemporary(), currentTemporary(), signExtend(getBits(offset, 0, 12), 12));
   }
@@ -3198,7 +3415,7 @@ void load_integer(uint64_t value) {
     if (entry == (uint64_t*) 0) {
       allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-      createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
+      createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory, 0);
     }
 
     load_variableOrBigInt(integer, BIGINT);
@@ -3216,7 +3433,7 @@ void load_string(uint64_t* string) {
 
   allocatedMemory = allocatedMemory + roundUp(length, REGISTERSIZE);
 
-  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, UINT64STAR_T, 0, -allocatedMemory);
+  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, UINT64STAR_T, 0, -allocatedMemory, 0);
 
   load_integer(-allocatedMemory);
 
@@ -3234,7 +3451,8 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
     // default return type is "int"
     type = UINT64_T;
 
-    createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
+    // set number of arguments to -1 as we do not know the number of arguments
+    createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, -1, binaryLength, 0);
 
     emitJAL(REG_RA, 0);
 
@@ -3290,9 +3508,20 @@ void help_procedure_prologue(uint64_t numberOfLocalVariableBytes) {
   }
 }
 
-void help_procedure_epilogue(uint64_t numberOfParameterBytes) {
+void help_procedure_epilogue(uint64_t numberOfParameterBytes, uint64_t hasVariableArguments) {
   // deallocate memory for callee's frame pointer and local variables
   emitADDI(REG_SP, REG_FP, 0);
+  
+  // if it procedure has variable arguments load space for deallocating them
+  if (hasVariableArguments) {
+    // load additional space caused by variable arguments
+    load_integer(REGISTERSIZE * 2);
+    emitADD(currentTemporary(), REG_FP, currentTemporary());
+    emitLD(currentTemporary(), currentTemporary(), 0);
+    
+    // add size of memory which saved offset
+    emitADDI(currentTemporary(), currentTemporary(), REGISTERSIZE);
+  }
 
   // restore caller's frame pointer
   emitLD(REG_FP, REG_SP, 0);
@@ -3305,6 +3534,12 @@ void help_procedure_epilogue(uint64_t numberOfParameterBytes) {
 
   // deallocate memory for return address and parameters
   emitADDI(REG_SP, REG_SP, REGISTERSIZE + numberOfParameterBytes);
+  
+  // deallocate extra space caused by variable arguments
+  if (hasVariableArguments) {
+    emitADD(REG_SP, REG_SP, currentTemporary());
+    tfree(1);
+  }
 
   // return
   emitJALR(REG_ZR, REG_RA, 0);
@@ -3314,6 +3549,7 @@ uint64_t compile_call(uint64_t* procedure) {
   uint64_t* entry;
   uint64_t numberOfTemporaries;
   uint64_t type;
+  uint64_t numArguments;
 
   // assert: n = allocatedTemporaries
 
@@ -3322,19 +3558,22 @@ uint64_t compile_call(uint64_t* procedure) {
   numberOfTemporaries = allocatedTemporaries;
 
   save_temporaries();
+  
+  numArguments = 0;
 
   // assert: allocatedTemporaries == 0
 
   if (isExpression()) {
     compile_expression();
 
-    // TODO: check if types/number of parameters is correct
+    // TODO: check if types of parameters is correct
 
     // push first parameter onto stack
     emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
     emitSD(REG_SP, 0, currentTemporary());
 
     tfree(1);
+    numArguments = numArguments + 1;
 
     while (symbol == SYM_COMMA) {
       getSymbol();
@@ -3346,12 +3585,39 @@ uint64_t compile_call(uint64_t* procedure) {
       emitSD(REG_SP, 0, currentTemporary());
 
       tfree(1);
+      numArguments = numArguments + 1;
     }
 
     if (symbol == SYM_RPARENTHESIS) {
       getSymbol();
+      
+      // check if entry already exists
+      if (entry != (uint64_t*) 0) {
+        if (getVArgList(entry)) {
+          // push number of additional arguments on stack (multiplied by REGISTERSIZE)
+          load_integer((numArguments - getValue(entry)) * REGISTERSIZE);
+          emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+          emitSD(REG_SP, 0, currentTemporary());
+          tfree(1);
+        
+        } else {
+          // check if the number of arguments in known
+          if (getValue(entry) != -1) {
+            // check if number of arguments is correct
+            if (getValue(entry) != numArguments) {
+              printLineNumber((uint64_t*) "syntax error", lineNumber);
+              print((uint64_t*) "wrong number of arguments, expected ");
+              printInteger(getValue(entry));
+              print((uint64_t*) " but found ");
+              printInteger(numArguments);
+              println();
+            }
+          }
+        }  
+      }
 
       type = help_call_codegen(entry, procedure);
+      
     } else {
       syntaxErrorSymbol(SYM_RPARENTHESIS);
 
@@ -3385,6 +3651,7 @@ uint64_t compile_factor() {
   uint64_t negative;
   uint64_t dereference;
   uint64_t* variableOrProcedureName;
+  uint64_t getAddress;
 
   // assert: n = allocatedTemporaries
 
@@ -3447,6 +3714,14 @@ uint64_t compile_factor() {
     getSymbol();
   } else
     dereference = 0;
+    
+    // optional: getAddress
+  if (symbol == SYM_AMPERSAND) {
+    getAddress = 1;
+     
+    getSymbol();
+  } else
+    getAddress = 0;
 
   // identifier or call?
   if (symbol == SYM_IDENTIFIER) {
@@ -3468,9 +3743,14 @@ uint64_t compile_factor() {
       // reset return register to initial return value
       // for missing return expressions
       emitADDI(REG_A0, REG_ZR, 0);
-    } else
-      // variable access: identifier
-      type = load_variableOrBigInt(variableOrProcedureName, VARIABLE);
+    } else {
+      if (getAddress)
+        // load address of variable
+        type = load_addressOfVariableOrBigInt(variableOrProcedureName, VARIABLE);
+      else
+        // variable access: identifier
+        type = load_variableOrBigInt(variableOrProcedureName, VARIABLE);
+    }
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
@@ -4057,11 +4337,19 @@ void compile_statement() {
       offset = getAddress(entry);
 
       if (isSignedInteger(offset, 12)) {
-        emitSD(getScope(entry), offset, currentTemporary());
-
-        tfree(1);
+        if (getVArgList(entry)) {
+          load_addressOfVariableOrBigInt(variableOrProcedureName, VARIABLE);
+          emitSD(currentTemporary(), 0, previousTemporary());
+          tfree(2);
+        } else {
+          emitSD(getScope(entry), offset, currentTemporary());
+          tfree(1);
+        }
+        
       } else {
         load_upperBaseAddress(entry);
+        
+        // TODO: Support VArgList
 
         emitSD(currentTemporary(), signExtend(getBits(offset, 0, 12), 12), previousTemporary());
 
@@ -4122,13 +4410,13 @@ void compile_variable(uint64_t offset) {
 
   if (symbol == SYM_IDENTIFIER) {
     // TODO: check if identifier has already been declared
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
+    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset, 0);
 
     getSymbol();
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
-    createSymbolTableEntry(LOCAL_TABLE, (uint64_t*) "missing variable name", lineNumber, VARIABLE, type, 0, offset);
+    createSymbolTableEntry(LOCAL_TABLE, (uint64_t*) "missing variable name", lineNumber, VARIABLE, type, 0, offset, 0);
   }
 }
 
@@ -4197,11 +4485,13 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
   uint64_t parameters;
   uint64_t numberOfLocalVariableBytes;
   uint64_t* entry;
+  uint64_t vArgList;
 
   // assuming procedure is undefined
   isUndefined = 1;
 
   numberOfParameters = 0;
+  vArgList = 0;
 
   // try parsing formal parameters
   if (symbol == SYM_LPARENTHESIS) {
@@ -4215,9 +4505,17 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
       while (symbol == SYM_COMMA) {
         getSymbol();
 
-        compile_variable(0);
-
-        numberOfParameters = numberOfParameters + 1;
+        if (symbol == SYM_DOTS) {
+          getSymbol();
+          vArgList = 1;
+          if (symbol == SYM_COMMA) {
+            syntaxErrorMessage((uint64_t*) "cannot have parameter after variable argument lists");
+          }
+          
+        } else {
+          compile_variable(0);
+          numberOfParameters = numberOfParameters + 1;
+        }
       }
 
       entry = local_symbol_table;
@@ -4226,8 +4524,14 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
       while (parameters < numberOfParameters) {
         // 8 bytes offset to skip frame pointer and link
-        setAddress(entry, parameters * REGISTERSIZE + 2 * REGISTERSIZE);
 
+        if (vArgList) {
+          // add space for number of additional arguments
+          setAddress(entry, parameters * REGISTERSIZE + 2 * REGISTERSIZE + REGISTERSIZE);
+          setVArgList(entry, vArgList);
+        } else
+          setAddress(entry, parameters * REGISTERSIZE + 2 * REGISTERSIZE);
+          
         parameters = parameters + 1;
 
         entry = getNextEntry(entry);
@@ -4243,12 +4547,25 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
     syntaxErrorSymbol(SYM_LPARENTHESIS);
 
   entry = searchSymbolTable(global_symbol_table, procedure, PROCEDURE);
+  
+  if (entry != (uint64_t*) 0) {
+    // throw error if procedure with variable argument list has been used without declaration
+    if (vArgList) {
+      if (getValue(entry) == -1) {
+        syntaxErrorMessage((uint64_t*) "procedure with variable arguments has been used before declaration");
+        exit(EXITCODE_PARSERERROR);
+      }
+    }
+    
+    // set number of parameters and vArgList flag
+    setValue(entry, numberOfParameters);
+  }
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, 0);
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, numberOfParameters, 0, vArgList);
     else if (getType(entry) != type)
       // procedure already called, declared, or even defined
       // check return type but otherwise ignore
@@ -4260,7 +4577,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, numberOfParameters, binaryLength, vArgList);
     else {
       // procedure already called or declared or defined
       if (getAddress(entry) != 0) {
@@ -4335,7 +4652,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
     returnBranches = 0;
 
-    help_procedure_epilogue(numberOfParameters * REGISTERSIZE);
+    help_procedure_epilogue(numberOfParameters * REGISTERSIZE, vArgList);
 
   } else
     syntaxErrorUnexpected();
@@ -4351,6 +4668,7 @@ void compile_cstar() {
   uint64_t currentLineNumber;
   uint64_t initialValue;
   uint64_t* entry;
+  uint64_t endingWithLParenthesis;
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -4368,22 +4686,50 @@ void compile_cstar() {
       type = VOID_T;
 
       getSymbol();
+      
+      if (symbol == SYM_LPARENTHESIS) {
+        getSymbol();
+        endingWithLParenthesis = 1;
+        println();
+      } else
+        endingWithLParenthesis = 0;
 
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
 
         getSymbol();
+        
+        if (endingWithLParenthesis) {
+          if (symbol == SYM_RPARENTHESIS)
+            getSymbol();
+          else
+            syntaxErrorSymbol(SYM_RPARENTHESIS);
+        }
 
         compile_procedure(variableOrProcedureName, type);
       } else
         syntaxErrorSymbol(SYM_IDENTIFIER);
     } else {
       type = compile_type();
+      
+      if (symbol == SYM_LPARENTHESIS) {
+        getSymbol();
+        endingWithLParenthesis = 1;
+        println();
+      } else
+        endingWithLParenthesis = 0;
 
       if (symbol == SYM_IDENTIFIER) {
         variableOrProcedureName = identifier;
 
         getSymbol();
+        
+        if (endingWithLParenthesis) {
+          if (symbol == SYM_RPARENTHESIS)
+            getSymbol();
+          else
+            syntaxErrorSymbol(SYM_RPARENTHESIS);
+        }
 
         if (symbol == SYM_LPARENTHESIS)
           // type identifier "(" ...
@@ -4391,6 +4737,9 @@ void compile_cstar() {
           compile_procedure(variableOrProcedureName, type);
         else {
           currentLineNumber = lineNumber;
+          
+          if (symbol == SYM_RPARENTHESIS)
+            syntaxErrorUnexpected();
 
           if (symbol == SYM_SEMICOLON) {
             // type identifier ";" ...
@@ -4408,7 +4757,7 @@ void compile_cstar() {
           if (entry == (uint64_t*) 0) {
             allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory, 0);
           } else {
             // global variable already declared or defined
             printLineNumber((uint64_t*) "warning", currentLineNumber);
@@ -4537,7 +4886,7 @@ void selfie_compile() {
   emitSwitch();
 
   // declare mandatory main procedure
-  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, 0);
+  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 2, 0, 0);
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -4549,20 +4898,15 @@ void selfie_compile() {
 
       numberOfSourceFiles = numberOfSourceFiles + 1;
 
-      print(selfieName);
-      print((uint64_t*) ": selfie compiling ");
-      print(sourceName);
-      print((uint64_t*) " with starc\n");
+
+      printf((uint64_t*) "%s: selfie compiling %s with starc\n", selfieName, sourceName);
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
       sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
       if (signedLessThan(sourceFD, 0)) {
-        print(selfieName);
-        print((uint64_t*) ": could not open input file ");
-        print(sourceName);
-        println();
+        printf((uint64_t*) "%s: could not open input file %s\n", selfieName, sourceName);
 
         exit(EXITCODE_IOERROR);
       }
@@ -4572,45 +4916,15 @@ void selfie_compile() {
 
       compile_cstar();
 
-      print(selfieName);
-      print((uint64_t*) ": ");
-      printInteger(numberOfReadCharacters);
-      print((uint64_t*) " characters read in ");
-      printInteger(lineNumber);
-      print((uint64_t*) " lines and ");
-      printInteger(numberOfComments);
-      print((uint64_t*) " comments\n");
+      printf((uint64_t*) "%s: %d characters read in %d lines and %d comments\n", selfieName, numberOfReadCharacters, lineNumber - 1, numberOfComments);
 
-      print(selfieName);
-      print((uint64_t*) ": with ");
-      printInteger(numberOfReadCharacters - numberOfIgnoredCharacters);
-      print((uint64_t*) "(");
+      printf((uint64_t*) "%s: with %d(", selfieName, numberOfReadCharacters - numberOfIgnoredCharacters);
       printFixedPointPercentage(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
-      print((uint64_t*) "%) characters in ");
-      printInteger(numberOfScannedSymbols);
-      print((uint64_t*) " actual symbols\n");
+      printf((uint64_t*) "%%) characters in %d  actual symbols\n", numberOfScannedSymbols);
 
-      print(selfieName);
-      print((uint64_t*) ": ");
-      printInteger(numberOfGlobalVariables);
-      print((uint64_t*) " global variables, ");
-      printInteger(numberOfProcedures);
-      print((uint64_t*) " procedures, ");
-      printInteger(numberOfStrings);
-      print((uint64_t*) " string literals\n");
+      printf((uint64_t*) "%s: %d global variables, %d procedures, %d string literals\n", selfieName, numberOfGlobalVariables, numberOfProcedures, numberOfStrings);
 
-      print(selfieName);
-      print((uint64_t*) ": ");
-      printInteger(numberOfCalls);
-      print((uint64_t*) " calls, ");
-      printInteger(numberOfAssignments);
-      print((uint64_t*) " assignments, ");
-      printInteger(numberOfWhile);
-      print((uint64_t*) " while, ");
-      printInteger(numberOfIf);
-      print((uint64_t*) " if, ");
-      printInteger(numberOfReturn);
-      print((uint64_t*) " return\n");
+      printf((uint64_t*) "%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfieName, numberOfCalls, numberOfAssignments, numberOfWhile, numberOfIf, numberOfReturn);
     }
   }
 
@@ -4977,10 +5291,7 @@ uint64_t getTotalNumberOfInstructions() {
 }
 
 void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
-  print(mnemonics);
-  print((uint64_t*) ": ");
-  printInteger(counter);
-  print((uint64_t*) "(");
+  printf((uint64_t*) "%s: %d(", mnemonics, counter);
   printFixedPointPercentage(total, counter);
   print((uint64_t*) "%)");
 }
@@ -4990,22 +5301,19 @@ void printInstructionCounters() {
 
   ic = getTotalNumberOfInstructions();
 
-  print(selfieName);
-  print((uint64_t*) ": init:    ");
+  printf((uint64_t*) "%s: init:    ", selfieName);
   printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
   println();
 
-  print(selfieName);
-  print((uint64_t*) ": memory:  ");
+  printf((uint64_t*) "%s: memory:  ", selfieName);
   printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
   println();
 
-  print(selfieName);
-  print((uint64_t*) ": compute: ");
+  printf((uint64_t*) "%s: compute: ", selfieName);
   printInstructionCounter(ic, ic_add, (uint64_t*) "add");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
@@ -5017,8 +5325,7 @@ void printInstructionCounters() {
   printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
   println();
 
-  print(selfieName);
-  print((uint64_t*) ": control: ");
+  printf((uint64_t*) "%s: control: ", selfieName);
   printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
@@ -5538,7 +5845,8 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emitExit() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
+  // create symbol table entry with 1 as the number of arguments
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 1, binaryLength, 0);
 
   // load signed 32-bit integer argument for exit
   emitLD(REG_A0, REG_SP, 0);
@@ -5571,7 +5879,8 @@ void implementExit(uint64_t* context) {
 }
 
 void emitRead() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+  // create symbol table entry with 3 as the number of arguments
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 3, binaryLength, 0);
 
   emitLD(REG_A2, REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -5746,7 +6055,8 @@ void implementRead(uint64_t* context) {
 }
 
 void emitWrite() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+  // create symbol table entry with 3 as the number of arguments
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 3, binaryLength, 0);
 
   emitLD(REG_A2, REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -5877,7 +6187,8 @@ void implementWrite(uint64_t* context) {
 }
 
 void emitOpen() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+  // create symbol table entry with 3 as the number of arguments
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 3, binaryLength, 0);
 
   emitLD(REG_A2, REG_SP, 0); // mode
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -6009,11 +6320,13 @@ void implementOpen(uint64_t* context) {
 }
 
 void emitMalloc() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
+  // create symbol table entry with 1 as the number of arguments
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 1, binaryLength, 0);
 
   // on boot levels higher than zero, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
+  // create symbol table entry with 1 as the number of arguments
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 1, binaryLength, 0);
 
   emitLD(REG_A0, REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -6098,7 +6411,8 @@ void implementMalloc(uint64_t* context) {
 // -----------------------------------------------------------------
 
 void emitSwitch() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
+  // create symbol table entry with 2 as the number of arguments
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 2, binaryLength, 0);
 
   emitLD(REG_A1, REG_SP, 0); // number of instructions to execute
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);

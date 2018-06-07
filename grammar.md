@@ -10,7 +10,7 @@ C\* is a tiny subset of the programming language C. C\* features global variable
 
 C\* Keywords: `uint64_t`, `while`, `if`, `else`, `return`, `void`
 
-C\* Symbols: `=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `,`, `(`, `)`, `{`, `}`, `;`, `integer`, `character`, `string`, `identifier`
+C\* Symbols: `=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `,`, `(`, `)`, `{`, `}`, `;`, `...`, `&`, `integer`, `character`, `string`, `identifier`
 
 with:
 
@@ -36,7 +36,7 @@ C\* Grammar:
 
 ```
 cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
-                   ( "void" | type ) identifier procedure } .
+                   ( "void" | type ) ( identifier procedure) | ( "(" identifier ")" procedure ) } .
 
 type             = "uint64_t" [ "*" ] .
 
@@ -44,7 +44,7 @@ cast             = "(" type ")" .
 
 literal          = integer | character .
 
-procedure        = "(" [ variable { "," variable } ] ")"
+procedure        = "(" [ variable { "," variable } [ ", ..." ] ] ")"
                     ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 variable         = type identifier .
@@ -62,7 +62,7 @@ simpleExpression = term { ( "+" | "-" ) term } .
 term             = factor { ( "*" | "/" | "%" ) factor } .
 
 factor           = [ cast ] [ "-" ] [ "*" ]
-                    ( identifier | call | literal | string | "(" expression ")" ) .
+                    ( [ "&" ] identifier | call | literal | string | "(" expression ")" ) .
 
 while            = "while" "(" expression ")"
                              ( statement |
