@@ -2051,20 +2051,54 @@ void putCharacter(uint64_t c) {
   }
 }
 
-void print(uint64_t* s) {
-  uint64_t i;
-
+void printThis(uint64_t* s, uint64_t i) {
   if (s == (uint64_t*) 0)
     print((uint64_t*) "NULL");
-  else {
-    i = 0;
+  else while (loadCharacter(s, i) != 0) {
+    putCharacter(loadCharacter(s, i));
 
-    while (loadCharacter(s, i) != 0) {
-      putCharacter(loadCharacter(s, i));
-
-      i = i + 1;
-    }
+    i = i + 1;
   }
+}
+
+void print(uint64_t* s) {
+  printThis(s, 0);
+}
+
+uint64_t printFormat(uint64_t* f, uint64_t i, uint64_t* s) {
+  if (f == (uint64_t*) 0)
+    return 0;
+  else {
+    while (loadCharacter(f, i) != 0) {
+      if (loadCharacter(f, i) != '%') {
+        putCharacter(loadCharacter(f, i));
+
+        i = i + 1;
+      } else if (loadCharacter(f, i + 1) == 's') {
+        print(s);
+
+        return i + 2;
+      } else {
+        putCharacter(loadCharacter(f, i));
+
+        i = i + 1;
+      }
+    }
+
+    return i;
+  }
+}
+
+void print1(uint64_t* f, uint64_t* s1) {
+  printThis(f, printFormat(f, 0, s1));
+}
+
+void print2(uint64_t* f, uint64_t* s1, uint64_t* s2) {
+  printThis(f, printFormat(f, printFormat(f, 0, s1), s2));
+}
+
+void print3(uint64_t* f, uint64_t* s1, uint64_t* s2, uint64_t* s3) {
+  printThis(f, printFormat(f, printFormat(f, printFormat(f, 0, s1), s2), s3));
 }
 
 void println() {
@@ -9977,9 +10011,10 @@ void setArgument(uint64_t* argv) {
 }
 
 void printUsage() {
-  print(selfieName);
-  print((uint64_t*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs }");
-  print((uint64_t*) " [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]\n");
+  print3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
+    selfieName,
+      (uint64_t*) "-c { source } | -o binary | -s assembly | -l binary | -sat dimacs",
+      (uint64_t*) "( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ...");
 }
 
 uint64_t selfie() {
