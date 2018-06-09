@@ -1254,9 +1254,9 @@ uint64_t do_taint_flag = 0;
 
 uint64_t* taints  = (uint64_t*) 0;           // trace of tainted addresses
 
-uint64_t* reg_istainted   = (uint64_t*) 0;    // is register tainted
+uint64_t* reg_istainted   = (uint64_t*) 0;   // is register tainted
 
-uint64_t to_store_taint = 0;
+uint64_t to_store_taint = 0;                 // to store in trace
 // symbolic numerical statistics
 // addi
 uint64_t nb_addis = 0;
@@ -1288,6 +1288,7 @@ void incr_opss(uint64_t op);
 void incr_oprs1(uint64_t op);
 void incr_oprs2(uint64_t op);
 
+void setTaintMemory(uint64_t is_taint);
 void storeTaintMemory(uint64_t offset);
 // ------------------------- INITIALIZATION ------------------------
 
@@ -5707,7 +5708,7 @@ void implementRead(uint64_t* context) {
               storePhysicalMemory(buffer, mrvc);
             }
 
-            to_store_taint = 1;
+            setTaintMemory(1);
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
               storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0);
@@ -6115,7 +6116,7 @@ void implementMalloc(uint64_t* context) {
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable()) {
-          to_store_taint = 0;
+          setTaintMemory(0);
           // since there has been branching record malloc using vaddr == 0
           storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, tc);
         }
@@ -7708,7 +7709,7 @@ uint64_t constrain_sd() {
         }
       }
 
-      to_store_taint =  *(reg_istainted + rs2);
+      setTaintMemory(*(reg_istainted + rs2));
       storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc);
 
       pc = pc + INSTRUCTIONSIZE;
@@ -8387,7 +8388,7 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
-  to_store_taint =  *(reg_istainted + reg);
+  setTaintMemory(*(reg_istainted + reg));
   storeSymbolicMemory(pt, reg, value, 0, value, value, 1, tc);
 }
 
@@ -8453,7 +8454,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
       costep = *(steps + mrvc);
     }
 
-    to_store_taint = *(reg_istainted + reg);
+    setTaintMemory(*(reg_istainted + reg));
     storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, trb);
   }
 }
@@ -9306,6 +9307,10 @@ void incr_oprs2(uint64_t op) {
   else                nb_remurs2 = nb_remurs2 + 1;
 }
 
+void setTaintMemory(uint64_t is_taint) {
+  to_store_taint = is_taint;
+}
+
 void storeTaintMemory(uint64_t offset) {
   *(taints + offset) = to_store_taint;
 }
@@ -9741,7 +9746,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
 
   if (symbolic) {
     if (isTraceSpaceAvailable()) {
-      to_store_taint =  0;
+      setTaintMemory(0);
       // always track initialized memory by using tc as most recent branch
       storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, tc);
     }

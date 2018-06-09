@@ -18,4 +18,17 @@ Because of the restriction that each condition should restrain only the last ass
 
 + warnings when over-approximations are done
   `printOverApprox();`
+
+## tainted analysis
+
+ + flag `-t`: count symbolic operations
+
+### soundness
+
+ + addition with different steps (todo)
+
+### completeness
+
++ operation with minuend operands (todo)
+
 -- --
