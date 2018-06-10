@@ -1265,14 +1265,25 @@ uint64_t MUL  = 2;
 uint64_t DIVU = 3;
 uint64_t REMU = 4;
 
+//tables length
+uint64_t MAXPROBLEMATICINSTR = 10;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 uint64_t do_taint_flag = 0;
 
-uint64_t* taints  = (uint64_t*) 0;           // trace of tainted addresses
+uint64_t* taints    = (uint64_t*) 0;           // trace of tainted addresses
+uint64_t* minuends  = (uint64_t*) 0;           // trace of minuend addresses
 
 uint64_t* reg_istainted   = (uint64_t*) 0;   // is register tainted
+uint64_t* reg_isminuend   = (uint64_t*) 0;   // is register tainted
 
-uint64_t to_store_taint = 0;                 // to store in trace
+uint64_t to_store_taint   = 0;                 // to store taint in trace
+uint64_t to_store_minuend = 0;                 // to store minuend in trace
+
+// problematic instructions
+uint64_t* minuends_pcs = (uint64_t*) 0;
+uint64_t minuends_size = 0;
+
 // symbolic numerical statistics
 // addi
 uint64_t nb_addis = 0;
@@ -1304,14 +1315,20 @@ void incr_opss(uint64_t op);
 void incr_oprs1(uint64_t op);
 void incr_oprs2(uint64_t op);
 
-void setTaintMemory(uint64_t is_taint);
+void setTaintMemory(uint64_t is_taint, uint64_t is_minuend);
 void storeTaintMemory(uint64_t offset);
+
+void pushNewEntry(uint64_t hot_pc);
 // ------------------------- INITIALIZATION ------------------------
 
 void initTaintEngine() {
   taints = zalloc(maxTraceLength * SIZEOFUINT64);
+  minuends = zalloc(maxTraceLength * SIZEOFUINT64);
 
   reg_istainted   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_isminuend   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  minuends_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
 }
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -5724,7 +5741,7 @@ void implementRead(uint64_t* context) {
               storePhysicalMemory(buffer, mrvc);
             }
 
-            setTaintMemory(1);
+            setTaintMemory(1, 0);
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
               storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0);
@@ -6132,7 +6149,7 @@ void implementMalloc(uint64_t* context) {
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable()) {
-          setTaintMemory(0);
+          setTaintMemory(0, 0);
           // since there has been branching record malloc using vaddr == 0
           storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, tc);
         }
@@ -6416,6 +6433,11 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 void constrain_lui() {
   if (rd != REG_ZR) {
     *(reg_typ + rd) = 0;
+
+    if(do_taint_flag) {
+      *(reg_istainted + rd) = 0;
+      *(reg_isminuend + rd) = 0;
+    }
 
     // interval semantics of lui
     *(reg_los + rd) = leftShift(imm, 12);
@@ -7878,7 +7900,8 @@ uint64_t constrain_ld() {
 
         *(reg_steps + rd) = *(steps + mrvc);
 
-        *(reg_istainted + rd) = *(taints + mrvc);
+        *(reg_istainted + rd)   = *(taints + mrvc);
+        *(reg_isminuend + rd)   = *(minuends + mrvc);
 
         // assert: vaddr == *(vaddrs + mrvc)
 
@@ -8047,7 +8070,7 @@ uint64_t constrain_sd() {
         }
       }
 
-      setTaintMemory(*(reg_istainted + rs2));
+      setTaintMemory(*(reg_istainted + rs2), *(reg_isminuend + rs2));
       storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_isChar + rs2), *(reg_saddr + rs2), mrcc);
 
       pc = pc + INSTRUCTIONSIZE;
@@ -8798,7 +8821,7 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
-  setTaintMemory(*(reg_istainted + reg));
+  setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg));
   storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, tc);
 }
 
@@ -8864,7 +8887,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
       costep = *(steps + mrvc);
     }
 
-    setTaintMemory(*(reg_istainted + reg));
+    setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg));
     storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, trb);
   }
 }
@@ -9672,23 +9695,40 @@ void selfie_disassemble() {
 // -----------------------------------------------------------------
 
 void taint_unop() {
+  //minuend
+  if(*(reg_isminuend + rs1))
+    pushNewEntry(pc - INSTRUCTIONSIZE - entryPoint);
+    
+  *(reg_isminuend + rd) = 0; //do not propagate minuend
+
+  //taint
   if (*(reg_istainted + rs1)) {
     *(reg_istainted + rd) = 1;
     nb_addis = nb_addis + 1;
   }
-  else                        *(reg_istainted + rd) = 0;
+  else  *(reg_istainted + rd) = 0;
 }
 
 void taint_binop(uint64_t op) {
+  //minuend
+  if(*(reg_isminuend + rs1))      pushNewEntry(pc - INSTRUCTIONSIZE - entryPoint);
+  else if(*(reg_isminuend + rs2)) pushNewEntry(pc - INSTRUCTIONSIZE - entryPoint);
+  *(reg_isminuend + rd) = 0; //reset minuend
+
+  //taint
   if (*(reg_istainted + rs1)) {
     *(reg_istainted + rd) = 1;
 
-    if (*(reg_istainted + rs2)) incr_opss(op);          // operation with two symbolics
+    if (*(reg_istainted + rs2)) {
+      incr_opss(op);                              // operation with two symbolics
+      if(op == SUB) *(reg_isminuend + rd) = 1;    //(source of correction problems)
+    }
     else                        incr_oprs1(op);         // only rs1 symbolic
   }
   else if (*(reg_istainted + rs2))  {                   // only rs2 symbolic
     *(reg_istainted + rd) = 1;
     incr_oprs2(op);
+    if(op == SUB) *(reg_isminuend + rd) = 1;    //(source of correction problems)
   }
   else *(reg_istainted + rd) = 0;                        // concrete operation
 }
@@ -9717,14 +9757,46 @@ void incr_oprs2(uint64_t op) {
   else                nb_remurs2 = nb_remurs2 + 1;
 }
 
-void setTaintMemory(uint64_t is_taint) {
-  to_store_taint = is_taint;
+void setTaintMemory(uint64_t is_taint, uint64_t is_minuend) {
+  to_store_taint    = is_taint;
+  to_store_minuend  = is_minuend;
 }
 
 void storeTaintMemory(uint64_t offset) {
-  *(taints + offset) = to_store_taint;
+  *(taints + offset)    = to_store_taint;
+  *(minuends + offset)  = to_store_minuend;
 }
 
+void pushNewEntry(uint64_t hot_pc) {
+  uint64_t i;
+  i = 0;
+
+  while(i < minuends_size) {
+    if(hot_pc == *(minuends_pcs + i))
+      return;
+    i = i + 1;
+  }
+  *(minuends_pcs + minuends_size) = hot_pc;
+  minuends_size = minuends_size + 1;
+}
+
+void printMinuendFails() {
+  uint64_t i;
+  i = 0;
+
+  print((uint64_t*) "Instructions raising minuend problems: ");
+  while(i < minuends_size) {
+    printHexadecimal(*(minuends_pcs + i), 0);
+    printSourceLineNumberOfInstruction(*(minuends_pcs + i));
+    print((uint64_t*) " ");
+
+    i = i + 1;
+  }
+  print((uint64_t*) "(");
+  printInteger(i);
+  print((uint64_t*) " instruction(s))");
+  println();
+}
 
 void printSymbolicCounters() {
   println();
@@ -10156,7 +10228,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
 
   if (symbolic) {
     if (isTraceSpaceAvailable()) {
-      setTaintMemory(0);
+      setTaintMemory(0, 0);
       // always track initialized memory by using tc as most recent branch
       storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, tc);
     }
@@ -10777,7 +10849,11 @@ uint64_t selfie_run(uint64_t machine) {
   println();
 
   printProfile();
-  if(do_taint_flag) printSymbolicCounters();
+  if(do_taint_flag) {
+    printSymbolicCounters();
+    println();
+    printMinuendFails();
+  }
 
   symbolic    = 0;
   record      = 0;
