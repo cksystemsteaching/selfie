@@ -468,6 +468,13 @@ void setValue(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
 void setAddress(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
 void setScope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
 
+// --------------------------- HASH TABLE --------------------------
+
+uint64_t GLOBAL_HASH_TABLE_SIZE = 1024;
+
+uint64_t getHashValue(uint64_t* key);
+uint64_t* getHashEntry(uint64_t* hash_table, uint64_t* key);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // classes
@@ -489,7 +496,7 @@ uint64_t LIBRARY_TABLE = 3;
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 // table pointers
-uint64_t* global_symbol_table  = (uint64_t*) 0;
+uint64_t* global_hash_symbol_table = (uint64_t*) 0;
 uint64_t* local_symbol_table   = (uint64_t*) 0;
 uint64_t* library_symbol_table = (uint64_t*) 0;
 
@@ -500,13 +507,23 @@ uint64_t numberOfStrings         = 0;
 // ------------------------- INITIALIZATION ------------------------
 
 void resetSymbolTables() {
-  global_symbol_table  = (uint64_t*) 0;
+  uint64_t i;
+  
+  if (global_hash_symbol_table == (uint64_t*) 0)
+    global_hash_symbol_table = smalloc(GLOBAL_HASH_TABLE_SIZE * SIZEOFUINT64STAR);
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
 
   numberOfGlobalVariables = 0;
   numberOfProcedures      = 0;
   numberOfStrings         = 0;
+  
+  // zero hash table
+  i = 0;
+  while (i < GLOBAL_HASH_TABLE_SIZE) {
+    *(global_hash_symbol_table + i) = 0;
+    i = i + 1;
+  }
 }
 
 // -----------------------------------------------------------------
@@ -590,6 +607,8 @@ void resetParser() {
 // -----------------------------------------------------------------
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
+
+uint64_t gp; // has to be initialized in emitStart
 
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
 void emitProgramEntry();
@@ -2736,8 +2755,10 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
   // create entry at head of symbol table
   if (whichTable == GLOBAL_TABLE) {
     setScope(newEntry, REG_GP);
-    setNextEntry(newEntry, global_symbol_table);
-    global_symbol_table = newEntry;
+    
+    // add to hash table
+    setNextEntry(newEntry, getHashEntry(global_hash_symbol_table, string));
+    *(global_hash_symbol_table + getHashValue(string)) = (uint64_t) newEntry;
 
     if (class == VARIABLE)
       numberOfGlobalVariables = numberOfGlobalVariables + 1;
@@ -2783,7 +2804,7 @@ uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class) {
     entry = (uint64_t*) 0;
 
   if (entry == (uint64_t*) 0)
-    return searchSymbolTable(global_symbol_table, string, class);
+    return searchSymbolTable(getHashEntry(global_hash_symbol_table, string), string, class);
   else
     return entry;
 }
@@ -2812,26 +2833,56 @@ uint64_t isUndefinedProcedure(uint64_t* entry) {
 uint64_t reportUndefinedProcedures() {
   uint64_t undefined;
   uint64_t* entry;
+  uint64_t i;
 
-  undefined = 0;
+  undefined = 0;  
+  i = 0;
 
-  entry = global_symbol_table;
+  while (i < GLOBAL_HASH_TABLE_SIZE) {
+    entry = (uint64_t*) *(global_hash_symbol_table + i);
+    
+    while (entry != (uint64_t*) 0) {
+      if (isUndefinedProcedure(entry)) {
+        undefined = 1;
 
-  while (entry != (uint64_t*) 0) {
-    if (isUndefinedProcedure(entry)) {
-      undefined = 1;
+        printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
+        print((uint64_t*) "procedure ");
+        print(getString(entry));
+        print((uint64_t*) " undefined\n");
+      }
 
-      printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
-      print((uint64_t*) "procedure ");
-      print(getString(entry));
-      print((uint64_t*) " undefined\n");
+      // keep looking
+      entry = getNextEntry(entry);
     }
-
-    // keep looking
-    entry = getNextEntry(entry);
+  
+    i = i + 1;
   }
 
   return undefined;
+}
+
+// --------------------------- HASH TABLE --------------------------
+
+uint64_t getHashValue(uint64_t* key) {
+  uint64_t i;
+  uint64_t hash;
+  uint64_t c;
+  
+  i = 0;
+  hash = 0;
+  
+  c = loadCharacter(key, i);
+  while (c != 0) {
+    hash = hash + c; // // lose lose, as good as djb2 and sdbm
+    i = i + 1;
+    c = loadCharacter(key, i);
+  }
+
+  return hash % GLOBAL_HASH_TABLE_SIZE;
+}
+
+uint64_t* getHashEntry(uint64_t* hash_table, uint64_t* key) {
+  return (uint64_t*) *(hash_table + getHashValue(key));
 }
 
 // -----------------------------------------------------------------
@@ -3088,7 +3139,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   uint64_t* entry;
 
   if (class == BIGINT)
-    return searchSymbolTable(global_symbol_table, variableOrBigInt, class);
+    return searchSymbolTable(getHashEntry(global_hash_symbol_table, variableOrBigInt), variableOrBigInt, class);
   else {
     entry = getScopedSymbolTableEntry(variableOrBigInt, class);
 
@@ -3193,7 +3244,7 @@ void load_integer(uint64_t value) {
 
   } else {
     // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
-    entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
+    entry = searchSymbolTable(getHashEntry(global_hash_symbol_table, integer), integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
       allocatedMemory = allocatedMemory + REGISTERSIZE;
@@ -4242,7 +4293,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
   } else
     syntaxErrorSymbol(SYM_LPARENTHESIS);
 
-  entry = searchSymbolTable(global_symbol_table, procedure, PROCEDURE);
+  entry = searchSymbolTable(getHashEntry(global_hash_symbol_table, procedure), procedure, PROCEDURE);
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
@@ -4403,7 +4454,7 @@ void compile_cstar() {
             // global variable definition
             initialValue = compile_initialization(type);
 
-          entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE);
+          entry = searchSymbolTable(getHashEntry(global_hash_symbol_table, variableOrProcedureName), variableOrProcedureName, VARIABLE);
 
           if (entry == (uint64_t*) 0) {
             allocatedMemory = allocatedMemory + REGISTERSIZE;
@@ -4442,7 +4493,6 @@ void emitProgramEntry() {
 
 void emitStart() {
   // initializes the global pointer and calls the main procedure
-  uint64_t gp;
   uint64_t padding;
   uint64_t lower;
   uint64_t upper;
@@ -5226,30 +5276,32 @@ uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
 
 void emitGlobalsStringsBigIntegers() {
   uint64_t* entry;
+  uint64_t offset;
+  uint64_t i;
+  
+  offset = gp - ELF_ENTRY_POINT; // gp has to be saved in emitStart
+  i = 0;
+  
+  binaryLength = binaryLength + allocatedMemory;  // increase binary length
 
-  entry = global_symbol_table;
-
-  // assert: n = binaryLength
-
-  // allocate space for global variables and copy strings and big integers
-  while ((uint64_t) entry != 0) {
-    if (getClass(entry) == VARIABLE) {
-      storeData(binaryLength, getValue(entry));
-
-      binaryLength = binaryLength + REGISTERSIZE;
-    } else if (getClass(entry) == STRING)
-      binaryLength = copyStringToBinary(getString(entry), binaryLength);
-    else if (getClass(entry) == BIGINT) {
-      storeData(binaryLength, getValue(entry));
-
-      binaryLength = binaryLength + REGISTERSIZE;
+  while (i < GLOBAL_HASH_TABLE_SIZE) {
+    entry = (uint64_t*) *(global_hash_symbol_table + i);
+    
+    // store values
+    while (entry != (uint64_t*) 0) {
+      if (getClass(entry) == VARIABLE) {
+        storeData(getAddress(entry)+offset, getValue(entry));
+      } else if (getClass(entry) == STRING) {
+        copyStringToBinary(getString(entry), getAddress(entry)+offset);
+      } else if (getClass(entry) == BIGINT) {
+        storeData(getAddress(entry)+offset, getValue(entry));
+      }
+      entry = getNextEntry(entry);
     }
-
-    entry = getNextEntry(entry);
+    
+    i = i + 1;
   }
-
-  // assert: binaryLength == n + allocatedMemory
-
+    
   allocatedMemory = 0;
 }
 
