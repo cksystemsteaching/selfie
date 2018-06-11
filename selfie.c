@@ -133,18 +133,26 @@ uint64_t fixedPointRatio(uint64_t a, uint64_t b);
 
 void putCharacter(uint64_t c);
 
+void printFrom(uint64_t* s, uint64_t i);
 void print(uint64_t* s);
 void println();
 
 void printCharacter(uint64_t c);
-void printString(uint64_t* s);
 void printInteger(uint64_t n);
 void unprintInteger(uint64_t n);
-void printFixedPointPercentage(uint64_t a, uint64_t b);
-void printFixedPointRatio(uint64_t a, uint64_t b);
 void printHexadecimal(uint64_t n, uint64_t a);
 void printOctal(uint64_t n, uint64_t a);
 void printBinary(uint64_t n, uint64_t a);
+
+void printFixedPointPercentage(uint64_t a, uint64_t b);
+void printFixedPointRatio(uint64_t a, uint64_t b);
+
+uint64_t printFormat(uint64_t* s, uint64_t i, uint64_t* a);
+
+void print1(uint64_t* s, uint64_t* a1);
+void print2(uint64_t* s, uint64_t* a1, uint64_t* a2);
+void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
+void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4);
 
 uint64_t roundUp(uint64_t n, uint64_t m);
 
@@ -154,6 +162,7 @@ uint64_t* zalloc(uint64_t size);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t CHAR_EOF          =  -1; // end of file
+uint64_t CHAR_BACKSPACE    =   8; // ASCII code 8  = backspace
 uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
 uint64_t CHAR_LF           =  10; // ASCII code 10 = line feed
 uint64_t CHAR_CR           =  13; // ASCII code 13 = carriage return
@@ -1835,10 +1844,7 @@ uint64_t atoi(uint64_t* s) {
     c = c - '0';
 
     if (c > 9) {
-      print(selfieName);
-      print((uint64_t*) ": cannot convert non-decimal number ");
-      print(s);
-      println();
+      print2((uint64_t*) "%s: cannot convert non-decimal number %s\n", selfieName, s);
 
       exit(EXITCODE_BADARGUMENTS);
     }
@@ -1853,19 +1859,13 @@ uint64_t atoi(uint64_t* s) {
         n = n * 10 + c;
       else {
         // s contains a decimal number larger than UINT64_MAX
-        print(selfieName);
-        print((uint64_t*) ": cannot convert out-of-bound number ");
-        print(s);
-        println();
+        print2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfieName, s);
 
         exit(EXITCODE_BADARGUMENTS);
       }
     else {
       // s contains a decimal number larger than UINT64_MAX
-      print(selfieName);
-      print((uint64_t*) ": cannot convert out-of-bound number ");
-      print(s);
-      println();
+      print2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfieName, s);
 
       exit(EXITCODE_BADARGUMENTS);
     }
@@ -2038,20 +2038,17 @@ void putCharacter(uint64_t c) {
     // write failed
     if (outputFD != 1) {
       // failed write was not to the console which has file descriptor 1
-      // to report the error we may thus still write to the console via print
+      // to report the error we may thus still write to the console
       outputFD = 1;
 
-      print(selfieName);
-      print((uint64_t*) ": could not write character to output file ");
-      print(outputName);
-      println();
+      print2((uint64_t*) "%s: could not write character to output file %s\n", selfieName, outputName);
     }
 
     exit(EXITCODE_IOERROR);
   }
 }
 
-void printThis(uint64_t* s, uint64_t i) {
+void printFrom(uint64_t* s, uint64_t i) {
   if (s == (uint64_t*) 0)
     print((uint64_t*) "NULL");
   else while (loadCharacter(s, i) != 0) {
@@ -2062,43 +2059,7 @@ void printThis(uint64_t* s, uint64_t i) {
 }
 
 void print(uint64_t* s) {
-  printThis(s, 0);
-}
-
-uint64_t printFormat(uint64_t* f, uint64_t i, uint64_t* s) {
-  if (f == (uint64_t*) 0)
-    return 0;
-  else {
-    while (loadCharacter(f, i) != 0) {
-      if (loadCharacter(f, i) != '%') {
-        putCharacter(loadCharacter(f, i));
-
-        i = i + 1;
-      } else if (loadCharacter(f, i + 1) == 's') {
-        print(s);
-
-        return i + 2;
-      } else {
-        putCharacter(loadCharacter(f, i));
-
-        i = i + 1;
-      }
-    }
-
-    return i;
-  }
-}
-
-void print1(uint64_t* f, uint64_t* s1) {
-  printThis(f, printFormat(f, 0, s1));
-}
-
-void print2(uint64_t* f, uint64_t* s1, uint64_t* s2) {
-  printThis(f, printFormat(f, printFormat(f, 0, s1), s2));
-}
-
-void print3(uint64_t* f, uint64_t* s1, uint64_t* s2, uint64_t* s3) {
-  printThis(f, printFormat(f, printFormat(f, printFormat(f, 0, s1), s2), s3));
+  printFrom(s, 0);
 }
 
 void println() {
@@ -2106,8 +2067,6 @@ void println() {
 }
 
 void printCharacter(uint64_t c) {
-  putCharacter(CHAR_SINGLEQUOTE);
-
   if (c == CHAR_EOF)
     print((uint64_t*) "end of file");
   else if (c == CHAR_TAB)
@@ -2118,19 +2077,8 @@ void printCharacter(uint64_t c) {
     print((uint64_t*) "carriage return");
   else
     putCharacter(c);
-
-  putCharacter(CHAR_SINGLEQUOTE);
 }
 
-void printString(uint64_t* s) {
-  putCharacter(CHAR_DOUBLEQUOTE);
-
-  print(s);
-
-  putCharacter(CHAR_DOUBLEQUOTE);
-}
-
-// TODO: correct for integers just a bit less than 2^31
 void printInteger(uint64_t n) {
   print(itoa(n, integer_buffer, 10, 0, 0));
 }
@@ -2139,19 +2087,10 @@ void unprintInteger(uint64_t n) {
   n = stringLength(itoa(n, integer_buffer, 10, 0, 0));
 
   while (n > 0) {
-    // 8 is ASCII code for backspace
-    putCharacter(8);
+    putCharacter(CHAR_BACKSPACE);
 
     n = n - 1;
   }
-}
-
-void printFixedPointPercentage(uint64_t a, uint64_t b) {
-  print(itoa(fixedPointPercentage(fixedPointRatio(a, b)), integer_buffer, 10, 0, 2));
-}
-
-void printFixedPointRatio(uint64_t a, uint64_t b) {
-  print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
 void printHexadecimal(uint64_t n, uint64_t a) {
@@ -2164,6 +2103,78 @@ void printOctal(uint64_t n, uint64_t a) {
 
 void printBinary(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 2, a, 0));
+}
+
+void printFixedPointPercentage(uint64_t a, uint64_t b) {
+  print(itoa(fixedPointPercentage(fixedPointRatio(a, b)), integer_buffer, 10, 0, 2));
+}
+
+void printFixedPointRatio(uint64_t a, uint64_t b) {
+  print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
+}
+
+uint64_t printFormat(uint64_t* s, uint64_t i, uint64_t* a) {
+  if (s == (uint64_t*) 0)
+    return 0;
+  else {
+    while (loadCharacter(s, i) != 0) {
+      if (loadCharacter(s, i) != '%') {
+        putCharacter(loadCharacter(s, i));
+
+        i = i + 1;
+      } else if (loadCharacter(s, i + 1) == 's') {
+        print(a);
+
+        return i + 2;
+      } else if (loadCharacter(s, i + 1) == 'c') {
+        printCharacter((uint64_t) a);
+
+        return i + 2;
+      } else if (loadCharacter(s, i + 1) == 'd') {
+        printInteger((uint64_t) a);
+
+        return i + 2;
+      } else if (loadCharacter(s, i + 1) == 'X') {
+        printHexadecimal((uint64_t) a, 8);
+
+        return i + 2;
+      } else if (loadCharacter(s, i + 1) == 'x') {
+        printHexadecimal((uint64_t) a, 0);
+
+        return i + 2;
+      } else if (loadCharacter(s, i + 1) == 'o') {
+        printOctal((uint64_t) a, 0);
+
+        return i + 2;
+      } else if (loadCharacter(s, i + 1) == 'b') {
+        printBinary((uint64_t) a, 0);
+
+        return i + 2;
+      } else {
+        putCharacter(loadCharacter(s, i));
+
+        i = i + 1;
+      }
+    }
+
+    return i;
+  }
+}
+
+void print1(uint64_t* s, uint64_t* a1) {
+  printFrom(s, printFormat(s, 0, a1));
+}
+
+void print2(uint64_t* s, uint64_t* a1, uint64_t* a2) {
+  printFrom(s, printFormat(s, printFormat(s, 0, a1), a2));
+}
+
+void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3) {
+  printFrom(s, printFormat(s, printFormat(s, printFormat(s, 0, a1), a2), a3));
+}
+
+void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4) {
+  printFrom(s, printFormat(s, printFormat(s, printFormat(s, printFormat(s, 0, a1), a2), a3), a4));
 }
 
 uint64_t roundUp(uint64_t n, uint64_t m) {
@@ -2184,8 +2195,7 @@ uint64_t* smalloc(uint64_t size) {
     // any address including null
     return memory;
   else if ((uint64_t) memory == 0) {
-    print(selfieName);
-    print((uint64_t*) ": malloc out of memory\n");
+    print1((uint64_t*) "%s: malloc out of memory\n", selfieName);
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
@@ -2241,42 +2251,25 @@ void printSymbol(uint64_t symbol) {
 }
 
 void printLineNumber(uint64_t* message, uint64_t line) {
-  print(selfieName);
-  print((uint64_t*) ": ");
-  print(message);
-  print((uint64_t*) " in ");
-  print(sourceName);
-  print((uint64_t*) " in line ");
-  printInteger(line);
-  print((uint64_t*) ": ");
+  print4((uint64_t*) "%s: %s in %s in line %d: ", selfieName, message, sourceName, (uint64_t*) line);
 }
 
 void syntaxErrorMessage(uint64_t* message) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
 
-  print(message);
-
-  println();
+  print1((uint64_t*) "%s\n", message);
 }
 
 void syntaxErrorCharacter(uint64_t expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
 
-  printCharacter(expected);
-  print((uint64_t*) " expected but ");
-
-  printCharacter(character);
-  print((uint64_t*) " found\n");
+  print2((uint64_t*) "\'%c\' expected but \'%c\' found\n", (uint64_t*) expected, (uint64_t*) character);
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
 
-  print(expected);
-  print((uint64_t*) " expected but ");
-
-  print(identifier);
-  print((uint64_t*) " found\n");
+  print2((uint64_t*) "\"%s\" expected but \"%s\" found\n", expected, identifier);
 }
 
 void getCharacter() {
@@ -2302,10 +2295,7 @@ void getCharacter() {
     // reached end of file
     character = CHAR_EOF;
   else {
-    print(selfieName);
-    print((uint64_t*) ": could not read character from input file ");
-    print(sourceName);
-    println();
+    print2((uint64_t*) "%s: could not read character from input file %s\n", selfieName, sourceName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -2716,10 +2706,8 @@ void getSymbol() {
 
       } else {
         printLineNumber((uint64_t*) "syntax error", lineNumber);
-        print((uint64_t*) "found unknown character ");
-        printCharacter(character);
 
-        println();
+        print1((uint64_t*) "found unknown character \'%c\'\n", (uint64_t*) character);
 
         exit(EXITCODE_SCANNERERROR);
       }
@@ -2739,6 +2727,8 @@ void handleEscapeSequence() {
     character = CHAR_LF;
   else if (character == 't')
     character = CHAR_TAB;
+  else if (character == 'b')
+    character = CHAR_BACKSPACE;
   else if (character == CHAR_DOUBLEQUOTE)
     character = CHAR_DOUBLEQUOTE;
   else if (character == CHAR_SINGLEQUOTE)
@@ -2746,7 +2736,7 @@ void handleEscapeSequence() {
   else if (character == CHAR_BACKSLASH)
     character = CHAR_BACKSLASH;
   else {
-    syntaxErrorMessage("Unknown escape sequence found.\n");
+    syntaxErrorMessage((uint64_t*) "Unknown escape sequence found.\n");
 
     exit(EXITCODE_SCANNERERROR);
   }
@@ -2856,9 +2846,8 @@ uint64_t reportUndefinedProcedures() {
       undefined = 1;
 
       printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
-      print((uint64_t*) "procedure ");
-      print(getString(entry));
-      print((uint64_t*) " undefined\n");
+
+      print1((uint64_t*) "procedure %s undefined\n", getString(entry));
     }
 
     // keep looking
@@ -6012,7 +6001,7 @@ void implementOpen(uint64_t* context) {
     if (debug_open) {
       print(selfieName);
       print((uint64_t*) ": opened file ");
-      printString(filename_buffer);
+      print(filename_buffer);
       print((uint64_t*) " with flags ");
       printHexadecimal(flags, 0);
       print((uint64_t*) " and mode ");
