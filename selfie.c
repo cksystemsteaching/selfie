@@ -9398,6 +9398,7 @@ void incr_oprs2(uint64_t op) {
 
 void check_step() {
   uint64_t vgcd;
+  uint64_t imax;
 
   if(*(reg_hasstep + rs1)) {
     if(*(reg_hasstep + rs2)) {
@@ -9405,21 +9406,32 @@ void check_step() {
       if(*(reg_hasstep + rs1) != *(reg_hasstep + rs2)) {
         vgcd = gcd(*(reg_hasstep + rs1), *(reg_hasstep + rs2));
 
-          if(vgcd != *(reg_hasstep + rs1))
+          if(vgcd != *(reg_hasstep + rs1)) {
             if(vgcd != *(reg_hasstep + rs2))
               pushNewEntryStep(pc - INSTRUCTIONSIZE - entryPoint);
+            else if(*(reg_ups + rs2) < *(reg_ups + rs1)) { // gcp == s2
+              imax = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_hasstep + rs2);
+              if(imax < *(reg_hasstep + rs1)/vgcd - 1)
+                pushNewEntryStep(pc - INSTRUCTIONSIZE - entryPoint);
+            }
+          }
+          else if(*(reg_ups + rs1) < *(reg_ups + rs2)) {   // gcp == s1
+            imax = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_hasstep + rs1);
+            if(imax < *(reg_hasstep + rs2)/vgcd - 1)
+              pushNewEntryStep(pc - INSTRUCTIONSIZE - entryPoint);
+         }
 
-        print("~~~~~~~~~~~~~");
-        print("~~~pc: ~~~");
-        printHexadecimal(pc - INSTRUCTIONSIZE - entryPoint, 0);
-        printSourceLineNumberOfInstruction(pc - INSTRUCTIONSIZE - entryPoint);
-        print("rs1: ");
-        printInteger(*(reg_hasstep + rs1));
-        print(" +/- rs2: ");
-        printInteger(*(reg_hasstep + rs2));
-        print(" = rd: ");
-        printInteger(vgcd);
-        println();
+        //print("~~~~~~~~~~~~~");
+        //print("~~~pc: ~~~");
+        //printHexadecimal(pc - INSTRUCTIONSIZE - entryPoint, 0);
+        //printSourceLineNumberOfInstruction(pc - INSTRUCTIONSIZE - entryPoint);
+        //print("rs1: ");
+        //printInteger(*(reg_hasstep + rs1));
+        //print(" +/- rs2: ");
+        //printInteger(*(reg_hasstep + rs2));
+        //print(" = rd: ");
+        //printInteger(vgcd);
+        //println();
       }
     }
   }
