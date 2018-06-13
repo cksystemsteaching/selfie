@@ -2,7 +2,7 @@ uint64_t main() {
   uint64_t* string;
 
   // looks bad but shows what is possible
-  string = "\nThis is a demonstration of \"escape sequences\".\n\nselfie supports:\n\t\\n\n\t\\t\n\t\\\"\n\t\\\'\n\t\\\\\n\n";
+  string = "\nThis is a demonstration of \"escape sequences\".\n\nselfie supports:\n\t\\n\n\t\\t\n\t\\b\n\t\\\'\n\t\\\"\n\t\\\%\n\t\\\\\n\n";
 
   while (*string != 0) {
     // 1 means that we print to the console

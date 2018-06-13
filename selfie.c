@@ -138,14 +138,12 @@ void print(uint64_t* s);
 void println();
 
 void printCharacter(uint64_t c);
+void printString(uint64_t* s);
 void printInteger(uint64_t n);
 void unprintInteger(uint64_t n);
 void printHexadecimal(uint64_t n, uint64_t a);
 void printOctal(uint64_t n, uint64_t a);
 void printBinary(uint64_t n, uint64_t a);
-
-void printFixedPointPercentage(uint64_t a, uint64_t b);
-void printFixedPointRatio(uint64_t a, uint64_t b);
 
 uint64_t printFormat0(uint64_t* s, uint64_t i);
 uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a);
@@ -2078,6 +2076,8 @@ void println() {
 }
 
 void printCharacter(uint64_t c) {
+  putCharacter(CHAR_SINGLEQUOTE);
+
   if (c == CHAR_EOF)
     print((uint64_t*) "end of file");
   else if (c == CHAR_TAB)
@@ -2088,6 +2088,16 @@ void printCharacter(uint64_t c) {
     print((uint64_t*) "carriage return");
   else
     putCharacter(c);
+
+  putCharacter(CHAR_SINGLEQUOTE);
+}
+
+void printString(uint64_t* s) {
+  putCharacter(CHAR_DOUBLEQUOTE);
+
+  print(s);
+
+  putCharacter(CHAR_DOUBLEQUOTE);
 }
 
 void printInteger(uint64_t n) {
@@ -2114,14 +2124,6 @@ void printOctal(uint64_t n, uint64_t a) {
 
 void printBinary(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 2, a, 0));
-}
-
-void printFixedPointPercentage(uint64_t a, uint64_t b) {
-  print(itoa(fixedPointPercentage(fixedPointRatio(a, b)), integer_buffer, 10, 0, 2));
-}
-
-void printFixedPointRatio(uint64_t a, uint64_t b) {
-  print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
 uint64_t printFormat0(uint64_t* s, uint64_t i) {
@@ -2164,7 +2166,7 @@ uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
 
         return i + 2;
       } else if (loadCharacter(s, i + 1) == 'c') {
-        printCharacter((uint64_t) a);
+        putCharacter((uint64_t) a);
 
         return i + 2;
       } else if (loadCharacter(s, i + 1) == 'd') {
@@ -2177,7 +2179,7 @@ uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
         if (p < 10) {
           printInteger((uint64_t) a / tenToThePowerOf(p));
           if (p > 0) {
-            printCharacter('.');
+            putCharacter('.');
             printInteger((uint64_t) a % tenToThePowerOf(p));
           }
 
@@ -2786,10 +2788,10 @@ void handleEscapeSequence() {
     character = CHAR_TAB;
   else if (character == 'b')
     character = CHAR_BACKSPACE;
-  else if (character == CHAR_DOUBLEQUOTE)
-    character = CHAR_DOUBLEQUOTE;
   else if (character == CHAR_SINGLEQUOTE)
     character = CHAR_SINGLEQUOTE;
+  else if (character == CHAR_DOUBLEQUOTE)
+    character = CHAR_DOUBLEQUOTE;
   else if (character == CHAR_PERCENTAGE)
     character = CHAR_PERCENTAGE;
   else if (character == CHAR_BACKSLASH)
@@ -4634,21 +4636,30 @@ void selfie_compile() {
 
       compile_cstar();
 
-      print4((uint64_t*) "%s: %d characters read in %d lines and %d comments\n", selfieName,
+      print4((uint64_t*)
+        "%s: %d characters read in %d lines and %d comments\n",
+        selfieName,
         (uint64_t*) numberOfReadCharacters,
         (uint64_t*) lineNumber,
         (uint64_t*) numberOfComments);
 
-      print4((uint64_t*) "%s: with %d(%.2d%%) characters in %d actual symbols\n", selfieName,
-        (uint64_t*) (numberOfReadCharacters - numberOfIgnoredCharacters), (uint64_t*) fixedPointPercentage(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters)),
+      print4((uint64_t*)
+        "%s: with %d(%.2d%%) characters in %d actual symbols\n",
+        selfieName,
+        (uint64_t*) (numberOfReadCharacters - numberOfIgnoredCharacters),
+        (uint64_t*) fixedPointPercentage(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters)),
         (uint64_t*) numberOfScannedSymbols);
 
-      print4((uint64_t*) "%s: %d global variables, %d procedures, %d string literals\n", selfieName,
+      print4((uint64_t*)
+        "%s: %d global variables, %d procedures, %d string literals\n",
+        selfieName,
         (uint64_t*) numberOfGlobalVariables,
         (uint64_t*) numberOfProcedures,
         (uint64_t*) numberOfStrings);
 
-      print6((uint64_t*) "%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfieName,
+      print6((uint64_t*)
+        "%s: %d calls, %d assignments, %d while, %d if, %d return\n",
+        selfieName,
         (uint64_t*) numberOfCalls,
         (uint64_t*) numberOfAssignments,
         (uint64_t*) numberOfWhile,
@@ -5014,7 +5025,11 @@ uint64_t getTotalNumberOfInstructions() {
 }
 
 void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
-  print3((uint64_t*) "%s: %d(%.2d%%)", mnemonics, (uint64_t*) counter, (uint64_t*) fixedPointPercentage(fixedPointRatio(total, counter)));
+  print3((uint64_t*)
+    "%s: %d(%.2d%%)",
+    mnemonics,
+    (uint64_t*) counter,
+    (uint64_t*) fixedPointPercentage(fixedPointRatio(total, counter)));
 }
 
 void printInstructionCounters() {
@@ -5592,14 +5607,12 @@ void implementExit(uint64_t* context) {
   if (symbolic)
     return;
 
-  print(selfieName);
-  print((uint64_t*) ": ");
-  print(getName(context));
-  print((uint64_t*) " exiting with exit code ");
-  printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
-  print((uint64_t*) " and ");
-  printFixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE);
-  print((uint64_t*) "MB mallocated memory\n");
+  print4((uint64_t*)
+    "%s: %s exiting with exit code %d and %.2dMB mallocated memory\n",
+    selfieName,
+    getName(context),
+    (uint64_t*) signExtend(getExitCode(context), SYSCALL_BITWIDTH),
+    (uint64_t*) fixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE));
 }
 
 void emitRead() {
@@ -8557,11 +8570,9 @@ uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t
   else
     ratio = *(counters + a / INSTRUCTIONSIZE);
 
-  printInteger(ratio);
-
-  print((uint64_t*) "(");
-  printFixedPointPercentage(total, ratio);
-  print((uint64_t*) "%)");
+  print2((uint64_t*) "%d(%.2d%%)",
+    (uint64_t*) ratio,
+    (uint64_t*) fixedPointPercentage(fixedPointRatio(total, ratio)));
 
   if (ratio != 0) {
     print((uint64_t*) "@");
@@ -8588,12 +8599,11 @@ void printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* cou
 }
 
 void printProfile() {
-  print(selfieName);
-  print((uint64_t*) ": summary: ");
-  printInteger(getTotalNumberOfInstructions());
-  print((uint64_t*) " executed instructions and ");
-  printFixedPointRatio(pused(), MEGABYTE);
-  print((uint64_t*) "MB mapped memory\n");
+  print3((uint64_t*)
+    "%s: summary: %d executed instructions and %.2dMB mapped memory\n",
+    selfieName,
+    (uint64_t*) getTotalNumberOfInstructions(),
+    (uint64_t*) fixedPointRatio(pused(), MEGABYTE));
 
   if (getTotalNumberOfInstructions() > 0) {
     printInstructionCounters();
