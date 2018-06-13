@@ -1274,6 +1274,8 @@ uint64_t minuends_size = 0;
 uint64_t* addsub_incompletness_pcs = (uint64_t*) 0;
 uint64_t addsub_size = 0;
 
+uint64_t* both_symbolics_pcs = (uint64_t*) 0;
+uint64_t  both_symbolics_size = 0;
 // symbolic numerical statistics
 // addi
 uint64_t nb_addis = 0;
@@ -1315,6 +1317,7 @@ void storeTaintMemory(uint64_t offset);
 
 void pushNewEntry(uint64_t hot_pc);
 void pushNewEntryStep(uint64_t hot_pc);
+void pushNewSymbollicEntry(uint64_t hot_pc);
 // ------------------------- INITIALIZATION ------------------------
 
 void initTaintEngine() {
@@ -1328,6 +1331,7 @@ void initTaintEngine() {
 
   minuends_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
   addsub_incompletness_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
+  both_symbolics_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
 }
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -9334,6 +9338,7 @@ void taint_binop(uint64_t op) {
     if (*(reg_istainted + rs2)) {
       incr_opss(op);                              // operation with two symbolics
       step_opss(op);
+      pushNewSymbollicEntry(pc - INSTRUCTIONSIZE - entryPoint);
       if(op == SUB) *(reg_isminuend + rd) = 1;    //(source of correction problems)
     }
     else {
@@ -9475,6 +9480,19 @@ void pushNewEntryStep(uint64_t hot_pc) {
   addsub_size = addsub_size + 1;
 }
 
+void pushNewSymbollicEntry(uint64_t hot_pc) {
+  uint64_t i;
+  i = 0;
+
+  while(i < both_symbolics_size) {
+    if(hot_pc == *(both_symbolics_pcs + i))
+      return;
+    i = i + 1;
+  }
+  *(both_symbolics_pcs + both_symbolics_size) = hot_pc;
+  both_symbolics_size = both_symbolics_size + 1;
+}
+
 void printSymbolicCounters() {
   println();
   print((uint64_t*)"Symbolic analysis sum-up: ");
@@ -9596,6 +9614,24 @@ void printIncompleteOperations() {
   while(i < addsub_size) {
     printHexadecimal(*(addsub_incompletness_pcs + i), 0);
     printSourceLineNumberOfInstruction(*(addsub_incompletness_pcs + i));
+    print((uint64_t*) " ");
+
+    i = i + 1;
+  }
+  print((uint64_t*) "(");
+  printInteger(i);
+  print((uint64_t*) " instruction(s))");
+  println();
+}
+
+void printBothSymbolic() {
+  uint64_t i;
+  i = 0;
+
+  print((uint64_t*) "Instructions (add and sub) with two symbolics: ");
+  while(i < both_symbolics_size) {
+    printHexadecimal(*(both_symbolics_pcs + i), 0);
+    printSourceLineNumberOfInstruction(*(both_symbolics_pcs + i));
     print((uint64_t*) " ");
 
     i = i + 1;
@@ -10568,6 +10604,8 @@ uint64_t selfie_run(uint64_t machine) {
     printMinuendFails();
     println();
     printIncompleteOperations();
+    println();
+    printBothSymbolic();
   }
 
   symbolic    = 0;
