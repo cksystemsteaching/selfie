@@ -2256,19 +2256,16 @@ void printLineNumber(uint64_t* message, uint64_t line) {
 
 void syntaxErrorMessage(uint64_t* message) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-
   print1((uint64_t*) "%s\n", message);
 }
 
 void syntaxErrorCharacter(uint64_t expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-
   print2((uint64_t*) "\'%c\' expected but \'%c\' found\n", (uint64_t*) expected, (uint64_t*) character);
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-
   print2((uint64_t*) "\"%s\" expected but \"%s\" found\n", expected, identifier);
 }
 
@@ -2706,7 +2703,6 @@ void getSymbol() {
 
       } else {
         printLineNumber((uint64_t*) "syntax error", lineNumber);
-
         print1((uint64_t*) "found unknown character \'%c\'\n", (uint64_t*) character);
 
         exit(EXITCODE_SCANNERERROR);
@@ -2846,7 +2842,6 @@ uint64_t reportUndefinedProcedures() {
       undefined = 1;
 
       printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
-
       print1((uint64_t*) "procedure %s undefined\n", getString(entry));
     }
 
@@ -3066,17 +3061,14 @@ void restore_temporaries(uint64_t numberOfTemporaries) {
 
 void syntaxErrorSymbol(uint64_t expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-
   printSymbol(expected);
   print((uint64_t*) " expected but ");
-
   printSymbol(symbol);
   print((uint64_t*) " found\n");
 }
 
 void syntaxErrorUnexpected() {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-
   print((uint64_t*) "unexpected symbol ");
   printSymbol(symbol);
   print((uint64_t*) " found\n");
@@ -3095,15 +3087,10 @@ void printType(uint64_t type) {
 
 void typeWarning(uint64_t expected, uint64_t found) {
   printLineNumber((uint64_t*) "warning", lineNumber);
-
   print((uint64_t*) "type mismatch, ");
-
   printType(expected);
-
   print((uint64_t*) " expected but ");
-
   printType(found);
-
   print((uint64_t*) " found\n");
 }
 
@@ -3117,8 +3104,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
     if (entry == (uint64_t*) 0) {
       printLineNumber((uint64_t*) "syntax error", lineNumber);
-      print(variableOrBigInt);
-      print((uint64_t*) " undeclared\n");
+      print1((uint64_t*) "%s undeclared\n", variableOrBigInt);
 
       exit(EXITCODE_PARSERERROR);
     }
@@ -4312,9 +4298,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
       } else {
         // procedure already defined
         printLineNumber((uint64_t*) "warning", lineNumber);
-        print((uint64_t*) "redefinition of procedure ");
-        print(procedure);
-        print((uint64_t*) " ignored\n");
+        print1((uint64_t*) "redefinition of procedure %s ignored\n", procedure);
       }
     }
 
