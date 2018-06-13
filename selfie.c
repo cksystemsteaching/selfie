@@ -102,6 +102,7 @@ void initLibrary();
 void resetLibrary();
 
 uint64_t twoToThePowerOf(uint64_t p);
+uint64_t tenToThePowerOf(uint64_t p);
 
 uint64_t leftShift(uint64_t n, uint64_t b);
 uint64_t rightShift(uint64_t n, uint64_t b);
@@ -133,7 +134,6 @@ uint64_t fixedPointRatio(uint64_t a, uint64_t b);
 
 void putCharacter(uint64_t c);
 
-void printFrom(uint64_t* s, uint64_t i);
 void print(uint64_t* s);
 void println();
 
@@ -147,12 +147,14 @@ void printBinary(uint64_t n, uint64_t a);
 void printFixedPointPercentage(uint64_t a, uint64_t b);
 void printFixedPointRatio(uint64_t a, uint64_t b);
 
-uint64_t printFormat(uint64_t* s, uint64_t i, uint64_t* a);
+uint64_t printFormat0(uint64_t* s, uint64_t i);
+uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a);
 
 void print1(uint64_t* s, uint64_t* a1);
 void print2(uint64_t* s, uint64_t* a1, uint64_t* a2);
 void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
 void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4);
+void print6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
 
 uint64_t roundUp(uint64_t n, uint64_t m);
 
@@ -1653,6 +1655,13 @@ uint64_t twoToThePowerOf(uint64_t p) {
   return *(power_of_two_table + p);
 }
 
+uint64_t tenToThePowerOf(uint64_t p) {
+  if (p == 0)
+    return 1;
+  else
+    return tenToThePowerOf(p - 1) * 10;
+}
+
 uint64_t leftShift(uint64_t n, uint64_t b) {
   // assert: 0 <= b < CPUBITWIDTH
   return n * twoToThePowerOf(b);
@@ -2048,18 +2057,20 @@ void putCharacter(uint64_t c) {
   }
 }
 
-void printFrom(uint64_t* s, uint64_t i) {
+void print(uint64_t* s) {
+  uint64_t i;
+
   if (s == (uint64_t*) 0)
     print((uint64_t*) "NULL");
-  else while (loadCharacter(s, i) != 0) {
-    putCharacter(loadCharacter(s, i));
+  else {
+    i = 0;
 
-    i = i + 1;
+    while (loadCharacter(s, i) != 0) {
+      putCharacter(loadCharacter(s, i));
+
+      i = i + 1;
+    }
   }
-}
-
-void print(uint64_t* s) {
-  printFrom(s, 0);
 }
 
 void println() {
@@ -2113,7 +2124,33 @@ void printFixedPointRatio(uint64_t a, uint64_t b) {
   print(itoa(fixedPointRatio(a, b), integer_buffer, 10, 0, 2));
 }
 
-uint64_t printFormat(uint64_t* s, uint64_t i, uint64_t* a) {
+uint64_t printFormat0(uint64_t* s, uint64_t i) {
+  if (s == (uint64_t*) 0)
+    return 0;
+  else {
+    while (loadCharacter(s, i) != 0) {
+      if (loadCharacter(s, i) != '%') {
+        putCharacter(loadCharacter(s, i));
+
+        i = i + 1;
+      } else if (loadCharacter(s, i + 1) == '%') {
+        putCharacter(loadCharacter(s, i + 1));
+
+        i = i + 2;
+      } else {
+        putCharacter(loadCharacter(s, i));
+
+        i = i + 1;
+      }
+    }
+
+    return i;
+  }
+}
+
+uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
+  uint64_t p;
+
   if (s == (uint64_t*) 0)
     return 0;
   else {
@@ -2134,7 +2171,23 @@ uint64_t printFormat(uint64_t* s, uint64_t i, uint64_t* a) {
         printInteger((uint64_t) a);
 
         return i + 2;
-      } else if (loadCharacter(s, i + 1) == 'X') {
+      } else if (loadCharacter(s, i + 1) == '.') {
+        p = loadCharacter(s, i + 2) - '0';
+
+        if (p < 10) {
+          printInteger((uint64_t) a / tenToThePowerOf(p));
+          if (p > 0) {
+            printCharacter('.');
+            printInteger((uint64_t) a % tenToThePowerOf(p));
+          }
+
+          return i + 4;
+        } else {
+          putCharacter(loadCharacter(s, i));
+
+          i = i + 1;
+        }
+      } else if (loadCharacter(s, i + 1) == 'p') {
         printHexadecimal((uint64_t) a, 8);
 
         return i + 2;
@@ -2150,6 +2203,10 @@ uint64_t printFormat(uint64_t* s, uint64_t i, uint64_t* a) {
         printBinary((uint64_t) a, 0);
 
         return i + 2;
+      } else if (loadCharacter(s, i + 1) == '%') {
+        putCharacter('%');
+
+        i = i + 2;
       } else {
         putCharacter(loadCharacter(s, i));
 
@@ -2162,19 +2219,23 @@ uint64_t printFormat(uint64_t* s, uint64_t i, uint64_t* a) {
 }
 
 void print1(uint64_t* s, uint64_t* a1) {
-  printFrom(s, printFormat(s, 0, a1));
+  printFormat0(s, printFormat1(s, 0, a1));
 }
 
 void print2(uint64_t* s, uint64_t* a1, uint64_t* a2) {
-  printFrom(s, printFormat(s, printFormat(s, 0, a1), a2));
+  printFormat0(s, printFormat1(s, printFormat1(s, 0, a1), a2));
 }
 
 void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3) {
-  printFrom(s, printFormat(s, printFormat(s, printFormat(s, 0, a1), a2), a3));
+  printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3));
 }
 
 void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4) {
-  printFrom(s, printFormat(s, printFormat(s, printFormat(s, printFormat(s, 0, a1), a2), a3), a4));
+  printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3), a4));
+}
+
+void print6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6) {
+  printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3), a4), a5), a6));
 }
 
 uint64_t roundUp(uint64_t n, uint64_t m) {
@@ -2729,6 +2790,8 @@ void handleEscapeSequence() {
     character = CHAR_DOUBLEQUOTE;
   else if (character == CHAR_SINGLEQUOTE)
     character = CHAR_SINGLEQUOTE;
+  else if (character == CHAR_PERCENTAGE)
+    character = CHAR_PERCENTAGE;
   else if (character == CHAR_BACKSLASH)
     character = CHAR_BACKSLASH;
   else {
@@ -4419,9 +4482,7 @@ void compile_cstar() {
           } else {
             // global variable already declared or defined
             printLineNumber((uint64_t*) "warning", currentLineNumber);
-            print((uint64_t*) "redefinition of global variable ");
-            print(variableOrProcedureName);
-            print((uint64_t*) " ignored\n");
+            print1((uint64_t*) "redefinition of global variable %s ignored\n", variableOrProcedureName);
           }
         }
       } else
@@ -4556,20 +4617,14 @@ void selfie_compile() {
 
       numberOfSourceFiles = numberOfSourceFiles + 1;
 
-      print(selfieName);
-      print((uint64_t*) ": selfie compiling ");
-      print(sourceName);
-      print((uint64_t*) " with starc\n");
+      print2((uint64_t*) "%s: selfie compiling %s with starc\n", selfieName, sourceName);
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
       sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
       if (signedLessThan(sourceFD, 0)) {
-        print(selfieName);
-        print((uint64_t*) ": could not open input file ");
-        print(sourceName);
-        println();
+        print2((uint64_t*) "%s: could not open input file %s\n", selfieName, sourceName);
 
         exit(EXITCODE_IOERROR);
       }
@@ -4579,52 +4634,31 @@ void selfie_compile() {
 
       compile_cstar();
 
-      print(selfieName);
-      print((uint64_t*) ": ");
-      printInteger(numberOfReadCharacters);
-      print((uint64_t*) " characters read in ");
-      printInteger(lineNumber);
-      print((uint64_t*) " lines and ");
-      printInteger(numberOfComments);
-      print((uint64_t*) " comments\n");
+      print4((uint64_t*) "%s: %d characters read in %d lines and %d comments\n", selfieName,
+        (uint64_t*) numberOfReadCharacters,
+        (uint64_t*) lineNumber,
+        (uint64_t*) numberOfComments);
 
-      print(selfieName);
-      print((uint64_t*) ": with ");
-      printInteger(numberOfReadCharacters - numberOfIgnoredCharacters);
-      print((uint64_t*) "(");
-      printFixedPointPercentage(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
-      print((uint64_t*) "%) characters in ");
-      printInteger(numberOfScannedSymbols);
-      print((uint64_t*) " actual symbols\n");
+      print4((uint64_t*) "%s: with %d(%.2d%%) characters in %d actual symbols\n", selfieName,
+        (uint64_t*) (numberOfReadCharacters - numberOfIgnoredCharacters), (uint64_t*) fixedPointPercentage(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters)),
+        (uint64_t*) numberOfScannedSymbols);
 
-      print(selfieName);
-      print((uint64_t*) ": ");
-      printInteger(numberOfGlobalVariables);
-      print((uint64_t*) " global variables, ");
-      printInteger(numberOfProcedures);
-      print((uint64_t*) " procedures, ");
-      printInteger(numberOfStrings);
-      print((uint64_t*) " string literals\n");
+      print4((uint64_t*) "%s: %d global variables, %d procedures, %d string literals\n", selfieName,
+        (uint64_t*) numberOfGlobalVariables,
+        (uint64_t*) numberOfProcedures,
+        (uint64_t*) numberOfStrings);
 
-      print(selfieName);
-      print((uint64_t*) ": ");
-      printInteger(numberOfCalls);
-      print((uint64_t*) " calls, ");
-      printInteger(numberOfAssignments);
-      print((uint64_t*) " assignments, ");
-      printInteger(numberOfWhile);
-      print((uint64_t*) " while, ");
-      printInteger(numberOfIf);
-      print((uint64_t*) " if, ");
-      printInteger(numberOfReturn);
-      print((uint64_t*) " return\n");
+      print6((uint64_t*) "%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfieName,
+        (uint64_t*) numberOfCalls,
+        (uint64_t*) numberOfAssignments,
+        (uint64_t*) numberOfWhile,
+        (uint64_t*) numberOfIf,
+        (uint64_t*) numberOfReturn);
     }
   }
 
-  if (numberOfSourceFiles == 0) {
-    print(selfieName);
-    print((uint64_t*) ": nothing to compile, only library generated\n");
-  }
+  if (numberOfSourceFiles == 0)
+    print1((uint64_t*) "%s: nothing to compile, only library generated\n", selfieName);
 
   emitStart();
 
@@ -4634,14 +4668,10 @@ void selfie_compile() {
 
   entryPoint = ELF_ENTRY_POINT;
 
-  print(selfieName);
-  print((uint64_t*) ": ");
-  printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
-  print((uint64_t*) " bytes generated with ");
-  printInteger(codeLength / INSTRUCTIONSIZE);
-  print((uint64_t*) " instructions and ");
-  printInteger(binaryLength - codeLength);
-  print((uint64_t*) " bytes of data\n");
+  print4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfieName,
+    (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
+    (uint64_t*) (codeLength / INSTRUCTIONSIZE),
+    (uint64_t*) (binaryLength - codeLength));
 
   printInstructionCounters();
 }
@@ -4984,12 +5014,7 @@ uint64_t getTotalNumberOfInstructions() {
 }
 
 void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
-  print(mnemonics);
-  print((uint64_t*) ": ");
-  printInteger(counter);
-  print((uint64_t*) "(");
-  printFixedPointPercentage(total, counter);
-  print((uint64_t*) "%)");
+  print3((uint64_t*) "%s: %d(%.2d%%)", mnemonics, (uint64_t*) counter, (uint64_t*) fixedPointPercentage(fixedPointRatio(total, counter)));
 }
 
 void printInstructionCounters() {
