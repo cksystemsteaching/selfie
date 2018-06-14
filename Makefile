@@ -55,6 +55,10 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 8 -sat manuscript/cnfs/rivest.cnf
 
+# Run tainted analysis
+taint: selfie
+	./selfie -c selfie.c -t -n 0 -c selfie.c
+
 # Run everything
 all: compile quine debug replay os vm min mob sat
 
