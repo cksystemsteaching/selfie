@@ -128,7 +128,7 @@ void     stringReverse(uint64_t* s);
 uint64_t stringCompare(uint64_t* s, uint64_t* t);
 
 uint64_t  atoi(uint64_t* s);
-uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p);
+uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a);
 
 uint64_t fixedPointRatio(uint64_t a, uint64_t b);
 
@@ -152,6 +152,7 @@ void print1(uint64_t* s, uint64_t* a1);
 void print2(uint64_t* s, uint64_t* a1, uint64_t* a2);
 void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
 void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4);
+void print5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5);
 void print6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
 
 uint64_t roundUp(uint64_t n, uint64_t m);
@@ -1888,15 +1889,14 @@ uint64_t atoi(uint64_t* s) {
   return n;
 }
 
-uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
+uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a) {
   // assert: b in {2,4,8,10,16}
 
   uint64_t i;
   uint64_t sign;
 
-  // the conversion of the integer n to an ASCII string in s
-  // with base b, alignment a, and fixed point p
-  // begins with the leftmost digit in s
+  // the conversion of the integer n to an ASCII string in s with
+  // base b and alignment a begins with the leftmost digit in s
   i = 0;
 
   // for now assuming n is positive
@@ -1917,17 +1917,6 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
   }
 
   while (n != 0) {
-    if (p > 0)
-      if (i == p) {
-        storeCharacter(s, i, '.'); // set point of fixed point number
-
-        // go to the next digit
-        i = i + 1;
-
-        // we are done with the fixed point
-        p = 0;
-      }
-
     if (n % b > 9)
       // the ASCII code of hexadecimal digits larger than 9
       // is offset by the ASCII code of 'A' (which is 65)
@@ -1941,23 +1930,6 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
     n = n / b;
 
     i = i + 1;
-  }
-
-  if (p > 0) {
-    while (i < p) {
-      storeCharacter(s, i, '0'); // no point yet, fill with 0s
-
-      i = i + 1;
-    }
-
-    storeCharacter(s, i, '.'); // set point
-    storeCharacter(s, i + 1, '0'); // leading 0
-
-    // go to the second next digit
-    i = i + 2;
-
-    // we are done with the fixed point
-    p = 0;
   }
 
   if (b == 10) {
@@ -2101,11 +2073,11 @@ void printString(uint64_t* s) {
 }
 
 void printInteger(uint64_t n) {
-  print(itoa(n, integer_buffer, 10, 0, 0));
+  print(itoa(n, integer_buffer, 10, 0));
 }
 
 void unprintInteger(uint64_t n) {
-  n = stringLength(itoa(n, integer_buffer, 10, 0, 0));
+  n = stringLength(itoa(n, integer_buffer, 10, 0));
 
   while (n > 0) {
     putCharacter(CHAR_BACKSPACE);
@@ -2115,15 +2087,15 @@ void unprintInteger(uint64_t n) {
 }
 
 void printHexadecimal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 16, a, 0));
+  print(itoa(n, integer_buffer, 16, a));
 }
 
 void printOctal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 8, a, 0));
+  print(itoa(n, integer_buffer, 8, a));
 }
 
 void printBinary(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 2, a, 0));
+  print(itoa(n, integer_buffer, 2, a));
 }
 
 uint64_t printFormat0(uint64_t* s, uint64_t i) {
@@ -2234,6 +2206,10 @@ void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3) {
 
 void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4) {
   printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3), a4));
+}
+
+void print5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5) {
+  printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3), a4), a5));
 }
 
 void print6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6) {
@@ -4708,12 +4684,10 @@ void printRegister(uint64_t reg) {
 void checkImmediateRange(uint64_t immediate, uint64_t bits) {
   if (isSignedInteger(immediate, bits) == 0) {
     printLineNumber((uint64_t*) "encoding error", lineNumber);
-    printInteger(immediate);
-    print((uint64_t*) " expected between ");
-    printInteger(-twoToThePowerOf(bits - 1));
-    print((uint64_t*) " and ");
-    printInteger(twoToThePowerOf(bits - 1) - 1);
-    println();
+    print3((uint64_t*) "%d expected between %d and %d\n",
+      (uint64_t*) immediate,
+      (uint64_t*) -twoToThePowerOf(bits - 1),
+      (uint64_t*) twoToThePowerOf(bits - 1) - 1);
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -5037,22 +5011,19 @@ void printInstructionCounters() {
 
   ic = getTotalNumberOfInstructions();
 
-  print(selfieName);
-  print((uint64_t*) ": init:    ");
+  print1((uint64_t*) "%s: init:    ", selfieName);
   printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
   println();
 
-  print(selfieName);
-  print((uint64_t*) ": memory:  ");
+  print1((uint64_t*) "%s: memory:  ", selfieName);
   printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
   println();
 
-  print(selfieName);
-  print((uint64_t*) ": compute: ");
+  print1((uint64_t*) "%s: compute: ", selfieName);
   printInstructionCounter(ic, ic_add, (uint64_t*) "add");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
@@ -5064,8 +5035,7 @@ void printInstructionCounters() {
   printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
   println();
 
-  print(selfieName);
-  print((uint64_t*) ": control: ");
+  print1((uint64_t*) "%s: control: ", selfieName);
   printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
@@ -5402,10 +5372,7 @@ void selfie_output() {
   binaryName = getArgument();
 
   if (binaryLength == 0) {
-    print(selfieName);
-    print((uint64_t*) ": nothing to emit to output file ");
-    print(binaryName);
-    println();
+    print2((uint64_t*) "%s: nothing to emit to output file %s\n", selfieName, binaryName);
 
     return;
   }
@@ -5415,10 +5382,7 @@ void selfie_output() {
   fd = openWriteOnly(binaryName);
 
   if (signedLessThan(fd, 0)) {
-    print(selfieName);
-    print((uint64_t*) ": could not create binary output file ");
-    print(binaryName);
-    println();
+    print2((uint64_t*) "%s: could not create binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5427,10 +5391,7 @@ void selfie_output() {
 
   // first write ELF header
   if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
-    print(selfieName);
-    print((uint64_t*) ": could not write ELF header of binary output file ");
-    print(binaryName);
-    println();
+    print2((uint64_t*) "%s: could not write ELF header of binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5439,10 +5400,7 @@ void selfie_output() {
   *binary_buffer = codeLength;
 
   if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
-    print(selfieName);
-    print((uint64_t*) ": could not write code length of binary output file ");
-    print(binaryName);
-    println();
+    print2((uint64_t*) "%s: could not write code length of binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5451,24 +5409,17 @@ void selfie_output() {
 
   // then write binary
   if (write(fd, binary, binaryLength) != binaryLength) {
-    print(selfieName);
-    print((uint64_t*) ": could not write binary into binary output file ");
-    print(binaryName);
-    println();
+    print2((uint64_t*) "%s: could not write binary into binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
 
-  print(selfieName);
-  print((uint64_t*) ": ");
-  printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
-  print((uint64_t*) " bytes with ");
-  printInteger(codeLength / INSTRUCTIONSIZE);
-  print((uint64_t*) " instructions and ");
-  printInteger(binaryLength - codeLength);
-  print((uint64_t*) " bytes of data written into ");
-  print(binaryName);
-  println();
+  print5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data written into %s\n",
+    selfieName,
+    (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
+    (uint64_t*) (codeLength / INSTRUCTIONSIZE),
+    (uint64_t*) (binaryLength - codeLength),
+    binaryName);
 }
 
 uint64_t* touch(uint64_t* memory, uint64_t length) {
@@ -5514,10 +5465,7 @@ void selfie_load() {
   fd = signExtend(open(binaryName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signedLessThan(fd, 0)) {
-    print(selfieName);
-    print((uint64_t*) ": could not open input file ");
-    print(binaryName);
-    println();
+    print2((uint64_t*) "%s: could not open input file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5553,16 +5501,12 @@ void selfie_load() {
           if (signedLessThan(0, numberOfReadBytes)) {
             // check if we are really at EOF
             if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-              print(selfieName);
-              print((uint64_t*) ": ");
-              printInteger(ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength);
-              print((uint64_t*) " bytes with ");
-              printInteger(codeLength / INSTRUCTIONSIZE);
-              print((uint64_t*) " instructions and ");
-              printInteger(binaryLength - codeLength);
-              print((uint64_t*) " bytes of data loaded from ");
-              print(binaryName);
-              println();
+              print5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
+                selfieName,
+                (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
+                (uint64_t*) (codeLength / INSTRUCTIONSIZE),
+                (uint64_t*) (binaryLength - codeLength),
+                binaryName);
 
               return;
             }
@@ -5572,10 +5516,7 @@ void selfie_load() {
     }
   }
 
-  print(selfieName);
-  print((uint64_t*) ": failed to load code from input file ");
-  print(binaryName);
-  println();
+  print2((uint64_t*) "%s: failed to load code from input file %s\n", selfieName, binaryName);
 
   exit(EXITCODE_IOERROR);
 }
@@ -5656,16 +5597,12 @@ void implementRead(uint64_t* context) {
   vbuffer = *(getRegs(context) + REG_A1);
   size    = *(getRegs(context) + REG_A2);
 
-  if (debug_read) {
-    print(selfieName);
-    print((uint64_t*) ": trying to read ");
-    printInteger(size);
-    print((uint64_t*) " bytes from file with descriptor ");
-    printInteger(fd);
-    print((uint64_t*) " into buffer at virtual address ");
-    printHexadecimal(vbuffer, 8);
-    println();
-  }
+  if (debug_read)
+    print4((uint64_t*) "%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n",
+      selfieName,
+      (uint64_t*) size,
+      (uint64_t*) fd,
+      (uint64_t*) vbuffer);
 
   readTotal   = 0;
   bytesToRead = SIZEOFUINT64;
@@ -5745,24 +5682,16 @@ void implementRead(uint64_t* context) {
 
         size = 0;
 
-        if (debug_read) {
-          print(selfieName);
-          print((uint64_t*) ": reading into virtual address ");
-          printHexadecimal(vbuffer, 8);
-          print((uint64_t*) " failed because the address is unmapped\n");
-        }
+        if (debug_read)
+          print2((uint64_t*) "%s: reading into virtual address %p failed because the address is unmapped\n", selfieName, (uint64_t*) vbuffer);
       }
     } else {
       failed = 1;
 
       size = 0;
 
-      if (debug_read) {
-        print(selfieName);
-        print((uint64_t*) ": reading into virtual address ");
-        printHexadecimal(vbuffer, 8);
-        print((uint64_t*) " failed because the address is invalid\n");
-      }
+      if (debug_read)
+        print2((uint64_t*) "%s: reading into virtual address %p failed because the address is invalid\n", selfieName, (uint64_t*) vbuffer);
     }
   }
 
@@ -5780,14 +5709,8 @@ void implementRead(uint64_t* context) {
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
-  if (debug_read) {
-    print(selfieName);
-    print((uint64_t*) ": actually read ");
-    printInteger(readTotal);
-    print((uint64_t*) " bytes from file with descriptor ");
-    printInteger(fd);
-    println();
-  }
+  if (debug_read)
+    print3((uint64_t*) "%s: actually read %d bytes from file with descriptor %d\n", selfieName, (uint64_t*) readTotal, (uint64_t*) fd);
 }
 
 void emitWrite() {
