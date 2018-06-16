@@ -7090,16 +7090,7 @@ void undo_sd() {
 
 void print_beq() {
   printInstructionContext();
-
-  print((uint64_t*) "beq ");
-  printRegisterName(rs1);
-  print((uint64_t*) ",");
-  printRegisterName(rs2);
-  print((uint64_t*) ",");
-  printInteger(signedDivision(imm, INSTRUCTIONSIZE));
-  print((uint64_t*) "[");
-  printHexadecimal(pc + imm, 0);
-  print((uint64_t*) "]");
+  printf4((uint64_t*) "beq %s,%s,%d[%x]", getRegisterName(rs1), getRegisterName(rs2), (uint64_t*) signedDivision(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
 }
 
 void print_beq_before() {
@@ -7107,13 +7098,11 @@ void print_beq_before() {
   printRegisterValue(rs1);
   print((uint64_t*) ",");
   printRegisterValue(rs2);
-  print((uint64_t*) " |- $pc=");
-  printHexadecimal(pc, 0);
+  printf1((uint64_t*) " |- $pc=%x", (uint64_t*) pc);
 }
 
 void print_beq_after() {
-  print((uint64_t*) " -> $pc=");
-  printHexadecimal(pc, 0);
+  printf1((uint64_t*) " -> $pc=%x", (uint64_t*) pc);
 }
 
 void record_beq() {
@@ -7134,14 +7123,7 @@ void do_beq() {
 
 void print_jal() {
   printInstructionContext();
-
-  print((uint64_t*) "jal ");
-  printRegisterName(rd);
-  print((uint64_t*) ",");
-  printInteger(signedDivision(imm, INSTRUCTIONSIZE));
-  print((uint64_t*) "[");
-  printHexadecimal(pc + imm, 0);
-  print((uint64_t*) "]");
+  printf3((uint64_t*) "jal %s,%d[%x]", getRegisterName(rd), (uint64_t*) signedDivision(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
 }
 
 void print_jal_before() {
@@ -7150,8 +7132,7 @@ void print_jal_before() {
     printRegisterHexadecimal(rd);
     print((uint64_t*) ",");
   }
-  print((uint64_t*) "$pc=");
-  printHexadecimal(pc, 0);
+  printf1((uint64_t*) "$pc=%x", (uint64_t*) pc);
 }
 
 void print_jal_jalr_after() {
@@ -7206,14 +7187,7 @@ void constrain_jal_jalr() {
 
 void print_jalr() {
   printInstructionContext();
-
-  print((uint64_t*) "jalr ");
-  printRegisterName(rd);
-  print((uint64_t*) ",");
-  printInteger(signedDivision(imm, INSTRUCTIONSIZE));
-  print((uint64_t*) "(");
-  printRegisterName(rs1);
-  print((uint64_t*) ")");
+  printf3((uint64_t*) "jalr %s,%d(%s)", getRegisterName(rd), (uint64_t*) signedDivision(imm, INSTRUCTIONSIZE), getRegisterName(rs1));
 }
 
 void print_jalr_before() {
@@ -7224,8 +7198,7 @@ void print_jalr_before() {
     printRegisterHexadecimal(rd);
     print((uint64_t*) ",");
   }
-  print((uint64_t*) "$pc=");
-  printHexadecimal(pc, 0);
+  printf1((uint64_t*) "$pc=%x", (uint64_t*) pc);
 }
 
 void do_jalr() {
@@ -7282,13 +7255,11 @@ void do_ecall() {
     pc = pc + INSTRUCTIONSIZE;
   } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
-      print(selfieName);
-      print((uint64_t*) ": context switching during recording is unsupported\n");
+      printf1((uint64_t*) "%s: context switching during recording is unsupported\n", selfieName);
 
       exit(EXITCODE_BADARGUMENTS);
     } else if (symbolic) {
-      print(selfieName);
-      print((uint64_t*) ": context switching during symbolic execution is unsupported\n");
+      printf1((uint64_t*) "%s: context switching during symbolic execution is unsupported\n", selfieName);
 
       exit(EXITCODE_BADARGUMENTS);
     } else {
@@ -7315,8 +7286,7 @@ void undo_ecall() {
 
 void backtrack_ecall() {
   if (debug_symbolic) {
-    print(selfieName);
-    print((uint64_t*) ": backtracking ecall ");
+    printf1((uint64_t*) "%s: backtracking ecall ", selfieName);
     printSymbolicMemory(tc);
   }
 
@@ -7325,18 +7295,13 @@ void backtrack_ecall() {
     if (getBumpPointer(currentContext) == *(los + tc) + *(ups + tc))
       setBumpPointer(currentContext, *(los + tc));
     else {
-      print(selfieName);
-      print((uint64_t*) ": malloc backtracking error at ");
+      printf1((uint64_t*) "%s: malloc backtracking error at ", selfieName);
       printSymbolicMemory(tc);
-      print((uint64_t*) " with current bump pointer ");
-      printHexadecimal(getBumpPointer(currentContext), 0);
-      print((uint64_t*) " unequal ");
-      printHexadecimal(*(los + tc) + *(ups + tc), 0);
-      print((uint64_t*) " which is previous bump pointer ");
-      printHexadecimal(*(los + tc), 0);
-      print((uint64_t*) " plus size ");
-      printInteger(*(ups + tc));
-      println();
+      printf4((uint64_t*) " with current bump pointer %x unequal %x which is previous bump pointer %x plus size %d\n",
+        (uint64_t*) getBumpPointer(currentContext),
+        (uint64_t*) (*(los + tc) + *(ups + tc)),
+        (uint64_t*) *(los + tc),
+        (uint64_t*) *(ups + tc));
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
@@ -7422,42 +7387,25 @@ void replayTrace() {
 // -----------------------------------------------------------------
 
 void printSymbolicMemory(uint64_t svc) {
-  print((uint64_t*) "@");
-  printInteger(svc);
-  print((uint64_t*) "{@");
-  printInteger(*(tcs + svc));
-  print((uint64_t*) "@");
-  printHexadecimal(*(pcs + svc), 0);
+  printf3((uint64_t*) "@%d{@%d@%x", (uint64_t*) svc, (uint64_t*) *(tcs + svc), (uint64_t*) *(pcs + svc));
   if (*(pcs + svc) >= entryPoint)
     printSourceLineNumberOfInstruction(*(pcs + svc) - entryPoint);
-  print((uint64_t*) ";");
   if (*(vaddrs + svc) == 0) {
-    printHexadecimal(*(values + svc), 0);
-    print((uint64_t*) "=");
-    printHexadecimal(*(los + svc), 0);
-    print((uint64_t*) "=malloc(");
-    printInteger(*(ups + svc));
-    print((uint64_t*) ")}\n");
+    printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) *(values + svc), (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
     return;
   } else if (*(vaddrs + svc) < NUMBEROFREGISTERS)
-    printRegisterName(*(vaddrs + svc));
+    printf2((uint64_t*) ";%s=%d", getRegisterName(*(vaddrs + svc)), (uint64_t*) *(values + svc));
   else
-    printHexadecimal(*(vaddrs + svc), 0);
-  print((uint64_t*) "=");
-  printInteger(*(values + svc));
+    printf2((uint64_t*) ";%x=%d", (uint64_t*) *(vaddrs + svc), (uint64_t*) *(values + svc));
   if (*(types + svc))
-    print((uint64_t*) "(");
+    if (*(los + svc) == *(ups + svc))
+      printf1((uint64_t*) "(%d)}\n", (uint64_t*) *(los + svc));
+    else
+      printf2((uint64_t*) "(%d,%d)}\n", (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
+  else if (*(los + svc) == *(ups + svc))
+    printf1((uint64_t*) "[%d]}\n", (uint64_t*) *(los + svc));
   else
-    print((uint64_t*) "[");
-  printInteger(*(los + svc));
-  if (*(los + svc) != *(ups + svc)) {
-    print((uint64_t*) ",");
-    printInteger(*(ups + svc));
-  }
-  if (*(types + svc))
-    print((uint64_t*) ")}\n");
-  else
-    print((uint64_t*) "]}\n");
+    printf2((uint64_t*) "[%d,%d]}\n", (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
 }
 
 uint64_t cardinality(uint64_t lo, uint64_t up) {
@@ -7507,9 +7455,7 @@ uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg) {
   } else if (*(reg_los + reg) == *(reg_ups + reg))
     return 1;
   else {
-    print(selfieName);
-    print((uint64_t*) ": detected unsupported symbolic access of memory interval at ");
-    printHexadecimal(pc, 0);
+    printf2((uint64_t*) "%s: detected unsupported symbolic access of memory interval at %x", selfieName, (uint64_t*) pc);
     printSourceLineNumberOfInstruction(pc - entryPoint);
     println();
 
@@ -7526,14 +7472,7 @@ uint64_t loadSymbolicMemory(uint64_t* pt, uint64_t vaddr) {
   if (mrvc <= tc)
     return mrvc;
   else {
-    print(selfieName);
-    print((uint64_t*) ": detected most recent value counter ");
-    printInteger(mrvc);
-    print((uint64_t*) " at vaddr ");
-    printHexadecimal(vaddr, 0);
-    print((uint64_t*) " greater than current trace counter ");
-    printInteger(tc);
-    println();
+    printf4((uint64_t*) "%s: detected most recent value counter %d at vaddr %x greater than current trace counter %d\n", selfieName, (uint64_t*) mrvc, (uint64_t*) vaddr, (uint64_t*) tc);
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
@@ -7586,8 +7525,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     // assert: vaddr == *(vaddrs + mrvc)
 
     if (debug_symbolic) {
-      print(selfieName);
-      print((uint64_t*) ": overwriting ");
+      printf1((uint64_t*) "%s: overwriting ", selfieName);
       printSymbolicMemory(mrvc);
     }
   } else if (isTraceSpaceAvailable()) {
@@ -7616,8 +7554,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
       storeVirtualMemory(pt, vaddr, tc);
 
     if (debug_symbolic) {
-      print(selfieName);
-      print((uint64_t*) ": storing ");
+      printf1((uint64_t*) "%s: storing ", selfieName);
       printSymbolicMemory(tc);
     }
   } else
@@ -7636,8 +7573,7 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t t
 
   if (mrvc < trb) {
     // we do not support potentially aliased constrained memory
-    print(selfieName);
-    print((uint64_t*) ": detected potentially aliased constrained memory\n");
+    printf1((uint64_t*) "%s: detected potentially aliased constrained memory\n", selfieName);
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
@@ -7745,8 +7681,7 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, u
         takeBranch(1, howManyMore);
       } else {
         // we cannot handle non-singleton interval intersections in comparison
-        print(selfieName);
-        print((uint64_t*) ": detected non-singleton interval intersection\n");
+        printf1((uint64_t*) "%s: detected non-singleton interval intersection\n", selfieName);
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
@@ -7828,32 +7763,21 @@ uint64_t isSystemRegister(uint64_t reg) {
 void printRegisterValue(uint64_t reg) {
   if (isSystemRegister(reg))
     printRegisterHexadecimal(reg);
-  else {
-    printRegisterName(reg);
-    print((uint64_t*) "=");
-    printInteger(*(registers + reg));
-    print((uint64_t*) "(");
-    printHexadecimal(*(registers + reg), 0);
-    print((uint64_t*) ")");
-  }
+  else
+    printf3((uint64_t*) "%s=%d(%x)", getRegisterName(reg), (uint64_t*) *(registers + reg), (uint64_t*) *(registers + reg));
 }
 
 void printException(uint64_t exception, uint64_t faultingPage) {
   print((uint64_t*) *(EXCEPTIONS + exception));
 
-  if (exception == EXCEPTION_PAGEFAULT) {
-    print((uint64_t*) " at ");
-    printHexadecimal(faultingPage, 8);
-  }
+  if (exception == EXCEPTION_PAGEFAULT)
+    printf1((uint64_t*) " at %p", (uint64_t*) faultingPage);
 }
 
 void throwException(uint64_t exception, uint64_t faultingPage) {
   if (getException(currentContext) != EXCEPTION_NOEXCEPTION)
     if (getException(currentContext) != exception) {
-      print(selfieName);
-      print((uint64_t*) ": context ");
-      printHexadecimal((uint64_t) currentContext, 8);
-      print((uint64_t*) " throws ");
+      printf2((uint64_t*) "%s: context %p throws ", selfieName, currentContext);
       printException(exception, faultingPage);
       print((uint64_t*) " exception in presence of ");
       printException(getException(currentContext), getFaultingPage(currentContext));
@@ -7868,10 +7792,7 @@ void throwException(uint64_t exception, uint64_t faultingPage) {
   trap = 1;
 
   if (debug_exception) {
-    print(selfieName);
-    print((uint64_t*) ": context ");
-    printHexadecimal((uint64_t) currentContext, 8);
-    print((uint64_t*) " throws ");
+    printf2((uint64_t*) "%s: context %p throws ", selfieName, currentContext);
     printException(exception, faultingPage);
     print((uint64_t*) " exception\n");
   }
@@ -8293,62 +8214,55 @@ uint64_t instructionWithMaxCounter(uint64_t* counters, uint64_t max) {
   uint64_t c;
 
   a = -1;
-
   n = 0;
-
   i = 0;
 
   while (i < codeLength / INSTRUCTIONSIZE) {
     c = *(counters + i);
 
-    if (n < c)
+    if (n < c) {
       if (c < max) {
         n = c;
-        a = i * INSTRUCTIONSIZE;
-      }
+        a = i;
+      } else
+        return i * INSTRUCTIONSIZE;
+    }
 
     i = i + 1;
   }
 
-  return a;
+  if (a != -1)
+    return a * INSTRUCTIONSIZE;
+  else
+    return -1;
 }
 
 uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t max) {
   uint64_t a;
-  uint64_t ratio;
+  uint64_t c;
 
   a = instructionWithMaxCounter(counters, max);
 
-  if (a == (uint64_t) (-1))
-    ratio = 0;
-  else
-    ratio = *(counters + a / INSTRUCTIONSIZE);
+  if (a != -1) {
+    c = *(counters + a / INSTRUCTIONSIZE);
 
-  printf2((uint64_t*) "%d(%.2d%%)",
-    (uint64_t*) ratio,
-    (uint64_t*) fixedPointPercentage(fixedPointRatio(total, ratio)));
+    // CAUTION: we reset counter to avoid reporting it again
+    *(counters + a / INSTRUCTIONSIZE) = 0;
 
-  if (ratio != 0) {
-    print((uint64_t*) "@");
-    printHexadecimal(a, 0);
+    printf3((uint64_t*) ",%d(%.2d%%)@%x", (uint64_t*) c, (uint64_t*) fixedPointPercentage(fixedPointRatio(total, c)), (uint64_t*) a);
     printSourceLineNumberOfInstruction(a);
-  }
 
-  return ratio;
+    return c;
+  } else {
+    print((uint64_t*) ",0(0.0%)");
+
+    return 0;
+  }
 }
 
 void printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* counters) {
-  uint64_t max;
-
-  print(selfieName);
-  print(message);
-  printInteger(total);
-  print((uint64_t*) ",");
-  max = printPerInstructionCounter(total, counters, UINT64_MAX); // max counter
-  print((uint64_t*) ",");
-  max = printPerInstructionCounter(total, counters, max); // 2nd max
-  print((uint64_t*) ",");
-  printPerInstructionCounter(total, counters, max); // 3rd max
+  printf3((uint64_t*) "%s%s%d", selfieName, message, (uint64_t*) total);
+  printPerInstructionCounter(total, counters, printPerInstructionCounter(total, counters, printPerInstructionCounter(total, counters, UINT64_MAX)));
   println();
 }
 
@@ -8362,11 +8276,10 @@ void printProfile() {
   if (getTotalNumberOfInstructions() > 0) {
     printInstructionCounters();
 
-    print(selfieName);
     if (sourceLineNumber != (uint64_t*) 0)
-      print((uint64_t*) ": profile: total,max(ratio%)@addr(line#),2max,3max\n");
+      printf1((uint64_t*) "%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfieName);
     else
-      print((uint64_t*) ": profile: total,max(ratio%)@addr,2max,3max\n");
+      printf1((uint64_t*) "%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfieName);
 
     printPerInstructionProfile((uint64_t*) ": calls:   ", calls, callsPerProcedure);
     printPerInstructionProfile((uint64_t*) ": loops:   ", iterations, iterationsPerLoop);
@@ -8379,10 +8292,7 @@ void selfie_disassemble() {
   assemblyName = getArgument();
 
   if (codeLength == 0) {
-    print(selfieName);
-    print((uint64_t*) ": nothing to disassemble to output file ");
-    print(assemblyName);
-    println();
+    printf2((uint64_t*) "%s: nothing to disassemble to output file %s\n", selfieName, assemblyName);
 
     return;
   }
@@ -8392,10 +8302,7 @@ void selfie_disassemble() {
   assemblyFD = openWriteOnly(assemblyName);
 
   if (signedLessThan(assemblyFD, 0)) {
-    print(selfieName);
-    print((uint64_t*) ": could not create assembly output file ");
-    print(assemblyName);
-    println();
+    printf2((uint64_t*) "%s: could not create assembly output file %s\n", selfieName, assemblyName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -8425,14 +8332,7 @@ void selfie_disassemble() {
   outputName = (uint64_t*) 0;
   outputFD   = 1;
 
-  print(selfieName);
-  print((uint64_t*) ": ");
-  printInteger(numberOfWrittenCharacters);
-  print((uint64_t*) " characters of assembly with ");
-  printInteger(codeLength / INSTRUCTIONSIZE);
-  print((uint64_t*) " instructions written into ");
-  print(assemblyName);
-  println();
+  printf4((uint64_t*) "%s: %d characters of assembly with %d instructions written into %s\n", selfieName, (uint64_t*) numberOfWrittenCharacters, (uint64_t*) (codeLength / INSTRUCTIONSIZE), assemblyName);
 }
 
 // -----------------------------------------------------------------
@@ -8532,14 +8432,8 @@ uint64_t* createContext(uint64_t* parent, uint64_t* vctxt) {
   if (currentContext == (uint64_t*) 0)
     currentContext = usedContexts;
 
-  if (debug_create) {
-    print(selfieName);
-    print((uint64_t*) ": parent context ");
-    printHexadecimal((uint64_t) parent, 8);
-    print((uint64_t*) " created child context ");
-    printHexadecimal((uint64_t) usedContexts, 8);
-    println();
-  }
+  if (debug_create)
+    printf3((uint64_t*) "%s: parent context %p created child context %p\n", selfieName, parent, usedContexts);
 
   return usedContexts;
 }
@@ -8612,14 +8506,9 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 
   if (debug_map) {
-    print(selfieName);
-    print((uint64_t*) ": page ");
+    printf1((uint64_t*) "%s: page ", selfieName);
     printHexadecimal(page, 4);
-    print((uint64_t*) " mapped to frame ");
-    printHexadecimal(frame, 8);
-    print((uint64_t*) " in context ");
-    printHexadecimal((uint64_t) context, 8);
-    println();
+    printf2((uint64_t*) " mapped to frame %p in context %p\n", (uint64_t*) frame, context);
   }
 }
 
@@ -8772,8 +8661,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
       // always track initialized memory by using tc as most recent branch
       storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, tc);
     else {
-      print(selfieName);
-      print((uint64_t*) ": ealloc out of memory\n");
+      printf1((uint64_t*) "%s: ealloc out of memory\n", selfieName);
 
       exit(EXITCODE_OUTOFTRACEMEMORY);
     }
@@ -8917,10 +8805,7 @@ uint64_t handleSystemCall(uint64_t* context) {
     // TODO: exit only if all contexts have exited
     return EXIT;
   } else {
-    print(selfieName);
-    print((uint64_t*) ": unknown system call ");
-    printInteger(a7);
-    println();
+    printf2((uint64_t*) "%s: unknown system call %d\n", selfieName, (uint64_t*) a7);
 
     setExitCode(context, EXITCODE_UNKNOWNSYSCALL);
 
@@ -8948,16 +8833,14 @@ uint64_t handlePageFault(uint64_t* context) {
 uint64_t handleDivisionByZero(uint64_t* context) {
   setException(context, EXCEPTION_NOEXCEPTION);
 
-  print(selfieName);
-  print((uint64_t*) ": division by zero");
   if (record) {
-    print((uint64_t*) ", replaying...\n");
+    printf1((uint64_t*) "%s: division by zero, replaying...\n", selfieName);
 
     replayTrace();
 
     setExitCode(context, EXITCODE_NOERROR);
   } else {
-    println();
+    printf1((uint64_t*) "%s: division by zero\n", selfieName);
 
     setExitCode(context, EXITCODE_DIVISIONBYZERO);
   }
@@ -8995,10 +8878,7 @@ uint64_t handleException(uint64_t* context) {
   else if (exception == EXCEPTION_TIMER)
     return handleTimer(context);
   else {
-    print(selfieName);
-    print((uint64_t*) ": context ");
-    print(getName(context));
-    print((uint64_t*) " throws uncaught ");
+    printf2((uint64_t*) "%s: context %s throws uncaught ", selfieName, getName(context));
     printException(exception, getFaultingPage(context));
     println();
 
@@ -9057,11 +8937,7 @@ uint64_t mixter(uint64_t* toContext, uint64_t mix) {
   uint64_t timeout;
   uint64_t* fromContext;
 
-  print((uint64_t*) "mixter (");
-  printInteger(mix);
-  print((uint64_t*) "% mipster/");
-  printInteger(100 - mix);
-  print((uint64_t*) "% hypster)\n");
+  printf2((uint64_t*) "mixter (%d%% mipster/%d%% hypster)\n", (uint64_t*) mix, (uint64_t*) (100 - mix));
 
   mslice = TIMESLICE;
 
@@ -9131,10 +9007,7 @@ uint64_t minmob(uint64_t* toContext) {
     } else {
       // minster and mobster do not handle page faults
       if (getException(fromContext) == EXCEPTION_PAGEFAULT) {
-        print(selfieName);
-        print((uint64_t*) ": context ");
-        print(getName(fromContext));
-        print((uint64_t*) " throws uncaught ");
+        printf2((uint64_t*) "%s: context %s throws uncaught ", selfieName, getName(fromContext));
         printException(getException(fromContext), getFaultingPage(fromContext));
         println();
 
@@ -9189,14 +9062,8 @@ uint64_t mobster(uint64_t* toContext) {
 void backtrackTrace(uint64_t* context) {
   uint64_t savepc;
 
-  if (debug_symbolic) {
-    print(selfieName);
-    print((uint64_t*) ": backtracking ");
-    print(getName(context));
-    print((uint64_t*) " from exit code ");
-    printInteger(signExtend(getExitCode(context), SYSCALL_BITWIDTH));
-    println();
-  }
+  if (debug_symbolic)
+    printf3((uint64_t*) "%s: backtracking %s from exit code %d\n", selfieName, getName(context), (uint64_t*) signExtend(getExitCode(context), SYSCALL_BITWIDTH));
 
   symbolic = 0;
 
@@ -9248,10 +9115,9 @@ uint64_t monster(uint64_t* toContext) {
       if (handleException(fromContext) == EXIT) {
         backtrackTrace(fromContext);
 
-        if (b == 0) {
-          print(selfieName);
-          print((uint64_t*) ": backtracking ");
-        } else
+        if (b == 0)
+          printf1((uint64_t*) "%s: backtracking ", selfieName);
+        else
           unprintInteger(b);
 
         b = b + 1;
@@ -9297,8 +9163,7 @@ uint64_t selfie_run(uint64_t machine) {
   uint64_t exitCode;
 
   if (binaryLength == 0) {
-    print(selfieName);
-    print((uint64_t*) ": nothing to run, debug, or host\n");
+    printf1((uint64_t*) "%s: nothing to run, debug, or host\n", selfieName);
 
     return EXITCODE_BADARGUMENTS;
   }
@@ -9339,12 +9204,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   up_loadArguments(currentContext, numberOfRemainingArguments(), remainingArguments());
 
-  print(selfieName);
-  print((uint64_t*) ": selfie executing ");
-  print(binaryName);
-  print((uint64_t*) " with ");
-  printInteger(pageFrameMemory / MEGABYTE);
-  print((uint64_t*) "MB physical memory on ");
+  printf3((uint64_t*) "%s: selfie executing %s with %dMB physical memory on ", selfieName, binaryName, (uint64_t*) (pageFrameMemory / MEGABYTE));
 
   if (machine == MIPSTER)
     exitCode = mipster(currentContext);
@@ -9370,12 +9230,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   execute = 0;
 
-  print(selfieName);
-  print((uint64_t*) ": selfie terminating ");
-  print(getName(currentContext));
-  print((uint64_t*) " with exit code ");
-  printInteger(signExtend(exitCode, SYSCALL_BITWIDTH));
-  println();
+  printf3((uint64_t*) "%s: selfie terminating %s with exit code %d\n", selfieName, getName(currentContext), (uint64_t*) signExtend(exitCode, SYSCALL_BITWIDTH));
 
   printProfile();
 
@@ -9469,11 +9324,7 @@ void selfie_printDimacs() {
   uint64_t clause;
   uint64_t variable;
 
-  print((uint64_t*) "p cnf ");
-  printInteger(numberOfSATVariables);
-  print((uint64_t*) " ");
-  printInteger(numberOfSATClauses);
-  println();
+  printf2((uint64_t*) "p cnf %d %d\n", (uint64_t*) numberOfSATVariables, (uint64_t*) numberOfSATClauses);
 
   clause = 0;
 
@@ -9645,20 +9496,14 @@ void dimacs_getInstance() {
 void selfie_loadDimacs() {
   sourceName = getArgument();
 
-  print(selfieName);
-  print((uint64_t*) ": selfie loading SAT instance ");
-  print(sourceName);
-  println();
+  printf2((uint64_t*) "%s: selfie loading SAT instance %s\n", selfieName, sourceName);
 
   // assert: sourceName is mapped and not longer than maxFilenameLength
 
   sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signedLessThan(sourceFD, 0)) {
-    print(selfieName);
-    print((uint64_t*) ": could not open input file ");
-    print(sourceName);
-    println();
+    printf2((uint64_t*) "%s: could not open input file %s\n", selfieName, sourceName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -9683,14 +9528,7 @@ void selfie_loadDimacs() {
 
   dimacs_getInstance();
 
-  print(selfieName);
-  print((uint64_t*) ": ");
-  printInteger(numberOfSATClauses);
-  print((uint64_t*) " clauses with ");
-  printInteger(numberOfSATVariables);
-  print((uint64_t*) " declared variables loaded from ");
-  print(sourceName);
-  println();
+  printf4((uint64_t*) "%s: %d clauses with %d declared variables loaded from %s\n", selfieName, (uint64_t*) numberOfSATClauses, (uint64_t*) numberOfSATVariables, sourceName);
 
   dimacsName = sourceName;
 }
@@ -9701,8 +9539,7 @@ void selfie_sat() {
   selfie_loadDimacs();
 
   if (dimacsName == (uint64_t*) 0) {
-    print(selfieName);
-    print((uint64_t*) ": nothing to SAT solve\n");
+    printf1((uint64_t*) "%s: nothing to SAT solve\n", selfieName);
 
     return;
   }
@@ -9710,28 +9547,20 @@ void selfie_sat() {
   selfie_printDimacs();
 
   if (babysat(0) == SAT) {
-    print(selfieName);
-    print((uint64_t*) ": ");
-    print(dimacsName);
-    print((uint64_t*) " is satisfiable with ");
+    printf2((uint64_t*) "%s: %s is satisfiable with ", selfieName, dimacsName);
 
     variable = 0;
 
     while (variable < numberOfSATVariables) {
       if (*(SATAssignment + variable) == FALSE)
-        print((uint64_t*) "-");
-
-      printInteger(variable + 1);
-      print((uint64_t*) " ");
+        printf1((uint64_t*) "-%d ", (uint64_t*) (variable + 1));
+      else
+        printf1((uint64_t*) "%d ", (uint64_t*) (variable + 1));
 
       variable = variable + 1;
     }
-  } else {
-    print(selfieName);
-    print((uint64_t*) ": ");
-    print(dimacsName);
-    print((uint64_t*) " is unsatisfiable");
-  }
+  } else
+    printf2((uint64_t*) "%s: %s is unsatisfiable", selfieName, dimacsName);
 
   println();
 }
