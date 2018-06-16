@@ -623,7 +623,8 @@ void selfie_compile();
 
 void initRegister();
 
-void printRegister(uint64_t reg);
+uint64_t* getRegisterName(uint64_t reg);
+void      printRegisterName(uint64_t reg);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -4679,8 +4680,12 @@ void selfie_compile() {
 // --------------------------- REGISTER ----------------------------
 // -----------------------------------------------------------------
 
-void printRegister(uint64_t reg) {
-  print((uint64_t*) *(REGISTERS + reg));
+uint64_t* getRegisterName(uint64_t reg) {
+  return (uint64_t*) *(REGISTERS + reg);
+}
+
+void printRegisterName(uint64_t reg) {
+  print(getRegisterName(reg));
 }
 
 // -----------------------------------------------------------------
@@ -6171,38 +6176,24 @@ void storeVirtualMemory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void printSourceLineNumberOfInstruction(uint64_t a) {
-  if (sourceLineNumber != (uint64_t*) 0) {
-    print((uint64_t*) "(~");
-    printInteger(*(sourceLineNumber + a / INSTRUCTIONSIZE));
-    print((uint64_t*) ")");
-  }
+  if (sourceLineNumber != (uint64_t*) 0)
+    printf1((uint64_t*) "(~%d)", (uint64_t*) *(sourceLineNumber + a / INSTRUCTIONSIZE));
 }
 
 void printInstructionContext() {
   if (execute) {
-    print(binaryName);
-    print((uint64_t*) ": $pc=");
-  }
-
-  printHexadecimal(pc, 0);
-  if (execute)
+    printf2((uint64_t*) "%s: $pc=%x", binaryName, (uint64_t*) pc);
     printSourceLineNumberOfInstruction(pc - entryPoint);
-  else
+  } else {
+    printf1((uint64_t*) "%x", (uint64_t*) pc);
     printSourceLineNumberOfInstruction(pc);
-
-  print((uint64_t*) ": ");
-  printHexadecimal(ir, 8);
-
-  print((uint64_t*) ": ");
+  }
+  printf1((uint64_t*) ": %p: ", (uint64_t*) ir);
 }
 
 void print_lui() {
   printInstructionContext();
-
-  print((uint64_t*) "lui ");
-  printRegister(rd);
-  print((uint64_t*) ",");
-  printHexadecimal(imm, 0);
+  printf2((uint64_t*) "lui %s,%x", getRegisterName(rd), (uint64_t*) imm);
 }
 
 void print_lui_before() {
@@ -6259,12 +6250,7 @@ void print_addi() {
         return;
       }
 
-  print((uint64_t*) "addi ");
-  printRegister(rd);
-  print((uint64_t*) ",");
-  printRegister(rs1);
-  print((uint64_t*) ",");
-  printInteger(imm);
+  printf3((uint64_t*) "addi %s,%s,%d", getRegisterName(rd), getRegisterName(rs1), (uint64_t*) imm);
 }
 
 void print_addi_before() {
@@ -6314,9 +6300,7 @@ void constrain_addi() {
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in operand of addi at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected invalid minuend expression in operand of addi at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6332,14 +6316,7 @@ void constrain_addi() {
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
   printInstructionContext();
-
-  print(mnemonics);
-  print((uint64_t*) " ");
-  printRegister(rd);
-  print((uint64_t*) ",");
-  printRegister(rs1);
-  print((uint64_t*) ",");
-  printRegister(rs2);
+  printf4((uint64_t*) "%s %s,%s,%s", mnemonics, getRegisterName(rd), getRegisterName(rs1), getRegisterName(rs2));
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
@@ -6366,9 +6343,7 @@ void constrain_add() {
     if (*(reg_typ + rs1)) {
       if (*(reg_typ + rs2)) {
         // adding two pointers is undefined
-        print(selfieName);
-        print((uint64_t*) ": undefined addition of two pointers at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: undefined addition of two pointers at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6414,9 +6389,7 @@ void constrain_add() {
         setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in left operand of add at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of add at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6427,9 +6400,7 @@ void constrain_add() {
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another addend
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in right operand of add at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of add at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6522,9 +6493,7 @@ void constrain_sub() {
         setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another subtrahend
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in left operand of sub at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of sub at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6535,9 +6504,7 @@ void constrain_sub() {
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another minuend
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in right operand of sub at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of sub at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6574,18 +6541,14 @@ void constrain_mul() {
     if (*(reg_hasco + rs1)) {
       if (*(reg_hasco + rs2)) {
         // non-linear expressions are not supported
-        print(selfieName);
-        print((uint64_t*) ": detected non-linear expression in mul at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected non-linear expression in mul at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another multiplier
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in left operand of mul at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of mul at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6598,9 +6561,7 @@ void constrain_mul() {
     } else if (*(reg_hasco + rs2)) {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another multiplicand
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in right operand of mul at ");
-        printHexadecimal(pc, 0);
+        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of mul at %x", selfieName, (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6651,18 +6612,14 @@ void constrain_divu() {
         if (*(reg_hasco + rs1)) {
           if (*(reg_hasco + rs2)) {
             // non-linear expressions are not supported
-            print(selfieName);
-            print((uint64_t*) ": detected non-linear expression in divu at ");
-            printHexadecimal(pc, 0);
+            printf2((uint64_t*) "%s: detected non-linear expression in divu at %x", selfieName, (uint64_t*) pc);
             printSourceLineNumberOfInstruction(pc - entryPoint);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           } else if (*(reg_hasmn + rs1)) {
             // rs1 constraint has already minuend and cannot have another divisor
-            print(selfieName);
-            print((uint64_t*) ": detected invalid minuend expression in left operand of divu at ");
-            printHexadecimal(pc, 0);
+            printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of divu at %x", selfieName, (uint64_t*) pc);
             printSourceLineNumberOfInstruction(pc - entryPoint);
             println();
 
@@ -6678,9 +6635,7 @@ void constrain_divu() {
         } else if (*(reg_hasco + rs2)) {
           if (*(reg_hasmn + rs2)) {
             // rs2 constraint has already minuend and cannot have another dividend
-            print(selfieName);
-            print((uint64_t*) ": detected invalid minuend expression in right operand of divu at ");
-            printHexadecimal(pc, 0);
+            printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of divu at %x", selfieName, (uint64_t*) pc);
             printSourceLineNumberOfInstruction(pc - entryPoint);
             println();
 
@@ -6731,18 +6686,14 @@ void constrain_remu() {
         if (*(reg_hasco + rs1)) {
           if (*(reg_hasco + rs2)) {
             // non-linear expressions are not supported
-            print(selfieName);
-            print((uint64_t*) ": detected non-linear expression in remu at ");
-            printHexadecimal(pc, 0);
+            printf2((uint64_t*) "%s: detected non-linear expression in remu at %x", selfieName, (uint64_t*) pc);
             printSourceLineNumberOfInstruction(pc - entryPoint);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           } else if (*(reg_hasmn + rs1)) {
             // rs1 constraint has already minuend and cannot have another divisor
-            print(selfieName);
-            print((uint64_t*) ": detected invalid minuend expression in left operand of remu at ");
-            printHexadecimal(pc, 0);
+            printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of remu at %x", selfieName, (uint64_t*) pc);
             printSourceLineNumberOfInstruction(pc - entryPoint);
             println();
 
@@ -6758,9 +6709,7 @@ void constrain_remu() {
         } else if (*(reg_hasco + rs2)) {
           if (*(reg_hasmn + rs2)) {
             // rs2 constraint has already minuend and cannot have another dividend
-            print(selfieName);
-            print((uint64_t*) ": detected invalid minuend expression in right operand of remu at ");
-            printHexadecimal(pc, 0);
+            printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of remu at %x", selfieName, (uint64_t*) pc);
             printSourceLineNumberOfInstruction(pc - entryPoint);
             println();
 
@@ -6805,11 +6754,7 @@ void constrain_sltu() {
       if (*(reg_vaddr + rs1) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
-        print(selfieName);
-        print((uint64_t*) ": ");
-        printInteger(*(reg_hasco + rs1));
-        print((uint64_t*) " constrained memory locations in left sltu operand at ");
-        printHexadecimal(pc, 0);
+        printf3((uint64_t*) "%s: %d constrained memory locations in left sltu operand at %x", selfieName, (uint64_t*) *(reg_hasco + rs1), (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6821,11 +6766,7 @@ void constrain_sltu() {
       if (*(reg_vaddr + rs2) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
-        print(selfieName);
-        print((uint64_t*) ": ");
-        printInteger(*(reg_hasco + rs2));
-        print((uint64_t*) " constrained memory locations in right sltu operand at ");
-        printHexadecimal(pc, 0);
+        printf3((uint64_t*) "%s: %d constrained memory locations in right sltu operand at %x", selfieName, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
 
@@ -6854,8 +6795,7 @@ void backtrack_sltu() {
   uint64_t vaddr;
 
   if (debug_symbolic) {
-    print(selfieName);
-    print((uint64_t*) ": backtracking sltu ");
+    printf1((uint64_t*) "%s: backtracking sltu ", selfieName);
     printSymbolicMemory(tc);
   }
 
@@ -6892,14 +6832,7 @@ void backtrack_sltu() {
 
 void print_ld() {
   printInstructionContext();
-
-  print((uint64_t*) "ld ");
-  printRegister(rd);
-  print((uint64_t*) ",");
-  printInteger(imm);
-  print((uint64_t*) "(");
-  printRegister(rs1);
-  print((uint64_t*) ")");
+  printf3((uint64_t*) "ld %s,%d(%s)", getRegisterName(rd), (uint64_t*) imm, getRegisterName(rs1));
 }
 
 void print_ld_before() {
@@ -6912,14 +6845,10 @@ void print_ld_before() {
 
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr)) {
-      print((uint64_t*) ",mem[");
-      printHexadecimal(vaddr, 0);
-      print((uint64_t*) "]=");
       if (isSystemRegister(rd))
-        printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
+        printf2((uint64_t*) ",mem[%x]=%x |- ", (uint64_t*) vaddr, (uint64_t*) loadVirtualMemory(pt, vaddr));
       else
-        printInteger(loadVirtualMemory(pt, vaddr));
-      print((uint64_t*) " |- ");
+        printf2((uint64_t*) ",mem[%x]=%d |- ", (uint64_t*) vaddr, (uint64_t*) loadVirtualMemory(pt, vaddr));
       printRegisterValue(rd);
 
       return;
@@ -6933,9 +6862,7 @@ void print_ld_after(uint64_t vaddr) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       print((uint64_t*) " -> ");
       printRegisterValue(rd);
-      print((uint64_t*) "=mem[");
-      printHexadecimal(vaddr, 0);
-      print((uint64_t*) "]");
+      printf1((uint64_t*) "=mem[%x]", (uint64_t*) vaddr);
     }
 }
 
@@ -7028,14 +6955,7 @@ uint64_t constrain_ld() {
 
 void print_sd() {
   printInstructionContext();
-
-  print((uint64_t*) "sd ");
-  printRegister(rs2);
-  print((uint64_t*) ",");
-  printInteger(imm);
-  print((uint64_t*) "(");
-  printRegister(rs1);
-  print((uint64_t*) ")");
+  printf3((uint64_t*) "sd %s,%d(%s)", getRegisterName(rs2), (uint64_t*) imm, getRegisterName(rs1));
 }
 
 void print_sd_before() {
@@ -7050,13 +6970,10 @@ void print_sd_before() {
     if (isVirtualAddressMapped(pt, vaddr)) {
       print((uint64_t*) ",");
       printRegisterValue(rs2);
-      print((uint64_t*) " |- mem[");
-      printHexadecimal(vaddr, 0);
-      print((uint64_t*) "]=");
       if (isSystemRegister(rd))
-        printHexadecimal(loadVirtualMemory(pt, vaddr), 0);
+        printf2((uint64_t*) " |- mem[%x]=%x", (uint64_t*) vaddr, (uint64_t*) loadVirtualMemory(pt, vaddr));
       else
-        printInteger(loadVirtualMemory(pt, vaddr));
+        printf2((uint64_t*) " |- mem[%x]=%d", (uint64_t*) vaddr, (uint64_t*) loadVirtualMemory(pt, vaddr));
 
       return;
     }
@@ -7067,9 +6984,7 @@ void print_sd_before() {
 void print_sd_after(uint64_t vaddr) {
   if (isValidVirtualAddress(vaddr))
     if (isVirtualAddressMapped(pt, vaddr)) {
-      print((uint64_t*) " -> mem[");
-      printHexadecimal(vaddr, 0);
-      print((uint64_t*) "]=");
+      printf1((uint64_t*) " -> mem[%x]=", (uint64_t*) vaddr);
       printRegisterValue(rs2);
     }
 }
@@ -7128,11 +7043,7 @@ uint64_t constrain_sd() {
         if (*(reg_vaddr + rs2) == 0) {
           // constrained memory at vaddr 0 means that there is more than
           // one constrained memory location in the sd operand
-          print(selfieName);
-          print((uint64_t*) ": ");
-          printInteger(*(reg_hasco + rs2));
-          print((uint64_t*) " constrained memory locations in sd operand at ");
-          printHexadecimal(pc, 0);
+          printf3((uint64_t*) "%s: %d constrained memory locations in sd operand at %x", selfieName, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
           printSourceLineNumberOfInstruction(pc - entryPoint);
           println();
 
@@ -7160,8 +7071,7 @@ uint64_t constrain_sd() {
 
 void backtrack_sd() {
   if (debug_symbolic) {
-    print(selfieName);
-    print((uint64_t*) ": backtracking sd ");
+    printf1((uint64_t*) "%s: backtracking sd ", selfieName);
     printSymbolicMemory(tc);
   }
 
@@ -7182,9 +7092,9 @@ void print_beq() {
   printInstructionContext();
 
   print((uint64_t*) "beq ");
-  printRegister(rs1);
+  printRegisterName(rs1);
   print((uint64_t*) ",");
-  printRegister(rs2);
+  printRegisterName(rs2);
   print((uint64_t*) ",");
   printInteger(signedDivision(imm, INSTRUCTIONSIZE));
   print((uint64_t*) "[");
@@ -7226,7 +7136,7 @@ void print_jal() {
   printInstructionContext();
 
   print((uint64_t*) "jal ");
-  printRegister(rd);
+  printRegisterName(rd);
   print((uint64_t*) ",");
   printInteger(signedDivision(imm, INSTRUCTIONSIZE));
   print((uint64_t*) "[");
@@ -7298,11 +7208,11 @@ void print_jalr() {
   printInstructionContext();
 
   print((uint64_t*) "jalr ");
-  printRegister(rd);
+  printRegisterName(rd);
   print((uint64_t*) ",");
   printInteger(signedDivision(imm, INSTRUCTIONSIZE));
   print((uint64_t*) "(");
-  printRegister(rs1);
+  printRegisterName(rs1);
   print((uint64_t*) ")");
 }
 
@@ -7530,7 +7440,7 @@ void printSymbolicMemory(uint64_t svc) {
     print((uint64_t*) ")}\n");
     return;
   } else if (*(vaddrs + svc) < NUMBEROFREGISTERS)
-    printRegister(*(vaddrs + svc));
+    printRegisterName(*(vaddrs + svc));
   else
     printHexadecimal(*(vaddrs + svc), 0);
   print((uint64_t*) "=");
@@ -7899,9 +7809,7 @@ uint64_t fuzzUp(uint64_t value) {
 // -----------------------------------------------------------------
 
 void printRegisterHexadecimal(uint64_t reg) {
-  printRegister(reg);
-  print((uint64_t*) "=");
-  printHexadecimal(*(registers + reg), 0);
+  printf2((uint64_t*) "%s=%x", getRegisterName(reg), (uint64_t*) *(registers + reg));
 }
 
 uint64_t isSystemRegister(uint64_t reg) {
@@ -7921,7 +7829,7 @@ void printRegisterValue(uint64_t reg) {
   if (isSystemRegister(reg))
     printRegisterHexadecimal(reg);
   else {
-    printRegister(reg);
+    printRegisterName(reg);
     print((uint64_t*) "=");
     printInteger(*(registers + reg));
     print((uint64_t*) "(");
