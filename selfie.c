@@ -148,12 +148,12 @@ void printBinary(uint64_t n, uint64_t a);
 uint64_t printFormat0(uint64_t* s, uint64_t i);
 uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a);
 
-void print1(uint64_t* s, uint64_t* a1);
-void print2(uint64_t* s, uint64_t* a1, uint64_t* a2);
-void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
-void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4);
-void print5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5);
-void print6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
+void printf1(uint64_t* s, uint64_t* a1);
+void printf2(uint64_t* s, uint64_t* a1, uint64_t* a2);
+void printf3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
+void printf4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4);
+void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5);
+void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
 
 uint64_t roundUp(uint64_t n, uint64_t m);
 
@@ -1655,6 +1655,8 @@ uint64_t twoToThePowerOf(uint64_t p) {
 }
 
 uint64_t tenToThePowerOf(uint64_t p) {
+  // use recursion for simplicity and educational value
+  // for p close to 0 performance is not relevant
   if (p == 0)
     return 1;
   else
@@ -1852,7 +1854,7 @@ uint64_t atoi(uint64_t* s) {
     c = c - '0';
 
     if (c > 9) {
-      print2((uint64_t*) "%s: cannot convert non-decimal number %s\n", selfieName, s);
+      printf2((uint64_t*) "%s: cannot convert non-decimal number %s\n", selfieName, s);
 
       exit(EXITCODE_BADARGUMENTS);
     }
@@ -1867,13 +1869,13 @@ uint64_t atoi(uint64_t* s) {
         n = n * 10 + c;
       else {
         // s contains a decimal number larger than UINT64_MAX
-        print2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfieName, s);
+        printf2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfieName, s);
 
         exit(EXITCODE_BADARGUMENTS);
       }
     else {
       // s contains a decimal number larger than UINT64_MAX
-      print2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfieName, s);
+      printf2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfieName, s);
 
       exit(EXITCODE_BADARGUMENTS);
     }
@@ -2020,7 +2022,7 @@ void putCharacter(uint64_t c) {
       // to report the error we may thus still write to the console
       outputFD = 1;
 
-      print2((uint64_t*) "%s: could not write character to output file %s\n", selfieName, outputName);
+      printf2((uint64_t*) "%s: could not write character to output file %s\n", selfieName, outputName);
     }
 
     exit(EXITCODE_IOERROR);
@@ -2108,7 +2110,8 @@ uint64_t printFormat0(uint64_t* s, uint64_t i) {
 
         i = i + 1;
       } else if (loadCharacter(s, i + 1) == '%') {
-        putCharacter(loadCharacter(s, i + 1));
+        // for %% print just one %
+        putCharacter('%');
 
         i = i + 2;
       } else {
@@ -2146,9 +2149,11 @@ uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
 
         return i + 2;
       } else if (loadCharacter(s, i + 1) == '.') {
+        // for simplicity we support a single digit only
         p = loadCharacter(s, i + 2) - '0';
 
         if (p < 10) {
+          // the character at i + 2 is in fact a digit
           printInteger((uint64_t) a / tenToThePowerOf(p));
           if (p > 0) {
             putCharacter('.');
@@ -2162,7 +2167,7 @@ uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
           i = i + 1;
         }
       } else if (loadCharacter(s, i + 1) == 'p') {
-        printHexadecimal((uint64_t) a, 8);
+        printHexadecimal((uint64_t) a, SIZEOFUINT64STAR);
 
         return i + 2;
       } else if (loadCharacter(s, i + 1) == 'x') {
@@ -2178,6 +2183,7 @@ uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
 
         return i + 2;
       } else if (loadCharacter(s, i + 1) == '%') {
+        // for %% print just one %
         putCharacter('%');
 
         i = i + 2;
@@ -2192,27 +2198,27 @@ uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
   }
 }
 
-void print1(uint64_t* s, uint64_t* a1) {
+void printf1(uint64_t* s, uint64_t* a1) {
   printFormat0(s, printFormat1(s, 0, a1));
 }
 
-void print2(uint64_t* s, uint64_t* a1, uint64_t* a2) {
+void printf2(uint64_t* s, uint64_t* a1, uint64_t* a2) {
   printFormat0(s, printFormat1(s, printFormat1(s, 0, a1), a2));
 }
 
-void print3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3) {
+void printf3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3) {
   printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3));
 }
 
-void print4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4) {
+void printf4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4) {
   printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3), a4));
 }
 
-void print5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5) {
+void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5) {
   printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3), a4), a5));
 }
 
-void print6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6) {
+void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6) {
   printFormat0(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, printFormat1(s, 0, a1), a2), a3), a4), a5), a6));
 }
 
@@ -2234,7 +2240,7 @@ uint64_t* smalloc(uint64_t size) {
     // any address including null
     return memory;
   else if ((uint64_t) memory == 0) {
-    print1((uint64_t*) "%s: malloc out of memory\n", selfieName);
+    printf1((uint64_t*) "%s: malloc out of memory\n", selfieName);
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
@@ -2290,22 +2296,22 @@ void printSymbol(uint64_t symbol) {
 }
 
 void printLineNumber(uint64_t* message, uint64_t line) {
-  print4((uint64_t*) "%s: %s in %s in line %d: ", selfieName, message, sourceName, (uint64_t*) line);
+  printf4((uint64_t*) "%s: %s in %s in line %d: ", selfieName, message, sourceName, (uint64_t*) line);
 }
 
 void syntaxErrorMessage(uint64_t* message) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-  print1((uint64_t*) "%s\n", message);
+  printf1((uint64_t*) "%s\n", message);
 }
 
 void syntaxErrorCharacter(uint64_t expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-  print2((uint64_t*) "\'%c\' expected but \'%c\' found\n", (uint64_t*) expected, (uint64_t*) character);
+  printf2((uint64_t*) "\'%c\' expected but \'%c\' found\n", (uint64_t*) expected, (uint64_t*) character);
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-  print2((uint64_t*) "\"%s\" expected but \"%s\" found\n", expected, identifier);
+  printf2((uint64_t*) "\"%s\" expected but \"%s\" found\n", expected, identifier);
 }
 
 void getCharacter() {
@@ -2331,7 +2337,7 @@ void getCharacter() {
     // reached end of file
     character = CHAR_EOF;
   else {
-    print2((uint64_t*) "%s: could not read character from input file %s\n", selfieName, sourceName);
+    printf2((uint64_t*) "%s: could not read character from input file %s\n", selfieName, sourceName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -2742,7 +2748,7 @@ void getSymbol() {
 
       } else {
         printLineNumber((uint64_t*) "syntax error", lineNumber);
-        print1((uint64_t*) "found unknown character \'%c\'\n", (uint64_t*) character);
+        printf1((uint64_t*) "found unknown character \'%c\'\n", (uint64_t*) character);
 
         exit(EXITCODE_SCANNERERROR);
       }
@@ -2883,7 +2889,7 @@ uint64_t reportUndefinedProcedures() {
       undefined = 1;
 
       printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
-      print1((uint64_t*) "procedure %s undefined\n", getString(entry));
+      printf1((uint64_t*) "procedure %s undefined\n", getString(entry));
     }
 
     // keep looking
@@ -3145,7 +3151,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
 
     if (entry == (uint64_t*) 0) {
       printLineNumber((uint64_t*) "syntax error", lineNumber);
-      print1((uint64_t*) "%s undeclared\n", variableOrBigInt);
+      printf1((uint64_t*) "%s undeclared\n", variableOrBigInt);
 
       exit(EXITCODE_PARSERERROR);
     }
@@ -4339,7 +4345,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
       } else {
         // procedure already defined
         printLineNumber((uint64_t*) "warning", lineNumber);
-        print1((uint64_t*) "redefinition of procedure %s ignored\n", procedure);
+        printf1((uint64_t*) "redefinition of procedure %s ignored\n", procedure);
       }
     }
 
@@ -4460,7 +4466,7 @@ void compile_cstar() {
           } else {
             // global variable already declared or defined
             printLineNumber((uint64_t*) "warning", currentLineNumber);
-            print1((uint64_t*) "redefinition of global variable %s ignored\n", variableOrProcedureName);
+            printf1((uint64_t*) "redefinition of global variable %s ignored\n", variableOrProcedureName);
           }
         }
       } else
@@ -4595,14 +4601,14 @@ void selfie_compile() {
 
       numberOfSourceFiles = numberOfSourceFiles + 1;
 
-      print2((uint64_t*) "%s: selfie compiling %s with starc\n", selfieName, sourceName);
+      printf2((uint64_t*) "%s: selfie compiling %s with starc\n", selfieName, sourceName);
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
       sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
       if (signedLessThan(sourceFD, 0)) {
-        print2((uint64_t*) "%s: could not open input file %s\n", selfieName, sourceName);
+        printf2((uint64_t*) "%s: could not open input file %s\n", selfieName, sourceName);
 
         exit(EXITCODE_IOERROR);
       }
@@ -4612,28 +4618,28 @@ void selfie_compile() {
 
       compile_cstar();
 
-      print4((uint64_t*)
+      printf4((uint64_t*)
         "%s: %d characters read in %d lines and %d comments\n",
         selfieName,
         (uint64_t*) numberOfReadCharacters,
         (uint64_t*) lineNumber,
         (uint64_t*) numberOfComments);
 
-      print4((uint64_t*)
+      printf4((uint64_t*)
         "%s: with %d(%.2d%%) characters in %d actual symbols\n",
         selfieName,
         (uint64_t*) (numberOfReadCharacters - numberOfIgnoredCharacters),
         (uint64_t*) fixedPointPercentage(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters)),
         (uint64_t*) numberOfScannedSymbols);
 
-      print4((uint64_t*)
+      printf4((uint64_t*)
         "%s: %d global variables, %d procedures, %d string literals\n",
         selfieName,
         (uint64_t*) numberOfGlobalVariables,
         (uint64_t*) numberOfProcedures,
         (uint64_t*) numberOfStrings);
 
-      print6((uint64_t*)
+      printf6((uint64_t*)
         "%s: %d calls, %d assignments, %d while, %d if, %d return\n",
         selfieName,
         (uint64_t*) numberOfCalls,
@@ -4645,7 +4651,7 @@ void selfie_compile() {
   }
 
   if (numberOfSourceFiles == 0)
-    print1((uint64_t*) "%s: nothing to compile, only library generated\n", selfieName);
+    printf1((uint64_t*) "%s: nothing to compile, only library generated\n", selfieName);
 
   emitStart();
 
@@ -4655,7 +4661,7 @@ void selfie_compile() {
 
   entryPoint = ELF_ENTRY_POINT;
 
-  print4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfieName,
+  printf4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfieName,
     (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
     (uint64_t*) (codeLength / INSTRUCTIONSIZE),
     (uint64_t*) (binaryLength - codeLength));
@@ -4684,7 +4690,7 @@ void printRegister(uint64_t reg) {
 void checkImmediateRange(uint64_t immediate, uint64_t bits) {
   if (isSignedInteger(immediate, bits) == 0) {
     printLineNumber((uint64_t*) "encoding error", lineNumber);
-    print3((uint64_t*) "%d expected between %d and %d\n",
+    printf3((uint64_t*) "%d expected between %d and %d\n",
       (uint64_t*) immediate,
       (uint64_t*) -twoToThePowerOf(bits - 1),
       (uint64_t*) twoToThePowerOf(bits - 1) - 1);
@@ -4999,7 +5005,7 @@ uint64_t getTotalNumberOfInstructions() {
 }
 
 void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
-  print3((uint64_t*)
+  printf3((uint64_t*)
     "%s: %d(%.2d%%)",
     mnemonics,
     (uint64_t*) counter,
@@ -5011,19 +5017,19 @@ void printInstructionCounters() {
 
   ic = getTotalNumberOfInstructions();
 
-  print1((uint64_t*) "%s: init:    ", selfieName);
+  printf1((uint64_t*) "%s: init:    ", selfieName);
   printInstructionCounter(ic, ic_lui, (uint64_t*) "lui");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_addi, (uint64_t*) "addi");
   println();
 
-  print1((uint64_t*) "%s: memory:  ", selfieName);
+  printf1((uint64_t*) "%s: memory:  ", selfieName);
   printInstructionCounter(ic, ic_ld, (uint64_t*) "ld");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_sd, (uint64_t*) "sd");
   println();
 
-  print1((uint64_t*) "%s: compute: ", selfieName);
+  printf1((uint64_t*) "%s: compute: ", selfieName);
   printInstructionCounter(ic, ic_add, (uint64_t*) "add");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_sub, (uint64_t*) "sub");
@@ -5035,7 +5041,7 @@ void printInstructionCounters() {
   printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
   println();
 
-  print1((uint64_t*) "%s: control: ", selfieName);
+  printf1((uint64_t*) "%s: control: ", selfieName);
   printInstructionCounter(ic, ic_sltu, (uint64_t*) "sltu");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_beq, (uint64_t*) "beq");
@@ -5372,7 +5378,7 @@ void selfie_output() {
   binaryName = getArgument();
 
   if (binaryLength == 0) {
-    print2((uint64_t*) "%s: nothing to emit to output file %s\n", selfieName, binaryName);
+    printf2((uint64_t*) "%s: nothing to emit to output file %s\n", selfieName, binaryName);
 
     return;
   }
@@ -5382,7 +5388,7 @@ void selfie_output() {
   fd = openWriteOnly(binaryName);
 
   if (signedLessThan(fd, 0)) {
-    print2((uint64_t*) "%s: could not create binary output file %s\n", selfieName, binaryName);
+    printf2((uint64_t*) "%s: could not create binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5391,7 +5397,7 @@ void selfie_output() {
 
   // first write ELF header
   if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
-    print2((uint64_t*) "%s: could not write ELF header of binary output file %s\n", selfieName, binaryName);
+    printf2((uint64_t*) "%s: could not write ELF header of binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5400,7 +5406,7 @@ void selfie_output() {
   *binary_buffer = codeLength;
 
   if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
-    print2((uint64_t*) "%s: could not write code length of binary output file %s\n", selfieName, binaryName);
+    printf2((uint64_t*) "%s: could not write code length of binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5409,12 +5415,12 @@ void selfie_output() {
 
   // then write binary
   if (write(fd, binary, binaryLength) != binaryLength) {
-    print2((uint64_t*) "%s: could not write binary into binary output file %s\n", selfieName, binaryName);
+    printf2((uint64_t*) "%s: could not write binary into binary output file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
 
-  print5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data written into %s\n",
+  printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data written into %s\n",
     selfieName,
     (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
     (uint64_t*) (codeLength / INSTRUCTIONSIZE),
@@ -5465,7 +5471,7 @@ void selfie_load() {
   fd = signExtend(open(binaryName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signedLessThan(fd, 0)) {
-    print2((uint64_t*) "%s: could not open input file %s\n", selfieName, binaryName);
+    printf2((uint64_t*) "%s: could not open input file %s\n", selfieName, binaryName);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5501,7 +5507,7 @@ void selfie_load() {
           if (signedLessThan(0, numberOfReadBytes)) {
             // check if we are really at EOF
             if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-              print5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
+              printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
                 selfieName,
                 (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
                 (uint64_t*) (codeLength / INSTRUCTIONSIZE),
@@ -5516,7 +5522,7 @@ void selfie_load() {
     }
   }
 
-  print2((uint64_t*) "%s: failed to load code from input file %s\n", selfieName, binaryName);
+  printf2((uint64_t*) "%s: failed to load code from input file %s\n", selfieName, binaryName);
 
   exit(EXITCODE_IOERROR);
 }
@@ -5548,7 +5554,7 @@ void implementExit(uint64_t* context) {
   if (symbolic)
     return;
 
-  print4((uint64_t*)
+  printf4((uint64_t*)
     "%s: %s exiting with exit code %d and %.2dMB mallocated memory\n",
     selfieName,
     getName(context),
@@ -5598,11 +5604,7 @@ void implementRead(uint64_t* context) {
   size    = *(getRegs(context) + REG_A2);
 
   if (debug_read)
-    print4((uint64_t*) "%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n",
-      selfieName,
-      (uint64_t*) size,
-      (uint64_t*) fd,
-      (uint64_t*) vbuffer);
+    printf4((uint64_t*) "%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfieName, (uint64_t*) size, (uint64_t*) fd, (uint64_t*) vbuffer);
 
   readTotal   = 0;
   bytesToRead = SIZEOFUINT64;
@@ -5683,7 +5685,7 @@ void implementRead(uint64_t* context) {
         size = 0;
 
         if (debug_read)
-          print2((uint64_t*) "%s: reading into virtual address %p failed because the address is unmapped\n", selfieName, (uint64_t*) vbuffer);
+          printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is unmapped\n", selfieName, (uint64_t*) vbuffer);
       }
     } else {
       failed = 1;
@@ -5691,7 +5693,7 @@ void implementRead(uint64_t* context) {
       size = 0;
 
       if (debug_read)
-        print2((uint64_t*) "%s: reading into virtual address %p failed because the address is invalid\n", selfieName, (uint64_t*) vbuffer);
+        printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is invalid\n", selfieName, (uint64_t*) vbuffer);
     }
   }
 
@@ -5710,7 +5712,7 @@ void implementRead(uint64_t* context) {
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    print3((uint64_t*) "%s: actually read %d bytes from file with descriptor %d\n", selfieName, (uint64_t*) readTotal, (uint64_t*) fd);
+    printf3((uint64_t*) "%s: actually read %d bytes from file with descriptor %d\n", selfieName, (uint64_t*) readTotal, (uint64_t*) fd);
 }
 
 void emitWrite() {
@@ -5749,16 +5751,8 @@ void implementWrite(uint64_t* context) {
   vbuffer = *(getRegs(context) + REG_A1);
   size    = *(getRegs(context) + REG_A2);
 
-  if (debug_write) {
-    print(selfieName);
-    print((uint64_t*) ": trying to write ");
-    printInteger(size);
-    print((uint64_t*) " bytes from buffer at virtual address ");
-    printHexadecimal(vbuffer, 8);
-    print((uint64_t*) " into file with descriptor ");
-    printInteger(fd);
-    println();
-  }
+  if (debug_write)
+    printf4((uint64_t*) "%s: trying to write %d bytes from buffer at virtual address %p into file with descriptor %d\n", selfieName, (uint64_t*) size, (uint64_t*) vbuffer, (uint64_t*) fd);
 
   writtenTotal = 0;
   bytesToWrite = SIZEOFUINT64;
@@ -5799,24 +5793,16 @@ void implementWrite(uint64_t* context) {
 
         size = 0;
 
-        if (debug_write) {
-          print(selfieName);
-          print((uint64_t*) ": writing into virtual address ");
-          printHexadecimal(vbuffer, 8);
-          print((uint64_t*) " failed because the address is unmapped\n");
-        }
+        if (debug_write)
+          printf2((uint64_t*) "%s: writing into virtual address %p failed because the address is unmapped\n", selfieName, (uint64_t*) vbuffer);
       }
     } else {
       failed = 1;
 
       size = 0;
 
-      if (debug_write) {
-        print(selfieName);
-        print((uint64_t*) ": writing into virtual address ");
-        printHexadecimal(vbuffer, 8);
-        print((uint64_t*) " failed because the address is invalid\n");
-      }
+      if (debug_write)
+        printf2((uint64_t*) "%s: writing into virtual address %p failed because the address is invalid\n", selfieName, (uint64_t*) vbuffer);
     }
   }
 
@@ -5834,14 +5820,8 @@ void implementWrite(uint64_t* context) {
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
-  if (debug_write) {
-    print(selfieName);
-    print((uint64_t*) ": actually wrote ");
-    printInteger(writtenTotal);
-    print((uint64_t*) " bytes into file with descriptor ");
-    printInteger(fd);
-    println();
-  }
+  if (debug_write)
+    printf3((uint64_t*) "%s: actually wrote %d bytes into file with descriptor %d\n", selfieName, (uint64_t*) writtenTotal, (uint64_t*) fd);
 }
 
 void emitOpen() {
@@ -5879,8 +5859,7 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
           *(s + i) = *(values + mrvc);
 
           if (isSymbolicValue(*(types + mrvc), *(los + mrvc), *(ups + mrvc))) {
-            print(selfieName);
-            print((uint64_t*) ": detected symbolic value ");
+            printf1((uint64_t*) "%s: detected symbolic value ", selfieName);
             printSymbolicMemory(mrvc);
             print((uint64_t*) " in filename of open call\n");
 
@@ -5904,22 +5883,10 @@ uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
         // advance to the next machine word in our memory
         i = i + 1;
-      } else {
-        if (debug_open) {
-          print(selfieName);
-          print((uint64_t*) ": opening file with name at virtual address ");
-          printHexadecimal(vaddr, 8);
-          print((uint64_t*) " failed because the address is unmapped\n");
-        }
-      }
-    } else {
-      if (debug_open) {
-        print(selfieName);
-        print((uint64_t*) ": opening file with name at virtual address ");
-        printHexadecimal(vaddr, 8);
-        print((uint64_t*) " failed because the address is invalid\n");
-      }
-    }
+      } else if (debug_open)
+        printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfieName, (uint64_t*) vaddr);
+    } else if (debug_open)
+      printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is invalid\n", selfieName, (uint64_t*) vaddr);
   }
 
   return 0;
@@ -5943,27 +5910,13 @@ void implementOpen(uint64_t* context) {
 
     *(getRegs(context) + REG_A0) = fd;
 
-    if (debug_open) {
-      print(selfieName);
-      print((uint64_t*) ": opened file ");
-      print(filename_buffer);
-      print((uint64_t*) " with flags ");
-      printHexadecimal(flags, 0);
-      print((uint64_t*) " and mode ");
-      printOctal(mode, 0);
-      print((uint64_t*) " returning file descriptor ");
-      printInteger(fd);
-      println();
-    }
+    if (debug_open)
+      printf5((uint64_t*) "%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfieName, filename_buffer, (uint64_t*) flags, (uint64_t*) mode, (uint64_t*) fd);
   } else {
     *(getRegs(context) + REG_A0) = signShrink(-1, SYSCALL_BITWIDTH);
 
-    if (debug_open) {
-      print(selfieName);
-      print((uint64_t*) ": opening file with name at virtual address ");
-      printHexadecimal(vfilename, 8);
-      print((uint64_t*) " failed because the name is too long\n");
-    }
+    if (debug_open)
+      printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the name is too long\n", selfieName, (uint64_t*) vfilename);
   }
 
   if (symbolic) {
@@ -6002,12 +5955,8 @@ void implementMalloc(uint64_t* context) {
 
   size = *(getRegs(context) + REG_A0);
 
-  if (debug_malloc) {
-    print(selfieName);
-    print((uint64_t*) ": trying to malloc ");
-    printInteger(size);
-    print((uint64_t*) " bytes net\n");
-  }
+  if (debug_malloc)
+    printf2((uint64_t*) "%s: trying to malloc %d bytes net\n", selfieName, (uint64_t*) size);
 
   size = roundUp(size, SIZEOFUINT64);
   bump = getBumpPointer(context);
@@ -6051,14 +6000,8 @@ void implementMalloc(uint64_t* context) {
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
-  if (debug_malloc) {
-    print(selfieName);
-    print((uint64_t*) ": actually mallocating ");
-    printInteger(size);
-    print((uint64_t*) " bytes at virtual address ");
-    printHexadecimal(bump, 8);
-    println();
-  }
+  if (debug_malloc)
+    printf3((uint64_t*) "%s: actually mallocating %d bytes at virtual address %p\n", selfieName, (uint64_t*) size, (uint64_t*) bump);
 }
 
 // -----------------------------------------------------------------
@@ -6107,16 +6050,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   timer = timeout;
 
   if (debug_switch) {
-    print(selfieName);
-    print((uint64_t*) ": switched from context ");
-    printHexadecimal((uint64_t) fromContext, 8);
-    print((uint64_t*) " to context ");
-    printHexadecimal((uint64_t) toContext, 8);
-    if (timer != TIMEROFF) {
-      print((uint64_t*) " to execute ");
-      printInteger(timer);
-      print((uint64_t*) " instructions");
-    }
+    printf3((uint64_t*) "%s: switched from context %p to context %p", selfieName, fromContext, toContext);
+    if (timer != TIMEROFF)
+      printf1((uint64_t*) " to execute %d instructions", (uint64_t*) timer);
     println();
   }
 }
@@ -6210,18 +6146,8 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   // map virtual address to physical address
   paddr = vaddr - page * PAGESIZE + frame;
 
-  if (debug_tlb) {
-    print(selfieName);
-    print((uint64_t*) ": tlb access:\n vaddr: ");
-    printBinary(vaddr, CPUBITWIDTH);
-    print((uint64_t*) "\n page:  ");
-    printBinary(page * PAGESIZE, CPUBITWIDTH);
-    print((uint64_t*) "\n frame: ");
-    printBinary(frame, CPUBITWIDTH);
-    print((uint64_t*) "\n paddr: ");
-    printBinary(paddr, CPUBITWIDTH);
-    println();
-  }
+  if (debug_tlb)
+    printf5((uint64_t*) "%s: tlb access:\n vaddr: %p\n page:  %p\n frame: %p\n paddr: %p\n", selfieName, (uint64_t*) vaddr, (uint64_t*) (page * PAGESIZE), (uint64_t*) frame, (uint64_t*) paddr);
 
   return (uint64_t*) paddr;
 }
@@ -8416,10 +8342,7 @@ void decode_execute() {
     //report the error on the console
     outputFD = 1;
 
-    print(selfieName);
-    print((uint64_t*) ": unknown instruction with ");
-    printBinary(opcode, 0);
-    print((uint64_t*) " opcode detected");
+    printf2((uint64_t*) "%s: unknown instruction with %x opcode detected\n", selfieName, (uint64_t*) opcode);
 
     exit(EXITCODE_UNKNOWNINSTRUCTION);
   }
@@ -8493,7 +8416,7 @@ uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t
   else
     ratio = *(counters + a / INSTRUCTIONSIZE);
 
-  print2((uint64_t*) "%d(%.2d%%)",
+  printf2((uint64_t*) "%d(%.2d%%)",
     (uint64_t*) ratio,
     (uint64_t*) fixedPointPercentage(fixedPointRatio(total, ratio)));
 
@@ -8522,7 +8445,7 @@ void printPerInstructionProfile(uint64_t* message, uint64_t total, uint64_t* cou
 }
 
 void printProfile() {
-  print3((uint64_t*)
+  printf3((uint64_t*)
     "%s: summary: %d executed instructions and %.2dMB mapped memory\n",
     selfieName,
     (uint64_t*) getTotalNumberOfInstructions(),
@@ -9942,7 +9865,7 @@ void setArgument(uint64_t* argv) {
 }
 
 void printUsage() {
-  print3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
+  printf3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
     selfieName,
       (uint64_t*) "-c { source } | -o binary | -s assembly | -l binary | -sat dimacs",
       (uint64_t*) "( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ...");
