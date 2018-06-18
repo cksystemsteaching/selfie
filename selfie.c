@@ -130,7 +130,8 @@ uint64_t stringCompare(uint64_t* s, uint64_t* t);
 uint64_t  atoi(uint64_t* s);
 uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a);
 
-uint64_t fixedPointRatio(uint64_t a, uint64_t b);
+uint64_t fixedPointRatio(uint64_t a, uint64_t b, uint64_t f);
+uint64_t fixedPointPercentage(uint64_t r, uint64_t f);
 
 void putCharacter(uint64_t c);
 
@@ -1977,29 +1978,30 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a) {
   return s;
 }
 
-uint64_t fixedPointRatio(uint64_t a, uint64_t b) {
-  // compute fixed point ratio with 2 fractional digits
+uint64_t fixedPointRatio(uint64_t a, uint64_t b, uint64_t f) {
+  // compute fixed point ratio with f fractional digits
+  // multiply a/b with 10^f but avoid wrap around
 
-  // multiply a/b with 100 but avoid wrap around
+  uint64_t p;
 
-  if (a <= UINT64_MAX / 100) {
-    if (b != 0)
-      return a * 100 / b;
-  } else if (a <= UINT64_MAX / 10) {
-    if (b / 10 != 0)
-      return a * 10 / (b / 10);
-  } else {
-    if (b / 100 != 0)
-      return a / (b / 100);
+  p = f;
+
+  while (p > 0) {
+    if (a <= UINT64_MAX / tenToThePowerOf(p)) {
+      if (b / tenToThePowerOf(f - p) != 0)
+        return (a * tenToThePowerOf(p)) / (b / tenToThePowerOf(f - p));
+    }
+
+    p = p - 1;
   }
 
   return 0;
 }
 
-uint64_t fixedPointPercentage(uint64_t r) {
+uint64_t fixedPointPercentage(uint64_t r, uint64_t f) {
   if (r != 0)
-    // 1000000 = 10000 (for 100.00%) * 100 (for 2 fractional digits of r)
-    return 1000000 / r;
+    // 10^4 (for 100.00%) * 10^f (for f fractional digits of r)
+    return tenToThePowerOf(4 + f) / r;
   else
     return 0;
 }
@@ -2102,6 +2104,8 @@ void printBinary(uint64_t n, uint64_t a) {
 }
 
 uint64_t printFormat0(uint64_t* s, uint64_t i) {
+  // print string s from index i on
+  // ignore % formatting codes except for %%
   if (s == (uint64_t*) 0)
     return 0;
   else {
@@ -2127,6 +2131,9 @@ uint64_t printFormat0(uint64_t* s, uint64_t i) {
 }
 
 uint64_t printFormat1(uint64_t* s, uint64_t i, uint64_t* a) {
+  // print string s from index i on until next % formatting code except for %%
+  // then print argument a according to the encountered % formatting code
+
   uint64_t p;
 
   if (s == (uint64_t*) 0)
@@ -2307,12 +2314,18 @@ void syntaxErrorMessage(uint64_t* message) {
 
 void syntaxErrorCharacter(uint64_t expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-  printf2((uint64_t*) "\'%c\' expected but \'%c\' found\n", (uint64_t*) expected, (uint64_t*) character);
+  printCharacter(expected);
+  print((uint64_t*) " expected but ");
+  printCharacter(character);
+  print((uint64_t*) " found\n");
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
   printLineNumber((uint64_t*) "syntax error", lineNumber);
-  printf2((uint64_t*) "\"%s\" expected but \"%s\" found\n", expected, identifier);
+  printString(expected);
+  print((uint64_t*) " expected but ");
+  printString(identifier);
+  print((uint64_t*) " found\n");
 }
 
 void getCharacter() {
@@ -2749,7 +2762,9 @@ void getSymbol() {
 
       } else {
         printLineNumber((uint64_t*) "syntax error", lineNumber);
-        printf1((uint64_t*) "found unknown character \'%c\'\n", (uint64_t*) character);
+        print((uint64_t*) "found unknown character ");
+        printCharacter(character);
+        println();
 
         exit(EXITCODE_SCANNERERROR);
       }
@@ -2780,7 +2795,7 @@ void handleEscapeSequence() {
   else if (character == CHAR_BACKSLASH)
     character = CHAR_BACKSLASH;
   else {
-    syntaxErrorMessage((uint64_t*) "Unknown escape sequence found.\n");
+    syntaxErrorMessage((uint64_t*) "unknown escape sequence found");
 
     exit(EXITCODE_SCANNERERROR);
   }
@@ -4619,30 +4634,22 @@ void selfie_compile() {
 
       compile_cstar();
 
-      printf4((uint64_t*)
-        "%s: %d characters read in %d lines and %d comments\n",
-        selfieName,
+      printf4((uint64_t*) "%s: %d characters read in %d lines and %d comments\n", selfieName,
         (uint64_t*) numberOfReadCharacters,
         (uint64_t*) lineNumber,
         (uint64_t*) numberOfComments);
 
-      printf4((uint64_t*)
-        "%s: with %d(%.2d%%) characters in %d actual symbols\n",
-        selfieName,
+      printf4((uint64_t*) "%s: with %d(%.2d%%) characters in %d actual symbols\n", selfieName,
         (uint64_t*) (numberOfReadCharacters - numberOfIgnoredCharacters),
-        (uint64_t*) fixedPointPercentage(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters)),
+        (uint64_t*) fixedPointPercentage(fixedPointRatio(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters, 4), 4),
         (uint64_t*) numberOfScannedSymbols);
 
-      printf4((uint64_t*)
-        "%s: %d global variables, %d procedures, %d string literals\n",
-        selfieName,
+      printf4((uint64_t*) "%s: %d global variables, %d procedures, %d string literals\n", selfieName,
         (uint64_t*) numberOfGlobalVariables,
         (uint64_t*) numberOfProcedures,
         (uint64_t*) numberOfStrings);
 
-      printf6((uint64_t*)
-        "%s: %d calls, %d assignments, %d while, %d if, %d return\n",
-        selfieName,
+      printf6((uint64_t*) "%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfieName,
         (uint64_t*) numberOfCalls,
         (uint64_t*) numberOfAssignments,
         (uint64_t*) numberOfWhile,
@@ -5014,7 +5021,7 @@ void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemoni
     "%s: %d(%.2d%%)",
     mnemonics,
     (uint64_t*) counter,
-    (uint64_t*) fixedPointPercentage(fixedPointRatio(total, counter)));
+    (uint64_t*) fixedPointPercentage(fixedPointRatio(total, counter, 4), 4));
 }
 
 void printInstructionCounters() {
@@ -5564,7 +5571,7 @@ void implementExit(uint64_t* context) {
     selfieName,
     getName(context),
     (uint64_t*) signExtend(getExitCode(context), SYSCALL_BITWIDTH),
-    (uint64_t*) fixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE));
+    (uint64_t*) fixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE, 4));
 }
 
 void emitRead() {
@@ -8249,7 +8256,7 @@ uint64_t printPerInstructionCounter(uint64_t total, uint64_t* counters, uint64_t
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf3((uint64_t*) ",%d(%.2d%%)@%x", (uint64_t*) c, (uint64_t*) fixedPointPercentage(fixedPointRatio(total, c)), (uint64_t*) a);
+    printf3((uint64_t*) ",%d(%.2d%%)@%x", (uint64_t*) c, (uint64_t*) fixedPointPercentage(fixedPointRatio(total, c, 4), 4), (uint64_t*) a);
     printSourceLineNumberOfInstruction(a);
 
     return c;
@@ -8271,7 +8278,7 @@ void printProfile() {
     "%s: summary: %d executed instructions and %.2dMB mapped memory\n",
     selfieName,
     (uint64_t*) getTotalNumberOfInstructions(),
-    (uint64_t*) fixedPointRatio(pused(), MEGABYTE));
+    (uint64_t*) fixedPointRatio(pused(), MEGABYTE, 4));
 
   if (getTotalNumberOfInstructions() > 0) {
     printInstructionCounters();
