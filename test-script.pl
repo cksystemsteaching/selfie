@@ -10,6 +10,7 @@ my $FileLog;
 my $selfie = "selfie";
 
 my $has_error = 0;
+my $nb_test = 0;
 
 #BEGIN
 die "needs: the test folder emplacement" if (@ARGV < 1);
@@ -68,7 +69,7 @@ sub handleTestPrologue {
       $return_codes{substr($items[0], 1)} = $quadruple; #{line} => "<line,start,end, step>"
     }
 
-    push (@out, \%return_codes); #hash of line->triple
+    push (@out, \%return_codes); #hash of line->quadruple
 
     #debug
     #for my $i (@out) {print "item: $i"};
@@ -83,7 +84,12 @@ sub exec_test {
 
   my $dir = dirname($testFile);
   my $base = basename($testFile, ".c");
-  my $Testoutput = $dir . "/" . $base . ".out";
+
+  #fails if selfie -c <file>.c does not match the test file name
+  die "$testFile <> $cmd_args" if ( -1 == index($cmd_args, $testFile) );
+
+#  my $Testoutput = $dir . "/" . $base . ".out";
+  my $testOutput = "/tmp/" . $base . ".out";
 
   `echo "~~~--~~~------~~~---~~~ $testFile:" 2>&1 >> $FileLog`;
   my $testCmd = "./$selfie " . $cmd_args; #create the command
@@ -96,7 +102,7 @@ sub exec_test {
   die "cannot fork" unless defined $pid;
 
   if(0 == $pid) {
-    my $command = "$testCmd 2>&1 > $Testoutput";
+    my $command = "$testCmd 2>&1 > $testOutput";
 
     local $SIG{ALRM} = sub { `echo "KILLED" >> $FileLog`; exit(-1); }; #avoid parent freezed forever ...
     alarm 1; #1 second
@@ -124,13 +130,16 @@ sub exec_test {
   #die "error in test execution" if($?); (needs good return 0)
 
   ###Check
-  if(&verifyOutcomes($Testoutput, $return_codes)) {
+  if(&verifyOutcomes($testOutput, $return_codes)) {
     `echo "PASS" >> $FileLog`;
   } else {
     `echo "WRONG" >> $FileLog`;
     $has_error = 1;
   }
   ###Check
+
+  unlink $testOutput or die " Could not unlink $testOutput: $!";
+  $nb_test++;
 
   `echo "- - - - - - -" >> $FileLog`;
 }
@@ -170,6 +179,8 @@ $input_to_test = `pwd` if ($input_to_test =~ /\./);
 chomp $input_to_test;
 
 &find_test ($input_to_test) if -d $input_to_test;
+
+`echo "$nb_test tests executed" >> $FileLog`;
 
 exit(-1) if($has_error);
 exit(0);

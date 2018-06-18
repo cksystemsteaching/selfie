@@ -59,6 +59,8 @@ sat: selfie
 taint: selfie
 	./selfie -c selfie.c -t -n 0 -c selfie.c
 
+test: selfie
+	./test-script.pl test
 # Run everything
 all: compile quine debug replay os vm min mob sat
 
