@@ -895,6 +895,9 @@ void     implementOpen(uint64_t* context);
 void emitMalloc();
 void implementMalloc(uint64_t* context);
 
+void emitInput();
+void implementInput(uint64_t* context);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read   = 0;
@@ -909,6 +912,9 @@ uint64_t SYSCALL_OPEN  = 1024;
 
 // TODO: fix this syscall for spike
 uint64_t SYSCALL_MALLOC = 222;
+
+//
+uint64_t SYSCALL_INPUT = 42;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1194,6 +1200,9 @@ uint64_t mrcc = 0;
 // fuzzing
 
 uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
+
+// line exit code
+uint64_t last_jal_from = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -4602,6 +4611,8 @@ void selfie_compile() {
   emitOpen();
   emitMalloc();
   emitSwitch();
+  // init. symbolic value (symbolic testing purpose)
+  emitInput();
 
   // declare mandatory main procedure
   createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, 0);
@@ -5628,11 +5639,33 @@ void emitExit() {
   // never returns here
 }
 
+void printEndPointStatus(uint64_t* context, uint64_t start, uint64_t end, uint64_t step) {
+  print(selfieName);
+  print((uint64_t*) ": ");
+  print(getName(context));
+  print((uint64_t*) " reaching end point at:");
+  printHexadecimal(last_jal_from - entryPoint, 0);
+  printSourceLineNumberOfInstruction(last_jal_from - entryPoint);
+  print((uint64_t*) " with exit code <");
+  printInteger(start);
+  print((uint64_t*) ",");
+  printInteger(end);
+  print((uint64_t*) ",");
+  printInteger(step);
+  print((uint64_t*) ">");
+  println();
+}
+
 void implementExit(uint64_t* context) {
   setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
 
-  if (symbolic)
+  if (symbolic) {
+    printEndPointStatus(context,
+      signExtend(signShrink(*(reg_los + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
+      signExtend(signShrink(*(reg_ups + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
+      signExtend(signShrink(*(reg_steps + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH));
     return;
+  }
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -5744,7 +5777,7 @@ void implementRead(uint64_t* context) {
               storePhysicalMemory(buffer, mrvc);
             }
 
-            setTaintMemory(1, 0, 1);
+            if(do_taint_flag) setTaintMemory(1, 0, 1);
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
               storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0);
@@ -6260,6 +6293,53 @@ uint64_t* mipster_switch(uint64_t* toContext, uint64_t timeout) {
 uint64_t* hypster_switch(uint64_t* toContext, uint64_t timeout) {
   // this procedure is only executed at boot level zero
   return mipster_switch(toContext, timeout);
+}
+
+void emitInput() {
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "input", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+
+  emitLD(REG_A2, REG_SP, 0); // step
+  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+
+  emitLD(REG_A1, REG_SP, 0); // end
+  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+
+  emitLD(REG_A0, REG_SP, 0); // start
+  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+
+  emitADDI(REG_A7, REG_ZR, SYSCALL_INPUT);
+
+  emitECALL();
+
+  emitJALR(REG_ZR, REG_RA, 0);
+}
+
+// set [start, end, step] in return reg
+void implementInput(uint64_t* context) {
+  uint64_t start;
+  uint64_t end;
+  uint64_t step;
+
+  start   = *(getRegs(context) + REG_A0);
+  end     = *(getRegs(context) + REG_A1);
+  step    = *(getRegs(context) + REG_A2);
+
+  if (symbolic) {
+
+    *(reg_typ + REG_A0)   = 0;
+    *(reg_los + REG_A0)   = start;
+    *(reg_ups + REG_A0)   = end;
+    *(reg_steps + REG_A0) = step;
+
+    *(reg_hasco + REG_A0) = 1;
+
+    setPC(context, getPC(context) + INSTRUCTIONSIZE);
+  } else {
+    print(selfieName);
+    print((uint64_t*) ": input syscall during concrete execution ");
+    println();
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -7033,8 +7113,10 @@ void do_divu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_divu = ic_divu + 1;
-  } else
+  } else {
+    last_jal_from = pc;
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
+  }
 }
 
 void constrain_divu() {
@@ -7893,9 +7975,13 @@ void do_jal() {
     a = (pc - entryPoint) / INSTRUCTIONSIZE;
 
     *(iterationsPerLoop + a) = *(iterationsPerLoop + a) + 1;
-  } else
+  } else {
+    // save last exit line
+    last_jal_from = pc;
+
     // just jump forward
     pc = pc + imm;
+  }
 
   ic_jal = ic_jal + 1;
 }
@@ -10122,6 +10208,8 @@ uint64_t handleSystemCall(uint64_t* context) {
     implementWrite(context);
   else if (a7 == SYSCALL_OPEN)
     implementOpen(context);
+  else if (a7 == SYSCALL_INPUT)
+    implementInput(context);
   else if (a7 == SYSCALL_EXIT) {
     implementExit(context);
 
@@ -10172,6 +10260,8 @@ uint64_t handleDivisionByZero(uint64_t* context) {
     println();
 
     setExitCode(context, EXITCODE_DIVISIONBYZERO);
+    if(symbolic)
+      printEndPointStatus(context, EXITCODE_DIVISIONBYZERO, EXITCODE_DIVISIONBYZERO, 1);
   }
 
   return EXIT;
@@ -10181,6 +10271,7 @@ uint64_t handleMaxTrace(uint64_t* context) {
   setException(context, EXCEPTION_NOEXCEPTION);
 
   setExitCode(context, EXITCODE_OUTOFTRACEMEMORY);
+  printEndPointStatus(context, EXITCODE_OUTOFTRACEMEMORY, EXITCODE_OUTOFTRACEMEMORY, 1);
 
   return EXIT;
 }
