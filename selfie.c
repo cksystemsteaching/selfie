@@ -7237,8 +7237,10 @@ void do_remu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_remu = ic_remu + 1;
-  } else
+  } else {
+    last_jal_from = pc;
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
+  }
 }
 
 void constrain_remu_step_1() {
@@ -7336,7 +7338,7 @@ void constrain_remu() {
   uint64_t lcm;
 
   if (*(reg_los + rs2) == 0)
-    throwException(EXCEPTION_DIVISIONBYZERO, 0);
+    return;
 
   if (*(reg_hasco + rs2) != 0) {
     // rs2 has constraint
