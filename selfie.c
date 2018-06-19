@@ -1110,7 +1110,8 @@ void initReplayEngine() {
 void initSymbolicEngine();
 
 void printSymbolicMemory(uint64_t svc);
-void printOverApprox();
+void printOverApprox(uint64_t* which);
+void printInvalid();
 
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
 uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
@@ -1118,6 +1119,7 @@ uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k);
 uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t k);
 uint64_t isPowerOfTwo(uint64_t n);
 uint64_t gcd(uint64_t n1, uint64_t n2);
+uint64_t isByteShift(uint64_t n);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg);
@@ -1128,9 +1130,9 @@ uint64_t isTraceSpaceAvailable();
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t isByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t isByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
@@ -1146,7 +1148,7 @@ uint64_t fuzzUp(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t maxTraceLength = 100000;
+uint64_t maxTraceLength = 20000000;
 
 uint64_t debug_symbolic = 0;
 
@@ -1163,6 +1165,10 @@ uint64_t* ups   = (uint64_t*) 0; // trace of upper bounds on values
 uint64_t* steps = (uint64_t*) 0; // trace of steps for intervals
 
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
+
+uint64_t* isBytes = (uint64_t*) 0; // trace of data types
+uint64_t* saddrs  = (uint64_t*) 0; // trace of source addresses
+uint64_t* isNotIntervals = (uint64_t*) 0;
 
 // read history
 
@@ -1194,6 +1200,10 @@ uint64_t* reg_rem     = (uint64_t*) 0;
 uint64_t* reg_rem_typ = (uint64_t*) 0;
 uint64_t* reg_has_mul_div_mod = (uint64_t*) 0;
 
+uint64_t* reg_isByte = (uint64_t*) 0;
+uint64_t* reg_saddr  = (uint64_t*) 0;
+uint64_t* reg_isNotInterval = (uint64_t*) 0;
+
 // trace counter of most recent constraint
 
 uint64_t mrcc = 0;
@@ -1219,6 +1229,10 @@ void initSymbolicEngine() {
   steps  = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
+  isBytes = zalloc(maxTraceLength * SIZEOFUINT64);
+  saddrs  = zalloc(maxTraceLength * SIZEOFUINT64);
+  isNotIntervals  = zalloc(maxTraceLength * SIZEOFUINT64);
+
   read_values = zalloc(maxTraceLength * SIZEOFUINT64);
   read_los    = zalloc(maxTraceLength * SIZEOFUINT64);
   read_ups    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1239,6 +1253,10 @@ void initSymbolicEngine() {
   reg_rem     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_rem_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_has_mul_div_mod = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  reg_isByte = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_saddr  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_isNotInterval  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   i = 0;
   while (i < NUMBEROFREGISTERS) {
@@ -5668,6 +5686,9 @@ void implementExit(uint64_t* context) {
     return;
   }
 
+  if (symbolic)
+    return;
+
   print(selfieName);
   print((uint64_t*) ": ");
   print(getName(context));
@@ -5781,11 +5802,15 @@ void implementRead(uint64_t* context) {
             if(do_taint_flag) setTaintMemory(1, 0, 1);
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, tc);
           } else {
             actuallyRead = 0;
+
+            print(selfieName);
+            print((uint64_t*) ": ealloc out of memory");
+            println();
 
             throwException(EXCEPTION_MAXTRACE, 0);
           }
@@ -6188,9 +6213,13 @@ void implementMalloc(uint64_t* context) {
         if (isTraceSpaceAvailable()) {
           setTaintMemory(0, 0, 1);
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, tc);
         }
         else {
+          print(selfieName);
+          print((uint64_t*) ": ealloc out of memory");
+          println();
+
           throwException(EXCEPTION_MAXTRACE, 0);
 
           return;
@@ -6627,6 +6656,16 @@ void constrain_addi() {
       setConstraint(rd, 0, 0, 0, 0, 0);
       setCorrection(rd, 0, 0, 0, 0, 0);
     }
+
+    if (rs1 == REG_A0) {
+      *(reg_isByte + rd) = *(reg_isByte + rs1);
+      *(reg_saddr  + rd) = *(reg_saddr  + rs1);
+      *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
+    } else {
+      *(reg_isByte + rd) = 0;
+      *(reg_saddr  + rd) = 0;
+      *(reg_isNotInterval + rd) = 0;
+    }
   }
 }
 
@@ -6667,6 +6706,7 @@ void constrain_add() {
   uint64_t cnd;
   uint64_t gcd_steps;
   uint64_t i_max;
+  uint64_t tmp;
 
   if (rd == REG_ZR)
     return;
@@ -6707,6 +6747,60 @@ void constrain_add() {
   }
 
   *(reg_typ + rd) = 0;
+
+  // to handle addition of bytes in storeCharacter function
+  if (*(reg_isNotInterval + rs1)) {
+    if (*(reg_isNotInterval + rs2) == 0) {
+      if (*(reg_isByte + rs2) > 0) {
+        if (*(reg_isByte + rs1) == *(reg_isByte + rs2)) {
+          if (*(reg_los + rs1) == 0)
+            if (*(reg_ups + rs1) == 0) {
+              *(reg_los + rd) = rightShift(*(reg_los + rs2), (*(reg_isByte + rs2) - 1) * 8);
+              *(reg_ups + rd) = rightShift(*(reg_ups + rs2), (*(reg_isByte + rs2) - 1) * 8);
+              tmp = *(reg_steps + rs2) / twoToThePowerOf((*(reg_isByte + rs2) - 1) * 8);
+              if (tmp)
+                *(reg_steps  + rd) = tmp;
+              else
+                *(reg_steps  + rd) = 1;
+              *(reg_isByte + rd) = *(reg_isByte + rs2);
+              *(reg_saddr  + rd) = *(reg_saddr + rs1);
+              *(reg_isNotInterval + rd) = 1;
+
+              setConstraint(rd, 0, 0, 0, 0, 0);
+              setCorrection(rd, 0, 0, 0, 0, 0);
+
+              return;
+            }
+        } else
+          printInvalid();
+      } else
+        printInvalid();
+    } else
+      printInvalid();
+  }
+
+  if (*(reg_isNotInterval + rs1)) {
+    printInvalid();
+  } else if (*(reg_isNotInterval + rs2)) {
+    if (rd != REG_A0)
+      printInvalid();
+  }
+
+  tmp = 1;
+  if (rd == REG_A0) {
+    if (rs2 != REG_A1) {
+      *(reg_saddr  + rd) = *(reg_saddr  + rs2);
+      *(reg_isByte + rd) = *(reg_isByte + rs2);
+      *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs2);
+      tmp = 0;
+    }
+  }
+
+  if (tmp) {
+    *(reg_saddr  + rd) = 0;
+    *(reg_isByte + rd) = 0;
+    *(reg_isNotInterval + rd) = 0;
+  }
 
   // interval semantics of add
   cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
@@ -6769,7 +6863,7 @@ void constrain_add() {
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
       // rd inherits rs1 constraint since rs2 has none
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2),*(reg_coups + rs1) + *(reg_ups + rs2));
+      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
 
       if (*(reg_has_mul_div_mod + rs1) == 0)
         setCorrection(rd, 1, 0, 0, 0, 1);
@@ -6794,7 +6888,7 @@ void constrain_add() {
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
       // rd inherits rs2 constraint since rs1 has none
-      setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2),*(reg_ups + rs1) + *(reg_coups + rs2));
+      setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
 
       if (*(reg_has_mul_div_mod + rs2) == 0)
         setCorrection(rd, 1, 0, 0, 0, 1);
@@ -6882,6 +6976,34 @@ void constrain_sub() {
   }
 
   *(reg_typ + rd) = 0;
+
+  // to handle subtraction of characters in storeCharacter function
+  if (*(reg_isNotInterval + rs2) == 0) {
+    if (*(reg_isByte + rs2) > 0) {
+      if (*(reg_saddr + rs2) == *(reg_saddr + rs1)) {
+        // char_i - char_i
+        *(reg_los + rd)    = 0;
+        *(reg_ups + rd)    = 0;
+        *(reg_steps  + rd) = 1;
+        *(reg_isByte + rd) = *(reg_isByte + rs2);
+        *(reg_saddr  + rd) = *(reg_saddr + rs1);
+        *(reg_isNotInterval + rd) = 1;
+
+        setConstraint(rd, 0, 0, 0, 0, 0);
+        setCorrection(rd, 0, 0, 0, 0, 0);
+        return;
+      }
+    }
+  }
+
+  if (*(reg_isNotInterval + rs1))
+    printInvalid();
+  else if (*(reg_isNotInterval + rs2))
+    printInvalid();
+
+  *(reg_saddr  + rd) = 0;
+  *(reg_isByte + rd) = 0;
+  *(reg_isNotInterval + rd) = 0;
 
   // interval semantics of sub
   cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
@@ -7006,6 +7128,10 @@ void do_mul() {
 void constrain_mul() {
   uint64_t mul_los;
   uint64_t mul_ups;
+  uint64_t shift;
+  uint64_t mrvc;
+  uint64_t saved_mrvc;
+  uint64_t whichByte;
 
   if (rd == REG_ZR)
     return;
@@ -7042,6 +7168,62 @@ void constrain_mul() {
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, *(reg_los + rs2), 0, 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
+      shift = isByteShift(*(reg_los + rs2));
+      if (shift < CPUBITWIDTH) {
+        whichByte = SIZEOFUINT64 - (shift/SIZEOFUINT64);
+        if (*(reg_isNotInterval + rs1) == 0) {
+          // interval semantics of left shift
+          *(reg_los + rd) = mul_los;
+          *(reg_ups + rd) = mul_ups;
+          *(reg_steps  + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
+          *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+          *(reg_isNotInterval + rd) = 0;
+        } else {
+          if (*(reg_isByte + rs1) > 0) {
+            if (shift == 56) {
+              mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
+              saved_mrvc = 0;
+              while (mrvc != 0) {
+                if (*(isBytes + mrvc) == whichByte) {
+                  saved_mrvc = mrvc;
+                  mrvc = 0;
+                } else if (*(isBytes + mrvc) == 0)
+                  printInvalid();
+                mrvc = *(tcs + mrvc);
+              }
+
+              if (saved_mrvc == 0) {
+                *(reg_los + rd) = 0;
+                *(reg_ups + rd) = 0;
+                *(reg_steps + rd) = 1;
+              } else {
+                *(reg_ups + rd) = *(ups + saved_mrvc) * *(reg_los + rs2);
+                *(reg_los + rd) = *(los + saved_mrvc) * *(reg_los + rs2);
+                *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
+              }
+              *(reg_isNotInterval + rd) = 0;
+
+            } else {
+              // not important to be what for now
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = UINT64_MAX;
+              *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
+              *(reg_isNotInterval + rd) = 1;
+            }
+
+            *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+          }
+        }
+        *(reg_saddr + rd) = *(reg_saddr + rs1);
+
+        return;
+      }
+
+      if (*(reg_isNotInterval + rs1))
+        printInvalid();
+      else if (*(reg_isNotInterval + rs2))
+        printInvalid();
+
       // interval semantics of mul
       if (mul_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2))) {
         // TODO: improve
@@ -7055,6 +7237,10 @@ void constrain_mul() {
         *(reg_los + rd)   = mul_los;
         *(reg_ups + rd)   = mul_ups;
       }
+
+      *(reg_saddr  + rd) = *(reg_saddr + rs1);
+      *(reg_isByte + rd) = 0;
+      *(reg_isNotInterval + rd) = 0;
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -7072,6 +7258,11 @@ void constrain_mul() {
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_colos + rs2), *(reg_coups + rs2));
       setCorrection(rd, *(reg_los + rs1), 0, 0, 0, *(reg_has_mul_div_mod + rs2) + 1);
 
+      if (*(reg_isNotInterval + rs1))
+        printInvalid();
+      else if (*(reg_isNotInterval + rs2))
+        printInvalid();
+
       // interval semantics of mul
       if (mul_condition(*(reg_los + rs2), *(reg_ups + rs2), *(reg_los + rs1))) {
         // TODO: improve
@@ -7085,6 +7276,10 @@ void constrain_mul() {
         *(reg_los + rd)   = mul_los;
         *(reg_ups + rd)   = mul_ups;
       }
+
+      *(reg_saddr  + rd) = 0;
+      *(reg_isByte + rd) = 0;
+      *(reg_isNotInterval + rd) = 0;
     }
 
   } else {
@@ -7092,9 +7287,71 @@ void constrain_mul() {
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
+    shift = isByteShift(*(reg_los + rs2));
+    if (shift < CPUBITWIDTH) {
+      whichByte = SIZEOFUINT64 - (shift/SIZEOFUINT64);
+      if (*(reg_isNotInterval + rs1) == 0) {
+        // interval semantics of left shift
+        *(reg_los + rd) = mul_los;
+        *(reg_ups + rd) = mul_ups;
+        *(reg_steps  + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
+        *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+        *(reg_isNotInterval + rd) = 0;
+      } else {
+        if (*(reg_isByte + rs1) > 0) {
+          if (shift == 56) {
+            mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
+            saved_mrvc = 0;
+            while (mrvc != 0) {
+              if (*(isBytes + mrvc) == whichByte) {
+                saved_mrvc = mrvc;
+                mrvc = 0;
+              } else if (*(isBytes + mrvc) == 0)
+                printInvalid();
+              mrvc = *(tcs + mrvc);
+            }
+
+            if (saved_mrvc == 0) {
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = 0;
+              *(reg_steps + rd) = 1;
+            } else {
+              *(reg_ups + rd) = *(ups + saved_mrvc) * *(reg_los + rs2);
+              *(reg_los + rd) = *(los + saved_mrvc) * *(reg_los + rs2);
+              *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
+            }
+            *(reg_isNotInterval + rd) = 0;
+
+          } else {
+            // not important to be what
+            *(reg_los + rd) = 0;
+            *(reg_ups + rd) = 0;
+            *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
+            *(reg_isNotInterval + rd) = 1;
+          }
+
+          *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+        }
+      }
+      *(reg_saddr + rd) = *(reg_saddr + rs1);
+
+      return;
+    }
+
+    if (*(reg_isNotInterval + rs2))
+      printInvalid();
+    else if (*(reg_isNotInterval + rs1)) {
+      // if (*(reg_isByte + rs1) == 0)
+        printInvalid();
+    }
+
     // interval semantics of mul
     *(reg_los + rd) = mul_los;
     *(reg_ups + rd) = mul_ups;
+
+    *(reg_isByte + rd) = 0;
+    *(reg_saddr  + rd) = *(reg_saddr + rs1);
+    *(reg_isNotInterval + rd) = 0;
   }
 }
 
@@ -7123,6 +7380,10 @@ void do_divu() {
 void constrain_divu() {
   uint64_t div_los;
   uint64_t div_ups;
+  uint64_t shift;
+  uint64_t mrvc;
+  uint64_t saved_mrvc;
+  uint64_t whichByte;
 
   if (*(reg_los + rs2) == 0)
     return;
@@ -7167,6 +7428,45 @@ void constrain_divu() {
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
+      shift = isByteShift(*(reg_los + rs2));
+      if (shift < CPUBITWIDTH) {
+        if (shift == 56) {
+          if (*(reg_isNotInterval + rs1)) {
+            mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
+            whichByte = SIZEOFUINT64 - *(reg_isByte + rs1) - 1;
+            saved_mrvc = 0;
+            while (mrvc != 0) {
+              if (*(isBytes + mrvc) == whichByte) {
+                saved_mrvc = mrvc;
+                mrvc = 0;
+              } else if (*(isBytes + mrvc) == 0)
+                printInvalid();
+              mrvc = *(tcs + mrvc);
+            }
+
+            if (saved_mrvc == 0) {
+              *(reg_los + rd) = 0;
+              *(reg_ups + rd) = 0;
+            } else {
+              *(reg_los + rd) = *(los + saved_mrvc);
+              *(reg_ups + rd) = *(ups + saved_mrvc);
+            }
+            *(reg_steps + rd) = 1;
+
+            *(reg_isByte + rd) = whichByte;
+            *(reg_saddr  + rd) = *(reg_saddr + rs1);
+            *(reg_isNotInterval + rd) = 0;
+
+            return;
+          }
+        }
+      }
+
+      if (*(reg_isNotInterval + rs1))
+        printInvalid();
+      else if (*(reg_isNotInterval + rs2))
+        printInvalid();
+
       // step computation
       if (*(reg_steps + rs1) < *(reg_los + rs2)) {
         if (*(reg_los + rs2) % *(reg_steps + rs1) != 0)
@@ -7194,6 +7494,10 @@ void constrain_divu() {
         *(reg_los + rd) = div_los;
         *(reg_ups + rd) = div_ups;
       }
+
+      *(reg_saddr  + rd) = *(reg_saddr + rs1);
+      *(reg_isByte + rd) = 0;
+      *(reg_isNotInterval + rd) = 0;
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -7221,9 +7525,53 @@ void constrain_divu() {
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
+    shift = isByteShift(*(reg_los + rs2));
+    if (shift < CPUBITWIDTH) {
+      if (shift == 56) {
+        if (*(reg_isNotInterval + rs1)) {
+          mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
+          whichByte = SIZEOFUINT64 - *(reg_isByte + rs1) - 1;
+          saved_mrvc = 0;
+          while (mrvc != 0) {
+            if (*(isBytes + mrvc) == whichByte) {
+              saved_mrvc = mrvc;
+              mrvc = 0;
+            } else if (*(isBytes + mrvc) == 0)
+              printInvalid();
+            mrvc = *(tcs + mrvc);
+          }
+
+          if (saved_mrvc == 0) {
+            *(reg_los + rd) = 0;
+            *(reg_ups + rd) = 0;
+          } else {
+            *(reg_los + rd) = *(los + saved_mrvc);
+            *(reg_ups + rd) = *(ups + saved_mrvc);
+          }
+          *(reg_steps + rd) = 1;
+
+          *(reg_isByte + rd) = whichByte;
+          *(reg_saddr  + rd) = *(reg_saddr + rs1);
+          *(reg_isNotInterval + rd) = 0;
+
+          return;
+        }
+      }
+    }
+
+    if (*(reg_isNotInterval + rs1)) {
+      // if (*(reg_isByte + rs1) == 0)
+        printInvalid();
+    } else if (*(reg_isNotInterval + rs2))
+      printInvalid();
+
     // interval semantics of divu
     *(reg_los + rd) = div_los;
     *(reg_ups + rd) = div_ups;
+
+    *(reg_saddr  + rd) = *(reg_saddr + rs1);
+    *(reg_isByte + rd) = 0;
+    *(reg_isNotInterval + rd) = 0;
   }
 }
 
@@ -7326,6 +7674,10 @@ void constrain_remu_step_1() {
     *(reg_los + rd)   = rem_lo;
     *(reg_ups + rd)   = rem_up;
     *(reg_steps + rd) = 1;
+
+    *(reg_saddr  + rd) = *(reg_saddr + rs1);
+    *(reg_isByte + rd) = 0;
+    *(reg_isNotInterval + rd) = 0;
   }
 }
 
@@ -7337,9 +7689,12 @@ void constrain_remu() {
   uint64_t gcd_step_k;
   uint64_t rem_typ;
   uint64_t lcm;
+  uint64_t mrvc;
+  uint64_t saved_mrvc;
+  uint64_t* tmp;
 
   if (*(reg_los + rs2) == 0)
-    return;
+    throwException(EXCEPTION_DIVISIONBYZERO, 0);
 
   if (*(reg_hasco + rs2) != 0) {
     // rs2 has constraint
@@ -7358,6 +7713,50 @@ void constrain_remu() {
   if(do_taint_flag) taint_binop(REMU);
 
   *(reg_typ + rd) = 0;
+
+  if (*(reg_isNotInterval + rs1)) {
+    if (*(reg_los + rs2) == twoToThePowerOf(8)) {
+      if (*(reg_hasco + rs1)) {
+        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
+        setCorrection(rd, 0, 0, *(reg_los + rs2), 1, *(reg_has_mul_div_mod + rs1) + 1);
+      } else {
+        setConstraint(rd, 0, 0, 0, 0, 0);
+        setCorrection(rd, 0, 0, 0, 0, 0);
+      }
+
+      mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
+      saved_mrvc = 0;
+      while (mrvc != 0) {
+        if (*(isBytes + mrvc) == 1) {
+          saved_mrvc = mrvc;
+          mrvc = 0;
+        } else if (*(isBytes + mrvc) == 0)
+          printInvalid();
+        mrvc = *(tcs + mrvc);
+      }
+
+      if (saved_mrvc == 0) {
+        *(reg_los + rd) = 0;
+        *(reg_ups + rd) = 0;
+      } else {
+        *(reg_los + rd) = *(los + saved_mrvc);
+        *(reg_ups + rd) = *(ups + saved_mrvc);
+      }
+      *(reg_steps + rd) = 1;
+
+      *(reg_saddr  + rd) = *(reg_saddr + rs1);
+      *(reg_isByte + rd) = 1;
+      *(reg_isNotInterval + rd) = 0;
+
+      return;
+    } else
+      printInvalid();
+  }
+
+  if (*(reg_isNotInterval + rs1))
+    printInvalid();
+  else if (*(reg_isNotInterval + rs2))
+    printInvalid();
 
   if (*(reg_hasco + rs1)) {
     // interval semantics of remu
@@ -7442,6 +7841,10 @@ void constrain_remu() {
 
     *(reg_los + rd) = rem_lo;
     *(reg_ups + rd) = rem_up;
+
+    *(reg_saddr  + rd) = *(reg_saddr + rs1);
+    *(reg_isByte + rd) = 0;
+    *(reg_isNotInterval + rd) = 0;
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7449,6 +7852,10 @@ void constrain_remu() {
 
     *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
     *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
+
+    *(reg_saddr  + rd) = *(reg_saddr + rs1);
+    *(reg_isByte + rd) = 0;
+    *(reg_isNotInterval + rd) = 0;
   }
 }
 
@@ -7540,8 +7947,11 @@ void backtrack_sltu() {
 
       *(reg_los + vaddr) = *(los + tc);
       *(reg_ups + vaddr) = *(ups + tc);
-
       *(reg_steps + vaddr) = *(steps + tc);
+
+      *(reg_isByte + vaddr) = *(isBytes + tc);
+      *(reg_saddr  + vaddr) = *(saddrs  + tc);
+      *(reg_isNotInterval + vaddr) = *(isNotIntervals + tc);
 
       setConstraint(vaddr, 0, 0, 0, 0, 0);
       setCorrection(vaddr, 0, 0, 0, 0, 0);
@@ -7673,7 +8083,6 @@ uint64_t constrain_ld() {
 
         *(reg_los + rd) = *(los + mrvc);
         *(reg_ups + rd) = *(ups + mrvc);
-
         *(reg_steps + rd) = *(steps + mrvc);
 
         if(do_taint_flag) {
@@ -7683,6 +8092,17 @@ uint64_t constrain_ld() {
         }
 
         // assert: vaddr == *(vaddrs + mrvc)
+
+        *(reg_isByte + rd) = *(isBytes + mrvc);
+        *(reg_saddr  + rd) = *(saddrs  + mrvc);
+        if (*(reg_saddr + rd) == 0) {
+          if (rs1 < REG_FP) {
+            if (rs1 > REG_TP)
+              *(reg_saddr + rd) = vaddr;
+          } else if (rs1 > REG_S11)
+            *(reg_saddr + rd) = vaddr;
+        }
+        *(reg_isNotInterval + rd) = *(isNotIntervals + mrvc);
 
         if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd))) {
           // vaddr is constrained by rd if value interval is not singleton
@@ -7838,7 +8258,12 @@ uint64_t constrain_sd() {
       }
 
       if(do_taint_flag) setTaintMemory(*(reg_istainted + rs2), *(reg_isminuend + rs2), *(reg_hasstep + rs2));
-      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc);
+
+      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_isByte + rs2), *(reg_isNotInterval + rs2), *(reg_saddr + rs2), mrcc);
+
+      *(reg_isByte + rs2) = 0;
+      *(reg_saddr  + rs2) = 0;
+      *(reg_isNotInterval + rs2) = 0;
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -8256,6 +8681,16 @@ void printSymbolicMemory(uint64_t svc) {
   println();
 }
 
+void printInvalid() {
+  print(selfieName);
+  print((uint64_t*) ": detected an invalid interval at ");
+  printHexadecimal(pc, 0);
+  printSourceLineNumberOfInstruction(pc - entryPoint);
+  println();
+
+  exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+}
+
 void printOverApprox(uint64_t* which) {
   print(selfieName);
   print((uint64_t*) ": over-approximation applied in ");
@@ -8343,6 +8778,18 @@ uint64_t isPowerOfTwo(uint64_t n) {
   // return 1;
 }
 
+uint64_t isByteShift(uint64_t n) {
+  uint64_t c;
+
+  c = 0;
+  while (c < CPUBITWIDTH) {
+    if (n == twoToThePowerOf(c))
+      return c;
+    c = c + 8;
+  }
+  return CPUBITWIDTH;
+}
+
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
   if (type)
     // memory range
@@ -8413,7 +8860,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t isByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr == 0)
@@ -8431,25 +8878,55 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
         if (lo == *(los + mrvc))
           if (up == *(ups + mrvc))
             if (step == *(steps + mrvc))
-              // prevent tracking identical updates
-              return;
+              if (isByte == *(isBytes + mrvc))
+                if (isNotInterval == *(isNotIntervals + mrvc))
+                  if (saddr == *(saddrs + mrvc))
+                    return;
   }
 
   if (trb < mrvc) {
     // current value at vaddr does not need to be tracked,
     // just overwrite it in the trace
-    *(values + mrvc) = value;
 
-    *(types + mrvc) = type;
+    if (isNotInterval) {
+      if (isTraceSpaceAvailable()) {
+        ealloc();
+        *(pcs + tc) = pc;
+        *(tcs + tc) = mrvc;
+        *(values + tc) = value;
+        *(types  + tc) = type;
+        *(los + tc) = lo;
+        *(ups + tc) = up;
+        *(steps  + tc) = step;
+        *(vaddrs + tc) = vaddr;
+        *(isBytes + tc) = isByte;
+        *(saddrs  + tc) = saddr;
+        *(isNotIntervals + tc) = isNotInterval;
+        storeVirtualMemory(pt, vaddr, tc);
+      } else {
+        print(selfieName);
+        print((uint64_t*) ": ealloc out of memory");
+        println();
 
-    *(los + mrvc) = lo;
-    *(ups + mrvc) = up;
+        throwException(EXCEPTION_MAXTRACE, 0);
+      }
+    } else {
+      *(values + mrvc) = value;
 
-    *(steps + mrvc) = step;
+      *(types + mrvc) = type;
 
-    if(do_taint_flag) storeTaintMemory(mrvc);
+      *(los + mrvc) = lo;
+      *(ups + mrvc) = up;
+      *(steps + mrvc) = step;
 
-    // assert: vaddr == *(vaddrs + mrvc)
+      if(do_taint_flag) storeTaintMemory(mrvc);
+
+      // assert: vaddr == *(vaddrs + mrvc)
+
+      *(isBytes + mrvc) = isByte;
+      *(saddrs  + mrvc) = saddr;
+      *(isNotIntervals + mrvc) = isNotInterval;
+    }
 
     if (debug_symbolic) {
       print(selfieName);
@@ -8470,10 +8947,13 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 
     *(los + tc) = lo;
     *(ups + tc) = up;
-
     *(steps + tc) = step;
 
     *(vaddrs + tc) = vaddr;
+
+    *(isBytes + tc) = isByte;
+    *(saddrs  + tc) = saddr;
+    *(isNotIntervals + tc) = isNotInterval;
 
     if(do_taint_flag) storeTaintMemory(tc);
 
@@ -8490,11 +8970,16 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
       print((uint64_t*) ": storing ");
       printSymbolicMemory(tc);
     }
-  } else
+  } else {
+    print(selfieName);
+    print((uint64_t*) ": ealloc out of memory");
+    println();
+
     throwException(EXCEPTION_MAXTRACE, 0);
+  }
 }
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t isByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr >= getBumpPointer(currentContext))
@@ -8515,13 +9000,14 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
 
   // always track constrained memory by using tc as most recent branch
   //assert to_store_taint set
-  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, tc);
+  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, isByte, isNotInterval, saddr, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
-  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, tc);
+
+  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, tc);
 }
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
@@ -8587,7 +9073,15 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     }
 
     if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
-    storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, trb);
+
+    if (*(isNotIntervals + mrvc))
+      *(reg_isNotInterval + reg) = 1;
+
+    storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, *(reg_isByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
+
+    *(reg_isByte + reg) = 0;
+    *(reg_saddr  + reg) = 0;
+    *(reg_isNotInterval + reg) = 0;
   }
 }
 
@@ -10068,7 +10562,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     if (isTraceSpaceAvailable()) {
       setTaintMemory(0, 0, 1);
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, tc);
     }
     else {
       print(selfieName);
@@ -10634,7 +11128,7 @@ uint64_t selfie_run(uint64_t machine) {
   }
 
   if (machine == MONSTER) {
-    initMemory(roundUp(maxTraceLength * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
+    initMemory(roundUp(15 * maxTraceLength * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
 
     fuzz = atoi(peekArgument());
   } else
