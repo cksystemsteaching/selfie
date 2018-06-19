@@ -5571,7 +5571,7 @@ void implementExit(uint64_t* context) {
     selfieName,
     getName(context),
     (uint64_t*) signExtend(getExitCode(context), SYSCALL_BITWIDTH),
-    (uint64_t*) fixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE, 4));
+    (uint64_t*) fixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE, 2));
 }
 
 void emitRead() {
@@ -8278,7 +8278,7 @@ void printProfile() {
     "%s: summary: %d executed instructions and %.2dMB mapped memory\n",
     selfieName,
     (uint64_t*) getTotalNumberOfInstructions(),
-    (uint64_t*) fixedPointRatio(pused(), MEGABYTE, 4));
+    (uint64_t*) fixedPointRatio(pused(), MEGABYTE, 2));
 
   if (getTotalNumberOfInstructions() > 0) {
     printInstructionCounters();
