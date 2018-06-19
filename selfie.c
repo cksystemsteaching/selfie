@@ -904,6 +904,7 @@ uint64_t debug_read   = 0;
 uint64_t debug_write  = 0;
 uint64_t debug_open   = 0;
 uint64_t debug_malloc = 0;
+uint64_t debug_endpoint = 0;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
@@ -5659,7 +5660,7 @@ void printEndPointStatus(uint64_t* context, uint64_t start, uint64_t end, uint64
 void implementExit(uint64_t* context) {
   setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
 
-  if (symbolic) {
+  if (debug_endpoint) {
     printEndPointStatus(context,
       signExtend(signShrink(*(reg_los + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
       signExtend(signShrink(*(reg_ups + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
@@ -10262,7 +10263,7 @@ uint64_t handleDivisionByZero(uint64_t* context) {
     println();
 
     setExitCode(context, EXITCODE_DIVISIONBYZERO);
-    if(symbolic)
+    if(debug_endpoint)
       printEndPointStatus(context, EXITCODE_DIVISIONBYZERO, EXITCODE_DIVISIONBYZERO, 1);
   }
 
@@ -10273,7 +10274,8 @@ uint64_t handleMaxTrace(uint64_t* context) {
   setException(context, EXCEPTION_NOEXCEPTION);
 
   setExitCode(context, EXITCODE_OUTOFTRACEMEMORY);
-  printEndPointStatus(context, EXITCODE_OUTOFTRACEMEMORY, EXITCODE_OUTOFTRACEMEMORY, 1);
+  if(debug_endpoint)
+    printEndPointStatus(context, EXITCODE_OUTOFTRACEMEMORY, EXITCODE_OUTOFTRACEMEMORY, 1);
 
   return EXIT;
 }
