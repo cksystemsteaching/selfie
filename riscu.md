@@ -18,6 +18,32 @@ A RISC-U machine has a 64-bit program counter denoted `$pc`, 32 64-bit registers
 
 ## Arithmetic
 
+`add: $rd,$rs1,$rs2: $rd = $rs1 + $rs2; $pc = $pc + 4`
+
+`sub: $rd,$rs1,$rs2: $rd = $rs1 - $rs2; $pc = $pc + 4`
+
+`mul: $rd,$rs1,$rs2: $rd = $rs1 * $rs2; $pc = $pc + 4`
+
+`divu: $rd,$rs1,$rs2: $rd = $rs1 / $rs2; $pc = $pc + 4`
+
+`remu: $rd,$rs1,$rs2: $rd = $rs1 % $rs2; $pc = $pc + 4`
+
+`sltu: $rd,$rs1,$rs2: if ($rs1 < $rs2) $rd = 1 else $rd = 0; $pc = $pc + 4`
+
 ## Memory
 
+`ld: $rd,imm($rs1): $rd = memory[$rs1 + imm]; $pc = $pc + 4`
+
+`sd: $rs2,imm($rs1): $memory[$rs1 + imm] = $rs2; $pc = $pc + 4`
+
 ## Control
+
+`beq: $rs1,$rs2,imm: if ($rs1 == $rs2) $pc = $pc + imm else $pc = $pc + 4`
+
+`jal: $rd,imm: $rd = $pc + 4; $pc = $pc + imm`
+
+`jalr: $rd,imm($rs1): $rd = $pc + 4; $pc = $rs1 + imm`
+
+## System
+
+`ecall`
