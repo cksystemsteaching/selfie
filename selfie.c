@@ -8283,9 +8283,12 @@ uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k) {
   uint64_t c1;
   uint64_t c2;
 
+  if(k == 0)
+    return 0;
+
   c1 = up - lo;
   c2 = UINT64_MAX / k;
-
+  
   if (c1 <= c2)
     return 0;
 
@@ -11155,6 +11158,8 @@ uint64_t selfie() {
         return selfie_run(MOBSTER);
       else if (stringCompare(option, (uint64_t*) "-t"))
         do_taint_flag = 1;
+      else if (stringCompare(option, (uint64_t*) "-test"))
+        debug_endpoint = 1;
       else {
         printUsage();
 
