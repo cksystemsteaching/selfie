@@ -8,42 +8,52 @@ This document provides an overview of the RISC-U instruction set. RISC-U is a ti
 
 ## Machine State
 
-A RISC-U machine has a 64-bit program counter denoted `$pc`, 32 64-bit registers, and 4GB of byte-addressed memory. RISC-U instructions are 32-bit, two per 64-bit double-word. Memory, however, is accessed at 64-bit double-word granularity only.
+A RISC-U machine has a 64-bit program counter denoted `$pc`, 32 general-purpose 64-bit registers (`$zero`, `$ra`, `$sp`, `$gp`, `$tp`, `$t0-$t2`, `$fp`, `$s1`, `$a0-$a7`, `$s2-$s11`, `$t3-$t6`), and 4GB of byte-addressed memory.
 
-## Initialization
+Register `$zero` always contains the value `0`. Any attempts to update the value in `$zero` are ignored.
 
-`lui $rd,imm: $rd = leftShift(imm, 12); $pc = $pc + 4`
+## Instructions
 
-`addi: $rd,$rs1,imm: $rd = $rs1 + imm; $pc = $pc + 4`
+RISC-U instructions are 32-bit, two per 64-bit double-word. Memory, however, is accessed at 64-bit double-word granularity only.
 
-## Arithmetic
+The parameters `$rd`, `$rs1`, and `$rs2` used in RISC-U instructions may denote any of the 32 general-purpose registers.
 
-`add: $rd,$rs1,$rs2: $rd = $rs1 + $rs2; $pc = $pc + 4`
+The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
-`sub: $rd,$rs1,$rs2: $rd = $rs1 - $rs2; $pc = $pc + 4`
+#### Initialization
 
-`mul: $rd,$rs1,$rs2: $rd = $rs1 * $rs2; $pc = $pc + 4`
+`lui $rd,imm`: `$rd = leftShift(imm, 12); $pc = $pc + 4` with `-2^19 <= imm < 2^19`
 
-`divu: $rd,$rs1,$rs2: $rd = $rs1 / $rs2; $pc = $pc + 4`
+`addi $rd,$rs1,imm`: `$rd = $rs1 + imm; $pc = $pc + 4` with `-2^11 <= imm < 2^11`
 
-`remu: $rd,$rs1,$rs2: $rd = $rs1 % $rs2; $pc = $pc + 4`
+#### Arithmetic
 
-`sltu: $rd,$rs1,$rs2: if ($rs1 < $rs2) $rd = 1 else $rd = 0; $pc = $pc + 4`
+`add $rd,$rs1,$rs2`: `$rd = $rs1 + $rs2; $pc = $pc + 4`
 
-## Memory
+`sub $rd,$rs1,$rs2`: `$rd = $rs1 - $rs2; $pc = $pc + 4`
 
-`ld: $rd,imm($rs1): $rd = memory[$rs1 + imm]; $pc = $pc + 4`
+`mul $rd,$rs1,$rs2`: `$rd = $rs1 * $rs2; $pc = $pc + 4`
 
-`sd: $rs2,imm($rs1): $memory[$rs1 + imm] = $rs2; $pc = $pc + 4`
+`divu $rd,$rs1,$rs2`: `$rd = $rs1 / $rs2; $pc = $pc + 4`
 
-## Control
+`remu $rd,$rs1,$rs2`: `$rd = $rs1 % $rs2; $pc = $pc + 4`
 
-`beq: $rs1,$rs2,imm: if ($rs1 == $rs2) $pc = $pc + imm else $pc = $pc + 4`
+`sltu $rd,$rs1,$rs2`: `if ($rs1 < $rs2) { $rd = 1 } else { $rd = 0 } $pc = $pc + 4`
 
-`jal: $rd,imm: $rd = $pc + 4; $pc = $pc + imm`
+#### Memory
 
-`jalr: $rd,imm($rs1): $rd = $pc + 4; $pc = $rs1 + imm`
+`ld $rd,imm($rs1)`: `$rd = memory[$rs1 + imm]; $pc = $pc + 4` with `-2^11 <= imm < 2^11`
 
-## System
+`sd $rs2,imm($rs1)`: `$memory[$rs1 + imm] = $rs2; $pc = $pc + 4` with `-2^11 <= imm < 2^11`
+
+#### Control
+
+`beq $rs1,$rs2,imm`: `if ($rs1 == $rs2) $pc = $pc + imm else $pc = $pc + 4` with `-2^12 <= imm < 2^12`
+
+`jal $rd,imm`: `$rd = $pc + 4; $pc = $pc + imm` with `-2^20 <= imm < 2^20`
+
+`jalr $rd,imm($rs1)`: `tmp = $rs1 + imm; $rd = $pc + 4; $pc = tmp` with `-2^11 <= imm < 2^11`
+
+#### System
 
 `ecall`
