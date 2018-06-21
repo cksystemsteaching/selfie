@@ -1258,9 +1258,10 @@ uint64_t SUB  = 1;
 uint64_t MUL  = 2;
 uint64_t DIVU = 3;
 uint64_t REMU = 4;
+uint64_t SLTU = 5;
 
 //tables length
-uint64_t MAXPROBLEMATICINSTR = 20;
+uint64_t MAXPROBLEMATICINSTR = 30;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 uint64_t do_taint_flag = 0;
@@ -1309,6 +1310,10 @@ uint64_t nb_divuss  = 0;
 uint64_t nb_remurs1 = 0;
 uint64_t nb_remurs2 = 0;
 uint64_t nb_remuss  = 0;
+
+uint64_t nb_slturs1 = 0;
+uint64_t nb_slturs2 = 0;
+uint64_t nb_sltuss  = 0;
 
 void printSymbolicCounters();
 void taint_unop();
@@ -5660,11 +5665,13 @@ void printEndPointStatus(uint64_t* context, uint64_t start, uint64_t end, uint64
 void implementExit(uint64_t* context) {
   setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
 
-  if (debug_endpoint) {
-    printEndPointStatus(context,
-      signExtend(signShrink(*(reg_los + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
-      signExtend(signShrink(*(reg_ups + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
-      signExtend(signShrink(*(reg_steps + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH));
+  if(symbolic) {
+    if (debug_endpoint) {
+      printEndPointStatus(context,
+        signExtend(signShrink(*(reg_los + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
+        signExtend(signShrink(*(reg_ups + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
+        signExtend(signShrink(*(reg_steps + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH));
+      }
     return;
   }
 
@@ -7471,6 +7478,9 @@ void do_sltu() {
 void constrain_sltu() {
   // interval semantics of sltu
   if (rd != REG_ZR) {
+
+    if(do_taint_flag) taint_binop(SLTU);
+
     if (*(reg_hasco + rs1)) {
       if (*(reg_vaddr + rs1) == 0) {
         // constrained memory at vaddr 0 means that there is more than
@@ -8288,7 +8298,7 @@ uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k) {
 
   c1 = up - lo;
   c2 = UINT64_MAX / k;
-  
+
   if (c1 <= c2)
     return 0;
 
@@ -9419,15 +9429,19 @@ void taint_binop(uint64_t op) {
   else if(SUB == op)  check_step();
 
   //minuend
-  if(*(reg_isminuend + rs1))      pushNewEntry(pc - INSTRUCTIONSIZE - entryPoint);
-  else if(*(reg_isminuend + rs2)) pushNewEntry(pc - INSTRUCTIONSIZE - entryPoint);
+  if(SLTU != op) {
+    if(*(reg_isminuend + rs1))      pushNewEntry(pc - INSTRUCTIONSIZE - entryPoint);
+    else if(*(reg_isminuend + rs2)) pushNewEntry(pc - INSTRUCTIONSIZE - entryPoint);
+  }
   *(reg_isminuend + rd) = 0; //reset minuend
 
   //taint
   if (*(reg_istainted + rs1)) {
-    *(reg_istainted + rd) = 1;
+    if(SLTU != op)
+      *(reg_istainted + rd) = 1;
 
     if (*(reg_istainted + rs2)) {
+      *(reg_istainted + rd) = 1;
       incr_opss(op);                              // operation with two symbolics
       step_opss(op);
       pushNewSymbollicEntry(pc - INSTRUCTIONSIZE - entryPoint);
@@ -9458,7 +9472,8 @@ void incr_opss(uint64_t op) {
   else if(op == SUB)  nb_subss = nb_subss + 1;
   else if(op == MUL)  nb_mulss = nb_mulss + 1;
   else if(op == DIVU) nb_divuss = nb_divuss + 1;
-  else                nb_remuss = nb_remuss + 1;
+  else if(op == REMU) nb_remuss = nb_remuss + 1;
+  else                nb_sltuss = nb_sltuss + 1;
 }
 
 void step_oprs1(uint64_t op) {
@@ -9466,7 +9481,7 @@ void step_oprs1(uint64_t op) {
   else if(op == SUB)  *(reg_hasstep + rd) = *(reg_hasstep + rs1);
   else if(op == MUL)  *(reg_hasstep + rd) = *(reg_hasstep + rs1) * *(registers + rs2);
   else if(op == DIVU) *(reg_hasstep + rd) = *(reg_hasstep + rs1) / *(registers + rs2);
-  else *(reg_hasstep + rd) = *(reg_hasstep + rs1); //MOD?
+  else if(op == REMU) *(reg_hasstep + rd) = *(reg_hasstep + rs1); //MOD?
 }
 
 void incr_oprs1(uint64_t op) {
@@ -9474,7 +9489,8 @@ void incr_oprs1(uint64_t op) {
   else if(op == SUB)  nb_subrs1 = nb_subrs1 + 1;
   else if(op == MUL)  nb_mulrs1 = nb_mulrs1 + 1;
   else if(op == DIVU) nb_divurs1 = nb_divurs1 + 1;
-  else                nb_remurs1 = nb_remurs1 + 1;
+  else if(op == REMU) nb_remurs1 = nb_remurs1 + 1;
+  else                nb_slturs1 = nb_slturs1 + 1;
 }
 
 void step_oprs2(uint64_t op) {
@@ -9482,7 +9498,7 @@ void step_oprs2(uint64_t op) {
   else if(op == SUB)  *(reg_hasstep + rd) = *(reg_hasstep + rs2);
   else if(op == MUL)  *(reg_hasstep + rd) = *(reg_hasstep + rs2) * *(registers + rs1);
   else if(op == DIVU) *(reg_hasstep + rd) = *(reg_hasstep + rs2) / *(registers + rs1);
-  else *(reg_hasstep + rd) = *(reg_hasstep + rs2); //MOD?
+  else if(op == REMU) *(reg_hasstep + rd) = *(reg_hasstep + rs2); //MOD?
 }
 
 void incr_oprs2(uint64_t op) {
@@ -9490,7 +9506,8 @@ void incr_oprs2(uint64_t op) {
   else if(op == SUB)  nb_subrs2 = nb_subrs2 + 1;
   else if(op == MUL)  nb_mulrs2 = nb_mulrs2 + 1;
   else if(op == DIVU) nb_divurs2 = nb_divurs2 + 1;
-  else                nb_remurs2 = nb_remurs2 + 1;
+  else if(op == REMU) nb_remurs2 = nb_remurs2 + 1;
+  else                nb_slturs2 = nb_slturs2 + 1;
 }
 
 void check_step() {
@@ -9575,6 +9592,9 @@ void pushNewEntryStep(uint64_t hot_pc) {
 void pushNewSymbollicEntry(uint64_t hot_pc) {
   uint64_t i;
   i = 0;
+
+  if(both_symbolics_size == MAXPROBLEMATICINSTR)
+    exit(EXITCODE_OUTOFTRACEMEMORY);
 
   while(i < both_symbolics_size) {
     if(hot_pc == *(both_symbolics_pcs + i))
@@ -9676,6 +9696,22 @@ void printSymbolicCounters() {
   printInteger(nb_remurs2);
   print((uint64_t*)", both:");
   printInteger(nb_remuss);
+  print((uint64_t*)")");
+  println();
+
+  print((uint64_t*)"Total Set on Less Than Unsigneds: ");
+  printInteger(ic_sltu);
+  print((uint64_t*)" with ");
+  printInteger(nb_slturs1 + nb_slturs2 + nb_sltuss);
+  print((uint64_t*)"(");
+  printFixedPointPercentage(ic_sltu, nb_slturs1 + nb_slturs2 + nb_sltuss);
+  print((uint64_t*)"%)");
+  print((uint64_t*)" symbolic implications (rs1:");
+  printInteger(nb_slturs1);
+  print((uint64_t*)", rs2:");
+  printInteger(nb_slturs2);
+  print((uint64_t*)", both:");
+  printInteger(nb_sltuss);
   print((uint64_t*)")");
   println();
 }
