@@ -1148,7 +1148,7 @@ uint64_t fuzzUp(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t maxTraceLength = 20000000;
+uint64_t maxTraceLength = 200000000;
 
 uint64_t debug_symbolic = 0;
 
@@ -7177,7 +7177,10 @@ void constrain_mul() {
           *(reg_ups + rd) = mul_ups;
           *(reg_steps  + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
           *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+          *(reg_saddr  + rd) = *(reg_saddr + rs1);
           *(reg_isNotInterval + rd) = 0;
+
+          return;
         } else {
           if (*(reg_isByte + rs1) > 0) {
             if (shift == 56) {
@@ -7212,11 +7215,11 @@ void constrain_mul() {
             }
 
             *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+            *(reg_saddr  + rd) = *(reg_saddr + rs1);
+
+            return;
           }
         }
-        *(reg_saddr + rd) = *(reg_saddr + rs1);
-
-        return;
       }
 
       if (*(reg_isNotInterval + rs1))
@@ -7296,7 +7299,10 @@ void constrain_mul() {
         *(reg_ups + rd) = mul_ups;
         *(reg_steps  + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
         *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+        *(reg_saddr  + rd) = *(reg_saddr + rs1);
         *(reg_isNotInterval + rd) = 0;
+
+        return;
       } else {
         if (*(reg_isByte + rs1) > 0) {
           if (shift == 56) {
@@ -7329,13 +7335,12 @@ void constrain_mul() {
             *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
             *(reg_isNotInterval + rd) = 1;
           }
-
           *(reg_isByte + rd) = shift/SIZEOFUINT64 + 1;
+          *(reg_saddr  + rd) = *(reg_saddr + rs1);
+
+          return;
         }
       }
-      *(reg_saddr + rd) = *(reg_saddr + rs1);
-
-      return;
     }
 
     if (*(reg_isNotInterval + rs2))
@@ -7431,9 +7436,9 @@ void constrain_divu() {
       shift = isByteShift(*(reg_los + rs2));
       if (shift < CPUBITWIDTH) {
         if (shift == 56) {
+          whichByte = SIZEOFUINT64 - (*(reg_isByte + rs1) - 1);
           if (*(reg_isNotInterval + rs1)) {
             mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
-            whichByte = SIZEOFUINT64 - *(reg_isByte + rs1) - 1;
             saved_mrvc = 0;
             while (mrvc != 0) {
               if (*(isBytes + mrvc) == whichByte) {
@@ -7452,13 +7457,17 @@ void constrain_divu() {
               *(reg_ups + rd) = *(ups + saved_mrvc);
             }
             *(reg_steps + rd) = 1;
-
-            *(reg_isByte + rd) = whichByte;
-            *(reg_saddr  + rd) = *(reg_saddr + rs1);
-            *(reg_isNotInterval + rd) = 0;
-
-            return;
+          } else {
+            *(reg_los + rd) = div_los;
+            *(reg_ups + rd) = div_ups;
+            *(reg_steps + rd) = 1;
           }
+
+          *(reg_isByte + rd) = whichByte;
+          *(reg_saddr  + rd) = *(reg_saddr + rs1);
+          *(reg_isNotInterval + rd) = 0;
+
+          return;
         }
       }
 
@@ -7528,9 +7537,9 @@ void constrain_divu() {
     shift = isByteShift(*(reg_los + rs2));
     if (shift < CPUBITWIDTH) {
       if (shift == 56) {
+        whichByte = SIZEOFUINT64 - (*(reg_isByte + rs1) - 1);
         if (*(reg_isNotInterval + rs1)) {
           mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
-          whichByte = SIZEOFUINT64 - *(reg_isByte + rs1) - 1;
           saved_mrvc = 0;
           while (mrvc != 0) {
             if (*(isBytes + mrvc) == whichByte) {
@@ -7549,13 +7558,17 @@ void constrain_divu() {
             *(reg_ups + rd) = *(ups + saved_mrvc);
           }
           *(reg_steps + rd) = 1;
-
-          *(reg_isByte + rd) = whichByte;
-          *(reg_saddr  + rd) = *(reg_saddr + rs1);
-          *(reg_isNotInterval + rd) = 0;
-
-          return;
+        } else {
+          *(reg_los + rd) = div_los;
+          *(reg_ups + rd) = div_ups;
+          *(reg_steps + rd) = 1;
         }
+
+        *(reg_isByte + rd) = whichByte;
+        *(reg_saddr  + rd) = *(reg_saddr + rs1);
+        *(reg_isNotInterval + rd) = 0;
+
+        return;
       }
     }
 
@@ -11128,7 +11141,7 @@ uint64_t selfie_run(uint64_t machine) {
   }
 
   if (machine == MONSTER) {
-    initMemory(roundUp(15 * maxTraceLength * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
+    initMemory(roundUp(maxTraceLength * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
 
     fuzz = atoi(peekArgument());
   } else
