@@ -910,22 +910,20 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s);
 void     implementOpen(uint64_t* context);
 
 void emitMalloc();
-void implementMalloc(uint64_t* context);
+void implementBrk(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t debug_read   = 0;
-uint64_t debug_write  = 0;
-uint64_t debug_open   = 0;
-uint64_t debug_malloc = 0;
+uint64_t debug_read  = 0;
+uint64_t debug_write = 0;
+uint64_t debug_open  = 0;
+uint64_t debug_brk   = 0;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
 uint64_t SYSCALL_WRITE = 64;
 uint64_t SYSCALL_OPEN  = 1024;
-
-// TODO: fix this syscall for spike
-uint64_t SYSCALL_MALLOC = 222;
+uint64_t SYSCALL_BRK   = 214;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -4519,6 +4517,29 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
+  // initialize s1 with the current bump pointer
+  emitADDI(REG_A0, REG_ZR, 0);
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
+
+  emitECALL();
+
+  talloc();
+
+  // align the current bump pointer for double word access
+  emitADDI(REG_A0, REG_A0, SIZEOFUINT64 - 1);
+  emitADDI(currentTemporary(), REG_ZR, SIZEOFUINT64);
+  emitREMU(currentTemporary(), REG_A0, currentTemporary());
+  emitSUB(REG_A0, REG_A0, currentTemporary());
+
+  tfree(1);
+
+  // set program brk to the aligned bump pointer
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
+
+  emitECALL();
+
+  emitADDI(REG_S1, REG_A0, 0);
+
   // calculate the global pointer value accommodating 6 more instructions
   gp = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
 
@@ -5948,34 +5969,74 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  emitLD(REG_A0, REG_SP, 0); // size
+  talloc();
+  talloc();
+
+  emitLD(currentTemporary(), REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitADDI(REG_A7, REG_ZR, SYSCALL_MALLOC);
+  // round up size to double word alignment
+  emitADDI(currentTemporary(), currentTemporary(), SIZEOFUINT64 - 1);
+  emitADDI(nextTemporary(), REG_ZR, SIZEOFUINT64);
+  emitREMU(previousTemporary(), currentTemporary(), nextTemporary());
+  emitSUB(currentTemporary(), currentTemporary(), previousTemporary());
+
+  // call brk syscall to set the current bump pointer
+  emitADD(REG_A0, currentTemporary(), REG_S1);
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
 
   emitECALL();
 
-  emitJALR(REG_ZR, REG_RA, 0);
+  // return 0 iff memory allocation failed
+  emitBEQ(REG_A0, REG_S1, 2 * INSTRUCTIONSIZE);
+  emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
+  emitBEQ(REG_ZR, currentTemporary(), 3 * INSTRUCTIONSIZE);
+
+  // no memory was allocated
+  emitADDI(REG_A0, REG_ZR, 0);
+  emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
+
+  // memory space was allocated
+  emitADDI(currentTemporary(), REG_S1, 0);
+  emitADDI(REG_S1, REG_A0, 0);
+  emitADDI(REG_A0, currentTemporary(), 0);
+
+  tfree(2);
+
+  emitJALR(REG_ZR, REG_RA,0);
 }
 
-void implementMalloc(uint64_t* context) {
+void implementBrk(uint64_t* context) {
   // parameter
-  uint64_t size;
-
-  // local variable
   uint64_t bump;
 
-  size = *(getRegs(context) + REG_A0);
+  uint64_t previousBump;
+  uint64_t size;
+  uint64_t valid;
 
-  if (debug_malloc)
-    printf2((uint64_t*) "%s: trying to malloc %d bytes net\n", selfieName, (uint64_t*) size);
+  previousBump = getBumpPointer(context);
 
-  size = roundUp(size, SIZEOFUINT64);
-  bump = getBumpPointer(context);
+  bump = *(getRegs(context) + REG_A0);
 
-  if (bump + size > *(getRegs(context) + REG_SP)) {
-    // out of virtual memory
-    *(getRegs(context) + REG_A0) = 0;
+  if (debug_brk) {
+    print(selfieName);
+    print((uint64_t*) ": trying to set brk to ");
+    printHexadecimal(bump, 8);
+    print((uint64_t*) "\n");
+  }
+
+  valid = 0;
+
+  if (bump >= previousBump)
+    if (bump < *(getRegs(context) + REG_SP))
+      if (bump % SIZEOFUINT64 == 0)
+        valid = 1;
+
+  if (valid == 0) {
+    // error returns current valid bump pointer
+    bump = previousBump;
+
+    *(getRegs(context) + REG_A0) = bump;
 
     if (symbolic) {
       *(reg_typ + REG_A0) = 0;
@@ -5984,20 +6045,22 @@ void implementMalloc(uint64_t* context) {
       *(reg_ups + REG_A0) = 0;
     }
   } else {
-    *(getRegs(context) + REG_A0) = bump;
+    setBumpPointer(context, bump);
 
     if (symbolic) {
+      size = bump - previousBump;
+
       // interval is memory range, not symbolic value
       *(reg_typ + REG_A0) = 1;
 
       // remember start and size of memory block for checking memory safety
-      *(reg_los + REG_A0) = bump;
+      *(reg_los + REG_A0) = previousBump;
       *(reg_ups + REG_A0) = size;
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, tc);
+          storeSymbolicMemory(getPT(context), 0, previousBump, 1, previousBump, size, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6005,16 +6068,18 @@ void implementMalloc(uint64_t* context) {
         }
       }
     }
-
-    // set bump pointer to next free space
-    setBumpPointer(context, bump + size);
   }
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
-  if (debug_malloc)
-    printf3((uint64_t*) "%s: actually mallocating %d bytes at virtual address %p\n", selfieName, (uint64_t*) size, (uint64_t*) bump);
+  if (debug_brk) {
+    print(selfieName);
+    print((uint64_t*) ": actually setting brk to ");
+    printHexadecimal(bump, 8);
+    println();
+  }
 }
+
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -8798,8 +8863,8 @@ uint64_t handleSystemCall(uint64_t* context) {
 
   a7 = *(getRegs(context) + REG_A7);
 
-  if (a7 == SYSCALL_MALLOC)
-    implementMalloc(context);
+  if (a7 == SYSCALL_BRK)
+    implementBrk(context);
   else if (a7 == SYSCALL_READ)
     implementRead(context);
   else if (a7 == SYSCALL_WRITE)
