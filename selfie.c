@@ -123,6 +123,9 @@ uint64_t signShrink(uint64_t n, uint64_t b);
 uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 
+uint64_t  stringAddressOffset(uint64_t* s);
+uint64_t* stringAddressAligned(uint64_t* s);
+
 uint64_t stringLength(uint64_t* s);
 void     stringReverse(uint64_t* s);
 uint64_t stringCompare(uint64_t* s, uint64_t* t);
@@ -1763,6 +1766,10 @@ uint64_t loadCharacter(uint64_t* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
 
+  // align string address for double word access
+  i = i + stringAddressOffset(s);
+  s = stringAddressAligned(s);
+
   // a is the index of the double word where
   // the to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
@@ -1775,6 +1782,10 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
   // assert: i >= 0, 0 <= c < 2^8 (all characters are 8-bit)
   uint64_t a;
 
+  // align string address for double word access
+  i = i + stringAddressOffset(s);
+  s = stringAddressAligned(s);
+
   // a is the index of the double word where
   // the with c to-be-overwritten i-th character in s is
   a = i / SIZEOFUINT64;
@@ -1784,6 +1795,16 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
   *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFUINT64) * 8)) + leftShift(c, (i % SIZEOFUINT64) * 8);
 
   return s;
+}
+
+uint64_t stringAddressOffset(uint64_t* s) {
+  // offset of a bytewise address to a double word aligned address
+  return ((uint64_t)s) % SIZEOFUINT64;
+}
+
+uint64_t* stringAddressAligned(uint64_t* s) {
+  // double word aligned address of a bytewise aligned address
+  return (uint64_t*) (((uint64_t)s) - stringAddressOffset(s));
 }
 
 uint64_t stringLength(uint64_t* s) {
@@ -8716,7 +8737,7 @@ uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
   uint64_t bytes;
   uint64_t i;
 
-  bytes = roundUp(stringLength(s) + 1, REGISTERSIZE);
+  bytes = roundUp(stringAddressOffset(s) + stringLength(s) + 1, REGISTERSIZE);
 
   // allocate memory for storing string
   SP = SP - bytes;
