@@ -1130,9 +1130,9 @@ uint64_t isTraceSpaceAvailable();
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t byte_lo, uint64_t byte_up, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t byte_lo, uint64_t byte_up, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
@@ -1148,7 +1148,7 @@ uint64_t fuzzUp(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t maxTraceLength = 200000000;
+uint64_t maxTraceLength = 1000000;
 
 uint64_t debug_symbolic = 0;
 
@@ -1167,9 +1167,7 @@ uint64_t* steps = (uint64_t*) 0; // trace of steps for intervals
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 
 uint64_t* whichBytes = (uint64_t*) 0;
-uint64_t* byte_los = (uint64_t*) 0;
-uint64_t* byte_ups = (uint64_t*) 0;
-uint64_t* saddrs   = (uint64_t*) 0;
+uint64_t* saddrs     = (uint64_t*) 0;
 uint64_t* isNotIntervals = (uint64_t*) 0;
 
 // read history
@@ -1203,8 +1201,6 @@ uint64_t* reg_rem_typ = (uint64_t*) 0;
 uint64_t* reg_has_mul_div_mod = (uint64_t*) 0;
 
 uint64_t* reg_whichByte = (uint64_t*) 0;
-uint64_t* reg_byte_los  = (uint64_t*) 0;
-uint64_t* reg_byte_ups  = (uint64_t*) 0;
 uint64_t* reg_saddr     = (uint64_t*) 0;
 uint64_t* reg_isNotInterval = (uint64_t*) 0;
 
@@ -1234,8 +1230,6 @@ void initSymbolicEngine() {
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
   whichBytes = zalloc(maxTraceLength * SIZEOFUINT64);
-  byte_los = zalloc(maxTraceLength * SIZEOFUINT64);
-  byte_ups = zalloc(maxTraceLength * SIZEOFUINT64);
   saddrs   = zalloc(maxTraceLength * SIZEOFUINT64);
   isNotIntervals  = zalloc(maxTraceLength * SIZEOFUINT64);
 
@@ -1261,8 +1255,6 @@ void initSymbolicEngine() {
   reg_has_mul_div_mod = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_whichByte = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_byte_los  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_byte_ups  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_saddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_isNotInterval  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
@@ -5810,15 +5802,15 @@ void implementRead(uint64_t* context) {
             if(do_taint_flag) setTaintMemory(1, 0, 1);
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, tc);
           } else {
             actuallyRead = 0;
 
-            print(selfieName);
-            print((uint64_t*) ": ealloc out of memory");
-            println();
+            // print(selfieName);
+            // print((uint64_t*) ": ealloc out of memory");
+            // println();
 
             throwException(EXCEPTION_MAXTRACE, 0);
           }
@@ -6221,12 +6213,12 @@ void implementMalloc(uint64_t* context) {
         if (isTraceSpaceAvailable()) {
           setTaintMemory(0, 0, 1);
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, 0, 0, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, tc);
         }
         else {
-          print(selfieName);
-          print((uint64_t*) ": ealloc out of memory");
-          println();
+          // print(selfieName);
+          // print((uint64_t*) ": ealloc out of memory");
+          // println();
 
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6566,8 +6558,6 @@ void constrain_lui() {
     *(reg_ups   + rd) = leftShift(imm, 12);
     *(reg_steps + rd) = 1;
 
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_whichByte + rd) = 0;
     *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
@@ -6633,8 +6623,6 @@ void constrain_addi() {
       *(reg_ups   + rd) = *(reg_ups + rs1);
       *(reg_steps + rd) = *(reg_steps + rs1);
 
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
       *(reg_whichByte + rd) = 0;
       *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
@@ -6683,14 +6671,10 @@ void constrain_addi() {
     }
 
     if (rs1 == REG_A0) {
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
       *(reg_whichByte + rd) = *(reg_whichByte + rs1);
       *(reg_saddr     + rd) = *(reg_saddr     + rs1);
       *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
     } else {
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
       *(reg_whichByte + rd) = 0;
       *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
@@ -6764,8 +6748,6 @@ void constrain_add() {
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_whichByte + rd) = 0;
     *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
@@ -6782,8 +6764,6 @@ void constrain_add() {
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_whichByte + rd) = 0;
     *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
@@ -6798,39 +6778,31 @@ void constrain_add() {
     if (*(reg_isNotInterval + rs2) == 0) {
       if (*(reg_whichByte + rs2) > 0) {
         if (*(reg_whichByte + rs1) == *(reg_whichByte + rs2)) {
-          if (*(reg_los + rs1) == 0)
-            if (*(reg_ups + rs1) == 0) {
-              tmp = rightShift(*(reg_los + rs2), (*(reg_whichByte + rs2) - 1) * 8);
-              storeCharacter(reg_byte_los + rs1, (*(reg_whichByte + rs2) - 1), tmp);
-              tmp = rightShift(*(reg_ups + rs2), (*(reg_whichByte + rs2) - 1) * 8);
-              storeCharacter(reg_byte_ups + rs1, (*(reg_whichByte + rs2) - 1), tmp);
+          tmp = rightShift(*(reg_los + rs2), (*(reg_whichByte + rs2) - 1) * 8);
+          storeCharacter(reg_los + rs1, (*(reg_whichByte + rs2) - 1), tmp);
+          tmp = rightShift(*(reg_ups + rs2), (*(reg_whichByte + rs2) - 1) * 8);
+          storeCharacter(reg_ups + rs1, (*(reg_whichByte + rs2) - 1), tmp);
 
-              *(reg_los + rd) = *(reg_byte_los + rs1);
-              *(reg_ups + rd) = *(reg_byte_ups + rs1);
-              tmp = *(reg_steps + rs2) / twoToThePowerOf((*(reg_whichByte + rs2) - 1) * 8);
-              if (tmp)
-                *(reg_steps  + rd) = tmp;
-              else
-                *(reg_steps  + rd) = 1;
+          *(reg_los + rd) = *(reg_los + rs1);
+          *(reg_ups + rd) = *(reg_ups + rs1);
+          tmp = *(reg_steps + rs2) / twoToThePowerOf((*(reg_whichByte + rs2) - 1) * 8);
+          if (tmp)
+            *(reg_steps  + rd) = tmp;
+          else
+            *(reg_steps  + rd) = 1;
 
-              *(reg_whichByte + rd) = *(reg_whichByte + rs2);
-              *(reg_byte_los  + rd) = *(reg_byte_los  + rs1);
-              *(reg_byte_ups  + rd) = *(reg_byte_ups  + rs1);
-              *(reg_saddr     + rd) = *(reg_saddr     + rs1);
+          *(reg_whichByte + rd) = *(reg_whichByte + rs2);
+          *(reg_saddr     + rd) = *(reg_saddr     + rs1);
 
-              if (*(reg_isNotInterval + rs1) == 1) {
-                if (*(reg_hasco + rs2) == 0)
-                  *(reg_isNotInterval + rd) = 0;
-                else
-                  *(reg_isNotInterval + rd) = 2;
-              } else
-                *(reg_isNotInterval + rd) = 2;
+          if (*(reg_los + rd) == *(reg_ups + rd))
+            *(reg_isNotInterval + rd) = 0;
+          else
+            *(reg_isNotInterval + rd) = 2;
 
-              setConstraint(rd, 0, 0, 0, 0, 0);
-              setCorrection(rd, 0, 0, 0, 0, 0);
+          setConstraint(rd, 0, 0, 0, 0, 0);
+          setCorrection(rd, 0, 0, 0, 0, 0);
 
-              return;
-            }
+          return;
         } else
           printInvalid();
       } else
@@ -6861,9 +6833,6 @@ void constrain_add() {
     *(reg_whichByte + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
   }
-
-  *(reg_byte_los + rd) = 0;
-  *(reg_byte_ups + rd) = 0;
 
   // interval semantics of add
   cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
@@ -7006,8 +6975,6 @@ void constrain_sub() {
           *(reg_ups   + rd) = *(registers + rd);
           *(reg_steps + rd) = 1;
 
-          *(reg_byte_los  + rd) = 0;
-          *(reg_byte_ups  + rd) = 0;
           *(reg_whichByte + rd) = 0;
           *(reg_saddr     + rd) = 0;
           *(reg_isNotInterval + rd) = 0;
@@ -7030,8 +6997,6 @@ void constrain_sub() {
       *(reg_ups   + rd) = *(reg_ups   + rs1);
       *(reg_steps + rd) = *(reg_steps + rs1);
 
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
       *(reg_whichByte + rd) = 0;
       *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
@@ -7049,8 +7014,6 @@ void constrain_sub() {
     *(reg_ups   + rd) = *(reg_ups   + rs2);
     *(reg_steps + rd) = *(reg_steps + rs2);
 
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_whichByte + rd) = 0;
     *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
@@ -7069,13 +7032,11 @@ void constrain_sub() {
     if (*(reg_whichByte + rs2) > 0) {
       if (*(reg_saddr + rs2) == *(reg_saddr + rs1)) {
         // char_i - char_i
-        *(reg_los    + rd) = 0;
-        *(reg_ups    + rd) = 0;
-        *(reg_steps  + rd) = 1;
+        *(reg_los   + rd) = *(reg_los + rs1);
+        *(reg_ups   + rd) = *(reg_ups + rs1);
+        *(reg_steps + rd) = 1;
 
         *(reg_whichByte + rd) = *(reg_whichByte + rs2);
-        *(reg_byte_los  + rd) = *(reg_byte_los  + rs1);
-        *(reg_byte_ups  + rd) = *(reg_byte_ups  + rs1);
         *(reg_saddr     + rd) = *(reg_saddr     + rs1);
 
         if (*(reg_isNotInterval + rs1))
@@ -7096,8 +7057,6 @@ void constrain_sub() {
     printInvalid();
 
   *(reg_whichByte + rd) = 0;
-  *(reg_byte_los  + rd) = 0;
-  *(reg_byte_ups  + rd) = 0;
   *(reg_saddr     + rd) = 0;
   *(reg_isNotInterval + rd) = 0;
 
@@ -7263,28 +7222,17 @@ void constrain_mul() {
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, *(reg_los + rs2), 0, 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
+      whichByte = 0;
       shift = isByteShift(*(reg_los + rs2));
       if (shift < CPUBITWIDTH) {
-        whichByte = SIZEOFUINT64 - (shift/SIZEOFUINT64);
         if (*(reg_isNotInterval + rs1) == 0) {
-          *(reg_los   + rd) = mul_los;
-          *(reg_ups   + rd) = mul_ups;
-          *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
-          *(reg_whichByte + rd) = shift/SIZEOFUINT64 + 1;
-          *(reg_byte_los  + rd) = 0;
-          *(reg_byte_ups  + rd) = 0;
-          *(reg_saddr     + rd) = *(reg_saddr + rs1);
-          *(reg_isNotInterval + rd) = 0;
-
-          return;
+          whichByte = shift/SIZEOFUINT64 + 1;
         } else if (*(reg_whichByte + rs1) > 0) {
           // not important to be what
           *(reg_los   + rd) = 0;
           *(reg_ups   + rd) = UINT64_MAX;
           *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
           *(reg_whichByte + rd) = shift/SIZEOFUINT64 + 1;
-          *(reg_byte_los  + rd) = 0;
-          *(reg_byte_ups  + rd) = 0;
           *(reg_saddr     + rd) = *(reg_saddr + rs1);
           *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
 
@@ -7311,9 +7259,7 @@ void constrain_mul() {
         *(reg_ups + rd)   = mul_ups;
       }
 
-      *(reg_whichByte + rd) = 0;
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
+      *(reg_whichByte + rd) = whichByte;
       *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = 0;
     }
@@ -7353,8 +7299,6 @@ void constrain_mul() {
       }
 
       *(reg_whichByte + rd) = 0;
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
       *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
     }
@@ -7366,28 +7310,13 @@ void constrain_mul() {
 
     shift = isByteShift(*(reg_los + rs2));
     if (shift < CPUBITWIDTH) {
-      whichByte = SIZEOFUINT64 - (shift/SIZEOFUINT64);
       if (*(reg_isNotInterval + rs1) == 0) {
         *(reg_los   + rd) = mul_los;
         *(reg_ups   + rd) = mul_ups;
         *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
         *(reg_whichByte + rd) = shift/SIZEOFUINT64 + 1;
-        *(reg_byte_los  + rd) = 0;
-        *(reg_byte_ups  + rd) = 0;
         *(reg_saddr     + rd) = *(reg_saddr + rs1);
         *(reg_isNotInterval + rd) = 0;
-
-        return;
-      } else if (*(reg_whichByte + rs1) > 0) {
-        // not important to be what
-        *(reg_los   + rd) = 0;
-        *(reg_ups   + rd) = 0;
-        *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
-        *(reg_whichByte + rd) = shift/SIZEOFUINT64 + 1;
-        *(reg_byte_los  + rd) = 0;
-        *(reg_byte_ups  + rd) = 0;
-        *(reg_saddr     + rd) = *(reg_saddr + rs1);
-        *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
 
         return;
       }
@@ -7399,12 +7328,11 @@ void constrain_mul() {
       printInvalid();
 
     // interval semantics of mul
-    *(reg_los + rd) = mul_los;
-    *(reg_ups + rd) = mul_ups;
+    *(reg_los   + rd) = mul_los;
+    *(reg_ups   + rd) = mul_ups;
+    *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   }
@@ -7482,25 +7410,33 @@ void constrain_divu() {
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
+      // step computation
+      if (*(reg_steps + rs1) < *(reg_los + rs2)) {
+        if (*(reg_los + rs2) % *(reg_steps + rs1) != 0)
+          printOverApprox((uint64_t*) "div");
+        *(reg_steps + rd) = 1;
+      } else {
+        if (*(reg_steps + rs1) % *(reg_los + rs2) != 0)
+          printOverApprox((uint64_t*) "div");
+        *(reg_steps + rd) = *(reg_steps + rs1) / *(reg_los + rs2);
+      }
+
       shift = isByteShift(*(reg_los + rs2));
       if (shift < CPUBITWIDTH) {
         if (shift == 56) {
           whichByte = *(reg_whichByte + rs1) - 1;
           if (*(reg_isNotInterval + rs1)) {
             mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
-            *(reg_los + rd) = rightShift(leftShift(*(byte_los + mrvc), whichByte * 8), 56);
-            *(reg_ups + rd) = rightShift(leftShift(*(byte_ups + mrvc), whichByte * 8), 56);
-            *(reg_steps + rd) = 1;
+            *(reg_los   + rd) = rightShift(leftShift(*(los + mrvc), whichByte * 8), 56);
+            *(reg_ups   + rd) = rightShift(leftShift(*(ups + mrvc), whichByte * 8), 56);
+            *(reg_whichByte + rd) = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1); // if loadchar
           } else {
-            *(reg_los + rd) = div_los;
-            *(reg_ups + rd) = div_ups;
-            *(reg_steps + rd) = 1;
+            *(reg_los   + rd) = div_los;
+            *(reg_ups   + rd) = div_ups;
+            *(reg_whichByte + rd) = 0;
           }
 
-          *(reg_whichByte + rd) = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1);
-          *(reg_byte_los  + rd) = 0;
-          *(reg_byte_ups  + rd) = 0;
-          *(reg_saddr     + rd) = *(reg_saddr + rs1);
+          *(reg_saddr + rd) = *(reg_saddr + rs1);
           *(reg_isNotInterval + rd) = 0;
 
           return;
@@ -7511,18 +7447,6 @@ void constrain_divu() {
         printInvalid();
       else if (*(reg_isNotInterval + rs2))
         printInvalid();
-
-      // step computation
-      if (*(reg_steps + rs1) < *(reg_los + rs2)) {
-        if (*(reg_los + rs2) % *(reg_steps + rs1) != 0)
-          printOverApprox((uint64_t*) "div");
-        *(reg_steps + rd) = 1;
-      } else {
-        if (*(reg_steps + rs1) % *(reg_los + rs2) != 0)
-          printOverApprox((uint64_t*) "div");
-
-        *(reg_steps + rd) = *(reg_steps + rs1) / *(reg_los + rs2);
-      }
 
       // interval semantics of divu
       if (*(reg_los + rs1) > *(reg_ups + rs1)) {
@@ -7541,8 +7465,6 @@ void constrain_divu() {
       }
 
       *(reg_whichByte + rd) = 0;
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
       *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = 0;
     }
@@ -7578,19 +7500,17 @@ void constrain_divu() {
         whichByte = *(reg_whichByte + rs1) - 1;
         if (*(reg_isNotInterval + rs1)) {
           mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
-          *(reg_los + rd) = rightShift(leftShift(*(byte_los + mrvc), whichByte * 8), 56);
-          *(reg_ups + rd) = rightShift(leftShift(*(byte_ups + mrvc), whichByte * 8), 56);
-          *(reg_steps + rd) = 1;
+          *(reg_los + rd) = rightShift(leftShift(*(los + mrvc), whichByte * 8), 56);
+          *(reg_ups + rd) = rightShift(leftShift(*(ups + mrvc), whichByte * 8), 56);
+          *(reg_whichByte + rd) = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1);
         } else {
           *(reg_los + rd) = div_los;
           *(reg_ups + rd) = div_ups;
-          *(reg_steps + rd) = 1;
+          *(reg_whichByte + rd) = 0;
         }
 
-        *(reg_whichByte + rd) = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1);
-        *(reg_byte_los  + rd) = 0;
-        *(reg_byte_ups  + rd) = 0;
-        *(reg_saddr     + rd) = *(reg_saddr + rs1);
+        *(reg_steps + rd) = 1;
+        *(reg_saddr + rd) = *(reg_saddr + rs1);
         *(reg_isNotInterval + rd) = 0;
 
         return;
@@ -7603,12 +7523,11 @@ void constrain_divu() {
       printInvalid();
 
     // interval semantics of divu
-    *(reg_los + rd) = div_los;
-    *(reg_ups + rd) = div_ups;
+    *(reg_los   + rd) = div_los;
+    *(reg_ups   + rd) = div_ups;
+    *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   }
@@ -7715,8 +7634,6 @@ void constrain_remu_step_1() {
     *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   }
@@ -7766,13 +7683,11 @@ void constrain_remu() {
       }
 
       mrvc = loadSymbolicMemory(pt, *(reg_saddr + rs1));
-      *(reg_los + rd) = rightShift(leftShift(*(byte_los + mrvc), 56), 56);
-      *(reg_ups + rd) = rightShift(leftShift(*(byte_ups + mrvc), 56), 56);
+      *(reg_los + rd) = rightShift(leftShift(*(los + mrvc), 56), 56);
+      *(reg_ups + rd) = rightShift(leftShift(*(ups + mrvc), 56), 56);
       *(reg_steps + rd) = 1;
 
       *(reg_whichByte + rd) = 1;
-      *(reg_byte_los  + rd) = 0;
-      *(reg_byte_ups  + rd) = 0;
       *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = 0;
 
@@ -7871,8 +7786,6 @@ void constrain_remu() {
     *(reg_ups + rd) = rem_up;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   } else {
@@ -7884,8 +7797,6 @@ void constrain_remu() {
     *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
 
     *(reg_whichByte + rd) = 0;
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   }
@@ -7981,8 +7892,6 @@ void backtrack_sltu() {
       *(reg_ups   + vaddr) = *(ups   + tc);
       *(reg_steps + vaddr) = *(steps + tc);
 
-      *(reg_byte_los  + vaddr) = *(byte_los + tc);
-      *(reg_byte_ups  + vaddr) = *(byte_ups + tc);
       *(reg_whichByte + vaddr) = *(whichBytes + tc);
       *(reg_saddr     + vaddr) = *(saddrs   + tc);
       *(reg_isNotInterval + vaddr) = *(isNotIntervals + tc);
@@ -8125,8 +8034,6 @@ uint64_t constrain_ld() {
 
         // assert: vaddr == *(vaddrs + mrvc)
 
-        *(reg_byte_los  + rd) = *(byte_los  + mrvc);
-        *(reg_byte_ups  + rd) = *(byte_ups  + mrvc);
         *(reg_whichByte + rd) = *(whichBytes + mrvc);
         *(reg_saddr     + rd) = *(saddrs    + mrvc);
         if (*(reg_saddr + rd) == 0) {
@@ -8292,11 +8199,9 @@ uint64_t constrain_sd() {
 
       if(do_taint_flag) setTaintMemory(*(reg_istainted + rs2), *(reg_isminuend + rs2), *(reg_hasstep + rs2));
 
-      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_byte_los + rs2), *(reg_byte_ups + rs2), *(reg_isNotInterval + rs2), *(reg_saddr + rs2), mrcc);
+      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_isNotInterval + rs2), *(reg_saddr + rs2), mrcc);
 
       *(reg_whichByte + rs2) = 0;
-      *(reg_byte_los  + rs2) = 0;
-      *(reg_byte_los  + rs2) = 0;
       *(reg_saddr     + rs2) = 0;
       *(reg_isNotInterval + rs2) = 0;
 
@@ -8455,8 +8360,6 @@ void constrain_jal_jalr() {
     *(reg_ups + rd) = *(registers + rd);
     *(reg_steps + rd) = 1;
 
-    *(reg_byte_los  + rd) = 0;
-    *(reg_byte_ups  + rd) = 0;
     *(reg_whichByte + rd) = 0;
     *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
@@ -8902,7 +8805,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t byte_lo, uint64_t byte_up, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr == 0)
@@ -8920,13 +8823,11 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
         if (lo == *(los + mrvc))
           if (up == *(ups + mrvc))
             if (step == *(steps + mrvc))
-              if (byte_lo == *(byte_los + mrvc))
-                if (byte_up == *(byte_ups + mrvc))
-                  if (whichByte == *(whichBytes + mrvc))
-                    if (isNotInterval == *(isNotIntervals + mrvc))
-                      if (saddr == *(saddrs + mrvc))
-                        // prevent tracking identical updates
-                        return;
+              if (whichByte == *(whichBytes + mrvc))
+                if (isNotInterval == *(isNotIntervals + mrvc))
+                  if (saddr == *(saddrs + mrvc))
+                    // prevent tracking identical updates
+                    return;
   }
 
   if (trb < mrvc) {
@@ -8943,8 +8844,6 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     // assert: vaddr == *(vaddrs + mrvc)
 
     *(whichBytes + mrvc) = whichByte;
-    *(byte_los + mrvc) = byte_lo;
-    *(byte_ups + mrvc) = byte_up;
     *(saddrs   + mrvc) = saddr;
     *(isNotIntervals + mrvc) = isNotInterval;
 
@@ -8974,8 +8873,6 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(vaddrs + tc) = vaddr;
 
     *(whichBytes + tc) = whichByte;
-    *(byte_los + tc) = byte_lo;
-    *(byte_ups + tc) = byte_up;
     *(saddrs   + tc) = saddr;
     *(isNotIntervals + tc) = isNotInterval;
 
@@ -8995,15 +8892,15 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
       printSymbolicMemory(tc);
     }
   } else {
-    print(selfieName);
-    print((uint64_t*) ": ealloc out of memory");
-    println();
+    // print(selfieName);
+    // print((uint64_t*) ": ealloc out of memory");
+    // println();
 
     throwException(EXCEPTION_MAXTRACE, 0);
   }
 }
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t byte_lo, uint64_t byte_up, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr >= getBumpPointer(currentContext))
@@ -9024,14 +8921,14 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
 
   // always track constrained memory by using tc as most recent branch
   //assert to_store_taint set
-  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, byte_lo, byte_up, isNotInterval, saddr, tc);
+  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, saddr, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
 
-  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, 0, 0, tc);
+  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, tc);
 }
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
@@ -9101,11 +8998,9 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     if (*(isNotIntervals + mrvc))
       *(reg_isNotInterval + reg) = *(isNotIntervals + mrvc);
 
-    storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, *(reg_whichByte + reg), *(reg_byte_los + reg), *(reg_byte_ups + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
+    storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
 
     *(reg_whichByte + reg) = 0;
-    *(reg_byte_los  + reg) = 0;
-    *(reg_byte_ups  + reg) = 0;
     *(reg_saddr     + reg) = 0;
     *(reg_isNotInterval + reg) = 0;
   }
@@ -10588,7 +10483,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     if (isTraceSpaceAvailable()) {
       setTaintMemory(0, 0, 1);
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, 0, 0, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, tc);
     }
     else {
       print(selfieName);
