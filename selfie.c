@@ -4519,13 +4519,16 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // prepare main function aguments on the stack
+  // prepare main function arguments on the stack
   talloc();
 
   // allocate memory for argv variable
   emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
 
-  // push argv pointer on the stack
+  // push argv pointer onto the stack
+  //      ______________
+  //     |              V
+  // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
   emitADDI(currentTemporary(), REG_SP, 2 * REGISTERSIZE);
   emitSD(REG_SP, 0, currentTemporary());
 
@@ -8747,7 +8750,7 @@ uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
 }
 
 void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
-  // uploads arguments in the way of an UNIX system
+  // uploads arguments like a UNIX system
   //
   //    SP
   //    |
@@ -8764,7 +8767,7 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   vargv = smalloc(argc * SIZEOFUINT64STAR);
 
   i = 0;
-  // push program parameters to the stack
+  // push program parameters onto the stack
   while (i < argc) {
     SP = up_loadString(context, (uint64_t*) *(argv + i), SP);
 
@@ -8774,20 +8777,20 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
     i = i + 1;
   }
 
-  // allocate memory for env termination
+  // allocate memory for termination of env table
   SP = SP - REGISTERSIZE;
 
-  // push null value to signalize end of env table
+  // push null value to terminate env table
   mapAndStore(context, SP, 0);
 
-  // allocate memory for argv termination
+  // allocate memory for termination of argv table
   SP = SP - REGISTERSIZE;
 
-  // push null value to signalize end of argv table
+  // push null value to terminate argv table
   mapAndStore(context, SP, 0);
 
   i = argc;
-  // push pointer table to program parameters to the stack
+  // push argv table onto the stack
   while (i > 0) {
     // allocate memory for argv table entry
     SP = SP - REGISTERSIZE;
