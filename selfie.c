@@ -4497,7 +4497,7 @@ void compile_cstar() {
 void emitRoundUp(uint64_t reg, uint64_t m) {
   talloc();
 
-  // computes value(reg) -  ((value(reg) + (m - 1)) % m)
+  // computes value(reg) + m - 1 - (value(reg) + m - 1) % m
   emitADDI(reg, reg, m - 1);
   emitADDI(currentTemporary(), REG_ZR, m);
   emitREMU(currentTemporary(), reg, currentTemporary());
