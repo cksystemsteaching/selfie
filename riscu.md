@@ -14,7 +14,7 @@ Register `$zero` always contains the value `0`. Any attempts to update the value
 
 ## Instructions
 
-RISC-U instructions are 32-bit, two per 64-bit double-word. Memory, however, is accessed at 64-bit double-word granularity only.
+RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity.
 
 The parameters `$rd`, `$rs1`, and `$rs2` used in RISC-U instructions may denote any of the 32 general-purpose registers.
 
@@ -22,7 +22,7 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 #### Initialization
 
-`lui $rd,imm`: `$rd = leftShift(imm, 12); $pc = $pc + 4` with `-2^19 <= imm < 2^19`
+`lui $rd,imm`: `$rd = imm * 2^12; $pc = $pc + 4` with `-2^19 <= imm < 2^19`
 
 `addi $rd,$rs1,imm`: `$rd = $rs1 + imm; $pc = $pc + 4` with `-2^11 <= imm < 2^11`
 
@@ -44,15 +44,15 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 `ld $rd,imm($rs1)`: `$rd = memory[$rs1 + imm]; $pc = $pc + 4` with `-2^11 <= imm < 2^11`
 
-`sd $rs2,imm($rs1)`: `$memory[$rs1 + imm] = $rs2; $pc = $pc + 4` with `-2^11 <= imm < 2^11`
+`sd $rs2,imm($rs1)`: `memory[$rs1 + imm] = $rs2; $pc = $pc + 4` with `-2^11 <= imm < 2^11`
 
 #### Control
 
-`beq $rs1,$rs2,imm`: `if ($rs1 == $rs2) $pc = $pc + imm else $pc = $pc + 4` with `-2^12 <= imm < 2^12`
+`beq $rs1,$rs2,imm`: `if ($rs1 == $rs2) $pc = $pc + imm else $pc = $pc + 4` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
 
-`jal $rd,imm`: `$rd = $pc + 4; $pc = $pc + imm` with `-2^20 <= imm < 2^20`
+`jal $rd,imm`: `$rd = $pc + 4; $pc = $pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
 
-`jalr $rd,imm($rs1)`: `tmp = $rs1 + imm; $rd = $pc + 4; $pc = tmp` with `-2^11 <= imm < 2^11`
+`jalr $rd,imm($rs1)`: `tmp = (($rs1 + imm) / 2) * 2; $rd = $pc + 4; $pc = tmp` with `-2^11 <= imm < 2^11`
 
 #### System
 

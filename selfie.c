@@ -4871,6 +4871,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   immediate = signShrink(immediate, 13);
 
+  // LSB of immediate is lost
   imm1 = getBits(immediate, 12, 1);
   imm2 = getBits(immediate,  5, 6);
   imm3 = getBits(immediate,  1, 4);
@@ -4925,6 +4926,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 
   immediate = signShrink(immediate, 21);
 
+  // LSB of immediate is lost
   imm1 = getBits(immediate, 20,  1);
   imm2 = getBits(immediate,  1, 10);
   imm3 = getBits(immediate, 11,  1);
