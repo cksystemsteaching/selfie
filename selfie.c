@@ -4497,6 +4497,7 @@ void compile_cstar() {
 void emitRoundUp(uint64_t reg, uint64_t m) {
   talloc();
 
+  // computes value(reg) -  ((value(reg) + (m - 1)) % m)
   emitADDI(reg, reg, m - 1);
   emitADDI(currentTemporary(), REG_ZR, m);
   emitREMU(currentTemporary(), reg, currentTemporary());
@@ -4535,7 +4536,7 @@ void emitStart() {
 
   emitECALL();
 
-  // align the current bump pointer for double word access
+  // align the current bump pointer for double-word access
   emitRoundUp(REG_A0, SIZEOFUINT64);
 
   // set program brk to the aligned bump pointer
@@ -4543,6 +4544,7 @@ void emitStart() {
 
   emitECALL();
 
+  // save the actual bump pointer in register s1
   emitADDI(REG_S1, REG_A0, 0);
 
   // calculate the global pointer value accommodating 6 more instructions
@@ -5974,12 +5976,13 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
+  // allocate register to compute the new bump pointer
   talloc();
 
   emitLD(currentTemporary(), REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
 
-  // round up size to double word alignment
+  // round up size to double-word alignment
   emitRoundUp(currentTemporary(), SIZEOFUINT64);
 
   // call brk syscall to set the current bump pointer
@@ -5988,7 +5991,15 @@ void emitMalloc() {
 
   emitECALL();
 
-  // return 0 iff memory allocation failed
+  // return 0 iff memory allocation failed:
+  //
+  // if (bump == previous_bump)
+  //   if (size == 0)
+  //     return bump
+  //   else
+  //     return 0
+  // else
+  //   return bump
   emitBEQ(REG_A0, REG_S1, 2 * INSTRUCTIONSIZE);
   emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
   emitBEQ(REG_ZR, currentTemporary(), 3 * INSTRUCTIONSIZE);
@@ -6011,20 +6022,17 @@ void implementBrk(uint64_t* context) {
   // parameter
   uint64_t bump;
 
+  // local variables
   uint64_t previousBump;
   uint64_t size;
   uint64_t valid;
 
-  previousBump = getBumpPointer(context);
-
   bump = *(getRegs(context) + REG_A0);
 
-  if (debug_brk) {
-    print(selfieName);
-    print((uint64_t*) ": trying to set brk to ");
-    printHexadecimal(bump, 8);
-    print((uint64_t*) "\n");
-  }
+  if (debug_brk)
+    printf2((uint64_t*) "%s: trying to set brk to %x\n", selfieName, bump);
+
+  previousBump = getBumpPointer(context);
 
   valid = 0;
 
@@ -6033,19 +6041,7 @@ void implementBrk(uint64_t* context) {
       if (bump % SIZEOFUINT64 == 0)
         valid = 1;
 
-  if (valid == 0) {
-    // error returns current valid bump pointer
-    bump = previousBump;
-
-    *(getRegs(context) + REG_A0) = bump;
-
-    if (symbolic) {
-      *(reg_typ + REG_A0) = 0;
-
-      *(reg_los + REG_A0) = 0;
-      *(reg_ups + REG_A0) = 0;
-    }
-  } else {
+  if (valid) {
     setBumpPointer(context, bump);
 
     if (symbolic) {
@@ -6069,16 +6065,24 @@ void implementBrk(uint64_t* context) {
         }
       }
     }
+  } else {
+    // error returns current valid bump pointer
+    bump = previousBump;
+
+    *(getRegs(context) + REG_A0) = bump;
+
+    if (symbolic) {
+      *(reg_typ + REG_A0) = 0;
+
+      *(reg_los + REG_A0) = 0;
+      *(reg_ups + REG_A0) = 0;
+    }
   }
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
-  if (debug_brk) {
-    print(selfieName);
-    print((uint64_t*) ": actually setting brk to ");
-    printHexadecimal(bump, 8);
-    println();
-  }
+  if (debug_brk)
+    printf2((uint64_t*) "%s: actually setting brk to %x\n", selfieName, bump);
 }
 
 
