@@ -1766,7 +1766,7 @@ uint64_t loadCharacter(uint64_t* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
 
-  // align string address for double word access
+  // align string address for double-word access
   i = i + stringAddressOffset(s);
   s = stringAddressAligned(s);
 
@@ -1782,7 +1782,7 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
   // assert: i >= 0, 0 <= c < 2^8 (all characters are 8-bit)
   uint64_t a;
 
-  // align string address for double word access
+  // align string address for double-word access
   i = i + stringAddressOffset(s);
   s = stringAddressAligned(s);
 
@@ -1798,12 +1798,12 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
 }
 
 uint64_t stringAddressOffset(uint64_t* s) {
-  // offset of a bytewise address to a double word aligned address
+  // offset of a bytewise address to a double-word-aligned address
   return ((uint64_t)s) % SIZEOFUINT64;
 }
 
 uint64_t* stringAddressAligned(uint64_t* s) {
-  // double word aligned address of a bytewise aligned address
+  // double-word-aligned address of a bytewise address
   return (uint64_t*) (((uint64_t)s) - stringAddressOffset(s));
 }
 
