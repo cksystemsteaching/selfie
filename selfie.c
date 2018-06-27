@@ -8957,8 +8957,10 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     mrvc = loadVirtualMemory(pt, *(reg_vaddr + reg));
 
     if (*(reg_hasmn + reg)) {
-      lo = *(reg_colos + reg) - lo;
-      up = *(reg_coups + reg) - up;
+      tmp1 = *(reg_colos + reg) - up;
+      tmp2 = *(reg_coups + reg) - lo;
+      lo = tmp1;
+      up = tmp2;
     } else {
       lo = lo - *(reg_colos + reg);
       up = up - *(reg_coups + reg);
