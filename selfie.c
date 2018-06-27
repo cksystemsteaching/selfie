@@ -602,6 +602,7 @@ void resetParser() {
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
+void emitRoundUp(uint64_t reg, uint64_t m);
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
 void emitProgramEntry();
 void emitStart();
@@ -4493,6 +4494,17 @@ void compile_cstar() {
 // ------------------------ MACHINE CODE LIBRARY -------------------
 // -----------------------------------------------------------------
 
+void emitRoundUp(uint64_t reg, uint64_t m) {
+  talloc();
+
+  emitADDI(reg, reg, m - 1);
+  emitADDI(currentTemporary(), REG_ZR, m);
+  emitREMU(currentTemporary(), reg, currentTemporary());
+  emitSUB(reg, reg, currentTemporary());
+
+  tfree(1);
+}
+
 void emitLeftShiftBy(uint64_t reg, uint64_t b) {
   // assert: 0 <= b < 11
 
@@ -4523,15 +4535,8 @@ void emitStart() {
 
   emitECALL();
 
-  talloc();
-
   // align the current bump pointer for double word access
-  emitADDI(REG_A0, REG_A0, SIZEOFUINT64 - 1);
-  emitADDI(currentTemporary(), REG_ZR, SIZEOFUINT64);
-  emitREMU(currentTemporary(), REG_A0, currentTemporary());
-  emitSUB(REG_A0, REG_A0, currentTemporary());
-
-  tfree(1);
+  emitRoundUp(REG_A0, SIZEOFUINT64);
 
   // set program brk to the aligned bump pointer
   emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
@@ -5970,16 +5975,12 @@ void emitMalloc() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
   talloc();
-  talloc();
 
   emitLD(currentTemporary(), REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
 
   // round up size to double word alignment
-  emitADDI(currentTemporary(), currentTemporary(), SIZEOFUINT64 - 1);
-  emitADDI(nextTemporary(), REG_ZR, SIZEOFUINT64);
-  emitREMU(previousTemporary(), currentTemporary(), nextTemporary());
-  emitSUB(currentTemporary(), currentTemporary(), previousTemporary());
+  emitRoundUp(currentTemporary(), SIZEOFUINT64);
 
   // call brk syscall to set the current bump pointer
   emitADD(REG_A0, currentTemporary(), REG_S1);
@@ -6001,7 +6002,7 @@ void emitMalloc() {
   emitADDI(REG_S1, REG_A0, 0);
   emitADDI(REG_A0, currentTemporary(), 0);
 
-  tfree(2);
+  tfree(1);
 
   emitJALR(REG_ZR, REG_RA,0);
 }
