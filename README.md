@@ -9,8 +9,8 @@ Slides providing an overview of selfie and an introduction to its design and imp
 Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
-   a tiny but still fast subset of C called C Star (C*) to
-   a tiny and easy-to-teach subset of RISC-V called RISC-U,
+   a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to
+   a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
 2. a self-executing emulator called mipster that executes
    RISC-U code including itself when compiled with starc,
 3. a self-hosting hypervisor called hypster that provides
