@@ -56,4 +56,4 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 #### System
 
-`ecall`
+`ecall`: system call number is in `$a7`, parameters are in `$a0-$a2`, return value is in `$a0`.
