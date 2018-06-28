@@ -7195,14 +7195,6 @@ void do_divu() {
     last_jal_from = pc;
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
   }
-
-  print((uint64_t*) "~~~~ divU:");
-  printInteger(*(registers + rs1));
-  print((uint64_t*) " / ");
-  printInteger(*(registers + rs2));
-  print((uint64_t*) " = ");
-  printInteger(*(registers + rd));
-  println();
 }
 
 void constrain_divu() {
@@ -7226,21 +7218,6 @@ void constrain_divu() {
 
   div_los = *(reg_los + rs1) / *(reg_ups + rs2);
   div_ups = *(reg_ups + rs1) / *(reg_los + rs2);
-
-  print((uint64_t*) "~~~~ divU:");
-  printInteger(*(reg_los + rs1));
-  print((uint64_t*) " / ");
-  printInteger(*(reg_ups + rs2));
-  print((uint64_t*) " = ");
-  printInteger(div_los);
-  println();
-
-  printInteger(*(reg_ups + rs1));
-  print((uint64_t*) " / ");
-  printInteger(*(reg_los + rs2));
-  print((uint64_t*) " = ");
-  printInteger(div_ups);
-  println();
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {

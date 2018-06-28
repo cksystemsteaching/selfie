@@ -92,7 +92,7 @@ sub exec_test {
   my $testOutput = "/tmp/" . $base . ".out";
 
   `echo "~~~--~~~------~~~---~~~ $testFile:" 2>&1 >> $FileLog`;
-  my $testCmd = "./$selfie " . $cmd_args; #create the command
+  my $testCmd = "./$selfie -test " . $cmd_args; #create the command
 
   print "run $testCmd";
 
@@ -152,7 +152,7 @@ sub verifyOutcomes {
 
   open (REAL, "<$file") or die "Can't open $file : $!\n";
   while(<REAL>) {
-    if(/reaching end point at:\w+\(~(\d+)\) with exit code \<(-?\d+),(-?\d+),(\d+)\>/) {
+    if(/reaching end point at:\w+\(~(\d+)\) with exit code \<(-?\d+),(-?\d+),(-?\d+)\>/) {
         my $r_line  = $1;
         my $r_start = $2;
         my $r_end   = $3;
@@ -161,7 +161,7 @@ sub verifyOutcomes {
         die "line not expected" unless(exists($hash{$r_line}));
         `echo "At line $r_line is <$r_start, $r_end, $r_step> == $hash{$r_line}?" >> $FileLog`;
 
-        if($hash{$r_line} =~ /\<\d+,(-?\d+),(-?\d+),(\d+)\>/) {
+        if($hash{$r_line} =~ /\<\d+,(-?\d+),(-?\d+),(-?\d+)\>/) {
           return 0 unless(($1 == $r_start) && ($2 == $r_end) && ($3 == $r_step));
         } else {die "cannot read expected w-values";}
         $check ++;
