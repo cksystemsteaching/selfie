@@ -1282,7 +1282,7 @@ uint64_t to_store_step    = 0;                 // to store step in trace
 uint64_t* minuends_pcs = (uint64_t*) 0;
 uint64_t minuends_size = 0;
 
-uint64_t* addsub_incompletness_pcs = (uint64_t*) 0;
+uint64_t* addsub_incompleteness_pcs = (uint64_t*) 0;
 uint64_t addsub_size = 0;
 
 uint64_t* both_symbolics_pcs = (uint64_t*) 0;
@@ -1327,6 +1327,8 @@ void step_opss(uint64_t op);
 void step_oprs1(uint64_t op);
 void step_oprs2(uint64_t op);
 
+void check_signed_mul();
+
 void setTaintMemory(uint64_t is_taint, uint64_t is_minuend, uint64_t hasstep);
 void storeTaintMemory(uint64_t offset);
 
@@ -1344,9 +1346,9 @@ void initTaintEngine() {
   reg_isminuend   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_hasstep     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
-  minuends_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
-  addsub_incompletness_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
-  both_symbolics_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
+  minuends_pcs              = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
+  addsub_incompleteness_pcs = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
+  both_symbolics_pcs        = zalloc(MAXPROBLEMATICINSTR * SIZEOFUINT64);
 }
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1386,6 +1388,7 @@ uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
 uint64_t EXCEPTION_MAXTRACE           = 7;
+uint64_t EXCEPTION_INCOMPLETENESS     = 8;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1439,7 +1442,7 @@ uint64_t* storesPerInstruction = (uint64_t*) 0; // number of executed stores per
 // ------------------------- INITIALIZATION ------------------------
 
 void initInterpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_MAXTRACE + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_INCOMPLETENESS + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1449,6 +1452,7 @@ void initInterpreter() {
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_MAXTRACE)           = (uint64_t) "trace length exceeded";
+  *(EXCEPTIONS + EXCEPTION_INCOMPLETENESS)      = (uint64_t) "incomplete abstraction";
 }
 
 void resetInterpreter() {
@@ -1659,7 +1663,8 @@ uint64_t EXITCODE_UNKNOWNSYSCALL = 10;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 11;
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
 uint64_t EXITCODE_OUTOFTRACEMEMORY = 13;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION = 14;
+uint64_t EXITCODE_INCOMPLETENESS = 14;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION = 15;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -6718,6 +6723,10 @@ void constrain_add() {
   // interval semantics of add
   cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
   if (cnd == 0) {
+    //now: exit analysis (result too big for the abstract domain)
+    last_jal_from = pc;
+    throwException(EXCEPTION_INCOMPLETENESS, 0);
+
     // TODO: improve
     add_los = 0;
     add_ups = UINT64_MAX;
@@ -6743,18 +6752,34 @@ void constrain_add() {
           if (*(reg_steps + rs1) == gcd_steps) {
             i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
             if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
+
+              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
+              last_jal_from = pc;
+              throwException(EXCEPTION_INCOMPLETENESS, 0);
               printOverApprox((uint64_t*) "add");
             }
           } else {
+
+            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
+            last_jal_from = pc;
+            throwException(EXCEPTION_INCOMPLETENESS, 0);
             printOverApprox((uint64_t*) "add");
           }
         } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
           if (*(reg_steps + rs2) == gcd_steps) {
             i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
             if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
+
+              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
+              last_jal_from = pc;
+              throwException(EXCEPTION_INCOMPLETENESS, 0);
               printOverApprox((uint64_t*) "add");
             }
           } else {
+
+            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
+            last_jal_from = pc;
+            throwException(EXCEPTION_INCOMPLETENESS, 0);
             printOverApprox((uint64_t*) "add");
           }
         }
@@ -6893,6 +6918,10 @@ void constrain_sub() {
   // interval semantics of sub
   cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
   if (cnd == 0) {
+    //now: exit analysis (result too big for the abstract domain)
+    last_jal_from = pc;
+    throwException(EXCEPTION_INCOMPLETENESS, 0);
+
     // TODO: improve
     sub_los = 0;
     sub_ups = UINT64_MAX;
@@ -6919,18 +6948,32 @@ void constrain_sub() {
           if (*(reg_steps + rs1) == gcd_steps) {
             i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
             if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
+
+              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
+              last_jal_from = pc;
+              throwException(EXCEPTION_INCOMPLETENESS, 0);
               printOverApprox((uint64_t*) "sub");
             }
           } else {
+            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
+            last_jal_from = pc;
+            throwException(EXCEPTION_INCOMPLETENESS, 0);
             printOverApprox((uint64_t*) "sub");
           }
         } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
           if (*(reg_steps + rs2) == gcd_steps) {
             i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
             if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
+
+              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
+              last_jal_from = pc;
+              throwException(EXCEPTION_INCOMPLETENESS, 0);
               printOverApprox((uint64_t*) "sub");
             }
           } else {
+            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
+            last_jal_from = pc;
+            throwException(EXCEPTION_INCOMPLETENESS, 0);
             printOverApprox((uint64_t*) "sub");
           }
         }
@@ -7051,6 +7094,10 @@ void constrain_mul() {
 
       // interval semantics of mul
       if (mul_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2))) {
+        //now: exit analysis (result too big for the abstract domain)
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
+
         // TODO: improve
         *(reg_steps + rd) = 1;
         *(reg_los + rd)   = 0;
@@ -7058,6 +7105,15 @@ void constrain_mul() {
 
         printOverApprox((uint64_t*) "mul");
       } else {
+
+        if(*(reg_steps + rs1) * *(reg_los + rs2) < *(reg_steps + rs1)) {
+          if(*(reg_los + rs2) != 0) {
+            //now: exit analysis (step overflow)
+            last_jal_from = pc;
+            throwException(EXCEPTION_INCOMPLETENESS, 0);
+          }
+        }
+
         *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
         *(reg_los + rd)   = mul_los;
         *(reg_ups + rd)   = mul_ups;
@@ -7081,6 +7137,10 @@ void constrain_mul() {
 
       // interval semantics of mul
       if (mul_condition(*(reg_los + rs2), *(reg_ups + rs2), *(reg_los + rs1))) {
+        //now: exit analysis (result too big for the abstract domain)
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
+
         // TODO: improve
         *(reg_steps + rd) = 1;
         *(reg_los + rd)   = 0;
@@ -7088,6 +7148,16 @@ void constrain_mul() {
 
         printOverApprox((uint64_t*) "mul");
       } else {
+
+
+        if(*(reg_steps + rs2) * *(reg_los + rs1) < *(reg_steps + rs2)) {
+          if(*(reg_los + rs1) != 0) {
+            //now: exit analysis (step overflow)
+            last_jal_from = pc;
+            throwException(EXCEPTION_INCOMPLETENESS, 0);
+          }
+        }
+
         *(reg_steps + rd) = *(reg_steps + rs2) * *(reg_los + rs1);
         *(reg_los + rd)   = mul_los;
         *(reg_ups + rd)   = mul_ups;
@@ -7125,6 +7195,14 @@ void do_divu() {
     last_jal_from = pc;
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
   }
+
+  print((uint64_t*) "~~~~ divU:");
+  printInteger(*(registers + rs1));
+  print((uint64_t*) " / ");
+  printInteger(*(registers + rs2));
+  print((uint64_t*) " = ");
+  printInteger(*(registers + rd));
+  println();
 }
 
 void constrain_divu() {
@@ -7148,6 +7226,21 @@ void constrain_divu() {
 
   div_los = *(reg_los + rs1) / *(reg_ups + rs2);
   div_ups = *(reg_ups + rs1) / *(reg_los + rs2);
+
+  print((uint64_t*) "~~~~ divU:");
+  printInteger(*(reg_los + rs1));
+  print((uint64_t*) " / ");
+  printInteger(*(reg_ups + rs2));
+  print((uint64_t*) " = ");
+  printInteger(div_los);
+  println();
+
+  printInteger(*(reg_ups + rs1));
+  print((uint64_t*) " / ");
+  printInteger(*(reg_los + rs2));
+  print((uint64_t*) " = ");
+  printInteger(div_ups);
+  println();
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
@@ -7176,12 +7269,21 @@ void constrain_divu() {
 
       // step computation
       if (*(reg_steps + rs1) < *(reg_los + rs2)) {
-        if (*(reg_los + rs2) % *(reg_steps + rs1) != 0)
+        if (*(reg_los + rs2) % *(reg_steps + rs1) != 0) {
+          if(*(reg_steps + rd) < *(reg_steps + rs1))
+          //now: exit analysis (step no multiple)
+          last_jal_from = pc;
+          throwException(EXCEPTION_INCOMPLETENESS, 0);
           printOverApprox((uint64_t*) "div");
+        }
         *(reg_steps + rd) = 1;
       } else {
-        if (*(reg_steps + rs1) % *(reg_los + rs2) != 0)
+        if (*(reg_steps + rs1) % *(reg_los + rs2) != 0) {
+          //now: exit analysis (step no multiple)
+          last_jal_from = pc;
+          throwException(EXCEPTION_INCOMPLETENESS, 0);
           printOverApprox((uint64_t*) "div");
+        }
 
         *(reg_steps + rd) = *(reg_steps + rs1) / *(reg_los + rs2);
       }
@@ -7194,8 +7296,12 @@ void constrain_divu() {
 
         // lo/k == up/k (or) up/k + step_rd
         if (div_los != div_ups)
-          if (div_los != div_ups + *(reg_steps + rd))
+          if (div_los != div_ups + *(reg_steps + rd)) {
+            //now: exit analysis (wrap interval division: not close)
+            last_jal_from = pc;
+            throwException(EXCEPTION_INCOMPLETENESS, 0);
             printOverApprox((uint64_t*) "div");
+          }
       } else {
         // rs1 constraint is not wrapped
         *(reg_los + rd) = div_los;
@@ -7274,8 +7380,12 @@ void constrain_remu_step_1() {
       rem_lo = 0;
       rem_up = divisor - 1;
 
-      if (rem_typ == 1)
+      if (rem_typ == 1) {
+        //now: exit analysis
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
         printOverApprox((uint64_t*) "rem");
+      }
     }
   } else {
     // [lo, up] interval is wrapped
@@ -7299,6 +7409,9 @@ void constrain_remu_step_1() {
         rem_lo = 0;
         rem_up = UINT64_MAX % divisor;
 
+        //now: exit analysis
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
         printOverApprox((uint64_t*) "rem");
       }
     } else {
@@ -7310,6 +7423,9 @@ void constrain_remu_step_1() {
         rem_lo = 0;
         rem_up = divisor - 1;
 
+        //now: exit analysis
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
         printOverApprox((uint64_t*) "rem");
       }
     }
@@ -7390,6 +7506,9 @@ void constrain_remu() {
         rem_lo = (rem_lo + ((divisor-1-rem_lo%divisor)/step + 1)*step) % divisor;
         *(reg_steps + rd) = step;
 
+        //now: exit analysisk
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
         printOverApprox((uint64_t*) "rem");
       } else {
         gcd_step_k = gcd(step, divisor);
@@ -7397,8 +7516,12 @@ void constrain_remu() {
         rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
         *(reg_steps + rd) = gcd_step_k;
 
-        if (rem_typ == 10)
+        if (rem_typ == 10) {
+          //now: exit analysis
+          last_jal_from = pc;
+          throwException(EXCEPTION_INCOMPLETENESS, 0);
           printOverApprox((uint64_t*) "rem");
+        }
       }
 
     } else if (isPowerOfTwo(divisor)) {
@@ -7406,8 +7529,12 @@ void constrain_remu() {
       gcd_step_k = gcd(step, divisor);
       lcm = (rem_up * rem_lo) / gcd_step_k;
 
-      if (rem_up - rem_lo < lcm - step)
+      if (rem_up - rem_lo < lcm - step) {
+        //now: exit analysis
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
         printOverApprox((uint64_t*) "rem^2");
+      }
 
       rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
       rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
@@ -9459,6 +9586,23 @@ void taint_binop(uint64_t op) {
     if(op == SUB) *(reg_isminuend + rd) = 1;    //(source of correction problems)
   }
   else *(reg_istainted + rd) = 0;                        // concrete operation
+
+  // check MUL with negative number
+  check_signed_mul();
+}
+
+void check_signed_mul() {
+  if(*(reg_istainted + rd))
+  {
+    if(*(reg_istainted + rs1)) {
+      if(signedLessThan(*(values + rs2), 0))
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+    else if(*(reg_istainted + rs2)) {
+      if(signedLessThan(*(values + rs1), 0))
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+  }
 }
 
 void step_opss(uint64_t op) {
@@ -9581,11 +9725,11 @@ void pushNewEntryStep(uint64_t hot_pc) {
   i = 0;
 
   while(i < addsub_size) {
-    if(hot_pc == *(addsub_incompletness_pcs + i))
+    if(hot_pc == *(addsub_incompleteness_pcs + i))
       return;
     i = i + 1;
   }
-  *(addsub_incompletness_pcs + addsub_size) = hot_pc;
+  *(addsub_incompleteness_pcs + addsub_size) = hot_pc;
   addsub_size = addsub_size + 1;
 }
 
@@ -9740,8 +9884,8 @@ void printIncompleteOperations() {
 
   print((uint64_t*) "Instructions raising step (add and sub) problems: ");
   while(i < addsub_size) {
-    printHexadecimal(*(addsub_incompletness_pcs + i), 0);
-    printSourceLineNumberOfInstruction(*(addsub_incompletness_pcs + i));
+    printHexadecimal(*(addsub_incompleteness_pcs + i), 0);
+    printSourceLineNumberOfInstruction(*(addsub_incompleteness_pcs + i));
     print((uint64_t*) " ");
 
     i = i + 1;
@@ -10319,6 +10463,16 @@ uint64_t handleMaxTrace(uint64_t* context) {
   return EXIT;
 }
 
+uint64_t handleIncompleteness(uint64_t* context) {
+  setException(context, EXCEPTION_NOEXCEPTION);
+  setExitCode(context, EXITCODE_INCOMPLETENESS);
+
+  if(debug_endpoint)
+    printEndPointStatus(context, EXITCODE_INCOMPLETENESS, EXITCODE_INCOMPLETENESS, 1);
+
+  return EXIT;
+}
+
 uint64_t handleTimer(uint64_t* context) {
   setException(context, EXCEPTION_NOEXCEPTION);
 
@@ -10338,6 +10492,8 @@ uint64_t handleException(uint64_t* context) {
     return handleDivisionByZero(context);
   else if (exception == EXCEPTION_MAXTRACE)
     return handleMaxTrace(context);
+  else if (exception == EXCEPTION_INCOMPLETENESS)
+    return handleIncompleteness(context);
   else if (exception == EXCEPTION_TIMER)
     return handleTimer(context);
   else {
