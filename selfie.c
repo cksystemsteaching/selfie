@@ -1112,6 +1112,16 @@ void initSymbolicEngine();
 void printSymbolicMemory(uint64_t svc);
 void printOverApprox();
 
+//[in] a modular stride interval
+//print a slide of concrete values: {start, start + s, [up, lo], end - s, end}
+void printConcreteBounds(uint64_t start, uint64_t end, uint64_t step);
+//[in] a modular stride interval
+//[out] is a correct abstract value (end = start + i*s)
+uint64_t isErroneous(uint64_t start, uint64_t end, uint64_t step);
+//[in] a start, step and MAX value
+//[out] return a correct upper bound (up) such that up <= MAX (wrapped thinking)
+uint64_t computeUpperBound(uint64_t start, uint64_t step, uint64_t max);
+
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
 uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
 uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k);
@@ -5665,6 +5675,10 @@ void printEndPointStatus(uint64_t* context, uint64_t start, uint64_t end, uint64
   printInteger(step);
   print((uint64_t*) ">");
   println();
+
+  //correct value
+  printConcreteBounds(start, end, step);
+  println();
 }
 
 void implementExit(uint64_t* context) {
@@ -8378,6 +8392,72 @@ void printOverApprox(uint64_t* which) {
   printHexadecimal(pc, 0);
   printSourceLineNumberOfInstruction(pc - entryPoint);
   println();
+}
+
+uint64_t printOnDiff(uint64_t lastPrint, uint64_t toPrint) {
+  if(toPrint != lastPrint) {
+    print((uint64_t*) ", ");
+    printInteger(toPrint);
+    return toPrint;
+  }
+  return lastPrint;
+}
+
+void printConcreteBounds(uint64_t start, uint64_t end, uint64_t step) {
+  uint64_t correct_end;
+  uint64_t max_value;
+  uint64_t last_value;
+
+  //is a valid abstract value
+  if(isErroneous(start, end, step)) {
+      print((uint64_t*) "Abstract value incorrect! Correct one: ");
+      correct_end = computeUpperBound(start, step, end);
+  } else
+      correct_end = end;
+
+  print((uint64_t*) "{");
+  //start
+  printInteger(start);
+  last_value = start;
+
+  //if crossing 0 (wrapped)
+  if(start > end) {
+    //start + step
+    if(start + step > start)
+      last_value = printOnDiff(start, start + step);
+
+    max_value = computeUpperBound(start, step, UINT64_MAX);
+
+    last_value = printOnDiff(last_value, max_value);
+    if(max_value + step < correct_end)
+      last_value = printOnDiff(last_value, max_value + step); //min_value
+
+      //end -s
+    if(signedLessThan(correct_end - step, 0))
+      last_value = printOnDiff(last_value, correct_end - step);
+  } else {
+    //start + step
+    if(start + step < correct_end)
+      last_value = printOnDiff(start, start + step);
+
+    //end -s
+  if(correct_end - step > last_value)
+    last_value = printOnDiff(last_value, correct_end - step);
+  }
+
+  //end
+  last_value = printOnDiff(last_value, correct_end);
+  print((uint64_t*) "}");
+}
+
+uint64_t isErroneous(uint64_t start, uint64_t end, uint64_t step) {
+  uint64_t imax;
+  imax = (end - start) / step;
+  return end != start + imax * step;
+}
+
+uint64_t computeUpperBound(uint64_t start, uint64_t step, uint64_t max) {
+  return start + ((max - start) / step) * step;
 }
 
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
