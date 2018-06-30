@@ -1363,58 +1363,58 @@ void      freeContext(uint64_t* context);
 uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 
 // context struct:
-// +----+----------------+
-// |  0 | nextContext    | pointer to next context
-// |  1 | prevContext    | pointer to previous context
-// |  2 | pc             | program counter
-// |  3 | regs           | pointer to general purpose registers
-// |  4 | pt             | pointer to page table
-// |  5 | loPage         | lowest low unmapped page
-// |  6 | mePage         | highest low unmapped page
-// |  7 | hiPage         | highest high unmapped page
-// |  8 | program break  | program break between code, data, and heap
-// |  9 | bump pointer   | bump pointer for malloc
-// | 10 | exception      | exception ID
-// | 11 | faultingPage   | faulting page
-// | 12 | exitCode       | exit code
-// | 13 | parent         | context that created this context
-// | 14 | virtualContext | virtual context address
-// | 15 | name           | binary name loaded into context
-// +----+----------------+
+// +----+-------------------+
+// |  0 | nextContext       | pointer to next context
+// |  1 | prevContext       | pointer to previous context
+// |  2 | pc                | program counter
+// |  3 | regs              | pointer to general purpose registers
+// |  4 | pt                | pointer to page table
+// |  5 | loPage            | lowest low unmapped page
+// |  6 | mePage            | highest low unmapped page
+// |  7 | hiPage            | highest high unmapped page
+// |  8 | min program break | end of initial data segment
+// |  9 | program break     | end of data segment
+// | 10 | exception         | exception ID
+// | 11 | faultingPage      | faulting page
+// | 12 | exitCode          | exit code
+// | 13 | parent            | context that created this context
+// | 14 | virtualContext    | virtual context address
+// | 15 | name              | binary name loaded into context
+// +----+-------------------+
 
-uint64_t nextContext(uint64_t* context)    { return (uint64_t) context; }
-uint64_t prevContext(uint64_t* context)    { return (uint64_t) (context + 1); }
-uint64_t PC(uint64_t* context)             { return (uint64_t) (context + 2); }
-uint64_t Regs(uint64_t* context)           { return (uint64_t) (context + 3); }
-uint64_t PT(uint64_t* context)             { return (uint64_t) (context + 4); }
-uint64_t LoPage(uint64_t* context)         { return (uint64_t) (context + 5); }
-uint64_t MePage(uint64_t* context)         { return (uint64_t) (context + 6); }
-uint64_t HiPage(uint64_t* context)         { return (uint64_t) (context + 7); }
-uint64_t ProgramBreak(uint64_t* context)   { return (uint64_t) (context + 8); }
-uint64_t BumpPointer(uint64_t* context)    { return (uint64_t) (context + 9); }
-uint64_t Exception(uint64_t* context)      { return (uint64_t) (context + 10); }
-uint64_t FaultingPage(uint64_t* context)   { return (uint64_t) (context + 11); }
-uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 12); }
-uint64_t Parent(uint64_t* context)         { return (uint64_t) (context + 13); }
-uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 14); }
-uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 15); }
+uint64_t nextContext(uint64_t* context)     { return (uint64_t) context; }
+uint64_t prevContext(uint64_t* context)     { return (uint64_t) (context + 1); }
+uint64_t PC(uint64_t* context)              { return (uint64_t) (context + 2); }
+uint64_t Regs(uint64_t* context)            { return (uint64_t) (context + 3); }
+uint64_t PT(uint64_t* context)              { return (uint64_t) (context + 4); }
+uint64_t LoPage(uint64_t* context)          { return (uint64_t) (context + 5); }
+uint64_t MePage(uint64_t* context)          { return (uint64_t) (context + 6); }
+uint64_t HiPage(uint64_t* context)          { return (uint64_t) (context + 7); }
+uint64_t MinProgramBreak(uint64_t* context) { return (uint64_t) (context + 8); }
+uint64_t ProgramBreak(uint64_t* context)    { return (uint64_t) (context + 9); }
+uint64_t Exception(uint64_t* context)       { return (uint64_t) (context + 10); }
+uint64_t FaultingPage(uint64_t* context)    { return (uint64_t) (context + 11); }
+uint64_t ExitCode(uint64_t* context)        { return (uint64_t) (context + 12); }
+uint64_t Parent(uint64_t* context)          { return (uint64_t) (context + 13); }
+uint64_t VirtualContext(uint64_t* context)  { return (uint64_t) (context + 14); }
+uint64_t Name(uint64_t* context)            { return (uint64_t) (context + 15); }
 
-uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
-uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
-uint64_t  getPC(uint64_t* context)             { return             *(context + 2); }
-uint64_t* getRegs(uint64_t* context)           { return (uint64_t*) *(context + 3); }
-uint64_t* getPT(uint64_t* context)             { return (uint64_t*) *(context + 4); }
-uint64_t  getLoPage(uint64_t* context)         { return             *(context + 5); }
-uint64_t  getMePage(uint64_t* context)         { return             *(context + 6); }
-uint64_t  getHiPage(uint64_t* context)         { return             *(context + 7); }
-uint64_t  getProgramBreak(uint64_t* context)   { return             *(context + 8); }
-uint64_t  getBumpPointer(uint64_t* context)    { return             *(context + 9); }
-uint64_t  getException(uint64_t* context)      { return             *(context + 10); }
-uint64_t  getFaultingPage(uint64_t* context)   { return             *(context + 11); }
-uint64_t  getExitCode(uint64_t* context)       { return             *(context + 12); }
-uint64_t* getParent(uint64_t* context)         { return (uint64_t*) *(context + 13); }
-uint64_t* getVirtualContext(uint64_t* context) { return (uint64_t*) *(context + 14); }
-uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 15); }
+uint64_t* getNextContext(uint64_t* context)     { return (uint64_t*) *context; }
+uint64_t* getPrevContext(uint64_t* context)     { return (uint64_t*) *(context + 1); }
+uint64_t  getPC(uint64_t* context)              { return             *(context + 2); }
+uint64_t* getRegs(uint64_t* context)            { return (uint64_t*) *(context + 3); }
+uint64_t* getPT(uint64_t* context)              { return (uint64_t*) *(context + 4); }
+uint64_t  getLoPage(uint64_t* context)          { return             *(context + 5); }
+uint64_t  getMePage(uint64_t* context)          { return             *(context + 6); }
+uint64_t  getHiPage(uint64_t* context)          { return             *(context + 7); }
+uint64_t  getMinProgramBreak(uint64_t* context) { return             *(context + 8); }
+uint64_t  getProgramBreak(uint64_t* context)    { return             *(context + 9); }
+uint64_t  getException(uint64_t* context)       { return             *(context + 10); }
+uint64_t  getFaultingPage(uint64_t* context)    { return             *(context + 11); }
+uint64_t  getExitCode(uint64_t* context)        { return             *(context + 12); }
+uint64_t* getParent(uint64_t* context)          { return (uint64_t*) *(context + 13); }
+uint64_t* getVirtualContext(uint64_t* context)  { return (uint64_t*) *(context + 14); }
+uint64_t* getName(uint64_t* context)            { return (uint64_t*) *(context + 15); }
 
 void setNextContext(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
 void setPrevContext(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
@@ -1424,8 +1424,8 @@ void setPT(uint64_t* context, uint64_t* pt)                { *(context + 4)  = (
 void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 5)  = loPage; }
 void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 6)  = mePage; }
 void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 7)  = hiPage; }
-void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 8) = brk; }
-void setBumpPointer(uint64_t* context, uint64_t brk)       { *(context + 9) = brk; }
+void setMinProgramBreak(uint64_t* context, uint64_t brk)   { *(context + 8)  = brk; }
+void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 9)  = brk; }
 void setException(uint64_t* context, uint64_t exception)   { *(context + 10) = exception; }
 void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 11) = page; }
 void setExitCode(uint64_t* context, uint64_t code)         { *(context + 12) = code; }
@@ -5599,7 +5599,7 @@ void implementExit(uint64_t* context) {
     selfieName,
     getName(context),
     (uint64_t*) signExtend(getExitCode(context), SYSCALL_BITWIDTH),
-    (uint64_t*) fixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE, 2));
+    (uint64_t*) fixedPointRatio(getProgramBreak(context) - getMinProgramBreak(context), MEGABYTE, 2));
 }
 
 void emitRead() {
@@ -6020,44 +6020,44 @@ void emitMalloc() {
 
 void implementBrk(uint64_t* context) {
   // parameter
-  uint64_t bump;
+  uint64_t programBreak;
 
   // local variables
-  uint64_t previousBump;
+  uint64_t previousProgramBreak;
   uint64_t size;
   uint64_t valid;
 
-  bump = *(getRegs(context) + REG_A0);
+  programBreak = *(getRegs(context) + REG_A0);
 
   if (debug_brk)
-    printf2((uint64_t*) "%s: trying to set brk to %x\n", selfieName, bump);
+    printf2((uint64_t*) "%s: trying to set program break to %x\n", selfieName, programBreak);
 
-  previousBump = getBumpPointer(context);
+  previousProgramBreak = getProgramBreak(context);
 
   valid = 0;
 
-  if (bump >= previousBump)
-    if (bump < *(getRegs(context) + REG_SP))
-      if (bump % SIZEOFUINT64 == 0)
+  if (programBreak >= previousProgramBreak)
+    if (programBreak < *(getRegs(context) + REG_SP))
+      if (programBreak % SIZEOFUINT64 == 0)
         valid = 1;
 
   if (valid) {
-    setBumpPointer(context, bump);
+    setProgramBreak(context, programBreak);
 
     if (symbolic) {
-      size = bump - previousBump;
+      size = programBreak - previousProgramBreak;
 
       // interval is memory range, not symbolic value
       *(reg_typ + REG_A0) = 1;
 
       // remember start and size of memory block for checking memory safety
-      *(reg_los + REG_A0) = previousBump;
+      *(reg_los + REG_A0) = previousProgramBreak;
       *(reg_ups + REG_A0) = size;
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, previousBump, 1, previousBump, size, tc);
+          storeSymbolicMemory(getPT(context), 0, previousProgramBreak, 1, previousProgramBreak, size, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6066,10 +6066,10 @@ void implementBrk(uint64_t* context) {
       }
     }
   } else {
-    // error returns current valid bump pointer
-    bump = previousBump;
+    // error returns current valid program break
+    programBreak = previousProgramBreak;
 
-    *(getRegs(context) + REG_A0) = bump;
+    *(getRegs(context) + REG_A0) = programBreak;
 
     if (symbolic) {
       *(reg_typ + REG_A0) = 0;
@@ -6082,7 +6082,7 @@ void implementBrk(uint64_t* context) {
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
 
   if (debug_brk)
-    printf2((uint64_t*) "%s: actually setting brk to %x\n", selfieName, bump);
+    printf2((uint64_t*) "%s: actually setting program break to %x\n", selfieName, programBreak);
 }
 
 
@@ -7369,13 +7369,13 @@ void backtrack_ecall() {
 
   if (*(vaddrs + tc) == 0) {
     // backtracking malloc
-    if (getBumpPointer(currentContext) == *(los + tc) + *(ups + tc))
-      setBumpPointer(currentContext, *(los + tc));
+    if (getProgramBreak(currentContext) == *(los + tc) + *(ups + tc))
+      setProgramBreak(currentContext, *(los + tc));
     else {
       printf1((uint64_t*) "%s: malloc backtracking error at ", selfieName);
       printSymbolicMemory(tc);
-      printf4((uint64_t*) " with current bump pointer %x unequal %x which is previous bump pointer %x plus size %d\n",
-        (uint64_t*) getBumpPointer(currentContext),
+      printf4((uint64_t*) " with current program break %x unequal %x which is previous program break %x plus size %d\n",
+        (uint64_t*) getProgramBreak(currentContext),
         (uint64_t*) (*(los + tc) + *(ups + tc)),
         (uint64_t*) *(los + tc),
         (uint64_t*) *(ups + tc));
@@ -7572,7 +7572,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
   uint64_t mrvc;
 
   if (vaddr == 0)
-    // tracking bump pointer and size for malloc
+    // tracking program break and size for malloc
     mrvc = 0;
   else if (vaddr < NUMBEROFREGISTERS)
     // tracking a register value for sltu
@@ -7641,7 +7641,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t mrvc;
 
-  if (vaddr >= getBumpPointer(currentContext))
+  if (vaddr >= getProgramBreak(currentContext))
     if (vaddr < *(registers + REG_SP))
       // do not constrain free memory
       return;
@@ -8557,7 +8557,7 @@ void saveContext(uint64_t* context) {
       r = r + 1;
     }
 
-    storeVirtualMemory(parentTable, BumpPointer(vctxt), getBumpPointer(context));
+    storeVirtualMemory(parentTable, ProgramBreak(vctxt), getProgramBreak(context));
 
     storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
     storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
@@ -8574,7 +8574,7 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   *(table + page) = frame;
 
-  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE)) {
+  if (page <= getPageOfVirtualAddress(getProgramBreak(context) - REGISTERSIZE)) {
     // exploit spatial locality in page table caching
     if (page < getLoPage(context))
       setLoPage(context, page);
@@ -8619,7 +8619,7 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
+    setProgramBreak(context, loadVirtualMemory(parentTable, ProgramBreak(vctxt)));
 
     setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
@@ -8754,8 +8754,8 @@ void up_loadBinary(uint64_t* context) {
   setPC(context, entryPoint);
   setLoPage(context, getPageOfVirtualAddress(entryPoint));
   setMePage(context, getPageOfVirtualAddress(entryPoint));
-  setProgramBreak(context, entryPoint + binaryLength);
-  setBumpPointer(context, getProgramBreak(context));
+  setMinProgramBreak(context, entryPoint + binaryLength);
+  setProgramBreak(context, getMinProgramBreak(context));
 
   baddr = 0;
 
