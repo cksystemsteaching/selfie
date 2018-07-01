@@ -4530,25 +4530,8 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // initialize s1 with the current bump pointer
-  emitADDI(REG_A0, REG_ZR, 0);
-  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-
-  emitECALL();
-
-  // align the current bump pointer for double-word access
-  emitRoundUp(REG_A0, SIZEOFUINT64);
-
-  // set program brk to the aligned bump pointer
-  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-
-  emitECALL();
-
-  // save the actual bump pointer in register s1
-  emitADDI(REG_S1, REG_A0, 0);
-
   // calculate the global pointer value accommodating 6 more instructions
-  gp = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
+  gp = ELF_ENTRY_POINT + binaryLength + 16 * INSTRUCTIONSIZE + allocatedMemory;
 
   // make sure gp is double-word-aligned
   padding = gp % REGISTERSIZE;
@@ -4567,6 +4550,25 @@ void emitStart() {
     emitLUI(REG_GP, upper);
     emitADDI(REG_GP, REG_GP, lower);
   }
+
+  // initialize _bump with the original bump pointer
+  emitADDI(REG_A0, REG_ZR, 0);
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
+
+  emitECALL();
+
+  // align the current bump pointer for double-word access
+  emitRoundUp(REG_A0, SIZEOFUINT64);
+
+  // set program brk to the aligned bump pointer
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
+
+  emitECALL();
+
+  // store the bump pointer into the memory
+  entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
+
+  emitSD(getScope(entry), getAddress(entry), REG_A0);
 
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
@@ -5970,13 +5972,22 @@ void implementOpen(uint64_t* context) {
 }
 
 void emitMalloc() {
+  uint64_t* entry;
+
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
   // on boot levels higher than zero, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  // allocate register to compute the new bump pointer
+  // introduce the the state of malloc (bump pointer) as global variable
+  allocatedMemory = allocatedMemory + REGISTERSIZE;
+
+  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "_bump", 0, VARIABLE, UINT64_T, 0, -allocatedMemory);
+
+  entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
+
+  // allocate register for the size parameter
   talloc();
 
   emitLD(currentTemporary(), REG_SP, 0); // size
@@ -5985,35 +5996,37 @@ void emitMalloc() {
   // round up size to double-word alignment
   emitRoundUp(currentTemporary(), SIZEOFUINT64);
 
+  // allocate register to compute the new bump pointer
+  talloc();
+
+  emitLD(currentTemporary(), getScope(entry), getAddress(entry));
+
   // call brk syscall to set the current bump pointer
-  emitADD(REG_A0, currentTemporary(), REG_S1);
+  emitADD(REG_A0, currentTemporary(), previousTemporary());
   emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
 
   emitECALL();
 
   // return 0 iff memory allocation failed:
   //
-  // if (bump == previous_bump)
-  //   if (size == 0)
-  //     return bump
-  //   else
+  // if (new_bump == _bump)
+  //   if (size != 0)
   //     return 0
-  // else
-  //   return bump
-  emitBEQ(REG_A0, REG_S1, 2 * INSTRUCTIONSIZE);
+  emitBEQ(REG_A0, currentTemporary(), 2 * INSTRUCTIONSIZE);
   emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
-  emitBEQ(REG_ZR, currentTemporary(), 3 * INSTRUCTIONSIZE);
-
-  // no memory was allocated
+  emitBEQ(REG_ZR, previousTemporary(), 3 * INSTRUCTIONSIZE);
   emitADDI(REG_A0, REG_ZR, 0);
-  emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
+  emitBEQ(REG_ZR, REG_ZR, 3 * INSTRUCTIONSIZE);
 
-  // memory space was allocated
-  emitADDI(currentTemporary(), REG_S1, 0);
-  emitADDI(REG_S1, REG_A0, 0);
+  // memory was allocated:
+  //
+  // previous_bump = _bump
+  // _bump = new_bump
+  // return previous_bump
+  emitSD(getScope(entry), getAddress(entry), REG_A0);
   emitADDI(REG_A0, currentTemporary(), 0);
 
-  tfree(1);
+  tfree(2);
 
   emitJALR(REG_ZR, REG_RA,0);
 }
