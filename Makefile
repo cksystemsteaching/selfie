@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob sat all clean
+.PHONY : compile quine escape debug replay os vm min mob sat spike all clean
 
 # Self-compile
 compile: selfie
