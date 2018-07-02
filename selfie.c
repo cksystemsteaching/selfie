@@ -4519,7 +4519,22 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // calculate the global pointer value accommodating 6 more instructions
+  // prepare main function arguments on the stack
+  talloc();
+
+  // allocate memory for argv variable
+  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+
+  // push argv pointer onto the stack
+  //      ______________
+  //     |              V
+  // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
+  emitADDI(currentTemporary(), REG_SP, 2 * REGISTERSIZE);
+  emitSD(REG_SP, 0, currentTemporary());
+
+  tfree(1);
+
+  // calculate the global pointer value accommodating 9 more instructions
   gp = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
 
   // make sure gp is double-word-aligned
@@ -8737,36 +8752,55 @@ uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
 }
 
 void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
+  // uploads arguments like a UNIX system
+  //
+  //    SP
+  //    |
+  //    V
+  // | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[n] | 0 |
+
   uint64_t SP;
-  uint64_t vargv;
-  uint64_t i_argc;
-  uint64_t i_vargv;
+  uint64_t i;
+  uint64_t* vargv;
 
   // the call stack grows top down
   SP = VIRTUALMEMORYSIZE;
 
-  // assert: argc > 0
+  vargv = smalloc(argc * SIZEOFUINT64STAR);
 
-  // allocate memory for storing *argv array
-  SP = SP - argc * REGISTERSIZE;
+  i = 0;
+  // push program parameters onto the stack
+  while (i < argc) {
+    SP = up_loadString(context, (uint64_t*) *(argv + i), SP);
 
-  // caution: vargv invalid if argc == 0
-  vargv = SP;
+    // store pointer in virtual *argv
+    *(vargv + i) = SP;
 
-  i_vargv = vargv;
-  i_argc  = argc;
+    i = i + 1;
+  }
 
-  while (i_argc > 0) {
-    SP = up_loadString(context, (uint64_t*) *argv, SP);
+  // allocate memory for termination of env table
+  SP = SP - REGISTERSIZE;
 
-    // store pointer to string in virtual *argv
-    mapAndStore(context, i_vargv, SP);
+  // push null value to terminate env table
+  mapAndStore(context, SP, 0);
 
-    argv = argv + 1;
+  // allocate memory for termination of argv table
+  SP = SP - REGISTERSIZE;
 
-    i_vargv = i_vargv + REGISTERSIZE;
+  // push null value to terminate argv table
+  mapAndStore(context, SP, 0);
 
-    i_argc = i_argc - 1;
+  i = argc;
+  // push argv table onto the stack
+  while (i > 0) {
+    // allocate memory for argv table entry
+    SP = SP - REGISTERSIZE;
+
+    i = i - 1;
+
+    // push argv table entry
+    mapAndStore(context, SP, *(vargv + i));
   }
 
   // allocate memory for argc
@@ -8774,12 +8808,6 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // push argc
   mapAndStore(context, SP, argc);
-
-  // allocate memory for pointer to virtual argv
-  SP = SP - REGISTERSIZE;
-
-  // push virtual argv
-  mapAndStore(context, SP, vargv);
 
   // store stack pointer value in stack pointer register
   *(getRegs(context) + REG_SP) = SP;
