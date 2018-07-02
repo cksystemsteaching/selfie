@@ -4509,7 +4509,11 @@ void emitProgramEntry() {
 }
 
 void emitStart() {
-  // initializes the global pointer and calls the main procedure
+  /* 1. fixup initial jump to here
+     2. push argv pointer onto stack
+     3. initialize global pointer
+     4. call main procedure
+     5. call exit procedure */
   uint64_t gp;
   uint64_t padding;
   uint64_t lower;
@@ -4519,11 +4523,10 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // prepare main function arguments on the stack
-  talloc();
-
   // allocate memory for argv variable
   emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+
+  talloc();
 
   // push argv pointer onto the stack
   //      ______________
@@ -4534,7 +4537,7 @@ void emitStart() {
 
   tfree(1);
 
-  // calculate the global pointer value accommodating 9 more instructions
+  // calculate the global pointer value accommodating 6 more instructions
   gp = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
 
   // make sure gp is double-word-aligned
@@ -8752,16 +8755,17 @@ uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
 }
 
 void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
-  // uploads arguments like a UNIX system
-  //
-  //    SP
-  //    |
-  //    V
-  // | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[n] | 0 |
+  /* upload arguments like a UNIX system
 
+      SP
+      |
+      V
+   | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
+
+     with argc > 0, n == argc - 1, and m == 0 (that is, env is empty) */
   uint64_t SP;
-  uint64_t i;
   uint64_t* vargv;
+  uint64_t i;
 
   // the call stack grows top down
   SP = VIRTUALMEMORYSIZE;
@@ -8769,6 +8773,7 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   vargv = smalloc(argc * SIZEOFUINT64STAR);
 
   i = 0;
+
   // push program parameters onto the stack
   while (i < argc) {
     SP = up_loadString(context, (uint64_t*) *(argv + i), SP);
@@ -8791,7 +8796,8 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
   // push null value to terminate argv table
   mapAndStore(context, SP, 0);
 
-  i = argc;
+  // assert: i == argc
+
   // push argv table onto the stack
   while (i > 0) {
     // allocate memory for argv table entry
