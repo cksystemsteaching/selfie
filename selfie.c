@@ -4530,7 +4530,7 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // calculate the global pointer value accommodating 6 more instructions
+  // calculate the global pointer value accommodating 16 more instructions
   gp = ELF_ENTRY_POINT + binaryLength + 16 * INSTRUCTIONSIZE + allocatedMemory;
 
   // make sure gp is double-word-aligned
@@ -4557,15 +4557,15 @@ void emitStart() {
 
   emitECALL();
 
-  // align the current bump pointer for double-word access
+  // align current bump pointer for double-word access
   emitRoundUp(REG_A0, SIZEOFUINT64);
 
-  // set program brk to the aligned bump pointer
+  // set program break to aligned bump pointer
   emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
 
   emitECALL();
 
-  // store the bump pointer into the memory
+  // store bump pointer in compiler-declared global variable
   entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
 
   emitSD(getScope(entry), getAddress(entry), REG_A0);
@@ -5980,7 +5980,8 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  // introduce the the state of malloc (bump pointer) as global variable
+  // allocate memory in data segment for recording state of malloc (bump pointer) 
+  // in compiler-declared global variable
   allocatedMemory = allocatedMemory + REGISTERSIZE;
 
   createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "_bump", 0, VARIABLE, UINT64_T, 0, -allocatedMemory);
