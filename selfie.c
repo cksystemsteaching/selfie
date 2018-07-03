@@ -4520,7 +4520,11 @@ void emitProgramEntry() {
 }
 
 void emitStart() {
-  // initializes the global pointer and calls the main procedure
+  /* 1. fixup initial jump to here
+     2. push argv pointer onto stack
+     3. initialize global pointer
+     4. call main procedure
+     5. call exit procedure */
   uint64_t gp;
   uint64_t padding;
   uint64_t lower;
@@ -4530,7 +4534,21 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // calculate the global pointer value accommodating 16 more instructions
+  // allocate memory for argv variable
+  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+
+  talloc();
+
+  // push argv pointer onto the stack
+  //      ______________
+  //     |              V
+  // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
+  emitADDI(currentTemporary(), REG_SP, 2 * REGISTERSIZE);
+  emitSD(REG_SP, 0, currentTemporary());
+
+  tfree(1);
+
+  // calculate the global pointer value accommodating 6 more instructions
   gp = ELF_ENTRY_POINT + binaryLength + 16 * INSTRUCTIONSIZE + allocatedMemory;
 
   // make sure gp is double-word-aligned
@@ -4901,6 +4919,7 @@ uint64_t encodeBFormat(uint64_t immediate, uint64_t rs2, uint64_t rs1, uint64_t 
 
   immediate = signShrink(immediate, 13);
 
+  // LSB of immediate is lost
   imm1 = getBits(immediate, 12, 1);
   imm2 = getBits(immediate,  5, 6);
   imm3 = getBits(immediate,  1, 4);
@@ -4955,6 +4974,7 @@ uint64_t encodeJFormat(uint64_t immediate, uint64_t rd, uint64_t opcode) {
 
   immediate = signShrink(immediate, 21);
 
+  // LSB of immediate is lost
   imm1 = getBits(immediate, 20,  1);
   imm2 = getBits(immediate,  1, 10);
   imm3 = getBits(immediate, 11,  1);
@@ -8819,36 +8839,58 @@ uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
 }
 
 void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
+  /* upload arguments like a UNIX system
+
+      SP
+      |
+      V
+   | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
+
+     with argc > 0, n == argc - 1, and m == 0 (that is, env is empty) */
   uint64_t SP;
-  uint64_t vargv;
-  uint64_t i_argc;
-  uint64_t i_vargv;
+  uint64_t* vargv;
+  uint64_t i;
 
   // the call stack grows top down
   SP = VIRTUALMEMORYSIZE;
 
-  // assert: argc > 0
+  vargv = smalloc(argc * SIZEOFUINT64STAR);
 
-  // allocate memory for storing *argv array
-  SP = SP - argc * REGISTERSIZE;
+  i = 0;
 
-  // caution: vargv invalid if argc == 0
-  vargv = SP;
+  // push program parameters onto the stack
+  while (i < argc) {
+    SP = up_loadString(context, (uint64_t*) *(argv + i), SP);
 
-  i_vargv = vargv;
-  i_argc  = argc;
+    // store pointer in virtual *argv
+    *(vargv + i) = SP;
 
-  while (i_argc > 0) {
-    SP = up_loadString(context, (uint64_t*) *argv, SP);
+    i = i + 1;
+  }
 
-    // store pointer to string in virtual *argv
-    mapAndStore(context, i_vargv, SP);
+  // allocate memory for termination of env table
+  SP = SP - REGISTERSIZE;
 
-    argv = argv + 1;
+  // push null value to terminate env table
+  mapAndStore(context, SP, 0);
 
-    i_vargv = i_vargv + REGISTERSIZE;
+  // allocate memory for termination of argv table
+  SP = SP - REGISTERSIZE;
 
-    i_argc = i_argc - 1;
+  // push null value to terminate argv table
+  mapAndStore(context, SP, 0);
+
+  // assert: i == argc
+
+  // push argv table onto the stack
+  while (i > 0) {
+    // allocate memory for argv table entry
+    SP = SP - REGISTERSIZE;
+
+    i = i - 1;
+
+    // push argv table entry
+    mapAndStore(context, SP, *(vargv + i));
   }
 
   // allocate memory for argc
@@ -8856,12 +8898,6 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // push argc
   mapAndStore(context, SP, argc);
-
-  // allocate memory for pointer to virtual argv
-  SP = SP - REGISTERSIZE;
-
-  // push virtual argv
-  mapAndStore(context, SP, vargv);
 
   // store stack pointer value in stack pointer register
   *(getRegs(context) + REG_SP) = SP;
