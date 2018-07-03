@@ -7259,13 +7259,13 @@ void constrain_divu() {
       setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
       // step computation
+      // set the result step to 1 if divisor greater than s1
       if (*(reg_steps + rs1) < *(reg_los + rs2)) {
         if (*(reg_los + rs2) % *(reg_steps + rs1) != 0) {
-          if(*(reg_steps + rd) < *(reg_steps + rs1))
           //now: exit analysis (step no multiple)
           last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
-          printOverApprox((uint64_t*) "div");
+          printOverApprox((uint64_t*) "divu1");
         }
         *(reg_steps + rd) = 1;
       } else {
@@ -7273,7 +7273,7 @@ void constrain_divu() {
           //now: exit analysis (step no multiple)
           last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
-          printOverApprox((uint64_t*) "div");
+          printOverApprox((uint64_t*) "divu2");
         }
 
         *(reg_steps + rd) = *(reg_steps + rs1) / *(reg_los + rs2);
@@ -7287,11 +7287,11 @@ void constrain_divu() {
 
         // lo/k == up/k (or) up/k + step_rd
         if (div_los != div_ups)
-          if (div_los != div_ups + *(reg_steps + rd)) {
+          if (div_los > div_ups + *(reg_steps + rd)) {
             //now: exit analysis (wrap interval division: not close)
             last_jal_from = pc;
             throwException(EXCEPTION_INCOMPLETENESS, 0);
-            printOverApprox((uint64_t*) "div");
+            printOverApprox((uint64_t*) "divu3");
           }
       } else {
         // rs1 constraint is not wrapped
@@ -7318,7 +7318,9 @@ void constrain_divu() {
       printSourceLineNumberOfInstruction(pc - entryPoint);
       println();
 
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      last_jal_from = pc;
+      throwException(EXCEPTION_INCOMPLETENESS, 0);
+      //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
@@ -7375,7 +7377,7 @@ void constrain_remu_step_1() {
         //now: exit analysis
         last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
-        printOverApprox((uint64_t*) "rem");
+        printOverApprox((uint64_t*) "rem1_1");
       }
     }
   } else {
@@ -7403,7 +7405,7 @@ void constrain_remu_step_1() {
         //now: exit analysis
         last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
-        printOverApprox((uint64_t*) "rem");
+        printOverApprox((uint64_t*) "rem1_10");
       }
     } else {
       // rem_typ1 == 0 and rem_typ2 == 1
@@ -7417,7 +7419,7 @@ void constrain_remu_step_1() {
         //now: exit analysis
         last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
-        printOverApprox((uint64_t*) "rem");
+        printOverApprox((uint64_t*) "rem1_^2");
       }
     }
   }
@@ -7500,7 +7502,7 @@ void constrain_remu() {
         //now: exit analysisk
         last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
-        printOverApprox((uint64_t*) "rem");
+        printOverApprox((uint64_t*) "rem1");
       } else {
         gcd_step_k = gcd(step, divisor);
         rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
@@ -7511,7 +7513,7 @@ void constrain_remu() {
           //now: exit analysis
           last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
-          printOverApprox((uint64_t*) "rem");
+          printOverApprox((uint64_t*) "rem10");
         }
       }
 
