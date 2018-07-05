@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob sat all clean
+.PHONY : compile quine escape debug replay os vm min mob sat spike all clean
 
 # Self-compile
 compile: selfie
@@ -58,6 +58,11 @@ mob: selfie
 sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
+
+# Run selfie on Spike
+spike: selfie
+	./selfie -c selfie.c -o selfie.m
+	spike pk selfie.m -l selfie.m -m 2
 
 # Run everything
 all: compile quine debug replay os vm min mob sat
