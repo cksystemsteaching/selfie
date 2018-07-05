@@ -7351,29 +7351,33 @@ void do_remu() {
 }
 
 void constrain_remu_step_1() {
-  uint64_t rem_lo;
-  uint64_t rem_up;
+  uint64_t lo;
+  uint64_t up;
   uint64_t divisor;
-  uint64_t rem_typ;
-  uint64_t rem_typ1;
-  uint64_t rem_typ2;
+  uint64_t remu_case;
+  uint64_t wrap_remu_case;
 
   // interval semantics of remu
-  rem_lo  = *(reg_los + rs1);
-  rem_up  = *(reg_ups + rs1);
+  lo      = *(reg_los + rs1);
+  up      = *(reg_ups + rs1);
   divisor = *(reg_los + rs2);
 
-  if (rem_lo <= rem_up) {
+  if (lo <= up) {
     // rs1 interval is not wrapped
-    rem_typ = remu_condition(rem_lo, rem_up, divisor);
-    if (rem_typ == 0) {
-      rem_lo = rem_lo % divisor;
-      rem_up = rem_up % divisor;
-    } else {
-      rem_lo = 0;
-      rem_up = divisor - 1;
+    remu_case = remu_condition(lo, up, divisor);
 
-      if (rem_typ == 1) {
+    if (remu_case == 0) {
+      //case [0]
+      lo = lo % divisor;
+      up = up % divisor;
+
+    } else {
+      //other cases [0, k-1]
+      lo = 0;
+      up = divisor - 1;
+
+      if (remu_case == 1) {
+        //case[1] the result is not an ms-interval
         //now: exit analysis
         last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
@@ -7381,26 +7385,28 @@ void constrain_remu_step_1() {
       }
     }
   } else {
-    // [lo, up] interval is wrapped
-    rem_typ1 = remu_condition(0, rem_up, divisor);           // [0, up]
-    rem_typ2 = remu_condition(rem_lo, UINT64_MAX, divisor);  // [lo, UINT64_MAX]
-    if (rem_typ1 == 2) {
-      rem_lo = 0;
-      rem_up = divisor - 1;
-    } else if (rem_typ2 == 2) {
-      rem_lo = 0;
-      rem_up = divisor - 1;
-    } else if (rem_typ2 == 0) {
-      // rem_typ1 == 0 and rem_typ2 == 0
-      if (rem_up % divisor >= UINT64_MAX % divisor) {
-        rem_lo = 0;
-        rem_up = rem_up % divisor;
-      } else if (rem_up % divisor + 1 >= rem_lo % divisor) {
-        rem_lo = 0;
-        rem_up = UINT64_MAX % divisor;
+    // [up, lo] interval is wrapped
+    wrap_remu_case = remu_condition(lo, UINT64_MAX, divisor);  // [lo, UINT64_MAX]
+    if (remu_condition(0, up, divisor) == 2) {  // [0, up]
+      lo = 0;
+      up = divisor - 1;
+    } else if (wrap_remu_case == 2) {
+      lo = 0;
+      up = divisor - 1;
+    } else if (wrap_remu_case == 0) {
+      // rem_typ1 == 0 and wrap_remu_case == 0
+      if (up % divisor >= UINT64_MAX % divisor) {
+        // up >= UMAX [k]
+        lo = 0;
+        up = up % divisor;
+      } else if (up % divisor + 1 >= lo % divisor) {
+        // up < UMAX [k] and up + 1 >= lo [k]
+        lo = 0;
+        up = UINT64_MAX % divisor;
       } else {
-        rem_lo = 0;
-        rem_up = UINT64_MAX % divisor;
+        // up < UMAX [k] and up + 1 < lo [k] (not an ms-interval)
+        lo = 0;
+        up = UINT64_MAX % divisor;
 
         //now: exit analysis
         last_jal_from = pc;
@@ -7408,13 +7414,15 @@ void constrain_remu_step_1() {
         printOverApprox((uint64_t*) "rem1_10");
       }
     } else {
-      // rem_typ1 == 0 and rem_typ2 == 1
-      if (rem_up % divisor + 1 >= rem_lo % divisor) {
-        rem_lo = 0;
-        rem_up = divisor - 1;
+      // rem_typ1 == 0 and {wrap_remu_case == 1 (impossible)}
+      if (up % divisor + 1 >= lo % divisor) {
+        // up >= lo and lo != k [k + 1]
+        lo = 0;
+        up = divisor - 1;
       } else {
-        rem_lo = 0;
-        rem_up = divisor - 1;
+        // up < lo or lo == k [k + 1] (not an ms-interval)
+        lo = 0;
+        up = divisor - 1;
 
         //now: exit analysis
         last_jal_from = pc;
@@ -7437,21 +7445,21 @@ void constrain_remu_step_1() {
     // rd inherits rs1 constraint since rs2 has none
     // assert: rs2 interval is singleton
     setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-    setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_has_mul_div_mod + rs1) + 1);
+    setCorrection(rd, 0, 0, *(reg_los + rs2), remu_case + 1, *(reg_has_mul_div_mod + rs1) + 1);
 
-    *(reg_los + rd)   = rem_lo;
-    *(reg_ups + rd)   = rem_up;
+    *(reg_los + rd)   = lo;
+    *(reg_ups + rd)   = up;
     *(reg_steps + rd) = 1;
   }
 }
 
 void constrain_remu() {
-  uint64_t rem_lo;
-  uint64_t rem_up;
+  uint64_t lo;
+  uint64_t up;
   uint64_t divisor;
   uint64_t step;
   uint64_t gcd_step_k;
-  uint64_t rem_typ;
+  uint64_t remu_case;
   uint64_t lcm;
 
   if (*(reg_los + rs2) == 0)
@@ -7465,7 +7473,9 @@ void constrain_remu() {
     printSourceLineNumberOfInstruction(pc - entryPoint);
     println();
 
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    last_jal_from = pc;
+    throwException(EXCEPTION_INCOMPLETENESS, 0);
+    //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
   if (rd == REG_ZR)
@@ -7477,63 +7487,72 @@ void constrain_remu() {
 
   if (*(reg_hasco + rs1)) {
     // interval semantics of remu
-    if (*(reg_steps + rs1) == 1) {
+    lo      = *(reg_los + rs1);
+    up      = *(reg_ups + rs1);
+    divisor = *(reg_los + rs2);
+    step    = *(reg_steps + rs1);
+
+    //special case when step is 1
+    if (step == 1) {
       constrain_remu_step_1();
       return;
     }
 
-    rem_lo  = *(reg_los + rs1);
-    rem_up  = *(reg_ups + rs1);
-    divisor = *(reg_los + rs2);
-    step    = *(reg_steps + rs1);
-
-    if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
+    if (lo <= up) {
       // rs1 interval is not wrapped
-      rem_typ = stride_remu_condition(rem_lo, rem_up, step, divisor);
-      if (rem_typ == 0) {
-        rem_lo = rem_lo % divisor;
-        rem_up = rem_up % divisor;
-        *(reg_steps + rd) = step;
-      } else if (rem_typ == 1) {
-        rem_up = (rem_lo + ((divisor-1-rem_lo%divisor)/step)*step) % divisor;
-        rem_lo = (rem_lo + ((divisor-1-rem_lo%divisor)/step + 1)*step) % divisor;
-        *(reg_steps + rd) = step;
+      remu_case = stride_remu_condition(lo, up, step, divisor);
 
-        //now: exit analysisk
+      if (remu_case == 0) {
+        //case [1] lo/div ==  up/div
+        lo = lo % divisor;
+        up = up % divisor;
+        //same step
+
+      } else if (remu_case == 1) {
+        //case [2]: rem_up-rem_lo < lcm and rem_up = rem_lo + 1 (result not an ms-interval)
+        up = (lo + ((divisor - 1 - lo % divisor) / step) * step) % divisor;
+        lo = (lo + ((divisor - 1 - lo % divisor) / step + 1) * step) % divisor;
+        //same step
+
+        //now: exit analysis
         last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
         printOverApprox((uint64_t*) "rem1");
       } else {
-        gcd_step_k = gcd(step, divisor);
-        rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
-        rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
-        *(reg_steps + rd) = gcd_step_k;
-
-        if (rem_typ == 10) {
+        //case[3, 4 and 5]
+        if (remu_case == 10) {
+          //case [5] rem_up > rem_lo and rem_up - rem_lo < lcm - step (result not an ms-interval)
           //now: exit analysis
           last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
           printOverApprox((uint64_t*) "rem10");
         }
+        //case [3 (>) and 4 (=)] rem_up > rem_lo and rem_up - rem_lo => lcm - step (complete gcd_step_k ms-interval)
+        gcd_step_k = gcd(step, divisor);
+        lo = lo % divisor - ( (lo % divisor) / gcd_step_k) * gcd_step_k;
+        up = computeUpperBound(lo, gcd_step_k, divisor - 1);
+        step = gcd_step_k;
       }
-
     } else if (isPowerOfTwo(divisor)) {
-      // rs1 interval is wrapped
+      // rs1 interval is wrapped and divisor == 2^i
       gcd_step_k = gcd(step, divisor);
-      lcm = (rem_up * rem_lo) / gcd_step_k;
+      lcm = (step * divisor) / gcd_step_k;
 
-      if (rem_up - rem_lo < lcm - step) {
+      if (up - lo < lcm - step) {
+        // rs1 interval is too small the result is not an ms-interval
         //now: exit analysis
         last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
         printOverApprox((uint64_t*) "rem^2");
       }
 
-      rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
-      rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
-      *(reg_steps + rd) = gcd_step_k;
+      lo = lo % divisor - ( (lo % divisor) / gcd_step_k) * gcd_step_k;
+      up = computeUpperBound(lo, gcd_step_k, divisor-1);
+      step = gcd_step_k;
 
     } else {
+      //case wrapped and k != 2^i not handled
+
       print(selfieName);
       print((uint64_t*) ": detected wrapped remu with ");
       printInteger(*(reg_ups + rs2));
@@ -7542,7 +7561,9 @@ void constrain_remu() {
       printSourceLineNumberOfInstruction(pc - entryPoint);
       println();
 
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      last_jal_from = pc;
+      throwException(EXCEPTION_INCOMPLETENESS, 0);
+      //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
 
     if (*(reg_hasmn + rs1)) {
@@ -7558,7 +7579,7 @@ void constrain_remu() {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_has_mul_div_mod + rs1) + 1);
+      setCorrection(rd, 0, 0, *(reg_los + rs2), remu_case + 1, *(reg_has_mul_div_mod + rs1) + 1);
 
     } else if (isPowerOfTwo(divisor)) {
       // rd inherits rs1 constraint since rs2 has none
@@ -7567,8 +7588,10 @@ void constrain_remu() {
       setCorrection(rd, 0, 0, *(reg_los + rs2), 0, *(reg_has_mul_div_mod + rs1) + 1);
     }
 
-    *(reg_los + rd) = rem_lo;
-    *(reg_ups + rd) = rem_up;
+    //store rd values
+    *(reg_los + rd)   = lo;
+    *(reg_ups + rd)   = up;
+    *(reg_steps + rd) = step;
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -8509,13 +8532,13 @@ uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k) {
 
 uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t k) {
   uint64_t lcm;
+  lcm = (step * k) / gcd(step, k);
 
-  lcm = (up * lo) / gcd(step, k);
-  if (up/k - lo/k == 0)
+  if (up/k == lo/k)
     return 0;
   else if (up - lo >= lcm - step)
     return 2;
-  else if (up/k - lo/k == 1)
+  else if (up/k == lo/k + 1)
     return 1;
   else
     return 10;
