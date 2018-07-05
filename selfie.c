@@ -4523,8 +4523,9 @@ void emitStart() {
   /* 1. fixup initial jump to here
      2. push argv pointer onto stack
      3. initialize global pointer
-     4. call main procedure
-     5. call exit procedure */
+     4. initialize malloc's bump pointer
+     5. call main procedure
+     6. call exit procedure */
   uint64_t gp;
   uint64_t padding;
   uint64_t lower;
@@ -4548,7 +4549,7 @@ void emitStart() {
 
   tfree(1);
 
-  // calculate the global pointer value accommodating 6 more instructions
+  // calculate the global pointer value accommodating 16 more instructions
   gp = ELF_ENTRY_POINT + binaryLength + 16 * INSTRUCTIONSIZE + allocatedMemory;
 
   // make sure gp is double-word-aligned
@@ -4569,23 +4570,22 @@ void emitStart() {
     emitADDI(REG_GP, REG_GP, lower);
   }
 
-  // initialize _bump with the original bump pointer
+  // retrieve current program break
   emitADDI(REG_A0, REG_ZR, 0);
   emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-
   emitECALL();
 
-  // align current bump pointer for double-word access
+  // align current program break for double-word access
   emitRoundUp(REG_A0, SIZEOFUINT64);
 
-  // set program break to aligned bump pointer
+  // set program break to aligned program break
   emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-
   emitECALL();
 
-  // store bump pointer in compiler-declared global variable
+  // declare global variable _bump for storing malloc's bump pointer
   entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
 
+  // store aligned program break in _bump
   emitSD(getScope(entry), getAddress(entry), REG_A0);
 
   if (reportUndefinedProcedures())
@@ -6000,15 +6000,15 @@ void emitMalloc() {
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  // allocate memory in data segment for recording state of malloc (bump pointer) 
-  // in compiler-declared global variable
+  // allocate memory in data segment for recording state of
+  // malloc (bump pointer) in compiler-declared global variable
   allocatedMemory = allocatedMemory + REGISTERSIZE;
 
   createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "_bump", 0, VARIABLE, UINT64_T, 0, -allocatedMemory);
 
   entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
 
-  // allocate register for the size parameter
+  // allocate register for size parameter
   talloc();
 
   emitLD(currentTemporary(), REG_SP, 0); // size
@@ -6017,33 +6017,28 @@ void emitMalloc() {
   // round up size to double-word alignment
   emitRoundUp(currentTemporary(), SIZEOFUINT64);
 
-  // allocate register to compute the new bump pointer
+  // allocate register to compute new bump pointer
   talloc();
 
+  // get current _bump (which will be returned upon success)
   emitLD(currentTemporary(), getScope(entry), getAddress(entry));
 
-  // call brk syscall to set the current bump pointer
+  // call brk syscall to set "new_program_break" to _bump + size
   emitADD(REG_A0, currentTemporary(), previousTemporary());
   emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-
   emitECALL();
 
-  // return 0 iff memory allocation failed:
-  //
-  // if (new_bump == _bump)
-  //   if (size != 0)
-  //     return 0
+  // return 0 if memory allocation failed, that is,
+  // if "new_program_break" is still _bump and size !=0
   emitBEQ(REG_A0, currentTemporary(), 2 * INSTRUCTIONSIZE);
   emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
   emitBEQ(REG_ZR, previousTemporary(), 3 * INSTRUCTIONSIZE);
   emitADDI(REG_A0, REG_ZR, 0);
   emitBEQ(REG_ZR, REG_ZR, 3 * INSTRUCTIONSIZE);
 
-  // memory was allocated:
-  //
-  // previous_bump = _bump
-  // _bump = new_bump
-  // return previous_bump
+  // if memory was successfully allocated
+  // set _bump to "new_program_break"
+  // and then return original _bump
   emitSD(getScope(entry), getAddress(entry), REG_A0);
   emitADDI(REG_A0, currentTemporary(), 0);
 
@@ -6058,13 +6053,10 @@ void implementBrk(uint64_t* context) {
 
   // local variables
   uint64_t previousProgramBreak;
-  uint64_t size;
   uint64_t valid;
+  uint64_t size;
 
   programBreak = *(getRegs(context) + REG_A0);
-
-  if (debug_brk)
-    printf2((uint64_t*) "%s: trying to set program break to %x\n", selfieName, programBreak);
 
   previousProgramBreak = getProgramBreak(context);
 
@@ -6076,6 +6068,9 @@ void implementBrk(uint64_t* context) {
         valid = 1;
 
   if (valid) {
+    if (debug_brk)
+      printf2((uint64_t*) "%s: setting program break to %p\n", selfieName, programBreak);
+
     setProgramBreak(context, programBreak);
 
     if (symbolic) {
@@ -6090,7 +6085,7 @@ void implementBrk(uint64_t* context) {
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
-          // since there has been branching record malloc using vaddr == 0
+          // since there has been branching record brk using vaddr == 0
           storeSymbolicMemory(getPT(context), 0, previousProgramBreak, 1, previousProgramBreak, size, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
@@ -6100,8 +6095,11 @@ void implementBrk(uint64_t* context) {
       }
     }
   } else {
-    // error returns current valid program break
+    // error returns current program break
     programBreak = previousProgramBreak;
+
+    if (debug_brk)
+      printf2((uint64_t*) "%s: retrieving current program break %p\n", selfieName, programBreak);
 
     *(getRegs(context) + REG_A0) = programBreak;
 
@@ -6114,9 +6112,6 @@ void implementBrk(uint64_t* context) {
   }
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
-
-  if (debug_brk)
-    printf2((uint64_t*) "%s: actually setting program break to %x\n", selfieName, programBreak);
 }
 
 
