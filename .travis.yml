@@ -15,7 +15,7 @@ stages:
   - test
   - test on spike
   - name: deploy docker image
-    if: branch = master
+    if: branch = master AND type = push AND fork = false
 jobs:
   include:
     - stage: test on spike
