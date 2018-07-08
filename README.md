@@ -27,7 +27,7 @@ For further information and support please refer to [http://selfie.cs.uni-salzbu
 
 ## Supported Platforms
 
-Selfie runs on Mac, Linux, Windows and possibly other systems that have a terminal and a C compiler installed. Even if you only have access to a web browser you can still run selfie through a cloud-based development environment. Selfie generates ELF binaries. Making them compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk), is ongoing work.
+Selfie runs on Mac, Linux, Windows and possibly other systems that have a terminal and a C compiler installed. Even if you only have access to a web browser you can still run selfie through a cloud-based development environment. Selfie generates ELF binaries that are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk). We are currently working on a docker-based solution to run selfie on spike with the toolchain already installed.
 
 ## Installing Selfie
 

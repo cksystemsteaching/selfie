@@ -602,6 +602,7 @@ void resetParser() {
 // ---------------------- MACHINE CODE LIBRARY ---------------------
 // -----------------------------------------------------------------
 
+void emitRoundUp(uint64_t reg, uint64_t m);
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
 void emitProgramEntry();
 void emitStart();
@@ -910,22 +911,20 @@ uint64_t down_loadString(uint64_t* table, uint64_t vstring, uint64_t* s);
 void     implementOpen(uint64_t* context);
 
 void emitMalloc();
-void implementMalloc(uint64_t* context);
+void implementBrk(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t debug_read   = 0;
-uint64_t debug_write  = 0;
-uint64_t debug_open   = 0;
-uint64_t debug_malloc = 0;
+uint64_t debug_read  = 0;
+uint64_t debug_write = 0;
+uint64_t debug_open  = 0;
+uint64_t debug_brk   = 0;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
 uint64_t SYSCALL_WRITE = 64;
 uint64_t SYSCALL_OPEN  = 1024;
-
-// TODO: fix this syscall for spike
-uint64_t SYSCALL_MALLOC = 222;
+uint64_t SYSCALL_BRK   = 214;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1373,8 +1372,8 @@ uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 // |  5 | loPage         | lowest low unmapped page
 // |  6 | mePage         | highest low unmapped page
 // |  7 | hiPage         | highest high unmapped page
-// |  8 | program break  | program break between code, data, and heap
-// |  9 | bump pointer   | bump pointer for malloc
+// |  8 | original break | original end of data segment
+// |  9 | program break  | end of data segment
 // | 10 | exception      | exception ID
 // | 11 | faultingPage   | faulting page
 // | 12 | exitCode       | exit code
@@ -1391,8 +1390,8 @@ uint64_t PT(uint64_t* context)             { return (uint64_t) (context + 4); }
 uint64_t LoPage(uint64_t* context)         { return (uint64_t) (context + 5); }
 uint64_t MePage(uint64_t* context)         { return (uint64_t) (context + 6); }
 uint64_t HiPage(uint64_t* context)         { return (uint64_t) (context + 7); }
-uint64_t ProgramBreak(uint64_t* context)   { return (uint64_t) (context + 8); }
-uint64_t BumpPointer(uint64_t* context)    { return (uint64_t) (context + 9); }
+uint64_t OriginalBreak(uint64_t* context)  { return (uint64_t) (context + 8); }
+uint64_t ProgramBreak(uint64_t* context)   { return (uint64_t) (context + 9); }
 uint64_t Exception(uint64_t* context)      { return (uint64_t) (context + 10); }
 uint64_t FaultingPage(uint64_t* context)   { return (uint64_t) (context + 11); }
 uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 12); }
@@ -1408,8 +1407,8 @@ uint64_t* getPT(uint64_t* context)             { return (uint64_t*) *(context + 
 uint64_t  getLoPage(uint64_t* context)         { return             *(context + 5); }
 uint64_t  getMePage(uint64_t* context)         { return             *(context + 6); }
 uint64_t  getHiPage(uint64_t* context)         { return             *(context + 7); }
-uint64_t  getProgramBreak(uint64_t* context)   { return             *(context + 8); }
-uint64_t  getBumpPointer(uint64_t* context)    { return             *(context + 9); }
+uint64_t  getOriginalBreak(uint64_t* context)  { return             *(context + 8); }
+uint64_t  getProgramBreak(uint64_t* context)   { return             *(context + 9); }
 uint64_t  getException(uint64_t* context)      { return             *(context + 10); }
 uint64_t  getFaultingPage(uint64_t* context)   { return             *(context + 11); }
 uint64_t  getExitCode(uint64_t* context)       { return             *(context + 12); }
@@ -1425,8 +1424,8 @@ void setPT(uint64_t* context, uint64_t* pt)                { *(context + 4)  = (
 void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 5)  = loPage; }
 void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 6)  = mePage; }
 void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 7)  = hiPage; }
-void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 8) = brk; }
-void setBumpPointer(uint64_t* context, uint64_t brk)       { *(context + 9) = brk; }
+void setOriginalBreak(uint64_t* context, uint64_t brk)     { *(context + 8)  = brk; }
+void setProgramBreak(uint64_t* context, uint64_t brk)      { *(context + 9)  = brk; }
 void setException(uint64_t* context, uint64_t exception)   { *(context + 10) = exception; }
 void setFaultingPage(uint64_t* context, uint64_t page)     { *(context + 11) = page; }
 void setExitCode(uint64_t* context, uint64_t code)         { *(context + 12) = code; }
@@ -4495,6 +4494,18 @@ void compile_cstar() {
 // ------------------------ MACHINE CODE LIBRARY -------------------
 // -----------------------------------------------------------------
 
+void emitRoundUp(uint64_t reg, uint64_t m) {
+  talloc();
+
+  // computes value(reg) + m - 1 - (value(reg) + m - 1) % m
+  emitADDI(reg, reg, m - 1);
+  emitADDI(currentTemporary(), REG_ZR, m);
+  emitREMU(currentTemporary(), reg, currentTemporary());
+  emitSUB(reg, reg, currentTemporary());
+
+  tfree(1);
+}
+
 void emitLeftShiftBy(uint64_t reg, uint64_t b) {
   // assert: 0 <= b < 11
 
@@ -4509,7 +4520,12 @@ void emitProgramEntry() {
 }
 
 void emitStart() {
-  // initializes the global pointer and calls the main procedure
+  /* 1. fixup initial jump to here
+     2. push argv pointer onto stack
+     3. initialize global pointer
+     4. initialize malloc's bump pointer
+     5. call main procedure
+     6. call exit procedure */
   uint64_t gp;
   uint64_t padding;
   uint64_t lower;
@@ -4519,8 +4535,22 @@ void emitStart() {
   // fixup jump at address 0 to here
   fixup_relative_JFormat(0, binaryLength);
 
-  // calculate the global pointer value accommodating 6 more instructions
-  gp = ELF_ENTRY_POINT + binaryLength + 6 * INSTRUCTIONSIZE + allocatedMemory;
+  // allocate memory for argv variable
+  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+
+  talloc();
+
+  // push argv pointer onto the stack
+  //      ______________
+  //     |              V
+  // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
+  emitADDI(currentTemporary(), REG_SP, 2 * REGISTERSIZE);
+  emitSD(REG_SP, 0, currentTemporary());
+
+  tfree(1);
+
+  // calculate the global pointer value accommodating 16 more instructions
+  gp = ELF_ENTRY_POINT + binaryLength + 16 * INSTRUCTIONSIZE + allocatedMemory;
 
   // make sure gp is double-word-aligned
   padding = gp % REGISTERSIZE;
@@ -4539,6 +4569,24 @@ void emitStart() {
     emitLUI(REG_GP, upper);
     emitADDI(REG_GP, REG_GP, lower);
   }
+
+  // retrieve current program break
+  emitADDI(REG_A0, REG_ZR, 0);
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
+  emitECALL();
+
+  // align current program break for double-word access
+  emitRoundUp(REG_A0, SIZEOFUINT64);
+
+  // set program break to aligned program break
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
+  emitECALL();
+
+  // declare global variable _bump for storing malloc's bump pointer
+  entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
+
+  // store aligned program break in _bump
+  emitSD(getScope(entry), getAddress(entry), REG_A0);
 
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
@@ -5573,7 +5621,7 @@ void implementExit(uint64_t* context) {
     selfieName,
     getName(context),
     (uint64_t*) signExtend(getExitCode(context), SYSCALL_BITWIDTH),
-    (uint64_t*) fixedPointRatio(getBumpPointer(context) - getProgramBreak(context), MEGABYTE, 2));
+    (uint64_t*) fixedPointRatio(getProgramBreak(context) - getOriginalBreak(context), MEGABYTE, 2));
 }
 
 void emitRead() {
@@ -5944,62 +5992,101 @@ void implementOpen(uint64_t* context) {
 }
 
 void emitMalloc() {
+  uint64_t* entry;
+
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
   // on boot levels higher than zero, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  emitLD(REG_A0, REG_SP, 0); // size
+  // allocate memory in data segment for recording state of
+  // malloc (bump pointer) in compiler-declared global variable
+  allocatedMemory = allocatedMemory + REGISTERSIZE;
+
+  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "_bump", 0, VARIABLE, UINT64_T, 0, -allocatedMemory);
+
+  entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
+
+  // allocate register for size parameter
+  talloc();
+
+  emitLD(currentTemporary(), REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitADDI(REG_A7, REG_ZR, SYSCALL_MALLOC);
+  // round up size to double-word alignment
+  emitRoundUp(currentTemporary(), SIZEOFUINT64);
 
+  // allocate register to compute new bump pointer
+  talloc();
+
+  // get current _bump (which will be returned upon success)
+  emitLD(currentTemporary(), getScope(entry), getAddress(entry));
+
+  // call brk syscall to set new program break to _bump + size
+  emitADD(REG_A0, currentTemporary(), previousTemporary());
+  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
   emitECALL();
 
-  emitJALR(REG_ZR, REG_RA, 0);
+  // return 0 if memory allocation failed, that is,
+  // if new program break is still _bump and size !=0
+  emitBEQ(REG_A0, currentTemporary(), 2 * INSTRUCTIONSIZE);
+  emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
+  emitBEQ(REG_ZR, previousTemporary(), 3 * INSTRUCTIONSIZE);
+  emitADDI(REG_A0, REG_ZR, 0);
+  emitBEQ(REG_ZR, REG_ZR, 3 * INSTRUCTIONSIZE);
+
+  // if memory was successfully allocated
+  // set _bump to new program break
+  // and then return original _bump
+  emitSD(getScope(entry), getAddress(entry), REG_A0);
+  emitADDI(REG_A0, currentTemporary(), 0);
+
+  tfree(2);
+
+  emitJALR(REG_ZR, REG_RA,0);
 }
 
-void implementMalloc(uint64_t* context) {
+void implementBrk(uint64_t* context) {
   // parameter
+  uint64_t programBreak;
+
+  // local variables
+  uint64_t previousProgramBreak;
+  uint64_t valid;
   uint64_t size;
 
-  // local variable
-  uint64_t bump;
+  programBreak = *(getRegs(context) + REG_A0);
 
-  size = *(getRegs(context) + REG_A0);
+  previousProgramBreak = getProgramBreak(context);
 
-  if (debug_malloc)
-    printf2((uint64_t*) "%s: trying to malloc %d bytes net\n", selfieName, (uint64_t*) size);
+  valid = 0;
 
-  size = roundUp(size, SIZEOFUINT64);
-  bump = getBumpPointer(context);
+  if (programBreak >= previousProgramBreak)
+    if (programBreak < *(getRegs(context) + REG_SP))
+      if (programBreak % SIZEOFUINT64 == 0)
+        valid = 1;
 
-  if (bump + size > *(getRegs(context) + REG_SP)) {
-    // out of virtual memory
-    *(getRegs(context) + REG_A0) = 0;
+  if (valid) {
+    if (debug_brk)
+      printf2((uint64_t*) "%s: setting program break to %p\n", selfieName, (uint64_t*) programBreak);
 
-    if (symbolic) {
-      *(reg_typ + REG_A0) = 0;
-
-      *(reg_los + REG_A0) = 0;
-      *(reg_ups + REG_A0) = 0;
-    }
-  } else {
-    *(getRegs(context) + REG_A0) = bump;
+    setProgramBreak(context, programBreak);
 
     if (symbolic) {
+      size = programBreak - previousProgramBreak;
+
       // interval is memory range, not symbolic value
       *(reg_typ + REG_A0) = 1;
 
       // remember start and size of memory block for checking memory safety
-      *(reg_los + REG_A0) = bump;
+      *(reg_los + REG_A0) = previousProgramBreak;
       *(reg_ups + REG_A0) = size;
 
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
-          // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, tc);
+          // since there has been branching record brk using vaddr == 0
+          storeSymbolicMemory(getPT(context), 0, previousProgramBreak, 1, previousProgramBreak, size, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6007,16 +6094,26 @@ void implementMalloc(uint64_t* context) {
         }
       }
     }
+  } else {
+    // error returns current program break
+    programBreak = previousProgramBreak;
 
-    // set bump pointer to next free space
-    setBumpPointer(context, bump + size);
+    if (debug_brk)
+      printf2((uint64_t*) "%s: retrieving current program break %p\n", selfieName, (uint64_t*) programBreak);
+
+    *(getRegs(context) + REG_A0) = programBreak;
+
+    if (symbolic) {
+      *(reg_typ + REG_A0) = 0;
+
+      *(reg_los + REG_A0) = 0;
+      *(reg_ups + REG_A0) = 0;
+    }
   }
 
   setPC(context, getPC(context) + INSTRUCTIONSIZE);
-
-  if (debug_malloc)
-    printf3((uint64_t*) "%s: actually mallocating %d bytes at virtual address %p\n", selfieName, (uint64_t*) size, (uint64_t*) bump);
 }
+
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -7301,13 +7398,13 @@ void backtrack_ecall() {
 
   if (*(vaddrs + tc) == 0) {
     // backtracking malloc
-    if (getBumpPointer(currentContext) == *(los + tc) + *(ups + tc))
-      setBumpPointer(currentContext, *(los + tc));
+    if (getProgramBreak(currentContext) == *(los + tc) + *(ups + tc))
+      setProgramBreak(currentContext, *(los + tc));
     else {
       printf1((uint64_t*) "%s: malloc backtracking error at ", selfieName);
       printSymbolicMemory(tc);
-      printf4((uint64_t*) " with current bump pointer %x unequal %x which is previous bump pointer %x plus size %d\n",
-        (uint64_t*) getBumpPointer(currentContext),
+      printf4((uint64_t*) " with current program break %x unequal %x which is previous program break %x plus size %d\n",
+        (uint64_t*) getProgramBreak(currentContext),
         (uint64_t*) (*(los + tc) + *(ups + tc)),
         (uint64_t*) *(los + tc),
         (uint64_t*) *(ups + tc));
@@ -7504,7 +7601,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
   uint64_t mrvc;
 
   if (vaddr == 0)
-    // tracking bump pointer and size for malloc
+    // tracking program break and size for malloc
     mrvc = 0;
   else if (vaddr < NUMBEROFREGISTERS)
     // tracking a register value for sltu
@@ -7573,7 +7670,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t mrvc;
 
-  if (vaddr >= getBumpPointer(currentContext))
+  if (vaddr >= getProgramBreak(currentContext))
     if (vaddr < *(registers + REG_SP))
       // do not constrain free memory
       return;
@@ -8489,7 +8586,7 @@ void saveContext(uint64_t* context) {
       r = r + 1;
     }
 
-    storeVirtualMemory(parentTable, BumpPointer(vctxt), getBumpPointer(context));
+    storeVirtualMemory(parentTable, ProgramBreak(vctxt), getProgramBreak(context));
 
     storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
     storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
@@ -8506,7 +8603,7 @@ void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
 
   *(table + page) = frame;
 
-  if (page <= getPageOfVirtualAddress(getBumpPointer(context) - REGISTERSIZE)) {
+  if (page <= getPageOfVirtualAddress(getProgramBreak(context) - REGISTERSIZE)) {
     // exploit spatial locality in page table caching
     if (page < getLoPage(context))
       setLoPage(context, page);
@@ -8551,7 +8648,7 @@ void restoreContext(uint64_t* context) {
       r = r + 1;
     }
 
-    setBumpPointer(context, loadVirtualMemory(parentTable, BumpPointer(vctxt)));
+    setProgramBreak(context, loadVirtualMemory(parentTable, ProgramBreak(vctxt)));
 
     setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
     setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
@@ -8686,8 +8783,8 @@ void up_loadBinary(uint64_t* context) {
   setPC(context, entryPoint);
   setLoPage(context, getPageOfVirtualAddress(entryPoint));
   setMePage(context, getPageOfVirtualAddress(entryPoint));
-  setProgramBreak(context, entryPoint + binaryLength);
-  setBumpPointer(context, getProgramBreak(context));
+  setOriginalBreak(context, entryPoint + binaryLength);
+  setProgramBreak(context, getOriginalBreak(context));
 
   baddr = 0;
 
@@ -8737,36 +8834,58 @@ uint64_t up_loadString(uint64_t* context, uint64_t* s, uint64_t SP) {
 }
 
 void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
+  /* upload arguments like a UNIX system
+
+      SP
+      |
+      V
+   | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
+
+     with argc > 0, n == argc - 1, and m == 0 (that is, env is empty) */
   uint64_t SP;
-  uint64_t vargv;
-  uint64_t i_argc;
-  uint64_t i_vargv;
+  uint64_t* vargv;
+  uint64_t i;
 
   // the call stack grows top down
   SP = VIRTUALMEMORYSIZE;
 
-  // assert: argc > 0
+  vargv = smalloc(argc * SIZEOFUINT64STAR);
 
-  // allocate memory for storing *argv array
-  SP = SP - argc * REGISTERSIZE;
+  i = 0;
 
-  // caution: vargv invalid if argc == 0
-  vargv = SP;
+  // push program parameters onto the stack
+  while (i < argc) {
+    SP = up_loadString(context, (uint64_t*) *(argv + i), SP);
 
-  i_vargv = vargv;
-  i_argc  = argc;
+    // store pointer in virtual *argv
+    *(vargv + i) = SP;
 
-  while (i_argc > 0) {
-    SP = up_loadString(context, (uint64_t*) *argv, SP);
+    i = i + 1;
+  }
 
-    // store pointer to string in virtual *argv
-    mapAndStore(context, i_vargv, SP);
+  // allocate memory for termination of env table
+  SP = SP - REGISTERSIZE;
 
-    argv = argv + 1;
+  // push null value to terminate env table
+  mapAndStore(context, SP, 0);
 
-    i_vargv = i_vargv + REGISTERSIZE;
+  // allocate memory for termination of argv table
+  SP = SP - REGISTERSIZE;
 
-    i_argc = i_argc - 1;
+  // push null value to terminate argv table
+  mapAndStore(context, SP, 0);
+
+  // assert: i == argc
+
+  // push argv table onto the stack
+  while (i > 0) {
+    // allocate memory for argv table entry
+    SP = SP - REGISTERSIZE;
+
+    i = i - 1;
+
+    // push argv table entry
+    mapAndStore(context, SP, *(vargv + i));
   }
 
   // allocate memory for argc
@@ -8774,12 +8893,6 @@ void up_loadArguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // push argc
   mapAndStore(context, SP, argc);
-
-  // allocate memory for pointer to virtual argv
-  SP = SP - REGISTERSIZE;
-
-  // push virtual argv
-  mapAndStore(context, SP, vargv);
 
   // store stack pointer value in stack pointer register
   *(getRegs(context) + REG_SP) = SP;
@@ -8800,8 +8913,8 @@ uint64_t handleSystemCall(uint64_t* context) {
 
   a7 = *(getRegs(context) + REG_A7);
 
-  if (a7 == SYSCALL_MALLOC)
-    implementMalloc(context);
+  if (a7 == SYSCALL_BRK)
+    implementBrk(context);
   else if (a7 == SYSCALL_READ)
     implementRead(context);
   else if (a7 == SYSCALL_WRITE)
