@@ -59,10 +59,12 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
-# Run selfie on Spike
+# Run selfie on spike
 spike: selfie
-	./selfie -c selfie.c -o selfie.m
-	spike pk selfie.m -l selfie.m -m 2
+	./selfie -c selfie.c -o selfie.m -s selfie.s
+	spike pk selfie.m -c selfie.c -o selfie7.m -s selfie7.s -m 1
+	diff -q selfie.m selfie7.m
+	diff -q selfie.s selfie7.s
 
 # Run everything
 all: compile quine debug replay os vm min mob sat
