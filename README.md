@@ -47,7 +47,7 @@ The next step is to produce a selfie binary. To do that type `make` in your term
 cc -w -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' selfie.c -o selfie
 ```
 
-and compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-D'main(a,b)=main(int argc, char** argv)'` and `-Duint64_t='unsigned long long'` options are needed to bootstrap the code. The `char` data type is not available in C\* but may be required by the compiler. The `uint64_t` data type is undefined since C\* does not support including the necessary declarations.
+and then compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-w` option suppresses warnings that can be ignored here. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-D'main(a,b)=main(int argc, char** argv)'` and `-Duint64_t='unsigned long long'` options are needed to bootstrap the code. The `char` data type is not available in C\* but may be required by the compiler. The `uint64_t` data type is undefined since C\* does not support including the necessary declarations.
 
 ## Running Selfie
 
