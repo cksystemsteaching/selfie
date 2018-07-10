@@ -21,21 +21,27 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 5. a simple SAT solver that reads CNF DIMACS files, and
 6. a tiny C* library called libcstar utilized by selfie.
 
-Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support in the form of RISC-V system calls built into the emulator.
+Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support in the form of RISC-V system calls built into the emulator. Selfie generates ELF binaries that are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
 
 For further information and support please refer to [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
 ## Supported Platforms
 
-Selfie runs on Mac, Linux, Windows and possibly other systems that have a terminal and a C compiler installed. Even if you only have access to a web browser you can still run selfie through a cloud-based development environment. Selfie generates ELF binaries that are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk). We are currently working on a docker-based solution to run selfie on spike with the toolchain already installed.
+Selfie runs on Mac, Linux, and Windows machines and possibly other systems that have a terminal and a C compiler installed. But even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
 
 ## Installing Selfie
 
-If you have access to a computer with a terminal application and a C compiler installed, just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip) on that machine. If you only have access to a web browser, get a [github](https://github.com) account, unless you already have one, and fork [selfie]( https://github.com/cksystemsteaching/selfie) into your github account. Then, get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
+There are at least three ways to install and run selfie, from real simple to a bit more difficult:
+
+1. If you have access to a Mac, Linux, or Windows machine download and install [docker](https://docker.com). Then, open a terminal window and type `docker run -it cksystemsteaching/selfie`. Besides simplicity, the key advantage of using docker is that you can run selfie out of the box natively on your machine but also on the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk), which are pre-installed in the [selfie docker image](https://hub.docker.com/r/cksystemsteaching/selfie).
+
+2. However, instead of using docker, you may also just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip), and then open a terminal window to run selfie on your machine. However, for this to work you need to have a C compiler installed. We recommend using [clang](https://clang.llvm.org) or [gcc](https://gcc.gnu.org).
+
+3. If you only have access to a web browser, get a [github](https://github.com) account, unless you already have one, and fork [selfie](https://github.com/cksystemsteaching/selfie) into your github account. Then, get a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
 
 At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
 
-The next step is to produce a selfie binary that runs on your system. To do that type `make` in your terminal. This will invoke the C compiler:
+The next step is to produce a selfie binary. To do that type `make` in your terminal. With docker, the system will respond `make: 'selfie' is up to date.` since there is already a selfie binary pre-installed. Without docker, `make` will invoke the C compiler on your machine or in the cloud9 workspace as follows:
 
 ```bash
 cc -w -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' selfie.c -o selfie
