@@ -502,7 +502,7 @@ uint64_t LOCAL_TABLE   = 2;
 uint64_t LIBRARY_TABLE = 3;
 
 // hash table size for global symbol table
-uint64_t HASH_TABLE_SIZE = 512;
+uint64_t HASH_TABLE_SIZE = 1024;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2876,15 +2876,30 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
   }
 }
 
+uint64_t averageSearchTime = 0;
+uint64_t totalSearchTime   = 0;
+
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
+  uint64_t thisSearchTime;
+
+  thisSearchTime = 0;
+
   while (entry != (uint64_t*) 0) {
     if (stringCompare(string, getString(entry)))
-      if (class == getClass(entry))
+      if (class == getClass(entry)) {
+        averageSearchTime = (averageSearchTime + thisSearchTime) / 2;
+
         return entry;
+      }
+
+    thisSearchTime  = thisSearchTime + 1;
+    totalSearchTime = totalSearchTime + 1;
 
     // keep looking
     entry = getNextEntry(entry);
   }
+
+  averageSearchTime = (averageSearchTime + thisSearchTime) / 2;
 
   return (uint64_t*) 0;
 }
@@ -4765,6 +4780,8 @@ void selfie_compile() {
   ELF_header = createELFHeader(binaryLength);
 
   entryPoint = ELF_ENTRY_POINT;
+
+  printf3((uint64_t*) "%s: symbol table search time was %d iterations on average and %d in total\n", selfieName, (uint64_t*) averageSearchTime, (uint64_t*) totalSearchTime);
 
   printf4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfieName,
     (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
