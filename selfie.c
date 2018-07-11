@@ -981,6 +981,8 @@ uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
 uint64_t pageFrameMemory = 0; // size of memory for frames
 
+uint64_t unreachable_case = 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void initMemory(uint64_t megabytes) {
@@ -1121,6 +1123,8 @@ uint64_t isErroneous(uint64_t start, uint64_t end, uint64_t step);
 //[in] a start, step and MAX value
 //[out] return a correct upper bound (up) such that up <= MAX (wrapped thinking)
 uint64_t computeUpperBound(uint64_t start, uint64_t step, uint64_t max);
+
+void printUnreachable(uint64_t* label, uint64_t unreachable_pc);
 
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
 uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
@@ -5686,10 +5690,7 @@ void implementExit(uint64_t* context) {
 
   if(symbolic) {
     if (debug_endpoint) {
-      printEndPointStatus(context,
-        signExtend(signShrink(*(reg_los + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
-        signExtend(signShrink(*(reg_ups + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH),
-        signExtend(signShrink(*(reg_steps + REG_A0), SYSCALL_BITWIDTH), SYSCALL_BITWIDTH));
+      printEndPointStatus(context, *(reg_los + REG_A0), *(reg_ups + REG_A0), *(reg_steps + REG_A0));
       }
     return;
   }
@@ -7214,6 +7215,8 @@ void do_divu() {
 void constrain_divu() {
   uint64_t div_los;
   uint64_t div_ups;
+  uint64_t step;
+  uint64_t max;
 
   if (*(reg_los + rs2) == 0)
     return;
@@ -7232,6 +7235,7 @@ void constrain_divu() {
 
   div_los = *(reg_los + rs1) / *(reg_ups + rs2);
   div_ups = *(reg_ups + rs1) / *(reg_los + rs2);
+  step = *(reg_steps + rs1);
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
@@ -7281,9 +7285,11 @@ void constrain_divu() {
 
       // interval semantics of divu
       if (*(reg_los + rs1) > *(reg_ups + rs1)) {
-        // rs1 constraint is wrapped: [lo, UINT64_MAX], [0, up]
-        *(reg_los + rd) = 0;
-        *(reg_ups + rd) = UINT64_MAX / *(reg_los + rs2);
+        // rs1 constraint is wrapped: [lo, UINT64_MAX] U [0, up]
+        //exact computation of rd ms-interval
+        max = computeUpperBound(*(reg_los + rs1), step, UINT64_MAX);
+        *(reg_los + rd) = (max + step) / *(reg_los + rs2);
+        *(reg_ups + rd) = max / *(reg_ups + rs2);
 
         // lo/k == up/k (or) up/k + step_rd
         if (div_los != div_ups)
@@ -7663,9 +7669,9 @@ void constrain_sltu() {
       else
         createConstraints(*(registers + rs1), *(registers + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
     else if (*(reg_typ + rs2))
-      createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
+        createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
     else
-      createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
+        createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -8065,10 +8071,22 @@ void do_beq() {
   // branch on equal
 
   // semantics of beq
-  if (*(registers + rs1) == *(registers + rs2))
+  if (*(registers + rs1) == *(registers + rs2)) {
+    if(debug_endpoint)
+      if(unreachable_case) {
+      printUnreachable("true", pc + INSTRUCTIONSIZE); //Is a true beq always in case of else branches?
+      unreachable_case = 0;
+    }
     pc = pc + imm;
-  else
+  }
+  else {
+    if(debug_endpoint)
+      if(unreachable_case) {
+      printUnreachable("false", pc + imm); //Is a false beq always in case of then branches?
+      unreachable_case = 0;
+    }
     pc = pc + INSTRUCTIONSIZE;
+  }
 
   ic_beq = ic_beq + 1;
 }
@@ -8485,6 +8503,16 @@ uint64_t computeUpperBound(uint64_t start, uint64_t step, uint64_t max) {
   return start + ((max - start) / step) * step;
 }
 
+void printUnreachable(uint64_t* label, uint64_t unreachable_pc) {
+  print((uint64_t*) "[LINE:");
+  printSourceLineNumberOfInstruction(unreachable_pc - entryPoint);
+  print((uint64_t*) "] branch ");
+  printString(label);
+  print((uint64_t*) " unreachable");
+  println();
+}
+
+
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
   uint64_t c1;
   uint64_t c2;
@@ -8771,23 +8799,23 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
         return;
     mrvc = loadVirtualMemory(pt, *(reg_vaddr + reg));
 
-    if (*(reg_hasmn + reg)) {
+    //corrections computation
+    if (*(reg_hasmn + reg)) {       //only addition
       lo = *(reg_colos + reg) - lo;
       up = *(reg_coups + reg) - up;
-    } else {
+    } else {                        //one substractions
       lo = lo - *(reg_colos + reg);
       up = up - *(reg_coups + reg);
     }
-
-    if (*(reg_mul + reg)) {
+    if (*(reg_mul + reg)) {         //one multiplication
       lo = lo / *(reg_mul + reg);
       up = up / *(reg_mul + reg);
       costep = *(steps + mrvc);
-    } else if (*(reg_div + reg)) {
+    } else if (*(reg_div + reg)) {  //one division
       lo = lo * *(reg_div + reg);
       up = up * *(reg_div + reg);
       costep = *(steps + mrvc);
-    } else if (*(reg_rem + reg)) {
+    } else if (*(reg_rem + reg)) {  //one remainder
       // probably there is no constrainted remu appeard in a condition in Selfie
       if (*(reg_rem_typ + reg) == 1) {
         tmp1 = (*(los + mrvc) / *(reg_rem + reg)) * *(reg_rem + reg) + lo;
@@ -8860,11 +8888,17 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, u
         constrainMemory(rs1, lo1, up1, trb);
         constrainMemory(rs2, lo2, up2, trb);
 
+        //single branch case
+        unreachable_case = 1;
+
         takeBranch(1, howManyMore);
       } else if (up2 <= lo1) {
         // rs2 interval is less than or equal to rs1 interval
         constrainMemory(rs1, lo1, up1, trb);
         constrainMemory(rs2, lo2, up2, trb);
+
+        //single branch case
+        unreachable_case = 1;
 
         takeBranch(0, howManyMore);
       } else if (lo2 == up2) {

@@ -63,10 +63,10 @@ sub handleTestPrologue {
 
     push @out, (shift @tmp); #cmd_arg
 
-    #<exit line, w-start, w-end, step>
-    for my $quadruple (@tmp) {
-      my @items = split(',', $quadruple);
-      $return_codes{substr($items[0], 1)} = $quadruple; #{line} => "<line,start,end, step>"
+    #<exit line, w-start, w-end, step> or <branch line, unreachable case>
+    for my $tuple (@tmp) {
+      my @items = split(',', $tuple);
+      $return_codes{substr($items[0], 1)} = $tuple; #{line} => "<line,start,end, step>" or "<line,label>"
     }
 
     push (@out, \%return_codes); #hash of line->quadruple
@@ -148,10 +148,11 @@ sub verifyOutcomes {
   my $file = shift;
   my $results = shift;
   my %hash = %{$results};
-  my $check = 0;
+  my $check = scalar keys %hash; #should have nb_hash exit points
 
   open (REAL, "<$file") or die "Can't open $file : $!\n";
   while(<REAL>) {
+    #exit case (or exception)
     if(/reaching end point at:\w+\(~(\d+)\) with exit code \<(-?\d+),(-?\d+),(-?\d+)\>/) {
         my $r_line  = $1;
         my $r_start = $2;
@@ -164,11 +165,24 @@ sub verifyOutcomes {
         if($hash{$r_line} =~ /\<\d+,(-?\d+),(-?\d+),(-?\d+)\>/) {
           return 0 unless(($1 == $r_start) && ($2 == $r_end) && ($3 == $r_step));
         } else {die "cannot read expected w-values";}
-        $check ++;
+        $check --;
+        #unreachable case
+    } elsif(/LINE:\(~(\d+)\)\] branch "(\w+)" unreachable/) {
+        my $r_line  = $1;
+        my $r_label = $2;
+
+        die "line not expected" unless(exists($hash{$r_line}));
+        `echo "At line $r_line is $r_label == $hash{$r_line}?" >> $FileLog`;
+
+        if($hash{$r_line} =~ /\<\d+,(\w+)\>/) {
+          return 0 unless($r_label eq $1);
+        } else {die "cannot read expected w-values";}
+        $check --;
     }
   }
   close REAL;
-  return $check; #false if no check
+  `echo "MISSING cases" >> $FileLog` unless 0 == $check;
+  return 0 == $check; #false if check != nb_hash
 }
 
 #Main
