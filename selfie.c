@@ -1135,10 +1135,15 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
+uint64_t applyCorrection(uint64_t reg, uint64_t lo, uint64_t up);
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
 
+uint64_t reverseDivisionLo(uint64_t mrvc, uint64_t lo, uint64_t codiv);
+uint64_t reverseDivisionUp(uint64_t mrvc, uint64_t up, uint64_t codiv);
+uint64_t computeUpperBound(uint64_t lo, uint64_t step, uint64_t value);
+uint64_t computeLowerBound(uint64_t lo, uint64_t step, uint64_t value);
 void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
-void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone);
+void setCorrection(uint64_t reg, uint64_t mul, uint64_t divq, uint64_t rem, uint64_t rem_typ, uint64_t has);
 
 void takeBranch(uint64_t b, uint64_t howManyMore);
 void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t howManyMore);
@@ -1194,15 +1199,24 @@ uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
 uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
 uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
 
+uint64_t* reg_whichByte = (uint64_t*) 0;
+uint64_t* reg_saddr     = (uint64_t*) 0;
+uint64_t* reg_isNotInterval = (uint64_t*) 0;
+
+// conditionals
 uint64_t* reg_mul     = (uint64_t*) 0;
 uint64_t* reg_div     = (uint64_t*) 0;
 uint64_t* reg_rem     = (uint64_t*) 0;
 uint64_t* reg_rem_typ = (uint64_t*) 0;
-uint64_t* reg_has_mul_div_mod = (uint64_t*) 0;
-
-uint64_t* reg_whichByte = (uint64_t*) 0;
-uint64_t* reg_saddr     = (uint64_t*) 0;
-uint64_t* reg_isNotInterval = (uint64_t*) 0;
+uint64_t* reg_cohas   = (uint64_t*) 0;
+uint64_t initial_interval_rs1_tc = 0;
+uint64_t initial_interval_rs2_tc = 0;
+uint64_t cnd_rs1_lo   = 0;
+uint64_t cnd_rs1_up   = 0;
+uint64_t cnd_rs1_step = 0;
+uint64_t cnd_rs2_lo   = 0;
+uint64_t cnd_rs2_up   = 0;
+uint64_t cnd_rs2_step = 0;
 
 // trace counter of most recent constraint
 
@@ -1252,7 +1266,7 @@ void initSymbolicEngine() {
   reg_div     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_rem     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_rem_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_has_mul_div_mod = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_cohas   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_whichByte = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_saddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -6654,10 +6668,10 @@ void constrain_addi() {
         // rd inherits rs1 constraint
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
 
-        if (*(reg_has_mul_div_mod + rs1) == 0)
-          setCorrection(rd, 1, 0, 0, 0, 1);
+        if (*(reg_cohas + rs1) == 0)
+          setCorrection(rd, 0, 0, 0, 0, 1);
         else
-          setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
+          setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_cohas + rs1));
 
         //step
         *(reg_steps + rd) = *(reg_steps + rs1);
@@ -6897,10 +6911,10 @@ void constrain_add() {
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
 
-      if (*(reg_has_mul_div_mod + rs1) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
+      if (*(reg_cohas + rs1) == 0)
+        setCorrection(rd, 0, 0, 0, 0, 1);
       else
-        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
+        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_cohas + rs1));
 
       // interval semantics of add
       if (cnd != 0)
@@ -6922,10 +6936,10 @@ void constrain_add() {
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
 
-      if (*(reg_has_mul_div_mod + rs2) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
+      if (*(reg_cohas + rs2) == 0)
+        setCorrection(rd, 0, 0, 0, 0, 1);
       else
-        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_has_mul_div_mod + rs2));
+        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_cohas + rs2));
 
       // interval semantics of add
       if (cnd != 0)
@@ -7124,10 +7138,10 @@ void constrain_sub() {
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
 
-      if (*(reg_has_mul_div_mod + rs1) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
+      if (*(reg_cohas + rs1) == 0)
+        setCorrection(rd, 0, 0, 0, 0, 1);
       else
-        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
+        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_cohas + rs1));
 
       // interval semantics of sub
       if (cnd != 0)
@@ -7153,10 +7167,10 @@ void constrain_sub() {
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
 
-      if (*(reg_has_mul_div_mod + rs2) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
+      if (*(reg_cohas + rs2) == 0)
+        setCorrection(rd, 0, 0, 0, 0, 1);
       else
-        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_has_mul_div_mod + rs2));
+        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_cohas + rs2));
 
       // interval semantics of sub
       if (cnd != 0)
@@ -7234,7 +7248,7 @@ void constrain_mul() {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, *(reg_los + rs2), 0, 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
+      setCorrection(rd, *(reg_los + rs2), 0, 0, 0, *(reg_cohas + rs1) + 1);
 
       whichByte = 0;
       shift = isByteShift(*(reg_los + rs2));
@@ -7290,7 +7304,7 @@ void constrain_mul() {
       // rd inherits rs2 constraint since rs1 has none
       // assert: rs1 interval is singleton
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_colos + rs2), *(reg_coups + rs2));
-      setCorrection(rd, *(reg_los + rs1), 0, 0, 0, *(reg_has_mul_div_mod + rs2) + 1);
+      setCorrection(rd, *(reg_los + rs1), 0, 0, 0, *(reg_cohas + rs2) + 1);
 
       if (*(reg_isNotInterval + rs1))
         printInvalid();
@@ -7421,7 +7435,6 @@ void constrain_divu() {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
       // step computation
       if (*(reg_steps + rs1) < *(reg_los + rs2)) {
@@ -7454,7 +7467,7 @@ void constrain_divu() {
             setCorrection(rd, 0, 0, 0, 0, 0);
             *(reg_whichByte + rd) = 0;
           } else
-            setCorrection(rd, 0, 0, 0, 0, *(reg_has_mul_div_mod + rs1));
+            setCorrection(rd, 0, 0, 0, 0, *(reg_cohas + rs1));
 
           return;
         }
@@ -7464,6 +7477,8 @@ void constrain_divu() {
         printInvalid();
       else if (*(reg_isNotInterval + rs2))
         printInvalid();
+
+      setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_cohas + rs1) + 1);
 
       // interval semantics of divu
       if (*(reg_los + rs1) > *(reg_ups + rs1)) {
@@ -7636,7 +7651,7 @@ void constrain_remu_step_1() {
     // rd inherits rs1 constraint since rs2 has none
     // assert: rs2 interval is singleton
     setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-    setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_has_mul_div_mod + rs1) + 1);
+    setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_cohas + rs1) + 1);
 
     *(reg_los + rd)   = rem_lo;
     *(reg_ups + rd)   = rem_up;
@@ -7694,7 +7709,7 @@ void constrain_remu() {
         *(reg_whichByte + rd) = 0;
       } else {
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-        setCorrection(rd, 0, 0, 0, 0, *(reg_has_mul_div_mod + rs1));
+        setCorrection(rd, 0, 0, 0, 0, *(reg_cohas + rs1));
         *(reg_whichByte + rd) = 1;
       }
 
@@ -7780,13 +7795,13 @@ void constrain_remu() {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_has_mul_div_mod + rs1) + 1);
+      setCorrection(rd, 0, 0, *(reg_los + rs2), rem_typ + 1, *(reg_cohas + rs1) + 1);
 
     } else if (isPowerOfTwo(divisor)) {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, 0, 0, *(reg_los + rs2), 0, *(reg_has_mul_div_mod + rs1) + 1);
+      setCorrection(rd, 0, 0, *(reg_los + rs2), 0, *(reg_cohas + rs1) + 1);
     }
 
     *(reg_los + rd) = rem_lo;
@@ -7859,6 +7874,12 @@ void constrain_sltu() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
     }
+
+    if (*(reg_hasco + rs1))
+      initial_interval_rs1_tc = loadVirtualMemory(pt, *(reg_vaddr + rs1));
+
+    if (*(reg_hasco + rs2))
+      initial_interval_rs2_tc = loadVirtualMemory(pt, *(reg_vaddr + rs2));
 
     // take local copy of mrcc to make sure that alias check considers old mrcc
     if (*(reg_typ + rs1))
@@ -8972,16 +8993,14 @@ void storeRegisterMemory(uint64_t reg, uint64_t value) {
   storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, tc);
 }
 
-void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
-  // TODO: improve
-  uint64_t costep;
+uint64_t applyCorrection(uint64_t reg, uint64_t lo, uint64_t up) {
   uint64_t mrvc;
-  uint64_t tmp1;
-  uint64_t tmp2;
+  uint64_t tmp;
+  uint64_t operator;
 
-  if (*(reg_has_mul_div_mod + reg) > 1) {
+  if (*(reg_cohas + reg) > 1) {
     print(selfieName);
-    print((uint64_t*) ": detected bad expression at ");
+    print((uint64_t*) ": detected an unsupported conditional expression at ");
     printHexadecimal(pc, 0);
     printSourceLineNumberOfInstruction(pc - entryPoint);
     println();
@@ -8990,36 +9009,55 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
   }
 
   if (*(reg_hasco + reg)) {
-    mrvc = loadVirtualMemory(pt, *(reg_vaddr + reg));
+    // applying corrections
 
+    if (reg == rs1)
+      mrvc = initial_interval_rs1_tc;
+    else
+      mrvc = initial_interval_rs2_tc;
+
+    if (*(reg_vaddr + reg) >= getBumpPointer(currentContext))
+      if (*(reg_vaddr + reg) < *(registers + REG_SP)) {
+        mrvc = 0;
+        if (*(reg_mul + reg)) {
+          print(selfieName); print((uint64_t*) ": detected an unsupported conditional expression "); println();
+        } else if (*(reg_div + reg)) {
+          print(selfieName); print((uint64_t*) ": detected an unsupported conditional expression "); println();
+        } else if (*(reg_rem + reg)) {
+          print(selfieName); print((uint64_t*) ": detected an unsupported conditional expression "); println();
+        }
+      }
+
+    // add, sub
     if (*(reg_hasmn + reg)) {
-      tmp1 = *(reg_colos + reg) - up;
-      tmp2 = *(reg_coups + reg) - lo;
-      lo = tmp1;
-      up = tmp2;
+      tmp = *(reg_colos + reg) - up;
+      up  = *(reg_coups + reg) - lo;
+      lo = tmp;
     } else {
       lo = lo - *(reg_colos + reg);
       up = up - *(reg_coups + reg);
     }
 
+    // mul, div, rem
     if (*(reg_mul + reg)) {
-      lo = lo / *(reg_mul + reg);
-      up = up / *(reg_mul + reg);
-      costep = *(steps + mrvc);
+      operator = *(reg_mul + reg);
+      if (lo % operator != 0)
+        lo = (lo/operator + 1) * operator;
+      lo = computeLowerBound(*(los + mrvc), *(steps + mrvc), lo / operator);
+      up = (up/operator) * operator;
+      up = computeUpperBound(*(los + mrvc), *(steps + mrvc), up / operator);
     } else if (*(reg_div + reg)) {
-      lo = lo * *(reg_div + reg);
-      up = up * *(reg_div + reg);
-      costep = *(steps + mrvc);
+      operator = *(reg_div + reg);
+      lo = computeLowerBound(*(los + mrvc), *(steps + mrvc), lo * operator + reverseDivisionLo(mrvc, lo, operator));
+      up = computeUpperBound(*(los + mrvc), *(steps + mrvc), up * operator + reverseDivisionUp(mrvc, up, operator));
     } else if (*(reg_rem + reg)) {
       if (*(reg_rem_typ + reg) == 1) {
-        tmp1 = (*(los + mrvc) / *(reg_rem + reg)) * *(reg_rem + reg) + lo;
-        tmp2 = (*(ups + mrvc) / *(reg_rem + reg)) * *(reg_rem + reg) + up;
-        lo = (tmp1 / *(steps + mrvc)) * *(steps + mrvc) + *(steps + mrvc);
-        up = (tmp2 / *(steps + mrvc)) * *(steps + mrvc);
-        costep = *(reg_steps + reg);
+        operator = *(reg_rem + reg);
+        lo = computeLowerBound(*(los + mrvc), *(steps + mrvc), (*(los + mrvc) / operator) * operator + lo);
+        up = computeUpperBound(*(los + mrvc), *(steps + mrvc), (*(ups + mrvc) / operator) * operator + up);
       } else {
         print(selfieName);
-        print((uint64_t*) ": detected a remu in a condition at ");
+        print((uint64_t*) ": detected an unsupported remu in a conditional expression at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
@@ -9027,21 +9065,72 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
     } else {
-      costep = *(steps + mrvc);
+      if (mrvc) {
+        lo = computeLowerBound(*(los + mrvc), *(steps + mrvc), lo);
+        up = computeUpperBound(*(los + mrvc), *(steps + mrvc), up);
+      }
     }
 
+    if (lo > up)
+      return 0;
+
+    if (reg == rs1) {
+      cnd_rs1_lo   = lo;
+      cnd_rs1_up   = up;
+      cnd_rs1_step = *(steps + mrvc);
+    } else {
+      cnd_rs2_lo   = lo;
+      cnd_rs2_up   = up;
+      cnd_rs2_step = *(steps + mrvc);
+    }
+  }
+
+  return 1;
+}
+
+void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
+  if (*(reg_hasco + reg)) {
     if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
 
-    storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
+    if (reg == rs1)
+      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs1_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
+    else
+      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs2_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
   }
 }
 
-void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone) {
+uint64_t reverseDivisionLo(uint64_t mrvc, uint64_t lo, uint64_t codiv) {
+  if (*(los + mrvc) > lo * codiv)
+    return *(los + mrvc) - lo * codiv;
+  else
+    return 0;
+}
+
+uint64_t reverseDivisionUp(uint64_t mrvc, uint64_t up, uint64_t codiv) {
+  if (*(ups + mrvc) < up * codiv + (codiv - 1))
+    return *(ups + mrvc) - up * codiv;
+  else
+    return codiv - 1;
+}
+
+// same as littlemonster
+uint64_t computeUpperBound(uint64_t lo, uint64_t step, uint64_t value) {
+  return lo + ((value - lo) / step) * step;
+}
+
+uint64_t computeLowerBound(uint64_t lo, uint64_t step, uint64_t value) {
+  if ((value - lo) % step)
+    return lo + (((value - lo) / step) + 1) * step;
+  else
+    return lo + ((value - lo) / step) * step;
+}
+
+void setCorrection(uint64_t reg, uint64_t mul, uint64_t divq, uint64_t rem, uint64_t rem_typ, uint64_t has) {
   *(reg_mul     + reg) = mul;
-  *(reg_div     + reg) = div;
+  *(reg_div     + reg) = divq;
   *(reg_rem     + reg) = rem;
   *(reg_rem_typ + reg) = rem_typ;
-  *(reg_has_mul_div_mod + reg) = hasone;
+  *(reg_cohas   + reg) = has;
 }
 
 void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
@@ -9074,60 +9163,135 @@ void takeBranch(uint64_t b, uint64_t howManyMore) {
 }
 
 void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t howManyMore) {
+  uint64_t take_which;
+
+  take_which = 0;
   if (lo1 <= up1) {
     // rs1 interval is not wrapped around
     if (lo2 <= up2) {
       // both rs1 and rs2 intervals are not wrapped around
       if (up1 < lo2) {
         // rs1 interval is strictly less than rs2 interval
-        constrainMemory(rs1, lo1, up1, trb);
-        constrainMemory(rs2, lo2, up2, trb);
+        if (applyCorrection(rs1, lo1, up1))
+          if (applyCorrection(rs2, lo2, up2)) {
+            constrainMemory(rs1, cnd_rs1_lo, cnd_rs1_up, trb);
+            constrainMemory(rs2, cnd_rs2_lo, cnd_rs2_up, trb);
+            takeBranch(1, howManyMore);
+            take_which = 2;
+          }
 
-        takeBranch(1, howManyMore);
+        if (take_which == 0) {
+          print(selfieName);
+          print((uint64_t*) ": non of the branches can be taken at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        }
+
       } else if (up2 <= lo1) {
         // rs2 interval is less than or equal to rs1 interval
-        constrainMemory(rs1, lo1, up1, trb);
-        constrainMemory(rs2, lo2, up2, trb);
+        if (applyCorrection(rs1, lo1, up1))
+          if (applyCorrection(rs2, lo2, up2)) {
+            constrainMemory(rs1, cnd_rs1_lo, cnd_rs1_up, trb);
+            constrainMemory(rs2, cnd_rs2_lo, cnd_rs2_up, trb);
+            takeBranch(0, howManyMore);
+            take_which = 1;
+          }
 
-        takeBranch(0, howManyMore);
+        if (take_which == 0) {
+          print(selfieName);
+          print((uint64_t*) ": non of the branches can be taken at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        }
+
       } else if (lo2 == up2) {
         // rs2 interval is a singleton
 
         // construct constraint for false case
-        constrainMemory(rs1, lo2, up1, trb);
-        constrainMemory(rs2, lo2, up2, trb);
+        if (applyCorrection(rs1, lo2, up1))
+          if (applyCorrection(rs2, lo2, up2)) {
+            constrainMemory(rs1, cnd_rs1_lo, cnd_rs1_up, trb);
+            constrainMemory(rs2, cnd_rs2_lo, cnd_rs2_up, trb);
+            take_which = 1;
+          }
 
-        // record that we need to set rd to false
-        storeRegisterMemory(rd, 0);
+        if (applyCorrection(rs1, lo1, lo2 - 1))
+          if (applyCorrection(rs2, lo2, up2)) {
+            if (take_which) {
+              // record that we need to set rd to false
+              storeRegisterMemory(rd, 0);
+              // record frame and stack pointer
+              storeRegisterMemory(REG_FP, *(registers + REG_FP));
+              storeRegisterMemory(REG_SP, *(registers + REG_SP));
+            }
 
-        // record frame and stack pointer
-        storeRegisterMemory(REG_FP, *(registers + REG_FP));
-        storeRegisterMemory(REG_SP, *(registers + REG_SP));
+            // construct constraint for true case
+            constrainMemory(rs1, cnd_rs1_lo, cnd_rs1_up, trb);
+            constrainMemory(rs2, cnd_rs2_lo, cnd_rs2_up, trb);
 
-        // construct constraint for true case
-        constrainMemory(rs1, lo1, lo2 - 1, trb);
-        constrainMemory(rs2, lo2, up2, trb);
+            takeBranch(1, howManyMore);
+            take_which = 2;
+          }
 
-        takeBranch(1, howManyMore);
+        if (take_which == 1)
+          takeBranch(0, howManyMore);
+        else if (take_which == 0) {
+          print(selfieName);
+          print((uint64_t*) ": non of the branches can be taken at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        }
+
       } else if (lo1 == up1) {
         // rs1 interval is a singleton
 
         // construct constraint for false case
-        constrainMemory(rs1, lo1, up1, trb);
-        constrainMemory(rs2, lo2, lo1, trb);
+        if (applyCorrection(rs1, lo1, up1))
+          if (applyCorrection(rs2, lo2, lo1)) {
+            constrainMemory(rs1, cnd_rs1_lo, cnd_rs1_up, trb);
+            constrainMemory(rs2, cnd_rs2_lo, cnd_rs2_up, trb);
+            take_which = 1;
+          }
 
-        // record that we need to set rd to false
-        storeRegisterMemory(rd, 0);
+        if (applyCorrection(rs1, lo1, up1))
+          if (applyCorrection(rs2, lo1 + 1, up2)) {
+            if (take_which) {
+              // record that we need to set rd to false
+              storeRegisterMemory(rd, 0);
+              // record frame and stack pointer
+              storeRegisterMemory(REG_FP, *(registers + REG_FP));
+              storeRegisterMemory(REG_SP, *(registers + REG_SP));
+            }
 
-        // record frame and stack pointer
-        storeRegisterMemory(REG_FP, *(registers + REG_FP));
-        storeRegisterMemory(REG_SP, *(registers + REG_SP));
+            // construct constraint for true case
+            constrainMemory(rs1, cnd_rs1_lo, cnd_rs1_up, trb);
+            constrainMemory(rs2, cnd_rs2_lo, cnd_rs2_up, trb);
 
-        // construct constraint for true case
-        constrainMemory(rs1, lo1, up1, trb);
-        constrainMemory(rs2, lo1 + 1, up2, trb);
+            takeBranch(1, howManyMore);
+            take_which = 2;
+          }
 
-        takeBranch(1, howManyMore);
+        if (take_which == 1)
+          takeBranch(0, howManyMore);
+        else if (take_which == 0) {
+          print(selfieName);
+          print((uint64_t*) ": non of the branches can be taken at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        }
+
       } else {
         // we cannot handle non-singleton interval intersections in comparison
         print(selfieName);
