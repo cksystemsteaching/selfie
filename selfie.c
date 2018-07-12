@@ -981,7 +981,8 @@ uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
 uint64_t pageFrameMemory = 0; // size of memory for frames
 
-uint64_t unreachable_case = 0;
+uint64_t has_true_branch  = 0;
+uint64_t has_false_branch = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1153,7 +1154,7 @@ void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn,
 void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone);
 
 void takeBranch(uint64_t b, uint64_t howManyMore);
-void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t howManyMore);
+void createConstraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, uint64_t up2, uint64_t s2, uint64_t trb, uint64_t howManyMore);
 
 uint64_t fuzzLo(uint64_t value);
 uint64_t fuzzUp(uint64_t value);
@@ -7662,16 +7663,19 @@ void constrain_sltu() {
       }
     }
 
+    //number of constrains given a stlu (detect unreachable case)
+    has_true_branch  = 0;
+    has_false_branch = 0;
     // take local copy of mrcc to make sure that alias check considers old mrcc
     if (*(reg_typ + rs1))
       if (*(reg_typ + rs2))
-        createConstraints(*(registers + rs1), *(registers + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
+        createConstraints(*(registers + rs1), *(registers + rs1), 1, *(registers + rs2), *(registers + rs2), 1, mrcc, 0);
       else
-        createConstraints(*(registers + rs1), *(registers + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
+        createConstraints(*(registers + rs1), *(registers + rs1), 1, *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc, 0);
     else if (*(reg_typ + rs2))
-        createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
+        createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_steps + rs1), *(registers + rs2), *(registers + rs2), 1, mrcc, 0);
     else
-        createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
+        createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_steps + rs1), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc, 0);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -8067,24 +8071,29 @@ void record_beq() {
   recordState(0);
 }
 
+void testUnreachableBranch(uint64_t* label, uint64_t unreach_pc) {
+  if(debug_endpoint) {
+    if(has_true_branch == 0)
+      printUnreachable(label, unreach_pc);
+    if(has_false_branch == 0)
+      printUnreachable(label, unreach_pc);
+  }
+  has_true_branch = 1;
+  has_false_branch = 1; // prevent from another raise of same beqs
+}
+
 void do_beq() {
   // branch on equal
 
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2)) {
-    if(debug_endpoint)
-      if(unreachable_case) {
-      printUnreachable("true", pc + INSTRUCTIONSIZE); //Is a true beq always in case of else branches?
-      unreachable_case = 0;
-    }
+    //Is a true beq always in case of else branches?
+    testUnreachableBranch("true", pc + INSTRUCTIONSIZE);
     pc = pc + imm;
   }
   else {
-    if(debug_endpoint)
-      if(unreachable_case) {
-      printUnreachable("false", pc + imm); //Is a false beq always in case of then branches?
-      unreachable_case = 0;
-    }
+    //Is a false beq always in case of then branches?
+    testUnreachableBranch("false", pc + imm);
     pc = pc + INSTRUCTIONSIZE;
   }
 
@@ -8878,7 +8887,12 @@ void takeBranch(uint64_t b, uint64_t howManyMore) {
   }
 }
 
-void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t howManyMore) {
+// assert(isErroneous(lo1, up1, s1) == 0);
+// assert(isErroneous(lo2, up2, s2) == 0);
+void createConstraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, uint64_t up2, uint64_t s2, uint64_t trb, uint64_t howManyMore) {
+  uint64_t lo1_2;
+  uint64_t up1_2;
+
   if (lo1 <= up1) {
     // rs1 interval is not wrapped around
     if (lo2 <= up2) {
@@ -8887,26 +8901,30 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, u
         // rs1 interval is strictly less than rs2 interval
         constrainMemory(rs1, lo1, up1, trb);
         constrainMemory(rs2, lo2, up2, trb);
-
-        //single branch case
-        unreachable_case = 1;
+        has_true_branch = 1;
 
         takeBranch(1, howManyMore);
       } else if (up2 <= lo1) {
         // rs2 interval is less than or equal to rs1 interval
         constrainMemory(rs1, lo1, up1, trb);
         constrainMemory(rs2, lo2, up2, trb);
-
-        //single branch case
-        unreachable_case = 1;
+        has_false_branch = 1;
 
         takeBranch(0, howManyMore);
       } else if (lo2 == up2) {
         // rs2 interval is a singleton
 
+        // rounded values of resulting rs1 values
+        up1_2 = computeUpperBound(lo1, s1, lo2 - 1);  //TODO: is up1_2 in rs1?
+        lo1_2 = up1_2 + s1;                           //TODO: is lo1_2 in rs1?
+
+        // [false]  rs1:[ |lo2| , up1, s1 ] >= rs2:[ lo2, up2, s2 ]
+        // [true]   rs1:[ lo1, |lo2 - 1|, s1 ] < rs2:[ lo2, up2, s2 ]
+
         // construct constraint for false case
-        constrainMemory(rs1, lo2, up1, trb);
+        constrainMemory(rs1, lo1_2, up1, trb);
         constrainMemory(rs2, lo2, up2, trb);
+        has_false_branch = 1;
 
         // record that we need to set rd to false
         storeRegisterMemory(rd, 0);
@@ -8916,16 +8934,25 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, u
         storeRegisterMemory(REG_SP, *(registers + REG_SP));
 
         // construct constraint for true case
-        constrainMemory(rs1, lo1, lo2 - 1, trb);
+        constrainMemory(rs1, lo1, up1_2, trb);
         constrainMemory(rs2, lo2, up2, trb);
+        has_true_branch = 1;
 
         takeBranch(1, howManyMore);
       } else if (lo1 == up1) {
         // rs1 interval is a singleton
 
+        // rounded values of resulting rs1 values
+        up1_2 = computeUpperBound(lo2, s2, lo1);      //TODO: is up1_2 in rs1?
+        lo1_2 = up1_2 + s1;                           //TODO: is lo1_2 in rs1?
+
+        // [false]  rs1:[ lo1, up1, s1 ] >= rs2:[ lo2, |lo1|, s2 ]
+        // [true]   rs1:[ lo1, up1, s1 ] < rs2:[ |lo1 + 1|, up2, s2 ]
+
         // construct constraint for false case
         constrainMemory(rs1, lo1, up1, trb);
-        constrainMemory(rs2, lo2, lo1, trb);
+        constrainMemory(rs2, lo2, up1_2, trb);
+        has_false_branch = 1;
 
         // record that we need to set rd to false
         storeRegisterMemory(rd, 0);
@@ -8936,7 +8963,8 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, u
 
         // construct constraint for true case
         constrainMemory(rs1, lo1, up1, trb);
-        constrainMemory(rs2, lo1 + 1, up2, trb);
+        constrainMemory(rs2, lo1_2, up2, trb);
+        has_true_branch = 1;
 
         takeBranch(1, howManyMore);
       } else {
@@ -8950,34 +8978,42 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, u
     } else {
       // rs1 interval is not wrapped around but rs2 is
 
+      up1_2 = computeUpperBound(lo2, s2, UINT64_MAX);
+      lo1_2 = up1_2 + s2;
+
       // unwrap rs2 interval and use higher portion first
-      createConstraints(lo1, up1, lo2, UINT64_MAX, trb, 1);
+      createConstraints(lo1, up1, s1, lo2, up1_2, s2, trb, 1);
 
       // then use lower portion of rs2 interval
-      createConstraints(lo1, up1, 0, up2, trb, 0);
+      createConstraints(lo1, up1, s1, lo1_2, up2, s2, trb, 0);
     }
   } else if (lo2 <= up2) {
     // rs2 interval is not wrapped around but rs1 is
 
+    up1_2 = computeUpperBound(lo1, s1, UINT64_MAX);
+    lo1_2 = up1_2 + s1;
+
     // unwrap rs1 interval and use higher portion first
-    createConstraints(lo1, UINT64_MAX, lo2, up2, trb, 1);
+    createConstraints(lo1, up1_2, s1, lo2, up2, s2, trb, 1);
 
     // then use lower portion of rs1 interval
-    createConstraints(0, up1, lo2, up2, trb, 0);
+    createConstraints(lo1_2, up1, s1, lo2, up2, s2, trb, 0);
   } else {
     // both rs1 and rs2 intervals are wrapped around
+    last_jal_from = pc;
+    throwException(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
 
     // unwrap rs1 and rs2 intervals and use higher portions
-    createConstraints(lo1, UINT64_MAX, lo2, UINT64_MAX, trb, 3);
+    createConstraints(lo1, UINT64_MAX, s1, lo2, UINT64_MAX, s2, trb, 3);
 
     // use higher portion of rs1 interval and lower portion of rs2 interval
-    createConstraints(lo1, UINT64_MAX, 0, up2, trb, 2);
+    createConstraints(lo1, UINT64_MAX, s1, 0, up2, s2, trb, 2);
 
     // use lower portions of rs1 and rs2 intervals
-    createConstraints(0, up1, 0, up2, trb, 1);
+    createConstraints(0, up1, s1, 0, up2, s2, trb, 1);
 
     // use lower portion of rs1 interval and higher portion of rs2 interval
-    createConstraints(0, up1, lo2, UINT64_MAX, trb, 0);
+    createConstraints(0, up1, s1, lo2, UINT64_MAX, s2, trb, 0);
   }
 }
 

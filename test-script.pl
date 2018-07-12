@@ -66,10 +66,10 @@ sub handleTestPrologue {
     #<exit line, w-start, w-end, step> or <branch line, unreachable case>
     for my $tuple (@tmp) {
       my @items = split(',', $tuple);
-      $return_codes{substr($items[0], 1)} = $tuple; #{line} => "<line,start,end, step>" or "<line,label>"
+      push @{$return_codes{substr($items[0], 1)}}, $tuple; #{line} => ref_to_@["<line,start,end, step>" or "<line,label>"]
     }
 
-    push (@out, \%return_codes); #hash of line->quadruple
+    push (@out, \%return_codes); #[cmd, %{line}{@<expected_values>}
 
     #debug
     #for my $i (@out) {print "item: $i"};
@@ -144,11 +144,49 @@ sub exec_test {
   `echo "- - - - - - -" >> $FileLog`;
 }
 
+sub verifyUnreachableLine {
+  my $expected_array  = shift;
+  my $r_label         = shift;
+  my $hasmatch = 0;
+
+  foreach my $expected_line (@$expected_array) {
+    if($expected_line =~ /\<\d+,(\w+)\>/) {
+      return 1 if($r_label eq $1);
+      $hasmatch = 1;
+    }
+  }
+
+  die "cannot read expected w-values" unless $hasmatch;
+  return 0;
+}
+
+sub verifyExitLine {
+  my $expected_array  = shift;
+  my $r_start         = shift;
+  my $r_end           = shift;
+  my $r_step          = shift;
+  my $hasmatch = 0;
+
+  foreach my $expected_line (@$expected_array) {
+    if($expected_line =~ /\<\d+,(-?\d+),(-?\d+),(-?\d+)\>/) {
+      return 1 if(($1 == $r_start) && ($2 == $r_end) && ($3 == $r_step));
+      $hasmatch = 1;
+    }
+  }
+
+  die "cannot read expected w-values" unless $hasmatch;
+  return 0;
+}
+
 sub verifyOutcomes {
   my $file = shift;
   my $results = shift;
   my %hash = %{$results};
-  my $check = scalar keys %hash; #should have nb_hash exit points
+  my $check = 0;
+
+  foreach my $ref_to_arrays (values %hash) { #should have nb_hash exit points
+    $check += scalar @$ref_to_arrays;
+  }
 
   open (REAL, "<$file") or die "Can't open $file : $!\n";
   while(<REAL>) {
@@ -160,23 +198,24 @@ sub verifyOutcomes {
         my $r_step  = $4;
 
         die "line not expected" unless(exists($hash{$r_line}));
-        `echo "At line $r_line is <$r_start, $r_end, $r_step> == $hash{$r_line}?" >> $FileLog`;
+        my $expected_values = join " | ", @{$hash{$r_line}};
+        `echo "At line $r_line is <$r_start, $r_end, $r_step> == $expected_values ?" >> $FileLog`;
 
-        if($hash{$r_line} =~ /\<\d+,(-?\d+),(-?\d+),(-?\d+)\>/) {
-          return 0 unless(($1 == $r_start) && ($2 == $r_end) && ($3 == $r_step));
-        } else {die "cannot read expected w-values";}
+        return 0 unless(&verifyExitLine($hash{$r_line}, $r_start, $r_end, $r_step));
+        `echo ". . . ok!" >> $FileLog`;
         $check --;
+
         #unreachable case
     } elsif(/LINE:\(~(\d+)\)\] branch "(\w+)" unreachable/) {
         my $r_line  = $1;
         my $r_label = $2;
 
         die "line not expected" unless(exists($hash{$r_line}));
-        `echo "At line $r_line is $r_label == $hash{$r_line}?" >> $FileLog`;
+        my $expected_values = join " | ", @{$hash{$r_line}};
+        `echo "At line $r_line is $r_label == $expected_values?" >> $FileLog`;
 
-        if($hash{$r_line} =~ /\<\d+,(\w+)\>/) {
-          return 0 unless($r_label eq $1);
-        } else {die "cannot read expected w-values";}
+        return 0 unless(&verifyUnreachableLine($hash{$r_line}, $r_label));
+        `echo ". . . ok!" >> $FileLog`;
         $check --;
     }
   }
