@@ -515,6 +515,9 @@ uint64_t numberOfGlobalVariables = 0;
 uint64_t numberOfProcedures      = 0;
 uint64_t numberOfStrings         = 0;
 
+uint64_t numberOfSearches = 0;
+uint64_t totalSearchTime  = 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void resetSymbolTables() {
@@ -526,6 +529,9 @@ void resetSymbolTables() {
   numberOfGlobalVariables = 0;
   numberOfProcedures      = 0;
   numberOfStrings         = 0;
+
+  numberOfSearches = 0;
+  totalSearchTime  = 0;
 }
 
 // -----------------------------------------------------------------
@@ -2875,9 +2881,6 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
     library_symbol_table = newEntry;
   }
 }
-
-uint64_t numberOfSearches = 0;
-uint64_t totalSearchTime  = 0;
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
   numberOfSearches = numberOfSearches + 1;
