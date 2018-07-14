@@ -51,11 +51,14 @@ and then compile `selfie.c` into an executable called `selfie` as directed by th
 
 ## Running Selfie
 
-Once you have successfully compiled selfie you may invoke it in your terminal according to the following pattern:
+Once you have successfully compiled `selfie.c` you may invoke `selfie` without any arguments:
 
 ```bash
+$ ./selfie
 ./selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
 ```
+
+making it respond with its usage pattern.
 
 The order in which the options are provided matters for taking full advantage of self-referentiality.
 
@@ -101,13 +104,13 @@ This is semantically equivalent to executing `selfie` without any arguments:
 $ ./selfie
 ```
 
-To execute `selfie.m` by hypster use the following command:
+Executing `selfie.m` with hypster:
 
 ```bash
 $ ./selfie -l selfie.m -y 1
 ```
 
-This is semantically equivalent to executing `selfie.m` by mipster and thus `selfie` without any arguments. There is a difference in output though since mipster reports code execution profiles whereas hypster does not.
+is semantically equivalent to executing `selfie.m` with mipster and thus `selfie` without any arguments.
 
 If you are using docker you can also execute selfie on spike and pk as follows:
 
@@ -131,32 +134,26 @@ Note that at least 2MB of memory is required.
 
 ### Self-execution
 
-The following example shows how to perform self-execution of `selfie.c`. In this case we invoke the mipster emulator to invoke itself which then invokes the compiler to compile itself:
+The following example shows how to perform self-execution of the mipster emulator. In this case we invoke mipster to invoke itself to execute `selfie`:
 
 ```bash
-$ ./selfie -c selfie.c -o selfie1.m -m 4 -l selfie1.m -m 2 -c selfie.c -o selfie2.m
-$ diff -s selfie1.m selfie2.m
-Files selfie1.m and selfie2.m are identical
+$ ./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
 ```
 
-Note that the example may take several hours to complete. Also, an emulator instance A running an emulator instance B needs more memory than B, say, 4MB rather than 2MB in the example here.
+which is again semantically equivalent to executing `selfie` without any arguments but this time with `selfie` printing its usage pattern much slower since there is a mipster running on top of another mipster.
 
 ### Self-hosting
 
-The previous example can also be done by running hypster on mipster. This is significantly faster since hypster does not create a second emulator instance on top of the first emulator instance. Instead, hypster creates a virtual machine to execute selfie that runs concurrently to hypster on the first emulator instance:
+The previous example can also be done by running hypster on mipster. This is significantly faster and requires less memory since hypster does not create a second emulator instance on top of the first emulator instance. Instead, hypster creates a virtual machine to execute selfie that runs concurrently to hypster on the first emulator instance:
 
 ```bash
-$ ./selfie -c selfie.c -o selfie1.m -m 4 -l selfie1.m -y 2 -c selfie.c -o selfie2.m
-$ diff -s selfie1.m selfie2.m
-Files selfie1.m and selfie2.m are identical
+$ ./selfie -c selfie.c -o selfie.m -m 1 -l selfie.m -y 1
 ```
 
 We may even run hypster on hypster on mipster which is still reasonably fast since there is still only one emulator instance involved and hypster itself does not add much overhead:
 
 ```bash
-$ ./selfie -c selfie.c -o selfie1.m -m 8 -l selfie1.m -y 4 -l selfie1.m -y 2 -c selfie.c -o selfie2.m
-$ diff -s selfie1.m selfie2.m
-Files selfie1.m and selfie2.m are identical
+$ ./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -y 1
 ```
 
 ### Workflow
