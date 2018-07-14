@@ -123,9 +123,10 @@ uint64_t signShrink(uint64_t n, uint64_t b);
 uint64_t  loadCharacter(uint64_t* s, uint64_t i);
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 
-uint64_t stringLength(uint64_t* s);
-void     stringReverse(uint64_t* s);
-uint64_t stringCompare(uint64_t* s, uint64_t* t);
+uint64_t  stringLength(uint64_t* s);
+uint64_t* stringCopy(uint64_t* s);
+void      stringReverse(uint64_t* s);
+uint64_t  stringCompare(uint64_t* s, uint64_t* t);
 
 uint64_t  atoi(uint64_t* s);
 uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a);
@@ -441,9 +442,12 @@ void resetScanner() {
 
 void resetSymbolTables();
 
+uint64_t hash(uint64_t* key);
+
 void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class);
+uint64_t* searchGlobalSymbolTable(uint64_t* string, uint64_t class);
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class);
 
 uint64_t isUndefinedProcedure(uint64_t* entry);
@@ -452,7 +456,7 @@ uint64_t reportUndefinedProcedures();
 // symbol table entry:
 // +----+---------+
 // |  0 | next    | pointer to next entry
-// |  1 | string  | identifier string, string literal
+// |  1 | string  | identifier string, big integer as string, string literal
 // |  2 | line#   | source line number
 // |  3 | class   | VARIABLE, BIGINT, STRING, PROCEDURE
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
@@ -497,6 +501,9 @@ uint64_t GLOBAL_TABLE  = 1;
 uint64_t LOCAL_TABLE   = 2;
 uint64_t LIBRARY_TABLE = 3;
 
+// hash table size for global symbol table
+uint64_t HASH_TABLE_SIZE = 1024;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 // table pointers
@@ -508,16 +515,23 @@ uint64_t numberOfGlobalVariables = 0;
 uint64_t numberOfProcedures      = 0;
 uint64_t numberOfStrings         = 0;
 
+uint64_t numberOfSearches = 0;
+uint64_t totalSearchTime  = 0;
+
 // ------------------------- INITIALIZATION ------------------------
 
 void resetSymbolTables() {
-  global_symbol_table  = (uint64_t*) 0;
+  global_symbol_table  = (uint64_t*) zalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
+
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
 
   numberOfGlobalVariables = 0;
   numberOfProcedures      = 0;
   numberOfStrings         = 0;
+
+  numberOfSearches = 0;
+  totalSearchTime  = 0;
 }
 
 // -----------------------------------------------------------------
@@ -605,7 +619,7 @@ void resetParser() {
 void emitRoundUp(uint64_t reg, uint64_t m);
 void emitLeftShiftBy(uint64_t reg, uint64_t b);
 void emitProgramEntry();
-void emitStart();
+void emitBootstrapping();
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -836,12 +850,12 @@ void fixup_relative_BFormat(uint64_t fromAddress);
 void fixup_relative_JFormat(uint64_t fromAddress, uint64_t toAddress);
 void fixlink_relative(uint64_t fromAddress, uint64_t toAddress);
 
-uint64_t copyStringToBinary(uint64_t* s, uint64_t a);
+void copyStringToBinary(uint64_t* s, uint64_t a);
 
-void emitGlobalsStringsBigIntegers();
+void emitDataSegment();
 
 uint64_t* createELFHeader(uint64_t binaryLength);
-uint64_t  parseELFHeader(uint64_t* header);
+uint64_t  validateELFHeader(uint64_t* header);
 
 uint64_t openWriteOnly(uint64_t* name);
 
@@ -855,9 +869,9 @@ void selfie_load();
 
 uint64_t maxBinaryLength = 262144; // 256KB
 
-uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
+uint64_t ELF_HEADER_LEN  = 120; // = 64 + 56 bytes (file + program header)
 
-// is determined by RISC-V pk
+// according to RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -879,17 +893,17 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
-uint64_t* binary       = (uint64_t*) 0; // binary of emitted instructions and data segment
-uint64_t  binaryLength = 0;             // length of binary in bytes including data segment
+uint64_t* binary       = (uint64_t*) 0; // binary of code and data segments
+uint64_t  binaryLength = 0; // length of binary in bytes including data segment
 uint64_t* binaryName   = (uint64_t*) 0; // file name of binary
 
 uint64_t codeLength = 0; // length of code segment in binary in bytes
-uint64_t entryPoint = 0; // entry point of code segment in virtual address space
+uint64_t entryPoint = 0; // beginning of code segment in virtual address space
 
 uint64_t* sourceLineNumber = (uint64_t*) 0; // source line number per emitted instruction
 
 uint64_t* assemblyName = (uint64_t*) 0; // name of assembly file
-uint64_t  assemblyFD   = 0;             // file descriptor of open assembly file
+uint64_t  assemblyFD   = 0; // file descriptor of open assembly file
 
 uint64_t* ELF_header = (uint64_t*) 0;
 
@@ -1794,6 +1808,26 @@ uint64_t stringLength(uint64_t* s) {
     i = i + 1;
 
   return i;
+}
+
+uint64_t* stringCopy(uint64_t* s) {
+  uint64_t l;
+  uint64_t* t;
+  uint64_t i;
+
+  l = stringLength(s);
+
+  t = zalloc(l + 1);
+
+  i = 0;
+
+  while (i <= l) {
+    storeCharacter(t, i, loadCharacter(s, i));
+
+    i = i + 1;
+  }
+
+  return t;
 }
 
 void stringReverse(uint64_t* s) {
@@ -2803,8 +2837,14 @@ void handleEscapeSequence() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
+uint64_t hash(uint64_t* key) {
+  // assert: key != (uint64_t*) 0
+  return (*key + (*key + (*key + (*key + (*key + *key / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) % HASH_TABLE_SIZE;
+}
+
 void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* newEntry;
+  uint64_t* hashedEntryAddress;
 
   newEntry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
 
@@ -2815,11 +2855,14 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
   setValue(newEntry, value);
   setAddress(newEntry, address);
 
-  // create entry at head of symbol table
+  // create entry at head of list of symbols
   if (whichTable == GLOBAL_TABLE) {
     setScope(newEntry, REG_GP);
-    setNextEntry(newEntry, global_symbol_table);
-    global_symbol_table = newEntry;
+
+    hashedEntryAddress = global_symbol_table + hash(string);
+
+    setNextEntry(newEntry, (uint64_t*) *hashedEntryAddress);
+    *hashedEntryAddress = (uint64_t) newEntry;
 
     if (class == VARIABLE)
       numberOfGlobalVariables = numberOfGlobalVariables + 1;
@@ -2840,7 +2883,11 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
 }
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
+  numberOfSearches = numberOfSearches + 1;
+
   while (entry != (uint64_t*) 0) {
+    totalSearchTime = totalSearchTime + 1;
+
     if (stringCompare(string, getString(entry)))
       if (class == getClass(entry))
         return entry;
@@ -2850,6 +2897,10 @@ uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
   }
 
   return (uint64_t*) 0;
+}
+
+uint64_t* searchGlobalSymbolTable(uint64_t* string, uint64_t class) {
+  return searchSymbolTable((uint64_t*) *(global_symbol_table + hash(string)), string, class);
 }
 
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class) {
@@ -2865,7 +2916,7 @@ uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class) {
     entry = (uint64_t*) 0;
 
   if (entry == (uint64_t*) 0)
-    return searchSymbolTable(global_symbol_table, string, class);
+    return searchGlobalSymbolTable(string, class);
   else
     return entry;
 }
@@ -2893,22 +2944,29 @@ uint64_t isUndefinedProcedure(uint64_t* entry) {
 
 uint64_t reportUndefinedProcedures() {
   uint64_t undefined;
+  uint64_t i;
   uint64_t* entry;
 
   undefined = 0;
 
-  entry = global_symbol_table;
+  i = 0;
 
-  while (entry != (uint64_t*) 0) {
-    if (isUndefinedProcedure(entry)) {
-      undefined = 1;
+  while (i < HASH_TABLE_SIZE) {
+    entry = (uint64_t*) *(global_symbol_table + i);
 
-      printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
-      printf1((uint64_t*) "procedure %s undefined\n", getString(entry));
+    while (entry != (uint64_t*) 0) {
+      if (isUndefinedProcedure(entry)) {
+        undefined = 1;
+
+        printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
+        printf1((uint64_t*) "procedure %s undefined\n", getString(entry));
+      }
+
+      // keep looking
+      entry = getNextEntry(entry);
     }
 
-    // keep looking
-    entry = getNextEntry(entry);
+    i = i + 1;
   }
 
   return undefined;
@@ -3160,7 +3218,7 @@ uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   uint64_t* entry;
 
   if (class == BIGINT)
-    return searchSymbolTable(global_symbol_table, variableOrBigInt, class);
+    return searchGlobalSymbolTable(variableOrBigInt, class);
   else {
     entry = getScopedSymbolTableEntry(variableOrBigInt, class);
 
@@ -3264,7 +3322,7 @@ void load_integer(uint64_t value) {
 
   } else {
     // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
-    entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
+    entry = searchGlobalSymbolTable(integer, BIGINT);
 
     if (entry == (uint64_t*) 0) {
       allocatedMemory = allocatedMemory + REGISTERSIZE;
@@ -4313,7 +4371,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
   } else
     syntaxErrorSymbol(SYM_LPARENTHESIS);
 
-  entry = searchSymbolTable(global_symbol_table, procedure, PROCEDURE);
+  entry = searchGlobalSymbolTable(procedure, PROCEDURE);
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
@@ -4472,7 +4530,7 @@ void compile_cstar() {
             // global variable definition
             initialValue = compile_initialization(type);
 
-          entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE);
+          entry = searchGlobalSymbolTable(variableOrProcedureName, VARIABLE);
 
           if (entry == (uint64_t*) 0) {
             allocatedMemory = allocatedMemory + REGISTERSIZE;
@@ -4519,7 +4577,7 @@ void emitProgramEntry() {
   emitJAL(REG_RA, 0);
 }
 
-void emitStart() {
+void emitBootstrapping() {
   /* 1. fixup initial jump to here
      2. push argv pointer onto stack
      3. initialize global pointer
@@ -4583,7 +4641,7 @@ void emitStart() {
   emitECALL();
 
   // declare global variable _bump for storing malloc's bump pointer
-  entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
+  entry = searchGlobalSymbolTable(stringCopy((uint64_t*) "_bump"), VARIABLE);
 
   // store aligned program break in _bump
   emitSD(getScope(entry), getAddress(entry), REG_A0);
@@ -4593,7 +4651,8 @@ void emitStart() {
     // exit by continuing to the next instruction
     emitADDI(REG_A0, REG_ZR, 0);
   else {
-    entry = getScopedSymbolTableEntry((uint64_t*) "main", PROCEDURE);
+    // copy "main" string to obtain unique hash
+    entry = getScopedSymbolTableEntry(stringCopy((uint64_t*) "main"), PROCEDURE);
 
     help_call_codegen(entry, (uint64_t*) "main");
   }
@@ -4652,8 +4711,8 @@ void selfie_compile() {
   emitMalloc();
   emitSwitch();
 
-  // declare mandatory main procedure
-  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, 0);
+  // declare main procedure, copy "main" string to obtain unique hash
+  createSymbolTableEntry(GLOBAL_TABLE, stringCopy((uint64_t*) "main"), 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -4709,13 +4768,15 @@ void selfie_compile() {
   if (numberOfSourceFiles == 0)
     printf1((uint64_t*) "%s: nothing to compile, only library generated\n", selfieName);
 
-  emitStart();
+  emitBootstrapping();
 
-  emitGlobalsStringsBigIntegers();
+  emitDataSegment();
 
   ELF_header = createELFHeader(binaryLength);
 
   entryPoint = ELF_ENTRY_POINT;
+
+  printf3((uint64_t*) "%s: symbol table search time was %d iterations on average and %d in total\n", selfieName, (uint64_t*) (totalSearchTime / numberOfSearches), (uint64_t*) totalSearchTime);
 
   printf4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfieName,
     (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
@@ -5293,47 +5354,45 @@ void fixlink_relative(uint64_t fromAddress, uint64_t toAddress) {
   }
 }
 
-uint64_t copyStringToBinary(uint64_t* s, uint64_t baddr) {
-  uint64_t next;
+void copyStringToBinary(uint64_t* s, uint64_t baddr) {
+  uint64_t end;
 
-  next = baddr + roundUp(stringLength(s) + 1, REGISTERSIZE);
+  end = baddr + roundUp(stringLength(s) + 1, REGISTERSIZE);
 
-  while (baddr < next) {
+  while (baddr < end) {
     storeData(baddr, *s);
 
     s = s + 1;
 
     baddr = baddr + REGISTERSIZE;
   }
-
-  return next;
 }
 
-void emitGlobalsStringsBigIntegers() {
+void emitDataSegment() {
+  uint64_t i;
   uint64_t* entry;
 
-  entry = global_symbol_table;
+  binaryLength = binaryLength + allocatedMemory;
 
-  // assert: n = binaryLength
+  i = 0;
 
-  // allocate space for global variables and copy strings and big integers
-  while ((uint64_t) entry != 0) {
-    if (getClass(entry) == VARIABLE) {
-      storeData(binaryLength, getValue(entry));
+  while (i < HASH_TABLE_SIZE) {
+    entry = (uint64_t*) *(global_symbol_table + i);
 
-      binaryLength = binaryLength + REGISTERSIZE;
-    } else if (getClass(entry) == STRING)
-      binaryLength = copyStringToBinary(getString(entry), binaryLength);
-    else if (getClass(entry) == BIGINT) {
-      storeData(binaryLength, getValue(entry));
+    // copy initial values of global variables, copy strings and big integers
+    while ((uint64_t) entry != 0) {
+      if (getClass(entry) == VARIABLE)
+        storeData(binaryLength + getAddress(entry), getValue(entry));
+      else if (getClass(entry) == STRING)
+        copyStringToBinary(getString(entry), binaryLength + getAddress(entry));
+      else if (getClass(entry) == BIGINT)
+        storeData(binaryLength + getAddress(entry), getValue(entry));
 
-      binaryLength = binaryLength + REGISTERSIZE;
+      entry = getNextEntry(entry);
     }
 
-    entry = getNextEntry(entry);
+    i = i + 1;
   }
-
-  // assert: binaryLength == n + allocatedMemory
 
   allocatedMemory = 0;
 }
@@ -5342,7 +5401,7 @@ uint64_t* createELFHeader(uint64_t binaryLength) {
   uint64_t* header;
 
   // store all numbers necessary to create a minimal and valid
-  // ELF64 header incl. program header.
+  // ELF64 header including the program header
   header = smalloc(ELF_HEADER_LEN);
 
   // RISC-U ELF64 file header:
@@ -5377,37 +5436,35 @@ uint64_t* createELFHeader(uint64_t binaryLength) {
   return header;
 }
 
-uint64_t parseELFHeader(uint64_t* header) {
+uint64_t validateELFHeader(uint64_t* header) {
   uint64_t  newEntryPoint;
   uint64_t  newBinaryLength;
   uint64_t  position;
-  uint64_t* valid;
+  uint64_t* validHeader;
 
-  newEntryPoint = *(header + 10);
-
+  newEntryPoint   = *(header + 10);
   newBinaryLength = *(header + 12);
 
   if (newBinaryLength != *(header + 13))
-    // segment size in file is not the same as segement size in memory
+    // segment size in file is not the same as segment size in memory
     return 0;
 
   if (newEntryPoint > VIRTUALMEMORYSIZE - PAGESIZE - newBinaryLength)
     // binary does not fit into virtual address space
     return 0;
 
-  valid = createELFHeader(newBinaryLength);
+  validHeader = createELFHeader(newBinaryLength);
 
   position = 0;
 
   while (position < ELF_HEADER_LEN / SIZEOFUINT64) {
-    if (*(header + position) != *(valid + position))
+    if (*(header + position) != *(validHeader + position))
       return 0;
 
     position = position + 1;
   }
 
-  entryPoint = newEntryPoint;
-
+  entryPoint   = newEntryPoint;
   binaryLength = newBinaryLength;
 
   return 1;
@@ -5555,7 +5612,7 @@ void selfie_load() {
   numberOfReadBytes = read(fd, ELF_header, ELF_HEADER_LEN);
 
   if (numberOfReadBytes == ELF_HEADER_LEN) {
-    if (parseELFHeader(ELF_header)) {
+    if (validateELFHeader(ELF_header)) {
       // now read code length
       numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
 
@@ -6004,9 +6061,10 @@ void emitMalloc() {
   // malloc (bump pointer) in compiler-declared global variable
   allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "_bump", 0, VARIABLE, UINT64_T, 0, -allocatedMemory);
+  // copy "_bump" string to obtain unique hash
+  createSymbolTableEntry(GLOBAL_TABLE, stringCopy((uint64_t*) "_bump"), 0, VARIABLE, UINT64_T, 0, -allocatedMemory);
 
-  entry = searchSymbolTable(global_symbol_table, (uint64_t*) "_bump", VARIABLE);
+  entry = searchGlobalSymbolTable(stringCopy((uint64_t*) "_bump"), VARIABLE);
 
   // allocate register for size parameter
   talloc();
