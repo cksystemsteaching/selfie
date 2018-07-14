@@ -2839,7 +2839,7 @@ void handleEscapeSequence() {
 
 uint64_t hash(uint64_t* key) {
   // assert: key != (uint64_t*) 0
-  return (*key + rightShift(*key, 16) + rightShift(*key, 32) + rightShift(*key, 48)) % HASH_TABLE_SIZE;
+  return (*key + (*key + (*key + (*key + (*key + *key / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) % HASH_TABLE_SIZE;
 }
 
 void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
