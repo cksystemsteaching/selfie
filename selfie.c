@@ -2876,30 +2876,22 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
   }
 }
 
-uint64_t averageSearchTime = 0;
-uint64_t totalSearchTime   = 0;
+uint64_t numberOfSearches = 0;
+uint64_t totalSearchTime  = 0;
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
-  uint64_t thisSearchTime;
-
-  thisSearchTime = 0;
+  numberOfSearches = numberOfSearches + 1;
 
   while (entry != (uint64_t*) 0) {
-    if (stringCompare(string, getString(entry)))
-      if (class == getClass(entry)) {
-        averageSearchTime = (averageSearchTime + thisSearchTime) / 2;
-
-        return entry;
-      }
-
-    thisSearchTime  = thisSearchTime + 1;
     totalSearchTime = totalSearchTime + 1;
+
+    if (stringCompare(string, getString(entry)))
+      if (class == getClass(entry))
+        return entry;
 
     // keep looking
     entry = getNextEntry(entry);
   }
-
-  averageSearchTime = (averageSearchTime + thisSearchTime) / 2;
 
   return (uint64_t*) 0;
 }
@@ -4781,7 +4773,7 @@ void selfie_compile() {
 
   entryPoint = ELF_ENTRY_POINT;
 
-  printf3((uint64_t*) "%s: symbol table search time was %d iterations on average and %d in total\n", selfieName, (uint64_t*) averageSearchTime, (uint64_t*) totalSearchTime);
+  printf3((uint64_t*) "%s: symbol table search time was %d iterations on average and %d in total\n", selfieName, (uint64_t*) (totalSearchTime / numberOfSearches), (uint64_t*) totalSearchTime);
 
   printf4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfieName,
     (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binaryLength),
