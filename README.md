@@ -51,68 +51,56 @@ and then compile `selfie.c` into an executable called `selfie` as directed by th
 
 ## Running Selfie
 
-Once you have successfully compiled `selfie.c` you may invoke `selfie` without any arguments:
+Once you have successfully compiled `selfie.c` you may invoke `selfie` without any arguments as follows:
 
 ```bash
 $ ./selfie
 ./selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
 ```
 
-making it respond with its usage pattern.
+In this case, `selfie` responds with its usage pattern.
 
 The order in which the options are provided matters for taking full advantage of self-referentiality.
 
-The `-c` option invokes the C\* compiler on the given list of `source` files compiling and linking them into RISC-U code that is stored internally.
+The `-c` option invokes the C\* compiler on the given list of `source` files compiling and linking them into RISC-U code that is stored internally. For example, `selfie` may be used to compile its own source code `selfie.c` as follows:
 
-The `-o` option writes RISC-U code produced by the most recent compiler invocation to the given `binary` file.
+```bash
+$ ./selfie -c selfie.c
+```
 
-The `-s` option writes RISC-U assembly of the RISC-U code produced by the most recent compiler invocation including approximate source line numbers to the given `assembly` file.
-
-The `-l` option loads RISC-U code from the given `binary` file. The `-o` and `-s` options can also be used after the `-l` option. However, in this case the `-s` option does not generate approximate source line numbers.
-
-The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The current implementation is naive and only works on small instances.
-
-The `-m` option invokes the mipster emulator to execute RISC-U code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `0-64` MB of memory. The `source` or `binary` name of the RISC-U code and any remaining `...` arguments are passed to the main function of the code.
-
-The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state.
-
-Alternatively, the `-r` option limits the amount of output created with the `-d` option by having mipster merely replay code execution when runtime errors such as division by zero occur. In this case, mipster outputs only the instructions that were executed right before the error occurred.
-
-The `-n` option invokes the symbolic execution engine which interprets the `0-64` value as fuzzing parameter. Value `0` means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The `64` value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value. Note that the current implementation is incomplete and buggy.
-
-The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code.
-
-The `-min` and `-mob` options invoke special versions of the mipster emulator used for teaching.
-
-To compile `selfie.c` for mipster and hypster use the following command:
+The `-o` option writes RISC-U code produced by the most recent compiler invocation to the given `binary` file. For example, `selfie` may be instructed to compile itself and then output the generated RISC-U code into a RISC-U binary file called `selfie.m`:
 
 ```bash
 $ ./selfie -c selfie.c -o selfie.m
 ```
 
-This produces a RISC-U binary file called `selfie.m` that implements selfie.
+The `-s` option writes RISC-U assembly of the RISC-U code produced by the most recent compiler invocation including approximate source line numbers to the given `assembly` file. Similarly as before, `selfie` may be instructed to compile itself and then output the generated RISC-U code into a RISC-U assembly file called `selfie.s`:
 
-To execute `selfie.m` by mipster use the following command:
+```bash
+$ ./selfie -c selfie.c -s selfie.s
+```
+
+The `-l` option loads RISC-U code from the given `binary` file. The `-o` and `-s` options can also be used after the `-l` option. However, in this case the `-s` option does not generate approximate source line numbers. For example, the previously generated RISC-U binary file `selfie.m` may be loaded as follows:
+
+```bash
+$ ./selfie -l selfie.m
+```
+
+The `-m` option invokes the mipster emulator to execute RISC-U code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `0-64` MB of memory. The `source` or `binary` name of the RISC-U code and any remaining `...` arguments are passed to the main function of the code. For example, the following invocation executes `selfie.m` using mipster:
 
 ```bash
 $ ./selfie -l selfie.m -m 1
 ```
 
-This is semantically equivalent to executing `selfie` without any arguments:
+This is in fact semantically equivalent to executing `selfie` without any arguments:
 
 ```bash
 $ ./selfie
 ```
 
-Executing `selfie.m` with hypster:
+The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state. Alternatively, the `-r` option limits the amount of output created with the `-d` option by having mipster merely replay code execution when runtime errors such as division by zero occur. In this case, mipster outputs only the instructions that were executed right before the error occurred. The `-min` and `-mob` options invoke special versions of the mipster emulator used for teaching.
 
-```bash
-$ ./selfie -l selfie.m -y 1
-```
-
-is semantically equivalent to executing `selfie.m` with mipster and thus `selfie` without any arguments.
-
-If you are using docker you can also execute selfie on spike and pk as follows:
+If you are using docker you can also execute `selfie.m` directly on spike and pk as follows:
 
 ```bash
 $ spike pk selfie.m
@@ -120,9 +108,15 @@ $ spike pk selfie.m
 
 which is again semantically equivalent to executing `selfie` without any arguments.
 
+The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code. See below for an example.
+
+The `-n` option invokes the symbolic execution engine which interprets the `0-64` value as fuzzing parameter. Value `0` means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The `64` value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value. Note that the current implementation is incomplete and buggy.
+
+The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The current implementation is naive and only works on small instances.
+
 ### Self-compilation
 
-Here is an example of how to perform self-compilation of `selfie.c`:
+Here is an example of how to perform self-compilation of `selfie.c` and then check if the RISC-U code `selfie1.m` generated for `selfie.c` by executing the `./selfie` binary is equivalent to the code `selfie2.m` generated by executing the just generated `selfie1.m` binary:
 
 ```bash
 $ ./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m
@@ -130,7 +124,7 @@ $ diff -s selfie1.m selfie2.m
 Files selfie1.m and selfie2.m are identical
 ```
 
-Note that at least 2MB of memory is required.
+Note that at least 2MB of memory is required for this to work.
 
 ### Self-execution
 
@@ -213,7 +207,7 @@ Note that multiple definitions of symbols are ignored by the compiler with a war
 
 Selfie's console messages always begin with the name of the source or binary file currently running. The mipster emulator also shows the amount of memory allocated for its machine instance and how execution terminated (exit code).
 
-RISC-U assembly for `selfie` and any other C\* file is generated as follows:
+As discussed before, RISC-U assembly for `selfie` and any other C\* file is generated as follows:
 
 ```bash
 $ ./selfie -c selfie.c -s selfie.s
