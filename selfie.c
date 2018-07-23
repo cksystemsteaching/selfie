@@ -2833,6 +2833,7 @@ void handleEscapeSequence() {
     exit(EXITCODE_SCANNERERROR);
   }
 }
+
 // -----------------------------------------------------------------
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
@@ -4640,7 +4641,8 @@ void emitBootstrapping() {
   emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
   emitECALL();
 
-  // declare global variable _bump for storing malloc's bump pointer
+  // look up global variable _bump for storing malloc's bump pointer
+  // copy "_bump" string into zeroed double word to obtain unique hash
   entry = searchGlobalSymbolTable(stringCopy((uint64_t*) "_bump"), VARIABLE);
 
   // store aligned program break in _bump
@@ -4651,7 +4653,7 @@ void emitBootstrapping() {
     // exit by continuing to the next instruction
     emitADDI(REG_A0, REG_ZR, 0);
   else {
-    // copy "main" string to obtain unique hash
+    // copy "main" string into zeroed double word to obtain unique hash
     entry = getScopedSymbolTableEntry(stringCopy((uint64_t*) "main"), PROCEDURE);
 
     help_call_codegen(entry, (uint64_t*) "main");
@@ -4711,7 +4713,8 @@ void selfie_compile() {
   emitMalloc();
   emitSwitch();
 
-  // declare main procedure, copy "main" string to obtain unique hash
+  // implicitly declare main procedure in global symbol table
+  // copy "main" string into zeroed double word to obtain unique hash
   createSymbolTableEntry(GLOBAL_TABLE, stringCopy((uint64_t*) "main"), 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
@@ -6061,7 +6064,8 @@ void emitMalloc() {
   // malloc (bump pointer) in compiler-declared global variable
   allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-  // copy "_bump" string to obtain unique hash
+  // define global variable _bump for storing malloc's bump pointer
+  // copy "_bump" string into zeroed double word to obtain unique hash
   createSymbolTableEntry(GLOBAL_TABLE, stringCopy((uint64_t*) "_bump"), 0, VARIABLE, UINT64_T, 0, -allocatedMemory);
 
   entry = searchGlobalSymbolTable(stringCopy((uint64_t*) "_bump"), VARIABLE);
@@ -6078,7 +6082,7 @@ void emitMalloc() {
   // allocate register to compute new bump pointer
   talloc();
 
-  // get current _bump (which will be returned upon success)
+  // get current _bump which will be returned upon success
   emitLD(currentTemporary(), getScope(entry), getAddress(entry));
 
   // call brk syscall to set new program break to _bump + size
