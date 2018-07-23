@@ -1143,14 +1143,14 @@ uint64_t isTraceSpaceAvailable();
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t saddr, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void storeConstrainedMemory(uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
 
-void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
+void setConstraint(uint64_t reg, uint64_t hasco, uint64_t saddr, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
 void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone);
 
 void takeBranch(uint64_t b, uint64_t howManyMore);
@@ -1178,6 +1178,7 @@ uint64_t* ups   = (uint64_t*) 0; // trace of upper bounds on values
 uint64_t* steps = (uint64_t*) 0; // trace of steps for intervals
 
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
+uint64_t* saddrs = (uint64_t*) 0; // trace of source addresses
 
 // read history
 
@@ -1202,6 +1203,7 @@ uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
 uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
 uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
 uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
+uint64_t* reg_saddr = (uint64_t*) 0; // source address (renaming and string constrains)
 
 uint64_t* reg_mul     = (uint64_t*) 0;
 uint64_t* reg_div     = (uint64_t*) 0;
@@ -1233,6 +1235,7 @@ void initSymbolicEngine() {
   ups    = zalloc(maxTraceLength * SIZEOFUINT64);
   steps  = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
+  saddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
   read_values = zalloc(maxTraceLength * SIZEOFUINT64);
   read_los    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1248,6 +1251,7 @@ void initSymbolicEngine() {
   reg_hasmn = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_colos = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_coups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_saddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_mul     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_div     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -5809,9 +5813,9 @@ void implementRead(uint64_t* context) {
             if(do_taint_flag) setTaintMemory(1, 0, 1);
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0);
+              storeSymbolicMemory(getPT(context), 0, vbuffer, value, 0, lo, up, 1, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, tc);
+              storeSymbolicMemory(getPT(context), 0, vbuffer, value, 0, lo, up, 1, tc);
           } else {
             actuallyRead = 0;
 
@@ -6216,7 +6220,7 @@ void implementMalloc(uint64_t* context) {
         if (isTraceSpaceAvailable()) {
           setTaintMemory(0, 0, 1);
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, tc);
+          storeSymbolicMemory(getPT(context), 0, 0, bump, 1, bump, size, 1, tc);
         }
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
@@ -6557,7 +6561,7 @@ void constrain_lui() {
     *(reg_ups + rd) = leftShift(imm, 12);
 
     // rd has no constraint
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
   }
 }
@@ -6617,7 +6621,7 @@ void constrain_addi() {
       *(reg_ups + rd) = *(reg_ups + rs1);
 
       // rd has no constraint if rs1 is memory range
-      setConstraint(rd, 0, 0, 0, 0, 0);
+      setConstraint(rd, 0, 0, 0, 0, 0, 0);
 
       return;
     }
@@ -6640,7 +6644,13 @@ void constrain_addi() {
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else {
         // rd inherits rs1 constraint
-        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
+        if(*(reg_saddr + rs1)) {
+          if(rs1 == REG_A0)
+            setConstraint(rd, *(reg_hasco + rs1), 0, *(reg_saddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
+          else
+            setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
+        } else
+            setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
 
         if (*(reg_has_mul_div_mod + rs1) == 0)
           setCorrection(rd, 1, 0, 0, 0, 1);
@@ -6652,7 +6662,7 @@ void constrain_addi() {
       }
     } else {
       // rd has no constraint if rs1 has none
-      setConstraint(rd, 0, 0, 0, 0, 0);
+      setConstraint(rd, 0, 0, 0, 0, 0, 0);
       setCorrection(rd, 0, 0, 0, 0, 0);
     }
   }
@@ -6719,7 +6729,7 @@ void constrain_add() {
     *(reg_ups + rd) = *(reg_ups + rs1);
 
     // rd has no constraint if rs1 is memory range
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
 
     return;
   } else if (*(reg_typ + rs2)) {
@@ -6729,7 +6739,7 @@ void constrain_add() {
     *(reg_ups + rd) = *(reg_ups + rs2);
 
     // rd has no constraint if rs2 is memory range
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
 
     return;
   }
@@ -6758,7 +6768,7 @@ void constrain_add() {
     if (*(reg_hasco + rs2)) {
       // we cannot keep track of more than one constraint for add but
       // need to warn about their earlier presence if used in comparisons
-      setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
+      setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0, 0);
 
       // interval semantics of add
       if (cnd != 0) {
@@ -6776,7 +6786,7 @@ void constrain_add() {
             }
           } else {
 
-            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
+            //now: exit analysis (two "incompatible" symbolic values addition [no multiple step])
             last_jal_from = pc;
             throwException(EXCEPTION_INCOMPLETENESS, 0);
             printOverApprox((uint64_t*) "add");
@@ -6817,7 +6827,7 @@ void constrain_add() {
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
       // rd inherits rs1 constraint since rs2 has none
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2),*(reg_coups + rs1) + *(reg_ups + rs2));
+      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2),*(reg_coups + rs1) + *(reg_ups + rs2));
 
       if (*(reg_has_mul_div_mod + rs1) == 0)
         setCorrection(rd, 1, 0, 0, 0, 1);
@@ -6842,7 +6852,7 @@ void constrain_add() {
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
       // rd inherits rs2 constraint since rs1 has none
-      setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2),*(reg_ups + rs1) + *(reg_coups + rs2));
+      setConstraint(rd, *(reg_hasco + rs2), *(reg_saddr + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2),*(reg_ups + rs1) + *(reg_coups + rs2));
 
       if (*(reg_has_mul_div_mod + rs2) == 0)
         setCorrection(rd, 1, 0, 0, 0, 1);
@@ -6857,7 +6867,7 @@ void constrain_add() {
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     *(reg_los + rd) = add_los;
@@ -6897,7 +6907,7 @@ void constrain_sub() {
           *(reg_ups + rd) = *(registers + rd);
 
           // rd has no constraint if rs1 and rs2 are memory range
-          setConstraint(rd, 0, 0, 0, 0, 0);
+          setConstraint(rd, 0, 0, 0, 0, 0, 0);
 
           return;
         }
@@ -6913,7 +6923,7 @@ void constrain_sub() {
       *(reg_ups + rd) = *(reg_ups + rs1);
 
       // rd has no constraint if rs1 is memory range
-      setConstraint(rd, 0, 0, 0, 0, 0);
+      setConstraint(rd, 0, 0, 0, 0, 0, 0);
 
       return;
     }
@@ -6924,7 +6934,7 @@ void constrain_sub() {
     *(reg_ups + rd) = *(reg_ups + rs2);
 
     // rd has no constraint if rs2 is memory range
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
 
     return;
   }
@@ -6954,7 +6964,7 @@ void constrain_sub() {
     if (*(reg_hasco + rs2)) {
       // we cannot keep track of more than one constraint for sub but
       // need to warn about their earlier presence if used in comparisons
-      setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
+      setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0, 0);
 
       // interval semantics of sub
       if (cnd != 0) {
@@ -7009,7 +7019,7 @@ void constrain_sub() {
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
       // rd inherits rs1 constraint since rs2 has none
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
+      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
 
       if (*(reg_has_mul_div_mod + rs1) == 0)
         setCorrection(rd, 1, 0, 0, 0, 1);
@@ -7034,7 +7044,7 @@ void constrain_sub() {
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
       // rd inherits rs2 constraint since rs1 has none
-      setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
+      setConstraint(rd, *(reg_hasco + rs2), *(reg_saddr + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
 
       if (*(reg_has_mul_div_mod + rs2) == 0)
         setCorrection(rd, 1, 0, 0, 0, 1);
@@ -7049,7 +7059,7 @@ void constrain_sub() {
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     *(reg_los + rd) = sub_los;
@@ -7105,7 +7115,7 @@ void constrain_mul() {
     } else {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
+      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, *(reg_los + rs2), 0, 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
       // interval semantics of mul
@@ -7148,7 +7158,7 @@ void constrain_mul() {
     } else {
       // rd inherits rs2 constraint since rs1 has none
       // assert: rs1 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_colos + rs2), *(reg_coups + rs2));
+      setConstraint(rd, *(reg_hasco + rs2), *(reg_saddr + rs2), *(reg_vaddr + rs2), 0, *(reg_colos + rs2), *(reg_coups + rs2));
       setCorrection(rd, *(reg_los + rs1), 0, 0, 0, *(reg_has_mul_div_mod + rs2) + 1);
 
       // interval semantics of mul
@@ -7182,7 +7192,7 @@ void constrain_mul() {
 
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     // interval semantics of mul
@@ -7260,7 +7270,7 @@ void constrain_divu() {
     } else {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
+      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
 
       // step computation
@@ -7331,7 +7341,7 @@ void constrain_divu() {
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     // interval semantics of divu
@@ -7451,7 +7461,7 @@ void constrain_remu_step_1() {
   } else {
     // rd inherits rs1 constraint since rs2 has none
     // assert: rs2 interval is singleton
-    setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
+    setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
     setCorrection(rd, 0, 0, *(reg_los + rs2), remu_case + 1, *(reg_has_mul_div_mod + rs1) + 1);
 
     *(reg_los + rd)   = lo;
@@ -7585,13 +7595,13 @@ void constrain_remu() {
     } else if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
+      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, 0, 0, *(reg_los + rs2), remu_case + 1, *(reg_has_mul_div_mod + rs1) + 1);
 
     } else if (isPowerOfTwo(divisor)) {
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
+      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
       setCorrection(rd, 0, 0, *(reg_los + rs2), 0, *(reg_has_mul_div_mod + rs1) + 1);
     }
 
@@ -7601,7 +7611,7 @@ void constrain_remu() {
     *(reg_steps + rd) = step;
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
@@ -7705,8 +7715,9 @@ void backtrack_sltu() {
       *(reg_ups + vaddr) = *(ups + tc);
 
       *(reg_steps + vaddr) = *(steps + tc);
+      *(reg_saddr + vaddr) = *(saddrs + tc);
 
-      setConstraint(vaddr, 0, 0, 0, 0, 0);
+      setConstraint(vaddr, 0, 0, 0, 0, 0, 0);
       setCorrection(vaddr, 0, 0, 0, 0, 0);
 
       // restoring mrcc
@@ -7849,7 +7860,7 @@ uint64_t constrain_ld() {
 
         if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd))) {
           // vaddr is constrained by rd if value interval is not singleton
-          setConstraint(rd, 1, vaddr, 0, 0, 0);
+          setConstraint(rd, 1, *(saddrs + mrvc), vaddr, 0, 0, 0);
 
           if (*(reg_steps + rd) == 0) {
             print(selfieName);
@@ -7861,7 +7872,7 @@ uint64_t constrain_ld() {
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           }
         } else {
-          setConstraint(rd, 0, 0, 0, 0, 0);
+          setConstraint(rd, 0, 0, 0, 0, 0, 0);
 
           *(reg_steps + rd) = 1;
         }
@@ -7973,6 +7984,7 @@ uint64_t do_sd() {
 }
 
 uint64_t constrain_sd() {
+  uint64_t saddr;
   uint64_t vaddr;
   uint64_t a;
 
@@ -8000,8 +8012,14 @@ uint64_t constrain_sd() {
         }
       }
 
+      //call renaming management
+      if(vaddr > getBumpPointer(currentContext)) //SD $ti 0($sp)
+        saddr = *(reg_vaddr + rs2);
+      else
+        saddr = 0;
+
       if(do_taint_flag) setTaintMemory(*(reg_istainted + rs2), *(reg_isminuend + rs2), *(reg_hasstep + rs2));
-      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc);
+      storeSymbolicMemory(pt, saddr, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc);
 
       pc = pc + INSTRUCTIONSIZE;
 
@@ -8672,7 +8690,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t saddr, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr == 0)
@@ -8705,6 +8723,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(ups + mrvc) = up;
 
     *(steps + mrvc) = step;
+    *(saddrs + mrvc) = saddr;
 
     if(do_taint_flag) storeTaintMemory(mrvc);
 
@@ -8733,6 +8752,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(steps + tc) = step;
 
     *(vaddrs + tc) = vaddr;
+    *(saddrs + tc) = saddr;
 
     if(do_taint_flag) storeTaintMemory(tc);
 
@@ -8753,7 +8773,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     throwException(EXCEPTION_MAXTRACE, 0);
 }
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void storeConstrainedMemory(uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr >= getBumpPointer(currentContext))
@@ -8774,13 +8794,13 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
 
   // always track constrained memory by using tc as most recent branch
   //assert to_store_taint set
-  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, tc);
+  storeSymbolicMemory(pt, saddr, vaddr, lo, 0, lo, up, step, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
-  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, tc);
+  storeSymbolicMemory(pt, *(reg_saddr + reg), reg, value, 0, value, value, 1, tc);
 }
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
@@ -8809,13 +8829,19 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     mrvc = loadVirtualMemory(pt, *(reg_vaddr + reg));
 
     //corrections computation
-    if (*(reg_hasmn + reg)) {       //only addition
-      lo = *(reg_colos + reg) - lo;
-      up = *(reg_coups + reg) - up;
-    } else {                        //one substractions
+    //additions / substractions
+    if (*(reg_hasmn + reg)) {       //one minuend
+      //backward semantics:rs2 = rs1 - rd
+      //undo substraction (a-d,b-c)
+      tmp1 = lo;
+      lo = *(reg_colos + reg) - up;
+      up = *(reg_coups + reg) - tmp1;
+    } else {                        //no minuend
       lo = lo - *(reg_colos + reg);
       up = up - *(reg_coups + reg);
     }
+
+    //one multiplication or division or modulo
     if (*(reg_mul + reg)) {         //one multiplication
       lo = lo / *(reg_mul + reg);
       up = up / *(reg_mul + reg);
@@ -8846,7 +8872,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     }
 
     if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
-    storeConstrainedMemory(*(reg_vaddr + reg), lo, up, costep, trb);
+    storeConstrainedMemory(*(reg_saddr + reg), *(reg_vaddr + reg), lo, up, costep, trb);
   }
 }
 
@@ -8858,8 +8884,9 @@ void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint6
   *(reg_has_mul_div_mod + reg) = hasone;
 }
 
-void setConstraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
+void setConstraint(uint64_t reg, uint64_t hasco, uint64_t saddr, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
   *(reg_hasco + reg) = hasco;
+  *(reg_saddr + reg) = saddr;
   *(reg_vaddr + reg) = vaddr;
   *(reg_hasmn + reg) = hasmn;
   *(reg_colos + reg) = colos;
@@ -8882,7 +8909,7 @@ void takeBranch(uint64_t b, uint64_t howManyMore) {
     *(reg_los + rd) = b;
     *(reg_ups + rd) = b;
 
-    setConstraint(rd, 0, 0, 0, 0, 0);
+    setConstraint(rd, 0, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
   }
 }
@@ -8944,7 +8971,7 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, ui
 
         // rounded values of resulting rs1 values
         up1_2 = computeUpperBound(lo2, s2, lo1);      //TODO: is up1_2 in rs1?
-        lo1_2 = up1_2 + s1;                           //TODO: is lo1_2 in rs1?
+        lo1_2 = up1_2 + s2;                           //TODO: is lo1_2 in rs1?
 
         // [false]  rs1:[ lo1, up1, s1 ] >= rs2:[ lo2, |lo1|, s2 ]
         // [true]   rs1:[ lo1, up1, s1 ] < rs2:[ |lo1 + 1|, up2, s2 ]
@@ -9830,18 +9857,6 @@ void check_step() {
             if(imax < *(reg_hasstep + rs2)/vgcd - 1)
               pushNewEntryStep(pc - INSTRUCTIONSIZE - entryPoint);
          }
-
-        //print("~~~~~~~~~~~~~");
-        //print("~~~pc: ~~~");
-        //printHexadecimal(pc - INSTRUCTIONSIZE - entryPoint, 0);
-        //printSourceLineNumberOfInstruction(pc - INSTRUCTIONSIZE - entryPoint);
-        //print("rs1: ");
-        //printInteger(*(reg_hasstep + rs1));
-        //print(" +/- rs2: ");
-        //printInteger(*(reg_hasstep + rs2));
-        //print(" = rd: ");
-        //printInteger(vgcd);
-        //println();
       }
     }
   }
@@ -10403,7 +10418,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     if (isTraceSpaceAvailable()) {
       setTaintMemory(0, 0, 1);
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, tc);
+      storeSymbolicMemory(getPT(context), 0, vaddr, data, 0, data, data, 1, tc);
     }
     else {
       print(selfieName);
