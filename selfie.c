@@ -237,7 +237,7 @@ uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 uint64_t numberOfWrittenCharacters = 0;
 
 uint64_t* outputName = (uint64_t*) 0;
-uint64_t  outputFD   = 1; // 1 is file descriptor of standard output
+uint64_t  outputFd   = 1; // 1 is file descriptor of standard output
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -314,7 +314,7 @@ uint64_t findNextCharacter();
 uint64_t isCharacterLetter();
 uint64_t isCharacterDigit();
 uint64_t isCharacterLetterOrDigitOrUnderscore();
-uint64_t isCharacterNotDoubleQuoteOrNewLineOrEOF();
+uint64_t isCharacterNotDoubleQuoteOrNewLineOrEof();
 
 uint64_t identifierStringMatch(uint64_t stringIndex);
 uint64_t identifierOrKeyword();
@@ -384,7 +384,7 @@ uint64_t numberOfComments          = 0;
 uint64_t numberOfScannedSymbols    = 0;
 
 uint64_t* sourceName = (uint64_t*) 0; // name of source file
-uint64_t  sourceFD   = 0;             // file descriptor of open source file
+uint64_t  sourceFd   = 0;             // file descriptor of open source file
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -540,7 +540,7 @@ void resetSymbolTables() {
 
 void resetParser();
 
-uint64_t isNotRbraceOrEOF();
+uint64_t isNotRbraceOrEof();
 uint64_t isExpression();
 uint64_t isLiteral();
 uint64_t isStarOrDivOrModulo();
@@ -729,10 +729,10 @@ void checkImmediateRange(uint64_t found, uint64_t bits);
 
 uint64_t encodeRFormat(uint64_t funct7, uint64_t rs2, uint64_t rs1, uint64_t funct3, uint64_t rd, uint64_t opcode);
 uint64_t getFunct7(uint64_t instruction);
-uint64_t getRS2(uint64_t instruction);
-uint64_t getRS1(uint64_t instruction);
+uint64_t getRs2(uint64_t instruction);
+uint64_t getRs1(uint64_t instruction);
 uint64_t getFunct3(uint64_t instruction);
-uint64_t getRD(uint64_t instruction);
+uint64_t getRd(uint64_t instruction);
 uint64_t getOpcode(uint64_t instruction);
 void     decodeRFormat();
 
@@ -824,27 +824,27 @@ void     storeData(uint64_t baddr, uint64_t data);
 
 void emitInstruction(uint64_t instruction);
 
-void emitNOP();
+void emitNop();
 
-void emitLUI(uint64_t rd, uint64_t immediate);
-void emitADDI(uint64_t rd, uint64_t rs1, uint64_t immediate);
+void emitLui(uint64_t rd, uint64_t immediate);
+void emitAddi(uint64_t rd, uint64_t rs1, uint64_t immediate);
 
-void emitADD(uint64_t rd, uint64_t rs1, uint64_t rs2);
-void emitSUB(uint64_t rd, uint64_t rs1, uint64_t rs2);
-void emitMUL(uint64_t rd, uint64_t rs1, uint64_t rs2);
-void emitDIVU(uint64_t rd, uint64_t rs1, uint64_t rs2);
-void emitREMU(uint64_t rd, uint64_t rs1, uint64_t rs2);
-void emitSLTU(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emitAdd(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emitSub(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emitMul(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emitDivu(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emitRemu(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emitSltu(uint64_t rd, uint64_t rs1, uint64_t rs2);
 
-void emitLD(uint64_t rd, uint64_t rs1, uint64_t immediate);
-void emitSD(uint64_t rs1, uint64_t immediate, uint64_t rs2);
+void emitLd(uint64_t rd, uint64_t rs1, uint64_t immediate);
+void emitSd(uint64_t rs1, uint64_t immediate, uint64_t rs2);
 
-void emitBEQ(uint64_t rs1, uint64_t rs2, uint64_t immediate);
+void emitBeq(uint64_t rs1, uint64_t rs2, uint64_t immediate);
 
-void emitJAL(uint64_t rd, uint64_t immediate);
-void emitJALR(uint64_t rd, uint64_t rs1, uint64_t immediate);
+void emitJal(uint64_t rd, uint64_t immediate);
+void emitJalr(uint64_t rd, uint64_t rs1, uint64_t immediate);
 
-void emitECALL();
+void emitEcall();
 
 void fixup_relative_BFormat(uint64_t fromAddress);
 void fixup_relative_JFormat(uint64_t fromAddress, uint64_t toAddress);
@@ -854,8 +854,8 @@ void copyStringToBinary(uint64_t* s, uint64_t a);
 
 void emitDataSegment();
 
-uint64_t* createELFHeader(uint64_t binaryLength);
-uint64_t  validateELFHeader(uint64_t* header);
+uint64_t* createElfHeader(uint64_t binaryLength);
+uint64_t  validateElfHeader(uint64_t* header);
 
 uint64_t openWriteOnly(uint64_t* name);
 
@@ -903,7 +903,7 @@ uint64_t entryPoint = 0; // beginning of code segment in virtual address space
 uint64_t* sourceLineNumber = (uint64_t*) 0; // source line number per emitted instruction
 
 uint64_t* assemblyName = (uint64_t*) 0; // name of assembly file
-uint64_t  assemblyFD   = 0; // file descriptor of open assembly file
+uint64_t  assemblyFd   = 0; // file descriptor of open assembly file
 
 uint64_t* ELF_header = (uint64_t*) 0;
 
@@ -1415,9 +1415,9 @@ uint64_t name(uint64_t* context)           { return (uint64_t) (context + 15); }
 
 uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
-uint64_t  getPC(uint64_t* context)             { return             *(context + 2); }
+uint64_t  getPc(uint64_t* context)             { return             *(context + 2); }
 uint64_t* getRegs(uint64_t* context)           { return (uint64_t*) *(context + 3); }
-uint64_t* getPT(uint64_t* context)             { return (uint64_t*) *(context + 4); }
+uint64_t* getPt(uint64_t* context)             { return (uint64_t*) *(context + 4); }
 uint64_t  getLoPage(uint64_t* context)         { return             *(context + 5); }
 uint64_t  getMePage(uint64_t* context)         { return             *(context + 6); }
 uint64_t  getHiPage(uint64_t* context)         { return             *(context + 7); }
@@ -1432,9 +1432,9 @@ uint64_t* getName(uint64_t* context)           { return (uint64_t*) *(context + 
 
 void setNextContext(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
 void setPrevContext(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
-void setPC(uint64_t* context, uint64_t pc)                 { *(context + 2)  = pc; }
+void setPc(uint64_t* context, uint64_t pc)                 { *(context + 2)  = pc; }
 void setRegs(uint64_t* context, uint64_t* regs)            { *(context + 3)  = (uint64_t) regs; }
-void setPT(uint64_t* context, uint64_t* pt)                { *(context + 4)  = (uint64_t) pt; }
+void setPt(uint64_t* context, uint64_t* pt)                { *(context + 4)  = (uint64_t) pt; }
 void setLoPage(uint64_t* context, uint64_t loPage)         { *(context + 5)  = loPage; }
 void setMePage(uint64_t* context, uint64_t mePage)         { *(context + 6)  = mePage; }
 void setHiPage(uint64_t* context, uint64_t hiPage)         { *(context + 7)  = hiPage; }
@@ -1596,15 +1596,15 @@ uint64_t SAT   = 1;
 
 uint64_t* dimacsName = (uint64_t*) 0;
 
-uint64_t numberOfSATVariables = 0;
+uint64_t numberOfSatVariables = 0;
 
-// numberOfSATVariables
-uint64_t* SATAssignment = (uint64_t*) 0;
+// numberOfSatVariables
+uint64_t* satAssignment = (uint64_t*) 0;
 
-uint64_t numberOfSATClauses = 0;
+uint64_t numberOfSatClauses = 0;
 
-// numberOfSATClauses * 2 * numberOfSATVariables
-uint64_t* SATInstance = (uint64_t*) 0;
+// numberOfSatClauses * 2 * numberOfSatVariables
+uint64_t* satInstance = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
 // ----------------------- DIMACS CNF PARSER -----------------------
@@ -2045,18 +2045,18 @@ void putCharacter(uint64_t c) {
   // assert: character_buffer is mapped
 
   // try to write 1 character from character_buffer
-  // into file with outputFD file descriptor
-  if (write(outputFD, character_buffer, 1) == 1) {
-    if (outputFD != 1)
+  // into file with outputFd file descriptor
+  if (write(outputFd, character_buffer, 1) == 1) {
+    if (outputFd != 1)
       // count number of characters written to a file,
       // not the console which has file descriptor 1
       numberOfWrittenCharacters = numberOfWrittenCharacters + 1;
   } else {
     // write failed
-    if (outputFD != 1) {
+    if (outputFd != 1) {
       // failed write was not to the console which has file descriptor 1
       // to report the error we may thus still write to the console
-      outputFD = 1;
+      outputFd = 1;
 
       printf2((uint64_t*) "%s: could not write character to output file %s\n", selfieName, outputName);
     }
@@ -2367,8 +2367,8 @@ void getCharacter() {
   // assert: character_buffer is mapped
 
   // try to read 1 character into character_buffer
-  // from file with sourceFD file descriptor
-  numberOfReadBytes = read(sourceFD, character_buffer, 1);
+  // from file with sourceFd file descriptor
+  numberOfReadBytes = read(sourceFd, character_buffer, 1);
 
   if (numberOfReadBytes == 1) {
     // store the read character in the global variable called character
@@ -2537,7 +2537,7 @@ uint64_t isCharacterLetterOrDigitOrUnderscore() {
     return 0;
 }
 
-uint64_t isCharacterNotDoubleQuoteOrNewLineOrEOF() {
+uint64_t isCharacterNotDoubleQuoteOrNewLineOrEof() {
   if (character == CHAR_DOUBLEQUOTE)
     return 0;
   else if (isCharacterNewLine())
@@ -2674,7 +2674,7 @@ void getSymbol() {
 
         i = 0;
 
-        while (isCharacterNotDoubleQuoteOrNewLineOrEOF()) {
+        while (isCharacterNotDoubleQuoteOrNewLineOrEof()) {
           if (i >= maxStringLength) {
             syntaxErrorMessage((uint64_t*) "string too long");
 
@@ -2977,7 +2977,7 @@ uint64_t reportUndefinedProcedures() {
 // ---------------------------- PARSER -----------------------------
 // -----------------------------------------------------------------
 
-uint64_t isNotRbraceOrEOF() {
+uint64_t isNotRbraceOrEof() {
   if (symbol == SYM_RBRACE)
     return 0;
   else if (symbol == SYM_EOF)
@@ -3163,8 +3163,8 @@ void tfree(uint64_t numberOfTemporaries) {
 void save_temporaries() {
   while (allocatedTemporaries > 0) {
     // push temporary onto stack
-    emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
-    emitSD(REG_SP, 0, currentTemporary());
+    emitAddi(REG_SP, REG_SP, -REGISTERSIZE);
+    emitSd(REG_SP, 0, currentTemporary());
 
     tfree(1);
   }
@@ -3175,8 +3175,8 @@ void restore_temporaries(uint64_t numberOfTemporaries) {
     talloc();
 
     // restore temporary from stack
-    emitLD(currentTemporary(), REG_SP, 0);
-    emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+    emitLd(currentTemporary(), REG_SP, 0);
+    emitAddi(REG_SP, REG_SP, REGISTERSIZE);
   }
 }
 
@@ -3250,8 +3250,8 @@ void load_upperBaseAddress(uint64_t* entry) {
   talloc();
 
   // calculate upper part of base address relative to global or frame pointer
-  emitLUI(currentTemporary(), signExtend(upper, 20));
-  emitADD(currentTemporary(), getScope(entry), currentTemporary());
+  emitLui(currentTemporary(), signExtend(upper, 20));
+  emitAdd(currentTemporary(), getScope(entry), currentTemporary());
 
   // assert: allocatedTemporaries == n + 1
 }
@@ -3269,11 +3269,11 @@ uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
   if (isSignedInteger(offset, 12)) {
     talloc();
 
-    emitLD(currentTemporary(), getScope(entry), offset);
+    emitLd(currentTemporary(), getScope(entry), offset);
   } else {
     load_upperBaseAddress(entry);
 
-    emitLD(currentTemporary(), currentTemporary(), signExtend(getBits(offset, 0, 12), 12));
+    emitLd(currentTemporary(), currentTemporary(), signExtend(getBits(offset, 0, 12), 12));
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3294,7 +3294,7 @@ void load_integer(uint64_t value) {
 
     talloc();
 
-    emitADDI(currentTemporary(), REG_ZR, value);
+    emitAddi(currentTemporary(), REG_ZR, value);
 
   } else if (isSignedInteger(value, 32)) {
     // integers greater than or equal to -2^31 and less than 2^31
@@ -3310,16 +3310,16 @@ void load_integer(uint64_t value) {
       upper = upper + 1;
 
       // assert: 0 < upper <= 2^(32-12)
-      emitLUI(currentTemporary(), signExtend(upper, 20));
+      emitLui(currentTemporary(), signExtend(upper, 20));
 
       if (upper == twoToThePowerOf(19))
         // upper overflowed, cancel sign extension
-        emitSUB(currentTemporary(), REG_ZR, currentTemporary());
+        emitSub(currentTemporary(), REG_ZR, currentTemporary());
     } else
       // assert: 0 < upper < 2^(32-12)
-      emitLUI(currentTemporary(), signExtend(upper, 20));
+      emitLui(currentTemporary(), signExtend(upper, 20));
 
-    emitADDI(currentTemporary(), currentTemporary(), signExtend(lower, 12));
+    emitAddi(currentTemporary(), currentTemporary(), signExtend(lower, 12));
 
   } else {
     // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
@@ -3350,7 +3350,7 @@ void load_string(uint64_t* string) {
 
   load_integer(-allocatedMemory);
 
-  emitADD(currentTemporary(), REG_GP, currentTemporary());
+  emitAdd(currentTemporary(), REG_GP, currentTemporary());
 
   // assert: allocatedTemporaries == n + 1
 }
@@ -3366,7 +3366,7 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
 
     createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
 
-    emitJAL(REG_RA, 0);
+    emitJal(REG_RA, 0);
 
   } else {
     type = getType(entry);
@@ -3375,16 +3375,16 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
       // procedure declared but never called nor defined
       setAddress(entry, binaryLength);
 
-      emitJAL(REG_RA, 0);
+      emitJal(REG_RA, 0);
     } else if (getOpcode(loadInstruction(getAddress(entry))) == OP_JAL) {
       // procedure called and possibly declared but not defined
 
       // create fixup chain using absolute address
-      emitJAL(REG_RA, getAddress(entry));
+      emitJal(REG_RA, getAddress(entry));
       setAddress(entry, binaryLength - INSTRUCTIONSIZE);
     } else
       // procedure defined, use relative address
-      emitJAL(REG_RA, getAddress(entry) - binaryLength);
+      emitJal(REG_RA, getAddress(entry) - binaryLength);
   }
 
   return type;
@@ -3392,28 +3392,28 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
 
 void help_procedure_prologue(uint64_t numberOfLocalVariableBytes) {
   // allocate memory for return address
-  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+  emitAddi(REG_SP, REG_SP, -REGISTERSIZE);
 
   // save return address
-  emitSD(REG_SP, 0, REG_RA);
+  emitSd(REG_SP, 0, REG_RA);
 
   // allocate memory for caller's frame pointer
-  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+  emitAddi(REG_SP, REG_SP, -REGISTERSIZE);
 
   // save caller's frame pointer
-  emitSD(REG_SP, 0, REG_FP);
+  emitSd(REG_SP, 0, REG_FP);
 
   // set callee's frame pointer
-  emitADDI(REG_FP, REG_SP, 0);
+  emitAddi(REG_FP, REG_SP, 0);
 
   // allocate memory for callee's local variables
   if (numberOfLocalVariableBytes > 0) {
     if (isSignedInteger(-numberOfLocalVariableBytes, 12))
-      emitADDI(REG_SP, REG_SP, -numberOfLocalVariableBytes);
+      emitAddi(REG_SP, REG_SP, -numberOfLocalVariableBytes);
     else {
       load_integer(-numberOfLocalVariableBytes);
 
-      emitADD(REG_SP, REG_SP, currentTemporary());
+      emitAdd(REG_SP, REG_SP, currentTemporary());
 
       tfree(1);
     }
@@ -3422,22 +3422,22 @@ void help_procedure_prologue(uint64_t numberOfLocalVariableBytes) {
 
 void help_procedure_epilogue(uint64_t numberOfParameterBytes) {
   // deallocate memory for callee's frame pointer and local variables
-  emitADDI(REG_SP, REG_FP, 0);
+  emitAddi(REG_SP, REG_FP, 0);
 
   // restore caller's frame pointer
-  emitLD(REG_FP, REG_SP, 0);
+  emitLd(REG_FP, REG_SP, 0);
 
   // deallocate memory for caller's frame pointer
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
   // restore return address
-  emitLD(REG_RA, REG_SP, 0);
+  emitLd(REG_RA, REG_SP, 0);
 
   // deallocate memory for return address and parameters
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE + numberOfParameterBytes);
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE + numberOfParameterBytes);
 
   // return
-  emitJALR(REG_ZR, REG_RA, 0);
+  emitJalr(REG_ZR, REG_RA, 0);
 }
 
 uint64_t compile_call(uint64_t* procedure) {
@@ -3461,8 +3461,8 @@ uint64_t compile_call(uint64_t* procedure) {
     // TODO: check if types/number of parameters is correct
 
     // push first parameter onto stack
-    emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
-    emitSD(REG_SP, 0, currentTemporary());
+    emitAddi(REG_SP, REG_SP, -REGISTERSIZE);
+    emitSd(REG_SP, 0, currentTemporary());
 
     tfree(1);
 
@@ -3472,8 +3472,8 @@ uint64_t compile_call(uint64_t* procedure) {
       compile_expression();
 
       // push more parameters onto stack
-      emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
-      emitSD(REG_SP, 0, currentTemporary());
+      emitAddi(REG_SP, REG_SP, -REGISTERSIZE);
+      emitSd(REG_SP, 0, currentTemporary());
 
       tfree(1);
     }
@@ -3593,11 +3593,11 @@ uint64_t compile_factor() {
       talloc();
 
       // retrieve return value
-      emitADDI(currentTemporary(), REG_A0, 0);
+      emitAddi(currentTemporary(), REG_A0, 0);
 
       // reset return register to initial return value
       // for missing return expressions
-      emitADDI(REG_A0, REG_ZR, 0);
+      emitAddi(REG_A0, REG_ZR, 0);
     } else
       // variable access: identifier
       type = load_variableOrBigInt(variableOrProcedureName, VARIABLE);
@@ -3614,7 +3614,7 @@ uint64_t compile_factor() {
   } else if (symbol == SYM_CHARACTER) {
     talloc();
 
-    emitADDI(currentTemporary(), REG_ZR, literal);
+    emitAddi(currentTemporary(), REG_ZR, literal);
 
     getSymbol();
 
@@ -3649,7 +3649,7 @@ uint64_t compile_factor() {
       typeWarning(UINT64STAR_T, type);
 
     // dereference
-    emitLD(currentTemporary(), currentTemporary(), 0);
+    emitLd(currentTemporary(), currentTemporary(), 0);
 
     type = UINT64_T;
   }
@@ -3661,7 +3661,7 @@ uint64_t compile_factor() {
       type = UINT64_T;
     }
 
-    emitSUB(currentTemporary(), REG_ZR, currentTemporary());
+    emitSub(currentTemporary(), REG_ZR, currentTemporary());
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3697,11 +3697,11 @@ uint64_t compile_term() {
       typeWarning(ltype, rtype);
 
     if (operatorSymbol == SYM_ASTERISK)
-      emitMUL(previousTemporary(), previousTemporary(), currentTemporary());
+      emitMul(previousTemporary(), previousTemporary(), currentTemporary());
     else if (operatorSymbol == SYM_DIV)
-      emitDIVU(previousTemporary(), previousTemporary(), currentTemporary());
+      emitDivu(previousTemporary(), previousTemporary(), currentTemporary());
     else if (operatorSymbol == SYM_MOD)
-      emitREMU(previousTemporary(), previousTemporary(), currentTemporary());
+      emitRemu(previousTemporary(), previousTemporary(), currentTemporary());
 
     tfree(1);
   }
@@ -3749,7 +3749,7 @@ uint64_t compile_simpleExpression() {
         ltype = UINT64STAR_T;
       }
 
-      emitADD(previousTemporary(), previousTemporary(), currentTemporary());
+      emitAdd(previousTemporary(), previousTemporary(), currentTemporary());
 
     } else if (operatorSymbol == SYM_MINUS) {
       if (ltype == UINT64STAR_T) {
@@ -3757,13 +3757,13 @@ uint64_t compile_simpleExpression() {
           // UINT64STAR_T - UINT64_T
           // pointer arithmetic: factor of 2^3 of integer operand
           emitLeftShiftBy(currentTemporary(), 3);
-          emitSUB(previousTemporary(), previousTemporary(), currentTemporary());
+          emitSub(previousTemporary(), previousTemporary(), currentTemporary());
         } else {
           // UINT64STAR_T - UINT64STAR_T
           // pointer arithmetic: (left_term - right_term) / SIZEOFUINT64
-          emitSUB(previousTemporary(), previousTemporary(), currentTemporary());
-          emitADDI(currentTemporary(), REG_ZR, SIZEOFUINT64);
-          emitDIVU(previousTemporary(), previousTemporary(), currentTemporary());
+          emitSub(previousTemporary(), previousTemporary(), currentTemporary());
+          emitAddi(currentTemporary(), REG_ZR, SIZEOFUINT64);
+          emitDivu(previousTemporary(), previousTemporary(), currentTemporary());
 
           ltype = UINT64_T;
         }
@@ -3772,7 +3772,7 @@ uint64_t compile_simpleExpression() {
         syntaxErrorMessage((uint64_t*) "(uint64_t) - (uint64_t*) is undefined");
       else
         // UINT64_T - UINT64_T
-        emitSUB(previousTemporary(), previousTemporary(), currentTemporary());
+        emitSub(previousTemporary(), previousTemporary(), currentTemporary());
     }
 
     tfree(1);
@@ -3809,45 +3809,45 @@ uint64_t compile_expression() {
 
     if (operatorSymbol == SYM_EQUALITY) {
       // a == b iff unsigned b - a < 1
-      emitSUB(previousTemporary(), currentTemporary(), previousTemporary());
-      emitADDI(currentTemporary(), REG_ZR, 1);
-      emitSLTU(previousTemporary(), previousTemporary(), currentTemporary());
+      emitSub(previousTemporary(), currentTemporary(), previousTemporary());
+      emitAddi(currentTemporary(), REG_ZR, 1);
+      emitSltu(previousTemporary(), previousTemporary(), currentTemporary());
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_NOTEQ) {
       // a != b iff unsigned 0 < b - a
-      emitSUB(previousTemporary(), currentTemporary(), previousTemporary());
+      emitSub(previousTemporary(), currentTemporary(), previousTemporary());
 
       tfree(1);
 
-      emitSLTU(currentTemporary(), REG_ZR, currentTemporary());
+      emitSltu(currentTemporary(), REG_ZR, currentTemporary());
 
     } else if (operatorSymbol == SYM_LT) {
       // a < b
-      emitSLTU(previousTemporary(), previousTemporary(), currentTemporary());
+      emitSltu(previousTemporary(), previousTemporary(), currentTemporary());
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GT) {
       // a > b iff b < a
-      emitSLTU(previousTemporary(), currentTemporary(), previousTemporary());
+      emitSltu(previousTemporary(), currentTemporary(), previousTemporary());
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_LEQ) {
       // a <= b iff 1 - (b < a)
-      emitSLTU(previousTemporary(), currentTemporary(), previousTemporary());
-      emitADDI(currentTemporary(), REG_ZR, 1);
-      emitSUB(previousTemporary(), currentTemporary(), previousTemporary());
+      emitSltu(previousTemporary(), currentTemporary(), previousTemporary());
+      emitAddi(currentTemporary(), REG_ZR, 1);
+      emitSub(previousTemporary(), currentTemporary(), previousTemporary());
 
       tfree(1);
 
     } else if (operatorSymbol == SYM_GEQ) {
       // a >= b iff 1 - (a < b)
-      emitSLTU(previousTemporary(), previousTemporary(), currentTemporary());
-      emitADDI(currentTemporary(), REG_ZR, 1);
-      emitSUB(previousTemporary(), currentTemporary(), previousTemporary());
+      emitSltu(previousTemporary(), previousTemporary(), currentTemporary());
+      emitAddi(currentTemporary(), REG_ZR, 1);
+      emitSub(previousTemporary(), currentTemporary(), previousTemporary());
 
       tfree(1);
     }
@@ -3880,7 +3880,7 @@ void compile_while() {
       // we do not know where to branch, fixup later
       branchForwardToEnd = binaryLength;
 
-      emitBEQ(currentTemporary(), REG_ZR, 0);
+      emitBeq(currentTemporary(), REG_ZR, 0);
 
       tfree(1);
 
@@ -3891,7 +3891,7 @@ void compile_while() {
         if (symbol == SYM_LBRACE) {
           getSymbol();
 
-          while (isNotRbraceOrEOF())
+          while (isNotRbraceOrEof())
             compile_statement();
 
           if (symbol == SYM_RBRACE)
@@ -3914,7 +3914,7 @@ void compile_while() {
   // we use JAL for the unconditional jump back to the loop condition because:
   // 1. the RISC-V doc recommends to do so to not disturb branch prediction
   // 2. GCC also uses JAL for the unconditional back jump of a while loop
-  emitJAL(REG_ZR, jumpBackToWhile - binaryLength);
+  emitJal(REG_ZR, jumpBackToWhile - binaryLength);
 
   if (branchForwardToEnd != 0)
     // first instruction after loop body will be generated here
@@ -3944,7 +3944,7 @@ void compile_if() {
       // if the "if" case is not true we branch to "else" (if provided)
       branchForwardToElseOrEnd = binaryLength;
 
-      emitBEQ(currentTemporary(), REG_ZR, 0);
+      emitBeq(currentTemporary(), REG_ZR, 0);
 
       tfree(1);
 
@@ -3955,7 +3955,7 @@ void compile_if() {
         if (symbol == SYM_LBRACE) {
           getSymbol();
 
-          while (isNotRbraceOrEOF())
+          while (isNotRbraceOrEof())
             compile_statement();
 
           if (symbol == SYM_RBRACE)
@@ -3977,7 +3977,7 @@ void compile_if() {
           // by unconditionally jumping to the end
           jumpForwardToEnd = binaryLength;
 
-          emitJAL(REG_ZR, 0);
+          emitJal(REG_ZR, 0);
 
           // if the "if" case was not true we branch here
           fixup_relative_BFormat(branchForwardToElseOrEnd);
@@ -3986,7 +3986,7 @@ void compile_if() {
           if (symbol == SYM_LBRACE) {
             getSymbol();
 
-            while (isNotRbraceOrEOF())
+            while (isNotRbraceOrEof())
               compile_statement();
 
             if (symbol == SYM_RBRACE)
@@ -4036,14 +4036,14 @@ void compile_return() {
       typeWarning(returnType, type);
 
     // save value of expression in return register
-    emitADD(REG_A0, REG_ZR, currentTemporary());
+    emitAdd(REG_A0, REG_ZR, currentTemporary());
 
     tfree(1);
   } else if (returnType != VOID_T)
     typeWarning(returnType, VOID_T);
 
   // jump to procedure epilogue through fixup chain using absolute address
-  emitJAL(REG_ZR, returnBranches);
+  emitJal(REG_ZR, returnBranches);
 
   // new head of fixup chain
   returnBranches = binaryLength - INSTRUCTIONSIZE;
@@ -4093,7 +4093,7 @@ void compile_statement() {
         if (rtype != UINT64_T)
           typeWarning(UINT64_T, rtype);
 
-        emitSD(previousTemporary(), 0, currentTemporary());
+        emitSd(previousTemporary(), 0, currentTemporary());
 
         tfree(2);
 
@@ -4130,7 +4130,7 @@ void compile_statement() {
           if (rtype != UINT64_T)
             typeWarning(UINT64_T, rtype);
 
-          emitSD(previousTemporary(), 0, currentTemporary());
+          emitSd(previousTemporary(), 0, currentTemporary());
 
           tfree(2);
 
@@ -4164,7 +4164,7 @@ void compile_statement() {
 
       // reset return register to initial return value
       // for missing return expressions
-      emitADDI(REG_A0, REG_ZR, 0);
+      emitAddi(REG_A0, REG_ZR, 0);
 
       if (symbol == SYM_SEMICOLON)
         getSymbol();
@@ -4187,13 +4187,13 @@ void compile_statement() {
       offset = getAddress(entry);
 
       if (isSignedInteger(offset, 12)) {
-        emitSD(getScope(entry), offset, currentTemporary());
+        emitSd(getScope(entry), offset, currentTemporary());
 
         tfree(1);
       } else {
         load_upperBaseAddress(entry);
 
-        emitSD(currentTemporary(), signExtend(getBits(offset, 0, 12), 12), previousTemporary());
+        emitSd(currentTemporary(), signExtend(getBits(offset, 0, 12), 12), previousTemporary());
 
         tfree(2);
       }
@@ -4446,7 +4446,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
     returnType = type;
 
-    while (isNotRbraceOrEOF())
+    while (isNotRbraceOrEof())
       compile_statement();
 
     returnType = 0;
@@ -4557,10 +4557,10 @@ void emitRoundUp(uint64_t reg, uint64_t m) {
   talloc();
 
   // computes value(reg) + m - 1 - (value(reg) + m - 1) % m
-  emitADDI(reg, reg, m - 1);
-  emitADDI(currentTemporary(), REG_ZR, m);
-  emitREMU(currentTemporary(), reg, currentTemporary());
-  emitSUB(reg, reg, currentTemporary());
+  emitAddi(reg, reg, m - 1);
+  emitAddi(currentTemporary(), REG_ZR, m);
+  emitRemu(currentTemporary(), reg, currentTemporary());
+  emitSub(reg, reg, currentTemporary());
 
   tfree(1);
 }
@@ -4569,13 +4569,13 @@ void emitLeftShiftBy(uint64_t reg, uint64_t b) {
   // assert: 0 <= b < 11
 
   // load multiplication factor less than 2^11 to avoid sign extension
-  emitADDI(nextTemporary(), REG_ZR, twoToThePowerOf(b));
-  emitMUL(reg, reg, nextTemporary());
+  emitAddi(nextTemporary(), REG_ZR, twoToThePowerOf(b));
+  emitMul(reg, reg, nextTemporary());
 }
 
 void emitProgramEntry() {
   // jump and link to the _start procedure
-  emitJAL(REG_RA, 0);
+  emitJal(REG_RA, 0);
 }
 
 void emitBootstrapping() {
@@ -4595,7 +4595,7 @@ void emitBootstrapping() {
   fixup_relative_JFormat(0, binaryLength);
 
   // allocate memory for argv variable
-  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
+  emitAddi(REG_SP, REG_SP, -REGISTERSIZE);
 
   talloc();
 
@@ -4603,8 +4603,8 @@ void emitBootstrapping() {
   //      ______________
   //     |              V
   // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
-  emitADDI(currentTemporary(), REG_SP, 2 * REGISTERSIZE);
-  emitSD(REG_SP, 0, currentTemporary());
+  emitAddi(currentTemporary(), REG_SP, 2 * REGISTERSIZE);
+  emitSd(REG_SP, 0, currentTemporary());
 
   tfree(1);
 
@@ -4622,36 +4622,36 @@ void emitBootstrapping() {
 
   if (lower >= twoToThePowerOf(11)) {
     // add 1 which is effectively 2^12 to cancel sign extension of lower
-    emitLUI(REG_GP, upper + 1);
-    emitADDI(REG_GP, REG_GP, signExtend(lower, 12));
+    emitLui(REG_GP, upper + 1);
+    emitAddi(REG_GP, REG_GP, signExtend(lower, 12));
   } else {
-    emitLUI(REG_GP, upper);
-    emitADDI(REG_GP, REG_GP, lower);
+    emitLui(REG_GP, upper);
+    emitAddi(REG_GP, REG_GP, lower);
   }
 
   // retrieve current program break
-  emitADDI(REG_A0, REG_ZR, 0);
-  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-  emitECALL();
+  emitAddi(REG_A0, REG_ZR, 0);
+  emitAddi(REG_A7, REG_ZR, SYSCALL_BRK);
+  emitEcall();
 
   // align current program break for double-word access
   emitRoundUp(REG_A0, SIZEOFUINT64);
 
   // set program break to aligned program break
-  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-  emitECALL();
+  emitAddi(REG_A7, REG_ZR, SYSCALL_BRK);
+  emitEcall();
 
   // look up global variable _bump for storing malloc's bump pointer
   // copy "_bump" string into zeroed double word to obtain unique hash
   entry = searchGlobalSymbolTable(stringCopy((uint64_t*) "_bump"), VARIABLE);
 
   // store aligned program break in _bump
-  emitSD(getScope(entry), getAddress(entry), REG_A0);
+  emitSd(getScope(entry), getAddress(entry), REG_A0);
 
   if (reportUndefinedProcedures())
     // rather than jump and link to the main procedure
     // exit by continuing to the next instruction
-    emitADDI(REG_A0, REG_ZR, 0);
+    emitAddi(REG_A0, REG_ZR, 0);
   else {
     // copy "main" string into zeroed double word to obtain unique hash
     entry = getScopedSymbolTableEntry(stringCopy((uint64_t*) "main"), PROCEDURE);
@@ -4660,15 +4660,15 @@ void emitBootstrapping() {
   }
 
   // we exit with exit code in return register pushed onto the stack
-  emitADDI(REG_SP, REG_SP, -REGISTERSIZE);
-  emitSD(REG_SP, 0, REG_A0);
+  emitAddi(REG_SP, REG_SP, -REGISTERSIZE);
+  emitSd(REG_SP, 0, REG_A0);
 
   entry = getScopedSymbolTableEntry((uint64_t*) "exit", PROCEDURE);
 
   help_call_codegen(entry, (uint64_t*) "exit");
 
   if (padding != 0)
-    emitNOP();
+    emitNop();
 
   codeLength = binaryLength;
 }
@@ -4731,9 +4731,9 @@ void selfie_compile() {
 
       // assert: sourceName is mapped and not longer than maxFilenameLength
 
-      sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
+      sourceFd = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
-      if (signedLessThan(sourceFD, 0)) {
+      if (signedLessThan(sourceFd, 0)) {
         printf2((uint64_t*) "%s: could not open input file %s\n", selfieName, sourceName);
 
         exit(EXITCODE_IOERROR);
@@ -4775,7 +4775,7 @@ void selfie_compile() {
 
   emitDataSegment();
 
-  ELF_header = createELFHeader(binaryLength);
+  ELF_header = createElfHeader(binaryLength);
 
   entryPoint = ELF_ENTRY_POINT;
 
@@ -4847,11 +4847,11 @@ uint64_t getFunct7(uint64_t instruction) {
   return getBits(instruction, 25, 7);
 }
 
-uint64_t getRS2(uint64_t instruction) {
+uint64_t getRs2(uint64_t instruction) {
   return getBits(instruction, 20, 5);
 }
 
-uint64_t getRS1(uint64_t instruction) {
+uint64_t getRs1(uint64_t instruction) {
   return getBits(instruction, 15, 5);
 }
 
@@ -4859,7 +4859,7 @@ uint64_t getFunct3(uint64_t instruction) {
   return getBits(instruction, 12, 3);
 }
 
-uint64_t getRD(uint64_t instruction) {
+uint64_t getRd(uint64_t instruction) {
   return getBits(instruction, 7, 5);
 }
 
@@ -4869,10 +4869,10 @@ uint64_t getOpcode(uint64_t instruction) {
 
 void decodeRFormat() {
   funct7 = getFunct7(ir);
-  rs2    = getRS2(ir);
-  rs1    = getRS1(ir);
+  rs2    = getRs2(ir);
+  rs1    = getRs1(ir);
   funct3 = getFunct3(ir);
-  rd     = getRD(ir);
+  rd     = getRd(ir);
   imm    = 0;
 }
 
@@ -4906,9 +4906,9 @@ uint64_t getImmediateIFormat(uint64_t instruction) {
 void decodeIFormat() {
   funct7 = 0;
   rs2    = 0;
-  rs1    = getRS1(ir);
+  rs1    = getRs1(ir);
   funct3 = getFunct3(ir);
-  rd     = getRD(ir);
+  rd     = getRd(ir);
   imm    = getImmediateIFormat(ir);
 }
 
@@ -4952,8 +4952,8 @@ uint64_t getImmediateSFormat(uint64_t instruction) {
 
 void decodeSFormat() {
   funct7 = 0;
-  rs2    = getRS2(ir);
-  rs1    = getRS1(ir);
+  rs2    = getRs2(ir);
+  rs1    = getRs1(ir);
   funct3 = getFunct3(ir);
   rd     = 0;
   imm    = getImmediateSFormat(ir);
@@ -5009,8 +5009,8 @@ uint64_t getImmediateBFormat(uint64_t instruction) {
 
 void decodeBFormat() {
   funct7 = 0;
-  rs2    = getRS2(ir);
-  rs1    = getRS1(ir);
+  rs2    = getRs2(ir);
+  rs1    = getRs1(ir);
   funct3 = getFunct3(ir);
   rd     = 0;
   imm    = getImmediateBFormat(ir);
@@ -5067,7 +5067,7 @@ void decodeJFormat() {
   rs2    = 0;
   rs1    = 0;
   funct3 = 0;
-  rd     = getRD(ir);
+  rd     = getRd(ir);
   imm    = getImmediateJFormat(ir);
 }
 
@@ -5101,7 +5101,7 @@ void decodeUFormat() {
   rs2    = 0;
   rs1    = 0;
   funct3 = 0;
-  rd     = getRD(ir);
+  rd     = getRd(ir);
   imm    = getImmediateUFormat(ir);
 }
 
@@ -5231,91 +5231,91 @@ void emitInstruction(uint64_t instruction) {
   binaryLength = binaryLength + INSTRUCTIONSIZE;
 }
 
-void emitNOP() {
+void emitNop() {
   emitInstruction(encodeIFormat(0, REG_ZR, F3_NOP, REG_ZR, OP_IMM));
 
   ic_addi = ic_addi + 1;
 }
 
-void emitLUI(uint64_t rd, uint64_t immediate) {
+void emitLui(uint64_t rd, uint64_t immediate) {
   emitInstruction(encodeUFormat(immediate, rd, OP_LUI));
 
   ic_lui = ic_lui + 1;
 }
 
-void emitADDI(uint64_t rd, uint64_t rs1, uint64_t immediate) {
+void emitAddi(uint64_t rd, uint64_t rs1, uint64_t immediate) {
   emitInstruction(encodeIFormat(immediate, rs1, F3_ADDI, rd, OP_IMM));
 
   ic_addi = ic_addi + 1;
 }
 
-void emitADD(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+void emitAdd(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_ADD, rs2, rs1, F3_ADD, rd, OP_OP));
 
   ic_add = ic_add + 1;
 }
 
-void emitSUB(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+void emitSub(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_SUB, rs2, rs1, F3_SUB, rd, OP_OP));
 
   ic_sub = ic_sub + 1;
 }
 
-void emitMUL(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+void emitMul(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_MUL, rs2, rs1, F3_MUL, rd, OP_OP));
 
   ic_mul = ic_mul + 1;
 }
 
-void emitDIVU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+void emitDivu(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_DIVU, rs2, rs1, F3_DIVU, rd, OP_OP));
 
   ic_divu = ic_divu + 1;
 }
 
-void emitREMU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+void emitRemu(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_REMU, rs2, rs1, F3_REMU, rd, OP_OP));
 
   ic_remu = ic_remu + 1;
 }
 
-void emitSLTU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+void emitSltu(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_SLTU, rs2, rs1, F3_SLTU, rd, OP_OP));
 
   ic_sltu = ic_sltu + 1;
 }
 
-void emitLD(uint64_t rd, uint64_t rs1, uint64_t immediate) {
+void emitLd(uint64_t rd, uint64_t rs1, uint64_t immediate) {
   emitInstruction(encodeIFormat(immediate, rs1, F3_LD, rd, OP_LD));
 
   ic_ld = ic_ld + 1;
 }
 
-void emitSD(uint64_t rs1, uint64_t immediate, uint64_t rs2) {
+void emitSd(uint64_t rs1, uint64_t immediate, uint64_t rs2) {
   emitInstruction(encodeSFormat(immediate, rs2, rs1, F3_SD, OP_SD));
 
   ic_sd = ic_sd + 1;
 }
 
-void emitBEQ(uint64_t rs1, uint64_t rs2, uint64_t immediate) {
+void emitBeq(uint64_t rs1, uint64_t rs2, uint64_t immediate) {
   emitInstruction(encodeBFormat(immediate, rs2, rs1, F3_BEQ, OP_BRANCH));
 
   ic_beq = ic_beq + 1;
 }
 
-void emitJAL(uint64_t rd, uint64_t immediate) {
+void emitJal(uint64_t rd, uint64_t immediate) {
   emitInstruction(encodeJFormat(immediate, rd, OP_JAL));
 
   ic_jal = ic_jal + 1;
 }
 
-void emitJALR(uint64_t rd, uint64_t rs1, uint64_t immediate) {
+void emitJalr(uint64_t rd, uint64_t rs1, uint64_t immediate) {
   emitInstruction(encodeIFormat(immediate, rs1, F3_JALR, rd, OP_JALR));
 
   ic_jalr = ic_jalr + 1;
 }
 
-void emitECALL() {
+void emitEcall() {
   emitInstruction(encodeIFormat(F12_ECALL, REG_ZR, F3_ECALL, REG_ZR, OP_SYSTEM));
 
   ic_ecall = ic_ecall + 1;
@@ -5328,8 +5328,8 @@ void fixup_relative_BFormat(uint64_t fromAddress) {
 
   storeInstruction(fromAddress,
     encodeBFormat(binaryLength - fromAddress,
-      getRS2(instruction),
-      getRS1(instruction),
+      getRs2(instruction),
+      getRs1(instruction),
       getFunct3(instruction),
       getOpcode(instruction)));
 }
@@ -5341,7 +5341,7 @@ void fixup_relative_JFormat(uint64_t fromAddress, uint64_t toAddress) {
 
   storeInstruction(fromAddress,
     encodeJFormat(toAddress - fromAddress,
-      getRD(instruction),
+      getRd(instruction),
       getOpcode(instruction)));
 }
 
@@ -5400,7 +5400,7 @@ void emitDataSegment() {
   allocatedMemory = 0;
 }
 
-uint64_t* createELFHeader(uint64_t binaryLength) {
+uint64_t* createElfHeader(uint64_t binaryLength) {
   uint64_t* header;
 
   // store all numbers necessary to create a minimal and valid
@@ -5439,7 +5439,7 @@ uint64_t* createELFHeader(uint64_t binaryLength) {
   return header;
 }
 
-uint64_t validateELFHeader(uint64_t* header) {
+uint64_t validateElfHeader(uint64_t* header) {
   uint64_t  newEntryPoint;
   uint64_t  newBinaryLength;
   uint64_t  position;
@@ -5456,7 +5456,7 @@ uint64_t validateELFHeader(uint64_t* header) {
     // binary does not fit into virtual address space
     return 0;
 
-  validHeader = createELFHeader(newBinaryLength);
+  validHeader = createElfHeader(newBinaryLength);
 
   position = 0;
 
@@ -5615,7 +5615,7 @@ void selfie_load() {
   numberOfReadBytes = read(fd, ELF_header, ELF_HEADER_LEN);
 
   if (numberOfReadBytes == ELF_HEADER_LEN) {
-    if (validateELFHeader(ELF_header)) {
+    if (validateElfHeader(ELF_header)) {
       // now read code length
       numberOfReadBytes = read(fd, binary_buffer, SIZEOFUINT64);
 
@@ -5657,15 +5657,15 @@ void emitExit() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   // load signed 32-bit integer argument for exit
-  emitLD(REG_A0, REG_SP, 0);
+  emitLd(REG_A0, REG_SP, 0);
 
   // remove the argument from the stack
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
   // load the correct syscall number and invoke syscall
-  emitADDI(REG_A7, REG_ZR, SYSCALL_EXIT);
+  emitAddi(REG_A7, REG_ZR, SYSCALL_EXIT);
 
-  emitECALL();
+  emitEcall();
 
   // never returns here
 }
@@ -5687,21 +5687,21 @@ void implementExit(uint64_t* context) {
 void emitRead() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
-  emitLD(REG_A2, REG_SP, 0); // size
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A2, REG_SP, 0); // size
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitLD(REG_A1, REG_SP, 0); // *buffer
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A1, REG_SP, 0); // *buffer
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitLD(REG_A0, REG_SP, 0); // fd
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A0, REG_SP, 0); // fd
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitADDI(REG_A7, REG_ZR, SYSCALL_READ);
+  emitAddi(REG_A7, REG_ZR, SYSCALL_READ);
 
-  emitECALL();
+  emitEcall();
 
   // jump back to caller, return value is in REG_A0
-  emitJALR(REG_ZR, REG_RA, 0);
+  emitJalr(REG_ZR, REG_RA, 0);
 }
 
 void implementRead(uint64_t* context) {
@@ -5735,8 +5735,8 @@ void implementRead(uint64_t* context) {
 
   while (size > 0) {
     if (isValidVirtualAddress(vbuffer)) {
-      if (isVirtualAddressMapped(getPT(context), vbuffer)) {
-        buffer = tlb(getPT(context), vbuffer);
+      if (isVirtualAddressMapped(getPt(context), vbuffer)) {
+        buffer = tlb(getPt(context), vbuffer);
 
         if (size < bytesToRead)
           bytesToRead = size;
@@ -5760,7 +5760,7 @@ void implementRead(uint64_t* context) {
               // caution: read only overwrites bytesToRead number of bytes
               // we therefore need to restore the actual value in buffer
               // to preserve the original read semantics
-              storePhysicalMemory(buffer, *(values + loadSymbolicMemory(getPT(context), vbuffer)));
+              storePhysicalMemory(buffer, *(values + loadSymbolicMemory(getPt(context), vbuffer)));
 
               actuallyRead = signExtend(read(fd, buffer, bytesToRead), SYSCALL_BITWIDTH);
 
@@ -5777,9 +5777,9 @@ void implementRead(uint64_t* context) {
 
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 0);
+              storeSymbolicMemory(getPt(context), vbuffer, value, 0, lo, up, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, tc);
+              storeSymbolicMemory(getPt(context), vbuffer, value, 0, lo, up, tc);
           } else {
             actuallyRead = 0;
 
@@ -5831,7 +5831,7 @@ void implementRead(uint64_t* context) {
     *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
   }
 
-  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+  setPc(context, getPc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
     printf3((uint64_t*) "%s: actually read %d bytes from file with descriptor %d\n", selfieName, (uint64_t*) readTotal, (uint64_t*) fd);
@@ -5840,20 +5840,20 @@ void implementRead(uint64_t* context) {
 void emitWrite() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
-  emitLD(REG_A2, REG_SP, 0); // size
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A2, REG_SP, 0); // size
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitLD(REG_A1, REG_SP, 0); // *buffer
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A1, REG_SP, 0); // *buffer
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitLD(REG_A0, REG_SP, 0); // fd
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A0, REG_SP, 0); // fd
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitADDI(REG_A7, REG_ZR, SYSCALL_WRITE);
+  emitAddi(REG_A7, REG_ZR, SYSCALL_WRITE);
 
-  emitECALL();
+  emitEcall();
 
-  emitJALR(REG_ZR, REG_RA, 0);
+  emitJalr(REG_ZR, REG_RA, 0);
 }
 
 void implementWrite(uint64_t* context) {
@@ -5883,8 +5883,8 @@ void implementWrite(uint64_t* context) {
 
   while (size > 0) {
     if (isValidVirtualAddress(vbuffer)) {
-      if (isVirtualAddressMapped(getPT(context), vbuffer)) {
-        buffer = tlb(getPT(context), vbuffer);
+      if (isVirtualAddressMapped(getPt(context), vbuffer)) {
+        buffer = tlb(getPt(context), vbuffer);
 
         if (size < bytesToWrite)
           bytesToWrite = size;
@@ -5940,7 +5940,7 @@ void implementWrite(uint64_t* context) {
     *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
   }
 
-  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+  setPc(context, getPc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
     printf3((uint64_t*) "%s: actually wrote %d bytes into file with descriptor %d\n", selfieName, (uint64_t*) writtenTotal, (uint64_t*) fd);
@@ -5949,20 +5949,20 @@ void implementWrite(uint64_t* context) {
 void emitOpen() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
-  emitLD(REG_A2, REG_SP, 0); // mode
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A2, REG_SP, 0); // mode
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitLD(REG_A1, REG_SP, 0); // flags
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A1, REG_SP, 0); // flags
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitLD(REG_A0, REG_SP, 0); // filename
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A0, REG_SP, 0); // filename
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitADDI(REG_A7, REG_ZR, SYSCALL_OPEN);
+  emitAddi(REG_A7, REG_ZR, SYSCALL_OPEN);
 
-  emitECALL();
+  emitEcall();
 
-  emitJALR(REG_ZR, REG_RA, 0);
+  emitJalr(REG_ZR, REG_RA, 0);
 }
 
 uint64_t down_loadString(uint64_t* table, uint64_t vaddr, uint64_t* s) {
@@ -6027,7 +6027,7 @@ void implementOpen(uint64_t* context) {
   flags     = *(getRegs(context) + REG_A1);
   mode      = *(getRegs(context) + REG_A2);
 
-  if (down_loadString(getPT(context), vfilename, filename_buffer)) {
+  if (down_loadString(getPt(context), vfilename, filename_buffer)) {
     fd = signExtend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(getRegs(context) + REG_A0) = fd;
@@ -6048,7 +6048,7 @@ void implementOpen(uint64_t* context) {
     *(reg_ups + REG_A0) = *(getRegs(context) + REG_A0);
   }
 
-  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+  setPc(context, getPc(context) + INSTRUCTIONSIZE);
 }
 
 void emitMalloc() {
@@ -6073,8 +6073,8 @@ void emitMalloc() {
   // allocate register for size parameter
   talloc();
 
-  emitLD(currentTemporary(), REG_SP, 0); // size
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(currentTemporary(), REG_SP, 0); // size
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
   // round up size to double-word alignment
   emitRoundUp(currentTemporary(), SIZEOFUINT64);
@@ -6083,30 +6083,30 @@ void emitMalloc() {
   talloc();
 
   // get current _bump which will be returned upon success
-  emitLD(currentTemporary(), getScope(entry), getAddress(entry));
+  emitLd(currentTemporary(), getScope(entry), getAddress(entry));
 
   // call brk syscall to set new program break to _bump + size
-  emitADD(REG_A0, currentTemporary(), previousTemporary());
-  emitADDI(REG_A7, REG_ZR, SYSCALL_BRK);
-  emitECALL();
+  emitAdd(REG_A0, currentTemporary(), previousTemporary());
+  emitAddi(REG_A7, REG_ZR, SYSCALL_BRK);
+  emitEcall();
 
   // return 0 if memory allocation failed, that is,
   // if new program break is still _bump and size !=0
-  emitBEQ(REG_A0, currentTemporary(), 2 * INSTRUCTIONSIZE);
-  emitBEQ(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
-  emitBEQ(REG_ZR, previousTemporary(), 3 * INSTRUCTIONSIZE);
-  emitADDI(REG_A0, REG_ZR, 0);
-  emitBEQ(REG_ZR, REG_ZR, 3 * INSTRUCTIONSIZE);
+  emitBeq(REG_A0, currentTemporary(), 2 * INSTRUCTIONSIZE);
+  emitBeq(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
+  emitBeq(REG_ZR, previousTemporary(), 3 * INSTRUCTIONSIZE);
+  emitAddi(REG_A0, REG_ZR, 0);
+  emitBeq(REG_ZR, REG_ZR, 3 * INSTRUCTIONSIZE);
 
   // if memory was successfully allocated
   // set _bump to new program break
   // and then return original _bump
-  emitSD(getScope(entry), getAddress(entry), REG_A0);
-  emitADDI(REG_A0, currentTemporary(), 0);
+  emitSd(getScope(entry), getAddress(entry), REG_A0);
+  emitAddi(REG_A0, currentTemporary(), 0);
 
   tfree(2);
 
-  emitJALR(REG_ZR, REG_RA,0);
+  emitJalr(REG_ZR, REG_RA,0);
 }
 
 void implementBrk(uint64_t* context) {
@@ -6148,7 +6148,7 @@ void implementBrk(uint64_t* context) {
       if (mrcc > 0) {
         if (isTraceSpaceAvailable())
           // since there has been branching record brk using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, previousProgramBreak, 1, previousProgramBreak, size, tc);
+          storeSymbolicMemory(getPt(context), 0, previousProgramBreak, 1, previousProgramBreak, size, tc);
         else {
           throwException(EXCEPTION_MAXTRACE, 0);
 
@@ -6173,7 +6173,7 @@ void implementBrk(uint64_t* context) {
     }
   }
 
-  setPC(context, getPC(context) + INSTRUCTIONSIZE);
+  setPc(context, getPc(context) + INSTRUCTIONSIZE);
 }
 
 
@@ -6184,20 +6184,20 @@ void implementBrk(uint64_t* context) {
 void emitSwitch() {
   createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
-  emitLD(REG_A1, REG_SP, 0); // number of instructions to execute
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A1, REG_SP, 0); // number of instructions to execute
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitLD(REG_A0, REG_SP, 0); // context to which we switch
-  emitADDI(REG_SP, REG_SP, REGISTERSIZE);
+  emitLd(REG_A0, REG_SP, 0); // context to which we switch
+  emitAddi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emitADDI(REG_A7, REG_ZR, SYSCALL_SWITCH);
+  emitAddi(REG_A7, REG_ZR, SYSCALL_SWITCH);
 
-  emitECALL();
+  emitEcall();
 
   // save context from which we are switching here in return register
-  emitADD(REG_A0, REG_ZR, REG_A1);
+  emitAdd(REG_A0, REG_ZR, REG_A1);
 
-  emitJALR(REG_ZR, REG_RA, 0);
+  emitJalr(REG_ZR, REG_RA, 0);
 }
 
 void doSwitch(uint64_t* toContext, uint64_t timeout) {
@@ -6208,9 +6208,9 @@ void doSwitch(uint64_t* toContext, uint64_t timeout) {
   restoreContext(toContext);
 
   // restore machine state
-  pc        = getPC(toContext);
+  pc        = getPc(toContext);
   registers = getRegs(toContext);
-  pt        = getPT(toContext);
+  pt        = getPt(toContext);
 
   // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
   if (getParent(fromContext) != MY_CONTEXT)
@@ -8337,7 +8337,7 @@ void decode_execute() {
     throwException(EXCEPTION_UNKNOWNINSTRUCTION, 0);
   else {
     //report the error on the console
-    outputFD = 1;
+    outputFd = 1;
 
     printf2((uint64_t*) "%s: unknown instruction with %x opcode detected\n", selfieName, (uint64_t*) opcode);
 
@@ -8467,16 +8467,16 @@ void selfie_disassemble() {
 
   // assert: assemblyName is mapped and not longer than maxFilenameLength
 
-  assemblyFD = openWriteOnly(assemblyName);
+  assemblyFd = openWriteOnly(assemblyName);
 
-  if (signedLessThan(assemblyFD, 0)) {
+  if (signedLessThan(assemblyFd, 0)) {
     printf2((uint64_t*) "%s: could not create assembly output file %s\n", selfieName, assemblyName);
 
     exit(EXITCODE_IOERROR);
   }
 
   outputName = assemblyName;
-  outputFD   = assemblyFD;
+  outputFd   = assemblyFd;
 
   execute = 0;
 
@@ -8498,7 +8498,7 @@ void selfie_disassemble() {
   debug       = 0;
 
   outputName = (uint64_t*) 0;
-  outputFD   = 1;
+  outputFd   = 1;
 
   printf4((uint64_t*) "%s: %d characters of assembly with %d instructions written into %s\n", selfieName, (uint64_t*) numberOfWrittenCharacters, (uint64_t*) (codeLength / INSTRUCTIONSIZE), assemblyName);
 }
@@ -8524,7 +8524,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   if (in != (uint64_t*) 0)
     setPrevContext(in, context);
 
-  setPC(context, 0);
+  setPc(context, 0);
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
@@ -8532,7 +8532,7 @@ uint64_t* allocateContext(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  setPT(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+  setPt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
 
   // determine range of recently mapped pages
   setLoPage(context, 0);
@@ -8627,14 +8627,14 @@ void saveContext(uint64_t* context) {
   uint64_t* vregisters;
 
   // save machine state
-  setPC(context, pc);
+  setPc(context, pc);
 
   if (getParent(context) != MY_CONTEXT) {
-    parentTable = getPT(getParent(context));
+    parentTable = getPt(getParent(context));
 
     vctxt = getVirtualContext(context);
 
-    storeVirtualMemory(parentTable, programCounter(vctxt), getPC(context));
+    storeVirtualMemory(parentTable, programCounter(vctxt), getPc(context));
 
     r = 0;
 
@@ -8659,7 +8659,7 @@ void saveContext(uint64_t* context) {
 void mapPage(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
 
-  table = getPT(context);
+  table = getPt(context);
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
@@ -8692,11 +8692,11 @@ void restoreContext(uint64_t* context) {
   uint64_t frame;
 
   if (getParent(context) != MY_CONTEXT) {
-    parentTable = getPT(getParent(context));
+    parentTable = getPt(getParent(context));
 
     vctxt = getVirtualContext(context);
 
-    setPC(context, loadVirtualMemory(parentTable, programCounter(vctxt)));
+    setPc(context, loadVirtualMemory(parentTable, programCounter(vctxt)));
 
     r = 0;
 
@@ -8821,20 +8821,20 @@ void pfree(uint64_t* frame) {
 void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
   // assert: isValidVirtualAddress(vaddr) == 1
 
-  if (isVirtualAddressMapped(getPT(context), vaddr) == 0)
+  if (isVirtualAddressMapped(getPt(context), vaddr) == 0)
     mapPage(context, getPageOfVirtualAddress(vaddr), (uint64_t) palloc());
 
   if (symbolic) {
     if (isTraceSpaceAvailable())
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, tc);
+      storeSymbolicMemory(getPt(context), vaddr, data, 0, data, data, tc);
     else {
       printf1((uint64_t*) "%s: ealloc out of memory\n", selfieName);
 
       exit(EXITCODE_OUTOFTRACEMEMORY);
     }
   } else
-    storeVirtualMemory(getPT(context), vaddr, data);
+    storeVirtualMemory(getPt(context), vaddr, data);
 }
 
 void up_loadBinary(uint64_t* context) {
@@ -8842,7 +8842,7 @@ void up_loadBinary(uint64_t* context) {
 
   // assert: entryPoint is multiple of PAGESIZE and REGISTERSIZE
 
-  setPC(context, entryPoint);
+  setPc(context, entryPoint);
   setLoPage(context, getPageOfVirtualAddress(entryPoint));
   setMePage(context, getPageOfVirtualAddress(entryPoint));
   setOriginalBreak(context, entryPoint + binaryLength);
@@ -9214,7 +9214,7 @@ void mapUnmappedPages(uint64_t* context) {
 
   page = getLoPage(context);
 
-  while (isPageMapped(getPT(context), page))
+  while (isPageMapped(getPt(context), page))
     page = page + 1;
 
   while (pavailable()) {
@@ -9273,7 +9273,7 @@ void backtrackTrace(uint64_t* context) {
 
   symbolic = 1;
 
-  setPC(context, pc);
+  setPc(context, pc);
 }
 
 uint64_t monster(uint64_t* toContext) {
@@ -9444,7 +9444,7 @@ uint64_t clauseMayBeTrue(uint64_t* clauseAddress, uint64_t depth) {
   variable = 0;
 
   while (variable <= depth) {
-    if (*(SATAssignment + variable) == TRUE) {
+    if (*(satAssignment + variable) == TRUE) {
       if (*(clauseAddress + 2 * variable))
         return TRUE;
     } else if (*(clauseAddress + 2 * variable + 1))
@@ -9454,7 +9454,7 @@ uint64_t clauseMayBeTrue(uint64_t* clauseAddress, uint64_t depth) {
     variable = variable + 1;
   }
 
-  while (variable < numberOfSATVariables) {
+  while (variable < numberOfSatVariables) {
     // variable must be unassigned because variable > depth
     if (*(clauseAddress + 2 * variable))
       return TRUE;
@@ -9472,8 +9472,8 @@ uint64_t instanceMayBeTrue(uint64_t depth) {
 
   clause = 0;
 
-  while (clause < numberOfSATClauses) {
-    if (clauseMayBeTrue(SATInstance + clause * 2 * numberOfSATVariables, depth))
+  while (clause < numberOfSatClauses) {
+    if (clauseMayBeTrue(satInstance + clause * 2 * numberOfSatVariables, depth))
       clause = clause + 1;
     else
       // clause is FALSE under current assignment
@@ -9484,15 +9484,15 @@ uint64_t instanceMayBeTrue(uint64_t depth) {
 }
 
 uint64_t babysat(uint64_t depth) {
-  if (depth == numberOfSATVariables)
+  if (depth == numberOfSatVariables)
     return SAT;
 
-  *(SATAssignment + depth) = TRUE;
+  *(satAssignment + depth) = TRUE;
 
   if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT)
     return SAT;
 
-  *(SATAssignment + depth) = FALSE;
+  *(satAssignment + depth) = FALSE;
 
   if (instanceMayBeTrue(depth)) if (babysat(depth + 1) == SAT)
     return SAT;
@@ -9508,18 +9508,18 @@ void selfie_printDimacs() {
   uint64_t clause;
   uint64_t variable;
 
-  printf2((uint64_t*) "p cnf %d %d\n", (uint64_t*) numberOfSATVariables, (uint64_t*) numberOfSATClauses);
+  printf2((uint64_t*) "p cnf %d %d\n", (uint64_t*) numberOfSatVariables, (uint64_t*) numberOfSatClauses);
 
   clause = 0;
 
-  while (clause < numberOfSATClauses) {
+  while (clause < numberOfSatClauses) {
     variable = 0;
 
-    while (variable < numberOfSATVariables) {
-      if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable) == TRUE) {
+    while (variable < numberOfSatVariables) {
+      if (*(satInstance + clause * 2 * numberOfSatVariables + 2 * variable) == TRUE) {
         printInteger(variable + 1);
         print((uint64_t*) " ");
-      } else if (*(SATInstance + clause * 2 * numberOfSATVariables + 2 * variable + 1) == TRUE) {
+      } else if (*(satInstance + clause * 2 * numberOfSatVariables + 2 * variable + 1) == TRUE) {
         printInteger(-(variable + 1));
         print((uint64_t*) " ");
       }
@@ -9632,7 +9632,7 @@ void dimacs_getClause(uint64_t clause) {
         dimacs_getSymbol();
 
         return;
-      } else if (literal > numberOfSATVariables) {
+      } else if (literal > numberOfSatVariables) {
         syntaxErrorMessage((uint64_t*) "clause exceeds declared number of variables");
 
         exit(EXITCODE_PARSERERROR);
@@ -9642,9 +9642,9 @@ void dimacs_getClause(uint64_t clause) {
       literal = literal - 1;
 
       if (not)
-        *(SATInstance + clause * 2 * numberOfSATVariables + 2 * literal + 1) = TRUE;
+        *(satInstance + clause * 2 * numberOfSatVariables + 2 * literal + 1) = TRUE;
       else
-        *(SATInstance + clause * 2 * numberOfSATVariables + 2 * literal) = TRUE;
+        *(satInstance + clause * 2 * numberOfSatVariables + 2 * literal) = TRUE;
     } else if (symbol == SYM_EOF)
       return;
     else
@@ -9659,7 +9659,7 @@ void dimacs_getInstance() {
 
   clauses = 0;
 
-  while (clauses < numberOfSATClauses)
+  while (clauses < numberOfSatClauses)
     if (symbol != SYM_EOF) {
       dimacs_getClause(clauses);
 
@@ -9684,9 +9684,9 @@ void selfie_loadDimacs() {
 
   // assert: sourceName is mapped and not longer than maxFilenameLength
 
-  sourceFD = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
+  sourceFd = signExtend(open(sourceName, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
-  if (signedLessThan(sourceFD, 0)) {
+  if (signedLessThan(sourceFd, 0)) {
     printf2((uint64_t*) "%s: could not open input file %s\n", selfieName, sourceName);
 
     exit(EXITCODE_IOERROR);
@@ -9702,17 +9702,17 @@ void selfie_loadDimacs() {
   dimacs_word((uint64_t*) "p");
   dimacs_word((uint64_t*) "cnf");
 
-  numberOfSATVariables = dimacs_number();
+  numberOfSatVariables = dimacs_number();
 
-  SATAssignment = (uint64_t*) smalloc(numberOfSATVariables * SIZEOFUINT64);
+  satAssignment = (uint64_t*) smalloc(numberOfSatVariables * SIZEOFUINT64);
 
-  numberOfSATClauses = dimacs_number();
+  numberOfSatClauses = dimacs_number();
 
-  SATInstance = (uint64_t*) smalloc(numberOfSATClauses * 2 * numberOfSATVariables * SIZEOFUINT64);
+  satInstance = (uint64_t*) smalloc(numberOfSatClauses * 2 * numberOfSatVariables * SIZEOFUINT64);
 
   dimacs_getInstance();
 
-  printf4((uint64_t*) "%s: %d clauses with %d declared variables loaded from %s\n", selfieName, (uint64_t*) numberOfSATClauses, (uint64_t*) numberOfSATVariables, sourceName);
+  printf4((uint64_t*) "%s: %d clauses with %d declared variables loaded from %s\n", selfieName, (uint64_t*) numberOfSatClauses, (uint64_t*) numberOfSatVariables, sourceName);
 
   dimacsName = sourceName;
 }
@@ -9735,8 +9735,8 @@ void selfie_sat() {
 
     variable = 0;
 
-    while (variable < numberOfSATVariables) {
-      if (*(SATAssignment + variable) == FALSE)
+    while (variable < numberOfSatVariables) {
+      if (*(satAssignment + variable) == FALSE)
         printf1((uint64_t*) "-%d ", (uint64_t*) (variable + 1));
       else
         printf1((uint64_t*) "%d ", (uint64_t*) (variable + 1));
