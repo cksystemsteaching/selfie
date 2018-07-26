@@ -971,7 +971,7 @@ void initMemory(uint64_t megabytes);
 uint64_t loadPhysicalMemory(uint64_t* paddr);
 void     storePhysicalMemory(uint64_t* paddr, uint64_t data);
 
-uint64_t FrameForPage(uint64_t* table, uint64_t page);
+uint64_t frameForPage(uint64_t* table, uint64_t page);
 uint64_t getFrameForPage(uint64_t* table, uint64_t page);
 uint64_t isPageMapped(uint64_t* table, uint64_t page);
 
@@ -1398,20 +1398,20 @@ uint64_t* deleteContext(uint64_t* context, uint64_t* from);
 
 uint64_t nextContext(uint64_t* context)    { return (uint64_t) context; }
 uint64_t prevContext(uint64_t* context)    { return (uint64_t) (context + 1); }
-uint64_t PC(uint64_t* context)             { return (uint64_t) (context + 2); }
-uint64_t Regs(uint64_t* context)           { return (uint64_t) (context + 3); }
-uint64_t PT(uint64_t* context)             { return (uint64_t) (context + 4); }
-uint64_t LoPage(uint64_t* context)         { return (uint64_t) (context + 5); }
-uint64_t MePage(uint64_t* context)         { return (uint64_t) (context + 6); }
-uint64_t HiPage(uint64_t* context)         { return (uint64_t) (context + 7); }
-uint64_t OriginalBreak(uint64_t* context)  { return (uint64_t) (context + 8); }
-uint64_t ProgramBreak(uint64_t* context)   { return (uint64_t) (context + 9); }
-uint64_t Exception(uint64_t* context)      { return (uint64_t) (context + 10); }
-uint64_t FaultingPage(uint64_t* context)   { return (uint64_t) (context + 11); }
-uint64_t ExitCode(uint64_t* context)       { return (uint64_t) (context + 12); }
-uint64_t Parent(uint64_t* context)         { return (uint64_t) (context + 13); }
-uint64_t VirtualContext(uint64_t* context) { return (uint64_t) (context + 14); }
-uint64_t Name(uint64_t* context)           { return (uint64_t) (context + 15); }
+uint64_t programCounter(uint64_t* context) { return (uint64_t) (context + 2); }
+uint64_t regs(uint64_t* context)           { return (uint64_t) (context + 3); }
+uint64_t pageTable(uint64_t* context)      { return (uint64_t) (context + 4); }
+uint64_t loPage(uint64_t* context)         { return (uint64_t) (context + 5); }
+uint64_t mePage(uint64_t* context)         { return (uint64_t) (context + 6); }
+uint64_t hiPage(uint64_t* context)         { return (uint64_t) (context + 7); }
+uint64_t originalBreak(uint64_t* context)  { return (uint64_t) (context + 8); }
+uint64_t programBreak(uint64_t* context)   { return (uint64_t) (context + 9); }
+uint64_t exception(uint64_t* context)      { return (uint64_t) (context + 10); }
+uint64_t faultingPage(uint64_t* context)   { return (uint64_t) (context + 11); }
+uint64_t exitCode(uint64_t* context)       { return (uint64_t) (context + 12); }
+uint64_t parent(uint64_t* context)         { return (uint64_t) (context + 13); }
+uint64_t virtualContext(uint64_t* context) { return (uint64_t) (context + 14); }
+uint64_t name(uint64_t* context)           { return (uint64_t) (context + 15); }
 
 uint64_t* getNextContext(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* getPrevContext(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -6270,7 +6270,7 @@ void storePhysicalMemory(uint64_t* paddr, uint64_t data) {
   *paddr = data;
 }
 
-uint64_t FrameForPage(uint64_t* table, uint64_t page) {
+uint64_t frameForPage(uint64_t* table, uint64_t page) {
   return (uint64_t) (table + page);
 }
 
@@ -8623,8 +8623,8 @@ void saveContext(uint64_t* context) {
   uint64_t* parentTable;
   uint64_t* vctxt;
   uint64_t r;
-  uint64_t* regs;
-  uint64_t* vregs;
+  uint64_t* registers;
+  uint64_t* vregisters;
 
   // save machine state
   setPC(context, pc);
@@ -8634,25 +8634,25 @@ void saveContext(uint64_t* context) {
 
     vctxt = getVirtualContext(context);
 
-    storeVirtualMemory(parentTable, PC(vctxt), getPC(context));
+    storeVirtualMemory(parentTable, programCounter(vctxt), getPC(context));
 
     r = 0;
 
-    regs = getRegs(context);
+    registers = getRegs(context);
 
-    vregs = (uint64_t*) loadVirtualMemory(parentTable, Regs(vctxt));
+    vregisters = (uint64_t*) loadVirtualMemory(parentTable, regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      storeVirtualMemory(parentTable, (uint64_t) (vregs + r), *(regs + r));
+      storeVirtualMemory(parentTable, (uint64_t) (vregisters + r), *(registers + r));
 
       r = r + 1;
     }
 
-    storeVirtualMemory(parentTable, ProgramBreak(vctxt), getProgramBreak(context));
+    storeVirtualMemory(parentTable, programBreak(vctxt), getProgramBreak(context));
 
-    storeVirtualMemory(parentTable, Exception(vctxt), getException(context));
-    storeVirtualMemory(parentTable, FaultingPage(vctxt), getFaultingPage(context));
-    storeVirtualMemory(parentTable, ExitCode(vctxt), getExitCode(context));
+    storeVirtualMemory(parentTable, exception(vctxt), getException(context));
+    storeVirtualMemory(parentTable, faultingPage(vctxt), getFaultingPage(context));
+    storeVirtualMemory(parentTable, exitCode(vctxt), getExitCode(context));
   }
 }
 
@@ -8684,8 +8684,8 @@ void restoreContext(uint64_t* context) {
   uint64_t* parentTable;
   uint64_t* vctxt;
   uint64_t r;
-  uint64_t* regs;
-  uint64_t* vregs;
+  uint64_t* registers;
+  uint64_t* vregisters;
   uint64_t* table;
   uint64_t page;
   uint64_t me;
@@ -8696,36 +8696,36 @@ void restoreContext(uint64_t* context) {
 
     vctxt = getVirtualContext(context);
 
-    setPC(context, loadVirtualMemory(parentTable, PC(vctxt)));
+    setPC(context, loadVirtualMemory(parentTable, programCounter(vctxt)));
 
     r = 0;
 
-    regs = getRegs(context);
+    registers = getRegs(context);
 
-    vregs = (uint64_t*) loadVirtualMemory(parentTable, Regs(vctxt));
+    vregisters = (uint64_t*) loadVirtualMemory(parentTable, regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      *(regs + r) = loadVirtualMemory(parentTable, (uint64_t) (vregs + r));
+      *(registers + r) = loadVirtualMemory(parentTable, (uint64_t) (vregisters + r));
 
       r = r + 1;
     }
 
-    setProgramBreak(context, loadVirtualMemory(parentTable, ProgramBreak(vctxt)));
+    setProgramBreak(context, loadVirtualMemory(parentTable, programBreak(vctxt)));
 
-    setException(context, loadVirtualMemory(parentTable, Exception(vctxt)));
-    setFaultingPage(context, loadVirtualMemory(parentTable, FaultingPage(vctxt)));
-    setExitCode(context, loadVirtualMemory(parentTable, ExitCode(vctxt)));
+    setException(context, loadVirtualMemory(parentTable, exception(vctxt)));
+    setFaultingPage(context, loadVirtualMemory(parentTable, faultingPage(vctxt)));
+    setExitCode(context, loadVirtualMemory(parentTable, exitCode(vctxt)));
 
-    table = (uint64_t*) loadVirtualMemory(parentTable, PT(vctxt));
+    table = (uint64_t*) loadVirtualMemory(parentTable, pageTable(vctxt));
 
     // assert: context page table is only mapped from beginning up and end down
 
-    page = loadVirtualMemory(parentTable, LoPage(vctxt));
-    me   = loadVirtualMemory(parentTable, MePage(vctxt));
+    page = loadVirtualMemory(parentTable, loPage(vctxt));
+    me   = loadVirtualMemory(parentTable, mePage(vctxt));
 
     while (page <= me) {
-      if (isVirtualAddressMapped(parentTable, FrameForPage(table, page))) {
-        frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+      if (isVirtualAddressMapped(parentTable, frameForPage(table, page))) {
+        frame = loadVirtualMemory(parentTable, frameForPage(table, page));
 
         mapPage(context, page, getFrameForPage(parentTable, getPageOfVirtualAddress(frame)));
       }
@@ -8733,12 +8733,12 @@ void restoreContext(uint64_t* context) {
       page = page + 1;
     }
 
-    storeVirtualMemory(parentTable, LoPage(vctxt), page);
+    storeVirtualMemory(parentTable, loPage(vctxt), page);
 
-    page = loadVirtualMemory(parentTable, HiPage(vctxt));
+    page = loadVirtualMemory(parentTable, hiPage(vctxt));
 
-    if (isVirtualAddressMapped(parentTable, FrameForPage(table, page)))
-      frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+    if (isVirtualAddressMapped(parentTable, frameForPage(table, page)))
+      frame = loadVirtualMemory(parentTable, frameForPage(table, page));
     else
       frame = 0;
 
@@ -8747,13 +8747,13 @@ void restoreContext(uint64_t* context) {
 
       page  = page - 1;
 
-      if (isVirtualAddressMapped(parentTable, FrameForPage(table, page)))
-        frame = loadVirtualMemory(parentTable, FrameForPage(table, page));
+      if (isVirtualAddressMapped(parentTable, frameForPage(table, page)))
+        frame = loadVirtualMemory(parentTable, frameForPage(table, page));
       else
         frame = 0;
     }
 
-    storeVirtualMemory(parentTable, HiPage(vctxt), page);
+    storeVirtualMemory(parentTable, hiPage(vctxt), page);
   }
 }
 
