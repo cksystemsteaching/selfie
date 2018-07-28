@@ -5408,32 +5408,32 @@ uint64_t* create_elf_header(uint64_t binary_length) {
   header = smalloc(ELF_HEADER_LEN);
 
   // RISC-U ELF64 file header:
-  *(header + 0) = 127                              // magic number part 0 is 0x7F
+  *(header + 0) = 127                               // magic number part 0 is 0x7F
                 + left_shift((uint64_t) 'E', 8)     // magic number part 1
                 + left_shift((uint64_t) 'L', 16)    // magic number part 2
                 + left_shift((uint64_t) 'F', 24)    // magic number part 3
                 + left_shift(2, 32)                 // file class is ELFCLASS64
                 + left_shift(1, 40)                 // object file data structures endianess is ELFDATA2LSB
                 + left_shift(1, 48);                // version of the object file format
-  *(header + 1) = 0;                               // ABI version and start of padding bytes
-  *(header + 2) = 2                                // object file type is ET_EXEC
+  *(header + 1) = 0;                                // ABI version and start of padding bytes
+  *(header + 2) = 2                                 // object file type is ET_EXEC
                 + left_shift(243, 16)               // target architecture is RV64
                 + left_shift(1, 32);                // version of the object file format
-  *(header + 3) = ELF_ENTRY_POINT;                 // entry point address
-  *(header + 4) = 8 * SIZEOFUINT64;                // program header offset
-  *(header + 5) = 0;                               // section header offset
+  *(header + 3) = ELF_ENTRY_POINT;                  // entry point address
+  *(header + 4) = 8 * SIZEOFUINT64;                 // program header offset
+  *(header + 5) = 0;                                // section header offset
   *(header + 6) = left_shift(8 * SIZEOFUINT64, 32)  // elf header size
                 + left_shift(7 * SIZEOFUINT64, 48); // size of program header entry
-  *(header + 7) = 1;                               // number of program header entries
+  *(header + 7) = 1;                                // number of program header entries
 
   // RISC-U ELF64 program header table:
   *(header + 8)  = 1                              // type of segment is LOAD
-                 + left_shift(7, 32);              // segment attributes is RWX
+                 + left_shift(7, 32);             // segment attributes is RWX
   *(header + 9)  = ELF_HEADER_LEN + SIZEOFUINT64; // segment offset in file
   *(header + 10) = ELF_ENTRY_POINT;               // virtual address in memory
   *(header + 11) = 0;                             // physical address (reserved)
-  *(header + 12) = binary_length;                  // size of segment in file
-  *(header + 13) = binary_length;                  // size of segment in memory
+  *(header + 12) = binary_length;                 // size of segment in file
+  *(header + 13) = binary_length;                 // size of segment in memory
   *(header + 14) = PAGESIZE;                      // alignment of segment
 
   return header;
