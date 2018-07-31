@@ -174,6 +174,7 @@ uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
 uint64_t CHAR_DOUBLEQUOTE  = '"';
+uint64_t CHAR_BITWISEAND   = '&';
 
 uint64_t CPUBITWIDTH = 64;
 
@@ -337,6 +338,7 @@ uint64_t SYM_NOTEQ        = 24; // !=
 uint64_t SYM_MOD          = 25; // %
 uint64_t SYM_CHARACTER    = 26; // character
 uint64_t SYM_STRING       = 27; // string
+uint64_t SYM_BITWISEAND   = 28; // &
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -372,7 +374,7 @@ uint64_t  sourceFD   = 0;             // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void initScanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_BITWISEAND + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
@@ -402,6 +404,7 @@ void initScanner () {
   *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
   *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+  *(SYMBOLS + SYM_BITWISEAND)   = (uint64_t) "&";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -543,6 +546,7 @@ uint64_t compile_call(uint64_t* procedure);
 uint64_t compile_factor();
 uint64_t compile_term();
 uint64_t compile_simpleExpression();
+uint64_t compile_comparisonExpression();
 uint64_t compile_expression();
 void     compile_while();
 void     compile_if();
@@ -745,6 +749,7 @@ uint64_t F3_SUB   = 0; // 000
 uint64_t F3_MUL   = 0; // 000
 uint64_t F3_DIVU  = 5; // 101
 uint64_t F3_REMU  = 7; // 111
+uint64_t F3_AND   = 7; // 111
 uint64_t F3_SLTU  = 3; // 011
 uint64_t F3_LD    = 3; // 011
 uint64_t F3_SD    = 3; // 011
@@ -758,6 +763,7 @@ uint64_t F7_MUL  = 1;  // 0000001
 uint64_t F7_SUB  = 32; // 0100000
 uint64_t F7_DIVU = 1;  // 0000001
 uint64_t F7_REMU = 1;  // 0000001
+uint64_t F7_AND  = 0;  // 0000000
 uint64_t F7_SLTU = 0;  // 0000000
 
 // f12-codes (immediates)
@@ -802,6 +808,7 @@ void emitSUB(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emitMUL(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emitDIVU(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emitREMU(uint64_t rd, uint64_t rs1, uint64_t rs2);
+void emitAND(uint64_t rd, uint64_t rs1, uint64_t rs2);
 void emitSLTU(uint64_t rd, uint64_t rs1, uint64_t rs2);
 
 void emitLD(uint64_t rd, uint64_t rs1, uint64_t immediate);
@@ -853,6 +860,7 @@ uint64_t ic_sub   = 0;
 uint64_t ic_mul   = 0;
 uint64_t ic_divu  = 0;
 uint64_t ic_remu  = 0;
+uint64_t ic_and   = 0;
 uint64_t ic_sltu  = 0;
 uint64_t ic_ld    = 0;
 uint64_t ic_sd    = 0;
@@ -1030,6 +1038,9 @@ void constrain_divu();
 void do_remu();
 void constrain_remu_step_1();
 void constrain_remu();
+
+void do_and();
+void constrain_and();
 
 void do_sltu();
 void constrain_sltu();
@@ -1228,6 +1239,31 @@ uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
 
 // line exit code
 uint64_t last_jal_from = 0;
+
+// equality trace
+uint64_t ec = 0;
+uint64_t cnd_rs1_vaddr;
+uint64_t cnd_rs2_vaddr;
+uint64_t cnd_rs1_saddr;
+uint64_t cnd_rs2_saddr;
+uint64_t cnd_rs1_whichByte;
+uint64_t cnd_rs2_whichByte;
+uint64_t cnd_rs1_isNotInterval;
+uint64_t cnd_rs2_isNotInterval;
+
+uint64_t* constraint_types = (uint64_t*) 0;
+uint64_t* vintervals       = (uint64_t*) 0;
+uint64_t* nevintervals     = (uint64_t*) 0;
+
+uint64_t to_vinterval(uint64_t lo, uint64_t up);
+uint64_t vinterval_check_class(uint64_t lo, uint64_t up);
+uint64_t vinterval_intersection(uint64_t vinterval1, uint64_t vinterval2);
+uint64_t vinterval_non_equality_region(uint64_t intersection, uint64_t vinterval);
+void copy_equality_constriants(uint64_t old_ec, uint64_t new_ec);
+void reset_equality_constriants(uint64_t ec);
+void create_equality_constraint();
+void eq_alloc();
+void eq_free();
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2811,6 +2847,11 @@ void getSymbol() {
 
         symbol = SYM_MOD;
 
+      } else if (character == CHAR_BITWISEAND) {
+        getCharacter();
+
+        symbol = SYM_BITWISEAND;
+
       } else {
         printLineNumber((uint64_t*) "syntax error", lineNumber);
         print((uint64_t*) "found unknown character ");
@@ -3761,7 +3802,7 @@ uint64_t compile_simpleExpression() {
   return ltype;
 }
 
-uint64_t compile_expression() {
+uint64_t compile_comparisonExpression() {
   uint64_t ltype;
   uint64_t operatorSymbol;
   uint64_t rtype;
@@ -3829,6 +3870,39 @@ uint64_t compile_expression() {
 
       tfree(1);
     }
+  }
+
+  // assert: allocatedTemporaries == n + 1
+
+  return ltype;
+}
+
+uint64_t compile_expression() {
+  uint64_t ltype;
+  uint64_t operatorSymbol;
+  uint64_t rtype;
+
+  // assert: n = allocatedTemporaries
+
+  ltype = compile_comparisonExpression();
+
+  // assert: allocatedTemporaries == n + 1
+
+  // & ?
+  while (symbol == SYM_BITWISEAND) {
+    operatorSymbol = symbol;
+
+    getSymbol();
+
+    rtype = compile_comparisonExpression();
+    // assert: allocatedTemporaries == n + 2
+
+    if (ltype != rtype)
+      typeWarning(ltype, rtype);
+
+    emitAND(previousTemporary(), previousTemporary(), currentTemporary());
+
+    tfree(1);
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -5081,6 +5155,7 @@ void resetInstructionCounters() {
   ic_mul   = 0;
   ic_divu  = 0;
   ic_remu  = 0;
+  ic_and   = 0;
   ic_sltu  = 0;
   ic_ld    = 0;
   ic_sd    = 0;
@@ -5091,7 +5166,7 @@ void resetInstructionCounters() {
 }
 
 uint64_t getTotalNumberOfInstructions() {
-  return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
+  return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_and + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
 }
 
 void printInstructionCounter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
@@ -5133,6 +5208,8 @@ void printInstructionCounters() {
   printInstructionCounter(ic, ic_divu, (uint64_t*) "divu");
   print((uint64_t*) ", ");
   printInstructionCounter(ic, ic_remu, (uint64_t*) "remu");
+  print((uint64_t*) ", ");
+  printInstructionCounter(ic, ic_and, (uint64_t*) "and");
   println();
 
   print(selfieName);
@@ -5246,6 +5323,12 @@ void emitREMU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
   emitInstruction(encodeRFormat(F7_REMU, rs2, rs1, F3_REMU, rd, OP_OP));
 
   ic_remu = ic_remu + 1;
+}
+
+void emitAND(uint64_t rd, uint64_t rs1, uint64_t rs2) {
+  emitInstruction(encodeRFormat(F7_AND, rs2, rs1, F3_AND, rd, OP_OP));
+
+  ic_and = ic_and + 1;
 }
 
 void emitSLTU(uint64_t rd, uint64_t rs1, uint64_t rs2) {
@@ -7824,6 +7907,28 @@ void constrain_remu() {
   }
 }
 
+void do_and() {
+  if (rd != REG_ZR)
+    // semantics of and
+    *(registers + rd) = *(registers + rs1) & *(registers + rs2);
+
+  pc = pc + INSTRUCTIONSIZE;
+
+  ic_and = ic_and + 1;
+}
+
+void constrain_and() {
+  if (rd != REG_ZR) {
+    *(reg_los + rd) = *(registers + rd);
+    *(reg_ups + rd) = *(registers + rd);
+    *(reg_steps + rd) = 1;
+
+    *(reg_whichByte + rd) = 0;
+    *(reg_saddr     + rd) = 0;
+    *(reg_isNotInterval + rd) = 0;
+  }
+}
+
 void do_sltu() {
   // set on less than unsigned
 
@@ -9354,6 +9459,222 @@ uint64_t fuzzUp(uint64_t value) {
     return twoToThePowerOf(fuzz) - 1;
 }
 
+uint64_t vinterval_check_class(uint64_t lo, uint64_t up) {
+  if (lo <= '9')
+    if (lo >= '0')
+      if (up <= '9')
+        if (up >= '0')
+          return 1;
+
+  if (lo <= 'z')
+    if (lo >= 'a')
+      if (up <= 'z')
+        if (up >= 'a')
+          return 2;
+
+  if (lo <= 'Z')
+    if (lo >= 'A')
+      if (up <= 'Z')
+        if (up >= 'A')
+          return 3;
+
+  return 0;
+}
+
+uint64_t to_vinterval(uint64_t lo, uint64_t up) {
+  return leftShift(twoToThePowerOf(up - lo + 1) - 1, lo);
+}
+
+uint64_t vinterval_intersection(uint64_t vinterval1, uint64_t vinterval2) {
+  return vinterval1 & vinterval2;
+}
+
+uint64_t vinterval_non_equality_region(uint64_t intersection, uint64_t vinterval) {
+  return (-intersection - 1) & vinterval;
+}
+
+void copy_equality_constriants(uint64_t old_ec, uint64_t new_ec) {
+  uint64_t cnt;
+
+  cnt = 0;
+  while (cnt < 8) {
+    *(constraint_types + new_ec + cnt) = *(constraint_types + old_ec + cnt);
+    *(vintervals       + new_ec + cnt) = *(vintervals       + old_ec + cnt);
+    *(nevintervals     + new_ec + cnt) = *(nevintervals     + old_ec + cnt);
+
+    cnt = cnt + 1;
+  }
+}
+
+void reset_equality_constriants(uint64_t ec) {
+  uint64_t cnt;
+
+  cnt = 0;
+  while (cnt < 8) {
+    *(constraint_types + ec + cnt) = 0;
+
+    cnt = cnt + 1;
+  }
+}
+
+void create_equality_constraint() {
+  uint64_t mrvc1;
+  uint64_t mrvc2;
+  uint64_t c1;
+  uint64_t c2;
+  uint64_t vinterval1;
+  uint64_t vinterval2;
+  uint64_t intersection;
+  uint64_t constraint_type_rs1;
+  uint64_t constraint_type_rs2;
+  uint64_t take;
+
+  take = 1;
+  c1 = vinterval_check_class(cnd_rs1_lo, cnd_rs1_up);
+  c2 = vinterval_check_class(cnd_rs2_lo, cnd_rs2_up);
+  if (c1 == 0) {
+    print(selfieName);
+    print((uint64_t*) ": unsupported value range in an equality expression at ");
+    printHexadecimal(pc, 0);
+    printSourceLineNumberOfInstruction(pc - entryPoint);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  } else if (c2 == 0) {
+    print(selfieName);
+    print((uint64_t*) ": unsupported value range in an equality expression at ");
+    printHexadecimal(pc, 0);
+    printSourceLineNumberOfInstruction(pc - entryPoint);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
+  // assert: only loadCharacter
+  mrvc1 = loadSymbolicMemory(pt, cnd_rs1_saddr);
+  mrvc2 = loadSymbolicMemory(pt, cnd_rs2_saddr);
+
+  if (c1 != c2) {
+    if (*(isNotIntervals + mrvc1) > 2) {
+      eq_alloc();
+      cnd_rs1_isNotInterval = ec;
+      copy_equality_constriants(*(isNotIntervals + mrvc1), ec);
+    }
+
+    if (*(isNotIntervals + mrvc2) > 2) {
+      eq_alloc();
+      cnd_rs2_isNotInterval = ec;
+      copy_equality_constriants(*(isNotIntervals + mrvc2), ec);
+    }
+
+    // TODO: update isNotInterval in storeConstrainedMemory function
+    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, mrcc);
+    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr, mrcc);
+    takeBranch(0, 0);
+  } else {
+    eq_alloc();
+    c1 = ec;
+    eq_alloc();
+    c2 = ec;
+
+    if (*(isNotIntervals + mrvc1) > 2) {
+      constraint_type_rs1 = *(constraint_types + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
+      copy_equality_constriants(*(isNotIntervals + mrvc1), c1);
+    } else {
+      constraint_type_rs1 = 0;
+      reset_equality_constriants(c1);
+    }
+
+    if (*(isNotIntervals + mrvc2) > 2) {
+      constraint_type_rs2 = *(constraint_types + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
+      copy_equality_constriants(*(isNotIntervals + mrvc2), c2);
+    } else {
+      constraint_type_rs2 = 0;
+      reset_equality_constriants(c2);
+    }
+
+    if (constraint_type_rs1 == 0)
+      vinterval1 = to_vinterval(cnd_rs1_lo, cnd_rs1_up);
+    else
+      vinterval1 = *(vintervals + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
+
+    if (constraint_type_rs2 == 0)
+      vinterval2 = to_vinterval(cnd_rs2_lo, cnd_rs2_up);
+    else
+      vinterval2 = *(vintervals + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
+
+    intersection = vinterval_intersection(vinterval1, vinterval2);
+
+    // non-equality
+    if (constraint_type_rs1 == 1) {
+      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
+      *(vintervals   + c1 + cnd_rs1_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval1);
+      *(nevintervals + c1 + cnd_rs1_whichByte - 1) = vinterval_intersection(intersection, vinterval1);
+    } else if (constraint_type_rs1 == 0) {
+      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
+      *(vintervals   + c1 + cnd_rs1_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval1);
+      *(nevintervals + c1 + cnd_rs1_whichByte - 1) = vinterval_intersection(intersection, vinterval1);
+    } else {
+      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
+      *(vintervals   + c1 + cnd_rs1_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval1);
+      *(nevintervals + c1 + cnd_rs1_whichByte - 1) = intersection + *(nevintervals + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
+    }
+
+    if (*(vintervals + c1 + cnd_rs1_whichByte - 1) == 0)
+      if (*(nevintervals + c1 + cnd_rs1_whichByte - 1) == 0)
+        take = 0;
+
+    if (constraint_type_rs2 == 1) {
+      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
+      *(vintervals   + c2 + cnd_rs2_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval2);
+      *(nevintervals + c2 + cnd_rs2_whichByte - 1) = vinterval_intersection(intersection, vinterval2);
+    } else if (constraint_type_rs2 == 0) {
+      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
+      *(vintervals   + c2 + cnd_rs2_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval2);
+      *(nevintervals + c2 + cnd_rs2_whichByte - 1) = vinterval_intersection(intersection, vinterval2);
+    } else {
+      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
+      *(vintervals   + c2 + cnd_rs2_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval2);
+      *(nevintervals + c2 + cnd_rs2_whichByte - 1) = intersection + *(nevintervals + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
+    }
+
+    if (*(vintervals + c2 + cnd_rs2_whichByte - 1) == 0)
+      if (*(nevintervals + c2 + cnd_rs2_whichByte - 1) == 0)
+        take = 0;
+
+    if (take) {
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, mrcc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, mrcc);
+      if (intersection) {
+        storeRegisterMemory(rd, 0);
+        storeRegisterMemory(REG_FP, *(registers + REG_FP));
+        storeRegisterMemory(REG_SP, *(registers + REG_SP));
+      } else
+        takeBranch(0, 0);
+    }
+
+    // equality
+    if (intersection) {
+      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 1;
+      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 1;
+      *(vintervals + c1 + cnd_rs1_whichByte - 1) = intersection;
+      *(vintervals + c2 + cnd_rs2_whichByte - 1) = intersection;
+
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, mrcc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, mrcc);
+      takeBranch(1, 0);
+    }
+  }
+}
+
+void eq_alloc() {
+  ec = ec + 8;
+}
+
+void eq_free() {
+  ec = ec - 8;
+}
+
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
@@ -9521,7 +9842,7 @@ void decode_execute() {
 
       return;
     }
-  } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
+  } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, AND, SLTU
     decodeRFormat();
 
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
@@ -9618,7 +9939,7 @@ void decode_execute() {
 
         return;
       }
-    } else if (funct3 == F3_REMU) {
+    } else if (funct3 == F3_REMU) { // = AND
       if (funct7 == F7_REMU) {
         if (debug) {
           if (record) {
@@ -9640,6 +9961,27 @@ void decode_execute() {
           }
         } else
           do_remu();
+
+        return;
+      } else if (funct7 == F7_AND) {
+        if (debug) {
+          if (record) {
+            record_lui_addi_add_sub_mul_sltu_jal_jalr();
+            do_and();
+          } else if (disassemble) {
+            print_add_sub_mul_divu_remu_sltu((uint64_t*) "and");
+            if (execute) {
+              print_add_sub_mul_divu_remu_sltu_before();
+              do_and();
+              print_addi_add_sub_mul_divu_remu_sltu_after();
+            }
+            println();
+          } else if (symbolic) {
+            do_and();
+            constrain_and();
+          }
+        } else
+          do_and();
 
         return;
       }
