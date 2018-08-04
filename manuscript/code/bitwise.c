@@ -1,15 +1,15 @@
 // left shifting, bitwise ORing, and logical right shifting in C*
 
 // libcstar procedures for printing
-void initLibrary();
+void init_library();
 void print(uint64_t* s);
-void printInteger(uint64_t n);
-void printBinary(uint64_t n, uint64_t a);
+void print_integer(uint64_t n);
+void print_binary(uint64_t n, uint64_t a);
 void println();
 
 // libcstar procedures for left and right shifting
-uint64_t leftShift(uint64_t n, uint64_t b);
-uint64_t rightShift(uint64_t n, uint64_t b);
+uint64_t left_shift(uint64_t n, uint64_t b);
+uint64_t right_shift(uint64_t n, uint64_t b);
 
 uint64_t main() {
   uint64_t i;
@@ -17,7 +17,7 @@ uint64_t main() {
   uint64_t u;
 
   // initialize selfie's libcstar library
-  initLibrary();
+  init_library();
 
   // initialize the integer i to binary 0000000000000000000000000000000000000000000000000000000000000011
   i = 3;
@@ -28,9 +28,9 @@ uint64_t main() {
   // repeat until i is equal to 0
   while (i != 0) {
     // print i in binary
-    printBinary(i, 64);
+    print_binary(i, 64);
     print(" in binary = ");
-    printInteger(i);
+    print_integer(i);
     print(" in decimal");
     println();
 
@@ -38,7 +38,7 @@ uint64_t main() {
     j = i;
 
     // shift i to the left by 6 bits
-    i = leftShift(i, 6);
+    i = left_shift(i, 6);
 
     // signed integer addition here amounts to bitwise OR because
     // the bits at the same index in u and i are never both 1 so
@@ -47,9 +47,9 @@ uint64_t main() {
   }
 
   // print u in binary
-  printBinary(u, 64);
+  print_binary(u, 64);
   print(" in binary = ");
-  printInteger(u);
+  print_integer(u);
   print(" in decimal");
   println();
 
@@ -59,13 +59,13 @@ uint64_t main() {
   // repeat until i is equal to 0
   while (i != 0) {
     // print i in binary
-    printBinary(i, 64);
+    print_binary(i, 64);
     print(" in binary = ");
-    printInteger(i);
+    print_integer(i);
     print(" in decimal");
     println();
 
     // shift i to the right by 6 bits
-    i = rightShift(i, 6);
+    i = right_shift(i, 6);
   }
 }
