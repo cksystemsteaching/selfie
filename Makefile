@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob sat spike all clean
+.PHONY : compile quine escape debug replay os vm min mob sat spike riscv-tools all clean
 
 # Self-compile
 compile: selfie
@@ -65,6 +65,12 @@ spike: selfie
 	spike pk selfie.m -c selfie.c -o selfie7.m -s selfie7.s -m 1
 	diff -q selfie.m selfie7.m
 	diff -q selfie.s selfie7.s
+
+# Build and update riscv-tools Docker image
+riscv-tools:
+	docker build -f Dockerfile-riscv-tools -t cksystemsteaching/selfie .
+	docker login -u cksystemsteaching
+	docker push cksystemsteaching/riscv-tools
 
 # Run everything
 all: compile quine debug replay os vm min mob sat
