@@ -202,7 +202,7 @@ uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 
 uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
 
-uint64_t max_filename_length = 128;
+uint64_t MAX_FILENAME_LENGTH = 128;
 
 uint64_t* character_buffer; // buffer for reading and writing characters
 uint64_t* integer_buffer;   // buffer for printing integers
@@ -273,7 +273,7 @@ void init_library() {
   integer_buffer = smalloc(CPUBITWIDTH + 1);
 
   // does not need to be mapped
-  filename_buffer = smalloc(max_filename_length);
+  filename_buffer = smalloc(MAX_FILENAME_LENGTH);
 
   // allocate and touch to make sure memory is mapped for read calls
   binary_buffer  = smalloc(SIZEOFUINT64);
@@ -357,9 +357,9 @@ uint64_t SYM_STRING       = 27; // string
 
 uint64_t* SYMBOLS; // strings representing symbols
 
-uint64_t max_identifier_length = 64;  // maximum number of characters in an identifier
-uint64_t max_integer_length    = 20;  // maximum number of characters in an unsigned integer
-uint64_t max_string_length     = 128; // maximum number of characters in a string
+uint64_t MAX_IDENTIFIER_LENGTH = 64;  // maximum number of characters in an identifier
+uint64_t MAX_INTEGER_LENGTH    = 20;  // maximum number of characters in an unsigned integer
+uint64_t MAX_STRING_LENGTH     = 128; // maximum number of characters in a string
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -380,7 +380,7 @@ uint64_t number_of_read_characters = 0;
 uint64_t symbol; // most recently recognized symbol
 
 uint64_t number_of_ignored_characters = 0;
-uint64_t number_of_comments          = 0;
+uint64_t number_of_comments           = 0;
 uint64_t number_of_scanned_symbols    = 0;
 
 uint64_t* source_name = (uint64_t*) 0; // name of source file
@@ -432,7 +432,7 @@ void reset_scanner() {
   get_character();
 
   number_of_ignored_characters = 0;
-  number_of_comments          = 0;
+  number_of_comments           = 0;
   number_of_scanned_symbols    = 0;
 }
 
@@ -512,8 +512,8 @@ uint64_t* local_symbol_table   = (uint64_t*) 0;
 uint64_t* library_symbol_table = (uint64_t*) 0;
 
 uint64_t number_of_global_variables = 0;
-uint64_t number_of_procedures      = 0;
-uint64_t number_of_strings         = 0;
+uint64_t number_of_procedures       = 0;
+uint64_t number_of_strings          = 0;
 
 uint64_t number_of_searches = 0;
 uint64_t total_search_time  = 0;
@@ -522,13 +522,12 @@ uint64_t total_search_time  = 0;
 
 void reset_symbol_tables() {
   global_symbol_table  = (uint64_t*) zalloc(HASH_TABLE_SIZE * SIZEOFUINT64STAR);
-
   local_symbol_table   = (uint64_t*) 0;
   library_symbol_table = (uint64_t*) 0;
 
   number_of_global_variables = 0;
-  number_of_procedures      = 0;
-  number_of_strings         = 0;
+  number_of_procedures       = 0;
+  number_of_strings          = 0;
 
   number_of_searches = 0;
   total_search_time  = 0;
@@ -867,9 +866,9 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t max_binary_length = 262144; // 256KB
+uint64_t MAX_BINARY_LENGTH = 262144; // 256KB
 
-uint64_t ELF_HEADER_LEN  = 120; // = 64 + 56 bytes (file + program header)
+uint64_t ELF_HEADER_LEN = 120; // = 64 + 56 bytes (file + program header)
 
 // according to RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
@@ -893,7 +892,7 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
-uint64_t* binary       = (uint64_t*) 0; // binary of code and data segments
+uint64_t* binary        = (uint64_t*) 0; // binary of code and data segments
 uint64_t  binary_length = 0; // length of binary in bytes including data segment
 uint64_t* binary_name   = (uint64_t*) 0; // file name of binary
 
@@ -1109,7 +1108,7 @@ void replay_trace();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t max_replay_length = 100;
+uint64_t MAX_REPLAY_LENGTH = 100;
 
 // trace
 
@@ -1121,8 +1120,8 @@ uint64_t* values = (uint64_t*) 0; // trace of values
 // ------------------------- INITIALIZATION ------------------------
 
 void init_replay_engine() {
-  pcs    = zalloc(max_replay_length * SIZEOFUINT64);
-  values = zalloc(max_replay_length * SIZEOFUINT64);
+  pcs    = zalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
+  values = zalloc(MAX_REPLAY_LENGTH * SIZEOFUINT64);
 }
 
 // -----------------------------------------------------------------
@@ -1162,7 +1161,7 @@ uint64_t fuzz_up(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t max_trace_length = 100000;
+uint64_t MAX_TRACE_LENGTH = 100000;
 
 uint64_t debug_symbolic = 0;
 
@@ -1213,17 +1212,17 @@ uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
 // ------------------------- INITIALIZATION ------------------------
 
 void init_symbolic_engine() {
-  pcs    = zalloc(max_trace_length * SIZEOFUINT64);
-  tcs    = zalloc(max_trace_length * SIZEOFUINT64);
-  values = zalloc(max_trace_length * SIZEOFUINT64);
-  types  = zalloc(max_trace_length * SIZEOFUINT64);
-  los    = zalloc(max_trace_length * SIZEOFUINT64);
-  ups    = zalloc(max_trace_length * SIZEOFUINT64);
-  vaddrs = zalloc(max_trace_length * SIZEOFUINT64);
+  pcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  tcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  types  = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  vaddrs = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
 
-  read_values = zalloc(max_trace_length * SIZEOFUINT64);
-  read_los    = zalloc(max_trace_length * SIZEOFUINT64);
-  read_ups    = zalloc(max_trace_length * SIZEOFUINT64);
+  read_values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  read_los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  read_ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
 
   reg_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -1315,10 +1314,10 @@ uint64_t trap  = 0; // flag for creating a trap
 
 // profile
 
-uint64_t  calls             = 0;             // total number of executed procedure calls
+uint64_t  calls               = 0;             // total number of executed procedure calls
 uint64_t* calls_per_procedure = (uint64_t*) 0; // number of executed calls of each procedure
 
-uint64_t  iterations        = 0;             // total number of executed loop iterations
+uint64_t  iterations          = 0;             // total number of executed loop iterations
 uint64_t* iterations_per_loop = (uint64_t*) 0; // number of executed iterations of each loop
 
 uint64_t* loads_per_instruction  = (uint64_t*) 0; // number of executed loads per load instruction
@@ -1354,14 +1353,14 @@ void reset_interpreter() {
   if (execute) {
     reset_instruction_counters();
 
-    calls             = 0;
-    calls_per_procedure = zalloc(max_binary_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+    calls               = 0;
+    calls_per_procedure = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-    iterations        = 0;
-    iterations_per_loop = zalloc(max_binary_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+    iterations          = 0;
+    iterations_per_loop = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-    loads_per_instruction  = zalloc(max_binary_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-    stores_per_instruction = zalloc(max_binary_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+    loads_per_instruction  = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+    stores_per_instruction = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
 }
 
@@ -1531,23 +1530,23 @@ uint64_t selfie_run(uint64_t machine);
 uint64_t* MY_CONTEXT = (uint64_t*) 0;
 
 uint64_t DONOTEXIT = 0;
-uint64_t EXIT = 1;
+uint64_t EXIT      = 1;
 
-uint64_t EXITCODE_NOERROR = 0;
-uint64_t EXITCODE_BADARGUMENTS = 1;
-uint64_t EXITCODE_IOERROR = 2;
-uint64_t EXITCODE_SCANNERERROR = 3;
-uint64_t EXITCODE_PARSERERROR = 4;
-uint64_t EXITCODE_COMPILERERROR = 5;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY = 6;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY = 7;
-uint64_t EXITCODE_DIVISIONBYZERO = 8;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION = 9;
-uint64_t EXITCODE_UNKNOWNSYSCALL = 10;
+uint64_t EXITCODE_NOERROR                = 0;
+uint64_t EXITCODE_BADARGUMENTS           = 1;
+uint64_t EXITCODE_IOERROR                = 2;
+uint64_t EXITCODE_SCANNERERROR           = 3;
+uint64_t EXITCODE_PARSERERROR            = 4;
+uint64_t EXITCODE_COMPILERERROR          = 5;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 6;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 7;
+uint64_t EXITCODE_DIVISIONBYZERO         = 8;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 9;
+uint64_t EXITCODE_UNKNOWNSYSCALL         = 10;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 11;
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
-uint64_t EXITCODE_OUTOFTRACEMEMORY = 13;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION = 14;
+uint64_t EXITCODE_OUTOFTRACEMEMORY       = 13;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 14;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -2581,12 +2580,12 @@ void get_symbol() {
       // while looking for whitespace and "//"
       if (is_character_letter()) {
         // accommodate identifier and null for termination
-        identifier = smalloc(max_identifier_length + 1);
+        identifier = smalloc(MAX_IDENTIFIER_LENGTH + 1);
 
         i = 0;
 
         while (is_character_letter_or_digit_or_underscore()) {
-          if (i >= max_identifier_length) {
+          if (i >= MAX_IDENTIFIER_LENGTH) {
             syntax_error_message((uint64_t*) "identifier too long");
 
             exit(EXITCODE_SCANNERERROR);
@@ -2605,12 +2604,12 @@ void get_symbol() {
 
       } else if (is_character_digit()) {
         // accommodate integer and null for termination
-        integer = smalloc(max_integer_length + 1);
+        integer = smalloc(MAX_INTEGER_LENGTH + 1);
 
         i = 0;
 
         while (is_character_digit()) {
-          if (i >= max_integer_length) {
+          if (i >= MAX_INTEGER_LENGTH) {
             if (integer_is_signed)
               syntax_error_message((uint64_t*) "signed integer out of bound");
             else
@@ -2670,12 +2669,12 @@ void get_symbol() {
         // accommodate string and null for termination,
         // allocate zeroed memory since strings are emitted
         // in double words but may end non-word-aligned
-        string = zalloc(max_string_length + 1);
+        string = zalloc(MAX_STRING_LENGTH + 1);
 
         i = 0;
 
         while (is_character_not_double_quote_or_new_line_or_eof()) {
-          if (i >= max_string_length) {
+          if (i >= MAX_STRING_LENGTH) {
             syntax_error_message((uint64_t*) "string too long");
 
             exit(EXITCODE_SCANNERERROR);
@@ -4691,14 +4690,14 @@ void selfie_compile() {
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary       = smalloc(max_binary_length);
+  binary       = smalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
   // reset code length
   code_length = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  source_line_number = zalloc(max_binary_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  source_line_number = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -4729,7 +4728,7 @@ void selfie_compile() {
 
       printf2((uint64_t*) "%s: selfie compiling %s with starc\n", selfie_name, source_name);
 
-      // assert: source_name is mapped and not longer than max_filename_length
+      // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
       source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
@@ -5190,7 +5189,7 @@ uint64_t load_instruction(uint64_t baddr) {
 void store_instruction(uint64_t baddr, uint64_t instruction) {
   uint64_t temp;
 
-  if (baddr >= max_binary_length) {
+  if (baddr >= MAX_BINARY_LENGTH) {
     syntax_error_message((uint64_t*) "maximum binary length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
@@ -5213,7 +5212,7 @@ uint64_t load_data(uint64_t baddr) {
 }
 
 void store_data(uint64_t baddr, uint64_t data) {
-  if (baddr >= max_binary_length) {
+  if (baddr >= MAX_BINARY_LENGTH) {
     syntax_error_message((uint64_t*) "maximum binary length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
@@ -5505,7 +5504,7 @@ void selfie_output() {
     return;
   }
 
-  // assert: binary_name is mapped and not longer than max_filename_length
+  // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   fd = open_write_only(binary_name);
 
@@ -5588,7 +5587,7 @@ void selfie_load() {
 
   binary_name = get_argument();
 
-  // assert: binary_name is mapped and not longer than max_filename_length
+  // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   fd = sign_extend(open(binary_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
@@ -5599,7 +5598,7 @@ void selfie_load() {
   }
 
   // make sure binary is mapped for reading into it
-  binary = touch(smalloc(max_binary_length), max_binary_length);
+  binary = touch(smalloc(MAX_BINARY_LENGTH), MAX_BINARY_LENGTH);
 
   binary_length = 0;
   code_length   = 0;
@@ -5622,7 +5621,7 @@ void selfie_load() {
       if (number_of_read_bytes == SIZEOFUINT64) {
         code_length = *binary_buffer;
 
-        if (binary_length <= max_binary_length) {
+        if (binary_length <= MAX_BINARY_LENGTH) {
           // now read binary including global variables and strings
           number_of_read_bytes = sign_extend(read(fd, binary, binary_length), SYSCALL_BITWIDTH);
 
@@ -5972,7 +5971,7 @@ uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
   i = 0;
 
-  while (i < max_filename_length / SIZEOFUINT64) {
+  while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
     if (is_valid_virtual_address(vaddr)) {
       if (is_virtual_address_mapped(table, vaddr)) {
         if (symbolic) {
@@ -6391,7 +6390,7 @@ void do_lui() {
 }
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
-  *(registers + rd) = *(values + (tc % max_replay_length));
+  *(registers + rd) = *(values + (tc % MAX_REPLAY_LENGTH));
 }
 
 void constrain_lui() {
@@ -7253,7 +7252,7 @@ void undo_sd() {
 
   vaddr = *(registers + rs1) + imm;
 
-  store_virtual_memory(pt, vaddr, *(values + (tc % max_replay_length)));
+  store_virtual_memory(pt, vaddr, *(values + (tc % MAX_REPLAY_LENGTH)));
 }
 
 void print_beq() {
@@ -7418,7 +7417,7 @@ void do_ecall() {
 
   if (redo) {
     // TODO: redo all side effects
-    *(registers + REG_A0) = *(values + (tc % max_replay_length));
+    *(registers + REG_A0) = *(values + (tc % MAX_REPLAY_LENGTH));
 
     pc = pc + INSTRUCTIONSIZE;
   } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
@@ -7446,10 +7445,10 @@ void undo_ecall() {
   a0 = *(registers + REG_A0);
 
   // TODO: undo all side effects
-  *(registers + REG_A0) = *(values + (tc % max_replay_length));
+  *(registers + REG_A0) = *(values + (tc % MAX_REPLAY_LENGTH));
 
   // save register a0 for redoing system call
-  *(values + (tc % max_replay_length)) = a0;
+  *(values + (tc % MAX_REPLAY_LENGTH)) = a0;
 }
 
 void backtrack_ecall() {
@@ -7494,8 +7493,8 @@ void backtrack_ecall() {
 // -----------------------------------------------------------------
 
 void record_state(uint64_t value) {
-  *(pcs + (tc % max_replay_length))    = pc;
-  *(values + (tc % max_replay_length)) = value;
+  *(pcs + (tc % MAX_REPLAY_LENGTH))    = pc;
+  *(values + (tc % MAX_REPLAY_LENGTH)) = value;
 
   tc = tc + 1;
 }
@@ -7504,10 +7503,10 @@ void replay_trace() {
   uint64_t trace_length;
   uint64_t tl;
 
-  if (tc < max_replay_length)
+  if (tc < MAX_REPLAY_LENGTH)
     trace_length = tc;
   else
-    trace_length = max_replay_length;
+    trace_length = MAX_REPLAY_LENGTH;
 
   record = 0;
   undo   = 1;
@@ -7518,7 +7517,7 @@ void replay_trace() {
   while (tl > 0) {
     tc = tc - 1;
 
-    pc = *(pcs + (tc % max_replay_length));
+    pc = *(pcs + (tc % MAX_REPLAY_LENGTH));
 
     fetch();
     decode_execute();
@@ -7535,7 +7534,7 @@ void replay_trace() {
 
   // redo trace_length number of instructions
   while (tl > 0) {
-    // assert: pc == *(pcs + (tc % max_replay_length))
+    // assert: pc == *(pcs + (tc % MAX_REPLAY_LENGTH))
 
     fetch();
     decode_execute();
@@ -7647,7 +7646,7 @@ uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr) {
 }
 
 uint64_t is_trace_space_available() {
-  return tc + 1 < max_trace_length;
+  return tc + 1 < MAX_TRACE_LENGTH;
 }
 
 void ealloc() {
@@ -8465,7 +8464,7 @@ void selfie_disassemble() {
     return;
   }
 
-  // assert: assembly_name is mapped and not longer than max_filename_length
+  // assert: assembly_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   assembly_fd = open_write_only(assembly_name);
 
@@ -9368,7 +9367,7 @@ uint64_t selfie_run(uint64_t machine) {
   }
 
   if (machine == MONSTER) {
-    init_memory(round_up(max_trace_length * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
+    init_memory(round_up(MAX_TRACE_LENGTH * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
 
     fuzz = atoi(peek_argument());
   } else
@@ -9682,7 +9681,7 @@ void selfie_load_dimacs() {
 
   printf2((uint64_t*) "%s: selfie loading SAT instance %s\n", selfie_name, source_name);
 
-  // assert: source_name is mapped and not longer than max_filename_length
+  // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
