@@ -10,7 +10,7 @@ selfie: selfie.c
 
 # Self-compile
 compile: selfie
-	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 3 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 
