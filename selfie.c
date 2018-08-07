@@ -2374,11 +2374,6 @@ void get_character() {
     character = *character_buffer;
 
     number_of_read_characters = number_of_read_characters + 1;
-
-    // keep track of line numbers for error reporting and code annotation
-    if (character == CHAR_LF)
-      // only linefeeds count, not carriage returns
-      line_number = line_number + 1;
   } else if (number_of_read_bytes == 0)
     // reached end of file
     character = CHAR_EOF;
@@ -2425,6 +2420,7 @@ uint64_t find_next_character() {
         // single-line comments end with new line
         in_single_line_comment = 0;
       else if (character == CHAR_EOF)
+        // or end of file
         return character;
       else
         // count the characters in comments as ignored characters
@@ -2434,6 +2430,9 @@ uint64_t find_next_character() {
       get_character();
 
       if (character == CHAR_ASTERISK) {
+        // look for '*/' and here count '*' as ignored character
+        number_of_ignored_characters = number_of_ignored_characters + 1;
+
         get_character();
 
         if (character == CHAR_SLASH) {
@@ -2444,27 +2443,31 @@ uint64_t find_next_character() {
         }
       }
 
-      if (character == CHAR_EOF) {
-        if (in_multi_line_comment) {
+
+      if (in_multi_line_comment) {
+        // keep track of line numbers for error reporting and code annotation
+        if (character == CHAR_LF)
+          // only linefeeds count, not carriage returns
+          line_number = line_number + 1;
+        else if (character == CHAR_EOF) {
           // multi-line comment is not terminated
           syntax_error_message((uint64_t*) "runaway multi-line comment");
 
-      	  exit(EXITCODE_SCANNERERROR);
-        } else
-          // this is redundant but easier to understand
-          return character;
-      } else if (in_multi_line_comment)
-        // count the characters in comments as ignored characters
-        number_of_ignored_characters = number_of_ignored_characters + 1;
-      else
-        // count '*/' as ignored characters
-        number_of_ignored_characters = number_of_ignored_characters + 2;
+          exit(EXITCODE_SCANNERERROR);
+        }
+      }
+
+      // count the characters in comments as ignored characters including '/' in '*/'
+      number_of_ignored_characters = number_of_ignored_characters + 1;
 
     } else if (is_character_whitespace()) {
-      get_character();
+      if (character == CHAR_LF)
+        line_number = line_number + 1;
 
       // also count line feed and carriage return as ignored characters
       number_of_ignored_characters = number_of_ignored_characters + 1;
+
+      get_character();
 
     } else if (character == CHAR_SLASH) {
       get_character();
