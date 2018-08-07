@@ -1,12 +1,12 @@
 # Compiler flags
-CFLAGS := -w -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
+CFLAGS := -Wall -Wno-main-return-type -Wno-incompatible-library-redeclaration -pedantic -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob sat spike riscv-tools all clean
+.PHONY : compile quine escape debug replay os vm min mob sat spike db riscv-tools all clean
 
 # Self-compile
 compile: selfie
@@ -65,6 +65,9 @@ spike: selfie
 	spike pk selfie.m -c selfie.c -o selfie7.m -s selfie7.s -m 1
 	diff -q selfie.m selfie7.m
 	diff -q selfie.s selfie7.s
+
+db: selfie
+	./selfie -c manuscript/code/db.c selfie.c -m 2048
 
 # Build and update riscv-tools Docker image
 riscv-tools:

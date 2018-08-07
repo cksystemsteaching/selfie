@@ -232,6 +232,10 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
+// flags for opening write-only files in append mode
+// MAC: 521 = 0x0209 = O_CREAT (0x0200) | O_APPEND (0x0008) | O_WRONLY (0x0001)
+uint64_t MAC_O_CREAT_APPEND_WRONLY = 521;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t number_of_written_characters = 0;
@@ -1547,6 +1551,7 @@ uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 11;
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
 uint64_t EXITCODE_OUTOFTRACEMEMORY       = 13;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 14;
+uint64_t EXITCODE_DATABSEERROR           = 15;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1621,6 +1626,64 @@ void     dimacs_get_instance();
 void selfie_load_dimacs();
 
 void selfie_sat();
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -------------------------   Database   --------------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+uint64_t  log_fd = 1;
+uint64_t* db_keys   = (uint64_t*) 0; 
+uint64_t* db_values = (uint64_t*) 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void fatal_db_error(uint64_t* s);
+void restore_database(uint64_t* name);
+uint64_t open_append_only(uint64_t* name);
+uint64_t search_key(uint64_t* key);
+
+// -----------------------------------------------------------------
+// ---------------------------- VECTORS ----------------------------
+// -----------------------------------------------------------------
+
+uint64_t* create_vector(uint64_t size);
+uint64_t* push_back_vector_element(uint64_t* vector, uint64_t value);
+uint64_t  get_vector_element(uint64_t* vector, uint64_t index);
+void      set_vector_element(uint64_t* vector, uint64_t index, uint64_t value);
+
+// vector struct:
+// +-------+----------------+
+// |   0   | capacity       | maximum capacity of the data array
+// |   1   | size           | occupied size of data
+// | 2 - n | data           | data
+// +-------+----------------+
+
+uint64_t  get_vector_capacity(uint64_t* vector) { return *vector; }
+uint64_t  get_vector_size(uint64_t* vector)     { return *(vector + 1); }
+uint64_t* get_vector_data(uint64_t* vector)     { return vector + 2; }
+
+void set_vector_capacity(uint64_t* vector, uint64_t capacity) { *vector       = capacity; }
+void set_vector_size(uint64_t* vector, uint64_t size)         { *(vector + 1) = size; }
+
+void db_init(uint64_t* name) {
+  db_keys   = create_vector(1);
+  db_values = create_vector(1);
+
+  init_scanner();
+
+  restore_database(name);
+
+  log_fd = open_append_only(name);
+}
+
+void     db_put(uint64_t* key, uint64_t values);
+uint64_t db_get(uint64_t* key);
+uint64_t db_exists(uint64_t* key);
 
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
@@ -9746,6 +9809,197 @@ void selfie_sat() {
     printf2((uint64_t*) "%s: %s is unsatisfiable", selfie_name, dimacs_name);
 
   println();
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -------------------------   Database   --------------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+void fatal_db_error(uint64_t* s) {
+  print(s);
+  println();
+
+  exit(EXITCODE_DATABSEERROR);
+}
+
+void restore_database(uint64_t* name) {
+  uint64_t* key;
+  uint64_t  value;
+
+  source_name = (uint64_t*) "selfie.db";
+
+  source_fd = sign_extend(open(name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+
+  if (signed_less_than(source_fd, 0)) {
+    print((uint64_t*) "Nothing to restore");
+    println();
+
+    return;
+  } else {
+    print((uint64_t*) "Restored from database log:");
+    println();
+  }
+
+  reset_scanner();
+  reset_parser();
+
+  key = (uint64_t*) 0;
+
+  while (symbol == SYM_STRING) {
+
+    if (symbol == SYM_STRING)
+      key = string;
+    else
+      fatal_db_error((uint64_t*) "failed to restore database");
+
+    get_symbol();
+
+    if (symbol == SYM_INTEGER) {
+        db_put(key, literal);
+
+      key = (uint64_t*) 0;
+    } else
+      fatal_db_error((uint64_t*) "failed to restore database");
+
+    get_symbol();
+
+    if (symbol == CHAR_LF)
+      get_symbol();
+  }
+}
+
+uint64_t open_append_only(uint64_t* name) {
+  // we try opening write-only files using platform-specific flags
+  // to make selfie platform-independent, this may nevertheless
+  // not always work and require intervention
+  uint64_t fd;
+
+  // try Mac flags
+  fd = sign_extend(open(name, MAC_O_CREAT_APPEND_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+
+  // TODO: implement plattform specific flags for windows and linux
+
+  return fd;
+}
+
+uint64_t search_key(uint64_t* key) {
+  uint64_t size;
+  uint64_t i;
+
+  size = get_vector_size(db_keys);
+  i = 0;
+
+  while (i < size) {
+    if (string_compare((uint64_t*) get_vector_element(db_keys, i), key))
+      return i;
+
+    i = i + 1;
+  }
+
+  return -1;
+}
+
+void db_put(uint64_t* key, uint64_t value) {
+  uint64_t index;
+  uint64_t fd;
+
+  index = search_key(key);
+
+  if (index != -1)
+    set_vector_element(db_values, index, value);
+  else {
+    db_keys   = push_back_vector_element(db_keys, (uint64_t) key);
+    db_values = push_back_vector_element(db_values, value);
+  }
+
+  fd = output_fd;
+
+  output_fd = log_fd;
+
+  print_string(key);
+  print_integer(value);
+  put_character(CHAR_LF);
+
+  output_fd = fd;
+}
+
+uint64_t db_get(uint64_t* key) {
+  uint64_t index;
+
+  index = search_key(key);
+
+  if (index != -1)
+    return get_vector_element(db_values, index);
+  else
+    fatal_db_error((uint64_t*) "failed to find key");
+}
+
+uint64_t db_exists(uint64_t* key) {
+  uint64_t index;
+
+  index = search_key(key);
+
+  return index != -1;
+}
+
+uint64_t* create_vector(uint64_t capacity) {
+  uint64_t* vector;
+
+  vector = smalloc((capacity + 2) * SIZEOFUINT64);
+
+  set_vector_capacity(vector, capacity);
+  set_vector_size(vector, 0);
+
+  return vector;
+}
+
+uint64_t* push_back_vector_element(uint64_t* vector, uint64_t value) {
+  uint64_t* new;
+  uint64_t  capacity;
+  uint64_t  size;
+  uint64_t* src;
+  uint64_t* end;
+  uint64_t* dest;
+
+  size     = get_vector_size(vector);
+  capacity = get_vector_capacity(vector);
+
+  if (size == capacity) {
+    capacity = capacity * 2;
+
+    new = create_vector(capacity);
+
+    src  = get_vector_data(vector);
+    dest = get_vector_data(new);
+    end  = src + size;
+
+    while (src < end) {
+      *dest = *src;
+
+      src = src + 1;
+      dest = dest + 1;
+    }
+
+    // TODO: free memory of old vector
+
+    vector = new;
+  }
+
+  *(get_vector_data(vector) + size) = value;
+
+  set_vector_size(vector, size + 1);
+
+  return vector;
+}
+
+uint64_t get_vector_element(uint64_t* vector, uint64_t index) {
+  return *(get_vector_data(vector) + index);
+}
+
+void set_vector_element(uint64_t* vector, uint64_t index, uint64_t value) {
+  *(get_vector_data(vector) + index) = value;
 }
 
 // -----------------------------------------------------------------
