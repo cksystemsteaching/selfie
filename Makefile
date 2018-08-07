@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS := -Wall -Wno-main-return-type -Wno-incompatible-library-redeclaration -pedantic -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
+CFLAGS := -Wall -Wextra -Wno-main-return-type -Wno-unused-parameter -Wno-incompatible-library-redeclaration -pedantic -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
