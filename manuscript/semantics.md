@@ -50,10 +50,10 @@ On machine level, each character is thus represented by seven bits. What we see 
 {line-numbers=off}
 ```
 > wc -m selfie.c
-275552 selfie.c
+284556 selfie.c
 ```
 
-The output means that `selfie.c` at the time of invoking the command consisted of 275,552 characters. Your output may not be exactly the same number of characters depending on which version of selfie you have. The same is true for other statistical data shown below. However, the order of magnitude of that data is likely to be the same here and in your version.
+The output means that `selfie.c` at the time of invoking the command consisted of 284,556 characters. Your output may not be exactly the same number of characters depending on which version of selfie you have. The same is true for other statistical data shown below. However, the order of magnitude of that data is likely to be the same here and in your version.
 
 The `-m` part of the command is called an option that directs, in this case, `wc` to output the number of characters. However, we should mention that the characters in `selfie.c` are actually encoded according to the newer UTF-8 standard which uses eight rather than seven bits per character.
 
@@ -72,10 +72,10 @@ We can easily verify that `selfie.c` consists of the same number of bytes than c
 {line-numbers=off}
 ```
 > wc -c selfie.c
-275552 selfie.c
+284556 selfie.c
 ```
 
-In other words, for a computer `selfie.c` is in fact a sequence of eight times 275,552 bits, that is, 2,204,416 bits. The key question addressed by this book is where the meaning of these bits comes from.
+In other words, for a computer `selfie.c` is in fact a sequence of eight times 284,556 bits, that is, 2,276,448 bits. The key question addressed by this book is where the meaning of these bits comes from.
 
 Q> Where does semantics come from and how do we create it on a machine?
 
@@ -137,15 +137,16 @@ Selfie requires using at least one option to do anything useful and therefore re
 ```
 > ./selfie -c selfie.c
 ./selfie: selfie compiling selfie.c with starc
-./selfie: 275552 characters read in 10045 lines and 1266 comments
-./selfie: with 161069(58.47%) characters in 43094 actual symbols
-./selfie: 336 global variables, 426 procedures, 503 string literals
-./selfie: 2780 calls, 1108 assignments, 77 while, 843 if, 374 return
-./selfie: 168008 bytes generated with 38950 instructions and 12080 bytes of data
-./selfie: init:    lui: 2307(5.92%), addi: 13177(33.89%)
-./selfie: memory:  ld: 6774(17.42%), sd: 5691(14.61%)
-./selfie: compute: add: 3718(9.55%), sub: 666(1.70%), mul: 788(2.02%), divu: 75(0.19%), remu: 30(0.07%)
-./selfie: control: sltu: 598(1.53%), beq: 920(2.36%), jal: 3774(9.68%), jalr: 426(1.09%), ecall: 6(0.01%)
+./selfie: 284556 characters read in 9854 lines and 1297 comments
+./selfie: with 168379(59.17%) characters in 43187 actual symbols
+./selfie: 341 global variables, 438 procedures, 385 string literals
+./selfie: 2458 calls, 1129 assignments, 83 while, 858 if, 392 return
+./selfie: symbol table search time was 2 iterations on average and 47865 in total
+./selfie: 168416 bytes generated with 39022 instructions and 12200 bytes of data
+./selfie: init:    lui: 2242(5.74%), addi: 13058(33.46%)
+./selfie: memory:  ld: 7055(18.7%), sd: 5819(14.91%)
+./selfie: compute: add: 3721(9.53%), sub: 699(1.79%), mul: 808(2.7%), divu: 78(0.19%), remu: 35(0.8%)
+./selfie: control: sltu: 620(1.58%), beq: 945(2.42%), jal: 3496(8.95%), jalr: 438(1.12%), ecall: 8(0.2%)
 ```
 
 Now, things are taking off. Selfie includes a compiler, just like the cc compiler, that we call starc and invoke with the `-c` option. The statistics in the output of starc may safely be ignored here. This will become clear later. The starc compiler is capable of compiling all of selfie including itself. By now we all know why selfie is called selfie but the story continues.
@@ -157,7 +158,7 @@ After compiling `selfie.c` starc only stores the machine code internally but doe
 > ./selfie -c selfie.c -o selfie.m
 ./selfie: selfie compiling selfie.c with starc
 ...
-./selfie: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie.m
+./selfie: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie.m
 ```
 
 The three dots `...` indicate that we omitted some output that is either identical to or insignificantly different from the previous output. The command produces a file called `selfie.m` that contains machine code compiled from `selfie.c` using the starc compiler in `selfie` rather than the cc compiler. The process is called self-compilation.
@@ -178,21 +179,21 @@ We execute `selfie.m` by first loading it using the `-l` option and then running
 {line-numbers=off}
 ```
 > ./selfie -l selfie.m -m 1
-./selfie: 168008 bytes with 38950 instructions and 12080 bytes of data loaded from selfie.m
+./selfie: 168416 bytes with 39022 instructions and 12200 bytes of data loaded from selfie.m
 ./selfie: selfie executing selfie.m with 1MB physical memory on mipster
 selfie.m: usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
-./selfie: selfie.m exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie.m exiting with exit code 0 and 0.0MB mallocated memory
 ./selfie: selfie terminating selfie.m with exit code 0
-./selfie: summary: 61013 executed instructions and 0.16MB mapped memory
-./selfie: init:    lui: 16(0.02%), addi: 23945(39.37%)
-./selfie: memory:  ld: 13487(22.12%), sd: 8697(14.26%)
-./selfie: compute: add: 3163(5.18%), sub: 1347(2.20%), mul: 1609(2.63%), divu: 559(0.91%), remu: 338(0.55%)
-./selfie: control: sltu: 826(1.35%), beq: 826(1.35%), jal: 4049(6.64%), jalr: 1997(3.27%), ecall: 154(0.25%)
+./selfie: summary: 67180 executed instructions and 0.16MB mapped memory
+./selfie: init:    lui: 17(0.2%), addi: 26378(39.26%)
+./selfie: memory:  ld: 14816(22.5%), sd: 9569(14.24%)
+./selfie: compute: add: 3499(5.20%), sub: 1485(2.21%), mul: 1773(2.63%), divu: 623(0.92%), remu: 388(0.57%)
+./selfie: control: sltu: 902(1.34%), beq: 912(1.35%), jal: 4468(6.65%), jalr: 2194(3.26%), ecall: 156(0.23%)
 ./selfie: profile: total,max(ratio%)@addr,2max,3max
-./selfie: calls:   1999,560(28.08%)@0x2778,299(14.97%)@0x288C,260(13.02%)@0x27C4
-./selfie: loops:   211,148(70.42%)@0x3FA0,63(29.94%)@0x104,0(0.00%)
-./selfie: loads:   13487,560(4.15%)@0x2790,299(2.21%)@0x28A4,260(1.92%)@0x27DC
-./selfie: stores:  8697,560(6.43%)@0x2780,299(3.43%)@0x2894,260(2.98%)@0x27CC
+./selfie: calls:   2196,624(28.41%)@0x27D8,335(15.25%)@0x2970,335(15.25%)@0x3048
+./selfie: loops:   211,122(57.82%)@0x4054,63(29.85%)@0x138,23(10.90%)@0x4770
+./selfie: loads:   14816,624(4.21%)@0x27F0,624(4.21%)@0x27F4,624(4.21%)@0x2804
+./selfie: stores:  9569,624(6.52%)@0x27E0,624(6.52%)@0x27E8,335(3.50%)@0x2978
 ```
 
 After loading `selfie.m` the `-m 1` option directs mipster to *emulate* a computer with 1 megabyte of memory (abbreviated 1MB, explained below) for executing `selfie.m`. Since `selfie.m` is invoked without any options, which could appear after the `-m 1` option, it responds, just like `selfie` without options before, with its usage pattern and then terminates. After that mipster terminates and outputs a summary of its builtin performance profiler.
@@ -209,16 +210,16 @@ We later use profiling to explain performance-related issues of selfie. But now,
 ...
 ./selfie: selfie executing selfie.c with 1MB physical memory on mipster
 ...
-./selfie: summary: 61013 executed instructions and 0.16MB mapped memory
-./selfie: init:    lui: 16(0.02%), addi: 23945(39.37%)
-./selfie: memory:  ld: 13487(22.12%), sd: 8697(14.26%)
-./selfie: compute: add: 3163(5.18%), sub: 1347(2.20%), mul: 1609(2.63%), divu: 559(0.91%), remu: 338(0.55%)
-./selfie: control: sltu: 826(1.35%), beq: 826(1.35%), jal: 4049(6.64%), jalr: 1997(3.27%), ecall: 154(0.25%)
+./selfie: summary: 67180 executed instructions and 0.16MB mapped memory
+./selfie: init:    lui: 17(0.2%), addi: 26378(39.26%)
+./selfie: memory:  ld: 14816(22.5%), sd: 9569(14.24%)
+./selfie: compute: add: 3499(5.20%), sub: 1485(2.21%), mul: 1773(2.63%), divu: 623(0.92%), remu: 388(0.57%)
+./selfie: control: sltu: 902(1.34%), beq: 912(1.35%), jal: 4468(6.65%), jalr: 2194(3.26%), ecall: 156(0.23%)
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
-./selfie: calls:   1999,560(28.08%)@0x2778(~1644),299(14.97%)@0x288C(~1659),260(13.02%)@0x27C4(~1649)
-./selfie: loops:   211,148(70.42%)@0x3FA0(~2062),63(29.94%)@0x104(~242),0(0.00%)
-./selfie: loads:   13487,560(4.15%)@0x2790(~1644),299(2.21%)@0x28A4(~1659),260(1.92%)@0x27DC(~1649)
-./selfie: stores:  8697,560(6.43%)@0x2780(~1644),299(3.43%)@0x2894(~1659),260(2.98%)@0x27CC(~1649)
+./selfie: calls:   2196,624(28.41%)@0x27D8(~1668),335(15.25%)@0x2970(~1692),335(15.25%)@0x3048(~1780)
+./selfie: loops:   211,122(57.82%)@0x4054(~2075),63(29.85%)@0x138(~254),23(10.90%)@0x4770(~2174)
+./selfie: loads:   14816,624(4.21%)@0x27F0(~1668),624(4.21%)@0x27F4(~1668),624(4.21%)@0x2804(~1669)
+./selfie: stores:  9569,624(6.52%)@0x27E0(~1668),624(6.52%)@0x27E8(~1668),335(3.50%)@0x2978(~1692)
 ```
 
 The output is just like before except for the approximate source code line numbers in the profile. Those are only available if executing machine code generated in the same run rather than loading machine code. Never mind if you do not understand what this means. It will become clear later.
@@ -233,9 +234,9 @@ Let us maintain our momentum and do something even cooler than before. We now co
 ./selfie: selfie executing selfie.c with 2MB physical memory on mipster
 selfie.c: selfie compiling selfie.c with starc
 ...
-./selfie: selfie.c exiting with exit code 0 and 2.08MB mallocated memory
+./selfie: selfie.c exiting with exit code 0 and 2.9MB mallocated memory
 ./selfie: selfie terminating selfie.c with exit code 0
-./selfie: summary: 2328169173 executed instructions and 1.96MB mapped memory
+./selfie: summary: 282569258 executed instructions and 1.97MB mapped memory
 ...
 ```
 
@@ -246,14 +247,14 @@ We can even verify that starc generates the same machine code independently of w
 > ./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m
 ./selfie: selfie compiling selfie.c with starc
 ...
-./selfie: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie1.m
+./selfie: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie1.m
 ./selfie: selfie executing selfie1.m with 2MB physical memory on mipster
 selfie1.m: selfie compiling selfie.c with starc
 ...
-selfie1.m: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie2.m
-./selfie: selfie1.m exiting with exit code 0 and 2.08MB mallocated memory
+selfie1.m: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie2.m
+./selfie: selfie1.m exiting with exit code 0 and 2.9MB mallocated memory
 ./selfie: selfie terminating selfie1.m with exit code 0
-./selfie: summary: 2328231271 executed instructions and 1.96MB mapped memory
+./selfie: summary: 282646078 executed instructions and 1.97MB mapped memory
 ...
 ```
 
@@ -279,7 +280,7 @@ Try the `-s` option to have selfie generate assembly as follows:
 > ./selfie -c selfie.c -s selfie.s
 ./selfie: selfie compiling selfie.c with starc
 ...
-./selfie: 1749178 characters of assembly with 38950 instructions written into selfie.s
+./selfie: 1748540 characters of assembly with 39022 instructions written into selfie.s
 ```
 
 The part of selfie that generates assembly is called a *disassembler*.
@@ -300,7 +301,7 @@ For example, the first few lines of `selfie.s` are:
 
 {line-numbers=off}
 ```
-0x0(~1): 0x07C260EF: jal $ra,38943[0x2607C]
+0x0(~1): 0x168260EF: jal $ra,39002[0x26168]
 0x4(~1): 0x00013503: ld $a0,0($sp)
 0x8(~1): 0x00810113: addi $sp,$sp,8
 0xC(~1): 0x05D00893: addi $a7,$zero,93
@@ -333,21 +334,26 @@ Let us try that using the `-d` option which invokes mipster in debugging mode. C
 ./selfie: selfie compiling selfie.c with starc
 ...
 ./selfie: selfie executing selfie.c with 1MB physical memory on mipster
-selfie.c: $pc=0x10000(~1): 0x07C260EF: jal $ra,38943[0x3607C]: |- $ra=0x0,$pc=0x10000 -> $pc=0x3607C,$ra=0x10004
-selfie.c: $pc=0x3607C(~10045): 0x000391B7: lui $gp,0x39: |- $gp=0x0 -> $gp=0x39000
-selfie.c: $pc=0x36080(~10045): 0xFC818193: addi $gp,$gp,-56: $gp=0x39000 |- $gp=0x39000 -> $gp=0x38FC8
-selfie.c: $pc=0x36084(~10045): 0xF91FF0EF: jal $ra,-28[0x36014]: |- $ra=0x10004,$pc=0x36084 -> $pc=0x36014,$ra=0x36088
+selfie.c: $pc=0x10000(~1): 0x168260EF: jal $ra,39002[0x36168]: |- $ra=0x0,$pc=0x10000 -> $pc=0x36168,$ra=0x10004
+selfie.c: $pc=0x36168(~9854): 0xFF810113: addi $sp,$sp,-8: $sp=0xFFFFFFD0 |- $sp=0xFFFFFFD0 -> $sp=0xFFFFFFC8
+selfie.c: $pc=0x3616C(~9854): 0x01010293: addi $t0,$sp,16: $sp=0xFFFFFFC8 |- $t0=0(0x0) -> $t0=4294967256(0xFFFFFFD8)
+selfie.c: $pc=0x36170(~9854): 0x00513023: sd $t0,0($sp): $sp=0xFFFFFFC8,$t0=4294967256(0xFFFFFFD8) |- mem[0xFFFFFFC8]=0 -> mem[0xFFFFFFC8]=$t0=4294967256(0xFFFFFFD8)
+selfie.c: $pc=0x36174(~9854): 0x000391B7: lui $gp,0x39: |- $gp=0x0 -> $gp=0x39000
+selfie.c: $pc=0x36178(~9854): 0x16018193: addi $gp,$gp,352: $gp=0x39000 |- $gp=0x39000 -> $gp=0x39160
+selfie.c: $pc=0x3617C(~9854): 0x00000513: addi $a0,$zero,0: $zero=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
+selfie.c: $pc=0x36180(~9854): 0x0D600893: addi $a7,$zero,214: $zero=0(0x0) |- $a7=0(0x0) -> $a7=214(0xD6)
+selfie.c: $pc=0x36184(~9854): 0x00000073: ecall: |- $a0=0x0 -> $a0=0x0
           |
           |
           |
-selfie.c: $pc=0x36090(~10045): 0xF75D90EF: jal $ra,-38947[0x10004]: |- $ra=0x36088,$pc=0x36090 -> $pc=0x10004,$ra=0x36094
-selfie.c: $pc=0x10004(~1): 0x00013503: ld $a0,0($sp): $sp=0xFFFFFFE0,mem[0xFFFFFFE0]=0 |- $a0=0(0x0) -> $a0=0(0x0)=mem[0xFFFFFFE0]
-selfie.c: $pc=0x10008(~1): 0x00810113: addi $sp,$sp,8: $sp=0xFFFFFFE0 |- $sp=0xFFFFFFE0 -> $sp=0xFFFFFFE8
+selfie.c: $pc=0x361B0(~9854): 0xE55D90EF: jal $ra,-39019[0x10004]: |- $ra=0x361A8,$pc=0x361B0 -> $pc=0x10004,$ra=0x361B4
+selfie.c: $pc=0x10004(~1): 0x00013503: ld $a0,0($sp): $sp=0xFFFFFFD0,mem[0xFFFFFFD0]=0 |- $a0=0(0x0) -> $a0=0(0x0)=mem[0xFFFFFFD0]
+selfie.c: $pc=0x10008(~1): 0x00810113: addi $sp,$sp,8: $sp=0xFFFFFFD0 |- $sp=0xFFFFFFD0 -> $sp=0xFFFFFFD8
 selfie.c: $pc=0x1000C(~1): 0x05D00893: addi $a7,$zero,93: $zero=0(0x0) |- $a7=64(0x40) -> $a7=93(0x5D)
 selfie.c: $pc=0x10010(~1): 0x00000073: ecall: |- $a0=0x0 -> $a0=0x0
-./selfie: selfie.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie.c exiting with exit code 0 and 0.0MB mallocated memory
 ./selfie: selfie terminating selfie.c with exit code 0
-./selfie: summary: 61013 executed instructions and 0.16MB mapped memory
+./selfie: summary: 67180 executed instructions and 0.16MB mapped memory
 ...
 ```
 
@@ -360,18 +366,18 @@ By the way, we can also slow down the machine to see what happens in slow motion
 > ./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
 ./selfie: selfie compiling selfie.c with starc
 ...
-./selfie: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie.m
+./selfie: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie.m
 ./selfie: selfie executing selfie.m with 2MB physical memory on mipster
-selfie.m: 168008 bytes with 38950 instructions and 12080 bytes of data loaded from selfie.m
+selfie.m: 168416 bytes with 39022 instructions and 12200 bytes of data loaded from selfie.m
 selfie.m: selfie executing selfie.m with 1MB physical memory on mipster
 selfie.m: usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
-selfie.m: selfie.m exiting with exit code 0 and 0.00MB mallocated memory
+selfie.m: selfie.m exiting with exit code 0 and 0.0MB mallocated memory
 selfie.m: selfie terminating selfie.m with exit code 0
-selfie.m: summary: 61013 executed instructions and 0.17MB mapped memory
+selfie.m: summary: 67180 executed instructions and 0.17MB mapped memory
 ...
 ./selfie: selfie.m exiting with exit code 0 and 11.25MB mallocated memory
 ./selfie: selfie terminating selfie.m with exit code 0
-./selfie: summary: 108787947 executed instructions and 1.79MB mapped memory
+./selfie: summary: 114192390 executed instructions and 1.79MB mapped memory
 ...
 ```
 
@@ -396,19 +402,19 @@ Let us try using the same command as above for running starc on mipster but this
 > ./selfie -c selfie.c -o selfie3.m -m 3 -l selfie3.m -y 2 -c selfie.c -o selfie4.m
 ./selfie: selfie compiling selfie.c with starc
 ...
-./selfie: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie3.m
+./selfie: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie3.m
 ./selfie: selfie executing selfie3.m with 3MB physical memory on mipster
-selfie3.m: 168008 bytes with 38950 instructions and 12080 bytes of data loaded from selfie3.m
+selfie3.m: 168416 bytes with 39022 instructions and 12200 bytes of data loaded from selfie3.m
 selfie3.m: selfie executing selfie3.m with 2MB physical memory on hypster
 selfie3.m: selfie compiling selfie.c with starc
 ...
-selfie3.m: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie4.m
-selfie3.m: selfie3.m exiting with exit code 0 and 2.08MB mallocated memory
+selfie3.m: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie4.m
+selfie3.m: selfie3.m exiting with exit code 0 and 2.9MB mallocated memory
 selfie3.m: selfie terminating selfie3.m with exit code 0
-selfie3.m: summary: 0 executed instructions and 1.97MB mapped memory
+selfie3.m: summary: 0 executed instructions and 1.98MB mapped memory
 ./selfie: selfie3.m exiting with exit code 0 and 12.25MB mallocated memory
 ./selfie: selfie terminating selfie3.m with exit code 0
-./selfie: summary: 2585541181 executed instructions and 2.39MB mapped memory
+./selfie: summary: 546567868 executed instructions and 2.41MB mapped memory
 ...
 ```
 
@@ -421,34 +427,34 @@ Again, `selfie3.m` and `selfie4.m` are identical and equal to `selfie.m`, `selfi
 > ./selfie -c selfie.c -o selfie5.m -m 4 -l selfie5.m -y 4 -l selfie5.m -y 3 -l selfie5.m -y 3 -l selfie5.m -y 2 -c selfie.c -o selfie6.m
 ./selfie: selfie compiling selfie.c with starc
 ...
-./selfie: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie5.m
+./selfie: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie5.m
 ./selfie: selfie executing selfie5.m with 4MB physical memory on mipster
-selfie5.m: 168008 bytes with 38950 instructions and 12080 bytes of data loaded from selfie5.m
+selfie5.m: 168416 bytes with 39022 instructions and 12200 bytes of data loaded from selfie5.m
 selfie5.m: selfie executing selfie5.m with 4MB physical memory on hypster
-selfie5.m: 168008 bytes with 38950 instructions and 12080 bytes of data loaded from selfie5.m
+selfie5.m: 168416 bytes with 39022 instructions and 12200 bytes of data loaded from selfie5.m
 selfie5.m: selfie executing selfie5.m with 3MB physical memory on hypster
-selfie5.m: 168008 bytes with 38950 instructions and 12080 bytes of data loaded from selfie5.m
+selfie5.m: 168416 bytes with 39022 instructions and 12200 bytes of data loaded from selfie5.m
 selfie5.m: selfie executing selfie5.m with 3MB physical memory on hypster
-selfie5.m: 168008 bytes with 38950 instructions and 12080 bytes of data loaded from selfie5.m
+selfie5.m: 168416 bytes with 39022 instructions and 12200 bytes of data loaded from selfie5.m
 selfie5.m: selfie executing selfie5.m with 2MB physical memory on hypster
 selfie5.m: selfie compiling selfie.c with starc
 ...
-selfie5.m: 168008 bytes with 38950 instructions and 12080 bytes of data written into selfie6.m
-selfie5.m: selfie5.m exiting with exit code 0 and 2.08MB mallocated memory
+selfie5.m: 168416 bytes with 39022 instructions and 12200 bytes of data written into selfie6.m
+selfie5.m: selfie5.m exiting with exit code 0 and 2.9MB mallocated memory
 selfie5.m: selfie terminating selfie5.m with exit code 0
-selfie5.m: summary: 0 executed instructions and 1.97MB mapped memory
+selfie5.m: summary: 0 executed instructions and 1.98MB mapped memory
 selfie5.m: selfie5.m exiting with exit code 0 and 12.25MB mallocated memory
 selfie5.m: selfie terminating selfie5.m with exit code 0
-selfie5.m: summary: 0 executed instructions and 2.41MB mapped memory
+selfie5.m: summary: 0 executed instructions and 2.42MB mapped memory
 selfie5.m: selfie5.m exiting with exit code 0 and 13.25MB mallocated memory
 selfie5.m: selfie terminating selfie5.m with exit code 0
-selfie5.m: summary: 0 executed instructions and 2.84MB mapped memory
+selfie5.m: summary: 0 executed instructions and 2.86MB mapped memory
 selfie5.m: selfie5.m exiting with exit code 0 and 13.25MB mallocated memory
 selfie5.m: selfie terminating selfie5.m with exit code 0
-selfie5.m: summary: 0 executed instructions and 3.28MB mapped memory
+selfie5.m: summary: 0 executed instructions and 3.30MB mapped memory
 ./selfie: selfie5.m exiting with exit code 0 and 14.25MB mallocated memory
 ./selfie: selfie terminating selfie5.m with exit code 0
-./selfie: summary: 3435729782 executed instructions and 3.71MB mapped memory
+./selfie: summary: 1420063022 executed instructions and 3.73MB mapped memory
 ...
 ```
 
