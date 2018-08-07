@@ -8464,7 +8464,7 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
     i = i + 1;
   }
 
-  if (a != -1)
+  if (a != (uint64_t) -1)
     return a * INSTRUCTIONSIZE;
   else
     return -1;
@@ -8476,7 +8476,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
   a = instruction_with_max_counter(counters, max);
 
-  if (a != -1) {
+  if (a != (uint64_t) -1) {
     c = *(counters + a / INSTRUCTIONSIZE);
 
     // CAUTION: we reset counter to avoid reporting it again
@@ -9829,7 +9829,6 @@ void fatal_db_error(uint64_t* s) {
 
 void restore_database(uint64_t* name) {
   uint64_t* key;
-  uint64_t  value;
 
   source_name = (uint64_t*) "selfie.db";
 
@@ -9910,7 +9909,7 @@ void db_put(uint64_t* key, uint64_t value) {
 
   index = search_key(key);
 
-  if (index != -1)
+  if (index != (uint64_t) -1)
     set_vector_element(db_values, index, value);
   else {
     db_keys   = push_back_vector_element(db_keys, (uint64_t) key);
@@ -9933,10 +9932,10 @@ uint64_t db_get(uint64_t* key) {
 
   index = search_key(key);
 
-  if (index != -1)
-    return get_vector_element(db_values, index);
-  else
+  if (index == (uint64_t) -1)
     fatal_db_error((uint64_t*) "failed to find key");
+  
+  return get_vector_element(db_values, index);
 }
 
 uint64_t db_exists(uint64_t* key) {
@@ -9944,7 +9943,7 @@ uint64_t db_exists(uint64_t* key) {
 
   index = search_key(key);
 
-  return index != -1;
+  return index != (uint64_t) -1;
 }
 
 uint64_t* create_vector(uint64_t capacity) {
