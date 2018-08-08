@@ -1189,11 +1189,11 @@ uint64_t* isNotIntervals = (uint64_t*) 0;
 // read history
 
 uint64_t rc = 0; // read counter
+uint64_t read_vbuffer = 0;
 
 uint64_t* read_values = (uint64_t*) 0;
-
-uint64_t* read_los = (uint64_t*) 0;
-uint64_t* read_ups = (uint64_t*) 0;
+uint64_t* read_los    = (uint64_t*) 0;
+uint64_t* read_ups    = (uint64_t*) 0;
 
 // registers
 
@@ -5907,6 +5907,8 @@ void implementRead(uint64_t* context) {
             }
 
             if(do_taint_flag) setTaintMemory(1, 0, 1);
+
+            read_vbuffer = vbuffer;
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
               storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0);
@@ -8999,6 +9001,10 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
                     if (trb < mrvc)
                       // prevent tracking identical updates
                       return;
+
+    if (vaddr == read_vbuffer)
+      // prevent overwriting
+      trb = mrvc;
   }
 
   if (trb < mrvc) {
