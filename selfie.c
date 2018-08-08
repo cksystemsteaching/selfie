@@ -9124,9 +9124,11 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
       // we do not support potentially aliased constrained memory
       print(selfieName);
       print((uint64_t*) ": detected potentially aliased constrained memory");
+      printHexadecimal(pc, 0);
+      printSourceLineNumberOfInstruction(pc - entryPoint);
       println();
 
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      // exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
   }
 
