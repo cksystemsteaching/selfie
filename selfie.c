@@ -1255,7 +1255,7 @@ uint64_t* constraint_types = (uint64_t*) 0;
 uint64_t* vintervals       = (uint64_t*) 0;
 uint64_t* nevintervals     = (uint64_t*) 0;
 
-uint64_t to_vinterval(uint64_t lo, uint64_t up);
+uint64_t to_vinterval(uint64_t lo, uint64_t up, uint64_t base_value);
 uint64_t vinterval_check_class(uint64_t lo, uint64_t up);
 uint64_t vinterval_intersection(uint64_t vinterval1, uint64_t vinterval2);
 uint64_t vinterval_non_equality_region(uint64_t intersection, uint64_t vinterval);
@@ -1279,9 +1279,13 @@ void initSymbolicEngine() {
   steps  = zalloc(maxTraceLength * SIZEOFUINT64);
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
-  whichBytes = zalloc(maxTraceLength * SIZEOFUINT64);
-  saddrs   = zalloc(maxTraceLength * SIZEOFUINT64);
-  isNotIntervals  = zalloc(maxTraceLength * SIZEOFUINT64);
+  whichBytes     = zalloc(maxTraceLength * SIZEOFUINT64);
+  saddrs         = zalloc(maxTraceLength * SIZEOFUINT64);
+  isNotIntervals = zalloc(maxTraceLength * SIZEOFUINT64);
+
+  constraint_types = zalloc(maxTraceLength * SIZEOFUINT64);
+  vintervals       = zalloc(maxTraceLength * SIZEOFUINT64);
+  nevintervals     = zalloc(maxTraceLength * SIZEOFUINT64);
 
   read_values = zalloc(maxTraceLength * SIZEOFUINT64);
   read_los    = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1304,9 +1308,9 @@ void initSymbolicEngine() {
   reg_rem_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_cohas   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
-  reg_whichByte = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_saddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_isNotInterval  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_whichByte     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_saddr         = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_isNotInterval = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   i = 0;
   while (i < NUMBEROFREGISTERS) {
@@ -2436,6 +2440,8 @@ void syntaxErrorCharacter(uint64_t expected) {
   print((uint64_t*) " found");
 
   println();
+
+  exit(EXITCODE_SCANNERERROR);
 }
 
 void syntaxErrorIdentifier(uint64_t* expected) {
@@ -3202,6 +3208,8 @@ void syntaxErrorSymbol(uint64_t expected) {
   print((uint64_t*) " found");
 
   println();
+
+  exit(EXITCODE_SCANNERERROR);
 }
 
 void syntaxErrorUnexpected() {
@@ -3212,6 +3220,8 @@ void syntaxErrorUnexpected() {
   print((uint64_t*) " found");
 
   println();
+
+  exit(EXITCODE_SCANNERERROR);
 }
 
 void printType(uint64_t type) {
@@ -7172,6 +7182,19 @@ void constrain_sub() {
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
+      cnd_rs1_lo    = *(reg_los + rs1);
+      cnd_rs2_lo    = *(reg_los + rs2);
+      cnd_rs1_up    = *(reg_ups + rs1);
+      cnd_rs2_up    = *(reg_ups + rs2);
+      cnd_rs1_step  = *(reg_steps + rs1);
+      cnd_rs2_step  = *(reg_steps + rs2);
+      cnd_rs1_vaddr = *(reg_vaddr + rs1);
+      cnd_rs2_vaddr = *(reg_vaddr + rs2);
+      cnd_rs1_saddr = *(reg_saddr + rs1);
+      cnd_rs2_saddr = *(reg_saddr + rs2);
+      cnd_rs1_whichByte = *(reg_whichByte + rs1);
+      cnd_rs2_whichByte = *(reg_whichByte + rs2);
+
       // we cannot keep track of more than one constraint for sub but
       // need to warn about their earlier presence if used in comparisons
       setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
@@ -7950,6 +7973,16 @@ void constrain_sltu() {
   if (rd != REG_ZR) {
     if (*(reg_hasco + rs1)) {
       if (*(reg_vaddr + rs1) == 0) {
+        if (*(registers + rs2) == 1) {
+          print((uint64_t*) " equality of two symbolic intervals ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+
+          create_equality_constraint();
+          return;
+        }
+
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
         print(selfieName);
@@ -8045,6 +8078,10 @@ void backtrack_sltu() {
     }
   } else
     storeVirtualMemory(pt, vaddr, *(tcs + tc));
+
+  if (*(isNotIntervals + tc) > 2) {
+    eq_free();
+  }
 
   efree();
 }
@@ -9065,9 +9102,10 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
 
     lo = *(los + tc);
     up = *(ups + tc);
-    if (lo != up)
-      isNotInterval = 2;
-    else
+    if (lo != up) {
+      if (isNotInterval == 0)
+        isNotInterval = 2;
+    } else
       isNotInterval = 0;
     saddr         = *(saddrs + mrvc);
     step          = *(steps  + mrvc);
@@ -9464,25 +9502,25 @@ uint64_t vinterval_check_class(uint64_t lo, uint64_t up) {
     if (lo >= '0')
       if (up <= '9')
         if (up >= '0')
-          return 1;
+          return '0';
 
   if (lo <= 'z')
     if (lo >= 'a')
       if (up <= 'z')
         if (up >= 'a')
-          return 2;
+          return 'a';
 
   if (lo <= 'Z')
     if (lo >= 'A')
       if (up <= 'Z')
         if (up >= 'A')
-          return 3;
+          return 'A';
 
   return 0;
 }
 
-uint64_t to_vinterval(uint64_t lo, uint64_t up) {
-  return leftShift(twoToThePowerOf(up - lo + 1) - 1, lo);
+uint64_t to_vinterval(uint64_t lo, uint64_t up, uint64_t base_value) {
+  return leftShift(twoToThePowerOf(up - lo + 1) - 1, lo - base_value);
 }
 
 uint64_t vinterval_intersection(uint64_t vinterval1, uint64_t vinterval2) {
@@ -9497,7 +9535,7 @@ void copy_equality_constriants(uint64_t old_ec, uint64_t new_ec) {
   uint64_t cnt;
 
   cnt = 0;
-  while (cnt < 8) {
+  while (cnt < REGISTERSIZE) {
     *(constraint_types + new_ec + cnt) = *(constraint_types + old_ec + cnt);
     *(vintervals       + new_ec + cnt) = *(vintervals       + old_ec + cnt);
     *(nevintervals     + new_ec + cnt) = *(nevintervals     + old_ec + cnt);
@@ -9510,7 +9548,7 @@ void reset_equality_constriants(uint64_t ec) {
   uint64_t cnt;
 
   cnt = 0;
-  while (cnt < 8) {
+  while (cnt < REGISTERSIZE) {
     *(constraint_types + ec + cnt) = 0;
 
     cnt = cnt + 1;
@@ -9528,6 +9566,10 @@ void create_equality_constraint() {
   uint64_t constraint_type_rs1;
   uint64_t constraint_type_rs2;
   uint64_t take;
+  uint64_t region1;
+  uint64_t region2;
+  uint64_t region3;
+  uint64_t region4;
 
   take = 1;
   c1 = vinterval_check_class(cnd_rs1_lo, cnd_rs1_up);
@@ -9560,91 +9602,85 @@ void create_equality_constraint() {
       cnd_rs1_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc1), ec);
     }
+    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, mrcc);
 
     if (*(isNotIntervals + mrvc2) > 2) {
       eq_alloc();
       cnd_rs2_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc2), ec);
     }
-
-    // TODO: update isNotInterval in storeConstrainedMemory function
-    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, mrcc);
     storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr, mrcc);
     takeBranch(0, 0);
   } else {
-    eq_alloc();
-    c1 = ec;
-    eq_alloc();
-    c2 = ec;
 
     if (*(isNotIntervals + mrvc1) > 2) {
       constraint_type_rs1 = *(constraint_types + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
-      copy_equality_constriants(*(isNotIntervals + mrvc1), c1);
+      if (constraint_type_rs1 == 0)
+        vinterval1 = to_vinterval(cnd_rs1_lo, cnd_rs1_up, c1);
+      else
+        vinterval1 = *(vintervals + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
     } else {
       constraint_type_rs1 = 0;
-      reset_equality_constriants(c1);
+      vinterval1 = to_vinterval(cnd_rs1_lo, cnd_rs1_up, c1);
     }
 
     if (*(isNotIntervals + mrvc2) > 2) {
       constraint_type_rs2 = *(constraint_types + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
-      copy_equality_constriants(*(isNotIntervals + mrvc2), c2);
+      if (constraint_type_rs2 == 0)
+        vinterval2 = to_vinterval(cnd_rs2_lo, cnd_rs2_up, c2);
+      else
+        vinterval2 = *(vintervals + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
     } else {
       constraint_type_rs2 = 0;
-      reset_equality_constriants(c2);
+      vinterval2 = to_vinterval(cnd_rs2_lo, cnd_rs2_up, c2);
     }
-
-    if (constraint_type_rs1 == 0)
-      vinterval1 = to_vinterval(cnd_rs1_lo, cnd_rs1_up);
-    else
-      vinterval1 = *(vintervals + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
-
-    if (constraint_type_rs2 == 0)
-      vinterval2 = to_vinterval(cnd_rs2_lo, cnd_rs2_up);
-    else
-      vinterval2 = *(vintervals + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
 
     intersection = vinterval_intersection(vinterval1, vinterval2);
 
     // non-equality
-    if (constraint_type_rs1 == 1) {
-      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
-      *(vintervals   + c1 + cnd_rs1_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval1);
-      *(nevintervals + c1 + cnd_rs1_whichByte - 1) = vinterval_intersection(intersection, vinterval1);
-    } else if (constraint_type_rs1 == 0) {
-      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
-      *(vintervals   + c1 + cnd_rs1_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval1);
-      *(nevintervals + c1 + cnd_rs1_whichByte - 1) = vinterval_intersection(intersection, vinterval1);
-    } else {
-      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
-      *(vintervals   + c1 + cnd_rs1_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval1);
-      *(nevintervals + c1 + cnd_rs1_whichByte - 1) = intersection + *(nevintervals + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
-    }
+    region1 = vinterval_non_equality_region(intersection, vinterval1);
+    if (constraint_type_rs1 == 2)
+      region2 = intersection + *(nevintervals + *(isNotIntervals + mrvc1) + cnd_rs1_whichByte - 1);
+    else
+      region2 = vinterval_intersection(intersection, vinterval1);
 
-    if (*(vintervals + c1 + cnd_rs1_whichByte - 1) == 0)
-      if (*(nevintervals + c1 + cnd_rs1_whichByte - 1) == 0)
+    region3 = vinterval_non_equality_region(intersection, vinterval2);
+    if (constraint_type_rs2 == 2)
+      region4 = intersection + *(nevintervals + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
+    else
+      region4 = vinterval_intersection(intersection, vinterval2);
+
+    if (region1 == 0)
+      if (region2 == 0)
         take = 0;
-
-    if (constraint_type_rs2 == 1) {
-      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
-      *(vintervals   + c2 + cnd_rs2_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval2);
-      *(nevintervals + c2 + cnd_rs2_whichByte - 1) = vinterval_intersection(intersection, vinterval2);
-    } else if (constraint_type_rs2 == 0) {
-      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
-      *(vintervals   + c2 + cnd_rs2_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval2);
-      *(nevintervals + c2 + cnd_rs2_whichByte - 1) = vinterval_intersection(intersection, vinterval2);
-    } else {
-      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
-      *(vintervals   + c2 + cnd_rs2_whichByte - 1) = vinterval_non_equality_region(intersection, vinterval2);
-      *(nevintervals + c2 + cnd_rs2_whichByte - 1) = intersection + *(nevintervals + *(isNotIntervals + mrvc2) + cnd_rs2_whichByte - 1);
-    }
-
-    if (*(vintervals + c2 + cnd_rs2_whichByte - 1) == 0)
-      if (*(nevintervals + c2 + cnd_rs2_whichByte - 1) == 0)
+    if (region3 == 0)
+      if (region4 == 0)
         take = 0;
 
     if (take) {
+      eq_alloc();
+      c1 = ec;
+      if (*(isNotIntervals + mrvc1) > 2)
+        copy_equality_constriants(*(isNotIntervals + mrvc1), c1);
+      else
+        reset_equality_constriants(c1);
+
+      *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
+      *(vintervals       + c1 + cnd_rs1_whichByte - 1) = region1;
+      *(nevintervals     + c1 + cnd_rs1_whichByte - 1) = region2;
       storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, mrcc);
+
+      eq_alloc();
+      c2 = ec;
+      if (*(isNotIntervals + mrvc2) > 2)
+        copy_equality_constriants(*(isNotIntervals + mrvc2), c2);
+      else
+        reset_equality_constriants(c2);
+      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
+      *(vintervals       + c2 + cnd_rs2_whichByte - 1) = region3;
+      *(nevintervals     + c2 + cnd_rs2_whichByte - 1) = region4;
       storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, mrcc);
+
       if (intersection) {
         storeRegisterMemory(rd, 0);
         storeRegisterMemory(REG_FP, *(registers + REG_FP));
@@ -9655,13 +9691,26 @@ void create_equality_constraint() {
 
     // equality
     if (intersection) {
+      eq_alloc();
+      c1 = ec;
+      if (*(isNotIntervals + mrvc1) > 2)
+        copy_equality_constriants(*(isNotIntervals + mrvc1), c1);
+      else
+        reset_equality_constriants(c1);
       *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 1;
-      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 1;
-      *(vintervals + c1 + cnd_rs1_whichByte - 1) = intersection;
-      *(vintervals + c2 + cnd_rs2_whichByte - 1) = intersection;
-
+      *(vintervals       + c1 + cnd_rs1_whichByte - 1) = intersection;
       storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, mrcc);
+
+      eq_alloc();
+      c2 = ec;
+      if (*(isNotIntervals + mrvc2) > 2)
+        copy_equality_constriants(*(isNotIntervals + mrvc2), c2);
+      else
+        reset_equality_constriants(c2);
+      *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 1;
+      *(vintervals       + c2 + cnd_rs2_whichByte - 1) = intersection;
       storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, mrcc);
+
       takeBranch(1, 0);
     }
   }
@@ -9669,6 +9718,18 @@ void create_equality_constraint() {
 
 void eq_alloc() {
   ec = ec + 8;
+
+  if (ec >= maxTraceLength) {
+    if (isTraceSpaceAvailable()) {
+      print(selfieName);
+      print((uint64_t*) ": out of equality trace at ");
+      printHexadecimal(pc, 0);
+      printSourceLineNumberOfInstruction(pc - entryPoint);
+      println();
+
+      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+  }
 }
 
 void eq_free() {
