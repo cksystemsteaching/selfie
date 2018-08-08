@@ -2195,9 +2195,19 @@ uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a) {
         if (p < 10) {
           // the character at i + 2 is in fact a digit
           print_integer((uint64_t) a / ten_to_the_power_of(p));
+
           if (p > 0) {
+            // using integer_buffer here is ok since we are not using print_integer
+            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0);
+            p = p - string_length(integer_buffer);
+
             put_character('.');
-            print_integer((uint64_t) a % ten_to_the_power_of(p));
+            print(integer_buffer);
+            while (p > 0) {
+              put_character('0');
+
+              p = p - 1;
+            }
           }
 
           return i + 4;
@@ -8424,7 +8434,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
     return c;
   } else {
-    print((uint64_t*) ",0(0.0%)");
+    print((uint64_t*) ",0(0.00%)");
 
     return 0;
   }
