@@ -211,7 +211,7 @@ Numbers are important and computers are incredibly good at working with them. No
 
 T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers.
 
-Beyond signed integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers as percentage](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1605-L1622) with up to two fractional digits.
+Beyond signed integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers with a given number of fractional digits](https://github.com/cksystemsteaching/selfie/blob/29baa3174c1e56cf73fcf68c377cd801b75e5d4f/selfie.c#L2013-L2031).
 
 Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number `85`.
 
@@ -233,30 +233,31 @@ X> The value represented by `85` is obviously `8`\*10+`5` using base 10, or equi
 
 Selfie does in fact implement exactly the above computation of a [recurrence relation](https://en.wikipedia.org/wiki/Recurrence_relation) for encoding numbers but only for numbers represented in decimal notation. An extension to other bases is nevertheless easy to do. Think about it and try!
 
-The encoding is done in the procedure [`atoi`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1409-L1457) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
+The encoding is done in the procedure [`atoi`](https://github.com/cksystemsteaching/selfie/blob/29baa3174c1e56cf73fcf68c377cd801b75e5d4f/selfie.c#L1868-L1926) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
 
 X> Note that the value represented by `85` can also be computed by `8`\*10^1^+`5`\*10^0^ using powers of base 10, or equivalently, `1`\*2^6^+`0`\*2^5^+`1`\*2^4^+`0`\*2^3^+`1`\*2^2^+`0`\*2^1^+`1`\*2^0^ as represented by `1010101` using powers of base 2. However, since the digits are read from left to right, computing the recurrence relation is easier.
 
-Selfie also implements the procedure symmetric to `atoi` called [`itoa`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1459-L1603) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
+Selfie also implements the procedure symmetric to `atoi` called [`itoa`](https://github.com/cksystemsteaching/selfie/blob/29baa3174c1e56cf73fcf68c377cd801b75e5d4f/selfie.c#L1928-L2011) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
 
 X> Suppose we would like to convert the value of `85` to a string `"85"` that shows the value in decimal. This works by dividing `85` by the base 10 resulting in the quotient `8` and the remainder `5`, which we save as a string `"5"`. We then divide quotient `8` by 10 which is quotient `0` and append the remainder, which is `8`, to the string `"5"` resulting in the string `"58"`. Quotient `0` terminates the conversion. The resulting string `"58"` in reverse is the desired string `"85"`.
 
-The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
+The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](https://github.com/cksystemsteaching/selfie/blob/29baa3174c1e56cf73fcf68c377cd801b75e5d4f/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/integer.c selfie.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/integer.c
+./selfie: selfie compiling manuscript/code/integer.c with starc
 ...
-./selfie: this is selfie's mipster executing manuscript/code/integer.c with 1MB of physical memory
+./selfie: selfie executing manuscript/code/integer.c with 1MB physical memory on mipster
 85 in decimal:     85
 'U' in ASCII:      85
 "85" string:       85
 85 in hexadecimal: 0x55
 85 in octal:       00125
 85 in binary:      1010101
-manuscript/code/integer.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/integer.c with exit code 0 and 0.12MB of mapped memory
+./selfie: manuscript/code/integer.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/integer.c with exit code 0
+./selfie: summary: 78608 executed instructions and 0.17MB mapped memory
 ...
 ```
 
