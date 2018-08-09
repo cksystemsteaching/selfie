@@ -18,13 +18,13 @@ X> The bit sequence `01010101` is also binary for the [decimal number](https://e
 
 So what is it now, `U` or `85`? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws `U` for `01010101` on the screen then `01010101` stands for `U` in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent `85`.
 
-But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1820) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1639) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
+But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](https://github.com/cksystemsteaching/selfie/blob/9fdee06fe5cc90e7b143bda14964cc127213d9b7/selfie.c#L2380) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](https://github.com/cksystemsteaching/selfie/blob/9fdee06fe5cc90e7b143bda14964cc127213d9b7/selfie.c#L2048) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
 
 In general, we only provide links to code with comments so that text explaining code is not duplicated here. You may want read the code in `selfie.c` as if it was some sort of mechanical English. There are a lot of comments whenever the code is not sufficiently self-explanatory. In other words, reading code and comments is part of the experience of reading this book!
 
 ## Comments
 
-Now, what is a comment in code anyway? A comment is text that the compiler ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L85) that means something to the machine and is not a comment.
+Now, what is a comment in code anyway? A comment is text that the compiler ignores completely. It is only there for people to read and understand the code. In C\*, a comment is either a single-line comment which is any text to the right of two slashes `//` until the end of the line, or it is a multi-line comment which is any text enclosed by `/*` and `*/`. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](https://github.com/cksystemsteaching/selfie/blob/9fdee06fe5cc90e7b143bda14964cc127213d9b7/selfie.c#L91) that means something to the machine and is not a comment.
 
 If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we can safely remove even more characters called whitespace without changing any semantics.
 
@@ -40,34 +40,40 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 {line-numbers=off}
 ```
 > ./selfie -c selfie.c
-./selfie: this is selfie's starc compiling selfie.c
-./selfie: 176408 characters read in 7083 lines and 969 comments
-./selfie: with 97779(55.55%) characters in 28914 actual symbols
+./selfie: selfie compiling selfie.c with starc
+./selfie: 284874 characters read in 9867 lines and 1298 comments
+./selfie: with 168476(59.14%) characters in 43229 actual symbols
 ...
 ```
 
-Out of all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The code in `selfie.c` that starc uses to [ignore whitespace and comments](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1858-L1913) works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
+Out of all the characters in `selfie.c` only a bit more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The code in `selfie.c` that starc uses to [ignore whitespace and comments](https://github.com/cksystemsteaching/selfie/blob/9fdee06fe5cc90e7b143bda14964cc127213d9b7/selfie.c#L2415-L2512) works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
 
 Let us have a look at the following ["Hello World!" program](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program) written in C\*:
 
 {line-numbers=on, lang=c}
 <<[A "Hello World!" Program](code/hello-world.c)
 
-and run the [code](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world.c) as follows (ignoring the compiler warning):
+and run the [code](https://github.com/cksystemsteaching/selfie/blob/9fdee06fe5cc90e7b143bda14964cc127213d9b7/manuscript/code/hello-world.c) as follows (ignoring the compiler warning):
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
-./selfie: warning in manuscript/code/hello-world.c in line 5: type mismatch, int expected but int* found
-./selfie: 729 characters read in 22 lines and 11 comments
-./selfie: with 80(10.97%) characters in 39 actual symbols
-./selfie: 1 global variables, 1 procedures, 1 string literals
+./selfie: selfie compiling manuscript/code/hello-world.c with starc
+./selfie: warning in manuscript/code/hello-world.c in line 5: type mismatch, uint64_t expected but uint64_t* found
+./selfie: 734 characters read in 23 lines and 11 comments
+./selfie: with 94(12.80%) characters in 39 actual symbols
+./selfie: 2 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/hello-world.c with 1MB of physical memory
-Hello World!manuscript/code/hello-world.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/hello-world.c with exit code 0 and 0.00MB of mapped memory
+./selfie: symbol table search time was 1 iterations on average and 35 in total
+./selfie: 632 bytes generated with 116 instructions and 40 bytes of data
+./selfie: init:    lui: 1(0.86%), addi: 49(42.24%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 4(3.44%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 5(4.31%), jalr: 6(5.17%), ecall: 8(6.89%)
+./selfie: selfie executing manuscript/code/hello-world.c with 1MB physical memory on mipster
+Hello World!    ./selfie: manuscript/code/hello-world.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/hello-world.c with exit code 0
+./selfie: summary: 110 executed instructions and 0.00MB mapped memory
 ...
 ```
 
@@ -78,21 +84,27 @@ Removing all whitespace and comments, also called minification, results in the f
 {line-numbers=on, lang=c}
 <<[Minified "Hello World!" Program](code/hello-world-minified.c)
 
-with this output when running the [code](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world-minified.c):
+with this output when running the [code](https://github.com/cksystemsteaching/selfie/blob/9fdee06fe5cc90e7b143bda14964cc127213d9b7/manuscript/code/hello-world-minified.c):
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world-minified.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
-./selfie: warning in manuscript/code/hello-world-minified.c in line 1: type mismatch, int expected but int* found
-./selfie: 80 characters read in 0 lines and 0 comments
-./selfie: with 80(100.00%) characters in 39 actual symbols
-./selfie: 1 global variables, 1 procedures, 1 string literals
+./selfie: selfie compiling manuscript/code/hello-world-minified.c with starc
+./selfie: warning in manuscript/code/hello-world-minified.c in line 1: type mismatch, uint64_t expected but uint64_t* found
+./selfie: 94 characters read in 1 lines and 0 comments
+./selfie: with 94(100.00%) characters in 39 actual symbols
+./selfie: 2 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/hello-world-minified.c with 1MB of physical memory
-Hello World!manuscript/code/hello-world-minified.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/hello-world-minified.c with exit code 0 and 0.00MB of mapped memory
+./selfie: symbol table search time was 1 iterations on average and 35 in total
+./selfie: 632 bytes generated with 116 instructions and 40 bytes of data
+./selfie: init:    lui: 1(0.86%), addi: 49(42.24%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 4(3.44%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 5(4.31%), jalr: 6(5.17%), ecall: 8(6.89%)
+./selfie: selfie executing manuscript/code/hello-world-minified.c with 1MB physical memory on mipster
+Hello World!    ./selfie: manuscript/code/hello-world-minified.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/hello-world-minified.c with exit code 0
+./selfie: summary: 110 executed instructions and 0.00MB mapped memory
 ...
 ```
 
@@ -106,12 +118,12 @@ Minification is useful for improving performance and saving bandwidth when commu
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c manuscript/code/hello-world-minified.c -o hello-world-minified.m
-./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+./selfie: selfie compiling manuscript/code/hello-world.c with starc
 ...
-./selfie: 600 bytes with 144 instructions and 24 bytes of data written into hello-world.m
-./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
+./selfie: 632 bytes with 116 instructions and 40 bytes of data written into hello-world.m
+./selfie: selfie compiling manuscript/code/hello-world-minified.c with starc
 ...
-./selfie: 600 bytes with 144 instructions and 24 bytes of data written into hello-world-minified.m
+./selfie: 632 bytes with 116 instructions and 40 bytes of data written into hello-world-minified.m
 ```
 
 and then check that both files are indeed identical:
