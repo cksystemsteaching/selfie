@@ -7501,6 +7501,8 @@ void constrain_divu() {
   uint64_t shift;
   uint64_t mrvc;
   uint64_t whichByte;
+  uint64_t step;
+  uint64_t max;
 
   if (*(reg_los + rs2) == 0)
     return;
@@ -7519,6 +7521,7 @@ void constrain_divu() {
 
   div_los = *(reg_los + rs1) / *(reg_ups + rs2);
   div_ups = *(reg_ups + rs1) / *(reg_los + rs2);
+  step    = *(reg_steps + rs1);
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
@@ -7591,12 +7594,18 @@ void constrain_divu() {
       // interval semantics of divu
       if (*(reg_los + rs1) > *(reg_ups + rs1)) {
         // rs1 constraint is wrapped: [lo, UINT64_MAX], [0, up]
-        *(reg_los + rd) = 0;
-        *(reg_ups + rd) = UINT64_MAX / *(reg_los + rs2);
+
+        // valid when step = 1
+        // *(reg_los + rd) = 0;
+        // *(reg_ups + rd) = UINT64_MAX / *(reg_los + rs2);
+
+        max = computeUpperBound(*(reg_los + rs1), step, UINT64_MAX);
+        *(reg_los + rd) = (max + step) / *(reg_los + rs2);
+        *(reg_ups + rd) = max / *(reg_ups + rs2);
 
         // lo/k == up/k (or) up/k + step_rd
         if (div_los != div_ups)
-          if (div_los != div_ups + *(reg_steps + rd))
+          if (div_los > div_ups + *(reg_steps + rd))
             printOverApprox((uint64_t*) "div");
       } else {
         // rs1 constraint is not wrapped
@@ -7859,7 +7868,7 @@ void constrain_remu() {
       } else {
         gcd_step_k = gcd(step, divisor);
         rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
-        rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
+        rem_up = computeUpperBound(rem_lo, gcd_step_k, divisor - 1);
         *(reg_steps + rd) = gcd_step_k;
 
         if (rem_typ == 10)
@@ -7869,13 +7878,13 @@ void constrain_remu() {
     } else if (isPowerOfTwo(divisor)) {
       // rs1 interval is wrapped
       gcd_step_k = gcd(step, divisor);
-      lcm = (rem_up * rem_lo) / gcd_step_k;
+      lcm = (step * divisor) / gcd_step_k;
 
       if (rem_up - rem_lo < lcm - step)
         printOverApprox((uint64_t*) "rem^2");
 
       rem_lo = rem_lo%divisor - ((rem_lo%divisor)/gcd_step_k)* gcd_step_k;
-      rem_up = ((divisor - 1)/gcd_step_k)*gcd_step_k;
+      rem_up = computeUpperBound(rem_lo, gcd_step_k, divisor - 1);
       *(reg_steps + rd) = gcd_step_k;
 
     } else {
@@ -8835,6 +8844,9 @@ uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k) {
   uint64_t c1;
   uint64_t c2;
 
+  if (k == 0)
+    return 0;
+
   c1 = up - lo;
   c2 = UINT64_MAX / k;
 
@@ -8863,7 +8875,7 @@ uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k) {
 uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t k) {
   uint64_t lcm;
 
-  lcm = (up * lo) / gcd(step, k);
+  lcm = (step * k) / gcd(step, k);
   if (up/k - lo/k == 0)
     return 0;
   else if (up - lo >= lcm - step)
@@ -9264,7 +9276,6 @@ uint64_t reverseDivisionUp(uint64_t mrvc, uint64_t up, uint64_t codiv) {
     return codiv - 1;
 }
 
-// same as littlemonster
 uint64_t computeUpperBound(uint64_t lo, uint64_t step, uint64_t value) {
   return lo + ((value - lo) / step) * step;
 }
