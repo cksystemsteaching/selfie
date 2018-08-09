@@ -167,7 +167,7 @@ The code in `selfie.c` that actually [recognizes a string literal](https://githu
 
 ## Character Literals
 
-There is also the notion of *character literals* in C\* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1915-L1929) and for [identifying characters that represent digits](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1931-L1940).
+There is also the notion of *character literals* in C\* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](https://github.com/cksystemsteaching/selfie/blob/f855f36ece5a7cdf6cf913428a04f8b00724825c/selfie.c#L2514-L2528) and for [identifying characters that represent digits](https://github.com/cksystemsteaching/selfie/blob/f855f36ece5a7cdf6cf913428a04f8b00724825c/selfie.c#L2530-L2539).
 
 [Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
 : The representation of a character value within the source code of a computer program.
@@ -178,9 +178,9 @@ X> So, what is the difference between, say, `'a'` and `"a"`?
 X>
 X> The character literal `'a'` is the *ASCII code* of the character `a` whereas the string literal `"a"` is an *address* in memory where the ASCII code of `a` followed by null is stored.
 
-The code in `selfie.c` that [identifies characters other than letters and digits](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L134-L156) is another example which shows how character literals are used. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
+The code in `selfie.c` that [identifies characters other than letters and digits](https://github.com/cksystemsteaching/selfie/blob/f855f36ece5a7cdf6cf913428a04f8b00724825c/selfie.c#L167-L191) is another example which shows how character literals are used. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
 
-The code in `selfie.c` that [recognizes a character literal](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L2061-L2084) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals in C\* are handled.
+The code in `selfie.c` that [recognizes a character literal](https://github.com/cksystemsteaching/selfie/blob/f855f36ece5a7cdf6cf913428a04f8b00724825c/selfie.c#L2654-L2678) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals in C\* are handled.
 
 ## Identifiers
 
@@ -191,16 +191,16 @@ Let us now go back to the notion of identifiers and our example of the identifie
 
 Identifiers in C\* can indeed denote different kinds of entities. But, for now, we only need to know that, unlike string literals, identifiers in C\* always begin with a letter. After that there may appear letters, digits, and underscores `_` in any order but no other characters. Why is that? Because this is how the machine knows when an identifier begins and ends. Remember, identifiers are not enclosed by any special characters like double quotes, for example.
 
-The code in `selfie.c` that [recognizes an identifier](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1995-L2017) in source code, after reading a letter outside of a comment, first allocates memory not used by anyone to store the identifier, just like a string. Then it reads one character at a time and stores the characters contiguously in memory until it reads a character that is neither a letter nor a digit nor an underscore. It then stores a null to terminate the identifier. However, before deciding whether it has just recognized an identifier the code checks if it has actually recognized a *reserved identifier* or *keyword*.
+The code in `selfie.c` that [recognizes an identifier](https://github.com/cksystemsteaching/selfie/blob/f855f36ece5a7cdf6cf913428a04f8b00724825c/selfie.c#L2594-L2617) in source code, after reading a letter outside of a comment, first allocates memory not used by anyone to store the identifier, just like a string. Then it reads one character at a time and stores the characters contiguously in memory until it reads a character that is neither a letter nor a digit nor an underscore. It then stores a null to terminate the identifier. However, before deciding whether it has just recognized an identifier the code checks if it has actually recognized a *reserved identifier* or *keyword*.
 
 ## Keywords
 
-C\* features a number of [keywords](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/grammar.md#L11) with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
+C\* features a number of [keywords](https://github.com/cksystemsteaching/selfie/blob/f855f36ece5a7cdf6cf913428a04f8b00724825c/grammar.md#L11) with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
 
 [Keyword](https://en.wikipedia.org/wiki/Keyword_(computer_programming) "Keyword")
 : In a computer language, a reserved word (also known as a reserved identifier) is a word that cannot be used as an identifier, such as the name of a variable, function, or label – it is "reserved from use". This is a syntactic definition, and a reserved word may have no meaning. A closely related and often conflated notion is a keyword which is a word with special meaning in a particular context. This is a semantic definition. The terms "reserved word" and "keyword" are often used interchangeably – one may say that a reserved word is "reserved for use as a keyword".
 
-Since the keywords in C\* all begin with a letter they should not be mistaken for identifiers. The code in `selfie.c` that [distinguishes keywords from identifiers](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1968-L1983) compares potential identifiers with all keywords to implement that distinction.
+Since the keywords in C\* all begin with a letter they should not be mistaken for identifiers. The code in `selfie.c` that [distinguishes keywords from identifiers](https://github.com/cksystemsteaching/selfie/blob/f855f36ece5a7cdf6cf913428a04f8b00724825c/selfie.c#L2567-L2582) compares potential identifiers with all keywords to implement that distinction.
 
 ## Integers
 
