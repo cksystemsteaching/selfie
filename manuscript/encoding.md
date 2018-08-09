@@ -161,9 +161,9 @@ You may have noticed the double quotes enclosing the `Hello World!` string in th
 [String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
 : The representation of a string value within the source code of a computer program.
 
-String literals in C\* such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L357-L384) as just one example.
+String literals in C\* such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](https://github.com/cksystemsteaching/selfie/blob/059d39cfdf32ecb2a5333eb8932430f7c7d1a754/selfie.c#L394-L421) as just one example.
 
-The code in `selfie.c` that actually [recognizes a string literal](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2121) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals in C\* are handled.
+The code in `selfie.c` that actually [recognizes a string literal](https://github.com/cksystemsteaching/selfie/blob/059d39cfdf32ecb2a5333eb8932430f7c7d1a754/selfie.c#L2679-L2717) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals in C\* are handled.
 
 ## Character Literals
 
