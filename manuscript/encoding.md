@@ -152,7 +152,7 @@ X> The obvious way of storing UTF-8-encoded strings such as our `Hello World!` s
 X>
 X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 54, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but to indicate the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
 
-In selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2116) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2118) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
+In selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2116) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2118) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental trade-offs that will become more relevant later. Important for us here is to know that there is a choice.
 
 ## String Literals
 
@@ -452,40 +452,49 @@ Most registers of a CPU have the same size, that is, accommodate the same number
 [Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
 : The natural unit of data used by a particular processor design. A word is a fixed-sized piece of data handled as a unit by the instruction set or the hardware of the processor. The number of bits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
 
-The processor that the mipster emulator implements has a word size of 32 bits. In fact, virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution, as we see below. The reason is again performance. Involving 32 bits in parallel in all operations is obviously faster than working with bits individually. You probably know that there are machines with even larger word sizes for even greater speed such as 64-bit machines, for example. We stick to 32-bit words though since it makes things easier for two reasons.
+The processor that the mipster emulator implements has a word size of 64 bits. In fact, virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution, as we see below. The reason is again performance. Involving 64 bits in parallel in all operations is obviously faster than working with bits individually. However, there are two more reasons why we use a 64-bit machine. The first reason is that the size of an integer in C\* is also 64 bits. This means that a single mipster register can hold exactly one C\* integer value. Beautiful!
 
-The first reason is that the size of an integer in C\* is also 32 bits encoding the sign in the MSB and the value in the remaining 31 LSBs in two's complement. This means that a single mipster register can hold exactly one C\* integer value. Beautiful!
+How many different integer values can 64 bits represent? Well, 2^64^ values but what are they? This depends on how we interpret them. In C\* integers are interpreted as unsigned which means that an integer value is either zero or a positive number.
 
-T> A signed integer in C\* can in total represent signed integer values i from -2147483648 to 2147483647 since -2^32^/2-1 = -2^31^-1 = -2147483649 < i < 2147483648 = 2^31^ = 2^32^/2. In `selfie.c` the largest positive value is called [`INT_MAX`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L227) while the smallest negative value is called [`INT_MIN`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L228).
+T> An unsigned integer in C\* can in total represent integer values i from 0 to 18446744073709551615 = 2^64^-1. In `selfie.c` that value is called [`UINT64_MAX`](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/selfie.c#L262) which is the largest unsigned 64-bit integer value.
 
-We prepared another simple program called [`negative.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `INT_MAX` and `INT_MIN` for reference, in all possible ways supported by selfie as follows:
+However, we may also interpret 64-bit integers as signed in two's complement with the MSB encoding the sign and the remaining 63 LSBs encoding the value. The number of different integer values that can be represented is nevertheless the same.
+
+T> A signed 64-bit integer can in total represent signed integer values i from -9223372036854775808 to 9223372036854775807 since -2^64^/2-1 = -2^63^-1 = -9223372036854775809 < i < 9223372036854775808 = 2^63^ = 2^64^/2. In `selfie.c` the largest positive integer value is called [`INT64_MAX`](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/selfie.c#L265) while the smallest negative integer value is called [`INT64_MIN`](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/selfie.c#L266).
+
+We prepared another simple program called [`negative.c`](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `UINT64_MAX`, `INT64_MAX`, and `INT64_MIN` for reference, in all possible ways supported by selfie as follows:
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/negative.c selfie.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/negative.c
+./selfie: selfie compiling manuscript/code/negative.c with starc
 ...
-./selfie: this is selfie's mipster executing manuscript/code/negative.c with 1MB of physical memory
-    -85 in decimal:     -85
-    -85 in hexadecimal: 0xFFFFFFAB
-    -85 in octal:       0037777777653
-    -85 in binary:      11111111111111111111111110101011
-INT_MAX in decimal:     2147483647
-INT_MAX in hexadecimal: 0x7FFFFFFF
-INT_MAX in octal:       0017777777777
-INT_MAX in binary:      01111111111111111111111111111111
-INT_MIN in decimal:     -2147483648
-INT_MIN in hexadecimal: 0x80000000
-INT_MIN in octal:       0020000000000
-INT_MIN in binary:      10000000000000000000000000000000
-manuscript/code/negative.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/negative.c with exit code 0 and 0.12MB of mapped memory
+./selfie: selfie executing manuscript/code/negative.c with 1MB physical memory on mipster
+       -85 in decimal:     -85
+       -85 in hexadecimal: 0xFFFFFFFFFFFFFFAB
+       -85 in octal:       001777777777777777777653
+       -85 in binary:      1111111111111111111111111111111111111111111111111111111110101011
+UINT64_MAX in decimal:     -1
+UINT64_MAX in hexadecimal: 0xFFFFFFFFFFFFFFFF
+UINT64_MAX in octal:       001777777777777777777777
+UINT64_MAX in binary:      1111111111111111111111111111111111111111111111111111111111111111
+ INT64_MAX in decimal:     9223372036854775807
+ INT64_MAX in hexadecimal: 0x7FFFFFFFFFFFFFFF
+ INT64_MAX in octal:       00777777777777777777777
+ INT64_MAX in binary:      0111111111111111111111111111111111111111111111111111111111111111
+ INT64_MIN in decimal:     -9223372036854775808
+ INT64_MIN in hexadecimal: 0x8000000000000000
+ INT64_MIN in octal:       001000000000000000000000
+ INT64_MIN in binary:      1000000000000000000000000000000000000000000000000000000000000000
+./selfie: manuscript/code/negative.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/negative.c with exit code 0
+./selfie: summary: 861898 executed instructions and 0.17MB mapped memory
 ...
 ```
 
-The second reason for using 32-bit words is that memory addresses in mipster and ultimately in C\* are then 32 bits as well. This means in particular that the content of a register can also be seen as a memory address and not just an integer value. However, there is one important detail. On a mipster machine, memory is not only byte-addressed but also *word-aligned* for access. This means that words can only be accessed in memory at addresses that are multiples of four, the word size in bytes.
+The second reason for using 64-bit words is that memory addresses in mipster and ultimately in C\* are then 64 bits as well. This means in particular that the content of a register can also be seen as a memory address and not just an integer value. However, there is one important detail. On a mipster machine, memory is not only byte-addressed but also *word-aligned* for access. This means that words can only be accessed in memory at addresses that are multiples of eight, the word size in bytes.
 
-T> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 4, 8, 12, and so on. The word at address 0, for example, then contains the four bytes at addresses 0, 1, 2, and 3.
+T> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 8, 16, 24, and so on. The word at address 0, for example, then contains the eight bytes at addresses 0, 1, 2, 3, 4, 5, 6, and 7.
 
 An interesting question is which bits in a word are used to represent which bytes in memory. The two standard choices are determined by the *endianness* of a processor.
 
@@ -506,65 +515,77 @@ We prepared another simple program called [`bitwise.c`](http://github.com/cksyst
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/bitwise.c selfie.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/bitwise.c
+./selfie: selfie compiling manuscript/code/bitwise.c with starc
 ...
-./selfie: this is selfie's mipster executing manuscript/code/bitwise.c with 1MB of physical memory
-00000000000000000000000000000011 in binary = 3 in decimal
-00000000000000000000000011000000 in binary = 192 in decimal
-00000000000000000011000000000000 in binary = 12288 in decimal
-00000000000011000000000000000000 in binary = 786432 in decimal
-00000011000000000000000000000000 in binary = 50331648 in decimal
-11000000000000000000000000000000 in binary = -1073741824 in decimal
-11000011000011000011000011000011 in binary = -1022611261 in decimal
-11000000000000000000000000000000 in binary = -1073741824 in decimal
-00000011000000000000000000000000 in binary = 50331648 in decimal
-00000000000011000000000000000000 in binary = 786432 in decimal
-00000000000000000011000000000000 in binary = 12288 in decimal
-00000000000000000000000011000000 in binary = 192 in decimal
-00000000000000000000000000000011 in binary = 3 in decimal
-manuscript/code/bitwise.c: exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: selfie executing manuscript/code/bitwise.c with 1MB physical memory on mipster
+0000000000000000000000000000000000000000000000000000000000000011 in binary = 3 in decimal
+0000000000000000000000000000000000000000000000000000000011000000 in binary = 192 in decimal
+0000000000000000000000000000000000000000000000000011000000000000 in binary = 12288 in decimal
+0000000000000000000000000000000000000000000011000000000000000000 in binary = 786432 in decimal
+0000000000000000000000000000000000000011000000000000000000000000 in binary = 50331648 in decimal
+0000000000000000000000000000000011000000000000000000000000000000 in binary = 3221225472 in decimal
+0000000000000000000000000011000000000000000000000000000000000000 in binary = 206158430208 in decimal
+0000000000000000000011000000000000000000000000000000000000000000 in binary = 13194139533312 in decimal
+0000000000000011000000000000000000000000000000000000000000000000 in binary = 844424930131968 in decimal
+0000000011000000000000000000000000000000000000000000000000000000 in binary = 54043195528445952 in decimal
+0011000000000000000000000000000000000000000000000000000000000000 in binary = 3458764513820540928 in decimal
+0011000011000011000011000011000011000011000011000011000011000011 in binary = 3513665537849438403 in decimal
+0011000000000000000000000000000000000000000000000000000000000000 in binary = 3458764513820540928 in decimal
+0000000011000000000000000000000000000000000000000000000000000000 in binary = 54043195528445952 in decimal
+0000000000000011000000000000000000000000000000000000000000000000 in binary = 844424930131968 in decimal
+0000000000000000000011000000000000000000000000000000000000000000 in binary = 13194139533312 in decimal
+0000000000000000000000000011000000000000000000000000000000000000 in binary = 206158430208 in decimal
+0000000000000000000000000000000011000000000000000000000000000000 in binary = 3221225472 in decimal
+0000000000000000000000000000000000000011000000000000000000000000 in binary = 50331648 in decimal
+0000000000000000000000000000000000000000000011000000000000000000 in binary = 786432 in decimal
+0000000000000000000000000000000000000000000000000011000000000000 in binary = 12288 in decimal
+0000000000000000000000000000000000000000000000000000000011000000 in binary = 192 in decimal
+0000000000000000000000000000000000000000000000000000000000000011 in binary = 3 in decimal
+./selfie: manuscript/code/bitwise.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/bitwise.c with exit code 0
+./selfie: summary: 2727047 executed instructions and 0.17MB mapped memory
 ...
 ```
 
-But how did we do this if there is no native support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1297-L1309), and [logical right shift](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1311-L1333) operations in selfie.
+But how did we do this if there is no native support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/selfie.c#L1680-L1683), and [logical right shift](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/selfie.c#L1685-L1688) operations in selfie.
 
-T> Multiplying a signed integer with 2^n^ shifts the bits representing the integer value to the left by n bits even if the value is negative provided two's complement and wrap-around semantics upon arithmetic overflow is used.
+T> Multiplying an integer value with 2^n^ shifts the bits representing the value to the left by n bits even if the value is interpreted as negative provided two's complement and wrap-around semantics upon arithmetic overflow is used.
 
-In the `bitwise.c` program we shift the bits representing the integer value 3 to the left by six bits by multiplying the value repeatedly with 64=2^6^ until the value wraps around and becomes negative.
+In the `bitwise.c` program we shift the bits representing the integer value 3 to the left by six bits by multiplying the value repeatedly with 64=2^6^ until the value wraps around and becomes zero.
 
-T> Adding two signed integers corresponds to a bitwise OR operation if the bits at the same index in both integers are never both 1 avoiding any carry bit to be set.
+T> Adding two integers corresponds to a bitwise OR operation if the bits at the same index in both integers are never both 1 avoiding any carry bit to be set.
 
 The `bitwise.c` program demonstrates that by performing a bitwise OR operation on all intermediate values through simple integer addition.
 
-T> Dividing a signed integer with 2^n^ shifts the bits representing the integer value to the right by n bits if the value is positive. If it is negative, [the sign bit can be reset before performing the division and then restored n bits to the right](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1321-L1326).
+T> Dividing an integer value with 2^n^ shifts the bits representing the value to the right by n bits if the value is interpreted as unsigned.
 
 The `bitwise.c` program applies that method to shift the bits to the right repeatedly by six bits back to their original position.
 
 Interestingly, the bitwise OR, left shift, and logical right shift operations presented here are sufficient to implement all of selfie!
 
-Before moving on let us quickly revisit how characters and strings are stored in memory. In selfie characters are represented by 8 bits. A 32-bit word may therefore hold up to four characters. This is in fact done to store the characters of strings in memory. A character literal, however, is stored in the eight LSBs of a word leaving the remaining bits blank.
+Before moving on let us quickly revisit how characters and strings are stored in memory. In selfie characters are represented by 8 bits. A 64-bit word may therefore hold up to eight characters. This is in fact done to store the characters of strings in memory. A character literal, however, is stored in the eight LSBs of a word leaving the remaining bits blank.
 
-X> The string literal `"Hello World!"` is stored in four 32-bit words located contiguously in memory accommodating the substrings `"Hell"`, `"o Wo"`, and `"rld!"` as well as the value 0 in the fourth word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
+X> The string literal `"Hello World!"` is stored in two 64-bit words located contiguously in memory accommodating the substrings `"Hello Wo"` and `"rld!"` as well as the value 0 in the second word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
 
-Try the following command to see that our "Hello World!" program does actually print the characters in chunks of four by printing the three words containing the characters directly on the console. The command creates three mipsters on top of each other slowing down the execution of the program to the extent that the behavior is really visible:
+Try the following command to see that our "Hello World!" program does actually print the characters in chunks of eight by printing the two words containing the characters directly on the console. The command creates three mipsters on top of each other slowing down the execution of the program to the extent that the behavior is really visible:
 
 {line-numbers=off}
 ```
-> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 1 -l selfie.m -m 1 -l hello-world.m -m 1
+> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 3 -l selfie.m -m 1 -l hello-world.m -m 1
 ...
 ```
 
-This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1335-L1345) and [storing](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1347-L1360) characters of strings in memory accordingly.
+This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/selfie.c#L1774-L1784) and [storing](https://github.com/cksystemsteaching/selfie/blob/71f205081c25b3df20c653320790b186048f5181/selfie.c#L1786-L1799) characters of strings in memory accordingly.
 
-So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even memory addresses and all machine code is handled at that granularity as well.
+So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even memory addresses are handled at that granularity as well.
 
 ## Memory Addresses
 
-The address of a byte or in fact a word in memory is obviously a positive number. On a mipster machine and many others as well, memory addresses are also represented by words. Thus the word size of such machines determines how many memory addresses can be distinguished and, as a consequence, how much memory can be accessed. A mipster machine, for example, supports up to 64MB of byte-addressed and word-aligned memory. Addressing that memory thus requires the 26 LSBs out of the 32 bits of a word. The remaining 6 MSBs are unused.
+The address of a byte or in fact a word in memory is obviously a positive number. On a mipster machine and many others as well, memory addresses are also represented by words. Thus the word size of such machines determines how many memory addresses can be distinguished and, as a consequence, how much memory can be accessed. A mipster machine, for example, supports up to 4GB of byte-addressed and word-aligned memory. Addressing that memory thus requires the 32 LSBs out of the 64 bits of a word. The remaining 32 MSBs are unused.
 
 X> The address of where the string literal `"Hello World!"` is stored in memory is an example of such a memory address represented by a word.
 
-Let us reflect on that for a moment. So, on a mipster machine, the 32 bits of a word can be used to encode characters, signed integers, and even memory addresses! That's right and this is not all. Even machine instructions are represented by words which is our next topic.
+Let us reflect on that for a moment. So, on a mipster machine, the 64 bits of a word can be used to encode characters, integers, and even memory addresses! That's right and this is not all. Even machine instructions are represented by words which is our next topic.
 
 ## Instructions
 
@@ -667,4 +688,4 @@ X> The encoding of strings is another interesting example. Squeezing four charac
 
 Machine instructions are also encoded such that code size is compact while decoding them, which is ultimately done in hardware by the machine, is still fast. This is, of course, extremely important since every single instruction a processor executes needs to be decoded into opcode and operands before execution.
 
-In computer science the trade off between time and space shows up in all kinds of situations. Encoding information is just one example. The important lesson here is to be aware of the trade off and understand that [there is no such thing as a free lunch!](https://en.wikipedia.org/wiki/There_ain%27t_no_such_thing_as_a_free_lunch)
+In computer science the trade-off between time and space shows up in all kinds of situations. Encoding information is just one example. The important lesson here is to be aware of the trade-off and understand that [there is no such thing as a free lunch!](https://en.wikipedia.org/wiki/There_ain%27t_no_such_thing_as_a_free_lunch)
