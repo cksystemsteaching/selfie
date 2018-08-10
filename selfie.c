@@ -258,12 +258,12 @@ void init_library() {
     i = i + 1;
   }
 
-  // compute 64-bit signed integer range using unsigned integer arithmetic
-  INT64_MIN = two_to_the_power_of(CPUBITWIDTH - 1);
-  INT64_MAX = INT64_MIN - 1;
-
   // compute 64-bit unsigned integer range using signed integer arithmetic
   UINT64_MAX = -1;
+
+  // compute 64-bit signed integer range using unsigned integer arithmetic
+  INT64_MAX = two_to_the_power_of(CPUBITWIDTH - 1) - 1;
+  INT64_MIN = INT64_MAX + 1;
 
   // allocate and touch to make sure memory is mapped for read calls
   character_buffer  = smalloc(SIZEOFUINT64);
