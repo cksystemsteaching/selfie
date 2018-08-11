@@ -152,7 +152,7 @@ X> The obvious way of storing UTF-8-encoded strings such as our `Hello World!` s
 X>
 X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 54, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but to indicate the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
 
-In selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2116) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2118) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental trade-offs that will become more relevant later. Important for us here is to know that there is a choice.
+In selfie, strings are stored [contiguously](https://github.com/cksystemsteaching/selfie/blob/228c41ce4d30eefc7175f8404f772785f8cb3730/selfie.c#L2679-L2717) in memory and [null-terminated](https://github.com/cksystemsteaching/selfie/blob/228c41ce4d30eefc7175f8404f772785f8cb3730/selfie.c#L2714) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental trade-offs that will become more relevant later. Important for us here is to know that there is a choice.
 
 ## String Literals
 
@@ -510,7 +510,7 @@ Why would we want support of that anyway? Well, how do we read and modify indivi
 
 Bitwise operations have in common that they treat integers and words purely as sequences of bits. For example, a left shift operation shifts the bits in an integer or word to the left by a given amount of bits while shifting in zeros into the LSB. The logical right shift operation does the exact opposite.
 
-We prepared another simple program called [`bitwise.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/bitwise.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
+We prepared another simple program called [`bitwise.c`](https://github.com/cksystemsteaching/selfie/blob/228c41ce4d30eefc7175f8404f772785f8cb3730/manuscript/code/bitwise.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
 
 {line-numbers=off}
 ```
@@ -589,7 +589,7 @@ Let us reflect on that for a moment. So, on a mipster machine, the 64 bits of a 
 
 ## Instructions
 
-The code of a mipster machine is represented by a sequence of machine words where each word encodes a machine instruction. It is that easy and actually true for many other processors as well. The exact specification of the encoding as well as the meaning of each instruction is provided by the *instruction set architecture* or *ISA* for short.
+The code of a mipster machine is represented by a sequence of machine words where each 64-bit word encodes in fact two rather than one machine instruction since each instruction only requires 32 bits. It is that easy and actually true for many other processors as well. The exact specification of the encoding as well as the meaning of each instruction is provided by the *instruction set architecture* or *ISA* for short.
 
 [Instruction Set Architecture (ISA)](https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)")
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and external I/O. An ISA includes a specification of the set of opcodes (machine language), and the native commands implemented by a particular processor. An instruction set is the interface between a computer's software and its hardware, and thereby enables the independent development of these two computing realms.
@@ -598,81 +598,86 @@ Let us have another look at the first few lines of the assembly code in `selfie.
 
 {line-numbers=off}
 ```
-0x0(~1): 0x24080007: addiu $t0,$zero,7
-0x4(~1): 0x24094000: addiu $t1,$zero,16384
-0x8(~1): 0x01090019: multu $t0,$t1
-0xC(~1): 0x00004012: mflo $t0
-0x10(~1): 0x00000000: nop
-0x14(~1): 0x00000000: nop
-0x18(~1): 0x25081B38: addiu $t0,$t0,6968
-0x1C(~1): 0x251C0000: addiu $gp,$t0,0
-0x20(~1): 0x24080FFF: addiu $t0,$zero,4095
-0x24(~1): 0x24094000: addiu $t1,$zero,16384
-0x28(~1): 0x01090019: multu $t0,$t1
-0x2C(~1): 0x00004012: mflo $t0
-0x30(~1): 0x00000000: nop
-0x34(~1): 0x00000000: nop
-0x38(~1): 0x25083FFC: addiu $t0,$t0,16380
-0x3C(~1): 0x8D1D0000: lw $sp,0($t0)
-0x40(~1): 0x0C007029: jal 0x7029[0x1C0A4]
-0x44(~1): 0x00000000: nop
+0x0(~1): 0x168260EF: jal $ra,39002[0x26168]
+0x4(~1): 0x00013503: ld $a0,0($sp)
+0x8(~1): 0x00810113: addi $sp,$sp,8
+0xC(~1): 0x05D00893: addi $a7,$zero,93
+0x10(~1): 0x00000073: ecall
+0x14(~1): 0x00013603: ld $a2,0($sp)
+0x18(~1): 0x00810113: addi $sp,$sp,8
+0x1C(~1): 0x00013583: ld $a1,0($sp)
+0x20(~1): 0x00810113: addi $sp,$sp,8
+0x24(~1): 0x00013503: ld $a0,0($sp)
+0x28(~1): 0x00810113: addi $sp,$sp,8
+0x2C(~1): 0x03F00893: addi $a7,$zero,63
+0x30(~1): 0x00000073: ecall
 ```
 
-Each line represents one machine instruction. The first line, for example, reads like this. The hexadecimal number `0x0` is the word-aligned memory address of the instruction in memory. The expression `(~1)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x24080007` is in fact the binary encoded version of the instruction itself. Finally, `addiu $t0,$zero,7` is the human-readable assembly version of the instruction. This means in particular that `0x24080007` and `addiu $t0,$zero,7` are semantically equivalent. The 32-bit word `0x24080007` in binary stored at address `0x0` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
+Each line represents one machine instruction. The fourth line, for example, reads like this. The hexadecimal number `0xC` is the 32-bit-word-aligned memory address of the instruction in memory. The expression `(~1)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x05D00893` is in fact the binary encoded version of the instruction itself. Finally, `addi $a7,$zero,93` is the human-readable assembly version of the instruction. This means in particular that `0x05D00893` and `addi $a7,$zero,93` are semantically equivalent. The 32-bit word `0x05D00893` in binary stored at address `0xC` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
 
-The machine code in `selfie.m` presented in the previous chapter contains just that binary code, that is, `0x24080007` followed by `0x24094000` from the second line in `selfie.s` and so on. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
+The machine code in `selfie.m` presented in the previous chapter contains just that binary code, that is, `0x05D00893` followed by `0x00000073` from the fifth line in `selfie.s` and so on. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
 
-So, how do we know that `0x24080007` represents `addiu $t0,$zero,7`? This is specified precisely by the ISA of the widely used MIPS processor family.
+So, how do we know that `0x05D00893` represents `addi $a7,$zero,93`? This is specified precisely by the ISA of the open RISC-V processor family.
+
+[RISC-V](https://en.wikipedia.org/wiki/RISC-V "RISC-V")
+: An open instruction set architecture (ISA) based on established reduced instruction set computing (RISC) principles. In contrast to most ISAs, the RISC-V ISA can be freely used for any purpose, permitting anyone to design, manufacture and sell RISC-V chips and software. While not the first open architecture ISA, it is significant because it is designed to be useful in a wide range of devices. The instruction set also has a substantial body of supporting software, which avoids a usual weakness of new instruction sets.
+
+The mipster emulator implements a strict subset of 64-bit RISC-V instructions which we call *RISC-U*. In fact, mipster only implements [14](https://github.com/cksystemsteaching/selfie/blob/228c41ce4d30eefc7175f8404f772785f8cb3730/selfie.c#L1022-L1097) out of several dozen RISC-V instructions. The starc compiler generates [RISC-U code](https://github.com/cksystemsteaching/selfie/blob/228c41ce4d30eefc7175f8404f772785f8cb3730/selfie.c#L828-L846) that runs on mipster and is compatible with the official RISC-V tool chain and thus runs, at least in principle, also on real RISC-V processors.
+
+RISC-V can be seen as a streamlined modern version of *MIPS* which is the ISA that mipster used to support in older versions of selfie hence the name mipster. MIPS processors are still used in a large variety of devices.
 
 [MIPS](https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS")
 : A reduced instruction set computer (RISC) instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.). The early MIPS architectures were 32-bit, with 64-bit versions added later. Multiple revisions of the MIPS instruction set exist, including MIPS I, MIPS II, MIPS III, MIPS IV, MIPS V, MIPS32, and MIPS64. The current revisions are MIPS32 (for 32-bit implementations) and MIPS64 (for 64-bit implementations).
 
-The mipster emulator implements a strict subset of the instructions of the MIPS32 processor which we call *MIPSter*. In fact, mipster only implements [17](http://github.com/cksystemsteaching/selfie/blob/4d7d38e6bda22f02ab34abbae5040d17e8856bce/selfie.c#L705-L765) out of the more than 40 instructions of MIPS32. The starc compiler generates MIPSter code that runs on mipster and thus, at least in principle, also on a real MIPS32 processor. The converse is not true, of course. MIPS32 code does in general not run on mipster but that is not a problem here.
-
-Let us go back to the above example. The `addiu` string in `addiu $t0,$zero,7` is an assembly mnemonic of the *operation code* or *opcode*, for short, that identifies the operation to be performed while the remaining `$t0,$zero,7` are three operands of that operation.
+Let us go back to the above example. The `addi` string in `addi $a7,$zero,93` is an assembly mnemonic of the *operation code* or *opcode*, for short, that identifies the operation to be performed while the remaining `$a7,$zero,93` are three operands of that operation.
 
 [Opcode](https://en.wikipedia.org/wiki/Opcode "Opcode")
 : The portion of a machine language instruction that specifies the operation to be performed. Beside the opcode itself, most instructions also specify the data they will process, in the form of operands.
 
-In our example, `addiu` instructs the processor to add the value of the integer `7` to the value stored in register `$zero` (which is always 0) and store the result in register `$t0` (which will thus contain the value 7 after executing the instruction).
+In our example, `addi` instructs the processor to add the value of the integer `93` to the value stored in register `$zero` (which is always 0) and store the result in register `$a7` (which will thus contain the value 93 after executing the instruction).
 
-A MIPS processor has 32 32-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is obviously register 0 while the register `$t0`, less obviously, happens to be register 8. The only missing piece of information is that `addiu` is represented by the opcode 9. Now, how do we get from there to `0x24080007`?
+A 64-bit RISC-V processor has 32 64-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is obviously register 0 while the register `$a7`, less obviously, happens to be register 17. The only missing piece of information is that `addi` is represented by the opcode 19. Now, how do we get from there to `0x05D00893`?
 
-We take the opcode 9 (`001001`), register 0 (`00000`), register 8 (`01000`), and value 7 (`0000000000000111`) and put them together in binary as follows:
+We take the opcode 19 (`0010011`), register 17 (`10001`), register 0 (`00000`), and value 93 (`000001011101`) and put them together in binary as follows:
 
-`001001 00000 01000 0000000000000111`
+`000001011101 00000 000 10001 0010011`
 
-If you merge that into a 32-bit word you get `0x24080007`. The MIPS32 ISA specifies that the six MSBs encode the opcode 9, the next five bits encode the second (!) operand register 0, the following five bits encode the first (!) operand register 8, and lastly the remaining sixteen LSBs encode the third operand value 7, in 16-bit two's complement in fact so it could even be a negative value. The fact that the third operand is treated by `addiu` as an integer value rather than, say, a number identifying a register is called *immediate* addressing hence the `i` in `addiu`. Immediate addressing is one of various so-called *addressing modes*. The `u` in `addiu` stands for unsigned which is misleading. Its actual meaning is that arithmetic overflows with `addiu` are ignored while wrap-around semantics apply.
+If you merge that into a 32-bit word you get `0x05D00893`. The RISC-V ISA specifies that the twelve MSBs encode the third (!) operand value 93, in 12-bit two's complement in fact, so it could even be a negative value. The next five bits encode the second (!) operand register 0 followed by three bits set to 0. The next five bits encode the first (!) operand register 17 followed by the remaining seven LSBs that encode the opcode 19. The fact that the third operand is treated by `addi` as an integer value rather than, say, a number identifying a register, is called *immediate* addressing hence the `i` in `addi`. Immediate addressing is one of various so-called *addressing modes*.
 
 [Addressing Mode](https://en.wikipedia.org/wiki/Addressing_mode)
 : An aspect of the instruction set architecture in most central processing unit (CPU) designs. The various addressing modes that are defined in a given instruction set architecture define how machine language instructions in that architecture identify the operand(s) of each instruction.
 
-But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5^=32 different registers of the machine. The six bits for the opcode obviously allow us to distinguish up to 2^6^=64 different opcodes but we actually do not need that many. Now, think about the range of values that can be encoded in two's complement in the sixteen bits for the third operand! This is the range of values that we can get into a register such as `$t0$` with a single `addiu` instruction. In other words, we can use that instruction to initialize registers. Cool!
+But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5^=32 different registers of the machine. The seven bits for the opcode obviously allow us to distinguish up to 2^6^=64 different opcodes but we actually do not need that many. Now, think about the range of values that can be encoded in two's complement in the twelve bits for the third operand! This is the range of values that we can get into a register such as `$a7$` with a single `addi` instruction. In other words, we can use that instruction to initialize registers. Cool!
 
-Note that the value in register `$zero` is assumed to be 0 at all times. This is in fact needed for initializing registers using the `addiu` instruction. There exists MIPS assembly in which such intention is made explicit by using *pseudo instructions*. Here, the pseudo instruction `movi $t0,7`, for example, could be used instead but would anyhow just be a short version of `addiu $t0,$zero,7`. The remaining sixteen instructions of MIPSter are just as simple, we introduce them on the fly as needed.
+Note that the value in register `$zero` is assumed to be 0 at all times. This is in fact needed for initializing registers using the `addi` instruction. There exists RISC-V assembly in which such intention is made explicit by using *pseudo instructions*. Here, the pseudo instruction `movi $a7,93`, for example, could be used instead but would anyhow just be a short version of `addi $a7,$zero,93`. The remaining thirteen instructions of RISC-U are just as simple, we introduce them on the fly as needed.
 
-So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L4139-L4189) is nevertheless pretty straightforward.
+So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total six different formats in RISC-U depending on the opcode. The actual source code in `selfie.c` for [encoding (and decoding) machine instructions](https://github.com/cksystemsteaching/selfie/blob/228c41ce4d30eefc7175f8404f772785f8cb3730/selfie.c#L729-L756) is nevertheless pretty straightforward.
 
-An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L4191-L4290), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works in the code! It may look technical but is actually very simple.
+An interesting feature of the implementation of selfie in a single file is that the source code for decoding machine instructions, which is used by the mipster emulator and selfie's disassembler, is right next to the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works in the code! It may look technical but is actually very simple.
 
 ## Summary
 
-In this chapter we have seen how characters, strings, identifiers, integers, and even machine instructions are encoded and decoded, and how all that allows us to represent source and machine code using just bits. We even understand now some of the output of the starc compiler when compiling our "Hello World!" program, for example:
+In this chapter we have seen how characters, strings, identifiers, integers, and even machine instructions are encoded and decoded, and how all that allows us to represent source and machine code using just bits. We even understand now some of the output of the starc compiler when compiling our "Hello World!" program:
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+./selfie: selfie compiling manuscript/code/hello-world.c with starc
 ...
-./selfie: 729 characters read in 22 lines and 11 comments
-./selfie: with 80(10.97%) characters in 39 actual symbols
-./selfie: 1 global variables, 1 procedures, 1 string literals
+./selfie: 734 characters read in 23 lines and 11 comments
+./selfie: with 94(12.80%) characters in 39 actual symbols
+./selfie: 2 global variables, 1 procedures, 1 string literals
 ./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
+./selfie: symbol table search time was 1 iterations on average and 35 in total
+./selfie: 632 bytes generated with 116 instructions and 40 bytes of data
+./selfie: init:    lui: 1(0.86%), addi: 49(42.24%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 4(3.44%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 5(4.31%), jalr: 6(5.17%), ecall: 8(6.89%)
 ...
 ```
 
-The compiler counts `characters`, `lines`, `comments`, `whitespace`, and `symbols` in source code, and `instructions` and `bytes of data` in the generated machine code. The information about `global variables`, `procedures`, `calls`, `assignments`, `while`, `if`, and `return` will become clear in the next chapter.
+The compiler counts `characters`, `lines`, `comments`, `whitespace`, and `symbols` in source code, and `instructions` and `bytes of data` in the generated machine code. The information about `global variables`, `procedures`, `string literals`, `calls`, `assignments`, `while`, `if`, and `return` as well as the generated instructions will become clear in the next chapter.
 
 But there is still something missing here. Why is all of this encoded the way it is and not some other way? There are two important reasons:
 
