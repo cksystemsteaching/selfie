@@ -6080,6 +6080,9 @@ void emit_malloc() {
   // copy "_bump" string into zeroed double word to obtain unique hash
   create_symbol_table_entry(GLOBAL_TABLE, string_copy((uint64_t*) "_bump"), 0, VARIABLE, UINT64_T, 0, -allocated_memory);
 
+  // do not account for _bump as global variable
+  number_of_global_variables = number_of_global_variables - 1;
+
   entry = search_global_symbol_table(string_copy((uint64_t*) "_bump"), VARIABLE);
 
   // allocate register for size parameter
