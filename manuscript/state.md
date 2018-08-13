@@ -61,7 +61,7 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 ./selfie: selfie compiling manuscript/code/countdown.c with starc
 ./selfie: 645 characters read in 20 lines and 9 comments
 ./selfie: with 65(10.70%) characters in 28 actual symbols
-./selfie: 2 global variables, 1 procedures, 0 string literals
+./selfie: 1 global variables, 1 procedures, 0 string literals
 ./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: symbol table search time was 1 iterations on average and 29 in total
 ./selfie: 544 bytes generated with 100 instructions and 16 bytes of data
@@ -86,7 +86,7 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 ./selfie: stores:  15,10(66.66%)@0x11C(~19),1(6.66%)@0xF0(~11),1(6.66%)@0xF8(~11)
 ```
 
-## [Global Variable](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3847-L3874)
+## [Global Variable](https://github.com/cksystemsteaching/selfie/blob/2560aa4acb58dad6b6a6c877794616949936d318/selfie.c#L4532-L4557)
 
 For the countdown program to be able to operate on a number there needs to be memory to store that number. For this purpose, Line 3 in the source code *declares* a so-called *global variable* called `bar`. The starc compiler even reports that it found exactly that one global variable, see Line 5 in the above output.
 
@@ -98,7 +98,7 @@ So global really just means here that `bar` can be used throughout the program. 
 [Declaration](https://en.wikipedia.org/wiki/Declaration_(computer_programming) "Declaration")
 : Specifies properties of an identifier: it declares what an identifier means. Declarations are most commonly used for functions, variables, constants, and classes. Beyond the name (the identifier itself) and the kind of entity (function, variable, etc.), declarations typically specify the data type (for variables and constants), or the type signature (for functions). The term "declaration" is frequently contrasted with the term "definition", but meaning and usage varies significantly between languages.
 
-Line 3 not only declares `bar` but also *defines* the initial value of `bar` as the decimal value 10 represented by the integer literal `10`. The initial value of a global variable is nevertheless optional. Line 3 could be rewritten to `int bar;` in which case the value of `bar` would be initially undefined meaning it could initially be any value. Undefined values are a common source of errors, if programs depend on them. Modern compilers usually warn programmers about that (not starc though since we need to keep things simple). A simple way to avoid depending on undefined values is to either provide an initial value for a variable or to assign a value to a variable before using the variable in any computation, see below for more about how to do that. A program that does not depend on undefined values has a single initial state from which it begins all computations. This is what we want!
+Line 3 not only declares `bar` but also *defines* the initial value of `bar` as the decimal value 10 represented by the integer literal `10`. The initial value of a global variable is nevertheless optional. Line 3 could be rewritten to `uint64_t bar;` in which case the value of `bar` would be initially undefined meaning it could initially be any value. Undefined values are a common source of errors, if programs depend on them. Modern compilers usually warn programmers about that (not starc though since we need to keep things simple). A simple way to avoid depending on undefined values is to either provide an initial value for a variable or to assign a value to a variable before using the variable in any computation, see below for more about how to do that. A program that does not depend on undefined values has a single initial state from which it begins all computations. This is what we want!
 
 Note that the equality sign `=` in Line 3 is merely [syntactic sugar](https://en.wikipedia.org/wiki/Syntactic_sugar) making the code more readable while the [semicolon](https://en.wikipedia.org/wiki/Semicolon) `;` is a so-called *terminator* which indicates the end of a statement. After the semicolon we could insert more global variable declarations as long as they all were to introduce unique identifiers and were properly terminated with semicolons. Programming languages newer than C often make such terminators optional or omit them altogether since they are, similar to syntactic sugar, not necessary for the compiler to work and, unlike syntactic sugar, sometimes considered a burden.
 
