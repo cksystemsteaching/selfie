@@ -1145,13 +1145,13 @@ void efree();
 
 void storeSymbolicMemory(uint64_t* pt, uint64_t saddr, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void storeConstrainedMemory(uint64_t type, uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
 void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
-
-void setConstraint(uint64_t reg, uint64_t hasco, uint64_t saddr, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
-void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone);
+void setMeta(uint64_t reg, uint64_t typ, uint64_t hasmn, uint64_t expr);
+void setConstraint(uint64_t reg, uint64_t saddr, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step);
+void setCorrection(uint64_t reg, uint64_t colos, uint64_t coups, uint64_t operand);
 
 void takeBranch(uint64_t b, uint64_t howManyMore);
 void createConstraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, uint64_t up2, uint64_t s2, uint64_t trb, uint64_t howManyMore);
@@ -1165,20 +1165,31 @@ uint64_t maxTraceLength = 100000;
 
 uint64_t debug_symbolic = 0;
 
+//Abstract Domain types
+uint64_t concrete_t = 0; //is symbol (previous hasco)
+uint64_t integer_t = 1;
+uint64_t pointer_t = 2;
+uint64_t char_t = 3;
+
+//reg_expr
+uint64_t const_t = 0;
+uint64_t sum_t = 1;
+uint64_t mul_t = 2;
+uint64_t div_t = 3;
+uint64_t rem_t = 4;
+uint64_t fail_t = 5;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 // trace
+uint64_t* tcs = (uint64_t*) 0;    // trace of trace counters to previous values
 
-uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
-
-uint64_t* types = (uint64_t*) 0; // memory range or integer interval
-
-uint64_t* los   = (uint64_t*) 0; // trace of lower bounds on values
-uint64_t* ups   = (uint64_t*) 0; // trace of upper bounds on values
-uint64_t* steps = (uint64_t*) 0; // trace of steps for intervals
-
-uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
+uint64_t* types = (uint64_t*) 0;  // memory range or integer interval
 uint64_t* saddrs = (uint64_t*) 0; // trace of source addresses
+uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
+uint64_t* los   = (uint64_t*) 0;  // trace of lower bounds on values
+uint64_t* ups   = (uint64_t*) 0;  // trace of upper bounds on values
+uint64_t* steps = (uint64_t*) 0;  // trace of steps for intervals
 
 // read history
 
@@ -1191,25 +1202,21 @@ uint64_t* read_ups = (uint64_t*) 0;
 
 // registers
 
-uint64_t* reg_typ   = (uint64_t*) 0; // memory range or integer interval
-uint64_t* reg_los   = (uint64_t*) 0; // lower bound on register value
-uint64_t* reg_ups   = (uint64_t*) 0; // upper bound on register value
-uint64_t* reg_steps = (uint64_t*) 0; // step of register's interval
-
-// register constraints on memory
-
-uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
-uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
-uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
-uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
-uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
+// abstract domains for tempory computations
+// 'meta-info':
+uint64_t* reg_typ   = (uint64_t*) 0;  // type: memory range | integer interval
+uint64_t* reg_hasmn = (uint64_t*) 0;  // constraint has minuend
+uint64_t* reg_expr = (uint64_t*) 0;   // constraint can be corrected (the expression fits into the correction semantics)
+// astract domain values
 uint64_t* reg_saddr = (uint64_t*) 0; // source address (renaming and string constrains)
-
-uint64_t* reg_mul     = (uint64_t*) 0;
-uint64_t* reg_div     = (uint64_t*) 0;
-uint64_t* reg_rem     = (uint64_t*) 0;
-uint64_t* reg_rem_typ = (uint64_t*) 0;
-uint64_t* reg_has_mul_div_mod = (uint64_t*) 0;
+uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
+uint64_t* reg_los   = (uint64_t*) 0; // lower bound on register value | pt: start
+uint64_t* reg_ups   = (uint64_t*) 0; // upper bound on register value | pt: size
+uint64_t* reg_steps = (uint64_t*) 0; // step of register's interval
+// accumumated constraints
+uint64_t* reg_colos = (uint64_t*) 0;  // offset on lower bound
+uint64_t* reg_coups = (uint64_t*) 0;  // offset on upper bound
+uint64_t* reg_factor   = (uint64_t*) 0;  // constant operand in a mdr
 
 // trace counter of most recent constraint
 
@@ -1230,34 +1237,31 @@ void initSymbolicEngine() {
   pcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   tcs    = zalloc(maxTraceLength * SIZEOFUINT64);
   values = zalloc(maxTraceLength * SIZEOFUINT64);
+
   types  = zalloc(maxTraceLength * SIZEOFUINT64);
+  saddrs = zalloc(maxTraceLength * SIZEOFUINT64);
+  vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
   los    = zalloc(maxTraceLength * SIZEOFUINT64);
   ups    = zalloc(maxTraceLength * SIZEOFUINT64);
   steps  = zalloc(maxTraceLength * SIZEOFUINT64);
-  vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
-  saddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
   read_values = zalloc(maxTraceLength * SIZEOFUINT64);
   read_los    = zalloc(maxTraceLength * SIZEOFUINT64);
   read_ups    = zalloc(maxTraceLength * SIZEOFUINT64);
 
   reg_typ   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_hasmn = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_expr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  reg_saddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_los   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_ups   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_steps = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
-  reg_hasco = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_hasmn = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_colos = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_coups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_saddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-
-  reg_mul     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_div     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_rem     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_rem_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_has_mul_div_mod = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_colos   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_coups   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_factor  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   i = 0;
   while (i < NUMBEROFREGISTERS) {
@@ -6359,14 +6363,13 @@ void implementInput(uint64_t* context) {
 
   if (symbolic) {
 
-    *(reg_typ + REG_A0)   = 0;
+    *(reg_typ + REG_A0)   = integer_t;
     *(reg_los + REG_A0)   = start;
     *(reg_ups + REG_A0)   = end;
     *(reg_steps + REG_A0) = step;
 
-    *(reg_hasco + REG_A0) = 1;
-
     setPC(context, getPC(context) + INSTRUCTIONSIZE);
+
   } else {
     print(selfieName);
     print((uint64_t*) ": input syscall during concrete execution ");
@@ -6548,7 +6551,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 
 void constrain_lui() {
   if (rd != REG_ZR) {
-    *(reg_typ + rd) = 0;
+    //*(reg_typ + rd) = 0;
 
     if(do_taint_flag) {
       *(reg_istainted + rd) = 0;
@@ -6557,12 +6560,13 @@ void constrain_lui() {
     }
 
     // interval semantics of lui
-    *(reg_los + rd) = leftShift(imm, 12);
-    *(reg_ups + rd) = leftShift(imm, 12);
+    // *(reg_los + rd) = leftShift(imm, 12);
+    // *(reg_ups + rd) = leftShift(imm, 12);
 
     // rd has no constraint
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-    setCorrection(rd, 0, 0, 0, 0, 0);
+    setMeta(rd, concrete_t, 0, 0);
+    setCorrection(rd, 0, 0, 0);
+    setConstraint(rd, 0, 0, leftShift(imm, 12), leftShift(imm, 12), 1);
   }
 }
 
@@ -6609,61 +6613,56 @@ void do_addi() {
   ic_addi = ic_addi + 1;
 }
 
+void minuend_error() {
+  print(selfieName);
+  print((uint64_t*) ": detected invalid minuend expression in operand of addi at ");
+  printHexadecimal(pc, 0);
+  printSourceLineNumberOfInstruction(pc - entryPoint);
+  println();
+
+  exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+}
+
+uint64_t isFromReturn(uint64_t reg) {
+  if(*(reg_saddr + reg))
+    return reg == REG_A0;
+  return 0;
+}
+
 void constrain_addi() {
   if (rd != REG_ZR) {
 
     if(do_taint_flag) taint_unop();
 
-    if (*(reg_typ + rs1)) {
-      *(reg_typ + rd) = *(reg_typ + rs1);
-
-      *(reg_los + rd) = *(reg_los + rs1);
-      *(reg_ups + rd) = *(reg_ups + rs1);
-
+    if (*(reg_typ + rs1) == pointer_t) {
       // rd has no constraint if rs1 is memory range
-      setConstraint(rd, 0, 0, 0, 0, 0, 0);
-
+      setMeta(rd, *(reg_typ + rs1), 0, 0);
+      setCorrection(rd, 0, 0, 0);
+      setConstraint(rd, 0, 0, *(reg_los + rs1), *(reg_ups + rs1), 0);
       return;
     }
 
-    *(reg_typ + rd) = 0;
-
     // interval semantics of addi
-    *(reg_los + rd) = *(reg_los + rs1) + imm;
-    *(reg_ups + rd) = *(reg_ups + rs1) + imm;
+    // *(reg_los + rd) = *(reg_los + rs1) + imm;
+    // *(reg_ups + rd) = *(reg_ups + rs1) + imm;
 
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another addend
-        print(selfieName);
-        print((uint64_t*) ": detected invalid minuend expression in operand of addi at ");
-        printHexadecimal(pc, 0);
-        printSourceLineNumberOfInstruction(pc - entryPoint);
-        println();
+    if (*(reg_typ + rs1) == integer_t) {
+      // rs1 constraint has already minuend and cannot have another addend
+      if (*(reg_hasmn + rs1)) minuend_error();
 
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else {
-        // rd inherits rs1 constraint
-        if(*(reg_saddr + rs1)) {
-          if(rs1 == REG_A0)
-            setConstraint(rd, *(reg_hasco + rs1), 0, *(reg_saddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
-          else
-            setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
-        } else
-            setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
+      setMeta(rd, *(reg_typ + rs1), 0, sum_t);
 
-        if (*(reg_has_mul_div_mod + rs1) == 0)
-          setCorrection(rd, 1, 0, 0, 0, 1);
+      // rd inherits rs1 constraint
+      setCorrection(rd, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm, *(reg_factor + rs1));
+      if(isFromReturn(rs1))
+          setConstraint(rd, 0, *(reg_saddr + rs1), *(reg_los + rs1) + imm, *(reg_ups + rs1) + imm, *(reg_steps + rs1));
         else
-          setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
-
-        //step
-        *(reg_steps + rd) = *(reg_steps + rs1);
-      }
+          setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), *(reg_los + rs1) + imm, *(reg_ups + rs1) + imm, *(reg_steps + rs1));
     } else {
       // rd has no constraint if rs1 has none
-      setConstraint(rd, 0, 0, 0, 0, 0, 0);
-      setCorrection(rd, 0, 0, 0, 0, 0);
+      setMeta(rd, concrete_t, 0, 0);
+      setCorrection(rd, 0, 0, 0);
+      setConstraint(rd, 0, 0, *(reg_los + rs1) + imm, *(reg_ups + rs1) + imm, 1);
     }
   }
 }
@@ -6699,179 +6698,147 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
+void pointer_error() {
+  // adding two pointers is undefined
+  print(selfieName);
+  print((uint64_t*) ": undefined addition of two pointers at ");
+  printHexadecimal(pc, 0);
+  printSourceLineNumberOfInstruction(pc - entryPoint);
+  println();
+
+  exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+}
+
+uint64_t whichType(uint64_t reg1, uint64_t reg2) {
+  if (*(reg_typ + reg1)) return *(reg_typ + reg1);
+  return *(reg_typ + reg2);
+}
+
+void add_sub_pointer(uint64_t reg_pt) {
+  setMeta(rd, pointer_t, 0, 0);
+  setConstraint(rd, 0, 0, *(reg_los + reg_pt), *(reg_ups + reg_pt), 0);
+  setCorrection(rd, 0, 0, 0);
+}
+
+uint64_t check_add_sub_step(uint64_t reg_min, uint64_t reg_max, uint64_t gcd_step) {
+  uint64_t i_max;
+  if (*(reg_steps + reg_min) == gcd_step) {
+    i_max = (*(reg_ups + reg_min) - *(reg_los + reg_min)) / *(reg_steps + reg_min);
+
+    if (i_max < *(reg_steps + reg_max) / gcd_step - 1) {
+      //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
+      last_jal_from = pc;
+      throwException(EXCEPTION_INCOMPLETENESS, 0);
+      printOverApprox((uint64_t*) "add");
+    }
+  } else {
+    //now: exit analysis (two "incompatible" symbolic values addition [no multiple step])
+    last_jal_from = pc;
+    throwException(EXCEPTION_INCOMPLETENESS, 0);
+    printOverApprox((uint64_t*) "add");
+  }
+}
+
+void error_minuend(uint64_t* operand, uint64_t* operation) {
+  print(selfieName);
+  print((uint64_t*) ": detected invalid minuend expression in ");
+  print(operand);
+  print((uint64_t*) " operand of ");
+  print(operation);
+  print((uint64_t*) " at ");
+  printHexadecimal(pc, 0);
+  printSourceLineNumberOfInstruction(pc - entryPoint);
+  println();
+  exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+}
+
 void constrain_add() {
   uint64_t add_los;
   uint64_t add_ups;
-  uint64_t cnd;
-  uint64_t gcd_steps;
-  uint64_t i_max;
+  uint64_t add_steps;
 
   if (rd == REG_ZR)
     return;
 
   if(do_taint_flag) taint_binop(ADD);
 
-  if (*(reg_typ + rs1)) {
-    if (*(reg_typ + rs2)) {
-      // adding two pointers is undefined
-      print(selfieName);
-      print((uint64_t*) ": undefined addition of two pointers at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    }
-
-    *(reg_typ + rd) = *(reg_typ + rs1);
-
-    *(reg_los + rd) = *(reg_los + rs1);
-    *(reg_ups + rd) = *(reg_ups + rs1);
-
-    // rd has no constraint if rs1 is memory range
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-
-    return;
-  } else if (*(reg_typ + rs2)) {
-    *(reg_typ + rd) = *(reg_typ + rs2);
-
-    *(reg_los + rd) = *(reg_los + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs2);
-
-    // rd has no constraint if rs2 is memory range
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-
+  //pointer abstract domain
+  if(whichType(rs1, rs2) == pointer_t) {
+    if (*(reg_typ + rs1)) {
+      if (*(reg_typ + rs2))
+        pointer_error();
+      add_sub_pointer(rs1);
+    } else
+      add_sub_pointer(rs2);
     return;
   }
 
-  *(reg_typ + rd) = 0;
-
-  // interval semantics of add
-  cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
-  if (cnd == 0) {
+  //integer abstract domain
+  //domain-overflow?
+  if (add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2))) {
+    add_los = *(reg_los + rs1) + *(reg_los + rs2);
+    add_ups = *(reg_ups + rs1) + *(reg_ups + rs2);
+  } else {
     //now: exit analysis (result too big for the abstract domain)
     last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
-
-    // TODO: improve
-    add_los = 0;
-    add_ups = UINT64_MAX;
-    *(reg_steps + rd) = 1;
-
+    return;
+    //add_los = 0;
+    //add_ups = UINT64_MAX;
+    //*(reg_steps + rd) = 1;
     printOverApprox((uint64_t*) "add");
-  } else {
-    add_los = *(reg_los + rs1) + *(reg_los + rs2);
-    add_ups = *(reg_ups + rs1) + *(reg_ups + rs2);
   }
 
-  if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2)) {
-      // we cannot keep track of more than one constraint for add but
-      // need to warn about their earlier presence if used in comparisons
-      setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0, 0);
+  //typ is integer_t or 0 (concrete)
+  //interval add semantics
+  if (*(reg_typ + rs1)) {
+    if (*(reg_typ + rs2)) {
+      // s + s
 
-      // interval semantics of add
-      if (cnd != 0) {
-        gcd_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
+      add_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
+      if (*(reg_steps + rs1) < *(reg_steps + rs2))
+          check_add_sub_step(rs1, rs2, add_steps);
+      else if (*(reg_steps + rs1) > *(reg_steps + rs2))
+          check_add_sub_step(rs2, rs1, add_steps);
 
-        if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
-          if (*(reg_steps + rs1) == gcd_steps) {
-            i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
-            if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
-
-              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
-              last_jal_from = pc;
-              throwException(EXCEPTION_INCOMPLETENESS, 0);
-              printOverApprox((uint64_t*) "add");
-            }
-          } else {
-
-            //now: exit analysis (two "incompatible" symbolic values addition [no multiple step])
-            last_jal_from = pc;
-            throwException(EXCEPTION_INCOMPLETENESS, 0);
-            printOverApprox((uint64_t*) "add");
-          }
-        } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
-          if (*(reg_steps + rs2) == gcd_steps) {
-            i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
-            if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
-
-              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
-              last_jal_from = pc;
-              throwException(EXCEPTION_INCOMPLETENESS, 0);
-              printOverApprox((uint64_t*) "add");
-            }
-          } else {
-
-            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
-            last_jal_from = pc;
-            throwException(EXCEPTION_INCOMPLETENESS, 0);
-            printOverApprox((uint64_t*) "add");
-          }
-        }
-
-        *(reg_steps + rd) = gcd_steps;
+    // we cannot keep track of more than one constraint for add but
+    // need to warn about their earlier presence if used in comparisons
+    if(*(reg_expr + rs1) > 1)
+      setMeta(rd, *(reg_typ + rs1), 0, fail_t); //TODO: minend? / iscorrect rs2?
+    else
+      setMeta(rd, *(reg_typ + rs1), 0, 1); //TODO: minend? / iscorrect rs2?
+    setCorrection(rd, 0, 0, *(reg_factor + rs1)); //TODO: manage witness
+    setConstraint(rd, 0, 0, add_los, add_ups, add_steps);
+    } else if (*(reg_hasmn + rs1))
+        // rs1 constraint has already minuend and cannot have another addend
+        error_minuend("left", "add");
+      else {
+        // rd inherits rs1 constraint since rs2 has none
+        // s + c
+        if(*(reg_expr + rs1) > 1)
+          setMeta(rd, *(reg_typ + rs1), 0, fail_t);
+        else
+          setMeta(rd, *(reg_typ + rs1), 0, 1);
+        setCorrection(rd, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2), *(reg_factor + rs1));
+        setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), add_los, add_ups, *(reg_steps + rs1)); //interval add semantics
       }
-
-      *(reg_los + rd) = add_los;
-      *(reg_ups + rd) = add_ups;
-
-    } else if (*(reg_hasmn + rs1)) {
-      // rs1 constraint has already minuend and cannot have another addend
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in left operand of add at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
-      // rd inherits rs1 constraint since rs2 has none
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2),*(reg_coups + rs1) + *(reg_ups + rs2));
-
-      if (*(reg_has_mul_div_mod + rs1) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
-      else
-        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
-
-      // interval semantics of add
-      if (cnd != 0)
-        *(reg_steps + rd) = *(reg_steps + rs1);
-      *(reg_los + rd)   = add_los;
-      *(reg_ups + rd)   = add_ups;
-    }
-  } else if (*(reg_hasco + rs2)) {
-    if (*(reg_hasmn + rs2)) {
+  } else if (*(reg_typ + rs2)) {
+    if (*(reg_hasmn + rs2))
       // rs2 constraint has already minuend and cannot have another addend
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in right operand of add at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
+      error_minuend("right", "add");
+    else {
       // rd inherits rs2 constraint since rs1 has none
-      setConstraint(rd, *(reg_hasco + rs2), *(reg_saddr + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2),*(reg_ups + rs1) + *(reg_coups + rs2));
-
-      if (*(reg_has_mul_div_mod + rs2) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
-      else
-        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_has_mul_div_mod + rs2));
-
-      // interval semantics of add
-      if (cnd != 0)
-        *(reg_steps + rd) = *(reg_steps + rs2);
-      *(reg_los + rd)   = add_los;
-      *(reg_ups + rd)   = add_ups;
+      // c + s
+      setMeta(rd, *(reg_typ + rs2), 0, sum_t);
+      setCorrection(rd, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2), *(reg_factor + rs2));
+      setConstraint(rd, *(reg_saddr + rs2), *(reg_vaddr + rs2), add_los, add_ups, *(reg_steps + rs2)); //interval add semantics
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-    setCorrection(rd, 0, 0, 0, 0, 0);
-
-    *(reg_los + rd) = add_los;
-    *(reg_ups + rd) = add_ups;
+    // c + c
+    setMeta(rd, concrete_t, 0, 0);
+    setCorrection(rd, 0, 0, 0);
+    setConstraint(rd, 0, 0, add_los, add_ups, 1);
   }
 }
 
@@ -6885,185 +6852,112 @@ void do_sub() {
   ic_sub = ic_sub + 1;
 }
 
+void sub_2pointer() {
+  if (*(reg_los + rs1) == *(reg_los + rs2))
+    if (*(reg_ups + rs1) == *(reg_ups + rs2)) {
+      return; //ok
+    }
+  // subtracting incompatible pointers
+  throwException(EXCEPTION_INVALIDADDRESS, 0);
+}
+
 void constrain_sub() {
   uint64_t sub_los;
   uint64_t sub_ups;
-  uint64_t cnd;
-  uint64_t gcd_steps;
-  uint64_t i_max;
+  uint64_t sub_steps;
 
   if (rd == REG_ZR)
     return;
 
   if(do_taint_flag) taint_binop(SUB);
 
-  if (*(reg_typ + rs1)) {
-    if (*(reg_typ + rs2)) {
-      if (*(reg_los + rs1) == *(reg_los + rs2))
-        if (*(reg_ups + rs1) == *(reg_ups + rs2)) {
-          *(reg_typ + rd) = 0;
-
-          *(reg_los + rd) = *(registers + rd);
-          *(reg_ups + rd) = *(registers + rd);
-
-          // rd has no constraint if rs1 and rs2 are memory range
-          setConstraint(rd, 0, 0, 0, 0, 0, 0);
-
-          return;
-        }
-
-      // subtracting incompatible pointers
-      throwException(EXCEPTION_INVALIDADDRESS, 0);
-
-      return;
-    } else {
-      *(reg_typ + rd) = *(reg_typ + rs1);
-
-      *(reg_los + rd) = *(reg_los + rs1);
-      *(reg_ups + rd) = *(reg_ups + rs1);
-
-      // rd has no constraint if rs1 is memory range
-      setConstraint(rd, 0, 0, 0, 0, 0, 0);
-
-      return;
-    }
-  } else if (*(reg_typ + rs2)) {
-    *(reg_typ + rd) = *(reg_typ + rs2);
-
-    *(reg_los + rd) = *(reg_los + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs2);
-
-    // rd has no constraint if rs2 is memory range
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-
+  //pointer abstract domain
+  if(whichType(rs1, rs2) == pointer_t) {
+    if (*(reg_typ + rs1)) {
+      if (*(reg_typ + rs2)) {
+        sub_2pointer();
+        // rd has no constraint if rs1 and rs2 are memory range
+        setMeta(rd, concrete_t, 0, 0);
+        setCorrection(rd, 0, 0, 0);
+        setConstraint(rd, 0, 0, *(registers + rd), *(registers + rd), 0);
+      } else
+        add_sub_pointer(rs1);
+    } else
+      add_sub_pointer(rs2);
     return;
   }
 
-  *(reg_typ + rd) = 0;
-
-  // interval semantics of sub
-  cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
-  if (cnd == 0) {
+  //integer abstract domain
+  //domain-overflow?
+  if (add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2))) {
+    sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
+    sub_ups = *(reg_ups + rs1) - *(reg_los + rs2);
+  } else {
     //now: exit analysis (result too big for the abstract domain)
     last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
-
-    // TODO: improve
-    sub_los = 0;
-    sub_ups = UINT64_MAX;
-    *(reg_steps + rd) = 1;
-
+    return;
+    //add_los = 0;
+    //add_ups = UINT64_MAX;
+    //*(reg_steps + rd) = 1;
     printOverApprox((uint64_t*) "sub");
-  } else {
-    // use temporary variables since rd may be rs1 or rs2
-    sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
-    sub_ups = *(reg_ups + rs1) - *(reg_los + rs2);
   }
 
-  if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2)) {
-      // we cannot keep track of more than one constraint for sub but
-      // need to warn about their earlier presence if used in comparisons
-      setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0, 0);
+  //typ is integer_t or 0 (concrete)
+  //interval sub semantics
+  if (*(reg_typ + rs1)) {
+    if (*(reg_typ + rs2)) {
+      // s - s
 
-      // interval semantics of sub
-      if (cnd != 0) {
-        gcd_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
+      sub_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
+      if (*(reg_steps + rs1) < *(reg_steps + rs2))
+          check_add_sub_step(rs1, rs2, sub_steps);
+      else if (*(reg_steps + rs1) > *(reg_steps + rs2))
+          check_add_sub_step(rs2, rs1, sub_steps);
 
-        if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
-          if (*(reg_steps + rs1) == gcd_steps) {
-            i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
-            if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
+    // we cannot keep track of more than one constraint for sub but
+    // need to warn about their earlier presence if used in comparisons
+    if(*(reg_expr + rs1) > 1)
+      setMeta(rd, *(reg_typ + rs1), 0, fail_t); //TODO: minend? / iscorrect rs2?
+    else
+      setMeta(rd, *(reg_typ + rs1), 0, sum_t);
+    setCorrection(rd, 0, 0, *(reg_factor + rs1)); //TODO: manage witness
+    setConstraint(rd, 0, 0, sub_los, sub_ups, sub_steps);
 
-              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
-              last_jal_from = pc;
-              throwException(EXCEPTION_INCOMPLETENESS, 0);
-              printOverApprox((uint64_t*) "sub");
-            }
-          } else {
-            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
-            last_jal_from = pc;
-            throwException(EXCEPTION_INCOMPLETENESS, 0);
-            printOverApprox((uint64_t*) "sub");
-          }
-        } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
-          if (*(reg_steps + rs2) == gcd_steps) {
-            i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
-            if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
+    } else if (*(reg_hasmn + rs1))
+        // rs1 constraint has already minuend and cannot have another addend
+        error_minuend("left", "sub");
+      else {
+        // rd inherits rs1 constraint since rs2 has none
+        // s - c
+        if(*(reg_expr + rs1) > 1)
+          setMeta(rd, *(reg_typ + rs1), 0, fail_t);
+        else
+          setMeta(rd, *(reg_typ + rs1), 0, sum_t);
+        setCorrection(rd, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2), *(reg_factor + rs1));
+        setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), sub_los, sub_ups, *(reg_steps + rs1)); //interval sub semantics
 
-              //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
-              last_jal_from = pc;
-              throwException(EXCEPTION_INCOMPLETENESS, 0);
-              printOverApprox((uint64_t*) "sub");
-            }
-          } else {
-            //now: exit analysis (two "incompatible" symbolic values addition [no step multiple])
-            last_jal_from = pc;
-            throwException(EXCEPTION_INCOMPLETENESS, 0);
-            printOverApprox((uint64_t*) "sub");
-          }
-        }
-        *(reg_steps + rd) = gcd_steps;
       }
-
-      *(reg_los + rd)   = sub_los;
-      *(reg_ups + rd)   = sub_ups;
-    } else if (*(reg_hasmn + rs1)) {
-      // rs1 constraint has already minuend and cannot have another subtrahend
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in left operand of sub at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
-      // rd inherits rs1 constraint since rs2 has none
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
-
-      if (*(reg_has_mul_div_mod + rs1) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
-      else
-        setCorrection(rd, *(reg_mul + rs1), *(reg_div + rs1), *(reg_rem + rs1), *(reg_rem_typ + rs1), *(reg_has_mul_div_mod + rs1));
-
-      // interval semantics of sub
-      if (cnd != 0)
-        *(reg_steps + rd) = *(reg_steps + rs1);
-      *(reg_los + rd) = sub_los;
-      *(reg_ups + rd) = sub_ups;
-    }
-  } else if (*(reg_hasco + rs2)) {
-    if (*(reg_hasmn + rs2)) {
-      // rs2 constraint has already minuend and cannot have another minuend
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in right operand of sub at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
+  } else if (*(reg_typ + rs2)) {
+    if (*(reg_hasmn + rs2))
+      // rs2 constraint has already minuend and cannot have another addend
+      error_minuend("right", "sub");
+    else {
       // rd inherits rs2 constraint since rs1 has none
-      setConstraint(rd, *(reg_hasco + rs2), *(reg_saddr + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
-
-      if (*(reg_has_mul_div_mod + rs2) == 0)
-        setCorrection(rd, 1, 0, 0, 0, 1);
+      // c - s
+      if(*(reg_expr + rs2) < sum_t)
+        setMeta(rd, *(reg_typ + rs2), 1, sum_t);
       else
-        setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_has_mul_div_mod + rs2));
-
-      // interval semantics of sub
-      if (cnd != 0)
-        *(reg_steps + rd) = *(reg_steps + rs2);
-      *(reg_los + rd)   = sub_los;
-      *(reg_ups + rd)   = sub_ups;
+        setMeta(rd, *(reg_typ + rs2), 1, *(reg_expr + rs2));
+      setCorrection(rd, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2), *(reg_factor + rs2));
+      setConstraint(rd, *(reg_saddr + rs2), *(reg_vaddr + rs2), sub_los, sub_ups, *(reg_steps + rs2)); //interval sub semantics
     }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-    setCorrection(rd, 0, 0, 0, 0, 0);
-
-    *(reg_los + rd) = sub_los;
-    *(reg_ups + rd) = sub_ups;
+    // c - c
+    setMeta(rd, concrete_t, 0, 0);
+    setCorrection(rd, 0, 0, 0);
+    setConstraint(rd, 0, 0, sub_los, sub_ups, 1);
   }
 }
 
@@ -7079,6 +6973,30 @@ void do_mul() {
   ic_mul = ic_mul + 1;
 }
 
+uint64_t check_mul_condition(uint64_t reg_int, uint64_t reg_k) {
+  if (mul_condition(*(reg_los + reg_int), *(reg_ups + reg_int), *(reg_los + reg_k))) {
+    //now: exit analysis (result too big for the abstract domain)
+    last_jal_from = pc;
+    throwException(EXCEPTION_INCOMPLETENESS, 0);
+    return 0;
+    // TODO: improve
+    //*(reg_steps + rd) = 1;
+    //*(reg_los + rd)   = 0;
+    //*(reg_ups + rd)   = UINT64_MAX;
+    printOverApprox((uint64_t*) "mul");
+  } else {
+    if(*(reg_steps + reg_int) * *(reg_los + reg_k) < *(reg_steps + reg_int)) {
+      if(*(reg_los + reg_k) != 0) {
+        //now: exit analysis (step overflow)
+        last_jal_from = pc;
+        throwException(EXCEPTION_INCOMPLETENESS, 0);
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
 void constrain_mul() {
   uint64_t mul_los;
   uint64_t mul_ups;
@@ -7088,13 +7006,14 @@ void constrain_mul() {
 
   if(do_taint_flag) taint_binop(MUL);
 
-  *(reg_typ + rd) = 0;
-
   mul_los = *(reg_los + rs1) * *(reg_los + rs2);
   mul_ups = *(reg_ups + rs1) * *(reg_ups + rs2);
 
-  if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2)) {
+  //interval mul semantics
+  if (*(reg_typ + rs1)) {
+    if (*(reg_typ + rs2)) {
+      // s * s
+
       // non-linear expressions are not supported
       print(selfieName);
       print((uint64_t*) ": detected non-linear expression in mul at ");
@@ -7103,101 +7022,44 @@ void constrain_mul() {
       println();
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else if (*(reg_hasmn + rs1)) {
-      // rs1 constraint has already minuend and cannot have another multiplier
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in left operand of mul at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
 
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
-      // rd inherits rs1 constraint since rs2 has none
-      // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, *(reg_los + rs2), 0, 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
+    } else if (*(reg_hasmn + rs1))
+        // rs1 constraint has already minuend and cannot have another addend
+        error_minuend("left", "mul");
+      else {
+        // rd inherits rs1 constraint since rs2 has none
+        // assert: rs2 interval is singleton
+        // s * c
+        if(check_mul_condition(rs1, rs2) == 0)
+          return;
 
-      // interval semantics of mul
-      if (mul_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2))) {
-        //now: exit analysis (result too big for the abstract domain)
-        last_jal_from = pc;
-        throwException(EXCEPTION_INCOMPLETENESS, 0);
-
-        // TODO: improve
-        *(reg_steps + rd) = 1;
-        *(reg_los + rd)   = 0;
-        *(reg_ups + rd)   = UINT64_MAX;
-
-        printOverApprox((uint64_t*) "mul");
-      } else {
-
-        if(*(reg_steps + rs1) * *(reg_los + rs2) < *(reg_steps + rs1)) {
-          if(*(reg_los + rs2) != 0) {
-            //now: exit analysis (step overflow)
-            last_jal_from = pc;
-            throwException(EXCEPTION_INCOMPLETENESS, 0);
-          }
-        }
-
-        *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
-        *(reg_los + rd)   = mul_los;
-        *(reg_ups + rd)   = mul_ups;
+        if(*(reg_expr + rs1) > 0)
+          setMeta(rd, integer_t, 0, fail_t);
+        else
+          setMeta(rd, integer_t, 0, mul_t);
+        setCorrection(rd, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_los + rs2));
+        setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), mul_los, mul_ups, *(reg_steps + rs1) * *(reg_los + rs2)); //interval mul semantics
       }
-    }
-  } else if (*(reg_hasco + rs2)) {
-    if (*(reg_hasmn + rs2)) {
-      // rs2 constraint has already minuend and cannot have another multiplicand
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in right operand of mul at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
+  } else if (*(reg_typ + rs2)) {
+    if (*(reg_hasmn + rs2))
+      // rs2 constraint has already minuend and cannot have another addend
+      error_minuend("right", "mul");
+    else {
       // rd inherits rs2 constraint since rs1 has none
       // assert: rs1 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs2), *(reg_saddr + rs2), *(reg_vaddr + rs2), 0, *(reg_colos + rs2), *(reg_coups + rs2));
-      setCorrection(rd, *(reg_los + rs1), 0, 0, 0, *(reg_has_mul_div_mod + rs2) + 1);
-
-      // interval semantics of mul
-      if (mul_condition(*(reg_los + rs2), *(reg_ups + rs2), *(reg_los + rs1))) {
-        //now: exit analysis (result too big for the abstract domain)
-        last_jal_from = pc;
-        throwException(EXCEPTION_INCOMPLETENESS, 0);
-
-        // TODO: improve
-        *(reg_steps + rd) = 1;
-        *(reg_los + rd)   = 0;
-        *(reg_ups + rd)   = UINT64_MAX;
-
-        printOverApprox((uint64_t*) "mul");
-      } else {
-
-
-        if(*(reg_steps + rs2) * *(reg_los + rs1) < *(reg_steps + rs2)) {
-          if(*(reg_los + rs1) != 0) {
-            //now: exit analysis (step overflow)
-            last_jal_from = pc;
-            throwException(EXCEPTION_INCOMPLETENESS, 0);
-          }
-        }
-
-        *(reg_steps + rd) = *(reg_steps + rs2) * *(reg_los + rs1);
-        *(reg_los + rd)   = mul_los;
-        *(reg_ups + rd)   = mul_ups;
-      }
+      // c * s
+      if(check_mul_condition(rs2, rs1) == 0)
+        return;
+      setMeta(rd, integer_t, 0, mul_t);
+      setCorrection(rd, *(reg_colos + rs2), *(reg_coups + rs2), *(reg_los + rs1));
+      setConstraint(rd, *(reg_saddr + rs2), *(reg_vaddr + rs2), mul_los, mul_ups, *(reg_steps + rs2) * *(reg_los + rs1)); //interval mul semantics
     }
-
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-    setCorrection(rd, 0, 0, 0, 0, 0);
-
-    // interval semantics of mul
-    *(reg_los + rd) = mul_los;
-    *(reg_ups + rd) = mul_ups;
+    // c * c
+    setMeta(rd, concrete_t, 0, 0);
+    setCorrection(rd, 0, 0, 0);
+    setConstraint(rd, 0, 0, mul_los, mul_ups, 1);
   }
 }
 
@@ -7223,33 +7085,61 @@ void do_divu() {
   }
 }
 
+uint64_t check_divu_step() {
+  // set the result step to 1 if divisor greater than s1
+  if (*(reg_steps + rs1) < *(reg_los + rs2)) {
+    if (*(reg_los + rs2) % *(reg_steps + rs1) != 0) {
+      //now: exit analysis (step no multiple)
+      last_jal_from = pc;
+      throwException(EXCEPTION_INCOMPLETENESS, 0);
+      printOverApprox((uint64_t*) "divu1");
+      return 0;
+    }
+    return 1;
+  } else {
+    if (*(reg_steps + rs1) % *(reg_los + rs2) != 0) {
+      //now: exit analysis (step no multiple)
+      last_jal_from = pc;
+      throwException(EXCEPTION_INCOMPLETENESS, 0);
+      printOverApprox((uint64_t*) "divu2");
+      return 0;
+    }
+    return *(reg_steps + rs1) / *(reg_los + rs2);
+  }
+}
+
 void constrain_divu() {
   uint64_t div_los;
   uint64_t div_ups;
-  uint64_t step;
+  uint64_t div_steps;
+  uint64_t prev_step;
   uint64_t max;
+  uint64_t expr;
 
   if (*(reg_los + rs2) == 0)
     return;
 
-  if (*(reg_ups + rs2) < *(reg_los + rs2))
+  if (*(reg_ups + rs2) < *(reg_los + rs2)) {
     // 0 is in interval
+    last_jal_from = pc;
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
-
+  }
   // 0 is not in interval
+
   if (rd == REG_ZR)
     return;
 
   if(do_taint_flag) taint_binop(DIVU);
 
-  *(reg_typ + rd) = 0;
-
   div_los = *(reg_los + rs1) / *(reg_ups + rs2);
   div_ups = *(reg_ups + rs1) / *(reg_los + rs2);
-  step = *(reg_steps + rs1);
+  prev_step = *(reg_steps + rs1);
 
-  if (*(reg_hasco + rs1)) {
-    if (*(reg_hasco + rs2)) {
+  //interval divu semantics
+  if (*(reg_typ + rs1)) {
+    if (*(reg_typ + rs2)) {
+      // s / s
+
       // non-linear expressions are not supported
       print(selfieName);
       print((uint64_t*) ": detected non-linear expression in divu at ");
@@ -7258,77 +7148,54 @@ void constrain_divu() {
       println();
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else if (*(reg_hasmn + rs1)) {
-      // rs1 constraint has already minuend and cannot have another divisor
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in left operand of divu at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
 
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
-      // rd inherits rs1 constraint since rs2 has none
-      // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, 0, *(reg_los + rs2), 0, 0, *(reg_has_mul_div_mod + rs1) + 1);
+    } else if (*(reg_hasmn + rs1))
+        // rs1 constraint has already minuend and cannot have another addend
+        error_minuend("left", "divu");
+      else {
+        // rd inherits rs1 constraint since rs2 has none
+        // assert: rs2 interval is singleton
+        // s / c
 
-      // step computation
-      // set the result step to 1 if divisor greater than s1
-      if (*(reg_steps + rs1) < *(reg_los + rs2)) {
-        if (*(reg_los + rs2) % *(reg_steps + rs1) != 0) {
-          //now: exit analysis (step no multiple)
-          last_jal_from = pc;
-          throwException(EXCEPTION_INCOMPLETENESS, 0);
-          printOverApprox((uint64_t*) "divu1");
+        // step computation
+        div_steps = check_divu_step();
+        if(div_steps == 0) return; //incomplete
+
+        // interval semantics of divu
+        if (*(reg_los + rs1) > *(reg_ups + rs1)) {
+          // rs1 constraint is wrapped: [lo, UINT64_MAX] U [0, up]
+
+          // lo/k == up/k (or) up/k + step_rd
+          if (div_los != div_ups)
+            if (div_los > div_ups + div_steps) {
+              //now: exit analysis (wrap interval division: not close)
+              last_jal_from = pc;
+              throwException(EXCEPTION_INCOMPLETENESS, 0);
+              printOverApprox((uint64_t*) "divu3");
+              return;
+            }
+
+          //exact computation of rd ms-interval
+          max = computeUpperBound(*(reg_los + rs1), prev_step, UINT64_MAX);
+
+          setCorrection(rd, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_los + rs2));
+          setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), (max + prev_step) / *(reg_los + rs2), max / *(reg_ups + rs2), div_steps);
+        } else {
+          // rs1 constraint is not wrapped
+          setCorrection(rd, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_los + rs2));
+          setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), div_los, div_ups, div_steps);
         }
-        *(reg_steps + rd) = 1;
-      } else {
-        if (*(reg_steps + rs1) % *(reg_los + rs2) != 0) {
-          //now: exit analysis (step no multiple)
-          last_jal_from = pc;
-          throwException(EXCEPTION_INCOMPLETENESS, 0);
-          printOverApprox((uint64_t*) "divu2");
-        }
 
-        *(reg_steps + rd) = *(reg_steps + rs1) / *(reg_los + rs2);
+        if(*(reg_los + rs1) > 0)
+          expr = fail_t;
+        else
+          expr = div_t;
+        if(*(reg_los + rd) == *(reg_ups + rd))
+          setMeta(rd, concrete_t, 0, expr);
+        else
+          setMeta(rd, *(reg_typ + rs1), 0, expr);
       }
-
-      // interval semantics of divu
-      if (*(reg_los + rs1) > *(reg_ups + rs1)) {
-        // rs1 constraint is wrapped: [lo, UINT64_MAX] U [0, up]
-        //exact computation of rd ms-interval
-        max = computeUpperBound(*(reg_los + rs1), step, UINT64_MAX);
-        *(reg_los + rd) = (max + step) / *(reg_los + rs2);
-        *(reg_ups + rd) = max / *(reg_ups + rs2);
-
-        // lo/k == up/k (or) up/k + step_rd
-        if (div_los != div_ups)
-          if (div_los > div_ups + *(reg_steps + rd)) {
-            //now: exit analysis (wrap interval division: not close)
-            last_jal_from = pc;
-            throwException(EXCEPTION_INCOMPLETENESS, 0);
-            printOverApprox((uint64_t*) "divu3");
-          }
-      } else {
-        // rs1 constraint is not wrapped
-        *(reg_los + rd) = div_los;
-        *(reg_ups + rd) = div_ups;
-      }
-    }
-  } else if (*(reg_hasco + rs2)) {
-    if (*(reg_hasmn + rs2)) {
-      // rs2 constraint has already minuend and cannot have another dividend
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in right operand of divu at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else {
-      // rd inherits rs2 constraint since rs1 has none
-      // assert: rs1 interval is singleton
+    } else if (*(reg_typ + rs2)) {
       print(selfieName);
       print((uint64_t*) ": detected division of constant by interval at ");
       printHexadecimal(pc, 0);
@@ -7337,16 +7204,12 @@ void constrain_divu() {
 
       last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
-      //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    }
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-    setCorrection(rd, 0, 0, 0, 0, 0);
-
-    // interval semantics of divu
-    *(reg_los + rd) = div_los;
-    *(reg_ups + rd) = div_ups;
+    // c / c
+    setMeta(rd, concrete_t, 0, 0);
+    setCorrection(rd, 0, 0, 0);
+    setConstraint(rd, 0, 0, div_los, div_ups, 1);
   }
 }
 
@@ -7373,6 +7236,7 @@ void constrain_remu_step_1() {
   uint64_t divisor;
   uint64_t remu_case;
   uint64_t wrap_remu_case;
+  uint64_t expr;
 
   // interval semantics of remu
   lo      = *(reg_los + rs1);
@@ -7449,26 +7313,21 @@ void constrain_remu_step_1() {
     }
   }
 
-  if (*(reg_hasmn + rs1)) {
-    // rs1 constraint has already minuend and cannot have another divisor
-    print(selfieName);
-    print((uint64_t*) ": detected invalid minuend expression in left operand of remu at ");
-    printHexadecimal(pc, 0);
-    printSourceLineNumberOfInstruction(pc - entryPoint);
-    println();
+  // rd inherits rs1 constraint since rs2 has none
+  // assert: rs2 interval is singleton
+  setCorrection(rd, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_los + rs2));
+  setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), lo, up, 1);
 
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  } else {
-    // rd inherits rs1 constraint since rs2 has none
-    // assert: rs2 interval is singleton
-    setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-    setCorrection(rd, 0, 0, *(reg_los + rs2), remu_case + 1, *(reg_has_mul_div_mod + rs1) + 1);
-
-    *(reg_los + rd)   = lo;
-    *(reg_ups + rd)   = up;
-    *(reg_steps + rd) = 1;
-  }
+  if(*(reg_expr + rs1) > 0)
+    expr = fail_t;
+  else
+    expr = rem_t;
+  if(*(reg_los + rd) == *(reg_ups + rd))
+    setMeta(rd, concrete_t, 0, expr);
+  else
+    setMeta(rd, *(reg_typ + rs1), 0, expr);
 }
+
 
 void constrain_remu() {
   uint64_t lo;
@@ -7478,12 +7337,13 @@ void constrain_remu() {
   uint64_t gcd_step_k;
   uint64_t remu_case;
   uint64_t lcm;
+  uint64_t expr;
 
   if (*(reg_los + rs2) == 0)
     return;
 
-  if (*(reg_hasco + rs2) != 0) {
-    // rs2 has constraint
+  if (*(reg_typ + rs2) != concrete_t) {
+    // rs2 is not concrete
     print(selfieName);
     print((uint64_t*) ": constrained memory location in right operand of remu at ");
     printHexadecimal(pc, 0);
@@ -7493,6 +7353,7 @@ void constrain_remu() {
     last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
     //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    return;
   }
 
   if (rd == REG_ZR)
@@ -7500,10 +7361,20 @@ void constrain_remu() {
 
   if(do_taint_flag) taint_binop(REMU);
 
-  *(reg_typ + rd) = 0;
+  if (*(reg_typ + rs1) == integer_t) { //no pt right?
+    if (*(reg_hasmn + rs1)) {
+      // rs1 constraint has already minuend and cannot have another divisor
+      print(selfieName);
+      print((uint64_t*) ": detected invalid minuend expression in left operand of remu at ");
+      printHexadecimal(pc, 0);
+      printSourceLineNumberOfInstruction(pc - entryPoint);
+      println();
 
-  if (*(reg_hasco + rs1)) {
+      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+
     // interval semantics of remu
+    // s % c
     lo      = *(reg_los + rs1);
     up      = *(reg_ups + rs1);
     divisor = *(reg_los + rs2);
@@ -7582,40 +7453,24 @@ void constrain_remu() {
       throwException(EXCEPTION_INCOMPLETENESS, 0);
       //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
+    setCorrection(rd, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_los + rs2));
+    setConstraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), lo, up, step);
 
-    if (*(reg_hasmn + rs1)) {
-      // rs1 constraint has already minuend and cannot have another divisor
-      print(selfieName);
-      print((uint64_t*) ": detected invalid minuend expression in left operand of remu at ");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
+    if(*(reg_expr + rs1) > 0)
+      expr = fail_t;
+    else
+      expr = rem_t;
+    if(*(reg_los + rd) == *(reg_ups + rd))
+      setMeta(rd, concrete_t, 0, expr);
+    else
+      setMeta(rd, *(reg_typ + rs1), 0, expr);
 
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    } else if (*(reg_los + rs1) <= *(reg_ups + rs1)) {
-      // rd inherits rs1 constraint since rs2 has none
-      // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, 0, 0, *(reg_los + rs2), remu_case + 1, *(reg_has_mul_div_mod + rs1) + 1);
-
-    } else if (isPowerOfTwo(divisor)) {
-      // rd inherits rs1 constraint since rs2 has none
-      // assert: rs2 interval is singleton
-      setConstraint(rd, *(reg_hasco + rs1), *(reg_saddr + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
-      setCorrection(rd, 0, 0, *(reg_los + rs2), 0, *(reg_has_mul_div_mod + rs1) + 1);
-    }
-
-    //store rd values
-    *(reg_los + rd)   = lo;
-    *(reg_ups + rd)   = up;
-    *(reg_steps + rd) = step;
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-    setCorrection(rd, 0, 0, 0, 0, 0);
-
-    *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
+    // c % c
+    setMeta(rd, concrete_t, 0, 0);
+    setCorrection(rd, 0, 0, 0);
+    setConstraint(rd, 0, 0, *(reg_los + rs1) % *(reg_los + rs2), *(reg_ups + rs1) % *(reg_ups + rs2), 1);
   }
 }
 
@@ -7641,13 +7496,13 @@ void constrain_sltu() {
 
     if(do_taint_flag) taint_binop(SLTU);
 
-    if (*(reg_hasco + rs1)) {
+    if (*(reg_typ + rs1) == integer_t) {
       if (*(reg_vaddr + rs1) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
         print(selfieName);
         print((uint64_t*) ": ");
-        printInteger(*(reg_hasco + rs1));
+        printInteger(*(reg_typ + rs1)); //nb of hasco lost
         print((uint64_t*) " constrained memory locations in left sltu operand at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
@@ -7657,13 +7512,13 @@ void constrain_sltu() {
       }
     }
 
-    if (*(reg_hasco + rs2)) {
+    if (*(reg_typ + rs2) == integer_t) {
       if (*(reg_vaddr + rs2) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
         print(selfieName);
         print((uint64_t*) ": ");
-        printInteger(*(reg_hasco + rs2));
+        printInteger(*(reg_typ + rs2)); //nb of hasco lost
         print((uint64_t*) " constrained memory locations in right sltu operand at ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
@@ -7677,12 +7532,12 @@ void constrain_sltu() {
     has_true_branch  = 0;
     has_false_branch = 0;
     // take local copy of mrcc to make sure that alias check considers old mrcc
-    if (*(reg_typ + rs1))
-      if (*(reg_typ + rs2))
+    if (*(reg_typ + rs1) == pointer_t)
+      if (*(reg_typ + rs2) == pointer_t)
         createConstraints(*(registers + rs1), *(registers + rs1), 1, *(registers + rs2), *(registers + rs2), 1, mrcc, 0);
       else
         createConstraints(*(registers + rs1), *(registers + rs1), 1, *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc, 0);
-    else if (*(reg_typ + rs2))
+    else if (*(reg_typ + rs2) == pointer_t)
         createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_steps + rs1), *(registers + rs2), *(registers + rs2), 1, mrcc, 0);
     else
         createConstraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_steps + rs1), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), mrcc, 0);
@@ -7709,16 +7564,9 @@ void backtrack_sltu() {
       // the register is identified by vaddr
       *(registers + vaddr) = *(values + tc);
 
-      *(reg_typ + vaddr) = *(types + tc);
-
-      *(reg_los + vaddr) = *(los + tc);
-      *(reg_ups + vaddr) = *(ups + tc);
-
-      *(reg_steps + vaddr) = *(steps + tc);
-      *(reg_saddr + vaddr) = *(saddrs + tc);
-
-      setConstraint(vaddr, 0, 0, 0, 0, 0, 0);
-      setCorrection(vaddr, 0, 0, 0, 0, 0);
+      setMeta(vaddr, *(types + tc), 0, 0);
+      setCorrection(vaddr, 0, 0, 0);
+      setConstraint(vaddr, *(saddrs + tc), 0, *(los + tc), *(ups + tc), *(steps + tc)); //reg_vaddr?
 
       // restoring mrcc
       mrcc = *(tcs + tc);
@@ -7843,41 +7691,31 @@ uint64_t constrain_ld() {
         // interval semantics of ld
         *(registers + rd) = *(values + mrvc);
 
-        *(reg_typ + rd) = *(types + mrvc);
+        // assert: vaddr == *(vaddrs + mrvc)
+        if (isSymbolicValue(*(types + mrvc), *(los + mrvc), *(ups + mrvc))) {
+            setMeta(rd, *(types + mrvc), 0, 0);
+            setConstraint(rd,  *(saddrs + mrvc), vaddr, *(los + mrvc), *(ups + mrvc), *(steps + mrvc));
 
-        *(reg_los + rd) = *(los + mrvc);
-        *(reg_ups + rd) = *(ups + mrvc);
+            if (*(reg_steps + rd) == 0) {
+              print(selfieName);
+              print((uint64_t*) ": detected step 0 ");
+              printHexadecimal(pc, 0);
+              printSourceLineNumberOfInstruction(pc - entryPoint);
+              println();
 
-        *(reg_steps + rd) = *(steps + mrvc);
+              exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+            }
+        } else {
+            setMeta(rd, *(types + mrvc), 0, 0);
+            setConstraint(rd, 0, 0, *(los + mrvc), *(ups + mrvc), 1);
+        }
 
         if(do_taint_flag) {
           *(reg_istainted + rd)   = *(taints + mrvc);
           *(reg_isminuend + rd)   = *(minuends + mrvc);
           *(reg_hasstep + rd)     = *(hassteps + mrvc);
         }
-
-        // assert: vaddr == *(vaddrs + mrvc)
-
-        if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd))) {
-          // vaddr is constrained by rd if value interval is not singleton
-          setConstraint(rd, 1, *(saddrs + mrvc), vaddr, 0, 0, 0);
-
-          if (*(reg_steps + rd) == 0) {
-            print(selfieName);
-            print((uint64_t*) ": detected step 0 ");
-            printHexadecimal(pc, 0);
-            printSourceLineNumberOfInstruction(pc - entryPoint);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          }
-        } else {
-          setConstraint(rd, 0, 0, 0, 0, 0, 0);
-
-          *(reg_steps + rd) = 1;
-        }
-
-        setCorrection(rd, 0, 0, 0, 0, 0);
+        setCorrection(rd, 0, 0, 0);
       }
 
       pc = pc + INSTRUCTIONSIZE;
@@ -7995,14 +7833,14 @@ uint64_t constrain_sd() {
   if (isSafeAddress(vaddr, rs1)) {
     if (isVirtualAddressMapped(pt, vaddr)) {
       // interval semantics of sd
-      if (*(reg_hasco + rs2)) {
+      if (*(reg_typ + rs2) == integer_t) {
         if (*(reg_vaddr + rs2) == 0) {
           // constrained memory at vaddr 0 means that there is more than
           // one constrained memory location in the sd operand
 
           print(selfieName);
           print((uint64_t*) ": ");
-          printInteger(*(reg_hasco + rs2));
+          printInteger(*(reg_typ + rs2)); //nb of hasco lost
           print((uint64_t*) " constrained memory locations in sd operand at ");
           printHexadecimal(pc, 0);
           printSourceLineNumberOfInstruction(pc - entryPoint);
@@ -8508,11 +8346,13 @@ void printConcreteBounds(uint64_t start, uint64_t end, uint64_t step) {
   } else {
     //start + step
     if(start + step < correct_end)
-      last_value = printOnDiff(start, start + step);
+      if(correct_end != -1)
+        last_value = printOnDiff(start, start + step);
 
     //end -s
   if(correct_end - step > last_value)
-    last_value = printOnDiff(last_value, correct_end - step);
+    if(correct_end != 0)
+      last_value = printOnDiff(last_value, correct_end - step);
   }
 
   //end
@@ -8621,7 +8461,7 @@ uint64_t isPowerOfTwo(uint64_t n) {
 }
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
-  if (type)
+  if (type == pointer_t)
     // memory range
     return 0;
   else if (lo == up)
@@ -8715,15 +8555,14 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t saddr, uint64_t vaddr, uint64_t 
   if (trb < mrvc) {
     // current value at vaddr does not need to be tracked,
     // just overwrite it in the trace
-    *(values + mrvc) = value;
-
     *(types + mrvc) = type;
 
+    *(saddrs + mrvc) = saddr;
+
+    *(values + mrvc) = value;
     *(los + mrvc) = lo;
     *(ups + mrvc) = up;
-
     *(steps + mrvc) = step;
-    *(saddrs + mrvc) = saddr;
 
     if(do_taint_flag) storeTaintMemory(mrvc);
 
@@ -8742,17 +8581,15 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t saddr, uint64_t vaddr, uint64_t 
     *(pcs + tc) = pc;
     *(tcs + tc) = mrvc;
 
-    *(values + tc) = value;
-
     *(types + tc) = type;
 
+    *(saddrs + tc) = saddr;
+    *(vaddrs + tc) = vaddr;
+
+    *(values + tc) = value;
     *(los + tc) = lo;
     *(ups + tc) = up;
-
     *(steps + tc) = step;
-
-    *(vaddrs + tc) = vaddr;
-    *(saddrs + tc) = saddr;
 
     if(do_taint_flag) storeTaintMemory(tc);
 
@@ -8773,7 +8610,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t saddr, uint64_t vaddr, uint64_t 
     throwException(EXCEPTION_MAXTRACE, 0);
 }
 
-void storeConstrainedMemory(uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void storeConstrainedMemory(uint64_t type, uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   uint64_t mrvc;
 
   if (vaddr >= getBumpPointer(currentContext))
@@ -8794,7 +8631,7 @@ void storeConstrainedMemory(uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_
 
   // always track constrained memory by using tc as most recent branch
   //assert to_store_taint set
-  storeSymbolicMemory(pt, saddr, vaddr, lo, 0, lo, up, step, tc);
+  storeSymbolicMemory(pt, saddr, vaddr, lo, type, lo, up, step, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
@@ -8810,7 +8647,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t tmp1;
   uint64_t tmp2;
 
-  if (*(reg_has_mul_div_mod + reg) > 1) {
+  if (*(reg_expr + reg) == fail_t) {
     print(selfieName);
     print((uint64_t*) ": detected bad expression at ");
     printHexadecimal(pc, 0);
@@ -8820,7 +8657,7 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
-  if (*(reg_hasco + reg)) {
+  if (*(reg_typ + reg) == integer_t) {
     // load trace counter of previous constraint
     if (*(reg_vaddr + reg) >= getBumpPointer(currentContext))
       if (*(reg_vaddr + reg) < *(registers + REG_SP))
@@ -8842,55 +8679,60 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     }
 
     //one multiplication or division or modulo
-    if (*(reg_mul + reg)) {         //one multiplication
-      lo = lo / *(reg_mul + reg);
-      up = up / *(reg_mul + reg);
+    if (*(reg_expr + reg) == mul_t) {         //one multiplication
+      lo = lo / *(reg_factor + reg);
+      up = up / *(reg_factor + reg);
       costep = *(steps + mrvc);
-    } else if (*(reg_div + reg)) {  //one division
-      lo = lo * *(reg_div + reg);
-      up = up * *(reg_div + reg);
+    } else if (*(reg_expr + reg) == div_t) {  //one division
+      lo = lo * *(reg_factor + reg);
+      up = up * *(reg_factor + reg);
       costep = *(steps + mrvc);
-    } else if (*(reg_rem + reg)) {  //one remainder
+    } else if (*(reg_expr + reg) == rem_t) {  //one remainder
       // probably there is no constrainted remu appeard in a condition in Selfie
-      if (*(reg_rem_typ + reg) == 1) {
-        tmp1 = (*(los + mrvc) / *(reg_rem + reg)) * *(reg_rem + reg) + lo;
-        tmp2 = (*(ups + mrvc) / *(reg_rem + reg)) * *(reg_rem + reg) + up;
+      //if (*(reg_rem_typ + reg) == 1) { TODO: fail in remu ?
+        tmp1 = (*(los + mrvc) / *(reg_factor + reg)) * *(reg_factor + reg) + lo;
+        tmp2 = (*(ups + mrvc) / *(reg_factor + reg)) * *(reg_factor + reg) + up;
         lo = (tmp1 / *(steps + mrvc)) * *(steps + mrvc) + *(steps + mrvc);
         up = (tmp2 / *(steps + mrvc)) * *(steps + mrvc);
         costep = *(reg_steps + reg);
-      } else {
-        print(selfieName);
-        print((uint64_t*) ": detected a remu in a condition at ");
-        printHexadecimal(pc, 0);
-        printSourceLineNumberOfInstruction(pc - entryPoint);
-        println();
+      //} else {
+        //print(selfieName);
+        //print((uint64_t*) ": detected a remu in a condition at ");
+        //printHexadecimal(pc, 0);
+        //printSourceLineNumberOfInstruction(pc - entryPoint);
+        //println();
 
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
+        //last_jal_from = pc;
+        //throwException(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
+        //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      //}
     } else {
       costep = *(steps + mrvc);
     }
 
     if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
-    storeConstrainedMemory(*(reg_saddr + reg), *(reg_vaddr + reg), lo, up, costep, trb);
+    storeConstrainedMemory(*(reg_typ + reg), *(reg_saddr + reg), *(reg_vaddr + reg), lo, up, costep, trb);
   }
 }
 
-void setCorrection(uint64_t reg, uint64_t mul, uint64_t div, uint64_t rem, uint64_t rem_typ, uint64_t hasone) {
-  *(reg_mul     + reg) = mul;
-  *(reg_div     + reg) = div;
-  *(reg_rem     + reg) = rem;
-  *(reg_rem_typ + reg) = rem_typ;
-  *(reg_has_mul_div_mod + reg) = hasone;
+void setMeta(uint64_t reg, uint64_t typ, uint64_t hasmn, uint64_t expr) {
+  *(reg_typ + reg) = typ;
+  *(reg_hasmn + reg) = hasmn;
+  *(reg_expr + reg) = expr;
 }
 
-void setConstraint(uint64_t reg, uint64_t hasco, uint64_t saddr, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
-  *(reg_hasco + reg) = hasco;
+void setConstraint(uint64_t reg, uint64_t saddr, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step) {
   *(reg_saddr + reg) = saddr;
   *(reg_vaddr + reg) = vaddr;
-  *(reg_hasmn + reg) = hasmn;
+  *(reg_los + reg) = start;
+  *(reg_ups + reg) = end;
+  *(reg_steps + reg) = step;
+}
+
+void setCorrection(uint64_t reg, uint64_t colos, uint64_t coups, uint64_t operand) {
   *(reg_colos + reg) = colos;
   *(reg_coups + reg) = coups;
+  *(reg_factor + reg) = operand;
 }
 
 void takeBranch(uint64_t b, uint64_t howManyMore) {
@@ -8904,13 +8746,9 @@ void takeBranch(uint64_t b, uint64_t howManyMore) {
   } else {
     *(registers + rd) = b;
 
-    *(reg_typ + rd) = 0;
-
-    *(reg_los + rd) = b;
-    *(reg_ups + rd) = b;
-
-    setConstraint(rd, 0, 0, 0, 0, 0, 0);
-    setCorrection(rd, 0, 0, 0, 0, 0);
+    setMeta(rd, 0, 0, 0);
+    setCorrection(rd, 0, 0, 0);
+    setConstraint(rd, 0, 0, b, b, 1);
   }
 }
 
@@ -8942,8 +8780,8 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, ui
         // rs2 interval is a singleton
 
         // rounded values of resulting rs1 values
-        up1_2 = computeUpperBound(lo1, s1, lo2 - 1);  //TODO: is up1_2 in rs1?
-        lo1_2 = up1_2 + s1;                           //TODO: is lo1_2 in rs1?
+        up1_2 = computeUpperBound(lo1, s1, lo2 - 1);
+        lo1_2 = up1_2 + s1;
 
         // [false]  rs1:[ |lo2| , up1, s1 ] >= rs2:[ lo2, up2, s2 ]
         // [true]   rs1:[ lo1, |lo2 - 1|, s1 ] < rs2:[ lo2, up2, s2 ]
@@ -8970,8 +8808,8 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, ui
         // rs1 interval is a singleton
 
         // rounded values of resulting rs1 values
-        up1_2 = computeUpperBound(lo2, s2, lo1);      //TODO: is up1_2 in rs1?
-        lo1_2 = up1_2 + s2;                           //TODO: is lo1_2 in rs1?
+        up1_2 = computeUpperBound(lo2, s2, lo1);
+        lo1_2 = up1_2 + s2;
 
         // [false]  rs1:[ lo1, up1, s1 ] >= rs2:[ lo2, |lo1|, s2 ]
         // [true]   rs1:[ lo1, up1, s1 ] < rs2:[ |lo1 + 1|, up2, s2 ]
@@ -10906,6 +10744,7 @@ uint64_t monster(uint64_t* toContext) {
 
   print((uint64_t*) "monster");
   println();
+
 
   b = 0;
 
