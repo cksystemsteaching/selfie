@@ -26,9 +26,9 @@ The key idea is very simple. A von Neumann machine is a [stored-program computer
 
 A von Neumann machine that can store n bits in memory and registers can distinguish 2^n^ states.
 
-X> The mipster emulator implements a von Neumann machine with 64MB of memory, and [32 general-purpose 32-bit registers](http://github.com/cksystemsteaching/selfie/blob/4d7d38e6bda22f02ab34abbae5040d17e8856bce/selfie.c#L595-L669) and [3 special-purpose 32-bit registers](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L1036-L1040), explained below.
+X> The mipster emulator implements a von Neumann machine with 4GB of memory, and [32 general-purpose 64-bit registers](https://github.com/cksystemsteaching/selfie/blob/b59e59e44c84fa54c480020c35c40c5633660476/selfie.c#L646-L721) and [1 special-purpose 64-bit register](https://github.com/cksystemsteaching/selfie/blob/b59e59e44c84fa54c480020c35c40c5633660476/selfie.c#L1303), explained below.
 X>
-X> Therefore, a mipster machine can store 2^26^\*8+32\*32+3\*32 bits which is equal to 536872032 bits. Thus the machine can be in [2^536872032^](http://www.wolframalpha.com/input/?source=nav&i=2%5E536872032) different states, a number with 161,614,586 decimal digits. Imagine what a machine with gigabytes or even terabytes of memory can do.
+X> Therefore, a mipster machine can store 2^32^\*8+32\*64+64 bits which is equal to 4,294,969,408 bits. Thus the machine can be in [2^4294969408^](http://www.wolframalpha.com/input/?source=nav&i=2%5E4294969408) different states, a number with 1,292,914,623 decimal digits. Imagine what a machine with terabytes of memory can do.
 
 Interestingly, we can always, at least in principle, partition that enormously large state space into a set of good states and a set of bad states. Software without bugs would always keep the machine in good states, or conversely, prevent the machine from ever going to a bad state. However, what is a good state?
 
@@ -53,27 +53,37 @@ Before explaining how C\* code works, we introduce C\* language elements that al
 {line-numbers=on, lang=c}
 <<[The Countdown Program](code/countdown.c)
 
-The program takes the decimal value 10 (Line 3) and decrements it (Line 13) until it reaches the decimal value 0 (Line 11) which is then returned (Line 19) as so-called *exit code*. To see for yourself run the [code](http://github.com/cksystemsteaching/selfie/blob/2b97bcfc85897ed2a3c421bb601cd8255ad3a3f3/manuscript/code/countdown.c) as follows:
+The program takes the decimal value 10 (Line 3) and decrements it (Line 13) until it reaches the decimal value 0 (Line 11) which is then returned (Line 19) as so-called *exit code*. To see for yourself run the [code](https://github.com/cksystemsteaching/selfie/blob/b59e59e44c84fa54c480020c35c40c5633660476/manuscript/code/countdown.c) as follows:
 
 {line-numbers=on}
 ```
 > ./selfie -c manuscript/code/countdown.c -o countdown.m -s countdown.s -m 1
-./selfie: this is selfie's starc compiling manuscript/code/countdown.c
-./selfie: 625 characters read in 19 lines and 9 comments
-./selfie: with 55(8.80%) characters in 28 actual symbols
-./selfie: 1 global variables, 1 procedures, 0 string literals
+./selfie: selfie compiling manuscript/code/countdown.c with starc
+./selfie: 645 characters read in 20 lines and 9 comments
+./selfie: with 65(10.70%) characters in 28 actual symbols
+./selfie: 2 global variables, 1 procedures, 0 string literals
 ./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
-./selfie: 496 bytes generated with 122 instructions and 8 bytes of data
-./selfie: 496 bytes with 122 instructions and 8 bytes of data written into countdown.m
-./selfie: 4301 characters of assembly with 122 instructions written into countdown.s
-./selfie: this is selfie's mipster executing countdown.m with 1MB of physical memory
-countdown.m: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating countdown.m with exit code 0 and 0.00MB of mapped memory
-./selfie: profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)
-./selfie: calls: 1,1(100.00%)@0x17C(~11),0(0.00%),0(0.00%)
-./selfie: loops: 10,10(100.00%)@0x190(~11),0(0.00%),0(0.00%)
-./selfie: loads: 26,11(42.37%)@0x190(~11),10(38.46%)@0x1A4(~13),1(3.84%)@0x24(~1)
-./selfie: stores: 13,10(76.92%)@0x1B0(~13),1(7.69%)@0x4C(~1),0(0.00%)
+./selfie: symbol table search time was 1 iterations on average and 29 in total
+./selfie: 544 bytes generated with 100 instructions and 16 bytes of data
+./selfie: init:    lui: 1(1.00%), addi: 40(40.00%)
+./selfie: memory:  ld: 19(19.00%), sd: 7(7.00%)
+./selfie: compute: add: 3(3.00%), sub: 3(3.00%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(2.00%)
+./selfie: control: sltu: 1(1.00%), beq: 5(5.00%), jal: 5(5.00%), jalr: 6(6.00%), ecall: 8(8.00%)
+./selfie: 544 bytes with 100 instructions and 16 bytes of data written into countdown.m
+./selfie: 3822 characters of assembly with 100 instructions written into countdown.s
+./selfie: selfie executing countdown.m with 1MB physical memory on mipster
+./selfie: countdown.m exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating countdown.m with exit code 0
+./selfie: summary: 132 executed instructions and 0.00MB mapped memory
+./selfie: init:    lui: 1(0.75%), addi: 38(28.78%)
+./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
+./selfie: compute: add: 1(0.75%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
+./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 14(10.60%), jalr: 1(0.75%), ecall: 3(2.27%)
+./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
+./selfie: calls:   3,1(33.33%)@0x4(~1),1(33.33%)@0xE8(~11),1(33.33%)@0x144(~20)
+./selfie: loops:   10,10(100.00%)@0xFC(~11),0(0.00%),0(0.00%)
+./selfie: loads:   25,11(44.00%)@0x100(~11),10(40.00%)@0x110(~13),1(4.00%)@0x8(~1)
+./selfie: stores:  15,10(66.66%)@0x11C(~19),1(6.66%)@0xF0(~11),1(6.66%)@0xF8(~11)
 ```
 
 ## [Global Variable](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3847-L3874)
