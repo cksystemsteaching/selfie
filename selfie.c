@@ -9621,14 +9621,14 @@ void create_equality_constraint() {
       cnd_rs1_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc1), ec);
     }
-    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, mrcc);
+    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, tc);
 
     if (*(isNotIntervals + mrvc2) > 2) {
       eq_alloc();
       cnd_rs2_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc2), ec);
     }
-    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr, mrcc);
+    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr, tc);
     takeBranch(0, 0);
   } else {
 
@@ -9687,7 +9687,7 @@ void create_equality_constraint() {
       *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
       *(vintervals       + c1 + cnd_rs1_whichByte - 1) = region1;
       *(nevintervals     + c1 + cnd_rs1_whichByte - 1) = region2;
-      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, mrcc);
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, tc);
 
       eq_alloc();
       c2 = ec;
@@ -9698,7 +9698,7 @@ void create_equality_constraint() {
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = region3;
       *(nevintervals     + c2 + cnd_rs2_whichByte - 1) = region4;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, mrcc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, tc);
 
       if (intersection) {
         storeRegisterMemory(rd, 0);
@@ -9718,7 +9718,7 @@ void create_equality_constraint() {
         reset_equality_constriants(c1);
       *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 1;
       *(vintervals       + c1 + cnd_rs1_whichByte - 1) = intersection;
-      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, mrcc);
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, tc);
 
       eq_alloc();
       c2 = ec;
@@ -9728,7 +9728,7 @@ void create_equality_constraint() {
         reset_equality_constriants(c2);
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 1;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = intersection;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, mrcc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, tc);
 
       takeBranch(1, 0);
     }
