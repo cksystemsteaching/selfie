@@ -204,14 +204,14 @@ Since the keywords in C\* all begin with a letter they should not be mistaken fo
 
 ## Integers
 
-Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in digital memory. Numbers in selfie are *signed integers*, that is, whole numbers, positive or negative.
+Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in digital memory. Numbers in selfie are *integers*, that is, zero as well as positive and negative whole numbers.
 
 [Integer](https://en.wikipedia.org/wiki/Integer "Integer")
 : A number that can be written without a fractional component (from the Latin integer meaning "whole"). For example, 21, 4, 0, and −2048 are integers, while 9.75 and 5.5 are not. The set of integers consists of zero (0), the natural numbers (1, 2, 3, ...), also called whole, counting, or positive numbers, and their additive inverses (the negative numbers, that is −1, −2, −3, ...).
 
-T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers.
+T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers. In C\* all integers are in fact qualified as unsigned. However, unsigned integers can easily be used to mimic signed integers, as shown below.
 
-Beyond signed integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers with a given number of fractional digits](https://github.com/cksystemsteaching/selfie/blob/29baa3174c1e56cf73fcf68c377cd801b75e5d4f/selfie.c#L2013-L2031).
+Beyond integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers with a given number of fractional digits](https://github.com/cksystemsteaching/selfie/blob/29baa3174c1e56cf73fcf68c377cd801b75e5d4f/selfie.c#L2013-L2031).
 
 Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number `85`.
 
