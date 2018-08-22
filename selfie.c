@@ -1131,6 +1131,7 @@ uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t
 uint64_t isPowerOfTwo(uint64_t n);
 uint64_t gcd(uint64_t n1, uint64_t n2);
 uint64_t isByteShift(uint64_t n);
+void alias_check_char(uint64_t whichByte);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg);
@@ -1141,9 +1142,9 @@ uint64_t isTraceSpaceAvailable();
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb);
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
 uint64_t applyCorrection(uint64_t reg, uint64_t lo, uint64_t up);
@@ -1164,7 +1165,7 @@ uint64_t fuzzUp(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t maxTraceLength = 1000000;
+uint64_t maxTraceLength = 10000000;
 
 uint64_t debug_symbolic = 0;
 
@@ -1185,6 +1186,18 @@ uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 uint64_t* whichBytes = (uint64_t*) 0;
 uint64_t* saddrs     = (uint64_t*) 0;
 uint64_t* isNotIntervals = (uint64_t*) 0;
+
+// alias
+
+uint64_t* is_useds      = (uint64_t*) 0;
+uint64_t* ld_froms_1    = (uint64_t*) 0;
+uint64_t* ld_froms_2    = (uint64_t*) 0;
+uint64_t* reg_ld_from_1 = (uint64_t*) 0;
+uint64_t* reg_ld_from_2 = (uint64_t*) 0;
+uint64_t* tmp_memory    = (uint64_t*) 0;
+
+uint64_t potential_load_char  = 0;
+uint64_t potential_store_char = 0;
 
 // read history
 
@@ -1282,6 +1295,14 @@ void initSymbolicEngine() {
   whichBytes     = zalloc(maxTraceLength * SIZEOFUINT64);
   saddrs         = zalloc(maxTraceLength * SIZEOFUINT64);
   isNotIntervals = zalloc(maxTraceLength * SIZEOFUINT64);
+
+  // alias
+  is_useds      = zalloc(maxTraceLength * SIZEOFUINT64);
+  ld_froms_1    = zalloc(maxTraceLength * SIZEOFUINT64);
+  ld_froms_2    = zalloc(maxTraceLength * SIZEOFUINT64);
+  reg_ld_from_1 = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_ld_from_2 = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  tmp_memory    = zalloc(REGISTERSIZE);
 
   constraint_types = zalloc(maxTraceLength * SIZEOFUINT64);
   vintervals       = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1957,6 +1978,7 @@ uint64_t loadCharacter(uint64_t* s, uint64_t i) {
 uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
   // assert: i >= 0, 0 <= c < 2^8 (all characters are 8-bit)
   uint64_t a;
+  uint64_t t;
 
   // a is the index of the double word where
   // the with c to-be-overwritten i-th character in s is
@@ -1964,7 +1986,8 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c) {
 
   // subtract the to-be-overwritten character to reset its bits in s
   // then add c to set its bits at the i-th position in s
-  *(s + a) = (*(s + a) - leftShift(loadCharacter(s, i), (i % SIZEOFUINT64) * 8)) + leftShift(c, (i % SIZEOFUINT64) * 8);
+  t = leftShift(loadCharacter(s, i), (i % SIZEOFUINT64) * 8);
+  *(s + a) = (*(s + a) - t) + leftShift(c, (i % SIZEOFUINT64) * 8);
 
   return s;
 }
@@ -2644,6 +2667,11 @@ void getSymbol() {
 
         i = 0;
 
+        // alias
+        storeCharacter(identifier, i, character);
+        i = i + 1;
+        getCharacter();
+
         while (isCharacterLetterOrDigitOrUnderscore()) {
           if (i >= maxIdentifierLength) {
             syntaxErrorMessage((uint64_t*) "identifier too long");
@@ -2663,8 +2691,8 @@ void getSymbol() {
         symbol = identifierOrKeyword();
 
         // dummy store to avoid potentially aliased constrained memory error
-        character = character - 1;
-        character = character + 1;
+        // character = character - 1;
+        // character = character + 1;
 
       } else if (isCharacterDigit()) {
         // accommodate integer and null for termination
@@ -4356,16 +4384,21 @@ uint64_t compile_initialization(uint64_t type) {
 
       getSymbol();
 
-      integerIsSigned = 0;
-
-      initialValue = -literal;
-    } else
-      initialValue = literal;
-
-    if (isLiteral())
-      getSymbol();
-    else
-      syntaxErrorUnexpected();
+      // changed for alias
+      if (isLiteral()) {
+        integerIsSigned = 0;
+        initialValue = -literal;
+        getSymbol();
+      } else
+        syntaxErrorUnexpected();
+    } else {
+      // changed for alias
+      if (isLiteral()) {
+        initialValue = literal;
+        getSymbol();
+      } else
+        syntaxErrorUnexpected();
+    }
 
     if (symbol == SYM_SEMICOLON)
       getSymbol();
@@ -5911,9 +5944,9 @@ void implementRead(uint64_t* context) {
             read_vbuffer = vbuffer;
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, tc);
           } else {
             actuallyRead = 0;
 
@@ -6322,7 +6355,7 @@ void implementMalloc(uint64_t* context) {
         if (isTraceSpaceAvailable()) {
           setTaintMemory(0, 0, 1);
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, 0, 0, tc);
         }
         else {
           // print(selfieName);
@@ -6721,6 +6754,8 @@ void do_addi() {
 }
 
 void constrain_addi() {
+  uint64_t mrvc;
+
   if (rd != REG_ZR) {
 
     if(do_taint_flag) taint_unop();
@@ -6760,6 +6795,10 @@ void constrain_addi() {
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else {
+        // alias
+        *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+        *(reg_ld_from_2 + rd) = 0;
+
         // rd inherits rs1 constraint
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
 
@@ -6772,6 +6811,10 @@ void constrain_addi() {
         *(reg_steps + rd) = *(reg_steps + rs1);
       }
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = 0;
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd has no constraint if rs1 has none
       setConstraint(rd, 0, 0, 0, 0, 0);
       setCorrection(rd, 0, 0, 0, 0, 0);
@@ -6887,6 +6930,10 @@ void constrain_add() {
     if (*(reg_isNotInterval + rs2) == 0) {
       if (*(reg_whichByte + rs2) > 0) {
         if (*(reg_whichByte + rs1) == *(reg_whichByte + rs2)) {
+          // alias
+          *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+          *(reg_ld_from_2 + rd) = 0;
+
           tmp = rightShift(*(reg_los + rs2), (*(reg_whichByte + rs2) - 1) * 8);
           storeCharacter(reg_los + rs1, (*(reg_whichByte + rs2) - 1), tmp);
           tmp = rightShift(*(reg_ups + rs2), (*(reg_whichByte + rs2) - 1) * 8);
@@ -6959,6 +7006,10 @@ void constrain_add() {
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+      *(reg_ld_from_2 + rd) = *(reg_ld_from_1 + rs2);
+
       // we cannot keep track of more than one constraint for add but
       // need to warn about their earlier presence if used in comparisons
       setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
@@ -7003,6 +7054,10 @@ void constrain_add() {
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
 
@@ -7028,6 +7083,10 @@ void constrain_add() {
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs2);
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
 
@@ -7043,6 +7102,10 @@ void constrain_add() {
       *(reg_ups + rd)   = add_ups;
     }
   } else {
+    // alias
+    *(reg_ld_from_1 + rd) = 0;
+    *(reg_ld_from_2 + rd) = 0;
+
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
@@ -7140,6 +7203,10 @@ void constrain_sub() {
   if (*(reg_isNotInterval + rs2) == 0) {
     if (*(reg_whichByte + rs2) > 0) {
       if (*(reg_saddr + rs2) == *(reg_saddr + rs1)) {
+        // alias
+        *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+        *(reg_ld_from_2 + rd) = 0;
+
         // char_i - char_i
         storeCharacter(reg_los + rs1, (*(reg_whichByte + rs2) - 1), 0);
         storeCharacter(reg_ups + rs1, (*(reg_whichByte + rs2) - 1), 0);
@@ -7197,6 +7264,10 @@ void constrain_sub() {
       cnd_rs1_whichByte = *(reg_whichByte + rs1);
       cnd_rs2_whichByte = *(reg_whichByte + rs2);
 
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+      *(reg_ld_from_2 + rd) = *(reg_ld_from_1 + rs2);
+
       // we cannot keep track of more than one constraint for sub but
       // need to warn about their earlier presence if used in comparisons
       setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
@@ -7243,6 +7314,10 @@ void constrain_sub() {
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
 
@@ -7272,6 +7347,10 @@ void constrain_sub() {
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs2);
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
 
@@ -7291,6 +7370,10 @@ void constrain_sub() {
       *(reg_isNotInterval + rd) = 0;
     }
   } else {
+    // alias
+    *(reg_ld_from_1 + rd) = 0;
+    *(reg_ld_from_2 + rd) = 0;
+
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
@@ -7353,6 +7436,10 @@ void constrain_mul() {
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
@@ -7409,6 +7496,10 @@ void constrain_mul() {
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs2);
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd inherits rs2 constraint since rs1 has none
       // assert: rs1 interval is singleton
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_colos + rs2), *(reg_coups + rs2));
@@ -7439,6 +7530,10 @@ void constrain_mul() {
     }
 
   } else {
+    // alias
+    *(reg_ld_from_1 + rd) = 0;
+    *(reg_ld_from_2 + rd) = 0;
+
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
@@ -7543,6 +7638,10 @@ void constrain_divu() {
 
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     } else {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+      *(reg_ld_from_2 + rd) = 0;
+
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
@@ -7571,7 +7670,6 @@ void constrain_divu() {
             *(reg_whichByte + rd) = 0;
 
           *(reg_saddr + rd) = *(reg_saddr + rs1);
-          *(reg_isNotInterval + rd) = 0;
 
           if (*(reg_los + rd) == *(reg_ups + rd)) {
             setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7579,6 +7677,10 @@ void constrain_divu() {
             *(reg_whichByte + rd) = 0;
           } else
             setCorrection(rd, 0, 0, 0, 0, *(reg_cohas + rs1));
+
+          alias_check_char(whichByte);
+
+          *(reg_isNotInterval + rd) = 0;
 
           return;
         }
@@ -7639,6 +7741,10 @@ void constrain_divu() {
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
   } else {
+    // alias
+    *(reg_ld_from_1 + rd) = 0;
+    *(reg_ld_from_2 + rd) = 0;
+
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
@@ -7650,8 +7756,18 @@ void constrain_divu() {
         *(reg_ups + rd) = div_ups;
         *(reg_steps + rd) = 1;
 
+        // alias
+        if (*(reg_isNotInterval + rs1)) {
+          mrvc = loadVirtualMemory(pt, *(reg_saddr + rs1));
+          whichByte = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1);
+          if (*(is_useds + mrvc) == 1)
+            *(is_useds + mrvc) = 0;
+          else if (*(is_useds + mrvc))
+            storeCharacter(is_useds + mrvc, whichByte, 0);
+        }
+
         *(reg_whichByte + rd) = 0;
-        *(reg_saddr + rd) = *(reg_saddr + rs1);
+        *(reg_saddr     + rd) = *(reg_saddr + rs1);
         *(reg_isNotInterval + rd) = 0;
 
         return;
@@ -7813,12 +7929,15 @@ void constrain_remu() {
 
   if (*(reg_isNotInterval + rs1)) {
     if (*(reg_los + rs2) == twoToThePowerOf(8)) {
+      // alias
+      *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+      *(reg_ld_from_2 + rd) = 0;
+
       *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2); // rightShift(leftShift(*(reg_los + rs1), 56), 56);
       *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2); // rightShift(leftShift(*(reg_ups + rs1), 56), 56);
       *(reg_steps + rd) = 1;
 
       *(reg_saddr     + rd) = *(reg_saddr + rs1);
-      *(reg_isNotInterval + rd) = 0;
 
       if (*(reg_los + rd) == *(reg_ups + rd)) {
         setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7829,6 +7948,10 @@ void constrain_remu() {
         setCorrection(rd, 0, 0, 0, 0, *(reg_cohas + rs1));
         *(reg_whichByte + rd) = 1;
       }
+
+      alias_check_char(7);
+
+      *(reg_isNotInterval + rd) = 0;
 
       return;
     } else
@@ -7841,6 +7964,10 @@ void constrain_remu() {
     printInvalid();
 
   if (*(reg_hasco + rs1)) {
+    // alias
+    *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+    *(reg_ld_from_2 + rd) = 0;
+
     // interval semantics of remu
     if (*(reg_steps + rs1) == 1) {
       constrain_remu_step_1();
@@ -7928,6 +8055,10 @@ void constrain_remu() {
     *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   } else {
+    // alias
+    *(reg_ld_from_1 + rd) = 0;
+    *(reg_ld_from_2 + rd) = 0;
+
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
@@ -7960,6 +8091,10 @@ void constrain_and() {
     *(reg_whichByte + rd) = 0;
     *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
+
+    // alias
+    *(reg_ld_from_1 + rd) = 0;
+    *(reg_ld_from_2 + rd) = 0;
   }
 }
 
@@ -8049,6 +8184,7 @@ void constrain_sltu() {
 
 void backtrack_sltu() {
   uint64_t vaddr;
+  uint64_t ld_from;
 
   if (debug_symbolic) {
     print(selfieName);
@@ -8069,10 +8205,6 @@ void backtrack_sltu() {
       *(reg_ups   + vaddr) = *(ups   + tc);
       *(reg_steps + vaddr) = *(steps + tc);
 
-      *(reg_whichByte + vaddr) = *(whichBytes + tc);
-      *(reg_saddr     + vaddr) = *(saddrs   + tc);
-      *(reg_isNotInterval + vaddr) = *(isNotIntervals + tc);
-
       setConstraint(vaddr, 0, 0, 0, 0, 0);
       setCorrection(vaddr, 0, 0, 0, 0, 0);
 
@@ -8087,8 +8219,21 @@ void backtrack_sltu() {
           ic_sltu = ic_sltu + 1;
         }
     }
-  } else
+  } else {
     storeVirtualMemory(pt, vaddr, *(tcs + tc));
+
+    // alias
+    ld_from = *(ld_froms_1 + tc);
+    if (ld_from != 0)
+      if (*(is_useds + ld_from) == 1)
+        *(is_useds + ld_from) = 0;
+
+    ld_from = *(ld_froms_2 + tc);
+    if (ld_from != 0)
+      if (*(is_useds + ld_from) == 1)
+        *(is_useds + ld_from) = 0;
+
+  }
 
   if (*(isNotIntervals + tc) > 2) {
     eq_free();
@@ -8217,18 +8362,46 @@ uint64_t constrain_ld() {
 
         *(reg_whichByte + rd) = *(whichBytes + mrvc);
         *(reg_saddr     + rd) = *(saddrs    + mrvc);
-        if (*(reg_saddr + rd) == 0) {
-          if (rs1 < REG_FP) {
-            if (rs1 > REG_TP)
-              *(reg_saddr + rd) = vaddr;
-          } else if (rs1 > REG_S11)
+
+        // alias
+        potential_load_char = 0;
+        if (rs1 < REG_FP) {
+          if (rs1 > REG_TP) {
             *(reg_saddr + rd) = vaddr;
+            // if (*(reg_isNotInterval + rd))
+              potential_load_char = vaddr;
+          }
+        } else if (rs1 > REG_S11) {
+          *(reg_saddr + rd) = vaddr;
+          // if (*(reg_isNotInterval + rd))
+            potential_load_char = vaddr;
         }
+
         *(reg_isNotInterval + rd) = *(isNotIntervals + mrvc);
 
         if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd))) {
           // vaddr is constrained by rd if value interval is not singleton
           setConstraint(rd, 1, vaddr, 0, 0, 0);
+
+          // alias
+          if (*(is_useds + mrvc) == 1) {
+            if (*(reg_isNotInterval + rd))
+              *(is_useds + mrvc) = 0;
+            else {
+              print((uint64_t*) " detected double use ld ");
+              printHexadecimal(pc, 0);
+              printSourceLineNumberOfInstruction(pc - entryPoint);
+              println();
+
+              exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+            }
+          }
+          if (*(reg_isNotInterval + rd) == 0)
+            *(is_useds + mrvc) = 1;
+          else if (*(is_useds + mrvc) == 0)
+              *(is_useds + mrvc) = 1;
+          *(reg_ld_from_1 + rd) = mrvc;
+          *(reg_ld_from_2 + rd) = 0;
 
           if (*(reg_steps + rd) == 0) {
             print(selfieName);
@@ -8242,6 +8415,11 @@ uint64_t constrain_ld() {
         } else {
           setConstraint(rd, 0, 0, 0, 0, 0);
           *(reg_steps + rd) = 1;
+
+          // alias
+          *(reg_ld_from_1 + rd) = 0;
+          *(reg_ld_from_2 + rd) = 0;
+          *(is_useds + mrvc)    = 0;
         }
 
         setCorrection(rd, 0, 0, 0, 0, 0);
@@ -8380,7 +8558,13 @@ uint64_t constrain_sd() {
 
       if(do_taint_flag) setTaintMemory(*(reg_istainted + rs2), *(reg_isminuend + rs2), *(reg_hasstep + rs2));
 
-      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_isNotInterval + rs2), *(reg_saddr + rs2), mrcc);
+      // alias
+      if (potential_load_char) {
+        potential_store_char = vaddr;
+        potential_load_char  = 0;
+      }
+
+      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_isNotInterval + rs2), *(reg_saddr + rs2), *(reg_ld_from_1 + rs2), *(reg_ld_from_2 + rs2), mrcc);
 
       *(reg_whichByte + rs2) = 0;
       *(reg_saddr     + rs2) = 0;
@@ -8403,6 +8587,8 @@ uint64_t constrain_sd() {
 }
 
 void backtrack_sd() {
+  uint64_t ld_from;
+
   if (debug_symbolic) {
     print(selfieName);
     print((uint64_t*) ": backtracking sd ");
@@ -8410,6 +8596,24 @@ void backtrack_sd() {
   }
 
   storeVirtualMemory(pt, *(vaddrs + tc), *(tcs + tc));
+
+  // alias
+  ld_from = *(ld_froms_1 + tc);
+  if (ld_from != 0) {
+    if (*(is_useds + ld_from) == 1)
+      *(is_useds + ld_from) = 0;
+    else if (*(whichBytes + tc) > 10)
+      storeCharacter(is_useds + ld_from, *(whichBytes + tc) - 11, 0);
+  }
+
+  ld_from = *(ld_froms_2 + tc);
+  if (ld_from != 0) {
+    if (*(is_useds + ld_from) == 1) {
+      *(is_useds + ld_from) = 0;
+    } else if (*(whichBytes + tc) > 10) {
+      storeCharacter(is_useds + ld_from, *(whichBytes + tc) - 11, 0);
+    }
+  }
 
   efree();
 }
@@ -8919,6 +9123,43 @@ uint64_t isByteShift(uint64_t n) {
   return CPUBITWIDTH;
 }
 
+void alias_check_char(uint64_t whichByte) {
+  uint64_t mrvc;
+
+  mrvc = loadVirtualMemory(pt, *(reg_saddr + rd));
+  if (rightShift(leftShift(*(is_useds + mrvc), whichByte * 8), 56) == 2) {
+    print((uint64_t*) " detected char double use ");
+    printHexadecimal(pc, 0);
+    printSourceLineNumberOfInstruction(pc - entryPoint);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
+  if (*(reg_whichByte + rd)) {
+    if (*(is_useds + mrvc) == 1) {
+      *(is_useds + mrvc) = 0;
+      storeCharacter(is_useds + mrvc, *(reg_whichByte + rd) - 1, 2);
+    } else if (*(is_useds + mrvc))
+      storeCharacter(is_useds + mrvc, *(reg_whichByte + rd) - 1, 2);
+
+    mrvc = loadVirtualMemory(pt, potential_store_char);
+    *(whichBytes + mrvc) = *(reg_whichByte + rd) + 10;
+  } else {
+    whichByte = SIZEOFUINT64 - whichByte;
+    if (*(is_useds + mrvc) == 1)
+      *(is_useds + mrvc) = 0;
+    else if (*(is_useds + mrvc))
+      storeCharacter(is_useds + mrvc, whichByte, 0);
+
+    // mrvc = loadVirtualMemory(pt, potential_store_char);
+    // if (*(reg_isNotInterval + rs1))
+    //   *(whichBytes + mrvc) = whichByte + 11;
+    // else
+    //   *(whichBytes + mrvc) = 0;
+  }
+}
+
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
   if (type)
     // memory range
@@ -8989,8 +9230,9 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb) {
   uint64_t mrvc;
+  uint64_t is_used;
 
   if (vaddr == 0)
     // tracking bump pointer and size for malloc
@@ -9002,6 +9244,30 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     // assert: vaddr is valid and mapped
     mrvc = loadSymbolicMemory(pt, vaddr);
 
+    // alias
+    if (*(whichBytes + mrvc) > 10) {
+      trb = tc; // prevent overwriting to be able to backtrack is_used of chars
+      is_used = 0;
+    } else if (*(is_useds + mrvc) > 1) {
+      if (whichByte) {
+        *(tmp_memory) = *(is_useds + mrvc);
+        storeCharacter(tmp_memory, whichByte - 1, 0);
+        is_used = *(tmp_memory);
+      } else {
+        print((uint64_t*) ": whichByte is zero!");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+      }
+    } else
+      is_used = 0;
+
+    // prevent overwriting to be able to backtrack is_used
+    if (ld_from_1 != *(ld_froms_1 + mrvc))
+      trb = tc;
+    else if (ld_from_2 != *(ld_froms_2 + mrvc))
+      trb = tc;
+
     if (value == *(values + mrvc))
       if (type == *(types + mrvc))
         if (lo == *(los + mrvc))
@@ -9010,13 +9276,15 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
               if (whichByte == *(whichBytes + mrvc))
                 if (isNotInterval == *(isNotIntervals + mrvc))
                   if (saddr == *(saddrs + mrvc))
-                    if (trb < mrvc)
-                      // prevent tracking identical updates
-                      return;
+                    if (*(is_useds + mrvc) == is_used)
+                      if (*(ld_froms_1 + mrvc) == ld_from_1)
+                        if (*(ld_froms_2 + mrvc) == ld_from_2)
+                          if (trb < mrvc)
+                            // prevent tracking identical updates
+                            return;
 
     if (vaddr == read_vbuffer)
-      // prevent overwriting
-      trb = mrvc;
+      trb = tc; // prevent overwriting
   }
 
   if (trb < mrvc) {
@@ -9033,8 +9301,12 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     // assert: vaddr == *(vaddrs + mrvc)
 
     *(whichBytes + mrvc) = whichByte;
-    *(saddrs   + mrvc) = saddr;
+    *(saddrs     + mrvc) = saddr;
     *(isNotIntervals + mrvc) = isNotInterval;
+
+    *(is_useds   + mrvc) = is_used;
+    *(ld_froms_1 + mrvc) = ld_from_1;
+    *(ld_froms_2 + mrvc) = ld_from_2;
 
     if(do_taint_flag) storeTaintMemory(mrvc);
 
@@ -9062,8 +9334,12 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(vaddrs + tc) = vaddr;
 
     *(whichBytes + tc) = whichByte;
-    *(saddrs   + tc) = saddr;
+    *(saddrs     + tc) = saddr;
     *(isNotIntervals + tc) = isNotInterval;
+
+    *(is_useds   + tc) = is_used;
+    *(ld_froms_1 + tc) = ld_from_1;
+    *(ld_froms_2 + tc) = ld_from_2;
 
     if(do_taint_flag) storeTaintMemory(tc);
 
@@ -9089,7 +9365,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
   }
 }
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t trb) {
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb) {
   uint64_t mrvc;
   uint64_t is_func;
 
@@ -9112,14 +9388,14 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
   mrvc = loadVirtualMemory(pt, vaddr);
 
   if (is_func) {
-    ealloc(); // use it as temp memory
-    *(los + tc) = *(los + mrvc);
-    *(ups + tc) = *(ups + mrvc);
-    storeCharacter(los + tc, whichByte - 1, lo);
-    storeCharacter(ups + tc, whichByte - 1, up);
+    *(tmp_memory) = *(los + mrvc);
+    storeCharacter(tmp_memory, whichByte - 1, lo);
+    lo = *(tmp_memory);
 
-    lo = *(los + tc);
-    up = *(ups + tc);
+    *(tmp_memory) = *(ups + mrvc);
+    storeCharacter(tmp_memory, whichByte - 1, up);
+    up = *(tmp_memory);
+
     if (lo != up) {
       if (isNotInterval == 0)
         isNotInterval = 2;
@@ -9127,33 +9403,32 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
       isNotInterval = 0;
     saddr         = *(saddrs + mrvc);
     step          = *(steps  + mrvc);
-    efree(); // free temp memory
   }
 
-  if (is_func == 0) {
-    // the condition is not strong enough to handle 'if (loadCharacter)'
-    if (mrvc < trb) {
-      // we do not support potentially aliased constrained memory
-      print(selfieName);
-      print((uint64_t*) ": detected potentially aliased constrained memory");
-      printHexadecimal(pc, 0);
-      printSourceLineNumberOfInstruction(pc - entryPoint);
-      println();
-
-      // exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    }
-  }
+  // if (is_func == 0) {
+  //   // the condition is not strong enough to handle 'if (loadCharacter)'
+  //   if (mrvc < trb) {
+  //     // we do not support potentially aliased constrained memory
+  //     print(selfieName);
+  //     print((uint64_t*) ": detected potentially aliased constrained memory");
+  //     printHexadecimal(pc, 0);
+  //     printSourceLineNumberOfInstruction(pc - entryPoint);
+  //     println();
+  //
+  //     // exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  //   }
+  // }
 
   // always track constrained memory by using tc as most recent branch
   //assert to_store_taint set
-  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, saddr, tc);
+  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, saddr, ld_from_1, ld_from_2, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
 
-  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, tc);
+  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, 0, 0, tc);
 }
 
 uint64_t applyCorrection(uint64_t reg, uint64_t lo, uint64_t up) {
@@ -9256,9 +9531,9 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
 
     if (reg == rs1)
-      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs1_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs1_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), *(reg_ld_from_1 + reg), *(reg_ld_from_2 + reg), trb);
     else
-      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs2_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs2_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), *(reg_ld_from_1 + reg), *(reg_ld_from_2 + reg), trb);
   }
 }
 
@@ -9621,14 +9896,14 @@ void create_equality_constraint() {
       cnd_rs1_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc1), ec);
     }
-    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, tc);
+    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, 0, 0, tc);
 
     if (*(isNotIntervals + mrvc2) > 2) {
       eq_alloc();
       cnd_rs2_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc2), ec);
     }
-    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr, tc);
+    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr, 0, 0, tc);
     takeBranch(0, 0);
   } else {
 
@@ -9687,7 +9962,7 @@ void create_equality_constraint() {
       *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
       *(vintervals       + c1 + cnd_rs1_whichByte - 1) = region1;
       *(nevintervals     + c1 + cnd_rs1_whichByte - 1) = region2;
-      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, tc);
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, 0, 0, tc);
 
       eq_alloc();
       c2 = ec;
@@ -9698,7 +9973,7 @@ void create_equality_constraint() {
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = region3;
       *(nevintervals     + c2 + cnd_rs2_whichByte - 1) = region4;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, tc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, 0, 0, tc);
 
       if (intersection) {
         storeRegisterMemory(rd, 0);
@@ -9718,7 +9993,7 @@ void create_equality_constraint() {
         reset_equality_constriants(c1);
       *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 1;
       *(vintervals       + c1 + cnd_rs1_whichByte - 1) = intersection;
-      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, tc);
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, 0, 0, tc);
 
       eq_alloc();
       c2 = ec;
@@ -9728,7 +10003,7 @@ void create_equality_constraint() {
         reset_equality_constriants(c2);
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 1;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = intersection;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, tc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, 0, 0, tc);
 
       takeBranch(1, 0);
     }
@@ -11099,7 +11374,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     if (isTraceSpaceAvailable()) {
       setTaintMemory(0, 0, 1);
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, 0, 0, tc);
     }
     else {
       print(selfieName);
