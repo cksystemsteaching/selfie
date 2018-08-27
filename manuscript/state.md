@@ -148,58 +148,67 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 
 {line-numbers=off}
 ```
-0x0(~1): 0x240801EC: addiu $t0,$zero,492           // initialize global pointer
-0x4(~1): 0x251C0000: addiu $gp,$t0,0               // via $t0 register with 492
-0x8(~1): 0x24080FFF: addiu $t0,$zero,4095          // initialize stack pointer
-0xC(~1): 0x24094000: addiu $t1,$zero,16384         // with the machine word at
-0x10(~1): 0x01090019: multu $t0,$t1                // address 4095*16384+16380
-0x14(~1): 0x00004012: mflo $t0                     // by loading 4095 into $t0
-0x18(~1): 0x00000000: nop                          // and 16384 into $t1, then
-0x1C(~1): 0x00000000: nop                          // multiplying $t0 with $t1,
-0x20(~1): 0x25083FFC: addiu $t0,$t0,16380          // and adding 16380 to the
-0x24(~1): 0x8D1D0000: lw $sp,0($t0)                // result in $t0, and finally
-0x28(~1): 0x00000000: nop                          // loading the word at the
-0x2C(~1): 0x00000000: nop                          // address in $t0.
-0x30(~1): 0x00000000: nop
-0x34(~1): 0x00000000: nop
-0x38(~1): 0x00000000: nop
-0x3C(~1): 0x00000000: nop
-0x40(~1): 0x0C00005F: jal 0x5F[0x17C]              // jump to main procedure
-0x44(~1): 0x00000000: nop                          // at address 0x17C and
-0x48(~1): 0x27BDFFFC: addiu $sp,$sp,-4             // return here when done.
-0x4C(~1): 0xAFA20000: sw $v0,0($sp)                // copy exit code in $v0
-0x50(~1): 0x8FA40000: lw $a0,0($sp)                // register to $a0 register,
-0x54(~1): 0x27BD0004: addiu $sp,$sp,4              // load exit syscall ID
-0x58(~1): 0x24020FA1: addiu $v0,$zero,4001         // 4001 into $v0, and
-0x5C(~1): 0x0000000C: syscall                      // finally exit here.
+0x0(~1): 0x144000EF: jal $ra,81[0x144]         // jump to initialization code
+// wrapper code for exit system call
+0x4(~1): 0x00013503: ld $a0,0($sp)             // retrieve exit code and
+0x8(~1): 0x00810113: addi $sp,$sp,8            // store it in $a0,
+0xC(~1): 0x05D00893: addi $a7,$zero,93         // load exit syscall ID 93
+0x10(~1): 0x00000073: ecall                    // into $a7, and exit here.
+// wrapper code for unused system calls removed
 ...
-0x17C(~11): 0x27BDFFFC: addiu $sp,$sp,-4           // procedure prologue
-0x180(~11): 0xAFBF0000: sw $ra,0($sp)              // explained later in
-0x184(~11): 0x27BDFFFC: addiu $sp,$sp,-4           // stack chapter.
-0x188(~11): 0xAFBE0000: sw $fp,0($sp)
-0x18C(~11): 0x27BE0000: addiu $fp,$sp,0
-0x190(~11): 0x8F88FFFC: lw $t0,-4($gp)             // load bar into $t0,
-0x194(~11): 0x24090000: addiu $t1,$zero,0          // load 0 into $t1, and
-0x198(~11): 0x0128402A: slt $t0,$t1,$t0            // if $t0 <= $t1 then
-0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]     // branch forward to return
-0x1A0(~11): 0x00000000: nop                        // code at address 0x1BC.
-0x1A4(~13): 0x8F88FFFC: lw $t0,-4($gp)             // load bar into $t0,
-0x1A8(~13): 0x24090001: addiu $t1,$zero,1          // load 1 into $t1,
-0x1AC(~13): 0x01094023: subu $t0,$t0,$t1           // subtract $t1 from $t0,
-0x1B0(~13): 0xAF88FFFC: sw $t0,-4($gp)             // and store $t0 in bar.
-0x1B4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x190] // branch back to while
-0x1B8(~19): 0x00000000: nop                        // code at address 0x190.
-0x1BC(~19): 0x8F88FFFC: lw $t0,-4($gp)             // to return bar, load bar
-0x1C0(~19): 0x00081021: addu $v0,$zero,$t0         // into $v0 via $t0 and
-0x1C4(~19): 0x08000073: j 0x73[0x1CC]              // then jump to epilogue
-0x1C8(~19): 0x00000000: nop                        // at address 0x1CC.
-0x1CC(~20): 0x27DD0000: addiu $sp,$fp,0            // procedure epilogue
-0x1D0(~20): 0x8FBE0000: lw $fp,0($sp)              // explained later in
-0x1D4(~20): 0x27BD0004: addiu $sp,$sp,4            // stack chapter.
-0x1D8(~20): 0x8FBF0000: lw $ra,0($sp)
-0x1DC(~20): 0x27BD0004: addiu $sp,$sp,4
-0x1E0(~20): 0x03E00008: jr $ra                     // return to the code
-0x1E4(~20): 0x00000000: nop                        // at address 0x48.
+// prologue of main procedure, explained later
+0xE8(~11): 0xFF810113: addi $sp,$sp,-8
+0xEC(~11): 0x00113023: sd $ra,0($sp)
+0xF0(~11): 0xFF810113: addi $sp,$sp,-8
+0xF4(~11): 0x00813023: sd $fp,0($sp)
+0xF8(~11): 0x00010413: addi $fp,$sp,0
+// body of main procedure
+0xFC(~11): 0xFF01B283: ld $t0,-16($gp)         // load bar into $t0,
+0x100(~11): 0x00000313: addi $t1,$zero,0       // load 0 into $t1, and
+0x104(~11): 0x005332B3: sltu $t0,$t1,$t0       // if $t0 <= $t1 then
+0x108(~11): 0x00028C63: beq $t0,$zero,6[0x120] // branch forward to return
+0x10C(~13): 0xFF01B283: ld $t0,-16($gp)        // load bar into $t0,
+0x110(~13): 0x00100313: addi $t1,$zero,1       // load 1 into $t1,
+0x114(~13): 0x406282B3: sub $t0,$t0,$t1        // subtract $t1 from $t0,
+0x118(~13): 0xFE51B823: sd $t0,-16($gp)        // and store $t0 in bar.
+0x11C(~19): 0xFE1FF06F: jal $zero,-8[0xFC]     // branch back to while
+0x120(~19): 0xFF01B283: ld $t0,-16($gp)        // to return bar, load bar
+0x124(~19): 0x00500533: add $a0,$zero,$t0.     // into $a0 via $t0 and
+0x128(~19): 0x0040006F: jal $zero,1[0x12C]     // then jump to epilogue.
+// epilogue of main procedure, explained later
+0x12C(~20): 0x00040113: addi $sp,$fp,0
+0x130(~20): 0x00013403: ld $fp,0($sp)
+0x134(~20): 0x00810113: addi $sp,$sp,8
+0x138(~20): 0x00013083: ld $ra,0($sp)
+0x13C(~20): 0x00810113: addi $sp,$sp,8
+0x140(~20): 0x00008067: jalr $zero,0($ra)      // return to caller at 0x184
+// machine initialization code
+// initialize argv, explained later
+0x144(~20): 0xFF810113: addi $sp,$sp,-8
+0x148(~20): 0x01010293: addi $t0,$sp,16
+0x14C(~20): 0x00513023: sd $t0,0($sp)
+// initialize global pointer $gp
+// to program break at 0x101A0
+0x150(~20): 0x000101B7: lui $gp,0x10           // load 0x10000 into $gp and
+0x154(~20): 0x1A018193: addi $gp,$gp,416       // then add 416 (0x1A0) to $gp
+// initialize _bump pointer, explained later
+0x158(~20): 0x00000513: addi $a0,$zero,0
+0x15C(~20): 0x0D600893: addi $a7,$zero,214
+0x160(~20): 0x00000073: ecall
+0x164(~20): 0x00750513: addi $a0,$a0,7
+0x168(~20): 0x00800293: addi $t0,$zero,8
+0x16C(~20): 0x025572B3: remu $t0,$a0,$t0
+0x170(~20): 0x40550533: sub $a0,$a0,$t0
+0x174(~20): 0x0D600893: addi $a7,$zero,214
+0x178(~20): 0x00000073: ecall
+0x17C(~20): 0xFEA1BC23: sd $a0,-8($gp)
+// call main procedure
+0x180(~20): 0xF69FF0EF: jal $ra,-38[0xE8]      // jump to main procedure code
+// retrieve return value of main procedure
+// and store it as exit code, then exit
+0x184(~20): 0xFF810113: addi $sp,$sp,-8
+0x188(~20): 0x00A13023: sd $a0,0($sp)
+0x18C(~20): 0xE79FF0EF: jal $ra,-98[0x4]       // jump to exit wrapper code
 ```
 
 Each line in `countdown.s` represents one instruction. The first line, for example, is the instruction `addiu $t0,$zero,492`, which is encoded in the 32-bit word `0x240801EC`. The instruction will be loaded into memory at address `0x0`, as indicated by `0x0(~1)`. The number `~1` in parentheses is the approximate line number in `countdown.c` for which starc generated the instruction. Even though there is a comment at Line 1 in `countdown.c` this still makes sense because starc always generates some instructions before compiling any actual source code. Try to find the four instructions that starc actually generated for `bar = bar - 1` in Line 13 of `countdown.c`! They, along with the others, are explained below.
