@@ -249,45 +249,56 @@ Let us take a look at how the first few and last few instructions for the countd
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/countdown.c -d 1
-./selfie: this is selfie's starc compiling manuscript/code/countdown.c
-./selfie: 625 characters read in 19 lines and 9 comments
-./selfie: with 55(8.80%) characters in 28 actual symbols
+./selfie: selfie compiling manuscript/code/countdown.c with starc
+./selfie: 645 characters read in 20 lines and 9 comments
+./selfie: with 65(10.70%) characters in 28 actual symbols
 ./selfie: 1 global variables, 1 procedures, 0 string literals
 ./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
-./selfie: 496 bytes generated with 122 instructions and 8 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/countdown.c with 1MB of physical memory
-$pc=0x0(~1): 0x240801EC: addiu $t0,$zero,492: $t0=0,$zero=0 -> $t0=492
-$pc=0x4(~1): 0x251C0000: addiu $gp,$t0,0: $gp=0,$t0=492 -> $gp=492
-$pc=0x8(~1): 0x24080FFF: addiu $t0,$zero,4095: $t0=492,$zero=0 -> $t0=4095
-$pc=0xC(~1): 0x24094000: addiu $t1,$zero,16384: $t1=0,$zero=0 -> $t1=16384
-$pc=0x10(~1): 0x01090019: multu $t0,$t1: $t0=4095,$t1=16384,$lo=0 -> $lo=67092480
-$pc=0x14(~1): 0x00004012: mflo $t0: $t0=4095,$lo=67092480 -> $t0=67092480
-$pc=0x18(~1): 0x00000000: nop
-$pc=0x1C(~1): 0x00000000: nop
-$pc=0x20(~1): 0x25083FFC: addiu $t0,$t0,16380: $t0=67092480,$t0=67092480 -> $t0=67108860
-$pc=0x24(~1): 0x8D1D0000: lw $sp,0($t0): $sp=0,$t0=0x3FFFFFC -> $sp=67108816=memory[0x3FFFFFC]
-$pc=0x28(~1): 0x00000000: nop
-$pc=0x2C(~1): 0x00000000: nop
-$pc=0x30(~1): 0x00000000: nop
-$pc=0x34(~1): 0x00000000: nop
-$pc=0x38(~1): 0x00000000: nop
-$pc=0x3C(~1): 0x00000000: nop
-$pc=0x40(~1): 0x0C00005F: jal 0x5F[0x17C]: $ra=0x0 -> $ra=0x48,$pc=0x17C
+./selfie: symbol table search time was 1 iterations on average and 29 in total
+./selfie: 544 bytes generated with 100 instructions and 16 bytes of data
+./selfie: init:    lui: 1(1.00%), addi: 40(40.00%)
+./selfie: memory:  ld: 19(19.00%), sd: 7(7.00%)
+./selfie: compute: add: 3(3.00%), sub: 3(3.00%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(2.00%)
+./selfie: control: sltu: 1(1.00%), beq: 5(5.00%), jal: 5(5.00%), jalr: 6(6.00%), ecall: 8(8.00%)
+./selfie: selfie executing manuscript/code/countdown.c with 1MB physical memory on mipster
+$pc=0x10000(~1): jal $ra,81[0x10144]: |- $ra=0x0,$pc=0x10000 -> $pc=0x10144,$ra=0x10004
+$pc=0x10144(~20): addi $sp,$sp,-8: $sp=0xFFFFFFC0 |- $sp=0xFFFFFFC0 -> $sp=0xFFFFFFB8
+$pc=0x10148(~20): addi $t0,$sp,16: $sp=0xFFFFFFB8 |- $t0=0(0x0) -> $t0=4294967240(0xFFFFFFC8)
+$pc=0x1014C(~20): sd $t0,0($sp): $sp=0xFFFFFFB8,$t0=4294967240(0xFFFFFFC8) |- mem[0xFFFFFFB8]=0 -> mem[0xFFFFFFB8]=$t0=4294967240(0xFFFFFFC8)
+$pc=0x10150(~20): lui $gp,0x10: |- $gp=0x0 -> $gp=0x10000
+$pc=0x10154(~20): addi $gp,$gp,416: $gp=0x10000 |- $gp=0x10000 -> $gp=0x101A0
+$pc=0x10158(~20): addi $a0,$zero,0: $zero=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
+$pc=0x1015C(~20): addi $a7,$zero,214: $zero=0(0x0) |- $a7=0(0x0) -> $a7=214(0xD6)
+$pc=0x10160(~20): ecall: |- $a0=0x0 -> $a0=0x0
+$pc=0x10164(~20): addi $a0,$a0,7: $a0=65952(0x101A0) |- $a0=65952(0x101A0) -> $a0=65959(0x101A7)
+$pc=0x10168(~20): addi $t0,$zero,8: $zero=0(0x0) |- $t0=4294967240(0xFFFFFFC8) -> $t0=8(0x8)
+$pc=0x1016C(~20): remu $t0,$a0,$t0: $a0=65959(0x101A7),$t0=8(0x8) |- $t0=8(0x8) -> $t0=7(0x7)
+$pc=0x10170(~20): sub $a0,$a0,$t0: $a0=65959(0x101A7),$t0=7(0x7) |- $a0=65959(0x101A7) -> $a0=65952(0x101A0)
+$pc=0x10174(~20): addi $a7,$zero,214: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=214(0xD6)
+$pc=0x10178(~20): ecall: |- $a0=0x101A0 -> $a0=0x101A0
+$pc=0x1017C(~20): sd $a0,-8($gp): $gp=0x101A0,$a0=65952(0x101A0) |- mem[0x10198]=0 -> mem[0x10198]=$a0=65952(0x101A0)
+$pc=0x10180(~20): jal $ra,-38[0x100E8]: |- $ra=0x10004,$pc=0x10180 -> $pc=0x100E8,$ra=0x10184
+
 ...
-$pc=0x1E0(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
-$pc=0x48(~1): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108816,$sp=67108816 -> $sp=67108812
-$pc=0x4C(~1): 0xAFA20000: sw $v0,0($sp): $v0=0,$sp=0x3FFFFCC -> memory[0x3FFFFCC]=0=$v0
-$pc=0x50(~1): 0x8FA40000: lw $a0,0($sp): $a0=0,$sp=0x3FFFFCC -> $a0=0=memory[0x3FFFFCC]
-$pc=0x54(~1): 0x27BD0004: addiu $sp,$sp,4: $sp=67108812,$sp=67108812 -> $sp=67108816
-$pc=0x58(~1): 0x24020FA1: addiu $v0,$zero,4001: $v0=0,$zero=0 -> $v0=4001
-$pc=0x5C(~1): 0x0000000C: syscall
-exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/countdown.c with exit code 0 and 0.00MB of mapped memory
-./selfie: profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)
-./selfie: calls: 1,1(100.00%)@0x17C(~11),0(0.00%),0(0.00%)
-./selfie: loops: 10,10(100.00%)@0x190(~11),0(0.00%),0(0.00%)
-./selfie: loads: 26,11(42.37%)@0x190(~11),10(38.46%)@0x1A4(~13),1(3.84%)@0x24(~1)
-./selfie: stores: 13,10(76.92%)@0x1B0(~13),1(7.69%)@0x4C(~1),0(0.00%)
+$pc=0x10184(~20): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFFFFB0
+$pc=0x10188(~20): sd $a0,0($sp): $sp=0xFFFFFFB0,$a0=0(0x0) |- mem[0xFFFFFFB0]=65924 -> mem[0xFFFFFFB0]=$a0=0(0x0)
+$pc=0x1018C(~20): jal $ra,-98[0x10004]: |- $ra=0x10184,$pc=0x1018C -> $pc=0x10004,$ra=0x10190
+$pc=0x10004(~1): ld $a0,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0 |- $a0=0(0x0) -> $a0=0(0x0)=mem[0xFFFFFFB0]
+$pc=0x10008(~1): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
+$pc=0x1000C(~1): addi $a7,$zero,93: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=93(0x5D)
+$pc=0x10010(~1): ecall: |- $a0=0x0 -> $a0=0x0
+./selfie: manuscript/code/countdown.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/countdown.c with exit code 0
+./selfie: summary: 132 executed instructions and 0.00MB mapped memory
+./selfie: init:    lui: 1(0.75%), addi: 38(28.78%)
+./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
+./selfie: compute: add: 1(0.75%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
+./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 14(10.60%), jalr: 1(0.75%), ecall: 3(2.27%)
+./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
+./selfie: calls:   3,1(33.33%)@0x4(~1),1(33.33%)@0xE8(~11),1(33.33%)@0x144(~20)
+./selfie: loops:   10,10(100.00%)@0xFC(~11),0(0.00%),0(0.00%)
+./selfie: loads:   25,11(44.00%)@0x100(~11),10(40.00%)@0x110(~13),1(4.00%)@0x8(~1)
+./selfie: stores:  15,10(66.66%)@0x11C(~19),1(6.66%)@0xF0(~11),1(6.66%)@0xF8(~11)
 ```
 
 ## Initialization
