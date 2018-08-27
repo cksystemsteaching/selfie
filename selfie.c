@@ -4794,7 +4794,7 @@ void selfie_compile() {
   printf3((uint64_t*) "%s: symbol table search time was %d iterations on average and %d in total\n", selfie_name, (uint64_t*) (total_search_time / number_of_searches), (uint64_t*) total_search_time);
 
   printf4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfie_name,
-    (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binary_length),
+    (uint64_t*) binary_length,
     (uint64_t*) (code_length / INSTRUCTIONSIZE),
     (uint64_t*) (binary_length - code_length));
 
