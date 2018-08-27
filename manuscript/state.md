@@ -400,55 +400,52 @@ Here is the output of mipster when executing the instructions that implement the
 ```
 > ./selfie -c manuscript/code/countdown.c -d 1
 ...
-$pc=0x17C(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108816,$sp=67108816 -> $sp=67108812
-$pc=0x180(~11): 0xAFBF0000: sw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> memory[0x3FFFFCC]=72=$ra
-$pc=0x184(~11): 0x27BDFFFC: addiu $sp,$sp,-4: $sp=67108812,$sp=67108812 -> $sp=67108808
-$pc=0x188(~11): 0xAFBE0000: sw $fp,0($sp): $fp=0,$sp=0x3FFFFC8 -> memory[0x3FFFFC8]=0=$fp
-$pc=0x18C(~11): 0x27BE0000: addiu $fp,$sp,0: $fp=0,$sp=67108808 -> $fp=67108808
-$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=67108860,$gp=0x1EC -> $t0=10=memory[0x1E8]
-$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=16384,$zero=0 -> $t1=0
-$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=10 -> $t0=1
-$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=1 -> $pc=0x1A0
-$pc=0x1A0(~11): 0x00000000: nop
-$pc=0x1A4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=10=memory[0x1E8]
-$pc=0x1A8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
-$pc=0x1AC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=10,$t0=10,$t1=1 -> $t0=9
-$pc=0x1B0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=9,$gp=0x1EC -> memory[0x1E8]=9=$t0
-$pc=0x1B4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x190]: $zero=0,$zero=0 -> $pc=0x190
-$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=9,$gp=0x1EC -> $t0=9=memory[0x1E8]
-$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
-$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=9 -> $t0=1
-$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=1 -> $pc=0x1A0
-$pc=0x1A0(~11): 0x00000000: nop
-$pc=0x1A4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=9=memory[0x1E8]
-$pc=0x1A8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
-$pc=0x1AC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=9,$t0=9,$t1=1 -> $t0=8
-$pc=0x1B0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=8,$gp=0x1EC -> memory[0x1E8]=8=$t0
-$pc=0x1B4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x190]: $zero=0,$zero=0 -> $pc=0x190
+$pc=0x100E8(~11): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFFFFB0
+$pc=0x100EC(~11): sd $ra,0($sp): $sp=0xFFFFFFB0,$ra=0x10184 |- mem[0xFFFFFFB0]=0 -> mem[0xFFFFFFB0]=$ra=0x10184
+$pc=0x100F0(~11): addi $sp,$sp,-8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFA8
+$pc=0x100F4(~11): sd $fp,0($sp): $sp=0xFFFFFFA8,$fp=0x0 |- mem[0xFFFFFFA8]=0 -> mem[0xFFFFFFA8]=$fp=0x0
+$pc=0x100F8(~11): addi $fp,$sp,0: $sp=0xFFFFFFA8 |- $fp=0x0 -> $fp=0xFFFFFFA8
+$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=10 |- $t0=7(0x7) -> $t0=10(0xA)=mem[0x10190]
+$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=0(0x0) -> $t1=0(0x0)
+$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=10(0xA) |- $t0=10(0xA) -> $t0=1(0x1)
+$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x1010C
+$pc=0x1010C(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=10 |- $t0=1(0x1) -> $t0=10(0xA)=mem[0x10190]
+$pc=0x10110(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
+$pc=0x10114(~13): sub $t0,$t0,$t1: $t0=10(0xA),$t1=1(0x1) |- $t0=10(0xA) -> $t0=9(0x9)
+$pc=0x10118(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=9(0x9) |- mem[0x10190]=10 -> mem[0x10190]=$t0=9(0x9)
+$pc=0x1011C(~19): jal $zero,-8[0x100FC]: |- $pc=0x1011C -> $pc=0x100FC
+$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=9 |- $t0=9(0x9) -> $t0=9(0x9)=mem[0x10190]
+$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
+$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=9(0x9) |- $t0=9(0x9) -> $t0=1(0x1)
+$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x1010C
+$pc=0x1010C(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=9 |- $t0=1(0x1) -> $t0=9(0x9)=mem[0x10190]
+$pc=0x10110(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
+$pc=0x10114(~13): sub $t0,$t0,$t1: $t0=9(0x9),$t1=1(0x1) |- $t0=9(0x9) -> $t0=8(0x8)
+$pc=0x10118(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=8(0x8) |- mem[0x10190]=9 -> mem[0x10190]=$t0=8(0x8)
+$pc=0x1011C(~19): jal $zero,-8[0x100FC]: |- $pc=0x1011C -> $pc=0x100FC
 ...
-$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=1=memory[0x1E8]
-$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
-$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=1 -> $t0=1
-$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=1 -> $pc=0x1A0
-$pc=0x1A0(~11): 0x00000000: nop
-$pc=0x1A4(~13): 0x8F88FFFC: lw $t0,-4($gp): $t0=1,$gp=0x1EC -> $t0=1=memory[0x1E8]
-$pc=0x1A8(~13): 0x24090001: addiu $t1,$zero,1: $t1=0,$zero=0 -> $t1=1
-$pc=0x1AC(~13): 0x01094023: subu $t0,$t0,$t1: $t0=1,$t0=1,$t1=1 -> $t0=0
-$pc=0x1B0(~13): 0xAF88FFFC: sw $t0,-4($gp): $t0=0,$gp=0x1EC -> memory[0x1E8]=0=$t0
-$pc=0x1B4(~19): 0x1000FFF6: beq $zero,$zero,-10[0x190]: $zero=0,$zero=0 -> $pc=0x190
-$pc=0x190(~11): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x1EC -> $t0=0=memory[0x1E8]
-$pc=0x194(~11): 0x24090000: addiu $t1,$zero,0: $t1=1,$zero=0 -> $t1=0
-$pc=0x198(~11): 0x0128402A: slt $t0,$t1,$t0: $t1=0,$t0=0 -> $t0=0
-$pc=0x19C(~11): 0x10080007: beq $zero,$t0,7[0x1BC]: $zero=0,$t0=0 -> $pc=0x1BC
-$pc=0x1BC(~19): 0x8F88FFFC: lw $t0,-4($gp): $t0=0,$gp=0x1EC -> $t0=0=memory[0x1E8]
-$pc=0x1C0(~19): 0x00081021: addu $v0,$zero,$t0: $v0=0,$zero=0,$t0=0 -> $v0=0
-$pc=0x1C4(~19): 0x08000073: j 0x73[0x1CC]: -> $pc=0x1CC
-$pc=0x1CC(~20): 0x27DD0000: addiu $sp,$fp,0: $sp=67108808,$fp=67108808 -> $sp=67108808
-$pc=0x1D0(~20): 0x8FBE0000: lw $fp,0($sp): $fp=67108808,$sp=0x3FFFFC8 -> $fp=0=memory[0x3FFFFC8]
-$pc=0x1D4(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108808,$sp=67108808 -> $sp=67108812
-$pc=0x1D8(~20): 0x8FBF0000: lw $ra,0($sp): $ra=72,$sp=0x3FFFFCC -> $ra=72=memory[0x3FFFFCC]
-$pc=0x1DC(~20): 0x27BD0004: addiu $sp,$sp,4: $sp=67108812,$sp=67108812 -> $sp=67108816
-$pc=0x1E0(~20): 0x03E00008: jr $ra: $ra=0x48 -> $pc=0x48
+$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=1 |- $t0=1(0x1) -> $t0=1(0x1)=mem[0x10190]
+$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
+$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=1(0x1) |- $t0=1(0x1) -> $t0=1(0x1)
+$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x1010C
+$pc=0x1010C(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=1 |- $t0=1(0x1) -> $t0=1(0x1)=mem[0x10190]
+$pc=0x10110(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
+$pc=0x10114(~13): sub $t0,$t0,$t1: $t0=1(0x1),$t1=1(0x1) |- $t0=1(0x1) -> $t0=0(0x0)
+$pc=0x10118(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=0(0x0) |- mem[0x10190]=1 -> mem[0x10190]=$t0=0(0x0)
+$pc=0x1011C(~19): jal $zero,-8[0x100FC]: |- $pc=0x1011C -> $pc=0x100FC
+$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=0 |- $t0=0(0x0) -> $t0=0(0x0)=mem[0x10190]
+$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
+$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=0(0x0) |- $t0=0(0x0) -> $t0=0(0x0)
+$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=0(0x0),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x10120
+$pc=0x10120(~19): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=0 |- $t0=0(0x0) -> $t0=0(0x0)=mem[0x10190]
+$pc=0x10124(~19): add $a0,$zero,$t0: $zero=0(0x0),$t0=0(0x0) |- $a0=65952(0x101A0) -> $a0=0(0x0)
+$pc=0x10128(~19): jal $zero,1[0x1012C]: |- $pc=0x10128 -> $pc=0x1012C
+$pc=0x1012C(~20): addi $sp,$fp,0: $fp=0xFFFFFFA8 |- $sp=0xFFFFFFA8 -> $sp=0xFFFFFFA8
+$pc=0x10130(~20): ld $fp,0($sp): $sp=0xFFFFFFA8,mem[0xFFFFFFA8]=0x0 |- $fp=0xFFFFFFA8 -> $fp=0x0=mem[0xFFFFFFA8]
+$pc=0x10134(~20): addi $sp,$sp,8: $sp=0xFFFFFFA8 |- $sp=0xFFFFFFA8 -> $sp=0xFFFFFFB0
+$pc=0x10138(~20): ld $ra,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0x10184 |- $ra=0x10184 -> $ra=0x10184=mem[0xFFFFFFB0]
+$pc=0x1013C(~20): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
+$pc=0x10140(~20): jalr $zero,0($ra): $ra=0x10184 |- $pc=0x10140 -> $pc=0x10184
 ...
 ```
 
