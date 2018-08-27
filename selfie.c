@@ -1124,6 +1124,7 @@ void printSymbolicMemory(uint64_t svc);
 void printOverApprox(uint64_t* which);
 void printInvalid();
 
+uint64_t check_incompleteness(uint64_t gcd_steps);
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
 uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
 uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k);
@@ -1131,6 +1132,8 @@ uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t
 uint64_t isPowerOfTwo(uint64_t n);
 uint64_t gcd(uint64_t n1, uint64_t n2);
 uint64_t isByteShift(uint64_t n);
+uint64_t is_character_valid(uint64_t lo, uint64_t up);
+uint64_t is_store_char_valid(uint64_t i);
 void alias_check_char(uint64_t whichByte);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
@@ -6870,8 +6873,6 @@ void constrain_add() {
   uint64_t add_ups;
   uint64_t cnd;
   uint64_t gcd_steps;
-  uint64_t i_max;
-  uint64_t tmp;
 
   if (rd == REG_ZR)
     return;
@@ -6925,71 +6926,6 @@ void constrain_add() {
 
   *(reg_typ + rd) = 0;
 
-  // to handle addition of bytes in storeCharacter function
-  if (*(reg_isNotInterval + rs1)) {
-    if (*(reg_isNotInterval + rs2) == 0) {
-      if (*(reg_whichByte + rs2) > 0) {
-        if (*(reg_whichByte + rs1) == *(reg_whichByte + rs2)) {
-          // alias
-          *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
-          *(reg_ld_from_2 + rd) = 0;
-
-          tmp = rightShift(*(reg_los + rs2), (*(reg_whichByte + rs2) - 1) * 8);
-          storeCharacter(reg_los + rs1, (*(reg_whichByte + rs2) - 1), tmp);
-          tmp = rightShift(*(reg_ups + rs2), (*(reg_whichByte + rs2) - 1) * 8);
-          storeCharacter(reg_ups + rs1, (*(reg_whichByte + rs2) - 1), tmp);
-
-          *(reg_los + rd) = *(reg_los + rs1);
-          *(reg_ups + rd) = *(reg_ups + rs1);
-          tmp = *(reg_steps + rs2) / twoToThePowerOf((*(reg_whichByte + rs2) - 1) * 8);
-          if (tmp)
-            *(reg_steps  + rd) = tmp;
-          else
-            *(reg_steps  + rd) = 1;
-
-          *(reg_whichByte + rd) = *(reg_whichByte + rs2);
-          *(reg_saddr     + rd) = *(reg_saddr     + rs1);
-
-          if (*(reg_los + rd) == *(reg_ups + rd))
-            *(reg_isNotInterval + rd) = 0;
-          else
-            *(reg_isNotInterval + rd) = 2;
-
-          setConstraint(rd, 0, 0, 0, 0, 0);
-          setCorrection(rd, 0, 0, 0, 0, 0);
-
-          return;
-        } else
-          printInvalid();
-      } else
-        printInvalid();
-    } else
-      printInvalid();
-  }
-
-  if (*(reg_isNotInterval + rs1)) {
-    printInvalid();
-  } else if (*(reg_isNotInterval + rs2)) {
-    if (rd != REG_A0)
-      printInvalid();
-  }
-
-  tmp = 1;
-  if (rd == REG_A0) {
-    if (rs2 != REG_A1) {
-      *(reg_saddr     + rd) = *(reg_saddr     + rs2);
-      *(reg_whichByte + rd) = *(reg_whichByte + rs2);
-      *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs2);
-      tmp = 0;
-    }
-  }
-
-  if (tmp) {
-    *(reg_saddr     + rd) = 0;
-    *(reg_whichByte + rd) = 0;
-    *(reg_isNotInterval + rd) = 0;
-  }
-
   // interval semantics of add
   cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
   if (cnd == 0) {
@@ -7005,6 +6941,45 @@ void constrain_add() {
   }
 
   if (*(reg_hasco + rs1)) {
+    // to handle addition of bytes in storeCharacter function
+    if (*(reg_isNotInterval + rs1)) {
+      if (*(reg_isNotInterval + rs2) == 0) {
+        if (*(reg_whichByte + rs2) > 0) {
+          if (is_store_char_valid(*(reg_whichByte + rs2) - 1) == 0) {
+            print((uint64_t*) " store character is not valid 1 at ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+
+            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+          }
+
+          // alias
+          *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+          *(reg_ld_from_2 + rd) = 0;
+
+          *(reg_los + rd)   = add_los;
+          *(reg_ups + rd)   = add_ups;
+          *(reg_steps  + rd) = 1;
+
+          *(reg_whichByte + rd) = 0;
+          *(reg_saddr     + rd) = *(reg_saddr + rs1);
+          *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
+
+          setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), *(reg_vaddr + rs1), 0, 0, 0);
+          setCorrection(rd, 0, 0, 0, 0, 0);
+
+          return;
+        } else
+          printInvalid();
+      } else
+        printInvalid();
+    }
+    if (*(reg_isNotInterval + rs1))
+      printInvalid();
+    else if (*(reg_isNotInterval + rs2))
+      printInvalid();
+
     if (*(reg_hasco + rs2)) {
       // alias
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
@@ -7017,32 +6992,17 @@ void constrain_add() {
       // interval semantics of add
       if (cnd != 0) {
         gcd_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
-
-        if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
-          if (*(reg_steps + rs1) == gcd_steps) {
-            i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
-            if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
-              printOverApprox((uint64_t*) "add");
-            }
-          } else {
-            printOverApprox((uint64_t*) "add");
-          }
-        } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
-          if (*(reg_steps + rs2) == gcd_steps) {
-            i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
-            if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
-              printOverApprox((uint64_t*) "add");
-            }
-          } else {
-            printOverApprox((uint64_t*) "add");
-          }
-        }
-
+        if (check_incompleteness(gcd_steps))
+          printOverApprox((uint64_t*) "add");
         *(reg_steps + rd) = gcd_steps;
       }
 
       *(reg_los + rd) = add_los;
       *(reg_ups + rd) = add_ups;
+
+      *(reg_saddr     + rd) = 0;
+      *(reg_whichByte + rd) = 0;
+      *(reg_isNotInterval + rd) = 0;
 
     } else if (*(reg_hasmn + rs1)) {
       // rs1 constraint has already minuend and cannot have another addend
@@ -7071,6 +7031,10 @@ void constrain_add() {
         *(reg_steps + rd) = *(reg_steps + rs1);
       *(reg_los + rd)   = add_los;
       *(reg_ups + rd)   = add_ups;
+
+      *(reg_saddr     + rd) = 0;
+      *(reg_whichByte + rd) = 0;
+      *(reg_isNotInterval + rd) = 0;
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -7095,11 +7059,44 @@ void constrain_add() {
       else
         setCorrection(rd, *(reg_mul + rs2), *(reg_div + rs2), *(reg_rem + rs2), *(reg_rem_typ + rs2), *(reg_cohas + rs2));
 
+      if (rd == REG_A0) {
+        if (rs2 != REG_A1) {
+          // interval semantics of add
+          if (cnd != 0)
+            *(reg_steps + rd) = *(reg_steps + rs2);
+          *(reg_los + rd)   = add_los;
+          *(reg_ups + rd)   = add_ups;
+
+          *(reg_saddr     + rd) = *(reg_saddr     + rs2);
+          *(reg_whichByte + rd) = *(reg_whichByte + rs2);
+          *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs2);
+
+          return;
+        }
+      }
+
+      *(reg_isNotInterval + rd) = 0;
+      if (*(reg_whichByte + rs2) > 0) {
+        if (is_store_char_valid(*(reg_whichByte + rs2) - 1) == 0) {
+          print((uint64_t*) " store character is not valid 2 at ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        }
+
+        *(reg_isNotInterval + rd) = 2;
+      }
+
       // interval semantics of add
       if (cnd != 0)
         *(reg_steps + rd) = *(reg_steps + rs2);
       *(reg_los + rd)   = add_los;
       *(reg_ups + rd)   = add_ups;
+
+      *(reg_saddr     + rd) = 0;
+      *(reg_whichByte + rd) = 0;
     }
   } else {
     // alias
@@ -7110,8 +7107,37 @@ void constrain_add() {
     setConstraint(rd, 0, 0, 0, 0, 0);
     setCorrection(rd, 0, 0, 0, 0, 0);
 
-    *(reg_los + rd) = add_los;
-    *(reg_ups + rd) = add_ups;
+    if (rd == REG_A0) {
+      if (rs2 != REG_A1) {
+        *(reg_los + rd)   = add_los;
+        *(reg_ups + rd)   = add_ups;
+        *(reg_saddr     + rd) = *(reg_saddr     + rs2);
+        *(reg_whichByte + rd) = *(reg_whichByte + rs2);
+        *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs2);
+
+        return;
+      }
+    }
+
+    if (*(reg_whichByte + rs2) > 0) {
+      if (loadCharacter(reg_los + rs1, *(reg_whichByte + rs2) - 1) != 0) {
+        print((uint64_t*) " store character is not valid 3 at ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      }
+    }
+
+    // interval semantics of add
+    *(reg_los + rd)   = add_los;
+    *(reg_ups + rd)   = add_ups;
+    *(reg_steps + rd) = 1;
+
+    *(reg_saddr     + rd) = 0;
+    *(reg_whichByte + rd) = 0;
+    *(reg_isNotInterval + rd) = 0;
   }
 }
 
@@ -7130,7 +7156,6 @@ void constrain_sub() {
   uint64_t sub_ups;
   uint64_t cnd;
   uint64_t gcd_steps;
-  uint64_t i_max;
 
   if (rd == REG_ZR)
     return;
@@ -7199,41 +7224,6 @@ void constrain_sub() {
 
   *(reg_typ + rd) = 0;
 
-  // to handle subtraction of characters in storeCharacter function
-  if (*(reg_isNotInterval + rs2) == 0) {
-    if (*(reg_whichByte + rs2) > 0) {
-      if (*(reg_saddr + rs2) == *(reg_saddr + rs1)) {
-        // alias
-        *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
-        *(reg_ld_from_2 + rd) = 0;
-
-        // char_i - char_i
-        storeCharacter(reg_los + rs1, (*(reg_whichByte + rs2) - 1), 0);
-        storeCharacter(reg_ups + rs1, (*(reg_whichByte + rs2) - 1), 0);
-        *(reg_los   + rd) = *(reg_los + rs1);
-        *(reg_ups   + rd) = *(reg_ups + rs1);
-        *(reg_steps + rd) = 1;
-
-        *(reg_whichByte + rd) = *(reg_whichByte + rs2);
-        *(reg_saddr     + rd) = *(reg_saddr     + rs1);
-
-        if (*(reg_isNotInterval + rs1))
-          *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
-        else
-          *(reg_isNotInterval + rd) = 1;
-
-        setConstraint(rd, 0, 0, 0, 0, 0);
-        setCorrection(rd, 0, 0, 0, 0, 0);
-        return;
-      }
-    }
-  }
-
-  if (*(reg_isNotInterval + rs1))
-    printInvalid();
-  else if (*(reg_isNotInterval + rs2))
-    printInvalid();
-
   // interval semantics of sub
   cnd = add_sub_condition(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2));
   if (cnd == 0) {
@@ -7251,6 +7241,35 @@ void constrain_sub() {
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
+      // to handle subtraction of characters in storeCharacter function
+      if (*(reg_isNotInterval + rs1)) {
+        if (*(reg_whichByte + rs2) > 0) {
+          if (*(reg_saddr + rs2) == *(reg_saddr + rs1)) {
+            // alias
+            *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
+            *(reg_ld_from_2 + rd) = 0;
+
+            // char_i - char_i
+            *(reg_los   + rd) = *(reg_los + rs1) - *(reg_los + rs2);
+            *(reg_ups   + rd) = *(reg_ups + rs1) - *(reg_ups + rs2);
+            *(reg_steps + rd) = 1;
+
+            *(reg_whichByte     + rd) = 0;
+            *(reg_saddr         + rd) = *(reg_saddr + rs1);
+            *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
+
+            setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), *(reg_vaddr + rs1), 0, 0, 0);
+            setCorrection(rd, 0, 0, 0, 0, 0);
+
+            return;
+          }
+        }
+      }
+      if (*(reg_isNotInterval + rs1))
+        printInvalid();
+      else if (*(reg_isNotInterval + rs2))
+        printInvalid();
+
       cnd_rs1_lo    = *(reg_los + rs1);
       cnd_rs2_lo    = *(reg_los + rs2);
       cnd_rs1_up    = *(reg_ups + rs1);
@@ -7275,34 +7294,16 @@ void constrain_sub() {
       // interval semantics of sub
       if (cnd != 0) {
         gcd_steps = gcd(*(reg_steps + rs1), *(reg_steps + rs2));
-
-        if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
-          if (*(reg_steps + rs1) == gcd_steps) {
-            i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
-            if (i_max < *(reg_steps + rs2)/gcd_steps - 1) {
-              printOverApprox((uint64_t*) "sub");
-            }
-          } else {
-            printOverApprox((uint64_t*) "sub");
-          }
-        } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
-          if (*(reg_steps + rs2) == gcd_steps) {
-            i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
-            if (i_max < *(reg_steps + rs1)/gcd_steps - 1) {
-              printOverApprox((uint64_t*) "sub");
-            }
-          } else {
-            printOverApprox((uint64_t*) "sub");
-          }
-        }
+        if (check_incompleteness(gcd_steps))
+          printOverApprox((uint64_t*) "sub");
         *(reg_steps + rd) = gcd_steps;
       }
 
       *(reg_los + rd)   = sub_los;
       *(reg_ups + rd)   = sub_ups;
 
-      *(reg_whichByte + rd) = *(reg_whichByte + rs1);
-      *(reg_saddr     + rd) = *(reg_saddr     + rs1);
+      *(reg_whichByte + rd) = 0;
+      *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = 0;
     } else if (*(reg_hasmn + rs1)) {
       // rs1 constraint has already minuend and cannot have another subtrahend
@@ -7332,9 +7333,9 @@ void constrain_sub() {
       *(reg_los + rd) = sub_los;
       *(reg_ups + rd) = sub_ups;
 
-      *(reg_whichByte + rd) = *(reg_whichByte + rs1);
-      *(reg_saddr     + rd) = *(reg_saddr     + rs1);
-      *(reg_isNotInterval + rd) = 0;
+      *(reg_whichByte + rd) = 0;
+      *(reg_saddr     + rd) = *(reg_saddr + rs1);
+      *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
     }
   } else if (*(reg_hasco + rs2)) {
     if (*(reg_hasmn + rs2)) {
@@ -7365,7 +7366,7 @@ void constrain_sub() {
       *(reg_los + rd)   = sub_los;
       *(reg_ups + rd)   = sub_ups;
 
-      *(reg_whichByte + rd) = *(reg_whichByte + rs2);
+      *(reg_whichByte + rd) = 0;
       *(reg_saddr     + rd) = *(reg_saddr     + rs2);
       *(reg_isNotInterval + rd) = 0;
     }
@@ -7450,7 +7451,7 @@ void constrain_mul() {
       if (shift < CPUBITWIDTH) {
         if (*(reg_isNotInterval + rs1) == 0) {
           whichByte = shift/SIZEOFUINT64 + 1;
-        } else if (*(reg_whichByte + rs1) > 0) {
+        } else {
           *(reg_los   + rd) = mul_los;
           *(reg_ups   + rd) = mul_ups;
           *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
@@ -7663,10 +7664,20 @@ void constrain_divu() {
           *(reg_los + rd) = div_los;
           *(reg_ups + rd) = div_ups;
 
+          if (is_character_valid(div_los, div_ups) == 0) {
+            print(selfieName);
+            print((uint64_t*) ": loaded character is not valid ");
+            printHexadecimal(pc, 0);
+            printSourceLineNumberOfInstruction(pc - entryPoint);
+            println();
+          }
+
           whichByte = *(reg_whichByte + rs1) - 1;
-          if (*(reg_isNotInterval + rs1))
+          if (*(reg_isNotInterval + rs1)) {
             *(reg_whichByte + rd) = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1); // if loadchar
-          else
+            mrvc = loadVirtualMemory(pt, *(reg_saddr + rs1));
+            *(whichBytes + mrvc) = *(reg_whichByte + rd) + 10;
+          } else
             *(reg_whichByte + rd) = 0;
 
           *(reg_saddr + rd) = *(reg_saddr + rs1);
@@ -7755,6 +7766,14 @@ void constrain_divu() {
         *(reg_los + rd) = div_los;
         *(reg_ups + rd) = div_ups;
         *(reg_steps + rd) = 1;
+
+        if (is_character_valid(div_los, div_ups) == 0) {
+          print(selfieName);
+          print((uint64_t*) ": loaded character is not valid ");
+          printHexadecimal(pc, 0);
+          printSourceLineNumberOfInstruction(pc - entryPoint);
+          println();
+        }
 
         // alias
         if (*(reg_isNotInterval + rs1)) {
@@ -7933,9 +7952,17 @@ void constrain_remu() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
       *(reg_ld_from_2 + rd) = 0;
 
-      *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2); // rightShift(leftShift(*(reg_los + rs1), 56), 56);
-      *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2); // rightShift(leftShift(*(reg_ups + rs1), 56), 56);
+      *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
+      *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
       *(reg_steps + rd) = 1;
+
+      if (is_character_valid(*(reg_los + rd), *(reg_ups + rd)) == 0) {
+        print(selfieName);
+        print((uint64_t*) ": loaded character is not valid ");
+        printHexadecimal(pc, 0);
+        printSourceLineNumberOfInstruction(pc - entryPoint);
+        println();
+      }
 
       *(reg_saddr     + rd) = *(reg_saddr + rs1);
 
@@ -7947,6 +7974,8 @@ void constrain_remu() {
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
         setCorrection(rd, 0, 0, 0, 0, *(reg_cohas + rs1));
         *(reg_whichByte + rd) = 1;
+        mrvc = loadVirtualMemory(pt, *(reg_saddr + rs1));
+        *(whichBytes + mrvc) = *(reg_whichByte + rd) + 10;
       }
 
       alias_check_char(7);
@@ -8602,17 +8631,16 @@ void backtrack_sd() {
   if (ld_from != 0) {
     if (*(is_useds + ld_from) == 1)
       *(is_useds + ld_from) = 0;
-    else if (*(whichBytes + tc) > 10)
-      storeCharacter(is_useds + ld_from, *(whichBytes + tc) - 11, 0);
+    else if (*(whichBytes + tc) > 20)
+      storeCharacter(is_useds + ld_from, *(whichBytes + tc) - 21, 0);
   }
 
   ld_from = *(ld_froms_2 + tc);
   if (ld_from != 0) {
-    if (*(is_useds + ld_from) == 1) {
+    if (*(is_useds + ld_from) == 1)
       *(is_useds + ld_from) = 0;
-    } else if (*(whichBytes + tc) > 10) {
-      storeCharacter(is_useds + ld_from, *(whichBytes + tc) - 11, 0);
-    }
+    else if (*(whichBytes + tc) > 20)
+      storeCharacter(is_useds + ld_from, *(whichBytes + tc) - 21, 0);
   }
 
   efree();
@@ -9031,6 +9059,28 @@ void printOverApprox(uint64_t* which) {
   println();
 }
 
+uint64_t check_incompleteness(uint64_t gcd_steps) {
+  uint64_t i_max;
+
+  if (*(reg_steps + rs1) < *(reg_steps + rs2)) {
+    if (*(reg_steps + rs1) == gcd_steps) {
+      i_max = (*(reg_ups + rs1) - *(reg_los + rs1)) / *(reg_steps + rs1);
+      if (i_max < *(reg_steps + rs2)/gcd_steps - 1)
+        return 1;
+    } else
+      return 1;
+  } else if (*(reg_steps + rs1) > *(reg_steps + rs2)) {
+    if (*(reg_steps + rs2) == gcd_steps) {
+      i_max = (*(reg_ups + rs2) - *(reg_los + rs2)) / *(reg_steps + rs2);
+      if (i_max < *(reg_steps + rs1)/gcd_steps - 1)
+        return 1;
+    } else
+      return 1;
+  }
+
+  return 0;
+}
+
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
   uint64_t c1;
   uint64_t c2;
@@ -9123,6 +9173,29 @@ uint64_t isByteShift(uint64_t n) {
   return CPUBITWIDTH;
 }
 
+uint64_t is_character_valid(uint64_t lo, uint64_t up) {
+  if (lo <= up)
+    if (up < 255)
+      if (up >= 0)
+        return 1;
+
+  return 0;
+}
+
+uint64_t is_store_char_valid(uint64_t i) {
+  uint64_t c1;
+  uint64_t c2;
+
+  c1 = loadCharacter(reg_los + rs1, i);
+  c2 = loadCharacter(reg_ups + rs1, i);
+  if (c1 != c2)
+    return 0;
+  else if (c1)
+    return 0;
+
+  return 1;
+}
+
 void alias_check_char(uint64_t whichByte) {
   uint64_t mrvc;
 
@@ -9144,7 +9217,7 @@ void alias_check_char(uint64_t whichByte) {
       storeCharacter(is_useds + mrvc, *(reg_whichByte + rd) - 1, 2);
 
     mrvc = loadVirtualMemory(pt, potential_store_char);
-    *(whichBytes + mrvc) = *(reg_whichByte + rd) + 10;
+    *(whichBytes + mrvc) = *(reg_whichByte + rd) + 20;
   } else {
     whichByte = SIZEOFUINT64 - whichByte;
     if (*(is_useds + mrvc) == 1)
@@ -9245,16 +9318,18 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     mrvc = loadSymbolicMemory(pt, vaddr);
 
     // alias
-    if (*(whichBytes + mrvc) > 10) {
+    if (*(whichBytes + mrvc) > 20) {
       trb = tc; // prevent overwriting to be able to backtrack is_used of chars
       is_used = 0;
     } else if (*(is_useds + mrvc) > 1) {
-      if (whichByte) {
-        *(tmp_memory) = *(is_useds + mrvc);
-        storeCharacter(tmp_memory, whichByte - 1, 0);
-        is_used = *(tmp_memory);
+      if (whichByte > 10) {
+        if (whichByte < 20) {
+          *(tmp_memory) = *(is_useds + mrvc);
+          storeCharacter(tmp_memory, whichByte - 11, 0);
+          is_used = *(tmp_memory);
+        }
       } else {
-        print((uint64_t*) ": whichByte is zero!");
+        print((uint64_t*) " whichByte is zero! ");
         printHexadecimal(pc, 0);
         printSourceLineNumberOfInstruction(pc - entryPoint);
         println();
@@ -9375,9 +9450,13 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
   if (vaddr >= getBumpPointer(currentContext))
     if (vaddr < *(registers + REG_SP))
       if (saddr != 0) {
-        if (whichByte != 0) {
-          is_func = 1;
-          vaddr = saddr;
+        mrvc = loadVirtualMemory(pt, saddr);
+        if (*(whichBytes + mrvc) > 10) {
+          if (*(whichBytes + mrvc) < 20) {
+            whichByte = *(whichBytes + mrvc);
+            is_func = 1;
+            vaddr = saddr;
+          }
         } else
           return;
       } else
@@ -9389,11 +9468,11 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
 
   if (is_func) {
     *(tmp_memory) = *(los + mrvc);
-    storeCharacter(tmp_memory, whichByte - 1, lo);
+    storeCharacter(tmp_memory, whichByte - 11, lo);
     lo = *(tmp_memory);
 
     *(tmp_memory) = *(ups + mrvc);
-    storeCharacter(tmp_memory, whichByte - 1, up);
+    storeCharacter(tmp_memory, whichByte - 11, up);
     up = *(tmp_memory);
 
     if (lo != up) {
