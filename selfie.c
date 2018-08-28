@@ -4425,9 +4425,13 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
         set_type(entry, type);
         set_address(entry, binary_length);
 
-        if (string_compare(procedure, (uint64_t*) "main"))
+        if (string_compare(procedure, (uint64_t*) "main")) {
           // first source containing main procedure provides binary name
           binary_name = source_name;
+
+          // account for initial call to main procedure
+          number_of_calls = number_of_calls + 1;
+        }
       } else {
         // procedure already defined
         print_line_number((uint64_t*) "warning", line_number);
