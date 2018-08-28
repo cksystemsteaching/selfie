@@ -62,28 +62,28 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 ./selfie: 645 characters read in 20 lines and 9 comments
 ./selfie: with 65(10.70%) characters in 28 actual symbols
 ./selfie: 1 global variables, 1 procedures, 0 string literals
-./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
-./selfie: symbol table search time was 1 iterations on average and 29 in total
+./selfie: 1 calls, 1 assignments, 1 while, 0 if, 1 return
+./selfie: symbol table search time was 1 iterations on average and 22 in total
 ./selfie: 416 bytes generated with 100 instructions and 16 bytes of data
-./selfie: init:    lui: 1(1.00%), addi: 40(40.00%)
-./selfie: memory:  ld: 19(19.00%), sd: 7(7.00%)
-./selfie: compute: add: 3(3.00%), sub: 3(3.00%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(2.00%)
-./selfie: control: sltu: 1(1.00%), beq: 5(5.00%), jal: 5(5.00%), jalr: 6(6.00%), ecall: 8(8.00%)
+./selfie: init:    lui: 1(0.83%), addi: 62(51.66%)
+./selfie: memory:  ld: 19(15.83%), sd: 7(5.83%)
+./selfie: compute: add: 3(2.50%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
+./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
 ./selfie: 544 bytes with 100 instructions and 16 bytes of data written into countdown.m
-./selfie: 3822 characters of assembly with 100 instructions written into countdown.s
+./selfie: 3805 characters of assembly with 100 instructions written into countdown.s
 ./selfie: selfie executing countdown.m with 1MB physical memory on mipster
 ./selfie: countdown.m exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating countdown.m with exit code 0
 ./selfie: summary: 132 executed instructions and 0.00MB mapped memory
-./selfie: init:    lui: 1(0.75%), addi: 38(28.78%)
+./selfie: init:    lui: 1(0.75%), addi: 40(30.30%)
 ./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
 ./selfie: compute: add: 1(0.75%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
-./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 14(10.60%), jalr: 1(0.75%), ecall: 3(2.27%)
+./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.90%), jalr: 1(0.75%), ecall: 3(2.27%)
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
-./selfie: calls:   3,1(33.33%)@0x4(~1),1(33.33%)@0xE8(~11),1(33.33%)@0x144(~20)
-./selfie: loops:   10,10(100.00%)@0xFC(~11),0(0.00%),0(0.00%)
-./selfie: loads:   25,11(44.00%)@0x100(~11),10(40.00%)@0x110(~13),1(4.00%)@0x8(~1)
-./selfie: stores:  15,10(66.66%)@0x11C(~19),1(6.66%)@0xF0(~11),1(6.66%)@0xF8(~11)
+./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
+./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
+./selfie: loads:   25,11(44.00%)@0x14C(~11),10(40.00%)@0x15C(~13),1(4.00%)@0x54(~1)
+./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x30(~1),1(6.66%)@0x44(~1)
 ```
 
 ## [Global Variable](https://github.com/cksystemsteaching/selfie/blob/2560aa4acb58dad6b6a6c877794616949936d318/selfie.c#L4532-L4557)
@@ -148,70 +148,79 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 
 {line-numbers=off}
 ```
-0x0(~1): 0x144000EF: jal $ra,81[0x144]         // jump to initialization code
+// machine initialization code
+
+// initialize global pointer $gp
+// to program break at 0x101A0
+0x0(~1): 0x000101B7: lui $gp,0x10     // load 0x10000 into $gp,
+0x4(~1): 0x1A018193: addi $gp,$gp,416 // add 416 (0x1A0) to $gp
+
+// initialize _bump pointer, explained later
+0x8(~1): 0x00000513: addi $a0,$zero,0
+0xC(~1): 0x0D600893: addi $a7,$zero,214
+0x10(~1): 0x00000073: ecall
+0x14(~1): 0x00750513: addi $a0,$a0,7
+0x18(~1): 0x00800293: addi $t0,$zero,8
+0x1C(~1): 0x025572B3: remu $t0,$a0,$t0
+0x20(~1): 0x40550533: sub $a0,$a0,$t0
+0x24(~1): 0x0D600893: addi $a7,$zero,214
+0x28(~1): 0x00000073: ecall
+0x2C(~1): 0xFEA1BC23: sd $a0,-8($gp)
+0x30(~1): 0x00000513: addi $a0,$zero,0
+0x34(~1): 0x00000893: addi $a7,$zero,0
+
+// initialize argv, explained later
+0x38(~1): 0x00810293: addi $t0,$sp,8
+0x3C(~1): 0xFF810113: addi $sp,$sp,-8
+0x40(~1): 0x00513023: sd $t0,0($sp)
+
+// call main procedure
+0x44(~1): 0x0F0000EF: jal $ra,60[0x134] // jump and link to main procedure code
+
+// retrieve return value of main procedure
+// and push it as exit code onto the stack
+0x48(~1): 0xFF810113: addi $sp,$sp,-8
+0x4C(~1): 0x00A13023: sd $a0,0($sp)
+
 // wrapper code for exit system call
-0x4(~1): 0x00013503: ld $a0,0($sp)             // retrieve exit code and
-0x8(~1): 0x00810113: addi $sp,$sp,8            // store it in $a0,
-0xC(~1): 0x05D00893: addi $a7,$zero,93         // load exit syscall ID 93
-0x10(~1): 0x00000073: ecall                    // into $a7, and exit here.
+0x50(~1): 0x00013503: ld $a0,0($sp)     // retrieve exit code in $a0,
+0x54(~1): 0x00810113: addi $sp,$sp,8    // pop value off the stack,
+0x58(~1): 0x05D00893: addi $a7,$zero,93 // load exit syscall ID 93 into $a7,
+0x5C(~1): 0x00000073: ecall             // and exit here
+
 // wrapper code for unused system calls removed
 ...
 // prologue of main procedure, explained later
-0xE8(~11): 0xFF810113: addi $sp,$sp,-8
-0xEC(~11): 0x00113023: sd $ra,0($sp)
-0xF0(~11): 0xFF810113: addi $sp,$sp,-8
-0xF4(~11): 0x00813023: sd $fp,0($sp)
-0xF8(~11): 0x00010413: addi $fp,$sp,0
+0x134(~11): 0xFF810113: addi $sp,$sp,-8
+0x138(~11): 0x00113023: sd $ra,0($sp)
+0x13C(~11): 0xFF810113: addi $sp,$sp,-8
+0x140(~11): 0x00813023: sd $fp,0($sp)
+0x144(~11): 0x00010413: addi $fp,$sp,0
+
 // body of main procedure
-0xFC(~11): 0xFF01B283: ld $t0,-16($gp)         // load bar into $t0,
-0x100(~11): 0x00000313: addi $t1,$zero,0       // load 0 into $t1, and
-0x104(~11): 0x005332B3: sltu $t0,$t1,$t0       // if $t0 <= $t1 then
-0x108(~11): 0x00028C63: beq $t0,$zero,6[0x120] // branch forward to return
-0x10C(~13): 0xFF01B283: ld $t0,-16($gp)        // load bar into $t0,
-0x110(~13): 0x00100313: addi $t1,$zero,1       // load 1 into $t1,
-0x114(~13): 0x406282B3: sub $t0,$t0,$t1        // subtract $t1 from $t0,
-0x118(~13): 0xFE51B823: sd $t0,-16($gp)        // and store $t0 in bar.
-0x11C(~19): 0xFE1FF06F: jal $zero,-8[0xFC]     // branch back to while
-0x120(~19): 0xFF01B283: ld $t0,-16($gp)        // to return bar, load bar
-0x124(~19): 0x00500533: add $a0,$zero,$t0.     // into $a0 via $t0 and
-0x128(~19): 0x0040006F: jal $zero,1[0x12C]     // then jump to epilogue.
+0x148(~11): 0xFF01B283: ld $t0,-16($gp)
+0x14C(~11): 0x00000313: addi $t1,$zero,0
+0x150(~11): 0x005332B3: sltu $t0,$t1,$t0
+0x154(~11): 0x00028C63: beq $t0,$zero,6[0x16C]
+0x158(~13): 0xFF01B283: ld $t0,-16($gp)
+0x15C(~13): 0x00100313: addi $t1,$zero,1
+0x160(~13): 0x406282B3: sub $t0,$t0,$t1
+0x164(~13): 0xFE51B823: sd $t0,-16($gp)
+0x168(~19): 0xFE1FF06F: jal $zero,-8[0x148]
+0x16C(~19): 0xFF01B283: ld $t0,-16($gp)
+0x170(~19): 0x00500533: add $a0,$zero,$t0
+0x174(~19): 0x0040006F: jal $zero,1[0x178]
+
 // epilogue of main procedure, explained later
-0x12C(~20): 0x00040113: addi $sp,$fp,0
-0x130(~20): 0x00013403: ld $fp,0($sp)
-0x134(~20): 0x00810113: addi $sp,$sp,8
-0x138(~20): 0x00013083: ld $ra,0($sp)
-0x13C(~20): 0x00810113: addi $sp,$sp,8
-0x140(~20): 0x00008067: jalr $zero,0($ra)      // return to caller at 0x184
-// machine initialization code
-// initialize argv, explained later
-0x144(~20): 0xFF810113: addi $sp,$sp,-8
-0x148(~20): 0x01010293: addi $t0,$sp,16
-0x14C(~20): 0x00513023: sd $t0,0($sp)
-// initialize global pointer $gp
-// to program break at 0x101A0
-0x150(~20): 0x000101B7: lui $gp,0x10           // load 0x10000 into $gp and
-0x154(~20): 0x1A018193: addi $gp,$gp,416       // then add 416 (0x1A0) to $gp
-// initialize _bump pointer, explained later
-0x158(~20): 0x00000513: addi $a0,$zero,0
-0x15C(~20): 0x0D600893: addi $a7,$zero,214
-0x160(~20): 0x00000073: ecall
-0x164(~20): 0x00750513: addi $a0,$a0,7
-0x168(~20): 0x00800293: addi $t0,$zero,8
-0x16C(~20): 0x025572B3: remu $t0,$a0,$t0
-0x170(~20): 0x40550533: sub $a0,$a0,$t0
-0x174(~20): 0x0D600893: addi $a7,$zero,214
-0x178(~20): 0x00000073: ecall
-0x17C(~20): 0xFEA1BC23: sd $a0,-8($gp)
-// call main procedure
-0x180(~20): 0xF69FF0EF: jal $ra,-38[0xE8]      // jump to main procedure code
-// retrieve return value of main procedure
-// and store it as exit code, then exit
-0x184(~20): 0xFF810113: addi $sp,$sp,-8
-0x188(~20): 0x00A13023: sd $a0,0($sp)
-0x18C(~20): 0xE79FF0EF: jal $ra,-98[0x4]       // jump to exit wrapper code
+0x178(~20): 0x00040113: addi $sp,$fp,0
+0x17C(~20): 0x00013403: ld $fp,0($sp)
+0x180(~20): 0x00810113: addi $sp,$sp,8
+0x184(~20): 0x00013083: ld $ra,0($sp)
+0x188(~20): 0x00810113: addi $sp,$sp,8
+0x18C(~20): 0x00008067: jalr $zero,0($ra)
 ```
 
-Each line in `countdown.s` represents one instruction. The first line, for example, is the instruction `jal $ra,81[0x144]`, which is encoded in the 32-bit word `0x144000EF`. The instruction will be loaded into memory at some fixed address plus `0x0`, as indicated by `0x0(~1)`. The number `~1` in parentheses is the approximate line number in `countdown.c` for which starc generated the instruction. Even though there is a comment at Line 1 in `countdown.c` this still makes sense because starc always generates some instructions before compiling any actual source code. Try to find the four instructions that starc actually generated for `bar = bar - 1` in Line 13 of `countdown.c`! They, along with the others, are explained below.
+Each line in `countdown.s` represents one instruction. The first line, for example, is the instruction `lui $gp,0x10`, which is encoded in the 32-bit word `0x000101B7`. The instruction will be loaded into memory at some fixed address plus `0x0`, as indicated by `0x0(~1)`. The number `~1` in parentheses is the approximate line number in `countdown.c` for which starc generated the instruction. Even though there is a comment at Line 1 in `countdown.c` this still makes sense because starc always generates some instructions before compiling any actual source code. Try to find the four instructions that starc actually generated for `bar = bar - 1` in Line 13 of `countdown.c`! They, along with the others, are explained below.
 
 Ok, but what happens now when selfie is instructed by the final `-m 1` option to execute the generated code? Doing that involves solving a problem that appears to have no solution. How does a computer load an executable into memory without an executable in memory that instructs the processor how to do this? The process that solves that problem is called *bootstrapping*.
 
@@ -253,63 +262,62 @@ Let us take a look at how the first few and last few instructions for the countd
 ./selfie: 645 characters read in 20 lines and 9 comments
 ./selfie: with 65(10.70%) characters in 28 actual symbols
 ./selfie: 1 global variables, 1 procedures, 0 string literals
-./selfie: 0 calls, 1 assignments, 1 while, 0 if, 1 return
-./selfie: symbol table search time was 1 iterations on average and 29 in total
+./selfie: 1 calls, 1 assignments, 1 while, 0 if, 1 return
+./selfie: symbol table search time was 1 iterations on average and 22 in total
 ./selfie: 416 bytes generated with 100 instructions and 16 bytes of data
-./selfie: init:    lui: 1(1.00%), addi: 40(40.00%)
-./selfie: memory:  ld: 19(19.00%), sd: 7(7.00%)
-./selfie: compute: add: 3(3.00%), sub: 3(3.00%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(2.00%)
-./selfie: control: sltu: 1(1.00%), beq: 5(5.00%), jal: 5(5.00%), jalr: 6(6.00%), ecall: 8(8.00%)
+./selfie: init:    lui: 1(0.83%), addi: 62(51.66%)
+./selfie: memory:  ld: 19(15.83%), sd: 7(5.83%)
+./selfie: compute: add: 3(2.50%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
+./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
 ./selfie: selfie executing manuscript/code/countdown.c with 1MB physical memory on mipster
-$pc=0x10000(~1): jal $ra,81[0x10144]: |- $ra=0x0,$pc=0x10000 -> $pc=0x10144,$ra=0x10004
-$pc=0x10144(~20): addi $sp,$sp,-8: $sp=0xFFFFFFC0 |- $sp=0xFFFFFFC0 -> $sp=0xFFFFFFB8
-$pc=0x10148(~20): addi $t0,$sp,16: $sp=0xFFFFFFB8 |- $t0=0(0x0) -> $t0=4294967240(0xFFFFFFC8)
-$pc=0x1014C(~20): sd $t0,0($sp): $sp=0xFFFFFFB8,$t0=4294967240(0xFFFFFFC8) |- mem[0xFFFFFFB8]=0 -> mem[0xFFFFFFB8]=$t0=4294967240(0xFFFFFFC8)
-$pc=0x10150(~20): lui $gp,0x10: |- $gp=0x0 -> $gp=0x10000
-$pc=0x10154(~20): addi $gp,$gp,416: $gp=0x10000 |- $gp=0x10000 -> $gp=0x101A0
-$pc=0x10158(~20): addi $a0,$zero,0: $zero=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
-$pc=0x1015C(~20): addi $a7,$zero,214: $zero=0(0x0) |- $a7=0(0x0) -> $a7=214(0xD6)
-$pc=0x10160(~20): ecall: |- $a0=0x0 -> $a0=0x0
-$pc=0x10164(~20): addi $a0,$a0,7: $a0=65952(0x101A0) |- $a0=65952(0x101A0) -> $a0=65959(0x101A7)
-$pc=0x10168(~20): addi $t0,$zero,8: $zero=0(0x0) |- $t0=4294967240(0xFFFFFFC8) -> $t0=8(0x8)
-$pc=0x1016C(~20): remu $t0,$a0,$t0: $a0=65959(0x101A7),$t0=8(0x8) |- $t0=8(0x8) -> $t0=7(0x7)
-$pc=0x10170(~20): sub $a0,$a0,$t0: $a0=65959(0x101A7),$t0=7(0x7) |- $a0=65959(0x101A7) -> $a0=65952(0x101A0)
-$pc=0x10174(~20): addi $a7,$zero,214: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=214(0xD6)
-$pc=0x10178(~20): ecall: |- $a0=0x101A0 -> $a0=0x101A0
-$pc=0x1017C(~20): sd $a0,-8($gp): $gp=0x101A0,$a0=65952(0x101A0) |- mem[0x10198]=0 -> mem[0x10198]=$a0=65952(0x101A0)
-$pc=0x10180(~20): jal $ra,-38[0x100E8]: |- $ra=0x10004,$pc=0x10180 -> $pc=0x100E8,$ra=0x10184
-
-...
-$pc=0x10184(~20): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFFFFB0
-$pc=0x10188(~20): sd $a0,0($sp): $sp=0xFFFFFFB0,$a0=0(0x0) |- mem[0xFFFFFFB0]=65924 -> mem[0xFFFFFFB0]=$a0=0(0x0)
-$pc=0x1018C(~20): jal $ra,-98[0x10004]: |- $ra=0x10184,$pc=0x1018C -> $pc=0x10004,$ra=0x10190
-$pc=0x10004(~1): ld $a0,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0 |- $a0=0(0x0) -> $a0=0(0x0)=mem[0xFFFFFFB0]
-$pc=0x10008(~1): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
-$pc=0x1000C(~1): addi $a7,$zero,93: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=93(0x5D)
+$pc=0x10000(~1): lui $gp,0x10: |- $gp=0x0 -> $gp=0x10000
+$pc=0x10004(~1): addi $gp,$gp,416: $gp=0x10000 |- $gp=0x10000 -> $gp=0x101A0
+$pc=0x10008(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
+$pc=0x1000C(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=0(0x0) -> $a7=214(0xD6)
 $pc=0x10010(~1): ecall: |- $a0=0x0 -> $a0=0x0
+$pc=0x10014(~1): addi $a0,$a0,7: $a0=65952(0x101A0) |- $a0=65952(0x101A0) -> $a0=65959(0x101A7)
+$pc=0x10018(~1): addi $t0,$zero,8: $zero=0(0x0) |- $t0=0(0x0) -> $t0=8(0x8)
+$pc=0x1001C(~1): remu $t0,$a0,$t0: $a0=65959(0x101A7),$t0=8(0x8) |- $t0=8(0x8) -> $t0=7(0x7)
+$pc=0x10020(~1): sub $a0,$a0,$t0: $a0=65959(0x101A7),$t0=7(0x7) |- $a0=65959(0x101A7) -> $a0=65952(0x101A0)
+$pc=0x10024(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=214(0xD6)
+$pc=0x10028(~1): ecall: |- $a0=0x101A0 -> $a0=0x101A0
+$pc=0x1002C(~1): sd $a0,-8($gp): $gp=0x101A0,$a0=65952(0x101A0) |- mem[0x10198]=0 -> mem[0x10198]=$a0=65952(0x101A0)
+$pc=0x10030(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=65952(0x101A0) -> $a0=0(0x0)
+$pc=0x10034(~1): addi $a7,$zero,0: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=0(0x0)
+$pc=0x10038(~1): addi $t0,$sp,8: $sp=0xFFFFFFC0 |- $t0=7(0x7) -> $t0=4294967240(0xFFFFFFC8)
+$pc=0x1003C(~1): addi $sp,$sp,-8: $sp=0xFFFFFFC0 |- $sp=0xFFFFFFC0 -> $sp=0xFFFFFFB8
+$pc=0x10040(~1): sd $t0,0($sp): $sp=0xFFFFFFB8,$t0=4294967240(0xFFFFFFC8) |- mem[0xFFFFFFB8]=0 -> mem[0xFFFFFFB8]=$t0=4294967240(0xFFFFFFC8)
+$pc=0x10044(~1): jal $ra,60[0x10134]: |- $ra=0x0,$pc=0x10044 -> $pc=0x10134,$ra=0x10048
+...
+$pc=0x10048(~1): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFFFFB0
+$pc=0x1004C(~1): sd $a0,0($sp): $sp=0xFFFFFFB0,$a0=0(0x0) |- mem[0xFFFFFFB0]=65608 -> mem[0xFFFFFFB0]=$a0=0(0x0)
+$pc=0x10050(~1): ld $a0,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0 |- $a0=0(0x0) -> $a0=0(0x0)=mem[0xFFFFFFB0]
+$pc=0x10054(~1): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
+$pc=0x10058(~1): addi $a7,$zero,93: $zero=0(0x0) |- $a7=0(0x0) -> $a7=93(0x5D)
+$pc=0x1005C(~1): ecall: |- $a0=0x0 -> $a0=0x0
 ./selfie: manuscript/code/countdown.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/countdown.c with exit code 0
 ./selfie: summary: 132 executed instructions and 0.00MB mapped memory
-./selfie: init:    lui: 1(0.75%), addi: 38(28.78%)
+./selfie: init:    lui: 1(0.75%), addi: 40(30.30%)
 ./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
 ./selfie: compute: add: 1(0.75%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
-./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 14(10.60%), jalr: 1(0.75%), ecall: 3(2.27%)
+./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.90%), jalr: 1(0.75%), ecall: 3(2.27%)
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
-./selfie: calls:   3,1(33.33%)@0x4(~1),1(33.33%)@0xE8(~11),1(33.33%)@0x144(~20)
-./selfie: loops:   10,10(100.00%)@0xFC(~11),0(0.00%),0(0.00%)
-./selfie: loads:   25,11(44.00%)@0x100(~11),10(40.00%)@0x110(~13),1(4.00%)@0x8(~1)
-./selfie: stores:  15,10(66.66%)@0x11C(~19),1(6.66%)@0xF0(~11),1(6.66%)@0xF8(~11)
+./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
+./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
+./selfie: loads:   25,11(44.00%)@0x14C(~11),10(40.00%)@0x15C(~13),1(4.00%)@0x54(~1)
+./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x30(~1),1(6.66%)@0x44(~1)
 ```
 
 ## Initialization
 
-The purpose of the first sixteen instructions executed by mipster is to initialize the machine and get it ready for executing the code that implements the `main` procedure.
-
-#### [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)
-
-Initially, the PC denoted by `$pc` points to address `0x0` in memory. The instruction at this address is thus the first instruction that will be executed by the machine. The instruction is encoded in the word `0x240801EC` which stands for [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625), as mentioned before.
+The purpose of the first eighteen instructions executed by mipster is to initialize the machine and get it ready for executing the code that implements the `main` procedure. Initially, the PC denoted by `$pc` points to address `0x10000` in memory. The instruction at this address is thus the first instruction that will be executed by the machine. It is `lui $gp,0x10`, as mentioned before.
 
 In our discussion we provide for each new instruction a link to the source code of mipster that implements the instruction (see, for example, the above [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)) and for each concrete instruction in the example a link to the source code of starc that generated the instruction (see, for example, the above [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625)).
+
+#### [lui](https://github.com/cksystemsteaching/selfie/blob/0d42a4ce21cee6903f0c9e937109a21fa07c63bd/selfie.c#L6396-L6406)
+
+#### [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)
 
 Now, here is the interesting part. The output `$t0=0,$zero=0 -> $t0=492` next to the instruction tells us which part of the state space (memory, registers) the instruction depends on and what the affected state actually is right before executing the instruction (`$t0=0,$zero=0` to the left of the arrow `->`) and which part of the state space changes and how after executing the instruction (`$t0=492` to the right of `->`). In other words, the instruction depends on the values in the two registers `$t0` and `$zero` that both contain 0 and the instruction changes the value in register `$t0` to 492. This is because `addiu $t0,$zero,492` instructs the processor to *add* the value 492 to the value in register `$zero` which is always 0 and store the result in register `$t0`. In other words, `addiu $t0,$zero,492` does effectively *load* the value 492 into `$t0`, enabled by the fact that `$zero` always contains 0. Thus there is no need for another instruction to initialize registers.
 
@@ -400,52 +408,52 @@ Here is the output of mipster when executing the instructions that implement the
 ```
 > ./selfie -c manuscript/code/countdown.c -d 1
 ...
-$pc=0x100E8(~11): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFFFFB0
-$pc=0x100EC(~11): sd $ra,0($sp): $sp=0xFFFFFFB0,$ra=0x10184 |- mem[0xFFFFFFB0]=0 -> mem[0xFFFFFFB0]=$ra=0x10184
-$pc=0x100F0(~11): addi $sp,$sp,-8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFA8
-$pc=0x100F4(~11): sd $fp,0($sp): $sp=0xFFFFFFA8,$fp=0x0 |- mem[0xFFFFFFA8]=0 -> mem[0xFFFFFFA8]=$fp=0x0
-$pc=0x100F8(~11): addi $fp,$sp,0: $sp=0xFFFFFFA8 |- $fp=0x0 -> $fp=0xFFFFFFA8
-$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=10 |- $t0=7(0x7) -> $t0=10(0xA)=mem[0x10190]
-$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=0(0x0) -> $t1=0(0x0)
-$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=10(0xA) |- $t0=10(0xA) -> $t0=1(0x1)
-$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x1010C
-$pc=0x1010C(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=10 |- $t0=1(0x1) -> $t0=10(0xA)=mem[0x10190]
-$pc=0x10110(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
-$pc=0x10114(~13): sub $t0,$t0,$t1: $t0=10(0xA),$t1=1(0x1) |- $t0=10(0xA) -> $t0=9(0x9)
-$pc=0x10118(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=9(0x9) |- mem[0x10190]=10 -> mem[0x10190]=$t0=9(0x9)
-$pc=0x1011C(~19): jal $zero,-8[0x100FC]: |- $pc=0x1011C -> $pc=0x100FC
-$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=9 |- $t0=9(0x9) -> $t0=9(0x9)=mem[0x10190]
-$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
-$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=9(0x9) |- $t0=9(0x9) -> $t0=1(0x1)
-$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x1010C
-$pc=0x1010C(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=9 |- $t0=1(0x1) -> $t0=9(0x9)=mem[0x10190]
-$pc=0x10110(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
-$pc=0x10114(~13): sub $t0,$t0,$t1: $t0=9(0x9),$t1=1(0x1) |- $t0=9(0x9) -> $t0=8(0x8)
-$pc=0x10118(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=8(0x8) |- mem[0x10190]=9 -> mem[0x10190]=$t0=8(0x8)
-$pc=0x1011C(~19): jal $zero,-8[0x100FC]: |- $pc=0x1011C -> $pc=0x100FC
+$pc=0x10134(~11): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFFFFB0
+$pc=0x10138(~11): sd $ra,0($sp): $sp=0xFFFFFFB0,$ra=0x10048 |- mem[0xFFFFFFB0]=0 -> mem[0xFFFFFFB0]=$ra=0x10048
+$pc=0x1013C(~11): addi $sp,$sp,-8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFA8
+$pc=0x10140(~11): sd $fp,0($sp): $sp=0xFFFFFFA8,$fp=0x0 |- mem[0xFFFFFFA8]=0 -> mem[0xFFFFFFA8]=$fp=0x0
+$pc=0x10144(~11): addi $fp,$sp,0: $sp=0xFFFFFFA8 |- $fp=0x0 -> $fp=0xFFFFFFA8
+$pc=0x10148(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=10 |- $t0=4294967240(0xFFFFFFC8) -> $t0=10(0xA)=mem[0x10190]
+$pc=0x1014C(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=0(0x0) -> $t1=0(0x0)
+$pc=0x10150(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=10(0xA) |- $t0=10(0xA) -> $t0=1(0x1)
+$pc=0x10154(~11): beq $t0,$zero,6[0x1016C]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10154 -> $pc=0x10158
+$pc=0x10158(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=10 |- $t0=1(0x1) -> $t0=10(0xA)=mem[0x10190]
+$pc=0x1015C(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
+$pc=0x10160(~13): sub $t0,$t0,$t1: $t0=10(0xA),$t1=1(0x1) |- $t0=10(0xA) -> $t0=9(0x9)
+$pc=0x10164(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=9(0x9) |- mem[0x10190]=10 -> mem[0x10190]=$t0=9(0x9)
+$pc=0x10168(~19): jal $zero,-8[0x10148]: |- $pc=0x10168 -> $pc=0x10148
+$pc=0x10148(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=9 |- $t0=9(0x9) -> $t0=9(0x9)=mem[0x10190]
+$pc=0x1014C(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
+$pc=0x10150(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=9(0x9) |- $t0=9(0x9) -> $t0=1(0x1)
+$pc=0x10154(~11): beq $t0,$zero,6[0x1016C]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10154 -> $pc=0x10158
+$pc=0x10158(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=9 |- $t0=1(0x1) -> $t0=9(0x9)=mem[0x10190]
+$pc=0x1015C(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
+$pc=0x10160(~13): sub $t0,$t0,$t1: $t0=9(0x9),$t1=1(0x1) |- $t0=9(0x9) -> $t0=8(0x8)
+$pc=0x10164(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=8(0x8) |- mem[0x10190]=9 -> mem[0x10190]=$t0=8(0x8)
+$pc=0x10168(~19): jal $zero,-8[0x10148]: |- $pc=0x10168 -> $pc=0x10148
 ...
-$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=1 |- $t0=1(0x1) -> $t0=1(0x1)=mem[0x10190]
-$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
-$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=1(0x1) |- $t0=1(0x1) -> $t0=1(0x1)
-$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x1010C
-$pc=0x1010C(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=1 |- $t0=1(0x1) -> $t0=1(0x1)=mem[0x10190]
-$pc=0x10110(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
-$pc=0x10114(~13): sub $t0,$t0,$t1: $t0=1(0x1),$t1=1(0x1) |- $t0=1(0x1) -> $t0=0(0x0)
-$pc=0x10118(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=0(0x0) |- mem[0x10190]=1 -> mem[0x10190]=$t0=0(0x0)
-$pc=0x1011C(~19): jal $zero,-8[0x100FC]: |- $pc=0x1011C -> $pc=0x100FC
-$pc=0x100FC(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=0 |- $t0=0(0x0) -> $t0=0(0x0)=mem[0x10190]
-$pc=0x10100(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
-$pc=0x10104(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=0(0x0) |- $t0=0(0x0) -> $t0=0(0x0)
-$pc=0x10108(~11): beq $t0,$zero,6[0x10120]: $t0=0(0x0),$zero=0(0x0) |- $pc=0x10108 -> $pc=0x10120
-$pc=0x10120(~19): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=0 |- $t0=0(0x0) -> $t0=0(0x0)=mem[0x10190]
-$pc=0x10124(~19): add $a0,$zero,$t0: $zero=0(0x0),$t0=0(0x0) |- $a0=65952(0x101A0) -> $a0=0(0x0)
-$pc=0x10128(~19): jal $zero,1[0x1012C]: |- $pc=0x10128 -> $pc=0x1012C
-$pc=0x1012C(~20): addi $sp,$fp,0: $fp=0xFFFFFFA8 |- $sp=0xFFFFFFA8 -> $sp=0xFFFFFFA8
-$pc=0x10130(~20): ld $fp,0($sp): $sp=0xFFFFFFA8,mem[0xFFFFFFA8]=0x0 |- $fp=0xFFFFFFA8 -> $fp=0x0=mem[0xFFFFFFA8]
-$pc=0x10134(~20): addi $sp,$sp,8: $sp=0xFFFFFFA8 |- $sp=0xFFFFFFA8 -> $sp=0xFFFFFFB0
-$pc=0x10138(~20): ld $ra,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0x10184 |- $ra=0x10184 -> $ra=0x10184=mem[0xFFFFFFB0]
-$pc=0x1013C(~20): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
-$pc=0x10140(~20): jalr $zero,0($ra): $ra=0x10184 |- $pc=0x10140 -> $pc=0x10184
+$pc=0x10148(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=1 |- $t0=1(0x1) -> $t0=1(0x1)=mem[0x10190]
+$pc=0x1014C(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
+$pc=0x10150(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=1(0x1) |- $t0=1(0x1) -> $t0=1(0x1)
+$pc=0x10154(~11): beq $t0,$zero,6[0x1016C]: $t0=1(0x1),$zero=0(0x0) |- $pc=0x10154 -> $pc=0x10158
+$pc=0x10158(~13): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=1 |- $t0=1(0x1) -> $t0=1(0x1)=mem[0x10190]
+$pc=0x1015C(~13): addi $t1,$zero,1: $zero=0(0x0) |- $t1=0(0x0) -> $t1=1(0x1)
+$pc=0x10160(~13): sub $t0,$t0,$t1: $t0=1(0x1),$t1=1(0x1) |- $t0=1(0x1) -> $t0=0(0x0)
+$pc=0x10164(~13): sd $t0,-16($gp): $gp=0x101A0,$t0=0(0x0) |- mem[0x10190]=1 -> mem[0x10190]=$t0=0(0x0)
+$pc=0x10168(~19): jal $zero,-8[0x10148]: |- $pc=0x10168 -> $pc=0x10148
+$pc=0x10148(~11): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=0 |- $t0=0(0x0) -> $t0=0(0x0)=mem[0x10190]
+$pc=0x1014C(~11): addi $t1,$zero,0: $zero=0(0x0) |- $t1=1(0x1) -> $t1=0(0x0)
+$pc=0x10150(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=0(0x0) |- $t0=0(0x0) -> $t0=0(0x0)
+$pc=0x10154(~11): beq $t0,$zero,6[0x1016C]: $t0=0(0x0),$zero=0(0x0) |- $pc=0x10154 -> $pc=0x1016C
+$pc=0x1016C(~19): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=0 |- $t0=0(0x0) -> $t0=0(0x0)=mem[0x10190]
+$pc=0x10170(~19): add $a0,$zero,$t0: $zero=0(0x0),$t0=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
+$pc=0x10174(~19): jal $zero,1[0x10178]: |- $pc=0x10174 -> $pc=0x10178
+$pc=0x10178(~20): addi $sp,$fp,0: $fp=0xFFFFFFA8 |- $sp=0xFFFFFFA8 -> $sp=0xFFFFFFA8
+$pc=0x1017C(~20): ld $fp,0($sp): $sp=0xFFFFFFA8,mem[0xFFFFFFA8]=0x0 |- $fp=0xFFFFFFA8 -> $fp=0x0=mem[0xFFFFFFA8]
+$pc=0x10180(~20): addi $sp,$sp,8: $sp=0xFFFFFFA8 |- $sp=0xFFFFFFA8 -> $sp=0xFFFFFFB0
+$pc=0x10184(~20): ld $ra,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0x10048 |- $ra=0x10048 -> $ra=0x10048=mem[0xFFFFFFB0]
+$pc=0x10188(~20): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
+$pc=0x1018C(~20): jalr $zero,0($ra): $ra=0x10048 |- $pc=0x1018C -> $pc=0x10048
 ...
 ```
 
