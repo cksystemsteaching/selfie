@@ -1134,6 +1134,9 @@ uint64_t gcd(uint64_t n1, uint64_t n2);
 uint64_t isByteShift(uint64_t n);
 uint64_t is_character_valid(uint64_t lo, uint64_t up);
 uint64_t is_store_char_valid(uint64_t i);
+uint64_t is_address_free(uint64_t vaddr);
+uint64_t is_reg_temporary(uint64_t reg);
+uint64_t is_address_on_stack(uint64_t vaddr);
 void alias_check_char(uint64_t whichByte);
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up);
@@ -1145,9 +1148,9 @@ uint64_t isTraceSpaceAvailable();
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
 
 uint64_t applyCorrection(uint64_t reg, uint64_t lo, uint64_t up);
@@ -1187,8 +1190,19 @@ uint64_t* steps = (uint64_t*) 0; // trace of steps for intervals
 uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
 
 uint64_t* whichBytes = (uint64_t*) 0;
-uint64_t* saddrs     = (uint64_t*) 0;
 uint64_t* isNotIntervals = (uint64_t*) 0;
+
+uint64_t* saddrs_1 = (uint64_t*) 0;
+uint64_t* saddrs_2 = (uint64_t*) 0;
+uint64_t* saddrs_3 = (uint64_t*) 0;
+uint64_t* reg_saddr_1 = (uint64_t*) 0;
+uint64_t* reg_saddr_2 = (uint64_t*) 0;
+uint64_t cnd_rs1_saddr_1;
+uint64_t cnd_rs2_saddr_1;
+uint64_t cnd_rs1_saddr_2;
+uint64_t cnd_rs2_saddr_2;
+uint64_t cnd_rs1_saddr_3;
+uint64_t cnd_rs2_saddr_3;
 
 // alias
 
@@ -1227,7 +1241,6 @@ uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
 uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
 
 uint64_t* reg_whichByte = (uint64_t*) 0;
-uint64_t* reg_saddr     = (uint64_t*) 0;
 uint64_t* reg_isNotInterval = (uint64_t*) 0;
 
 // conditionals
@@ -1260,8 +1273,6 @@ uint64_t last_jal_from = 0;
 uint64_t ec = 0;
 uint64_t cnd_rs1_vaddr;
 uint64_t cnd_rs2_vaddr;
-uint64_t cnd_rs1_saddr;
-uint64_t cnd_rs2_saddr;
 uint64_t cnd_rs1_whichByte;
 uint64_t cnd_rs2_whichByte;
 uint64_t cnd_rs1_isNotInterval;
@@ -1296,8 +1307,13 @@ void initSymbolicEngine() {
   vaddrs = zalloc(maxTraceLength * SIZEOFUINT64);
 
   whichBytes     = zalloc(maxTraceLength * SIZEOFUINT64);
-  saddrs         = zalloc(maxTraceLength * SIZEOFUINT64);
   isNotIntervals = zalloc(maxTraceLength * SIZEOFUINT64);
+
+  saddrs_1 = zalloc(maxTraceLength * SIZEOFUINT64);
+  saddrs_2 = zalloc(maxTraceLength * SIZEOFUINT64);
+  saddrs_3 = zalloc(maxTraceLength * SIZEOFUINT64);
+  reg_saddr_1 = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_saddr_2 = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   // alias
   is_useds      = zalloc(maxTraceLength * SIZEOFUINT64);
@@ -1333,7 +1349,6 @@ void initSymbolicEngine() {
   reg_cohas   = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_whichByte     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_saddr         = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_isNotInterval = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   i = 0;
@@ -5947,9 +5962,9 @@ void implementRead(uint64_t* context) {
             read_vbuffer = vbuffer;
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0, 0, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0, 0, tc);
           } else {
             actuallyRead = 0;
 
@@ -6358,7 +6373,7 @@ void implementMalloc(uint64_t* context) {
         if (isTraceSpaceAvailable()) {
           setTaintMemory(0, 0, 1);
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, 0, 0, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, 0, 0, 0, 0, tc);
         }
         else {
           // print(selfieName);
@@ -6704,8 +6719,11 @@ void constrain_lui() {
     *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     // rd has no constraint
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6757,7 +6775,7 @@ void do_addi() {
 }
 
 void constrain_addi() {
-  uint64_t mrvc;
+  uint64_t vaddr;
 
   if (rd != REG_ZR) {
 
@@ -6771,8 +6789,11 @@ void constrain_addi() {
       *(reg_steps + rd) = *(reg_steps + rs1);
 
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
+
+      // func
+      *(reg_saddr_1 + rd) = 0;
+      *(reg_saddr_2 + rd) = 0;
 
       // rd has no constraint if rs1 is memory range
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -6802,8 +6823,36 @@ void constrain_addi() {
         *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
         *(reg_ld_from_2 + rd) = 0;
 
+        // func
+        if (rs1 == REG_A0) {
+          if (is_address_free(*(reg_vaddr + rs1))) {
+            if (is_address_free(*(reg_saddr_2 + rs1)) == 0) {
+              vaddr = *(reg_saddr_2 + rs1);
+              *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+              *(reg_saddr_2 + rd) = 0;
+            } else if (is_address_free(*(reg_saddr_1 + rs1)) == 0) {
+              vaddr = *(reg_saddr_1 + rs1);
+              *(reg_saddr_1 + rd) = 0;
+              *(reg_saddr_2 + rd) = 0;
+            } else {
+              print((uint64_t*) " source addresses are free at ");
+              printHexadecimal(pc, 0);
+              printSourceLineNumberOfInstruction(pc - entryPoint);
+              println();
+            }
+          } else {
+            vaddr = *(reg_vaddr + rs1);
+            *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+            *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+          }
+        } else {
+          vaddr = *(reg_vaddr + rs1);
+          *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+          *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+        }
+
         // rd inherits rs1 constraint
-        setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
+        setConstraint(rd, *(reg_hasco + rs1), vaddr, 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
 
         if (*(reg_cohas + rs1) == 0)
           setCorrection(rd, 0, 0, 0, 0, 1);
@@ -6818,6 +6867,9 @@ void constrain_addi() {
       *(reg_ld_from_1 + rd) = 0;
       *(reg_ld_from_2 + rd) = 0;
 
+      *(reg_saddr_1 + rd) = 0;
+      *(reg_saddr_2 + rd) = 0;
+
       // rd has no constraint if rs1 has none
       setConstraint(rd, 0, 0, 0, 0, 0);
       setCorrection(rd, 0, 0, 0, 0, 0);
@@ -6827,11 +6879,9 @@ void constrain_addi() {
 
     if (rs1 == REG_A0) {
       *(reg_whichByte + rd) = *(reg_whichByte + rs1);
-      *(reg_saddr     + rd) = *(reg_saddr     + rs1);
       *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
     } else {
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
     }
   }
@@ -6902,8 +6952,11 @@ void constrain_add() {
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     return;
   } else if (*(reg_typ + rs2)) {
@@ -6918,8 +6971,11 @@ void constrain_add() {
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     return;
   }
@@ -6958,12 +7014,15 @@ void constrain_add() {
           *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
           *(reg_ld_from_2 + rd) = 0;
 
+          // func
+          *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+          *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+
           *(reg_los + rd)   = add_los;
           *(reg_ups + rd)   = add_ups;
           *(reg_steps  + rd) = 1;
 
           *(reg_whichByte + rd) = 0;
-          *(reg_saddr     + rd) = *(reg_saddr + rs1);
           *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
 
           setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), *(reg_vaddr + rs1), 0, 0, 0);
@@ -6985,6 +7044,10 @@ void constrain_add() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
       *(reg_ld_from_2 + rd) = *(reg_ld_from_1 + rs2);
 
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+
       // we cannot keep track of more than one constraint for add but
       // need to warn about their earlier presence if used in comparisons
       setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
@@ -7000,7 +7063,6 @@ void constrain_add() {
       *(reg_los + rd) = add_los;
       *(reg_ups + rd) = add_ups;
 
-      *(reg_saddr     + rd) = 0;
       *(reg_whichByte + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
 
@@ -7018,6 +7080,10 @@ void constrain_add() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
       *(reg_ld_from_2 + rd) = 0;
 
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
 
@@ -7032,7 +7098,6 @@ void constrain_add() {
       *(reg_los + rd)   = add_los;
       *(reg_ups + rd)   = add_ups;
 
-      *(reg_saddr     + rd) = 0;
       *(reg_whichByte + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
     }
@@ -7051,6 +7116,10 @@ void constrain_add() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs2);
       *(reg_ld_from_2 + rd) = 0;
 
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs2);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs2);
+
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
 
@@ -7067,7 +7136,6 @@ void constrain_add() {
           *(reg_los + rd)   = add_los;
           *(reg_ups + rd)   = add_ups;
 
-          *(reg_saddr     + rd) = *(reg_saddr     + rs2);
           *(reg_whichByte + rd) = *(reg_whichByte + rs2);
           *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs2);
 
@@ -7095,13 +7163,15 @@ void constrain_add() {
       *(reg_los + rd)   = add_los;
       *(reg_ups + rd)   = add_ups;
 
-      *(reg_saddr     + rd) = 0;
       *(reg_whichByte + rd) = 0;
     }
   } else {
     // alias
     *(reg_ld_from_1 + rd) = 0;
     *(reg_ld_from_2 + rd) = 0;
+
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7111,7 +7181,6 @@ void constrain_add() {
       if (rs2 != REG_A1) {
         *(reg_los + rd)   = add_los;
         *(reg_ups + rd)   = add_ups;
-        *(reg_saddr     + rd) = *(reg_saddr     + rs2);
         *(reg_whichByte + rd) = *(reg_whichByte + rs2);
         *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs2);
 
@@ -7135,7 +7204,6 @@ void constrain_add() {
     *(reg_ups + rd)   = add_ups;
     *(reg_steps + rd) = 1;
 
-    *(reg_saddr     + rd) = 0;
     *(reg_whichByte + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
   }
@@ -7173,8 +7241,11 @@ void constrain_sub() {
           *(reg_steps + rd) = 1;
 
           *(reg_whichByte + rd) = 0;
-          *(reg_saddr     + rd) = 0;
           *(reg_isNotInterval + rd) = 0;
+
+          // func
+          *(reg_saddr_1 + rd) = 0;
+          *(reg_saddr_2 + rd) = 0;
 
           // rd has no constraint if rs1 and rs2 are memory range
           setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7195,8 +7266,11 @@ void constrain_sub() {
       *(reg_steps + rd) = *(reg_steps + rs1);
 
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
+
+      // func
+      *(reg_saddr_1 + rd) = 0;
+      *(reg_saddr_2 + rd) = 0;
 
       // rd has no constraint if rs1 is memory range
       setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7212,8 +7286,11 @@ void constrain_sub() {
     *(reg_steps + rd) = *(reg_steps + rs2);
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     // rd has no constraint if rs2 is memory range
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7241,10 +7318,14 @@ void constrain_sub() {
 
   if (*(reg_hasco + rs1)) {
     if (*(reg_hasco + rs2)) {
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+
       // to handle subtraction of characters in storeCharacter function
       if (*(reg_isNotInterval + rs1)) {
         if (*(reg_whichByte + rs2) > 0) {
-          if (*(reg_saddr + rs2) == *(reg_saddr + rs1)) {
+          if (*(reg_vaddr + rs2) == *(reg_vaddr + rs1)) {
             // alias
             *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
             *(reg_ld_from_2 + rd) = 0;
@@ -7255,7 +7336,6 @@ void constrain_sub() {
             *(reg_steps + rd) = 1;
 
             *(reg_whichByte     + rd) = 0;
-            *(reg_saddr         + rd) = *(reg_saddr + rs1);
             *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
 
             setConstraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), *(reg_vaddr + rs1), 0, 0, 0);
@@ -7278,10 +7358,16 @@ void constrain_sub() {
       cnd_rs2_step  = *(reg_steps + rs2);
       cnd_rs1_vaddr = *(reg_vaddr + rs1);
       cnd_rs2_vaddr = *(reg_vaddr + rs2);
-      cnd_rs1_saddr = *(reg_saddr + rs1);
-      cnd_rs2_saddr = *(reg_saddr + rs2);
       cnd_rs1_whichByte = *(reg_whichByte + rs1);
       cnd_rs2_whichByte = *(reg_whichByte + rs2);
+
+      // func
+      cnd_rs1_saddr_1 = *(reg_saddr_1 + rs1);
+      cnd_rs2_saddr_1 = *(reg_saddr_1 + rs2);
+      cnd_rs1_saddr_2 = *(reg_saddr_2 + rs1);
+      cnd_rs2_saddr_2 = *(reg_saddr_2 + rs2);
+      cnd_rs1_saddr_3 = 0;
+      cnd_rs2_saddr_3 = 0;
 
       // alias
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
@@ -7303,7 +7389,6 @@ void constrain_sub() {
       *(reg_ups + rd)   = sub_ups;
 
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = 0;
     } else if (*(reg_hasmn + rs1)) {
       // rs1 constraint has already minuend and cannot have another subtrahend
@@ -7318,6 +7403,9 @@ void constrain_sub() {
       // alias
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
       *(reg_ld_from_2 + rd) = 0;
+
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
 
       // rd inherits rs1 constraint since rs2 has none
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
@@ -7334,7 +7422,6 @@ void constrain_sub() {
       *(reg_ups + rd) = sub_ups;
 
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
     }
   } else if (*(reg_hasco + rs2)) {
@@ -7352,6 +7439,10 @@ void constrain_sub() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs2);
       *(reg_ld_from_2 + rd) = 0;
 
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs2);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs2);
+
       // rd inherits rs2 constraint since rs1 has none
       setConstraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
 
@@ -7367,13 +7458,16 @@ void constrain_sub() {
       *(reg_ups + rd)   = sub_ups;
 
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = *(reg_saddr     + rs2);
       *(reg_isNotInterval + rd) = 0;
     }
   } else {
     // alias
     *(reg_ld_from_1 + rd) = 0;
     *(reg_ld_from_2 + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7383,7 +7477,6 @@ void constrain_sub() {
     *(reg_ups + rd) = sub_ups;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
   }
 }
@@ -7441,6 +7534,10 @@ void constrain_mul() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
       *(reg_ld_from_2 + rd) = 0;
 
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
@@ -7456,7 +7553,6 @@ void constrain_mul() {
           *(reg_ups   + rd) = mul_ups;
           *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
           *(reg_whichByte + rd) = shift/SIZEOFUINT64 + 1;
-          *(reg_saddr     + rd) = *(reg_saddr + rs1);
           *(reg_isNotInterval + rd) = *(reg_isNotInterval + rs1);
 
           return;
@@ -7483,7 +7579,6 @@ void constrain_mul() {
       }
 
       *(reg_whichByte + rd) = whichByte;
-      *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = 0;
     }
   } else if (*(reg_hasco + rs2)) {
@@ -7500,6 +7595,10 @@ void constrain_mul() {
       // alias
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs2);
       *(reg_ld_from_2 + rd) = 0;
+
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs2);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs2);
 
       // rd inherits rs2 constraint since rs1 has none
       // assert: rs1 interval is singleton
@@ -7526,7 +7625,6 @@ void constrain_mul() {
       }
 
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = 0;
       *(reg_isNotInterval + rd) = 0;
     }
 
@@ -7534,6 +7632,10 @@ void constrain_mul() {
     // alias
     *(reg_ld_from_1 + rd) = 0;
     *(reg_ld_from_2 + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -7546,7 +7648,6 @@ void constrain_mul() {
         *(reg_ups   + rd) = mul_ups;
         *(reg_steps + rd) = *(reg_steps + rs1) * *(reg_los + rs2);
         *(reg_whichByte + rd) = shift/SIZEOFUINT64 + 1;
-        *(reg_saddr     + rd) = *(reg_saddr + rs1);
         *(reg_isNotInterval + rd) = 0;
 
         return;
@@ -7564,7 +7665,6 @@ void constrain_mul() {
     *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   }
 }
@@ -7643,6 +7743,10 @@ void constrain_divu() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
       *(reg_ld_from_2 + rd) = 0;
 
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+
       // rd inherits rs1 constraint since rs2 has none
       // assert: rs2 interval is singleton
       setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
@@ -7675,17 +7779,19 @@ void constrain_divu() {
           whichByte = *(reg_whichByte + rs1) - 1;
           if (*(reg_isNotInterval + rs1)) {
             *(reg_whichByte + rd) = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1); // if loadchar
-            mrvc = loadVirtualMemory(pt, *(reg_saddr + rs1));
+            mrvc = loadVirtualMemory(pt, *(reg_saddr_1 + rs1));
             *(whichBytes + mrvc) = *(reg_whichByte + rd) + 10;
           } else
             *(reg_whichByte + rd) = 0;
-
-          *(reg_saddr + rd) = *(reg_saddr + rs1);
 
           if (*(reg_los + rd) == *(reg_ups + rd)) {
             setConstraint(rd, 0, 0, 0, 0, 0);
             setCorrection(rd, 0, 0, 0, 0, 0);
             *(reg_whichByte + rd) = 0;
+
+            // func
+            // *(reg_saddr_1 + rd) = 0;
+            // *(reg_saddr_2 + rd) = 0;
           } else
             setCorrection(rd, 0, 0, 0, 0, *(reg_cohas + rs1));
 
@@ -7727,7 +7833,6 @@ void constrain_divu() {
       }
 
       *(reg_whichByte + rd) = 0;
-      *(reg_saddr     + rd) = *(reg_saddr + rs1);
       *(reg_isNotInterval + rd) = 0;
     }
   } else if (*(reg_hasco + rs2)) {
@@ -7777,7 +7882,7 @@ void constrain_divu() {
 
         // alias
         if (*(reg_isNotInterval + rs1)) {
-          mrvc = loadVirtualMemory(pt, *(reg_saddr + rs1));
+          mrvc = loadVirtualMemory(pt, *(reg_saddr_1 + rs1));
           whichByte = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1);
           if (*(is_useds + mrvc) == 1)
             *(is_useds + mrvc) = 0;
@@ -7786,8 +7891,11 @@ void constrain_divu() {
         }
 
         *(reg_whichByte + rd) = 0;
-        *(reg_saddr     + rd) = *(reg_saddr + rs1);
         *(reg_isNotInterval + rd) = 0;
+
+        // func
+        *(reg_saddr_1 + rd) = 0;
+        *(reg_saddr_2 + rd) = 0;
 
         return;
       }
@@ -7804,8 +7912,11 @@ void constrain_divu() {
     *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
   }
 }
 
@@ -7910,7 +8021,6 @@ void constrain_remu_step_1() {
     *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   }
 }
@@ -7952,6 +8062,10 @@ void constrain_remu() {
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
       *(reg_ld_from_2 + rd) = 0;
 
+      // func
+      *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+      *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
+
       *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
       *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
       *(reg_steps + rd) = 1;
@@ -7964,17 +8078,19 @@ void constrain_remu() {
         println();
       }
 
-      *(reg_saddr     + rd) = *(reg_saddr + rs1);
-
       if (*(reg_los + rd) == *(reg_ups + rd)) {
         setConstraint(rd, 0, 0, 0, 0, 0);
         setCorrection(rd, 0, 0, 0, 0, 0);
         *(reg_whichByte + rd) = 0;
+
+        // func
+        // *(reg_saddr_1 + rd) = 0;
+        // *(reg_saddr_2 + rd) = 0;
       } else {
         setConstraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1), *(reg_coups + rs1));
         setCorrection(rd, 0, 0, 0, 0, *(reg_cohas + rs1));
         *(reg_whichByte + rd) = 1;
-        mrvc = loadVirtualMemory(pt, *(reg_saddr + rs1));
+        mrvc = loadVirtualMemory(pt, *(reg_saddr_1 + rs1));
         *(whichBytes + mrvc) = *(reg_whichByte + rd) + 10;
       }
 
@@ -7996,6 +8112,10 @@ void constrain_remu() {
     // alias
     *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
     *(reg_ld_from_2 + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = *(reg_saddr_1 + rs1);
+    *(reg_saddr_2 + rd) = *(reg_saddr_2 + rs1);
 
     // interval semantics of remu
     if (*(reg_steps + rs1) == 1) {
@@ -8081,12 +8201,15 @@ void constrain_remu() {
     *(reg_ups + rd) = rem_up;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   } else {
     // alias
     *(reg_ld_from_1 + rd) = 0;
     *(reg_ld_from_2 + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
 
     // rd has no constraint if both rs1 and rs2 have no constraints
     setConstraint(rd, 0, 0, 0, 0, 0);
@@ -8096,7 +8219,6 @@ void constrain_remu() {
     *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = *(reg_saddr + rs1);
     *(reg_isNotInterval + rd) = 0;
   }
 }
@@ -8118,12 +8240,15 @@ void constrain_and() {
     *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
 
     // alias
     *(reg_ld_from_1 + rd) = 0;
     *(reg_ld_from_2 + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
   }
 }
 
@@ -8390,27 +8515,37 @@ uint64_t constrain_ld() {
         // assert: vaddr == *(vaddrs + mrvc)
 
         *(reg_whichByte + rd) = *(whichBytes + mrvc);
-        *(reg_saddr     + rd) = *(saddrs    + mrvc);
 
         // alias
         potential_load_char = 0;
         if (rs1 < REG_FP) {
-          if (rs1 > REG_TP) {
-            *(reg_saddr + rd) = vaddr;
-            // if (*(reg_isNotInterval + rd))
-              potential_load_char = vaddr;
-          }
-        } else if (rs1 > REG_S11) {
-          *(reg_saddr + rd) = vaddr;
-          // if (*(reg_isNotInterval + rd))
+          if (rs1 > REG_TP)
             potential_load_char = vaddr;
-        }
+        } else if (rs1 > REG_S11)
+          potential_load_char = vaddr;
 
         *(reg_isNotInterval + rd) = *(isNotIntervals + mrvc);
+
+        // func
+        *(reg_saddr_1 + rd) = *(saddrs_1 + mrvc);
+        *(reg_saddr_2 + rd) = *(saddrs_2 + mrvc);
 
         if (isSymbolicValue(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd))) {
           // vaddr is constrained by rd if value interval is not singleton
           setConstraint(rd, 1, vaddr, 0, 0, 0);
+
+          // func
+          // restore temporaries
+          if (rs1 == REG_SP) {
+            if (is_reg_temporary(rd)) {
+              if (*(saddrs_3 + mrvc)) {
+                *(reg_vaddr   + rd) = *(reg_saddr_2 + rd);
+                *(reg_saddr_2 + rd) = *(saddrs_3 + mrvc);
+              } else {
+                *(reg_vaddr   + rd) = *(reg_saddr_1 + rd);
+              }
+            }
+          }
 
           // alias
           if (*(is_useds + mrvc) == 1) {
@@ -8560,6 +8695,9 @@ uint64_t do_sd() {
 uint64_t constrain_sd() {
   uint64_t vaddr;
   uint64_t a;
+  uint64_t saddr_1;
+  uint64_t saddr_2;
+  uint64_t saddr_3;
 
   // store double word
 
@@ -8593,10 +8731,27 @@ uint64_t constrain_sd() {
         potential_load_char  = 0;
       }
 
-      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_isNotInterval + rs2), *(reg_saddr + rs2), *(reg_ld_from_1 + rs2), *(reg_ld_from_2 + rs2), mrcc);
+      // func
+      saddr_1 = *(reg_saddr_1 + rs2);
+      saddr_2 = *(reg_saddr_2 + rs2);
+      saddr_3 = 0;
+      if (*(reg_hasco + rs2)) {
+        // func
+        if (rs1 == REG_SP) {
+          if (is_address_on_stack(*(reg_vaddr + rs2))) {
+            saddr_1 = *(reg_saddr_1 + rs2);
+            saddr_2 = *(reg_vaddr   + rs2);
+            saddr_3 = *(reg_saddr_2 + rs2);
+          } else {
+            saddr_1 = *(reg_vaddr + rs2);
+            saddr_2 = 0;
+          }
+        }
+      }
+
+      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_isNotInterval + rs2), saddr_1, saddr_2, saddr_3, *(reg_ld_from_1 + rs2), *(reg_ld_from_2 + rs2), mrcc);
 
       *(reg_whichByte + rs2) = 0;
-      *(reg_saddr     + rs2) = 0;
       *(reg_isNotInterval + rs2) = 0;
 
       pc = pc + INSTRUCTIONSIZE;
@@ -8774,8 +8929,11 @@ void constrain_jal_jalr() {
     *(reg_steps + rd) = 1;
 
     *(reg_whichByte + rd) = 0;
-    *(reg_saddr     + rd) = 0;
     *(reg_isNotInterval + rd) = 0;
+
+    // func
+    *(reg_saddr_1 + rd) = 0;
+    *(reg_saddr_2 + rd) = 0;
   }
 }
 
@@ -9199,7 +9357,7 @@ uint64_t is_store_char_valid(uint64_t i) {
 void alias_check_char(uint64_t whichByte) {
   uint64_t mrvc;
 
-  mrvc = loadVirtualMemory(pt, *(reg_saddr + rd));
+  mrvc = loadVirtualMemory(pt, *(reg_saddr_1 + rd));
   if (rightShift(leftShift(*(is_useds + mrvc), whichByte * 8), 56) == 2) {
     print((uint64_t*) " detected char double use ");
     printHexadecimal(pc, 0);
@@ -9231,6 +9389,37 @@ void alias_check_char(uint64_t whichByte) {
     // else
     //   *(whichBytes + mrvc) = 0;
   }
+}
+
+// func
+uint64_t is_address_free(uint64_t vaddr) {
+  if (vaddr >= getBumpPointer(currentContext))
+    if (vaddr < *(registers + REG_SP))
+      return 1;
+
+  if (vaddr == 0)
+    return 1;
+
+  return 0;
+}
+
+// func
+uint64_t is_reg_temporary(uint64_t reg) {
+  if (reg < REG_FP) {
+    if (reg > REG_TP)
+      return 1;
+  } else if (reg > REG_S11)
+    return 1;
+
+  return 0;
+}
+
+// func
+uint64_t is_address_on_stack(uint64_t vaddr) {
+  if (vaddr >= getBumpPointer(currentContext))
+    return 1;
+
+  return 0;
 }
 
 uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
@@ -9303,7 +9492,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb) {
   uint64_t mrvc;
   uint64_t is_used;
 
@@ -9350,13 +9539,15 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
             if (step == *(steps + mrvc))
               if (whichByte == *(whichBytes + mrvc))
                 if (isNotInterval == *(isNotIntervals + mrvc))
-                  if (saddr == *(saddrs + mrvc))
-                    if (*(is_useds + mrvc) == is_used)
-                      if (*(ld_froms_1 + mrvc) == ld_from_1)
-                        if (*(ld_froms_2 + mrvc) == ld_from_2)
-                          if (trb < mrvc)
-                            // prevent tracking identical updates
-                            return;
+                  if (*(saddrs_1 + mrvc) == saddr_1)
+                    if (*(saddrs_2 + mrvc) == saddr_2)
+                      if (*(saddrs_3 + mrvc) == saddr_3)
+                        if (*(is_useds + mrvc) == is_used)
+                          if (*(ld_froms_1 + mrvc) == ld_from_1)
+                            if (*(ld_froms_2 + mrvc) == ld_from_2)
+                              if (trb < mrvc)
+                                // prevent tracking identical updates
+                                return;
 
     if (vaddr == read_vbuffer)
       trb = tc; // prevent overwriting
@@ -9376,12 +9567,16 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     // assert: vaddr == *(vaddrs + mrvc)
 
     *(whichBytes + mrvc) = whichByte;
-    *(saddrs     + mrvc) = saddr;
     *(isNotIntervals + mrvc) = isNotInterval;
 
     *(is_useds   + mrvc) = is_used;
     *(ld_froms_1 + mrvc) = ld_from_1;
     *(ld_froms_2 + mrvc) = ld_from_2;
+
+    // func
+    *(saddrs_1 + mrvc) = saddr_1;
+    *(saddrs_2 + mrvc) = saddr_2;
+    *(saddrs_3 + mrvc) = saddr_3;
 
     if(do_taint_flag) storeTaintMemory(mrvc);
 
@@ -9409,12 +9604,16 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(vaddrs + tc) = vaddr;
 
     *(whichBytes + tc) = whichByte;
-    *(saddrs     + tc) = saddr;
     *(isNotIntervals + tc) = isNotInterval;
 
     *(is_useds   + tc) = is_used;
     *(ld_froms_1 + tc) = ld_from_1;
     *(ld_froms_2 + tc) = ld_from_2;
+
+    // func
+    *(saddrs_1 + tc) = saddr_1;
+    *(saddrs_2 + tc) = saddr_2;
+    *(saddrs_3 + tc) = saddr_3;
 
     if(do_taint_flag) storeTaintMemory(tc);
 
@@ -9440,51 +9639,49 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
   }
 }
 
-void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb) {
+void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb) {
   uint64_t mrvc;
-  uint64_t is_func;
 
-  // if a function call appears in a conditional expression
-  // and after returning vaddr is a free memory location
-  is_func = 0;
   if (vaddr >= getBumpPointer(currentContext))
-    if (vaddr < *(registers + REG_SP))
-      if (saddr != 0) {
-        mrvc = loadVirtualMemory(pt, saddr);
-        if (*(whichBytes + mrvc) > 10) {
-          if (*(whichBytes + mrvc) < 20) {
-            whichByte = *(whichBytes + mrvc);
-            is_func = 1;
-            vaddr = saddr;
-          }
-        } else
-          return;
-      } else
-        // do not constrain free memory
-        return;
+    if (vaddr < *(registers + REG_SP)) {
+      // do not constrain free memory
+      print(selfieName);
+      print((uint64_t*) ": detected free memory in a conditional ");
+      printHexadecimal(pc, 0);
+      printSourceLineNumberOfInstruction(pc - entryPoint);
+      println();
+
+      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
 
 
   mrvc = loadVirtualMemory(pt, vaddr);
 
-  if (is_func) {
-    *(tmp_memory) = *(los + mrvc);
-    storeCharacter(tmp_memory, whichByte - 11, lo);
-    lo = *(tmp_memory);
+  if (*(whichBytes + mrvc) > 10) {
+    if (*(whichBytes + mrvc) < 20) {
+      whichByte = *(whichBytes + mrvc);
+      *(tmp_memory) = *(los + mrvc);
+      storeCharacter(tmp_memory, whichByte - 11, lo);
+      lo = *(tmp_memory);
 
-    *(tmp_memory) = *(ups + mrvc);
-    storeCharacter(tmp_memory, whichByte - 11, up);
-    up = *(tmp_memory);
+      *(tmp_memory) = *(ups + mrvc);
+      storeCharacter(tmp_memory, whichByte - 11, up);
+      up = *(tmp_memory);
 
-    if (lo != up) {
-      if (isNotInterval == 0)
-        isNotInterval = 2;
-    } else
-      isNotInterval = 0;
-    saddr         = *(saddrs + mrvc);
-    step          = *(steps  + mrvc);
+      if (lo != up) {
+        if (isNotInterval == 0)
+          isNotInterval = 2;
+      } else
+        isNotInterval = 0;
+
+      step  = *(steps  + mrvc);
+
+      // saddr_1 = *(saddrs_1 + mrvc);
+      // saddr_2 = *(saddrs_2 + mrvc);
+      // saddr_3 = *(saddrs_3 + mrvc);
+    }
   }
 
-  // if (is_func == 0) {
   //   // the condition is not strong enough to handle 'if (loadCharacter)'
   //   if (mrvc < trb) {
   //     // we do not support potentially aliased constrained memory
@@ -9496,18 +9693,17 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
   //
   //     // exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   //   }
-  // }
 
   // always track constrained memory by using tc as most recent branch
   //assert to_store_taint set
-  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, saddr, ld_from_1, ld_from_2, tc);
+  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, saddr_1, saddr_2, saddr_3, ld_from_1, ld_from_2, tc);
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
 
-  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, 0, 0, tc);
+  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, 0, 0, 0, 0, tc);
 }
 
 uint64_t applyCorrection(uint64_t reg, uint64_t lo, uint64_t up) {
@@ -9610,9 +9806,9 @@ void constrainMemory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
     if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
 
     if (reg == rs1)
-      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs1_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), *(reg_ld_from_1 + reg), *(reg_ld_from_2 + reg), trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs1_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr_1 + reg), *(reg_saddr_2 + reg), 0, *(reg_ld_from_1 + reg), *(reg_ld_from_2 + reg), trb);
     else
-      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs2_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr + reg), *(reg_ld_from_1 + reg), *(reg_ld_from_2 + reg), trb);
+      storeConstrainedMemory(*(reg_vaddr + reg), lo, up, cnd_rs2_step, *(reg_whichByte + reg), *(reg_isNotInterval + reg), *(reg_saddr_1 + reg), *(reg_saddr_2 + reg), 0, *(reg_ld_from_1 + reg), *(reg_ld_from_2 + reg), trb);
   }
 }
 
@@ -9966,8 +10162,8 @@ void create_equality_constraint() {
   }
 
   // assert: only loadCharacter
-  mrvc1 = loadSymbolicMemory(pt, cnd_rs1_saddr);
-  mrvc2 = loadSymbolicMemory(pt, cnd_rs2_saddr);
+  mrvc1 = loadSymbolicMemory(pt, cnd_rs1_vaddr);
+  mrvc2 = loadSymbolicMemory(pt, cnd_rs2_vaddr);
 
   if (c1 != c2) {
     if (*(isNotIntervals + mrvc1) > 2) {
@@ -9975,14 +10171,14 @@ void create_equality_constraint() {
       cnd_rs1_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc1), ec);
     }
-    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr, 0, 0, tc);
+    storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, cnd_rs1_isNotInterval, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
 
     if (*(isNotIntervals + mrvc2) > 2) {
       eq_alloc();
       cnd_rs2_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc2), ec);
     }
-    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr, 0, 0, tc);
+    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
     takeBranch(0, 0);
   } else {
 
@@ -10041,7 +10237,7 @@ void create_equality_constraint() {
       *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 2;
       *(vintervals       + c1 + cnd_rs1_whichByte - 1) = region1;
       *(nevintervals     + c1 + cnd_rs1_whichByte - 1) = region2;
-      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, 0, 0, tc);
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
 
       eq_alloc();
       c2 = ec;
@@ -10052,7 +10248,7 @@ void create_equality_constraint() {
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = region3;
       *(nevintervals     + c2 + cnd_rs2_whichByte - 1) = region4;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, 0, 0, tc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
 
       if (intersection) {
         storeRegisterMemory(rd, 0);
@@ -10072,7 +10268,7 @@ void create_equality_constraint() {
         reset_equality_constriants(c1);
       *(constraint_types + c1 + cnd_rs1_whichByte - 1) = 1;
       *(vintervals       + c1 + cnd_rs1_whichByte - 1) = intersection;
-      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr, 0, 0, tc);
+      storeConstrainedMemory(cnd_rs1_vaddr, cnd_rs1_lo, cnd_rs1_up, cnd_rs1_step, cnd_rs1_whichByte, c1, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
 
       eq_alloc();
       c2 = ec;
@@ -10082,7 +10278,7 @@ void create_equality_constraint() {
         reset_equality_constriants(c2);
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 1;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = intersection;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr, 0, 0, tc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
 
       takeBranch(1, 0);
     }
@@ -11453,7 +11649,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     if (isTraceSpaceAvailable()) {
       setTaintMemory(0, 0, 1);
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, 0, 0, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, 0, 0, 0, 0, tc);
     }
     else {
       print(selfieName);
