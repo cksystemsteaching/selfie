@@ -4586,85 +4586,122 @@ void emit_left_shift_by(uint64_t reg, uint64_t b) {
 }
 
 void emit_program_entry() {
-  // jump and link to the _start procedure
-  emit_jal(REG_RA, 0);
+  uint64_t i;
+
+  i = 0;
+
+  // allocate space for machine initialization code,
+  // emit exactly 20 NOPs with source code line 1
+  while (i < 20) {
+    emit_nop();
+
+    i = i + 1;
+  }
 }
 
 void emit_bootstrapping() {
-  /* 1. fixup initial jump to here
-     2. push argv pointer onto stack
-     3. initialize global pointer
-     4. initialize malloc's bump pointer
-     5. call main procedure
-     6. call exit procedure */
+  /*
+      1. initialize global pointer
+      2. initialize malloc's _bump pointer
+      3. push argv pointer onto stack
+      4. call main procedure
+      5. proceed to exit procedure
+  */
   uint64_t gp;
   uint64_t padding;
   uint64_t lower;
   uint64_t upper;
   uint64_t* entry;
 
-  // fixup jump at address 0 to here
-  fixup_relative_JFormat(0, binary_length);
-
-  // allocate memory for argv variable
-  emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
-
-  talloc();
-
-  // push argv pointer onto the stack
-  //      ______________
-  //     |              V
-  // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
-  emit_addi(current_temporary(), REG_SP, 2 * REGISTERSIZE);
-  emit_sd(REG_SP, 0, current_temporary());
-
-  tfree(1);
-
-  // calculate the global pointer value accommodating 16 more instructions
-  gp = ELF_ENTRY_POINT + binary_length + 16 * INSTRUCTIONSIZE + allocated_memory;
+  // calculate the global pointer value
+  gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
 
   // make sure gp is double-word-aligned
   padding = gp % REGISTERSIZE;
   gp      = gp + padding;
 
-  // assert: 0 <= gp < 2^31-2^11 (to avoid sign extension for upper)
+  if (padding != 0)
+    emit_nop();
 
-  lower = get_bits(gp,  0, 12);
-  upper = get_bits(gp, 12, 19);
+  // no more allocation in code segment from now on
+  code_length = binary_length;
 
-  if (lower >= two_to_the_power_of(11)) {
-    // add 1 which is effectively 2^12 to cancel sign extension of lower
-    emit_lui(REG_GP, upper + 1);
-    emit_addi(REG_GP, REG_GP, sign_extend(lower, 12));
-  } else {
-    emit_lui(REG_GP, upper);
-    emit_addi(REG_GP, REG_GP, lower);
-  }
+  // reset code emission to program entry
+  binary_length = 0;
 
-  // retrieve current program break
-  emit_addi(REG_A0, REG_ZR, 0);
-  emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
-  emit_ecall();
+  // assert: emitting no more than 20 instructions
 
-  // align current program break for double-word access
-  emit_round_up(REG_A0, SIZEOFUINT64);
-
-  // set program break to aligned program break
-  emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
-  emit_ecall();
-
-  // look up global variable _bump for storing malloc's bump pointer
-  // copy "_bump" string into zeroed double word to obtain unique hash
-  entry = search_global_symbol_table(string_copy((uint64_t*) "_bump"), VARIABLE);
-
-  // store aligned program break in _bump
-  emit_sd(get_scope(entry), get_address(entry), REG_A0);
-
-  if (report_undefined_procedures())
-    // rather than jump and link to the main procedure
-    // exit by continuing to the next instruction
+  if (report_undefined_procedures()) {
+    // if there are undefined procedures just exit
+    // by loading exit code 0 into return register
     emit_addi(REG_A0, REG_ZR, 0);
-  else {
+  } else {
+    // assert: 0 <= gp < 2^31-2^11 (to avoid sign extension for upper)
+
+    lower = get_bits(gp,  0, 12);
+    upper = get_bits(gp, 12, 19);
+
+    if (lower >= two_to_the_power_of(11)) {
+      // add 1 which is effectively 2^12 to cancel sign extension of lower
+      emit_lui(REG_GP, upper + 1);
+      emit_addi(REG_GP, REG_GP, sign_extend(lower, 12));
+    } else {
+      emit_lui(REG_GP, upper);
+      emit_addi(REG_GP, REG_GP, lower);
+    }
+
+    // retrieve current program break in return register
+    emit_addi(REG_A0, REG_ZR, 0);
+    emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
+    emit_ecall();
+
+    // align current program break for double-word access
+    emit_round_up(REG_A0, SIZEOFUINT64);
+
+    // set program break to aligned program break
+    emit_addi(REG_A7, REG_ZR, SYSCALL_BRK);
+    emit_ecall();
+
+    // look up global variable _bump for storing malloc's bump pointer
+    // copy "_bump" string into zeroed double word to obtain unique hash
+    entry = search_global_symbol_table(string_copy((uint64_t*) "_bump"), VARIABLE);
+
+    // store aligned program break in _bump
+    emit_sd(get_scope(entry), get_address(entry), REG_A0);
+
+    // cleaning up
+    emit_addi(REG_A0, REG_ZR, 0);
+    emit_addi(REG_A7, REG_ZR, 0);
+
+    // assert: stack is set up with argv pointer still missing
+    //
+    //    $sp
+    //     |
+    //     V
+    // | argc | argv[0] | argv[1] | ... | argv[n]
+
+    talloc();
+
+    // first obtain pointer to argv
+    //
+    //    $sp + REGISTERSIZE
+    //            |
+    //            V
+    // | argc | argv[0] | argv[1] | ... | argv[n]
+    emit_addi(current_temporary(), REG_SP, REGISTERSIZE);
+
+    // then push argv pointer onto the stack
+    //      ______________
+    //     |              V
+    // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
+    emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
+    emit_sd(REG_SP, 0, current_temporary());
+
+    tfree(1);
+
+    // assert: global, _bump, and stack pointers are set up
+    //         with all other non-temporary registers zeroed
+
     // copy "main" string into zeroed double word to obtain unique hash
     entry = get_scoped_symbol_table_entry(string_copy((uint64_t*) "main"), PROCEDURE);
 
@@ -4675,14 +4712,10 @@ void emit_bootstrapping() {
   emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
   emit_sd(REG_SP, 0, REG_A0);
 
-  entry = get_scoped_symbol_table_entry((uint64_t*) "exit", PROCEDURE);
+  // wrapper code for exit must follow here
 
-  help_call_codegen(entry, (uint64_t*) "exit");
-
-  if (padding != 0)
-    emit_nop();
-
-  code_length = binary_length;
+  // restore original binary length
+  binary_length = code_length;
 }
 
 // -----------------------------------------------------------------
@@ -4718,6 +4751,7 @@ void selfie_compile() {
   emit_program_entry();
 
   // emit system call wrappers
+  // exit code must be first
   emit_exit();
   emit_read();
   emit_write();
