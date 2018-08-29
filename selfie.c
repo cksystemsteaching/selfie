@@ -1123,6 +1123,7 @@ void initSymbolicEngine();
 void printSymbolicMemory(uint64_t svc);
 void printOverApprox(uint64_t* which);
 void printInvalid();
+void save_equality_cnd();
 
 uint64_t check_incompleteness(uint64_t gcd_steps);
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
@@ -7350,24 +7351,7 @@ void constrain_sub() {
       else if (*(reg_isNotInterval + rs2))
         printInvalid();
 
-      cnd_rs1_lo    = *(reg_los + rs1);
-      cnd_rs2_lo    = *(reg_los + rs2);
-      cnd_rs1_up    = *(reg_ups + rs1);
-      cnd_rs2_up    = *(reg_ups + rs2);
-      cnd_rs1_step  = *(reg_steps + rs1);
-      cnd_rs2_step  = *(reg_steps + rs2);
-      cnd_rs1_vaddr = *(reg_vaddr + rs1);
-      cnd_rs2_vaddr = *(reg_vaddr + rs2);
-      cnd_rs1_whichByte = *(reg_whichByte + rs1);
-      cnd_rs2_whichByte = *(reg_whichByte + rs2);
-
-      // func
-      cnd_rs1_saddr_1 = *(reg_saddr_1 + rs1);
-      cnd_rs2_saddr_1 = *(reg_saddr_1 + rs2);
-      cnd_rs1_saddr_2 = *(reg_saddr_2 + rs1);
-      cnd_rs2_saddr_2 = *(reg_saddr_2 + rs2);
-      cnd_rs1_saddr_3 = 0;
-      cnd_rs2_saddr_3 = 0;
+      save_equality_cnd();
 
       // alias
       *(reg_ld_from_1 + rd) = *(reg_ld_from_1 + rs1);
@@ -7866,12 +7850,13 @@ void constrain_divu() {
     setCorrection(rd, 0, 0, 0, 0, 0);
 
     shift = isByteShift(*(reg_los + rs2));
-    if (shift < CPUBITWIDTH) {
-      if (shift == 56) {
-        *(reg_los + rd) = div_los;
-        *(reg_ups + rd) = div_ups;
-        *(reg_steps + rd) = 1;
+    if (shift == 56) {
+      *(reg_los + rd) = div_los;
+      *(reg_ups + rd) = div_ups;
+      *(reg_steps + rd) = 1;
 
+      // alias
+      if (*(reg_isNotInterval + rs1)) {
         if (is_character_valid(div_los, div_ups) == 0) {
           print(selfieName);
           print((uint64_t*) ": loaded character is not valid ");
@@ -7880,25 +7865,22 @@ void constrain_divu() {
           println();
         }
 
-        // alias
-        if (*(reg_isNotInterval + rs1)) {
-          mrvc = loadVirtualMemory(pt, *(reg_saddr_1 + rs1));
-          whichByte = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1);
-          if (*(is_useds + mrvc) == 1)
-            *(is_useds + mrvc) = 0;
-          else if (*(is_useds + mrvc))
-            storeCharacter(is_useds + mrvc, whichByte, 0);
-        }
-
-        *(reg_whichByte + rd) = 0;
-        *(reg_isNotInterval + rd) = 0;
-
-        // func
-        *(reg_saddr_1 + rd) = 0;
-        *(reg_saddr_2 + rd) = 0;
-
-        return;
+        mrvc = loadVirtualMemory(pt, *(reg_saddr_1 + rs1));
+        whichByte = SIZEOFUINT64 - (*(reg_whichByte + rs1) - 1);
+        if (*(is_useds + mrvc) == 1)
+          *(is_useds + mrvc) = 0;
+        else if (*(is_useds + mrvc))
+          storeCharacter(is_useds + mrvc, whichByte, 0);
       }
+
+      *(reg_whichByte + rd) = 0;
+      *(reg_isNotInterval + rd) = 0;
+
+      // func
+      *(reg_saddr_1 + rd) = 0;
+      *(reg_saddr_2 + rd) = 0;
+
+      return;
     }
 
     if (*(reg_isNotInterval + rs1))
@@ -9215,6 +9197,25 @@ void printOverApprox(uint64_t* which) {
   printHexadecimal(pc, 0);
   printSourceLineNumberOfInstruction(pc - entryPoint);
   println();
+}
+
+void save_equality_cnd() {
+  cnd_rs1_lo        = *(reg_los + rs1);
+  cnd_rs2_lo        = *(reg_los + rs2);
+  cnd_rs1_up        = *(reg_ups + rs1);
+  cnd_rs2_up        = *(reg_ups + rs2);
+  cnd_rs1_step      = *(reg_steps + rs1);
+  cnd_rs2_step      = *(reg_steps + rs2);
+  cnd_rs1_vaddr     = *(reg_vaddr + rs1);
+  cnd_rs2_vaddr     = *(reg_vaddr + rs2);
+  cnd_rs1_saddr_1   = *(reg_saddr_1 + rs1);
+  cnd_rs2_saddr_1   = *(reg_saddr_1 + rs2);
+  cnd_rs1_saddr_2   = *(reg_saddr_2 + rs1);
+  cnd_rs2_saddr_2   = *(reg_saddr_2 + rs2);
+  cnd_rs1_saddr_3   = 0;
+  cnd_rs2_saddr_3   = 0;
+  cnd_rs1_whichByte = *(reg_whichByte + rs1);
+  cnd_rs2_whichByte = *(reg_whichByte + rs2);
 }
 
 uint64_t check_incompleteness(uint64_t gcd_steps) {
