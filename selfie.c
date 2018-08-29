@@ -123,6 +123,7 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 uint64_t stringLength(uint64_t* s);
 void     stringReverse(uint64_t* s);
 uint64_t stringCompare(uint64_t* s, uint64_t* t);
+uint64_t stringCompareSymbolTable(uint64_t* s, uint64_t* t, uint64_t sl, uint64_t tl);
 
 uint64_t  atoi(uint64_t* s);
 uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p);
@@ -428,7 +429,7 @@ void resetScanner() {
 
 void resetSymbolTables();
 
-void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
+void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t str_len, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class);
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class);
@@ -446,6 +447,7 @@ uint64_t reportUndefinedProcedures();
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
 // |  7 | scope   | REG_GP, REG_FP
+// |  8 | str_len | length of the string
 // +----+---------+
 
 uint64_t* getNextEntry(uint64_t* entry)  { return (uint64_t*) *entry; }
@@ -456,6 +458,7 @@ uint64_t  getType(uint64_t* entry)       { return             *(entry + 4); }
 uint64_t  getValue(uint64_t* entry)      { return             *(entry + 5); }
 uint64_t  getAddress(uint64_t* entry)    { return             *(entry + 6); }
 uint64_t  getScope(uint64_t* entry)      { return             *(entry + 7); }
+uint64_t  getStrLen(uint64_t* entry)     { return             *(entry + 8); }
 
 void setNextEntry(uint64_t* entry, uint64_t* next)    { *entry       = (uint64_t) next; }
 void setString(uint64_t* entry, uint64_t* identifier) { *(entry + 1) = (uint64_t) identifier; }
@@ -465,6 +468,7 @@ void setType(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
 void setValue(uint64_t* entry, uint64_t value)        { *(entry + 5) = value; }
 void setAddress(uint64_t* entry, uint64_t address)    { *(entry + 6) = address; }
 void setScope(uint64_t* entry, uint64_t scope)        { *(entry + 7) = scope; }
+void setStrLen(uint64_t* entry, uint64_t sl)          { *(entry + 8) = sl; }
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2058,6 +2062,22 @@ uint64_t stringCompare(uint64_t* s, uint64_t* t) {
       return 0;
 }
 
+uint64_t stringCompareSymbolTable(uint64_t* s, uint64_t* t, uint64_t sl, uint64_t tl) {
+  if (sl != tl)
+    return 0;
+
+  tl = 0;
+
+  while (tl < sl) {
+    if (loadCharacter(s, tl) == loadCharacter(t, tl))
+      tl = tl + 1;
+    else
+      return 0;
+  }
+
+  return 1;
+}
+
 uint64_t atoi(uint64_t* s) {
   uint64_t i;
   uint64_t n;
@@ -2924,12 +2944,13 @@ void getSymbol() {
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
 
-void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
+void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t str_len, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* newEntry;
 
-  newEntry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  newEntry = smalloc(2 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
 
   setString(newEntry, string);
+  setStrLen(newEntry, str_len);
   setLineNumber(newEntry, line);
   setClass(newEntry, class);
   setType(newEntry, type);
@@ -2961,8 +2982,11 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t line
 }
 
 uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
+  uint64_t sl;
+
+  sl = stringLength(string);
   while (entry != (uint64_t*) 0) {
-    if (stringCompare(string, getString(entry)))
+    if (stringCompareSymbolTable(string, getString(entry), sl, getStrLen(entry)))
       if (class == getClass(entry))
         return entry;
 
@@ -3413,7 +3437,7 @@ void load_integer(uint64_t value) {
     if (entry == (uint64_t*) 0) {
       allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-      createSymbolTableEntry(GLOBAL_TABLE, integer, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
+      createSymbolTableEntry(GLOBAL_TABLE, integer, stringLength(integer), lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
     }
 
     load_variableOrBigInt(integer, BIGINT);
@@ -3431,7 +3455,7 @@ void load_string(uint64_t* string) {
 
   allocatedMemory = allocatedMemory + roundUp(length, REGISTERSIZE);
 
-  createSymbolTableEntry(GLOBAL_TABLE, string, lineNumber, STRING, UINT64STAR_T, 0, -allocatedMemory);
+  createSymbolTableEntry(GLOBAL_TABLE, string, stringLength(string), lineNumber, STRING, UINT64STAR_T, 0, -allocatedMemory);
 
   load_integer(-allocatedMemory);
 
@@ -3449,7 +3473,7 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
     // default return type is "int"
     type = UINT64_T;
 
-    createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
+    createSymbolTableEntry(GLOBAL_TABLE, procedure, stringLength(procedure), lineNumber, PROCEDURE, type, 0, binaryLength);
 
     emitJAL(REG_RA, 0);
 
@@ -4361,13 +4385,13 @@ void compile_variable(uint64_t offset) {
 
   if (symbol == SYM_IDENTIFIER) {
     // TODO: check if identifier has already been declared
-    createSymbolTableEntry(LOCAL_TABLE, identifier, lineNumber, VARIABLE, type, 0, offset);
+    createSymbolTableEntry(LOCAL_TABLE, identifier, stringLength(identifier), lineNumber, VARIABLE, type, 0, offset);
 
     getSymbol();
   } else {
     syntaxErrorSymbol(SYM_IDENTIFIER);
 
-    createSymbolTableEntry(LOCAL_TABLE, (uint64_t*) "missing variable name", lineNumber, VARIABLE, type, 0, offset);
+    createSymbolTableEntry(LOCAL_TABLE, (uint64_t*) "missing variable name", stringLength((uint64_t*) "missing variable name"), lineNumber, VARIABLE, type, 0, offset);
   }
 }
 
@@ -4492,7 +4516,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
     // this is a procedure declaration
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, 0);
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, stringLength(procedure), lineNumber, PROCEDURE, type, 0, 0);
     else if (getType(entry) != type)
       // procedure already called, declared, or even defined
       // check return type but otherwise ignore
@@ -4504,7 +4528,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, procedure, lineNumber, PROCEDURE, type, 0, binaryLength);
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, stringLength(procedure), lineNumber, PROCEDURE, type, 0, binaryLength);
     else {
       // procedure already called or declared or defined
       if (getAddress(entry) != 0) {
@@ -4652,7 +4676,7 @@ void compile_cstar() {
           if (entry == (uint64_t*) 0) {
             allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, stringLength(variableOrProcedureName), currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
           } else {
             // global variable already declared or defined
             printLineNumber((uint64_t*) "warning", currentLineNumber);
@@ -4784,7 +4808,7 @@ void selfie_compile() {
   emitInput();
 
   // declare mandatory main procedure
-  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", 0, PROCEDURE, UINT64_T, 0, 0);
+  createSymbolTableEntry(GLOBAL_TABLE, (uint64_t*) "main", stringLength((uint64_t*) "main"), 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (numberOfRemainingArguments() == 0)
@@ -5801,7 +5825,7 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emitExit() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "exit", stringLength((uint64_t*) "exit"), 0, PROCEDURE, VOID_T, 0, binaryLength);
 
   // load signed 32-bit integer argument for exit
   emitLD(REG_A0, REG_SP, 0);
@@ -5860,7 +5884,7 @@ void implementExit(uint64_t* context) {
 }
 
 void emitRead() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "read", stringLength((uint64_t*) "read"), 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
   emitLD(REG_A2, REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -6044,7 +6068,7 @@ void implementRead(uint64_t* context) {
 }
 
 void emitWrite() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "write", stringLength((uint64_t*) "write"), 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
   emitLD(REG_A2, REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -6177,7 +6201,7 @@ void implementWrite(uint64_t* context) {
 }
 
 void emitOpen() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "open", stringLength((uint64_t*) "open"), 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
   emitLD(REG_A2, REG_SP, 0); // mode
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -6313,11 +6337,11 @@ void implementOpen(uint64_t* context) {
 }
 
 void emitMalloc() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "malloc", stringLength((uint64_t*) "malloc"), 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
   // on boot levels higher than zero, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "zalloc", stringLength((uint64_t*) "zalloc"), 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
   emitLD(REG_A0, REG_SP, 0); // size
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -6409,7 +6433,7 @@ void implementMalloc(uint64_t* context) {
 // -----------------------------------------------------------------
 
 void emitSwitch() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", stringLength((uint64_t*) "hypster_switch"), 0, PROCEDURE, UINT64STAR_T, 0, binaryLength);
 
   emitLD(REG_A1, REG_SP, 0); // number of instructions to execute
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
@@ -6487,7 +6511,7 @@ uint64_t* hypster_switch(uint64_t* toContext, uint64_t timeout) {
 }
 
 void emitInput() {
-  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "input", 0, PROCEDURE, UINT64_T, 0, binaryLength);
+  createSymbolTableEntry(LIBRARY_TABLE, (uint64_t*) "input", stringLength((uint64_t*) "input"), 0, PROCEDURE, UINT64_T, 0, binaryLength);
 
   emitLD(REG_A2, REG_SP, 0); // step
   emitADDI(REG_SP, REG_SP, REGISTERSIZE);
