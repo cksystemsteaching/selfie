@@ -70,7 +70,7 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 ./selfie: compute: add: 3(2.50%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
 ./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
 ./selfie: 544 bytes with 100 instructions and 16 bytes of data written into countdown.m
-./selfie: 3805 characters of assembly with 100 instructions written into countdown.s
+./selfie: 3803 characters of assembly with 100 instructions written into countdown.s
 ./selfie: selfie executing countdown.m with 1MB physical memory on mipster
 ./selfie: countdown.m exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating countdown.m with exit code 0
@@ -83,7 +83,7 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
 ./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
 ./selfie: loads:   25,11(44.00%)@0x14C(~11),10(40.00%)@0x15C(~13),1(4.00%)@0x54(~1)
-./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x30(~1),1(6.66%)@0x44(~1)
+./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x34(~1),1(6.66%)@0x44(~1)
 ```
 
 ## [Global Variable](https://github.com/cksystemsteaching/selfie/blob/2560aa4acb58dad6b6a6c877794616949936d318/selfie.c#L4532-L4557)
@@ -152,22 +152,22 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 
 // initialize global pointer $gp
 // to program break at 0x101A0
-0x0(~1): 0x000101B7: lui $gp,0x10     // load 0x10000 into $gp,
-0x4(~1): 0x1A018193: addi $gp,$gp,416 // add 416 (0x1A0) to $gp
+0x0(~1): 0x000102B7: lui $t0,0x10     // load 0x10000 into $t0
+0x4(~1): 0x1A028293: addi $t0,$t0,416 // add 416 (0x1A0) to $t0
+0x8(~1): 0x00028193: addi $gp,$t0,0   // copy $t0 to $gp
 
 // initialize _bump pointer, explained later
-0x8(~1): 0x00000513: addi $a0,$zero,0
-0xC(~1): 0x0D600893: addi $a7,$zero,214
-0x10(~1): 0x00000073: ecall
-0x14(~1): 0x00750513: addi $a0,$a0,7
-0x18(~1): 0x00800293: addi $t0,$zero,8
-0x1C(~1): 0x025572B3: remu $t0,$a0,$t0
-0x20(~1): 0x40550533: sub $a0,$a0,$t0
-0x24(~1): 0x0D600893: addi $a7,$zero,214
-0x28(~1): 0x00000073: ecall
-0x2C(~1): 0xFEA1BC23: sd $a0,-8($gp)
-0x30(~1): 0x00000513: addi $a0,$zero,0
-0x34(~1): 0x00000893: addi $a7,$zero,0
+0xC(~1): 0x00000513: addi $a0,$zero,0
+0x10(~1): 0x0D600893: addi $a7,$zero,214
+0x14(~1): 0x00000073: ecall
+0x18(~1): 0x00750513: addi $a0,$a0,7
+0x1C(~1): 0x00800293: addi $t0,$zero,8
+0x20(~1): 0x025572B3: remu $t0,$a0,$t0
+0x24(~1): 0x40550533: sub $a0,$a0,$t0
+0x28(~1): 0x0D600893: addi $a7,$zero,214
+0x2C(~1): 0x00000073: ecall
+0x30(~1): 0xFEA1BC23: sd $a0,-8($gp)
+0x34(~1): 0x00000513: addi $a0,$zero,0
 
 // initialize argv, explained later
 0x38(~1): 0x00810293: addi $t0,$sp,8
@@ -183,10 +183,10 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 0x4C(~1): 0x00A13023: sd $a0,0($sp)
 
 // wrapper code for exit system call
-0x50(~1): 0x00013503: ld $a0,0($sp)     // retrieve exit code in $a0,
-0x54(~1): 0x00810113: addi $sp,$sp,8    // pop value off the stack,
-0x58(~1): 0x05D00893: addi $a7,$zero,93 // load exit syscall ID 93 into $a7,
-0x5C(~1): 0x00000073: ecall             // and exit here
+0x50(~1): 0x00013503: ld $a0,0($sp)     // retrieve exit code in $a0
+0x54(~1): 0x00810113: addi $sp,$sp,8    // pop value off the stack
+0x58(~1): 0x05D00893: addi $a7,$zero,93 // load exit syscall ID 93 into $a7
+0x5C(~1): 0x00000073: ecall             // exit here
 
 // wrapper code for unused system calls removed
 ...
@@ -220,7 +220,7 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 0x18C(~20): 0x00008067: jalr $zero,0($ra)
 ```
 
-Each line in `countdown.s` represents one instruction. The first line, for example, is the instruction `lui $gp,0x10`, which is encoded in the 32-bit word `0x000101B7`. The instruction will be loaded into memory at some fixed address plus `0x0`, as indicated by `0x0(~1)`. The number `~1` in parentheses is the approximate line number in `countdown.c` for which starc generated the instruction. Even though there is a comment at Line 1 in `countdown.c` this still makes sense because starc always generates some instructions before compiling any actual source code. Try to find the four instructions that starc actually generated for `bar = bar - 1` in Line 13 of `countdown.c`! They, along with the others, are explained below.
+Each line in `countdown.s` represents one instruction. The first line, for example, is the instruction `lui $gp,0x10`, which is encoded in the 32-bit word `0x000101B7`. The instruction will be loaded into memory at some fixed address plus the offset `0x0`, as indicated by `0x0(~1)`. The number `~1` in parentheses is the approximate line number in `countdown.c` for which starc generated the instruction. Even though there is a comment at Line 1 in `countdown.c` this still makes sense because starc always generates some instructions before compiling any actual source code. Try to find the four instructions that starc actually generated for `bar = bar - 1` in Line 13 of `countdown.c`! They, along with the others, are explained below.
 
 Ok, but what happens now when selfie is instructed by the final `-m 1` option to execute the generated code? Doing that involves solving a problem that appears to have no solution. How does a computer load an executable into memory without an executable in memory that instructs the processor how to do this? The process that solves that problem is called *bootstrapping*.
 
@@ -270,20 +270,20 @@ Let us take a look at how the first few and last few instructions for the countd
 ./selfie: compute: add: 3(2.50%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
 ./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
 ./selfie: selfie executing manuscript/code/countdown.c with 1MB physical memory on mipster
-$pc=0x10000(~1): lui $gp,0x10: |- $gp=0x0 -> $gp=0x10000
-$pc=0x10004(~1): addi $gp,$gp,416: $gp=0x10000 |- $gp=0x10000 -> $gp=0x101A0
-$pc=0x10008(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
-$pc=0x1000C(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=0(0x0) -> $a7=214(0xD6)
-$pc=0x10010(~1): ecall: |- $a0=0x0 -> $a0=0x0
-$pc=0x10014(~1): addi $a0,$a0,7: $a0=65952(0x101A0) |- $a0=65952(0x101A0) -> $a0=65959(0x101A7)
-$pc=0x10018(~1): addi $t0,$zero,8: $zero=0(0x0) |- $t0=0(0x0) -> $t0=8(0x8)
-$pc=0x1001C(~1): remu $t0,$a0,$t0: $a0=65959(0x101A7),$t0=8(0x8) |- $t0=8(0x8) -> $t0=7(0x7)
-$pc=0x10020(~1): sub $a0,$a0,$t0: $a0=65959(0x101A7),$t0=7(0x7) |- $a0=65959(0x101A7) -> $a0=65952(0x101A0)
-$pc=0x10024(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=214(0xD6)
-$pc=0x10028(~1): ecall: |- $a0=0x101A0 -> $a0=0x101A0
-$pc=0x1002C(~1): sd $a0,-8($gp): $gp=0x101A0,$a0=65952(0x101A0) |- mem[0x10198]=0 -> mem[0x10198]=$a0=65952(0x101A0)
-$pc=0x10030(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=65952(0x101A0) -> $a0=0(0x0)
-$pc=0x10034(~1): addi $a7,$zero,0: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=0(0x0)
+$pc=0x10000(~1): lui $t0,0x10: |- $t0=0x0 -> $t0=0x10000
+$pc=0x10004(~1): addi $t0,$t0,416: $t0=65536(0x10000) |- $t0=65536(0x10000) -> $t0=65952(0x101A0)
+$pc=0x10008(~1): addi $gp,$t0,0: $t0=65952(0x101A0) |- $gp=0x0 -> $gp=0x101A0
+$pc=0x1000C(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
+$pc=0x10010(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=0(0x0) -> $a7=214(0xD6)
+$pc=0x10014(~1): ecall: |- $a0=0x0 -> $a0=0x0
+$pc=0x10018(~1): addi $a0,$a0,7: $a0=65952(0x101A0) |- $a0=65952(0x101A0) -> $a0=65959(0x101A7)
+$pc=0x1001C(~1): addi $t0,$zero,8: $zero=0(0x0) |- $t0=65952(0x101A0) -> $t0=8(0x8)
+$pc=0x10020(~1): remu $t0,$a0,$t0: $a0=65959(0x101A7),$t0=8(0x8) |- $t0=8(0x8) -> $t0=7(0x7)
+$pc=0x10024(~1): sub $a0,$a0,$t0: $a0=65959(0x101A7),$t0=7(0x7) |- $a0=65959(0x101A7) -> $a0=65952(0x101A0)
+$pc=0x10028(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=214(0xD6)
+$pc=0x1002C(~1): ecall: |- $a0=0x101A0 -> $a0=0x101A0
+$pc=0x10030(~1): sd $a0,-8($gp): $gp=0x101A0,$a0=65952(0x101A0) |- mem[0x10198]=0 -> mem[0x10198]=$a0=65952(0x101A0)
+$pc=0x10034(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=65952(0x101A0) -> $a0=0(0x0)
 $pc=0x10038(~1): addi $t0,$sp,8: $sp=0xFFFFFFC0 |- $t0=7(0x7) -> $t0=4294967240(0xFFFFFFC8)
 $pc=0x1003C(~1): addi $sp,$sp,-8: $sp=0xFFFFFFC0 |- $sp=0xFFFFFFC0 -> $sp=0xFFFFFFB8
 $pc=0x10040(~1): sd $t0,0($sp): $sp=0xFFFFFFB8,$t0=4294967240(0xFFFFFFC8) |- mem[0xFFFFFFB8]=0 -> mem[0xFFFFFFB8]=$t0=4294967240(0xFFFFFFC8)
@@ -293,7 +293,7 @@ $pc=0x10048(~1): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFF
 $pc=0x1004C(~1): sd $a0,0($sp): $sp=0xFFFFFFB0,$a0=0(0x0) |- mem[0xFFFFFFB0]=65608 -> mem[0xFFFFFFB0]=$a0=0(0x0)
 $pc=0x10050(~1): ld $a0,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0 |- $a0=0(0x0) -> $a0=0(0x0)=mem[0xFFFFFFB0]
 $pc=0x10054(~1): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
-$pc=0x10058(~1): addi $a7,$zero,93: $zero=0(0x0) |- $a7=0(0x0) -> $a7=93(0x5D)
+$pc=0x10058(~1): addi $a7,$zero,93: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=93(0x5D)
 $pc=0x1005C(~1): ecall: |- $a0=0x0 -> $a0=0x0
 ./selfie: manuscript/code/countdown.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/countdown.c with exit code 0
@@ -306,16 +306,18 @@ $pc=0x1005C(~1): ecall: |- $a0=0x0 -> $a0=0x0
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
 ./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
 ./selfie: loads:   25,11(44.00%)@0x14C(~11),10(40.00%)@0x15C(~13),1(4.00%)@0x54(~1)
-./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x30(~1),1(6.66%)@0x44(~1)
+./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x34(~1),1(6.66%)@0x44(~1)
 ```
 
 ## Initialization
 
-The purpose of the first eighteen instructions executed by mipster is to initialize the machine and get it ready for executing the code that implements the `main` procedure. Initially, the PC denoted by `$pc` points to address `0x10000` in memory. The instruction at this address is thus the first instruction that will be executed by the machine. It is `lui $gp,0x10`, as mentioned before.
+The purpose of the first eighteen instructions executed by mipster is to initialize the machine and get it ready for executing the code that implements the `main` procedure.
 
-In our discussion we provide for each new instruction a link to the source code of mipster that implements the instruction (see, for example, the above [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)) and for each concrete instruction in the example a link to the source code of starc that generated the instruction (see, for example, the above [`addiu $t0,$zero,492`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2625)).
+#### [lui](https://github.com/cksystemsteaching/selfie/blob/d7c69631a5e2cf71097a5a0bf9cf21af1a6eb8a4/selfie.c#L6435-L6445)
 
-#### [lui](https://github.com/cksystemsteaching/selfie/blob/0d42a4ce21cee6903f0c9e937109a21fa07c63bd/selfie.c#L6396-L6406)
+Initially, the PC denoted by `$pc` points to address `0x10000` in memory. The instruction at this address is thus the first instruction that will be executed by the machine. The instruction is encoded in the word `0x000101B7` (omitted here but mentioned before) which stands for `lui $gp,0x10`.
+
+In our discussion we provide for each new instruction a link to the source code of mipster that implements the instruction (see, for example, the above [liu](https://github.com/cksystemsteaching/selfie/blob/d7c69631a5e2cf71097a5a0bf9cf21af1a6eb8a4/selfie.c#L6435-L6445)) and for each concrete instruction in the example a link to the source code of starc that generated the instruction (see, for example, the above [`lui $gp,0x10`](https://github.com/cksystemsteaching/selfie/blob/d7c69631a5e2cf71097a5a0bf9cf21af1a6eb8a4/selfie.c#L3333)).
 
 #### [addiu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5698-L5736)
 
