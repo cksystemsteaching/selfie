@@ -1089,8 +1089,6 @@ void print_jalr_before();
 void do_jalr();
 
 void print_ecall();
-void print_ecall_before();
-void print_ecall_after();
 void record_ecall();
 void do_ecall();
 void undo_ecall();
@@ -1243,6 +1241,7 @@ void init_interpreter();
 void reset_interpreter();
 
 void     print_register_hexadecimal(uint64_t reg);
+void     print_register_octal(uint64_t reg);
 uint64_t is_system_register(uint64_t reg);
 void     print_register_value(uint64_t reg);
 
@@ -5722,6 +5721,12 @@ void emit_exit() {
 }
 
 void implement_exit(uint64_t* context) {
+  if (disassemble) {
+    print((uint64_t*) "(exit): ");
+    print_register_hexadecimal(REG_A0);
+    print((uint64_t*) " |- ->\n");
+  }
+
   set_exit_code(context, sign_shrink(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH));
 
   if (symbolic)
@@ -5771,6 +5776,17 @@ void implement_read(uint64_t* context) {
   uint64_t lo;
   uint64_t up;
   uint64_t mrvc;
+
+  if (disassemble) {
+    print((uint64_t*) "(read): ");
+    print_register_value(REG_A0);
+    print((uint64_t*) ",");
+    print_register_hexadecimal(REG_A1);
+    print((uint64_t*) ",");
+    print_register_value(REG_A2);
+    print((uint64_t*) " |- ");
+    print_register_value(REG_A0);
+  }
 
   fd      = *(get_regs(context) + REG_A0);
   vbuffer = *(get_regs(context) + REG_A1);
@@ -5886,6 +5902,12 @@ void implement_read(uint64_t* context) {
 
   if (debug_read)
     printf3((uint64_t*) "%s: actually read %d bytes from file with descriptor %d\n", selfie_name, (uint64_t*) read_total, (uint64_t*) fd);
+
+  if (disassemble) {
+    print((uint64_t*) " -> ");
+    print_register_value(REG_A0);
+    println();
+  }
 }
 
 void emit_write() {
@@ -5919,6 +5941,17 @@ void implement_write(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actually_written;
+
+  if (disassemble) {
+    print((uint64_t*) "(write): ");
+    print_register_value(REG_A0);
+    print((uint64_t*) ",");
+    print_register_hexadecimal(REG_A1);
+    print((uint64_t*) ",");
+    print_register_value(REG_A2);
+    print((uint64_t*) " |- ");
+    print_register_value(REG_A0);
+  }
 
   fd      = *(get_regs(context) + REG_A0);
   vbuffer = *(get_regs(context) + REG_A1);
@@ -5995,6 +6028,12 @@ void implement_write(uint64_t* context) {
 
   if (debug_write)
     printf3((uint64_t*) "%s: actually wrote %d bytes into file with descriptor %d\n", selfie_name, (uint64_t*) written_total, (uint64_t*) fd);
+
+  if (disassemble) {
+    print((uint64_t*) " -> ");
+    print_register_value(REG_A0);
+    println();
+  }
 }
 
 void emit_open() {
@@ -6074,6 +6113,17 @@ void implement_open(uint64_t* context) {
   // return value
   uint64_t fd;
 
+  if (disassemble) {
+    print((uint64_t*) "(open): ");
+    print_register_hexadecimal(REG_A0);
+    print((uint64_t*) ",");
+    print_register_hexadecimal(REG_A1);
+    print((uint64_t*) ",");
+    print_register_octal(REG_A2);
+    print((uint64_t*) " |- ");
+    print_register_value(REG_A0);
+  }
+
   vfilename = *(get_regs(context) + REG_A0);
   flags     = *(get_regs(context) + REG_A1);
   mode      = *(get_regs(context) + REG_A2);
@@ -6100,6 +6150,12 @@ void implement_open(uint64_t* context) {
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+
+  if (disassemble) {
+    print((uint64_t*) " -> ");
+    print_register_value(REG_A0);
+    println();
+  }
 }
 
 void emit_malloc() {
@@ -6172,6 +6228,11 @@ void implement_brk(uint64_t* context) {
   uint64_t valid;
   uint64_t size;
 
+  if (disassemble) {
+    print((uint64_t*) "(brk): ");
+    print_register_hexadecimal(REG_A0);
+  }
+
   program_break = *(get_regs(context) + REG_A0);
 
   previous_program_break = get_program_break(context);
@@ -6184,6 +6245,9 @@ void implement_brk(uint64_t* context) {
         valid = 1;
 
   if (valid) {
+    if (disassemble)
+      print((uint64_t*) " |- ->\n");
+
     if (debug_brk)
       printf2((uint64_t*) "%s: setting program break to %p\n", selfie_name, (uint64_t*) program_break);
 
@@ -6217,7 +6281,18 @@ void implement_brk(uint64_t* context) {
     if (debug_brk)
       printf2((uint64_t*) "%s: retrieving current program break %p\n", selfie_name, (uint64_t*) program_break);
 
+    if (disassemble) {
+      print((uint64_t*) " |- ");
+      print_register_hexadecimal(REG_A0);
+    }
+
     *(get_regs(context) + REG_A0) = program_break;
+
+    if (disassemble) {
+      print((uint64_t*) " -> ");
+      print_register_hexadecimal(REG_A0);
+      println();
+    }
 
     if (symbolic) {
       *(reg_typ + REG_A0) = 0;
@@ -6285,10 +6360,25 @@ void do_switch(uint64_t* to_context, uint64_t timeout) {
 }
 
 void implement_switch() {
+  if (disassemble) {
+    print((uint64_t*) "(switch): ");
+    print_register_hexadecimal(REG_A0);
+    print((uint64_t*) ",");
+    print_register_value(REG_A1);
+    print((uint64_t*) " |- ");
+    print_register_value(REG_A1);
+  }
+
   save_context(current_context);
 
   // cache context on my boot level before switching
   do_switch(cache_context((uint64_t*) *(registers + REG_A0)), *(registers + REG_A1));
+
+  if (disassemble) {
+    print((uint64_t*) " -> ");
+    print_register_hexadecimal(REG_A1);
+    println();
+  }
 }
 
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
@@ -7452,16 +7542,6 @@ void print_ecall() {
   print((uint64_t*) "ecall");
 }
 
-void print_ecall_before() {
-  print((uint64_t*) ": |- ");
-  print_register_hexadecimal(REG_A0);
-}
-
-void print_ecall_after() {
-  print((uint64_t*) " -> ");
-  print_register_hexadecimal(REG_A0);
-}
-
 void record_ecall() {
   // TODO: record all side effects
   record_state(*(registers + REG_A0));
@@ -7969,6 +8049,10 @@ void print_register_hexadecimal(uint64_t reg) {
   printf2((uint64_t*) "%s=%x", get_register_name(reg), (uint64_t*) *(registers + reg));
 }
 
+void print_register_octal(uint64_t reg) {
+  printf2((uint64_t*) "%s=%o", get_register_name(reg), (uint64_t*) *(registers + reg));
+}
+
 uint64_t is_system_register(uint64_t reg) {
   if (reg == REG_GP)
     return 1;
@@ -8370,12 +8454,10 @@ void decode_execute() {
           undo_ecall();
         else if (disassemble) {
           print_ecall();
-          if (execute) {
-            print_ecall_before();
+          if (execute)
             do_ecall();
-            print_ecall_after();
-          }
-          println();
+          else
+            println();
         } else if (symbolic)
           do_ecall();
         else if (backtrack)
