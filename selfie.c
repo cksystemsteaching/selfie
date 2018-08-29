@@ -3310,7 +3310,8 @@ void load_integer(uint64_t value) {
 
   } else if (is_signed_integer(value, 32)) {
     // integers greater than or equal to -2^31 and less than 2^31
-    // are loaded with one addi and one lui into a register
+    // are loaded with one lui and one addi into a register plus
+    // an additional sub to cancel sign extension if necessary
 
     lower = get_bits(value,  0, 12);
     upper = get_bits(value, 12, 20);
@@ -4640,19 +4641,20 @@ void emit_bootstrapping() {
     // by loading exit code 0 into return register
     emit_addi(REG_A0, REG_ZR, 0);
   } else {
-    // assert: 0 <= gp < 2^31-2^11 (to avoid sign extension for upper)
+    // avoid sign extension that would result in an additional sub instruction
+    if (gp < two_to_the_power_of(31) - two_to_the_power_of(11))
+      // assert: generates no more than two instructions
+      load_integer(gp);
+    else {
+      syntax_error_message((uint64_t*) "maximum program break exceeded");
 
-    lower = get_bits(gp,  0, 12);
-    upper = get_bits(gp, 12, 19);
-
-    if (lower >= two_to_the_power_of(11)) {
-      // add 1 which is effectively 2^12 to cancel sign extension of lower
-      emit_lui(REG_GP, upper + 1);
-      emit_addi(REG_GP, REG_GP, sign_extend(lower, 12));
-    } else {
-      emit_lui(REG_GP, upper);
-      emit_addi(REG_GP, REG_GP, lower);
+      exit(EXITCODE_COMPILERERROR);
     }
+
+    // initialize global pointer
+    emit_addi(REG_GP, current_temporary(), 0);
+
+    tfree(1);
 
     // retrieve current program break in return register
     emit_addi(REG_A0, REG_ZR, 0);
@@ -4673,9 +4675,8 @@ void emit_bootstrapping() {
     // store aligned program break in _bump
     emit_sd(get_scope(entry), get_address(entry), REG_A0);
 
-    // cleaning up
+    // reset return register to initial return value
     emit_addi(REG_A0, REG_ZR, 0);
-    emit_addi(REG_A7, REG_ZR, 0);
 
     // assert: stack is set up with argv pointer still missing
     //
