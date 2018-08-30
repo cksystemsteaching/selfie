@@ -7202,13 +7202,15 @@ uint64_t do_ld() {
         // semantics of ld
         *(registers + rd) = load_virtual_memory(pt, vaddr);
 
-      pc = pc + INSTRUCTIONSIZE;
-
-      ic_ld = ic_ld + 1;
-
-      // keep track of number of loads per instruction
+      // keep track of instruction address for profiling loads
       a = (pc - entry_point) / INSTRUCTIONSIZE;
 
+      pc = pc + INSTRUCTIONSIZE;
+
+      // keep track of number of loads in total
+      ic_ld = ic_ld + 1;
+
+      // and individually
       *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
     } else
       throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
@@ -7249,13 +7251,15 @@ uint64_t constrain_ld() {
           set_constraint(rd, 0, 0, 0, 0, 0);
       }
 
-      pc = pc + INSTRUCTIONSIZE;
-
-      ic_ld = ic_ld + 1;
-
-      // keep track of number of loads per instruction
+      // keep track of instruction address for profiling loads
       a = (pc - entry_point) / INSTRUCTIONSIZE;
 
+      pc = pc + INSTRUCTIONSIZE;
+
+      // keep track of number of loads in total
+      ic_ld = ic_ld + 1;
+
+      // and individually
       *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
     } else
       throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
@@ -7324,13 +7328,15 @@ uint64_t do_sd() {
       // semantics of sd
       store_virtual_memory(pt, vaddr, *(registers + rs2));
 
-      pc = pc + INSTRUCTIONSIZE;
-
-      ic_sd = ic_sd + 1;
-
-      // keep track of number of stores per instruction
+      // keep track of instruction address for profiling stores
       a = (pc - entry_point) / INSTRUCTIONSIZE;
 
+      pc = pc + INSTRUCTIONSIZE;
+
+      // keep track of number of stores in total
+      ic_sd = ic_sd + 1;
+
+      // and individually
       *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
     } else
       throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
@@ -7365,13 +7371,15 @@ uint64_t constrain_sd() {
 
       store_symbolic_memory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), mrcc);
 
-      pc = pc + INSTRUCTIONSIZE;
-
-      ic_sd = ic_sd + 1;
-
-      // keep track of number of stores per instruction
+      // keep track of instruction address for profiling stores
       a = (pc - entry_point) / INSTRUCTIONSIZE;
 
+      pc = pc + INSTRUCTIONSIZE;
+
+      // keep track of number of stores in total
+      ic_sd = ic_sd + 1;
+
+      // and individually
       *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
     } else
       throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
@@ -7467,21 +7475,25 @@ void do_jal() {
     // then jump for procedure calls
     pc = pc + imm;
 
-    // keep track of number of procedure calls
+    // prologue address for profiling procedure calls
+    a = (pc - entry_point) / INSTRUCTIONSIZE;
+
+    // keep track of number of procedure calls in total
     calls = calls + 1;
 
-    a = (pc - entry_point) / INSTRUCTIONSIZE;
-
+    // and individually
     *(calls_per_procedure + a) = *(calls_per_procedure + a) + 1;
   } else if (signed_less_than(imm, 0)) {
-    // just jump backwards to check for another loop iteration
+    // jump backwards to check for another loop iteration
     pc = pc + imm;
 
-    // keep track of number of loop iterations
-    iterations = iterations + 1;
-
+    // first loop instruction address for profiling loop iterations
     a = (pc - entry_point) / INSTRUCTIONSIZE;
 
+    // keep track of number of loop iterations in total
+    iterations = iterations + 1;
+
+    // and individually
     *(iterations_per_loop + a) = *(iterations_per_loop + a) + 1;
   } else
     // just jump forward
@@ -8553,7 +8565,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf3((uint64_t*) ",%d(%.2d%%)@%x", (uint64_t*) c, (uint64_t*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (uint64_t*) a);
+    printf3((uint64_t*) ",%d(%.2d%%)@%x", (uint64_t*) c, (uint64_t*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (uint64_t*) (entry_point + a));
     print_source_line_number_of_instruction(a);
 
     return c;
