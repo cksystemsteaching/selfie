@@ -82,8 +82,8 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
 ./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
-./selfie: loads:   25,11(44.00%)@0x14C(~11),10(40.00%)@0x15C(~13),1(4.00%)@0x54(~1)
-./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x34(~1),1(6.66%)@0x44(~1)
+./selfie: loads:   25,11(44.00%)@0x148(~11),10(40.00%)@0x158(~13),1(4.00%)@0x50(~1)
+./selfie: stores:  15,10(66.66%)@0x164(~13),1(6.66%)@0x30(~1),1(6.66%)@0x40(~1)
 ```
 
 ## [Global Variable](https://github.com/cksystemsteaching/selfie/blob/2560aa4acb58dad6b6a6c877794616949936d318/selfie.c#L4532-L4557)
@@ -273,29 +273,34 @@ Let us take a look at how the first few and last few instructions for the countd
 $pc=0x10000(~1): lui $t0,0x10: |- $t0=0x0 -> $t0=0x10000
 $pc=0x10004(~1): addi $t0,$t0,416: $t0=65536(0x10000) |- $t0=65536(0x10000) -> $t0=65952(0x101A0)
 $pc=0x10008(~1): addi $gp,$t0,0: $t0=65952(0x101A0) |- $gp=0x0 -> $gp=0x101A0
+---
 $pc=0x1000C(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
 $pc=0x10010(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=0(0x0) -> $a7=214(0xD6)
-$pc=0x10014(~1): ecall: |- $a0=0x0 -> $a0=0x0
+$pc=0x10014(~1): ecall(brk): $a0=0x0 |- $a0=0x0 -> $a0=0x101A0
 $pc=0x10018(~1): addi $a0,$a0,7: $a0=65952(0x101A0) |- $a0=65952(0x101A0) -> $a0=65959(0x101A7)
 $pc=0x1001C(~1): addi $t0,$zero,8: $zero=0(0x0) |- $t0=65952(0x101A0) -> $t0=8(0x8)
 $pc=0x10020(~1): remu $t0,$a0,$t0: $a0=65959(0x101A7),$t0=8(0x8) |- $t0=8(0x8) -> $t0=7(0x7)
 $pc=0x10024(~1): sub $a0,$a0,$t0: $a0=65959(0x101A7),$t0=7(0x7) |- $a0=65959(0x101A7) -> $a0=65952(0x101A0)
 $pc=0x10028(~1): addi $a7,$zero,214: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=214(0xD6)
-$pc=0x1002C(~1): ecall: |- $a0=0x101A0 -> $a0=0x101A0
+$pc=0x1002C(~1): ecall(brk): $a0=0x101A0 |- ->
 $pc=0x10030(~1): sd $a0,-8($gp): $gp=0x101A0,$a0=65952(0x101A0) |- mem[0x10198]=0 -> mem[0x10198]=$a0=65952(0x101A0)
 $pc=0x10034(~1): addi $a0,$zero,0: $zero=0(0x0) |- $a0=65952(0x101A0) -> $a0=0(0x0)
+---
 $pc=0x10038(~1): addi $t0,$sp,8: $sp=0xFFFFFFC0 |- $t0=7(0x7) -> $t0=4294967240(0xFFFFFFC8)
 $pc=0x1003C(~1): addi $sp,$sp,-8: $sp=0xFFFFFFC0 |- $sp=0xFFFFFFC0 -> $sp=0xFFFFFFB8
 $pc=0x10040(~1): sd $t0,0($sp): $sp=0xFFFFFFB8,$t0=4294967240(0xFFFFFFC8) |- mem[0xFFFFFFB8]=0 -> mem[0xFFFFFFB8]=$t0=4294967240(0xFFFFFFC8)
+---
 $pc=0x10044(~1): jal $ra,60[0x10134]: |- $ra=0x0,$pc=0x10044 -> $pc=0x10134,$ra=0x10048
 ...
 $pc=0x1018C(~20): jalr $zero,0($ra): $ra=0x10048 |- $pc=0x1018C -> $pc=0x10048
+---
 $pc=0x10048(~1): addi $sp,$sp,-8: $sp=0xFFFFFFB8 |- $sp=0xFFFFFFB8 -> $sp=0xFFFFFFB0
 $pc=0x1004C(~1): sd $a0,0($sp): $sp=0xFFFFFFB0,$a0=0(0x0) |- mem[0xFFFFFFB0]=65608 -> mem[0xFFFFFFB0]=$a0=0(0x0)
+---
 $pc=0x10050(~1): ld $a0,0($sp): $sp=0xFFFFFFB0,mem[0xFFFFFFB0]=0 |- $a0=0(0x0) -> $a0=0(0x0)=mem[0xFFFFFFB0]
 $pc=0x10054(~1): addi $sp,$sp,8: $sp=0xFFFFFFB0 |- $sp=0xFFFFFFB0 -> $sp=0xFFFFFFB8
 $pc=0x10058(~1): addi $a7,$zero,93: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=93(0x5D)
-$pc=0x1005C(~1): ecall: |- $a0=0x0 -> $a0=0x0
+$pc=0x1005C(~1): ecall(exit): $a0=0x0 |- ->
 ./selfie: manuscript/code/countdown.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/countdown.c with exit code 0
 ./selfie: summary: 132 executed instructions and 0.00MB mapped memory
@@ -306,8 +311,8 @@ $pc=0x1005C(~1): ecall: |- $a0=0x0 -> $a0=0x0
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
 ./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
-./selfie: loads:   25,11(44.00%)@0x14C(~11),10(40.00%)@0x15C(~13),1(4.00%)@0x54(~1)
-./selfie: stores:  15,10(66.66%)@0x168(~19),1(6.66%)@0x34(~1),1(6.66%)@0x44(~1)
+./selfie: loads:   25,11(44.00%)@0x148(~11),10(40.00%)@0x158(~13),1(4.00%)@0x50(~1)
+./selfie: stores:  15,10(66.66%)@0x164(~13),1(6.66%)@0x30(~1),1(6.66%)@0x40(~1)
 ```
 
 ## Initialization
@@ -338,37 +343,27 @@ More important here is the question as to why `$gp` is initialized to 0x101A0? T
 
 The purpose of the global pointer is to provide a fixed point of reference for referring to memory words that store the values of global variables. To find out where the word storing the value of a global variable is in memory, we only need to know the offset in bytes of how far below the address to which `$gp` *points* to the word is located. By the way, the value in `$gp` never changes during the execution of the program. So, relative to the value of `$gp`, what is the offset of the word in memory that stores the value of the global variable `bar`? This is clarified and explained in more detail below.
 
-Let us take a quick look at the next eleven instructions in the above output. Their purpose is to [initialize](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L4659-L4679) a hidden global variable called `_bump` which is used for memory management. The first instruction `addi $a0,$zero,0` demonstrates another use of the `addi` instruction, namely, it instructs the processor to *add* the *immediate* value 0 to the value in register `$zero` which is always 0 and store the result in register `$a0`. In other words, `addi $a0,$zero,0` does effectively *load* the immediate value 0 into `$a0`, enabled by the fact that `$zero` always contains 0. Immediate values other than 0 are of course possible. By the way, `$a0` happens to be [register 10](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L659) among the 32 general-purpose registers.
+Let us take a quick look at the next eleven instructions in the above output. Their purpose is to [initialize](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L4659-L4679) a hidden global variable called `_bump` which is used for memory management. The first instruction [`addi $a0,$zero,0`](https://github.com/cksystemsteaching/selfie/blob/95e3b9292726f4b9da05b090b049a0f507e509cc/selfie.c#L4659) at address `0x1000C` demonstrates another use of the `addi` instruction, namely, it instructs the processor to *add* the *immediate* value 0 to the value in register `$zero` which is always 0 and store the result in register `$a0`. In other words, `addi $a0,$zero,0` does effectively *load* the immediate value 0 into `$a0`, enabled by the fact that `$zero` always contains 0. Immediate values other than 0 are of course possible. By the way, `$a0` happens to be [register 10](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L659) among the 32 general-purpose registers.
+
+#### [sd](https://github.com/cksystemsteaching/selfie/blob/95e3b9292726f4b9da05b090b049a0f507e509cc/selfie.c#L7314-L7341)
+
+The following ten instructions perform further computations to determine the correct initial value for `_bump`. The last instruction at address `0x10034` is again [`addi $a0,$zero,0`](https://github.com/cksystemsteaching/selfie/blob/95e3b9292726f4b9da05b090b049a0f507e509cc/selfie.c#L4678) to clean up `$a0`. More interesting is the instruction [`sd $a0,-8($gp)`](https://github.com/cksystemsteaching/selfie/blob/95e3b9292726f4b9da05b090b049a0f507e509cc/selfie.c#L4675) right before that at address `0x10030`. This instruction *stores* the *double* word in `$a0` in the memory word at the address derived from the value in `$gp` plus the offset `-8`, as indicated by the notation `-8($gp)`. The `sd` stands for *store double* word. The RISC-V ISA refers to a double word rather than just a word to emphasize that the involved word is 64-bit rather than 32-bit. We ignore the distinction between double word and word because everything other than machine instructions in selfie is 64-bit.
+
+More important here is that the value in `$gp` is interpreted as memory address plus the constant offset `-8`. This behavior is another addressing mode which is called *register-relative* addressing. We hear more about that below. The output `$gp=0x101A0,$a0=65952(0x101A0) |- mem[0x10198]=0 -> mem[0x10198]=$a0=65952(0x101A0)` next to the instruction shows exactly what is happening. The value in `$a0`, which is 0x101A0 (the program break, remember?), is stored in the memory word at address 0x10198, which is the value in `$gp`, that is, 0x101A0, plus `-8`. In other words, the program break is stored 8 bytes below the program break in memory. This is where the hidden `_bump` variable that we mentioned before is stored. Its purpose is to maintain a so-called *bump pointer* to where unused memory in the dynamically allocated part of memory is available.
+
+Interestingly, the store operation is actually mentioned by the profiler in the above output, that is, in `stores:  15,...,1(6.66%)@0x30(~1),...` as one of the second most executed operations among a total of 15 store operations even though it is only executed once which corresponds to 6.66% of all store operations.
 
 ----
-
-the `$sp` register by loading the word stored at the highest address in memory into `$sp`. The `$sp` register stands for *stack pointer* and is register 29 among the 32 general-purpose registers. The purpose of the stack pointer is to facilitate fast dynamic allocation of memory for procedures. At all times during code execution, the value of the stack pointer is an address that *points* to memory below which data can be stored temporarily. The details are explained in the stack chapter.
-
-Interesting here is to see how the highest address which is 2^26^-4=67108860=0x3FFFFFC is loaded into register `$t0`. Remember that mipster emulates 64MB of memory which is 64\*2^20^=2^6^\*2^20^=2^26^ bytes. The highest address is thus 2^26^ bytes subtracted by 4 bytes because memory addresses start at `0x0` and need to be word-aligned.
-
-Now, the issue is that representing 0x3FFFFFC in binary requires 26 bits but the signed integer argument of `addiu` is only 16 bits. The solution is to [break that large number into smaller numbers using left and logical right shift and then arithmetics to recompute the original number](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L2627-L2634). Here, we exploit that with signed 32-bit integer arithmetics 2^26^-4=((2^26^-4)/2^14^)\*2^14^+((2^26^-4)-((2^26^-4)/2^14^)\*2^14^)=4095\*16384+16380 where all three numbers fit into 16-bit signed integers and can therefore be loaded into registers through immediate addressing with `addiu`.
-
-#### [multu](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5827-L5862) and the $hi and $lo registers
-
-The multiplication 4095\*16384 is performed by first loading 4095 and 16384 into registers `$t0` and `$t1`, respectively. Similar to `$t0`, `$t1` is also a register for temporary results, it is register 9 among the 32 general-purpose registers. The actual multiplication is performed by the instruction [`multu $t0,$t1`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3891) where `multu` stands for *multiply unsigned*. Similar to `addiu`, the term unsigned is misleading. Its actual meaning is that arithmetic overflows with `multu` are ignored while wrap-around semantics apply.
-
-The instruction *multiplies* the value in `$t0` with the value in `$t1` and stores the 32 LSBs of the 64-bit result in a special-purpose 32-bit register called `$lo`. An actual MIPS processor would also store the 32 MSBs of the result in another special-purpose 32-bit register called `$hi` which we nevertheless ignore here. The `$lo` register contains the result with 32-bit wrap-around semantics which is exactly what we need. However, `$hi` is used for integer division in MIPSter just like on a MIPS32 processor. We get to that later.
-
-The `$lo` and `$hi` registers are together with the `$pc` register the 3 special-purpose registers of a mipster machine that we mentioned above. At boot time, `$lo` and `$hi` are also zeroed just like all other registers. This is in fact now the complete machine state, no more surprises.
-
-#### [mflo](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5795-L5825) and [nop](http://github.com/cksystemsteaching/selfie/blob/5c0fed59da834b8cce6077283c50f2054b409679/selfie.c#L5527-L5535)
-
-In order to access the result in `$lo` we use the instruction [`mflo $t0`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3892) where `mflo` stands for *move from low*. It copies the value in `$lo` to `$t0`. The following two `nop` instructions do *no operation*, that is, do not do anything other than advancing the PC to the next instruction. They are there because the MIPS ISA restricts what the processor can do in the next two instructions after an `mflo` instruction. We can nevertheless safely ignore the technical reasons behind that. After adding 16380 to the value in `$t0` we have the desired value 0x3FFFFFC in `$t0`.
-
-#### [lw](http://github.com/cksystemsteaching/selfie/blob/e37e0b759dba9e7c4b35f7fa5e4d8b76be7a1f44/selfie.c#L5989-L6045)
-
-The next instruction is the [`lw $sp,0($t0)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3955-L3956) instruction at address `0x24` where `lw` stands for *load word*. This instruction *loads*, into the `$sp` register, the word from memory stored at the address derived from the value of `$t0` plus offset `0`, as indicated by the notation `0($t0)`. This means in particular that the value in `$t0` is interpreted as memory address plus some constant offset that does not have to be zero and can even be negative. This behavior is another addressing mode which is called *register-relative* addressing. We hear more about that below. Why we are loading that word is explained in another chapter.
-
-Interestingly, this load operation is actually mentioned by the profiler in the above output, that is, in `loads: 26,...,...,1(3.84%)@0x24(~1)` as one of the third most executed operations among a total of 26 load operations even though it is only executed once which corresponds to 3.84% of all load operations.
 
 The next six instructions in the above output are all `nop` instructions. So, imagine, it took us sixteen instructions to get the integer value 492 into `$gp` and the value at address 0x3FFFFFC into `$sp`. We definitely need a higher-level programming language to raise the level of abstraction. However, as tedious as the machine level might be, it is completely deterministic and rather easy to understand.
 
 For now, the important take-away message here is that we can reconstruct the full state of the machine at any instruction in the above output just by following the arrows `->` line by line until that instruction. If you still cannot believe that a computer really is so simple and does work in these tiny steps and does so completely deterministically it is time to reflect about that here again. The machine starts in some given state and proceeds from there by changing very few bits in each step instructed by other bits that are identified by the program counter. That's it. The only reason why computers appear to be so powerful is because they are so fast and can store enormous amounts of bits. This even applies to computers appearing to do many things at the same time. They don't. When looking close enough things happen step by step.
+
+---
+
+The `$sp` register stands for *stack pointer* and is register 29 among the 32 general-purpose registers. The purpose of the stack pointer is to facilitate fast dynamic allocation of memory for procedures. At all times during code execution, the value of the stack pointer is an address that *points* to memory below which data can be stored temporarily. The details are explained in the stack chapter.
+
+---
 
 ## Execution
 
@@ -395,6 +390,16 @@ So, with the PC now pointing to the address `0x48` in memory, the next four inst
 Among the four instructions the instruction we have not seen yet is the `sw $v0,0($sp)` instruction at address `0x4C` where `sw` stands for *store word*. This instruction *stores* the word in `$v0` in the memory word at the address derived from the value of `$sp` plus offset `0`, again as indicated by the notation `0($sp)`. Similar to the `lw` instruction, the `sw` instruction uses register-relative addressing and is thus the natural counterpart to the `lw` instruction. The effect of the four instructions is that the value in `$v0` is copied to `$a0` via the memory word at address `$sp` (after decrementing `$sp` by 4 bytes and before incrementing `$sp`, again by 4 bytes, back to its original value). The reasoning behind that behavior is explained in the stack chapter.
 
 Interestingly again, this store instruction is also mentioned by the profiler in the above output, that is, in `stores: 13,...,1(7.69%)@0x4C(~1),...` as one of the second most executed operations among a total of 13 store operations even though it is only executed once which corresponds to 7.69% of all store operations.
+
+---
+
+#### [lw](http://github.com/cksystemsteaching/selfie/blob/e37e0b759dba9e7c4b35f7fa5e4d8b76be7a1f44/selfie.c#L5989-L6045)
+
+The next instruction is the [`lw $sp,0($t0)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3955-L3956) instruction at address `0x24` where `lw` stands for *load word*. This instruction *loads*, into the `$sp` register, the word from memory stored at the address derived from the value of `$t0` plus offset `0`, as indicated by the notation `0($t0)`. This means in particular that the value in `$t0` is interpreted as memory address plus some constant offset that does not have to be zero and can even be negative. This behavior is another addressing mode which is called *register-relative* addressing. We hear more about that below. Why we are loading that word is explained in another chapter.
+
+Interestingly, this load operation is actually mentioned by the profiler in the above output, that is, in `loads: 26,...,...,1(3.84%)@0x24(~1)` as one of the third most executed operations among a total of 26 load operations even though it is only executed once which corresponds to 3.84% of all load operations.
+
+---
 
 #### [syscall](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L5488-L5525)
 
