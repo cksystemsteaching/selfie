@@ -177,18 +177,18 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 // call main procedure
 0x44(~1): 0x0F0000EF: jal $ra,60[0x134] // jump and link to main procedure code
 
-// retrieve return value of main procedure
-// and push it as exit code onto the stack
-0x48(~1): 0xFF810113: addi $sp,$sp,-8
-0x4C(~1): 0x00A13023: sd $a0,0($sp)
+// prepare return value of main procedure
+// as exit code for exit environment call
+0x48(~1): 0xFF810113: addi $sp,$sp,-8   // allocate space on the stack
+0x4C(~1): 0x00A13023: sd $a0,0($sp)     // push return value onto stack
 
-// wrapper code for exit system call
-0x50(~1): 0x00013503: ld $a0,0($sp)     // retrieve exit code in $a0
-0x54(~1): 0x00810113: addi $sp,$sp,8    // pop value off the stack
-0x58(~1): 0x05D00893: addi $a7,$zero,93 // load exit syscall ID 93 into $a7
+// wrapper code for exit environment call
+0x50(~1): 0x00013503: ld $a0,0($sp)     // load exit code from stack into $a0
+0x54(~1): 0x00810113: addi $sp,$sp,8    // pop exit code off the stack
+0x58(~1): 0x05D00893: addi $a7,$zero,93 // load exit environment call ID 93 into $a7
 0x5C(~1): 0x00000073: ecall             // exit here
 
-// wrapper code for unused system calls removed
+// wrapper code for unused environment calls removed
 ...
 // prologue of main procedure, explained later
 0x134(~11): 0xFF810113: addi $sp,$sp,-8
@@ -343,7 +343,7 @@ More important here is the question as to why `$gp` is initialized to 0x101A0? T
 
 The purpose of the global pointer is to provide a fixed point of reference for referring to memory words that store the values of global variables. To find out where the word storing the value of a global variable is in memory, we only need to know the offset in bytes of how far below the address to which `$gp` *points* to the word is located. By the way, the value in `$gp` never changes during the execution of the program. So, relative to the value of `$gp`, what is the offset of the word in memory that stores the value of the global variable `bar`? This is clarified and explained in more detail below.
 
-Let us take a quick look at the next eleven instructions in the above output. Their purpose is to [initialize](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L4659-L4679) a hidden global variable called `_bump` which is used for memory management. The first instruction [`addi $a0,$zero,0`](https://github.com/cksystemsteaching/selfie/blob/95e3b9292726f4b9da05b090b049a0f507e509cc/selfie.c#L4659) at address `0x1000C` demonstrates another use of the `addi` instruction, namely, it instructs the processor to *add* the *immediate* value 0 to the value in register `$zero` which is always 0 and store the result in register `$a0`. In other words, `addi $a0,$zero,0` does effectively *load* the immediate value 0 into `$a0`, enabled by the fact that `$zero` always contains 0. Immediate values other than 0 are of course possible. By the way, `$a0` happens to be [register 10](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L659) among the 32 general-purpose registers.
+Let us take a quick look at the next eleven instructions in the above output. Their purpose is to [initialize](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L4659-L4679) a hidden global variable called `_bump` which is used for memory management. The first instruction [`addi $a0,$zero,0`](https://github.com/cksystemsteaching/selfie/blob/95e3b9292726f4b9da05b090b049a0f507e509cc/selfie.c#L4659) at address `0x1000C` demonstrates another use of the `addi` instruction, namely, it instructs the processor to *add* the *immediate* value 0 to the value in register `$zero` which is always 0 and store the result in register `$a0`. In other words, `addi $a0,$zero,0` does effectively *load* the immediate value 0 into `$a0`, enabled by the fact that `$zero` always contains 0. Immediate values other than 0 are of course possible. By the way, the `a` in `$a0` stands for *argument*, explained further below, and `$a0` happens to be [register 10](https://github.com/cksystemsteaching/selfie/blob/4d578929fd332d1a4bffe53bde462393bd16a4bb/selfie.c#L659) among the 32 general-purpose registers.
 
 #### [sd](https://github.com/cksystemsteaching/selfie/blob/95e3b9292726f4b9da05b090b049a0f507e509cc/selfie.c#L7314-L7341)
 
@@ -377,7 +377,7 @@ The [`jalr $zero,0($ra)`](https://github.com/cksystemsteaching/selfie/blob/fe7e3
 
 ## Termination
 
-So, with the PC now pointing to the address `0x48` in memory, the next four instructions to be executed are [`addiu $sp,$sp,-4`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3924), followed by [`sw $v0,0($sp)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L3925), [`lw $a0,0($sp)`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4610-4611), and [`addiu $sp,$sp,4`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4613-L4614). Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of [code for exiting the program by shutting down the machine](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4607-L4621).
+So, with the PC now pointing to the address `0x10048` in memory, the next six instructions to be executed prepare and perform program termination. Their purpose is to copy the value in the `$v0` register, which is 0, to the `$a0` register. This is something we could have done with a single instruction but never mind. The `$v0` and `$a0` registers are registers 2 and 4, respectively, among the 32 general-purpose registers. The `v` in `$v0` stands for value while the `a` in `$a0` stands for argument. The value in `$v0` is in fact the value returned by the `main` procedure which now becomes the argument of [code for exiting the program by shutting down the machine](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4607-L4621).
 
 #### [sw](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L6088-L6143)
 
@@ -395,11 +395,11 @@ Interestingly, this load operation is actually mentioned by the profiler in the 
 
 ---
 
-#### [syscall](http://github.com/cksystemsteaching/selfie/blob/b942899871379e447b12a5dc9c98858cbecfb641/selfie.c#L5488-L5525)
+#### [ecall](https://github.com/cksystemsteaching/selfie/blob/e3480a3f97859fb806d4ac67f48a2e49372732fd/selfie.c#L7562-L7587)
 
-The next instruction [`addiu $v0,$zero,4001`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4617) loads the value 4001 into the `$v0` register. Upon executing the following [`syscall`](http://github.com/cksystemsteaching/selfie/blob/75462fecb49ba11b2da8561880395048bcf1edc4/selfie.c#L4618) instruction, that value in `$v0` instructs the machine to output the value in `$a0` as exit code, which is 0, and then to shut down. That's it.
+The next instruction [`addi $a7,$zero,93`](https://github.com/cksystemsteaching/selfie/blob/e3480a3f97859fb806d4ac67f48a2e49372732fd/selfie.c#L5716) loads the value 93 into the `$a7` register which is [register 17](https://github.com/cksystemsteaching/selfie/blob/e3480a3f97859fb806d4ac67f48a2e49372732fd/selfie.c#L666) among the 32 general-purpose registers. Upon executing the following [`ecall`](https://github.com/cksystemsteaching/selfie/blob/e3480a3f97859fb806d4ac67f48a2e49372732fd/selfie.c#L5718) instruction, that value in `$a7` instructs the machine to output the value in `$a0` as exit code, which is 0, and then to shut down. That's it.
 
-Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. Here, we only point out that the `syscall` instruction, which stands for *system call*, does not have any explicit arguments. However, it does expect implicit arguments provided in at least the `$v0` register which identifies among a finite set of choices the functionality that the machine is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code.
+Again, the exact reasoning why things are done this way and what other behavior is supported by mipster is explained in later chapters. Here, we only point out that the `ecall` instruction, which stands for *environment call*, does not have any explicit arguments. However, mipster does expect implicit arguments for environment calls provided in at least the `$a7` register which identifies among a finite set of choices the functionality that the emulator is supposed to perform. The `$a0` register can then be used to pass additional information such as an exit code. The term environment call is a generalization of the much older term *system call*. Since environment calls in selfie are implemented in two ways, that is, by emulated hardware (mipster) and by system software (hypster), we generally refer to them as environment calls but also as system calls, in particular when emphasizing the latter.
 
 ## [Statement](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3376-L3536)
 
