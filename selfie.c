@@ -4048,7 +4048,7 @@ void compile_return() {
       type_warning(return_type, type);
 
     // save value of expression in return register
-    emit_add(REG_A0, REG_ZR, current_temporary());
+    emit_addi(REG_A0, current_temporary(), 0);
 
     tfree(1);
   } else if (return_type != VOID_T)
@@ -6324,7 +6324,7 @@ void emit_switch() {
   emit_ecall();
 
   // save context from which we are switching here in return register
-  emit_add(REG_A0, REG_ZR, REG_A1);
+  emit_addi(REG_A0, REG_A1, 0);
 
   emit_jalr(REG_ZR, REG_RA, 0);
 }
