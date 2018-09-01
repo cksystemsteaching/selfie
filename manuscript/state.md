@@ -65,19 +65,19 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 ./selfie: 1 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: symbol table search time was 1 iterations on average and 22 in total
 ./selfie: 416 bytes generated with 100 instructions and 16 bytes of data
-./selfie: init:    lui: 1(0.83%), addi: 62(51.66%)
+./selfie: init:    lui: 1(0.83%), addi: 64(53.33%)
 ./selfie: memory:  ld: 19(15.83%), sd: 7(5.83%)
-./selfie: compute: add: 3(2.50%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
+./selfie: compute: add: 1(0.83%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
 ./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
 ./selfie: 544 bytes with 100 instructions and 16 bytes of data written into countdown.m
-./selfie: 3803 characters of assembly with 100 instructions written into countdown.s
+./selfie: 3797 characters of assembly with 100 instructions written into countdown.s
 ./selfie: selfie executing countdown.m with 1MB physical memory on mipster
 ./selfie: countdown.m exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating countdown.m with exit code 0
 ./selfie: summary: 132 executed instructions and 0.00MB mapped memory
-./selfie: init:    lui: 1(0.75%), addi: 40(30.30%)
+./selfie: init:    lui: 1(0.75%), addi: 41(31.60%)
 ./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
-./selfie: compute: add: 1(0.75%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
+./selfie: compute: add: 0(0.00%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
 ./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.90%), jalr: 1(0.75%), ecall: 3(2.27%)
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
@@ -208,7 +208,7 @@ Here is `countdown.s` but only showing the instructions that will actually be ex
 0x164(~13): 0xFE51B823: sd $t0,-16($gp)
 0x168(~19): 0xFE1FF06F: jal $zero,-8[0x148]
 0x16C(~19): 0xFF01B283: ld $t0,-16($gp)
-0x170(~19): 0x00500533: add $a0,$zero,$t0
+0x170(~19): 0x00028513: addi $a0,$t0,0
 0x174(~19): 0x0040006F: jal $zero,1[0x178]
 
 // epilogue of main procedure, explained later
@@ -265,9 +265,9 @@ Let us take a look at how the first few and last few instructions for the countd
 ./selfie: 1 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: symbol table search time was 1 iterations on average and 22 in total
 ./selfie: 416 bytes generated with 100 instructions and 16 bytes of data
-./selfie: init:    lui: 1(0.83%), addi: 62(51.66%)
+./selfie: init:    lui: 1(0.83%), addi: 64(53.33%)
 ./selfie: memory:  ld: 19(15.83%), sd: 7(5.83%)
-./selfie: compute: add: 3(2.50%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
+./selfie: compute: add: 1(0.83%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
 ./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
 ./selfie: selfie executing manuscript/code/countdown.c with 1MB physical memory on mipster
 $pc=0x10000(~1): lui $t0,0x10: |- $t0=0x0 -> $t0=0x10000
@@ -304,9 +304,9 @@ $pc=0x1005C(~1): ecall(exit): $a0=0x0 |- ->
 ./selfie: manuscript/code/countdown.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/countdown.c with exit code 0
 ./selfie: summary: 132 executed instructions and 0.00MB mapped memory
-./selfie: init:    lui: 1(0.75%), addi: 40(30.30%)
+./selfie: init:    lui: 1(0.75%), addi: 41(31.60%)
 ./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
-./selfie: compute: add: 1(0.75%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
+./selfie: compute: add: 0(0.00%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
 ./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.90%), jalr: 1(0.75%), ecall: 3(2.27%)
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
@@ -448,7 +448,7 @@ $pc=0x10150(~11): sltu $t0,$t1,$t0: $t1=0(0x0),$t0=0(0x0) |- $t0=0(0x0) -> $t0=0
 $pc=0x10154(~11): beq $t0,$zero,6[0x1016C]: $t0=0(0x0),$zero=0(0x0) |- $pc=0x10154 -> $pc=0x1016C
 ---
 $pc=0x1016C(~19): ld $t0,-16($gp): $gp=0x101A0,mem[0x10190]=0 |- $t0=0(0x0) -> $t0=0(0x0)=mem[0x10190]
-$pc=0x10170(~19): add $a0,$zero,$t0: $zero=0(0x0),$t0=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
+$pc=0x10170(~19): addi $a0,$t0,0: $t0=0(0x0) |- $a0=0(0x0) -> $a0=0(0x0)
 $pc=0x10174(~19): jal $zero,1[0x10178]: |- $pc=0x10174 -> $pc=0x10178
 ---
 $pc=0x10178(~20): addi $sp,$fp,0: $fp=0xFFFFFFA8 |- $sp=0xFFFFFFA8 -> $sp=0xFFFFFFA8
@@ -500,7 +500,7 @@ Also, note that the only relevant thing that changes in the machine's state from
 
 Moreover, the control structure of a while statement is only implemented by the `beq` and `jal` instructions we just explained, that is, a conditional forward branch and an unconditional backward jump. The instructions before the forward branch that belong to the while statement implement the loop condition and the instructions between the forward branch and backward jump implement the body of the while loop. Let us now have a look at the body of the while loop in our example.
 
-## [Assignment](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3494-L3517)
+## [Assignment](https://github.com/cksystemsteaching/selfie/blob/b6014c45e52d7aa9dc23a45eabf32b7fa4ed7e4c/selfie.c#L4187-L4221)
 
 The *assignment* `bar = bar - 1` in Line 13 in `countdown.c` constitutes the body of the previously discussed while loop. The assignment decrements the value of `bar` by 1, that is, it loads the value of `bar` (right hand side of `=`) from memory, subtracts 1 from that value, and stores the resulting value in the memory for `bar` (left hand side of `=`), overwriting the previous value of `bar` in memory.
 
@@ -509,7 +509,7 @@ The *assignment* `bar = bar - 1` in Line 13 in `countdown.c` constitutes the bod
 
 What does fundamental construct mean? In imperative programming languages assignments are the only way to change state other than control state which is the portion of state that represents the current state of control flow, that is, the currently executed statement. In the countdown program the only non-control-state information is thus the value of `bar` in memory. That's it! On source code level, the values of all other memory and all registers is therefore not relevant for the correctness of countdown.
 
-#### [Expression](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3094-L3179)
+#### [Expression](https://github.com/cksystemsteaching/selfie/blob/b6014c45e52d7aa9dc23a45eabf32b7fa4ed7e4c/selfie.c#L3798-L3871)
 
 The right hand side of an assignment provides a so-called *expression* for computing non-control-state information, that is, the next value of the variable on the left hand side of the assignment. In `bar = bar - 1` that expression is obviously `bar - 1`.
 
@@ -522,13 +522,13 @@ A Boolean condition such as `bar > 0` is actually also an example of an expressi
 
 Let us now again take a look at the machine code generated by starc for the assignment and see how it executes. Just like before, the instructions implement exactly what we described above informally.
 
-The first two instructions of the assignment [`lw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2612) at address `0x1A4` and [`addiu $t1,$zero,1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L2625) at address `0x1A8` load the values of `bar` and `1` into `$t0` and `$t1`, respectively, to prepare for the evaluation of the expression `bar - 1`.
+The first two instructions of the assignment [`ld $t0,-16($gp)`](https://github.com/cksystemsteaching/selfie/blob/b6014c45e52d7aa9dc23a45eabf32b7fa4ed7e4c/selfie.c#L3283) at address `0x10158` and [`addi $t1,$zero,1`](https://github.com/cksystemsteaching/selfie/blob/b6014c45e52d7aa9dc23a45eabf32b7fa4ed7e4c/selfie.c#L3308) at address `0x1015C` load the values of `bar` and `1` into `$t0` and `$t1`, respectively, to prepare for the evaluation of the expression `bar - 1`.
 
-#### [subu](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L5947-L5987)
+#### [sub](https://github.com/cksystemsteaching/selfie/blob/b6014c45e52d7aa9dc23a45eabf32b7fa4ed7e4c/selfie.c#L6729-L6737)
 
-The next instruction is [`subu $t0,$t0,$t1`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L3083) which actually implements the subtraction in `bar - 1`, that is, the `-` operator, by subtracting the value of `$t1` from the value of `$t0` and store the result in `$t0`. Unsurprisingly, `subu` stands for *subtract unsigned*, analogous to `addiu`. However, the term unsigned is again misleading. Its meaning is as usual that arithmetic overflows with `subu` are ignored while wrap-around semantics apply. Unlike `addiu`, however, `subu` uses register addressing, as opposed to immediate addressing. In other words, its third argument is a register, not an integer value.
+The next instruction is [`sub $t0,$t0,$t1`](https://github.com/cksystemsteaching/selfie/blob/b6014c45e52d7aa9dc23a45eabf32b7fa4ed7e4c/selfie.c#L3787) which actually implements the subtraction in `bar - 1`, that is, the `-` operator, by subtracting the value of `$t1` from the value of `$t0` (second occurrence of `$t0`) and store the result in `$t0` (first occurrence of `$t0`). Unsurprisingly, `sub` stands for *subtract*, analogous to `addi`. Unlike `addi`, however, `sub` uses register addressing, as opposed to immediate addressing. In other words, its third argument is a register, not an integer value.
 
-At this point the evaluation of the expression and thus the right hand side of the `=` operator is complete. The only remaining thing to do is to perform the actual assignment. This is done by [`sw $t0,-4($gp)`](http://github.com/cksystemsteaching/selfie/blob/81b2205060c7244ff2f6ce86e444d8dec9a50215/selfie.c#L3506) which is the last instruction generated by starc for the assignment, that is, for the left hand side of the `=` operator. Analogous to `lw $t0,-4($gp)`, which loads the memory word that represents the value of `bar` into `$t0`, `sw $t0,-4($gp)` stores the result of the evaluation in `$t0` in that memory word. That's it! Interestingly, an assignment is actually implemented by only one instruction, namely that `sw` instruction. The other instructions are there for evaluating the expression in the right hand side of the assignment.
+At this point the evaluation of the expression and thus the right hand side of the `=` operator is complete. The only remaining thing to do is to perform the actual assignment. This is done by [`sd $t0,-16($gp)`](https://github.com/cksystemsteaching/selfie/blob/b6014c45e52d7aa9dc23a45eabf32b7fa4ed7e4c/selfie.c#L4202) which is the last instruction generated by starc for the assignment, that is, for the left hand side of the `=` operator. Analogous to `ld $t0,-16($gp)`, which loads the memory word that represents the value of `bar` into `$t0`, `sd $t0,-16($gp)` stores the result of the evaluation in `$t0` in that memory word. That's it! Interestingly, an assignment is actually implemented by only one instruction, namely that `sd` instruction. The other instructions are there for evaluating the expression in the right hand side of the assignment.
 
 ## [Return Statement](http://github.com/cksystemsteaching/selfie/blob/0645b3bf1c59a21298a4402b8eb36ff4319ff2a5/selfie.c#L3339-L3374)
 
