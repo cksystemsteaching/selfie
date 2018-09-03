@@ -591,7 +591,7 @@ With the full RISC-U instruction set introduced, there is one more thing we woul
 ...
 ```
 
-For example, when compiling `countdown.c` starc generated 3 `sub` instructions which is around 2.5% of the total number of generated instructions (`sub: 3(2.50%)` in Line 7). When executing the generated code `sub` instructions are executed 11 times which is around 8.33% of the total number of executed instructions (`sub: 11(8.33%)` in Line 17).
+For example, when compiling `countdown.c` starc generated 3 `sub` instructions which is around 2.5% of the total number of generated instructions (`sub: 3(2.50%)` in Line 7). When executing the generated code `sub` instructions are executed 11 times which is around 8.33% of the total number of executed instructions (`sub: 11(8.33%)` in Line 19).
 
 ## Pointer
 
