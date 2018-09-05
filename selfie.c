@@ -123,7 +123,7 @@ uint64_t* storeCharacter(uint64_t* s, uint64_t i, uint64_t c);
 uint64_t stringLength(uint64_t* s);
 void     stringReverse(uint64_t* s);
 uint64_t stringCompare(uint64_t* s, uint64_t* t);
-uint64_t stringCompareSymbolTable(uint64_t* s, uint64_t* t, uint64_t sl, uint64_t tl);
+uint64_t stringCompare_p(uint64_t* s, uint64_t* t, uint64_t sl, uint64_t tl);
 
 uint64_t  atoi(uint64_t* s);
 uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p);
@@ -1153,7 +1153,7 @@ uint64_t isTraceSpaceAvailable();
 void ealloc();
 void efree();
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t imm_aliasing, uint64_t trb);
 
 void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb);
 void storeRegisterMemory(uint64_t reg, uint64_t value);
@@ -1217,6 +1217,7 @@ uint64_t* ld_froms_2    = (uint64_t*) 0;
 uint64_t* reg_ld_from_1 = (uint64_t*) 0;
 uint64_t* reg_ld_from_2 = (uint64_t*) 0;
 uint64_t* tmp_memory    = (uint64_t*) 0;
+uint64_t* imm_alias     = (uint64_t*) 0;
 
 uint64_t potential_load_char  = 0;
 uint64_t potential_store_char = 0;
@@ -1324,6 +1325,7 @@ void initSymbolicEngine() {
   is_useds      = zalloc(maxTraceLength * SIZEOFUINT64);
   ld_froms_1    = zalloc(maxTraceLength * SIZEOFUINT64);
   ld_froms_2    = zalloc(maxTraceLength * SIZEOFUINT64);
+  imm_alias     = zalloc(maxTraceLength * SIZEOFUINT64);
   reg_ld_from_1 = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_ld_from_2 = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   tmp_memory    = zalloc(REGISTERSIZE);
@@ -2062,7 +2064,7 @@ uint64_t stringCompare(uint64_t* s, uint64_t* t) {
       return 0;
 }
 
-uint64_t stringCompareSymbolTable(uint64_t* s, uint64_t* t, uint64_t sl, uint64_t tl) {
+uint64_t stringCompare_p(uint64_t* s, uint64_t* t, uint64_t sl, uint64_t tl) {
   if (sl != tl)
     return 0;
 
@@ -2986,7 +2988,7 @@ uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
 
   sl = stringLength(string);
   while (entry != (uint64_t*) 0) {
-    if (stringCompareSymbolTable(string, getString(entry), sl, getStrLen(entry)))
+    if (stringCompare_p(string, getString(entry), sl, getStrLen(entry)))
       if (class == getClass(entry))
         return entry;
 
@@ -5987,9 +5989,9 @@ void implementRead(uint64_t* context) {
             read_vbuffer = vbuffer;
             if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0, 0, 0);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             else
-              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0, 0, tc);
+              storeSymbolicMemory(getPT(context), vbuffer, value, 0, lo, up, 1, 0, 0, 0, 0, 0, 0, 0, 0, tc);
           } else {
             actuallyRead = 0;
 
@@ -6398,7 +6400,7 @@ void implementMalloc(uint64_t* context) {
         if (isTraceSpaceAvailable()) {
           setTaintMemory(0, 0, 1);
           // since there has been branching record malloc using vaddr == 0
-          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, 0, 0, 0, 0, tc);
+          storeSymbolicMemory(getPT(context), 0, bump, 1, bump, size, 1, 0, 0, 0, 0, 0, 0, 0, 0, tc);
         }
         else {
           // print(selfieName);
@@ -6860,10 +6862,11 @@ void constrain_addi() {
               *(reg_saddr_1 + rd) = 0;
               *(reg_saddr_2 + rd) = 0;
             } else {
-              print((uint64_t*) " source addresses are free at ");
-              printHexadecimal(pc, 0);
-              printSourceLineNumberOfInstruction(pc - entryPoint);
-              println();
+              vaddr = *(reg_vaddr + rs1);
+              // print((uint64_t*) " source addresses are free at ");
+              // printHexadecimal(pc, 0);
+              // printSourceLineNumberOfInstruction(pc - entryPoint);
+              // println();
             }
           } else {
             vaddr = *(reg_vaddr + rs1);
@@ -8286,6 +8289,10 @@ void constrain_sltu() {
           println();
 
           create_equality_constraint();
+
+          pc = pc + INSTRUCTIONSIZE;
+          ic_sltu = ic_sltu + 1;
+
           return;
         }
 
@@ -8704,6 +8711,7 @@ uint64_t constrain_sd() {
   uint64_t saddr_1;
   uint64_t saddr_2;
   uint64_t saddr_3;
+  uint64_t imm_aliasing;
 
   // store double word
 
@@ -8741,6 +8749,7 @@ uint64_t constrain_sd() {
       saddr_1 = *(reg_saddr_1 + rs2);
       saddr_2 = *(reg_saddr_2 + rs2);
       saddr_3 = 0;
+      imm_aliasing = 0;
       if (*(reg_hasco + rs2)) {
         // func
         if (rs1 == REG_SP) {
@@ -8748,14 +8757,20 @@ uint64_t constrain_sd() {
             saddr_1 = *(reg_saddr_1 + rs2);
             saddr_2 = *(reg_vaddr   + rs2);
             saddr_3 = *(reg_saddr_2 + rs2);
+
+            if (*(reg_cohas + rs2) == 0)
+              imm_aliasing = 2;
           } else {
             saddr_1 = *(reg_vaddr + rs2);
             saddr_2 = 0;
+
+            if (*(reg_cohas + rs2) == 0)
+              imm_aliasing = 1;
           }
         }
       }
 
-      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_isNotInterval + rs2), saddr_1, saddr_2, saddr_3, *(reg_ld_from_1 + rs2), *(reg_ld_from_2 + rs2), mrcc);
+      storeSymbolicMemory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), *(reg_steps + rs2), *(reg_whichByte + rs2), *(reg_isNotInterval + rs2), saddr_1, saddr_2, saddr_3, *(reg_ld_from_1 + rs2), *(reg_ld_from_2 + rs2), imm_aliasing, mrcc);
 
       *(reg_whichByte + rs2) = 0;
       *(reg_isNotInterval + rs2) = 0;
@@ -9517,7 +9532,7 @@ void efree() {
   tc = tc - 1;
 }
 
-void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t trb) {
+void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t whichByte, uint64_t isNotInterval, uint64_t saddr_1, uint64_t saddr_2, uint64_t saddr_3, uint64_t ld_from_1, uint64_t ld_from_2, uint64_t imm_aliasing, uint64_t trb) {
   uint64_t mrvc;
   uint64_t is_used;
 
@@ -9570,9 +9585,10 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
                         if (*(is_useds + mrvc) == is_used)
                           if (*(ld_froms_1 + mrvc) == ld_from_1)
                             if (*(ld_froms_2 + mrvc) == ld_from_2)
-                              if (trb < mrvc)
-                                // prevent tracking identical updates
-                                return;
+                              if (*(imm_alias + mrvc) == imm_aliasing)
+                                if (trb < mrvc)
+                                  // prevent tracking identical updates
+                                  return;
 
     if (vaddr == read_vbuffer)
       trb = tc; // prevent overwriting
@@ -9597,6 +9613,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(is_useds   + mrvc) = is_used;
     *(ld_froms_1 + mrvc) = ld_from_1;
     *(ld_froms_2 + mrvc) = ld_from_2;
+    *(imm_alias  + mrvc) = imm_aliasing;
 
     // func
     *(saddrs_1 + mrvc) = saddr_1;
@@ -9634,6 +9651,7 @@ void storeSymbolicMemory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t 
     *(is_useds   + tc) = is_used;
     *(ld_froms_1 + tc) = ld_from_1;
     *(ld_froms_2 + tc) = ld_from_2;
+    *(imm_alias  + tc) = imm_aliasing;
 
     // func
     *(saddrs_1 + tc) = saddr_1;
@@ -9707,28 +9725,25 @@ void storeConstrainedMemory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t s
     }
   }
 
-  //   // the condition is not strong enough to handle 'if (loadCharacter)'
-  //   if (mrvc < trb) {
-  //     // we do not support potentially aliased constrained memory
-  //     print(selfieName);
-  //     print((uint64_t*) ": detected potentially aliased constrained memory");
-  //     printHexadecimal(pc, 0);
-  //     printSourceLineNumberOfInstruction(pc - entryPoint);
-  //     println();
-  //
-  //     // exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  //   }
-
   // always track constrained memory by using tc as most recent branch
-  //assert to_store_taint set
-  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, saddr_1, saddr_2, saddr_3, ld_from_1, ld_from_2, tc);
+  storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, saddr_1, saddr_2, saddr_3, ld_from_1, ld_from_2, *(imm_alias + mrvc), tc);
+
+  while (*(imm_alias + mrvc)) {
+    if (*(imm_alias + mrvc) == 2) {
+      vaddr = *(saddrs_2 + mrvc);
+    } else if (*(imm_alias + mrvc) == 1)
+      vaddr = *(saddrs_1 + mrvc);
+
+    mrvc = loadVirtualMemory(pt, vaddr);
+    storeSymbolicMemory(pt, vaddr, lo, 0, lo, up, step, whichByte, isNotInterval, *(saddrs_1 + mrvc), *(saddrs_2 + mrvc), *(saddrs_3 + mrvc), *(ld_froms_1 + mrvc), *(ld_froms_2 + mrvc), *(imm_alias + mrvc), tc);
+  }
 }
 
 void storeRegisterMemory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   if(do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
 
-  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, 0, 0, 0, 0, tc);
+  storeSymbolicMemory(pt, reg, value, 0, value, value, 1, 0, 0, 0, 0, 0, 0, 0, 0, tc);
 }
 
 uint64_t applyCorrection(uint64_t reg, uint64_t lo, uint64_t up) {
@@ -10203,7 +10218,7 @@ void create_equality_constraint() {
       cnd_rs2_isNotInterval = ec;
       copy_equality_constriants(*(isNotIntervals + mrvc2), ec);
     }
-    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
+    storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, cnd_rs2_isNotInterval, cnd_rs2_saddr_1, cnd_rs2_saddr_2, cnd_rs2_saddr_3, 0, 0, tc);
     takeBranch(0, 0);
   } else {
 
@@ -10273,7 +10288,7 @@ void create_equality_constraint() {
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 2;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = region3;
       *(nevintervals     + c2 + cnd_rs2_whichByte - 1) = region4;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr_1, cnd_rs2_saddr_2, cnd_rs2_saddr_3, 0, 0, tc);
 
       if (intersection) {
         storeRegisterMemory(rd, 0);
@@ -10303,7 +10318,7 @@ void create_equality_constraint() {
         reset_equality_constriants(c2);
       *(constraint_types + c2 + cnd_rs2_whichByte - 1) = 1;
       *(vintervals       + c2 + cnd_rs2_whichByte - 1) = intersection;
-      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs1_saddr_1, cnd_rs1_saddr_2, cnd_rs1_saddr_3, 0, 0, tc);
+      storeConstrainedMemory(cnd_rs2_vaddr, cnd_rs2_lo, cnd_rs2_up, cnd_rs2_step, cnd_rs2_whichByte, c2, cnd_rs2_saddr_1, cnd_rs2_saddr_2, cnd_rs2_saddr_3, 0, 0, tc);
 
       takeBranch(1, 0);
     }
@@ -11674,7 +11689,7 @@ void mapAndStore(uint64_t* context, uint64_t vaddr, uint64_t data) {
     if (isTraceSpaceAvailable()) {
       setTaintMemory(0, 0, 1);
       // always track initialized memory by using tc as most recent branch
-      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, 0, 0, 0, 0, tc);
+      storeSymbolicMemory(getPT(context), vaddr, data, 0, data, data, 1, 0, 0, 0, 0, 0, 0, 0, 0, tc);
     }
     else {
       print(selfieName);
