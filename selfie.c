@@ -7912,6 +7912,7 @@ uint64_t constrain_sd() {
 
       //call renaming management
       if (vaddr > getBumpPointer(currentContext)) //SD $ti 0($sp)
+        //TODO: problem with save_tempories?
         saddr = *(reg_vaddr + rs2);
       else
         saddr = 0;
@@ -8724,6 +8725,17 @@ uint64_t reverseUpDivision(uint64_t up, uint64_t factor) {
   return tmp;
 }
 
+void propagateConstraint(uint64_t typ, uint64_t saddr, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+  uint64_t stc;
+  storeConstrainedMemory(typ, saddr, vaddr, lo, up, step, trb);
+
+  if (saddr)  { //side effect constraining
+    stc = loadSymbolicMemory(pt, saddr);
+    propagateConstraint(typ, *(saddrs + stc), saddr, lo, up, step, trb);
+  }
+
+}
+
 void constrainMemory(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t tmp;
   uint64_t highest;
@@ -8833,7 +8845,8 @@ void constrainMemory(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uint
     }
 
     if (do_taint_flag) setTaintMemory(*(reg_istainted + reg), *(reg_isminuend + reg), *(reg_hasstep + reg));
-    storeConstrainedMemory(*(reg_typ + reg), *(reg_saddr + reg), *(reg_vaddr + reg), lo, up, *(steps + mrvc), trb);
+    propagateConstraint(*(reg_typ + reg), *(reg_saddr + reg), *(reg_vaddr + reg), lo, up, *(steps + mrvc), trb);
+
   }
   //concrete case
   if (noConcrete)
