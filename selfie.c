@@ -303,8 +303,8 @@ uint64_t isCharacterDigit();
 uint64_t isCharacterLetterOrDigitOrUnderscore();
 uint64_t isCharacterNotDoubleQuoteOrNewLineOrEOF();
 
-uint64_t identifierStringMatch(uint64_t stringIndex);
-uint64_t identifierOrKeyword();
+uint64_t identifierStringMatch(uint64_t stringIndex, uint64_t length);
+uint64_t identifierOrKeyword(uint64_t length);
 
 void getSymbol();
 
@@ -342,6 +342,7 @@ uint64_t SYM_STRING       = 27; // string
 uint64_t SYM_BITWISEAND   = 28; // &
 
 uint64_t* SYMBOLS; // strings representing symbols
+uint64_t* SYMBOLS_LEN;
 
 uint64_t maxIdentifierLength = 64;  // maximum number of characters in an identifier
 uint64_t maxIntegerLength    = 20;  // maximum number of characters in an unsigned integer
@@ -407,6 +408,38 @@ void initScanner () {
   *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
   *(SYMBOLS + SYM_BITWISEAND)   = (uint64_t) "&";
 
+  SYMBOLS_LEN = smalloc((SYM_BITWISEAND + 1) * SIZEOFUINT64STAR);
+
+  *(SYMBOLS_LEN + SYM_IDENTIFIER)   = 10;
+  *(SYMBOLS_LEN + SYM_INTEGER)      = 7;
+  *(SYMBOLS_LEN + SYM_VOID)         = 4;
+  *(SYMBOLS_LEN + SYM_UINT64)       = 8;
+  *(SYMBOLS_LEN + SYM_SEMICOLON)    = 1;
+  *(SYMBOLS_LEN + SYM_IF)           = 2;
+  *(SYMBOLS_LEN + SYM_ELSE)         = 4;
+  *(SYMBOLS_LEN + SYM_PLUS)         = 1;
+  *(SYMBOLS_LEN + SYM_MINUS)        = 1;
+  *(SYMBOLS_LEN + SYM_ASTERISK)     = 1;
+  *(SYMBOLS_LEN + SYM_DIV)          = 1;
+  *(SYMBOLS_LEN + SYM_EQUALITY)     = 2;
+  *(SYMBOLS_LEN + SYM_ASSIGN)       = 1;
+  *(SYMBOLS_LEN + SYM_LPARENTHESIS) = 1;
+  *(SYMBOLS_LEN + SYM_RPARENTHESIS) = 1;
+  *(SYMBOLS_LEN + SYM_LBRACE)       = 1;
+  *(SYMBOLS_LEN + SYM_RBRACE)       = 1;
+  *(SYMBOLS_LEN + SYM_WHILE)        = 5;
+  *(SYMBOLS_LEN + SYM_RETURN)       = 6;
+  *(SYMBOLS_LEN + SYM_COMMA)        = 1;
+  *(SYMBOLS_LEN + SYM_LT)           = 1;
+  *(SYMBOLS_LEN + SYM_LEQ)          = 2;
+  *(SYMBOLS_LEN + SYM_GT)           = 1;
+  *(SYMBOLS_LEN + SYM_GEQ)          = 2;
+  *(SYMBOLS_LEN + SYM_NOTEQ)        = 2;
+  *(SYMBOLS_LEN + SYM_MOD)          = 1;
+  *(SYMBOLS_LEN + SYM_CHARACTER)    = 9;
+  *(SYMBOLS_LEN + SYM_STRING)       = 6;
+  *(SYMBOLS_LEN + SYM_BITWISEAND)   = 1;
+
   character = CHAR_EOF;
   symbol    = SYM_EOF;
 }
@@ -431,7 +464,7 @@ void resetSymbolTables();
 
 void createSymbolTableEntry(uint64_t which, uint64_t* string, uint64_t str_len, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
 
-uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class);
+uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class, uint64_t string_length);
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class);
 
 uint64_t isUndefinedProcedure(uint64_t* entry);
@@ -536,13 +569,14 @@ void syntaxErrorUnexpected();
 void printType(uint64_t type);
 void typeWarning(uint64_t expected, uint64_t found);
 
-uint64_t* getVariableOrBigInt(uint64_t* variable, uint64_t class);
+uint64_t* getVariable(uint64_t* variable);
 void      load_upperBaseAddress(uint64_t* entry);
-uint64_t  load_variableOrBigInt(uint64_t* variable, uint64_t class);
+uint64_t  load_variable(uint64_t* variable);
+uint64_t  load_bigInt(uint64_t* entry);
 void      load_integer(uint64_t value);
 void      load_string(uint64_t* string);
 
-uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
+uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure, uint64_t string_length);
 void     help_procedure_prologue(uint64_t localVariables);
 void     help_procedure_epilogue(uint64_t parameters);
 
@@ -846,7 +880,7 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t maxBinaryLength = 262144; // 256KB
+uint64_t maxBinaryLength = 524288; // 512KB
 
 uint64_t ELF_HEADER_LEN  = 120;   // = 64 + 56 bytes (file + program header)
 
@@ -2678,22 +2712,22 @@ uint64_t isCharacterNotDoubleQuoteOrNewLineOrEOF() {
     return 1;
 }
 
-uint64_t identifierStringMatch(uint64_t keyword) {
-  return stringCompare(identifier, (uint64_t*) *(SYMBOLS + keyword));
+uint64_t identifierStringMatch(uint64_t keyword, uint64_t length) {
+  return stringCompare_p(identifier, (uint64_t*) *(SYMBOLS + keyword), length, *(SYMBOLS_LEN + keyword));
 }
 
-uint64_t identifierOrKeyword() {
-  if (identifierStringMatch(SYM_WHILE))
+uint64_t identifierOrKeyword(uint64_t length) {
+  if (identifierStringMatch(SYM_WHILE, length))
     return SYM_WHILE;
-  if (identifierStringMatch(SYM_IF))
+  if (identifierStringMatch(SYM_IF, length))
     return SYM_IF;
-  if (identifierStringMatch(SYM_UINT64))
+  if (identifierStringMatch(SYM_UINT64, length))
     return SYM_UINT64;
-  if (identifierStringMatch(SYM_ELSE))
+  if (identifierStringMatch(SYM_ELSE, length))
     return SYM_ELSE;
-  if (identifierStringMatch(SYM_RETURN))
+  if (identifierStringMatch(SYM_RETURN, length))
     return SYM_RETURN;
-  if (identifierStringMatch(SYM_VOID))
+  if (identifierStringMatch(SYM_VOID, length))
     return SYM_VOID;
   else
     return SYM_IDENTIFIER;
@@ -2736,7 +2770,7 @@ void getSymbol() {
 
         storeCharacter(identifier, i, 0); // null-terminated string
 
-        symbol = identifierOrKeyword();
+        symbol = identifierOrKeyword(i);
 
         // dummy store to avoid potentially aliased constrained memory error
         // character = character - 1;
@@ -2990,12 +3024,9 @@ void createSymbolTableEntry(uint64_t whichTable, uint64_t* string, uint64_t str_
   }
 }
 
-uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
-  uint64_t sl;
-
-  sl = stringLength(string);
+uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class, uint64_t string_length) {
   while (entry != (uint64_t*) 0) {
-    if (stringCompare_p(string, getString(entry), sl, getStrLen(entry)))
+    if (stringCompare_p(string, getString(entry), string_length, getStrLen(entry)))
       if (class == getClass(entry))
         return entry;
 
@@ -3008,18 +3039,20 @@ uint64_t* searchSymbolTable(uint64_t* entry, uint64_t* string, uint64_t class) {
 
 uint64_t* getScopedSymbolTableEntry(uint64_t* string, uint64_t class) {
   uint64_t* entry;
+  uint64_t string_length;
 
+  string_length = stringLength(string);
   if (class == VARIABLE)
     // local variables override global variables
-    entry = searchSymbolTable(local_symbol_table, string, VARIABLE);
+    entry = searchSymbolTable(local_symbol_table, string, VARIABLE, string_length);
   else if (class == PROCEDURE)
     // library procedures override declared or defined procedures
-    entry = searchSymbolTable(library_symbol_table, string, PROCEDURE);
+    entry = searchSymbolTable(library_symbol_table, string, PROCEDURE, string_length);
   else
     entry = (uint64_t*) 0;
 
   if (entry == (uint64_t*) 0)
-    return searchSymbolTable(global_symbol_table, string, class);
+    return searchSymbolTable(global_symbol_table, string, class, string_length);
   else
     return entry;
 }
@@ -3029,7 +3062,7 @@ uint64_t isUndefinedProcedure(uint64_t* entry) {
 
   if (getClass(entry) == PROCEDURE) {
     // library procedures override declared or defined procedures
-    libraryEntry = searchSymbolTable(library_symbol_table, getString(entry), PROCEDURE);
+    libraryEntry = searchSymbolTable(library_symbol_table, getString(entry), PROCEDURE, getStrLen(entry));
 
     if (libraryEntry != (uint64_t*) 0)
       // procedure is library procedure
@@ -3059,7 +3092,7 @@ uint64_t reportUndefinedProcedures() {
 
       printLineNumber((uint64_t*) "syntax error", getLineNumber(entry));
       print((uint64_t*) "procedure ");
-      print(getString(entry));
+      // print(getString(entry));
       print((uint64_t*) " undefined");
       println();
     }
@@ -3331,25 +3364,21 @@ void typeWarning(uint64_t expected, uint64_t found) {
   println();
 }
 
-uint64_t* getVariableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
+uint64_t* getVariable(uint64_t* variable) {
   uint64_t* entry;
 
-  if (class == BIGINT)
-    return searchSymbolTable(global_symbol_table, variableOrBigInt, class);
-  else {
-    entry = getScopedSymbolTableEntry(variableOrBigInt, class);
+  entry = getScopedSymbolTableEntry(variable, VARIABLE);
 
-    if (entry == (uint64_t*) 0) {
-      printLineNumber((uint64_t*) "syntax error", lineNumber);
-      print(variableOrBigInt);
-      print((uint64_t*) " undeclared");
-      println();
+  if (entry == (uint64_t*) 0) {
+    printLineNumber((uint64_t*) "syntax error", lineNumber);
+    // print(variable);
+    print((uint64_t*) " undeclared");
+    println();
 
-      exit(EXITCODE_PARSERERROR);
-    }
-
-    return entry;
+    exit(EXITCODE_PARSERERROR);
   }
+
+  return entry;
 }
 
 void load_upperBaseAddress(uint64_t* entry) {
@@ -3374,13 +3403,35 @@ void load_upperBaseAddress(uint64_t* entry) {
   // assert: allocatedTemporaries == n + 1
 }
 
-uint64_t load_variableOrBigInt(uint64_t* variableOrBigInt, uint64_t class) {
+uint64_t load_variable(uint64_t* variable) {
   uint64_t* entry;
   uint64_t offset;
 
   // assert: n = allocatedTemporaries
 
-  entry = getVariableOrBigInt(variableOrBigInt, class);
+  entry = getVariable(variable);
+
+  offset = getAddress(entry);
+
+  if (isSignedInteger(offset, 12)) {
+    talloc();
+
+    emitLD(currentTemporary(), getScope(entry), offset);
+  } else {
+    load_upperBaseAddress(entry);
+
+    emitLD(currentTemporary(), currentTemporary(), signExtend(getBits(offset, 0, 12), 12));
+  }
+
+  // assert: allocatedTemporaries == n + 1
+
+  return getType(entry);
+}
+
+uint64_t load_bigInt(uint64_t* entry) {
+  uint64_t offset;
+
+  // assert: n = allocatedTemporaries
 
   offset = getAddress(entry);
 
@@ -3403,6 +3454,7 @@ void load_integer(uint64_t value) {
   uint64_t lower;
   uint64_t upper;
   uint64_t* entry;
+  uint64_t string_length;
 
   // assert: n = allocatedTemporaries
 
@@ -3441,15 +3493,18 @@ void load_integer(uint64_t value) {
 
   } else {
     // integers less than -2^31 or greater than or equal to 2^31 are stored in data segment
-    entry = searchSymbolTable(global_symbol_table, integer, BIGINT);
+    string_length = stringLength(integer);
+    entry = searchSymbolTable(global_symbol_table, integer, BIGINT, string_length);
 
     if (entry == (uint64_t*) 0) {
       allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-      createSymbolTableEntry(GLOBAL_TABLE, integer, stringLength(integer), lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
+      createSymbolTableEntry(GLOBAL_TABLE, integer, string_length, lineNumber, BIGINT, UINT64_T, value, -allocatedMemory);
+
+      entry = global_symbol_table;
     }
 
-    load_variableOrBigInt(integer, BIGINT);
+    load_bigInt(entry);
   }
 
   // assert: allocatedTemporaries == n + 1
@@ -3464,7 +3519,7 @@ void load_string(uint64_t* string) {
 
   allocatedMemory = allocatedMemory + roundUp(length, REGISTERSIZE);
 
-  createSymbolTableEntry(GLOBAL_TABLE, string, stringLength(string), lineNumber, STRING, UINT64STAR_T, 0, -allocatedMemory);
+  createSymbolTableEntry(GLOBAL_TABLE, string, length - 1, lineNumber, STRING, UINT64STAR_T, 0, -allocatedMemory);
 
   load_integer(-allocatedMemory);
 
@@ -3473,7 +3528,7 @@ void load_string(uint64_t* string) {
   // assert: allocatedTemporaries == n + 1
 }
 
-uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
+uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure, uint64_t string_length) {
   uint64_t type;
 
   if (entry == (uint64_t*) 0) {
@@ -3482,7 +3537,7 @@ uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
     // default return type is "int"
     type = UINT64_T;
 
-    createSymbolTableEntry(GLOBAL_TABLE, procedure, stringLength(procedure), lineNumber, PROCEDURE, type, 0, binaryLength);
+    createSymbolTableEntry(GLOBAL_TABLE, procedure, string_length, lineNumber, PROCEDURE, type, 0, binaryLength);
 
     emitJAL(REG_RA, 0);
 
@@ -3553,9 +3608,11 @@ uint64_t compile_call(uint64_t* procedure) {
   uint64_t* entry;
   uint64_t numberOfTemporaries;
   uint64_t type;
+  uint64_t string_length;
 
   // assert: n = allocatedTemporaries
 
+  string_length = stringLength(procedure);
   entry = getScopedSymbolTableEntry(procedure, PROCEDURE);
 
   numberOfTemporaries = allocatedTemporaries;
@@ -3590,7 +3647,7 @@ uint64_t compile_call(uint64_t* procedure) {
     if (symbol == SYM_RPARENTHESIS) {
       getSymbol();
 
-      type = help_call_codegen(entry, procedure);
+      type = help_call_codegen(entry, procedure, string_length);
     } else {
       syntaxErrorSymbol(SYM_RPARENTHESIS);
 
@@ -3599,7 +3656,7 @@ uint64_t compile_call(uint64_t* procedure) {
   } else if (symbol == SYM_RPARENTHESIS) {
     getSymbol();
 
-    type = help_call_codegen(entry, procedure);
+    type = help_call_codegen(entry, procedure, string_length);
   } else {
     syntaxErrorSymbol(SYM_RPARENTHESIS);
 
@@ -3709,7 +3766,7 @@ uint64_t compile_factor() {
       emitADDI(REG_A0, REG_ZR, 0);
     } else
       // variable access: identifier
-      type = load_variableOrBigInt(variableOrProcedureName, VARIABLE);
+      type = load_variable(variableOrProcedureName);
 
   // integer?
   } else if (symbol == SYM_INTEGER) {
@@ -4219,7 +4276,7 @@ void compile_statement() {
 
     // "*" identifier
     if (symbol == SYM_IDENTIFIER) {
-      ltype = load_variableOrBigInt(identifier, VARIABLE);
+      ltype = load_variable(identifier);
 
       if (ltype != UINT64STAR_T)
         typeWarning(UINT64STAR_T, ltype);
@@ -4315,7 +4372,7 @@ void compile_statement() {
 
     // identifier = expression
     } else if (symbol == SYM_ASSIGN) {
-      entry = getVariableOrBigInt(variableOrProcedureName, VARIABLE);
+      entry = getVariable(variableOrProcedureName);
 
       ltype = getType(entry);
 
@@ -4474,6 +4531,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
   uint64_t parameters;
   uint64_t localVariables;
   uint64_t* entry;
+  uint64_t string_length;
 
   // assuming procedure is undefined
   isUndefined = 1;
@@ -4519,13 +4577,14 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
   } else
     syntaxErrorSymbol(SYM_LPARENTHESIS);
 
-  entry = searchSymbolTable(global_symbol_table, procedure, PROCEDURE);
+  string_length = stringLength(procedure);
+  entry = searchSymbolTable(global_symbol_table, procedure, PROCEDURE, string_length);
 
   if (symbol == SYM_SEMICOLON) {
     // this is a procedure declaration
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, procedure, stringLength(procedure), lineNumber, PROCEDURE, type, 0, 0);
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, string_length, lineNumber, PROCEDURE, type, 0, 0);
     else if (getType(entry) != type)
       // procedure already called, declared, or even defined
       // check return type but otherwise ignore
@@ -4537,7 +4596,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
     // this is a procedure definition
     if (entry == (uint64_t*) 0)
       // procedure never called nor declared nor defined
-      createSymbolTableEntry(GLOBAL_TABLE, procedure, stringLength(procedure), lineNumber, PROCEDURE, type, 0, binaryLength);
+      createSymbolTableEntry(GLOBAL_TABLE, procedure, string_length, lineNumber, PROCEDURE, type, 0, binaryLength);
     else {
       // procedure already called or declared or defined
       if (getAddress(entry) != 0) {
@@ -4560,14 +4619,14 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
         setType(entry, type);
         setAddress(entry, binaryLength);
 
-        if (stringCompare(procedure, (uint64_t*) "main"))
+        if (stringCompare_p(procedure, (uint64_t*) "main", string_length, 4))
           // first source containing main procedure provides binary name
           binaryName = sourceName;
       } else {
         // procedure already defined
         printLineNumber((uint64_t*) "warning", lineNumber);
         print((uint64_t*) "redefinition of procedure ");
-        print(procedure);
+        // print(procedure);
         print((uint64_t*) " ignored");
         println();
       }
@@ -4628,6 +4687,7 @@ void compile_cstar() {
   uint64_t currentLineNumber;
   uint64_t initialValue;
   uint64_t* entry;
+  uint64_t string_length;
 
   while (symbol != SYM_EOF) {
     while (lookForType()) {
@@ -4680,17 +4740,18 @@ void compile_cstar() {
             // global variable definition
             initialValue = compile_initialization(type);
 
-          entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE);
+          string_length = stringLength(variableOrProcedureName);
+          entry = searchSymbolTable(global_symbol_table, variableOrProcedureName, VARIABLE, string_length);
 
           if (entry == (uint64_t*) 0) {
             allocatedMemory = allocatedMemory + REGISTERSIZE;
 
-            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, stringLength(variableOrProcedureName), currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
+            createSymbolTableEntry(GLOBAL_TABLE, variableOrProcedureName, string_length, currentLineNumber, VARIABLE, type, initialValue, -allocatedMemory);
           } else {
             // global variable already declared or defined
             printLineNumber((uint64_t*) "warning", currentLineNumber);
             print((uint64_t*) "redefinition of global variable ");
-            print(variableOrProcedureName);
+            // print(variableOrProcedureName);
             print((uint64_t*) " ignored");
             println();
           }
@@ -4757,7 +4818,7 @@ void emitStart() {
   else {
     entry = getScopedSymbolTableEntry((uint64_t*) "main", PROCEDURE);
 
-    help_call_codegen(entry, (uint64_t*) "main");
+    help_call_codegen(entry, (uint64_t*) "main", 4);
   }
 
   // we exit with exit code in return register pushed onto the stack
@@ -4766,7 +4827,7 @@ void emitStart() {
 
   entry = getScopedSymbolTableEntry((uint64_t*) "exit", PROCEDURE);
 
-  help_call_codegen(entry, (uint64_t*) "exit");
+  help_call_codegen(entry, (uint64_t*) "exit", 4);
 
   if (padding != 0)
     emitNOP();
@@ -8350,9 +8411,13 @@ void constrain_sltu() {
                 if (*(reg_hasmn + rs1)) {
                   eq_left_lo = *(reg_colos + rs1) - *(reg_ups + rs1);
                   eq_left_up = *(reg_coups + rs1) - *(reg_los + rs1);
+                  eq_right_lo = *(reg_colos + rs1);
+                  eq_right_up = *(reg_coups + rs1);
                 } else {
                   eq_left_lo = *(reg_los + rs1) - *(reg_colos + rs1);
                   eq_left_up = *(reg_ups + rs1) - *(reg_coups + rs1);
+                  eq_right_lo = - *(reg_colos + rs1);
+                  eq_right_up = - *(reg_coups + rs1);
                 }
                 save_equality_info_concrete();
 
@@ -8364,7 +8429,7 @@ void constrain_sltu() {
                   printSourceLineNumberOfInstruction(pc - entryPoint);
                   println();
 
-                  create_equality_constraint_concrete(initial_interval_rs1_tc, ecc, *(reg_colos + rs1), *(reg_coups + rs1));
+                  create_equality_constraint_concrete(initial_interval_rs1_tc, ecc, eq_right_lo, eq_right_up);
 
                   pc = pc + INSTRUCTIONSIZE;
                   ic_sltu = ic_sltu + 1;
@@ -8588,6 +8653,8 @@ uint64_t constrain_ld() {
           potential_load_char = vaddr;
 
         *(reg_isNotInterval + rd) = *(isNotIntervals + mrvc);
+        if (*(reg_isNotInterval + rd) == 3)
+          *(reg_isNotInterval + rd) = 4;
 
         // func
         *(reg_saddr_1 + rd) = *(saddrs_1 + mrvc);
@@ -10411,9 +10478,9 @@ void create_equality_constraint_concrete(uint64_t mrvc, uint64_t ecc, uint64_t c
     c2 = CHAR_UNDERSCORE;
 
   if (c1 == 0)
-    printInvalid((uint64_t*) " unsupported value range in an equality expression at ");
+    printInvalid((uint64_t*) " unsupported value range in an equality expression ");
   else if (c2 == 0)
-    printInvalid((uint64_t*) " unsupported value range in an equality expression at ");
+    printInvalid((uint64_t*) " unsupported value range in an equality expression ");
 
   if (c1 != c2) {
     // assert: *(isNotIntervals + mrvc) = 3
