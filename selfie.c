@@ -1129,6 +1129,7 @@ uint64_t isErroneous(uint64_t start, uint64_t end, uint64_t step);
 //[in] a start, step and MAX value
 //[out] return a correct upper bound (up) such that up <= MAX (wrapped thinking)
 uint64_t computeUpperBound(uint64_t start, uint64_t step, uint64_t max);
+void printMSIID(uint64_t start, uint64_t end, uint64_t st);
 
 void printUnreachable(uint64_t* label, uint64_t unreachable_pc);
 void error_minuend(uint64_t* operand, uint64_t* operation);
@@ -5703,11 +5704,8 @@ void printEndPointStatus(uint64_t* context, uint64_t start, uint64_t end, uint64
 void implementExit(uint64_t* context) {
   setExitCode(context, signShrink(*(getRegs(context) + REG_A0), SYSCALL_BITWIDTH));
 
-  if (symbolic) {
-    if (debug_endpoint)
-        printEndPointStatus(context, *(reg_los + REG_A0), *(reg_ups + REG_A0), *(reg_steps + REG_A0));
+  if (symbolic)
     return;
-  }
 
   print(selfieName);
   print((uint64_t*) ": ");
@@ -6219,7 +6217,7 @@ void implementMalloc(uint64_t* context) {
 
     if (symbolic) {
       // interval is memory range, not symbolic value
-      *(reg_typ + REG_A0) = 1;
+      *(reg_typ + REG_A0) = pointer_t;
 
       // remember start and size of memory block for checking memory safety
       *(reg_los + REG_A0) = bump;
@@ -6736,13 +6734,11 @@ uint64_t check_add_sub_step(uint64_t reg_min, uint64_t reg_max, uint64_t gcd_ste
     if (i_max < *(reg_steps + reg_max) / gcd_step - 1) {
       //now: exit analysis (two "incompatible" symbolic values addition [max bound too small])
       printOverApprox((uint64_t*) "add");
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
     }
   } else {
     //now: exit analysis (two "incompatible" symbolic values addition [no multiple step])
     printOverApprox((uint64_t*) "add");
-    last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
   }
 }
@@ -6758,7 +6754,6 @@ void error_minuend(uint64_t* operand, uint64_t* operation) {
   printSourceLineNumberOfInstruction(pc - entryPoint);
   println();
 
-  last_jal_from = pc;
   throwException(EXCEPTION_INCOMPLETENESS, 0);
   //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
 }
@@ -6796,7 +6791,6 @@ void constrain_add() {
     //add_ups = UINT64_MAX;
     //*(reg_steps + rd) = 1;
     printOverApprox((uint64_t*) "add");
-    last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
     return;
   }
@@ -6818,7 +6812,6 @@ void constrain_add() {
     if (*(reg_expr + rs1) > 1) {
       //now: expression not managed -> fail
       print_bad_expression();
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
       //setMeta(rd, *(reg_typ + rs1), 0, fail_t); //TODO: minuend? / iscorrect rs2?
     } else
@@ -6834,7 +6827,6 @@ void constrain_add() {
         if (*(reg_expr + rs1) > 1) {
           //now: expression not managed -> fail
           print_bad_expression();
-          last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
         }
         else
@@ -6919,7 +6911,6 @@ void constrain_sub() {
     //add_ups = UINT64_MAX;
     //*(reg_steps + rd) = 1;
     printOverApprox((uint64_t*) "sub");
-    last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
     return;
   }
@@ -6941,7 +6932,6 @@ void constrain_sub() {
     if (*(reg_expr + rs1) > 1) {
       //now: expression not managed -> fail
       print_bad_expression();
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
       //setMeta(rd, *(reg_typ + rs1), 0, fail_t); //TODO: minuend? / iscorrect rs2?
     } else
@@ -6958,7 +6948,6 @@ void constrain_sub() {
         if (*(reg_expr + rs1) > 1) {
           //now: expression not managed -> fail
           print_bad_expression();
-          last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
         } else
           setMeta(rd, *(reg_typ + rs1), 0, sum_t);
@@ -7007,7 +6996,6 @@ uint64_t check_mul_condition(uint64_t reg_int, uint64_t reg_k) {
     //*(reg_los + rd)   = 0;
     //*(reg_ups + rd)   = UINT64_MAX;
     printOverApprox((uint64_t*) "mul");
-    last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
     return 0;
   } else {
@@ -7020,7 +7008,6 @@ uint64_t check_mul_condition(uint64_t reg_int, uint64_t reg_k) {
         //*(reg_los + rd)   = 0;
         //*(reg_ups + rd)   = UINT64_MAX;
         printOverApprox((uint64_t*) "step mul");
-        last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
         return 0;
       }
@@ -7068,7 +7055,6 @@ void constrain_mul() {
         if (*(reg_expr + rs1) > 0) {
           //now: expression not managed -> fail
           print_bad_expression();
-          last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
         } else
           setMeta(rd, integer_t, 0, mul_t);
@@ -7114,10 +7100,8 @@ void do_divu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_divu = ic_divu + 1;
-  } else {
-    last_jal_from = pc;
+  } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
-  }
 }
 
 uint64_t check_divu_step() {
@@ -7127,7 +7111,6 @@ uint64_t check_divu_step() {
       //now: exit analysis (step no multiple)
 
       printOverApprox((uint64_t*) "divu1");
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
       return 0;
     }
@@ -7137,7 +7120,6 @@ uint64_t check_divu_step() {
       //now: exit analysis (step no multiple)
 
       printOverApprox((uint64_t*) "divu2");
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
       return 0;
     }
@@ -7156,11 +7138,8 @@ void constrain_divu() {
   if (*(reg_los + rs2) == 0)
     return;
 
-  if (*(reg_ups + rs2) < *(reg_los + rs2)) {
-    // 0 is in interval
-    last_jal_from = pc;
+  if (*(reg_ups + rs2) < *(reg_los + rs2)) // 0 is in interval
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
-  }
   // 0 is not in interval
 
   if (rd == REG_ZR)
@@ -7208,7 +7187,6 @@ void constrain_divu() {
               //now: exit analysis (wrap interval division: not close)
 
               printOverApprox((uint64_t*) "divu3");
-              last_jal_from = pc;
               throwException(EXCEPTION_INCOMPLETENESS, 0);
               return;
             }
@@ -7227,7 +7205,6 @@ void constrain_divu() {
         if (*(reg_expr + rs1) > 0) {
           //now: expression not managed -> fail
           print_bad_expression();
-          last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
         } else
           expr = div_t;
@@ -7243,7 +7220,6 @@ void constrain_divu() {
       printSourceLineNumberOfInstruction(pc - entryPoint);
       println();
 
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
   } else {
     // rd has no constraint if both rs1 and rs2 have no constraints
@@ -7265,10 +7241,8 @@ void do_remu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_remu = ic_remu + 1;
-  } else {
-    last_jal_from = pc;
+  } else
     throwException(EXCEPTION_DIVISIONBYZERO, 0);
-  }
 }
 
 void constrain_remu_step_1() {
@@ -7302,7 +7276,6 @@ void constrain_remu_step_1() {
         //case[1] the result is not an ms-interval
         //now: exit analysis
         printOverApprox((uint64_t*) "rem1_1");
-        last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
       }
     }
@@ -7337,7 +7310,6 @@ void constrain_remu_step_1() {
         println();
 
         //now: exit analysis
-        last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
 
       }
@@ -7354,7 +7326,6 @@ void constrain_remu_step_1() {
 
         //now: exit analysis
         printOverApprox((uint64_t*) "rem1_^2");
-        last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
       }
     }
@@ -7368,7 +7339,6 @@ void constrain_remu_step_1() {
   if (*(reg_expr + rs1) > 0) {
     //now: expression not managed -> fail
     print_bad_expression();
-    last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
   } else
     expr = rem_t;
@@ -7400,7 +7370,6 @@ void constrain_remu() {
     printSourceLineNumberOfInstruction(pc - entryPoint);
     println();
 
-    last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0);
     //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     return;
@@ -7454,7 +7423,6 @@ void constrain_remu() {
 
         //now: exit analysis
         printOverApprox((uint64_t*) "rem1");
-        last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
       } else {
         //case[3, 4 and 5]
@@ -7462,7 +7430,6 @@ void constrain_remu() {
           //case [5] rem_up > rem_lo and rem_up - rem_lo < lcm - step (result not an ms-interval)
           //now: exit analysis
           printOverApprox((uint64_t*) "rem10");
-          last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0);
         }
         //case [3 (>) and 4 (=)] rem_up > rem_lo and rem_up - rem_lo => lcm - step (complete gcd_step_k ms-interval)
@@ -7480,7 +7447,6 @@ void constrain_remu() {
         // rs1 interval is too small the result is not an ms-interval
         //now: exit analysis
         printOverApprox((uint64_t*) "rem^2");
-        last_jal_from = pc;
         throwException(EXCEPTION_INCOMPLETENESS, 0);
       }
 
@@ -7499,7 +7465,6 @@ void constrain_remu() {
       printSourceLineNumberOfInstruction(pc - entryPoint);
       println();
 
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
       //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
@@ -7509,7 +7474,6 @@ void constrain_remu() {
     if (*(reg_expr + rs1) > 0) {
       //now: expression not managed -> fail
       print_bad_expression();
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0);
     } else
       expr = rem_t;
@@ -7626,7 +7590,7 @@ void backtrack_sltu() {
 
       setMeta(vaddr, *(types + tc), 0, 0);
       setCorrection(vaddr, 0, 0, 0);
-      setConstraint(vaddr, *(saddrs + tc), 0, *(los + tc), *(ups + tc), *(steps + tc)); //reg_vaddr?
+      setConstraint(vaddr, *(saddrs + tc), 0, *(los + tc), *(ups + tc), *(steps + tc));
 
       // restoring mrcc
       mrcc = *(tcs + tc);
@@ -8546,7 +8510,8 @@ uint64_t isSymbolicValue(uint64_t type, uint64_t lo, uint64_t up) {
 }
 
 uint64_t isSafeAddress(uint64_t vaddr, uint64_t reg) {
-  if (*(reg_typ + reg)) {
+
+  if (*(reg_typ + reg) == pointer_t) {
     if (vaddr < *(reg_los + reg))
       // memory access below start address of mallocated block
       return 0;
@@ -8816,7 +8781,6 @@ void constrainMemory(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uint
           printSourceLineNumberOfInstruction(pc - entryPoint);
           println();
 
-          last_jal_from = pc;
           throwException(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
           exit(EXITCODE_SYMBOLICEXECUTIONERROR);
         }
@@ -8838,7 +8802,6 @@ void constrainMemory(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uint
       printSourceLineNumberOfInstruction(pc - entryPoint);
       println();
 
-      last_jal_from = pc;
       throwException(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       return;
@@ -9007,7 +8970,6 @@ void createConstraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, ui
     print((uint64_t*) ": detected two wrap interval in sltu");
     println();
 
-    last_jal_from = pc;
     throwException(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
 
     // unwrap rs1 and rs2 intervals and use higher portions
@@ -9107,6 +9069,9 @@ void throwException(uint64_t exception, uint64_t faultingPage) {
 
   setException(currentContext, exception);
   setFaultingPage(currentContext, faultingPage);
+
+  if (exception != EXCEPTION_SYSCALL) //prevent from overwritting return line with exit syscall exception
+    last_jal_from = pc; //for test line numbers
 
   trap = 1;
 
@@ -10613,10 +10578,6 @@ uint64_t handleMaxTrace(uint64_t* context) {
 uint64_t handleIncompleteness(uint64_t* context) {
   setException(context, EXCEPTION_NOEXCEPTION);
   setExitCode(context, EXITCODE_INCOMPLETENESS);
-
-  if (debug_endpoint)
-    printEndPointStatus(context, EXITCODE_INCOMPLETENESS, EXITCODE_INCOMPLETENESS, 1);
-
   return EXIT;
 }
 
@@ -10902,6 +10863,13 @@ uint64_t monster(uint64_t* toContext) {
       timeout = TIMEROFF;
     } else {
       if (handleException(fromContext) == EXIT) {
+
+        if (debug_endpoint)
+          if (getException(fromContext) == EXCEPTION_NOEXCEPTION) //exit
+            printEndPointStatus(fromContext, *(reg_los + REG_A0), *(reg_ups + REG_A0), *(reg_steps + REG_A0));
+          else //exceptions
+            printEndPointStatus(fromContext, getExitCode(fromContext), getExitCode(fromContext), 1);
+
         backtrackTrace(fromContext);
 
         if (b == 0) {
