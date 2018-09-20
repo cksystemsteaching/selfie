@@ -6505,7 +6505,7 @@ void print_instruction_context() {
 
 void print_lui() {
   print_instruction_context();
-  printf2((uint64_t*) "lui %s,%x", get_register_name(rd), (uint64_t*) imm);
+  printf2((uint64_t*) "lui %s,%x", get_register_name(rd), (uint64_t*) sign_shrink(imm, 20));
 }
 
 void print_lui_before() {
