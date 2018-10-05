@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob sat spike riscv-tools all clean
+.PHONY : compile quine escape debug replay os vm min mob sat grade spike riscv-tools all clean
 
 # Self-compile
 compile: selfie
@@ -58,6 +58,10 @@ mob: selfie
 sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
+
+# Create grade for assignments
+grade: selfie
+	python3 tests/grader.py
 
 # Run selfie on spike
 spike: selfie
