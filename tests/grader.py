@@ -88,7 +88,7 @@ def test_instruction_format(file, instruction, instruction_mask, msg):
   if exit_code != 0:
     warning = 'No instruction matching the RISC-V encoding found'
 
-  record_result(exit_code == 0, msg, output)
+  record_result(exit_code == 0, msg, output, warning)
 
 
 def test_execution(file, result, msg):
@@ -139,6 +139,12 @@ def test_structs():
     'initialization of trivial struct members compiled')
   test_execution('struct-member-initialization.c', 123,
     'read and write operations of trivial struct member works when executed with MIPSTER')
+  test_compilable('struct-nested-declaration.c',
+    'struct declaration with struct members compiled')
+  test_compilable('struct-nested-initialization.c',
+    'struct initialization with struct members compiled')
+  test_execution('struct-nested-initialization.c', 123,
+    'read and write operations of nested struct member works when executed with MIPSTER')
 
 
 def grade():
