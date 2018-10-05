@@ -145,6 +145,10 @@ def test_structs():
     'struct initialization with struct members compiled')
   test_execution('struct-nested-initialization.c', 123,
     'read and write operations of nested struct member works when executed with MIPSTER')
+  test_compilable('struct-as-parameter.c',
+    'struct as function parameter compiled')
+  test_execution('struct-as-parameter.c', 1,
+    'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
 def grade():
