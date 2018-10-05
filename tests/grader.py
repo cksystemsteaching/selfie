@@ -82,9 +82,12 @@ def test_instruction_format(file, instruction, instruction_mask, msg):
         if word & instruction_mask == instruction:
           # at least one instruction has the right encoding
           exit_code = 0
-          warning = 'No instruction matching the RISC-V encoding found'
 
   os.remove(TMP_FILE)
+
+  if exit_code != 0:
+    warning = 'No instruction matching the RISC-V encoding found'
+
   record_result(exit_code == 0, msg, output)
 
 
