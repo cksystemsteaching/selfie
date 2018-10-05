@@ -26,7 +26,7 @@ SLL_INSTRUCTION = encode_r_format(F7_SLL, F3_SLL, OP_OP)
 SRL_INSTRUCTION = encode_r_format(F7_SRL, F3_SRL, OP_OP)
 
 
-def record_result(result, msg, output):
+def record_result(result, msg, output, warning=None):
   global number_of_tests_passed, number_of_tests_failed
 
   if result == True:
@@ -37,7 +37,9 @@ def record_result(result, msg, output):
     number_of_tests_failed += 1
 
     print("\033[91m[FAILED]\033[0m " + msg)
-    print(' >>> ' + output[:-1].replace('\n', '\n >>> '))
+    if warning != None:
+      print("\033[93m > " + warning + " <\033[0m")
+    print(' >> ' + output[:-1].replace('\n', '\n >> '))
 
 
 def test_compilable(file, msg):
@@ -47,12 +49,16 @@ def test_compilable(file, msg):
   p.wait()
 
   exit_code = p.returncode
+  warning = None
 
   if exit_code == 0:
-    if output.find('syntax error') >= 0:
-      exit_code = 1
+    match = re.search('(syntax error [^\n]*)', output)
 
-  record_result(exit_code == 0, msg, output)
+    if match != None:
+      exit_code = 1
+      warning = match.group(0)
+
+  record_result(exit_code == 0, msg, output, warning)
 
 
 def test_instruction_format(file, instruction, instruction_mask, msg):
@@ -62,6 +68,7 @@ def test_instruction_format(file, instruction, instruction_mask, msg):
   p.wait()
 
   exit_code = p.returncode
+  warning = None
 
   if exit_code == 0:
     exit_code = 1
@@ -75,6 +82,7 @@ def test_instruction_format(file, instruction, instruction_mask, msg):
         if word & instruction_mask == instruction:
           # at least one instruction has the right encoding
           exit_code = 0
+          warning = 'No instruction matching the RISC-V encoding found'
 
   os.remove(TMP_FILE)
   record_result(exit_code == 0, msg, output)
@@ -86,7 +94,12 @@ def test_execution(file, result, msg):
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
 
-  record_result(p.returncode == result, msg, output)
+  if p.returncode != result:
+    warning = 'Execution terminated with wrong exit code {} instead of {}'.format(p.returncode, result)
+  else:
+    warning = None
+
+  record_result(p.returncode == result, msg, output, warning)
 
 
 def test_shift(direction):
@@ -112,6 +125,19 @@ def test_shift(direction):
     'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
 
+def test_structs():
+  test_compilable('struct-declaration.c',
+    'empty struct declarations compiled')
+  test_compilable('struct-member-declaration.c',
+    'struct declaration with trivial members compiled')
+  test_compilable('struct-initialization.c',
+    'empty struct with initialization compiled')
+  test_compilable('struct-member-initialization.c',
+    'initialization of trivial struct members compiled')
+  test_execution('struct-member-initialization.c', 123,
+    'read and write operations of trivial struct member works when executed with MIPSTER')
+
+
 def grade():
   number_of_tests_passed, number_of_tests_failed
 
@@ -123,6 +149,7 @@ def grade():
 if __name__ == "__main__":
   test_shift(direction='left')
   test_shift(direction='right')
-  
+  test_structs()
+
   grade()
 
