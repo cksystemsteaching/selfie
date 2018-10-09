@@ -1260,7 +1260,7 @@ void     print_per_instruction_profile(uint64_t* message, uint64_t total, uint64
 
 void print_profile();
 
-void selfie_disassemble();
+void selfie_disassemble(uint64_t details);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1287,6 +1287,8 @@ uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
 uint64_t symbolic    = 0; // flag for symbolically executing code
 uint64_t backtrack   = 0; // flag for backtracking symbolic execution
+
+uint64_t disassemble_details = 0; // flag for disassembling code in more detail
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -6498,9 +6500,13 @@ void print_instruction_context() {
     print_source_line_number_of_instruction(pc - entry_point);
   } else {
     printf1((uint64_t*) "%x", (uint64_t*) pc);
-    print_source_line_number_of_instruction(pc);
+    if (disassemble_details)
+      print_source_line_number_of_instruction(pc);
   }
-  printf1((uint64_t*) ": %p: ", (uint64_t*) ir);
+  if (disassemble_details)
+    printf1((uint64_t*) ": %p: ", (uint64_t*) ir);
+  else
+    print((uint64_t*) ": ");
 }
 
 void print_lui() {
@@ -8604,7 +8610,7 @@ void print_profile() {
   }
 }
 
-void selfie_disassemble() {
+void selfie_disassemble(uint64_t details) {
   assembly_name = get_argument();
 
   if (code_length == 0) {
@@ -8631,8 +8637,9 @@ void selfie_disassemble() {
   reset_library();
   reset_interpreter();
 
-  debug       = 1;
-  disassemble = 1;
+  debug               = 1;
+  disassemble         = 1;
+  disassemble_details = details;
 
   while (pc < code_length) {
     ir = load_instruction(pc);
@@ -8642,8 +8649,9 @@ void selfie_disassemble() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  disassemble = 0;
-  debug       = 0;
+  disassemble_details = 0;
+  disassemble         = 0;
+  debug               = 0;
 
   output_name = (uint64_t*) 0;
   output_fd   = 1;
@@ -9964,7 +9972,9 @@ uint64_t selfie() {
       } else if (string_compare(option, (uint64_t*) "-o"))
         selfie_output();
       else if (string_compare(option, (uint64_t*) "-s"))
-        selfie_disassemble();
+        selfie_disassemble(0);
+      else if (string_compare(option, (uint64_t*) "-S"))
+        selfie_disassemble(1);
       else if (string_compare(option, (uint64_t*) "-l"))
         selfie_load();
       else if (string_compare(option, (uint64_t*) "-sat"))
