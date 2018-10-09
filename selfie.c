@@ -1094,6 +1094,8 @@ void do_ecall();
 void undo_ecall();
 void backtrack_ecall();
 
+void print_data(uint64_t data);
+
 // -----------------------------------------------------------------
 // -------------------------- REPLAY ENGINE ------------------------
 // -----------------------------------------------------------------
@@ -7641,6 +7643,10 @@ void backtrack_ecall() {
   efree();
 }
 
+void print_data(uint64_t data) {
+  printf2((uint64_t*) "%x: .quad %x", (uint64_t*) pc, (uint64_t*) data);
+}
+
 // -----------------------------------------------------------------
 // -------------------------- REPLAY ENGINE ------------------------
 // -----------------------------------------------------------------
@@ -8611,6 +8617,8 @@ void print_profile() {
 }
 
 void selfie_disassemble(uint64_t details) {
+  uint64_t data;
+
   assembly_name = get_argument();
 
   if (code_length == 0) {
@@ -8647,6 +8655,15 @@ void selfie_disassemble(uint64_t details) {
     decode_execute();
 
     pc = pc + INSTRUCTIONSIZE;
+  }
+
+  while (pc < binary_length) {
+    data = load_data(pc);
+
+    print_data(data);
+    println();
+
+    pc = pc + REGISTERSIZE;
   }
 
   disassemble_details = 0;
