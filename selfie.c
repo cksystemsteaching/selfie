@@ -1262,7 +1262,7 @@ void     print_per_instruction_profile(uint64_t* message, uint64_t total, uint64
 
 void print_profile();
 
-void selfie_disassemble(uint64_t details);
+void selfie_disassemble(uint64_t verbose);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1290,7 +1290,7 @@ uint64_t disassemble = 0; // flag for disassembling code
 uint64_t symbolic    = 0; // flag for symbolically executing code
 uint64_t backtrack   = 0; // flag for backtracking symbolic execution
 
-uint64_t disassemble_details = 0; // flag for disassembling code in more detail
+uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -6502,10 +6502,10 @@ void print_instruction_context() {
     print_source_line_number_of_instruction(pc - entry_point);
   } else {
     printf1((uint64_t*) "%x", (uint64_t*) pc);
-    if (disassemble_details)
+    if (disassemble_verbose)
       print_source_line_number_of_instruction(pc);
   }
-  if (disassemble_details)
+  if (disassemble_verbose)
     printf1((uint64_t*) ": %p: ", (uint64_t*) ir);
   else
     print((uint64_t*) ": ");
@@ -8616,7 +8616,7 @@ void print_profile() {
   }
 }
 
-void selfie_disassemble(uint64_t details) {
+void selfie_disassemble(uint64_t verbose) {
   uint64_t data;
 
   assembly_name = get_argument();
@@ -8647,7 +8647,7 @@ void selfie_disassemble(uint64_t details) {
 
   debug               = 1;
   disassemble         = 1;
-  disassemble_details = details;
+  disassemble_verbose = verbose;
 
   while (pc < code_length) {
     ir = load_instruction(pc);
@@ -8666,14 +8666,18 @@ void selfie_disassemble(uint64_t details) {
     pc = pc + REGISTERSIZE;
   }
 
-  disassemble_details = 0;
+  disassemble_verbose = 0;
   disassemble         = 0;
   debug               = 0;
 
   output_name = (uint64_t*) 0;
   output_fd   = 1;
 
-  printf4((uint64_t*) "%s: %d characters of assembly with %d instructions written into %s\n", selfie_name, (uint64_t*) number_of_written_characters, (uint64_t*) (code_length / INSTRUCTIONSIZE), assembly_name);
+  printf5((uint64_t*) "%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
+    (uint64_t*) number_of_written_characters,
+    (uint64_t*) (code_length / INSTRUCTIONSIZE),
+    (uint64_t*) (binary_length - code_length),
+    assembly_name);
 }
 
 // -----------------------------------------------------------------
@@ -9961,7 +9965,7 @@ void set_argument(uint64_t* argv) {
 void print_usage() {
   printf3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
     selfie_name,
-      (uint64_t*) "-c { source } | -o binary | -s assembly | -S assembly | -l binary | -sat dimacs",
+      (uint64_t*) "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
       (uint64_t*) "( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ...");
 }
 

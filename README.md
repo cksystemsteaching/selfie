@@ -55,7 +55,7 @@ Once you have successfully compiled `selfie.c` you may invoke `selfie` without a
 
 ```bash
 $ ./selfie
-./selfie { -c { source } | -o binary | -s assembly | -S assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
+./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
 ```
 
 In this case, `selfie` responds with its usage pattern.
@@ -74,7 +74,7 @@ The `-o` option writes RISC-U code produced by the most recent compiler invocati
 $ ./selfie -c selfie.c -o selfie.m
 ```
 
-The `-s` option writes RISC-U assembly of the RISC-U code produced by the most recent compiler invocation to the given `assembly` file. While the `-S` option additionally includes approximate line numbers and the binary representation of the instructions. Similarly as before, `selfie` may be instructed to compile itself and then output the generated RISC-U code into a RISC-U assembly file called `selfie.s`:
+The `-s` option writes RISC-U assembly of the RISC-U code produced by the most recent compiler invocation to the given `assembly` file while the `-S` option additionally includes approximate line numbers and the binary representation of the instructions. Similarly as before, `selfie` may be instructed to compile itself and then output the generated RISC-U code into a RISC-U assembly file called `selfie.s`:
 
 ```bash
 $ ./selfie -c selfie.c -s selfie.s
