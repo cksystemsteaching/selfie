@@ -5419,9 +5419,6 @@ void copy_string_to_binary(uint64_t* s, uint64_t baddr, uint64_t line_number) {
   while (baddr < end) {
     store_data(baddr, *s);
 
-    if (source_line_number != (uint64_t*) 0)
-        *(source_line_number + baddr / INSTRUCTIONSIZE) = line_number;
-
     s = s + 1;
 
     baddr = baddr + REGISTERSIZE;
@@ -5431,6 +5428,7 @@ void copy_string_to_binary(uint64_t* s, uint64_t baddr, uint64_t line_number) {
 void emit_data_segment() {
   uint64_t i;
   uint64_t* entry;
+  uint64_t size;
 
   binary_length = binary_length + allocated_memory;
 
@@ -5441,15 +5439,25 @@ void emit_data_segment() {
 
     // copy initial values of global variables, copy strings and big integers
     while ((uint64_t) entry != 0) {
+      size = 1;
+
       if (get_class(entry) == VARIABLE)
         store_data(binary_length + get_address(entry), get_value(entry));
-      else if (get_class(entry) == STRING)
+      else if (get_class(entry) == STRING) {
         copy_string_to_binary(get_string(entry), binary_length + get_address(entry), get_line_number(entry));
-      else if (get_class(entry) == BIGINT)
+    
+        size = round_up(string_length(get_string(entry)) + 1, REGISTERSIZE) / REGISTERSIZE;
+
+      } else if (get_class(entry) == BIGINT)
         store_data(binary_length + get_address(entry), get_value(entry));
 
-      if (source_line_number != (uint64_t*) 0)
-        *(source_line_number + (binary_length + get_address(entry)) / INSTRUCTIONSIZE) = get_line_number(entry);
+      if (source_line_number != (uint64_t*) 0) {
+        while (size > 0) {
+          size = size - 1;
+
+          *(source_line_number + code_length / INSTRUCTIONSIZE + (allocated_memory + get_address(entry)) / REGISTERSIZE + size) = get_line_number(entry);
+        }
+      }
 
       entry = get_next_entry(entry);
     }
@@ -6498,8 +6506,18 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // -----------------------------------------------------------------
 
 void print_source_line_number_for_address(uint64_t a) {
-  if (source_line_number != (uint64_t*) 0)
-    printf1((uint64_t*) "(~%d)", (uint64_t*) *(source_line_number + a / INSTRUCTIONSIZE));
+  uint64_t line;
+
+  if (source_line_number != (uint64_t*) 0) {
+    if (a >= code_length)
+      // address of data segment
+      line = *(source_line_number + code_length / INSTRUCTIONSIZE + (a - code_length) / REGISTERSIZE);
+    else 
+      // address of executable code
+      line = *(source_line_number + a / INSTRUCTIONSIZE);
+
+    printf1((uint64_t*) "(~%d)", (uint64_t*) line);
+  }
 }
 
 void print_context_for_address(uint64_t a) {
