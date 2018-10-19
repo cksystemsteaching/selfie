@@ -9,8 +9,11 @@ def git_clone(user, repo):
 
 if len(sys.argv) == 3:
 	filename = sys.argv[1]
+
 	target = sys.argv[2]
 else:
+	print "usage: python clone-from-links.py text-file-with-github-links directory-to-clone-repos-into"
+
 	sys.exit(1)
 
 file = open(filename, "r")

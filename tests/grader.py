@@ -114,17 +114,17 @@ def test_shift(direction):
   literal_file = 'bitwise-' + direction + '-shift-literals.c'
   variable_file = 'bitwise-' + direction + '-shift-variables.c'
 
-  test_compilable(literal_file, 
+  test_compilable(literal_file,
     'bitwise-' + direction + '-shift operator with literals compiled')
-  test_instruction_format(literal_file, instruction, R_FORMAT_MASK, 
+  test_instruction_format(literal_file, instruction, R_FORMAT_MASK,
     'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-  test_execution(literal_file, 2, 
+  test_execution(literal_file, 2,
     'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
-  test_compilable(variable_file, 
+  test_compilable(variable_file,
     'bitwise-' + direction + '-shift operator with variables compiled')
-  test_instruction_format(variable_file, instruction, R_FORMAT_MASK, 
+  test_instruction_format(variable_file, instruction, R_FORMAT_MASK,
     'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-  test_execution(variable_file, 2, 
+  test_execution(variable_file, 2,
     'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
 

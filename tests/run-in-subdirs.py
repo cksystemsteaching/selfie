@@ -9,7 +9,9 @@ def run_in(directory):
 if len(sys.argv) > 1:
 	command = ' '.join(sys.argv[1:])
 else:
-	command = 'ls'
+	print "usage: python run-in-subdirs.py command-with-any-number-of-options"
+
+	sys.exit(1)
 
 for directory in next(os.walk(os.path.curdir))[1]:
 	run_in(directory)
