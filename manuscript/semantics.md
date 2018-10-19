@@ -128,7 +128,7 @@ This means that we now have a version of selfie that we can run on our machine! 
 {line-numbers=off}
 ```
 > ./selfie
-./selfie: usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
+./selfie: usage: selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
 ```
 
 Selfie requires using at least one option to do anything useful and therefore responds with its usage pattern and then terminates without doing anything else. To do something useful, let us try the first `-c` option on, well, `selfie.c` itself:
@@ -181,7 +181,7 @@ We execute `selfie.m` by first loading it using the `-l` option and then running
 > ./selfie -l selfie.m -m 1
 ./selfie: 170064 bytes with 39372 instructions and 12448 bytes of data loaded from selfie.m
 ./selfie: selfie executing selfie.m with 1MB physical memory on mipster
-selfie.m: usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
+selfie.m: usage: selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
 ./selfie: selfie.m exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating selfie.m with exit code 0
 ./selfie: summary: 67182 executed instructions and 0.16MB mapped memory
@@ -301,24 +301,24 @@ For example, the first few lines of `selfie.s` are:
 
 {line-numbers=off}
 ```
-0x0(~1): 0x000392B7: lui $t0,0x39
-0x4(~1): 0x7D028293: addi $t0,$t0,2000
-0x8(~1): 0x00028193: addi $gp,$t0,0
-0xC(~1): 0x00000513: addi $a0,$zero,0
-0x10(~1): 0x0D600893: addi $a7,$zero,214
-0x14(~1): 0x00000073: ecall
-0x18(~1): 0x00750513: addi $a0,$a0,7
-0x1C(~1): 0x00800293: addi $t0,$zero,8
-0x20(~1): 0x025572B3: remu $t0,$a0,$t0
-0x24(~1): 0x40550533: sub $a0,$a0,$t0
-0x28(~1): 0x0D600893: addi $a7,$zero,214
-0x2C(~1): 0x00000073: ecall
-0x30(~1): 0xFEA1BC23: sd $a0,-8($gp)
-0x34(~1): 0x00000513: addi $a0,$zero,0
-0x38(~1): 0x00810293: addi $t0,$sp,8
-0x3C(~1): 0xFF810113: addi $sp,$sp,-8
-0x40(~1): 0x00513023: sd $t0,0($sp)
-0x44(~1): 0x680260EF: jal $ra,39328[0x266C4]
+0x0: lui $t0,0x3A
+0x4: addi $t0,$t0,-1528
+0x8: addi $gp,$t0,0
+0xC: addi $a0,$zero,0
+0x10: addi $a7,$zero,214
+0x14: ecall
+0x18: addi $a0,$a0,7
+0x1C: addi $t0,$zero,8
+0x20: remu $t0,$a0,$t0
+0x24: sub $a0,$a0,$t0
+0x28: addi $a7,$zero,214
+0x2C: ecall
+0x30: sd $a0,-8($gp)
+0x34: addi $a0,$zero,0
+0x38: addi $t0,$sp,8
+0x3C: addi $sp,$sp,-8
+0x40: sd $t0,0($sp)
+0x44: jal $ra,39452[0x268B4]
 ```
 
 What you see is a human-readable version of the machine code in `selfie.m`. The purpose of `selfie.s` is here to study `selfie.m` and eventually understand its semantics. Selfie can even show the assembly code as it is being executed by mipster which helps debugging the machine code.
@@ -381,7 +381,7 @@ By the way, we can also slow down the machine to see what happens in slow motion
 ./selfie: selfie executing selfie.m with 2MB physical memory on mipster
 selfie.m: 170064 bytes with 39372 instructions and 12448 bytes of data loaded from selfie.m
 selfie.m: selfie executing selfie.m with 1MB physical memory on mipster
-selfie.m: usage: selfie { -c { source } | -o binary | -s assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
+selfie.m: usage: selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
 selfie.m: selfie.m exiting with exit code 0 and 0.00MB mallocated memory
 selfie.m: selfie terminating selfie.m with exit code 0
 selfie.m: summary: 67182 executed instructions and 0.17MB mapped memory

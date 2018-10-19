@@ -57,7 +57,7 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 
 {line-numbers=on}
 ```
-> ./selfie -c manuscript/code/countdown.c -o countdown.m -s countdown.s -m 1
+> ./selfie -c manuscript/code/countdown.c -o countdown.m -S countdown.s -m 1
 ./selfie: selfie compiling manuscript/code/countdown.c with starc
 ./selfie: 645 characters read in 20 lines and 9 comments
 ./selfie: with 65(10.70%) characters in 28 actual symbols

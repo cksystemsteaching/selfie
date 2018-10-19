@@ -43,7 +43,7 @@ def record_result(result, msg, output, warning=None):
 
 
 def test_compilable(file, msg):
-  p = Popen(['./selfie', '-c', 'tests/' + file], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', 'grader/' + file], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -62,7 +62,7 @@ def test_compilable(file, msg):
 
 
 def test_instruction_format(file, instruction, instruction_mask, msg):
-  p = Popen(['./selfie', '-c', 'tests/' + file, '-o', TMP_FILE], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', 'grader/' + file, '-o', TMP_FILE], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -92,7 +92,7 @@ def test_instruction_format(file, instruction, instruction_mask, msg):
 
 
 def test_execution(file, result, msg):
-  p = Popen(['./selfie', '-c', 'tests/' + file, '-m', '128'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', 'grader/' + file, '-m', '128'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
