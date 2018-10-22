@@ -1,7 +1,16 @@
 import sys
 import os
 import re
+import math
 from subprocess import Popen, PIPE
+
+grading_key = [
+  87.0,
+  75.0,
+  64.0,
+  50.0,
+  0
+]
 
 number_of_tests_passed = 0
 number_of_tests_failed = 0
@@ -42,7 +51,7 @@ def record_result(result, msg, output, warning=None):
     print(' >> ' + output[:-1].replace('\n', '\n >> '))
 
 
-def test_compilable(file, msg):
+def test_compilable(file, msg, should_succeed=True):
   p = Popen(['./selfie', '-c', 'tests/' + file], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
@@ -51,14 +60,18 @@ def test_compilable(file, msg):
   exit_code = p.returncode
   warning = None
 
-  if exit_code == 0:
-    match = re.search('(syntax error [^\n]*)', output)
+  succeeded = (should_succeed and exit_code == 0) or (should_succeed == False and exit_code != 0)
 
-    if match != None:
-      exit_code = 1
+  match = re.search('(syntax error [^\n]*)', output)
+
+  if match != None:
+    if should_succeed == False:
+      succeeded = True
+    else:
+      succeeded = False
       warning = match.group(0)
 
-  record_result(exit_code == 0, msg, output, warning)
+  record_result(succeeded, msg, output, warning)
 
 
 def test_instruction_format(file, instruction, instruction_mask, msg):
@@ -103,6 +116,23 @@ def test_execution(file, result, msg):
     warning = None
 
   record_result(p.returncode == result, msg, output, warning)
+
+
+def test_hex_literal():
+  test_compilable('hex-integer-literal.c', 
+    'hex integer literal with all characters compiled')
+  test_execution('hex-integer-literal.c', 1,
+    'hex integer literal with all characters has the right value')
+  test_compilable('hex-integer-literal-max.c',
+    'maximum hex integer literal compiled')
+  test_execution('hex-integer-literal-max.c', 1,
+    'maximum hex integer literal has the right value')
+  test_compilable('hex-integer-literal-max.c',
+    'minimum hex integer literal compiled')
+  test_execution('hex-integer-literal-max.c', 1,
+    'minimum hex integer literal has the right value')
+  test_compilable('hex-integer-literal-invalid.c', 
+    'out of bounds hex integer literal has not compiled', should_succeed=False)
 
 
 def test_shift(direction):
@@ -152,17 +182,57 @@ def test_structs():
 
 
 def grade():
+  global grading_key
+
   number_of_tests_passed, number_of_tests_failed
 
   number_of_tests = number_of_tests_passed + number_of_tests_failed
 
-  print('tests passed: {:02.1f}%'.format(number_of_tests_passed / number_of_tests * 100))
+  if number_of_tests == 0:
+    print('nothing to grade')
+    return
 
+  passed = number_of_tests_passed / number_of_tests
+
+  print('tests passed:  {:02.1f}%'.format(passed * 100))
+
+  if passed == 0.0:
+    grade_in_percent = 0.0
+  else:
+    grade_in_percent = math.log10(passed * 10.0) - 0.1
+
+  for i in range(0, len(grading_key)):
+    if grade_in_percent >= grading_key[i] / 100.0:
+      grade = i + 1
+
+      if grade == 1:
+        color = 92
+      elif grade < 5:
+        color = 93
+      else:
+        color = 91
+
+      print(f'your grade is: \033[{color}m\033[1m{i + 1}\033[0m')
+      return
 
 if __name__ == "__main__":
-  test_shift(direction='left')
-  test_shift(direction='right')
-  test_structs()
+  if len(sys.argv) <= 1:
+    print('usage: python3 grader.py { test_name }')
+    exit()
+
+  tests = sys.argv
+  tests.remove(tests[0])
+
+  for test in tests:
+    if test == 'hex-literal':
+      test_hex_literal()
+    elif test == 'shift':
+      test_shift(direction='left')
+      test_shift(direction='right')
+    elif test == 'struct':
+      test_structs()
+    else:
+      print(f'unknown test: {test}')
 
   grade()
 
