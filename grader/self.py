@@ -52,7 +52,7 @@ def record_result(result, msg, output, warning=None):
 
 
 def test_compilable(file, msg, should_succeed=True):
-  p = Popen(['./selfie', '-c', 'tests/' + file], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', 'grader/' + file], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -75,7 +75,7 @@ def test_compilable(file, msg, should_succeed=True):
 
 
 def test_instruction_format(file, instruction, instruction_mask, msg):
-  p = Popen(['./selfie', '-c', 'tests/' + file, '-o', TMP_FILE], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', 'grader/' + file, '-o', TMP_FILE], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -105,7 +105,7 @@ def test_instruction_format(file, instruction, instruction_mask, msg):
 
 
 def test_execution(file, result, msg):
-  p = Popen(['./selfie', '-c', 'tests/' + file, '-m', '128'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', 'grader/' + file, '-m', '128'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -144,17 +144,17 @@ def test_shift(direction):
   literal_file = 'bitwise-' + direction + '-shift-literals.c'
   variable_file = 'bitwise-' + direction + '-shift-variables.c'
 
-  test_compilable(literal_file, 
+  test_compilable(literal_file,
     'bitwise-' + direction + '-shift operator with literals compiled')
-  test_instruction_format(literal_file, instruction, R_FORMAT_MASK, 
+  test_instruction_format(literal_file, instruction, R_FORMAT_MASK,
     'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-  test_execution(literal_file, 2, 
+  test_execution(literal_file, 2,
     'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
-  test_compilable(variable_file, 
+  test_compilable(variable_file,
     'bitwise-' + direction + '-shift operator with variables compiled')
-  test_instruction_format(variable_file, instruction, R_FORMAT_MASK, 
+  test_instruction_format(variable_file, instruction, R_FORMAT_MASK,
     'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-  test_execution(variable_file, 2, 
+  test_execution(variable_file, 2,
     'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
 
