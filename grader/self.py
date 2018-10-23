@@ -217,7 +217,7 @@ def grade():
 
 if __name__ == "__main__":
   if len(sys.argv) <= 1:
-    print('usage: python3 grader.py { test_name }')
+    print('usage: python3 self.py { test_name }')
     exit()
 
   tests = sys.argv
