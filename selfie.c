@@ -849,7 +849,7 @@ void fixup_relative_BFormat(uint64_t from_address);
 void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address);
 void fixlink_relative(uint64_t from_address, uint64_t to_address);
 
-void copy_string_to_binary(uint64_t* s, uint64_t a, uint64_t line_number);
+void copy_string_to_binary(uint64_t* s, uint64_t a);
 
 void emit_data_segment();
 
@@ -5411,7 +5411,7 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address) {
   }
 }
 
-void copy_string_to_binary(uint64_t* s, uint64_t baddr, uint64_t line_number) {
+void copy_string_to_binary(uint64_t* s, uint64_t baddr) {
   uint64_t end;
 
   end = baddr + round_up(string_length(s) + 1, REGISTERSIZE);
@@ -5444,7 +5444,7 @@ void emit_data_segment() {
       if (get_class(entry) == VARIABLE)
         store_data(binary_length + get_address(entry), get_value(entry));
       else if (get_class(entry) == STRING) {
-        copy_string_to_binary(get_string(entry), binary_length + get_address(entry), get_line_number(entry));
+        copy_string_to_binary(get_string(entry), binary_length + get_address(entry));
     
         size = round_up(string_length(get_string(entry)) + 1, REGISTERSIZE) / REGISTERSIZE;
 
