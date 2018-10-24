@@ -4,14 +4,6 @@ import re
 import math
 from subprocess import Popen, PIPE
 
-grading_key = [
-  87.0,
-  75.0,
-  64.0,
-  50.0,
-  0
-]
-
 number_of_tests_passed = 0
 number_of_tests_failed = 0
 
@@ -182,8 +174,6 @@ def test_structs():
 
 
 def grade():
-  global grading_key
-
   number_of_tests_passed, number_of_tests_failed
 
   number_of_tests = number_of_tests_passed + number_of_tests_failed
@@ -196,24 +186,20 @@ def grade():
 
   print('tests passed:  {:02.1f}%'.format(passed * 100))
 
-  if passed == 0.0:
-    grade_in_percent = 0.0
+  if passed == 1.0:
+    grade = 2
+    color = 92
+  elif passed >= 0.5:
+    grade = 3
+    color = 93
+  elif passed > 0.0:
+    grade = 4
+    color = 93
   else:
-    grade_in_percent = math.log10(passed * 10.0) - 0.1
+    grade = 5
+    color = 91
 
-  for i in range(0, len(grading_key)):
-    if grade_in_percent >= grading_key[i] / 100.0:
-      grade = i + 1
-
-      if grade == 1:
-        color = 92
-      elif grade < 5:
-        color = 93
-      else:
-        color = 91
-
-      print(f'your grade is: \033[{color}m\033[1m{i + 1}\033[0m')
-      return
+  print(f'your grade is: \033[{color}m\033[1m{grade}\033[0m')
 
 if __name__ == "__main__":
   if len(sys.argv) <= 1:
