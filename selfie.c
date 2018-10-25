@@ -849,7 +849,7 @@ void fixup_relative_BFormat(uint64_t from_address);
 void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address);
 void fixlink_relative(uint64_t from_address, uint64_t to_address);
 
-void copy_string_to_binary(uint64_t* s, uint64_t a);
+void copy_string_to_data_segment(uint64_t* s, uint64_t a);
 
 void emit_data_segment();
 
@@ -899,7 +899,8 @@ uint64_t* binary_name   = (uint64_t*) 0; // file name of binary
 uint64_t code_length = 0; // length of code segment in binary in bytes
 uint64_t entry_point = 0; // beginning of code segment in virtual address space
 
-uint64_t* source_line_number = (uint64_t*) 0; // source line number per emitted instruction
+uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
+uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
 
 uint64_t* assembly_name = (uint64_t*) 0; // name of assembly file
 uint64_t  assembly_fd   = 0; // file descriptor of open assembly file
@@ -1016,8 +1017,8 @@ void init_memory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_source_line_number_of_instruction(uint64_t a);
-void print_instruction_context();
+void print_code_line_number_for_instruction(uint64_t a);
+void print_code_context_for_instruction(uint64_t a);
 
 void print_lui();
 void print_lui_before();
@@ -1094,6 +1095,8 @@ void do_ecall();
 void undo_ecall();
 void backtrack_ecall();
 
+void print_data_line_number();
+void print_data_context(uint64_t data);
 void print_data(uint64_t data);
 
 // -----------------------------------------------------------------
@@ -4751,7 +4754,8 @@ void selfie_compile() {
   code_length = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  source_line_number = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  code_line_number = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  data_line_number = zalloc(MAX_BINARY_LENGTH / REGISTERSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -5279,8 +5283,8 @@ void store_data(uint64_t baddr, uint64_t data) {
 void emit_instruction(uint64_t instruction) {
   store_instruction(binary_length, instruction);
 
-  if (*(source_line_number + binary_length / INSTRUCTIONSIZE) == 0)
-    *(source_line_number + binary_length / INSTRUCTIONSIZE) = line_number;
+  if (*(code_line_number + binary_length / INSTRUCTIONSIZE) == 0)
+    *(code_line_number + binary_length / INSTRUCTIONSIZE) = line_number;
 
   binary_length = binary_length + INSTRUCTIONSIZE;
 }
@@ -5411,7 +5415,7 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address) {
   }
 }
 
-void copy_string_to_binary(uint64_t* s, uint64_t baddr) {
+void copy_string_to_data_segment(uint64_t* s, uint64_t baddr) {
   uint64_t end;
 
   end = baddr + round_up(string_length(s) + 1, REGISTERSIZE);
@@ -5428,6 +5432,7 @@ void copy_string_to_binary(uint64_t* s, uint64_t baddr) {
 void emit_data_segment() {
   uint64_t i;
   uint64_t* entry;
+  uint64_t size;
 
   binary_length = binary_length + allocated_memory;
 
@@ -5438,12 +5443,25 @@ void emit_data_segment() {
 
     // copy initial values of global variables, copy strings and big integers
     while ((uint64_t) entry != 0) {
+      size = 1;
+
       if (get_class(entry) == VARIABLE)
         store_data(binary_length + get_address(entry), get_value(entry));
-      else if (get_class(entry) == STRING)
-        copy_string_to_binary(get_string(entry), binary_length + get_address(entry));
-      else if (get_class(entry) == BIGINT)
+      else if (get_class(entry) == STRING) {
+        copy_string_to_data_segment(get_string(entry), binary_length + get_address(entry));
+    
+        size = round_up(string_length(get_string(entry)) + 1, REGISTERSIZE) / REGISTERSIZE;
+
+      } else if (get_class(entry) == BIGINT)
         store_data(binary_length + get_address(entry), get_value(entry));
+
+      if (data_line_number != (uint64_t*) 0) {
+        while (size > 0) {
+          size = size - 1;
+
+          *(data_line_number + (allocated_memory + get_address(entry)) / REGISTERSIZE + size) = get_line_number(entry);
+        }
+      }
 
       entry = get_next_entry(entry);
     }
@@ -5660,7 +5678,8 @@ void selfie_load() {
   entry_point   = 0;
 
   // no source line numbers in binaries
-  source_line_number = (uint64_t*) 0;
+  code_line_number = (uint64_t*) 0;
+  data_line_number = (uint64_t*) 0;
 
   // make sure ELF_header is mapped for reading into it
   ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
@@ -6177,7 +6196,7 @@ void emit_malloc() {
 
   // define global variable _bump for storing malloc's bump pointer
   // copy "_bump" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy((uint64_t*) "_bump"), 0, VARIABLE, UINT64_T, 0, -allocated_memory);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy((uint64_t*) "_bump"), 1, VARIABLE, UINT64_T, 0, -allocated_memory);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
@@ -6491,19 +6510,19 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_source_line_number_of_instruction(uint64_t a) {
-  if (source_line_number != (uint64_t*) 0)
-    printf1((uint64_t*) "(~%d)", (uint64_t*) *(source_line_number + a / INSTRUCTIONSIZE));
+void print_code_line_number_for_instruction(uint64_t a) {
+  if (code_line_number != (uint64_t*) 0)
+    printf1((uint64_t*) "(~%d)", (uint64_t*) *(code_line_number + a / INSTRUCTIONSIZE));
 }
 
-void print_instruction_context() {
+void print_code_context_for_instruction(uint64_t a) {
   if (execute) {
     printf2((uint64_t*) "%s: $pc=%x", binary_name, (uint64_t*) pc);
-    print_source_line_number_of_instruction(pc - entry_point);
+    print_code_line_number_for_instruction(pc - entry_point);
   } else {
     printf1((uint64_t*) "%x", (uint64_t*) pc);
     if (disassemble_verbose)
-      print_source_line_number_of_instruction(pc);
+      print_code_line_number_for_instruction(pc);
   }
   if (disassemble_verbose)
     printf1((uint64_t*) ": %p: ", (uint64_t*) ir);
@@ -6512,7 +6531,7 @@ void print_instruction_context() {
 }
 
 void print_lui() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   printf2((uint64_t*) "lui %s,%x", get_register_name(rd), (uint64_t*) sign_shrink(imm, 20));
 }
 
@@ -6560,7 +6579,7 @@ void constrain_lui() {
 }
 
 void print_addi() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
 
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
@@ -6621,7 +6640,7 @@ void constrain_addi() {
       if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
         printf2((uint64_t*) "%s: detected invalid minuend expression in operand of addi at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6635,7 +6654,7 @@ void constrain_addi() {
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   printf4((uint64_t*) "%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
 }
 
@@ -6664,7 +6683,7 @@ void constrain_add() {
       if (*(reg_typ + rs2)) {
         // adding two pointers is undefined
         printf2((uint64_t*) "%s: undefined addition of two pointers at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6710,7 +6729,7 @@ void constrain_add() {
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another addend
         printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of add at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6721,7 +6740,7 @@ void constrain_add() {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another addend
         printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of add at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6814,7 +6833,7 @@ void constrain_sub() {
       else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another subtrahend
         printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of sub at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6825,7 +6844,7 @@ void constrain_sub() {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another minuend
         printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of sub at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6862,14 +6881,14 @@ void constrain_mul() {
       if (*(reg_hasco + rs2)) {
         // non-linear expressions are not supported
         printf2((uint64_t*) "%s: detected non-linear expression in mul at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       } else if (*(reg_hasmn + rs1)) {
         // rs1 constraint has already minuend and cannot have another multiplier
         printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of mul at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6882,7 +6901,7 @@ void constrain_mul() {
       if (*(reg_hasmn + rs2)) {
         // rs2 constraint has already minuend and cannot have another multiplicand
         printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of mul at %x", selfie_name, (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6933,14 +6952,14 @@ void constrain_divu() {
           if (*(reg_hasco + rs2)) {
             // non-linear expressions are not supported
             printf2((uint64_t*) "%s: detected non-linear expression in divu at %x", selfie_name, (uint64_t*) pc);
-            print_source_line_number_of_instruction(pc - entry_point);
+            print_code_line_number_for_instruction(pc - entry_point);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           } else if (*(reg_hasmn + rs1)) {
             // rs1 constraint has already minuend and cannot have another divisor
             printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of divu at %x", selfie_name, (uint64_t*) pc);
-            print_source_line_number_of_instruction(pc - entry_point);
+            print_code_line_number_for_instruction(pc - entry_point);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -6956,7 +6975,7 @@ void constrain_divu() {
           if (*(reg_hasmn + rs2)) {
             // rs2 constraint has already minuend and cannot have another dividend
             printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of divu at %x", selfie_name, (uint64_t*) pc);
-            print_source_line_number_of_instruction(pc - entry_point);
+            print_code_line_number_for_instruction(pc - entry_point);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7007,14 +7026,14 @@ void constrain_remu() {
           if (*(reg_hasco + rs2)) {
             // non-linear expressions are not supported
             printf2((uint64_t*) "%s: detected non-linear expression in remu at %x", selfie_name, (uint64_t*) pc);
-            print_source_line_number_of_instruction(pc - entry_point);
+            print_code_line_number_for_instruction(pc - entry_point);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           } else if (*(reg_hasmn + rs1)) {
             // rs1 constraint has already minuend and cannot have another divisor
             printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of remu at %x", selfie_name, (uint64_t*) pc);
-            print_source_line_number_of_instruction(pc - entry_point);
+            print_code_line_number_for_instruction(pc - entry_point);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7030,7 +7049,7 @@ void constrain_remu() {
           if (*(reg_hasmn + rs2)) {
             // rs2 constraint has already minuend and cannot have another dividend
             printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of remu at %x", selfie_name, (uint64_t*) pc);
-            print_source_line_number_of_instruction(pc - entry_point);
+            print_code_line_number_for_instruction(pc - entry_point);
             println();
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7075,7 +7094,7 @@ void constrain_sltu() {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
         printf3((uint64_t*) "%s: %d constrained memory locations in left sltu operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs1), (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7087,7 +7106,7 @@ void constrain_sltu() {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
         printf3((uint64_t*) "%s: %d constrained memory locations in right sltu operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
-        print_source_line_number_of_instruction(pc - entry_point);
+        print_code_line_number_for_instruction(pc - entry_point);
         println();
 
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7151,7 +7170,7 @@ void backtrack_sltu() {
 }
 
 void print_ld() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   printf3((uint64_t*) "ld %s,%d(%s)", get_register_name(rd), (uint64_t*) imm, get_register_name(rs1));
 }
 
@@ -7278,7 +7297,7 @@ uint64_t constrain_ld() {
 }
 
 void print_sd() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   printf3((uint64_t*) "sd %s,%d(%s)", get_register_name(rs2), (uint64_t*) imm, get_register_name(rs1));
 }
 
@@ -7370,7 +7389,7 @@ uint64_t constrain_sd() {
           // constrained memory at vaddr 0 means that there is more than
           // one constrained memory location in the sd operand
           printf3((uint64_t*) "%s: %d constrained memory locations in sd operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
-          print_source_line_number_of_instruction(pc - entry_point);
+          print_code_line_number_for_instruction(pc - entry_point);
           println();
 
           //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7417,7 +7436,7 @@ void undo_sd() {
 }
 
 void print_beq() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   printf4((uint64_t*) "beq %s,%s,%d[%x]", get_register_name(rs1), get_register_name(rs2), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
 }
 
@@ -7450,7 +7469,7 @@ void do_beq() {
 }
 
 void print_jal() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   printf3((uint64_t*) "jal %s,%d[%x]", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
 }
 
@@ -7518,7 +7537,7 @@ void constrain_jal_jalr() {
 }
 
 void print_jalr() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   printf3((uint64_t*) "jalr %s,%d(%s)", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
 }
 
@@ -7558,7 +7577,7 @@ void do_jalr() {
 }
 
 void print_ecall() {
-  print_instruction_context();
+  print_code_context_for_instruction(pc);
   print((uint64_t*) "ecall");
 }
 
@@ -7643,8 +7662,26 @@ void backtrack_ecall() {
   efree();
 }
 
+void print_data_line_number() {
+  if (data_line_number != (uint64_t*) 0)
+    printf1((uint64_t*) "(~%d)", (uint64_t*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
+}
+
+void print_data_context(uint64_t data) {
+  printf1((uint64_t*) "%x", (uint64_t*) pc);
+
+  if (disassemble_verbose) {
+    print_data_line_number();
+    print((uint64_t*) ": ");
+    print_hexadecimal(data, SIZEOFUINT64 * 2);
+    print((uint64_t*) " ");
+  } else
+    print((uint64_t*) ": ");
+}
+
 void print_data(uint64_t data) {
-  printf2((uint64_t*) "%x: .quad %x", (uint64_t*) pc, (uint64_t*) data);
+  print_data_context(data);
+  printf1((uint64_t*) ".quad %x", (uint64_t*) data);
 }
 
 // -----------------------------------------------------------------
@@ -7715,7 +7752,7 @@ void replay_trace() {
 void print_symbolic_memory(uint64_t svc) {
   printf3((uint64_t*) "@%d{@%d@%x", (uint64_t*) svc, (uint64_t*) *(tcs + svc), (uint64_t*) *(pcs + svc));
   if (*(pcs + svc) >= entry_point)
-    print_source_line_number_of_instruction(*(pcs + svc) - entry_point);
+    print_code_line_number_for_instruction(*(pcs + svc) - entry_point);
   if (*(vaddrs + svc) == 0) {
     printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) *(values + svc), (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
     return;
@@ -7782,7 +7819,7 @@ uint64_t is_safe_address(uint64_t vaddr, uint64_t reg) {
     return 1;
   else {
     printf2((uint64_t*) "%s: detected unsupported symbolic access of memory interval at %x", selfie_name, (uint64_t*) pc);
-    print_source_line_number_of_instruction(pc - entry_point);
+    print_code_line_number_for_instruction(pc - entry_point);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -8578,7 +8615,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
     printf3((uint64_t*) ",%d(%.2d%%)@%x", (uint64_t*) c, (uint64_t*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (uint64_t*) a);
-    print_source_line_number_of_instruction(a);
+    print_code_line_number_for_instruction(a);
 
     return c;
   } else {
@@ -8604,7 +8641,7 @@ void print_profile() {
   if (get_total_number_of_instructions() > 0) {
     print_instruction_counters();
 
-    if (source_line_number != (uint64_t*) 0)
+    if (code_line_number != (uint64_t*) 0)
       printf1((uint64_t*) "%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
     else
       printf1((uint64_t*) "%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
