@@ -129,7 +129,7 @@ void      string_reverse(uint64_t* s);
 uint64_t  string_compare(uint64_t* s, uint64_t* t);
 
 uint64_t  atoi(uint64_t* s);
-uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a);
+uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f);
@@ -1935,14 +1935,14 @@ uint64_t atoi(uint64_t* s) {
   return n;
 }
 
-uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a) {
+uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a, uint64_t p) {
   // assert: b in {2,4,8,10,16}
 
   uint64_t i;
   uint64_t sign;
 
-  // the conversion of the integer n to an ASCII string in s with
-  // base b and alignment a begins with the leftmost digit in s
+  // the conversion of the integer n to an ASCII string in s with base b,
+  // alignment a, and fixed point p begins with the leftmost digit in s
   i = 0;
 
   // for now assuming n is positive
@@ -1976,6 +1976,31 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a) {
     n = n / b;
 
     i = i + 1;
+
+    if (i == p) {
+      store_character(s, i, '.'); // fixed point
+
+      i = i + 1;
+
+      if (n == 0) {
+        store_character(s, i, '0'); // leading 0
+
+        i = i + 1;
+      }
+    }
+  }
+
+  while (i < p) {
+    store_character(s, i, '0'); // fill up with 0s
+
+    i = i + 1;
+  }
+
+  if (i == p) {
+    store_character(s, i, '.'); // fixed point with leading 0
+    store_character(s, i + 1, '0');
+
+    i = i + 2;
   }
 
   if (b == 10) {
@@ -1998,12 +2023,12 @@ uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a) {
     }
 
     if (b == 8) {
-      store_character(s, i, '0');   // octal numbers start with 00
+      store_character(s, i, '0'); // octal numbers start with 00
       store_character(s, i + 1, '0');
 
       i = i + 2;
     } else if (b == 16) {
-      store_character(s, i, 'x');   // hexadecimal numbers start with 0x
+      store_character(s, i, 'x'); // hexadecimal numbers start with 0x
       store_character(s, i + 1, '0');
 
       i = i + 2;
@@ -2120,11 +2145,11 @@ void print_string(uint64_t* s) {
 }
 
 void print_integer(uint64_t n) {
-  print(itoa(n, integer_buffer, 10, 0));
+  print(itoa(n, integer_buffer, 10, 0, 0));
 }
 
 void unprint_integer(uint64_t n) {
-  n = string_length(itoa(n, integer_buffer, 10, 0));
+  n = string_length(itoa(n, integer_buffer, 10, 0, 0));
 
   while (n > 0) {
     put_character(CHAR_BACKSPACE);
@@ -2134,15 +2159,15 @@ void unprint_integer(uint64_t n) {
 }
 
 void print_hexadecimal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 16, a));
+  print(itoa(n, integer_buffer, 16, a, 0));
 }
 
 void print_octal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 8, a));
+  print(itoa(n, integer_buffer, 8, a, 0));
 }
 
 void print_binary(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 2, a));
+  print(itoa(n, integer_buffer, 2, a, 0));
 }
 
 uint64_t print_format0(uint64_t* s, uint64_t i) {
@@ -2204,21 +2229,9 @@ uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a) {
 
         if (p < 10) {
           // the character at i + 2 is in fact a digit
-          print_integer((uint64_t) a / ten_to_the_power_of(p));
 
-          if (p > 0) {
-            // using integer_buffer here is ok since we are not using print_integer
-            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0);
-            p = p - string_length(integer_buffer);
-
-            put_character('.');
-            print(integer_buffer);
-            while (p > 0) {
-              put_character('0');
-
-              p = p - 1;
-            }
-          }
+          // using integer_buffer here is ok since we are not using print_integer
+          print(itoa((uint64_t) a, integer_buffer, 10, 0, p));
 
           return i + 4;
         } else {
@@ -8637,11 +8650,12 @@ void print_per_instruction_profile(uint64_t* message, uint64_t total, uint64_t* 
 }
 
 void print_profile() {
-  printf3((uint64_t*)
-    "%s: summary: %d executed instructions and %.2dMB mapped memory\n",
+  printf4((uint64_t*)
+    "%s: summary: %d executed instructions and %.2dMB(%.2d%%) mapped memory\n",
     selfie_name,
     (uint64_t*) get_total_number_of_instructions(),
-    (uint64_t*) fixed_point_ratio(pused(), MEGABYTE, 2));
+    (uint64_t*) fixed_point_ratio(pused(), MEGABYTE, 2),
+    (uint64_t*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, pused(), 4), 4));
 
   if (get_total_number_of_instructions() > 0) {
     print_instruction_counters();
@@ -8993,6 +9007,10 @@ uint64_t pused() {
   return used_page_frame_memory - free_page_frame_memory;
 }
 
+uint64_t putilization() {
+  return pused() / page_frame_memory;
+}
+
 uint64_t* palloc() {
   uint64_t block;
   uint64_t frame;
@@ -9001,9 +9019,9 @@ uint64_t* palloc() {
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
-    free_page_frame_memory = MEGABYTE;
+    if (pavailable()) {
+      free_page_frame_memory = MEGABYTE;
 
-    if (used_page_frame_memory + free_page_frame_memory <= page_frame_memory) {
       // on boot level zero allocate zeroed memory
       block = (uint64_t) zalloc(free_page_frame_memory);
 
