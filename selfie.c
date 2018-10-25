@@ -849,7 +849,8 @@ void fixup_relative_BFormat(uint64_t from_address);
 void fixup_relative_JFormat(uint64_t from_address, uint64_t to_address);
 void fixlink_relative(uint64_t from_address, uint64_t to_address);
 
-void copy_string_to_data_segment(uint64_t* s, uint64_t a);
+void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number);
+void emit_string_data(uint64_t* entry);
 
 void emit_data_segment();
 
@@ -866,7 +867,10 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t MAX_BINARY_LENGTH = 262144; // 256KB
+uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGTH
+
+uint64_t MAX_CODE_LENGTH = 245760; // 240KB
+uint64_t MAX_DATA_LENGTH = 16384; // 16KB
 
 uint64_t ELF_HEADER_LEN = 120; // = 64 + 56 bytes (file + program header)
 
@@ -1360,13 +1364,13 @@ void reset_interpreter() {
     reset_instruction_counters();
 
     calls               = 0;
-    calls_per_procedure = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+    calls_per_procedure = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
 
     iterations          = 0;
-    iterations_per_loop = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+    iterations_per_loop = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-    loads_per_instruction  = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-    stores_per_instruction = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+    loads_per_instruction  = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+    stores_per_instruction = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
 }
 
@@ -4754,8 +4758,8 @@ void selfie_compile() {
   code_length = 0;
 
   // allocate zeroed memory for storing source code line numbers
-  code_line_number = zalloc(MAX_BINARY_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-  data_line_number = zalloc(MAX_BINARY_LENGTH / REGISTERSIZE * SIZEOFUINT64);
+  code_line_number = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  data_line_number = zalloc(MAX_DATA_LENGTH / REGISTERSIZE * SIZEOFUINT64);
 
   reset_symbol_tables();
   reset_instruction_counters();
@@ -5248,8 +5252,8 @@ uint64_t load_instruction(uint64_t baddr) {
 void store_instruction(uint64_t baddr, uint64_t instruction) {
   uint64_t temp;
 
-  if (baddr >= MAX_BINARY_LENGTH) {
-    syntax_error_message((uint64_t*) "maximum binary length exceeded");
+  if (baddr >= MAX_CODE_LENGTH) {
+    syntax_error_message((uint64_t*) "maximum code length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -5271,8 +5275,8 @@ uint64_t load_data(uint64_t baddr) {
 }
 
 void store_data(uint64_t baddr, uint64_t data) {
-  if (baddr >= MAX_BINARY_LENGTH) {
-    syntax_error_message((uint64_t*) "maximum binary length exceeded");
+  if (baddr >= MAX_CODE_LENGTH + MAX_DATA_LENGTH) {
+    syntax_error_message((uint64_t*) "maximum data length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -5415,24 +5419,38 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address) {
   }
 }
 
-void copy_string_to_data_segment(uint64_t* s, uint64_t baddr) {
-  uint64_t end;
+void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number) {
+  // assert: offset < 0
 
-  end = baddr + round_up(string_length(s) + 1, REGISTERSIZE);
+  store_data(binary_length + offset, data);
 
-  while (baddr < end) {
-    store_data(baddr, *s);
+  if (data_line_number != (uint64_t*) 0)
+    *(data_line_number + (allocated_memory + offset) / REGISTERSIZE) = source_line_number;
+}
+
+void emit_string_data(uint64_t* entry) {
+  uint64_t* s;
+  uint64_t i;
+  uint64_t l;
+
+  s = get_string(entry);
+
+  i = 0;
+
+  l = round_up(string_length(s) + 1, REGISTERSIZE);
+
+  while (i < l) {
+    emit_data_word(*s, get_address(entry) + i, get_line_number(entry));
 
     s = s + 1;
 
-    baddr = baddr + REGISTERSIZE;
+    i = i + REGISTERSIZE;
   }
 }
 
 void emit_data_segment() {
   uint64_t i;
   uint64_t* entry;
-  uint64_t size;
 
   binary_length = binary_length + allocated_memory;
 
@@ -5441,27 +5459,14 @@ void emit_data_segment() {
   while (i < HASH_TABLE_SIZE) {
     entry = (uint64_t*) *(global_symbol_table + i);
 
-    // copy initial values of global variables, copy strings and big integers
+    // copy initial values of global variables, big integers and strings
     while ((uint64_t) entry != 0) {
-      size = 1;
-
       if (get_class(entry) == VARIABLE)
-        store_data(binary_length + get_address(entry), get_value(entry));
-      else if (get_class(entry) == STRING) {
-        copy_string_to_data_segment(get_string(entry), binary_length + get_address(entry));
-    
-        size = round_up(string_length(get_string(entry)) + 1, REGISTERSIZE) / REGISTERSIZE;
-
-      } else if (get_class(entry) == BIGINT)
-        store_data(binary_length + get_address(entry), get_value(entry));
-
-      if (data_line_number != (uint64_t*) 0) {
-        while (size > 0) {
-          size = size - 1;
-
-          *(data_line_number + (allocated_memory + get_address(entry)) / REGISTERSIZE + size) = get_line_number(entry);
-        }
-      }
+        emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
+      else if (get_class(entry) == BIGINT)
+        emit_data_word(get_value(entry), get_address(entry), get_line_number(entry));
+      else if (get_class(entry) == STRING)
+        emit_string_data(entry);
 
       entry = get_next_entry(entry);
     }
