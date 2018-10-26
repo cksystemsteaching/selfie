@@ -8994,10 +8994,6 @@ uint64_t pused() {
   return used_page_frame_memory - free_page_frame_memory;
 }
 
-uint64_t putilization() {
-  return pused() / page_frame_memory;
-}
-
 uint64_t* palloc() {
   uint64_t block;
   uint64_t frame;
