@@ -1498,6 +1498,7 @@ void reset_microkernel() {
 // -----------------------------------------------------------------
 
 uint64_t pavailable();
+uint64_t pexcess();
 uint64_t pused();
 
 uint64_t* palloc();
@@ -1575,8 +1576,8 @@ uint64_t HYPSTER = 7;
 
 uint64_t next_page_frame = 0;
 
-uint64_t used_page_frame_memory = 0;
-uint64_t free_page_frame_memory = 0;
+uint64_t allocated_page_frame_memory = 0;
+uint64_t free_page_frame_memory      = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -8984,14 +8985,24 @@ void restore_context(uint64_t* context) {
 uint64_t pavailable() {
   if (free_page_frame_memory > 0)
     return 1;
-  else if (used_page_frame_memory + MEGABYTE <= page_frame_memory)
+  else if (allocated_page_frame_memory + MEGABYTE <= page_frame_memory)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t pexcess() {
+  if (pavailable())
+    return 1;
+  else if (allocated_page_frame_memory + MEGABYTE <= 2 * page_frame_memory)
+    // tolerate twice as much memory mapped on demand than physically available
     return 1;
   else
     return 0;
 }
 
 uint64_t pused() {
-  return used_page_frame_memory - free_page_frame_memory;
+  return allocated_page_frame_memory - free_page_frame_memory;
 }
 
 uint64_t* palloc() {
@@ -9002,13 +9013,13 @@ uint64_t* palloc() {
   // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
 
   if (free_page_frame_memory == 0) {
-    if (pavailable()) {
+    if (pexcess()) {
       free_page_frame_memory = MEGABYTE;
 
       // on boot level zero allocate zeroed memory
       block = (uint64_t) zalloc(free_page_frame_memory);
 
-      used_page_frame_memory = used_page_frame_memory + free_page_frame_memory;
+      allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
 
       // page frames must be page-aligned to work as page table index
       next_page_frame = round_up(block, PAGESIZE);
