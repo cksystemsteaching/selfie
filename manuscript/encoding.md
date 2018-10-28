@@ -41,8 +41,8 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 ```
 > ./selfie -c selfie.c
 ./selfie: selfie compiling selfie.c with starc
-./selfie: 288310 characters read in 10003 lines and 1334 comments
-./selfie: with 169991(58.96%) characters in 43633 actual symbols
+./selfie: 290907 characters read in 10091 lines and 1341 comments
+./selfie: with 171876(59.08%) characters in 44090 actual symbols
 ...
 ```
 
@@ -66,14 +66,14 @@ and run the [code](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541
 ./selfie: 2 calls, 2 assignments, 1 while, 0 if, 0 return
 ./selfie: symbol table search time was 1 iterations on average and 28 in total
 ./selfie: 504 bytes generated with 116 instructions and 40 bytes of data
-./selfie: init:    lui: 1(0.73%), addi: 72(52.94%)
-./selfie: memory:  ld: 20(14.70%), sd: 11(8.80%)
-./selfie: compute: add: 3(2.20%), sub: 3(2.20%), mul: 1(0.73%), divu: 0(0.00%), remu: 2(1.47%)
-./selfie: control: sltu: 1(0.73%), beq: 5(3.67%), jal: 3(2.20%), jalr: 6(4.41%), ecall: 8(5.88%)
+./selfie: init:    lui: 1(0.86%), addi: 52(44.82%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 3(2.58%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 3(2.58%), jalr: 6(5.17%), ecall: 8(6.89%)
 ./selfie: selfie executing manuscript/code/hello-world.c with 1MB physical memory on mipster
 Hello World!    ./selfie: manuscript/code/hello-world.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/hello-world.c with exit code 0
-./selfie: summary: 110 executed instructions and 0.00MB mapped memory
+./selfie: summary: 110 executed instructions and 0.00MB(0.78%) mapped memory
 ...
 ```
 
@@ -97,14 +97,14 @@ with this output when running the [code](https://github.com/cksystemsteaching/se
 ./selfie: 2 calls, 2 assignments, 1 while, 0 if, 0 return
 ./selfie: symbol table search time was 1 iterations on average and 28 in total
 ./selfie: 504 bytes generated with 116 instructions and 40 bytes of data
-./selfie: init:    lui: 1(0.73%), addi: 72(52.94%)
-./selfie: memory:  ld: 20(14.70%), sd: 11(8.80%)
-./selfie: compute: add: 3(2.20%), sub: 3(2.20%), mul: 1(0.73%), divu: 0(0.00%), remu: 2(1.47%)
-./selfie: control: sltu: 1(0.73%), beq: 5(3.67%), jal: 3(2.20%), jalr: 6(4.41%), ecall: 8(5.88%)
+./selfie: init:    lui: 1(0.86%), addi: 52(44.82%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 3(2.58%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 3(2.58%), jalr: 6(5.17%), ecall: 8(6.89%)
 ./selfie: selfie executing manuscript/code/hello-world-minified.c with 1MB physical memory on mipster
 Hello World!    ./selfie: manuscript/code/hello-world-minified.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/hello-world-minified.c with exit code 0
-./selfie: summary: 110 executed instructions and 0.00MB mapped memory
+./selfie: summary: 110 executed instructions and 0.00MB(0.78%) mapped memory
 ...
 ```
 
@@ -259,7 +259,7 @@ The implementation of `itoa` in selfie not only supports decimal but also binary
 85 in binary:      1010101
 ./selfie: manuscript/code/integer.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/integer.c with exit code 0
-./selfie: summary: 78610 executed instructions and 0.17MB mapped memory
+./selfie: summary: 78610 executed instructions and 0.17MB(17.57%) mapped memory
 ...
 ```
 
@@ -490,7 +490,7 @@ UINT64_MAX in binary:      11111111111111111111111111111111111111111111111111111
  INT64_MIN in binary:      1000000000000000000000000000000000000000000000000000000000000000
 ./selfie: manuscript/code/negative.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/negative.c with exit code 0
-./selfie: summary: 861900 executed instructions and 0.17MB mapped memory
+./selfie: summary: 861900 executed instructions and 0.17MB(17.57%) mapped memory
 ...
 ```
 
@@ -545,7 +545,7 @@ We prepared another simple program called [`bitwise.c`](https://github.com/cksys
 0000000000000000000000000000000000000000000000000000000000000011 in binary = 3 in decimal
 ./selfie: manuscript/code/bitwise.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/bitwise.c with exit code 0
-./selfie: summary: 2727047 executed instructions and 0.17MB mapped memory
+./selfie: summary: 2727047 executed instructions and 0.17MB(17.57%) mapped memory
 ...
 ```
 
@@ -600,8 +600,8 @@ Let us have another look at the first few lines of the assembly code in `selfie.
 
 {line-numbers=off}
 ```
-0x0(~1): 0x000392B7: lui $t0,0x39
-0x4(~1): 0x7D028293: addi $t0,$t0,2000
+0x0(~1): 0x0003A2B7: lui $t0,0x3A
+0x4(~1): 0xF1028293: addi $t0,$t0,-240
 0x8(~1): 0x00028193: addi $gp,$t0,0
 0xC(~1): 0x00000513: addi $a0,$zero,0
 0x10(~1): 0x0D600893: addi $a7,$zero,214
@@ -617,7 +617,7 @@ Let us have another look at the first few lines of the assembly code in `selfie.
 0x38(~1): 0x00810293: addi $t0,$sp,8
 0x3C(~1): 0xFF810113: addi $sp,$sp,-8
 0x40(~1): 0x00513023: sd $t0,0($sp)
-0x44(~1): 0x680260EF: jal $ra,39328[0x266C4]
+0x44(~1): 0x531260EF: jal $ra,39756[0x26D74]
 ```
 
 Each line represents one machine instruction. The fifth line, for example, reads like this. The hexadecimal number `0x10` is the 32-bit-word-aligned memory address of the instruction in memory. The expression `(~1)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x0D600893` is in fact the binary encoded version of the instruction itself. Finally, `addi $a7,$zero,214` is the human-readable assembly version of the instruction. This means in particular that `0x0D600893` and `addi $a7,$zero,214` are semantically equivalent. The 32-bit word `0x0D600893` in binary stored at address `0x10` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
@@ -668,7 +668,7 @@ In this chapter we have seen how characters, strings, identifiers, integers, and
 
 {line-numbers=off}
 ```
-> ./selfie -c manuscript/code/hello-world.c -m 1
+> ./selfie -c manuscript/code/hello-world.c
 ./selfie: selfie compiling manuscript/code/hello-world.c with starc
 ...
 ./selfie: 734 characters read in 23 lines and 11 comments
@@ -677,11 +677,10 @@ In this chapter we have seen how characters, strings, identifiers, integers, and
 ./selfie: 2 calls, 2 assignments, 1 while, 0 if, 0 return
 ./selfie: symbol table search time was 1 iterations on average and 28 in total
 ./selfie: 504 bytes generated with 116 instructions and 40 bytes of data
-./selfie: init:    lui: 1(0.73%), addi: 72(52.94%)
-./selfie: memory:  ld: 20(14.70%), sd: 11(8.80%)
-./selfie: compute: add: 3(2.20%), sub: 3(2.20%), mul: 1(0.73%), divu: 0(0.00%), remu: 2(1.47%)
-./selfie: control: sltu: 1(0.73%), beq: 5(3.67%), jal: 3(2.20%), jalr: 6(4.41%), ecall: 8(5.88%)
-...
+./selfie: init:    lui: 1(0.86%), addi: 52(44.82%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 3(2.58%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 3(2.58%), jalr: 6(5.17%), ecall: 8(6.89%)
 ```
 
 The compiler counts `characters`, `lines`, `comments`, `whitespace`, and `symbols` in source code, and `instructions` and `bytes of data` in the generated machine code. The information about `global variables`, `procedures`, `string literals`, `calls`, `assignments`, `while`, `if`, and `return` as well as the generated instructions will become clear in the next chapter.

@@ -273,14 +273,14 @@ We call this phenomenon the *fixed point* of a self-compiling compiler. If we co
 [Assembly](https://en.wikipedia.org/wiki/Assembly_language "Assembly Language")
 : A low-level programming language for a computer, or other programmable device, in which there is a very strong (generally one-to-one) correspondence between the language and the architecture's machine code instructions.
 
-Try the `-s` option to have selfie generate assembly as follows:
+Try the `-S` option to have selfie generate assembly as follows:
 
 {line-numbers=off}
 ```
-> ./selfie -c selfie.c -s selfie.s
+> ./selfie -c selfie.c -S selfie.s
 ./selfie: selfie compiling selfie.c with starc
 ...
-./selfie: 1047528 characters of assembly with 39800 instructions and 12592 bytes of data written into selfie.s
+./selfie: 1843603 characters of assembly with 39800 instructions and 12592 bytes of data written into selfie.s
 ```
 
 The part of selfie that generates assembly is called a *disassembler*.
@@ -301,24 +301,24 @@ For example, the first few lines of `selfie.s` are:
 
 {line-numbers=off}
 ```
-0x0: lui $t0,0x3A
-0x4: addi $t0,$t0,-240
-0x8: addi $gp,$t0,0
-0xC: addi $a0,$zero,0
-0x10: addi $a7,$zero,214
-0x14: ecall
-0x18: addi $a0,$a0,7
-0x1C: addi $t0,$zero,8
-0x20: remu $t0,$a0,$t0
-0x24: sub $a0,$a0,$t0
-0x28: addi $a7,$zero,214
-0x2C: ecall
-0x30: sd $a0,-8($gp)
-0x34: addi $a0,$zero,0
-0x38: addi $t0,$sp,8
-0x3C: addi $sp,$sp,-8
-0x40: sd $t0,0($sp)
-0x44: jal $ra,39756[0x26D74]
+0x0(~1): 0x0003A2B7: lui $t0,0x3A
+0x4(~1): 0xF1028293: addi $t0,$t0,-240
+0x8(~1): 0x00028193: addi $gp,$t0,0
+0xC(~1): 0x00000513: addi $a0,$zero,0
+0x10(~1): 0x0D600893: addi $a7,$zero,214
+0x14(~1): 0x00000073: ecall
+0x18(~1): 0x00750513: addi $a0,$a0,7
+0x1C(~1): 0x00800293: addi $t0,$zero,8
+0x20(~1): 0x025572B3: remu $t0,$a0,$t0
+0x24(~1): 0x40550533: sub $a0,$a0,$t0
+0x28(~1): 0x0D600893: addi $a7,$zero,214
+0x2C(~1): 0x00000073: ecall
+0x30(~1): 0xFEA1BC23: sd $a0,-8($gp)
+0x34(~1): 0x00000513: addi $a0,$zero,0
+0x38(~1): 0x00810293: addi $t0,$sp,8
+0x3C(~1): 0xFF810113: addi $sp,$sp,-8
+0x40(~1): 0x00513023: sd $t0,0($sp)
+0x44(~1): 0x531260EF: jal $ra,39756[0x26D74]
 ```
 
 What you see is a human-readable version of the machine code in `selfie.m`. The purpose of `selfie.s` is here to study `selfie.m` and eventually understand its semantics. Selfie can even show the assembly code as it is being executed by mipster which helps debugging the machine code.
