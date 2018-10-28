@@ -4730,6 +4730,9 @@ void emit_bootstrapping() {
 
   // wrapper code for exit must follow here
 
+  // discount NOPs in profile that were generated for program entry
+  ic_addi = ic_addi - binary_length / INSTRUCTIONSIZE;
+
   // restore original binary length
   binary_length = code_length;
 }
