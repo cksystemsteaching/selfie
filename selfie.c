@@ -6530,13 +6530,12 @@ void print_code_context_for_instruction(uint64_t a) {
     print_code_line_number_for_instruction(pc - entry_point);
   } else {
     printf1((uint64_t*) "%x", (uint64_t*) pc);
-    if (disassemble_verbose)
+    if (disassemble_verbose) {
       print_code_line_number_for_instruction(pc);
+      printf1((uint64_t*) ": %p", (uint64_t*) ir);
+    }
   }
-  if (disassemble_verbose)
-    printf1((uint64_t*) ": %p: ", (uint64_t*) ir);
-  else
-    print((uint64_t*) ": ");
+  print((uint64_t*) ": ");
 }
 
 void print_lui() {
