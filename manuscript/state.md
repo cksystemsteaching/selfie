@@ -60,25 +60,25 @@ The program takes the decimal value 10 (Line 3) and decrements it (Line 13) unti
 > ./selfie -c manuscript/code/countdown.c -o countdown.m -S countdown.s -m 1
 ./selfie: selfie compiling manuscript/code/countdown.c with starc
 ./selfie: 645 characters read in 20 lines and 9 comments
-./selfie: with 65(10.70%) characters in 28 actual symbols
+./selfie: with 65(10.07%) characters in 28 actual symbols
 ./selfie: 1 global variables, 1 procedures, 0 string literals
 ./selfie: 1 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: symbol table search time was 1 iterations on average and 22 in total
 ./selfie: 416 bytes generated with 100 instructions and 16 bytes of data
-./selfie: init:    lui: 1(0.83%), addi: 64(53.33%)
-./selfie: memory:  ld: 19(15.83%), sd: 7(5.83%)
-./selfie: compute: add: 1(0.83%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
-./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
+./selfie: init:    lui: 1(1.00%), addi: 44(44.00%)
+./selfie: memory:  ld: 19(19.00%), sd: 7(7.00%)
+./selfie: compute: add: 1(1.00%), sub: 3(3.00%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(2.00%)
+./selfie: control: sltu: 1(1.00%), beq: 5(5.00%), jal: 3(3.00%), jalr: 6(6.00%), ecall: 8(8.00%)
 ./selfie: 544 bytes with 100 instructions and 16 bytes of data written into countdown.m
-./selfie: 3797 characters of assembly with 100 instructions written into countdown.s
+./selfie: 3877 characters of assembly with 100 instructions and 16 bytes of data written into countdown.s
 ./selfie: selfie executing countdown.m with 1MB physical memory on mipster
 ./selfie: countdown.m exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating countdown.m with exit code 0
-./selfie: summary: 132 executed instructions and 0.00MB mapped memory
-./selfie: init:    lui: 1(0.75%), addi: 41(31.60%)
+./selfie: summary: 132 executed instructions and 0.00MB(0.78%) mapped memory
+./selfie: init:    lui: 1(0.75%), addi: 41(31.06%)
 ./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
 ./selfie: compute: add: 0(0.00%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
-./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.90%), jalr: 1(0.75%), ecall: 3(2.27%)
+./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.09%), jalr: 1(0.75%), ecall: 3(2.27%)
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
 ./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
@@ -260,15 +260,15 @@ Let us take a look at how the first few and last few instructions for the countd
 > ./selfie -c manuscript/code/countdown.c -d 1
 ./selfie: selfie compiling manuscript/code/countdown.c with starc
 ./selfie: 645 characters read in 20 lines and 9 comments
-./selfie: with 65(10.70%) characters in 28 actual symbols
+./selfie: with 65(10.07%) characters in 28 actual symbols
 ./selfie: 1 global variables, 1 procedures, 0 string literals
 ./selfie: 1 calls, 1 assignments, 1 while, 0 if, 1 return
 ./selfie: symbol table search time was 1 iterations on average and 22 in total
 ./selfie: 416 bytes generated with 100 instructions and 16 bytes of data
-./selfie: init:    lui: 1(0.83%), addi: 64(53.33%)
-./selfie: memory:  ld: 19(15.83%), sd: 7(5.83%)
-./selfie: compute: add: 1(0.83%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
-./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
+./selfie: init:    lui: 1(1.00%), addi: 44(44.00%)
+./selfie: memory:  ld: 19(19.00%), sd: 7(7.00%)
+./selfie: compute: add: 1(1.00%), sub: 3(3.00%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(2.00%)
+./selfie: control: sltu: 1(1.00%), beq: 5(5.00%), jal: 3(3.00%), jalr: 6(6.00%), ecall: 8(8.00%)
 ./selfie: selfie executing manuscript/code/countdown.c with 1MB physical memory on mipster
 $pc=0x10000(~1): lui $t0,0x10: |- $t0=0x0 -> $t0=0x10000
 $pc=0x10004(~1): addi $t0,$t0,416: $t0=65536(0x10000) |- $t0=65536(0x10000) -> $t0=65952(0x101A0)
@@ -303,11 +303,11 @@ $pc=0x10058(~1): addi $a7,$zero,93: $zero=0(0x0) |- $a7=214(0xD6) -> $a7=93(0x5D
 $pc=0x1005C(~1): ecall(exit): $a0=0x0 |- ->
 ./selfie: manuscript/code/countdown.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/countdown.c with exit code 0
-./selfie: summary: 132 executed instructions and 0.00MB mapped memory
-./selfie: init:    lui: 1(0.75%), addi: 41(31.60%)
+./selfie: summary: 132 executed instructions and 0.00MB(0.78%) mapped memory
+./selfie: init:    lui: 1(0.75%), addi: 41(31.06%)
 ./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
 ./selfie: compute: add: 0(0.00%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
-./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.90%), jalr: 1(0.75%), ecall: 3(2.27%)
+./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.09%), jalr: 1(0.75%), ecall: 3(2.27%)
 ./selfie: profile: total,max(ratio%)@addr(line#),2max,3max
 ./selfie: calls:   1,1(100.00%)@0x134(~11),0(0.00%),0(0.00%)
 ./selfie: loops:   10,10(100.00%)@0x148(~11),0(0.00%),0(0.00%)
@@ -576,22 +576,22 @@ With the full RISC-U instruction set introduced, there is one more thing we woul
 ./selfie: selfie compiling manuscript/code/countdown.c with starc
 ...
 ./selfie: 416 bytes generated with 100 instructions and 16 bytes of data
-./selfie: init:    lui: 1(0.83%), addi: 64(53.33%)
-./selfie: memory:  ld: 19(15.83%), sd: 7(5.83%)
-./selfie: compute: add: 1(0.83%), sub: 3(2.50%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(1.66%)
-./selfie: control: sltu: 1(0.83%), beq: 5(4.16%), jal: 3(2.50%), jalr: 6(5.00%), ecall: 8(6.66%)
+./selfie: init:    lui: 1(1.00%), addi: 44(44.00%)
+./selfie: memory:  ld: 19(19.00%), sd: 7(7.00%)
+./selfie: compute: add: 1(1.00%), sub: 3(3.00%), mul: 0(0.00%), divu: 0(0.00%), remu: 2(2.00%)
+./selfie: control: sltu: 1(1.00%), beq: 5(5.00%), jal: 3(3.00%), jalr: 6(6.00%), ecall: 8(8.00%)
 ./selfie: selfie executing manuscript/code/countdown.c with 1MB physical memory on mipster
 ./selfie: manuscript/code/countdown.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/countdown.c with exit code 0
-./selfie: summary: 132 executed instructions and 0.00MB mapped memory
-./selfie: init:    lui: 1(0.75%), addi: 41(31.60%)
+./selfie: summary: 132 executed instructions and 0.00MB(0.78%) mapped memory
+./selfie: init:    lui: 1(0.75%), addi: 41(31.06%)
 ./selfie: memory:  ld: 25(18.93%), sd: 15(11.36%)
 ./selfie: compute: add: 0(0.00%), sub: 11(8.33%), mul: 0(0.00%), divu: 0(0.00%), remu: 1(0.75%)
-./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.90%), jalr: 1(0.75%), ecall: 3(2.27%)
+./selfie: control: sltu: 11(8.33%), beq: 11(8.33%), jal: 12(9.09%), jalr: 1(0.75%), ecall: 3(2.27%)
 ...
 ```
 
-For example, when compiling `countdown.c` starc generated 3 `sub` instructions which is around 2.5% of the total number of generated instructions (`sub: 3(2.50%)` in Line 7). When executing the generated code `sub` instructions are executed 11 times which is around 8.33% of the total number of executed instructions (`sub: 11(8.33%)` in Line 19).
+For example, when compiling `countdown.c` starc generated 3 `sub` instructions which is exactly 3% of the total number of generated instructions (`sub: 3(3.00%)` in Line 7). When executing the generated code `sub` instructions are executed 11 times which is 8.33% of the total number of executed instructions (`sub: 11(8.33%)` in Line 19).
 
 ## Pointer
 
@@ -639,7 +639,7 @@ $pc=0x101AC(~21): sd $t0,-16($gp): $gp=0x101F8,$t0=66008(0x101D8) |- mem[0x101E8
 ...
 ./selfie: manuscript/code/hello-world.c exiting with exit code 0 and 0.00MB mallocated memory
 ./selfie: selfie terminating manuscript/code/hello-world.c with exit code 0
-./selfie: summary: 110 executed instructions and 0.00MB mapped memory
+./selfie: summary: 110 executed instructions and 0.00MB(0.78%) mapped memory
 ...
 ```
 
