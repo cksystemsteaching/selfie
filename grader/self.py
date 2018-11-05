@@ -207,7 +207,7 @@ def test_structs():
 def test_assembler(stage):
   if stage >= 1:
     test_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
-      'selfie can parse it\'s own disassembly files')
+      'selfie can parse its own implementation in assembly')
     test_execution('./selfie -a grader/assembler-missing-address.s',
       'assembly file with a missing address is not parseable', should_succeed=False)
     test_execution('./selfie -a grader/assembler-missing-instruction.s',
