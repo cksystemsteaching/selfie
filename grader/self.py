@@ -215,6 +215,10 @@ def test_assembler(stage):
     test_execution('./selfie -a grader/assembler-missing-literal.s',
       'assembly file with a missing literal is not parseable', should_succeed=False)
 
+  if stage >= 2:
+    test_execution('./selfie -c selfie.c -s selfie.s -a selfie.s -m 3 -c selfie.c',
+      'selfie can assemble its own disassembly file')
+
 
 def grade():
   global number_of_positive_tests_passed, number_of_positive_tests_failed
@@ -270,8 +274,8 @@ if __name__ == "__main__":
       test_shift(direction='right')
     elif test == 'struct':
       test_structs()
-    elif re.match(r'^assembler-([1-1])$', test):
-      stage = re.search(r'^assembler-([1-1])$', test).group(1)
+    elif re.match(r'^assembler-([1-2])$', test):
+      stage = re.search(r'^assembler-([1-2])$', test).group(1)
 
       test_assembler(int(stage))
     else:
