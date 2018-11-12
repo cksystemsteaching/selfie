@@ -33,14 +33,16 @@ def print_passed(msg):
   print("\033[92m[PASSED]\033[0m " + msg)
 
 
-def print_failed(msg, warning, output):
+def print_failed(msg, warning, output, command):
   print("\033[91m[FAILED]\033[0m " + msg)
+  if command != None:
+    print(command)
   if warning != None:
     print("\033[93m > " + warning + " <\033[0m")
   print(' >> ' + output[:-1].replace('\n', '\n >> '))
 
 
-def record_result(result, msg, output, warning, should_succeed=True):
+def record_result(result, msg, output, warning, should_succeed=True, command=None):
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
 
@@ -50,11 +52,11 @@ def record_result(result, msg, output, warning, should_succeed=True):
       print_passed(msg)
     else:
       number_of_negative_tests_failed += 1
-      print_failed(msg, warning, output)
+      print_failed(msg, warning, output, command)
   else:
     if should_succeed:
       number_of_positive_tests_failed += 1
-      print_failed(msg, warning, output)
+      print_failed(msg, warning, output, command)
     else:
       number_of_negative_tests_passed += 1
       print_passed(msg)
@@ -138,7 +140,7 @@ def test_execution(command, msg, should_succeed=True):
   else:
     warning = f'Execution terminated with wrong exit code {p.returncode}'
 
-  record_result(p.returncode == 0, msg, output, warning, should_succeed)
+  record_result(p.returncode == 0, msg, output, warning, should_succeed, command)
 
 
 def test_hex_literal():
@@ -216,8 +218,10 @@ def test_assembler(stage):
       'assembly file with a missing literal is not parseable', should_succeed=False)
 
   if stage >= 2:
-    test_execution('./selfie -c selfie.c -s selfie.s -a selfie.s -m 3 -c selfie.c',
+    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 10 -a selfie1.s -s selfie2.s',
       'selfie can assemble its own disassembly file')
+    test_execution('diff -q selfie1.s selfie2.s',
+      'both assembly files are exaclty the same')
 
 
 def grade():
