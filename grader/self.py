@@ -219,9 +219,9 @@ def test_assembler(stage):
 
   if stage >= 2:
     test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 10 -a selfie1.s -s selfie2.s',
-      'selfie can assemble its own disassembly file')
+      'selfie can assemble its own binary file')
     test_execution('diff -q selfie1.s selfie2.s',
-      'both assembly files are exaclty the same')
+      'both assembly files are exactly the same')
 
 
 def grade():
