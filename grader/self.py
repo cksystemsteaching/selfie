@@ -4,10 +4,10 @@ import re
 import math
 from subprocess import Popen, PIPE
 
-number_of_positive_tests_passed = 0
-number_of_positive_tests_failed = 0
-number_of_negative_tests_passed = 0
-number_of_negative_tests_failed = 0
+number_of_positive_tests_passed = [0]
+number_of_positive_tests_failed = [0]
+number_of_negative_tests_passed = [0]
+number_of_negative_tests_failed = [0]
 
 INSTRUCTIONSIZE = 4  # in bytes
 ELF_HEADER_LEN = 120
@@ -48,18 +48,26 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
 
   if result == True:
     if should_succeed:
-      number_of_positive_tests_passed += 1
+      number_of_positive_tests_passed[-1] += 1
       print_passed(msg)
     else:
-      number_of_negative_tests_failed += 1
+      number_of_negative_tests_failed[-1] += 1
       print_failed(msg, warning, output, command)
   else:
     if should_succeed:
-      number_of_positive_tests_failed += 1
+      number_of_positive_tests_failed[-1] += 1
       print_failed(msg, warning, output, command)
     else:
-      number_of_negative_tests_passed += 1
+      number_of_negative_tests_passed[-1] += 1
       print_passed(msg)
+
+
+def execute(command):
+  Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True).wait()
+
+
+def set_up():
+  execute('make clean && make selfie')
 
 
 def test_compilable(file, msg, should_succeed=True):
@@ -130,7 +138,7 @@ def test_mipster_execution(file, result, msg):
 
 
 def test_execution(command, msg, should_succeed=True):
-  p = Popen(command.split(' '), stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -144,6 +152,8 @@ def test_execution(command, msg, should_succeed=True):
 
 
 def test_hex_literal():
+  set_up()
+
   test_compilable('hex-integer-literal.c', 
     'hex integer literal with all characters compiled')
   test_mipster_execution('hex-integer-literal.c', 1,
@@ -161,6 +171,8 @@ def test_hex_literal():
 
 
 def test_shift(direction):
+  set_up()
+
   if direction == 'left':
     instruction = SLL_INSTRUCTION
   else:
@@ -184,6 +196,8 @@ def test_shift(direction):
 
 
 def test_structs():
+  set_up()
+
   test_compilable('struct-declaration.c',
     'empty struct declarations compiled')
   test_compilable('struct-member-declaration.c',
@@ -207,7 +221,10 @@ def test_structs():
 
 
 def test_assembler(stage):
+  set_up()
+
   if stage >= 1:
+    start_stage(1)
     test_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
       'selfie can parse its own implementation in assembly')
     test_execution('./selfie -a grader/assembler-missing-address.s',
@@ -218,30 +235,68 @@ def test_assembler(stage):
       'assembly file with a missing literal is not parseable', should_succeed=False)
 
   if stage >= 2:
-    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 10 -a selfie1.s -s selfie2.s',
-      'selfie can assemble its own binary file')
-    test_execution('diff -q selfie1.s selfie2.s',
-      'both assembly files are exactly the same')
+    start_stage(2)
+    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 10 -a selfie1.s -s selfie2.s '
+     + '&& diff -q selfie1.s selfie2.s',
+      'selfie can assemble its own binary file and both assembly files are exactly the same')
+
+
+def start_stage(stage):
+  global number_of_positive_tests_passed, number_of_positive_tests_failed
+  global number_of_negative_tests_passed, number_of_negative_tests_failed
+
+  print(f'==== STAGE {stage} ====')
+
+  if stage == 1:
+    return
+
+  number_of_positive_tests_passed.append(0)
+  number_of_negative_tests_passed.append(0)
+  number_of_positive_tests_failed.append(0)
+  number_of_negative_tests_failed.append(0)
 
 
 def grade():
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
 
-  number_of_tests =  number_of_positive_tests_passed + number_of_positive_tests_failed
-  number_of_tests += number_of_negative_tests_passed + number_of_negative_tests_failed
+  grade_is_negative = False
 
-  number_of_tests_passed = number_of_positive_tests_passed + number_of_negative_tests_passed
+  for stage in range(0, len(number_of_positive_tests_passed)):
+    if len(number_of_positive_tests_passed) > 1:
+      name = f' of stage {stage + 1} '
+    else:
+      name = ' '
 
-  if number_of_tests == 0:
-    print('nothing to grade')
-    return
+    number_of_tests =  number_of_positive_tests_passed[stage] + number_of_positive_tests_failed[stage]
+    number_of_tests += number_of_negative_tests_passed[stage] + number_of_negative_tests_failed[stage]
+
+    number_of_tests_passed = number_of_positive_tests_passed[stage] + number_of_negative_tests_passed[stage]
+
+    if number_of_tests == 0:
+      print('nothing to grade')
+      return
+
+    passed = number_of_tests_passed / number_of_tests
+
+    print('tests{}passed: {:02.1f}%'.format(name, passed * 100))
+
+    if number_of_positive_tests_passed[stage] == 0:
+      print('warning: you have not passed at least one positive test')
+      grade_is_negative = True
+
+
+  number_of_tests_passed = sum(number_of_positive_tests_passed) + sum(number_of_negative_tests_passed)
+
+  number_of_tests =  sum(number_of_positive_tests_passed) + sum(number_of_positive_tests_failed)
+  number_of_tests += sum(number_of_negative_tests_passed) + sum(number_of_negative_tests_failed)
 
   passed = number_of_tests_passed / number_of_tests
 
-  print('tests passed:  {:02.1f}%'.format(passed * 100))
-
-  if passed == 1.0:
+  if grade_is_negative:
+    grade = 5
+    color = 91
+  elif passed == 1.0:
     grade = 2
     color = 92
   elif passed >= 0.5:
@@ -251,11 +306,6 @@ def grade():
     grade = 4
     color = 93
   else:
-    grade = 5
-    color = 91
-
-  if number_of_positive_tests_passed == 0:
-    print('warning:       you have not passed at least one positive test')
     grade = 5
     color = 91
 
