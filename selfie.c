@@ -931,6 +931,9 @@ void     implement_open(uint64_t* context);
 void emit_malloc();
 void implement_brk(uint64_t* context);
 
+void emit_wait();
+void implement_wait(uint64_t* context);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -943,6 +946,7 @@ uint64_t SYSCALL_READ  = 63;
 uint64_t SYSCALL_WRITE = 64;
 uint64_t SYSCALL_OPEN  = 1024;
 uint64_t SYSCALL_BRK   = 214;
+uint64_t SYSCALL_WAIT  = 403;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -4778,6 +4782,7 @@ void selfie_compile() {
   emit_open();
   emit_malloc();
   emit_switch();
+  emit_wait();
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed double word to obtain unique hash
@@ -6333,6 +6338,21 @@ void implement_brk(uint64_t* context) {
       *(reg_ups + REG_A0) = 0;
     }
   }
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
+void emit_wait() {
+  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "wait", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_WAIT);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_wait(uint64_t* context) {
+  *(get_regs(context) + REG_A0) = wait();
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
@@ -9216,6 +9236,8 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_write(context);
   else if (a7 == SYSCALL_OPEN)
     implement_open(context);
+  else if (a7 == SYSCALL_WAIT)
+    implement_wait(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
