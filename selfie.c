@@ -9378,7 +9378,8 @@ uint64_t hypster(uint64_t* to_context) {
 uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   // works with mipsters and hypsters
   uint64_t mslice;
-  uint64_t timeout;
+  // timeout is currently unused, commented out to avoid compiler warning
+  //uint64_t timeout;
   uint64_t* from_context;
 
   printf2((uint64_t*) "mixter (%d%% mipster/%d%% hypster)\n", (uint64_t*) mix, (uint64_t*) (100 - mix));
@@ -9395,11 +9396,11 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   if (mslice > 0) {
     mix = 1;
 
-    timeout = mslice;
+    // timeout = mslice;
   } else {
     mix = 0;
 
-    timeout = TIMESLICE;
+    // timeout = TIMESLICE;
   }
 
   while (1) {
@@ -9412,7 +9413,7 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
       // switch to parent which is in charge of handling exceptions
       to_context = get_parent(from_context);
 
-      timeout = TIMEROFF;
+      // timeout = TIMEROFF;
     } else if (handle_exception(from_context) == EXIT)
       return get_exit_code(from_context);
     else {
@@ -9423,22 +9424,23 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
         if (mslice != TIMESLICE) {
           mix = 0;
 
-          timeout = TIMESLICE - mslice;
+          // timeout = TIMESLICE - mslice;
         }
       } else if (mslice > 0) {
         mix = 1;
 
-        timeout = mslice;
+        // timeout = mslice;
       }
     }
   }
 }
 
 uint64_t minmob(uint64_t* to_context) {
-  uint64_t timeout;
+  // timeout is currently unused, commented out to avoid compiler warning
+  // uint64_t timeout;
   uint64_t* from_context;
 
-  timeout = TIMESLICE;
+  // timeout = TIMESLICE;
 
   while (1) {
     from_context = mipster_switch(to_context, TIMESLICE);
@@ -9447,7 +9449,7 @@ uint64_t minmob(uint64_t* to_context) {
       // switch to parent which is in charge of handling exceptions
       to_context = get_parent(from_context);
 
-      timeout = TIMEROFF;
+      // timeout = TIMEROFF;
     } else {
       // minster and mobster do not handle page faults
       if (get_exception(from_context) == EXCEPTION_PAGEFAULT) {
@@ -9462,7 +9464,7 @@ uint64_t minmob(uint64_t* to_context) {
       // TODO: scheduler should go here
       to_context = from_context;
 
-      timeout = TIMESLICE;
+      // timeout = TIMESLICE;
     }
   }
 }
@@ -10112,6 +10114,6 @@ int main(uint64_t argc, uint64_t* argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-
+  
   return selfie();
 }

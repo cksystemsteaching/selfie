@@ -17,13 +17,6 @@ compile: selfie
 webassembly: manuscript/code/hello-world-to-wasm.c
 	emcc $(CFLAGS) $< -o hello-world-to-wasm.html
 
-html: selfie.c
-	emcc $(CFLAGS) $< -s ASSERTIONS=2 -o selfie.html
-
-emcc: selfie.c
-	emcc $(CFLAGS) $< -s SYSCALL_DEBUG=1 -s FS_LOG=1 -s ASSERTIONS=2 -o selfie.html
-
-
 # Compile and run quine and compare its output to itself
 quine: selfie
 	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' | diff -q manuscript/code/quine.c -
