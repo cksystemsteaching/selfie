@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS := -w -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
+CFLAGS := -Wextra -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long' -Dulong='unsigned long'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c
@@ -13,6 +13,16 @@ compile: selfie
 	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 3 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
+
+webassembly: manuscript/code/hello-world-to-wasm.c
+	emcc $(CFLAGS) $< -o hello-world-to-wasm.html
+
+html: selfie.c
+	emcc $(CFLAGS) $< -s ASSERTIONS=2 -o selfie.html
+
+emcc: selfie.c
+	emcc $(CFLAGS) $< -s SYSCALL_DEBUG=1 -s FS_LOG=1 -s ASSERTIONS=2 -o selfie.html
+
 
 # Compile and run quine and compare its output to itself
 quine: selfie

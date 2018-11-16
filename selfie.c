@@ -88,11 +88,11 @@ Professor Jochen Liedtke from University of Karlsruhe.
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-void      exit(uint64_t code);
-uint64_t  read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
-uint64_t  write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
-uint64_t  open(uint64_t* filename, uint64_t flags, uint64_t mode);
-uint64_t* malloc(uint64_t size);
+void  exit(int code);
+int   read(int fd, uint64_t* buffer, int bytes_to_read);
+int   write(int fd, uint64_t* buffer, int bytes_to_write);
+int   open(uint64_t* filename, int flags, char* mode);
+void* malloc(ulong size);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -111,7 +111,7 @@ uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b);
 uint64_t get_low_word(uint64_t n);
 uint64_t get_high_word(uint64_t n);
 
-uint64_t abs(uint64_t n);
+uint64_t absolute(uint64_t n);
 
 uint64_t signed_less_than(uint64_t a, uint64_t b);
 uint64_t signed_division(uint64_t a, uint64_t b);
@@ -128,7 +128,7 @@ uint64_t* string_copy(uint64_t* s);
 void      string_reverse(uint64_t* s);
 uint64_t  string_compare(uint64_t* s, uint64_t* t);
 
-uint64_t  atoi(uint64_t* s);
+uint64_t  selfie_atoi(uint64_t* s);
 uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
@@ -354,6 +354,9 @@ uint64_t SYM_NOTEQ        = 24; // !=
 uint64_t SYM_MOD          = 25; // %
 uint64_t SYM_CHARACTER    = 26; // character
 uint64_t SYM_STRING       = 27; // string
+uint64_t SYM_INT          = 28; // int
+uint64_t SYM_ULONG        = 29; // unsigned
+uint64_t SYM_CHAR         = 30; // char
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -389,7 +392,7 @@ uint64_t  source_fd   = 0;             // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_CHAR + 1) * SIZEOFUINT64STAR);
 
   *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
@@ -419,6 +422,9 @@ void init_scanner () {
   *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
   *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
   *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+  *(SYMBOLS + SYM_INT)          = (uint64_t) "int";
+  *(SYMBOLS + SYM_ULONG)        = (uint64_t) "ulong";
+  *(SYMBOLS + SYM_CHAR)         = (uint64_t) "char";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -1022,7 +1028,7 @@ void init_memory(uint64_t megabytes) {
 // -----------------------------------------------------------------
 
 void print_code_line_number_for_instruction(uint64_t a);
-void print_code_context_for_instruction(uint64_t a);
+void print_code_context_for_instruction();
 
 void print_lui();
 void print_lui_before();
@@ -1502,7 +1508,7 @@ uint64_t pexcess();
 uint64_t pused();
 
 uint64_t* palloc();
-void      pfree(uint64_t* frame);
+//void      pfree(uint64_t* frame);
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data);
 
@@ -1717,7 +1723,7 @@ uint64_t get_high_word(uint64_t n) {
   return get_bits(n, WORDSIZEINBITS, WORDSIZEINBITS);
 }
 
-uint64_t abs(uint64_t n) {
+uint64_t absolute(uint64_t n) {
   if (signed_less_than(n, 0))
     return -n;
   else
@@ -1739,18 +1745,18 @@ uint64_t signed_division(uint64_t a, uint64_t b) {
     if (b == INT64_MIN)
       return 1;
     else if (signed_less_than(b, 0))
-      return INT64_MIN / abs(b);
+      return INT64_MIN / absolute(b);
     else
       return -(INT64_MIN / b);
   else if (b == INT64_MIN)
     return 0;
   else if (signed_less_than(a, 0))
     if (signed_less_than(b, 0))
-      return abs(a) / abs(b);
+      return absolute(a) / absolute(b);
     else
-      return -(abs(a) / b);
+      return -(absolute(a) / b);
   else if (signed_less_than(b, 0))
-    return -(a / abs(b));
+    return -(a / absolute(b));
   else
     return a / b;
 }
@@ -1876,7 +1882,7 @@ uint64_t string_compare(uint64_t* s, uint64_t* t) {
       return 0;
 }
 
-uint64_t atoi(uint64_t* s) {
+uint64_t selfie_atoi(uint64_t* s) {
   uint64_t i;
   uint64_t n;
   uint64_t c;
@@ -2056,7 +2062,7 @@ void put_character(uint64_t c) {
 
   // try to write 1 character from character_buffer
   // into file with output_fd file descriptor
-  if (write(output_fd, character_buffer, 1) == 1) {
+  if ((uint64_t) write(output_fd, character_buffer, 1) == 1) {
     if (output_fd != 1)
       // count number of characters written to a file,
       // not the console which has file descriptor 1
@@ -2588,6 +2594,12 @@ uint64_t identifier_or_keyword() {
     return SYM_RETURN;
   if (identifier_string_match(SYM_VOID))
     return SYM_VOID;
+  if (identifier_string_match(SYM_INT))
+    return SYM_UINT64;
+  if (identifier_string_match(SYM_ULONG))
+    return SYM_UINT64;
+  if (identifier_string_match(SYM_CHAR))
+    return SYM_UINT64;
   else
     return SYM_IDENTIFIER;
 }
@@ -2626,6 +2638,16 @@ void get_symbol() {
 
         symbol = identifier_or_keyword();
 
+        // char * hack:
+        if (identifier_string_match(SYM_CHAR)){
+          get_symbol();
+          if (symbol == SYM_ASTERISK){
+            symbol = SYM_UINT64;
+          } else {
+            syntax_error_message((uint64_t*) "char was not followed by *.");
+          }
+        }
+
       } else if (is_character_digit()) {
         // accommodate integer and null for termination
         integer = smalloc(MAX_INTEGER_LENGTH + 1);
@@ -2651,7 +2673,7 @@ void get_symbol() {
 
         store_character(integer, i, 0); // null-terminated string
 
-        literal = atoi(integer);
+        literal = selfie_atoi(integer);
 
         if (integer_is_signed)
           if (literal > INT64_MIN) {
@@ -4525,6 +4547,11 @@ void compile_cstar() {
 
       get_symbol();
 
+      // special case: void* malloc declaration. We ignore the *
+      if (symbol == SYM_ASTERISK) {
+        get_symbol();
+      }
+
       if (symbol == SYM_IDENTIFIER) {
         variable_or_procedure_name = identifier;
 
@@ -4625,8 +4652,6 @@ void emit_bootstrapping() {
   */
   uint64_t gp;
   uint64_t padding;
-  uint64_t lower;
-  uint64_t upper;
   uint64_t* entry;
 
   // calculate the global pointer value
@@ -4797,7 +4822,7 @@ void selfie_compile() {
 
       // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-      source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+      source_fd = sign_extend(open(source_name, O_RDONLY, (char*) 0), SYSCALL_BITWIDTH);
 
       if (signed_less_than(source_fd, 0)) {
         printf2((uint64_t*) "%s: could not open input file %s\n", selfie_name, source_name);
@@ -5561,15 +5586,15 @@ uint64_t open_write_only(uint64_t* name) {
   uint64_t fd;
 
   // try Mac flags
-  fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+  fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, (char*) S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
   if (signed_less_than(fd, 0)) {
     // try Linux flags
-    fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+    fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, (char*) S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
     if (signed_less_than(fd, 0))
       // try Windows flags
-      fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+      fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, (char*) S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
   }
 
   return fd;
@@ -5599,7 +5624,7 @@ void selfie_output() {
   // assert: ELF_header is mapped
 
   // first write ELF header
-  if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
+  if ((uint64_t) write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
     printf2((uint64_t*) "%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -5608,7 +5633,7 @@ void selfie_output() {
   // then write code length
   *binary_buffer = code_length;
 
-  if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
+  if ((uint64_t) write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
     printf2((uint64_t*) "%s: could not write code length of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -5617,7 +5642,7 @@ void selfie_output() {
   // assert: binary is mapped
 
   // then write binary
-  if (write(fd, binary, binary_length) != binary_length) {
+  if ((uint64_t) write(fd, binary, binary_length) != binary_length) {
     printf2((uint64_t*) "%s: could not write binary into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
@@ -5671,7 +5696,7 @@ void selfie_load() {
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  fd = sign_extend(open(binary_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+  fd = sign_extend(open(binary_name, O_RDONLY, (char*) 0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(fd, 0)) {
     printf2((uint64_t*) "%s: could not open input file %s\n", selfie_name, binary_name);
@@ -6008,10 +6033,10 @@ void implement_write(uint64_t* context) {
         if (symbolic)
           // TODO: What should symbolically executed code output?
           // buffer points to a trace counter that refers to the actual value
-          // actually_written = sign_extend(write(fd, values + load_physical_memory(buffer), bytes_to_write), SYSCALL_BITWIDTH);
+          // actually_written = sign_extend((uint64_t) write(fd, values + load_physical_memory(buffer), bytes_to_write), SYSCALL_BITWIDTH);
           actually_written = bytes_to_write;
         else
-          actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+          actually_written = sign_extend((uint64_t) write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
         if (actually_written == bytes_to_write) {
           written_total = written_total + actually_written;
@@ -6161,7 +6186,7 @@ void implement_open(uint64_t* context) {
   mode      = *(get_regs(context) + REG_A2);
 
   if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
-    fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
+    fd = sign_extend(open(filename_buffer, flags, (char*) mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
 
@@ -6524,7 +6549,7 @@ void print_code_line_number_for_instruction(uint64_t a) {
     printf1((uint64_t*) "(~%d)", (uint64_t*) *(code_line_number + a / INSTRUCTIONSIZE));
 }
 
-void print_code_context_for_instruction(uint64_t a) {
+void print_code_context_for_instruction() {
   if (execute) {
     printf2((uint64_t*) "%s: $pc=%x", binary_name, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
@@ -6539,7 +6564,7 @@ void print_code_context_for_instruction(uint64_t a) {
 }
 
 void print_lui() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   printf2((uint64_t*) "lui %s,%x", get_register_name(rd), (uint64_t*) sign_shrink(imm, 20));
 }
 
@@ -6587,7 +6612,7 @@ void constrain_lui() {
 }
 
 void print_addi() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
 
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
@@ -6662,7 +6687,7 @@ void constrain_addi() {
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   printf4((uint64_t*) "%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
 }
 
@@ -7178,7 +7203,7 @@ void backtrack_sltu() {
 }
 
 void print_ld() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   printf3((uint64_t*) "ld %s,%d(%s)", get_register_name(rd), (uint64_t*) imm, get_register_name(rs1));
 }
 
@@ -7305,7 +7330,7 @@ uint64_t constrain_ld() {
 }
 
 void print_sd() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   printf3((uint64_t*) "sd %s,%d(%s)", get_register_name(rs2), (uint64_t*) imm, get_register_name(rs1));
 }
 
@@ -7444,7 +7469,7 @@ void undo_sd() {
 }
 
 void print_beq() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   printf4((uint64_t*) "beq %s,%s,%d[%x]", get_register_name(rs1), get_register_name(rs2), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
 }
 
@@ -7477,7 +7502,7 @@ void do_beq() {
 }
 
 void print_jal() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   printf3((uint64_t*) "jal %s,%d[%x]", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
 }
 
@@ -7545,7 +7570,7 @@ void constrain_jal_jalr() {
 }
 
 void print_jalr() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   printf3((uint64_t*) "jalr %s,%d(%s)", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
 }
 
@@ -7585,7 +7610,7 @@ void do_jalr() {
 }
 
 void print_ecall() {
-  print_code_context_for_instruction(pc);
+  print_code_context_for_instruction();
   print((uint64_t*) "ecall");
 }
 
@@ -8604,7 +8629,7 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
     i = i + 1;
   }
 
-  if (a != -1)
+  if (a != UINT64_MAX)
     return a * INSTRUCTIONSIZE;
   else
     return -1;
@@ -8616,7 +8641,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
   a = instruction_with_max_counter(counters, max);
 
-  if (a != -1) {
+  if (a != UINT64_MAX) {
     c = *(counters + a / INSTRUCTIONSIZE);
 
     // CAUTION: we reset counter to avoid reporting it again
@@ -9047,9 +9072,11 @@ uint64_t* palloc() {
   return touch((uint64_t*) frame, PAGESIZE);
 }
 
+/*
 void pfree(uint64_t* frame) {
   // TODO: implement free list of page frames
 }
+*/
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
   // assert: is_valid_virtual_address(vaddr) == 1
@@ -9603,9 +9630,9 @@ uint64_t selfie_run(uint64_t machine) {
   if (machine == MONSTER) {
     init_memory(round_up(MAX_TRACE_LENGTH * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
 
-    fuzz = atoi(peek_argument());
+    fuzz = selfie_atoi(peek_argument());
   } else
-    init_memory(atoi(peek_argument()));
+    init_memory(selfie_atoi(peek_argument()));
 
   execute = 1;
 
@@ -9917,7 +9944,7 @@ void selfie_load_dimacs() {
 
   // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+  source_fd = sign_extend(open(source_name, O_RDONLY, (char*) 0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(source_fd, 0)) {
     printf2((uint64_t*) "%s: could not open input file %s\n", selfie_name, source_name);
@@ -10081,7 +10108,7 @@ uint64_t selfie() {
   return EXITCODE_NOERROR;
 }
 
-uint64_t main(uint64_t argc, uint64_t* argv) {
+int main(uint64_t argc, uint64_t* argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
