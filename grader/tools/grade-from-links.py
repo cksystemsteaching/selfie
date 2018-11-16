@@ -1,18 +1,19 @@
 import sys
 import os
 
-if len(sys.argv) == 4:
-	filename   = sys.argv[1]
-	target     = sys.argv[2]
-	assignment = sys.argv[3]
+if len(sys.argv) == 5:
+	links      = sys.argv[1]
+	selfiedir  = sys.argv[2]
+	reposdir   = sys.argv[3]
+	assignment = sys.argv[4]
 else:
-	print "usage: python grade-from-links.py text-file-with-github-links directory-where-repos-are assignment"
+	print "usage: python grade-from-links.py text-file-with-github-links selfie-directory repos-directory assignment"
 
 	sys.exit(1)
 
-file = open(filename, "r")
+file = open(links, "r")
 
-os.chdir(target)
+os.chdir(reposdir)
 
 for link in file.readlines():
 	link = link.replace("\n", "").split("/")
@@ -29,7 +30,7 @@ for link in file.readlines():
 	os.system("git fetch")
 	os.system("git checkout " + commit)
 	os.system("make")
-	os.system("python3 grader/self.py " + assignment)
+	os.system("python3 " + selfiedir + "/grader/self.py " + assignment)
 
 	os.chdir(os.path.pardir)
 	os.chdir(os.path.pardir)
