@@ -18,13 +18,13 @@ X> The bit sequence `01010101` is also binary for the [decimal number](https://e
 
 So what is it now, `U` or `85`? The answer is both, and anything else. As mentioned in the [previous chapter](#semantics), meaning comes from change. When the machine draws `U` for `01010101` on the screen then `01010101` stands for `U` in that moment but in the next moment the machine could increment `01010101` according to elementary arithmetic making `01010101` represent `85`.
 
-But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1820) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1639) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
+But how does selfie and in particular the starc compiler actually read characters from files such as `selfie.c`? It turns out that all characters are [read from left to right](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2379) using just a single line of source code in `selfie.c`. Similarly, all characters written to files and the screen are [written from left to right](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2047) using just one line of code in `selfie.c`. For further details on what the code means refer to the comments in the code.
 
 In general, we only provide links to code with comments so that text explaining code is not duplicated here. You may want read the code in `selfie.c` as if it was some sort of mechanical English. There are a lot of comments whenever the code is not sufficiently self-explanatory. In other words, reading code and comments is part of the experience of reading this book!
 
 ## Comments
 
-Now, what is a comment in code anyway? A comment is text that the compiler ignores completely. It is only there for people to read and understand the code. In C\*, a comment is all text to the right of two slashes `//` until the end of the line. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L85) that means something to the machine and is not a comment.
+Now, what is a comment in code anyway? A comment is text that the compiler ignores completely. It is only there for people to read and understand the code. In C\*, a comment is either a single-line comment which is any text to the right of two slashes `//` until the end of the line, or it is a multi-line comment which is any text enclosed by `/*` and `*/`. There is a lot of that in the beginning of `selfie.c`. It actually takes a bit of scrolling down to see the [first line of code](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L91) that means something to the machine and is not a comment.
 
 If we were to remove all comments from `selfie.c` the result would still be semantically equivalent to `selfie.c` from the perspective of the machine. In fact, we can safely remove even more characters called whitespace without changing any semantics.
 
@@ -40,63 +40,75 @@ The starc compiler considers the space, the tabulator, the line feed, and the ca
 {line-numbers=off}
 ```
 > ./selfie -c selfie.c
-./selfie: this is selfie's starc compiling selfie.c
-./selfie: 176408 characters read in 7083 lines and 969 comments
-./selfie: with 97779(55.55%) characters in 28914 actual symbols
+./selfie: selfie compiling selfie.c with starc
+./selfie: 290907 characters read in 10091 lines and 1341 comments
+./selfie: with 171876(59.08%) characters in 44090 actual symbols
 ...
 ```
 
-Out of all the characters in `selfie.c` only a little more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The code in `selfie.c` that starc uses to [ignore whitespace and comments](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1858-L1913) works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
+Out of all the characters in `selfie.c` only a bit more than half of the characters are actually considered code. The rest is whitespace and characters in comments. The code in `selfie.c` that starc uses to [ignore whitespace and comments](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2414-L2511) works by reading characters from left to right, one after the other, and discarding them until a character is found that is not whitespace and not occurring in a comment. This may also continue until the end of the file is reached without finding such a character. Important for us here is to understand that the machine really only looks at one character at a time from start to end of the file.
 
 Let us have a look at the following ["Hello World!" program](https://en.wikipedia.org/wiki/%22Hello,_World!%22_program) written in C\*:
 
 {line-numbers=on, lang=c}
 <<[A "Hello World!" Program](code/hello-world.c)
 
-and run the [code](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world.c) as follows (ignoring the compiler warning):
+and run the [code](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/manuscript/code/hello-world.c) as follows (ignoring the compiler warning):
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
-./selfie: warning in manuscript/code/hello-world.c in line 5: type mismatch, int expected but int* found
-./selfie: 729 characters read in 22 lines and 11 comments
-./selfie: with 80(10.97%) characters in 39 actual symbols
+./selfie: selfie compiling manuscript/code/hello-world.c with starc
+./selfie: warning in manuscript/code/hello-world.c in line 5: type mismatch, uint64_t expected but uint64_t* found
+./selfie: 734 characters read in 23 lines and 11 comments
+./selfie: with 94(12.80%) characters in 39 actual symbols
 ./selfie: 1 global variables, 1 procedures, 1 string literals
-./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/hello-world.c with 1MB of physical memory
-Hello World!manuscript/code/hello-world.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/hello-world.c with exit code 0 and 0.00MB of mapped memory
+./selfie: 2 calls, 2 assignments, 1 while, 0 if, 0 return
+./selfie: symbol table search time was 1 iterations on average and 28 in total
+./selfie: 504 bytes generated with 116 instructions and 40 bytes of data
+./selfie: init:    lui: 1(0.86%), addi: 52(44.82%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 3(2.58%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 3(2.58%), jalr: 6(5.17%), ecall: 8(6.89%)
+./selfie: selfie executing manuscript/code/hello-world.c with 1MB physical memory on mipster
+Hello World!    ./selfie: manuscript/code/hello-world.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/hello-world.c with exit code 0
+./selfie: summary: 110 executed instructions and 0.00MB(0.78%) mapped memory
 ...
 ```
 
-There is a lot of whitespace for increasing the readability of the code as well as comments for explaining what the code does. In fact, only a little more than ten percent of the characters are actual code. Note that `"Hello World!"` is printed on the console right before the program exits.
+There is a lot of whitespace for increasing the readability of the code as well as comments for explaining what the code does. In fact, only a little more than ten percent of the characters are actual code. Note that `"Hello World!    "` is printed on the console right before the program exits. Also, note that there are four spaces printed right after `Hello World!`. This is on purpose and will become clear below.
 
 Removing all whitespace and comments, also called minification, results in the following version:
 
 {line-numbers=on, lang=c}
 <<[Minified "Hello World!" Program](code/hello-world-minified.c)
 
-with this output when running the [code](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world-minified.c):
+with this output when running the [code](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/manuscript/code/hello-world-minified.c):
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world-minified.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
-./selfie: warning in manuscript/code/hello-world-minified.c in line 1: type mismatch, int expected but int* found
-./selfie: 80 characters read in 0 lines and 0 comments
-./selfie: with 80(100.00%) characters in 39 actual symbols
+./selfie: selfie compiling manuscript/code/hello-world-minified.c with starc
+./selfie: warning in manuscript/code/hello-world-minified.c in line 1: type mismatch, uint64_t expected but uint64_t* found
+./selfie: 94 characters read in 1 lines and 0 comments
+./selfie: with 94(100.00%) characters in 39 actual symbols
 ./selfie: 1 global variables, 1 procedures, 1 string literals
-./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
-./selfie: this is selfie's mipster executing manuscript/code/hello-world-minified.c with 1MB of physical memory
-Hello World!manuscript/code/hello-world-minified.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/hello-world-minified.c with exit code 0 and 0.00MB of mapped memory
+./selfie: 2 calls, 2 assignments, 1 while, 0 if, 0 return
+./selfie: symbol table search time was 1 iterations on average and 28 in total
+./selfie: 504 bytes generated with 116 instructions and 40 bytes of data
+./selfie: init:    lui: 1(0.86%), addi: 52(44.82%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 3(2.58%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 3(2.58%), jalr: 6(5.17%), ecall: 8(6.89%)
+./selfie: selfie executing manuscript/code/hello-world-minified.c with 1MB physical memory on mipster
+Hello World!    ./selfie: manuscript/code/hello-world-minified.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/hello-world-minified.c with exit code 0
+./selfie: summary: 110 executed instructions and 0.00MB(0.78%) mapped memory
 ...
 ```
 
-This time all characters are actual code but otherwise the behavior is the same with `"Hello World!"` appearing on the console just like before.
+This time all characters are actual code but otherwise the behavior is the same with `"Hello World!    "` appearing on the console just like before.
 
 [Minification](https://en.wikipedia.org/wiki/Minification_(programming) "Minification")
 : The process of removing all unnecessary characters from source code without changing its functionality. These unnecessary characters usually include white space characters, new line characters, and comments, which are used to add readability to the code but are not required for it to execute.
@@ -106,12 +118,12 @@ Minification is useful for improving performance and saving bandwidth when commu
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c manuscript/code/hello-world-minified.c -o hello-world-minified.m
-./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+./selfie: selfie compiling manuscript/code/hello-world.c with starc
 ...
-./selfie: 600 bytes with 144 instructions and 24 bytes of data written into hello-world.m
-./selfie: this is selfie's starc compiling manuscript/code/hello-world-minified.c
+./selfie: 632 bytes with 116 instructions and 40 bytes of data written into hello-world.m
+./selfie: selfie compiling manuscript/code/hello-world-minified.c with starc
 ...
-./selfie: 600 bytes with 144 instructions and 24 bytes of data written into hello-world-minified.m
+./selfie: 632 bytes with 116 instructions and 40 bytes of data written into hello-world-minified.m
 ```
 
 and then check that both files are indeed identical:
@@ -124,38 +136,40 @@ Files hello-world.m and hello-world-minified.m are identical
 
 ## Strings
 
-In computer science sequences of characters such as `Hello World!` are called *strings*.
+In computer science sequences of characters such as `Hello World!    ` are called *strings*.
 
 [String](https://en.wikipedia.org/wiki/String_(computer_science) "String")
 : A finite sequence of characters taken from some finite alphabet.
 
-In selfie, for example, `Hello World!` is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits, that is, one byte per character. However, the question is how such strings are handled and in particular encoded and stored in the memory of a computer.
+In selfie, for example, `Hello World!    ` is a string whose alphabet is in fact the printable ASCII characters UTF-8-encoded in eight bits, that is, one byte per character. However, the question is how such strings are handled and in particular encoded and stored in the memory of a computer.
 
 [Memory](https://en.wikipedia.org/wiki/Computer_memory "Memory")
 : Hardware device that stores information for immediate use in a computer; it is synonymous with the term "primary storage".
 
 Logically, memory is *storage* for bits as well as *addresses* for identifying those bits. Memory addresses are usually natural numbers from zero or some positive number to some larger positive number. To save addresses and increase speed of access, most memory is *byte-addressed*, that is, each address refers to a whole byte and not just a single bit. The size of byte-addressed memory, that is, the number of bytes that can be stored is the difference between the smallest and largest address plus one. The number of bits that can be stored is therefore eight times that value.
 
-X> The obvious way of storing UTF-8-encoded strings such as our `Hello World!` string in byte-addressed memory is by identifying an address in memory, say, 42 and then storing the ASCII code of the first character `H` there. Then, the next character `e` is stored at address 43 and so on. Finally, the last character `!` is stored at address 53 since there are 12 characters in `Hello World!`. In other words, the string is stored *contiguously* at *increasing* addresses in memory.
+X> The obvious way of storing UTF-8-encoded strings such as our `Hello World!    ` string in byte-addressed memory is by identifying an address in memory, say, 40 and then storing the ASCII code of the first character `H` there. Then, the next character `e` is stored at address 41 and so on. Finally, the last character is not `!` but the fourth space ` ` after `!` which is stored at address 55 since there are in total 16 characters in `Hello World!    ` including the four spaces. In other words, the string is stored *contiguously* at *increasing* addresses in memory.
 X>
-X> But how does the machine know where the string ends? Simple. Right after the last character `!`, at address 54, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but to indicate the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
+X> Why do we have four spaces after `Hello World!`? This is because we would like to have a string whose length is a multiple of 8 bytes. See below for more on that.
+X>
+X> But how does the machine know where the string ends? Simple. Right after the last character, at address 56, we store the value 0, also called *null*, which is the ASCII code that is here not used for anything else but to indicate the end of a string. In other words, storing an UTF-8-encoded string requires as many bytes as there are characters in the string plus one. A string stored this way is called a [*null-terminated*](https://en.wikipedia.org/wiki/Null-terminated_string) string.
 
-In selfie, strings are stored [contiguously](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2116) in memory and [null-terminated](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2118) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental tradeoffs that will become more relevant later. Important for us here is to know that there is a choice.
+In selfie, strings are stored [contiguously](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2678-L2715) in memory and [null-terminated](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2715) but what are the alternatives? We could store the number of characters in a string or the address of the last character in front of the string. Some systems do that but not selfie. Also, we could store the string non-contiguously in memory but would then need to remember where the characters are. This would require more space to store that information and more time to find the characters but enable us to store strings even if sufficiently large contiguous memory was not available. These are interesting and fundamental trade-offs that will become more relevant later. Important for us here is to know that there is a choice.
 
 ## String Literals
 
-You may have noticed the double quotes enclosing the `Hello World!` string in the "Hello World!" program. There are other sequences of characters in the program such as [`foo`](https://en.wikipedia.org/wiki/Foobar), for example, that also look like strings but are not enclosed with double quotes. The difference is that `"Hello World!"` is meant to be *literally* `Hello World!` whereas `foo` is an *identifier* that provides a name for something. If we were to change `foo` consistently in the whole program to an unused identifier such as `bar`, for example, the program would be semantically equivalent to the original version with `foo`. Changing `"Hello World!"` on the other hand would really change the output of the program. Try it!
+You may have noticed the double quotes enclosing the `Hello World!    ` string in the "Hello World!" program. There are other sequences of characters in the program such as [`foo`](https://en.wikipedia.org/wiki/Foobar), for example, that also look like strings but are not enclosed with double quotes. The difference is that `"Hello World!    "` is meant to be *literally* `Hello World!    ` whereas `foo` is an *identifier* that provides a name for something. If we were to change `foo` consistently in the whole program to an unused identifier such as `bar`, for example, the program would be semantically equivalent to the original version with `foo`. Changing `"Hello World!    "` on the other hand would really change the output of the program. Try it!
 
 [String Literal](https://en.wikipedia.org/wiki/String_literal "String Literal")
 : The representation of a string value within the source code of a computer program.
 
-String literals in C\* such as `"Hello World!"` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L357-L384) as just one example.
+String literals in C\* such as `"Hello World!    "` make it convenient to read and write source code that needs to output text, for example. We make extensive use of string literals in `selfie.c` with [strings for reporting compiler errors](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L394-L421) as just one example.
 
-The code in `selfie.c` that actually [recognizes a string literal](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L2086-L2121) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals in C\* are handled.
+The code in `selfie.c` that actually [recognizes a string literal](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2678-L2715) in source code, after reading a double quote outside of a comment, first allocates memory not used by anyone to store the string. Then it reads one character at a time and stores the characters contiguously in memory until it reads another double quote. It then stores a null to terminate the string. This code ultimately determines how string literals in C\* are handled.
 
 ## Character Literals
 
-There is also the notion of *character literals* in C\* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1915-L1929) and for [identifying characters that represent digits](http://github.com/cksystemsteaching/selfie/blob/6069120cb8d50fd31880f69e7f0f83c387913140/selfie.c#L1931-L1940).
+There is also the notion of *character literals* in C\* which we use in `selfie.c` in a number of situations, for example, for [identifying characters that represent letters](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2513-L2527) and for [identifying characters that represent digits](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2529-L2538).
 
 [Character Literal](https://en.wikipedia.org/wiki/Character_literal "Character Literal")
 : The representation of a character value within the source code of a computer program.
@@ -166,9 +180,9 @@ X> So, what is the difference between, say, `'a'` and `"a"`?
 X>
 X> The character literal `'a'` is the *ASCII code* of the character `a` whereas the string literal `"a"` is an *address* in memory where the ASCII code of `a` followed by null is stored.
 
-The code in `selfie.c` that [identifies characters other than letters and digits](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L134-L156) is another example which shows how character literals are used. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
+The code in `selfie.c` that [identifies characters other than letters and digits](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L167-L191) is another example which shows how character literals are used. Take `'{'` as an example. If we were to replace `'{'` with `123` the semantics of the code would not change because 123 is the ASCII code of `{`. In other words, `'{'` stands for `123`, that is, `'{'` is really just a human-readable version of the ASCII code of `{`.
 
-The code in `selfie.c` that [recognizes a character literal](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L2061-L2084) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals in C\* are handled.
+The code in `selfie.c` that [recognizes a character literal](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2653-L2676) in source code, after reading a single quote outside of a comment, reads the next character and then stores the ASCII code of that character. It then looks for the second single quote and, if it is there, returns the ASCII code. Again, this code ultimately determines how character literals in C\* are handled.
 
 ## Identifiers
 
@@ -179,27 +193,27 @@ Let us now go back to the notion of identifiers and our example of the identifie
 
 Identifiers in C\* can indeed denote different kinds of entities. But, for now, we only need to know that, unlike string literals, identifiers in C\* always begin with a letter. After that there may appear letters, digits, and underscores `_` in any order but no other characters. Why is that? Because this is how the machine knows when an identifier begins and ends. Remember, identifiers are not enclosed by any special characters like double quotes, for example.
 
-The code in `selfie.c` that [recognizes an identifier](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1995-L2017) in source code, after reading a letter outside of a comment, first allocates memory not used by anyone to store the identifier, just like a string. Then it reads one character at a time and stores the characters contiguously in memory until it reads a character that is neither a letter nor a digit nor an underscore. It then stores a null to terminate the identifier. However, before deciding whether it has just recognized an identifier the code checks if it has actually recognized a *reserved identifier* or *keyword*.
+The code in `selfie.c` that [recognizes an identifier](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2593-L2615) in source code, after reading a letter outside of a comment, first allocates memory not used by anyone to store the identifier, just like a string. Then it reads one character at a time and stores the characters contiguously in memory until it reads a character that is neither a letter nor a digit nor an underscore. It then stores a null to terminate the identifier. However, before deciding whether it has just recognized an identifier the code checks if it has actually recognized a *reserved identifier* or *keyword*.
 
 ## Keywords
 
-C\* features a number of [keywords](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/grammar.md#L11) with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `int` keyword twice and the `while` keyword once.
+C\* features a number of [keywords](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/grammar.md#L11) with special meaning that you can nevertheless safely ignore for now. The "Hello World!" program, for example, uses the `uint64_t` keyword twice and the `while` keyword once.
 
 [Keyword](https://en.wikipedia.org/wiki/Keyword_(computer_programming) "Keyword")
 : In a computer language, a reserved word (also known as a reserved identifier) is a word that cannot be used as an identifier, such as the name of a variable, function, or label – it is "reserved from use". This is a syntactic definition, and a reserved word may have no meaning. A closely related and often conflated notion is a keyword which is a word with special meaning in a particular context. This is a semantic definition. The terms "reserved word" and "keyword" are often used interchangeably – one may say that a reserved word is "reserved for use as a keyword".
 
-Since the keywords in C\* all begin with a letter they should not be mistaken for identifiers. The code in `selfie.c` that [distinguishes keywords from identifiers](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1968-L1983) compares potential identifiers with all keywords to implement that distinction.
+Since the keywords in C\* all begin with a letter they should not be mistaken for identifiers. The code in `selfie.c` that [distinguishes keywords from identifiers](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2566-L2581) compares potential identifiers with all keywords to implement that distinction.
 
 ## Integers
 
-Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in digital memory. Numbers in selfie are *signed integers*, that is, whole numbers, positive or negative.
+Numbers are important and computers are incredibly good at working with them. Not surprisingly, it is very easy to talk about numbers in C\* and compute with them. For now, we look at how numbers are represented in source code and how they are encoded in digital memory. Numbers in selfie are *integers*, that is, zero as well as positive and negative whole numbers.
 
 [Integer](https://en.wikipedia.org/wiki/Integer "Integer")
 : A number that can be written without a fractional component (from the Latin integer meaning "whole"). For example, 21, 4, 0, and −2048 are integers, while 9.75 and 5.5 are not. The set of integers consists of zero (0), the natural numbers (1, 2, 3, ...), also called whole, counting, or positive numbers, and their additive inverses (the negative numbers, that is −1, −2, −3, ...).
 
-T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers.
+T> In computer science integers are sometimes specifically qualified to be *unsigned*. In this case, they are meant to represent zero and positive numbers but no negative numbers. Integers may explicitly be called *signed* to emphasize that they are also meant to represent negative numbers. In C\* all integers are in fact qualified as unsigned. However, unsigned integers can easily be used to mimic signed integers, as shown below.
 
-Beyond signed integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers as percentage](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1605-L1622) with up to two fractional digits.
+Beyond integers there is no support of, say, [fixed-point](https://en.wikipedia.org/wiki/Fixed-point_arithmetic) or even [floating-point](https://en.wikipedia.org/wiki/Floating_point) numbers in C\*. However, it is always possible to write code in C\* based on integers that would support them. For example, there is code in `selfie.c` for printing profiling information that [computes the fixed-point ratio of two integers with a given number of fractional digits](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2012-L2030).
 
 Numbers, positive or negative, are encoded, like everything else, in bits. Let us go back to the earlier example of the decimal number `85`.
 
@@ -221,30 +235,31 @@ X> The value represented by `85` is obviously `8`\*10+`5` using base 10, or equi
 
 Selfie does in fact implement exactly the above computation of a [recurrence relation](https://en.wikipedia.org/wiki/Recurrence_relation) for encoding numbers but only for numbers represented in decimal notation. An extension to other bases is nevertheless easy to do. Think about it and try!
 
-The encoding is done in the procedure [`atoi`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1409-L1457) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
+The encoding is done in the procedure [`atoi`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L1867-L1925) which stands for *ascii-to-integer*. This is a [standard procedure](https://en.wikipedia.org/wiki/C_string_handling) that converts a sequence of ASCII characters representing digits in positional notation to an integer value.
 
 X> Note that the value represented by `85` can also be computed by `8`\*10^1^+`5`\*10^0^ using powers of base 10, or equivalently, `1`\*2^6^+`0`\*2^5^+`1`\*2^4^+`0`\*2^3^+`1`\*2^2^+`0`\*2^1^+`1`\*2^0^ as represented by `1010101` using powers of base 2. However, since the digits are read from left to right, computing the recurrence relation is easier.
 
-Selfie also implements the procedure symmetric to `atoi` called [`itoa`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1459-L1603) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
+Selfie also implements the procedure symmetric to `atoi` called [`itoa`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L1927-L2010) which obviously stands for *integer-to-ascii*. It works by dividing the given integer by the desired base repeatedly until the quotient is zero and saving the remainders during the process. At the end, the sequence of remainders is reversed (hindu-arabic) and then returned.
 
 X> Suppose we would like to convert the value of `85` to a string `"85"` that shows the value in decimal. This works by dividing `85` by the base 10 resulting in the quotient `8` and the remainder `5`, which we save as a string `"5"`. We then divide quotient `8` by 10 which is quotient `0` and append the remainder, which is `8`, to the string `"5"` resulting in the string `"58"`. Quotient `0` terminates the conversion. The resulting string `"58"` in reverse is the desired string `"85"`.
 
-The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
+The implementation of `itoa` in selfie not only supports decimal but also binary, [octal](https://en.wikipedia.org/wiki/Octal) (base 8), and [hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) (base 16) notation. We prepared a simple program called [`integer.c`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/manuscript/code/integer.c) that prints the value represented by `85` in all possible ways supported by selfie as follows:
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/integer.c selfie.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/integer.c
+./selfie: selfie compiling manuscript/code/integer.c with starc
 ...
-./selfie: this is selfie's mipster executing manuscript/code/integer.c with 1MB of physical memory
+./selfie: selfie executing manuscript/code/integer.c with 1MB physical memory on mipster
 85 in decimal:     85
 'U' in ASCII:      85
 "85" string:       85
 85 in hexadecimal: 0x55
 85 in octal:       00125
 85 in binary:      1010101
-manuscript/code/integer.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/integer.c with exit code 0 and 0.12MB of mapped memory
+./selfie: manuscript/code/integer.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/integer.c with exit code 0
+./selfie: summary: 78610 executed instructions and 0.17MB(17.57%) mapped memory
 ...
 ```
 
@@ -410,15 +425,15 @@ Similar to character and string literals, source code written in C\* may contain
 [Integer Literal](https://en.wikipedia.org/wiki/Integer_literal "Integer Literal")
 : An integer whose value is directly represented in source code.
 
-The code in selfie that [reads integer literals](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L2019-L2059) is next to the code that reads identifiers. Similar to the characters of an identifier, the digits of an integer literal are first read and stored in a string. However, that string is then converted to an integer value using the `atoi` procedure.
+The code in selfie that [reads integer literals](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L2617-L2651) is next to the code that reads identifiers. Similar to the characters of an identifier, the digits of an integer literal are first read and stored in a string. However, that string is then converted to an integer value using the `atoi` procedure.
 
 T> Recall that identifiers may also contain digits but must start with a letter. This requirement makes it easy for the compiler to distinguish integer literals from identifiers upon reading the first character. This is in fact the reason why identifiers are usually required to start with a letter.
 
-What about negative numbers then? Can we write integer literals in C\* that represent negative values? The answer is yes, very conveniently in fact, for example, by writing `-85` which obviously represents the value -85. However, this notation is only an abbreviation for `0 - 85` which obviously represents the same value. When reading integer literals such as `-85` the starc compiler does in fact generate code that [subtracts](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L3058) the positive value 85 from 0 to obtain the negative value -85.
+What about negative numbers then? Can we write integer literals in C\* that represent negative values? The answer is yes, very conveniently in fact, for example, by writing `-85` which obviously represents the value -85. However, this notation is only an abbreviation for `0 - 85` which obviously represents the same value. When reading integer literals such as `-85` the starc compiler does in fact generate code that [subtracts](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L3676) the positive value 85 from 0 to obtain the negative value -85.
 
 ## Symbols
 
-Among all language elements of C\* we have seen identifiers and keywords as well as character, string, and integer literals. The only missing elements are operator symbols and symbols for structuring source code. The [complete list of C\* symbols](http://github.com/cksystemsteaching/selfie/blob/e7ee49fb71eae1de5efc24435ab2b3ad4764c803/grammar.md#L13-L33), also called *tokens*, is surprisingly small. Our ["Hello World!" Program](http://github.com/cksystemsteaching/selfie/blob/a7fcb70c1683802c644f0cd1af3892696f68f4bd/manuscript/code/hello-world.c) does not contain all possible symbols but at least one from each category, that is, keywords, identifiers, literals, operator symbols, and symbols for structuring source code.
+Among all language elements of C\* we have seen identifiers and keywords as well as character, string, and integer literals. The only missing elements are operator symbols and symbols for structuring source code. The [complete list of C\* symbols](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/grammar.md#L13-L33), also called *tokens*, is surprisingly small. Our ["Hello World!" Program](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/manuscript/code/hello-world.c) does not contain all possible symbols but at least one from each category, that is, keywords, identifiers, literals, operator symbols, and symbols for structuring source code.
 
 ## Machine Words
 
@@ -439,40 +454,49 @@ Most registers of a CPU have the same size, that is, accommodate the same number
 [Word](https://en.wikipedia.org/wiki/Word_(computer_architecture) "Word")
 : The natural unit of data used by a particular processor design. A word is a fixed-sized piece of data handled as a unit by the instruction set or the hardware of the processor. The number of bits in a word (the word size, word width, or word length) is an important characteristic of any specific processor design or computer architecture.
 
-The processor that the mipster emulator implements has a word size of 32 bits. In fact, virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution, as we see below. The reason is again performance. Involving 32 bits in parallel in all operations is obviously faster than working with bits individually. You probably know that there are machines with even larger word sizes for even greater speed such as 64-bit machines, for example. We stick to 32-bit words though since it makes things easier for two reasons.
+The processor that the mipster emulator implements has a word size of 64 bits. In fact, virtually everything on that machine happens at the level of words. Loading data from memory and storing it back, arithmetic and logical operations among registers, and even fetching code from memory for execution, as we see below. The reason is again performance. Involving 64 bits in parallel in all operations is obviously faster than working with bits individually. However, there are two more reasons why we use a 64-bit machine. The first reason is that the size of an integer in C\* is also 64 bits. This means that a single mipster register can hold exactly one C\* integer value. Beautiful!
 
-The first reason is that the size of an integer in C\* is also 32 bits encoding the sign in the MSB and the value in the remaining 31 LSBs in two's complement. This means that a single mipster register can hold exactly one C\* integer value. Beautiful!
+How many different integer values can 64 bits represent? Well, 2^64^ values but what are they? This depends on how we interpret them. In C\* integers are interpreted as unsigned which means that an integer value is either zero or a positive number.
 
-T> A signed integer in C\* can in total represent signed integer values i from -2147483648 to 2147483647 since -2^32^/2-1 = -2^31^-1 = -2147483649 < i < 2147483648 = 2^31^ = 2^32^/2. In `selfie.c` the largest positive value is called [`INT_MAX`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L227) while the smallest negative value is called [`INT_MIN`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L228).
+T> An unsigned integer in C\* can in total represent integer values i from 0 to 18446744073709551615 = 2^64^-1. In `selfie.c` that value is called [`UINT64_MAX`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L262) which is the largest unsigned 64-bit integer value.
 
-We prepared another simple program called [`negative.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `INT_MAX` and `INT_MIN` for reference, in all possible ways supported by selfie as follows:
+However, we may also interpret 64-bit integers as signed in two's complement with the MSB encoding the sign and the remaining 63 LSBs encoding the value. The number of different integer values that can be represented is nevertheless the same.
+
+T> A signed 64-bit integer can in total represent signed integer values i from -9223372036854775808 to 9223372036854775807 since -2^64^/2-1 = -2^63^-1 = -9223372036854775809 < i < 9223372036854775808 = 2^63^ = 2^64^/2. In `selfie.c` the largest positive integer value is called [`INT64_MAX`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L265) while the smallest negative integer value is called [`INT64_MIN`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L266).
+
+We prepared another simple program called [`negative.c`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/manuscript/code/negative.c) that prints the numerical value represented by `-85`, and of `UINT64_MAX`, `INT64_MAX`, and `INT64_MIN` for reference, in all possible ways supported by selfie as follows:
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/negative.c selfie.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/negative.c
+./selfie: selfie compiling manuscript/code/negative.c with starc
 ...
-./selfie: this is selfie's mipster executing manuscript/code/negative.c with 1MB of physical memory
-    -85 in decimal:     -85
-    -85 in hexadecimal: 0xFFFFFFAB
-    -85 in octal:       0037777777653
-    -85 in binary:      11111111111111111111111110101011
-INT_MAX in decimal:     2147483647
-INT_MAX in hexadecimal: 0x7FFFFFFF
-INT_MAX in octal:       0017777777777
-INT_MAX in binary:      01111111111111111111111111111111
-INT_MIN in decimal:     -2147483648
-INT_MIN in hexadecimal: 0x80000000
-INT_MIN in octal:       0020000000000
-INT_MIN in binary:      10000000000000000000000000000000
-manuscript/code/negative.c: exiting with exit code 0 and 0.00MB of mallocated memory
-./selfie: this is selfie's mipster terminating manuscript/code/negative.c with exit code 0 and 0.12MB of mapped memory
+./selfie: selfie executing manuscript/code/negative.c with 1MB physical memory on mipster
+       -85 in decimal:     -85
+       -85 in hexadecimal: 0xFFFFFFFFFFFFFFAB
+       -85 in octal:       001777777777777777777653
+       -85 in binary:      1111111111111111111111111111111111111111111111111111111110101011
+UINT64_MAX in decimal:     -1
+UINT64_MAX in hexadecimal: 0xFFFFFFFFFFFFFFFF
+UINT64_MAX in octal:       001777777777777777777777
+UINT64_MAX in binary:      1111111111111111111111111111111111111111111111111111111111111111
+ INT64_MAX in decimal:     9223372036854775807
+ INT64_MAX in hexadecimal: 0x7FFFFFFFFFFFFFFF
+ INT64_MAX in octal:       00777777777777777777777
+ INT64_MAX in binary:      0111111111111111111111111111111111111111111111111111111111111111
+ INT64_MIN in decimal:     -9223372036854775808
+ INT64_MIN in hexadecimal: 0x8000000000000000
+ INT64_MIN in octal:       001000000000000000000000
+ INT64_MIN in binary:      1000000000000000000000000000000000000000000000000000000000000000
+./selfie: manuscript/code/negative.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/negative.c with exit code 0
+./selfie: summary: 861900 executed instructions and 0.17MB(17.57%) mapped memory
 ...
 ```
 
-The second reason for using 32-bit words is that memory addresses in mipster and ultimately in C\* are then 32 bits as well. This means in particular that the content of a register can also be seen as a memory address and not just an integer value. However, there is one important detail. On a mipster machine, memory is not only byte-addressed but also *word-aligned* for access. This means that words can only be accessed in memory at addresses that are multiples of four, the word size in bytes.
+The second reason for using 64-bit words is that memory addresses in mipster and ultimately in C\* are then 64 bits as well. This means in particular that the content of a register can also be seen as a memory address and not just an integer value. However, there is one important detail. On a mipster machine, memory is not only byte-addressed but also *word-aligned* for access. This means that words can only be accessed in memory at addresses that are multiples of eight, the word size in bytes.
 
-T> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 4, 8, 12, and so on. The word at address 0, for example, then contains the four bytes at addresses 0, 1, 2, and 3.
+T> The byte-addressed and word-aligned memory in mipster can only be accessed in whole words at addresses 0, 8, 16, 24, and so on. The word at address 0, for example, then contains the eight bytes at addresses 0, 1, 2, 3, 4, 5, 6, and 7.
 
 An interesting question is which bits in a word are used to represent which bytes in memory. The two standard choices are determined by the *endianness* of a processor.
 
@@ -488,74 +512,86 @@ Why would we want support of that anyway? Well, how do we read and modify indivi
 
 Bitwise operations have in common that they treat integers and words purely as sequences of bits. For example, a left shift operation shifts the bits in an integer or word to the left by a given amount of bits while shifting in zeros into the LSB. The logical right shift operation does the exact opposite.
 
-We prepared another simple program called [`bitwise.c`](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/manuscript/code/bitwise.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
+We prepared another simple program called [`bitwise.c`](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/manuscript/code/bitwise.c) that prints the numerical value 3 in binary and decimal notation and then shifts it repeatedly by six bits to the left until it reaches 0. The program also performs a bitwise OR operation of all intermediate values and prints the result. The program then reverses direction and shifts the most recent value before reaching 0 repeatedly by six bits to the right until it reaches 0 again:
 
 {line-numbers=off}
 ```
 > ./selfie -c manuscript/code/bitwise.c selfie.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/bitwise.c
+./selfie: selfie compiling manuscript/code/bitwise.c with starc
 ...
-./selfie: this is selfie's mipster executing manuscript/code/bitwise.c with 1MB of physical memory
-00000000000000000000000000000011 in binary = 3 in decimal
-00000000000000000000000011000000 in binary = 192 in decimal
-00000000000000000011000000000000 in binary = 12288 in decimal
-00000000000011000000000000000000 in binary = 786432 in decimal
-00000011000000000000000000000000 in binary = 50331648 in decimal
-11000000000000000000000000000000 in binary = -1073741824 in decimal
-11000011000011000011000011000011 in binary = -1022611261 in decimal
-11000000000000000000000000000000 in binary = -1073741824 in decimal
-00000011000000000000000000000000 in binary = 50331648 in decimal
-00000000000011000000000000000000 in binary = 786432 in decimal
-00000000000000000011000000000000 in binary = 12288 in decimal
-00000000000000000000000011000000 in binary = 192 in decimal
-00000000000000000000000000000011 in binary = 3 in decimal
-manuscript/code/bitwise.c: exiting with exit code 0 and 0.00MB of mallocated memory
+./selfie: selfie executing manuscript/code/bitwise.c with 1MB physical memory on mipster
+0000000000000000000000000000000000000000000000000000000000000011 in binary = 3 in decimal
+0000000000000000000000000000000000000000000000000000000011000000 in binary = 192 in decimal
+0000000000000000000000000000000000000000000000000011000000000000 in binary = 12288 in decimal
+0000000000000000000000000000000000000000000011000000000000000000 in binary = 786432 in decimal
+0000000000000000000000000000000000000011000000000000000000000000 in binary = 50331648 in decimal
+0000000000000000000000000000000011000000000000000000000000000000 in binary = 3221225472 in decimal
+0000000000000000000000000011000000000000000000000000000000000000 in binary = 206158430208 in decimal
+0000000000000000000011000000000000000000000000000000000000000000 in binary = 13194139533312 in decimal
+0000000000000011000000000000000000000000000000000000000000000000 in binary = 844424930131968 in decimal
+0000000011000000000000000000000000000000000000000000000000000000 in binary = 54043195528445952 in decimal
+0011000000000000000000000000000000000000000000000000000000000000 in binary = 3458764513820540928 in decimal
+0011000011000011000011000011000011000011000011000011000011000011 in binary = 3513665537849438403 in decimal
+0011000000000000000000000000000000000000000000000000000000000000 in binary = 3458764513820540928 in decimal
+0000000011000000000000000000000000000000000000000000000000000000 in binary = 54043195528445952 in decimal
+0000000000000011000000000000000000000000000000000000000000000000 in binary = 844424930131968 in decimal
+0000000000000000000011000000000000000000000000000000000000000000 in binary = 13194139533312 in decimal
+0000000000000000000000000011000000000000000000000000000000000000 in binary = 206158430208 in decimal
+0000000000000000000000000000000011000000000000000000000000000000 in binary = 3221225472 in decimal
+0000000000000000000000000000000000000011000000000000000000000000 in binary = 50331648 in decimal
+0000000000000000000000000000000000000000000011000000000000000000 in binary = 786432 in decimal
+0000000000000000000000000000000000000000000000000011000000000000 in binary = 12288 in decimal
+0000000000000000000000000000000000000000000000000000000011000000 in binary = 192 in decimal
+0000000000000000000000000000000000000000000000000000000000000011 in binary = 3 in decimal
+./selfie: manuscript/code/bitwise.c exiting with exit code 0 and 0.00MB mallocated memory
+./selfie: selfie terminating manuscript/code/bitwise.c with exit code 0
+./selfie: summary: 2727047 executed instructions and 0.17MB(17.57%) mapped memory
 ...
 ```
 
-But how did we do this if there is no native support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1297-L1309), and [logical right shift](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1311-L1333) operations in selfie.
+But how did we do this if there is no native support of bitwise operations? Well, we use integer arithmetics and wrap-around semantics to provide bitwise OR, [left shift](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L1679-L1682), and [logical right shift](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L1684-L1687) operations in selfie.
 
-T> Multiplying a signed integer with 2^n^ shifts the bits representing the integer value to the left by n bits even if the value is negative provided two's complement and wrap-around semantics upon arithmetic overflow is used.
+T> Multiplying an integer value with 2^n^ shifts the bits representing the value to the left by n bits even if the value is interpreted as negative provided two's complement and wrap-around semantics upon arithmetic overflow is used.
 
-In the `bitwise.c` program we shift the bits representing the integer value 3 to the left by six bits by multiplying the value repeatedly with 64=2^6^ until the value wraps around and becomes negative.
+In the `bitwise.c` program we shift the bits representing the integer value 3 to the left by six bits by multiplying the value repeatedly with 64=2^6^ until the value wraps around and becomes zero.
 
-T> Adding two signed integers corresponds to a bitwise OR operation if the bits at the same index in both integers are never both 1 avoiding any carry bit to be set.
+T> Adding two integers corresponds to a bitwise OR operation if the bits at the same index in both integers are never both 1 avoiding any carry bit to be set.
 
 The `bitwise.c` program demonstrates that by performing a bitwise OR operation on all intermediate values through simple integer addition.
 
-T> Dividing a signed integer with 2^n^ shifts the bits representing the integer value to the right by n bits if the value is positive. If it is negative, [the sign bit can be reset before performing the division and then restored n bits to the right](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1321-L1326).
+T> Dividing an integer value with 2^n^ shifts the bits representing the value to the right by n bits if the value is interpreted as unsigned.
 
 The `bitwise.c` program applies that method to shift the bits to the right repeatedly by six bits back to their original position.
 
 Interestingly, the bitwise OR, left shift, and logical right shift operations presented here are sufficient to implement all of selfie!
 
-Before moving on let us quickly revisit how characters and strings are stored in memory. In selfie characters are represented by 8 bits. A 32-bit word may therefore hold up to four characters. This is in fact done to store the characters of strings in memory. A character literal, however, is stored in the eight LSBs of a word leaving the remaining bits blank.
+Before moving on let us quickly revisit how characters and strings are stored in memory. In selfie characters are represented by 8 bits. A 64-bit word may therefore hold up to eight characters. This is in fact done to store the characters of strings in memory. A character literal, however, is stored in the eight LSBs of a word leaving the remaining bits blank.
 
-X> The string literal `"Hello World!"` is stored in four 32-bit words located contiguously in memory accommodating the substrings `"Hell"`, `"o Wo"`, and `"rld!"` as well as the value 0 in the fourth word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
+X> The string literal `"Hello World!    "` is stored in two 64-bit words located contiguously in memory accommodating the substrings `"Hello Wo"` and `"rld!    "` as well as the value 0 in the third word to terminate the string. The ASCII code of the letter `H` is stored in the eight LSBs of the first word, the ASCII code of the following letter `e` in the eight bits directly to the left of the eight LSBs, and so on.
 
-Try the following command to see that our "Hello World!" program does actually print the characters in chunks of four by printing the three words containing the characters directly on the console. The command creates three mipsters on top of each other slowing down the execution of the program to the extent that the behavior is really visible:
+Try the following command to see that our "Hello World!" program does actually print the characters in chunks of eight by printing the two words containing the characters directly on the console. The command creates three mipsters on top of each other slowing down the execution of the program to the extent that the behavior is really visible:
 
 {line-numbers=off}
 ```
-> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 1 -l selfie.m -m 1 -l hello-world.m -m 1
+> ./selfie -c manuscript/code/hello-world.c -o hello-world.m -c selfie.c -o selfie.m -m 3 -l selfie.m -m 1 -l hello-world.m -m 1
 ...
 ```
 
-This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1335-L1345) and [storing](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L1347-L1360) characters of strings in memory accordingly.
+This is nice but how do we then access individual characters of a string? Simple, by using our bitwise operations, of course! Selfie implements [loading](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L1773-L1783) and [storing](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L1785-L1798) characters of strings in memory accordingly.
 
-So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even memory addresses and all machine code is handled at that granularity as well.
+So, on the machine everything related to data happens at the granularity of words. Interesting. What is even more fascinating is that even memory addresses are handled at that granularity as well.
 
 ## Memory Addresses
 
-The address of a byte or in fact a word in memory is obviously a positive number. On a mipster machine and many others as well, memory addresses are also represented by words. Thus the word size of such machines determines how many memory addresses can be distinguished and, as a consequence, how much memory can be accessed. A mipster machine, for example, supports up to 64MB of byte-addressed and word-aligned memory. Addressing that memory thus requires the 26 LSBs out of the 32 bits of a word. The remaining 6 MSBs are unused.
+The address of a byte or in fact a word in memory is obviously a positive number. On a mipster machine and many others as well, memory addresses are also represented by words. Thus the word size of such machines determines how many memory addresses can be distinguished and, as a consequence, how much memory can be accessed. A mipster machine, for example, supports up to 4GB of byte-addressed and word-aligned memory. Addressing that memory thus requires the 32 LSBs out of the 64 bits of a word. The remaining 32 MSBs are unused.
 
-X> The address of where the string literal `"Hello World!"` is stored in memory is an example of such a memory address represented by a word.
+X> The address of where the string literal `"Hello World!    "` is stored in memory is an example of such a memory address represented by a word.
 
-Let us reflect on that for a moment. So, on a mipster machine, the 32 bits of a word can be used to encode characters, signed integers, and even memory addresses! That's right and this is not all. Even machine instructions are represented by words which is our next topic.
+Let us reflect on that for a moment. So, on a mipster machine, the 64 bits of a word can be used to encode characters, integers, and even memory addresses! That's right and this is not all. Even machine instructions are represented by words which is our next topic.
 
 ## Instructions
 
-The code of a mipster machine is represented by a sequence of machine words where each word encodes a machine instruction. It is that easy and actually true for many other processors as well. The exact specification of the encoding as well as the meaning of each instruction is provided by the *instruction set architecture* or *ISA* for short.
+The code of a mipster machine is represented by a sequence of machine words where each 64-bit word encodes in fact two rather than one machine instruction since each instruction only requires 32 bits. It is that easy and actually true for many other processors as well. The exact specification of the encoding as well as the meaning of each instruction is provided by the *instruction set architecture* or *ISA* for short.
 
 [Instruction Set Architecture (ISA)](https://en.wikipedia.org/wiki/Instruction_set "Instruction Set Architecture (ISA)")
 : The part of the computer architecture related to programming, including the native data types, instructions, registers, addressing modes, memory architecture, interrupt and exception handling, and external I/O. An ISA includes a specification of the set of opcodes (machine language), and the native commands implemented by a particular processor. An instruction set is the interface between a computer's software and its hardware, and thereby enables the independent development of these two computing realms.
@@ -564,81 +600,90 @@ Let us have another look at the first few lines of the assembly code in `selfie.
 
 {line-numbers=off}
 ```
-0x0(~1): 0x24080007: addiu $t0,$zero,7
-0x4(~1): 0x24094000: addiu $t1,$zero,16384
-0x8(~1): 0x01090019: multu $t0,$t1
-0xC(~1): 0x00004012: mflo $t0
-0x10(~1): 0x00000000: nop
-0x14(~1): 0x00000000: nop
-0x18(~1): 0x25081B38: addiu $t0,$t0,6968
-0x1C(~1): 0x251C0000: addiu $gp,$t0,0
-0x20(~1): 0x24080FFF: addiu $t0,$zero,4095
-0x24(~1): 0x24094000: addiu $t1,$zero,16384
-0x28(~1): 0x01090019: multu $t0,$t1
-0x2C(~1): 0x00004012: mflo $t0
-0x30(~1): 0x00000000: nop
-0x34(~1): 0x00000000: nop
-0x38(~1): 0x25083FFC: addiu $t0,$t0,16380
-0x3C(~1): 0x8D1D0000: lw $sp,0($t0)
-0x40(~1): 0x0C007029: jal 0x7029[0x1C0A4]
-0x44(~1): 0x00000000: nop
+0x0(~1): 0x0003A2B7: lui $t0,0x3A
+0x4(~1): 0xF1028293: addi $t0,$t0,-240
+0x8(~1): 0x00028193: addi $gp,$t0,0
+0xC(~1): 0x00000513: addi $a0,$zero,0
+0x10(~1): 0x0D600893: addi $a7,$zero,214
+0x14(~1): 0x00000073: ecall
+0x18(~1): 0x00750513: addi $a0,$a0,7
+0x1C(~1): 0x00800293: addi $t0,$zero,8
+0x20(~1): 0x025572B3: remu $t0,$a0,$t0
+0x24(~1): 0x40550533: sub $a0,$a0,$t0
+0x28(~1): 0x0D600893: addi $a7,$zero,214
+0x2C(~1): 0x00000073: ecall
+0x30(~1): 0xFEA1BC23: sd $a0,-8($gp)
+0x34(~1): 0x00000513: addi $a0,$zero,0
+0x38(~1): 0x00810293: addi $t0,$sp,8
+0x3C(~1): 0xFF810113: addi $sp,$sp,-8
+0x40(~1): 0x00513023: sd $t0,0($sp)
+0x44(~1): 0x531260EF: jal $ra,39756[0x26D74]
 ```
 
-Each line represents one machine instruction. The first line, for example, reads like this. The hexadecimal number `0x0` is the word-aligned memory address of the instruction in memory. The expression `(~1)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x24080007` is in fact the binary encoded version of the instruction itself. Finally, `addiu $t0,$zero,7` is the human-readable assembly version of the instruction. This means in particular that `0x24080007` and `addiu $t0,$zero,7` are semantically equivalent. The 32-bit word `0x24080007` in binary stored at address `0x0` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
+Each line represents one machine instruction. The fifth line, for example, reads like this. The hexadecimal number `0x10` is the 32-bit-word-aligned memory address of the instruction in memory. The expression `(~1)` is the approximate line number of the source code, in this case `selfie.c`, that was compiled to this instruction. The 32-bit word `0x0D600893` is in fact the binary encoded version of the instruction itself. Finally, `addi $a7,$zero,214` is the human-readable assembly version of the instruction. This means in particular that `0x0D600893` and `addi $a7,$zero,214` are semantically equivalent. The 32-bit word `0x0D600893` in binary stored at address `0x10` in memory is thus the only thing that the machine needs, the rest is for us to make it readable.
 
-The machine code in `selfie.m` presented in the previous chapter contains just that binary code, that is, `0x24080007` followed by `0x24094000` from the second line in `selfie.s` and so on. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
+The machine code in `selfie.m` presented in the previous chapter contains just that binary code, that is, `0x0D600893` followed by `0x00000073` from the sixth line in `selfie.s` and so on. To prepare the machine for executing that code we only need to load `selfie.m` into memory starting at address `0x0` and then tell the machine to execute the code. How this is done is part of the next chapter.
 
-So, how do we know that `0x24080007` represents `addiu $t0,$zero,7`? This is specified precisely by the ISA of the widely used MIPS processor family.
+So, how do we know that `0x0D600893` represents `addi $a7,$zero,214`? This is specified precisely by the ISA of the open RISC-V processor family.
+
+[RISC-V](https://en.wikipedia.org/wiki/RISC-V "RISC-V")
+: An open instruction set architecture (ISA) based on established reduced instruction set computing (RISC) principles. In contrast to most ISAs, the RISC-V ISA can be freely used for any purpose, permitting anyone to design, manufacture and sell RISC-V chips and software. While not the first open architecture ISA, it is significant because it is designed to be useful in a wide range of devices. The instruction set also has a substantial body of supporting software, which avoids a usual weakness of new instruction sets.
+
+The mipster emulator implements a strict subset of 64-bit RISC-V instructions which we call *RISC-U*. In fact, mipster only implements [14](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L1022-L1095) out of several dozen RISC-V instructions. The starc compiler generates [RISC-U code](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L826-L846) that runs on mipster and is compatible with the official RISC-V tool chain and thus runs, at least in principle, also on real RISC-V processors.
+
+RISC-V can be seen as a streamlined modern version of *MIPS* which is the ISA that mipster used to support in older versions of selfie hence the name mipster. MIPS processors are still used in a large variety of devices.
 
 [MIPS](https://en.wikipedia.org/wiki/MIPS_instruction_set "MIPS")
 : A reduced instruction set computer (RISC) instruction set architecture (ISA) developed by MIPS Technologies (formerly MIPS Computer Systems, Inc.). The early MIPS architectures were 32-bit, with 64-bit versions added later. Multiple revisions of the MIPS instruction set exist, including MIPS I, MIPS II, MIPS III, MIPS IV, MIPS V, MIPS32, and MIPS64. The current revisions are MIPS32 (for 32-bit implementations) and MIPS64 (for 64-bit implementations).
 
-The mipster emulator implements a strict subset of the instructions of the MIPS32 processor which we call *MIPSter*. In fact, mipster only implements [17](http://github.com/cksystemsteaching/selfie/blob/4d7d38e6bda22f02ab34abbae5040d17e8856bce/selfie.c#L705-L765) out of the more than 40 instructions of MIPS32. The starc compiler generates MIPSter code that runs on mipster and thus, at least in principle, also on a real MIPS32 processor. The converse is not true, of course. MIPS32 code does in general not run on mipster but that is not a problem here.
-
-Let us go back to the above example. The `addiu` string in `addiu $t0,$zero,7` is an assembly mnemonic of the *operation code* or *opcode*, for short, that identifies the operation to be performed while the remaining `$t0,$zero,7` are three operands of that operation.
+Let us go back to the above example. The `addi` string in `addi $a7,$zero,214` is an assembly mnemonic of the *operation code* or *opcode*, for short, that identifies the operation to be performed while the remaining `$a7,$zero,214` are three operands of that operation.
 
 [Opcode](https://en.wikipedia.org/wiki/Opcode "Opcode")
 : The portion of a machine language instruction that specifies the operation to be performed. Beside the opcode itself, most instructions also specify the data they will process, in the form of operands.
 
-In our example, `addiu` instructs the processor to add the value of the integer `7` to the value stored in register `$zero` (which is always 0) and store the result in register `$t0` (which will thus contain the value 7 after executing the instruction).
+In our example, `addi` instructs the processor to add the value of the integer `214` to the value stored in register `$zero` (which is always 0) and store the result in register `$a7` (which will thus contain the value 214 after executing the instruction).
 
-A MIPS processor has 32 32-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is obviously register 0 while the register `$t0`, less obviously, happens to be register 8. The only missing piece of information is that `addiu` is represented by the opcode 9. Now, how do we get from there to `0x24080007`?
+A 64-bit RISC-V processor has 32 64-bit registers that can be used for this purpose. They are numbered from 0 to 31. The register `$zero` is obviously register 0 while the register `$a7`, less obviously, happens to be [register 17](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L666). The only missing piece of information is that `addi` is represented by the opcode 19. Now, how do we get from there to `0x0D600893`?
 
-We take the opcode 9 (`001001`), register 0 (`00000`), register 8 (`01000`), and value 7 (`0000000000000111`) and put them together in binary as follows:
+We take the opcode 19 (`0010011`), register 17 (`10001`), register 0 (`00000`), and value 214 (`000011010110`) and put them together in binary as follows:
 
-`001001 00000 01000 0000000000000111`
+`000011010110 00000 000 10001 0010011`
 
-If you merge that into a 32-bit word you get `0x24080007`. The MIPS32 ISA specifies that the six MSBs encode the opcode 9, the next five bits encode the second (!) operand register 0, the following five bits encode the first (!) operand register 8, and lastly the remaining sixteen LSBs encode the third operand value 7, in 16-bit two's complement in fact so it could even be a negative value. The fact that the third operand is treated by `addiu` as an integer value rather than, say, a number identifying a register is called *immediate* addressing hence the `i` in `addiu`. Immediate addressing is one of various so-called *addressing modes*. The `u` in `addiu` stands for unsigned which is misleading. Its actual meaning is that arithmetic overflows with `addiu` are ignored while wrap-around semantics apply.
+If you merge that into a 32-bit word you get `0x0D600893`. The RISC-V ISA specifies that the twelve MSBs encode the third (!) operand value 214, in 12-bit two's complement in fact, so it could even be a negative value. The next five bits encode the second (!) operand register 0 followed by three bits set to 0. The next five bits encode the first (!) operand register 17 followed by the remaining seven LSBs that encode the opcode 19. The fact that the third operand is treated by `addi` as an integer value rather than, say, a number identifying a register, is called *immediate* addressing hence the `i` in `addi`. Immediate addressing is one of various so-called *addressing modes*.
 
 [Addressing Mode](https://en.wikipedia.org/wiki/Addressing_mode)
 : An aspect of the instruction set architecture in most central processing unit (CPU) designs. The various addressing modes that are defined in a given instruction set architecture define how machine language instructions in that architecture identify the operand(s) of each instruction.
 
-But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5^=32 different registers of the machine. The six bits for the opcode obviously allow us to distinguish up to 2^6^=64 different opcodes but we actually do not need that many. Now, think about the range of values that can be encoded in two's complement in the sixteen bits for the third operand! This is the range of values that we can get into a register such as `$t0$` with a single `addiu` instruction. In other words, we can use that instruction to initialize registers. Cool!
+But why does the ISA provision five bits for the first and second operand? Because five bits allow us to address exactly the 2^5^=32 different registers of the machine. The seven bits for the opcode obviously allow us to distinguish up to 2^6^=64 different opcodes but we actually do not need that many. Now, think about the range of values that can be encoded in two's complement in the twelve bits for the third operand! This is the range of values that we can get into a register such as `$a7` with a single `addi` instruction. In other words, we can use that instruction to initialize registers. Cool!
 
-Note that the value in register `$zero` is assumed to be 0 at all times. This is in fact needed for initializing registers using the `addiu` instruction. There exists MIPS assembly in which such intention is made explicit by using *pseudo instructions*. Here, the pseudo instruction `movi $t0,7`, for example, could be used instead but would anyhow just be a short version of `addiu $t0,$zero,7`. The remaining sixteen instructions of MIPSter are just as simple, we introduce them on the fly as needed.
+Note that the value in register `$zero` is assumed to be 0 at all times. This is in fact needed for initializing registers using the `addi` instruction. There exists RISC-V assembly in which such intention is made explicit by using *pseudo instructions*. Here, the pseudo instruction `movi $a7,214`, for example, could be used instead but would anyhow just be a short version of `addi $a7,$zero,214`. The remaining thirteen instructions of RISC-U are just as simple, we introduce them on the fly as needed.
 
-So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total three different formats in MIPS32 depending on the opcode. The actual source code in `selfie.c` for [encoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L4139-L4189) is nevertheless pretty straightforward.
+So, how does the starc compiler generate such code? It uses bitwise operations, of course, that is, bitwise OR and left shifting in particular. There are in total six different formats in RISC-U depending on the opcode. The actual source code in `selfie.c` for [encoding (and decoding) machine instructions](https://github.com/cksystemsteaching/selfie/blob/edc1218fc541bed249b4354a0fc57371842e59b7/selfie.c#L729-L756) is nevertheless pretty straightforward.
 
-An interesting feature of the implementation of selfie in a single file is that the source code for [decoding machine instructions](http://github.com/cksystemsteaching/selfie/blob/d5b7b78fa8db215544159718cb41a7406d39da78/selfie.c#L4191-L4290), which is used by the mipster emulator and selfie's disassembler, is right after the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works in the code! It may look technical but is actually very simple.
+An interesting feature of the implementation of selfie in a single file is that the source code for decoding machine instructions, which is used by the mipster emulator and selfie's disassembler, is right next to the code for encoding instructions. Decoding machine code performs the exact inverse to encoding machine code extracting the opcode and operands that were originally encoded. It is done by a combination of left and logical right shifting. See for yourself how this works in the code! It may look technical but is actually very simple.
 
 ## Summary
 
-In this chapter we have seen how characters, strings, identifiers, integers, and even machine instructions are encoded and decoded, and how all that allows us to represent source and machine code using just bits. We even understand now some of the output of the starc compiler when compiling our "Hello World!" program, for example:
+In this chapter we have seen how characters, strings, identifiers, integers, and even machine instructions are encoded and decoded, and how all that allows us to represent source and machine code using just bits. We even understand now some of the output of the starc compiler when compiling our "Hello World!" program:
 
 {line-numbers=off}
 ```
-> ./selfie -c manuscript/code/hello-world.c -m 1
-./selfie: this is selfie's starc compiling manuscript/code/hello-world.c
+> ./selfie -c manuscript/code/hello-world.c
+./selfie: selfie compiling manuscript/code/hello-world.c with starc
 ...
-./selfie: 729 characters read in 22 lines and 11 comments
-./selfie: with 80(10.97%) characters in 39 actual symbols
+./selfie: 734 characters read in 23 lines and 11 comments
+./selfie: with 94(12.80%) characters in 39 actual symbols
 ./selfie: 1 global variables, 1 procedures, 1 string literals
-./selfie: 1 calls, 2 assignments, 1 while, 0 if, 0 return
-./selfie: 600 bytes generated with 144 instructions and 24 bytes of data
-...
+./selfie: 2 calls, 2 assignments, 1 while, 0 if, 0 return
+./selfie: symbol table search time was 1 iterations on average and 28 in total
+./selfie: 504 bytes generated with 116 instructions and 40 bytes of data
+./selfie: init:    lui: 1(0.86%), addi: 52(44.82%)
+./selfie: memory:  ld: 20(17.24%), sd: 11(9.48%)
+./selfie: compute: add: 3(2.58%), sub: 3(2.58%), mul: 1(0.86%), divu: 0(0.00%), remu: 2(1.72%)
+./selfie: control: sltu: 1(0.86%), beq: 5(4.31%), jal: 3(2.58%), jalr: 6(5.17%), ecall: 8(6.89%)
 ```
 
-The compiler counts `characters`, `lines`, `comments`, `whitespace`, and `symbols` in source code, and `instructions` and `bytes of data` in the generated machine code. The information about `global variables`, `procedures`, `calls`, `assignments`, `while`, `if`, and `return` will become clear in the next chapter.
+The compiler counts `characters`, `lines`, `comments`, `whitespace`, and `symbols` in source code, and `instructions` and `bytes of data` in the generated machine code. The information about `global variables`, `procedures`, `string literals`, `calls`, `assignments`, `while`, `if`, and `return` as well as the generated instructions will become clear in the next chapter.
 
 But there is still something missing here. Why is all of this encoded the way it is and not some other way? There are two important reasons:
 
@@ -654,4 +699,4 @@ X> The encoding of strings is another interesting example. Squeezing four charac
 
 Machine instructions are also encoded such that code size is compact while decoding them, which is ultimately done in hardware by the machine, is still fast. This is, of course, extremely important since every single instruction a processor executes needs to be decoded into opcode and operands before execution.
 
-In computer science the trade off between time and space shows up in all kinds of situations. Encoding information is just one example. The important lesson here is to be aware of the trade off and understand that [there is no such thing as a free lunch!](https://en.wikipedia.org/wiki/There_ain%27t_no_such_thing_as_a_free_lunch)
+In computer science the trade-off between time and space shows up in all kinds of situations. Encoding information is just one example. The important lesson here is to be aware of the trade-off and understand that [there is no such thing as a free lunch!](https://en.wikipedia.org/wiki/There_ain%27t_no_such_thing_as_a_free_lunch)

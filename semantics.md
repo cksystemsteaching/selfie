@@ -10,9 +10,9 @@ This document provides an overview of the differences in semantics between the p
 
 Integer literals in C\* are interpreted as 64-bit unsigned integers. In C, however, integer literals are interpreted as 32-bit signed integers. As a result, an expression may evaluate to different values in C\* and C if the expression involves integer literals and operators with different semantics for signed and unsigned operands, that is, `/`, `%`, `<`, `<=`, `>`, and `>=`.
 
-#### Arithmetic:  
+#### Arithmetic:
 
-```  
+```
 uint64_t x;
 uint64_t y;
 
@@ -36,7 +36,7 @@ y == 0
 
 #### Comparison:
 
-```  
+```
 uint64_t a;
 uint64_t b;
 uint64_t c;
