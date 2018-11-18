@@ -14,9 +14,6 @@ compile: selfie
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 
-webassembly: manuscript/code/hello-world-to-wasm.c
-	emcc $(CFLAGS) $< -o hello-world-to-wasm.html
-
 # Compile and run quine and compare its output to itself
 quine: selfie
 	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' | diff -q manuscript/code/quine.c -

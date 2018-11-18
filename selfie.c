@@ -10114,6 +10114,6 @@ int main(uint64_t argc, uint64_t* argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-  
+
   return selfie();
 }
