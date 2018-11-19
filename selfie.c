@@ -8584,7 +8584,8 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
   uint64_t i;
   uint64_t c;
 
-  a = -1;
+  a = UINT64_MAX;
+
   n = 0;
   i = 0;
 
@@ -8602,10 +8603,10 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
     i = i + 1;
   }
 
-  if (a != -1)
+  if (a != UINT64_MAX)
     return a * INSTRUCTIONSIZE;
   else
-    return -1;
+    return UINT64_MAX;
 }
 
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max) {
@@ -8614,7 +8615,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
   a = instruction_with_max_counter(counters, max);
 
-  if (a != -1) {
+  if (a != UINT64_MAX) {
     c = *(counters + a / INSTRUCTIONSIZE);
 
     // CAUTION: we reset counter to avoid reporting it again
