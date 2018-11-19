@@ -111,7 +111,7 @@ uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b);
 uint64_t get_low_word(uint64_t n);
 uint64_t get_high_word(uint64_t n);
 
-uint64_t abs(uint64_t n);
+uint64_t absolute(uint64_t n);
 
 uint64_t signed_less_than(uint64_t a, uint64_t b);
 uint64_t signed_division(uint64_t a, uint64_t b);
@@ -1717,7 +1717,7 @@ uint64_t get_high_word(uint64_t n) {
   return get_bits(n, WORDSIZEINBITS, WORDSIZEINBITS);
 }
 
-uint64_t abs(uint64_t n) {
+uint64_t absolute(uint64_t n) {
   if (signed_less_than(n, 0))
     return -n;
   else
@@ -1739,18 +1739,18 @@ uint64_t signed_division(uint64_t a, uint64_t b) {
     if (b == INT64_MIN)
       return 1;
     else if (signed_less_than(b, 0))
-      return INT64_MIN / abs(b);
+      return INT64_MIN / absolute(b);
     else
       return -(INT64_MIN / b);
   else if (b == INT64_MIN)
     return 0;
   else if (signed_less_than(a, 0))
     if (signed_less_than(b, 0))
-      return abs(a) / abs(b);
+      return absolute(a) / absolute(b);
     else
-      return -(abs(a) / b);
+      return -(absolute(a) / b);
   else if (signed_less_than(b, 0))
-    return -(a / abs(b));
+    return -(a / absolute(b));
   else
     return a / b;
 }
