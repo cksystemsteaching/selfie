@@ -6524,12 +6524,12 @@ void print_code_line_number_for_instruction(uint64_t a) {
 
 void print_code_context_for_instruction(uint64_t a) {
   if (execute) {
-    printf2((uint64_t*) "%s: $pc=%x", binary_name, (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
+    printf2((uint64_t*) "%s: $pc=%x", binary_name, (uint64_t*) a);
+    print_code_line_number_for_instruction(a - entry_point);
   } else {
-    printf1((uint64_t*) "%x", (uint64_t*) pc);
+    printf1((uint64_t*) "%x", (uint64_t*) a);
     if (disassemble_verbose) {
-      print_code_line_number_for_instruction(pc);
+      print_code_line_number_for_instruction(a);
       printf1((uint64_t*) ": %p", (uint64_t*) ir);
     }
   }
