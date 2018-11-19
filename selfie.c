@@ -4625,8 +4625,6 @@ void emit_bootstrapping() {
   */
   uint64_t gp;
   uint64_t padding;
-  uint64_t lower;
-  uint64_t upper;
   uint64_t* entry;
 
   // calculate the global pointer value
