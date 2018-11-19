@@ -9,6 +9,8 @@ number_of_positive_tests_failed = [0]
 number_of_negative_tests_passed = [0]
 number_of_negative_tests_failed = [0]
 
+GRADER_PATH = ''
+
 INSTRUCTIONSIZE = 4  # in bytes
 ELF_HEADER_LEN = 120
 TMP_FILE = '.tmp.bin'
@@ -71,7 +73,7 @@ def set_up():
 
 
 def test_compilable(file, msg, should_succeed=True):
-  p = Popen(['./selfie', '-c', 'grader/' + file], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', GRADER_PATH + file], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -94,7 +96,7 @@ def test_compilable(file, msg, should_succeed=True):
 
 
 def test_instruction_format(file, instruction, instruction_mask, msg):
-  p = Popen(['./selfie', '-c', 'grader/' + file, '-o', TMP_FILE], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', GRADER_PATH + file, '-o', TMP_FILE], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -124,7 +126,7 @@ def test_instruction_format(file, instruction, instruction_mask, msg):
 
 
 def test_mipster_execution(file, result, msg):
-  p = Popen(['./selfie', '-c', 'grader/' + file, '-m', '128'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+  p = Popen(['./selfie', '-c', GRADER_PATH + file, '-m', '128'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
 
   output = p.stdout.read().decode(sys.stdout.encoding)
   p.wait()
@@ -149,6 +151,53 @@ def test_execution(command, msg, should_succeed=True):
     warning = f'Execution terminated with wrong exit code {p.returncode}'
 
   record_result(p.returncode == 0, msg, output, warning, should_succeed, command)
+
+class Memoize:
+  def __init__(self, fn):
+    self.fn = fn
+    self.memo = {}
+
+  def __call__(self, *args):
+    h = len(args[1]) + sum([i * 100 * x for i,x in enumerate(map(lambda s: len(s), args[0]), 1000)])
+    if h not in self.memo:
+      self.memo[h] = self.fn(*args)
+    return self.memo[h]
+
+@Memoize
+def isInterleaved(strings, interleaved):
+  if all(len(string) == 0 for string in strings) and len(interleaved) == 0:
+    return True
+  
+  if len(interleaved) == 0:
+    return False
+
+  for i, string in enumerate(filter(lambda s: len(s) > 0, strings)):
+    tmp = strings.copy()
+    tmp[i] = tmp[i][1:]
+    if interleaved[0] == string[0] and isInterleaved(tmp, interleaved[1:]):
+      return True
+
+  return False
+
+
+def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg):
+  p = Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
+  p.wait()
+
+  output = p.stdout.read().decode(sys.stdout.encoding)
+
+  if p.returncode != 0:
+    record_result(False, msg, output, '', True, command)
+  else:
+    strings = [interleaved_msg[:] for i in range(0, number_of_interleaved)]
+
+    filtered_output = re.sub(r'([a-zA-Z]:\\|(./)?selfie)[^\n]*\n', '', output)
+    filtered_output = filtered_output.replace('\n', '')
+
+    if len(filtered_output.replace(interleaved_msg, '')) == 0:
+      record_result(False, msg, output, 'The output strings are ordered sequentially', True, command)
+    else:
+      record_result(isInterleaved(strings, filtered_output), msg, output, 'The output strings are not interleaved')
 
 
 def test_hex_literal():
@@ -227,11 +276,11 @@ def test_assembler(stage):
     start_stage(1)
     test_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
       'selfie can parse its own implementation in assembly')
-    test_execution('./selfie -a grader/assembler-missing-address.s',
+    test_execution(f'./selfie -a {GRADER_PATH}assembler-missing-address.s',
       'assembly file with a missing address is not parseable', should_succeed=False)
-    test_execution('./selfie -a grader/assembler-missing-instruction.s',
+    test_execution(f'./selfie -a {GRADER_PATH}assembler-missing-instruction.s',
       'assembly file with a missing instruction is not parseable', should_succeed=False)
-    test_execution('./selfie -a grader/assembler-missing-literal.s',
+    test_execution(f'./selfie -a {GRADER_PATH}assembler-missing-literal.s',
       'assembly file with a missing literal is not parseable', should_succeed=False)
 
   if stage >= 2:
@@ -239,6 +288,15 @@ def test_assembler(stage):
     test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 10 -a selfie1.s -s selfie2.s '
      + '&& diff -q selfie1.s selfie2.s',
       'selfie can assemble its own binary file and both assembly files are exactly the same')
+
+
+def test_concurrent_machines():
+  set_up()
+
+  test_interleaved_output('./selfie -c manuscript/code/hello-world.c -x 10', 'Hello World!    ', 10,
+    '10 Mipster machines are running concurrently')
+  test_interleaved_output('./selfie -c selfie.c -m 10 -c manuscript/code/hello-world.c -z 10', 'Hello World!    ', 10,
+    '10 Hypster machines are running concurrently')
 
 
 def start_stage(stage):
@@ -317,8 +375,9 @@ if __name__ == "__main__":
     print('usage: python3 self.py { test_name }')
     exit()
 
-  tests = sys.argv
-  tests.remove(tests[0])
+  GRADER_PATH = os.path.dirname(sys.argv[0] + '/')
+
+  tests = sys.argv[1:]
 
   for test in tests:
     if test == 'hex-literal':
@@ -332,6 +391,8 @@ if __name__ == "__main__":
       stage = re.search(r'^assembler-([1-2])$', test).group(1)
 
       test_assembler(int(stage))
+    elif test == 'concurrent-machines':
+      test_concurrent_machines()
     else:
       print(f'unknown test: {test}')
 
