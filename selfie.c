@@ -9048,6 +9048,7 @@ uint64_t* palloc() {
 
 void pfree(uint64_t* frame) {
   // TODO: implement free list of page frames
+  frame = (uint64_t*) 0;
 }
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
