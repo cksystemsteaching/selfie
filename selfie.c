@@ -9048,7 +9048,7 @@ uint64_t* palloc() {
 
 void pfree(uint64_t* frame) {
   // TODO: implement free list of page frames
-  frame = (uint64_t*) 0;
+  frame = frame + 1;
 }
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
@@ -9377,9 +9377,9 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
 
   while (1) {
     if (mix)
-      from_context = mipster_switch(to_context, TIMESLICE);
+      from_context = mipster_switch(to_context, timeout);
     else
-      from_context = hypster_switch(to_context, TIMESLICE);
+      from_context = hypster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
@@ -9414,7 +9414,7 @@ uint64_t minmob(uint64_t* to_context) {
   timeout = TIMESLICE;
 
   while (1) {
-    from_context = mipster_switch(to_context, TIMESLICE);
+    from_context = mipster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
