@@ -88,11 +88,15 @@ Professor Jochen Liedtke from University of Karlsruhe.
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-void     exit(int code);
+ // selfie bootstraps int to uint64_t!
+void exit(int code);
+
 uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
 uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
 uint64_t open(uint64_t* filename, uint64_t flags, uint64_t mode);
-void*    malloc(unsigned long);
+
+// selfie bootstraps void* and unsigned long to uint64_t* and uint64_t, respectively!
+void* malloc(unsigned long);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -10107,6 +10111,7 @@ uint64_t selfie() {
   return EXITCODE_NOERROR;
 }
 
+// selfie bootstraps int and char** to uint64_t and uint64_t*, respectively!
 int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
