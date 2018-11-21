@@ -170,24 +170,24 @@ uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
 uint64_t CHAR_LF           =  10; // ASCII code 10 = line feed
 uint64_t CHAR_CR           =  13; // ASCII code 13 = carriage return
 uint64_t CHAR_SPACE        = ' ';
-uint64_t CHAR_SEMICOLON    = ';';
-uint64_t CHAR_PLUS         = '+';
-uint64_t CHAR_DASH         = '-';
-uint64_t CHAR_ASTERISK     = '*';
-uint64_t CHAR_SLASH        = '/';
 uint64_t CHAR_UNDERSCORE   = '_';
-uint64_t CHAR_EQUAL        = '=';
+uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
+uint64_t CHAR_DOUBLEQUOTE  = '"';
+uint64_t CHAR_COMMA        = ',';
+uint64_t CHAR_SEMICOLON    = ';';
 uint64_t CHAR_LPARENTHESIS = '(';
 uint64_t CHAR_RPARENTHESIS = ')';
 uint64_t CHAR_LBRACE       = '{';
 uint64_t CHAR_RBRACE       = '}';
-uint64_t CHAR_COMMA        = ',';
+uint64_t CHAR_PLUS         = '+';
+uint64_t CHAR_DASH         = '-';
+uint64_t CHAR_ASTERISK     = '*';
+uint64_t CHAR_SLASH        = '/';
+uint64_t CHAR_PERCENTAGE   = '%';
+uint64_t CHAR_EQUAL        = '=';
+uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
-uint64_t CHAR_EXCLAMATION  = '!';
-uint64_t CHAR_PERCENTAGE   = '%';
-uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
-uint64_t CHAR_DOUBLEQUOTE  = '"';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
 
 uint64_t CPUBITWIDTH = 64;
@@ -325,35 +325,44 @@ void handle_escape_sequence();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t SYM_EOF          = -1; // end of file
-uint64_t SYM_IDENTIFIER   = 0;  // identifier
-uint64_t SYM_INTEGER      = 1;  // integer
-uint64_t SYM_VOID         = 2;  // void
-uint64_t SYM_UINT64       = 3;  // uint64_t
-uint64_t SYM_SEMICOLON    = 4;  // ;
+uint64_t SYM_EOF = -1; // end of file
+
+// C* symbols
+
+uint64_t SYM_INTEGER      = 0;  // integer
+uint64_t SYM_CHARACTER    = 1;  // character
+uint64_t SYM_STRING       = 2;  // string
+uint64_t SYM_IDENTIFIER   = 3;  // identifier
+uint64_t SYM_UINT64       = 4;  // uint64_t
 uint64_t SYM_IF           = 5;  // if
 uint64_t SYM_ELSE         = 6;  // else
-uint64_t SYM_PLUS         = 7;  // +
-uint64_t SYM_MINUS        = 8;  // -
-uint64_t SYM_ASTERISK     = 9;  // *
-uint64_t SYM_DIV          = 10; // /
-uint64_t SYM_EQUALITY     = 11; // ==
-uint64_t SYM_ASSIGN       = 12; // =
-uint64_t SYM_LPARENTHESIS = 13; // (
-uint64_t SYM_RPARENTHESIS = 14; // )
-uint64_t SYM_LBRACE       = 15; // {
-uint64_t SYM_RBRACE       = 16; // }
-uint64_t SYM_WHILE        = 17; // while
-uint64_t SYM_RETURN       = 18; // return
-uint64_t SYM_COMMA        = 19; // ,
-uint64_t SYM_LT           = 20; // <
-uint64_t SYM_LEQ          = 21; // <=
-uint64_t SYM_GT           = 22; // >
-uint64_t SYM_GEQ          = 23; // >=
-uint64_t SYM_NOTEQ        = 24; // !=
-uint64_t SYM_MOD          = 25; // %
-uint64_t SYM_CHARACTER    = 26; // character
-uint64_t SYM_STRING       = 27; // string
+uint64_t SYM_VOID         = 7;  // void
+uint64_t SYM_RETURN       = 8;  // return
+uint64_t SYM_WHILE        = 9;  // while
+uint64_t SYM_COMMA        = 10; // ,
+uint64_t SYM_SEMICOLON    = 11; // ;
+uint64_t SYM_LPARENTHESIS = 12; // (
+uint64_t SYM_RPARENTHESIS = 13; // )
+uint64_t SYM_LBRACE       = 14; // {
+uint64_t SYM_RBRACE       = 15; // }
+uint64_t SYM_PLUS         = 16; // +
+uint64_t SYM_MINUS        = 17; // -
+uint64_t SYM_ASTERISK     = 18; // *
+uint64_t SYM_DIV          = 19; // /
+uint64_t SYM_MOD          = 20; // %
+uint64_t SYM_ASSIGN       = 21; // =
+uint64_t SYM_EQUALITY     = 22; // ==
+uint64_t SYM_NOTEQ        = 23; // !=
+uint64_t SYM_LT           = 24; // <
+uint64_t SYM_LEQ          = 25; // <=
+uint64_t SYM_GT           = 26; // >
+uint64_t SYM_GEQ          = 27; // >=
+
+// symbols for bootstrapping
+
+uint64_t SYM_INT      = 28; // int
+uint64_t SYM_CHAR     = 29; // char
+uint64_t SYM_UNSIGNED = 30; // unsigned
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -389,36 +398,40 @@ uint64_t  source_fd   = 0;             // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_UNSIGNED + 1) * SIZEOFUINT64STAR);
 
-  *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
-  *(SYMBOLS + SYM_VOID)         = (uint64_t) "void";
+  *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
+  *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+  *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_UINT64)       = (uint64_t) "uint64_t";
-  *(SYMBOLS + SYM_SEMICOLON)    = (uint64_t) ";";
   *(SYMBOLS + SYM_IF)           = (uint64_t) "if";
   *(SYMBOLS + SYM_ELSE)         = (uint64_t) "else";
-  *(SYMBOLS + SYM_PLUS)         = (uint64_t) "+";
-  *(SYMBOLS + SYM_MINUS)        = (uint64_t) "-";
-  *(SYMBOLS + SYM_ASTERISK)     = (uint64_t) "*";
-  *(SYMBOLS + SYM_DIV)          = (uint64_t) "/";
-  *(SYMBOLS + SYM_EQUALITY)     = (uint64_t) "==";
-  *(SYMBOLS + SYM_ASSIGN)       = (uint64_t) "=";
+  *(SYMBOLS + SYM_VOID)         = (uint64_t) "void";
+  *(SYMBOLS + SYM_RETURN)       = (uint64_t) "return";
+  *(SYMBOLS + SYM_WHILE)        = (uint64_t) "while";
+  *(SYMBOLS + SYM_COMMA)        = (uint64_t) ",";
+  *(SYMBOLS + SYM_SEMICOLON)    = (uint64_t) ";";
   *(SYMBOLS + SYM_LPARENTHESIS) = (uint64_t) "(";
   *(SYMBOLS + SYM_RPARENTHESIS) = (uint64_t) ")";
   *(SYMBOLS + SYM_LBRACE)       = (uint64_t) "{";
   *(SYMBOLS + SYM_RBRACE)       = (uint64_t) "}";
-  *(SYMBOLS + SYM_WHILE)        = (uint64_t) "while";
-  *(SYMBOLS + SYM_RETURN)       = (uint64_t) "return";
-  *(SYMBOLS + SYM_COMMA)        = (uint64_t) ",";
+  *(SYMBOLS + SYM_PLUS)         = (uint64_t) "+";
+  *(SYMBOLS + SYM_MINUS)        = (uint64_t) "-";
+  *(SYMBOLS + SYM_ASTERISK)     = (uint64_t) "*";
+  *(SYMBOLS + SYM_DIV)          = (uint64_t) "/";
+  *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
+  *(SYMBOLS + SYM_ASSIGN)       = (uint64_t) "=";
+  *(SYMBOLS + SYM_EQUALITY)     = (uint64_t) "==";
+  *(SYMBOLS + SYM_NOTEQ)        = (uint64_t) "!=";
   *(SYMBOLS + SYM_LT)           = (uint64_t) "<";
   *(SYMBOLS + SYM_LEQ)          = (uint64_t) "<=";
   *(SYMBOLS + SYM_GT)           = (uint64_t) ">";
   *(SYMBOLS + SYM_GEQ)          = (uint64_t) ">=";
-  *(SYMBOLS + SYM_NOTEQ)        = (uint64_t) "!=";
-  *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
-  *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
-  *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+
+  *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
+  *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
+  *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -2576,18 +2589,24 @@ uint64_t identifier_string_match(uint64_t keyword) {
 }
 
 uint64_t identifier_or_keyword() {
-  if (identifier_string_match(SYM_WHILE))
-    return SYM_WHILE;
-  if (identifier_string_match(SYM_IF))
-    return SYM_IF;
   if (identifier_string_match(SYM_UINT64))
     return SYM_UINT64;
-  if (identifier_string_match(SYM_ELSE))
+  else if (identifier_string_match(SYM_IF))
+    return SYM_IF;
+  else if (identifier_string_match(SYM_ELSE))
     return SYM_ELSE;
-  if (identifier_string_match(SYM_RETURN))
-    return SYM_RETURN;
-  if (identifier_string_match(SYM_VOID))
+  else if (identifier_string_match(SYM_VOID))
     return SYM_VOID;
+  else if (identifier_string_match(SYM_RETURN))
+    return SYM_RETURN;
+  else if (identifier_string_match(SYM_WHILE))
+    return SYM_WHILE;
+  else if (identifier_string_match(SYM_INT))
+    return SYM_UINT64;
+  else if (identifier_string_match(SYM_CHAR))
+    return SYM_UINT64;
+  else if (identifier_string_match(SYM_UNSIGNED))
+    return SYM_UINT64;
   else
     return SYM_IDENTIFIER;
 }
@@ -2726,35 +2745,15 @@ void get_symbol() {
 
         symbol = SYM_STRING;
 
+      } else if (character == CHAR_COMMA) {
+        get_character();
+
+        symbol = SYM_COMMA;
+
       } else if (character == CHAR_SEMICOLON) {
         get_character();
 
         symbol = SYM_SEMICOLON;
-
-      } else if (character == CHAR_PLUS) {
-        get_character();
-
-        symbol = SYM_PLUS;
-
-      } else if (character == CHAR_DASH) {
-        get_character();
-
-        symbol = SYM_MINUS;
-
-      } else if (character == CHAR_ASTERISK) {
-        get_character();
-
-        symbol = SYM_ASTERISK;
-
-      } else if (character == CHAR_EQUAL) {
-        get_character();
-
-        if (character == CHAR_EQUAL) {
-          get_character();
-
-          symbol = SYM_EQUALITY;
-        } else
-          symbol = SYM_ASSIGN;
 
       } else if (character == CHAR_LPARENTHESIS) {
         get_character();
@@ -2776,10 +2775,45 @@ void get_symbol() {
 
         symbol = SYM_RBRACE;
 
-      } else if (character == CHAR_COMMA) {
+      } else if (character == CHAR_PLUS) {
         get_character();
 
-        symbol = SYM_COMMA;
+        symbol = SYM_PLUS;
+
+      } else if (character == CHAR_DASH) {
+        get_character();
+
+        symbol = SYM_MINUS;
+
+      } else if (character == CHAR_ASTERISK) {
+        get_character();
+
+        symbol = SYM_ASTERISK;
+
+      } else if (character == CHAR_PERCENTAGE) {
+        get_character();
+
+        symbol = SYM_MOD;
+
+      } else if (character == CHAR_EQUAL) {
+        get_character();
+
+        if (character == CHAR_EQUAL) {
+          get_character();
+
+          symbol = SYM_EQUALITY;
+        } else
+          symbol = SYM_ASSIGN;
+
+      } else if (character == CHAR_EXCLAMATION) {
+        get_character();
+
+        if (character == CHAR_EQUAL)
+          get_character();
+        else
+          syntax_error_character(CHAR_EQUAL);
+
+        symbol = SYM_NOTEQ;
 
       } else if (character == CHAR_LT) {
         get_character();
@@ -2800,21 +2834,6 @@ void get_symbol() {
           symbol = SYM_GEQ;
         } else
           symbol = SYM_GT;
-
-      } else if (character == CHAR_EXCLAMATION) {
-        get_character();
-
-        if (character == CHAR_EQUAL)
-          get_character();
-        else
-          syntax_error_character(CHAR_EQUAL);
-
-        symbol = SYM_NOTEQ;
-
-      } else if (character == CHAR_PERCENTAGE) {
-        get_character();
-
-        symbol = SYM_MOD;
 
       } else {
         print_line_number((uint64_t*) "syntax error", line_number);
@@ -4258,7 +4277,8 @@ uint64_t compile_type() {
   if (symbol == SYM_UINT64) {
     get_symbol();
 
-    if (symbol == SYM_ASTERISK) {
+    while (symbol == SYM_ASTERISK) {
+      // we tolerate pointer to pointers for bootstrapping
       type = UINT64STAR_T;
 
       get_symbol();
@@ -4521,9 +4541,15 @@ void compile_cstar() {
     if (symbol == SYM_VOID) {
       // void identifier ...
       // procedure declaration or definition
-      type = VOID_T;
-
       get_symbol();
+
+      if (symbol == SYM_ASTERISK) {
+        // we tolerate void* return types for bootstrapping
+        get_symbol();
+
+        type = UINT64STAR_T;
+      } else
+        type = VOID_T;
 
       if (symbol == SYM_IDENTIFIER) {
         variable_or_procedure_name = identifier;
