@@ -2606,10 +2606,13 @@ uint64_t identifier_or_keyword() {
   else if (identifier_string_match(SYM_WHILE))
     return SYM_WHILE;
   else if (identifier_string_match(SYM_INT))
+    // selfie bootstraps int to uint64_t!
     return SYM_UINT64;
   else if (identifier_string_match(SYM_CHAR))
+    // selfie bootstraps char to uint64_t!
     return SYM_UINT64;
   else if (identifier_string_match(SYM_UNSIGNED))
+    // selfie bootstraps unsigned to uint64_t!
     return SYM_UINT64;
   else
     return SYM_IDENTIFIER;
