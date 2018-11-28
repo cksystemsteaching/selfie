@@ -93,6 +93,7 @@ uint64_t  read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
 uint64_t  write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
 uint64_t  open(uint64_t* filename, uint64_t flags, uint64_t mode);
 uint64_t* malloc(uint64_t size);
+uint64_t* mmap(uint64_t* addr, uint64_t length, uint64_t prot, uint64_t flags, uint64_t fd, uint64_t offset);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -231,6 +232,16 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
+
+// mmap memory protection, pages may be read and written: 3 = 0x03 = PROT_READ (0x01) | PROT_WRITE (0x02)
+uint64_t PROT_RW = 3;
+
+// mmap shared anonymous mapping: 4097 = 0x1001 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000)
+uint64_t MAP_SA = 4097;
+
+// mmap shared anonymous mapping: 4097 = 0x1011 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000) | MAP_FIXED (0x0010)
+uint64_t MAP_SAF = 4113;
+
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -937,6 +948,9 @@ void implement_fork(uint64_t* context);
 void emit_wait();
 void implement_wait(uint64_t* context);
 
+void emit_mmap();
+void implement_mmap(uint64_t* context);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -944,13 +958,14 @@ uint64_t debug_write = 0;
 uint64_t debug_open  = 0;
 uint64_t debug_brk   = 0;
 
-uint64_t SYSCALL_EXIT  = 93;
-uint64_t SYSCALL_READ  = 63;
-uint64_t SYSCALL_WRITE = 64;
-uint64_t SYSCALL_OPEN  = 1024;
-uint64_t SYSCALL_BRK   = 214;
-uint64_t SYSCALL_FORK  = 402;
-uint64_t SYSCALL_WAIT  = 403;
+uint64_t SYSCALL_EXIT   = 93;
+uint64_t SYSCALL_READ   = 63;
+uint64_t SYSCALL_WRITE  = 64;
+uint64_t SYSCALL_OPEN   = 1024;
+uint64_t SYSCALL_BRK    = 214;
+uint64_t SYSCALL_FORK   = 402;
+uint64_t SYSCALL_WAIT   = 403;
+uint64_t SYSCALL_MMAP   = 404;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1023,6 +1038,64 @@ void init_memory(uint64_t megabytes) {
     megabytes = 4096;
 
   page_frame_memory = megabytes * MEGABYTE;
+}
+
+// -----------------------------------------------------------------
+// ------------------------ SHARED MEMORY --------------------------
+// -----------------------------------------------------------------
+
+void init_memory_shared(uint64_t megabytes_private, uint64_t megabytes_shared);
+void init_corey();
+
+uint64_t get_and_update_frame_for_page_shared(uint64_t* table, uint64_t page);
+
+uint64_t* smmap(uint64_t size);
+
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t debug_corey = 1;
+uint64_t shared      = 0; // flag for executing code with shared memory
+
+uint64_t page_frame_memory_shared       = 0; // size of memory for frames
+uint64_t* page_frame_memory_base_address = (uint64_t*) 0;
+
+uint64_t* pt_shared = (uint64_t*) 0;
+
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* next_page_frame_shared = (uint64_t*) 0;
+
+uint64_t* allocated_page_frame_memory_shared = (uint64_t*) 0;
+uint64_t* free_page_frame_memory_shared      = (uint64_t*) 0;
+
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_memory_shared(uint64_t megabytes_private, uint64_t megabytes_shared) {
+  uint64_t pt_size;
+
+  if (megabytes_shared == 0) {
+    init_memory(megabytes_private);
+
+    page_frame_memory_shared = 0;
+
+  } else {
+    //TODO: how handle invalid input combination?
+    page_frame_memory = megabytes_private * MEGABYTE;
+    page_frame_memory_shared = megabytes_shared * MEGABYTE;
+
+    pt_size = page_frame_memory_shared / PAGESIZE * REGISTERSIZE;
+    pt_shared = smmap(pt_size);
+  }
+}
+
+void init_corey() {
+  next_page_frame_shared              = smmap(REGISTERSIZE);
+
+  allocated_page_frame_memory_shared  = smmap(REGISTERSIZE);
+  free_page_frame_memory_shared       = smmap(REGISTERSIZE);
 }
 
 // -----------------------------------------------------------------
@@ -1506,13 +1579,17 @@ void reset_microkernel() {
 // -----------------------------------------------------------------
 
 uint64_t pavailable();
+uint64_t pavailable_shared();
 uint64_t pexcess();
 uint64_t pused();
 
 uint64_t* palloc();
+uint64_t* palloc_shared();
+
 void      pfree(uint64_t* frame);
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data);
+void map_and_store_shared(uint64_t* context, uint64_t vaddr, uint64_t data);
 
 void up_load_binary(uint64_t* context);
 
@@ -1579,6 +1656,7 @@ uint64_t MINSTER = 5;
 uint64_t MOBSTER = 6;
 
 uint64_t HYPSTER = 7;
+uint64_t COREY   = 8;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -2339,6 +2417,17 @@ uint64_t* zalloc(uint64_t size) {
 
     i = i + 1;
   }
+
+  return memory;
+}
+
+uint64_t* smmap(uint64_t size) {
+  uint64_t* memory;
+  uint64_t  i;
+
+  size = round_up(size, REGISTERSIZE);
+
+  memory = mmap(0, size, PROT_RW, MAP_SA, -1, 0);
 
   return memory;
 }
@@ -4788,6 +4877,7 @@ void selfie_compile() {
   emit_switch();
   emit_fork();
   emit_wait();
+  emit_mmap();
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed double word to obtain unique hash
@@ -6293,6 +6383,10 @@ void implement_brk(uint64_t* context) {
     if (debug_brk)
       printf2((uint64_t*) "%s: setting program break to %p\n", selfie_name, (uint64_t*) program_break);
 
+    if (shared)
+      if (debug_corey)
+        printf2((uint64_t*) "%s: setting shared program break to %p\n", selfie_name, (uint64_t*) program_break);
+
     set_program_break(context, program_break);
 
     if (symbolic) {
@@ -6348,18 +6442,18 @@ void implement_brk(uint64_t* context) {
 }
 
 void emit_fork() {
-    create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "fork", 0, PROCEDURE, UINT64_T, 0, binary_length);
-    
-    emit_addi(REG_A7, REG_ZR, SYSCALL_FORK);
-    emit_ecall();
-    
-    emit_jalr(REG_ZR, REG_RA, 0);
+  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "fork", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_FORK);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
 }
 
 void implement_fork(uint64_t* context) {
-    *(get_regs(context) + REG_A0) = fork();
-    
-    set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+  *(get_regs(context) + REG_A0) = fork();
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
 void emit_wait() {
@@ -6373,6 +6467,53 @@ void emit_wait() {
 
 void implement_wait(uint64_t* context) {
   *(get_regs(context) + REG_A0) = wait();
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
+void emit_mmap() {
+  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "mmap", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+
+  emit_ld(REG_A5, REG_SP, 0); // offset
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+
+  emit_ld(REG_A4, REG_SP, 0); // file descriptor
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+
+  emit_ld(REG_A3, REG_SP, 0); // flags
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+
+  emit_ld(REG_A2, REG_SP, 0); // protection
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+
+  emit_ld(REG_A1, REG_SP, 0); // length
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+
+  emit_ld(REG_A0, REG_SP, 0); // address
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_OPEN);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_mmap(uint64_t* context) {
+  uint64_t* addr;
+  uint64_t length;
+  uint64_t prot;
+  uint64_t flags;
+  uint64_t fd;
+  uint64_t offset;
+
+  addr   = (uint64_t*) *(get_regs(context) + REG_A0);
+  length = *(get_regs(context) + REG_A1);
+  prot   = *(get_regs(context) + REG_A2);
+  flags  = *(get_regs(context) + REG_A3);
+  fd     = *(get_regs(context) + REG_A4);
+  offset = *(get_regs(context) + REG_A5);
+
+  *(get_regs(context) + REG_A0) = (uint64_t) mmap(addr, length, prot, flags, fd, offset);
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
@@ -6493,8 +6634,43 @@ uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
   return *(table + page);
 }
 
+uint64_t get_and_update_frame_for_page_shared(uint64_t* table, uint64_t page) {
+  // assert: get_frame_for_page() == 0
+  uint64_t frame;
+
+  frame = 0;
+
+  if (shared) {
+    // get frame from shared table
+    frame = *(pt_shared + page);
+
+    if (frame != 0) {
+      // update own table
+      *(table + page) = frame;
+
+      if (page <= get_page_of_virtual_address(get_program_break(current_context) - REGISTERSIZE)) {
+        // exploit spatial locality in page table caching
+        if (page < get_lo_page(current_context))
+          set_lo_page(current_context, page);
+        else if (page > get_me_page(current_context))
+          set_me_page(current_context, page);
+      }
+
+      if (debug_corey) {
+        printf1((uint64_t*) "%s: page ", selfie_name);
+        print_hexadecimal(page, 4);
+        printf2((uint64_t*) " updated form shared table, mapped to frame %p in context %p \n", (uint64_t*) frame, current_context);
+      }
+    }
+  }
+
+  return  frame;
+}
+
 uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
   if (get_frame_for_page(table, page) != 0)
+    return 1;
+  else if (get_and_update_frame_for_page_shared(table, page) != 0)
     return 1;
   else
     return 0;
@@ -8927,6 +9103,9 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   *(table + page) = frame;
 
+  if (shared)
+    *(pt_shared + page) = frame;
+
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
     // exploit spatial locality in page table caching
     if (page < get_lo_page(context))
@@ -9032,6 +9211,15 @@ uint64_t pavailable() {
     return 0;
 }
 
+uint64_t pavailable_shared() {
+  if (*free_page_frame_memory_shared > 0)
+    return 1;
+  else if (*allocated_page_frame_memory_shared < page_frame_memory_shared)
+    return 1;
+  else
+    return 0;
+}
+
 uint64_t pexcess() {
   if (pavailable())
     return 1;
@@ -9086,6 +9274,45 @@ uint64_t* palloc() {
   return touch((uint64_t*) frame, PAGESIZE);
 }
 
+uint64_t* palloc_shared() {
+  uint64_t frame;
+
+  // assert: page_frame_memory_shared is equal to or a multiple of MEGABYTE
+  // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
+
+  if (*free_page_frame_memory_shared == 0) {
+    if (pavailable_shared()) {
+      *free_page_frame_memory_shared = page_frame_memory_shared;
+
+      // on boot level zero mmap zeroed memory
+      page_frame_memory_base_address = smmap(*free_page_frame_memory_shared);
+
+      *allocated_page_frame_memory_shared = *allocated_page_frame_memory_shared + *free_page_frame_memory_shared;
+
+      // page frames must be page-aligned to work as page table index
+      *next_page_frame_shared = round_up((uint64_t) page_frame_memory_base_address, PAGESIZE);
+
+      if (*next_page_frame_shared >  (uint64_t) page_frame_memory_base_address)
+        // losing one page frame to fragmentation
+        *free_page_frame_memory_shared = *free_page_frame_memory_shared - PAGESIZE;
+    } else {
+      print(selfie_name);
+      print((uint64_t*) ": palloc_shared out of shared physical memory\n");
+
+      exit(EXITCODE_OUTOFPHYSICALMEMORY);
+    }
+  }
+
+  frame = *next_page_frame_shared;
+
+  *next_page_frame_shared = *next_page_frame_shared + PAGESIZE;
+
+  *free_page_frame_memory_shared = *free_page_frame_memory_shared - PAGESIZE;
+
+  // strictly, touching is only necessary on boot levels higher than zero
+  return touch((uint64_t*) frame, PAGESIZE);
+}
+
 void pfree(uint64_t* frame) {
   // TODO: implement free list of page frames
 }
@@ -9107,6 +9334,15 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
     }
   } else
     store_virtual_memory(get_pt(context), vaddr, data);
+}
+
+void map_and_store_shared(uint64_t* context, uint64_t vaddr, uint64_t data) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
+    map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc_shared());
+
+  store_virtual_memory(get_pt(context), vaddr, data);
 }
 
 void up_load_binary(uint64_t* context) {
@@ -9136,10 +9372,19 @@ void up_load_binary(uint64_t* context) {
     symbolic = 1;
   }
 
-  while (baddr < binary_length) {
-    map_and_store(context, entry_point + baddr, load_data(baddr));
+  if (shared) {
+    while (baddr < binary_length) {
+      map_and_store_shared(context, entry_point + baddr, load_data(baddr));
 
-    baddr = baddr + REGISTERSIZE;
+      baddr = baddr + REGISTERSIZE;
+    }
+
+  } else {
+    while (baddr < binary_length) {
+      map_and_store(context, entry_point + baddr, load_data(baddr));
+
+      baddr = baddr + REGISTERSIZE;
+    }
   }
 
   set_name(context, binary_name);
@@ -9259,6 +9504,8 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_fork(context);
   else if (a7 == SYSCALL_WAIT)
     implement_wait(context);
+  else if (a7 == SYSCALL_MMAP)
+    implement_mmap(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
@@ -9284,6 +9531,12 @@ uint64_t handle_system_call(uint64_t* context) {
 uint64_t handle_page_fault(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
+  if (shared)
+    if (get_faulting_page(context) < get_program_break(context) / PAGESIZE) {
+      map_page(context, get_faulting_page(context), (uint64_t) palloc_shared());
+
+      return DONOTEXIT;
+    }
   // TODO: use this table to unmap and reuse frames
   map_page(context, get_faulting_page(context), (uint64_t) palloc());
 
@@ -9641,12 +9894,26 @@ uint64_t selfie_run(uint64_t machine) {
     symbolic = 1;
 
     init_symbolic_engine();
+  } else if (machine == COREY) {
+    shared = 1;
+
+    init_corey();
   }
 
   if (machine == MONSTER) {
     init_memory(round_up(MAX_TRACE_LENGTH * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
 
     fuzz = atoi(peek_argument());
+
+  } else if (machine == COREY) {
+    init_memory_shared(atoi(get_argument()), atoi(peek_argument()));
+
+    if (page_frame_memory_shared == 0) {
+      shared = 0;
+
+      machine = MIPSTER;
+    }
+
   } else
     init_memory(atoi(peek_argument()));
 
@@ -9678,6 +9945,8 @@ uint64_t selfie_run(uint64_t machine) {
     exit_code = minster(current_context);
   else if (machine == MOBSTER)
     exit_code = mobster(current_context);
+  else if (machine == COREY)
+    exit_code = mipster(current_context);
   else if (machine == HYPSTER)
     if (is_boot_level_zero())
       // no hypster on boot level zero
@@ -10113,6 +10382,8 @@ uint64_t selfie() {
         return selfie_run(MINSTER);
       else if (string_compare(option, (uint64_t*) "-mob"))
         return selfie_run(MOBSTER);
+      else if (string_compare(option, (uint64_t*) "-cry"))
+        return selfie_run(COREY);
       else {
         print_usage();
 
