@@ -57,6 +57,7 @@ sub handleTestPrologue {
 
   my $prolog = `head -1 $file`;
   chomp($prolog);
+
   # \w means the 63 characters [A-Za-z0-9_]
   if ( $prolog =~ m|\s*//\s*\[([\w\- \./;<>,]+)\]| ) {
     my @tmp = split(';', $1);
@@ -227,7 +228,8 @@ sub verifyOutcomes {
 #Main
 &create_log();
 
-do {exec_test("$input_to_test"); next} if "$input_to_test" =~ /[^-]+.c/; #exec if file
+do {exec_test("$input_to_test"); next} if "$input_to_test" =~ /[^-]+\.c/; #exec if file
+
 $input_to_test = `pwd` if ($input_to_test =~ /\./);
 chomp $input_to_test;
 
@@ -235,5 +237,5 @@ chomp $input_to_test;
 
 `echo "$nb_test tests executed" >> $FileLog`;
 
-exit(-1) if($has_error);
+die "Test(s) failed" if($has_error);
 exit(0);

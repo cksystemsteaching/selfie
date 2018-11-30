@@ -22,10 +22,6 @@ quine: selfie
 debug: selfie
 	./selfie -c manuscript/code/pointer.c -d 1
 
-# Run replay engine
-replay: selfie
-	./selfie -c manuscript/code/division-by-zero.c -r 1
-
 # Run emulator on emulator
 os: selfie
 	./selfie -c selfie.c -o selfie.m -m 8 -l selfie.m -m 4
