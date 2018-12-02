@@ -6383,7 +6383,6 @@ void implementInput(uint64_t* context) {
   uint64_t end;
   uint64_t step;
 
-  //---> ho yeah if not in regs doen't work :)
   start   = *(getRegs(context) + REG_A0);
   end     = *(getRegs(context) + REG_A1);
   step    = *(getRegs(context) + REG_A2);
@@ -6936,7 +6935,8 @@ void sub_2pointer() {
 }
 
 void sub_pointer() {
-  uint64_t rd_val = *(registers + rs1) - *(registers + rs2);
+  uint64_t rd_val;
+  rd_val = *(registers + rs1) - *(registers + rs2);
 
   if (*(reg_typ + rs1)) {
     if (*(reg_typ + rs2)) {
@@ -10673,6 +10673,10 @@ uint64_t handleDivisionByZero(uint64_t* context) {
 uint64_t handleMaxTrace(uint64_t* context) {
   setException(context, EXCEPTION_NOEXCEPTION);
 
+  print(selfieName);
+  print((uint64_t*) ": Max trace length reached");
+  println();
+
   setExitCode(context, EXITCODE_OUTOFTRACEMEMORY);
   if (symbolic) {
     setExitCodeA2(context, EXITCODE_OUTOFTRACEMEMORY);
@@ -10684,6 +10688,10 @@ uint64_t handleMaxTrace(uint64_t* context) {
 
 uint64_t handleIncompleteness(uint64_t* context) {
   setException(context, EXCEPTION_NOEXCEPTION);
+
+  print(selfieName);
+  print((uint64_t*) ": incomplete case");
+  println();
 
   setExitCode(context, EXITCODE_INCOMPLETENESS);
   if (symbolic) {

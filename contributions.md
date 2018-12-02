@@ -22,6 +22,7 @@ Because of the restriction that each condition should restrain only the last ass
 ## tainted analysis
 
  + flag `-t`: count symbolic operations
+ + `taint` directive in Makefile
 
 ### completeness
 
@@ -43,4 +44,17 @@ Because of the restriction that each condition should restrain only the last ass
  - 0xAE08(~4254) `return initialValue;              in compile_initialization`
  - 0x2CD8(~1779) `return n % twoToThePowerOf(b);    in getBits`
  - 0x2BF8(~1768) `return n * twoToThePowerOf(b);    in leftShift`
+
+## symbolic test
+
+ + `test` directive in Makefile
+ + `input` system call: create a symbolic value "<start, end, step>"
+ + `test-script` run all the test files (.c) in the input test_folder.
+
+- A test file is a _.c_ with a first line header:
+`"//[" command line ";" return_value" { ";" return_value } "]"`
+with `return_value = "<" #line, start, end, step ">" `
+
+- Outputs a `.out` file for each test and a `log_<date>.txt`.
+
 -- --

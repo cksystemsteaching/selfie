@@ -9,7 +9,7 @@ It concerns expression containing one or more symbolic variables, that is to say
 
 ```
 symbolicExpression    =   ( simpleExpression [ ( "<" | ">" | "<=" | ">=" ) simpleExpression ] )
-                        | ( minuendFreeExpression ( "==" | "!=" ) simpleExpression ).
+                        | ( minuendFreeExpression ( "==" | "!=" ) minuendFreeExpression ).
 
 simpleExpression      = ["-"] ( sumExpression )
                             | ( term "-" sumExpression ).

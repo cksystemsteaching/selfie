@@ -232,6 +232,7 @@ do {exec_test("$input_to_test"); next} if "$input_to_test" =~ /[^-]+\.c/; #exec 
 
 $input_to_test = `pwd` if ($input_to_test =~ /\./);
 chomp $input_to_test;
+chop $input_to_test if (substr($input_to_test, -1) eq "/");
 
 &find_test ($input_to_test) if -d $input_to_test;
 

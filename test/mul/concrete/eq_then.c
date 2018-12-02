@@ -1,4 +1,4 @@
-// [-c test/mul/concrete/eq_then.c -n 2;<10,20,20,1>]
+// [-c test/mul/concrete/eq_then.c -n 2;<10,20,20,1>;<12,false>]
 uint64_t main(uint64_t argc, uint64_t* argv) {
   uint64_t x;
   uint64_t y;

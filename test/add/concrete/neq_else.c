@@ -1,4 +1,4 @@
-// [-c test/add/concrete/neq_else.c -n 2;<12,8,8,1>]
+// [-c test/add/concrete/neq_else.c -n 2;<12,8,8,1>;<10,true>]
 uint64_t main(uint64_t argc, uint64_t* argv) {
   uint64_t x;
   uint64_t y;

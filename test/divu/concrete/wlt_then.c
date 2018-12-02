@@ -1,4 +1,4 @@
-// [-c test/divu/concrete/wlt_then.c -n 2;<10,5,5,1>]
+// [-c test/divu/concrete/wlt_then.c -n 2;<10,5,5,1>;<12,false>]
 uint64_t main(uint64_t argc, uint64_t* argv) {
   uint64_t x;
   uint64_t y;
