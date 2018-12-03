@@ -139,6 +139,20 @@ def test_mipster_execution(file, result, msg):
   record_result(p.returncode == result, msg, output, warning)
 
 
+def test_hypster_execution(file, result, msg):
+  p = Popen(['./selfie', '-c', 'selfie.c', '-m', '128', '-c', GRADER_PATH + file, '-y', '64'], stdout=PIPE, stderr=PIPE, stdin=PIPE)
+
+  output = p.stdout.read().decode(sys.stdout.encoding)
+  p.wait()
+
+  if p.returncode != result:
+    warning = 'Hypster execution terminated with wrong exit code {} instead of {}'.format(p.returncode, result)
+  else:
+    warning = None
+
+  record_result(p.returncode == result, msg, output, warning)
+
+
 def test_execution(command, msg, should_succeed=True):
   p = Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
 
@@ -299,6 +313,15 @@ def test_concurrent_machines():
     '10 Hypster machines are running concurrently')
 
 
+def test_fork_and_wait():
+  set_up()
+
+  test_mipster_execution('fork-wait.c', 70,
+    'fork creates a child process, where the parent can wait for the child process with MIPSTER')
+  test_mipster_execution('fork-wait.c', 70,
+    'fork creates a child process, where the parent can wait for the child process with HYPSTER')
+
+
 def start_stage(stage):
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
@@ -375,7 +398,7 @@ if __name__ == "__main__":
     print('usage: python3 self.py { test_name }')
     exit()
 
-  GRADER_PATH = os.path.dirname(sys.argv[0] + '/')
+  GRADER_PATH = os.path.dirname(sys.argv[0]) + '/'
 
   tests = sys.argv[1:]
 
@@ -393,6 +416,8 @@ if __name__ == "__main__":
       test_assembler(int(stage))
     elif test == 'concurrent-machines':
       test_concurrent_machines()
+    elif test == 'fork-wait':
+      test_fork_and_wait()
     else:
       print(f'unknown test: {test}')
 
