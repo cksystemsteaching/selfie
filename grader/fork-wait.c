@@ -1,6 +1,6 @@
 uint64_t* malloc(uint64_t s);
 uint64_t  fork();
-uint64_t  wait(uint64_t pid);
+uint64_t  wait(uint64_t* wstatus);
 
 uint64_t sumChilds(uint64_t pid, uint64_t acc) {
   uint64_t* s;
