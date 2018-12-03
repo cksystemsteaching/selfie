@@ -1,24 +1,24 @@
 // This C* code outputs its own source code: quine.c in C*
-void initLibrary();
+void init_library();
 void print(uint64_t* s);
-void printInteger(uint64_t i);
-void printString(uint64_t* s);
+void print_integer(uint64_t i);
+void print_string(uint64_t* s);
 void println();
 uint64_t main() {
   uint64_t* source;
   uint64_t i;
-  initLibrary();
+  init_library();
   source = malloc(41*8);
   *(source + 0) = (uint64_t) "// This C* code outputs its own source code: quine.c in C*";
-  *(source + 1) = (uint64_t) "void initLibrary();";
+  *(source + 1) = (uint64_t) "void init_library();";
   *(source + 2) = (uint64_t) "void print(uint64_t* s);";
-  *(source + 3) = (uint64_t) "void printInteger(uint64_t i);";
-  *(source + 4) = (uint64_t) "void printString(uint64_t* s);";
+  *(source + 3) = (uint64_t) "void print_integer(uint64_t i);";
+  *(source + 4) = (uint64_t) "void print_string(uint64_t* s);";
   *(source + 5) = (uint64_t) "void println();";
   *(source + 6) = (uint64_t) "uint64_t main() {";
   *(source + 7) = (uint64_t) "  uint64_t* source;";
   *(source + 8) = (uint64_t) "  uint64_t i;";
-  *(source + 9) = (uint64_t) "  initLibrary();";
+  *(source + 9) = (uint64_t) "  init_library();";
   *(source + 10) = (uint64_t) "  source = malloc(41*8);";
   *(source + 11) = (uint64_t) "  // printing source code before stored code";
   *(source + 12) = (uint64_t) "  i = 0;";
@@ -31,9 +31,9 @@ uint64_t main() {
   *(source + 19) = (uint64_t) "  i = 0;";
   *(source + 20) = (uint64_t) "  while (i < 41) {";
   *(source + 21) = (uint64_t) "    print(*(source + 38));";
-  *(source + 22) = (uint64_t) "    printInteger(i);";
+  *(source + 22) = (uint64_t) "    print_integer(i);";
   *(source + 23) = (uint64_t) "    print(*(source + 39));";
-  *(source + 24) = (uint64_t) "    printString(*(source + i));";
+  *(source + 24) = (uint64_t) "    print_string(*(source + i));";
   *(source + 25) = (uint64_t) "    print(*(source + 40));";
   *(source + 26) = (uint64_t) "    println();";
   *(source + 27) = (uint64_t) "    i = i + 1;";
@@ -61,9 +61,9 @@ uint64_t main() {
   i = 0;
   while (i < 41) {
     print(*(source + 38));
-    printInteger(i);
+    print_integer(i);
     print(*(source + 39));
-    printString(*(source + i));
+    print_string(*(source + i));
     print(*(source + 40));
     println();
     i = i + 1;
