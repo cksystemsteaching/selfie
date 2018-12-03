@@ -318,7 +318,7 @@ def test_fork_and_wait():
 
   test_mipster_execution('fork-wait.c', 70,
     'fork creates a child process, where the parent can wait for the child process with MIPSTER')
-  test_mipster_execution('fork-wait.c', 70,
+  test_hypster_execution('fork-wait.c', 70,
     'fork creates a child process, where the parent can wait for the child process with HYPSTER')
 
 
