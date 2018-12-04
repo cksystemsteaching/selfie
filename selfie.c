@@ -966,8 +966,6 @@ uint64_t SYSCALL_READ  = 63;
 uint64_t SYSCALL_WRITE = 64;
 uint64_t SYSCALL_OPEN  = 1024;
 uint64_t SYSCALL_BRK   = 214;
-
-//
 uint64_t SYSCALL_INPUT = 42;
 
 // -----------------------------------------------------------------
@@ -6418,7 +6416,6 @@ void implement_open(uint64_t* context) {
 
   if (symbolic) {
     *(reg_typ + REG_A0)     = CONCRETE_T;
-    *(registers + REG_A0)   = *(get_regs(context) + REG_A0);
     *(reg_alpha2 + REG_A0)  = *(get_regs(context) + REG_A0);
   }
 
@@ -6532,7 +6529,6 @@ void implement_brk(uint64_t* context) {
       // interval is memory range, not symbolic value
       *(reg_typ + REG_A0) = ARRAY_T;
       // remember start and size of memory block for checking memory safety
-      *(registers + REG_A0)   = previous_program_break;
       *(reg_alpha2 + REG_A0)  = previous_program_break;
       *(reg_alpha3 + REG_A0)  = size;
 
@@ -6570,11 +6566,8 @@ void implement_brk(uint64_t* context) {
 
     if (symbolic) {
       *(reg_typ + REG_A0) = CONCRETE_T;
-
-      *(registers + REG_A0) = 0;
-      *(reg_alpha2 + REG_A0) = 0;
+      *(reg_alpha2 + REG_A0) = program_break;
       *(reg_alpha3 + REG_A0) = 1;
-
     }
   }
 
@@ -9272,14 +9265,8 @@ void print_register_value(uint64_t reg) {
   }
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
-  else {
-    print_register_name(reg);
-    print((uint64_t*) "=");
-    print_integer(*(registers + reg));
-    print((uint64_t*) "(");
-    print_hexadecimal(*(registers + reg), 0);
-    print((uint64_t*) ")");
-  }
+  else
+    printf3((uint64_t*) "%s=%d(%x)", get_register_name(reg), (uint64_t*) *(registers + reg), (uint64_t*) *(registers + reg));
 }
 
 void print_exception(uint64_t exception, uint64_t faulting_page) {
@@ -9304,7 +9291,7 @@ void throw_exception(uint64_t exception, uint64_t faulting_page) {
   set_exception(current_context, exception);
   set_faulting_page(current_context, faulting_page);
 
-  if (exception != EXCEPTION_SYSCALL) //prevent from overwritting return line with exit syscall exception
+  if (exception != EXCEPTION_SYSCALL)
     last_jal_from = pc; //for test line numbers
 
   trap = 1;
@@ -9618,7 +9605,7 @@ void decode_execute() {
         } else {
           do_jal();
           constrain_jal_jalr();
-        }
+      //  }
       }
     } else
       do_jal();
@@ -9648,7 +9635,7 @@ void decode_execute() {
           } else {
             do_jalr();
             constrain_jal_jalr();
-          }
+      //    }
         }
       } else
         do_jalr();
@@ -10566,7 +10553,7 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
     if (is_trace_space_available()) {
       set_taint_memory(0, 0, 1);
       // always track initialized memory by using tc as most recent branch
-      store_symbolic_memory(get_pt(context), 0, vaddr, 0, data, data, 1, tc);
+      store_symbolic_memory(get_pt(context), 0, vaddr, CONCRETE_T, data, data, 1, tc);
     }
     else {
       printf1((uint64_t*) "%s: ealloc out of memory\n", selfie_name);
@@ -10751,7 +10738,6 @@ uint64_t handle_division_by_zero(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   printf1((uint64_t*) "%s: division by zero\n", selfie_name);
-  set_exit_code(context, EXITCODE_DIVISIONBYZERO);
 
   set_exit_code(context, EXITCODE_DIVISIONBYZERO);
   if (symbolic) {
