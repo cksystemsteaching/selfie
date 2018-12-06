@@ -8963,8 +8963,10 @@ void constrain_memory(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uin
     factor = *(reg_factor + reg);
     //one multiplication or division or modulo
     if (*(reg_expr + reg) == MUL_T) {         //one multiplication
-      lo = lo / factor;
-      up = up / factor;
+
+      lo = signed_division(lo, factor);
+      up = signed_division(up, factor);
+
     } else if (*(reg_expr + reg) == DIV_T) {  //one division
       lo = lo * factor;
       up = reverse_up_division(up, factor); //overflow
@@ -9605,7 +9607,7 @@ void decode_execute() {
         } else {
           do_jal();
           constrain_jal_jalr();
-      //  }
+       }
       }
     } else
       do_jal();
@@ -9635,7 +9637,7 @@ void decode_execute() {
           } else {
             do_jalr();
             constrain_jal_jalr();
-      //    }
+         }
         }
       } else
         do_jalr();
@@ -10722,7 +10724,15 @@ uint64_t handle_system_call(uint64_t* context) {
 
     return EXIT;
   }
-  return EXIT;
+
+  //after implement_syscall
+  if (get_exception(context) == EXCEPTION_MAXTRACE) {
+    // exiting during symbolic execution, no exit code necessary
+    set_exception(context, EXCEPTION_NOEXCEPTION);
+
+    return EXIT;
+  } else
+  return DONOTEXIT;
 }
 
 uint64_t handle_page_fault(uint64_t* context) {

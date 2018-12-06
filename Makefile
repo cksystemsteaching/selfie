@@ -76,7 +76,7 @@ test: selfie
 		./test-script.pl test
 
 # Run everything
-all: compile quine debug replay os vm min mob sat
+all: compile quine debug os vm min mob sat
 
 # Clean up
 clean:

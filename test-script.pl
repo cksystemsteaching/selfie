@@ -192,7 +192,7 @@ sub verifyOutcomes {
   open (REAL, "<$file") or die "Can't open $file : $!\n";
   while(<REAL>) {
     #exit case (or exception)
-    if(/reaching end point at:\w+\(~(\d+)\) with exit code \<(-?\d+),(-?\d+),(-?\d+)\>/) {
+    if(/reaching end point at: \w+\(~(\d+)\) with exit code \<(-?\d+),(-?\d+),(-?\d+)\>/) {
         my $r_line  = $1;
         my $r_start = $2;
         my $r_end   = $3;
