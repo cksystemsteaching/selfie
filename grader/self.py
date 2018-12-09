@@ -44,6 +44,10 @@ def print_failed(msg, warning, output, command):
   print(' >> ' + output[:-1].replace('\n', '\n >> '))
 
 
+def filter_status_messages(selfie_output):
+  return re.sub(r'([a-zA-Z]:\\|(./)?selfie)[^\n]*\n', '', selfie_output).replace('\n', '')
+
+
 def record_result(result, msg, output, warning, should_succeed=True, command=None):
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
@@ -65,7 +69,9 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
 
 
 def execute(command):
-  Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True).wait()
+  process = Popen(command, stdout=PIPE, shell=True)
+  output = process.communicate()[0].decode(sys.stdout.encoding)
+  return (process.returncode, output)
 
 
 def set_up():
@@ -154,17 +160,14 @@ def test_hypster_execution(file, result, msg):
 
 
 def test_execution(command, msg, should_succeed=True):
-  p = Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
-
-  output = p.stdout.read().decode(sys.stdout.encoding)
-  p.wait()
+  returncode, output = execute(command)
 
   if should_succeed:
-    warning = f'Execution terminated with wrong exit code {p.returncode} instead of 0'
+    warning = f'Execution terminated with wrong exit code {returncode} instead of 0'
   else:
-    warning = f'Execution terminated with wrong exit code {p.returncode}'
+    warning = f'Execution terminated with wrong exit code {returncode}'
 
-  record_result(p.returncode == 0, msg, output, warning, should_succeed, command)
+  record_result(returncode == 0, msg, output, warning, should_succeed, command)
 
 class Memoize:
   def __init__(self, fn):
@@ -194,19 +197,26 @@ def isInterleaved(strings, interleaved):
   return False
 
 
+def test_output(command, output_msg, msg):
+  returncode, output = execute(command)
+
+  if returncode != 0:
+    record_result(False, msg, output, '', True, command)
+  else:
+    filtered_output = filter_status_messages(output)
+
+    record_result(filtered_output == output_msg, msg, output, 'The actual printed output does not match', True, command)
+
+
 def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg):
-  p = Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE, shell=True)
-  p.wait()
+  returncode, output = execute(command)
 
-  output = p.stdout.read().decode(sys.stdout.encoding)
-
-  if p.returncode != 0:
+  if returncode != 0:
     record_result(False, msg, output, '', True, command)
   else:
     strings = [interleaved_msg[:] for i in range(0, number_of_interleaved)]
 
-    filtered_output = re.sub(r'([a-zA-Z]:\\|(./)?selfie)[^\n]*\n', '', output)
-    filtered_output = filtered_output.replace('\n', '')
+    filtered_output = filter_status_messages(output)
 
     if len(filtered_output.replace(interleaved_msg, '')) == 0:
       record_result(False, msg, output, 'The output strings are ordered sequentially', True, command)
@@ -299,7 +309,7 @@ def test_assembler(stage):
 
   if stage >= 2:
     start_stage(2)
-    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 10 -a selfie1.s -s selfie2.s '
+    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s '
      + '&& diff -q selfie1.s selfie2.s',
       'selfie can assemble its own binary file and both assembly files are exactly the same')
 
@@ -309,7 +319,7 @@ def test_concurrent_machines():
 
   test_interleaved_output('./selfie -c manuscript/code/hello-world.c -x 10', 'Hello World!    ', 10,
     '10 Mipster machines are running concurrently')
-  test_interleaved_output('./selfie -c selfie.c -m 10 -c manuscript/code/hello-world.c -z 10', 'Hello World!    ', 10,
+  test_interleaved_output('./selfie -c selfie.c -m 128 -c manuscript/code/hello-world.c -z 10', 'Hello World!    ', 10,
     '10 Hypster machines are running concurrently')
 
 
@@ -320,6 +330,19 @@ def test_fork_and_wait():
     'fork creates a child process, where the parent can wait for the child process with MIPSTER')
   test_hypster_execution('fork-wait.c', 70,
     'fork creates a child process, where the parent can wait for the child process with HYPSTER')
+
+
+def test_lock():
+  set_up()
+
+  test_interleaved_output(f'./selfie -c {GRADER_PATH}hello-world-without-lock.c -m 128', 'Hello World!    ', 16,
+    '16 processes are running concurrently on MIPSTER')
+  test_interleaved_output(f'./selfie -c selfie.c -m 128 -c {GRADER_PATH}hello-world-without-lock.c -y 10', 'Hello World!    ', 16,
+    '16 processes are running concurrently on HYPSTER')
+  test_output(f'./selfie -c {GRADER_PATH}hello-world-with-lock.c -m 128', 'Hello World!    ' * 16,
+    '16 processes are printing in sequential order with the use of locks on MIPSTER')
+  test_output(f'./selfie -c selfie.c -m 128 -c {GRADER_PATH}hello-world-with-lock.c -y 10', 'Hello World!    ' * 16,
+    '16 processes are printing in sequential order with the use of locks on HYPSTER')
 
 
 def start_stage(stage):
@@ -418,6 +441,8 @@ if __name__ == "__main__":
       test_concurrent_machines()
     elif test == 'fork-wait':
       test_fork_and_wait()
+    elif test == 'lock':
+      test_lock()
     else:
       print(f'unknown test: {test}')
 
