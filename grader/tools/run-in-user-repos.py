@@ -16,7 +16,7 @@ for user in next(os.walk(os.path.curdir))[1]:
 	os.chdir(user)
 
 	for repo in next(os.walk(os.path.curdir))[1]:
-		print user + "/" + repo + ":"
+		print "\n\n" + user + "/" + repo + ":"
 
 		os.chdir(repo)
 

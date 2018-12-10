@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS := -w -O3 -m64 -D'main(a,b)=main(int argc, char** argv)' -Duint64_t='unsigned long long'
+CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 
 # Compile selfie.c into selfie executable
 selfie: selfie.c

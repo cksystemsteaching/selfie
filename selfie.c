@@ -88,11 +88,15 @@ Professor Jochen Liedtke from University of Karlsruhe.
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
-void      exit(uint64_t code);
-uint64_t  read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
-uint64_t  write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
-uint64_t  open(uint64_t* filename, uint64_t flags, uint64_t mode);
-uint64_t* malloc(uint64_t size);
+ // selfie bootstraps int to uint64_t!
+void exit(int code);
+
+uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
+uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
+uint64_t open(uint64_t* filename, uint64_t flags, uint64_t mode);
+
+// selfie bootstraps void* and unsigned long to uint64_t* and uint64_t, respectively!
+void* malloc(unsigned long);
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -111,7 +115,7 @@ uint64_t get_bits(uint64_t n, uint64_t i, uint64_t b);
 uint64_t get_low_word(uint64_t n);
 uint64_t get_high_word(uint64_t n);
 
-uint64_t abs(uint64_t n);
+uint64_t absolute(uint64_t n);
 
 uint64_t signed_less_than(uint64_t a, uint64_t b);
 uint64_t signed_division(uint64_t a, uint64_t b);
@@ -170,24 +174,24 @@ uint64_t CHAR_TAB          =   9; // ASCII code 9  = tabulator
 uint64_t CHAR_LF           =  10; // ASCII code 10 = line feed
 uint64_t CHAR_CR           =  13; // ASCII code 13 = carriage return
 uint64_t CHAR_SPACE        = ' ';
-uint64_t CHAR_SEMICOLON    = ';';
-uint64_t CHAR_PLUS         = '+';
-uint64_t CHAR_DASH         = '-';
-uint64_t CHAR_ASTERISK     = '*';
-uint64_t CHAR_SLASH        = '/';
 uint64_t CHAR_UNDERSCORE   = '_';
-uint64_t CHAR_EQUAL        = '=';
+uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
+uint64_t CHAR_DOUBLEQUOTE  = '"';
+uint64_t CHAR_COMMA        = ',';
+uint64_t CHAR_SEMICOLON    = ';';
 uint64_t CHAR_LPARENTHESIS = '(';
 uint64_t CHAR_RPARENTHESIS = ')';
 uint64_t CHAR_LBRACE       = '{';
 uint64_t CHAR_RBRACE       = '}';
-uint64_t CHAR_COMMA        = ',';
+uint64_t CHAR_PLUS         = '+';
+uint64_t CHAR_DASH         = '-';
+uint64_t CHAR_ASTERISK     = '*';
+uint64_t CHAR_SLASH        = '/';
+uint64_t CHAR_PERCENTAGE   = '%';
+uint64_t CHAR_EQUAL        = '=';
+uint64_t CHAR_EXCLAMATION  = '!';
 uint64_t CHAR_LT           = '<';
 uint64_t CHAR_GT           = '>';
-uint64_t CHAR_EXCLAMATION  = '!';
-uint64_t CHAR_PERCENTAGE   = '%';
-uint64_t CHAR_SINGLEQUOTE  =  39; // ASCII code 39 = '
-uint64_t CHAR_DOUBLEQUOTE  = '"';
 uint64_t CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
 
 uint64_t CPUBITWIDTH = 64;
@@ -325,35 +329,44 @@ void handle_escape_sequence();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t SYM_EOF          = -1; // end of file
-uint64_t SYM_IDENTIFIER   = 0;  // identifier
-uint64_t SYM_INTEGER      = 1;  // integer
-uint64_t SYM_VOID         = 2;  // void
-uint64_t SYM_UINT64       = 3;  // uint64_t
-uint64_t SYM_SEMICOLON    = 4;  // ;
+uint64_t SYM_EOF = -1; // end of file
+
+// C* symbols
+
+uint64_t SYM_INTEGER      = 0;  // integer
+uint64_t SYM_CHARACTER    = 1;  // character
+uint64_t SYM_STRING       = 2;  // string
+uint64_t SYM_IDENTIFIER   = 3;  // identifier
+uint64_t SYM_UINT64       = 4;  // uint64_t
 uint64_t SYM_IF           = 5;  // if
 uint64_t SYM_ELSE         = 6;  // else
-uint64_t SYM_PLUS         = 7;  // +
-uint64_t SYM_MINUS        = 8;  // -
-uint64_t SYM_ASTERISK     = 9;  // *
-uint64_t SYM_DIV          = 10; // /
-uint64_t SYM_EQUALITY     = 11; // ==
-uint64_t SYM_ASSIGN       = 12; // =
-uint64_t SYM_LPARENTHESIS = 13; // (
-uint64_t SYM_RPARENTHESIS = 14; // )
-uint64_t SYM_LBRACE       = 15; // {
-uint64_t SYM_RBRACE       = 16; // }
-uint64_t SYM_WHILE        = 17; // while
-uint64_t SYM_RETURN       = 18; // return
-uint64_t SYM_COMMA        = 19; // ,
-uint64_t SYM_LT           = 20; // <
-uint64_t SYM_LEQ          = 21; // <=
-uint64_t SYM_GT           = 22; // >
-uint64_t SYM_GEQ          = 23; // >=
-uint64_t SYM_NOTEQ        = 24; // !=
-uint64_t SYM_MOD          = 25; // %
-uint64_t SYM_CHARACTER    = 26; // character
-uint64_t SYM_STRING       = 27; // string
+uint64_t SYM_VOID         = 7;  // void
+uint64_t SYM_RETURN       = 8;  // return
+uint64_t SYM_WHILE        = 9;  // while
+uint64_t SYM_COMMA        = 10; // ,
+uint64_t SYM_SEMICOLON    = 11; // ;
+uint64_t SYM_LPARENTHESIS = 12; // (
+uint64_t SYM_RPARENTHESIS = 13; // )
+uint64_t SYM_LBRACE       = 14; // {
+uint64_t SYM_RBRACE       = 15; // }
+uint64_t SYM_PLUS         = 16; // +
+uint64_t SYM_MINUS        = 17; // -
+uint64_t SYM_ASTERISK     = 18; // *
+uint64_t SYM_DIV          = 19; // /
+uint64_t SYM_MOD          = 20; // %
+uint64_t SYM_ASSIGN       = 21; // =
+uint64_t SYM_EQUALITY     = 22; // ==
+uint64_t SYM_NOTEQ        = 23; // !=
+uint64_t SYM_LT           = 24; // <
+uint64_t SYM_LEQ          = 25; // <=
+uint64_t SYM_GT           = 26; // >
+uint64_t SYM_GEQ          = 27; // >=
+
+// symbols for bootstrapping
+
+uint64_t SYM_INT      = 28; // int
+uint64_t SYM_CHAR     = 29; // char
+uint64_t SYM_UNSIGNED = 30; // unsigned
 
 uint64_t* SYMBOLS; // strings representing symbols
 
@@ -389,36 +402,40 @@ uint64_t  source_fd   = 0;             // file descriptor of open source file
 // ------------------------- INITIALIZATION ------------------------
 
 void init_scanner () {
-  SYMBOLS = smalloc((SYM_STRING + 1) * SIZEOFUINT64STAR);
+  SYMBOLS = smalloc((SYM_UNSIGNED + 1) * SIZEOFUINT64STAR);
 
-  *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_INTEGER)      = (uint64_t) "integer";
-  *(SYMBOLS + SYM_VOID)         = (uint64_t) "void";
+  *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
+  *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+  *(SYMBOLS + SYM_IDENTIFIER)   = (uint64_t) "identifier";
   *(SYMBOLS + SYM_UINT64)       = (uint64_t) "uint64_t";
-  *(SYMBOLS + SYM_SEMICOLON)    = (uint64_t) ";";
   *(SYMBOLS + SYM_IF)           = (uint64_t) "if";
   *(SYMBOLS + SYM_ELSE)         = (uint64_t) "else";
-  *(SYMBOLS + SYM_PLUS)         = (uint64_t) "+";
-  *(SYMBOLS + SYM_MINUS)        = (uint64_t) "-";
-  *(SYMBOLS + SYM_ASTERISK)     = (uint64_t) "*";
-  *(SYMBOLS + SYM_DIV)          = (uint64_t) "/";
-  *(SYMBOLS + SYM_EQUALITY)     = (uint64_t) "==";
-  *(SYMBOLS + SYM_ASSIGN)       = (uint64_t) "=";
+  *(SYMBOLS + SYM_VOID)         = (uint64_t) "void";
+  *(SYMBOLS + SYM_RETURN)       = (uint64_t) "return";
+  *(SYMBOLS + SYM_WHILE)        = (uint64_t) "while";
+  *(SYMBOLS + SYM_COMMA)        = (uint64_t) ",";
+  *(SYMBOLS + SYM_SEMICOLON)    = (uint64_t) ";";
   *(SYMBOLS + SYM_LPARENTHESIS) = (uint64_t) "(";
   *(SYMBOLS + SYM_RPARENTHESIS) = (uint64_t) ")";
   *(SYMBOLS + SYM_LBRACE)       = (uint64_t) "{";
   *(SYMBOLS + SYM_RBRACE)       = (uint64_t) "}";
-  *(SYMBOLS + SYM_WHILE)        = (uint64_t) "while";
-  *(SYMBOLS + SYM_RETURN)       = (uint64_t) "return";
-  *(SYMBOLS + SYM_COMMA)        = (uint64_t) ",";
+  *(SYMBOLS + SYM_PLUS)         = (uint64_t) "+";
+  *(SYMBOLS + SYM_MINUS)        = (uint64_t) "-";
+  *(SYMBOLS + SYM_ASTERISK)     = (uint64_t) "*";
+  *(SYMBOLS + SYM_DIV)          = (uint64_t) "/";
+  *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
+  *(SYMBOLS + SYM_ASSIGN)       = (uint64_t) "=";
+  *(SYMBOLS + SYM_EQUALITY)     = (uint64_t) "==";
+  *(SYMBOLS + SYM_NOTEQ)        = (uint64_t) "!=";
   *(SYMBOLS + SYM_LT)           = (uint64_t) "<";
   *(SYMBOLS + SYM_LEQ)          = (uint64_t) "<=";
   *(SYMBOLS + SYM_GT)           = (uint64_t) ">";
   *(SYMBOLS + SYM_GEQ)          = (uint64_t) ">=";
-  *(SYMBOLS + SYM_NOTEQ)        = (uint64_t) "!=";
-  *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
-  *(SYMBOLS + SYM_CHARACTER)    = (uint64_t) "character";
-  *(SYMBOLS + SYM_STRING)       = (uint64_t) "string";
+
+  *(SYMBOLS + SYM_INT)      = (uint64_t) "int";
+  *(SYMBOLS + SYM_CHAR)     = (uint64_t) "char";
+  *(SYMBOLS + SYM_UNSIGNED) = (uint64_t) "unsigned";
 
   character = CHAR_EOF;
   symbol    = SYM_EOF;
@@ -1717,7 +1734,7 @@ uint64_t get_high_word(uint64_t n) {
   return get_bits(n, WORDSIZEINBITS, WORDSIZEINBITS);
 }
 
-uint64_t abs(uint64_t n) {
+uint64_t absolute(uint64_t n) {
   if (signed_less_than(n, 0))
     return -n;
   else
@@ -1739,18 +1756,18 @@ uint64_t signed_division(uint64_t a, uint64_t b) {
     if (b == INT64_MIN)
       return 1;
     else if (signed_less_than(b, 0))
-      return INT64_MIN / abs(b);
+      return INT64_MIN / absolute(b);
     else
       return -(INT64_MIN / b);
   else if (b == INT64_MIN)
     return 0;
   else if (signed_less_than(a, 0))
     if (signed_less_than(b, 0))
-      return abs(a) / abs(b);
+      return absolute(a) / absolute(b);
     else
-      return -(abs(a) / b);
+      return -(absolute(a) / b);
   else if (signed_less_than(b, 0))
-    return -(a / abs(b));
+    return -(a / absolute(b));
   else
     return a / b;
 }
@@ -2576,18 +2593,27 @@ uint64_t identifier_string_match(uint64_t keyword) {
 }
 
 uint64_t identifier_or_keyword() {
-  if (identifier_string_match(SYM_WHILE))
-    return SYM_WHILE;
-  if (identifier_string_match(SYM_IF))
-    return SYM_IF;
   if (identifier_string_match(SYM_UINT64))
     return SYM_UINT64;
-  if (identifier_string_match(SYM_ELSE))
+  else if (identifier_string_match(SYM_IF))
+    return SYM_IF;
+  else if (identifier_string_match(SYM_ELSE))
     return SYM_ELSE;
-  if (identifier_string_match(SYM_RETURN))
-    return SYM_RETURN;
-  if (identifier_string_match(SYM_VOID))
+  else if (identifier_string_match(SYM_VOID))
     return SYM_VOID;
+  else if (identifier_string_match(SYM_RETURN))
+    return SYM_RETURN;
+  else if (identifier_string_match(SYM_WHILE))
+    return SYM_WHILE;
+  else if (identifier_string_match(SYM_INT))
+    // selfie bootstraps int to uint64_t!
+    return SYM_UINT64;
+  else if (identifier_string_match(SYM_CHAR))
+    // selfie bootstraps char to uint64_t!
+    return SYM_UINT64;
+  else if (identifier_string_match(SYM_UNSIGNED))
+    // selfie bootstraps unsigned to uint64_t!
+    return SYM_UINT64;
   else
     return SYM_IDENTIFIER;
 }
@@ -2726,35 +2752,15 @@ void get_symbol() {
 
         symbol = SYM_STRING;
 
+      } else if (character == CHAR_COMMA) {
+        get_character();
+
+        symbol = SYM_COMMA;
+
       } else if (character == CHAR_SEMICOLON) {
         get_character();
 
         symbol = SYM_SEMICOLON;
-
-      } else if (character == CHAR_PLUS) {
-        get_character();
-
-        symbol = SYM_PLUS;
-
-      } else if (character == CHAR_DASH) {
-        get_character();
-
-        symbol = SYM_MINUS;
-
-      } else if (character == CHAR_ASTERISK) {
-        get_character();
-
-        symbol = SYM_ASTERISK;
-
-      } else if (character == CHAR_EQUAL) {
-        get_character();
-
-        if (character == CHAR_EQUAL) {
-          get_character();
-
-          symbol = SYM_EQUALITY;
-        } else
-          symbol = SYM_ASSIGN;
 
       } else if (character == CHAR_LPARENTHESIS) {
         get_character();
@@ -2776,10 +2782,45 @@ void get_symbol() {
 
         symbol = SYM_RBRACE;
 
-      } else if (character == CHAR_COMMA) {
+      } else if (character == CHAR_PLUS) {
         get_character();
 
-        symbol = SYM_COMMA;
+        symbol = SYM_PLUS;
+
+      } else if (character == CHAR_DASH) {
+        get_character();
+
+        symbol = SYM_MINUS;
+
+      } else if (character == CHAR_ASTERISK) {
+        get_character();
+
+        symbol = SYM_ASTERISK;
+
+      } else if (character == CHAR_PERCENTAGE) {
+        get_character();
+
+        symbol = SYM_MOD;
+
+      } else if (character == CHAR_EQUAL) {
+        get_character();
+
+        if (character == CHAR_EQUAL) {
+          get_character();
+
+          symbol = SYM_EQUALITY;
+        } else
+          symbol = SYM_ASSIGN;
+
+      } else if (character == CHAR_EXCLAMATION) {
+        get_character();
+
+        if (character == CHAR_EQUAL)
+          get_character();
+        else
+          syntax_error_character(CHAR_EQUAL);
+
+        symbol = SYM_NOTEQ;
 
       } else if (character == CHAR_LT) {
         get_character();
@@ -2800,21 +2841,6 @@ void get_symbol() {
           symbol = SYM_GEQ;
         } else
           symbol = SYM_GT;
-
-      } else if (character == CHAR_EXCLAMATION) {
-        get_character();
-
-        if (character == CHAR_EQUAL)
-          get_character();
-        else
-          syntax_error_character(CHAR_EQUAL);
-
-        symbol = SYM_NOTEQ;
-
-      } else if (character == CHAR_PERCENTAGE) {
-        get_character();
-
-        symbol = SYM_MOD;
 
       } else {
         print_line_number((uint64_t*) "syntax error", line_number);
@@ -4258,7 +4284,8 @@ uint64_t compile_type() {
   if (symbol == SYM_UINT64) {
     get_symbol();
 
-    if (symbol == SYM_ASTERISK) {
+    while (symbol == SYM_ASTERISK) {
+      // we tolerate pointer to pointers for bootstrapping
       type = UINT64STAR_T;
 
       get_symbol();
@@ -4521,9 +4548,15 @@ void compile_cstar() {
     if (symbol == SYM_VOID) {
       // void identifier ...
       // procedure declaration or definition
-      type = VOID_T;
-
       get_symbol();
+
+      if (symbol == SYM_ASTERISK) {
+        // we tolerate void* return types for bootstrapping
+        get_symbol();
+
+        type = UINT64STAR_T;
+      } else
+        type = VOID_T;
 
       if (symbol == SYM_IDENTIFIER) {
         variable_or_procedure_name = identifier;
@@ -4625,8 +4658,6 @@ void emit_bootstrapping() {
   */
   uint64_t gp;
   uint64_t padding;
-  uint64_t lower;
-  uint64_t upper;
   uint64_t* entry;
 
   // calculate the global pointer value
@@ -6526,12 +6557,12 @@ void print_code_line_number_for_instruction(uint64_t a) {
 
 void print_code_context_for_instruction(uint64_t a) {
   if (execute) {
-    printf2((uint64_t*) "%s: $pc=%x", binary_name, (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
+    printf2((uint64_t*) "%s: $pc=%x", binary_name, (uint64_t*) a);
+    print_code_line_number_for_instruction(a - entry_point);
   } else {
-    printf1((uint64_t*) "%x", (uint64_t*) pc);
+    printf1((uint64_t*) "%x", (uint64_t*) a);
     if (disassemble_verbose) {
-      print_code_line_number_for_instruction(pc);
+      print_code_line_number_for_instruction(a);
       printf1((uint64_t*) ": %p", (uint64_t*) ir);
     }
   }
@@ -8586,7 +8617,8 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
   uint64_t i;
   uint64_t c;
 
-  a = -1;
+  a = UINT64_MAX;
+
   n = 0;
   i = 0;
 
@@ -8604,10 +8636,10 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
     i = i + 1;
   }
 
-  if (a != -1)
+  if (a != UINT64_MAX)
     return a * INSTRUCTIONSIZE;
   else
-    return -1;
+    return UINT64_MAX;
 }
 
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max) {
@@ -8616,7 +8648,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 
   a = instruction_with_max_counter(counters, max);
 
-  if (a != -1) {
+  if (a != UINT64_MAX) {
     c = *(counters + a / INSTRUCTIONSIZE);
 
     // CAUTION: we reset counter to avoid reporting it again
@@ -9049,6 +9081,7 @@ uint64_t* palloc() {
 
 void pfree(uint64_t* frame) {
   // TODO: implement free list of page frames
+  frame = frame + 1;
 }
 
 void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
@@ -9377,9 +9410,9 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
 
   while (1) {
     if (mix)
-      from_context = mipster_switch(to_context, TIMESLICE);
+      from_context = mipster_switch(to_context, timeout);
     else
-      from_context = hypster_switch(to_context, TIMESLICE);
+      from_context = hypster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
@@ -9414,7 +9447,7 @@ uint64_t minmob(uint64_t* to_context) {
   timeout = TIMESLICE;
 
   while (1) {
-    from_context = mipster_switch(to_context, TIMESLICE);
+    from_context = mipster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
       // switch to parent which is in charge of handling exceptions
@@ -10081,7 +10114,8 @@ uint64_t selfie() {
   return EXITCODE_NOERROR;
 }
 
-uint64_t main(uint64_t argc, uint64_t* argv) {
+// selfie bootstraps int and char** to uint64_t and uint64_t*, respectively!
+int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
