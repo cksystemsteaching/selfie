@@ -6219,29 +6219,29 @@ void implement_open(uint64_t* context) {
   if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
     fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
-    *(get_regs(context) + REG_A1) = fd;
+    *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
       printf5((uint64_t*) "%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfie_name, filename_buffer, (uint64_t*) flags, (uint64_t*) mode, (uint64_t*) fd);
   } else {
-    *(get_regs(context) + REG_A1) = sign_shrink(-1, SYSCALL_BITWIDTH);
+    *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open)
       printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name, (uint64_t*) vfilename);
   }
 
   if (symbolic) {
-    *(reg_typ + REG_A1) = 0;
+    *(reg_typ + REG_A0) = 0;
 
-    *(reg_los + REG_A1) = *(get_regs(context) + REG_A1);
-    *(reg_ups + REG_A1) = *(get_regs(context) + REG_A1);
+    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
+    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (disassemble) {
     print((uint64_t*) " -> ");
-    print_register_value(REG_A1);
+    print_register_value(REG_A0);
     println();
   }
 }
