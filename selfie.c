@@ -5541,7 +5541,7 @@ uint64_t* create_elf_header(uint64_t binary_length) {
   // RISC-U ELF64 program header table:
   *(header + 8)  = 1                              // type of segment is LOAD
                  + left_shift(7, 32);             // segment attributes is RWX
-  *(header + 9)  = ELF_HEADER_LEN + SIZEOFUINT64; // segment offset in file
+  *(header + 9)  = PAGESIZE;                      // segment offset in file (must be page-aligned)
   *(header + 10) = ELF_ENTRY_POINT;               // virtual address in memory
   *(header + 11) = 0;                             // physical address (reserved)
   *(header + 12) = binary_length;                 // size of segment in file
@@ -5608,6 +5608,7 @@ uint64_t open_write_only(uint64_t* name) {
 
 void selfie_output() {
   uint64_t fd;
+  uint64_t i;
 
   binary_name = get_argument();
 
@@ -5645,6 +5646,18 @@ void selfie_output() {
     exit(EXITCODE_IOERROR);
   }
 
+  // pad the segment up to the page size
+  *binary_buffer = 0;
+  i = ELF_HEADER_LEN + SIZEOFUINT64;
+  while (i < PAGESIZE) {
+    if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
+      printf2((uint64_t*) "%s: could not write padding of binary output file %s\n", selfie_name, binary_name);
+
+      exit(EXITCODE_IOERROR);
+    }
+    i = i + SIZEOFUINT64;
+  }
+
   // assert: binary is mapped
 
   // then write binary
@@ -5656,7 +5669,7 @@ void selfie_output() {
 
   printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data written into %s\n",
     selfie_name,
-    (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binary_length),
+    (uint64_t*) (PAGESIZE + binary_length),
     (uint64_t*) (code_length / INSTRUCTIONSIZE),
     (uint64_t*) (binary_length - code_length),
     binary_name);
@@ -5696,6 +5709,7 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
 
 void selfie_load() {
   uint64_t fd;
+  uint64_t i;
   uint64_t number_of_read_bytes;
 
   binary_name = get_argument();
@@ -5732,7 +5746,14 @@ void selfie_load() {
       // now read code length
       number_of_read_bytes = read(fd, binary_buffer, SIZEOFUINT64);
 
-      if (number_of_read_bytes == SIZEOFUINT64) {
+      // ...and skip padding up to the first page
+      i = ELF_HEADER_LEN + SIZEOFUINT64;
+      while (i < PAGESIZE) {
+        number_of_read_bytes = number_of_read_bytes + read(fd, binary_buffer, SIZEOFUINT64);
+        i = i + SIZEOFUINT64;
+      }
+
+      if (number_of_read_bytes == PAGESIZE - ELF_HEADER_LEN) {
         code_length = *binary_buffer;
 
         if (binary_length <= MAX_BINARY_LENGTH) {
