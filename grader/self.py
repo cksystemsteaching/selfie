@@ -305,16 +305,16 @@ def test_fork_and_wait():
 def test_lock():
   test_execution('./selfie -c grader/hello-world-without-lock.c -m 128',
     '16 processes are running concurrently on MIPSTER', 
-    success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 16))
+    success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 8))
   test_execution('./selfie -c selfie.c -m 128 -c grader/hello-world-without-lock.c -y 10',
     '16 processes are running concurrently on HYPSTER',
-    success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 16))
+    success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 8))
   test_execution('./selfie -c grader/hello-world-with-lock.c -m 128', 
     '16 processes are printing in sequential order with the use of locks on MIPSTER', 
-    success_criteria='Hello World!    ' * 16)
+    success_criteria='Hello World!    ' * 8)
   test_execution('./selfie -c selfie.c -m 128 -c grader/hello-world-with-lock.c -y 10', 
     '16 processes are printing in sequential order with the use of locks on HYPSTER', 
-    success_criteria='Hello World!    ' * 16)
+    success_criteria='Hello World!    ' * 8)
 
 
 def start_stage(stage):
@@ -392,6 +392,8 @@ if __name__ == "__main__":
   if len(sys.argv) <= 1:
     print('usage: python3 grader/self.py { test_name }')
     exit()
+
+  sys.setrecursionlimit(5000)
 
   home_path = os.path.dirname(sys.argv[0]) + '/../'
 
