@@ -955,11 +955,13 @@ uint64_t debug_write = 0;
 uint64_t debug_open  = 0;
 uint64_t debug_brk   = 0;
 
-uint64_t SYSCALL_EXIT  = 93;
-uint64_t SYSCALL_READ  = 63;
-uint64_t SYSCALL_WRITE = 64;
-uint64_t SYSCALL_OPEN  = 1024;
-uint64_t SYSCALL_BRK   = 214;
+uint64_t SYSCALL_EXIT   = 93;
+uint64_t SYSCALL_READ   = 63;
+uint64_t SYSCALL_WRITE  = 64;
+uint64_t SYSCALL_OPENAT = 56;
+uint64_t SYSCALL_BRK    = 214;
+
+uint64_t DIRFD_AT_FDCWD = -100;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -6123,16 +6125,18 @@ void implement_write(uint64_t* context) {
 void emit_open() {
   create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
-  emit_ld(REG_A2, REG_SP, 0); // mode
+  emit_ld(REG_A3, REG_SP, 0); // mode
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // flags
+  emit_ld(REG_A2, REG_SP, 0); // flags
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // filename
+  emit_ld(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_addi(REG_A7, REG_ZR, SYSCALL_OPEN);
+  emit_addi(REG_A0, REG_ZR, DIRFD_AT_FDCWD); // dirfd
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_OPENAT);
 
   emit_ecall();
 
@@ -6199,45 +6203,45 @@ void implement_open(uint64_t* context) {
 
   if (disassemble) {
     print((uint64_t*) "(open): ");
-    print_register_hexadecimal(REG_A0);
-    print((uint64_t*) ",");
     print_register_hexadecimal(REG_A1);
     print((uint64_t*) ",");
-    print_register_octal(REG_A2);
+    print_register_hexadecimal(REG_A2);
+    print((uint64_t*) ",");
+    print_register_octal(REG_A3);
     print((uint64_t*) " |- ");
-    print_register_value(REG_A0);
+    print_register_value(REG_A1);
   }
 
-  vfilename = *(get_regs(context) + REG_A0);
-  flags     = *(get_regs(context) + REG_A1);
-  mode      = *(get_regs(context) + REG_A2);
+  vfilename = *(get_regs(context) + REG_A1);
+  flags     = *(get_regs(context) + REG_A2);
+  mode      = *(get_regs(context) + REG_A3);
 
   if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
     fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
-    *(get_regs(context) + REG_A0) = fd;
+    *(get_regs(context) + REG_A1) = fd;
 
     if (debug_open)
       printf5((uint64_t*) "%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfie_name, filename_buffer, (uint64_t*) flags, (uint64_t*) mode, (uint64_t*) fd);
   } else {
-    *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
+    *(get_regs(context) + REG_A1) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open)
       printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name, (uint64_t*) vfilename);
   }
 
   if (symbolic) {
-    *(reg_typ + REG_A0) = 0;
+    *(reg_typ + REG_A1) = 0;
 
-    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
-    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
+    *(reg_los + REG_A1) = *(get_regs(context) + REG_A1);
+    *(reg_ups + REG_A1) = *(get_regs(context) + REG_A1);
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (disassemble) {
     print((uint64_t*) " -> ");
-    print_register_value(REG_A0);
+    print_register_value(REG_A1);
     println();
   }
 }
@@ -9268,7 +9272,7 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_read(context);
   else if (a7 == SYSCALL_WRITE)
     implement_write(context);
-  else if (a7 == SYSCALL_OPEN)
+  else if (a7 == SYSCALL_OPENAT)
     implement_open(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
