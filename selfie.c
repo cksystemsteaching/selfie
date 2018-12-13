@@ -1206,7 +1206,7 @@ uint64_t fuzz_up(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 uint64_t MAX_TRACE_LENGTH = 10000;
-uint64_t debug_symbolic = 1;
+uint64_t debug_symbolic = 0;
 
 //Abstract Domain types
 uint64_t CONCRETE_T   = 0;
@@ -1304,6 +1304,7 @@ void  set_trace_corr(uint64_t index, uint64_t st_corr)    { *(corrs + index)    
 
 void print_trace();
 void print_src_list(uint64_t idx);
+uint64_t get_src_input(uint64_t idx); //witness
 
 // registers
 // abstract domains for tempory computations
@@ -6015,11 +6016,34 @@ void emit_exit() {
   // never returns here
 }
 
+void print_witness() {
+  uint64_t idx;
+  uint64_t input_idx;
+  idx = tc;
+
+  while (idx != 0) {
+    if (get_trace_type(idx) != CONCRETE_T) { //look for the first symbolic value into the trace
+      //get the most recent value
+      input_idx = get_src_input(idx);
+      print((uint64_t*) "Symbolic values witness:\n");
+      print_msiid(get_trace_a1(input_idx), get_trace_a2(input_idx), get_trace_a3(input_idx));
+      printf2((uint64_t*) " for variable: %x at index [%d]\n", (uint64_t*) get_trace_vaddr(input_idx), (uint64_t*) input_idx);
+      if (sdebug_context)
+        print_src_list(idx);
+      return;
+    }
+    idx = idx - 1;
+  }
+  print((uint64_t*) "No symbolic values: concrete execution?\n");
+}
+
 void print_end_point_status(uint64_t* context, uint64_t start, uint64_t end, uint64_t step) {
   printf3((uint64_t*) "%s: %s reaching end point at: %p", selfie_name, get_name(context), (uint64_t*) (last_jal_from - entry_point));
   print_code_line_number_for_instruction(last_jal_from - entry_point);
   printf3((uint64_t*) " with exit code <%d,%d,%d>\n", (uint64_t*) start, (uint64_t*) end, (uint64_t*) step);
   printf1((uint64_t*) "%d instructions executed for the path.\n", (uint64_t*) get_total_number_of_instructions());
+  //witness
+  print_witness();
 
   if (sdebug_trace)
     print_trace();
@@ -8797,9 +8821,8 @@ void print_trace() {
   idx = tc;
 
   printf1((uint64_t*) "Trace of length %d:\n", (uint64_t*) idx);
-  while(idx != 0) {
+  while (idx != 0) {
     print_symbolic_memory(idx);
-    println();
     idx = idx - 1;
   }
 }
@@ -8811,9 +8834,24 @@ void print_src_list(uint64_t idx) {
   printf1((uint64_t*) "Source list of %d:\n", (uint64_t*) jdx);
   while(jdx != 0) {
     print_symbolic_memory(jdx);
-    println();
-    jdx = load_virtual_memory(pt, get_trace_src(jdx));
+    if (get_trace_src(jdx) != 0)
+      jdx = load_virtual_memory(pt, get_trace_src(jdx));
+    else
+      return;
   }
+}
+
+uint64_t get_src_input(uint64_t idx) {
+  uint64_t jdx;
+  jdx = idx;
+  while(jdx != 0) {
+    if (get_trace_src(jdx) != 0)
+      jdx = load_virtual_memory(pt, get_trace_src(jdx));
+    else
+      //last value can be missed if concrete
+      return load_virtual_memory(pt, get_trace_vaddr(jdx));
+  }
+  return idx;
 }
 
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
@@ -9106,127 +9144,121 @@ void constrain_memory(uint64_t from, uint64_t mrvc, uint64_t lo, uint64_t up, ui
   uint64_t highest;
   uint64_t lowest;
 
-  if (buffer_typ == MSIID_T) {
-    // load trace counter of previous constraint
-    if (buffer_vaddr >= get_program_break(current_context))
-      if (buffer_vaddr < *(registers + REG_SP))
-        // do not constrain free memory
-        return;
+  // load trace counter of previous constraint
+  if (buffer_vaddr >= get_program_break(current_context))
+    if (buffer_vaddr < *(registers + REG_SP))
+      // do not constrain free memory
+      return;
 
-    //corrections computation
-    //additions / substractions
-    if (buffer_hasmn) {       //one minuend
-      //backward semantics:rs2 = rs1 - rd
-      //undo substraction (a-d,b-c)
-      tmp = lo;
-      lo = buffer_colo - up;
-      up = buffer_coup - tmp;
-    } else {                        //no minuend
-      lo = lo - buffer_colo;
-      up = up - buffer_coup;
+  //corrections computation
+  //additions / substractions
+  if (buffer_hasmn) {       //one minuend
+    //backward semantics:rs2 = rs1 - rd
+    //undo substraction (a-d,b-c)
+    tmp = lo;
+    lo = buffer_colo - up;
+    up = buffer_coup - tmp;
+  } else {                        //no minuend
+    lo = lo - buffer_colo;
+    up = up - buffer_coup;
+  }
+
+  //one multiplication or division or modulo
+  if (buffer_expr == MUL_T) {         //one multiplication
+
+    lo = signed_division(lo, buffer_factor);
+    up = signed_division(up, buffer_factor);
+
+  } else if (buffer_expr == DIV_T) {  //one division
+    lo = lo * buffer_factor;
+    up = reverse_up_division(up, buffer_factor); //overflow
+
+    //special case
+    if (lo == 0) {
+      if (up == (uint64_t) -1) {
+        lo = get_trace_a1(mrvc);
+        up = get_trace_a2(mrvc);
+        return;
+      }
     }
 
-    //one multiplication or division or modulo
-    if (buffer_expr == MUL_T) {         //one multiplication
+    if (get_trace_a1(mrvc) <= get_trace_a2(mrvc)) {
+      // original interval not wrapped around
+      if (lo <= get_trace_a1(mrvc))  // intersect with the lower original interval
+        lo = get_trace_a1(mrvc);
+      else
+        lo = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), lo); // fitting the steps
+      if (get_trace_a2(mrvc) < up) // intersect with the upper original interval
+        up = compute_upper_bound(lo, get_trace_a3(mrvc), get_trace_a2(mrvc)); // fitting the steps
+      else
+        up = compute_upper_bound(lo, get_trace_a3(mrvc), up);
+  } else {
+    //original interval wrapped around
+    //bound values
+    highest = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), -1);
+    lowest = highest + get_trace_a3(mrvc);
 
-      lo = signed_division(lo, buffer_factor);
-      up = signed_division(up, buffer_factor);
+    if (lo <= get_trace_a2(mrvc)) {
+      //intersect with the lower original interval
+      lo = compute_upper_bound(lowest, get_trace_a3(mrvc), lo + get_trace_a3(mrvc) - 1); // fitting the steps
 
-    } else if (buffer_expr == DIV_T) {  //one division
-      lo = lo * buffer_factor;
-      up = reverse_up_division(up, buffer_factor); //overflow
+      if (up < get_trace_a1(mrvc)) {
 
-      //special case
-      if (lo == 0) {
-        if (up == (uint64_t) -1) {
-          lo = get_trace_a1(mrvc);
+        if (up >= get_trace_a2(mrvc))
           up = get_trace_a2(mrvc);
-          return;
-        }
-      }
-
-      if (get_trace_a1(mrvc) <= get_trace_a2(mrvc)) {
-        // original interval not wrapped around
-        if (lo <= get_trace_a1(mrvc))  // intersect with the lower original interval
-          lo = get_trace_a1(mrvc);
-        else
-          lo = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), lo); // fitting the steps
-        if (get_trace_a2(mrvc) < up) // intersect with the upper original interval
-          up = compute_upper_bound(lo, get_trace_a3(mrvc), get_trace_a2(mrvc)); // fitting the steps
         else
           up = compute_upper_bound(lo, get_trace_a3(mrvc), up);
-    } else {
-      //original interval wrapped around
-      //bound values
-      highest = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), -1);
-      lowest = highest + get_trace_a3(mrvc);
 
-      if (lo <= get_trace_a2(mrvc)) {
-        //intersect with the lower original interval
-        lo = compute_upper_bound(lowest, get_trace_a3(mrvc), lo + get_trace_a3(mrvc) - 1); // fitting the steps
-
-        if (up < get_trace_a1(mrvc)) {
-
-          if (up >= get_trace_a2(mrvc))
-            up = get_trace_a2(mrvc);
-          else
-            up = compute_upper_bound(lo, get_trace_a3(mrvc), up);
-
-        } else {
-          //not allowed constrained result is not an interval
-          //should be -----| sltu |-----
-          printf2((uint64_t*) "%s: detected a divu of bad wrapped interval at %x", selfie_name, (uint64_t*) pc);
-          print_code_line_number_for_instruction(pc - entry_point);
-          println();
-
-          throw_exception(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
-          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-        }
       } else {
-        // intersect with the upper original interval
-        up = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), up);
+        //not allowed constrained result is not an interval
+        //should be -----| sltu |-----
+        printf2((uint64_t*) "%s: detected a divu of bad wrapped interval at %x", selfie_name, (uint64_t*) pc);
+        print_code_line_number_for_instruction(pc - entry_point);
+        println();
 
-        if (lo <= get_trace_a1(mrvc))
-          lo = get_trace_a1(mrvc);
-        else
-          lo = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), lo + get_trace_a3(mrvc) - 1); // fitting the steps
-        }
+        throw_exception(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
-    } else if (buffer_expr == REM_T) {  //one remainder
+    } else {
+      // intersect with the upper original interval
+      up = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), up);
 
-      printf2((uint64_t*) "%s: detected a remu in a condition at %x", selfie_name, (uint64_t*) pc);
-      print_code_line_number_for_instruction(pc - entry_point);
-      println();
-
-      throw_exception(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      return;
-    }
-
-    if(do_taint_flag)
-      if (from < NUMBEROFREGISTERS)
-        set_taint_memory(*(reg_is_tainted + from), *(reg_is_minuend + from), *(reg_has_step + from));
-
-    //cast singleton intervals into concrete values
-    if (lo == up)
-      store_propagate_constraint(CONCRETE_T, buffer_saddr, buffer_vaddr, lo, up, 1, trb);
-    else
-      store_propagate_constraint(buffer_typ, buffer_saddr, buffer_vaddr, lo, up, get_trace_a3(mrvc), trb);
-
-    if (sdebug_trace) {
-      printf2((uint64_t*) "%s: constrain-memory at %d", selfie_name, (uint64_t*) pc);
-      print_code_line_number_for_instruction(pc - entry_point);
-      if (from < NUMBEROFREGISTERS)
-        printf1((uint64_t*) " for register ", get_register_name(from));
+      if (lo <= get_trace_a1(mrvc))
+        lo = get_trace_a1(mrvc);
       else
-        printf1((uint64_t*) " for memory address %x ", (uint64_t*) from);
-      print_symbolic_memory(tc);
-      println();
+        lo = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), lo + get_trace_a3(mrvc) - 1); // fitting the steps
+      }
     }
+  } else if (buffer_expr == REM_T) {  //one remainder
+
+    printf2((uint64_t*) "%s: detected a remu in a condition at %x", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    throw_exception(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    return;
   }
-  //concrete case
-  if (no_concrete)
-    print_branch = 0;
+
+  if(do_taint_flag)
+    if (from < NUMBEROFREGISTERS)
+      set_taint_memory(*(reg_is_tainted + from), *(reg_is_minuend + from), *(reg_has_step + from));
+
+  //cast singleton intervals into concrete values
+  if (lo == up)
+    store_propagate_constraint(CONCRETE_T, buffer_saddr, buffer_vaddr, lo, up, 1, trb);
+  else
+    store_propagate_constraint(buffer_typ, buffer_saddr, buffer_vaddr, lo, up, get_trace_a3(mrvc), trb);
+
+  if (sdebug_trace) {
+    printf2((uint64_t*) "%s: constrain-memory at %d", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    if (from < NUMBEROFREGISTERS)
+      printf1((uint64_t*) " for register ", get_register_name(from));
+    else
+      printf1((uint64_t*) " for memory address %x ", (uint64_t*) from);
+    print_symbolic_memory(tc);
+  }
 }
 
 void set_constraint(uint64_t reg, uint64_t saddr, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step) {
@@ -9263,8 +9295,13 @@ void take_branch(uint64_t b, uint64_t how_many_more) {
 }
 
 void apply_correction(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uint64_t trb) {
-  fill_constraint_buffer(*(reg_vaddr + reg), *(reg_saddr + reg), *(reg_typ + reg), *(reg_hasmn + reg), *(reg_expr + reg),*(reg_colos + reg), *(reg_coups + reg), *(reg_factor + reg));
-  constrain_memory(reg, mrvc, lo, up, trb);
+  if (*(reg_typ + reg) == MSIID_T) {
+    fill_constraint_buffer(*(reg_vaddr + reg), *(reg_saddr + reg), *(reg_typ + reg), *(reg_hasmn + reg), *(reg_expr + reg),*(reg_colos + reg), *(reg_coups + reg), *(reg_factor + reg));
+    constrain_memory(reg, mrvc, lo, up, trb);
+  }
+  //concrete case
+  if (no_concrete)
+    print_branch = 0;
 }
 
 // assert(isErroneous(lo1, up1, s1) == 0);
