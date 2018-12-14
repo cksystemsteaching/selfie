@@ -5,6 +5,10 @@ use Cwd;
 use POSIX qw( WNOHANG );
 use File::Basename;
 
+#CONSTANTS
+use constant TIME_TO_WAIT => 20; #wait 10 seconds per test
+
+#Variables
 my $input_to_test;
 my $FileLog;
 my $selfie = "selfie";
@@ -106,7 +110,7 @@ sub exec_test {
     my $command = "$testCmd 2>&1 > $testOutput";
 
     local $SIG{ALRM} = sub { `echo "KILLED" >> $FileLog`; exit(-1); }; #avoid parent freezed forever ...
-    alarm 1; #1 second
+    alarm TIME_TO_WAIT; #5 seconds
 
     `$command`; #execute
 
@@ -119,10 +123,10 @@ sub exec_test {
     die "error with $pid" if ($r_pid < 0);
 
     if(0 == $r_pid) { #never happend
-      sleep(1); #1 second to finish
-      kill(15, $pid);
+      sleep(TIME_TO_WAIT); #TIME_TO_WAIT seconds to finish
+      my $time_waited = kill(15, $pid);
       #kill -- -$PGID
-      print "kill $pid! ";
+      print "kill $pid after $time_waited second(s)!";
     }
   }
   # ---> heavy stuff but working in case of infinite loops
