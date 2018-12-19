@@ -953,13 +953,13 @@ void implement_input(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t debug_read  = 0;
-uint64_t debug_write = 0;
-uint64_t debug_open  = 0;
-uint64_t debug_brk   = 0;
-uint64_t debug_end_point = 0;
-uint64_t no_concrete = 0;
-uint64_t print_branch = 1;
+uint64_t debug_read       = 0;
+uint64_t debug_write      = 0;
+uint64_t debug_open       = 0;
+uint64_t debug_brk        = 0;
+uint64_t debug_end_point  = 0;
+uint64_t no_concrete      = 0;
+uint64_t print_branch     = 1;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
@@ -1205,7 +1205,9 @@ uint64_t fuzz_lo(uint64_t value);
 uint64_t fuzz_up(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
-uint64_t MAX_TRACE_LENGTH = 10000;
+uint64_t MAX_TRACE_LENGTH = 100000;
+uint64_t MAX_READ         = 10;     // read bound
+
 uint64_t debug_symbolic = 0;
 
 //Abstract Domain types
@@ -1277,10 +1279,10 @@ uint64_t buffer_coup      =  0;
 uint64_t buffer_factor    =  0;
 
 // read history
-uint64_t rc = 0; // read counter
-uint64_t* read_values = (uint64_t*) 0;
-uint64_t* read_los = (uint64_t*) 0;
-uint64_t* read_ups = (uint64_t*) 0;
+uint64_t number_of_reads  = 0;     // number of reads
+uint64_t rcc = 0;     // read current counter
+uint64_t* stored_read_tcs    = (uint64_t*) 0;
+uint64_t* stored_read_values = (uint64_t*) 0;
 
 uint64_t  get_trace_pc(uint64_t index)     { return *(pcs + index);}
 uint64_t  get_trace_tc(uint64_t index)     { return *(tcs + index);}
@@ -1354,9 +1356,8 @@ void init_symbolic_engine() {
   coups     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
   factors   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
 
-  read_values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  read_los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  read_ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  stored_read_values = zalloc(MAX_READ * SIZEOFUINT64);
+  stored_read_tcs    = zalloc(MAX_READ * SIZEOFUINT64);
 
   reg_typ       = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_stc       = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -6099,6 +6100,11 @@ void emit_read() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
+uint64_t init_type(uint64_t lo, uint64_t up) {
+  if (lo == up) return CONCRETE_T;
+  return MSIID_T;
+}
+
 void implement_read(uint64_t* context) {
   // parameters
   uint64_t fd;
@@ -6149,44 +6155,73 @@ void implement_read(uint64_t* context) {
 
         if (symbolic) {
           if (is_trace_space_available()) {
-            if (rc > 0) {
-              // do not read but reuse value, lower and upper bound
-              value = *(read_values + rc);
 
-              lo = *(read_los + rc);
-              up = *(read_ups + rc);
+            //bound
+            if (number_of_reads < MAX_READ) {
+              if (rcc > 0) {
+                // do not read but reuse value, lower and upper bound
+                value = *(stored_read_values + (number_of_reads - rcc));
+                lo = fuzz_lo(value);
+                up = fuzz_up(value);
 
-              actually_read = bytes_to_read;
+                actually_read = bytes_to_read;
+                rcc = rcc - 1;
 
-              rc = rc - 1;
+                if (debug_read)
+                  printf4((uint64_t*) "%s: storing %d, %d at read index %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) rcc);
+              } else {
+                // save mrvc in buffer
+                mrvc = load_physical_memory(buffer);
+
+                // caution: read only overwrites bytes_to_read number of bytes
+                // we therefore need to restore the actual value in buffer
+                // to preserve the original read semantics
+                if (number_of_reads > 0)
+                  store_physical_memory(buffer, *(stored_read_values + (number_of_reads - 1)));
+                else
+                  store_physical_memory(buffer, 0);
+
+                actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
+
+                // retrieve read value
+                value = load_physical_memory(buffer);
+
+                // fuzz read value
+                lo = fuzz_lo(value);
+                up = fuzz_up(value);
+
+                // the witness needs the the previous read's last mrvc
+                if (number_of_reads > 0)
+                  *(stored_read_tcs + (number_of_reads - 1)) = mrvc;
+
+                *(stored_read_tcs + number_of_reads)     = tc; //??
+                *(stored_read_values + number_of_reads)  = value;
+                number_of_reads = number_of_reads + 1;
+
+                // restore mrvc in buffer
+                store_physical_memory(buffer, mrvc);
+                if (debug_read)
+                  printf5((uint64_t*) "%s: storing %d, %d at read index %d and index %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) number_of_reads, (uint64_t*) mrvc);
+              }
             } else {
-              // save mrvc in buffer
-              mrvc = load_physical_memory(buffer);
+              value = SYM_EOF;
+              lo    = SYM_EOF;
+              up    = SYM_EOF;
+              actually_read = 0;
 
-              // caution: read only overwrites bytes_to_read number of bytes
-              // we therefore need to restore the actual value in buffer
-              // to preserve the original read semantics
-              store_physical_memory(buffer, get_trace_a1(load_symbolic_memory(get_pt(context), vbuffer)));
-
-              actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-
-              // retrieve read value
-              value = load_physical_memory(buffer);
-
-              // fuzz read value
-              lo = fuzz_lo(value);
-              up = fuzz_up(value);
-
-              // restore mrvc in buffer
-              store_physical_memory(buffer, mrvc);
+              if (debug_read)
+                printf3((uint64_t*) "%s: max number of reads reached, storing %d, %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up);
             }
 
             if (do_taint_flag) set_taint_memory(1, 0, 1);
             if (mrcc == 0)
-              // no branching yet, we may overwrite symbolic memory
-              store_symbolic_memory(get_pt(context), 0, vbuffer, 0, value, lo, up, -1,  0);
+              store_symbolic_memory(get_pt(context), 0, vbuffer, init_type(lo, up), lo, up, 1, -1,  0);
             else
-              store_symbolic_memory(get_pt(context), 0, vbuffer, 0, value, lo, up, -1, tc);
+              store_symbolic_memory(get_pt(context), 0, vbuffer, init_type(lo, up), lo, up, 1, -1, tc);
+
+              if (debug_read)
+                print_symbolic_memory(load_symbolic_memory(get_pt(context), vbuffer));
+
           } else {
             actually_read = 0;
 
@@ -8304,6 +8339,13 @@ uint64_t has_correction(uint64_t reg) {
   return 1;
 }
 
+uint64_t is_renamming(uint64_t vaddr, uint64_t reg) {
+  if (vaddr == *(registers + REG_SP)) //also match last local variable accesses
+   if (reg == REG_SP)
+    return 1;                         //SD $ti 0($sp)
+  return 0;
+}
+
 uint64_t constrain_sd() {
   uint64_t stc;
   uint64_t vaddr;
@@ -8333,7 +8375,7 @@ uint64_t constrain_sd() {
         }
 
         //call renaming management
-        if (vaddr > get_program_break(current_context)) { //SD $ti 0($sp)
+        if (is_renamming(vaddr, rs1)) {
           //TODO: problem with save_tempories?
           if(*(reg_vaddr + rs2)) {
             stc = load_virtual_memory(pt, *(reg_vaddr + rs2));
@@ -8622,17 +8664,9 @@ void backtrack_ecall() {
     }
   } else {
     // backtracking read
-    rc = rc + 1;
-
-    // record value, lower and upper bound
-    *(read_values + rc) = get_trace_a1(tc);
-
-    *(read_los + rc) = get_trace_a2(tc);
-    *(read_ups + rc) = get_trace_a3(tc);
-
+    rcc = rcc + 1;
     store_virtual_memory(pt, get_trace_vaddr(tc), get_trace_tc(tc));
   }
-
   efree();
 }
 
