@@ -1229,6 +1229,8 @@ uint64_t REM_T = 4;
 uint64_t has_true_branch  = 1;
 uint64_t has_false_branch = 1;
 
+uint64_t path_length = 0; // number of instructions for the current path
+
 uint64_t tc = 0;        // current trace index
 uint64_t mrvc_rs1 = 0;  // rs1's trace index before constraining
 uint64_t mrvc_rs2 = 0;  // rs2's trace index before constraining
@@ -6065,7 +6067,7 @@ void print_end_point_status(uint64_t* context, uint64_t start, uint64_t end, uin
   printf3((uint64_t*) "%s: %s reaching end point at: %p", selfie_name, get_name(context), (uint64_t*) (last_jal_from - entry_point));
   print_code_line_number_for_instruction(last_jal_from - entry_point);
   printf3((uint64_t*) " with exit code <%d,%d,%d>\n", (uint64_t*) start, (uint64_t*) end, (uint64_t*) step);
-  printf1((uint64_t*) "%d instructions executed for the path.\n", (uint64_t*) get_total_number_of_instructions());
+  printf2((uint64_t*) "%d instructions executed for the path, total instructions %d.\n", (uint64_t*) path_length, (uint64_t*) get_total_number_of_instructions());
   //witness
   print_witness();
 
@@ -7018,6 +7020,7 @@ void constrain_lui() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_lui = ic_lui + 1;
+  path_length = path_length + 1;
 }
 
 void print_addi() {
@@ -7122,6 +7125,7 @@ void constrain_addi() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_addi = ic_addi + 1;
+  path_length = path_length + 1;
 }
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
@@ -7308,6 +7312,7 @@ void constrain_add() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_add = ic_add + 1;
+  path_length = path_length + 1;
 }
 
 void do_sub() {
@@ -7456,6 +7461,7 @@ void constrain_sub() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_sub = ic_sub + 1;
+  path_length = path_length + 1;
 }
 
 void do_mul() {
@@ -7624,6 +7630,7 @@ void constrain_mul() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_mul = ic_mul + 1;
+  path_length = path_length + 1;
 }
 
 void do_divu() {
@@ -7795,6 +7802,7 @@ void constrain_divu() {
     // }
     pc = pc + INSTRUCTIONSIZE;
     ic_divu = ic_divu + 1;
+    path_length = path_length + 1;
     } else  // 0 is in interval
       throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
   } else
@@ -8065,6 +8073,7 @@ void constrain_remu() {
 
     pc = pc + INSTRUCTIONSIZE;
     ic_remu = ic_remu + 1;
+    path_length = path_length + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
@@ -8137,6 +8146,7 @@ void constrain_sltu() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_sltu = ic_sltu + 1;
+  path_length = path_length + 1;
 }
 
 void backtrack_sltu() {
@@ -8156,10 +8166,14 @@ void backtrack_sltu() {
 
       *(reg_typ + vaddr) = get_trace_type(tc);
       set_correction(vaddr, 0, 0, 0, 0, 0);
-      set_constraint(vaddr, get_trace_src(tc), 0, get_trace_a1(tc), get_trace_a2(tc), get_trace_a3(tc));
+      set_constraint(vaddr, 0, 0, get_trace_a1(tc), get_trace_a2(tc), get_trace_a3(tc));
+      //no src here (otherwise use a2 for path_length)
 
       // restoring mrcc
       mrcc = get_trace_tc(tc);
+
+      // restoring path_length
+      path_length = get_trace_src(tc);
 
       if (vaddr != REG_FP)
         if (vaddr != REG_SP) {
@@ -8167,6 +8181,7 @@ void backtrack_sltu() {
           pc = pc + INSTRUCTIONSIZE;
 
           ic_sltu = ic_sltu + 1;
+          path_length = path_length + 1;
         }
     }
   } else
@@ -8289,6 +8304,7 @@ uint64_t constrain_ld() {
 
       pc = pc + INSTRUCTIONSIZE;
       ic_ld = ic_ld + 1;
+      path_length = path_length + 1;
       // keep track of number of loads per instruction
       a = (pc - entry_point) / INSTRUCTIONSIZE;
 
@@ -8461,6 +8477,7 @@ uint64_t constrain_sd() {
 
       pc = pc + INSTRUCTIONSIZE;
       ic_sd = ic_sd + 1;
+      path_length = path_length + 1;
       // keep track of number of stores per instruction
       a = (pc - entry_point) / INSTRUCTIONSIZE;
 
@@ -8532,6 +8549,8 @@ void do_beq() {
   }
 
   ic_beq = ic_beq + 1;
+  if (symbolic)
+    path_length = path_length + 1;
 }
 
 void print_jal() {
@@ -8602,6 +8621,7 @@ void constrain_jal_jalr() {
   if (rd != REG_ZR) {
     *(reg_alpha2 + rd) = *(registers + rd);
   }
+  path_length = path_length + 1;
 }
 
 void print_jalr() {
@@ -8661,6 +8681,8 @@ void print_ecall_after() {
 
 void do_ecall() {
   ic_ecall = ic_ecall + 1;
+  if (symbolic)
+    path_length = path_length + 1;
 
 if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (symbolic) {
@@ -9167,7 +9189,7 @@ void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint6
 void store_register_memory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   if (do_taint_flag) set_taint_memory(*(reg_is_tainted + reg), *(reg_is_minuend + reg), *(reg_has_step + reg));
-  store_symbolic_memory(pt, 0, reg, 0, value, value, 1, -1, tc);
+  store_symbolic_memory(pt, path_length, reg, CONCRETE_T, value, value, 1, -1, tc);
 }
 
 uint64_t reverse_up_division(uint64_t up, uint64_t factor) {
