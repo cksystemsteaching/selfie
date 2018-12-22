@@ -6018,13 +6018,13 @@ void emit_exit() {
   // never returns here
 }
 
-void print_witness() {
+void input_witness() {
   uint64_t idx;
   uint64_t input_idx;
   idx = tc;
 
   while (idx != 0) {
-    if (get_trace_type(idx) != CONCRETE_T) { //look for the first symbolic value into the trace
+    if (get_trace_type(idx) == MSIID_T) { //look for the first symbolic value into the trace
       //get the most recent value
       input_idx = load_virtual_memory(pt, get_trace_vaddr(get_src_input(idx)));
       print((uint64_t*) "Symbolic values witness:\n");
@@ -6037,6 +6037,28 @@ void print_witness() {
     idx = idx - 1;
   }
   print((uint64_t*) "No symbolic values: concrete execution?\n");
+}
+
+void read_witness() {
+  uint64_t idx;
+  printf1((uint64_t*) "Symbolic values witness with %d reads:\n", (uint64_t*) number_of_reads - rcc);
+
+  idx = 0;
+  while (idx < (number_of_reads - rcc)) {
+      printf3((uint64_t*) "read %d (%d) stored at [%d]: ", (uint64_t*) idx, (uint64_t*) *(stored_read_values + idx), (uint64_t*) *(stored_read_tcs + idx));
+      print_symbolic_memory(*(stored_read_tcs + idx));
+
+      idx = idx + 1;
+      if(idx == MAX_READ) return;
+  }
+}
+
+void print_witness() {
+  // assume not input and read syscalls
+  if (number_of_reads > 0)
+    read_witness();
+  else
+    input_witness();
 }
 
 void print_end_point_status(uint64_t* context, uint64_t start, uint64_t end, uint64_t step) {
@@ -6105,6 +6127,12 @@ uint64_t init_type(uint64_t lo, uint64_t up) {
   return MSIID_T;
 }
 
+uint64_t is_it_constrained(uint64_t pre) {
+  if (mrcc == 0)
+    return pre != 0;
+  return 1;
+}
+
 void implement_read(uint64_t* context) {
   // parameters
   uint64_t fd;
@@ -6156,8 +6184,11 @@ void implement_read(uint64_t* context) {
         if (symbolic) {
           if (is_trace_space_available()) {
 
+            // save mrvc in buffer
+            mrvc = load_physical_memory(buffer);
+
             //bound
-            if (number_of_reads < MAX_READ) {
+            if ((number_of_reads - rcc) < MAX_READ) {
               if (rcc > 0) {
                 // do not read but reuse value, lower and upper bound
                 value = *(stored_read_values + (number_of_reads - rcc));
@@ -6168,11 +6199,8 @@ void implement_read(uint64_t* context) {
                 rcc = rcc - 1;
 
                 if (debug_read)
-                  printf4((uint64_t*) "%s: storing %d, %d at read index %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) rcc);
+                  printf5((uint64_t*) "%s: fake read %d storing %d, %d at read index %d\n", selfie_name, (uint64_t*) (number_of_reads - rcc), (uint64_t*) lo, (uint64_t*) up, (uint64_t*) rcc);
               } else {
-                // save mrvc in buffer
-                mrvc = load_physical_memory(buffer);
-
                 // caution: read only overwrites bytes_to_read number of bytes
                 // we therefore need to restore the actual value in buffer
                 // to preserve the original read semantics
@@ -6190,36 +6218,44 @@ void implement_read(uint64_t* context) {
                 lo = fuzz_lo(value);
                 up = fuzz_up(value);
 
-                // the witness needs the the previous read's last mrvc
-                if (number_of_reads > 0)
-                  *(stored_read_tcs + (number_of_reads - 1)) = mrvc;
-
-                *(stored_read_tcs + number_of_reads)     = tc; //??
-                *(stored_read_values + number_of_reads)  = value;
+                *(stored_read_values + number_of_reads)   = value;
                 number_of_reads = number_of_reads + 1;
 
                 // restore mrvc in buffer
                 store_physical_memory(buffer, mrvc);
                 if (debug_read)
-                  printf5((uint64_t*) "%s: storing %d, %d at read index %d and index %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) number_of_reads, (uint64_t*) mrvc);
+                  printf6((uint64_t*) "%s: read %d storing %d, %d at read index %d and index %d\n", selfie_name, (uint64_t*) (number_of_reads - rcc), (uint64_t*) lo, (uint64_t*) up, (uint64_t*) number_of_reads, (uint64_t*) mrvc);
               }
             } else {
-              value = SYM_EOF;
-              lo    = SYM_EOF;
-              up    = SYM_EOF;
+              value = CHAR_EOF;
+              lo    = CHAR_EOF;
+              up    = CHAR_EOF;
               actually_read = 0;
 
+              number_of_reads = number_of_reads + 1;
               if (debug_read)
                 printf3((uint64_t*) "%s: max number of reads reached, storing %d, %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up);
             }
 
             if (do_taint_flag) set_taint_memory(1, 0, 1);
-            if (mrcc == 0)
-              store_symbolic_memory(get_pt(context), 0, vbuffer, init_type(lo, up), lo, up, 1, -1,  0);
-            else
-              store_symbolic_memory(get_pt(context), 0, vbuffer, init_type(lo, up), lo, up, 1, -1, tc);
 
-              if (debug_read)
+            if (is_it_constrained(get_trace_tc(mrvc)))
+              store_symbolic_memory(get_pt(context), 0, vbuffer, init_type(lo, up), lo, up, 1, -1, tc);
+            else
+              store_symbolic_memory(get_pt(context), 0, vbuffer, init_type(lo, up), lo, up, 1, -1,  0);
+
+
+            if ((number_of_reads - (1 + rcc)) < MAX_READ) {
+              // initialize current read
+              *(stored_read_tcs + (number_of_reads - (1 + rcc))) = load_physical_memory(buffer);
+            }
+
+            // the witness needs the previous read's last mrvc
+            if (signed_less_than(-1, number_of_reads - (2 + rcc)))
+              if ((number_of_reads - (2 + rcc)) < MAX_READ)
+                *(stored_read_tcs + (number_of_reads - (2 + rcc))) = mrvc;
+
+            if (debug_read)
                 print_symbolic_memory(load_symbolic_memory(get_pt(context), vbuffer));
 
           } else {
@@ -8664,7 +8700,10 @@ void backtrack_ecall() {
     }
   } else {
     // backtracking read
-    rcc = rcc + 1;
+    if (number_of_reads > MAX_READ)
+      number_of_reads = number_of_reads - 1;
+    else
+      rcc = rcc + 1;
     store_virtual_memory(pt, get_trace_vaddr(tc), get_trace_tc(tc));
   }
   efree();
