@@ -26,9 +26,10 @@ $input_to_test = shift(@ARGV);
 #Set fileLog
 sub create_log {
   my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
-  printf("Time Format - HH:MM:SS ");
-  printf("%02d:%02d:%02d\n", $hour, $min, $sec);
+  #printf("Time Format - HH:MM:SS ");
+  #printf("%02d:%02d:%02d\n", $hour, $min, $sec);
   $FileLog = "log_$year.$mon.$hour.$min.$sec.txt";
+  print "Log file in $FileLog";
 }
 
 #Parse test directories and execute the test routines
@@ -97,7 +98,7 @@ sub exec_test {
   my $testOutput = "/tmp/" . $base . ".out";
 
   `echo "~~~--~~~------~~~---~~~ $testFile:" 2>&1 >> $FileLog`;
-  my $testCmd = "./$selfie -test " . $cmd_args; #create the command
+  my $testCmd = "./$selfie " . $cmd_args; #create the command
 
   print "run $testCmd";
 
@@ -204,7 +205,7 @@ sub verifyOutcomes {
 
         die "line not expected" unless(exists($hash{$r_line}));
         my $expected_values = join " | ", @{$hash{$r_line}};
-        `echo "At line $r_line is <$r_start, $r_end, $r_step> == $expected_values ?" >> $FileLog`;
+        `echo "At line $r_line is <$r_start, $r_end, $r_step> == $expected_values?" >> $FileLog`;
 
         return 0 unless(&verifyExitLine($hash{$r_line}, $r_start, $r_end, $r_step));
         `echo ". . . ok!" >> $FileLog`;
@@ -232,15 +233,16 @@ sub verifyOutcomes {
 #Main
 &create_log();
 
-do {exec_test("$input_to_test"); next} if "$input_to_test" =~ /[^-]+\.c/; #exec if file
+if ("$input_to_test" =~ /[^-]+\.c/) { #exec if file
+  exec_test("$input_to_test");
+} else {
+  $input_to_test = `pwd` if ($input_to_test =~ /\./);
+  chomp $input_to_test;
+  chop $input_to_test if (substr($input_to_test, -1) eq "/");
 
-$input_to_test = `pwd` if ($input_to_test =~ /\./);
-chomp $input_to_test;
-chop $input_to_test if (substr($input_to_test, -1) eq "/");
+  &find_test ($input_to_test) if -d $input_to_test;
+}
 
-&find_test ($input_to_test) if -d $input_to_test;
-
-`echo "$nb_test tests executed" >> $FileLog`;
-
+`echo "$nb_test test(s) executed" >> $FileLog`;
 die "Test(s) failed" if($has_error);
 exit(0);

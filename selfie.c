@@ -11396,8 +11396,6 @@ uint64_t monster(uint64_t* to_context) {
       timeout = TIMEROFF;
     } else {
       if (handle_exception(from_context) == EXIT) {
-
-        printf1((uint64_t*) "I exit with %d\n", (uint64_t*) get_exit_code(from_context));
         print_end_point_status(from_context);
 
         backtrack_trace(from_context);
