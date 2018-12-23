@@ -953,13 +953,16 @@ void implement_input(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t debug_read       = 0;
-uint64_t debug_write      = 0;
-uint64_t debug_open       = 0;
-uint64_t debug_brk        = 0;
-uint64_t debug_end_point  = 0;
-uint64_t no_concrete      = 0;
-uint64_t print_branch     = 1;
+uint64_t debug_read             = 0;
+uint64_t debug_write            = 0;
+uint64_t debug_open             = 0;
+uint64_t debug_brk              = 0;
+uint64_t debug_symbolic         = 0;
+uint64_t print_sum_up           = 0; //verbose flags
+uint64_t print_branch           = 0;
+uint64_t print_concrete_branch  = 0;
+
+uint64_t branch_to_print        = 0;
 
 uint64_t SYSCALL_EXIT  = 93;
 uint64_t SYSCALL_READ  = 63;
@@ -1205,10 +1208,10 @@ uint64_t fuzz_lo(uint64_t value);
 uint64_t fuzz_up(uint64_t value);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+// symbolic BOUNDS
 uint64_t MAX_TRACE_LENGTH = 100000;
+uint64_t MAX_PATH_LENGTH  = 10000000; //=TIMESLICE
 uint64_t MAX_READ         = 10;     // read bound
-
-uint64_t debug_symbolic = 0;
 
 //Abstract Domain types
 uint64_t CONCRETE_T   = 0;
@@ -1807,6 +1810,7 @@ uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
 uint64_t EXITCODE_OUTOFTRACEMEMORY       = 13;
 uint64_t EXITCODE_INCOMPLETENESS         = 14;
 uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 15;
+uint64_t EXITCODE_MAXPATHLENGTH          = 16;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -6063,22 +6067,26 @@ void print_witness() {
     input_witness();
 }
 
-void print_end_point_status(uint64_t* context, uint64_t start, uint64_t end, uint64_t step) {
+void print_end_point_status(uint64_t* context) {
   printf3((uint64_t*) "%s: %s reaching end point at: %p", selfie_name, get_name(context), (uint64_t*) (last_jal_from - entry_point));
   print_code_line_number_for_instruction(last_jal_from - entry_point);
-  printf3((uint64_t*) " with exit code <%d,%d,%d>\n", (uint64_t*) start, (uint64_t*) end, (uint64_t*) step);
-  printf2((uint64_t*) "%d instructions executed for the path, total instructions %d.\n", (uint64_t*) path_length, (uint64_t*) get_total_number_of_instructions());
-  //witness
-  print_witness();
+  printf3((uint64_t*) " with exit code <%d,%d,%d>\n", (uint64_t*) get_exit_code(context), (uint64_t*) get_exit_code_a2(context), (uint64_t*) get_exit_code_a3(context));
+
+  if (print_sum_up) {
+    printf2((uint64_t*) "%s: trace of length %d.\n", selfie_name, (uint64_t*) tc);
+    printf3((uint64_t*) "%s: %d instructions executed for the path, total instructions %d.\n", selfie_name, (uint64_t*) path_length, (uint64_t*) get_total_number_of_instructions());
+    //witness
+    print_witness();
+  }
 
   if (sdebug_trace)
     print_trace();
 
   //correct value (msiid)
-  if(step != 0) {
-    print_concrete_bounds(start, end, step);
-    println();
-  }
+  //if(get_exit_code_a3(context) != 0) {
+  //  print_concrete_bounds(get_exit_code(context), get_exit_code_a2(context), get_exit_code_a3(context));
+  //  println();
+  //}
 }
 
 void implement_exit(uint64_t* context) {
@@ -6089,7 +6097,7 @@ void implement_exit(uint64_t* context) {
   }
 
   if (symbolic) {
-    set_exit_code(context, *(registers + REG_A0));
+    set_exit_code(context,    *(registers + REG_A0));
     set_exit_code_a2(context, *(reg_alpha2 + REG_A0));
     set_exit_code_a3(context, *(reg_alpha3 + REG_A0));
     return;
@@ -8519,12 +8527,11 @@ void print_beq_after() {
 }
 
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc) {
-  if (debug_end_point) {
-    if (has_true_branch == 0)
-      print_unreachable(label, unreach_pc);
-    if (has_false_branch == 0)
-      print_unreachable(label, unreach_pc);
-  }
+  if (has_true_branch == 0)
+    print_unreachable(label, unreach_pc);
+  if (has_false_branch == 0)
+    print_unreachable(label, unreach_pc);
+
   has_true_branch = 1;
   has_false_branch = 1; // prevent from another raises by the same beq
 }
@@ -8534,17 +8541,13 @@ void do_beq() {
 
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2)) {
-    if (print_branch)
+    if (branch_to_print)
       test_unreachable_branch((uint64_t*) "true", pc + INSTRUCTIONSIZE);
-    else
-      print_branch = 1;
     pc = pc + imm;
   }
   else {
-    if (print_branch)
+    if (branch_to_print)
       test_unreachable_branch((uint64_t*) "false", pc + imm);
-    else
-      print_branch = 1;
     pc = pc + INSTRUCTIONSIZE;
   }
 
@@ -9406,9 +9409,14 @@ void apply_correction(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uin
     fill_constraint_buffer(*(reg_stc + reg), *(reg_vaddr + reg), *(reg_typ + reg), *(reg_hasmn + reg), *(reg_expr + reg),*(reg_colos + reg), *(reg_coups + reg), *(reg_factor + reg));
     constrain_memory(mrvc, reg, lo, up, trb);
   }
+
   //concrete case
-  if (no_concrete)
-    print_branch = 0;
+  if (print_branch) {
+    if (print_concrete_branch < 1)
+      branch_to_print = 0;
+    else
+      branch_to_print = 1;
+  }
 }
 
 // assert(isErroneous(lo1, up1, s1) == 0);
@@ -11118,6 +11126,15 @@ uint64_t handle_incompleteness(uint64_t* context) {
 uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
+  if (symbolic)
+    if (path_length > MAX_PATH_LENGTH) {
+      printf1((uint64_t*) "%s: max path reached\n", selfie_name);
+      set_exit_code(context,    EXITCODE_MAXPATHLENGTH);
+      set_exit_code_a2(context, EXITCODE_MAXPATHLENGTH);
+      set_exit_code_a3(context, 1);
+      return EXIT;
+    }
+
   return DONOTEXIT;
 }
 
@@ -11380,8 +11397,8 @@ uint64_t monster(uint64_t* to_context) {
     } else {
       if (handle_exception(from_context) == EXIT) {
 
-        if (debug_end_point)
-            print_end_point_status(from_context, get_exit_code(from_context), get_exit_code_a2(from_context), get_exit_code_a3(from_context));
+        printf1((uint64_t*) "I exit with %d\n", (uint64_t*) get_exit_code(from_context));
+        print_end_point_status(from_context);
 
         backtrack_trace(from_context);
 
@@ -11852,8 +11869,9 @@ uint64_t* remaining_arguments() {
 }
 
 uint64_t* peek_argument() {
-  if (number_of_remaining_arguments() > 0)
+  if (number_of_remaining_arguments() > 0) {
     return (uint64_t*) *selfie_argv;
+  }
   else
     return (uint64_t*) 0;
 }
@@ -11876,10 +11894,23 @@ void set_argument(uint64_t* argv) {
 }
 
 void print_usage() {
-  printf3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
+  printf4((uint64_t*) "%s: usage: selfie { %s } [ %s ] [ %s ]\n",
     selfie_name,
       (uint64_t*) "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
+      (uint64_t*) "-v 0-4",
       (uint64_t*) "( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ...");
+}
+
+void set_verbose(uint64_t level) {
+  printf1((uint64_t*) "with verbose: %d", (uint64_t*) level);
+  if (level < 1) return;
+  print_sum_up = 1;           //only sum-up
+  if (level < 2) return;
+  print_branch = 1;           //symbolic unreachable branches
+  if (level < 3) return;
+  print_concrete_branch = 1;  //every unreachable branches
+  if (level < 4) return;
+  debug_symbolic = 1;         //debug
 }
 
 uint64_t selfie() {
@@ -11929,10 +11960,8 @@ uint64_t selfie() {
         return selfie_run(MOBSTER);
       else if (string_compare(option, (uint64_t*) "-t"))
         do_taint_flag = 1;
-      else if (string_compare(option, (uint64_t*) "-test"))
-        debug_end_point = 1;
-      else if (string_compare(option, (uint64_t*) "-no_concrete"))
-        no_concrete = 1;
+      else if (string_compare(option, (uint64_t*) "-v"))
+        set_verbose(atoi(get_argument()));
       else {
         print_usage();
 
