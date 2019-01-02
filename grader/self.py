@@ -317,6 +317,25 @@ def test_lock():
     success_criteria='Hello World!    ' * 8)
 
 
+def test_thread():
+  test_execution('./selfie -c grader/thread-implementation.c -m 128',
+    'creates a thread, where the parent can join the thread with MIPSTER', success_criteria=70)
+  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-implementation.c -y 64',
+    'creates a thread, where the parent can join the thread with HYPSTER', success_criteria=70)
+  test_execution('./selfie -c grader/thread-data-shared.c -m 128',
+    'data section is shared for threads on MIPSTER',
+    success_criteria=1)
+  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-data-shared.c -y 64',
+    'data section is shared for threads on HYPSTER',
+    success_criteria=1)
+  test_execution('./selfie -c grader/thread-heap-shared.c -m 128',
+    'heap data is shared for threads on MIPSTER',
+    success_criteria=1)
+  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-heap-shared.c -y 64',
+    'heap data is shared for threads on HYPSTER',
+    success_criteria=1)
+
+
 def start_stage(stage):
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
@@ -419,6 +438,8 @@ if __name__ == "__main__":
       test_fork_and_wait()
     elif test == 'lock':
       test_lock()
+    elif test == 'thread':
+      test_thread()
     else:
       print(f'unknown test: {test}')
 
