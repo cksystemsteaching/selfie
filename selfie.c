@@ -958,6 +958,7 @@ uint64_t debug_write            = 0;
 uint64_t debug_open             = 0;
 uint64_t debug_brk              = 0;
 uint64_t debug_symbolic         = 0;
+uint64_t print_end_point        = 0;
 uint64_t print_sum_up           = 0; //verbose flags
 uint64_t print_branch           = 0;
 uint64_t print_concrete_branch  = 0;
@@ -1192,7 +1193,7 @@ void store_symbolic_memory(uint64_t* pt, uint64_t stc, uint64_t vaddr, uint64_t 
 //constraints
 void fill_constraint_buffer(uint64_t stc, uint64_t vaddr, uint64_t t, uint64_t h, uint64_t exp, uint64_t col, uint64_t cou, uint64_t f);
 void store_propagate_constraint(uint64_t typ, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
-void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step);
 void store_register_memory(uint64_t reg, uint64_t value);
 
 void constrain_memory(uint64_t mrvc, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb);
@@ -1210,7 +1211,7 @@ uint64_t fuzz_up(uint64_t value);
 // ------------------------ GLOBAL CONSTANTS -----------------------
 // symbolic BOUNDS
 uint64_t MAX_TRACE_LENGTH = 100000;
-uint64_t MAX_PATH_LENGTH  = 10000000; //=TIMESLICE
+uint64_t MAX_PATH_LENGTH  = 50000000; //=5 * TIMESLICE
 uint64_t MAX_READ         = 10;     // read bound
 
 //Abstract Domain types
@@ -6033,7 +6034,7 @@ void input_witness() {
     if (get_trace_type(idx) == MSIID_T) { //look for the first symbolic value into the trace
       //get the most recent value
       input_idx = load_virtual_memory(pt, get_trace_vaddr(get_src_input(idx)));
-      print((uint64_t*) "Symbolic values witness:\n");
+      printf1((uint64_t*) "%s: symbolic values witness:\n", selfie_name);
       print_msiid(get_trace_a1(input_idx), get_trace_a2(input_idx), get_trace_a3(input_idx));
       printf2((uint64_t*) " for variable: %x at index [%d]\n", (uint64_t*) get_trace_vaddr(input_idx), (uint64_t*) input_idx);
       if (sdebug_context)
@@ -6042,16 +6043,16 @@ void input_witness() {
     }
     idx = idx - 1;
   }
-  print((uint64_t*) "No symbolic values: concrete execution?\n");
+  printf1((uint64_t*) "%s: no symbolic values: concrete execution?\n", selfie_name);
 }
 
 void read_witness() {
   uint64_t idx;
-  printf1((uint64_t*) "Symbolic values witness with %d reads:\n", (uint64_t*) number_of_reads - rcc);
+  printf2((uint64_t*) "%s: symbolic values witness with %d reads:\n", selfie_name, (uint64_t*) number_of_reads - rcc);
 
   idx = 0;
   while (idx < (number_of_reads - rcc)) {
-      printf3((uint64_t*) "read %d (%d) stored at [%d]: ", (uint64_t*) idx, (uint64_t*) *(stored_read_values + idx), (uint64_t*) *(stored_read_tcs + idx));
+      printf4((uint64_t*) "%s: read %d (%d) stored at [%d]: ", selfie_name, (uint64_t*) idx, (uint64_t*) *(stored_read_values + idx), (uint64_t*) *(stored_read_tcs + idx));
       print_symbolic_memory(*(stored_read_tcs + idx));
 
       idx = idx + 1;
@@ -6073,7 +6074,7 @@ void print_end_point_status(uint64_t* context) {
   printf3((uint64_t*) " with exit code <%d,%d,%d>\n", (uint64_t*) get_exit_code(context), (uint64_t*) get_exit_code_a2(context), (uint64_t*) get_exit_code_a3(context));
 
   if (print_sum_up) {
-    printf2((uint64_t*) "%s: trace of length %d.\n", selfie_name, (uint64_t*) tc);
+    printf2((uint64_t*) "%s: trace length %d.\n", selfie_name, (uint64_t*) tc);
     printf3((uint64_t*) "%s: %d instructions executed for the path, total instructions %d.\n", selfie_name, (uint64_t*) path_length, (uint64_t*) get_total_number_of_instructions());
     //witness
     print_witness();
@@ -7679,6 +7680,12 @@ uint64_t check_divu_step() {
   }
 }
 
+uint64_t can_divu_correction(uint64_t exp) {
+  if (exp == CONST_T) return 1;
+  if (exp == DIV_T)   return 1; // allow sequence of divu
+  return 0;
+}
+
 void divu_msiid() {
   uint64_t div_los;
   uint64_t div_ups;
@@ -7709,7 +7716,7 @@ void divu_msiid() {
         // assert: rs2 interval is singleton
         // s / c
 
-        if (*(reg_expr + rs1) > 0) {
+        if (can_divu_correction(*(reg_expr + rs1)) == 0) {
           //now: expression not managed -> fail
           print_bad_expression();
           throw_exception(EXCEPTION_INCOMPLETENESS, 0);
@@ -7735,11 +7742,17 @@ void divu_msiid() {
           //exact computation of rd ms-interval
           max = compute_upper_bound(*(registers + rs1), prev_step, UINT64_MAX);
 
-          set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
+          if (*(reg_factor + rs1) == 0)
+            set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
+          else  //cumul factors
+            set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_factor + rs1) * *(registers + rs2));
           set_constraint(rd, *(reg_stc + rs1), *(reg_vaddr + rs1), (max + prev_step) / *(registers + rs2), max / *(reg_alpha2 + rs2), div_steps);
         } else {
           // rs1 constraint is not wrapped
-          set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
+          if (*(reg_factor + rs1) == 0)
+            set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
+          else  //cumul factors
+            set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_factor + rs1) * *(registers + rs2));
           set_constraint(rd, *(reg_stc + rs1), *(reg_vaddr + rs1), div_los, div_ups, div_steps);
         }
 
@@ -8786,7 +8799,7 @@ void print_symbolic_register(uint64_t reg) {
     printf3((uint64_t*) "[%d,%d,%d]}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
   if (*(reg_stc + reg) != 0) {
     printf1((uint64_t*) "::@%d", (uint64_t*) *(reg_stc + reg));
-    printf5((uint64_t*) "<%d,%d,[%d,%d],%d>\n",
+    printf5((uint64_t*) "<%d,%d,[%d,%d],%d>",
     (uint64_t*) *(reg_hasmn + reg),
     (uint64_t*) *(reg_expr + reg),
     (uint64_t*) *(reg_colos + reg),
@@ -9168,7 +9181,7 @@ void store_symbolic_memory(uint64_t* pt, uint64_t stc, uint64_t vaddr,  uint64_t
     throw_exception(EXCEPTION_MAXTRACE, 0);
 }
 
-void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step) {
   uint64_t mrvc;
 
   if (vaddr >= get_program_break(current_context))
@@ -9178,14 +9191,7 @@ void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint6
 
   mrvc = load_virtual_memory(pt, vaddr);
 
-  if (mrvc < trb) {
-    // we do not support potentially aliased constrained memory
-    printf1((uint64_t*) "%s: detected potentially aliased constrained memory\n", selfie_name);
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
   // always track constrained memory by using tc as most recent branch
-  //assert to_store_taint set
   store_symbolic_memory(pt, stc, vaddr, type, lo, up, step, get_trace_corr(mrvc), tc);
 }
 
@@ -9231,9 +9237,9 @@ void store_propagate_constraint(uint64_t typ, uint64_t stc, uint64_t vaddr, uint
       store_propagate_constraint(typ, get_trace_src(stc), get_trace_vaddr(stc), lo, up, step, trb);
 
     //store current constraint with updated stc
-    store_constrained_memory(typ, load_virtual_memory(pt, get_trace_vaddr(stc)), vaddr, lo, up, step, trb);
+    store_constrained_memory(typ, load_virtual_memory(pt, get_trace_vaddr(stc)), vaddr, lo, up, step);
   } else
-    store_constrained_memory(typ, stc, vaddr, lo, up, step, trb);
+    store_constrained_memory(typ, stc, vaddr, lo, up, step);
 }
 
 void fill_constraint_buffer(uint64_t stc, uint64_t vaddr, uint64_t t, uint64_t h, uint64_t exp, uint64_t col, uint64_t cou, uint64_t f) {
@@ -11396,7 +11402,8 @@ uint64_t monster(uint64_t* to_context) {
       timeout = TIMEROFF;
     } else {
       if (handle_exception(from_context) == EXIT) {
-        print_end_point_status(from_context);
+        if (print_end_point)
+          print_end_point_status(from_context);
 
         backtrack_trace(from_context);
 
@@ -11900,14 +11907,15 @@ void print_usage() {
 }
 
 void set_verbose(uint64_t level) {
-  printf1((uint64_t*) "with verbose: %d", (uint64_t*) level);
   if (level < 1) return;
-  print_sum_up = 1;           //only sum-up
+  print_end_point = 1;        // only exit value
   if (level < 2) return;
-  print_branch = 1;           //symbolic unreachable branches
+  print_sum_up = 1;           //only sum-up
   if (level < 3) return;
-  print_concrete_branch = 1;  //every unreachable branches
+  print_branch = 1;           //symbolic unreachable branches
   if (level < 4) return;
+  print_concrete_branch = 1;  //every unreachable branches
+  if (level < 5) return;
   debug_symbolic = 1;         //debug
 }
 
