@@ -244,5 +244,7 @@ if ("$input_to_test" =~ /[^-]+\.c/) { #exec if file
 }
 
 `echo "$nb_test test(s) executed" >> $FileLog`;
+print "Log file in $FileLog";
+
 die "Test(s) failed" if($has_error);
 exit(0);

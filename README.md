@@ -268,7 +268,7 @@ $ ./selfie -c test/input_test.c -v 2 -n 2
 ./selfie: backtracking 1
 ./selfie: selfie terminating test/input_test.c with exit code 0
 ```
-The verbose option `-v` prints information about a symbolic execution. The level `1` shows the exit codes at each possible end, the level `2` adds a sum-up containing the current **trace** length (the symbolic memory), the number of instructions executed for this path, the total number of executed instructions, and the witness specifying the input values to reproduce this path. The other verbose values enable the unreachable branch warnings whenever a condition is valuated with symbolic values (level `3`) or any unreachable branches (level `4`). Finally, level `5` enables the symbolic debugger which is similar to `-d` but with symbolic values.
+The verbose option `-v` prints information about a symbolic execution. The level `1` shows the exit codes at each possible end, the level `2` adds a sum-up containing the current **trace** length (the symbolic memory), the number of instructions executed for this path, the total number of executed instructions, and the witness specifying the input values to reproduce this path. The other verbose values enable the unreachable branch warnings whenever a condition is evaluated with symbolic values (level `3`) or any unreachable branches (level `4`). Finally, level `5` enables the symbolic debugger which is similar to `-d` but with symbolic values.
 
 ### Bounded Execution
 ```c
@@ -324,3 +324,5 @@ with output :=        '<'line ',' start ',' end ',' step '>'
                     | '< 'line ',' "false" '>'
                     | '<' line ',' "true" '>'
 ```
+
+The file `test.zip` contains the last regression tests for the `msuiid` (01/03/2019). To test your `littlemonster` version, unzip it and run `make test`.

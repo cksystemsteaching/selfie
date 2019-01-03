@@ -1,4 +1,4 @@
-// [-c test/read_test.c selfie.c -v 1 -n 2;<35,49,52,1>;<1,false>]
+// [-c test/read_test.c selfie.c -v 1 -n 2;<35,49,52,1>]
 uint64_t* file_name;
 
 uint64_t SIZEOFUINT64       = 8; // must be the same as REGISTERSIZE
