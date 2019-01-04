@@ -1066,25 +1066,18 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void do_add();
-void constrain_operator(uint64_t* opt);
-void constrain_add();
+void constrain_add_sub_mul_divu_remu_sltu(uint64_t* operator);
 
 void do_sub();
-void constrain_sub();
 
 void do_mul();
-void constrain_mul();
 
 void record_divu_remu();
 void do_divu();
-void constrain_divu();
 
 void do_remu();
-void constrain_remu();
 
 void do_sltu();
-void constrain_sltu();
-void backtrack_sltu();
 
 void     print_ld();
 void     print_ld_before();
@@ -6647,16 +6640,8 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 }
 
 void constrain_lui() {
-  if (rd != REG_ZR) {
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of lui
-    *(reg_los + rd) = left_shift(imm, 12);
-    *(reg_ups + rd) = left_shift(imm, 12);
-
-    // rd has no constraint
-    set_constraint(rd, 0, 0, 0, 0, 0);
-  }
+  if (rd != REG_ZR)
+    *(reg_smt + rd) = 0;
 }
 
 void print_addi() {
@@ -6730,7 +6715,7 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void constrain_operator(uint64_t* opt) {
+void constrain_add_sub_mul_divu_remu_sltu(uint64_t* operator) {
   uint64_t* op1;
   uint64_t* op2;
 
@@ -6748,12 +6733,8 @@ void constrain_operator(uint64_t* opt) {
     } else if (op2 == 0)
         op2 = bv_constant(*(registers + rs2));
 
-    *(reg_smt + rd) = (uint64_t) bv_operator(opt, op1, op2);
+    *(reg_smt + rd) = (uint64_t) bv_operator(operator, op1, op2);
   }
-}
-
-void constrain_add() {
-  constrain_operator((uint64_t*) "bvadd");
 }
 
 void do_sub() {
@@ -6766,10 +6747,6 @@ void do_sub() {
   ic_sub = ic_sub + 1;
 }
 
-void constrain_sub() {
-  constrain_operator((uint64_t*) "bvsub");
-}
-
 void do_mul() {
   if (rd != REG_ZR)
     // semantics of mul
@@ -6780,10 +6757,6 @@ void do_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
-}
-
-void constrain_mul() {
-  constrain_operator((uint64_t*) "bvmul");
 }
 
 void record_divu_remu() {
@@ -6806,10 +6779,6 @@ void do_divu() {
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
-void constrain_divu() {
-  constrain_operator((uint64_t*) "bvdiv");
-}
-
 void do_remu() {
   // remainder unsigned
 
@@ -6823,10 +6792,6 @@ void do_remu() {
     ic_remu = ic_remu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
-}
-
-void constrain_remu() {
-  constrain_operator((uint64_t*) "bvrem");
 }
 
 void do_sltu() {
@@ -6843,89 +6808,6 @@ void do_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
-}
-
-void constrain_sltu() {
-  // interval semantics of sltu
-  if (rd != REG_ZR) {
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_vaddr + rs1) == 0) {
-        // constrained memory at vaddr 0 means that there is more than
-        // one constrained memory location in the sltu operand
-        printf3((uint64_t*) "%s: %d constrained memory locations in left sltu operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs1), (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
-    }
-
-    if (*(reg_hasco + rs2)) {
-      if (*(reg_vaddr + rs2) == 0) {
-        // constrained memory at vaddr 0 means that there is more than
-        // one constrained memory location in the sltu operand
-        printf3((uint64_t*) "%s: %d constrained memory locations in right sltu operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
-    }
-
-    // take local copy of mrcc to make sure that alias check considers old mrcc
-    if (*(reg_typ + rs1))
-      if (*(reg_typ + rs2))
-        create_constraints(*(registers + rs1), *(registers + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
-      else
-        create_constraints(*(registers + rs1), *(registers + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
-    else if (*(reg_typ + rs2))
-      create_constraints(*(reg_los + rs1), *(reg_ups + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
-    else
-      create_constraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
-  }
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_sltu = ic_sltu + 1;
-}
-
-void backtrack_sltu() {
-  uint64_t vaddr;
-
-  if (debug_symbolic) {
-    printf1((uint64_t*) "%s: backtracking sltu ", selfie_name);
-    print_symbolic_memory(tc);
-  }
-
-  vaddr = *(vaddrs + tc);
-
-  if (vaddr < NUMBEROFREGISTERS) {
-    if (vaddr > 0) {
-      // the register is identified by vaddr
-      *(registers + vaddr) = *(values + tc);
-
-      *(reg_typ + vaddr) = *(types + tc);
-
-      *(reg_los + vaddr) = *(los + tc);
-      *(reg_ups + vaddr) = *(ups + tc);
-
-      set_constraint(vaddr, 0, 0, 0, 0, 0);
-
-      // restoring mrcc
-      mrcc = *(tcs + tc);
-
-      if (vaddr != REG_FP)
-        if (vaddr != REG_SP) {
-          // stop backtracking and try next case
-          pc = pc + INSTRUCTIONSIZE;
-
-          ic_sltu = ic_sltu + 1;
-        }
-    }
-  } else
-    store_virtual_memory(pt, vaddr, *(tcs + tc));
-
-  efree();
 }
 
 void print_ld() {
@@ -8053,7 +7935,7 @@ void decode_execute() {
             println();
           } else if (symbolic) {
             do_add();
-            constrain_add();
+            constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvadd");
           }
         } else
           do_add();
@@ -8076,7 +7958,7 @@ void decode_execute() {
             println();
           } else if (symbolic) {
             do_sub();
-            constrain_sub();
+            constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvsub");
           }
         } else
           do_sub();
@@ -8099,7 +7981,7 @@ void decode_execute() {
             println();
           } else if (symbolic) {
             do_mul();
-            constrain_mul();
+            constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvmul");
           }
         } else
           do_mul();
@@ -8124,7 +8006,7 @@ void decode_execute() {
             println();
           } else if (symbolic) {
             do_divu();
-            constrain_divu();
+            constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvudiv");
           }
         } else
           do_divu();
@@ -8149,7 +8031,7 @@ void decode_execute() {
             println();
           } else if (symbolic) {
             do_remu();
-            constrain_remu();
+            constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvurem");
           }
         } else
           do_remu();
@@ -8172,10 +8054,10 @@ void decode_execute() {
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (symbolic)
-            constrain_sltu();
-          else if (backtrack)
-            backtrack_sltu();
+          } else if (symbolic) {
+            do_sltu();
+            constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvult");
+          }
         } else
           do_sltu();
 
