@@ -162,7 +162,7 @@ void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4
 void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
 
 void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1);
-void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2);
+void sprintf3(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -1191,7 +1191,7 @@ uint64_t fuzz_lo(uint64_t value);
 uint64_t fuzz_up(uint64_t value);
 
 uint64_t* bv_constant(uint64_t value);
-uint64_t* bv_add(uint64_t* op1, uint64_t* op2);
+uint64_t* bv_operator(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -2331,11 +2331,11 @@ void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1) {
   output_cursor = 0;
 }
 
-void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2) {
+void sprintf3(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3) {
   output_buffer = b;
   output_cursor = 0;
 
-  printf2(s, a1, a2);
+  printf3(s, a1, a2, a3);
 
   output_buffer = (uint64_t*) 0;
   output_cursor = 0;
@@ -6699,7 +6699,7 @@ void do_addi() {
 void constrain_addi() {
   if (rd != REG_ZR) {
     if (*(reg_smt + rs1))
-      *(reg_smt + rd) = (uint64_t) bv_add((uint64_t*) *(reg_smt + rs1), bv_constant(imm));
+      *(reg_smt + rd) = (uint64_t) bv_operator((uint64_t*) "bvadd", (uint64_t*) *(reg_smt + rs1), bv_constant(imm));
     else
       *(reg_smt + rd) = 0;
   }
@@ -6747,7 +6747,7 @@ void constrain_add() {
     } else if (op2 == 0)
         op2 = bv_constant(*(registers + rs2));
 
-    *(reg_smt + rd) = (uint64_t) bv_add(op1, op2);
+    *(reg_smt + rd) = (uint64_t) bv_operator((uint64_t*) "bvadd", op1, op2);
   }
 }
 
@@ -8110,12 +8110,12 @@ uint64_t* bv_constant(uint64_t value) {
   return string;
 }
 
-uint64_t* bv_add(uint64_t* op1, uint64_t* op2) {
+uint64_t* bv_operator(uint64_t* opt, uint64_t* op1, uint64_t* op2) {
   uint64_t* string;
 
-  string = smalloc(7 + string_length(op1) + 1 + string_length(op2) + 1 + 1);
+  string = smalloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1 + 1);
 
-  sprintf2(string, (uint64_t*) "(bvadd %s %s)", op1, op2);
+  sprintf3(string, (uint64_t*) "(%s %s %s)", opt, op1, op2);
 
   return string;
 }
