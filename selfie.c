@@ -6730,78 +6730,24 @@ void do_add() {
 }
 
 void constrain_add() {
+  uint64_t* op1;
+  uint64_t* op2;
+
   if (rd != REG_ZR) {
-    if (*(reg_typ + rs1)) {
-      if (*(reg_typ + rs2)) {
-        // adding two pointers is undefined
-        printf2((uint64_t*) "%s: undefined addition of two pointers at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
+    op1 = (uint64_t*) *(reg_smt + rs1);
+    op2 = (uint64_t*) *(reg_smt + rs2);
 
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
+    if (op1 == 0) {
+      if (op2 == 0) {
+        *(reg_smt + rd) = 0;
 
-      *(reg_typ + rd) = *(reg_typ + rs1);
-
-      *(reg_los + rd) = *(reg_los + rs1);
-      *(reg_ups + rd) = *(reg_ups + rs1);
-
-      // rd has no constraint if rs1 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    } else if (*(reg_typ + rs2)) {
-      *(reg_typ + rd) = *(reg_typ + rs2);
-
-      *(reg_los + rd) = *(reg_los + rs2);
-      *(reg_ups + rd) = *(reg_ups + rs2);
-
-      // rd has no constraint if rs2 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    }
-
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of add
-    if (combined_cardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
-      *(reg_los + rd) = 0;
-      *(reg_ups + rd) = UINT64_MAX;
-    } else {
-      *(reg_los + rd) = *(reg_los + rs1) + *(reg_los + rs2);
-      *(reg_ups + rd) = *(reg_ups + rs1) + *(reg_ups + rs2);
-    }
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2))
-        // we cannot keep track of more than one constraint for add but
-        // need to warn about their earlier presence if used in comparisons
-        set_constraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
-      else if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another addend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of add at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        return;
       } else
-        // rd inherits rs1 constraint since rs2 has none
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
-    } else if (*(reg_hasco + rs2)) {
-      if (*(reg_hasmn + rs2)) {
-        // rs2 constraint has already minuend and cannot have another addend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of add at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
+        op1 = bv_constant(*(registers + rs1));
+    } else if (op2 == 0)
+        op2 = bv_constant(*(registers + rs2));
 
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs2 constraint since rs1 has none
-        set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
-    } else
-      // rd has no constraint if both rs1 and rs2 have no constraints
-      set_constraint(rd, 0, 0, 0, 0, 0);
+    *(reg_smt + rd) = (uint64_t) bv_add(op1, op2);
   }
 }
 
