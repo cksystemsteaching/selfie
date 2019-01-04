@@ -1268,6 +1268,28 @@ void init_symbolic_engine() {
 }
 
 // -----------------------------------------------------------------
+// ----------------------- SYMBOLIC CONTEXTS -----------------------
+// -----------------------------------------------------------------
+
+// symbolic context struct:
+// +----+------------------+
+// |  0 | next context     | pointer to next symbolic context
+// |  1 | program location | program location
+// |  2 | path condition   | pointer to path condition
+// |  3 | symbolic store   | pointer to symbolic store
+// +----+------------------+
+
+uint64_t* get_next_symbolic_context(uint64_t* context) { return (uint64_t*) *context; }
+uint64_t  get_program_location(uint64_t* context)      { return             *(context + 1); }
+uint64_t* get_path_condition(uint64_t* context)        { return (uint64_t*) *(context + 2); }
+uint64_t* get_symbolic_store(uint64_t* context)        { return (uint64_t*) *(context + 3); }
+
+void set_next_symbolic_context(uint64_t* context, uint64_t* next) { *context       = (uint64_t) next; }
+void set_program_location(uint64_t* context, uint64_t location)   { *(context + 1) = location; }
+void set_path_condition(uint64_t* context, uint64_t* path)        { *(context + 2) = (uint64_t) path; }
+void set_symbolic_store(uint64_t* context, uint64_t* store)       { *(context + 3) = (uint64_t) store; }
+
+// -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
@@ -1411,7 +1433,7 @@ void      free_context(uint64_t* context);
 uint64_t* delete_context(uint64_t* context, uint64_t* from);
 
 // context struct:
-// +----+----------------+
+// +----+-----------------+
 // |  0 | next context    | pointer to next context
 // |  1 | prev context    | pointer to previous context
 // |  2 | program counter | program counter
