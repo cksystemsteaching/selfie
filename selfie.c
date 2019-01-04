@@ -154,15 +154,15 @@ void print_binary(uint64_t n, uint64_t a);
 uint64_t print_format0(uint64_t* s, uint64_t i);
 uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a);
 
-void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1);
-void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2);
-
 void printf1(uint64_t* s, uint64_t* a1);
 void printf2(uint64_t* s, uint64_t* a1, uint64_t* a2);
 void printf3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
 void printf4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4);
 void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5);
 void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
+
+void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1);
+void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -209,12 +209,13 @@ uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 
 uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
 
+uint64_t* character_buffer; // buffer for reading and writing characters
+uint64_t* integer_buffer;   // buffer for outputting integers
+
 uint64_t MAX_FILENAME_LENGTH = 128;
 
-uint64_t* character_buffer; // buffer for reading and writing characters
-uint64_t* integer_buffer;   // buffer for printing integers
-uint64_t* filename_buffer;  // buffer for opening files
-uint64_t* binary_buffer;    // buffer for binary I/O
+uint64_t* filename_buffer; // buffer for opening files
+uint64_t* binary_buffer;   // buffer for binary I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -245,6 +246,9 @@ uint64_t number_of_written_characters = 0;
 
 uint64_t* output_name = (uint64_t*) 0;
 uint64_t  output_fd   = 1; // 1 is file descriptor of standard output
+
+uint64_t* output_buffer = (uint64_t*) 0;
+uint64_t  output_cursor = 0; // cursor for output buffer
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -2077,28 +2081,35 @@ uint64_t fixed_point_percentage(uint64_t r, uint64_t f) {
 }
 
 void put_character(uint64_t c) {
-  *character_buffer = c;
+  if (output_buffer) {
+    // buffering character instead of outputting
+    store_character(output_buffer, output_cursor, c);
 
-  // assert: character_buffer is mapped
-
-  // try to write 1 character from character_buffer
-  // into file with output_fd file descriptor
-  if (write(output_fd, character_buffer, 1) == 1) {
-    if (output_fd != 1)
-      // count number of characters written to a file,
-      // not the console which has file descriptor 1
-      number_of_written_characters = number_of_written_characters + 1;
+    output_cursor = output_cursor + 1;
   } else {
-    // write failed
-    if (output_fd != 1) {
-      // failed write was not to the console which has file descriptor 1
-      // to report the error we may thus still write to the console
-      output_fd = 1;
+    *character_buffer = c;
 
-      printf2((uint64_t*) "%s: could not write character to output file %s\n", selfie_name, output_name);
+    // assert: character_buffer is mapped
+
+    // try to write 1 character from character_buffer
+    // into file with output_fd file descriptor
+    if (write(output_fd, character_buffer, 1) == 1) {
+      if (output_fd != 1)
+        // count number of characters written to a file,
+        // not the console which has file descriptor 1
+        number_of_written_characters = number_of_written_characters + 1;
+    } else {
+      // write failed
+      if (output_fd != 1) {
+        // failed write was not to the console which has file descriptor 1
+        // to report the error we may thus still write to the console
+        output_fd = 1;
+
+        printf2((uint64_t*) "%s: could not write character to output file %s\n", selfie_name, output_name);
+      }
+
+      exit(EXITCODE_IOERROR);
     }
-
-    exit(EXITCODE_IOERROR);
   }
 }
 
@@ -2286,14 +2297,6 @@ uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a) {
   }
 }
 
-void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1) {
-
-}
-
-void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2) {
-
-}
-
 void printf1(uint64_t* s, uint64_t* a1) {
   print_format0(s, print_format1(s, 0, a1));
 }
@@ -2316,6 +2319,26 @@ void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4
 
 void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6) {
   print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4), a5), a6));
+}
+
+void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1) {
+  output_buffer = b;
+  output_cursor = 0;
+
+  printf1(s, a1);
+
+  output_buffer = (uint64_t*) 0;
+  output_cursor = 0;
+}
+
+void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2) {
+  output_buffer = b;
+  output_cursor = 0;
+
+  printf2(s, a1, a2);
+
+  output_buffer = (uint64_t*) 0;
+  output_cursor = 0;
 }
 
 uint64_t round_up(uint64_t n, uint64_t m) {
