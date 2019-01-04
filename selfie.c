@@ -154,6 +154,9 @@ void print_binary(uint64_t n, uint64_t a);
 uint64_t print_format0(uint64_t* s, uint64_t i);
 uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a);
 
+void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1);
+void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2);
+
 void printf1(uint64_t* s, uint64_t* a1);
 void printf2(uint64_t* s, uint64_t* a1, uint64_t* a2);
 void printf3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
@@ -1183,6 +1186,9 @@ void create_constraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, 
 uint64_t fuzz_lo(uint64_t value);
 uint64_t fuzz_up(uint64_t value);
 
+uint64_t* bv_constant(uint64_t value);
+uint64_t* bv_add(uint64_t* op1, uint64_t* op2);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t MAX_TRACE_LENGTH = 100000;
@@ -1212,6 +1218,8 @@ uint64_t* read_los = (uint64_t*) 0;
 uint64_t* read_ups = (uint64_t*) 0;
 
 // registers
+
+uint64_t* reg_smt = (uint64_t*) 0; // constraint as string in smt-lib format
 
 uint64_t* reg_typ = (uint64_t*) 0; // memory range or integer interval
 uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
@@ -1247,6 +1255,8 @@ void init_symbolic_engine() {
   read_values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
   read_los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
   read_ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+
+  reg_smt = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -2274,6 +2284,14 @@ uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a) {
 
     return i;
   }
+}
+
+void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1) {
+
+}
+
+void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2) {
+
 }
 
 void printf1(uint64_t* s, uint64_t* a1) {
@@ -6657,38 +6675,10 @@ void do_addi() {
 
 void constrain_addi() {
   if (rd != REG_ZR) {
-    if (*(reg_typ + rs1)) {
-      *(reg_typ + rd) = *(reg_typ + rs1);
-
-      *(reg_los + rd) = *(reg_los + rs1);
-      *(reg_ups + rd) = *(reg_ups + rs1);
-
-      // rd has no constraint if rs1 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    }
-
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of addi
-    *(reg_los + rd) = *(reg_los + rs1) + imm;
-    *(reg_ups + rd) = *(reg_ups + rs1) + imm;
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another addend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in operand of addi at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs1 constraint
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
-    } else
-      // rd has no constraint if rs1 has none
-      set_constraint(rd, 0, 0, 0, 0, 0);
+    if (*(reg_smt + rs1))
+      *(reg_smt + rd) = (uint64_t) bv_add((uint64_t*) *(reg_smt + rs1), bv_constant(imm));
+    else
+      *(reg_smt + rd) = 0;
   }
 }
 
@@ -8139,6 +8129,26 @@ uint64_t fuzz_up(uint64_t value) {
     return value + two_to_the_power_of(fuzz) / 2;
   else
     return two_to_the_power_of(fuzz) - 1;
+}
+
+uint64_t* bv_constant(uint64_t value) {
+  uint64_t* string;
+
+  string = smalloc(5 + 20 + 4 + 1); // 64 bits require up to 20 decimal digits
+
+  sprintf1(string, (uint64_t*) "(_ bv%d 64)", (uint64_t*) value);
+
+  return string;
+}
+
+uint64_t* bv_add(uint64_t* op1, uint64_t* op2) {
+  uint64_t* string;
+
+  string = smalloc(7 + string_length(op1) + 1 + string_length(op2) + 1 + 1);
+
+  sprintf2(string, (uint64_t*) "(bvadd %s %s)", op1, op2);
+
+  return string;
 }
 
 // -----------------------------------------------------------------
