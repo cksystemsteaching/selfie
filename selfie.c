@@ -1268,16 +1268,35 @@ void init_symbolic_engine() {
 }
 
 // -----------------------------------------------------------------
+// ------------------------- SYMBOLIC STORE ------------------------
+// -----------------------------------------------------------------
+
+// symbolic store:
+// +---+-----------+
+// | 0 | next word | pointer to next memory word
+// | 1 | address   | address of memory word
+// | 2 | version   | version of memory store
+// +---+-----------+
+
+uint64_t* get_next_word(uint64_t* context)    { return (uint64_t*) *context; }
+uint64_t  get_word_address(uint64_t* context) { return             *(context + 1); }
+uint64_t  get_word_version(uint64_t* context) { return             *(context + 2); }
+
+void set_next_word(uint64_t* context, uint64_t* next)      { *context       = (uint64_t) next; }
+void set_word_address(uint64_t* context, uint64_t address) { *(context + 1) = address; }
+void set_word_version(uint64_t* context, uint64_t version) { *(context + 2) = version; }
+
+// -----------------------------------------------------------------
 // ----------------------- SYMBOLIC CONTEXTS -----------------------
 // -----------------------------------------------------------------
 
 // symbolic context struct:
-// +----+------------------+
-// |  0 | next context     | pointer to next symbolic context
-// |  1 | program location | program location
-// |  2 | path condition   | pointer to path condition
-// |  3 | symbolic store   | pointer to symbolic store
-// +----+------------------+
+// +---+------------------+
+// | 0 | next context     | pointer to next symbolic context
+// | 1 | program location | program location
+// | 2 | path condition   | pointer to path condition
+// | 3 | symbolic store   | pointer to symbolic store
+// +---+------------------+
 
 uint64_t* get_next_symbolic_context(uint64_t* context) { return (uint64_t*) *context; }
 uint64_t  get_program_location(uint64_t* context)      { return             *(context + 1); }
