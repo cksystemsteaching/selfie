@@ -7014,6 +7014,14 @@ uint64_t do_sd() {
   return vaddr;
 }
 
+void undo_sd() {
+  uint64_t vaddr;
+
+  vaddr = *(registers + rs1) + imm;
+
+  store_virtual_memory(pt, vaddr, *(values + (tc % MAX_REPLAY_LENGTH)));
+}
+
 uint64_t constrain_sd() {
   uint64_t vaddr;
   uint64_t a;
@@ -7066,14 +7074,6 @@ void backtrack_sd() {
   store_virtual_memory(pt, *(vaddrs + tc), *(tcs + tc));
 
   efree();
-}
-
-void undo_sd() {
-  uint64_t vaddr;
-
-  vaddr = *(registers + rs1) + imm;
-
-  store_virtual_memory(pt, vaddr, *(values + (tc % MAX_REPLAY_LENGTH)));
 }
 
 void print_beq() {
