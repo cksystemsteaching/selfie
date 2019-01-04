@@ -1066,6 +1066,7 @@ void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void do_add();
+void constrain_operator(uint64_t* opt);
 void constrain_add();
 
 void do_sub();
@@ -6729,7 +6730,7 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void constrain_add() {
+void constrain_operator(uint64_t* opt) {
   uint64_t* op1;
   uint64_t* op2;
 
@@ -6747,8 +6748,12 @@ void constrain_add() {
     } else if (op2 == 0)
         op2 = bv_constant(*(registers + rs2));
 
-    *(reg_smt + rd) = (uint64_t) bv_operator((uint64_t*) "bvadd", op1, op2);
+    *(reg_smt + rd) = (uint64_t) bv_operator(opt, op1, op2);
   }
+}
+
+void constrain_add() {
+  constrain_operator((uint64_t*) "bvadd");
 }
 
 void do_sub() {
@@ -6762,97 +6767,7 @@ void do_sub() {
 }
 
 void constrain_sub() {
-  uint64_t sub_los;
-  uint64_t sub_ups;
-
-  if (rd != REG_ZR) {
-    if (*(reg_typ + rs1)) {
-      if (*(reg_typ + rs2)) {
-        if (*(reg_los + rs1) == *(reg_los + rs2))
-          if (*(reg_ups + rs1) == *(reg_ups + rs2)) {
-            *(reg_typ + rd) = 0;
-
-            *(reg_los + rd) = *(registers + rd);
-            *(reg_ups + rd) = *(registers + rd);
-
-            // rd has no constraint if rs1 and rs2 are memory range
-            set_constraint(rd, 0, 0, 0, 0, 0);
-
-            return;
-          }
-
-        // subtracting incompatible pointers
-        throw_exception(EXCEPTION_INVALIDADDRESS, 0);
-
-        return;
-      } else {
-        *(reg_typ + rd) = *(reg_typ + rs1);
-
-        *(reg_los + rd) = *(reg_los + rs1);
-        *(reg_ups + rd) = *(reg_ups + rs1);
-
-        // rd has no constraint if rs1 is memory range
-        set_constraint(rd, 0, 0, 0, 0, 0);
-
-        return;
-      }
-    } else if (*(reg_typ + rs2)) {
-      *(reg_typ + rd) = *(reg_typ + rs2);
-
-      *(reg_los + rd) = *(reg_los + rs2);
-      *(reg_ups + rd) = *(reg_ups + rs2);
-
-      // rd has no constraint if rs2 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    }
-
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of sub
-    if (combined_cardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
-      *(reg_los + rd) = 0;
-      *(reg_ups + rd) = UINT64_MAX;
-    } else {
-      // use temporary variables since rd may be rs1 or rs2
-      sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
-      sub_ups = *(reg_ups + rs1) - *(reg_los + rs2);
-
-      *(reg_los + rd) = sub_los;
-      *(reg_ups + rd) = sub_ups;
-    }
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2))
-        // we cannot keep track of more than one constraint for sub but
-        // need to warn about their earlier presence if used in comparisons
-        set_constraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
-      else if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another subtrahend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of sub at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs1 constraint since rs2 has none
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
-    } else if (*(reg_hasco + rs2)) {
-      if (*(reg_hasmn + rs2)) {
-        // rs2 constraint has already minuend and cannot have another minuend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of sub at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs2 constraint since rs1 has none
-        set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
-    } else
-      // rd has no constraint if both rs1 and rs2 have no constraints
-      set_constraint(rd, 0, 0, 0, 0, 0);
-  }
+  constrain_operator((uint64_t*) "bvsub");
 }
 
 void do_mul() {
@@ -6868,51 +6783,7 @@ void do_mul() {
 }
 
 void constrain_mul() {
-  if (rd != REG_ZR) {
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of mul
-    *(reg_los + rd) = *(reg_los + rs1) * *(reg_los + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs1) * *(reg_ups + rs2);
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2)) {
-        // non-linear expressions are not supported
-        printf2((uint64_t*) "%s: detected non-linear expression in mul at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another multiplier
-        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of mul at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs1 constraint since rs2 has none
-        // assert: rs2 interval is singleton
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-          *(reg_colos + rs1) + *(reg_los + rs1) * (*(reg_los + rs2) - 1), *(reg_coups + rs1) + *(reg_ups + rs1) * (*(reg_ups + rs2) - 1));
-    } else if (*(reg_hasco + rs2)) {
-      if (*(reg_hasmn + rs2)) {
-        // rs2 constraint has already minuend and cannot have another multiplicand
-        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of mul at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs2 constraint since rs1 has none
-        // assert: rs1 interval is singleton
-        set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-          (*(reg_los + rs1) - 1) * *(reg_los + rs2) + *(reg_colos + rs2),
-          (*(reg_ups + rs1) - 1) * *(reg_ups + rs2) + *(reg_coups + rs2));
-    } else
-      // rd has no constraint if both rs1 and rs2 have no constraints
-      set_constraint(rd, 0, 0, 0, 0, 0);
-  }
+  constrain_operator((uint64_t*) "bvmul");
 }
 
 void record_divu_remu() {
@@ -6936,62 +6807,7 @@ void do_divu() {
 }
 
 void constrain_divu() {
-  if (*(reg_los + rs2) != 0) {
-    if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
-      // 0 is not in interval
-      if (rd != REG_ZR) {
-        *(reg_typ + rd) = 0;
-
-        // interval semantics of divu
-        *(reg_los + rd) = *(reg_los + rs1) / *(reg_los + rs2);
-        *(reg_ups + rd) = *(reg_ups + rs1) / *(reg_ups + rs2);
-
-        if (*(reg_hasco + rs1)) {
-          if (*(reg_hasco + rs2)) {
-            // non-linear expressions are not supported
-            printf2((uint64_t*) "%s: detected non-linear expression in divu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else if (*(reg_hasmn + rs1)) {
-            // rs1 constraint has already minuend and cannot have another divisor
-            printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of divu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs1 constraint since rs2 has none
-            // assert: rs2 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1) -
-                (*(reg_los + rs1) - *(reg_los + rs1) / *(reg_los + rs2)),
-              *(reg_coups + rs1) -
-                (*(reg_ups + rs1) - *(reg_ups + rs1) / *(reg_ups + rs2)));
-        } else if (*(reg_hasco + rs2)) {
-          if (*(reg_hasmn + rs2)) {
-            // rs2 constraint has already minuend and cannot have another dividend
-            printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of divu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs2 constraint since rs1 has none
-            // assert: rs1 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_colos + rs2) -
-                (*(reg_los + rs2) - *(reg_los + rs1) / *(reg_los + rs2)),
-              *(reg_coups + rs2) -
-                (*(reg_ups + rs2) - *(reg_ups + rs1) / *(reg_ups + rs2)));
-        } else
-          // rd has no constraint if both rs1 and rs2 have no constraints
-          set_constraint(rd, 0, 0, 0, 0, 0);
-      }
-    } else
-      throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
-  }
+  constrain_operator((uint64_t*) "bvdiv");
 }
 
 void do_remu() {
@@ -7010,62 +6826,7 @@ void do_remu() {
 }
 
 void constrain_remu() {
-  if (*(reg_los + rs2) != 0) {
-    if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
-      // 0 is not in interval
-      if (rd != REG_ZR) {
-        *(reg_typ + rd) = 0;
-
-        // interval semantics of remu
-        *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
-        *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
-
-        if (*(reg_hasco + rs1)) {
-          if (*(reg_hasco + rs2)) {
-            // non-linear expressions are not supported
-            printf2((uint64_t*) "%s: detected non-linear expression in remu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else if (*(reg_hasmn + rs1)) {
-            // rs1 constraint has already minuend and cannot have another divisor
-            printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of remu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs1 constraint since rs2 has none
-            // assert: rs2 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1) -
-                (*(reg_los + rs1) - *(reg_los + rs1) % *(reg_los + rs2)),
-              *(reg_coups + rs1) -
-                (*(reg_ups + rs1) - *(reg_ups + rs1) % *(reg_ups + rs2)));
-        } else if (*(reg_hasco + rs2)) {
-          if (*(reg_hasmn + rs2)) {
-            // rs2 constraint has already minuend and cannot have another dividend
-            printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of remu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs2 constraint since rs1 has none
-            // assert: rs1 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_colos + rs2) -
-                (*(reg_los + rs2) - *(reg_los + rs1) % *(reg_los + rs2)),
-              *(reg_coups + rs2) -
-                (*(reg_ups + rs2) - *(reg_ups + rs1) % *(reg_ups + rs2)));
-        } else
-          // rd has no constraint if both rs1 and rs2 have no constraints
-          set_constraint(rd, 0, 0, 0, 0, 0);
-      }
-    } else
-      throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
-  }
+  constrain_operator((uint64_t*) "bvrem");
 }
 
 void do_sltu() {
