@@ -1092,8 +1092,7 @@ void     print_sd_after(uint64_t vaddr);
 void     record_sd();
 uint64_t do_sd();
 void     undo_sd();
-uint64_t constrain_sd();
-void     backtrack_sd();
+void     constrain_sd();
 
 void print_beq();
 void print_beq_before();
@@ -1150,6 +1149,55 @@ void init_replay_engine() {
 }
 
 // -----------------------------------------------------------------
+// ------------------------ SYMBOLIC MEMORY ------------------------
+// -----------------------------------------------------------------
+
+void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic);
+
+// symbolic memory word struct:
+// +---+-----------+
+// | 0 | next word | pointer to next memory word
+// | 1 | address   | address of memory word
+// | 2 | concrete  | concrete value of memory word
+// | 3 | symbolic  | symbolic value of memory word
+// | 4 | version   | version of memory word
+// +---+-----------+
+
+uint64_t* get_next_word(uint64_t* word)     { return (uint64_t*) *word; }
+uint64_t  get_word_address(uint64_t* word)  { return             *(word + 1); }
+uint64_t  get_word_concrete(uint64_t* word) { return             *(word + 2); }
+uint64_t* get_word_symbolic(uint64_t* word) { return (uint64_t*) *(word + 3); }
+uint64_t  get_word_version(uint64_t* word)  { return             *(word + 4); }
+
+void set_next_word(uint64_t* word, uint64_t* next)      { *word       = (uint64_t) next; }
+void set_word_address(uint64_t* word, uint64_t address) { *(word + 1) = address; }
+void set_word_concrete(uint64_t* word, uint64_t value)  { *(word + 2) = value; }
+void set_word_symbolic(uint64_t* word, uint64_t* value) { *(word + 3) = (uint64_t) value; }
+void set_word_version(uint64_t* word, uint64_t version) { *(word + 4) = version; }
+
+// -----------------------------------------------------------------
+// ----------------------- SYMBOLIC CONTEXTS -----------------------
+// -----------------------------------------------------------------
+
+// symbolic context struct:
+// +---+------------------+
+// | 0 | next context     | pointer to next symbolic context
+// | 1 | program location | program location
+// | 2 | path condition   | pointer to path condition
+// | 3 | symbolic store   | pointer to symbolic store
+// +---+------------------+
+
+uint64_t* get_next_symbolic_context(uint64_t* context) { return (uint64_t*) *context; }
+uint64_t  get_program_location(uint64_t* context)      { return             *(context + 1); }
+uint64_t* get_path_condition(uint64_t* context)        { return (uint64_t*) *(context + 2); }
+uint64_t* get_symbolic_store(uint64_t* context)        { return (uint64_t*) *(context + 3); }
+
+void set_next_symbolic_context(uint64_t* context, uint64_t* next) { *context       = (uint64_t) next; }
+void set_program_location(uint64_t* context, uint64_t location)   { *(context + 1) = location; }
+void set_path_condition(uint64_t* context, uint64_t* path)        { *(context + 2) = (uint64_t) path; }
+void set_symbolic_store(uint64_t* context, uint64_t* store)       { *(context + 3) = (uint64_t) store; }
+
+// -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
 
@@ -1168,8 +1216,6 @@ uint64_t is_trace_space_available();
 
 void ealloc();
 void efree();
-
-void store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb);
 
 void store_constrained_memory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb);
 void store_register_memory(uint64_t reg, uint64_t value);
@@ -1214,6 +1260,10 @@ uint64_t* read_values = (uint64_t*) 0;
 
 uint64_t* read_los = (uint64_t*) 0;
 uint64_t* read_ups = (uint64_t*) 0;
+
+// symbolic contexts
+
+uint64_t* symbolic_memory = (uint64_t*) 0;
 
 // registers
 
@@ -1266,47 +1316,6 @@ void init_symbolic_engine() {
   reg_colos = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_coups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 }
-
-// -----------------------------------------------------------------
-// ------------------------- SYMBOLIC STORE ------------------------
-// -----------------------------------------------------------------
-
-// symbolic store:
-// +---+-----------+
-// | 0 | next word | pointer to next memory word
-// | 1 | address   | address of memory word
-// | 2 | version   | version of memory store
-// +---+-----------+
-
-uint64_t* get_next_word(uint64_t* context)    { return (uint64_t*) *context; }
-uint64_t  get_word_address(uint64_t* context) { return             *(context + 1); }
-uint64_t  get_word_version(uint64_t* context) { return             *(context + 2); }
-
-void set_next_word(uint64_t* context, uint64_t* next)      { *context       = (uint64_t) next; }
-void set_word_address(uint64_t* context, uint64_t address) { *(context + 1) = address; }
-void set_word_version(uint64_t* context, uint64_t version) { *(context + 2) = version; }
-
-// -----------------------------------------------------------------
-// ----------------------- SYMBOLIC CONTEXTS -----------------------
-// -----------------------------------------------------------------
-
-// symbolic context struct:
-// +---+------------------+
-// | 0 | next context     | pointer to next symbolic context
-// | 1 | program location | program location
-// | 2 | path condition   | pointer to path condition
-// | 3 | symbolic store   | pointer to symbolic store
-// +---+------------------+
-
-uint64_t* get_next_symbolic_context(uint64_t* context) { return (uint64_t*) *context; }
-uint64_t  get_program_location(uint64_t* context)      { return             *(context + 1); }
-uint64_t* get_path_condition(uint64_t* context)        { return (uint64_t*) *(context + 2); }
-uint64_t* get_symbolic_store(uint64_t* context)        { return (uint64_t*) *(context + 3); }
-
-void set_next_symbolic_context(uint64_t* context, uint64_t* next) { *context       = (uint64_t) next; }
-void set_program_location(uint64_t* context, uint64_t location)   { *(context + 1) = location; }
-void set_path_condition(uint64_t* context, uint64_t* path)        { *(context + 2) = (uint64_t) path; }
-void set_symbolic_store(uint64_t* context, uint64_t* store)       { *(context + 3) = (uint64_t) store; }
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -5981,11 +5990,11 @@ void implement_read(uint64_t* context) {
               store_physical_memory(buffer, mrvc);
             }
 
-            if (mrcc == 0)
+            /* if (mrcc == 0)
               // no branching yet, we may overwrite symbolic memory
               store_symbolic_memory(get_pt(context), vbuffer, value, 0, lo, up, 0);
             else
-              store_symbolic_memory(get_pt(context), vbuffer, value, 0, lo, up, tc);
+              store_symbolic_memory(get_pt(context), vbuffer, value, 0, lo, up, tc); */
           } else {
             actually_read = 0;
 
@@ -6402,7 +6411,7 @@ void implement_brk(uint64_t* context) {
       *(reg_los + REG_A0) = previous_program_break;
       *(reg_ups + REG_A0) = size;
 
-      if (mrcc > 0) {
+      /* if (mrcc > 0) {
         if (is_trace_space_available())
           // since there has been branching record brk using vaddr == 0
           store_symbolic_memory(get_pt(context), 0, previous_program_break, 1, previous_program_break, size, tc);
@@ -6411,7 +6420,7 @@ void implement_brk(uint64_t* context) {
 
           return;
         }
-      }
+      } */
     }
   } else {
     // error returns current program break
@@ -7063,58 +7072,45 @@ void undo_sd() {
   store_virtual_memory(pt, vaddr, *(values + (tc % MAX_REPLAY_LENGTH)));
 }
 
-uint64_t constrain_sd() {
+void constrain_sd() {
   uint64_t vaddr;
   uint64_t a;
 
   // store double word
 
-  vaddr = *(registers + rs1) + imm;
+  if (*(reg_smt + rs1)) {
+    // symbolic memory addresses not yet supported
+    printf2((uint64_t*) "%s: symbolic memory address in sd instruction at %x", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
 
-  if (is_safe_address(vaddr, rs1)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      // interval semantics of sd
-      if (*(reg_hasco + rs2)) {
-        if (*(reg_vaddr + rs2) == 0) {
-          // constrained memory at vaddr 0 means that there is more than
-          // one constrained memory location in the sd operand
-          printf3((uint64_t*) "%s: %d constrained memory locations in sd operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
-          print_code_line_number_for_instruction(pc - entry_point);
-          println();
-
-          //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-        }
-      }
-
-      store_symbolic_memory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), mrcc);
-
-      // keep track of instruction address for profiling stores
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
-
-      pc = pc + INSTRUCTIONSIZE;
-
-      // keep track of number of stores in total
-      ic_sd = ic_sd + 1;
-
-      // and individually
-      *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
-    } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
-  } else
-    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
-
-  return vaddr;
-}
-
-void backtrack_sd() {
-  if (debug_symbolic) {
-    printf1((uint64_t*) "%s: backtracking sd ", selfie_name);
-    print_symbolic_memory(tc);
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
-  store_virtual_memory(pt, *(vaddrs + tc), *(tcs + tc));
+  vaddr = *(registers + rs1) + imm;
 
-  efree();
+  if (is_valid_virtual_address(vaddr)) {
+    // semantics of sd
+    store_symbolic_memory(vaddr, *(registers + rs2), (uint64_t*) *(reg_smt + rs2));
+
+    // keep track of instruction address for profiling stores
+    a = (pc - entry_point) / INSTRUCTIONSIZE;
+
+    pc = pc + INSTRUCTIONSIZE;
+
+    // keep track of number of stores in total
+    ic_sd = ic_sd + 1;
+
+    // and individually
+    *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+  } else {
+    // invalid concrete memory address
+    printf3((uint64_t*) "%s: invalid concrete memory address %x in sd instruction at %x", selfie_name, (uint64_t*) vaddr, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
 }
 
 void print_beq() {
@@ -7428,6 +7424,24 @@ void replay_trace() {
 }
 
 // -----------------------------------------------------------------
+// ------------------------- SYMBOLIC STORE ------------------------
+// -----------------------------------------------------------------
+
+void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic) {
+  uint64_t* sword;
+
+  sword = malloc(2 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+
+  set_next_word(sword, symbolic_memory);
+  set_word_address(sword, vaddr);
+  set_word_concrete(sword, concrete);
+  set_word_symbolic(sword, symbolic);
+  set_word_version(sword, 0);
+
+  symbolic_memory = sword;
+}
+
+// -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
 
@@ -7536,76 +7550,6 @@ void efree() {
   tc = tc - 1;
 }
 
-void store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb) {
-  uint64_t mrvc;
-
-  if (vaddr == 0)
-    // tracking program break and size for malloc
-    mrvc = 0;
-  else if (vaddr < NUMBEROFREGISTERS)
-    // tracking a register value for sltu
-    mrvc = mrcc;
-  else {
-    // assert: vaddr is valid and mapped
-    mrvc = load_symbolic_memory(pt, vaddr);
-
-    if (value == *(values + mrvc))
-      if (type == *(types + mrvc))
-        if (lo == *(los + mrvc))
-          if (up == *(ups + mrvc))
-            // prevent tracking identical updates
-            return;
-  }
-
-  if (trb < mrvc) {
-    // current value at vaddr does not need to be tracked,
-    // just overwrite it in the trace
-    *(values + mrvc) = value;
-
-    *(types + mrvc) = type;
-
-    *(los + mrvc) = lo;
-    *(ups + mrvc) = up;
-
-    // assert: vaddr == *(vaddrs + mrvc)
-
-    if (debug_symbolic) {
-      printf1((uint64_t*) "%s: overwriting ", selfie_name);
-      print_symbolic_memory(mrvc);
-    }
-  } else if (is_trace_space_available()) {
-    // current value at vaddr is from before most recent branch,
-    // track that value by creating a new trace event
-    ealloc();
-
-    *(pcs + tc) = pc;
-    *(tcs + tc) = mrvc;
-
-    *(values + tc) = value;
-
-    *(types + tc) = type;
-
-    *(los + tc) = lo;
-    *(ups + tc) = up;
-
-    *(vaddrs + tc) = vaddr;
-
-    if (vaddr < NUMBEROFREGISTERS) {
-      if (vaddr > 0)
-        // register tracking marks most recent constraint
-        mrcc = tc;
-    } else
-      // assert: vaddr is valid and mapped
-      store_virtual_memory(pt, vaddr, tc);
-
-    if (debug_symbolic) {
-      printf1((uint64_t*) "%s: storing ", selfie_name);
-      print_symbolic_memory(tc);
-    }
-  } else
-    throw_exception(EXCEPTION_MAXTRACE, 0);
-}
-
 void store_constrained_memory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t mrvc;
 
@@ -7624,12 +7568,12 @@ void store_constrained_memory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t
   }
 
   // always track constrained memory by using tc as most recent branch
-  store_symbolic_memory(pt, vaddr, lo, 0, lo, up, tc);
+  // store_symbolic_memory(pt, vaddr, lo, 0, lo, up, tc);
 }
 
 void store_register_memory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
-  store_symbolic_memory(pt, reg, value, 0, value, value, tc);
+  // store_symbolic_memory(pt, reg, value, 0, value, value, tc);
 }
 
 void constrain_memory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
@@ -7950,8 +7894,6 @@ void decode_execute() {
           println();
         } else if (symbolic)
           constrain_sd();
-        else if (backtrack)
-          backtrack_sd();
       } else
         do_sd();
 
@@ -7975,8 +7917,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
-            do_add();
             constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvadd");
+            do_add();
           }
         } else
           do_add();
@@ -7998,8 +7940,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
-            do_sub();
             constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvsub");
+            do_sub();
           }
         } else
           do_sub();
@@ -8021,8 +7963,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
-            do_mul();
             constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvmul");
+            do_mul();
           }
         } else
           do_mul();
@@ -8046,8 +7988,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
-            do_divu();
             constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvudiv");
+            do_divu();
           }
         } else
           do_divu();
@@ -8071,8 +8013,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
-            do_remu();
             constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvurem");
+            do_remu();
           }
         } else
           do_remu();
@@ -8096,8 +8038,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
-            do_sltu();
             constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvult");
+            do_sltu();
           }
         } else
           do_sltu();
@@ -8753,7 +8695,7 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
     map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
 
-  if (symbolic) {
+  /* if (symbolic) {
     if (is_trace_space_available())
       // always track initialized memory by using tc as most recent branch
       store_symbolic_memory(get_pt(context), vaddr, data, 0, data, data, tc);
@@ -8762,8 +8704,9 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
 
       exit(EXITCODE_OUTOFTRACEMEMORY);
     }
-  } else
-    store_virtual_memory(get_pt(context), vaddr, data);
+  } else */
+
+  store_virtual_memory(get_pt(context), vaddr, data);
 }
 
 void up_load_binary(uint64_t* context) {
