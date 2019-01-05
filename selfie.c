@@ -1084,7 +1084,7 @@ void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
 uint64_t do_ld();
-uint64_t constrain_ld();
+void     constrain_ld();
 
 void     print_sd();
 void     print_sd_before();
@@ -1152,7 +1152,8 @@ void init_replay_engine() {
 // ------------------------ SYMBOLIC MEMORY ------------------------
 // -----------------------------------------------------------------
 
-void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic);
+uint64_t* load_symbolic_memory(uint64_t vaddr);
+void      store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic);
 
 // symbolic memory word struct:
 // +---+-----------+
@@ -1210,7 +1211,6 @@ uint64_t combined_cardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t
 
 uint64_t is_symbolic_value(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t is_safe_address(uint64_t vaddr, uint64_t reg);
-uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
 
 uint64_t is_trace_space_available();
 
@@ -5975,7 +5975,7 @@ void implement_read(uint64_t* context) {
               // caution: read only overwrites bytes_to_read number of bytes
               // we therefore need to restore the actual value in buffer
               // to preserve the original read semantics
-              store_physical_memory(buffer, *(values + load_symbolic_memory(get_pt(context), vbuffer)));
+              // store_physical_memory(buffer, *(values + load_symbolic_memory(get_pt(context), vbuffer)));
 
               actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
 
@@ -6204,7 +6204,7 @@ void emit_open() {
 }
 
 uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
-  uint64_t mrvc;
+  // uint64_t mrvc;
   uint64_t i;
   uint64_t j;
 
@@ -6213,7 +6213,7 @@ uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
     if (is_valid_virtual_address(vaddr)) {
       if (is_virtual_address_mapped(table, vaddr)) {
-        if (symbolic) {
+        /* if (symbolic) {
           mrvc = load_symbolic_memory(table, vaddr);
 
           *(s + i) = *(values + mrvc);
@@ -6225,8 +6225,9 @@ uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           }
-        } else
-          *(s + i) = load_virtual_memory(table, vaddr);
+        } else */
+
+        *(s + i) = load_virtual_memory(table, vaddr);
 
         j = 0;
 
@@ -6938,53 +6939,57 @@ uint64_t do_ld() {
   return vaddr;
 }
 
-uint64_t constrain_ld() {
+void constrain_ld() {
   uint64_t vaddr;
-  uint64_t mrvc;
+  uint64_t* sword;
   uint64_t a;
 
   // load double word
 
+  if (*(reg_smt + rs1)) {
+    // symbolic memory addresses not yet supported
+    printf2((uint64_t*) "%s: symbolic memory address in ld instruction at %x", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
   vaddr = *(registers + rs1) + imm;
 
-  if (is_safe_address(vaddr, rs1)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      if (rd != REG_ZR) {
-        mrvc = load_symbolic_memory(pt, vaddr);
+  if (is_valid_virtual_address(vaddr)) {
+    // semantics of ld
+    if (rd != REG_ZR) {
+      sword = load_symbolic_memory(vaddr);
 
-        // interval semantics of ld
-        *(registers + rd) = *(values + mrvc);
-
-        *(reg_typ + rd) = *(types + mrvc);
-
-        *(reg_los + rd) = *(los + mrvc);
-        *(reg_ups + rd) = *(ups + mrvc);
-
-        // assert: vaddr == *(vaddrs + mrvc)
-
-        if (is_symbolic_value(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd)))
-          // vaddr is constrained by rd if value interval is not singleton
-          set_constraint(rd, 1, vaddr, 0, 0, 0);
-        else
-          set_constraint(rd, 0, 0, 0, 0, 0);
+      if (sword) {
+        *(registers + rd) = get_word_concrete(sword);
+        *(reg_smt + rd)   = (uint64_t) get_word_symbolic(sword);
+      } else {
+        // assert: vaddr is mapped
+        *(registers + rd) = load_virtual_memory(pt, vaddr);
+        *(reg_smt + rd)   = 0;
       }
+    }
 
-      // keep track of instruction address for profiling loads
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
+    // keep track of instruction address for profiling loads
+    a = (pc - entry_point) / INSTRUCTIONSIZE;
 
-      pc = pc + INSTRUCTIONSIZE;
+    pc = pc + INSTRUCTIONSIZE;
 
-      // keep track of number of loads in total
-      ic_ld = ic_ld + 1;
+    // keep track of number of loads in total
+    ic_ld = ic_ld + 1;
 
-      // and individually
-      *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
-    } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
-  } else
-    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
+    // and individually
+    *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+  } else {
+    // invalid concrete memory address
+    printf3((uint64_t*) "%s: invalid concrete memory address %x in ld instruction at %x", selfie_name, (uint64_t*) vaddr, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
 
-  return vaddr;
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
 }
 
 void print_sd() {
@@ -7427,6 +7432,21 @@ void replay_trace() {
 // ------------------------- SYMBOLIC STORE ------------------------
 // -----------------------------------------------------------------
 
+uint64_t* load_symbolic_memory(uint64_t vaddr) {
+  uint64_t* sword;
+
+  sword = symbolic_memory;
+
+  while (sword != (uint64_t*) 0) {
+    if (get_word_address(sword) == vaddr)
+      return sword;
+
+    sword = get_next_word(sword);
+  }
+
+  return (uint64_t*) 0;
+}
+
 void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic) {
   uint64_t* sword;
 
@@ -7517,21 +7537,6 @@ uint64_t is_safe_address(uint64_t vaddr, uint64_t reg) {
     printf2((uint64_t*) "%s: detected unsupported symbolic access of memory interval at %x", selfie_name, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
-}
-
-uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr) {
-  uint64_t mrvc;
-
-  // assert: vaddr is valid and mapped
-  mrvc = load_virtual_memory(pt, vaddr);
-
-  if (mrvc <= tc)
-    return mrvc;
-  else {
-    printf4((uint64_t*) "%s: detected most recent value counter %d at vaddr %x greater than current trace counter %d\n", selfie_name, (uint64_t*) mrvc, (uint64_t*) vaddr, (uint64_t*) tc);
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
