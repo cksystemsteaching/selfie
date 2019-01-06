@@ -1114,7 +1114,6 @@ void print_ecall();
 void record_ecall();
 void do_ecall();
 void undo_ecall();
-void backtrack_ecall();
 
 void print_data_line_number();
 void print_data_context(uint64_t data);
@@ -1370,7 +1369,6 @@ uint64_t undo        = 0; // flag for undoing code execution
 uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
 uint64_t symbolic    = 0; // flag for symbolically executing code
-uint64_t backtrack   = 0; // flag for backtracking symbolic execution
 
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
@@ -1604,7 +1602,6 @@ void     map_unmapped_pages(uint64_t* context);
 uint64_t minster(uint64_t* to_context);
 uint64_t mobster(uint64_t* to_context);
 
-void     backtrack_trace(uint64_t* context);
 uint64_t monster(uint64_t* to_context);
 
 uint64_t is_boot_level_zero();
@@ -6350,7 +6347,7 @@ void emit_malloc() {
   emit_ecall();
 
   // return 0 if memory allocation failed, that is,
-  // if new program break is still _bump and size !=0
+  // if new program break is still _bump and size != 0
   emit_beq(REG_A0, current_temporary(), 2 * INSTRUCTIONSIZE);
   emit_beq(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
   emit_beq(REG_ZR, previous_temporary(), 3 * INSTRUCTIONSIZE);
@@ -7312,43 +7309,6 @@ void undo_ecall() {
   *(values + (tc % MAX_REPLAY_LENGTH)) = a0;
 }
 
-void backtrack_ecall() {
-  if (debug_symbolic) {
-    printf1((uint64_t*) "%s: backtracking ecall ", selfie_name);
-    print_symbolic_memory(tc);
-  }
-
-  if (*(vaddrs + tc) == 0) {
-    // backtracking malloc
-    if (get_program_break(current_context) == *(los + tc) + *(ups + tc))
-      set_program_break(current_context, *(los + tc));
-    else {
-      printf1((uint64_t*) "%s: malloc backtracking error at ", selfie_name);
-      print_symbolic_memory(tc);
-      printf4((uint64_t*) " with current program break %x unequal %x which is previous program break %x plus size %d\n",
-        (uint64_t*) get_program_break(current_context),
-        (uint64_t*) (*(los + tc) + *(ups + tc)),
-        (uint64_t*) *(los + tc),
-        (uint64_t*) *(ups + tc));
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    }
-  } else {
-    // backtracking read
-    rc = rc + 1;
-
-    // record value, lower and upper bound
-    *(read_values + rc) = *(values + tc);
-
-    *(read_los + rc) = *(los + tc);
-    *(read_ups + rc) = *(ups + tc);
-
-    store_virtual_memory(pt, *(vaddrs + tc), *(tcs + tc));
-  }
-
-  efree();
-}
-
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
     printf1((uint64_t*) "(~%d)", (uint64_t*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
@@ -8172,8 +8132,6 @@ void decode_execute() {
             println();
         } else if (symbolic)
           do_ecall();
-        else if (backtrack)
-          backtrack_ecall();
       } else
         do_ecall();
 
@@ -9122,39 +9080,6 @@ uint64_t mobster(uint64_t* to_context) {
   return minmob(to_context);
 }
 
-void backtrack_trace(uint64_t* context) {
-  uint64_t savepc;
-
-  if (debug_symbolic)
-    printf3((uint64_t*) "%s: backtracking %s from exit code %d\n", selfie_name, get_name(context), (uint64_t*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
-
-  symbolic = 0;
-
-  backtrack = 1;
-
-  while (backtrack) {
-    pc = *(pcs + tc);
-
-    if (pc == 0)
-      // we have backtracked all code back to the data segment
-      backtrack = 0;
-    else {
-      savepc = pc;
-
-      fetch();
-      decode_execute();
-
-      if (pc != savepc)
-        // backtracking stopped by sltu
-        backtrack = 0;
-    }
-  }
-
-  symbolic = 1;
-
-  set_pc(context, pc);
-}
-
 uint64_t monster(uint64_t* to_context) {
   uint64_t b;
   uint64_t timeout;
@@ -9176,7 +9101,7 @@ uint64_t monster(uint64_t* to_context) {
       timeout = TIMEROFF;
     } else {
       if (handle_exception(from_context) == EXIT) {
-        backtrack_trace(from_context);
+        // backtrack_trace(from_context);
 
         if (b == 0)
           printf1((uint64_t*) "%s: backtracking ", selfie_name);
