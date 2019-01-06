@@ -1104,11 +1104,11 @@ void print_jal();
 void print_jal_before();
 void print_jal_jalr_after();
 void do_jal();
-void constrain_jal_jalr();
 
 void print_jalr();
 void print_jalr_before();
 void do_jalr();
+void constrain_jalr();
 
 void print_ecall();
 void record_ecall();
@@ -7212,13 +7212,6 @@ void do_jal() {
   ic_jal = ic_jal + 1;
 }
 
-void constrain_jal_jalr() {
-  if (rd != REG_ZR) {
-    *(reg_los + rd) = *(registers + rd);
-    *(reg_ups + rd) = *(registers + rd);
-  }
-}
-
 void print_jalr() {
   print_code_context_for_instruction(pc);
   printf3((uint64_t*) "jalr %s,%d(%s)", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
@@ -7257,6 +7250,17 @@ void do_jalr() {
   }
 
   ic_jalr = ic_jalr + 1;
+}
+
+void constrain_jalr() {
+  if (*(reg_smt + rs1)) {
+    // symbolic memory addresses not yet supported
+    printf2((uint64_t*) "%s: symbolic memory address in jalr instruction at %x", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
 }
 
 void print_ecall() {
@@ -8092,10 +8096,8 @@ void decode_execute() {
           print_jal_jalr_after();
         }
         println();
-      } else if (symbolic) {
+      } else if (symbolic)
         do_jal();
-        constrain_jal_jalr();
-      }
     } else
       do_jal();
 
@@ -8119,8 +8121,8 @@ void decode_execute() {
           }
           println();
         } else if (symbolic) {
+          constrain_jalr();
           do_jalr();
-          constrain_jal_jalr();
         }
       } else
         do_jalr();
@@ -8145,8 +8147,8 @@ void decode_execute() {
         }
         println();
       } else if (symbolic) {
-        do_lui();
         constrain_lui();
+        do_lui();
       }
     } else
       do_lui();
