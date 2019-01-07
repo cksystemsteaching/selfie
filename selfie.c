@@ -1235,6 +1235,7 @@ uint64_t fuzz_lo(uint64_t value);
 uint64_t fuzz_up(uint64_t value);
 
 uint64_t* bv_constant(uint64_t value);
+uint64_t* bv_variable(uint64_t bits);
 
 uint64_t* smt_unary(uint64_t* opt, uint64_t* op);
 uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
@@ -5942,10 +5943,6 @@ void implement_read(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actually_read;
-  uint64_t value;
-  uint64_t lo;
-  uint64_t up;
-  uint64_t mrvc;
 
   if (disassemble) {
     print((uint64_t*) "(read): ");
@@ -5965,66 +5962,35 @@ void implement_read(uint64_t* context) {
   if (debug_read)
     printf4((uint64_t*) "%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfie_name, (uint64_t*) size, (uint64_t*) fd, (uint64_t*) vbuffer);
 
-  read_total   = 0;
+  read_total = 0;
+
   bytes_to_read = SIZEOFUINT64;
 
   failed = 0;
 
   while (size > 0) {
     if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+      if (size < bytes_to_read)
+        bytes_to_read = size;
+
+      if (symbolic) {
+        store_symbolic_memory(vbuffer, 0, bv_variable(bytes_to_read * 8));
+
+        actually_read = bytes_to_read;
+      } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         buffer = tlb(get_pt(context), vbuffer);
 
-        if (size < bytes_to_read)
-          bytes_to_read = size;
+        actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
+      } else {
+        failed = 1;
 
-        if (symbolic) {
-          if (is_trace_space_available()) {
-            if (rc > 0) {
-              // do not read but reuse value, lower and upper bound
-              value = *(read_values + rc);
+        size = 0;
 
-              lo = *(read_los + rc);
-              up = *(read_ups + rc);
+        if (debug_read)
+          printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vbuffer);
+      }
 
-              actually_read = bytes_to_read;
-
-              rc = rc - 1;
-            } else {
-              // save mrvc in buffer
-              mrvc = load_physical_memory(buffer);
-
-              // caution: read only overwrites bytes_to_read number of bytes
-              // we therefore need to restore the actual value in buffer
-              // to preserve the original read semantics
-              // store_physical_memory(buffer, *(values + load_symbolic_memory(get_pt(context), vbuffer)));
-
-              actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-
-              // retrieve read value
-              value = load_physical_memory(buffer);
-
-              // fuzz read value
-              lo = fuzz_lo(value);
-              up = fuzz_up(value);
-
-              // restore mrvc in buffer
-              store_physical_memory(buffer, mrvc);
-            }
-
-            /* if (mrcc == 0)
-              // no branching yet, we may overwrite symbolic memory
-              store_symbolic_memory(get_pt(context), vbuffer, value, 0, lo, up, 0);
-            else
-              store_symbolic_memory(get_pt(context), vbuffer, value, 0, lo, up, tc); */
-          } else {
-            actually_read = 0;
-
-            throw_exception(EXCEPTION_MAXTRACE, 0);
-          }
-        } else
-          actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-
+      if (failed == 0) {
         if (actually_read == bytes_to_read) {
           read_total = read_total + actually_read;
 
@@ -6038,13 +6004,6 @@ void implement_read(uint64_t* context) {
 
           size = 0;
         }
-      } else {
-        failed = 1;
-
-        size = 0;
-
-        if (debug_read)
-          printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vbuffer);
       }
     } else {
       failed = 1;
@@ -6056,17 +6015,10 @@ void implement_read(uint64_t* context) {
     }
   }
 
-  if (failed == 0)
-    *(get_regs(context) + REG_A0) = read_total;
-  else
+  if (failed)
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
-
-  if (symbolic) {
-    *(reg_typ + REG_A0) = 0;
-
-    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
-    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
-  }
+  else
+    *(get_regs(context) + REG_A0) = read_total;
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
@@ -6131,25 +6083,25 @@ void implement_write(uint64_t* context) {
     printf4((uint64_t*) "%s: trying to write %d bytes from buffer at virtual address %p into file with descriptor %d\n", selfie_name, (uint64_t*) size, (uint64_t*) vbuffer, (uint64_t*) fd);
 
   written_total = 0;
+
   bytes_to_write = SIZEOFUINT64;
 
   failed = 0;
 
   while (size > 0) {
     if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+      if (symbolic) {
+        // TODO: What should symbolically executed code actually output?
+        actually_written = size;
+
+        size = 0;
+      } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         buffer = tlb(get_pt(context), vbuffer);
 
         if (size < bytes_to_write)
           bytes_to_write = size;
 
-        if (symbolic)
-          // TODO: What should symbolically executed code output?
-          // buffer points to a trace counter that refers to the actual value
-          // actually_written = sign_extend(write(fd, values + load_physical_memory(buffer), bytes_to_write), SYSCALL_BITWIDTH);
-          actually_written = bytes_to_write;
-        else
-          actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+        actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
         if (actually_written == bytes_to_write) {
           written_total = written_total + actually_written;
@@ -6182,17 +6134,10 @@ void implement_write(uint64_t* context) {
     }
   }
 
-  if (failed == 0)
-    *(get_regs(context) + REG_A0) = written_total;
-  else
+  if (failed)
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
-
-  if (symbolic) {
-    *(reg_typ + REG_A0) = 0;
-
-    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
-    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
-  }
+  else
+    *(get_regs(context) + REG_A0) = written_total;
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
@@ -6802,14 +6747,14 @@ void constrain_add_sub_mul_divu_remu_sltu(uint64_t* operator) {
     op1 = (uint64_t*) *(reg_sym + rs1);
     op2 = (uint64_t*) *(reg_sym + rs2);
 
-    if (op1 == 0) {
-      if (op2 == 0) {
+    if (op1 == (uint64_t*) 0) {
+      if (op2 == (uint64_t*) 0) {
         *(reg_sym + rd) = 0;
 
         return;
       } else
         op1 = bv_constant(*(registers + rs1));
-    } else if (op2 == 0)
+    } else if (op2 == (uint64_t*) 0)
         op2 = bv_constant(*(registers + rs2));
 
     *(reg_sym + rd) = (uint64_t) smt_binary(operator, op1, op2);
@@ -7187,14 +7132,14 @@ void constrain_beq() {
   op1 = (uint64_t*) *(reg_sym + rs1);
   op2 = (uint64_t*) *(reg_sym + rs2);
 
-  if (op1 == 0) {
-    if (op2 == 0) {
+  if (op1 == (uint64_t*) 0) {
+    if (op2 == (uint64_t*) 0) {
       do_beq();
 
       return;
     } else
       op1 = bv_constant(*(registers + rs1));
-  } else if (op2 == 0)
+  } else if (op2 == (uint64_t*) 0)
     op2 = bv_constant(*(registers + rs2));
 
   bc = smt_binary((uint64_t*) "bvcomp", op1, op2);
@@ -7490,7 +7435,7 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic
 }
 
 uint64_t is_symbolic_value(uint64_t* sword) {
-  return get_word_symbolic(sword) != 0;
+  return get_word_symbolic(sword) != (uint64_t*) 0;
 }
 
 void print_symbolic_memory(uint64_t* sword) {
@@ -7758,9 +7703,19 @@ uint64_t fuzz_up(uint64_t value) {
 uint64_t* bv_constant(uint64_t value) {
   uint64_t* string;
 
-  string = smalloc(5 + 20 + 4 + 1); // 64 bits require up to 20 decimal digits
+  string = smalloc(5 + 20 + 4 + 1); // 64-bit constants require up to 20 decimal digits
 
   sprintf1(string, (uint64_t*) "(_ bv%d 64)", (uint64_t*) value);
+
+  return string;
+}
+
+uint64_t* bv_variable(uint64_t bits) {
+  uint64_t* string;
+
+  string = smalloc(10 + 2 + 1); // up to 64-bit variables require up to 2 decimal digits
+
+  sprintf1(string, (uint64_t*) "(_ BitVec %d)", (uint64_t*) bits);
 
   return string;
 }
