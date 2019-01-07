@@ -162,6 +162,7 @@ void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4
 void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
 
 void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1);
+void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2);
 void sprintf3(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
 
 uint64_t round_up(uint64_t n, uint64_t m);
@@ -1099,6 +1100,7 @@ void print_beq_before();
 void print_beq_after();
 void record_beq();
 void do_beq();
+void constrain_beq();
 
 void print_jal();
 void print_jal_before();
@@ -1183,12 +1185,14 @@ void set_word_version(uint64_t* word, uint64_t version) { *(word + 4) = version;
 // ----------------------- SYMBOLIC CONTEXTS -----------------------
 // -----------------------------------------------------------------
 
+void create_symbolic_context(uint64_t location, uint64_t* condition);
+
 // symbolic context struct:
 // +---+------------------+
 // | 0 | next context     | pointer to next symbolic context
 // | 1 | program location | program location
 // | 2 | path condition   | pointer to path condition
-// | 3 | symbolic store   | pointer to symbolic store
+// | 3 | symbolic memory  | pointer to symbolic memory
 // +---+------------------+
 
 uint64_t* get_next_symbolic_context(uint64_t* context) { return (uint64_t*) *context; }
@@ -1199,7 +1203,7 @@ uint64_t* get_symbolic_store(uint64_t* context)        { return (uint64_t*) *(co
 void set_next_symbolic_context(uint64_t* context, uint64_t* next) { *context       = (uint64_t) next; }
 void set_program_location(uint64_t* context, uint64_t location)   { *(context + 1) = location; }
 void set_path_condition(uint64_t* context, uint64_t* path)        { *(context + 2) = (uint64_t) path; }
-void set_symbolic_store(uint64_t* context, uint64_t* store)       { *(context + 3) = (uint64_t) store; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory)     { *(context + 3) = (uint64_t) memory; }
 
 // -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
@@ -1231,7 +1235,9 @@ uint64_t fuzz_lo(uint64_t value);
 uint64_t fuzz_up(uint64_t value);
 
 uint64_t* bv_constant(uint64_t value);
-uint64_t* bv_operator(uint64_t* opt, uint64_t* op1, uint64_t* op2);
+
+uint64_t* smt_unary(uint64_t* opt, uint64_t* op);
+uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1263,11 +1269,19 @@ uint64_t* read_ups = (uint64_t*) 0;
 
 // symbolic contexts
 
+uint64_t* symbolic_contexts = (uint64_t*) 0;
+
+// path condition
+
+uint64_t* path_condition = (uint64_t*) 0;
+
+// symbolic memory
+
 uint64_t* symbolic_memory = (uint64_t*) 0;
 
 // registers
 
-uint64_t* reg_smt = (uint64_t*) 0; // constraint as string in smt-lib format
+uint64_t* reg_sym = (uint64_t*) 0; // constraint as string in smt-lib format
 
 uint64_t* reg_typ = (uint64_t*) 0; // memory range or integer interval
 uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
@@ -1304,7 +1318,7 @@ void init_symbolic_engine() {
   read_los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
   read_ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
 
-  reg_smt = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_sym = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   reg_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -2368,6 +2382,16 @@ void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1) {
   output_cursor = 0;
 
   printf1(s, a1);
+
+  output_buffer = (uint64_t*) 0;
+  output_cursor = 0;
+}
+
+void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2) {
+  output_buffer = b;
+  output_cursor = 0;
+
+  printf2(s, a1, a2);
 
   output_buffer = (uint64_t*) 0;
   output_cursor = 0;
@@ -6696,7 +6720,7 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 
 void constrain_lui() {
   if (rd != REG_ZR)
-    *(reg_smt + rd) = 0;
+    *(reg_sym + rd) = 0;
 }
 
 void print_addi() {
@@ -6739,10 +6763,10 @@ void do_addi() {
 
 void constrain_addi() {
   if (rd != REG_ZR) {
-    if (*(reg_smt + rs1))
-      *(reg_smt + rd) = (uint64_t) bv_operator((uint64_t*) "bvadd", (uint64_t*) *(reg_smt + rs1), bv_constant(imm));
+    if (*(reg_sym + rs1))
+      *(reg_sym + rd) = (uint64_t) smt_binary((uint64_t*) "bvadd", (uint64_t*) *(reg_sym + rs1), bv_constant(imm));
     else
-      *(reg_smt + rd) = 0;
+      *(reg_sym + rd) = 0;
   }
 }
 
@@ -6775,12 +6799,12 @@ void constrain_add_sub_mul_divu_remu_sltu(uint64_t* operator) {
   uint64_t* op2;
 
   if (rd != REG_ZR) {
-    op1 = (uint64_t*) *(reg_smt + rs1);
-    op2 = (uint64_t*) *(reg_smt + rs2);
+    op1 = (uint64_t*) *(reg_sym + rs1);
+    op2 = (uint64_t*) *(reg_sym + rs2);
 
     if (op1 == 0) {
       if (op2 == 0) {
-        *(reg_smt + rd) = 0;
+        *(reg_sym + rd) = 0;
 
         return;
       } else
@@ -6788,7 +6812,7 @@ void constrain_add_sub_mul_divu_remu_sltu(uint64_t* operator) {
     } else if (op2 == 0)
         op2 = bv_constant(*(registers + rs2));
 
-    *(reg_smt + rd) = (uint64_t) bv_operator(operator, op1, op2);
+    *(reg_sym + rd) = (uint64_t) smt_binary(operator, op1, op2);
   }
 }
 
@@ -6950,7 +6974,7 @@ void constrain_ld() {
 
   // load double word
 
-  if (*(reg_smt + rs1)) {
+  if (*(reg_sym + rs1)) {
     // symbolic memory addresses not yet supported
     printf2((uint64_t*) "%s: symbolic memory address in ld instruction at %x", selfie_name, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
@@ -6968,11 +6992,11 @@ void constrain_ld() {
 
       if (sword) {
         *(registers + rd) = get_word_concrete(sword);
-        *(reg_smt + rd)   = (uint64_t) get_word_symbolic(sword);
+        *(reg_sym + rd)   = (uint64_t) get_word_symbolic(sword);
       } else {
         // assert: vaddr is mapped
         *(registers + rd) = load_virtual_memory(pt, vaddr);
-        *(reg_smt + rd)   = 0;
+        *(reg_sym + rd)   = 0;
       }
     }
 
@@ -7087,7 +7111,7 @@ void constrain_sd() {
 
   // store double word
 
-  if (*(reg_smt + rs1)) {
+  if (*(reg_sym + rs1)) {
     // symbolic memory addresses not yet supported
     printf2((uint64_t*) "%s: symbolic memory address in sd instruction at %x", selfie_name, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
@@ -7100,7 +7124,7 @@ void constrain_sd() {
 
   if (is_valid_virtual_address(vaddr)) {
     // semantics of sd
-    store_symbolic_memory(vaddr, *(registers + rs2), (uint64_t*) *(reg_smt + rs2));
+    store_symbolic_memory(vaddr, *(registers + rs2), (uint64_t*) *(reg_sym + rs2));
 
     // keep track of instruction address for profiling stores
     a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -7153,6 +7177,33 @@ void do_beq() {
     pc = pc + INSTRUCTIONSIZE;
 
   ic_beq = ic_beq + 1;
+}
+
+void constrain_beq() {
+  uint64_t* op1;
+  uint64_t* op2;
+  uint64_t* bc;
+
+  op1 = (uint64_t*) *(reg_sym + rs1);
+  op2 = (uint64_t*) *(reg_sym + rs2);
+
+  if (op1 == 0) {
+    if (op2 == 0) {
+      do_beq();
+
+      return;
+    } else
+      op1 = bv_constant(*(registers + rs1));
+  } else if (op2 == 0)
+    op2 = bv_constant(*(registers + rs2));
+
+  bc = smt_binary((uint64_t*) "bvcomp", op1, op2);
+
+  create_symbolic_context(pc + INSTRUCTIONSIZE, smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)));
+
+  path_condition = smt_binary((uint64_t*) "and", path_condition, bc);
+
+  pc = pc + imm;
 }
 
 void print_jal() {
@@ -7257,7 +7308,7 @@ void do_jalr() {
 }
 
 void constrain_jalr() {
-  if (*(reg_smt + rs1)) {
+  if (*(reg_sym + rs1)) {
     // symbolic memory addresses not yet supported
     printf2((uint64_t*) "%s: symbolic memory address in jalr instruction at %x", selfie_name, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
@@ -7400,7 +7451,7 @@ void replay_trace() {
 }
 
 // -----------------------------------------------------------------
-// ------------------------- SYMBOLIC STORE ------------------------
+// ------------------------ SYMBOLIC MEMORY ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* load_symbolic_memory(uint64_t vaddr) {
@@ -7421,7 +7472,7 @@ uint64_t* load_symbolic_memory(uint64_t vaddr) {
 void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic) {
   uint64_t* sword;
 
-  sword = malloc(2 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  sword = smalloc(2 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
   set_next_word(sword, symbolic_memory);
   set_word_address(sword, vaddr);
@@ -7441,6 +7492,23 @@ void print_symbolic_memory(uint64_t* sword) {
     print(get_word_symbolic(sword));
 
   printf2((uint64_t*) "[%x]@%x\n", (uint64_t*) get_word_concrete(sword), (uint64_t*) get_word_address(sword));
+}
+
+// -----------------------------------------------------------------
+// ----------------------- SYMBOLIC CONTEXTS -----------------------
+// -----------------------------------------------------------------
+
+void create_symbolic_context(uint64_t location, uint64_t* condition) {
+  uint64_t* sc;
+
+  sc = smalloc(3 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
+
+  set_next_symbolic_context(sc, symbolic_contexts);
+  set_program_location(sc, location);
+  set_path_condition(sc, condition);
+  set_symbolic_memory(sc, symbolic_memory);
+
+  symbolic_contexts = sc;
 }
 
 // -----------------------------------------------------------------
@@ -7691,7 +7759,17 @@ uint64_t* bv_constant(uint64_t value) {
   return string;
 }
 
-uint64_t* bv_operator(uint64_t* opt, uint64_t* op1, uint64_t* op2) {
+uint64_t* smt_unary(uint64_t* opt, uint64_t* op) {
+  uint64_t* string;
+
+  string = smalloc(1 + string_length(opt) + 1 + string_length(op) + 1 + 1);
+
+  sprintf2(string, (uint64_t*) "(%s %s)", opt, op);
+
+  return string;
+}
+
+uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2) {
   uint64_t* string;
 
   string = smalloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1 + 1);
@@ -8017,7 +8095,7 @@ void decode_execute() {
           }
           println();
         } else if (symbolic)
-          do_beq();
+          constrain_beq();
       } else
         do_beq();
 
