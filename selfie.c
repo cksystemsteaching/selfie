@@ -3965,6 +3965,9 @@ uint64_t compile_expression() {
     if (ltype != rtype)
       type_warning(ltype, rtype);
 
+    // for lack of boolean type
+    ltype = UINT64_T;
+
     if (operator_symbol == SYM_EQUALITY) {
       // a == b iff unsigned b - a < 1
       emit_sub(previous_temporary(), current_temporary(), previous_temporary());
