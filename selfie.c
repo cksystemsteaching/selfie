@@ -1211,29 +1211,6 @@ void set_symbolic_memory(uint64_t* context, uint64_t* memory)     { *(context + 
 
 void init_symbolic_engine();
 
-uint64_t cardinality(uint64_t lo, uint64_t up);
-uint64_t combined_cardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
-
-uint64_t is_safe_address(uint64_t vaddr, uint64_t reg);
-
-uint64_t is_trace_space_available();
-
-void ealloc();
-void efree();
-
-void store_constrained_memory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb);
-void store_register_memory(uint64_t reg, uint64_t value);
-
-void constrain_memory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
-
-void set_constraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
-
-void take_branch(uint64_t b, uint64_t how_many_more);
-void create_constraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t how_many_more);
-
-uint64_t fuzz_lo(uint64_t value);
-uint64_t fuzz_up(uint64_t value);
-
 uint64_t* bv_constant(uint64_t value);
 uint64_t* bv_variable(uint64_t bits);
 
@@ -1242,31 +1219,7 @@ uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t MAX_TRACE_LENGTH = 100000;
-
-uint64_t debug_symbolic = 0;
-
 // ------------------------ GLOBAL VARIABLES -----------------------
-
-// trace
-
-uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
-
-uint64_t* types = (uint64_t*) 0; // memory range or integer interval
-
-uint64_t* los = (uint64_t*) 0; // trace of lower bounds on values
-uint64_t* ups = (uint64_t*) 0; // trace of upper bounds on values
-
-uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
-
-// read history
-
-uint64_t rc = 0; // read counter
-
-uint64_t* read_values = (uint64_t*) 0;
-
-uint64_t* read_los = (uint64_t*) 0;
-uint64_t* read_ups = (uint64_t*) 0;
 
 // symbolic contexts
 
@@ -1284,52 +1237,10 @@ uint64_t* symbolic_memory = (uint64_t*) 0;
 
 uint64_t* reg_sym = (uint64_t*) 0; // constraint as string in smt-lib format
 
-uint64_t* reg_typ = (uint64_t*) 0; // memory range or integer interval
-uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
-uint64_t* reg_ups = (uint64_t*) 0; // upper bound on register value
-
-// register constraints on memory
-
-uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
-uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
-uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
-uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
-uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
-
-// trace counter of most recent constraint
-
-uint64_t mrcc = 0;
-
-// fuzzing
-
-uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
-
 // ------------------------- INITIALIZATION ------------------------
 
 void init_symbolic_engine() {
-  pcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  tcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  types  = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  vaddrs = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-
-  read_values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  read_los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  read_ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-
   reg_sym = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-
-  reg_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_ups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-
-  reg_hasco = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_hasmn = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_colos = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_coups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 }
 
 // -----------------------------------------------------------------
@@ -6351,7 +6262,6 @@ void implement_brk(uint64_t* context) {
   // local variables
   uint64_t previous_program_break;
   uint64_t valid;
-  uint64_t size;
 
   if (disassemble) {
     print((uint64_t*) "(brk): ");
@@ -6377,28 +6287,6 @@ void implement_brk(uint64_t* context) {
       printf2((uint64_t*) "%s: setting program break to %p\n", selfie_name, (uint64_t*) program_break);
 
     set_program_break(context, program_break);
-
-    if (symbolic) {
-      size = program_break - previous_program_break;
-
-      // interval is memory range, not symbolic value
-      *(reg_typ + REG_A0) = 1;
-
-      // remember start and size of memory block for checking memory safety
-      *(reg_los + REG_A0) = previous_program_break;
-      *(reg_ups + REG_A0) = size;
-
-      /* if (mrcc > 0) {
-        if (is_trace_space_available())
-          // since there has been branching record brk using vaddr == 0
-          store_symbolic_memory(get_pt(context), 0, previous_program_break, 1, previous_program_break, size, tc);
-        else {
-          throw_exception(EXCEPTION_MAXTRACE, 0);
-
-          return;
-        }
-      } */
-    }
   } else {
     // error returns current program break
     program_break = previous_program_break;
@@ -6417,13 +6305,6 @@ void implement_brk(uint64_t* context) {
       print((uint64_t*) " -> ");
       print_register_hexadecimal(REG_A0);
       println();
-    }
-
-    if (symbolic) {
-      *(reg_typ + REG_A0) = 0;
-
-      *(reg_los + REG_A0) = 0;
-      *(reg_ups + REG_A0) = 0;
     }
   }
 
@@ -7469,240 +7350,6 @@ void create_symbolic_context(uint64_t location, uint64_t* condition) {
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
 
-uint64_t cardinality(uint64_t lo, uint64_t up) {
-  // there are 2^64 values if the result is 0
-  return up - lo + 1;
-}
-
-uint64_t combined_cardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
-  uint64_t c1;
-  uint64_t c2;
-
-  c1 = cardinality(lo1, up1);
-  c2 = cardinality(lo2, up2);
-
-  if (c1 + c2 <= c1)
-    // there are at least 2^64 values
-    return 0;
-  else if (c1 + c2 <= c2)
-    // there are at least 2^64 values
-    return 0;
-  else
-    return c1 + c2;
-}
-
-uint64_t is_safe_address(uint64_t vaddr, uint64_t reg) {
-  if (*(reg_typ + reg)) {
-    if (vaddr < *(reg_los + reg))
-      // memory access below start address of mallocated block
-      return 0;
-    else if (vaddr - *(reg_los + reg) >= *(reg_ups + reg))
-      // memory access above end address of mallocated block
-      return 0;
-    else
-      return 1;
-  } else if (*(reg_los + reg) == *(reg_ups + reg))
-    return 1;
-  else {
-    printf2((uint64_t*) "%s: detected unsupported symbolic access of memory interval at %x", selfie_name, (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
-}
-
-uint64_t is_trace_space_available() {
-  return tc + 1 < MAX_TRACE_LENGTH;
-}
-
-void ealloc() {
-  tc = tc + 1;
-}
-
-void efree() {
-  // assert: tc > 0
-  tc = tc - 1;
-}
-
-void store_constrained_memory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb) {
-  uint64_t mrvc;
-
-  if (vaddr >= get_program_break(current_context))
-    if (vaddr < *(registers + REG_SP))
-      // do not constrain free memory
-      return;
-
-  mrvc = load_virtual_memory(pt, vaddr);
-
-  if (mrvc < trb) {
-    // we do not support potentially aliased constrained memory
-    printf1((uint64_t*) "%s: detected potentially aliased constrained memory\n", selfie_name);
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
-
-  // always track constrained memory by using tc as most recent branch
-  // store_symbolic_memory(pt, vaddr, lo, 0, lo, up, tc);
-}
-
-void store_register_memory(uint64_t reg, uint64_t value) {
-  // always track register memory by using tc as most recent branch
-  // store_symbolic_memory(pt, reg, value, 0, value, value, tc);
-}
-
-void constrain_memory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
-  if (*(reg_hasco + reg)) {
-    if (*(reg_hasmn + reg))
-      store_constrained_memory(*(reg_vaddr + reg), *(reg_colos + reg) - lo, *(reg_coups + reg) - up, trb);
-    else
-      store_constrained_memory(*(reg_vaddr + reg), lo - *(reg_colos + reg), up - *(reg_coups + reg), trb);
-  }
-}
-
-void set_constraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
-  *(reg_hasco + reg) = hasco;
-  *(reg_vaddr + reg) = vaddr;
-  *(reg_hasmn + reg) = hasmn;
-  *(reg_colos + reg) = colos;
-  *(reg_coups + reg) = coups;
-}
-
-void take_branch(uint64_t b, uint64_t how_many_more) {
-  if (how_many_more > 0) {
-    // record that we need to set rd to true
-    store_register_memory(rd, b);
-
-    // record frame and stack pointer
-    store_register_memory(REG_FP, *(registers + REG_FP));
-    store_register_memory(REG_SP, *(registers + REG_SP));
-  } else {
-    *(registers + rd) = b;
-
-    *(reg_typ + rd) = 0;
-
-    *(reg_los + rd) = b;
-    *(reg_ups + rd) = b;
-
-    set_constraint(rd, 0, 0, 0, 0, 0);
-  }
-}
-
-void create_constraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t how_many_more) {
-  if (lo1 <= up1) {
-    // rs1 interval is not wrapped around
-    if (lo2 <= up2) {
-      // both rs1 and rs2 intervals are not wrapped around
-      if (up1 < lo2) {
-        // rs1 interval is strictly less than rs2 interval
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        take_branch(1, how_many_more);
-      } else if (up2 <= lo1) {
-        // rs2 interval is less than or equal to rs1 interval
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        take_branch(0, how_many_more);
-      } else if (lo2 == up2) {
-        // rs2 interval is a singleton
-
-        // construct constraint for false case
-        constrain_memory(rs1, lo2, up1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        // record that we need to set rd to false
-        store_register_memory(rd, 0);
-
-        // record frame and stack pointer
-        store_register_memory(REG_FP, *(registers + REG_FP));
-        store_register_memory(REG_SP, *(registers + REG_SP));
-
-        // construct constraint for true case
-        constrain_memory(rs1, lo1, lo2 - 1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        take_branch(1, how_many_more);
-      } else if (lo1 == up1) {
-        // rs1 interval is a singleton
-
-        // construct constraint for false case
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo2, lo1, trb);
-
-        // record that we need to set rd to false
-        store_register_memory(rd, 0);
-
-        // record frame and stack pointer
-        store_register_memory(REG_FP, *(registers + REG_FP));
-        store_register_memory(REG_SP, *(registers + REG_SP));
-
-        // construct constraint for true case
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo1 + 1, up2, trb);
-
-        take_branch(1, how_many_more);
-      } else {
-        // we cannot handle non-singleton interval intersections in comparison
-        printf1((uint64_t*) "%s: detected non-singleton interval intersection\n", selfie_name);
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
-    } else {
-      // rs1 interval is not wrapped around but rs2 is
-
-      // unwrap rs2 interval and use higher portion first
-      create_constraints(lo1, up1, lo2, UINT64_MAX, trb, 1);
-
-      // then use lower portion of rs2 interval
-      create_constraints(lo1, up1, 0, up2, trb, 0);
-    }
-  } else if (lo2 <= up2) {
-    // rs2 interval is not wrapped around but rs1 is
-
-    // unwrap rs1 interval and use higher portion first
-    create_constraints(lo1, UINT64_MAX, lo2, up2, trb, 1);
-
-    // then use lower portion of rs1 interval
-    create_constraints(0, up1, lo2, up2, trb, 0);
-  } else {
-    // both rs1 and rs2 intervals are wrapped around
-
-    // unwrap rs1 and rs2 intervals and use higher portions
-    create_constraints(lo1, UINT64_MAX, lo2, UINT64_MAX, trb, 3);
-
-    // use higher portion of rs1 interval and lower portion of rs2 interval
-    create_constraints(lo1, UINT64_MAX, 0, up2, trb, 2);
-
-    // use lower portions of rs1 and rs2 intervals
-    create_constraints(0, up1, 0, up2, trb, 1);
-
-    // use lower portion of rs1 interval and higher portion of rs2 interval
-    create_constraints(0, up1, lo2, UINT64_MAX, trb, 0);
-  }
-}
-
-uint64_t fuzz_lo(uint64_t value) {
-  if (fuzz >= CPUBITWIDTH)
-    return 0;
-  else if (value > (two_to_the_power_of(fuzz) - 1) / 2)
-    return value - (two_to_the_power_of(fuzz) - 1) / 2;
-  else
-    return 0;
-}
-
-uint64_t fuzz_up(uint64_t value) {
-  if (fuzz >= CPUBITWIDTH)
-    return UINT64_MAX;
-  else if (UINT64_MAX - value < two_to_the_power_of(fuzz) / 2)
-    return UINT64_MAX;
-  else if (value > (two_to_the_power_of(fuzz) - 1) / 2)
-    return value + two_to_the_power_of(fuzz) / 2;
-  else
-    return two_to_the_power_of(fuzz) - 1;
-}
-
 uint64_t* bv_constant(uint64_t value) {
   uint64_t* string;
 
@@ -8686,17 +8333,6 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
     map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
 
-  /* if (symbolic) {
-    if (is_trace_space_available())
-      // always track initialized memory by using tc as most recent branch
-      store_symbolic_memory(get_pt(context), vaddr, data, 0, data, data, tc);
-    else {
-      printf1((uint64_t*) "%s: ealloc out of memory\n", selfie_name);
-
-      exit(EXITCODE_OUTOFTRACEMEMORY);
-    }
-  } else */
-
   store_virtual_memory(get_pt(context), vaddr, data);
 }
 
@@ -8712,20 +8348,6 @@ void up_load_binary(uint64_t* context) {
   set_program_break(context, get_original_break(context));
 
   baddr = 0;
-
-  if (symbolic) {
-    // code is never constrained...
-    symbolic = 0;
-
-    while (baddr < code_length) {
-      map_and_store(context, entry_point + baddr, load_data(baddr));
-
-      baddr = baddr + REGISTERSIZE;
-    }
-
-    // ... but data is
-    symbolic = 1;
-  }
 
   while (baddr < binary_length) {
     map_and_store(context, entry_point + baddr, load_data(baddr));
@@ -8821,14 +8443,6 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // store stack pointer value in stack pointer register
   *(get_regs(context) + REG_SP) = SP;
-
-  // set bounds to register value for symbolic execution
-  if (symbolic) {
-    *(reg_typ + REG_SP) = 0;
-
-    *(reg_los + REG_SP) = SP;
-    *(reg_ups + REG_SP) = SP;
-  }
 }
 
 uint64_t handle_system_call(uint64_t* context) {
@@ -9201,9 +8815,9 @@ uint64_t selfie_run(uint64_t machine) {
   }
 
   if (machine == MONSTER) {
-    init_memory(round_up(MAX_TRACE_LENGTH * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
+    init_memory(1);
 
-    fuzz = atoi(peek_argument());
+    // fuzz = atoi(peek_argument());
   } else
     init_memory(atoi(peek_argument()));
 
@@ -9255,8 +8869,6 @@ uint64_t selfie_run(uint64_t machine) {
   record      = 0;
   disassemble = 0;
   debug       = 0;
-
-  fuzz = 0;
 
   return exit_code;
 }
