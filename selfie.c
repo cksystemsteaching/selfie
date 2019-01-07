@@ -7199,9 +7199,15 @@ void constrain_beq() {
 
   bc = smt_binary((uint64_t*) "bvcomp", op1, op2);
 
-  create_symbolic_context(pc + INSTRUCTIONSIZE, smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)));
+  if (path_condition) {
+    create_symbolic_context(pc + INSTRUCTIONSIZE, smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)));
 
-  path_condition = smt_binary((uint64_t*) "and", path_condition, bc);
+    path_condition = smt_binary((uint64_t*) "and", path_condition, bc);
+  } else {
+    create_symbolic_context(pc + INSTRUCTIONSIZE, smt_unary((uint64_t*) "not", bc));
+
+    path_condition = bc;
+  }
 
   pc = pc + imm;
 }
@@ -9174,11 +9180,14 @@ uint64_t monster(uint64_t* to_context) {
 
         print_integer(b);
 
-        if (pc == 0) {
-          println();
+        // if (pc == 0) {
+        println();
 
-          return EXITCODE_NOERROR;
-        }
+        print(path_condition);
+        println();
+
+        return EXITCODE_NOERROR;
+        // }
       }
 
       // TODO: scheduler should go here
