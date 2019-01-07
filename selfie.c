@@ -6257,10 +6257,10 @@ void implement_open(uint64_t* context) {
   mode      = *(get_regs(context) + REG_A2);
 
   if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
-    if (symbolic) {
-      // todo: check if opening vfilename has been attempted before, ignoring flags and mode
+    if (symbolic)
+      // TODO: check if opening vfilename has been attempted before
       fd = 0;
-    } else
+    else
       fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
