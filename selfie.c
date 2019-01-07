@@ -1154,6 +1154,10 @@ void init_replay_engine() {
 uint64_t* load_symbolic_memory(uint64_t vaddr);
 void      store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic);
 
+uint64_t is_symbolic_value(uint64_t* sword);
+
+void print_symbolic_memory(uint64_t* sword);
+
 // symbolic memory word struct:
 // +---+-----------+
 // | 0 | next word | pointer to next memory word
@@ -1203,12 +1207,9 @@ void set_symbolic_store(uint64_t* context, uint64_t* store)       { *(context + 
 
 void init_symbolic_engine();
 
-void print_symbolic_memory(uint64_t svc);
-
 uint64_t cardinality(uint64_t lo, uint64_t up);
 uint64_t combined_cardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
 
-uint64_t is_symbolic_value(uint64_t type, uint64_t lo, uint64_t up);
 uint64_t is_safe_address(uint64_t vaddr, uint64_t reg);
 
 uint64_t is_trace_space_available();
@@ -6201,50 +6202,59 @@ void emit_open() {
 }
 
 uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
-  // uint64_t mrvc;
   uint64_t i;
+  uint64_t* sword;
   uint64_t j;
 
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
     if (is_valid_virtual_address(vaddr)) {
-      if (is_virtual_address_mapped(table, vaddr)) {
-        /* if (symbolic) {
-          mrvc = load_symbolic_memory(table, vaddr);
+      if (symbolic) {
+        sword = load_symbolic_memory(vaddr);
 
-          *(s + i) = *(values + mrvc);
-
-          if (is_symbolic_value(*(types + mrvc), *(los + mrvc), *(ups + mrvc))) {
+        if (sword) {
+          if (is_symbolic_value(sword)) {
             printf1((uint64_t*) "%s: detected symbolic value ", selfie_name);
-            print_symbolic_memory(mrvc);
+            print_symbolic_memory(sword);
             print((uint64_t*) " in filename of open call\n");
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          }
-        } else */
-
+          } else
+            *(s + i) = get_word_concrete(sword);
+        } else
+          // assert: vaddr is mapped
+          *(s + i) = load_virtual_memory(table, vaddr);
+      } else if (is_virtual_address_mapped(table, vaddr))
         *(s + i) = load_virtual_memory(table, vaddr);
+      else {
+        if (debug_open)
+          printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vaddr);
 
-        j = 0;
+        return 0;
+      }
 
-        // check if string ends in the current machine word
-        while (j < SIZEOFUINT64) {
-          if (load_character(s + i, j) == 0)
-            return 1;
+      j = 0;
 
-          j = j + 1;
-        }
+      // check if string ends in the current machine word
+      while (j < SIZEOFUINT64) {
+        if (load_character(s + i, j) == 0)
+          return 1;
 
-        // advance to the next machine word in virtual memory
-        vaddr = vaddr + SIZEOFUINT64;
+        j = j + 1;
+      }
 
-        // advance to the next machine word in our memory
-        i = i + 1;
-      } else if (debug_open)
-        printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vaddr);
-    } else if (debug_open)
-      printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is invalid\n", selfie_name, (uint64_t*) vaddr);
+      // advance to the next machine word in virtual memory
+      vaddr = vaddr + SIZEOFUINT64;
+
+      // advance to the next machine word in our memory
+      i = i + 1;
+    } else {
+      if (debug_open)
+        printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is invalid\n", selfie_name, (uint64_t*) vaddr);
+
+      return 0;
+    }
   }
 
   return 0;
@@ -6275,7 +6285,11 @@ void implement_open(uint64_t* context) {
   mode      = *(get_regs(context) + REG_A2);
 
   if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
-    fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
+    if (symbolic) {
+      // todo: check if opening vfilename has been attempted before, ignoring flags and mode
+      fd = 0;
+    } else
+      fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
 
@@ -6286,13 +6300,6 @@ void implement_open(uint64_t* context) {
 
     if (debug_open)
       printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name, (uint64_t*) vfilename);
-  }
-
-  if (symbolic) {
-    *(reg_typ + REG_A0) = 0;
-
-    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
-    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
@@ -7425,31 +7432,20 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic
   symbolic_memory = sword;
 }
 
+uint64_t is_symbolic_value(uint64_t* sword) {
+  return get_word_symbolic(sword) != 0;
+}
+
+void print_symbolic_memory(uint64_t* sword) {
+  if (is_symbolic_value(sword))
+    print(get_word_symbolic(sword));
+
+  printf2((uint64_t*) "[%x]@%x\n", (uint64_t*) get_word_concrete(sword), (uint64_t*) get_word_address(sword));
+}
+
 // -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
-
-void print_symbolic_memory(uint64_t svc) {
-  printf3((uint64_t*) "@%d{@%d@%x", (uint64_t*) svc, (uint64_t*) *(tcs + svc), (uint64_t*) *(pcs + svc));
-  if (*(pcs + svc) >= entry_point)
-    print_code_line_number_for_instruction(*(pcs + svc) - entry_point);
-  if (*(vaddrs + svc) == 0) {
-    printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) *(values + svc), (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
-    return;
-  } else if (*(vaddrs + svc) < NUMBEROFREGISTERS)
-    printf2((uint64_t*) ";%s=%d", get_register_name(*(vaddrs + svc)), (uint64_t*) *(values + svc));
-  else
-    printf2((uint64_t*) ";%x=%d", (uint64_t*) *(vaddrs + svc), (uint64_t*) *(values + svc));
-  if (*(types + svc))
-    if (*(los + svc) == *(ups + svc))
-      printf1((uint64_t*) "(%d)}\n", (uint64_t*) *(los + svc));
-    else
-      printf2((uint64_t*) "(%d,%d)}\n", (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
-  else if (*(los + svc) == *(ups + svc))
-    printf1((uint64_t*) "[%d]}\n", (uint64_t*) *(los + svc));
-  else
-    printf2((uint64_t*) "[%d,%d]}\n", (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
-}
 
 uint64_t cardinality(uint64_t lo, uint64_t up) {
   // there are 2^64 values if the result is 0
@@ -7471,18 +7467,6 @@ uint64_t combined_cardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t
     return 0;
   else
     return c1 + c2;
-}
-
-uint64_t is_symbolic_value(uint64_t type, uint64_t lo, uint64_t up) {
-  if (type)
-    // memory range
-    return 0;
-  else if (lo == up)
-    // singleton interval
-    return 0;
-  else
-    // non-singleton interval
-    return 1;
 }
 
 uint64_t is_safe_address(uint64_t vaddr, uint64_t reg) {
