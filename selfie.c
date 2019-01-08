@@ -1185,7 +1185,7 @@ void set_word_version(uint64_t* word, uint64_t version) { *(word + 4) = version;
 // ----------------------- SYMBOLIC CONTEXTS -----------------------
 // -----------------------------------------------------------------
 
-void create_symbolic_context(uint64_t location, uint64_t* condition);
+void create_symbolic_context(uint64_t location, uint64_t* condition, uint64_t depth);
 
 // symbolic context struct:
 // +---+------------------+
@@ -1193,17 +1193,20 @@ void create_symbolic_context(uint64_t location, uint64_t* condition);
 // | 1 | program location | program location
 // | 2 | path condition   | pointer to path condition
 // | 3 | symbolic memory  | pointer to symbolic memory
+// | 4 | execution depth  | number of executed instructions
 // +---+------------------+
 
 uint64_t* get_next_symbolic_context(uint64_t* context) { return (uint64_t*) *context; }
 uint64_t  get_program_location(uint64_t* context)      { return             *(context + 1); }
 uint64_t* get_path_condition(uint64_t* context)        { return (uint64_t*) *(context + 2); }
-uint64_t* get_symbolic_store(uint64_t* context)        { return (uint64_t*) *(context + 3); }
+uint64_t* get_symbolic_memory(uint64_t* context)       { return (uint64_t*) *(context + 3); }
+uint64_t  get_execution_depth(uint64_t* context)       { return             *(context + 4); }
 
 void set_next_symbolic_context(uint64_t* context, uint64_t* next) { *context       = (uint64_t) next; }
-void set_program_location(uint64_t* context, uint64_t location)   { *(context + 1) = location; }
+void set_program_location(uint64_t* context, uint64_t location)   { *(context + 1) =            location; }
 void set_path_condition(uint64_t* context, uint64_t* path)        { *(context + 2) = (uint64_t) path; }
 void set_symbolic_memory(uint64_t* context, uint64_t* memory)     { *(context + 3) = (uint64_t) memory; }
+void set_execution_depth(uint64_t* context, uint64_t depth)       { *(context + 4) =            depth; }
 
 // -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
@@ -1221,16 +1224,11 @@ uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-// symbolic contexts
+uint64_t MAX_EXECUTION_DEPTH = 100;
 
 uint64_t* symbolic_contexts = (uint64_t*) 0;
 
-// path condition
-
-uint64_t* path_condition = (uint64_t*) 0;
-
-// symbolic memory
-
+uint64_t* path_condition  = (uint64_t*) 0;
 uint64_t* symbolic_memory = (uint64_t*) 0;
 
 // registers
@@ -1281,7 +1279,6 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
-uint64_t EXCEPTION_MAXTRACE           = 7;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1336,7 +1333,7 @@ uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores p
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_MAXTRACE + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1345,7 +1342,6 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
-  *(EXCEPTIONS + EXCEPTION_MAXTRACE)           = (uint64_t) "trace length exceeded";
 }
 
 void reset_interpreter() {
@@ -7029,11 +7025,15 @@ void constrain_beq() {
   bc = smt_binary((uint64_t*) "bvcomp", op1, op2);
 
   if (path_condition) {
-    create_symbolic_context(pc + INSTRUCTIONSIZE, smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)));
+    create_symbolic_context(pc + INSTRUCTIONSIZE,
+      smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)),
+      MAX_EXECUTION_DEPTH - timer + 1);
 
     path_condition = smt_binary((uint64_t*) "and", path_condition, bc);
   } else {
-    create_symbolic_context(pc + INSTRUCTIONSIZE, smt_unary((uint64_t*) "not", bc));
+    create_symbolic_context(pc + INSTRUCTIONSIZE,
+      smt_unary((uint64_t*) "not", bc),
+      MAX_EXECUTION_DEPTH - timer + 1);
 
     path_condition = bc;
   }
@@ -7333,15 +7333,16 @@ void print_symbolic_memory(uint64_t* sword) {
 // ----------------------- SYMBOLIC CONTEXTS -----------------------
 // -----------------------------------------------------------------
 
-void create_symbolic_context(uint64_t location, uint64_t* condition) {
+void create_symbolic_context(uint64_t location, uint64_t* condition, uint64_t depth) {
   uint64_t* sc;
 
-  sc = smalloc(3 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
+  sc = smalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
 
   set_next_symbolic_context(sc, symbolic_contexts);
   set_program_location(sc, location);
   set_path_condition(sc, condition);
   set_symbolic_memory(sc, symbolic_memory);
+  set_execution_depth(sc, depth);
 
   symbolic_contexts = sc;
 }
@@ -8473,13 +8474,7 @@ uint64_t handle_system_call(uint64_t* context) {
     return EXIT;
   }
 
-  if (get_exception(context) == EXCEPTION_MAXTRACE) {
-    // exiting during symbolic execution, no exit code necessary
-    set_exception(context, EXCEPTION_NOEXCEPTION);
-
-    return EXIT;
-  } else
-    return DONOTEXIT;
+  return DONOTEXIT;
 }
 
 uint64_t handle_page_fault(uint64_t* context) {
@@ -8520,7 +8515,10 @@ uint64_t handle_max_trace(uint64_t* context) {
 uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
-  return DONOTEXIT;
+  if (symbolic)
+    return EXIT;
+  else
+    return DONOTEXIT;
 }
 
 uint64_t handle_exception(uint64_t* context) {
@@ -8534,8 +8532,6 @@ uint64_t handle_exception(uint64_t* context) {
     return handle_page_fault(context);
   else if (exception == EXCEPTION_DIVISIONBYZERO)
     return handle_division_by_zero(context);
-  else if (exception == EXCEPTION_MAXTRACE)
-    return handle_max_trace(context);
   else if (exception == EXCEPTION_TIMER)
     return handle_timer(context);
   else {
@@ -8729,7 +8725,7 @@ uint64_t monster(uint64_t* to_context) {
 
   b = 0;
 
-  timeout = TIMESLICE;
+  timeout = MAX_EXECUTION_DEPTH;
 
   while (1) {
     from_context = mipster_switch(to_context, timeout);
@@ -8741,31 +8737,22 @@ uint64_t monster(uint64_t* to_context) {
       timeout = TIMEROFF;
     } else {
       if (handle_exception(from_context) == EXIT) {
-        // backtrack_trace(from_context);
+        if (symbolic_contexts) {
+          pc = get_program_location(symbolic_contexts);
 
-        if (b == 0)
-          printf1((uint64_t*) "%s: backtracking ", selfie_name);
-        else
-          unprint_integer(b);
+          path_condition  = get_path_condition(symbolic_contexts);
+          symbolic_memory = get_symbolic_memory(symbolic_contexts);
 
-        b = b + 1;
+          timeout = get_execution_depth(symbolic_contexts);
 
-        print_integer(b);
-
-        // if (pc == 0) {
-        println();
-
-        print(path_condition);
-        println();
-
-        return EXITCODE_NOERROR;
-        // }
-      }
+          symbolic_contexts = get_next_symbolic_context(symbolic_contexts);
+        } else
+          return EXITCODE_NOERROR;
+      } else
+        timeout = timer;
 
       // TODO: scheduler should go here
       to_context = from_context;
-
-      timeout = TIMESLICE;
     }
   }
 }
