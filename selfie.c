@@ -1154,7 +1154,7 @@ void init_replay_engine() {
 // -----------------------------------------------------------------
 
 uint64_t* load_symbolic_memory(uint64_t vaddr);
-void      store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic);
+void      store_symbolic_memory(uint64_t vaddr, uint64_t value, uint64_t* sym);
 
 uint64_t is_symbolic_value(uint64_t* sword);
 
@@ -1164,22 +1164,19 @@ void print_symbolic_memory(uint64_t* sword);
 // +---+-----------+
 // | 0 | next word | pointer to next memory word
 // | 1 | address   | address of memory word
-// | 2 | concrete  | concrete value of memory word
+// | 2 | value     | concrete value of memory word
 // | 3 | symbolic  | symbolic value of memory word
-// | 4 | version   | version of memory word
 // +---+-----------+
 
 uint64_t* get_next_word(uint64_t* word)     { return (uint64_t*) *word; }
 uint64_t  get_word_address(uint64_t* word)  { return             *(word + 1); }
-uint64_t  get_word_concrete(uint64_t* word) { return             *(word + 2); }
+uint64_t  get_word_value(uint64_t* word)    { return             *(word + 2); }
 uint64_t* get_word_symbolic(uint64_t* word) { return (uint64_t*) *(word + 3); }
-uint64_t  get_word_version(uint64_t* word)  { return             *(word + 4); }
 
 void set_next_word(uint64_t* word, uint64_t* next)      { *word       = (uint64_t) next; }
-void set_word_address(uint64_t* word, uint64_t address) { *(word + 1) = address; }
-void set_word_concrete(uint64_t* word, uint64_t value)  { *(word + 2) = value; }
-void set_word_symbolic(uint64_t* word, uint64_t* value) { *(word + 3) = (uint64_t) value; }
-void set_word_version(uint64_t* word, uint64_t version) { *(word + 4) = version; }
+void set_word_address(uint64_t* word, uint64_t address) { *(word + 1) =            address; }
+void set_word_value(uint64_t* word, uint64_t value)     { *(word + 2) =            value; }
+void set_word_symbolic(uint64_t* word, uint64_t* sym)   { *(word + 3) = (uint64_t) sym; }
 
 // -----------------------------------------------------------------
 // ----------------------- SYMBOLIC CONTEXTS -----------------------
@@ -1222,9 +1219,11 @@ uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t MAX_EXECUTION_DEPTH = 100;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t MAX_EXECUTION_DEPTH = 100;
+uint64_t version = 0;
 
 uint64_t* symbolic_contexts = (uint64_t*) 0;
 
@@ -1233,7 +1232,7 @@ uint64_t* symbolic_memory = (uint64_t*) 0;
 
 // registers
 
-uint64_t* reg_sym = (uint64_t*) 0; // constraint as string in smt-lib format
+uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in smt-lib format
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -6100,7 +6099,7 @@ uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           } else
-            *(s + i) = get_word_concrete(sword);
+            *(s + i) = get_word_value(sword);
         } else
           // assert: vaddr is mapped
           *(s + i) = load_virtual_memory(table, vaddr);
@@ -6816,7 +6815,7 @@ void constrain_ld() {
       sword = load_symbolic_memory(vaddr);
 
       if (sword) {
-        *(registers + rd) = get_word_concrete(sword);
+        *(registers + rd) = get_word_value(sword);
         *(reg_sym + rd)   = (uint64_t) get_word_symbolic(sword);
       } else {
         // assert: vaddr is mapped
@@ -7304,16 +7303,36 @@ uint64_t* load_symbolic_memory(uint64_t vaddr) {
   return (uint64_t*) 0;
 }
 
-void store_symbolic_memory(uint64_t vaddr, uint64_t concrete, uint64_t* symbolic) {
+void store_symbolic_memory(uint64_t vaddr, uint64_t value, uint64_t* sym) {
   uint64_t* sword;
+  uint64_t* svar;
 
-  sword = smalloc(2 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  sword = smalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
   set_next_word(sword, symbolic_memory);
   set_word_address(sword, vaddr);
-  set_word_concrete(sword, concrete);
-  set_word_symbolic(sword, symbolic);
-  set_word_version(sword, 0);
+  set_word_value(sword, value);
+
+  if (sym) {
+    svar = smalloc(1 + 20 + 1); // 64-bit numbers require up to 20 decimal digits
+
+    sprintf1(svar, (uint64_t*) "x%d", (uint64_t*) version);
+
+    version = version + 1;
+
+    set_word_symbolic(sword, svar);
+
+    printf1((uint64_t*) "(declare-fun %s () (_ BitVec 64))\n", svar);
+    printf2((uint64_t*) "(assert (= %s %s))", svar, sym);
+
+    if (code_line_number != (uint64_t*) 0) {
+      print((uint64_t*) " ; ");
+      print_code_line_number_for_instruction(pc - entry_point);
+    }
+
+    println();
+  } else
+    set_word_symbolic(sword, (uint64_t*) 0);
 
   symbolic_memory = sword;
 }
@@ -7326,7 +7345,7 @@ void print_symbolic_memory(uint64_t* sword) {
   if (is_symbolic_value(sword))
     print(get_word_symbolic(sword));
 
-  printf2((uint64_t*) "[%x]@%x\n", (uint64_t*) get_word_concrete(sword), (uint64_t*) get_word_address(sword));
+  printf2((uint64_t*) "[%x]@%x\n", (uint64_t*) get_word_value(sword), (uint64_t*) get_word_address(sword));
 }
 
 // -----------------------------------------------------------------
@@ -7354,7 +7373,7 @@ void create_symbolic_context(uint64_t location, uint64_t* condition, uint64_t de
 uint64_t* bv_constant(uint64_t value) {
   uint64_t* string;
 
-  string = smalloc(5 + 20 + 4 + 1); // 64-bit constants require up to 20 decimal digits
+  string = smalloc(5 + 20 + 4 + 1); // 64-bit numbers require up to 20 decimal digits
 
   sprintf1(string, (uint64_t*) "(_ bv%d 64)", (uint64_t*) value);
 
