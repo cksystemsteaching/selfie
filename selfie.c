@@ -1153,8 +1153,10 @@ void init_replay_engine() {
 // ------------------------ SYMBOLIC MEMORY ------------------------
 // -----------------------------------------------------------------
 
+uint64_t* allocate_variable(uint64_t bits);
+
 uint64_t* load_symbolic_memory(uint64_t vaddr);
-void      store_symbolic_memory(uint64_t vaddr, uint64_t value, uint64_t* sym);
+void      store_symbolic_memory(uint64_t vaddr, uint64_t val, uint64_t* var, uint64_t* sym);
 
 uint64_t is_symbolic_value(uint64_t* sword);
 
@@ -5883,7 +5885,7 @@ void implement_read(uint64_t* context) {
         bytes_to_read = size;
 
       if (symbolic) {
-        store_symbolic_memory(vbuffer, 0, bv_variable(bytes_to_read * 8));
+        store_symbolic_memory(vbuffer, 0, allocate_variable(bytes_to_read * 8), (uint64_t*) 0);
 
         actually_read = bytes_to_read;
       } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
@@ -6948,7 +6950,7 @@ void constrain_sd() {
 
   if (is_valid_virtual_address(vaddr)) {
     // semantics of sd
-    store_symbolic_memory(vaddr, *(registers + rs2), (uint64_t*) *(reg_sym + rs2));
+    store_symbolic_memory(vaddr, *(registers + rs2), (uint64_t*) 0, (uint64_t*) *(reg_sym + rs2));
 
     // keep track of instruction address for profiling stores
     a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -7288,6 +7290,27 @@ void replay_trace() {
 // ------------------------ SYMBOLIC MEMORY ------------------------
 // -----------------------------------------------------------------
 
+uint64_t* allocate_variable(uint64_t bits) {
+  uint64_t* svar;
+
+  svar = smalloc(1 + 20 + 1); // 64-bit numbers require up to 20 decimal digits
+
+  sprintf1(svar, (uint64_t*) "x%d", (uint64_t*) version);
+
+  version = version + 1;
+
+  printf2((uint64_t*) "(declare-fun %s () (_ BitVec %d))", svar, (uint64_t*) bits);
+
+  if (code_line_number != (uint64_t*) 0) {
+    print((uint64_t*) " ; ");
+    print_code_line_number_for_instruction(pc - entry_point);
+  }
+
+  println();
+
+  return svar;
+}
+
 uint64_t* load_symbolic_memory(uint64_t vaddr) {
   uint64_t* sword;
 
@@ -7303,27 +7326,21 @@ uint64_t* load_symbolic_memory(uint64_t vaddr) {
   return (uint64_t*) 0;
 }
 
-void store_symbolic_memory(uint64_t vaddr, uint64_t value, uint64_t* sym) {
+void store_symbolic_memory(uint64_t vaddr, uint64_t val, uint64_t* var, uint64_t* sym) {
   uint64_t* sword;
-  uint64_t* svar;
 
   sword = smalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
   set_next_word(sword, symbolic_memory);
   set_word_address(sword, vaddr);
-  set_word_value(sword, value);
+  set_word_value(sword, val);
 
-  if (sym) {
-    svar = smalloc(1 + 20 + 1); // 64-bit numbers require up to 20 decimal digits
+  if (var)
+    set_word_symbolic(sword, var);
+  else if (sym) {
+    set_word_symbolic(sword, allocate_variable(SIZEOFUINT64 * 8));
 
-    sprintf1(svar, (uint64_t*) "x%d", (uint64_t*) version);
-
-    version = version + 1;
-
-    set_word_symbolic(sword, svar);
-
-    printf1((uint64_t*) "(declare-fun %s () (_ BitVec 64))\n", svar);
-    printf2((uint64_t*) "(assert (= %s %s))", svar, sym);
+    printf2((uint64_t*) "(assert (= %s %s))", get_word_symbolic(sword), sym);
 
     if (code_line_number != (uint64_t*) 0) {
       print((uint64_t*) " ; ");
