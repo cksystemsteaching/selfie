@@ -1216,6 +1216,8 @@ void init_symbolic_engine();
 uint64_t* bv_constant(uint64_t value);
 uint64_t* bv_variable(uint64_t bits);
 
+uint64_t* smt_value(uint64_t val, uint64_t* sym);
+
 uint64_t* smt_unary(uint64_t* opt, uint64_t* op);
 uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
@@ -1240,6 +1242,8 @@ uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in
 
 void init_symbolic_engine() {
   reg_sym = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  path_condition = (uint64_t*) "true";
 }
 
 // -----------------------------------------------------------------
@@ -1511,7 +1515,6 @@ void     up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv);
 uint64_t handle_system_call(uint64_t* context);
 uint64_t handle_page_fault(uint64_t* context);
 uint64_t handle_division_by_zero(uint64_t* context);
-uint64_t handle_max_trace(uint64_t* context);
 uint64_t handle_timer(uint64_t* context);
 
 uint64_t handle_exception(uint64_t* context);
@@ -5811,8 +5814,13 @@ void implement_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH));
 
-  if (symbolic)
+  if (symbolic) {
+    printf2((uint64_t*) "(assert (and %s (not (= %s (_ bv0 64)))))",
+      path_condition,
+      smt_value(*(registers + REG_A0), (uint64_t*) *(reg_sym + REG_A0)));
+
     return;
+  }
 
   printf4((uint64_t*)
     "%s: %s exiting with exit code %d and %.2dMB mallocated memory\n",
@@ -7025,19 +7033,11 @@ void constrain_beq() {
 
   bc = smt_binary((uint64_t*) "bvcomp", op1, op2);
 
-  if (path_condition) {
-    create_symbolic_context(pc + INSTRUCTIONSIZE,
-      smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)),
-      MAX_EXECUTION_DEPTH - timer + 1);
+  create_symbolic_context(pc + INSTRUCTIONSIZE,
+    smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)),
+    MAX_EXECUTION_DEPTH - timer + 1);
 
-    path_condition = smt_binary((uint64_t*) "and", path_condition, bc);
-  } else {
-    create_symbolic_context(pc + INSTRUCTIONSIZE,
-      smt_unary((uint64_t*) "not", bc),
-      MAX_EXECUTION_DEPTH - timer + 1);
-
-    path_condition = bc;
-  }
+  path_condition = smt_binary((uint64_t*) "and", path_condition, bc);
 
   pc = pc + imm;
 }
@@ -7405,6 +7405,13 @@ uint64_t* bv_variable(uint64_t bits) {
   sprintf1(string, (uint64_t*) "(_ BitVec %d)", (uint64_t*) bits);
 
   return string;
+}
+
+uint64_t* smt_value(uint64_t val, uint64_t* sym) {
+  if (sym)
+    return sym;
+  else
+    return bv_constant(val);
 }
 
 uint64_t* smt_unary(uint64_t* opt, uint64_t* op) {
@@ -8540,20 +8547,14 @@ uint64_t handle_division_by_zero(uint64_t* context) {
   return EXIT;
 }
 
-uint64_t handle_max_trace(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  set_exit_code(context, EXITCODE_OUTOFTRACEMEMORY);
-
-  return EXIT;
-}
-
 uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
-  if (symbolic)
+  if (symbolic) {
+    printf1((uint64_t*) "(assert (not %s))\n", path_condition);
+
     return EXIT;
-  else
+  } else
     return DONOTEXIT;
 }
 
