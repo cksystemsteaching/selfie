@@ -5819,6 +5819,13 @@ void implement_exit(uint64_t* context) {
       path_condition,
       smt_value(*(registers + REG_A0), (uint64_t*) *(reg_sym + REG_A0)));
 
+    if (code_line_number != (uint64_t*) 0) {
+      print((uint64_t*) " ; ");
+      print_code_line_number_for_instruction(pc - entry_point);
+    }
+
+    println();
+
     return;
   }
 
@@ -8760,6 +8767,8 @@ uint64_t monster(uint64_t* to_context) {
 
   print((uint64_t*) "monster\n");
 
+  print((uint64_t*) "(set-option :produce-models true)\n(set-logic QF_BV)\n");
+
   b = 0;
 
   timeout = MAX_EXECUTION_DEPTH;
@@ -8783,8 +8792,11 @@ uint64_t monster(uint64_t* to_context) {
           timeout = get_execution_depth(symbolic_contexts);
 
           symbolic_contexts = get_next_symbolic_context(symbolic_contexts);
-        } else
+        } else {
+          print((uint64_t*) "(check-sat)\n(get-model)\n(exit)\n");
+
           return EXITCODE_NOERROR;
+        }
       } else
         timeout = timer;
 
