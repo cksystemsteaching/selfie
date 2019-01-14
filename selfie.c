@@ -5543,7 +5543,7 @@ uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
   // RISC-U ELF64 program header table:
   *(header + 8)  = 1                              // type of segment is LOAD
                  + left_shift(7, 32);             // segment attributes is RWX
-  *(header + 9)  = PAGESIZE;                      // segment offset in file (must be page-aligned)
+  *(header + 9)  = ELF_HEADER_LEN;                // segment offset in file (must be page-aligned)
   *(header + 10) = ELF_ENTRY_POINT;               // virtual address in memory
   *(header + 11) = 0;                             // physical address (reserved)
   *(header + 12) = binary_length;                 // size of segment in file
