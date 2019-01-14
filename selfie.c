@@ -871,7 +871,7 @@ void emit_string_data(uint64_t* entry);
 
 void emit_data_segment();
 
-uint64_t* create_elf_header(uint64_t binary_length);
+uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length);
 uint64_t  validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(uint64_t* name);
@@ -889,7 +889,7 @@ uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGT
 uint64_t MAX_CODE_LENGTH = 245760; // 240KB
 uint64_t MAX_DATA_LENGTH = 16384; // 16KB
 
-uint64_t ELF_HEADER_LEN = 120; // = 64 + 56 bytes (file + program header)
+uint64_t ELF_HEADER_LEN = 4096; // Enough space to fit the ELF header and then align to page size
 
 // according to RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
@@ -4874,7 +4874,7 @@ void selfie_compile() {
 
   emit_data_segment();
 
-  ELF_header = create_elf_header(binary_length);
+  ELF_header = create_elf_header(binary_length, code_length);
 
   entry_point = ELF_ENTRY_POINT;
 
@@ -5514,12 +5514,12 @@ void emit_data_segment() {
   allocated_memory = 0;
 }
 
-uint64_t* create_elf_header(uint64_t binary_length) {
+uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
   uint64_t* header;
 
   // store all numbers necessary to create a minimal and valid
   // ELF64 header including the program header
-  header = smalloc(ELF_HEADER_LEN);
+  header = touch(zalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 
   // RISC-U ELF64 file header:
   *(header + 0) = 127                               // magic number part 0 is 0x7F
@@ -5550,17 +5550,23 @@ uint64_t* create_elf_header(uint64_t binary_length) {
   *(header + 13) = binary_length;                 // size of segment in memory
   *(header + 14) = PAGESIZE;                      // alignment of segment
 
+  // This field is not really part of the ELF header, but rather internally
+  // used by Selfie to load its own generated ELF files
+  *(header + 15) = code_length;
+
   return header;
 }
 
 uint64_t validate_elf_header(uint64_t* header) {
   uint64_t  new_entry_point;
   uint64_t  new_binary_length;
+  uint64_t  new_code_length;
   uint64_t  position;
   uint64_t* valid_header;
 
   new_entry_point   = *(header + 10);
   new_binary_length = *(header + 12);
+  new_code_length   = *(header + 15);
 
   if (new_binary_length != *(header + 13))
     // segment size in file is not the same as segment size in memory
@@ -5570,7 +5576,7 @@ uint64_t validate_elf_header(uint64_t* header) {
     // binary does not fit into virtual address space
     return 0;
 
-  valid_header = create_elf_header(new_binary_length);
+  valid_header = create_elf_header(new_binary_length, new_code_length);
 
   position = 0;
 
@@ -5583,6 +5589,7 @@ uint64_t validate_elf_header(uint64_t* header) {
 
   entry_point   = new_entry_point;
   binary_length = new_binary_length;
+  code_length   = new_code_length;
 
   return 1;
 }
@@ -5610,7 +5617,6 @@ uint64_t open_write_only(uint64_t* name) {
 
 void selfie_output() {
   uint64_t fd;
-  uint64_t i;
 
   binary_name = get_argument();
 
@@ -5639,27 +5645,6 @@ void selfie_output() {
     exit(EXITCODE_IOERROR);
   }
 
-  // then write code length
-  *binary_buffer = code_length;
-
-  if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
-    printf2((uint64_t*) "%s: could not write code length of binary output file %s\n", selfie_name, binary_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
-  // pad the segment up to the page size
-  *binary_buffer = 0;
-  i = ELF_HEADER_LEN + SIZEOFUINT64;
-  while (i < PAGESIZE) {
-    if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
-      printf2((uint64_t*) "%s: could not write padding of binary output file %s\n", selfie_name, binary_name);
-
-      exit(EXITCODE_IOERROR);
-    }
-    i = i + SIZEOFUINT64;
-  }
-
   // assert: binary is mapped
 
   // then write binary
@@ -5671,7 +5656,7 @@ void selfie_output() {
 
   printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data written into %s\n",
     selfie_name,
-    (uint64_t*) (PAGESIZE + binary_length),
+    (uint64_t*) (ELF_HEADER_LEN + binary_length),
     (uint64_t*) (code_length / INSTRUCTIONSIZE),
     (uint64_t*) (binary_length - code_length),
     binary_name);
@@ -5711,7 +5696,6 @@ uint64_t* touch(uint64_t* memory, uint64_t length) {
 
 void selfie_load() {
   uint64_t fd;
-  uint64_t i;
   uint64_t number_of_read_bytes;
 
   binary_name = get_argument();
@@ -5745,35 +5729,21 @@ void selfie_load() {
 
   if (number_of_read_bytes == ELF_HEADER_LEN) {
     if (validate_elf_header(ELF_header)) {
-      // now read code length
-      number_of_read_bytes = read(fd, binary_buffer, SIZEOFUINT64);
+      if (binary_length <= MAX_BINARY_LENGTH) {
+        // now read binary including global variables and strings
+        number_of_read_bytes = sign_extend(read(fd, binary, binary_length), SYSCALL_BITWIDTH);
 
-      // ...and skip padding up to the first page
-      i = ELF_HEADER_LEN + SIZEOFUINT64;
-      while (i < PAGESIZE) {
-        number_of_read_bytes = number_of_read_bytes + read(fd, binary_buffer, SIZEOFUINT64);
-        i = i + SIZEOFUINT64;
-      }
+        if (signed_less_than(0, number_of_read_bytes)) {
+          // check if we are really at EOF
+          if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
+            printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
+              selfie_name,
+              (uint64_t*) ELF_HEADER_LEN,
+              (uint64_t*) (code_length / INSTRUCTIONSIZE),
+              (uint64_t*) (binary_length - code_length),
+              binary_name);
 
-      if (number_of_read_bytes == PAGESIZE - ELF_HEADER_LEN) {
-        code_length = *binary_buffer;
-
-        if (binary_length <= MAX_BINARY_LENGTH) {
-          // now read binary including global variables and strings
-          number_of_read_bytes = sign_extend(read(fd, binary, binary_length), SYSCALL_BITWIDTH);
-
-          if (signed_less_than(0, number_of_read_bytes)) {
-            // check if we are really at EOF
-            if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-              printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
-                selfie_name,
-                (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binary_length),
-                (uint64_t*) (code_length / INSTRUCTIONSIZE),
-                (uint64_t*) (binary_length - code_length),
-                binary_name);
-
-              return;
-            }
+            return;
           }
         }
       }
