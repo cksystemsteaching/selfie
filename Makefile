@@ -44,7 +44,7 @@ vm: selfie
 
 # Self-compile on two virtual machines on fully mapped virtual memory
 min: selfie
-	./selfie -c selfie.c -o selfie5.m -s selfie5.s -min 14 -l selfie5.m -y 3 -l selfie5.m -y 3 -c selfie.c -o selfie6.m -s selfie6.s
+	./selfie -c selfie.c -o selfie5.m -s selfie5.s -min 15 -l selfie5.m -y 3 -l selfie5.m -y 3 -c selfie.c -o selfie6.m -s selfie6.s
 	diff -q selfie5.m selfie6.m
 	diff -q selfie5.s selfie6.s
 	diff -q selfie3.m selfie5.m
