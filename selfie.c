@@ -1153,8 +1153,6 @@ void init_replay_engine() {
 // ------------------------ SYMBOLIC MEMORY ------------------------
 // -----------------------------------------------------------------
 
-uint64_t* allocate_variable(uint64_t bits);
-
 uint64_t* load_symbolic_memory(uint64_t vaddr);
 void      store_symbolic_memory(uint64_t vaddr, uint64_t val, uint64_t* var, uint64_t* sym);
 
@@ -1217,6 +1215,7 @@ uint64_t* bv_constant(uint64_t value);
 uint64_t* bv_variable(uint64_t bits);
 
 uint64_t* smt_value(uint64_t val, uint64_t* sym);
+uint64_t* smt_variable(uint64_t* prefix, uint64_t bits);
 
 uint64_t* smt_unary(uint64_t* opt, uint64_t* op);
 uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
@@ -5815,12 +5814,12 @@ void implement_exit(uint64_t* context) {
   set_exit_code(context, sign_shrink(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH));
 
   if (symbolic) {
-    printf2((uint64_t*) "(assert (and %s (not (= %s (_ bv0 64)))))",
+    printf2((uint64_t*) "(assert (and %s (not (= %s (_ bv0 64))))); exit",
       path_condition,
       smt_value(*(registers + REG_A0), (uint64_t*) *(reg_sym + REG_A0)));
 
     if (code_line_number != (uint64_t*) 0) {
-      print((uint64_t*) " ; ");
+      print((uint64_t*) "@");
       print_code_line_number_for_instruction(pc - entry_point);
     }
 
@@ -5900,7 +5899,7 @@ void implement_read(uint64_t* context) {
         bytes_to_read = size;
 
       if (symbolic) {
-        store_symbolic_memory(vbuffer, 0, allocate_variable(bytes_to_read * 8), (uint64_t*) 0);
+        store_symbolic_memory(vbuffer, 0, smt_variable((uint64_t*) "r", bytes_to_read * 8), (uint64_t*) 0);
 
         actually_read = bytes_to_read;
       } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
@@ -7023,7 +7022,8 @@ void do_beq() {
 void constrain_beq() {
   uint64_t* op1;
   uint64_t* op2;
-  uint64_t* bc;
+  uint64_t* bvar;
+  uint64_t* pvar;
 
   op1 = (uint64_t*) *(reg_sym + rs1);
   op2 = (uint64_t*) *(reg_sym + rs2);
@@ -7038,13 +7038,33 @@ void constrain_beq() {
   } else if (op2 == (uint64_t*) 0)
     op2 = bv_constant(*(registers + rs2));
 
-  bc = smt_binary((uint64_t*) "bvcomp", op1, op2);
+  bvar = smt_variable((uint64_t*) "b", 1);
+
+  printf2((uint64_t*) "(assert (= %s %s)); beq", bvar, smt_binary((uint64_t*) "bvcomp", op1, op2));
+
+  if (code_line_number != (uint64_t*) 0) {
+    print((uint64_t*) "@");
+    print_code_line_number_for_instruction(pc - entry_point);
+  }
+
+  println();
+
+  pvar = smt_variable((uint64_t*) "p", 1);
+
+  printf2((uint64_t*) "(assert (= %s %s)); pc", pvar, path_condition);
+
+  if (code_line_number != (uint64_t*) 0) {
+    print((uint64_t*) "@");
+    print_code_line_number_for_instruction(pc - entry_point);
+  }
+
+  println();
 
   create_symbolic_context(pc + INSTRUCTIONSIZE,
-    smt_binary((uint64_t*) "and", path_condition, smt_unary((uint64_t*) "not", bc)),
+    smt_binary((uint64_t*) "and", pvar, smt_unary((uint64_t*) "not", bvar)),
     MAX_EXECUTION_DEPTH - timer + 1);
 
-  path_condition = smt_binary((uint64_t*) "and", path_condition, bc);
+  path_condition = smt_binary((uint64_t*) "and", pvar, bvar);
 
   pc = pc + imm;
 }
@@ -7297,27 +7317,6 @@ void replay_trace() {
 // ------------------------ SYMBOLIC MEMORY ------------------------
 // -----------------------------------------------------------------
 
-uint64_t* allocate_variable(uint64_t bits) {
-  uint64_t* svar;
-
-  svar = smalloc(1 + 20 + 1); // 64-bit numbers require up to 20 decimal digits
-
-  sprintf1(svar, (uint64_t*) "x%d", (uint64_t*) version);
-
-  version = version + 1;
-
-  printf2((uint64_t*) "(declare-fun %s () (_ BitVec %d))", svar, (uint64_t*) bits);
-
-  if (code_line_number != (uint64_t*) 0) {
-    print((uint64_t*) " ; ");
-    print_code_line_number_for_instruction(pc - entry_point);
-  }
-
-  println();
-
-  return svar;
-}
-
 uint64_t* load_symbolic_memory(uint64_t vaddr) {
   uint64_t* sword;
 
@@ -7345,12 +7344,12 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t val, uint64_t* var, uint64_t
   if (var)
     set_word_symbolic(sword, var);
   else if (sym) {
-    set_word_symbolic(sword, allocate_variable(SIZEOFUINT64 * 8));
+    set_word_symbolic(sword, smt_variable((uint64_t*) "m", SIZEOFUINT64 * 8));
 
-    printf2((uint64_t*) "(assert (= %s %s))", get_word_symbolic(sword), sym);
+    printf2((uint64_t*) "(assert (= %s %s)); sd", get_word_symbolic(sword), sym);
 
     if (code_line_number != (uint64_t*) 0) {
-      print((uint64_t*) " ; ");
+      print((uint64_t*) "@");
       print_code_line_number_for_instruction(pc - entry_point);
     }
 
@@ -7419,6 +7418,30 @@ uint64_t* smt_value(uint64_t val, uint64_t* sym) {
     return sym;
   else
     return bv_constant(val);
+}
+
+uint64_t* smt_variable(uint64_t* prefix, uint64_t bits) {
+  uint64_t* svar;
+
+  svar = smalloc(string_length(prefix) + 20 + 1); // 64-bit numbers require up to 20 decimal digits
+
+  sprintf2(svar, (uint64_t*) "%s%d", prefix, (uint64_t*) version);
+
+  if (bits == 1)
+    printf1((uint64_t*) "(declare-fun %s () Bool)", svar);
+  else
+    printf2((uint64_t*) "(declare-fun %s () (_ BitVec %d))", svar, (uint64_t*) bits);
+
+  version = version + 1;
+
+  if (code_line_number != (uint64_t*) 0) {
+    print((uint64_t*) "; ");
+    print_code_line_number_for_instruction(pc - entry_point);
+  }
+
+  println();
+
+  return svar;
 }
 
 uint64_t* smt_unary(uint64_t* opt, uint64_t* op) {
