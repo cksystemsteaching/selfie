@@ -889,7 +889,8 @@ uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGT
 uint64_t MAX_CODE_LENGTH = 245760; // 240KB
 uint64_t MAX_DATA_LENGTH = 16384; // 16KB
 
-uint64_t ELF_HEADER_LEN = 4096; // Enough space to fit the ELF header and then align to page size
+uint64_t ELF_HEADER_LEN = 4096; // page-aligned ELF header with sufficient space to store 64 bytes
+                                // for file header, 56 bytes for program header, and 8 bytes for code length
 
 // according to RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
@@ -961,7 +962,9 @@ uint64_t SYSCALL_WRITE  = 64;
 uint64_t SYSCALL_OPENAT = 56;
 uint64_t SYSCALL_BRK    = 214;
 
-uint64_t DIRFD_AT_FDCWD = -100;
+uint64_t DIRFD_AT_FDCWD = -100; // Same as constant AT_FDCWD from header fcntl.h. This is passed as the first
+                                // parameter for the openat system call, in order to achieve equivalent
+                                // behavior to the deprecated (in Linux) open system call
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -5519,7 +5522,11 @@ uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
 
   // store all numbers necessary to create a minimal and valid
   // ELF64 header including the program header
-  header = touch(zalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+  header = zalloc(ELF_HEADER_LEN);
+  // on boot levels higher than zero, zalloc falls back to malloc,
+  // so we have to touch the memory to make sure it is mapped for write calls
+  // (this is strictly unnecessary at boot level zero)
+  touch(header, ELF_HEADER_LEN);
 
   // RISC-U ELF64 file header:
   *(header + 0) = 127                               // magic number part 0 is 0x7F
@@ -5551,7 +5558,7 @@ uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
   *(header + 14) = PAGESIZE;                      // alignment of segment
 
   // This field is not really part of the ELF header, but rather internally
-  // used by Selfie to load its own generated ELF files
+  // used by selfie to load its own generated ELF files
   *(header + 15) = code_length;
 
   return header;
@@ -6173,6 +6180,8 @@ void implement_open(uint64_t* context) {
 
   if (disassemble) {
     print((uint64_t*) "(open): ");
+    print_register_hexadecimal(REG_A0);
+    print((uint64_t*) ",");
     print_register_hexadecimal(REG_A1);
     print((uint64_t*) ",");
     print_register_hexadecimal(REG_A2);
@@ -6182,6 +6191,9 @@ void implement_open(uint64_t* context) {
     print_register_value(REG_A1);
   }
 
+  // We're really implementing the openat system call here, since the open system call was removed in Linux
+  // For this reason, we ignore the first parameter (REG_A0) here, which will always be DIRFD_AT_FDCWD
+  // for selfie-generated programs. This value achieves the same behavior as the removed open system call
   vfilename = *(get_regs(context) + REG_A1);
   flags     = *(get_regs(context) + REG_A2);
   mode      = *(get_regs(context) + REG_A3);
