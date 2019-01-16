@@ -871,6 +871,7 @@ void emit_string_data(uint64_t* entry);
 
 void emit_data_segment();
 
+uint64_t* allocate_elf_header();
 uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length);
 uint64_t  validate_elf_header(uint64_t* header);
 
@@ -5517,16 +5518,32 @@ void emit_data_segment() {
   allocated_memory = 0;
 }
 
+uint64_t* allocate_elf_header() {
+  uint64_t* header;
+
+  // allocate enough memory for the ELF header, and zero-fill it
+  // (this is needed to zero the padding if we're going to write the header,
+  //  but strictly unnecessary for reads)
+  header = zalloc(ELF_HEADER_LEN);
+
+  // on boot levels higher than zero, zalloc falls back to malloc,
+  // so we have to touch the memory to make sure it is mapped for read/write calls
+  // (this is strictly unnecessary at boot level zero, since zalloc will already
+  //  have touched the memory in order to zero-fill it)
+  touch(header, ELF_HEADER_LEN);
+
+  return header;
+}
+
 uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
   uint64_t* header;
 
+  // allocate the ELF header. this also makes sure it is zero-filled (for the padding)
+  // and mapped for the write call
+  header = allocate_elf_header();
+
   // store all numbers necessary to create a minimal and valid
   // ELF64 header including the program header
-  header = zalloc(ELF_HEADER_LEN);
-  // on boot levels higher than zero, zalloc falls back to malloc,
-  // so we have to touch the memory to make sure it is mapped for write calls
-  // (this is strictly unnecessary at boot level zero)
-  touch(header, ELF_HEADER_LEN);
 
   // RISC-U ELF64 file header:
   *(header + 0) = 127                               // magic number part 0 is 0x7F
@@ -5728,8 +5745,8 @@ void selfie_load() {
   code_line_number = (uint64_t*) 0;
   data_line_number = (uint64_t*) 0;
 
-  // make sure ELF_header is mapped for reading into it
-  ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+  // this call also makes sure ELF_header is mapped for reading into it
+  ELF_header = allocate_elf_header();
 
   // read ELF_header first
   number_of_read_bytes = read(fd, ELF_header, ELF_HEADER_LEN);
