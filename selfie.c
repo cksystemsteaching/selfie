@@ -1248,7 +1248,7 @@ void fetch();
 void decode_execute();
 void interrupt();
 
-uint64_t* run_until_exception();
+void run_until_exception();
 
 uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max);
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max);
@@ -7909,7 +7909,7 @@ void interrupt() {
   }
 }
 
-uint64_t* run_until_exception() {
+void run_until_exception() {
   trap = 0;
 
   while (trap == 0) {
@@ -7919,8 +7919,6 @@ uint64_t* run_until_exception() {
   }
 
   trap = 0;
-
-  return current_context;
 }
 
 uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
