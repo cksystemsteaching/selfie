@@ -1364,10 +1364,10 @@ void reset_interpreter() {
 
 uint64_t* new_context();
 
-void      init_context(uint64_t* parent, uint64_t* vctxt);
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
-
+void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
 void copy_context(uint64_t* original, uint64_t location, uint64_t* condition, uint64_t depth);
+
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
 
 void      free_context(uint64_t* context);
 uint64_t* delete_context(uint64_t* context, uint64_t* from);
@@ -8094,14 +8094,12 @@ uint64_t* new_context() {
   if (used_contexts != (uint64_t*) 0)
     set_prev_context(used_contexts, context);
 
+  used_contexts = context;
+
   return context;
 }
 
-void init_context(uint64_t* parent, uint64_t* vctxt) {
-  uint64_t* context;
-
-  context = new_context();
-
+void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_pc(context, 0);
 
   // allocate zeroed memory for general purpose registers
@@ -8134,22 +8132,6 @@ void init_context(uint64_t* parent, uint64_t* vctxt) {
     set_symbolic_memory(context, (uint64_t*) 0);
     set_related_context(context, (uint64_t*) 0);
   }
-}
-
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
-  uint64_t* context;
-
-  context = used_contexts;
-
-  while (context != (uint64_t*) 0) {
-    if (get_parent(context) == parent)
-      if (get_virtual_context(context) == vctxt)
-        return context;
-
-    context = get_next_context(context);
-  }
-
-  return (uint64_t*) 0;
 }
 
 void copy_context(uint64_t* original, uint64_t location, uint64_t* condition, uint64_t depth) {
@@ -8201,6 +8183,22 @@ void copy_context(uint64_t* original, uint64_t location, uint64_t* condition, ui
   symbolic_contexts = context;
 }
 
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
+  uint64_t* context;
+
+  context = used_contexts;
+
+  while (context != (uint64_t*) 0) {
+    if (get_parent(context) == parent)
+      if (get_virtual_context(context) == vctxt)
+        return context;
+
+    context = get_next_context(context);
+  }
+
+  return (uint64_t*) 0;
+}
+
 void free_context(uint64_t* context) {
   set_next_context(context, free_contexts);
 
@@ -8227,16 +8225,19 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from) {
 // -----------------------------------------------------------------
 
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
-  // TODO: check if context already exists
-  init_context(parent, vctxt);
+  uint64_t* context;
+
+  context = new_context();
+
+  init_context(context, parent, vctxt);
 
   if (current_context == (uint64_t*) 0)
-    current_context = used_contexts;
+    current_context = context;
 
   if (debug_create)
     printf3((uint64_t*) "%s: parent context %p created child context %p\n", selfie_name, parent, used_contexts);
 
-  return used_contexts;
+  return context;
 }
 
 uint64_t* cache_context(uint64_t* vctxt) {
