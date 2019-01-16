@@ -1362,8 +1362,12 @@ void reset_interpreter() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-uint64_t* init_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
+uint64_t* new_context();
+
+void      init_context(uint64_t* parent, uint64_t* vctxt);
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
+
+void copy_context(uint64_t* original, uint64_t location, uint64_t* condition, uint64_t depth);
 
 void      free_context(uint64_t* context);
 uint64_t* delete_context(uint64_t* context, uint64_t* from);
@@ -1474,13 +1478,10 @@ void set_related_context(uint64_t* context, uint64_t* related) { *(context + 20)
 void reset_microkernel();
 
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);
-
 uint64_t* cache_context(uint64_t* vctxt);
 
 void save_context(uint64_t* context);
-
 void map_page(uint64_t* context, uint64_t page, uint64_t frame);
-
 void restore_context(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -7071,7 +7072,8 @@ void constrain_beq() {
 
   println();
 
-  create_symbolic_context(pc + INSTRUCTIONSIZE,
+  copy_context(current_context,
+    pc + INSTRUCTIONSIZE,
     smt_binary((uint64_t*) "and", pvar, smt_unary((uint64_t*) "not", bvar)),
     MAX_EXECUTION_DEPTH - timer + 1);
 
@@ -7380,18 +7382,6 @@ void print_symbolic_memory(uint64_t* sword) {
     print(get_word_symbolic(sword));
 
   printf2((uint64_t*) "[%x]@%x\n", (uint64_t*) get_word_value(sword), (uint64_t*) get_word_address(sword));
-}
-
-// -----------------------------------------------------------------
-// ----------------------- SYMBOLIC CONTEXTS -----------------------
-// -----------------------------------------------------------------
-
-void copy_context(uint64_t* context, uint64_t location, uint64_t* condition, uint64_t depth) {
-  uint64_t* copy;
-
-  copy = allocate_symbolic_context();
-
-  symbolic_contexts = copy;
 }
 
 // -----------------------------------------------------------------
@@ -8084,7 +8074,7 @@ void selfie_disassemble(uint64_t verbose) {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-uint64_t* init_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
+uint64_t* new_context() {
   uint64_t* context;
 
   if (free_contexts == (uint64_t*) 0)
@@ -8098,11 +8088,19 @@ uint64_t* init_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
     free_contexts = get_next_context(free_contexts);
   }
 
-  set_next_context(context, in);
+  set_next_context(context, used_contexts);
   set_prev_context(context, (uint64_t*) 0);
 
-  if (in != (uint64_t*) 0)
-    set_prev_context(in, context);
+  if (used_contexts != (uint64_t*) 0)
+    set_prev_context(used_contexts, context);
+
+  return context;
+}
+
+void init_context(uint64_t* parent, uint64_t* vctxt) {
+  uint64_t* context;
+
+  context = new_context();
 
   set_pc(context, 0);
 
@@ -8136,14 +8134,12 @@ uint64_t* init_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
     set_symbolic_memory(context, (uint64_t*) 0);
     set_related_context(context, (uint64_t*) 0);
   }
-
-  return context;
 }
 
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
   uint64_t* context;
 
-  context = in;
+  context = used_contexts;
 
   while (context != (uint64_t*) 0) {
     if (get_parent(context) == parent)
@@ -8154,6 +8150,55 @@ uint64_t* find_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   }
 
   return (uint64_t*) 0;
+}
+
+void copy_context(uint64_t* original, uint64_t location, uint64_t* condition, uint64_t depth) {
+  uint64_t* context;
+  uint64_t r;
+
+  context = new_context();
+
+  set_pc(context, location);
+
+  set_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_regs(context) + r) = *(registers + r);
+
+    r = r + 1;
+  }
+
+  set_pt(context, pt);
+
+  set_lo_page(context, get_lo_page(original));
+  set_me_page(context, get_me_page(original));
+  set_hi_page(context, get_hi_page(original));
+  set_exception(context, get_exception(original));
+  set_faulting_page(context, get_faulting_page(original));
+  set_exit_code(context, get_exit_code(original));
+  set_parent(context, get_parent(original));
+  set_virtual_context(context, get_virtual_context(original));
+  set_name(context, get_name(original));
+
+  set_execution_depth(context, depth);
+  set_path_condition(context, condition);
+
+  set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_symbolic_regs(context) + r) = *(reg_sym + r);
+
+    r = r + 1;
+  }
+
+  set_symbolic_memory(context, symbolic_memory);
+  set_related_context(context, symbolic_contexts);
+
+  symbolic_contexts = context;
 }
 
 void free_context(uint64_t* context) {
@@ -8183,7 +8228,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from) {
 
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
   // TODO: check if context already exists
-  used_contexts = init_context(parent, vctxt, used_contexts);
+  init_context(parent, vctxt);
 
   if (current_context == (uint64_t*) 0)
     current_context = used_contexts;
@@ -8198,7 +8243,7 @@ uint64_t* cache_context(uint64_t* vctxt) {
   uint64_t* context;
 
   // find cached context on my boot level
-  context = find_context(current_context, vctxt, used_contexts);
+  context = find_context(current_context, vctxt);
 
   if (context == (uint64_t*) 0)
     // create cached context on my boot level
@@ -8823,14 +8868,14 @@ uint64_t monster(uint64_t* to_context) {
     } else {
       if (handle_exception(from_context) == EXIT) {
         if (symbolic_contexts) {
-          pc = get_program_location(symbolic_contexts);
+          // pc = get_program_location(symbolic_contexts);
 
           path_condition  = get_path_condition(symbolic_contexts);
           symbolic_memory = get_symbolic_memory(symbolic_contexts);
 
           timeout = get_execution_depth(symbolic_contexts);
 
-          symbolic_contexts = get_next_symbolic_context(symbolic_contexts);
+          symbolic_contexts = get_related_context(symbolic_contexts);
         } else {
           print((uint64_t*) "(check-sat)\n(get-model)\n(exit)\n");
 
