@@ -978,7 +978,7 @@ uint64_t SYSCALL_BRK   = 214;
 // -----------------------------------------------------------------
 
 void      emit_switch();
-void      do_switch(uint64_t* to_context, uint64_t timeout);
+uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout);
 void      implement_switch();
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout);
 
@@ -5802,10 +5802,10 @@ void selfie_load() {
 void emit_exit() {
   create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binary_length);
 
-  // load signed 32-bit integer argument for exit
+  // load signed 32-bit integer exit code
   emit_ld(REG_A0, REG_SP, 0);
 
-  // remove the argument from the stack
+  // remove the exit code from the stack
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   // load the correct syscall number and invoke syscall
@@ -5817,13 +5817,18 @@ void emit_exit() {
 }
 
 void implement_exit(uint64_t* context) {
+  // parameter;
+  uint64_t signed_int_exit_code;
+
   if (disassemble) {
     print((uint64_t*) "(exit): ");
     print_register_hexadecimal(REG_A0);
     print((uint64_t*) " |- ->\n");
   }
 
-  set_exit_code(context, sign_shrink(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH));
+  signed_int_exit_code = *(get_regs(context) + REG_A0);
+
+  set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
   if (symbolic) {
     printf2((uint64_t*) "(assert (and %s (not (= %s (_ bv0 64))))); exit",
@@ -6358,11 +6363,7 @@ void emit_switch() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-void do_switch(uint64_t* to_context, uint64_t timeout) {
-  uint64_t* from_context;
-
-  from_context = current_context;
-
+uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout) {
   restore_context(to_context);
 
   // restore machine state
@@ -6376,8 +6377,6 @@ void do_switch(uint64_t* to_context, uint64_t timeout) {
   else
     *(registers + REG_A1) = (uint64_t) from_context;
 
-  current_context = to_context;
-
   timer = timeout;
 
   if (debug_switch) {
@@ -6386,9 +6385,15 @@ void do_switch(uint64_t* to_context, uint64_t timeout) {
       printf1((uint64_t*) " to execute %d instructions", (uint64_t*) timer);
     println();
   }
+
+  return to_context;
 }
 
 void implement_switch() {
+  // parameters
+  uint64_t* to_context;
+  uint64_t timeout;
+
   if (disassemble) {
     print((uint64_t*) "(switch): ");
     print_register_hexadecimal(REG_A0);
@@ -6398,10 +6403,15 @@ void implement_switch() {
     print_register_value(REG_A1);
   }
 
+  to_context = (uint64_t*) *(registers + REG_A0);
+  timeout    =             *(registers + REG_A1);
+
   save_context(current_context);
 
   // cache context on my boot level before switching
-  do_switch(cache_context((uint64_t*) *(registers + REG_A0)), *(registers + REG_A1));
+  to_context = cache_context(to_context);
+
+  current_context = do_switch(current_context, to_context, timeout);
 
   if (disassemble) {
     print((uint64_t*) " -> ");
@@ -6411,7 +6421,7 @@ void implement_switch() {
 }
 
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
-  do_switch(to_context, timeout);
+  current_context = do_switch(current_context, to_context, timeout);
 
   run_until_exception();
 
@@ -8252,8 +8262,8 @@ void save_context(uint64_t* context) {
   uint64_t* parent_table;
   uint64_t* vctxt;
   uint64_t r;
-  uint64_t* registers;
-  uint64_t* vregisters;
+  uint64_t* pregs;
+  uint64_t* vregs;
 
   // save machine state
   set_pc(context, pc);
@@ -8267,12 +8277,11 @@ void save_context(uint64_t* context) {
 
     r = 0;
 
-    registers = get_regs(context);
-
-    vregisters = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
+    pregs = get_regs(context);
+    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      store_virtual_memory(parent_table, (uint64_t) (vregisters + r), *(registers + r));
+      store_virtual_memory(parent_table, (uint64_t) (vregs + r), *(pregs + r));
 
       r = r + 1;
     }
@@ -8313,8 +8322,8 @@ void restore_context(uint64_t* context) {
   uint64_t* parent_table;
   uint64_t* vctxt;
   uint64_t r;
-  uint64_t* registers;
-  uint64_t* vregisters;
+  uint64_t* pregs;
+  uint64_t* vregs;
   uint64_t* table;
   uint64_t page;
   uint64_t me;
@@ -8329,12 +8338,11 @@ void restore_context(uint64_t* context) {
 
     r = 0;
 
-    registers = get_regs(context);
-
-    vregisters = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
+    pregs = get_regs(context);
+    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      *(registers + r) = load_virtual_memory(parent_table, (uint64_t) (vregisters + r));
+      *(pregs + r) = load_virtual_memory(parent_table, (uint64_t) (vregs + r));
 
       r = r + 1;
     }
