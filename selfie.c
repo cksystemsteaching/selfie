@@ -490,6 +490,10 @@ uint64_t report_undefined_procedures();
 // |  7 | scope   | REG_GP, REG_FP
 // +----+---------+
 
+uint64_t* allocate_symbol_table_entry() {
+  return smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+}
+
 uint64_t* get_next_entry(uint64_t* entry)  { return (uint64_t*) *entry; }
 uint64_t* get_string(uint64_t* entry)      { return (uint64_t*) *(entry + 1); }
 uint64_t  get_line_number(uint64_t* entry) { return             *(entry + 2); }
@@ -1168,6 +1172,10 @@ void print_symbolic_memory(uint64_t* sword);
 // | 3 | symbolic  | symbolic value of memory word
 // +---+-----------+
 
+uint64_t* allocate_symbolic_memory_word() {
+  return smalloc(2 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+}
+
 uint64_t* get_next_word(uint64_t* word)     { return (uint64_t*) *word; }
 uint64_t  get_word_address(uint64_t* word)  { return             *(word + 1); }
 uint64_t  get_word_value(uint64_t* word)    { return             *(word + 2); }
@@ -1179,37 +1187,10 @@ void set_word_value(uint64_t* word, uint64_t value)     { *(word + 2) =         
 void set_word_symbolic(uint64_t* word, uint64_t* sym)   { *(word + 3) = (uint64_t) sym; }
 
 // -----------------------------------------------------------------
-// ----------------------- SYMBOLIC CONTEXTS -----------------------
-// -----------------------------------------------------------------
-
-void create_symbolic_context(uint64_t location, uint64_t* condition, uint64_t depth);
-
-// symbolic context struct:
-// +---+------------------+
-// | 0 | next context     | pointer to next symbolic context
-// | 1 | program location | program location
-// | 2 | path condition   | pointer to path condition
-// | 3 | symbolic memory  | pointer to symbolic memory
-// | 4 | execution depth  | number of executed instructions
-// +---+------------------+
-
-uint64_t* get_next_symbolic_context(uint64_t* context) { return (uint64_t*) *context; }
-uint64_t  get_program_location(uint64_t* context)      { return             *(context + 1); }
-uint64_t* get_path_condition(uint64_t* context)        { return (uint64_t*) *(context + 2); }
-uint64_t* get_symbolic_memory(uint64_t* context)       { return (uint64_t*) *(context + 3); }
-uint64_t  get_execution_depth(uint64_t* context)       { return             *(context + 4); }
-
-void set_next_symbolic_context(uint64_t* context, uint64_t* next) { *context       = (uint64_t) next; }
-void set_program_location(uint64_t* context, uint64_t location)   { *(context + 1) =            location; }
-void set_path_condition(uint64_t* context, uint64_t* path)        { *(context + 2) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory)     { *(context + 3) = (uint64_t) memory; }
-void set_execution_depth(uint64_t* context, uint64_t depth)       { *(context + 4) =            depth; }
-
-// -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
 
-void init_symbolic_engine();
+void reset_symbolic_engine();
 
 uint64_t* bv_constant(uint64_t value);
 uint64_t* bv_variable(uint64_t bits);
@@ -1239,10 +1220,13 @@ uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in
 
 // ------------------------- INITIALIZATION ------------------------
 
-void init_symbolic_engine() {
-  reg_sym = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+void reset_symbolic_engine() {
+  symbolic_contexts = (uint64_t*) 0;
 
-  path_condition = (uint64_t*) "true";
+  path_condition  = (uint64_t*) 0;
+  symbolic_memory = (uint64_t*) 0;
+
+  reg_sym = (uint64_t*) 0;
 }
 
 // -----------------------------------------------------------------
@@ -1378,8 +1362,7 @@ void reset_interpreter() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-uint64_t* allocate_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
-
+uint64_t* init_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
 
 void      free_context(uint64_t* context);
@@ -1390,7 +1373,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  0 | next context    | pointer to next context
 // |  1 | prev context    | pointer to previous context
 // |  2 | program counter | program counter
-// |  3 | regs            | pointer to general purpose registers
+// |  3 | registers       | pointer to general purpose registers
 // |  4 | page table      | pointer to page table
 // |  5 | lo page         | lowest low unmapped page
 // |  6 | me page         | highest low unmapped page
@@ -1404,6 +1387,22 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 14 | virtual context | virtual context address
 // | 15 | name            | binary name loaded into context
 // +----+-----------------+
+// symbolic extension:
+// +----+-----------------+
+// | 16 | execution depth | number of executed instructions
+// | 17 | path condition  | pointer to path condition
+// | 18 | symbolic regs   | pointer to symbolic registers
+// | 19 | symbolic memory | pointer to symbolic memory
+// | 20 | related context | pointer to list of contexts of related branches
+// +----+-----------------+
+
+uint64_t* allocate_context() {
+  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
+}
+
+uint64_t* allocate_symbolic_context() {
+  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
+}
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
 uint64_t prev_context(uint64_t* context)    { return (uint64_t) (context + 1); }
@@ -1439,22 +1438,34 @@ uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context 
 uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 14); }
 uint64_t* get_name(uint64_t* context)            { return (uint64_t*) *(context + 15); }
 
-void set_next_context(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
-void set_prev_context(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
-void set_pc(uint64_t* context, uint64_t pc)                  { *(context + 2)  = pc; }
-void set_regs(uint64_t* context, uint64_t* regs)             { *(context + 3)  = (uint64_t) regs; }
-void set_pt(uint64_t* context, uint64_t* pt)                 { *(context + 4)  = (uint64_t) pt; }
-void set_lo_page(uint64_t* context, uint64_t lo_page)        { *(context + 5)  = lo_page; }
-void set_me_page(uint64_t* context, uint64_t me_page)        { *(context + 6)  = me_page; }
-void set_hi_page(uint64_t* context, uint64_t hi_page)        { *(context + 7)  = hi_page; }
-void set_original_break(uint64_t* context, uint64_t brk)     { *(context + 8)  = brk; }
-void set_program_break(uint64_t* context, uint64_t brk)      { *(context + 9)  = brk; }
-void set_exception(uint64_t* context, uint64_t exception)    { *(context + 10) = exception; }
-void set_faulting_page(uint64_t* context, uint64_t page)     { *(context + 11) = page; }
-void set_exit_code(uint64_t* context, uint64_t code)         { *(context + 12) = code; }
-void set_parent(uint64_t* context, uint64_t* parent)         { *(context + 13) = (uint64_t) parent; }
-void set_virtual_context(uint64_t* context, uint64_t* vctxt) { *(context + 14) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, uint64_t* name)             { *(context + 15) = (uint64_t) name; }
+uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 16); }
+uint64_t* get_path_condition(uint64_t* context)  { return (uint64_t*) *(context + 17); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 18); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 19); }
+uint64_t* get_related_context(uint64_t* context) { return (uint64_t*) *(context + 20); }
+
+void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
+void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
+void set_pc(uint64_t* context, uint64_t pc)                   { *(context + 2)  = pc; }
+void set_regs(uint64_t* context, uint64_t* regs)              { *(context + 3)  = (uint64_t) regs; }
+void set_pt(uint64_t* context, uint64_t* pt)                  { *(context + 4)  = (uint64_t) pt; }
+void set_lo_page(uint64_t* context, uint64_t lo_page)         { *(context + 5)  = lo_page; }
+void set_me_page(uint64_t* context, uint64_t me_page)         { *(context + 6)  = me_page; }
+void set_hi_page(uint64_t* context, uint64_t hi_page)         { *(context + 7)  = hi_page; }
+void set_original_break(uint64_t* context, uint64_t brk)      { *(context + 8)  = brk; }
+void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 9)  = brk; }
+void set_exception(uint64_t* context, uint64_t exception)     { *(context + 10) = exception; }
+void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 11) = page; }
+void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 12) = code; }
+void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 13) = (uint64_t) parent; }
+void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 14) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, uint64_t* name)              { *(context + 15) = (uint64_t) name; }
+
+void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 16) =            depth; }
+void set_path_condition(uint64_t* context, uint64_t* path)     { *(context + 17) = (uint64_t) path; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 18) = (uint64_t) regs; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 19) = (uint64_t) memory; }
+void set_related_context(uint64_t* context, uint64_t* related) { *(context + 20) = (uint64_t) related; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -2914,7 +2925,7 @@ void create_symbol_table_entry(uint64_t which_table, uint64_t* string, uint64_t 
   uint64_t* new_entry;
   uint64_t* hashed_entry_address;
 
-  new_entry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  new_entry = allocate_symbol_table_entry();
 
   set_string(new_entry, string);
   set_line_number(new_entry, line);
@@ -7335,7 +7346,7 @@ uint64_t* load_symbolic_memory(uint64_t vaddr) {
 void store_symbolic_memory(uint64_t vaddr, uint64_t val, uint64_t* var, uint64_t* sym) {
   uint64_t* sword;
 
-  sword = smalloc(1 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  sword = allocate_symbolic_memory_word();
 
   set_next_word(sword, symbolic_memory);
   set_word_address(sword, vaddr);
@@ -7375,18 +7386,12 @@ void print_symbolic_memory(uint64_t* sword) {
 // ----------------------- SYMBOLIC CONTEXTS -----------------------
 // -----------------------------------------------------------------
 
-void create_symbolic_context(uint64_t location, uint64_t* condition, uint64_t depth) {
-  uint64_t* sc;
+void copy_context(uint64_t* context, uint64_t location, uint64_t* condition, uint64_t depth) {
+  uint64_t* copy;
 
-  sc = smalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+  copy = allocate_symbolic_context();
 
-  set_next_symbolic_context(sc, symbolic_contexts);
-  set_program_location(sc, location);
-  set_path_condition(sc, condition);
-  set_symbolic_memory(sc, symbolic_memory);
-  set_execution_depth(sc, depth);
-
-  symbolic_contexts = sc;
+  symbolic_contexts = copy;
 }
 
 // -----------------------------------------------------------------
@@ -8079,11 +8084,14 @@ void selfie_disassemble(uint64_t verbose) {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-uint64_t* allocate_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
+uint64_t* init_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   uint64_t* context;
 
   if (free_contexts == (uint64_t*) 0)
-    context = smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
+    if (symbolic)
+      context = allocate_symbolic_context();
+    else
+      context = allocate_context();
   else {
     context = free_contexts;
 
@@ -8120,6 +8128,14 @@ uint64_t* allocate_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   set_virtual_context(context, vctxt);
 
   set_name(context, (uint64_t*) 0);
+
+  if (symbolic) {
+    set_execution_depth(context, 0);
+    set_path_condition(context, (uint64_t*) "true");
+    set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+    set_symbolic_memory(context, (uint64_t*) 0);
+    set_related_context(context, (uint64_t*) 0);
+  }
 
   return context;
 }
@@ -8167,7 +8183,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from) {
 
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
   // TODO: check if context already exists
-  used_contexts = allocate_context(parent, vctxt, used_contexts);
+  used_contexts = init_context(parent, vctxt, used_contexts);
 
   if (current_context == (uint64_t*) 0)
     current_context = used_contexts;
@@ -8870,7 +8886,7 @@ uint64_t selfie_run(uint64_t machine) {
     debug    = 1;
     symbolic = 1;
 
-    init_symbolic_engine();
+    reset_symbolic_engine();
   }
 
   if (machine == MONSTER) {
