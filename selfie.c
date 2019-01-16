@@ -8231,9 +8231,6 @@ uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
 
   init_context(context, parent, vctxt);
 
-  if (current_context == (uint64_t*) 0)
-    current_context = context;
-
   if (debug_create)
     printf3((uint64_t*) "%s: parent context %p created child context %p\n", selfie_name, parent, used_contexts);
 
@@ -8947,7 +8944,7 @@ uint64_t selfie_run(uint64_t machine) {
   reset_interpreter();
   reset_microkernel();
 
-  create_context(MY_CONTEXT, 0);
+  current_context = create_context(MY_CONTEXT, 0);
 
   up_load_binary(current_context);
 
