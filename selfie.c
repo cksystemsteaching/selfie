@@ -6358,7 +6358,7 @@ void emit_switch() {
   emit_ecall();
 
   // save context from which we are switching here in return register
-  emit_addi(REG_A0, REG_A1, 0);
+  emit_addi(REG_A0, REG_A6, 0);
 
   emit_jalr(REG_ZR, REG_RA, 0);
 }
@@ -6371,11 +6371,12 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
   registers = get_regs(to_context);
   pt        = get_pt(to_context);
 
-  // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
+  // use REG_A6 instead of REG_A0 for returning from_context
+  // to avoid overwriting REG_A0 in to_context
   if (get_parent(from_context) != MY_CONTEXT)
-    *(registers + REG_A1) = (uint64_t) get_virtual_context(from_context);
+    *(registers + REG_A6) = (uint64_t) get_virtual_context(from_context);
   else
-    *(registers + REG_A1) = (uint64_t) from_context;
+    *(registers + REG_A6) = (uint64_t) from_context;
 
   timer = timeout;
 
@@ -6400,7 +6401,7 @@ void implement_switch() {
     print((uint64_t*) ",");
     print_register_value(REG_A1);
     print((uint64_t*) " |- ");
-    print_register_value(REG_A1);
+    print_register_value(REG_A6);
   }
 
   to_context = (uint64_t*) *(registers + REG_A0);
@@ -6415,7 +6416,7 @@ void implement_switch() {
 
   if (disassemble) {
     print((uint64_t*) " -> ");
-    print_register_hexadecimal(REG_A1);
+    print_register_hexadecimal(REG_A6);
     println();
   }
 }
