@@ -1404,8 +1404,8 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // +----+-----------------+
 // | 16 | execution depth | number of executed instructions
 // | 17 | path condition  | pointer to path condition
-// | 18 | symbolic regs   | pointer to symbolic registers
-// | 19 | symbolic memory | pointer to symbolic memory
+// | 18 | symbolic memory | pointer to symbolic memory
+// | 19 | symbolic regs   | pointer to symbolic registers
 // | 20 | related context | pointer to list of contexts of related branches
 // +----+-----------------+
 
@@ -1453,8 +1453,8 @@ uint64_t* get_name(uint64_t* context)            { return (uint64_t*) *(context 
 
 uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 16); }
 uint64_t* get_path_condition(uint64_t* context)  { return (uint64_t*) *(context + 17); }
-uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 18); }
-uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 19); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 18); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 19); }
 uint64_t* get_related_context(uint64_t* context) { return (uint64_t*) *(context + 20); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
@@ -1476,8 +1476,8 @@ void set_name(uint64_t* context, uint64_t* name)              { *(context + 15) 
 
 void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 16) =            depth; }
 void set_path_condition(uint64_t* context, uint64_t* path)     { *(context + 17) = (uint64_t) path; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 18) = (uint64_t) regs; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 19) = (uint64_t) memory; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 18) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 19) = (uint64_t) regs; }
 void set_related_context(uint64_t* context, uint64_t* related) { *(context + 20) = (uint64_t) related; }
 
 // -----------------------------------------------------------------
@@ -6388,6 +6388,12 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
   registers = get_regs(to_context);
   pt        = get_pt(to_context);
 
+  if (symbolic) {
+    path_condition  = get_path_condition(to_context);
+    symbolic_memory = get_symbolic_memory(to_context);
+    reg_sym         = get_symbolic_regs(to_context);
+  }
+
   // use REG_A6 instead of REG_A0 for returning from_context
   // to avoid overwriting REG_A0 in to_context
   if (get_parent(from_context) != MY_CONTEXT)
@@ -8154,8 +8160,8 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   if (symbolic) {
     set_execution_depth(context, 0);
     set_path_condition(context, (uint64_t*) "true");
-    set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
     set_symbolic_memory(context, (uint64_t*) 0);
+    set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
     set_related_context(context, (uint64_t*) 0);
   }
 }
@@ -8168,12 +8174,12 @@ void copy_context(uint64_t* original, uint64_t location, uint64_t* condition, ui
 
   set_pc(context, location);
 
-  set_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
   r = 0;
 
   while (r < NUMBEROFREGISTERS) {
-    *(get_regs(context) + r) = *(registers + r);
+    *(get_regs(context) + r) = *(get_regs(original) + r);
 
     r = r + 1;
   }
@@ -8192,18 +8198,18 @@ void copy_context(uint64_t* original, uint64_t location, uint64_t* condition, ui
 
   set_execution_depth(context, depth);
   set_path_condition(context, condition);
+  set_symbolic_memory(context, symbolic_memory);
 
-  set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
   r = 0;
 
   while (r < NUMBEROFREGISTERS) {
-    *(get_symbolic_regs(context) + r) = *(reg_sym + r);
+    *(get_symbolic_regs(context) + r) = *(get_symbolic_regs(original) + r);
 
     r = r + 1;
   }
 
-  set_symbolic_memory(context, symbolic_memory);
   set_related_context(context, symbolic_contexts);
 
   symbolic_contexts = context;
@@ -8285,6 +8291,11 @@ void save_context(uint64_t* context) {
 
   // save machine state
   set_pc(context, pc);
+
+  if (symbolic) {
+    set_path_condition(context, path_condition);
+    set_symbolic_memory(context, symbolic_memory);
+  }
 
   if (get_parent(context) != MY_CONTEXT) {
     parent_table = get_pt(get_parent(context));
@@ -8890,12 +8901,9 @@ uint64_t monster(uint64_t* to_context) {
     } else {
       if (handle_exception(from_context) == EXIT) {
         if (symbolic_contexts) {
-          // pc = get_program_location(symbolic_contexts);
+          to_context = symbolic_contexts;
 
-          path_condition  = get_path_condition(symbolic_contexts);
-          symbolic_memory = get_symbolic_memory(symbolic_contexts);
-
-          timeout = get_execution_depth(symbolic_contexts);
+          timeout = get_execution_depth(to_context);
 
           symbolic_contexts = get_related_context(symbolic_contexts);
         } else {
@@ -8903,11 +8911,11 @@ uint64_t monster(uint64_t* to_context) {
 
           return EXITCODE_NOERROR;
         }
-      } else
+      } else {
         timeout = timer;
 
-      // TODO: scheduler should go here
-      to_context = from_context;
+        to_context = from_context;
+      }
     }
   }
 }
