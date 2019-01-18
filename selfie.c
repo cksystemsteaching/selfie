@@ -5924,6 +5924,9 @@ void implement_read(uint64_t* context) {
       if (symbolic) {
         store_symbolic_memory(vbuffer, 0, smt_variable((uint64_t*) "r", bytes_to_read * 8), (uint64_t*) 0);
 
+        // save symbolic memory here since context switching has already happened
+        set_symbolic_memory(context, symbolic_memory);
+
         actually_read = bytes_to_read;
       } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         buffer = tlb(get_pt(context), vbuffer);
