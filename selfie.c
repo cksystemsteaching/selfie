@@ -890,8 +890,9 @@ uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGT
 uint64_t MAX_CODE_LENGTH = 245760; // 240KB
 uint64_t MAX_DATA_LENGTH = 16384; // 16KB
 
-uint64_t ELF_HEADER_LEN = 4096; // page-aligned ELF header with sufficient space to store 64 bytes
-                                // for file header, 56 bytes for program header, and 8 bytes for code length
+// page-aligned ELF header for storing file header (64 bytes),
+// program header (56 bytes), and code length (8 bytes)
+uint64_t ELF_HEADER_LEN = 4096;
 
 // according to RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
@@ -945,7 +946,7 @@ void implement_write(uint64_t* context);
 
 void     emit_open();
 uint64_t down_load_string(uint64_t* table, uint64_t vstring, uint64_t* s);
-void     implement_open(uint64_t* context);
+void     implement_openat(uint64_t* context);
 
 void emit_malloc();
 void implement_brk(uint64_t* context);
@@ -963,9 +964,11 @@ uint64_t SYSCALL_WRITE  = 64;
 uint64_t SYSCALL_OPENAT = 56;
 uint64_t SYSCALL_BRK    = 214;
 
-uint64_t DIRFD_AT_FDCWD = -100; // Same as constant AT_FDCWD from header fcntl.h. This is passed as the first
-                                // parameter for the openat system call, in order to achieve equivalent
-                                // behavior to the deprecated (in Linux) open system call
+/* DIRFD_AT_FDCWD corresponds to AT_FDCWD in fcntl.h and
+   is passed as first argument of the openat system call
+   emulating the (in Linux) deprecated open system call. */
+
+uint64_t DIRFD_AT_FDCWD = -100;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -5519,31 +5522,17 @@ void emit_data_segment() {
 }
 
 uint64_t* allocate_elf_header() {
-  uint64_t* header;
-
-  // allocate enough memory for the ELF header, and zero-fill it
-  // (this is needed to zero the padding if we're going to write the header,
-  //  but strictly unnecessary for reads)
-  header = zalloc(ELF_HEADER_LEN);
-
-  // on boot levels higher than zero, zalloc falls back to malloc,
-  // so we have to touch the memory to make sure it is mapped for read/write calls
-  // (this is strictly unnecessary at boot level zero, since zalloc will already
-  //  have touched the memory in order to zero-fill it)
-  touch(header, ELF_HEADER_LEN);
-
-  return header;
+  // allocate and map (on all boot levels) zeroed memory for ELF header preparing
+  // read calls (memory must be mapped) and write calls (memory must be mapped and zeroed)
+  return touch(zalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
 }
 
 uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
   uint64_t* header;
 
-  // allocate the ELF header. this also makes sure it is zero-filled (for the padding)
-  // and mapped for the write call
   header = allocate_elf_header();
 
-  // store all numbers necessary to create a minimal and valid
-  // ELF64 header including the program header
+  // store all data necessary for creating a minimal and valid ELF64 file and program header
 
   // RISC-U ELF64 file header:
   *(header + 0) = 127                               // magic number part 0 is 0x7F
@@ -5574,7 +5563,7 @@ uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
   *(header + 13) = binary_length;                 // size of segment in memory
   *(header + 14) = PAGESIZE;                      // alignment of segment
 
-  // This field is not really part of the ELF header, but rather internally
+  // This field is not part of the standard ELF header but
   // used by selfie to load its own generated ELF files
   *(header + 15) = code_length;
 
@@ -5745,7 +5734,7 @@ void selfie_load() {
   code_line_number = (uint64_t*) 0;
   data_line_number = (uint64_t*) 0;
 
-  // this call also makes sure ELF_header is mapped for reading into it
+  // this call makes sure ELF_header is mapped for reading into it
   ELF_header = allocate_elf_header();
 
   // read ELF_header first
@@ -6128,7 +6117,8 @@ void emit_open() {
   emit_ld(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_addi(REG_A0, REG_ZR, DIRFD_AT_FDCWD); // dirfd
+  // DIRFD_AT_FDCWD makes sure that openat behaves like open
+  emit_addi(REG_A0, REG_ZR, DIRFD_AT_FDCWD);
 
   emit_addi(REG_A7, REG_ZR, SYSCALL_OPENAT);
 
@@ -6186,7 +6176,7 @@ uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
   return 0;
 }
 
-void implement_open(uint64_t* context) {
+void implement_openat(uint64_t* context) {
   // parameters
   uint64_t vfilename;
   uint64_t flags;
@@ -6196,7 +6186,7 @@ void implement_open(uint64_t* context) {
   uint64_t fd;
 
   if (disassemble) {
-    print((uint64_t*) "(open): ");
+    print((uint64_t*) "(openat): ");
     print_register_hexadecimal(REG_A0);
     print((uint64_t*) ",");
     print_register_hexadecimal(REG_A1);
@@ -6208,9 +6198,12 @@ void implement_open(uint64_t* context) {
     print_register_value(REG_A1);
   }
 
-  // We're really implementing the openat system call here, since the open system call was removed in Linux
-  // For this reason, we ignore the first parameter (REG_A0) here, which will always be DIRFD_AT_FDCWD
-  // for selfie-generated programs. This value achieves the same behavior as the removed open system call
+  /* We actually emulate the part of the openat system call here that is
+     implemented by the open system call which is deprecated in Linux.
+     In particular, the first parameter (REG_A0) is ignored here while
+     set to DIRFD_AT_FDCWD in the wrapper for the open library call to
+     make sure openat behaves like open when bootstrapping selfie. */
+
   vfilename = *(get_regs(context) + REG_A1);
   flags     = *(get_regs(context) + REG_A2);
   mode      = *(get_regs(context) + REG_A3);
@@ -9272,7 +9265,7 @@ uint64_t handle_system_call(uint64_t* context) {
   else if (a7 == SYSCALL_WRITE)
     implement_write(context);
   else if (a7 == SYSCALL_OPENAT)
-    implement_open(context);
+    implement_openat(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
