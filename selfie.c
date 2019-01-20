@@ -1092,6 +1092,7 @@ void do_divu();
 void do_remu();
 
 void do_sltu();
+void zero_extend_sltu();
 
 void     print_ld();
 void     print_ld_before();
@@ -6786,6 +6787,12 @@ void do_sltu() {
   ic_sltu = ic_sltu + 1;
 }
 
+void zero_extend_sltu() {
+  if (rd != REG_ZR)
+    if (*(reg_sym + rd))
+      *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(1), (uint64_t*) *(reg_sym + rd));
+}
+
 void print_ld() {
   print_code_context_for_instruction(pc);
   printf3((uint64_t*) "ld %s,%d(%s)", get_register_name(rd), (uint64_t*) imm, get_register_name(rs1));
@@ -7815,6 +7822,7 @@ void decode_execute() {
             println();
           } else if (symbolic) {
             constrain_add_sub_mul_divu_remu_sltu((uint64_t*) "bvult");
+            zero_extend_sltu();
             do_sltu();
           }
         } else
