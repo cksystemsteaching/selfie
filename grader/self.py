@@ -146,7 +146,7 @@ def test_instruction_encoding(file, instruction, instruction_mask, msg):
       if any(map(lambda x: x & instruction_mask == instruction, read_instructions)):
         # at least one instruction has the right encoding
         exit_code = 0
-      
+
       os.remove('.tmp.bin')
 
       warning = None
@@ -159,7 +159,7 @@ def test_instruction_encoding(file, instruction, instruction_mask, msg):
 
 def test_assembler_instruction_format(file, instruction, msg):
   exit_code, output = execute(f'./selfie -c grader/{file} -s .tmp.s')
-  
+
   if exit_code == 0:
     exit_code = 1
 
@@ -416,13 +416,13 @@ def test_treiber_stack():
     'LR RISC-V instruction has right assembly instructin format')
   test_assembler_instruction_format('../manuscript/code/hello-world.c', 'sc.d',
     'SC RISC-V instruction has right assembly instructin format')
-  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-push.c -m 128', 
+  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-push.c -m 128',
     'all pushed elements are actually in the treiber-stack',
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
-  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-pop.c -m 128', 
-    'all treiber-stack elements can be poped ',
+  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-pop.c -m 128',
+    'all treiber-stack elements can be popped ',
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
-  
+
 
 
 def start_stage(stage):
