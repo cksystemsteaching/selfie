@@ -193,7 +193,7 @@ def test_execution(command, msg, success_criteria=True):
     record_result(returncode == 0, msg, output, warning, should_succeed, command)
 
   elif type(success_criteria) is int:
-    record_result(returncode == success_criteria, msg, output, 
+    record_result(returncode == success_criteria, msg, output,
       f'Execution terminated with wrong exit code {returncode} instead of {success_criteria}', True, command)
 
   elif type(success_criteria) is str:
@@ -222,7 +222,7 @@ class Memoize:
 def isInterleaved(strings, interleaved):
   if all(len(string) == 0 for string in strings) and len(interleaved) == 0:
     return True
-  
+
   if len(interleaved) == 0:
     return False
 
@@ -277,7 +277,7 @@ def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg
 
 
 def test_hex_literal():
-  test_compilable('hex-integer-literal.c', 
+  test_compilable('hex-integer-literal.c',
     'hex integer literal with all characters compiled')
   test_mipster_execution('hex-integer-literal.c', 1,
     'hex integer literal with all characters has the right value')
@@ -289,7 +289,7 @@ def test_hex_literal():
     'minimum hex integer literal compiled')
   test_mipster_execution('hex-integer-literal-max.c', 1,
     'minimum hex integer literal has the right value')
-  test_compilable('hex-integer-literal-invalid.c', 
+  test_compilable('hex-integer-literal-invalid.c',
     'out of bounds hex integer literal has not compiled', should_succeed=False)
 
 
@@ -374,16 +374,16 @@ def test_fork_and_wait():
 
 def test_lock():
   test_execution('./selfie -c grader/hello-world-without-lock.c -m 128',
-    '16 processes are running concurrently on MIPSTER', 
+    '16 processes are running concurrently on MIPSTER',
     success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 8))
   test_execution('./selfie -c selfie.c -m 128 -c grader/hello-world-without-lock.c -y 10',
     '16 processes are running concurrently on HYPSTER',
     success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 8))
-  test_execution('./selfie -c grader/hello-world-with-lock.c -m 128', 
-    '16 processes are printing in sequential order with the use of locks on MIPSTER', 
+  test_execution('./selfie -c grader/hello-world-with-lock.c -m 128',
+    '16 processes are printing in sequential order with the use of locks on MIPSTER',
     success_criteria='Hello World!    ' * 8)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/hello-world-with-lock.c -y 10', 
-    '16 processes are printing in sequential order with the use of locks on HYPSTER', 
+  test_execution('./selfie -c selfie.c -m 128 -c grader/hello-world-with-lock.c -y 10',
+    '16 processes are printing in sequential order with the use of locks on HYPSTER',
     success_criteria='Hello World!    ' * 8)
 
 
