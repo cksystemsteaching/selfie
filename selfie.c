@@ -7496,10 +7496,7 @@ uint64_t* smt_variable(uint64_t* prefix, uint64_t bits) {
 
   sprintf2(svar, (uint64_t*) "%s%d", prefix, (uint64_t*) version);
 
-  if (bits == 1)
-    printf1((uint64_t*) "(declare-fun %s () Bool)", svar);
-  else
-    printf2((uint64_t*) "(declare-fun %s () (_ BitVec %d))", svar, (uint64_t*) bits);
+  printf2((uint64_t*) "(declare-fun %s () (_ BitVec %d))", svar, (uint64_t*) bits);
 
   version = version + 1;
 
@@ -8934,7 +8931,9 @@ uint64_t monster(uint64_t* to_context) {
 
   print((uint64_t*) "monster\n");
 
-  print((uint64_t*) "(set-option :produce-models true)\n(set-option :incremental true)\n(set-logic QF_BV)\n");
+  print((uint64_t*) "(set-option :produce-models true)\n");
+  print((uint64_t*) "(set-option :incremental true)\n");
+  print((uint64_t*) "(set-logic QF_BV)\n");
 
   b = 0;
 
