@@ -5842,6 +5842,8 @@ void implement_exit(uint64_t* context) {
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
   if (symbolic) {
+    print((uint64_t*) "(push 1)\n");
+
     printf2((uint64_t*) "(assert (and %s (not (= %s (_ bv0 64))))); exit",
       path_condition,
       smt_value(*(registers + REG_A0), (uint64_t*) *(reg_sym + REG_A0)));
@@ -5851,7 +5853,7 @@ void implement_exit(uint64_t* context) {
       print_code_line_number_for_instruction(pc - entry_point);
     }
 
-    println();
+    print((uint64_t*) "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     return;
   }
@@ -8714,7 +8716,16 @@ uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (symbolic) {
-    printf1((uint64_t*) "(assert (not %s))\n", path_condition);
+    print((uint64_t*) "(push 1)\n");
+
+    printf1((uint64_t*) "(assert (not %s)); timeout", path_condition);
+
+    if (code_line_number != (uint64_t*) 0) {
+      print((uint64_t*) "@");
+      print_code_line_number_for_instruction(pc - entry_point);
+    }
+
+    print((uint64_t*) "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     return EXIT;
   } else
@@ -8923,7 +8934,7 @@ uint64_t monster(uint64_t* to_context) {
 
   print((uint64_t*) "monster\n");
 
-  print((uint64_t*) "(set-option :produce-models true)\n(set-logic QF_BV)\n");
+  print((uint64_t*) "(set-option :produce-models true)\n(set-option :incremental true)\n(set-logic QF_BV)\n");
 
   b = 0;
 
@@ -8946,7 +8957,7 @@ uint64_t monster(uint64_t* to_context) {
 
           symbolic_contexts = get_related_context(symbolic_contexts);
         } else {
-          print((uint64_t*) "(check-sat)\n(get-model)\n(exit)\n");
+          print((uint64_t*) "(exit)\n");
 
           return EXITCODE_NOERROR;
         }
