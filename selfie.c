@@ -9474,7 +9474,7 @@ void print_usage() {
   printf3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
     selfie_name,
       (uint64_t*) "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
-      (uint64_t*) "( -m | -d | -r | -y | -min | -mob | -n ) 0-4096 ... ");
+      (uint64_t*) "( -m | -d | -r | -n | -y | -min | -mob ) 0-4096 ... ");
 }
 
 uint64_t selfie() {
