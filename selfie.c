@@ -6040,7 +6040,7 @@ void implement_write(uint64_t* context) {
     if (is_valid_virtual_address(vbuffer)) {
       if (symbolic) {
         // TODO: What should symbolically executed code actually output?
-        actually_written = size;
+        written_total = size;
 
         size = 0;
       } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
