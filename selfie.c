@@ -1203,8 +1203,6 @@ void set_number_of_bits(uint64_t* word, uint64_t bits)  { *(word + 4) =         
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
 
-void reset_symbolic_engine();
-
 uint64_t* bv_constant(uint64_t value);
 uint64_t* bv_variable(uint64_t bits);
 uint64_t* bv_zero_extension(uint64_t bits);
@@ -1215,33 +1213,21 @@ uint64_t* smt_variable(uint64_t* prefix, uint64_t bits);
 uint64_t* smt_unary(uint64_t* opt, uint64_t* op);
 uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t MAX_EXECUTION_DEPTH = 100;
-
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t version = 0;
+uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
+
+uint64_t version = 0; // generates unique smt-lib variable names
 
 uint64_t* symbolic_contexts = (uint64_t*) 0;
 
 uint64_t* path_condition  = (uint64_t*) 0;
 uint64_t* symbolic_memory = (uint64_t*) 0;
 
-// registers
-
 uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in smt-lib format
 
-// ------------------------- INITIALIZATION ------------------------
-
-void reset_symbolic_engine() {
-  symbolic_contexts = (uint64_t*) 0;
-
-  path_condition  = (uint64_t*) 0;
-  symbolic_memory = (uint64_t*) 0;
-
-  reg_sym = (uint64_t*) 0;
-}
+uint64_t* smt_name = (uint64_t*) 0; // name of smt-lib file
+uint64_t  smt_fd   = 0; // file descriptor of open smt-lib file
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1303,7 +1289,7 @@ uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 // TODO: implement proper interrupt controller to turn interrupts on and off
 uint64_t TIMESLICE = 10000000;
 
-uint64_t TIMEROFF = 0;
+uint64_t TIMEROFF = 0; // must be 0 to turn off timer interrupt
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1554,6 +1540,7 @@ void     map_unmapped_pages(uint64_t* context);
 uint64_t minster(uint64_t* to_context);
 uint64_t mobster(uint64_t* to_context);
 
+uint64_t* replace_extension(uint64_t* filename, uint64_t e);
 uint64_t monster(uint64_t* to_context);
 
 uint64_t is_boot_level_zero();
@@ -1580,8 +1567,7 @@ uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 9;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 10;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 11;
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
-uint64_t EXITCODE_OUTOFTRACEMEMORY       = 13;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 14;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 13;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -2318,7 +2304,7 @@ void sprintf1(uint64_t* b, uint64_t* s, uint64_t* a1) {
   output_buffer = b;
   output_cursor = 0;
 
-  printf1(s, a1);
+  printf1(s, a1);put_character(0);
 
   output_buffer = (uint64_t*) 0;
   output_cursor = 0;
@@ -2328,7 +2314,7 @@ void sprintf2(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2) {
   output_buffer = b;
   output_cursor = 0;
 
-  printf2(s, a1, a2);
+  printf2(s, a1, a2);put_character(0);
 
   output_buffer = (uint64_t*) 0;
   output_cursor = 0;
@@ -2338,7 +2324,7 @@ void sprintf3(uint64_t* b, uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3
   output_buffer = b;
   output_cursor = 0;
 
-  printf3(s, a1, a2, a3);
+  printf3(s, a1, a2, a3);put_character(0);
 
   output_buffer = (uint64_t*) 0;
   output_cursor = 0;
@@ -7137,7 +7123,7 @@ void constrain_beq() {
   copy_context(current_context,
     pc + INSTRUCTIONSIZE,
     smt_binary((uint64_t*) "and", pvar, smt_unary((uint64_t*) "not", bvar)),
-    MAX_EXECUTION_DEPTH - timer + 1);
+    max_execution_depth - timer);
 
   path_condition = smt_binary((uint64_t*) "and", pvar, bvar);
 
@@ -8924,6 +8910,39 @@ uint64_t mobster(uint64_t* to_context) {
   return minmob(to_context);
 }
 
+uint64_t* replace_extension(uint64_t* filename, uint64_t e) {
+  uint64_t* s;
+  uint64_t i;
+  uint64_t c;
+
+  // assert: 0 < string_length(filename) - 2 < MAX_FILENAME_LENGTH
+
+  s = smalloc(string_length(filename) + 2 + 1);
+
+  i = 0;
+
+  c = load_character(filename, i);
+
+  while (c != 0) {
+    store_character(s, i, c);
+
+    if (c == '.') {
+      store_character(s, i, 0);
+
+      c = 0;
+    } else {
+      i = i + 1;
+
+      c = load_character(filename, i);
+    }
+  }
+
+  // writing s plus extension into s works because we allocated two more bytes
+  sprintf2(s, (uint64_t*) "%s.%c", s, (uint64_t*) e);
+
+  return s;
+}
+
 uint64_t monster(uint64_t* to_context) {
   uint64_t b;
   uint64_t timeout;
@@ -8931,13 +8950,29 @@ uint64_t monster(uint64_t* to_context) {
 
   print((uint64_t*) "monster\n");
 
+  // use extension ".t" in name of smt-lib file
+  smt_name = replace_extension(binary_name, 't');
+
+  // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  smt_fd = open_write_only(smt_name);
+
+  if (signed_less_than(smt_fd, 0)) {
+    printf2((uint64_t*) "%s: could not create smt-lib output file %s\n", selfie_name, smt_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  output_name = smt_name;
+  output_fd   = smt_fd;
+
   print((uint64_t*) "(set-option :produce-models true)\n");
   print((uint64_t*) "(set-option :incremental true)\n");
   print((uint64_t*) "(set-logic QF_BV)\n");
 
   b = 0;
 
-  timeout = MAX_EXECUTION_DEPTH;
+  timeout = max_execution_depth;
 
   while (1) {
     from_context = mipster_switch(to_context, timeout);
@@ -8957,6 +8992,13 @@ uint64_t monster(uint64_t* to_context) {
           symbolic_contexts = get_related_context(symbolic_contexts);
         } else {
           print((uint64_t*) "(exit)\n");
+
+          output_name = (uint64_t*) 0;
+          output_fd   = 1;
+
+          printf3((uint64_t*) "%s: %d characters of smt-lib written into %s\n", selfie_name,
+            (uint64_t*) number_of_written_characters,
+            smt_name);
 
           return EXITCODE_NOERROR;
         }
@@ -9009,16 +9051,15 @@ uint64_t selfie_run(uint64_t machine) {
   } else if (machine == MONSTER) {
     debug    = 1;
     symbolic = 1;
-
-    reset_symbolic_engine();
   }
 
-  if (machine == MONSTER) {
+  if (machine != MONSTER)
+    init_memory(atoi(peek_argument()));
+  else {
     init_memory(1);
 
-    // fuzz = atoi(peek_argument());
-  } else
-    init_memory(atoi(peek_argument()));
+    max_execution_depth = atoi(peek_argument());
+  }
 
   execute = 1;
 
@@ -9348,11 +9389,11 @@ void selfie_load_dimacs() {
 
   number_of_sat_variables = dimacs_number();
 
-  sat_assignment = (uint64_t*) smalloc(number_of_sat_variables * SIZEOFUINT64);
+  sat_assignment = (uint64_t*) zalloc(number_of_sat_variables * SIZEOFUINT64);
 
   number_of_sat_clauses = dimacs_number();
 
-  sat_instance = (uint64_t*) smalloc(number_of_sat_clauses * 2 * number_of_sat_variables * SIZEOFUINT64);
+  sat_instance = (uint64_t*) zalloc(number_of_sat_clauses * 2 * number_of_sat_variables * SIZEOFUINT64);
 
   dimacs_get_instance();
 
@@ -9433,7 +9474,7 @@ void print_usage() {
   printf3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
     selfie_name,
       (uint64_t*) "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
-      (uint64_t*) "( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ...");
+      (uint64_t*) "( -m | -d | -r | -y | -min | -mob | -n ) 0-4096 ... ");
 }
 
 uint64_t selfie() {
