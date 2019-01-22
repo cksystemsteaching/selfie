@@ -5840,14 +5840,10 @@ void implement_exit(uint64_t* context) {
   if (symbolic) {
     print((uint64_t*) "\n(push 1)\n");
 
-    printf2((uint64_t*) "(assert (and %s (not (= %s (_ bv0 64))))); exit",
+    printf2((uint64_t*) "(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
       path_condition,
       smt_value(*(registers + REG_A0), (uint64_t*) *(reg_sym + REG_A0)));
-
-    if (code_line_number != (uint64_t*) 0) {
-      print((uint64_t*) "@");
-      print_code_line_number_for_instruction(pc - entry_point);
-    }
+    print_code_context_for_instruction(pc);
 
     print((uint64_t*) "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
@@ -7110,24 +7106,14 @@ void constrain_beq() {
 
   bvar = smt_variable((uint64_t*) "b", 1);
 
-  printf2((uint64_t*) "(assert (= %s %s)); beq", bvar, smt_binary((uint64_t*) "bvcomp", op1, op2));
-
-  if (code_line_number != (uint64_t*) 0) {
-    print((uint64_t*) "@");
-    print_code_line_number_for_instruction(pc - entry_point);
-  }
-
+  printf2((uint64_t*) "(assert (= %s %s)); beq in ", bvar, smt_binary((uint64_t*) "bvcomp", op1, op2));
+  print_code_context_for_instruction(pc);
   println();
 
   pvar = smt_variable((uint64_t*) "p", 1);
 
-  printf2((uint64_t*) "(assert (= %s %s)); pc", pvar, path_condition);
-
-  if (code_line_number != (uint64_t*) 0) {
-    print((uint64_t*) "@");
-    print_code_line_number_for_instruction(pc - entry_point);
-  }
-
+  printf2((uint64_t*) "(assert (= %s %s)); path condition in ", pvar, path_condition);
+  print_code_context_for_instruction(pc);
   println();
 
   copy_context(current_context,
@@ -7417,13 +7403,8 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t val, uint64_t* sym, uint64_t
   else if (sym) {
     set_word_symbolic(sword, smt_variable((uint64_t*) "m", SIZEOFUINT64 * 8));
 
-    printf2((uint64_t*) "(assert (= %s %s)); sd", get_word_symbolic(sword), sym);
-
-    if (code_line_number != (uint64_t*) 0) {
-      print((uint64_t*) "@");
-      print_code_line_number_for_instruction(pc - entry_point);
-    }
-
+    printf2((uint64_t*) "(assert (= %s %s)); sd in ", get_word_symbolic(sword), sym);
+    print_code_context_for_instruction(pc);
     println();
   } else
     set_word_symbolic(sword, (uint64_t*) 0);
@@ -7492,16 +7473,11 @@ uint64_t* smt_variable(uint64_t* prefix, uint64_t bits) {
 
   sprintf2(svar, (uint64_t*) "%s%d", prefix, (uint64_t*) version);
 
-  printf2((uint64_t*) "(declare-fun %s () (_ BitVec %d))", svar, (uint64_t*) bits);
+  printf2((uint64_t*) "(declare-fun %s () (_ BitVec %d)); variable for ", svar, (uint64_t*) bits);
+  print_code_context_for_instruction(pc);
+  println();
 
   version = version + 1;
-
-  if (code_line_number != (uint64_t*) 0) {
-    print((uint64_t*) "; ");
-    print_code_line_number_for_instruction(pc - entry_point);
-  }
-
-  println();
 
   return svar;
 }
@@ -8711,12 +8687,8 @@ uint64_t handle_timer(uint64_t* context) {
   if (symbolic) {
     print((uint64_t*) "(push 1)\n");
 
-    printf1((uint64_t*) "(assert (not %s)); timeout", path_condition);
-
-    if (code_line_number != (uint64_t*) 0) {
-      print((uint64_t*) "@");
-      print_code_line_number_for_instruction(pc - entry_point);
-    }
+    printf1((uint64_t*) "(assert (not %s)); timeout in ", path_condition);
+    print_code_context_for_instruction(pc);
 
     print((uint64_t*) "\n(check-sat)\n(get-model)\n(pop 1)\n");
 
