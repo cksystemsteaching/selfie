@@ -57,7 +57,7 @@ Once you have successfully compiled `selfie.c` you may invoke `selfie` without a
 
 ```bash
 $ ./selfie
-./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
+./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-4096 ... ]
 ```
 
 In this case, `selfie` responds with its usage pattern.
@@ -88,7 +88,7 @@ The `-l` option loads RISC-U code from the given `binary` file. The `-o` and `-s
 $ ./selfie -l selfie.m
 ```
 
-The `-m` option invokes the mipster emulator to execute RISC-U code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `0-64` MB of memory. The `source` or `binary` name of the RISC-U code and any remaining `...` arguments are passed to the main function of the code. For example, the following invocation executes `selfie.m` using mipster:
+The `-m` option invokes the mipster emulator to execute RISC-U code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `0-4096` MB of memory. The `source` or `binary` name of the RISC-U code and any remaining `...` arguments are passed to the main function of the code. For example, the following invocation executes `selfie.m` using mipster:
 
 ```bash
 $ ./selfie -l selfie.m -m 1
@@ -112,9 +112,9 @@ which is again semantically equivalent to executing `selfie` without any argumen
 
 The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code. See below for an example.
 
-The `-n` option invokes the symbolic execution engine which interprets the `0-64` value as fuzzing parameter. Value `0` means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The `64` value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value. Note that the current implementation is incomplete and buggy.
+The `-n` option invokes the symbolic execution engine which interprets the `0-4096` value as bound on the length of any symbolically executed code branch in number of instructions. Value `0` means that code is executed symbolically without a bound. While executing code symbolically an SMT-LIB file named after the executed binary but with extension `.t` is generated.
 
-The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The current implementation is naive and only works on small instances.
+The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The implementation is naive and only works on small instances.
 
 ### Self-compilation
 
