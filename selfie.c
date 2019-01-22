@@ -127,6 +127,7 @@ uint64_t sign_shrink(uint64_t n, uint64_t b);
 uint64_t  load_character(uint64_t* s, uint64_t i);
 uint64_t* store_character(uint64_t* s, uint64_t i, uint64_t c);
 
+uint64_t* string_alloc(uint64_t l);
 uint64_t  string_length(uint64_t* s);
 uint64_t* string_copy(uint64_t* s);
 void      string_reverse(uint64_t* s);
@@ -274,7 +275,7 @@ void init_library() {
   *character_buffer = 0;
 
   // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
-  integer_buffer = smalloc(CPUBITWIDTH + 1);
+  integer_buffer = string_alloc(CPUBITWIDTH);
 
   // does not need to be mapped
   filename_buffer = smalloc(MAX_FILENAME_LENGTH);
@@ -1835,6 +1836,13 @@ uint64_t* store_character(uint64_t* s, uint64_t i, uint64_t c) {
   return s;
 }
 
+uint64_t* string_alloc(uint64_t l) {
+	// reserve enough space for a string of 'l' characters, plus a null terminator.
+	// also, make sure the memory is zeroed and double word-aligned, in order to avoid
+	// out of bounds or uninitialized accesses with the load/store_character functions
+	return zalloc(l + (SIZEOFUINT64 - l % SIZEOFUINT64));
+}
+
 uint64_t string_length(uint64_t* s) {
   uint64_t i;
 
@@ -1853,7 +1861,7 @@ uint64_t* string_copy(uint64_t* s) {
 
   l = string_length(s);
 
-  t = zalloc(l + 1);
+  t = string_alloc(l);
 
   i = 0;
 
@@ -2639,7 +2647,7 @@ void get_symbol() {
       // while looking for whitespace and "//"
       if (is_character_letter()) {
         // accommodate identifier and null for termination
-        identifier = smalloc(MAX_IDENTIFIER_LENGTH + 1);
+        identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
 
         i = 0;
 
@@ -2663,7 +2671,7 @@ void get_symbol() {
 
       } else if (is_character_digit()) {
         // accommodate integer and null for termination
-        integer = smalloc(MAX_INTEGER_LENGTH + 1);
+        integer = string_alloc(MAX_INTEGER_LENGTH);
 
         i = 0;
 
@@ -2725,10 +2733,8 @@ void get_symbol() {
       } else if (character == CHAR_DOUBLEQUOTE) {
         get_character();
 
-        // accommodate string and null for termination,
-        // allocate zeroed memory since strings are emitted
-        // in double words but may end non-word-aligned
-        string = zalloc(MAX_STRING_LENGTH + 1);
+        // accommodate string and null for termination
+        string = string_alloc(MAX_STRING_LENGTH);
 
         i = 0;
 
@@ -4795,7 +4801,7 @@ void selfie_compile() {
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary       = smalloc(MAX_BINARY_LENGTH);
+  binary       = zalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
   // reset code length
