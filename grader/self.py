@@ -12,23 +12,43 @@ number_of_negative_tests_failed = [0]
 home_path = ''
 
 INSTRUCTIONSIZE = 4  # in bytes
-ELF_HEADER_LEN = 120
+REGISTERSIZE    = 8  # in bytes
 
-OP_OP = 51
+OP_OP  = 51
+OP_AMO = 47
 
 F3_SLL = 1
 F3_SRL = 5
+F3_LR  = 3
+F3_SC  = 3
+
+F5_LR  = 2
+F5_SC  = 3
 
 F7_SLL = 0
 F7_SRL = 0
 
+def read_instruction(file):
+  return int.from_bytes(file.read(INSTRUCTIONSIZE), byteorder='little', signed=True)
+
+def read_data(file):
+  return int.from_bytes(file.read(REGISTERSIZE), byteorder='little', signed=False)
+
 def encode_r_format(funct7, funct3, opcode):
   return (((((funct7 << 5) << 5) << 3) + funct3 << 5) << 7) + opcode
 
-R_FORMAT_MASK = 0b11111110000000000111000001111111
+def encode_amo_format(funct5, funct3):
+  return (((((funct5 << 7) << 5) << 3) + funct3 << 5) << 7) + OP_AMO
+
+R_FORMAT_MASK   = 0b11111110000000000111000001111111
+AMO_FORMAT_MASK = 0b11111000000000000111000001111111
+LR_FORMAT_MASK  = 0b11111001111100000111000001111111
+
 SLL_INSTRUCTION = encode_r_format(F7_SLL, F3_SLL, OP_OP)
 SRL_INSTRUCTION = encode_r_format(F7_SRL, F3_SRL, OP_OP)
 
+LR_INSTRUCTION = encode_amo_format(F5_LR, F3_LR)
+SC_INSTRUCTION = encode_amo_format(F5_SC, F3_SC)
 
 def print_passed(msg):
   print("\033[92m[PASSED]\033[0m " + msg)
@@ -98,29 +118,65 @@ def has_compiled(returncode, output, should_succeed=True):
   return (succeeded, warning)
 
 
-def test_instruction_format(file, instruction, instruction_mask, msg):
+def test_instruction_encoding(file, instruction, instruction_mask, msg):
   exit_code, output = execute(f'./selfie -c grader/{file} -o .tmp.bin')
-  warning = None
 
   if exit_code == 0:
     exit_code = 1
 
     with open('.tmp.bin', 'rb') as f:
-      f.read(ELF_HEADER_LEN)
+      ignored_elf_header_size = 14 * REGISTERSIZE
 
-      for raw_word in iter(lambda: f.read(INSTRUCTIONSIZE), b''):
-        word = int.from_bytes(raw_word, byteorder='little', signed=True)
+      f.read(ignored_elf_header_size)
 
-        if word & instruction_mask == instruction:
-          # at least one instruction has the right encoding
-          exit_code = 0
+      code_start  = read_data(f)
+      code_length = read_data(f)
 
-  os.remove('.tmp.bin')
+      # ignore all pading bytes
+      no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
 
-  if exit_code != 0:
+      if no_of_bytes_until_code < 0:
+        no_of_bytes_until_code = 0
+
+      f.read(no_of_bytes_until_code)
+
+      # read all RISC-V instructions from binary
+      read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
+
+      if any(map(lambda x: x & instruction_mask == instruction, read_instructions)):
+        # at least one instruction has the right encoding
+        exit_code = 0
+
+      os.remove('.tmp.bin')
+
+      warning = None
+  else:
     warning = 'No instruction matching the RISC-V encoding found'
 
   record_result(exit_code == 0, msg, output, warning)
+
+
+
+def test_assembler_instruction_format(file, instruction, msg):
+  exit_code, output = execute(f'./selfie -c grader/{file} -s .tmp.s')
+
+  if exit_code == 0:
+    exit_code = 1
+
+    with open('.tmp.s', 'rt') as f:
+      for line in f:
+        if instruction in line:
+          # at least one assembler instruction has the right encoding
+          exit_code = 0
+
+    os.remove('.tmp.s')
+
+    warning = None
+  else:
+    warning = 'No assembler instruction matching the RISC-V encoding found'
+
+  record_result(exit_code == 0, msg, output, warning)
+
 
 
 def test_execution(command, msg, success_criteria=True):
@@ -190,6 +246,20 @@ def is_interleaved_output(returncode, output, interleaved_msg, number_of_interle
     return (isInterleaved(strings, filtered_output), 'The output strings are not interleaved')
 
 
+def is_permutation_of(returncode, output, numbers):
+  filtered_output = filter_status_messages(output)
+
+  printed_numbers = list(map(lambda x: int(x), filter(lambda s: len(s) > 0, filtered_output.split(' '))))
+
+  if (len(printed_numbers) != len(numbers)):
+    return (False, f'The amount of printed numbers ({len(printed_numbers)}) is not equal to the amount of numbers needed to be printed ({len(numbers)})')
+
+  for number in numbers:
+    printed_numbers.remove(number)
+
+  return (len(printed_numbers) == 0, 'The printed numbers are not a permutation of {numbers}')
+
+
 def test_compilable(file, msg, should_succeed=True):
   test_execution(f'./selfie -c grader/{file}', msg, success_criteria=lambda code, out: has_compiled(code, out, should_succeed=should_succeed))
 
@@ -234,13 +304,13 @@ def test_shift(direction):
 
   test_compilable(literal_file,
     'bitwise-' + direction + '-shift operator with literals compiled')
-  test_instruction_format(literal_file, instruction, R_FORMAT_MASK,
+  test_instruction_encoding(literal_file, instruction, R_FORMAT_MASK,
     'bitwise-' + direction + '-shift operator has right RISC-V encoding')
   test_mipster_execution(literal_file, 2,
     'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
   test_compilable(variable_file,
     'bitwise-' + direction + '-shift operator with variables compiled')
-  test_instruction_format(variable_file, instruction, R_FORMAT_MASK,
+  test_instruction_encoding(variable_file, instruction, R_FORMAT_MASK,
     'bitwise-' + direction + '-shift operator has right RISC-V encoding')
   test_mipster_execution(variable_file, 2,
     'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
@@ -334,6 +404,25 @@ def test_thread():
   test_execution('./selfie -c selfie.c -m 128 -c grader/thread-heap-shared.c -y 64',
     'heap data is shared for threads on HYPSTER',
     success_criteria=1)
+
+
+
+def test_treiber_stack():
+  test_instruction_encoding('../manuscript/code/hello-world.c', LR_INSTRUCTION, LR_FORMAT_MASK,
+    'LR RISC-V instruction has right binary encoding')
+  test_instruction_encoding('../manuscript/code/hello-world.c', SC_INSTRUCTION, AMO_FORMAT_MASK,
+    'SC RISC-V instruction has right binary encoding')
+  test_assembler_instruction_format('../manuscript/code/hello-world.c', 'lr.d',
+    'LR RISC-V instruction has right assembly instructin format')
+  test_assembler_instruction_format('../manuscript/code/hello-world.c', 'sc.d',
+    'SC RISC-V instruction has right assembly instructin format')
+  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-push.c -m 128',
+    'all pushed elements are actually in the treiber-stack',
+    success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
+  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-pop.c -m 128',
+    'all treiber-stack elements can be popped ',
+    success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
+
 
 
 def start_stage(stage):
@@ -440,6 +529,8 @@ if __name__ == "__main__":
       test_lock()
     elif test == 'thread':
       test_thread()
+    elif test == 'treiber-stack':
+      test_treiber_stack()
     else:
       print(f'unknown test: {test}')
 
