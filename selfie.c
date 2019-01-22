@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015-2018, the Selfie Project authors. All rights reserved.
+Copyright (c) 2015-2019, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
 
@@ -27,8 +27,10 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 3. a self-hosting hypervisor called hypster that provides
    RISC-U virtual machines that can host all of selfie,
    that is, starc, mipster, and hypster itself,
-4. a prototypical symbolic execution engine called monster
-   that executes RISC-U code symbolically,
+4. a symbolic execution engine called monster that executes
+   RISC-U code symbolically and generates SMT-LIB files
+   that are satisfiable if and only if the code may exit
+   with non-zero exit codes,
 5. a simple SAT solver that reads CNF DIMACS files, and
 6. a tiny C* library called libcstar utilized by selfie.
 
@@ -70,12 +72,20 @@ selfie goes one step further by implementing microkernel functionality
 as part of the emulator and a hypervisor that can run as part of the
 emulator as well as on top of it, all with the same code.
 
+The symbolic execution engine implements a simple yet sound and
+complete translation of RISC-U code to SMT-LIB formulae. The SAT
+solver implements a naive brute-force enumeration of all possible
+variable assignments. Both engine and solver facilitate teaching
+the absolute basics of SAT and SMT solving applied to real code.
+
 Selfie is the result of many years of teaching systems engineering.
 The design of the compiler is inspired by the Oberon compiler of
 Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
 RISC-V community around Professor David Patterson from UC Berkeley.
-The design of the hypervisor is inspired by microkernels of
-Professor Jochen Liedtke from University of Karlsruhe.
+The design of the hypervisor is inspired by microkernels of Professor
+Jochen Liedtke from University of Karlsruhe. The symbolic execution
+engine and the SAT solver are inspired by Professor Armin Biere from
+JKU Linz.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1217,17 +1227,17 @@ uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2);
 
 uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
 
-uint64_t version = 0; // generates unique smt-lib variable names
+uint64_t version = 0; // generates unique SMT-LIB variable names
 
 uint64_t* symbolic_contexts = (uint64_t*) 0;
 
 uint64_t* path_condition  = (uint64_t*) 0;
 uint64_t* symbolic_memory = (uint64_t*) 0;
 
-uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in smt-lib format
+uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in SMT-LIB format
 
-uint64_t* smt_name = (uint64_t*) 0; // name of smt-lib file
-uint64_t  smt_fd   = 0; // file descriptor of open smt-lib file
+uint64_t* smt_name = (uint64_t*) 0; // name of SMT-LIB file
+uint64_t  smt_fd   = 0; // file descriptor of open SMT-LIB file
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -8950,7 +8960,7 @@ uint64_t monster(uint64_t* to_context) {
 
   print((uint64_t*) "monster\n");
 
-  // use extension ".t" in name of smt-lib file
+  // use extension ".t" in name of SMT-LIB file
   smt_name = replace_extension(binary_name, 't');
 
   // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
