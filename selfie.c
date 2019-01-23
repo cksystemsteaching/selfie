@@ -98,11 +98,13 @@ JKU Linz.
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
- // selfie bootstraps int to uint64_t!
+// selfie bootstraps int to uint64_t!
 void exit(int code);
 
 uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
 uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
+
+// selfie bootstraps char to uint64_t!
 uint64_t open(char* filename, uint64_t flags, uint64_t mode);
 
 // selfie bootstraps void* and unsigned long to uint64_t* and uint64_t, respectively!
