@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob sat spike riscv-tools all clean
+.PHONY : compile quine escape debug replay os vm min mob smt sat spike riscv-tools all clean
 
 # Self-compile
 compile: selfie
@@ -54,6 +54,10 @@ min: selfie
 mob: selfie
 	./selfie -c -mob 1
 
+# Run monster
+smt: selfie
+	./selfie -c manuscript/code/symbolic.c -n 0
+
 # Run SAT solver
 sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
@@ -73,7 +77,7 @@ riscv-tools:
 	docker push cksystemsteaching/riscv-tools
 
 # Run everything
-all: compile quine debug replay os vm min mob sat
+all: compile quine debug replay os vm min mob smt sat
 
 # Clean up
 clean:
