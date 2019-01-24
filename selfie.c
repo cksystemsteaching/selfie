@@ -1815,6 +1815,9 @@ uint64_t load_character(char* s, uint64_t i) {
   // the to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
 
+  // CAUTION: at boot levels higher than zero, s is only accessible
+  // in C* at machine word granularity, not individual characters
+
   // return i-th 8-bit character in s
   return get_bits(*((uint64_t*) s + a), (i % SIZEOFUINT64) * 8, 8);
 }
@@ -1826,6 +1829,9 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
   // a is the index of the double word where
   // the with c to-be-overwritten i-th character in s is
   a = i / SIZEOFUINT64;
+
+  // CAUTION: at boot levels higher than zero, s is only accessible
+  // in C* at machine word granularity, not individual characters
 
   // subtract the to-be-overwritten character to reset its bits in s
   // then add c to set its bits at the i-th position in s
@@ -5524,6 +5530,8 @@ void emit_string_data(uint64_t* entry) {
   l = round_up(string_length(s) + 1, REGISTERSIZE);
 
   while (i < l) {
+    // CAUTION: at boot levels higher than zero, s is only accessible
+    // in C* at machine word granularity, not individual characters
     emit_data_word(*((uint64_t*) s), get_address(entry) + i, get_line_number(entry));
 
     s = (char*) ((uint64_t*) s + 1);
@@ -6164,6 +6172,8 @@ uint64_t down_load_string(uint64_t* table, uint64_t vaddr, char* s) {
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
           } else
+            // CAUTION: at boot levels higher than zero, s is only accessible
+            // in C* at machine word granularity, not individual characters
             *((uint64_t*) s + i) = get_word_value(sword);
         } else
           // assert: vaddr is mapped
@@ -8582,6 +8592,8 @@ uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   i = 0;
 
   while (i < bytes) {
+    // CAUTION: at boot levels higher than zero, s is only accessible
+    // in C* at machine word granularity, not individual characters
     map_and_store(context, SP + i, *((uint64_t*) s));
 
     s = (char*) ((uint64_t*) s + 1);
