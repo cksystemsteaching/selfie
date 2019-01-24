@@ -83,5 +83,7 @@ all: compile quine debug replay os vm min mob smt sat
 clean:
 	rm -rf *.m
 	rm -rf *.s
+	rm -rf *.t
 	rm -rf selfie
 	rm -rf selfie.exe
+	rm -rf manuscript/code/*.t
