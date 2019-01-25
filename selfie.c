@@ -296,7 +296,7 @@ void init_library() {
   integer_buffer = string_alloc(CPUBITWIDTH);
 
   // does not need to be mapped
-  filename_buffer = smalloc(MAX_FILENAME_LENGTH);
+  filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
 
   // allocate and touch to make sure memory is mapped for read calls
   binary_buffer  = smalloc(SIZEOFUINT64);
@@ -1831,10 +1831,8 @@ uint64_t* store_character(uint64_t* s, uint64_t i, uint64_t c) {
 }
 
 uint64_t* string_alloc(uint64_t l) {
-	// reserve enough space for a string of 'l' characters, plus a null terminator.
-	// also, make sure the memory is zeroed and double word-aligned, in order to avoid
-	// out of bounds or uninitialized accesses with the load/store_character functions
-	return zalloc(l + (SIZEOFUINT64 - l % SIZEOFUINT64));
+	// allocates memory for a string of l characters plus a null terminator aligned to machine word size
+	return smalloc(round_up(l + 1, REGISTERSIZE));
 }
 
 uint64_t string_length(uint64_t* s) {
@@ -7438,7 +7436,7 @@ void print_symbolic_memory(uint64_t* sword) {
 uint64_t* bv_constant(uint64_t value) {
   uint64_t* string;
 
-  string = smalloc(5 + 20 + 4 + 1); // 64-bit numbers require up to 20 decimal digits
+  string = string_alloc(5 + 20 + 4); // 64-bit numbers require up to 20 decimal digits
 
   sprintf1(string, (uint64_t*) "(_ bv%d 64)", (uint64_t*) value);
 
@@ -7448,7 +7446,7 @@ uint64_t* bv_constant(uint64_t value) {
 uint64_t* bv_variable(uint64_t bits) {
   uint64_t* string;
 
-  string = smalloc(10 + 2 + 1); // up to 64-bit variables require up to 2 decimal digits
+  string = string_alloc(10 + 2); // up to 64-bit variables require up to 2 decimal digits
 
   sprintf1(string, (uint64_t*) "(_ BitVec %d)", (uint64_t*) bits);
 
@@ -7458,7 +7456,7 @@ uint64_t* bv_variable(uint64_t bits) {
 uint64_t* bv_zero_extension(uint64_t bits) {
   uint64_t* string;
 
-  string = smalloc(15 + 2 + 1); // up to 64-bit variables require up to 2 decimal digits
+  string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
 
   sprintf1(string, (uint64_t*) "(_ zero_extend %d)", (uint64_t*) (CPUBITWIDTH - bits));
 
@@ -7475,7 +7473,7 @@ uint64_t* smt_value(uint64_t val, uint64_t* sym) {
 uint64_t* smt_variable(uint64_t* prefix, uint64_t bits) {
   uint64_t* svar;
 
-  svar = smalloc(string_length(prefix) + 20 + 1); // 64-bit numbers require up to 20 decimal digits
+  svar = string_alloc(string_length(prefix) + 20); // 64-bit numbers require up to 20 decimal digits
 
   sprintf2(svar, (uint64_t*) "%s%d", prefix, (uint64_t*) version);
 
@@ -7491,7 +7489,7 @@ uint64_t* smt_variable(uint64_t* prefix, uint64_t bits) {
 uint64_t* smt_unary(uint64_t* opt, uint64_t* op) {
   uint64_t* string;
 
-  string = smalloc(1 + string_length(opt) + 1 + string_length(op) + 1 + 1);
+  string = string_alloc(1 + string_length(opt) + 1 + string_length(op) + 1);
 
   sprintf2(string, (uint64_t*) "(%s %s)", opt, op);
 
@@ -7501,7 +7499,7 @@ uint64_t* smt_unary(uint64_t* opt, uint64_t* op) {
 uint64_t* smt_binary(uint64_t* opt, uint64_t* op1, uint64_t* op2) {
   uint64_t* string;
 
-  string = smalloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1 + 1);
+  string = string_alloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1);
 
   sprintf3(string, (uint64_t*) "(%s %s %s)", opt, op1, op2);
 
@@ -8905,7 +8903,7 @@ uint64_t* replace_extension(uint64_t* filename, uint64_t e) {
 
   // assert: 0 < string_length(filename) - 2 < MAX_FILENAME_LENGTH
 
-  s = smalloc(string_length(filename) + 2 + 1);
+  s = string_alloc(string_length(filename) + 2);
 
   i = 0;
 
