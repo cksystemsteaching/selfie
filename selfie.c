@@ -110,6 +110,10 @@ uint64_t open(char* filename, uint64_t flags, uint64_t mode);
 // selfie bootstraps void* and unsigned long to uint64_t* and uint64_t, respectively!
 void* malloc(unsigned long);
 
+uint64_t fork();
+uint64_t wait();
+uint64_t getpid();
+
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
 // -----------------------------------------------------------------
@@ -255,6 +259,15 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // 420 = 00644 = S_IRUSR (00400) | S_IWUSR (00200) | S_IRGRP (00040) | S_IROTH (00004)
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
+
+// mmap memory protection, pages may be read and written: 3 = 0x03 = PROT_READ (0x01) | PROT_WRITE (0x02)
+uint64_t PROT_RW = 3;
+
+// mmap shared anonymous mapping: 4097 = 0x1001 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000)
+uint64_t MAP_SA = 4097;
+
+// mmap shared anonymous mapping: 4097 = 0x1011 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000) | MAP_FIXED (0x0010)
+uint64_t MAP_SAF = 4113;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -978,6 +991,15 @@ void     implement_openat(uint64_t* context);
 void emit_malloc();
 void implement_brk(uint64_t* context);
 
+void emit_fork();
+void implement_fork(uint64_t* context);
+
+void emit_wait();
+void implement_wait(uint64_t* context);
+
+void emit_pid();
+void implement_pid(uint64_t* context);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -990,6 +1012,10 @@ uint64_t SYSCALL_READ   = 63;
 uint64_t SYSCALL_WRITE  = 64;
 uint64_t SYSCALL_OPENAT = 56;
 uint64_t SYSCALL_BRK    = 214;
+
+uint64_t SYSCALL_FORK   = 402;
+uint64_t SYSCALL_WAIT   = 403;
+uint64_t SYSCALL_PID    = 404;
 
 /* DIRFD_AT_FDCWD corresponds to AT_FDCWD in fcntl.h and
    is passed as first argument of the openat system call
@@ -4872,6 +4898,9 @@ void selfie_compile() {
   emit_open();
   emit_malloc();
   emit_switch();
+  emit_fork();
+  emit_wait();
+  emit_pid();
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed double word to obtain unique hash
@@ -6405,6 +6434,50 @@ void implement_brk(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
+void emit_fork() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fork", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_FORK);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_fork(uint64_t* context) {
+  *(get_regs(context) + REG_A0) = fork();
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
+void emit_wait() {
+  create_symbol_table_entry(LIBRARY_TABLE, "wait", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_WAIT);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_wait(uint64_t* context) {
+  *(get_regs(context) + REG_A0) = wait();
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
+void emit_pid() {
+  create_symbol_table_entry(LIBRARY_TABLE, "getpid", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_PID);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_pid(uint64_t* context) {
+  *(get_regs(context) + REG_A0) = getpid();
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -8696,6 +8769,12 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_write(context);
   else if (a7 == SYSCALL_OPENAT)
     implement_openat(context);
+  else if (a7 == SYSCALL_FORK)
+    implement_fork(context);
+  else if (a7 == SYSCALL_WAIT)
+    implement_wait(context);
+  else if (a7 == SYSCALL_PID)
+    implement_pid(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
@@ -8984,7 +9063,6 @@ char* replace_extension(char* filename, uint64_t e) {
 }
 
 uint64_t monster(uint64_t* to_context) {
-  uint64_t b;
   uint64_t timeout;
   uint64_t* from_context;
 
@@ -9015,8 +9093,6 @@ uint64_t monster(uint64_t* to_context) {
   print("(set-option :produce-models true)\n");
   print("(set-option :incremental true)\n");
   print("(set-logic QF_BV)\n\n");
-
-  b = 0;
 
   timeout = max_execution_depth;
 
