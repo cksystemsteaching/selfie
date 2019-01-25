@@ -139,6 +139,7 @@ uint64_t sign_shrink(uint64_t n, uint64_t b);
 uint64_t load_character(char* s, uint64_t i);
 char*    store_character(char* s, uint64_t i, uint64_t c);
 
+char*    string_alloc(uint64_t l);
 uint64_t string_length(char* s);
 char*    string_copy(char* s);
 void     string_reverse(char* s);
@@ -296,10 +297,10 @@ void init_library() {
   *character_buffer = 0;
 
   // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
-  integer_buffer = (char*) smalloc(CPUBITWIDTH + 1);
+  integer_buffer = string_alloc(CPUBITWIDTH);
 
   // does not need to be mapped
-  filename_buffer = (char*) smalloc(MAX_FILENAME_LENGTH);
+  filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
 
   // allocate and touch to make sure memory is mapped for read calls
   binary_buffer  = smalloc(SIZEOFUINT64);
@@ -1840,6 +1841,12 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
   return s;
 }
 
+char* string_alloc(uint64_t l) {
+	// allocates zeroed memory for a string of l characters
+  // plus a null terminator aligned to machine word size
+	return (char*) zalloc(l + 1);
+}
+
 uint64_t string_length(char* s) {
   uint64_t i;
 
@@ -1858,7 +1865,7 @@ char* string_copy(char* s) {
 
   l = string_length(s);
 
-  t = (char*) zalloc(l + 1);
+  t = string_alloc(l);
 
   i = 0;
 
@@ -1867,6 +1874,8 @@ char* string_copy(char* s) {
 
     i = i + 1;
   }
+
+  store_character(t, i, 0); // null-terminated string
 
   return t;
 }
@@ -2681,7 +2690,7 @@ void get_symbol() {
       // while looking for whitespace and "//"
       if (is_character_letter()) {
         // accommodate identifier and null for termination
-        identifier = (char*) smalloc(MAX_IDENTIFIER_LENGTH + 1);
+        identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
 
         i = 0;
 
@@ -2705,7 +2714,7 @@ void get_symbol() {
 
       } else if (is_character_digit()) {
         // accommodate integer and null for termination
-        integer = (char*) smalloc(MAX_INTEGER_LENGTH + 1);
+        integer = string_alloc(MAX_INTEGER_LENGTH);
 
         i = 0;
 
@@ -2770,7 +2779,7 @@ void get_symbol() {
         // accommodate string and null for termination,
         // allocate zeroed memory since strings are emitted
         // in double words but may end non-word-aligned
-        string = (char*) zalloc(MAX_STRING_LENGTH + 1);
+        string = string_alloc(MAX_STRING_LENGTH);
 
         i = 0;
 
@@ -4840,7 +4849,7 @@ void selfie_compile() {
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary       = smalloc(MAX_BINARY_LENGTH);
+  binary       = zalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
   // reset code length
@@ -7479,7 +7488,7 @@ void print_symbolic_memory(uint64_t* sword) {
 char* bv_constant(uint64_t value) {
   char* string;
 
-  string = (char*) smalloc(5 + 20 + 4 + 1); // 64-bit numbers require up to 20 decimal digits
+  string = string_alloc(5 + 20 + 4); // 64-bit numbers require up to 20 decimal digits
 
   sprintf1(string, "(_ bv%d 64)", (char*) value);
 
@@ -7489,7 +7498,7 @@ char* bv_constant(uint64_t value) {
 char* bv_variable(uint64_t bits) {
   char* string;
 
-  string = (char*) smalloc(10 + 2 + 1); // up to 64-bit variables require up to 2 decimal digits
+  string = string_alloc(10 + 2); // up to 64-bit variables require up to 2 decimal digits
 
   sprintf1(string, "(_ BitVec %d)", (char*) bits);
 
@@ -7499,7 +7508,7 @@ char* bv_variable(uint64_t bits) {
 char* bv_zero_extension(uint64_t bits) {
   char* string;
 
-  string = (char*) smalloc(15 + 2 + 1); // up to 64-bit variables require up to 2 decimal digits
+  string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
 
   sprintf1(string, "(_ zero_extend %d)", (char*) (CPUBITWIDTH - bits));
 
@@ -7516,7 +7525,7 @@ char* smt_value(uint64_t val, char* sym) {
 char* smt_variable(char* prefix, uint64_t bits) {
   char* svar;
 
-  svar = (char*) smalloc(string_length(prefix) + 20 + 1); // 64-bit numbers require up to 20 decimal digits
+  svar = string_alloc(string_length(prefix) + 20); // 64-bit numbers require up to 20 decimal digits
 
   sprintf2(svar, "%s%d", prefix, (char*) version);
 
@@ -7532,7 +7541,7 @@ char* smt_variable(char* prefix, uint64_t bits) {
 char* smt_unary(char* opt, char* op) {
   char* string;
 
-  string = (char*) smalloc(1 + string_length(opt) + 1 + string_length(op) + 1 + 1);
+  string = string_alloc(1 + string_length(opt) + 1 + string_length(op) + 1);
 
   sprintf2(string, "(%s %s)", opt, op);
 
@@ -7542,7 +7551,7 @@ char* smt_unary(char* opt, char* op) {
 char* smt_binary(char* opt, char* op1, char* op2) {
   char* string;
 
-  string = (char*) smalloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1 + 1);
+  string = string_alloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1);
 
   sprintf3(string, "(%s %s %s)", opt, op1, op2);
 
@@ -8948,7 +8957,7 @@ char* replace_extension(char* filename, uint64_t e) {
 
   // assert: 0 < string_length(filename) - 2 < MAX_FILENAME_LENGTH
 
-  s = (char*) smalloc(string_length(filename) + 2 + 1);
+  s = string_alloc(string_length(filename) + 2);
 
   i = 0;
 
