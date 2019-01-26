@@ -1232,11 +1232,11 @@ char* smt_binary(char* opt, char* op1, char* op2);
 
 uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
 
-uint64_t version = 0; // generates unique SMT-LIB variable names
+uint64_t variable_version = 0; // generates unique SMT-LIB variable names
 
 uint64_t* symbolic_contexts = (uint64_t*) 0;
 
-char* path_condition  = (char*) 0;
+char* path_condition = (char*) 0;
 
 uint64_t* symbolic_memory = (uint64_t*) 0;
 
@@ -7527,13 +7527,13 @@ char* smt_variable(char* prefix, uint64_t bits) {
 
   svar = string_alloc(string_length(prefix) + 20); // 64-bit numbers require up to 20 decimal digits
 
-  sprintf2(svar, "%s%d", prefix, (char*) version);
+  sprintf2(svar, "%s%d", prefix, (char*) variable_version);
 
   printf2("(declare-fun %s () (_ BitVec %d)); variable for ", svar, (char*) bits);
   print_code_context_for_instruction(pc);
   println();
 
-  version = version + 1;
+  variable_version = variable_version + 1;
 
   return svar;
 }
