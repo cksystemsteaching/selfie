@@ -63,6 +63,11 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
+# Run test for native threads
+threads: selfie
+	./selfie -c manuscript/code/threads.c -m 2
+	./selfie -c selfie.c -m 4 -c manuscript/code/threads.c -m 2
+
 # Run selfie on spike
 spike: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
@@ -77,7 +82,7 @@ riscv-tools:
 	docker push cksystemsteaching/riscv-tools
 
 # Run everything
-all: compile quine debug replay os vm min mob smt sat
+all: compile quine debug replay os vm min mob smt sat threads
 
 # Clean up
 clean:
