@@ -110,6 +110,8 @@ uint64_t open(char* filename, uint64_t flags, uint64_t mode);
 // selfie bootstraps void* and unsigned long to uint64_t* and uint64_t, respectively!
 void* malloc(unsigned long);
 
+uint64_t* mmap(uint64_t* addr, uint64_t length, uint64_t prot, uint64_t flags, uint64_t fd, uint64_t offset);
+
 uint64_t fork();
 uint64_t wait();
 uint64_t getpid();
@@ -187,6 +189,8 @@ uint64_t round_up(uint64_t n, uint64_t m);
 uint64_t* smalloc(uint64_t size);
 uint64_t* zalloc(uint64_t size);
 
+uint64_t sfork();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t CHAR_EOF          =  -1; // end of file
@@ -260,13 +264,19 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
-// mmap memory protection, pages may be read and written: 3 = 0x03 = PROT_READ (0x01) | PROT_WRITE (0x02)
+// mmap memory protection, pages may be read and written
+
+// LINUX/MAC: 3 = 0x03 = PROT_READ (0x01) | PROT_WRITE (0x02)
 uint64_t PROT_RW = 3;
 
-// mmap shared anonymous mapping: 4097 = 0x1001 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000)
+// mmap shared anonymous mapping
+// Linux: 33 = 0x0021 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x0020)
+// MAC: 4097 = 0x1001 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000)
 uint64_t MAP_SA = 4097;
 
-// mmap shared anonymous mapping: 4097 = 0x1011 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000) | MAP_FIXED (0x0010)
+// mmap shared anonymous mapping
+// LINUX: 49 = 0x0031 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x0020) | MAP_FIXED (0x0010)
+// MAC: 4097 = 0x1011 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000) | MAP_FIXED (0x0010)
 uint64_t MAP_SAF = 4113;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -994,6 +1004,12 @@ void implement_brk(uint64_t* context);
 void emit_fork();
 void implement_fork(uint64_t* context);
 
+void emit_sfork();
+void implement_sfork(uint64_t* context);
+
+void emit_thread();
+void implement_thread(uint64_t* context);
+
 void emit_wait();
 void implement_wait(uint64_t* context);
 
@@ -1017,9 +1033,12 @@ uint64_t SYSCALL_OPENAT = 56;
 uint64_t SYSCALL_BRK    = 214;
 
 uint64_t SYSCALL_FORK   = 402;
-uint64_t SYSCALL_WAIT   = 403;
-uint64_t SYSCALL_PID    = 404;
-uint64_t SYSCALL_MMAP   = 405;
+uint64_t SYSCALL_THREAD = 403;
+uint64_t SYSCALL_WAIT   = 404;
+uint64_t SYSCALL_PID    = 405;
+uint64_t SYSCALL_MMAP   = 406;
+
+uint64_t SYSCALL_SFORK  = 602;
 
 /* DIRFD_AT_FDCWD corresponds to AT_FDCWD in fcntl.h and
    is passed as first argument of the openat system call
@@ -2481,6 +2500,11 @@ uint64_t* zalloc(uint64_t size) {
 
   return memory;
 }
+
+uint64_t sfork() {
+  return fork();
+}
+
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -4748,11 +4772,11 @@ void compile_cstar() {
 // -----------------------------------------------------------------
 
 void emit_round_up(uint64_t reg, uint64_t m) {
-  talloc();
+  load_integer(m - 1);
 
   // computes value(reg) + m - 1 - (value(reg) + m - 1) % m
-  emit_addi(reg, reg, m - 1);
-  emit_addi(current_temporary(), REG_ZR, m);
+  emit_add(reg, reg, current_temporary());
+  emit_addi(current_temporary(),current_temporary(), 1);
   emit_remu(current_temporary(), reg, current_temporary());
   emit_sub(reg, reg, current_temporary());
 
@@ -4943,7 +4967,10 @@ void selfie_compile() {
   emit_malloc();
   emit_switch();
   emit_fork();
+  emit_sfork();
+  emit_thread();
   emit_wait();
+  emit_mmap();
   emit_pid();
 
   // implicitly declare main procedure in global symbol table
@@ -6455,7 +6482,7 @@ void implement_brk(uint64_t* context) {
 
     if (shared)
       if (debug_shared)
-        printf2((uint64_t*) "%s: -> malloc - setting shared program break to %p\n\n", selfie_name, (uint64_t*) program_break);
+        printf2((uint64_t*) "%s: -> brk - setting shared program break to %p\n\n", selfie_name, (uint64_t*) program_break);
 
     set_program_break(context, program_break);
   } else {
@@ -6492,7 +6519,81 @@ void emit_fork() {
 }
 
 void implement_fork(uint64_t* context) {
-  *(get_regs(context) + REG_A0) = fork();
+  uint64_t pid;
+
+  if(debug_shared)
+    if (is_boot_level_zero())
+      printf1((uint64_t*) "%s: ...fork() on bootlevel...\n", selfie_name);
+    else
+      printf1((uint64_t*) "%s: ...fork() down...\n", selfie_name);
+
+  pid = fork();
+
+  if (is_boot_level_zero()) {
+    if (pid == 0) {
+      if(debug_shared)
+        if (page_frame_memory_base_address != (uint64_t*) 0) {
+          if(debug_shared)
+            printf1((uint64_t*) "%s: ...duplicating shared space...\n\n", selfie_name);
+
+          mmap_make_private(page_frame_memory_base_address, page_frame_memory);
+          mmap_make_private(pt_shared, page_frame_memory / PAGESIZE * REGISTERSIZE);
+          mmap_make_private(next_page_frame_shared, REGISTERSIZE);
+        }
+    }
+  }
+
+  *(get_regs(context) + REG_A0) = pid;
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
+void emit_sfork() {
+  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "sfork", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_SFORK);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_sfork(uint64_t* context) {
+  if(debug_shared)
+    if(is_boot_level_zero())
+      printf1((uint64_t*) "%s: ...sfork() falling back to fork() on bootlevel...\n", selfie_name);
+    else
+      printf1((uint64_t*) "%s: ...sfork() down...\n", selfie_name);
+
+  *(get_regs(context) + REG_A0) = sfork();
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
+void emit_thread() {
+  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "thread", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_THREAD);
+  emit_ecall();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_thread(uint64_t* context) {
+// not yet in shared space
+
+  if (debug_shared)
+    printf1((uint64_t*) "\n%s: ...thread() down (sfork())...\n", selfie_name);
+
+  if (shared == 0) {
+    shared = 1;
+
+    if(debug_shared)
+      printf1((uint64_t*) "%s: -> sharing memory\n", selfie_name);
+
+    mmap_make_shared(context);
+  }
+
+  *(get_regs(context) + REG_A0) = sfork();
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
@@ -6531,9 +6632,9 @@ void emit_mmap() {
   // like malloc/brk BUT bump and size PAGE-aligned (will be mapped to to shared PAGE)
   uint64_t* entry;
 
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "mmap", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "mmap", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
-  entry = search_global_symbol_table(string_copy((uint64_t*) "_bump"), VARIABLE);
+  entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
 
   emit_addi(REG_SP, REG_SP, REGISTERSIZE); // offset
   emit_addi(REG_SP, REG_SP, REGISTERSIZE); // file descriptor
@@ -6590,7 +6691,6 @@ void implement_mmap(uint64_t* context) {
   // local variables
   uint64_t previous_program_break;
   uint64_t valid;
-  uint64_t size;
 
   program_break = *(get_regs(context) + REG_A0);
 
@@ -9090,6 +9190,10 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_openat(context);
   else if (a7 == SYSCALL_FORK)
     implement_fork(context);
+  else if (a7 == SYSCALL_SFORK)
+    implement_sfork(context);
+  else if (a7 == SYSCALL_THREAD)
+    implement_thread(context);
   else if (a7 == SYSCALL_WAIT)
     implement_wait(context);
   else if (a7 == SYSCALL_PID)
