@@ -1000,6 +1000,9 @@ void implement_wait(uint64_t* context);
 void emit_pid();
 void implement_pid(uint64_t* context);
 
+void emit_mmap();
+void implement_mmap();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read  = 0;
@@ -1016,6 +1019,7 @@ uint64_t SYSCALL_BRK    = 214;
 uint64_t SYSCALL_FORK   = 402;
 uint64_t SYSCALL_WAIT   = 403;
 uint64_t SYSCALL_PID    = 404;
+uint64_t SYSCALL_MMAP   = 405;
 
 /* DIRFD_AT_FDCWD corresponds to AT_FDCWD in fcntl.h and
    is passed as first argument of the openat system call
@@ -1044,6 +1048,37 @@ uint64_t debug_switch = 0;
 // ----------------------    R U N T I M E    ----------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ------------------------ SHARED MEMORY --------------------------
+// -----------------------------------------------------------------
+
+uint64_t get_and_update_frame_for_page_shared(uint64_t* table, uint64_t page);
+
+uint64_t* smmap(uint64_t size);
+uint64_t* ammap(uint64_t addr, uint64_t size);
+
+void mmap_make_private(uint64_t* base, uint64_t size);
+void mmap_make_shared(uint64_t* context);
+
+void      copy_page_frame(uint64_t* old_frame, uint64_t* new_frame);
+uint64_t* palloc_shared();
+
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t shared       = 0; // flag for executing code with shared memory
+uint64_t debug_shared = 1;
+
+uint64_t* page_frame_memory_base_address = (uint64_t*) 0;
+
+uint64_t* pt_shared = (uint64_t*) 0;
+
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* next_page_frame_shared        = (uint64_t*) 0;
+
 
 // -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
@@ -1090,10 +1125,18 @@ uint64_t page_frame_memory = 0; // size of memory for frames
 // ------------------------- INITIALIZATION ------------------------
 
 void init_memory(uint64_t megabytes) {
+  uint64_t pt_size;
+
   if (megabytes > 4096)
     megabytes = 4096;
 
   page_frame_memory = megabytes * MEGABYTE;
+
+  pt_size = page_frame_memory / PAGESIZE * REGISTERSIZE;
+  pt_shared = smmap(pt_size);
+
+  next_page_frame_shared = smmap(REGISTERSIZE);
+
 }
 
 // -----------------------------------------------------------------
@@ -1552,6 +1595,7 @@ void reset_microkernel() {
 // -----------------------------------------------------------------
 
 uint64_t pavailable();
+uint64_t pavailable_shared();
 uint64_t pexcess();
 uint64_t pused();
 
@@ -6409,6 +6453,10 @@ void implement_brk(uint64_t* context) {
     if (debug_brk)
       printf2("%s: setting program break to %p\n", selfie_name, (char*) program_break);
 
+    if (shared)
+      if (debug_shared)
+        printf2((uint64_t*) "%s: -> malloc - setting shared program break to %p\n\n", selfie_name, (uint64_t*) program_break);
+
     set_program_break(context, program_break);
   } else {
     // error returns current program break
@@ -6478,6 +6526,109 @@ void implement_pid(uint64_t* context) {
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
+
+void emit_mmap() {
+  // like malloc/brk BUT bump and size PAGE-aligned (will be mapped to to shared PAGE)
+  uint64_t* entry;
+
+  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "mmap", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+
+  entry = search_global_symbol_table(string_copy((uint64_t*) "_bump"), VARIABLE);
+
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE); // offset
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE); // file descriptor
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE); // flags
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE); // protection
+
+  // allocate register for size parameter
+  talloc();
+
+  emit_ld(current_temporary(), REG_SP, 0); // size
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE); // size
+  emit_addi(REG_SP, REG_SP, REGISTERSIZE); // address
+
+  // round up size to page alignment
+  emit_round_up(current_temporary(), PAGESIZE);
+
+  // allocate register to compute new bump pointer
+  talloc();
+
+  // get current _bump which will be returned upon success
+  emit_ld(current_temporary(), get_scope(entry), get_address(entry));
+
+  // round up _bump to page alignment
+  emit_round_up(current_temporary(), PAGESIZE);
+
+  // call brk syscall to set new program break to (page-aligned) _bump + size
+  emit_add(REG_A0, current_temporary(), previous_temporary());
+  emit_addi(REG_A7, REG_ZR, SYSCALL_MMAP);
+  emit_ecall();
+
+  // return 0 if memory allocation failed, that is,
+  // if new program break is still _bump and size !=0
+  emit_beq(REG_A0, current_temporary(), 2 * INSTRUCTIONSIZE);
+  emit_beq(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
+  emit_beq(REG_ZR, previous_temporary(), 3 * INSTRUCTIONSIZE);
+  emit_addi(REG_A0, REG_ZR, 0);
+  emit_beq(REG_ZR, REG_ZR, 3 * INSTRUCTIONSIZE);
+
+  // if memory was successfully allocated
+  // set _bump to new program break
+  // and then return original _bump
+  emit_sd(get_scope(entry), get_address(entry), REG_A0);
+  emit_addi(REG_A0, current_temporary(), 0);
+
+  tfree(2);
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+}
+
+void implement_mmap(uint64_t* context) {
+  // parameter
+  uint64_t program_break;
+
+  // local variables
+  uint64_t previous_program_break;
+  uint64_t valid;
+  uint64_t size;
+
+  program_break = *(get_regs(context) + REG_A0);
+
+  previous_program_break = round_up(get_program_break(context), PAGESIZE);
+
+  valid = 0;
+
+  if (program_break >= previous_program_break)
+    if (program_break < *(get_regs(context) + REG_SP))
+      if (program_break % SIZEOFUINT64 == 0)
+        valid = 1;
+
+  if (valid) {
+    if (debug_shared)
+      printf2((uint64_t*) "%s: -> mmap - setting program break to %p\n", selfie_name, (uint64_t*) program_break);
+
+    set_program_break(context, program_break);
+
+    // map shared page already -> otherwise marking necessary?
+    while (previous_program_break < program_break) {
+      map_page(context, get_page_of_virtual_address(previous_program_break), (uint64_t) palloc_shared());
+
+      previous_program_break = previous_program_break + PAGESIZE;
+    }
+
+  } else {
+    // error returns current program break
+    program_break = previous_program_break;
+
+    if (debug_shared)
+      printf2((uint64_t*) "%s: -> mmap - retrieving current program break %p\n", selfie_name, (uint64_t*) program_break);
+
+    *(get_regs(context) + REG_A0) = program_break;
+  }
+
+  set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
+}
+
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -6590,6 +6741,127 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
+// ------------------------ SHARED MEMORY --------------------------
+// -----------------------------------------------------------------
+
+uint64_t get_and_update_frame_for_page_shared(uint64_t* table, uint64_t page) {
+  // assert: get_frame_for_page() == 0
+  uint64_t frame;
+
+  frame = 0;
+
+  if (shared) {
+    // get frame from shared table
+    frame = *(pt_shared + page);
+
+    if (frame != 0) {
+      // update own table
+      *(table + page) = frame;
+
+      if (page <= get_page_of_virtual_address(get_program_break(current_context) - REGISTERSIZE)) {
+        // exploit spatial locality in page table caching
+        if (page < get_lo_page(current_context))
+          set_lo_page(current_context, page);
+        else if (page > get_me_page(current_context))
+          set_me_page(current_context, page);
+      }
+
+      if (debug_shared) {
+        printf1((uint64_t*) "\n%s: -> page ", selfie_name);
+        print_hexadecimal(page, 4);
+        printf2((uint64_t*) " updated from shared table, mapped to frame %p in context %p \n\n", (uint64_t*) frame, current_context);
+      }
+    }
+  }
+
+  return  frame;
+}
+
+uint64_t* smmap(uint64_t size) {
+  uint64_t* memory;
+
+  size = round_up(size, REGISTERSIZE);
+
+  memory = mmap(0, size, PROT_RW, MAP_SA, -1, 0);
+
+  return memory;
+}
+
+uint64_t* ammap(uint64_t addr, uint64_t size) {
+  // assert: only called on bootlevel
+  uint64_t* memory;
+  uint64_t  i;
+
+  size = round_up(size, REGISTERSIZE);
+
+  memory = mmap(addr, size, PROT_RW, MAP_SAF, -1, 0);
+
+  return memory;
+}
+
+void mmap_make_private(uint64_t* base, uint64_t size) {
+  // asser: only on bootlevel zero
+  uint64_t* temp;
+  uint64_t i;
+
+  temp = malloc(size);
+
+  i = 0;
+
+  while (i < size / REGISTERSIZE) {
+    *(temp + i) = *(base + i);
+    i = i + 1;
+  }
+
+  base = ammap(base, size);
+
+  i = 0;
+
+  while (i < size / REGISTERSIZE) {
+    *(base + i) = *(temp + i);
+    i = i + 1;
+  }
+}
+
+void mmap_make_shared(uint64_t* context) {
+  uint64_t lo_page;
+  uint64_t me_page;
+  uint64_t page_offset;
+
+  uint64_t* frame;
+  uint64_t* frame_shared;
+
+  lo_page = get_lo_page(context);
+  me_page = get_me_page(context);
+
+  while (lo_page <= me_page) {
+
+    if (is_page_mapped(get_pt(context), lo_page)) {
+      frame = (uint64_t*) get_frame_for_page(get_pt(context), lo_page);
+      frame_shared = palloc_shared();
+
+      copy_page_frame(frame, frame_shared);
+      map_page(context, lo_page, (uint64_t) frame_shared);
+    }
+    lo_page = lo_page + 1;
+  }
+}
+
+void copy_page_frame(uint64_t* old_frame, uint64_t* new_frame) {
+  uint64_t page_offset;
+
+  page_offset = 0;
+
+  while (page_offset < PAGESIZE / REGISTERSIZE) {
+
+    *(new_frame + page_offset) = *(old_frame + page_offset);
+
+    page_offset = page_offset + 1;
+  }
+}
+
+
+// -----------------------------------------------------------------
 // ---------------------------- MEMORY -----------------------------
 // -----------------------------------------------------------------
 
@@ -6611,6 +6883,8 @@ uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
   if (get_frame_for_page(table, page) != 0)
+    return 1;
+  else if (get_and_update_frame_for_page_shared(table, page) != 0)
     return 1;
   else
     return 0;
@@ -8471,6 +8745,9 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   *(table + page) = frame;
 
+  if (shared)
+    *(pt_shared + page) = frame;
+
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
     // exploit spatial locality in page table caching
     if (page < get_lo_page(context))
@@ -8575,6 +8852,13 @@ uint64_t pavailable() {
     return 0;
 }
 
+uint64_t pavailable_shared() {
+  if (allocated_page_frame_memory + PAGESIZE < page_frame_memory)
+    return 1;
+  else
+    return 0;
+}
+
 uint64_t pexcess() {
   if (pavailable())
     return 1;
@@ -8626,6 +8910,41 @@ uint64_t* palloc() {
   free_page_frame_memory = free_page_frame_memory - PAGESIZE;
 
   // strictly, touching is only necessary on boot levels higher than zero
+  return touch((uint64_t*) frame, PAGESIZE);
+}
+
+uint64_t* palloc_shared() {
+  uint64_t frame;
+
+  // assert: page_frame_memory_shared is equal to or a multiple of MEGABYTE
+  // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
+
+  if (*next_page_frame_shared == 0) {
+    if (pavailable_shared()) {
+      // on boot level zero mmap zeroed memory
+      page_frame_memory_base_address = smmap(page_frame_memory);
+
+      // page frames must be page-aligned to work as page table index
+      *next_page_frame_shared = round_up((uint64_t) page_frame_memory_base_address, PAGESIZE);
+
+      if (*next_page_frame_shared > (uint64_t) page_frame_memory_base_address) {
+        // losing one page frame to fragmentation
+        allocated_page_frame_memory = allocated_page_frame_memory + PAGESIZE;
+      }
+    } else {
+      print(selfie_name);
+      print((uint64_t*) ": palloc_shared out of shared physical memory\n");
+
+      exit(EXITCODE_OUTOFPHYSICALMEMORY);
+    }
+  }
+
+  frame = *next_page_frame_shared;
+
+  *next_page_frame_shared = *next_page_frame_shared + PAGESIZE;
+
+  allocated_page_frame_memory = allocated_page_frame_memory + PAGESIZE;
+
   return touch((uint64_t*) frame, PAGESIZE);
 }
 
@@ -8775,6 +9094,8 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_wait(context);
   else if (a7 == SYSCALL_PID)
     implement_pid(context);
+  else if (a7 == SYSCALL_MMAP)
+    implement_mmap(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
@@ -8793,6 +9114,13 @@ uint64_t handle_system_call(uint64_t* context) {
 
 uint64_t handle_page_fault(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  if (shared)
+    if (get_faulting_page(context) < get_program_break(context) / PAGESIZE) {
+      map_page(context, get_faulting_page(context), (uint64_t) palloc_shared());
+
+      return DONOTEXIT;
+    }
 
   // TODO: use this table to unmap and reuse frames
   map_page(context, get_faulting_page(context), (uint64_t) palloc());
@@ -9235,6 +9563,7 @@ uint64_t selfie_run(uint64_t machine) {
   record      = 0;
   disassemble = 0;
   debug       = 0;
+  shared      = 0;
 
   return exit_code;
 }
