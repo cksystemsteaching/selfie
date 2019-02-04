@@ -8984,7 +8984,6 @@ char* replace_extension(char* filename, uint64_t e) {
 }
 
 uint64_t monster(uint64_t* to_context) {
-  uint64_t b;
   uint64_t timeout;
   uint64_t* from_context;
 
@@ -9015,8 +9014,6 @@ uint64_t monster(uint64_t* to_context) {
   print("(set-option :produce-models true)\n");
   print("(set-option :incremental true)\n");
   print("(set-logic QF_BV)\n\n");
-
-  b = 0;
 
   timeout = max_execution_depth;
 
