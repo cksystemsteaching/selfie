@@ -4839,15 +4839,24 @@ int openWriteOnly(int* name) {
   // not always work and require intervention
   int fd;
 
-  // This is a flag that works as a write only flag in a Browser environment:
-  // O_WRONLY | O_CREAT | O_EXCL (= 193)
-  // The mode will be set to 0666 (= 438)
-  fd = open(name, 193, 438);
+  // try Mac flags
+  fd = open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
 
   if (fd < 0) {
-    print((int*) "Error opening write only file. File descriptor is: ");
-    printInteger(fd);
-    print((int*) "\n");
+    // try Linux flags
+    fd = open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+    if (fd < 0) {
+      // try Windows flags
+      fd = open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+
+      if (fd < 0) {
+        // This is a flag that works as a write only flag in a Browser environment:
+        // O_WRONLY | O_CREAT | O_EXCL (= 193)
+        // The mode will be set to 0666 (= 438)
+        fd = open(name, 193, 438);
+      }
+    }
   }
 
   return fd;
