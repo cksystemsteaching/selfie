@@ -107,7 +107,7 @@ int  stringLength(int* s);
 void stringReverse(int* s);
 int  stringCompare(int* s, int* t);
 
-int  atoi(int* s);
+int  selfie_atoi(int* s);
 int* itoa(int n, int* s, int b, int a, int p);
 
 int fixedPointRatio(int a, int b);
@@ -157,6 +157,8 @@ int CHAR_EXCLAMATION  = '!';
 int CHAR_PERCENTAGE   = '%';
 int CHAR_SINGLEQUOTE  = 39; // ASCII code 39 = '
 int CHAR_DOUBLEQUOTE  = '"';
+int CHAR_BACKSLASH    =  92; // ASCII code 92 = backslash
+
 
 int SIZEOFINT     = 4; // must be the same as WORDSIZE
 int SIZEOFINTSTAR = 4; // must be the same as WORDSIZE
@@ -288,6 +290,7 @@ int identifierStringMatch(int stringIndex);
 int identifierOrKeyword();
 
 void getSymbol();
+void handle_escape_sequence();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -574,7 +577,7 @@ void emitLeftShiftBy(int b);
 void emitMainEntry();
 void createELFHeader();
 void createELFSectionHeader(int start, int name, int type, int flags, int addr, int off, int size, int link, int info, int align, int entsize);
-void createELFProgramHeader(int type, int offset, int vaddr, int paddr, int fsize, int memsize, int flags, int align); 
+void createELFProgramHeader(int type, int offset, int vaddr, int paddr, int fsize, int memsize, int flags, int align);
 void bootstrapCode();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1418,7 +1421,7 @@ int stringCompare(int* s, int* t) {
       return 0;
 }
 
-int atoi(int* s) {
+int selfie_atoi(int* s) {
   int i;
   int n;
   int c;
@@ -1821,9 +1824,7 @@ void syntaxErrorCharacter(int expected) {
   print((int*) " expected but ");
 
   printCharacter(character);
-  print((int*) " found");
-
-  println();
+  print((int*) " found\n");
 }
 
 void getCharacter() {
@@ -2054,7 +2055,7 @@ void getSymbol() {
 
         storeCharacter(integer, i, 0); // null-terminated string
 
-        literal = atoi(integer);
+        literal = selfie_atoi(integer);
 
         if (literal < 0) {
           if (literal == INT_MIN) {
@@ -2115,6 +2116,9 @@ void getSymbol() {
 
             exit(-1);
           }
+
+          if (character == CHAR_BACKSLASH)
+            handle_escape_sequence();
 
           storeCharacter(string, i, character);
 
@@ -2240,6 +2244,18 @@ void getSymbol() {
   }
 }
 
+void handle_escape_sequence() {
+  getCharacter();
+
+  if (character == 'n')
+    character = CHAR_LF;
+  else {
+    syntaxErrorMessage((int*) "unknown escape sequence found\n");
+
+    exit(-2);
+  }
+}
+
 // -----------------------------------------------------------------
 // ------------------------- SYMBOL TABLE --------------------------
 // -----------------------------------------------------------------
@@ -2347,8 +2363,7 @@ int reportUndefinedProcedures() {
       printLineNumber((int*) "error", getLineNumber(entry));
       print((int*) "procedure ");
       print(getString(entry));
-      print((int*) " undefined");
-      println();
+      print((int*) " undefined\n");
     }
 
     // keep looking
@@ -2566,9 +2581,7 @@ void syntaxErrorSymbol(int expected) {
   print((int*) " expected but ");
 
   printSymbol(symbol);
-  print((int*) " found");
-
-  println();
+  print((int*) " found\n");
 }
 
 void syntaxErrorUnexpected() {
@@ -2576,9 +2589,7 @@ void syntaxErrorUnexpected() {
 
   print((int*) "unexpected symbol ");
   printSymbol(symbol);
-  print((int*) " found");
-
-  println();
+  print((int*) " found\n");
 }
 
 void printType(int type) {
@@ -2603,9 +2614,7 @@ void typeWarning(int expected, int found) {
 
   printType(found);
 
-  print((int*) " found");
-
-  println();
+  print((int*) " found\n");
 }
 
 int* getVariable(int* variable) {
@@ -2616,8 +2625,7 @@ int* getVariable(int* variable) {
   if (entry == (int*) 0) {
     printLineNumber((int*) "error", lineNumber);
     print(variable);
-    print((int*) " undeclared");
-    println();
+    print((int*) " undeclared\n");
 
     exit(-1);
   }
@@ -3867,8 +3875,7 @@ void gr_procedure(int* procedure, int type) {
         printLineNumber((int*) "warning", lineNumber);
         print((int*) "redefinition of procedure ");
         print(procedure);
-        print((int*) " ignored");
-        println();
+        print((int*) " ignored\n");
       }
     }
 
@@ -3991,8 +3998,7 @@ void gr_cstar() {
             printLineNumber((int*) "warning", currentLineNumber);
             print((int*) "redefinition of global variable ");
             print(variableOrProcedureName);
-            print((int*) " ignored");
-            println();
+            print((int*) " ignored\n");
           }
         }
       } else
@@ -4039,7 +4045,7 @@ void emitMainEntry() {
     i = i + 1;
   }
 
-  talloc(1);
+  talloc();
   // this pushes argv pointer onto stack
   // (argv = address of argv[0])
   emitIFormat(WORDSIZE, REG_SP, F3_ADDI, currentTemporary(), OP_IMM);
@@ -4105,8 +4111,8 @@ void createELFHeader() {
   *(ELF_header + 12) = 196612;   // # of section headers (4) and section header string table index (3)
 
   // Program Header
-  createELFProgramHeader(1, ELF_HEADER_LEN+4, ELF_ENTRY_POINT, 
-                         0, binaryLength, binaryLength, 7, 4096); 
+  createELFProgramHeader(1, ELF_HEADER_LEN+4, ELF_ENTRY_POINT,
+                         0, binaryLength, binaryLength, 7, 4096);
 
   // Section Header 0 (Zero-Header)
   createELFSectionHeader(21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -4299,8 +4305,7 @@ void selfie_compile() {
       printInteger(lineNumber - 1);
       print((int*) " lines and ");
       printInteger(numberOfComments);
-      print((int*) " comments");
-      println();
+      print((int*) " comments\n");
 
       print(selfieName);
       print((int*) ": with ");
@@ -4309,8 +4314,7 @@ void selfie_compile() {
       printFixedPointPercentage(numberOfReadCharacters, numberOfReadCharacters - numberOfIgnoredCharacters);
       print((int*) "%) characters in ");
       printInteger(numberOfScannedSymbols);
-      print((int*) " actual symbols");
-      println();
+      print((int*) " actual symbols\n");
 
       print(selfieName);
       print((int*) ": ");
@@ -4319,8 +4323,7 @@ void selfie_compile() {
       printInteger(numberOfProcedures);
       print((int*) " procedures, ");
       printInteger(numberOfStrings);
-      print((int*) " string literals");
-      println();
+      print((int*) " string literals\n");
 
       print(selfieName);
       print((int*) ": ");
@@ -4333,15 +4336,13 @@ void selfie_compile() {
       printInteger(numberOfIf);
       print((int*) " if, ");
       printInteger(numberOfReturn);
-      print((int*) " return");
-      println();
+      print((int*) " return\n");
     }
   }
 
   if (numberOfSourceFiles == 0) {
     print(selfieName);
-    print((int*) ": nothing to compile, only library generated");
-    println();
+    print((int*) ": nothing to compile, only library generated\n");
   }
 
   codeLength = binaryLength;
@@ -4357,8 +4358,7 @@ void selfie_compile() {
   printInteger(codeLength / WORDSIZE);
   print((int*) " instructions and ");
   printInteger(binaryLength - codeLength + WORDSIZE);
-  print((int*) " bytes of data");
-  println();
+  print((int*) " bytes of data\n");
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -4614,7 +4614,7 @@ void decode() {
     printInteger(opcode);
     print((int*) " (");
     printBinary(opcode, 0);
-    print((int*) ") detected");
+    print((int*) ") detected\n");
     exit(-1);
   }
 }
@@ -4839,16 +4839,15 @@ int openWriteOnly(int* name) {
   // not always work and require intervention
   int fd;
 
-  // try Mac flags
-  fd = open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+  // This is a flag that works as a write only flag in a Browser environment:
+  // O_WRONLY | O_CREAT | O_EXCL (= 193)
+  // The mode will be set to 0666 (= 438)
+  fd = open(name, 193, 438);
 
   if (fd < 0) {
-    // try Linux flags
-    fd = open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
-
-    if (fd < 0)
-      // try Windows flags
-      fd = open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH);
+    print((int*) "Error opening write only file. File descriptor is: ");
+    printInteger(fd);
+    print((int*) "\n");
   }
 
   return fd;
@@ -5063,8 +5062,7 @@ void implementExit() {
   printInteger(*(registers+REG_A0));
   print((int*) " and ");
   printFixedPointRatio(brk - maxBinaryLength, MEGABYTE);
-  print((int*) "MB of mallocated memory");
-  println();
+  print((int*) "MB of mallocated memory\n");
 }
 
 void emitRead() {
@@ -5159,8 +5157,7 @@ void implementRead() {
           print(binaryName);
           print((int*) ": reading into virtual address ");
           printHexadecimal(vaddr, 8);
-          print((int*) " failed because the address is unmapped");
-          println();
+          print((int*) " failed because the address is unmapped\n");
         }
       }
     } else {
@@ -5172,8 +5169,7 @@ void implementRead() {
         print(binaryName);
         print((int*) ": reading into virtual address ");
         printHexadecimal(vaddr, 8);
-        print((int*) " failed because the address is invalid");
-        println();
+        print((int*) " failed because the address is invalid\n");
       }
     }
   }
@@ -5284,8 +5280,7 @@ void implementWrite() {
           print(binaryName);
           print((int*) ": writing into virtual address ");
           printHexadecimal(vaddr, 8);
-          print((int*) " failed because the address is unmapped");
-          println();
+          print((int*) " failed because the address is unmapped\n");
         }
       }
     } else {
@@ -5297,8 +5292,7 @@ void implementWrite() {
         print(binaryName);
         print((int*) ": writing into virtual address ");
         printHexadecimal(vaddr, 8);
-        print((int*) " failed because the address is invalid");
-        println();
+        print((int*) " failed because the address is invalid\n");
       }
     }
   }
@@ -5375,8 +5369,7 @@ int down_loadString(int* table, int vaddr, int* s) {
           print(binaryName);
           print((int*) ": opening file with name at virtual address ");
           printHexadecimal(vaddr, 8);
-          print((int*) " failed because the address is unmapped");
-          println();
+          print((int*) " failed because the address is unmapped\n");
         }
       }
     } else {
@@ -5384,8 +5377,7 @@ int down_loadString(int* table, int vaddr, int* s) {
         print(binaryName);
         print((int*) ": opening file with name at virtual address ");
         printHexadecimal(vaddr, 8);
-        print((int*) " failed because the address is invalid");
-        println();
+        print((int*) " failed because the address is invalid\n");
       }
     }
   }
@@ -5427,8 +5419,7 @@ void implementOpen() {
       print(binaryName);
       print((int*) ": opening file with name at virtual address ");
       printHexadecimal(vaddr, 8);
-      print((int*) " failed because the name is too long");
-      println();
+      print((int*) " failed because the name is too long\n");
     }
   }
 }
@@ -5549,8 +5540,7 @@ int doCreate(int parentID) {
     return bumpID;
   } else {
     print(binaryName);
-    print((int*) ": selfie_create failed");
-    println();
+    print((int*) ": selfie_create failed\n");
 
     exit(-1);
   }
@@ -5618,8 +5608,7 @@ int doSwitch(int toID) {
     print(binaryName);
     print((int*) ": selfie_switch context ");
     printInteger(toID);
-    print((int*) " not found");
-    println();
+    print((int*) " not found\n");
   }
 
   return fromID;
@@ -5746,8 +5735,7 @@ void doDelete(int ID) {
     print(binaryName);
     print((int*) ": selfie_delete context ");
     printInteger(ID);
-    print((int*) " not found");
-    println();
+    print((int*) " not found\n");
   }
 }
 
@@ -5813,8 +5801,7 @@ void doMap(int ID, int page, int frame) {
         printInteger(getParent(mapContext));
         print((int*) " of context ");
         printInteger(ID);
-        print((int*) " not found");
-        println();
+        print((int*) " not found\n");
       }
     }
 
@@ -5835,8 +5822,7 @@ void doMap(int ID, int page, int frame) {
     print(binaryName);
     print((int*) ": selfie_map context ");
     printInteger(ID);
-    print((int*) " not found");
-    println();
+    print((int*) " not found\n");
   }
 }
 
@@ -5922,18 +5908,14 @@ int* tlb(int* table, int vaddr) {
 
   if (debug_tlb) {
     print(binaryName);
-    print((int*) ": tlb access:");
-    println();
+    print((int*) ": tlb access:\n");
     print((int*) " vaddr: ");
     printBinary(vaddr, 32);
-    println();
-    print((int*) " page:  ");
+    print((int*) "\n page:  ");
     printBinary(page * PAGESIZE, 32);
-    println();
-    print((int*) " frame: ");
+    print((int*) "\n frame: ");
     printBinary(frame, 32);
-    println();
-    print((int*) " paddr: ");
+    print((int*) "\n paddr: ");
     printBinary(paddr, 32);
     println();
   }
@@ -5970,8 +5952,7 @@ void mapAndStoreVirtualMemory(int* table, int vaddr, int data) {
 
 void op_ecall() {
   if (debug) {
-    print((int*) "ecall");
-    println();
+    print((int*) "ecall\n");
   }
 
   if (interpret) {
@@ -6623,8 +6604,7 @@ void throwException(int exception, int parameter) {
     printInteger(getID(currentContext));
     print((int*) " throws ");
     printStatus(status);
-    print((int*) " exception");
-    println();
+    print((int*) " exception\n");
   }
 }
 
@@ -7004,8 +6984,7 @@ int* palloc() {
         freePageFrameMemory = freePageFrameMemory - PAGESIZE;
     } else {
       print(selfieName);
-      print((int*) ": palloc out of physical memory");
-      println();
+      print((int*) ": palloc out of physical memory\n");
 
       exit(-1);
     }
@@ -7240,7 +7219,7 @@ int runOrHostUntilExitWithPageFaultHandling(int toID) {
         printInteger(getID(fromContext));
         print((int*) " throws uncaught ");
         printStatus(savedStatus);
-        println();
+        print((int*)"\n");
 
         return -1;
       }
@@ -7266,8 +7245,7 @@ int bootminmob(int argc, int* argv, int machine) {
   print(binaryName);
   print((int*) " with ");
   printInteger(pageFrameMemory / MEGABYTE);
-  print((int*) "MB of physical memory");
-  println();
+  print((int*) "MB of physical memory\n");
 
   resetInterpreter();
   resetMicrokernel();
@@ -7299,8 +7277,7 @@ int bootminmob(int argc, int* argv, int machine) {
   printInteger(exitCode);
   print((int*) " and ");
   printFixedPointRatio(pused(), MEGABYTE);
-  print((int*) "MB of mapped memory");
-  println();
+  print((int*) "MB of mapped memory\n");
 
   return exitCode;
 }
@@ -7320,8 +7297,7 @@ int boot(int argc, int* argv) {
   print(binaryName);
   print((int*) " with ");
   printInteger(pageFrameMemory / MEGABYTE);
-  print((int*) "MB of physical memory");
-  println();
+  print((int*) "MB of physical memory\n");
 
   // resetting interpreter is only necessary for rocstars
   resetInterpreter();
@@ -7357,8 +7333,7 @@ int boot(int argc, int* argv) {
   printInteger(exitCode);
   print((int*) " and ");
   printFixedPointRatio(pused(), MEGABYTE);
-  print((int*) "MB of mapped memory");
-  println();
+  print((int*) "MB of mapped memory\n");
 
   return exitCode;
 }
@@ -7368,13 +7343,12 @@ int selfie_run(int engine, int machine, int debugger) {
 
   if (binaryLength == 0) {
     print(selfieName);
-    print((int*) ": nothing to run, debug, or host");
-    println();
+    print((int*) ": nothing to run, debug, or host\n");
 
     exit(-1);
   }
 
-  initMemory(atoi(peekArgument()));
+  initMemory(selfie_atoi(peekArgument()));
 
   // pass binary name as first argument by replacing memory size
   setArgument(binaryName);
@@ -7398,14 +7372,14 @@ int selfie_run(int engine, int machine, int debugger) {
 
     print(selfieName);
     if (sourceLineNumber != (int*) 0)
-      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)");
+      print((int*) ": profile: total,max(ratio%)@addr(line#),2max(ratio%)@addr(line#),3max(ratio%)@addr(line#)\n");
     else
-      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr");
-    println();
+      print((int*) ": profile: total,max(ratio%)@addr,2max(ratio%)@addr,3max(ratio%)@addr\n");
     printProfile((int*) ": calls: ", calls, callsPerAddress);
     printProfile((int*) ": loops: ", loops, loopsPerAddress);
     printProfile((int*) ": loads: ", loads, loadsPerAddress);
     printProfile((int*) ": stores: ", stores, storesPerAddress);
+    print("\n");
   } else
     // boot hypster
     exitCode = boot(numberOfRemainingArguments(), remainingArguments());
@@ -7511,8 +7485,7 @@ int main(int argc, int* argv) {
 
   if (exitCode == USAGE) {
     print(selfieName);
-    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ] ");
-    println();
+    print((int*) ": usage: selfie { -c { source } | -o binary | -s assembly | -l binary } [ (-m | -d | -y | -min | -mob ) size ... ]\n");
 
     return 0;
   } else

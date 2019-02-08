@@ -6,8 +6,11 @@ OS := $(shell uname)
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
+webassembly: selfie.c
+	emcc $(CFLAGS) $< -s ASSERTIONS=2 -s EXTRA_EXPORTED_RUNTIME_METHODS='["FS"]' -o selfie.html --preload-file selfie.c
+
 # Consider these targets as targets, not files
-.PHONY : test clean
+.PHONY : test clean clean-wasm
 
 # Test self-compilation, self-execution, and self-hosting
 
@@ -31,8 +34,15 @@ test: selfie
 sbrk.dylib: sbrk.c
 	$(CC) -m32 -Wall -o sbrk.dylib -dynamiclib sbrk.c
 
+# Clean up webassembly related files
+clean-wasm:
+	rm -rf selfie.wasm
+	rm -rf selfie.js
+	rm -rf selfie.html
+	rm -rf selfie.data
+
 # Clean up
-clean:
+clean: clean-wasm
 	rm -rf *.r
 	rm -rf *.s
 	rm -rf selfie
