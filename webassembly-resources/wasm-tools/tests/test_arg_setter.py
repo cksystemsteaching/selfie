@@ -31,7 +31,6 @@ def test_html_parsing(html_file):
 def test_filename_extraction():
     test_args = ["-o", "hello", "-s", "world"]
     filenames = arg_setter.extract_filenames(test_args)
-    print(filenames)
     assert(len(filenames) == 2)
     assert(filenames[0] == 'hello')
     assert(filenames[1] == 'world')

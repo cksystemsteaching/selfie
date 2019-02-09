@@ -105,15 +105,12 @@ def remove_existing_postRun(html_lines):
     postRun = get_index_and_line_num("postRun:", html_lines)
     postRun_index = postRun[0][0]
 
-    print(postRun_index)
-    print(len(html_lines))
     # remove postRun definition
     while "print: " not in html_lines[postRun_index]:
         html_lines.pop(postRun_index)
 
 def modify_postRun(html_lines, filenames):
     postRun = get_index_and_line_num("postRun:", html_lines)
-    print(postRun[0][1])
     whitespace = postRun[0][1].split("postRun")[0]
     new_postRun = whitespace + "postRun: (function () {\n"
 
@@ -128,8 +125,6 @@ def modify_postRun(html_lines, filenames):
     original_postRun_index = postRun[0][0]
     html_lines.insert(original_postRun_index, new_postRun)
 
-    return html_lines
-
 def set_up_auto_downloads(html_file, filenames):
     print("Will now set up downloads\n")
     html_lines = get_html_code(html_file)
@@ -137,8 +132,6 @@ def set_up_auto_downloads(html_file, filenames):
     assert(len(module) == 1)
 
     module_declaration_index = module[0][0]
-
-    print(html_lines[module_declaration_index - 2])
 
     # only add hidden link if it is not present yet
     if "spinnerElement" in html_lines[module_declaration_index - 2]:
@@ -156,28 +149,19 @@ def set_up_auto_downloads(html_file, filenames):
 
     write_html(html_file, html_lines)
 
-    #move a file or directory (src) to another location (dst) and return the destination
-def move_file(f, to):
-    print("Moving: %s\nTo: %s\n", "from","to")
-    #shutil.move()
-
 def arg_parser(html_file, args):
     set_args(html_file, args)
     print("Arguments set.\n")
 
     if "-o" in args or "-s" in args:
-        print("Setting up auto downloads of produced files\n")
+        print("Setting up auto downloads of produced files")
         filenames = extract_filenames(args)
-        print("Target file names:\n")
+        print("Target file names:")
         print(filenames)
         set_up_auto_downloads(html_file, filenames)
 
-    pass
-
 if __name__ == "__main__":
-    #print(return_line_and_index("var Module", ["var Module"]))
-
-#move_file("here", "there")
+    #move_file("here", "there")
     if len(sys.argv) < 3:
         print("Usage: python3 argument_setter.py <html> <arg1> ...")
         sys.exit(1)

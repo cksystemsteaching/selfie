@@ -29,7 +29,7 @@
     	window.URL.revokeObjectURL(url);
 
     }),
-print: (function() {
+    print: (function() {
       var element = document.getElementById('output');
       if (element) element.value = ''; // clear browser cache
       return function(text) {

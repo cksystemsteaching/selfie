@@ -4,4 +4,4 @@ selfie.html
 *.wasm
 *.r
 *.s
-__pycache__
+__pycache__*
