@@ -44,26 +44,26 @@ var Module = {
     preRun: [],
 ```
 
-The python script argument_setter.py in the wasm-tools may be used to make this
+The python script arg_setter.py in the wasm-tools may be used to make this
 more convenient.
 
-Using the argument_setter.py script the arguments can be set from the command line like this:
+Using the arg_setter.py script the command-line arguments can be set like this:
 ```
-python3 argument_setter.py selfie.html -c selfie.c -m 4
+python3 arg_setter.py selfie.html -c selfie.c -m 4
 ```
+
+### Use case: Compiling selfie.c on mipster
+1. make webassembly
+2. python3 arg_setter.py -c selfie.c -m 2
+3. firefox selfie.html
+
+### Use case: Compiling selfie.c and downloading produced binary
 
 In order to access the file system, it must be exported when compiling the code by adding:
 ```
 -s EXTRA_EXPORTED_RUNTIME_METHODS='["FS"]'
 ```
-See the Makefile target webassembly for an example of this
-
-### Use case: Compiling selfie.c on mipster
-1. make webassembly
-2. python3 argument_setter.py -c selfie.c -m 2
-3. firefox selfie.html
-
-### Use case: Compiling selfie.c and downloading produced binary
+See the Makefile target webassembly for an example of this.
 
 The Browser sandbox does not allow directly accessing the local file system.
 We can avoid this restriction by setting up an automatic download of our produced file(s).
@@ -109,7 +109,7 @@ Here is how to modify this code to set up an automatic download of the produced 
 
       url = window.URL.createObjectURL(blob);
 
-      // set the link to the new URLm, set the download name and click it
+      // set the link to the new URL, set the download name and click it
       hiddenLink.href = url;
       hiddenLink.download = downloadName;
       hiddenLink.click();
@@ -121,14 +121,12 @@ Here is how to modify this code to set up an automatic download of the produced 
 ```
 
 1. make webassembly
-2. python3 argument_setter.py -c selfie.c -o selfie_web
-3. Modify the selfie.html as shown above
-4. firefox selfie.html
-
+2. python3 arg_setter.py -c selfie.c -o selfie_web
+3. firefox selfie.html
 
 We can also download multiple produced files by setting up a download for each file.
 
-The relevant code may look like this:
+The relevant code:
 
 ```
     postRun: (function() {
@@ -161,6 +159,16 @@ The relevant code may look like this:
       // etc.
 ```
 Where file_1 and file_2 were produced by our program and were saved to the Browser's file system.
+
+## arg_setter.py
+
+The arg_setter.py script parses your "command-line" input.
+
+It will add your specified arguments to the html file and will also recognize -o and -s options
+to set up the downloads automatically.
+
+This is done by modifying the existing html and inserting the necessary html code, while also consistently
+formatting the inserted code.
 
 ### Status
 As of the creation of this document, self compilation, self hosting and the creation of assembly and binary files
