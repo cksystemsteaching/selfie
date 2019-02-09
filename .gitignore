@@ -1,0 +1,7 @@
+*.data
+selfie.js
+selfie.html
+*.wasm
+*.r
+*.s
+__pycache__

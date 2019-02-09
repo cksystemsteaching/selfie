@@ -109,7 +109,7 @@ Here is how to modify this code to set up an automatic download of the produced 
 
       url = window.URL.createObjectURL(blob);
 
-      // set the link to the new URLm, set the download name and click it
+      // set the link to the new URL, set the download name and click it
       hiddenLink.href = url;
       hiddenLink.download = downloadName;
       hiddenLink.click();
