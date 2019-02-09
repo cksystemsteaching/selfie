@@ -45,8 +45,6 @@ def set_args(html_file, args):
     index = module[0][0]
     line = module[0][1]
 
-    print(index)
-    print(line)
     if ("var Module") in line:
         arg_string = build_arg_string(args, line)
 
