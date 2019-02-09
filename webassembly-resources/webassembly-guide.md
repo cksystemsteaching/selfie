@@ -58,6 +58,7 @@ In order to access the file system, it must be exported when compiling the code 
 ```
 See the Makefile target webassembly for an example of this
 
+
 ### Use case: Compiling selfie.c on mipster
 1. make webassembly
 2. python3 argument_setter.py -c selfie.c -m 2
@@ -161,6 +162,16 @@ The relevant code may look like this:
       // etc.
 ```
 Where file_1 and file_2 were produced by our program and were saved to the Browser's file system.
+
+## arg_setter.py
+
+The arg_setter.py script parses your "command-line" input.
+
+It will add your specified arguments to the html file and will also recognize -o and -s options
+to set up the downloads automatically.
+
+This is done by modifying the existing html and inserting the necessary html code, while also consistently
+formatting the inserted code.
 
 ### Status
 As of the creation of this document, self compilation, self hosting and the creation of assembly and binary files

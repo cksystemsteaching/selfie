@@ -130,12 +130,13 @@ def set_up_auto_downloads(html_file, filenames):
     assert(len(module) == 1)
 
     module_declaration_index = module[0][0]
+    whitespace = module[0][1].split("var Module")[0]
 
     # only add hidden link if it is not present yet
     if "spinnerElement" in html_lines[module_declaration_index - 2]:
-        hidden_link_def = "\tvar hiddenLink = document.createElement('a');\n"
-        hidden_link_def = hidden_link_def + "\tdocument.body.appendChild(hiddenLink);\n"
-        hidden_link_def = hidden_link_def + "\thiddenLink.style = 'display: none';\n"
+        hidden_link_def = "\n" + whitespace + "var hiddenLink = document.createElement('a');\n"
+        hidden_link_def = hidden_link_def + whitespace + "document.body.appendChild(hiddenLink);\n"
+        hidden_link_def = hidden_link_def + whitespace + "hiddenLink.style = 'display: none';\n"
 
         # add hidden link
         html_lines.insert(module_declaration_index - 1, hidden_link_def)
