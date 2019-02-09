@@ -2,11 +2,34 @@
   var statusElement = document.getElementById('status');
   var progressElement = document.getElementById('progress');
   var spinnerElement = document.getElementById('spinner');
+	var hiddenLink = document.createElement('a');
+	document.body.appendChild(hiddenLink);
+	hiddenLink.style = 'display: none';
 
   var Module = {
+  	arguments: ["-c","selfie.c","-o","hello","-s","world"],
     preRun: [],
-    postRun: [],
-    print: (function() {
+    postRun: (function () {
+    	Module.FS.chmod('hello', 777);
+    	var bytes = Module.FS.readFile('hello').buffer;
+    	var blob = new Blob([bytes], {type: 'octet/stream'});
+    	url = window.URL.createObjectURL(blob);
+    	hiddenLink.href = url;
+    	hiddenLink.download = 'hello';
+    	hiddenLink.click();
+    	window.URL.revokeObjectURL(url);
+
+    	Module.FS.chmod('world', 777);
+    	var bytes = Module.FS.readFile('world').buffer;
+    	var blob = new Blob([bytes], {type: 'octet/stream'});
+    	url = window.URL.createObjectURL(blob);
+    	hiddenLink.href = url;
+    	hiddenLink.download = 'world';
+    	hiddenLink.click();
+    	window.URL.revokeObjectURL(url);
+
+    }),
+print: (function() {
       var element = document.getElementById('output');
       if (element) element.value = ''; // clear browser cache
       return function(text) {

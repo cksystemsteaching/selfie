@@ -16,9 +16,6 @@ def san_check():
         content = test_html.readlines()
         print([x for x in content if 'var Module' in x])
 
-def call_arg_setter():
-    pass
-
 def test_stringify():
     string_literal = "\"hello world\""
     assert(arg_setter.make_string_literal("hello world") == string_literal)
@@ -28,9 +25,25 @@ def test_stringify():
 def test_html_parsing(html_file):
     with open(html_file, "r") as html:
         source = html.readlines()
-        print(arg_setter.return_line_and_index("var Module" , source))
-        assert(len(arg_setter.return_line_and_index("var Module" , source)) == 1)
+        #print(arg_setter.get_index_and_line_num("var Module" , source))
+        assert(len(arg_setter.get_index_and_line_num("var Module" , source)) == 1)
 
+def test_filename_extraction():
+    test_args = ["-o", "hello", "-s", "world"]
+    filenames = arg_setter.extract_filenames(test_args)
+    print(filenames)
+    assert(len(filenames) == 2)
+    assert(filenames[0] == 'hello')
+    assert(filenames[1] == 'world')
+
+def test_postRun_redefinition(html_file):
+    print("opening " + html_file )
+    # with open(html_file, "r") as html:
+        # source = html.readlines()
+        #
+    test_args = ["-c", "selfie.c", "-o", "hello", "-s", "world"]
+
+    arg_setter.arg_parser(html_file, test_args)
 
 if __name__ == "__main__":
     # san_check()
@@ -38,3 +51,7 @@ if __name__ == "__main__":
     empty_file_test()
     test_stringify()
     test_html_parsing("test-file-containing-var-Module.html")
+    test_filename_extraction()
+    test_postRun_redefinition("test-file-containing-var-Module.html")
+
+    print("\nAll tests passed\n")
