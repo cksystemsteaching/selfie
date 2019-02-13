@@ -1693,6 +1693,63 @@ void init_selfie(uint64_t argc, uint64_t* argv) {
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
+// --------------------- I N C R E M E N T E R ---------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+void init_incrementer();
+void selfie_increment();
+
+void read_user_input();
+void reset_increment_file_cursor();
+
+void exit_recoverable(uint64_t code);
+
+uint64_t is_valid_call();
+uint64_t compile_source();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t STDIN_FILENO     = 0;
+uint64_t MAX_INPUT_LENGTH = 4096;
+
+char* INCREMENT_FILENAME = (char*) 0;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t incremental  = 0;
+uint64_t syntax_error = 0;
+
+uint64_t entry_point_incremental  = 0;
+uint64_t binary_length_checkpoint = 0;
+
+uint64_t* input_buffer = (uint64_t*) 0;
+
+uint64_t* latest_hashed_entry_address = (uint64_t*) 0;
+
+char* procedure_name  = (char*) 0;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_incrementer() {
+  incremental = 1;
+  INCREMENT_FILENAME = ".increment";
+
+  current_context = create_context(MY_CONTEXT, 0);
+  init_memory(VIRTUALMEMORYSIZE / MEGABYTE);
+  selfie_compile();
+
+  binary_name = "incrementer";
+  source_name = "incrementer";
+  binary_length = MAX_BINARY_LENGTH;
+
+  selfie_run(MIPSTER);
+
+  binary_length = code_length;
+  binary_length_checkpoint = binary_length;
+}
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
 // ---------------------     L I B R A R Y     ---------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2439,11 +2496,13 @@ void print_line_number(char* message, uint64_t line) {
 }
 
 void syntax_error_message(char* message) {
+  syntax_error = 1;
   print_line_number("syntax error", line_number);
   printf1("%s\n", message);
 }
 
 void syntax_error_character(uint64_t expected) {
+  syntax_error = 1;
   print_line_number("syntax error", line_number);
   print_character(expected);
   print(" expected but ");
@@ -2452,6 +2511,7 @@ void syntax_error_character(uint64_t expected) {
 }
 
 void syntax_error_identifier(char* expected) {
+  syntax_error = 1;
   print_line_number("syntax error", line_number);
   print_string(expected);
   print(" expected but ");
@@ -2552,7 +2612,7 @@ uint64_t find_next_character() {
           // multi-line comment is not terminated
           syntax_error_message("runaway multi-line comment");
 
-          exit(EXITCODE_SCANNERERROR);
+          exit_recoverable(EXITCODE_SCANNERERROR);
         }
       }
 
@@ -2699,7 +2759,7 @@ void get_symbol() {
           if (i >= MAX_IDENTIFIER_LENGTH) {
             syntax_error_message("identifier too long");
 
-            exit(EXITCODE_SCANNERERROR);
+            exit_recoverable(EXITCODE_SCANNERERROR);
           }
 
           store_character(identifier, i, character);
@@ -2726,7 +2786,7 @@ void get_symbol() {
             else
               syntax_error_message("integer out of bound");
 
-            exit(EXITCODE_SCANNERERROR);
+            exit_recoverable(EXITCODE_SCANNERERROR);
           }
 
           store_character(integer, i, character);
@@ -2744,7 +2804,7 @@ void get_symbol() {
           if (literal > INT64_MIN) {
               syntax_error_message("signed integer out of bound");
 
-              exit(EXITCODE_SCANNERERROR);
+              exit_recoverable(EXITCODE_SCANNERERROR);
             }
 
         symbol = SYM_INTEGER;
@@ -2757,7 +2817,7 @@ void get_symbol() {
         if (character == CHAR_EOF) {
           syntax_error_message("reached end of file looking for a character literal");
 
-          exit(EXITCODE_SCANNERERROR);
+          exit_recoverable(EXITCODE_SCANNERERROR);
         } else
           literal = character;
 
@@ -2768,7 +2828,7 @@ void get_symbol() {
         else if (character == CHAR_EOF) {
           syntax_error_character(CHAR_SINGLEQUOTE);
 
-          exit(EXITCODE_SCANNERERROR);
+          exit_recoverable(EXITCODE_SCANNERERROR);
         } else
           syntax_error_character(CHAR_SINGLEQUOTE);
 
@@ -2788,7 +2848,7 @@ void get_symbol() {
           if (i >= MAX_STRING_LENGTH) {
             syntax_error_message("string too long");
 
-            exit(EXITCODE_SCANNERERROR);
+            exit_recoverable(EXITCODE_SCANNERERROR);
           }
 
           if (character == CHAR_BACKSLASH)
@@ -2806,7 +2866,7 @@ void get_symbol() {
         else {
           syntax_error_character(CHAR_DOUBLEQUOTE);
 
-          exit(EXITCODE_SCANNERERROR);
+          exit_recoverable(EXITCODE_SCANNERERROR);
         }
 
         store_character(string, i, 0); // null-terminated string
@@ -2909,7 +2969,8 @@ void get_symbol() {
         print_character(character);
         println();
 
-        exit(EXITCODE_SCANNERERROR);
+        syntax_error = 1;
+        exit_recoverable(EXITCODE_SCANNERERROR);
       }
     }
 
@@ -2940,7 +3001,7 @@ void handle_escape_sequence() {
   else {
     syntax_error_message("unknown escape sequence found");
 
-    exit(EXITCODE_SCANNERERROR);
+    exit_recoverable(EXITCODE_SCANNERERROR);
   }
 }
 
@@ -2954,6 +3015,9 @@ uint64_t hash(uint64_t* key) {
 }
 
 void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
+  uint64_t i;
+  uint64_t baddr;
+  uint64_t length;
   uint64_t* new_entry;
   uint64_t* hashed_entry_address;
 
@@ -2974,6 +3038,31 @@ void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line
 
     set_next_entry(new_entry, (uint64_t*) *hashed_entry_address);
     *hashed_entry_address = (uint64_t) new_entry;
+    latest_hashed_entry_address = hashed_entry_address;
+
+    // if interpreting upload new entry to binary immediately
+    if (incremental) {
+      baddr = MAX_BINARY_LENGTH - allocated_memory;
+
+      if (class == STRING) {
+        emit_string_data(new_entry);
+
+        length = string_length(string) + 1;
+        i = 0;
+
+        while (i < round_up(length, REGISTERSIZE)) {
+          map_and_store(current_context, baddr + i * REGISTERSIZE, load_data(baddr + i * REGISTERSIZE));
+          i = i + 1;
+        }
+      } else if (class == VARIABLE) {
+        emit_data_word(get_value(new_entry), get_address(new_entry), get_line_number(new_entry));
+        map_and_store(current_context, baddr, load_data(baddr));
+
+      } else if (class == BIGINT) {
+        emit_data_word(get_value(new_entry), get_address(new_entry), get_line_number(new_entry));
+        map_and_store(current_context, baddr, load_data(baddr));
+      }
+    }
 
     if (class == VARIABLE)
       number_of_global_variables = number_of_global_variables + 1;
@@ -3217,7 +3306,7 @@ void talloc() {
   else {
     syntax_error_message("out of registers");
 
-    exit(EXITCODE_COMPILERERROR);
+    exit_recoverable(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -3230,7 +3319,7 @@ uint64_t current_temporary() {
   else {
     syntax_error_message("illegal register access");
 
-    exit(EXITCODE_COMPILERERROR);
+    exit_recoverable(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -3243,7 +3332,7 @@ uint64_t previous_temporary() {
   else {
     syntax_error_message("illegal register access");
 
-    exit(EXITCODE_COMPILERERROR);
+    exit_recoverable(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -3256,7 +3345,7 @@ uint64_t next_temporary() {
   else {
     syntax_error_message("out of registers");
 
-    exit(EXITCODE_COMPILERERROR);
+    exit_recoverable(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -3266,7 +3355,7 @@ void tfree(uint64_t number_of_temporaries) {
   else {
     syntax_error_message("illegal register deallocation");
 
-    exit(EXITCODE_COMPILERERROR);
+    exit_recoverable(EXITCODE_COMPILERERROR);
   }
 }
 
@@ -3291,6 +3380,7 @@ void restore_temporaries(uint64_t number_of_temporaries) {
 }
 
 void syntax_error_symbol(uint64_t expected) {
+  syntax_error = 1;
   print_line_number("syntax error", line_number);
   print_symbol(expected);
   print(" expected but ");
@@ -3299,6 +3389,7 @@ void syntax_error_symbol(uint64_t expected) {
 }
 
 void syntax_error_unexpected() {
+  syntax_error = 1;
   print_line_number("syntax error", line_number);
   print("unexpected symbol ");
   print_symbol(symbol);
@@ -3337,7 +3428,8 @@ uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
       print_line_number("syntax error", line_number);
       printf1("%s undeclared\n", variable_or_big_int);
 
-      exit(EXITCODE_PARSERERROR);
+      syntax_error = 1;
+      exit_recoverable(EXITCODE_PARSERERROR);
     }
 
     return entry;
@@ -3373,6 +3465,11 @@ uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   // assert: n = allocated_temporaries
 
   entry = get_variable_or_big_int(variable_or_big_int, class);
+
+  if (entry == (uint64_t*) 0) {
+    talloc();
+    return VOID_T;
+  }
 
   offset = get_address(entry);
 
@@ -3633,7 +3730,7 @@ uint64_t compile_factor() {
     syntax_error_unexpected();
 
     if (symbol == SYM_EOF)
-      exit(EXITCODE_PARSERERROR);
+      exit_recoverable(EXITCODE_PARSERERROR);
     else
       get_symbol();
   }
@@ -4013,7 +4110,7 @@ void compile_while() {
           else {
             syntax_error_symbol(SYM_RBRACE);
 
-            exit(EXITCODE_PARSERERROR);
+            exit_recoverable(EXITCODE_PARSERERROR);
           }
         } else
           // only one statement without {}
@@ -4077,7 +4174,7 @@ void compile_if() {
           else {
             syntax_error_symbol(SYM_RBRACE);
 
-            exit(EXITCODE_PARSERERROR);
+            exit_recoverable(EXITCODE_PARSERERROR);
           }
         } else
         // only one statement without {}
@@ -4108,7 +4205,7 @@ void compile_if() {
             else {
               syntax_error_symbol(SYM_RBRACE);
 
-              exit(EXITCODE_PARSERERROR);
+              exit_recoverable(EXITCODE_PARSERERROR);
             }
 
           // only one statement without {}
@@ -4180,7 +4277,7 @@ void compile_statement() {
     syntax_error_unexpected();
 
     if (symbol == SYM_EOF)
-      exit(EXITCODE_PARSERERROR);
+      exit_recoverable(EXITCODE_PARSERERROR);
     else
       get_symbol();
   }
@@ -4288,6 +4385,9 @@ void compile_statement() {
     // identifier = expression
     } else if (symbol == SYM_ASSIGN) {
       entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
+
+      if (entry == (uint64_t*) 0)
+        return;
 
       ltype = get_type(entry);
 
@@ -4575,7 +4675,7 @@ void compile_procedure(char* procedure, uint64_t type) {
     else {
       syntax_error_symbol(SYM_RBRACE);
 
-      exit(EXITCODE_PARSERERROR);
+      exit_recoverable(EXITCODE_PARSERERROR);
     }
 
     fixlink_relative(return_branches, binary_length);
@@ -4604,7 +4704,7 @@ void compile_cstar() {
       syntax_error_unexpected();
 
       if (symbol == SYM_EOF)
-        exit(EXITCODE_PARSERERROR);
+        exit_recoverable(EXITCODE_PARSERERROR);
       else
         get_symbol();
     }
@@ -4671,6 +4771,25 @@ void compile_cstar() {
       } else
         syntax_error_symbol(SYM_IDENTIFIER);
     }
+
+    if (incremental) {
+      if (syntax_error) {
+        // remove last entry of global symbol table
+        if (latest_hashed_entry_address != (uint64_t*) 0) {
+          *latest_hashed_entry_address = (uint64_t) get_next_entry((uint64_t*) *latest_hashed_entry_address);
+
+          allocated_memory = allocated_memory - REGISTERSIZE;
+        }
+
+        syntax_error = 0;
+        binary_length = binary_length_checkpoint;
+
+      } else
+        // so far everything had correct syntax
+        binary_length_checkpoint = binary_length;
+
+      latest_hashed_entry_address = (uint64_t*) 0;
+    }
   }
 }
 
@@ -4724,16 +4843,20 @@ void emit_bootstrapping() {
   uint64_t padding;
   uint64_t* entry;
 
-  // calculate the global pointer value
-  gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
+  if (incremental)
+    gp = MAX_BINARY_LENGTH;
 
-  // make sure gp is double-word-aligned
-  padding = gp % REGISTERSIZE;
-  gp      = gp + padding;
+  else {
+    // calculate the global pointer value
+    gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
 
-  if (padding != 0)
-    emit_nop();
+    // make sure gp is double-word-aligned
+    padding = gp % REGISTERSIZE;
+    gp      = gp + padding;
 
+    if (padding != 0)
+      emit_nop();
+  }
   // no more allocation in code segment from now on
   code_length = binary_length;
 
@@ -4784,39 +4907,45 @@ void emit_bootstrapping() {
     // reset return register to initial return value
     emit_addi(REG_A0, REG_ZR, 0);
 
-    // assert: stack is set up with argv pointer still missing
-    //
-    //    $sp
-    //     |
-    //     V
-    // | argc | argv[0] | argv[1] | ... | argv[n]
+    if (incremental) {
+      entry_point_incremental = binary_length;
+      emit_nop();
 
-    talloc();
+    } else {
+      // assert: stack is set up with argv pointer still missing
+      //
+      //    $sp
+      //     |
+      //     V
+      // | argc | argv[0] | argv[1] | ... | argv[n]
 
-    // first obtain pointer to argv
-    //
-    //    $sp + REGISTERSIZE
-    //            |
-    //            V
-    // | argc | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(current_temporary(), REG_SP, REGISTERSIZE);
+      talloc();
 
-    // then push argv pointer onto the stack
-    //      ______________
-    //     |              V
-    // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
-    emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
-    emit_sd(REG_SP, 0, current_temporary());
+      // first obtain pointer to argv
+      //
+      //    $sp + REGISTERSIZE
+      //            |
+      //            V
+      // | argc | argv[0] | argv[1] | ... | argv[n]
+      emit_addi(current_temporary(), REG_SP, REGISTERSIZE);
 
-    tfree(1);
+      // then push argv pointer onto the stack
+      //      ______________
+      //     |              V
+      // | &argv | argc | argv[0] | argv[1] | ... | argv[n]
+      emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
+      emit_sd(REG_SP, 0, current_temporary());
 
-    // assert: global, _bump, and stack pointers are set up
-    //         with all other non-temporary registers zeroed
+      tfree(1);
 
-    // copy "main" string into zeroed double word to obtain unique hash
-    entry = get_scoped_symbol_table_entry(string_copy("main"), PROCEDURE);
+      // assert: global, _bump, and stack pointers are set up
+      //         with all other non-temporary registers zeroed
 
-    help_call_codegen(entry, "main");
+      // copy "main" string into zeroed double word to obtain unique hash
+      entry = get_scoped_symbol_table_entry(string_copy("main"), PROCEDURE);
+
+      help_call_codegen(entry, "main");
+    }
   }
 
   // we exit with exit code in return register pushed onto the stack
@@ -4874,82 +5003,87 @@ void selfie_compile() {
   emit_malloc();
   emit_switch();
 
-  // implicitly declare main procedure in global symbol table
-  // copy "main" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
+  if (incremental == 0) {
+    // implicitly declare main procedure in global symbol table
+    // copy "main" string into zeroed double word to obtain unique hash
+    create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
 
-  while (link) {
-    if (number_of_remaining_arguments() == 0)
-      link = 0;
-    else if (load_character(peek_argument(), 0) == '-')
-      link = 0;
-    else {
-      source_name = get_argument();
+    while (link) {
+      if (number_of_remaining_arguments() == 0)
+        link = 0;
+      else if (load_character(peek_argument(), 0) == '-')
+        link = 0;
+      else {
+        source_name = get_argument();
 
-      number_of_source_files = number_of_source_files + 1;
+        number_of_source_files = number_of_source_files + 1;
 
-      printf2("%s: selfie compiling %s with starc\n", selfie_name, source_name);
+        printf2("%s: selfie compiling %s with starc\n", selfie_name, source_name);
 
-      // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
+        // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-      source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
+        source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
-      if (signed_less_than(source_fd, 0)) {
-        printf2("%s: could not open input file %s\n", selfie_name, source_name);
+        if (signed_less_than(source_fd, 0)) {
+          printf2("%s: could not open input file %s\n", selfie_name, source_name);
 
-        exit(EXITCODE_IOERROR);
+          exit(EXITCODE_IOERROR);
+        }
+
+        reset_scanner();
+        reset_parser();
+
+        compile_cstar();
+
+        printf4("%s: %d characters read in %d lines and %d comments\n", selfie_name,
+          (char*) number_of_read_characters,
+          (char*) line_number,
+          (char*) number_of_comments);
+
+        printf4("%s: with %d(%.2d%%) characters in %d actual symbols\n", selfie_name,
+          (char*) (number_of_read_characters - number_of_ignored_characters),
+          (char*) fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
+          (char*) number_of_scanned_symbols);
+
+        printf4("%s: %d global variables, %d procedures, %d string literals\n", selfie_name,
+          (char*) number_of_global_variables,
+          (char*) number_of_procedures,
+          (char*) number_of_strings);
+
+        printf6("%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfie_name,
+          (char*) number_of_calls,
+          (char*) number_of_assignments,
+          (char*) number_of_while,
+          (char*) number_of_if,
+          (char*) number_of_return);
       }
-
-      reset_scanner();
-      reset_parser();
-
-      compile_cstar();
-
-      printf4("%s: %d characters read in %d lines and %d comments\n", selfie_name,
-        (char*) number_of_read_characters,
-        (char*) line_number,
-        (char*) number_of_comments);
-
-      printf4("%s: with %d(%.2d%%) characters in %d actual symbols\n", selfie_name,
-        (char*) (number_of_read_characters - number_of_ignored_characters),
-        (char*) fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
-        (char*) number_of_scanned_symbols);
-
-      printf4("%s: %d global variables, %d procedures, %d string literals\n", selfie_name,
-        (char*) number_of_global_variables,
-        (char*) number_of_procedures,
-        (char*) number_of_strings);
-
-      printf6("%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfie_name,
-        (char*) number_of_calls,
-        (char*) number_of_assignments,
-        (char*) number_of_while,
-        (char*) number_of_if,
-        (char*) number_of_return);
     }
   }
 
-  if (number_of_source_files == 0)
-    printf1("%s: nothing to compile, only library generated\n", selfie_name);
-
   emit_bootstrapping();
 
-  emit_data_segment();
+  if (incremental == 0) {
+    if (number_of_source_files == 0)
+      printf1("%s: nothing to compile, only library generated\n", selfie_name);
 
-  ELF_header = create_elf_header(binary_length, code_length);
 
-  entry_point = ELF_ENTRY_POINT;
+    emit_data_segment();
 
-  printf3("%s: symbol table search time was %d iterations on average and %d in total\n", selfie_name,
-    (char*) (total_search_time / number_of_searches),
-    (char*) total_search_time);
+    ELF_header = create_elf_header(binary_length, code_length);
 
-  printf4("%s: %d bytes generated with %d instructions and %d bytes of data\n", selfie_name,
-    (char*) binary_length,
-    (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) (binary_length - code_length));
+    entry_point = ELF_ENTRY_POINT;
 
-  print_instruction_counters();
+    printf3("%s: symbol table search time was %d iterations on average and %d in total\n", selfie_name,
+      (char*) (total_search_time / number_of_searches),
+      (char*) total_search_time);
+
+    printf4("%s: %d bytes generated with %d instructions and %d bytes of data\n", selfie_name,
+      (char*) binary_length,
+      (char*) (code_length / INSTRUCTIONSIZE),
+      (char*) (binary_length - code_length));
+
+    print_instruction_counters();
+  }
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5522,7 +5656,10 @@ void fixlink_relative(uint64_t from_address, uint64_t to_address) {
 void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number) {
   // assert: offset < 0
 
-  store_data(binary_length + offset, data);
+  if (incremental)
+    store_data(MAX_BINARY_LENGTH + offset, data);
+  else
+    store_data(binary_length + offset, data);
 
   if (data_line_number != (uint64_t*) 0)
     *(data_line_number + (allocated_memory + offset) / REGISTERSIZE) = source_line_number;
@@ -9076,7 +9213,9 @@ uint64_t is_boot_level_zero() {
 }
 
 void boot_loader() {
-  current_context = create_context(MY_CONTEXT, 0);
+
+  if (incremental == 0)
+    current_context = create_context(MY_CONTEXT, 0);
 
   up_load_binary(current_context);
 
@@ -9108,7 +9247,9 @@ uint64_t selfie_run(uint64_t machine) {
     symbolic = 1;
   }
 
-  if (machine != MONSTER)
+  if (incremental)
+    init_memory(VIRTUALMEMORYSIZE / MEGABYTE);
+  else if (machine != MONSTER)
     init_memory(atoi(peek_argument()));
   else {
     init_memory(1);
@@ -9119,7 +9260,9 @@ uint64_t selfie_run(uint64_t machine) {
   execute = 1;
 
   reset_interpreter();
-  reset_microkernel();
+  if (incremental == 0) {
+    reset_microkernel();
+  }
 
   boot_loader();
 
@@ -9151,11 +9294,13 @@ uint64_t selfie_run(uint64_t machine) {
 
   execute = 0;
 
-  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
-    get_name(current_context),
-    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
+  if (incremental == 0) {
+    printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
+      get_name(current_context),
+      (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
 
-  print_profile();
+    print_profile();
+  }
 
   symbolic    = 0;
   record      = 0;
@@ -9489,6 +9634,171 @@ void selfie_sat() {
   println();
 }
 
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// --------------------- I N C R E M E N T E R ---------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+void selfie_increment() {
+  init_incrementer();
+
+  source_fd = STDIN_FILENO;
+  input_buffer = smalloc((MAX_INPUT_LENGTH + 1) * SIZEOFUINT64);
+
+  while (incremental) {
+    print(">> ");
+
+    read_user_input();
+
+    syntax_error = 0;
+    binary_length = binary_length_checkpoint;
+
+    reset_increment_file_cursor();
+
+    if (syntax_error == 0) {
+      if (is_valid_call()) {
+        if (report_undefined_procedures() == 0) {
+          // save address to jump to for later
+          code_length = binary_length;
+          // compile call (set up parameters etc)
+          compile_call(procedure_name);
+          // then emit the jump back directly to exit
+          emit_jalr(REG_ZR, REG_ZR, entry_point_incremental + INSTRUCTIONSIZE);
+
+          if (syntax_error == 0) {
+            // fix jal instruction / program counter for the interpreter
+            store_instruction(entry_point_incremental, encode_j_format(code_length - entry_point_incremental, REG_RA, OP_JAL));
+
+            // emit new data [restore allocated memory]
+            up_load_binary(current_context);
+
+            // run with new binary
+            set_pc(current_context, entry_point_incremental);
+
+            mipster(current_context);
+            *(get_regs(current_context) + REG_A0) = 0;
+          }
+        }
+      } else if (compile_source()) {
+        if (syntax_error == 0) {
+          source_fd = open(string, O_RDONLY, 0);
+
+          if (signed_less_than(sign_extend(source_fd, SYSCALL_BITWIDTH), 0))
+            printf2("%s: could not open input file %s\n", selfie_name, string);
+          else {
+            printf1("compiling %s ...\n", string);
+
+            get_character();
+            get_symbol();
+
+            compile_cstar();
+          }
+        }
+      } else {
+        reset_increment_file_cursor();
+
+        if (syntax_error == 0)
+          compile_cstar();
+      }
+    }
+  }
+
+  incremental = 0;
+}
+
+void read_user_input() {
+  uint64_t number_of_read_bytes;
+
+  number_of_read_bytes = read(STDIN_FILENO, input_buffer, MAX_INPUT_LENGTH);
+
+  if (signed_less_than(sign_extend(number_of_read_bytes, SYSCALL_BITWIDTH), 0)) {
+    printf1("%s: could not read from stdin\n", selfie_name);
+
+    exit(EXITCODE_IOERROR);
+
+  } else if (number_of_read_bytes > 0) {
+    store_character(input_buffer, number_of_read_bytes, 0);
+
+    source_fd = open_write_only(INCREMENT_FILENAME);
+
+    if (signed_less_than(source_fd, 0)) {
+      printf2("%s: could not open %s\n", selfie_name, INCREMENT_FILENAME);
+
+      exit(EXITCODE_IOERROR);
+    }
+
+    if (write(source_fd, input_buffer, string_length(input_buffer)) != string_length(input_buffer)) {
+      printf2("%s: could not write to %s\n", selfie_name, INCREMENT_FILENAME);
+
+      exit(EXITCODE_IOERROR);
+    }
+  }
+}
+
+void reset_increment_file_cursor() {
+  source_fd = sign_extend(open(INCREMENT_FILENAME, O_RDONLY, 0), SYSCALL_BITWIDTH);
+
+  if (signed_less_than(source_fd, 0)) {
+    printf2("%s: could not open %s\n", selfie_name, INCREMENT_FILENAME);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  get_character();
+  get_symbol();
+}
+
+void exit_recoverable(uint64_t code) {
+  if (incremental == 0)
+    exit(code);
+}
+
+uint64_t is_valid_call() {
+  uint64_t* procedure_entry;
+
+  if (symbol == SYM_IDENTIFIER) {
+    procedure_name = identifier;
+
+    get_symbol();
+
+    if (symbol == SYM_LPARENTHESIS) {
+      get_symbol();
+
+      procedure_entry = get_scoped_symbol_table_entry(procedure_name, PROCEDURE);
+
+      if (procedure_entry == (uint64_t*) 0)
+        return 0;
+      else if (get_address(procedure_entry) == 0)
+        return 0;
+      else if (get_opcode(load_instruction(get_address(procedure_entry))) != OP_JAL)
+        // procedure defined
+        return 1;
+    }
+  }
+
+  // either no procedure call or procedure not defined
+  return 0;
+}
+
+uint64_t compile_source() {
+  reset_increment_file_cursor();
+
+  if (symbol == SYM_MINUS) {
+    get_symbol();
+
+    if (symbol == SYM_IDENTIFIER) {
+      if (string_compare(identifier, "c")) {
+        get_symbol();
+
+        return symbol == SYM_STRING;
+      }
+    }
+  }
+
+  return 0;
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
@@ -9527,7 +9837,7 @@ void set_argument(char* argv) {
 
 void print_usage() {
   printf3("%s: usage: selfie { %s } [ %s ]\n", selfie_name,
-    "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
+    "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs | -i ",
     "( -m | -d | -r | -n | -y | -min | -mob ) 0-4096 ... ");
 }
 
@@ -9546,6 +9856,8 @@ uint64_t selfie() {
 
       if (string_compare(option, "-c"))
         selfie_compile();
+      else if (string_compare(option, "-i"))
+        selfie_increment();
 
       else if (number_of_remaining_arguments() == 0) {
         // remaining options have at least one argument
