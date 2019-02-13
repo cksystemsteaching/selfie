@@ -1713,12 +1713,12 @@ uint64_t compile_source();
 uint64_t STDIN_FILENO     = 0;
 uint64_t MAX_INPUT_LENGTH = 4096;
 
-// file that is compiled each
+// file that is compiled each time
 char* INCREMENT_FILENAME = (char*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-// indicate if compiler in incremental mode or not
+// indicate if compiler is in incremental mode or not
 uint64_t incremental  = 0;
 uint64_t syntax_error = 0;
 
