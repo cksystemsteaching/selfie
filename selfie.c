@@ -1713,20 +1713,22 @@ uint64_t compile_source();
 uint64_t STDIN_FILENO     = 0;
 uint64_t MAX_INPUT_LENGTH = 4096;
 
+// file that is compiled each
 char* INCREMENT_FILENAME = (char*) 0;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
+// indicate if compiler in incremental mode or not
 uint64_t incremental  = 0;
 uint64_t syntax_error = 0;
 
+// position where the jump to the called procedure will be generated
 uint64_t entry_point_incremental  = 0;
 uint64_t binary_length_checkpoint = 0;
 
 uint64_t* input_buffer = (uint64_t*) 0;
 
 uint64_t* latest_hashed_entry_address = (uint64_t*) 0;
-
 char* procedure_name  = (char*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1735,16 +1737,20 @@ void init_incrementer() {
   incremental = 1;
   INCREMENT_FILENAME = ".increment";
 
+  // context containing interpreter-binary
   current_context = create_context(MY_CONTEXT, 0);
+  // for now, always having VIRTUALMEMORYSIZE memory available
   init_memory(VIRTUALMEMORYSIZE / MEGABYTE);
   selfie_compile();
 
   binary_name = "incrementer";
   source_name = "incrementer";
+  // set to MAX_BINARY_LENGTH so whole binary will be uploaded
   binary_length = MAX_BINARY_LENGTH;
 
   selfie_run(MIPSTER);
 
+  // set back so code generation will continue at the right position
   binary_length = code_length;
   binary_length_checkpoint = binary_length;
 }
@@ -3040,8 +3046,9 @@ void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line
     *hashed_entry_address = (uint64_t) new_entry;
     latest_hashed_entry_address = hashed_entry_address;
 
-    // if interpreting upload new entry to binary immediately
+    // if in incremental mode upload new entry to binary immediately
     if (incremental) {
+      // use offset from MAX_BINARY_LENGTH due to different memory layout
       baddr = MAX_BINARY_LENGTH - allocated_memory;
 
       if (class == STRING) {
@@ -4782,6 +4789,7 @@ void compile_cstar() {
         }
 
         syntax_error = 0;
+        // undo last code generation by resetting binary_length
         binary_length = binary_length_checkpoint;
 
       } else
@@ -4844,6 +4852,7 @@ void emit_bootstrapping() {
   uint64_t* entry;
 
   if (incremental)
+    // global pointer value is fixed to MAX_BINARY_LENGTH
     gp = MAX_BINARY_LENGTH;
 
   else {
@@ -4908,9 +4917,14 @@ void emit_bootstrapping() {
     emit_addi(REG_A0, REG_ZR, 0);
 
     if (incremental) {
+      // when calling a procedure in the interpreter, this nop
+      // will be overwritten with a jump to the procedure
       entry_point_incremental = binary_length;
       emit_nop();
 
+      // in incremental mode:
+      // no arguments needed
+      // and no main and jump to main should be generated
     } else {
       // assert: stack is set up with argv pointer still missing
       //
@@ -5084,6 +5098,8 @@ void selfie_compile() {
 
     print_instruction_counters();
   }
+  // in incremental mode: no need to emit data segment
+  // since this happens during compiling
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -5657,6 +5673,7 @@ void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number)
   // assert: offset < 0
 
   if (incremental)
+    // data segment is ending at MAX_BINARY_LENGTH
     store_data(MAX_BINARY_LENGTH + offset, data);
   else
     store_data(binary_length + offset, data);
@@ -9263,6 +9280,7 @@ uint64_t selfie_run(uint64_t machine) {
   if (incremental == 0) {
     reset_microkernel();
   }
+  // continue using the same context in incremental mode
 
   boot_loader();
 
@@ -9750,8 +9768,11 @@ void reset_increment_file_cursor() {
 }
 
 void exit_recoverable(uint64_t code) {
+  // only exit if not in incremental mode
   if (incremental == 0)
     exit(code);
+  // else continue but remove (possibly) generated symbol table entry
+  // and go back to last binary_length_checkpoint
 }
 
 uint64_t is_valid_call() {
