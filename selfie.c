@@ -1355,11 +1355,11 @@ char* smt_binary(char* opt, char* op1, char* op2);
 
 uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
 
-uint64_t version = 0; // generates unique SMT-LIB variable names
+uint64_t variable_version = 0; // generates unique SMT-LIB variable names
 
 uint64_t* symbolic_contexts = (uint64_t*) 0;
 
-char* path_condition  = (char*) 0;
+char* path_condition = (char*) 0;
 
 uint64_t* symbolic_memory = (uint64_t*) 0;
 
@@ -1684,6 +1684,7 @@ char*    replace_extension(char* filename, uint64_t e);
 uint64_t monster(uint64_t* to_context);
 
 uint64_t is_boot_level_zero();
+void     boot_loader();
 
 uint64_t selfie_run(uint64_t machine);
 
@@ -8080,13 +8081,13 @@ char* smt_variable(char* prefix, uint64_t bits) {
 
   svar = string_alloc(string_length(prefix) + 20); // 64-bit numbers require up to 20 decimal digits
 
-  sprintf2(svar, "%s%d", prefix, (char*) version);
+  sprintf2(svar, "%s%d", prefix, (char*) variable_version);
 
   printf2("(declare-fun %s () (_ BitVec %d)); variable for ", svar, (char*) bits);
   print_code_context_for_instruction(pc);
   println();
 
-  version = version + 1;
+  variable_version = variable_version + 1;
 
   return svar;
 }
@@ -9695,6 +9696,17 @@ uint64_t is_boot_level_zero() {
   return 0;
 }
 
+void boot_loader() {
+  current_context = create_context(MY_CONTEXT, 0);
+
+  up_load_binary(current_context);
+
+  // pass binary name as first argument by replacing memory size
+  set_argument(binary_name);
+
+  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
+}
+
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
 
@@ -9732,14 +9744,7 @@ uint64_t selfie_run(uint64_t machine) {
   reset_interpreter();
   reset_microkernel();
 
-  current_context = create_context(MY_CONTEXT, 0);
-
-  up_load_binary(current_context);
-
-  // pass binary name as first argument by replacing memory size
-  set_argument(binary_name);
-
-  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
+  boot_loader();
 
   printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
     binary_name,
