@@ -271,14 +271,18 @@ uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 uint64_t PROT_RW = 3;
 
 // mmap shared anonymous mapping
-// Linux: 33 = 0x0021 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x0020)
 // MAC: 4097 = 0x1001 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000)
-uint64_t MAP_SA = 4097;
+uint64_t MAC_MAP_SA = 4097;
 
-// mmap shared anonymous mapping
-// LINUX: 49 = 0x0031 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x0020) | MAP_FIXED (0x0010)
+// LINUX: 33 = 0x0021 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x0020)
+uint64_t LINUX_MAP_SA = 33;
+
+// mmap shared anonymous fixed mapping
 // MAC: 4113 = 0x1011 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x1000) | MAP_FIXED (0x0010)
-uint64_t MAP_SAF = 4113;
+uint64_t MAC_MAP_SAF = 4133;
+
+// LINUX: 49 = 0x0031 = MAP_SHARED (0x0001) | MAP_ANONYMOUS (0x0020) | MAP_FIXED (0x0010)
+uint64_t LINUX_MAP_SAF = 49;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -6994,7 +6998,10 @@ uint64_t* smmap(uint64_t size) {
   uint64_t* memory;
 
   size   = round_up(size, REGISTERSIZE);
-  memory = mmap(0, size, PROT_RW, MAP_SA, -1, 0);
+  memory = mmap(0, size, PROT_RW, MAC_MAP_SA, -1, 0);
+
+  if (signed_less_than(sign_extend((uint64_t) memory, SYSCALL_BITWIDTH), 0))
+    memory = mmap(0, size, PROT_RW, LINUX_MAP_SA, -1, 0);
 
   return memory;
 }
@@ -7004,7 +7011,10 @@ uint64_t* ammap(uint64_t addr, uint64_t size) {
   uint64_t* memory;
 
   size   = round_up(size, REGISTERSIZE);
-  memory = mmap((uint64_t*) addr, size, PROT_RW, MAP_SAF, -1, 0);
+  memory = mmap((uint64_t*) addr, size, PROT_RW, MAC_MAP_SAF, -1, 0);
+
+  if (signed_less_than(sign_extend((uint64_t) memory, SYSCALL_BITWIDTH), 0))
+    memory = mmap((uint64_t*) addr, size, PROT_RW, LINUX_MAP_SAF, -1, 0);
 
   return memory;
 }
