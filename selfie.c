@@ -366,8 +366,8 @@ uint64_t is_character_whitespace();
 
 uint64_t find_next_character();
 
-uint64_t is_character_letter();
 uint64_t is_character_digit();
+uint64_t is_character_letter_or_underscore();
 uint64_t is_character_letter_or_digit_or_underscore();
 uint64_t is_character_not_double_quote_or_new_line_or_eof();
 
@@ -2754,24 +2754,6 @@ uint64_t find_next_character() {
   }
 }
 
-uint64_t is_character_letter() {
-  // ASCII codes for lower- and uppercase letters are in contiguous intervals
-  if (character >= 'a')
-    if (character <= 'z')
-      return 1;
-    else
-      return 0;
-  else if (character >= 'A')
-    if (character <= 'Z')
-      return 1;
-    else if (character == '_')
-      return 1;
-    else
-      return 0;
-  else
-    return 0;
-}
-
 uint64_t is_character_digit() {
   // ASCII codes for digits are in a contiguous interval
   if (character >= '0')
@@ -2783,12 +2765,28 @@ uint64_t is_character_digit() {
     return 0;
 }
 
+uint64_t is_character_letter_or_underscore() {
+  // ASCII codes for lower- and uppercase letters are in contiguous intervals
+  if (character >= 'a')
+    if (character <= 'z')
+      return 1;
+    else
+      return 0;
+  else if (character >= 'A')
+    if (character <= 'Z')
+      return 1;
+    else if (character == CHAR_UNDERSCORE)
+      return 1;
+    else
+      return 0;
+  else
+    return 0;
+}
+
 uint64_t is_character_letter_or_digit_or_underscore() {
-  if (is_character_letter())
+  if (is_character_letter_or_underscore())
     return 1;
   else if (is_character_digit())
-    return 1;
-  else if (character == CHAR_UNDERSCORE)
     return 1;
   else
     return 0;
@@ -2845,7 +2843,7 @@ void get_symbol() {
     if (symbol != SYM_DIV) {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
-      if (is_character_letter()) {
+      if (is_character_letter_or_underscore()) {
         // accommodate identifier and null for termination
         identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
 
@@ -7000,6 +6998,7 @@ uint64_t* smmap(uint64_t size) {
   size   = round_up(size, REGISTERSIZE);
   memory = mmap(0, size, PROT_RW, MAC_MAP_SA, -1, 0);
 
+  // if Mac flags fail, try Linux flags
   if (signed_less_than(sign_extend((uint64_t) memory, SYSCALL_BITWIDTH), 0))
     memory = mmap(0, size, PROT_RW, LINUX_MAP_SA, -1, 0);
 
@@ -7013,6 +7012,7 @@ uint64_t* ammap(uint64_t addr, uint64_t size) {
   size   = round_up(size, REGISTERSIZE);
   memory = mmap((uint64_t*) addr, size, PROT_RW, MAC_MAP_SAF, -1, 0);
 
+  // if Mac flags fail, try Linux flags
   if (signed_less_than(sign_extend((uint64_t) memory, SYSCALL_BITWIDTH), 0))
     memory = mmap((uint64_t*) addr, size, PROT_RW, LINUX_MAP_SAF, -1, 0);
 
