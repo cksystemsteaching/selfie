@@ -1047,7 +1047,7 @@ uint64_t SYSCALL_FORK   = 402;
 uint64_t SYSCALL_THREAD = 403;
 uint64_t SYSCALL_WAIT   = 404;
 
-uint64_t SYSCALL_MMAP   = 506;
+uint64_t SYSCALL_MMAP   = 222;
 
 uint64_t SYSCALL_PID    = 405;
 uint64_t SYSCALL_LOCK   = 406;
