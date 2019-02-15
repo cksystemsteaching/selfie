@@ -6656,11 +6656,10 @@ void emit_thread() {
 }
 
 void implement_thread(uint64_t* context) {
-// not yet in shared space
-
   if (debug_shared)
     printf1("\n%s: ...thread() down (sfork())...\n", selfie_name);
 
+  // not yet in shared space
   if (shared == 0) {
     shared = 1;
 
@@ -9557,7 +9556,11 @@ void map_unmapped_pages(uint64_t* context) {
     page = page + 1;
 
   while (pavailable()) {
-    map_page(context, page, (uint64_t) palloc());
+    // map half of pages to shared memory
+    if (page % 2)
+      map_page(context, page, (uint64_t) palloc_shared());
+    else
+      map_page(context, page, (uint64_t) palloc());
 
     page = page + 1;
   }
