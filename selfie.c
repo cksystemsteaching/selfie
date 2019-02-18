@@ -4837,7 +4837,7 @@ void emit_round_up(uint64_t reg, uint64_t m) {
 
   // computes value(reg) + m - 1 - (value(reg) + m - 1) % m
   emit_add(reg, reg, current_temporary());
-  emit_addi(current_temporary(),current_temporary(), 1);
+  emit_addi(current_temporary(), current_temporary(), 1);
   emit_remu(current_temporary(), reg, current_temporary());
   emit_sub(reg, reg, current_temporary());
 
