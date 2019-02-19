@@ -36,7 +36,7 @@ os: selfie
 
 # Self-compile on two virtual machines
 vm: selfie
-	./selfie -c selfie.c -o selfie3.m -s selfie3.s -m 3 -l selfie3.m -y 3 -l selfie3.m -y 2 -c selfie.c -o selfie4.m -s selfie4.s
+	./selfie -c selfie.c -o selfie3.m -s selfie3.s -m 4 -l selfie3.m -y 4 -l selfie3.m -y 2 -c selfie.c -o selfie4.m -s selfie4.s
 	diff -q selfie3.m selfie4.m
 	diff -q selfie3.s selfie4.s
 	diff -q selfie1.m selfie3.m
@@ -63,12 +63,17 @@ sat: selfie
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -c selfie.c -m 1 -sat manuscript/cnfs/rivest.cnf
 
+# Run test for native threads
+threads: selfie
+	./selfie -c manuscript/code/threads.c -m 2
+	./selfie -c selfie.c -m 4 -c manuscript/code/threads.c -m 2
+
 # Run selfie on spike
 spike: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
-	spike pk selfie.m -c selfie.c -o selfie7.m -s selfie7.s -m 1
-	diff -q selfie.m selfie7.m
-	diff -q selfie.s selfie7.s
+	# spike pk selfie.m -c selfie.c -o selfie7.m -s selfie7.s -m 1
+	# diff -q selfie.m selfie7.m
+	# diff -q selfie.s selfie7.s
 
 # Build and update riscv-tools Docker image
 riscv-tools:
@@ -77,7 +82,7 @@ riscv-tools:
 	docker push cksystemsteaching/riscv-tools
 
 # Run everything
-all: compile quine debug replay os vm min mob smt sat
+all: compile quine debug replay os vm min mob smt sat threads
 
 # Clean up
 clean:
