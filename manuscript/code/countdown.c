@@ -1,8 +1,8 @@
-// declaring bar as a global variable of type int and
+// declaring bar as a global variable of type uint64_t and
 // defining the decimal value 10 as initial value of bar
 uint64_t bar = 10;
 
-// declaring main as a procedure with no arguments and return type int
+// declaring main as a procedure with no arguments and return type uint64_t
 uint64_t main() {
   // defining main to be the following code
 

@@ -1,7 +1,3 @@
-branches:
-  except:
-  - gh-pages
-  - book
 language:
 - c
 os:
@@ -11,6 +7,36 @@ compiler:
 - clang
 - gcc
 script: travis_wait 60 make all
+stages:
+  - test
+  - spike
+  - name: deploy
+    if: branch = master AND type = push AND fork = false
+  - name: run
+    if: branch = master AND type = push AND fork = false
+jobs:
+  include:
+    - stage: spike
+      sudo: required
+      services: docker
+      os: linux
+      script:
+        - docker build -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make spike
+    - stage: deploy
+      sudo: required
+      services: docker
+      os: linux
+      script:
+        - docker build -t cksystemsteaching/selfie .
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        - docker push cksystemsteaching/selfie
+    - stage: run
+      sudo: required
+      services: docker
+      os: linux
+      script:
+        - docker run cksystemsteaching/selfie make spike
 notifications:
   email: false
   slack:

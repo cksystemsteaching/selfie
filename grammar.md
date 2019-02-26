@@ -1,4 +1,4 @@
-Copyright (c) 2015-2018, the Selfie Project authors. All rights reserved. Please see the AUTHORS file for details. Use of this source code is governed by a BSD license that can be found in the LICENSE file.
+Copyright (c) 2015-2019, the Selfie Project authors. All rights reserved. Please see the AUTHORS file for details. Use of this source code is governed by a BSD license that can be found in the LICENSE file.
 
 Selfie is a project of the Computational Systems Group at the Department of Computer Sciences of the University of Salzburg in Austria. For further information and code please refer to:
 
@@ -6,11 +6,11 @@ http://selfie.cs.uni-salzburg.at
 
 This is the grammar of the C Star (C\*) programming language.
 
-C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with six keywords and 22 symbols. Whitespace is ignored including one-line comments (`//`).
+C\* is a tiny subset of the programming language C. C\* features global variable declarations with optional initialization as well as procedures with parameters and local variables. C\* has five statements (assignment, while loop, if-then-else, procedure call, and return) and standard arithmetic (`+`, `-`, `*`, `/`, `%`) and comparison (`==`, `!=`, `<`, `<=`, `>`, `>=`) operators. C\* includes the unary `*` operator for dereferencing pointers hence the name but excludes data types other than `uint64_t` and `uint64_t*`, bitwise and Boolean operators, and many other features. The C\* grammar is LL(1) with 6 keywords and 22 symbols. Whitespace as well as single-line (`//`) and multi-line (`/*` to `*/`) comments are ignored.
 
-C\* Keywords: `uint64_t`, `while`, `if`, `else`, `return`, `void`
+C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
-C\* Symbols: `=`, `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `,`, `(`, `)`, `{`, `}`, `;`, `integer`, `character`, `string`, `identifier`
+C\* Symbols: `integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`
 
 with:
 
@@ -57,15 +57,12 @@ call             = identifier "(" [ expression { "," expression } ] ")" .
 
 expression       = simpleExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simpleExpression ] .
 
-simpleExpression = [ "-" ] term { ( "+" | "-" ) term } .
+simpleExpression = term { ( "+" | "-" ) term } .
 
 term             = factor { ( "*" | "/" | "%" ) factor } .
 
-factor           = [ cast ]
-                    ( [ "*" ] ( identifier | "(" expression ")" ) |
-                      call |
-                      literal |
-                      string ) .
+factor           = [ cast ] [ "-" ] [ "*" ]
+                    ( identifier | call | literal | string | "(" expression ")" ) .
 
 while            = "while" "(" expression ")"
                              ( statement |
