@@ -871,7 +871,8 @@ void emit_string_data(uint64_t* entry);
 
 void emit_data_segment();
 
-uint64_t* create_elf_header(uint64_t binary_length);
+uint64_t* allocate_elf_header();
+uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length);
 uint64_t  validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(uint64_t* name);
@@ -889,7 +890,9 @@ uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGT
 uint64_t MAX_CODE_LENGTH = 245760; // 240KB
 uint64_t MAX_DATA_LENGTH = 16384; // 16KB
 
-uint64_t ELF_HEADER_LEN = 120; // = 64 + 56 bytes (file + program header)
+// page-aligned ELF header for storing file header (64 bytes),
+// program header (56 bytes), and code length (8 bytes)
+uint64_t ELF_HEADER_LEN = 4096;
 
 // according to RISC-V pk
 uint64_t ELF_ENTRY_POINT = 65536; // = 0x10000 (address of beginning of code)
@@ -943,7 +946,7 @@ void implement_write(uint64_t* context);
 
 void     emit_open();
 uint64_t down_load_string(uint64_t* table, uint64_t vstring, uint64_t* s);
-void     implement_open(uint64_t* context);
+void     implement_openat(uint64_t* context);
 
 void emit_malloc();
 void implement_brk(uint64_t* context);
@@ -955,11 +958,17 @@ uint64_t debug_write = 0;
 uint64_t debug_open  = 0;
 uint64_t debug_brk   = 0;
 
-uint64_t SYSCALL_EXIT  = 93;
-uint64_t SYSCALL_READ  = 63;
-uint64_t SYSCALL_WRITE = 64;
-uint64_t SYSCALL_OPEN  = 1024;
-uint64_t SYSCALL_BRK   = 214;
+uint64_t SYSCALL_EXIT   = 93;
+uint64_t SYSCALL_READ   = 63;
+uint64_t SYSCALL_WRITE  = 64;
+uint64_t SYSCALL_OPENAT = 56;
+uint64_t SYSCALL_BRK    = 214;
+
+/* DIRFD_AT_FDCWD corresponds to AT_FDCWD in fcntl.h and
+   is passed as first argument of the openat system call
+   emulating the (in Linux) deprecated open system call. */
+
+uint64_t DIRFD_AT_FDCWD = -100;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -4872,7 +4881,7 @@ void selfie_compile() {
 
   emit_data_segment();
 
-  ELF_header = create_elf_header(binary_length);
+  ELF_header = create_elf_header(binary_length, code_length);
 
   entry_point = ELF_ENTRY_POINT;
 
@@ -5512,12 +5521,18 @@ void emit_data_segment() {
   allocated_memory = 0;
 }
 
-uint64_t* create_elf_header(uint64_t binary_length) {
+uint64_t* allocate_elf_header() {
+  // allocate and map (on all boot levels) zeroed memory for ELF header preparing
+  // read calls (memory must be mapped) and write calls (memory must be mapped and zeroed)
+  return touch(zalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+}
+
+uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
   uint64_t* header;
 
-  // store all numbers necessary to create a minimal and valid
-  // ELF64 header including the program header
-  header = smalloc(ELF_HEADER_LEN);
+  header = allocate_elf_header();
+
+  // store all data necessary for creating a minimal and valid ELF64 file and program header
 
   // RISC-U ELF64 file header:
   *(header + 0) = 127                               // magic number part 0 is 0x7F
@@ -5541,12 +5556,16 @@ uint64_t* create_elf_header(uint64_t binary_length) {
   // RISC-U ELF64 program header table:
   *(header + 8)  = 1                              // type of segment is LOAD
                  + left_shift(7, 32);             // segment attributes is RWX
-  *(header + 9)  = ELF_HEADER_LEN + SIZEOFUINT64; // segment offset in file
+  *(header + 9)  = ELF_HEADER_LEN;                // segment offset in file (must be page-aligned)
   *(header + 10) = ELF_ENTRY_POINT;               // virtual address in memory
   *(header + 11) = 0;                             // physical address (reserved)
   *(header + 12) = binary_length;                 // size of segment in file
   *(header + 13) = binary_length;                 // size of segment in memory
   *(header + 14) = PAGESIZE;                      // alignment of segment
+
+  // This field is not part of the standard ELF header but
+  // used by selfie to load its own generated ELF files
+  *(header + 15) = code_length;
 
   return header;
 }
@@ -5554,11 +5573,13 @@ uint64_t* create_elf_header(uint64_t binary_length) {
 uint64_t validate_elf_header(uint64_t* header) {
   uint64_t  new_entry_point;
   uint64_t  new_binary_length;
+  uint64_t  new_code_length;
   uint64_t  position;
   uint64_t* valid_header;
 
   new_entry_point   = *(header + 10);
   new_binary_length = *(header + 12);
+  new_code_length   = *(header + 15);
 
   if (new_binary_length != *(header + 13))
     // segment size in file is not the same as segment size in memory
@@ -5568,7 +5589,7 @@ uint64_t validate_elf_header(uint64_t* header) {
     // binary does not fit into virtual address space
     return 0;
 
-  valid_header = create_elf_header(new_binary_length);
+  valid_header = create_elf_header(new_binary_length, new_code_length);
 
   position = 0;
 
@@ -5581,6 +5602,7 @@ uint64_t validate_elf_header(uint64_t* header) {
 
   entry_point   = new_entry_point;
   binary_length = new_binary_length;
+  code_length   = new_code_length;
 
   return 1;
 }
@@ -5636,15 +5658,6 @@ void selfie_output() {
     exit(EXITCODE_IOERROR);
   }
 
-  // then write code length
-  *binary_buffer = code_length;
-
-  if (write(fd, binary_buffer, SIZEOFUINT64) != SIZEOFUINT64) {
-    printf2((uint64_t*) "%s: could not write code length of binary output file %s\n", selfie_name, binary_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
   // assert: binary is mapped
 
   // then write binary
@@ -5656,7 +5669,7 @@ void selfie_output() {
 
   printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data written into %s\n",
     selfie_name,
-    (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binary_length),
+    (uint64_t*) (ELF_HEADER_LEN + binary_length),
     (uint64_t*) (code_length / INSTRUCTIONSIZE),
     (uint64_t*) (binary_length - code_length),
     binary_name);
@@ -5721,36 +5734,29 @@ void selfie_load() {
   code_line_number = (uint64_t*) 0;
   data_line_number = (uint64_t*) 0;
 
-  // make sure ELF_header is mapped for reading into it
-  ELF_header = touch(smalloc(ELF_HEADER_LEN), ELF_HEADER_LEN);
+  // this call makes sure ELF_header is mapped for reading into it
+  ELF_header = allocate_elf_header();
 
   // read ELF_header first
   number_of_read_bytes = read(fd, ELF_header, ELF_HEADER_LEN);
 
   if (number_of_read_bytes == ELF_HEADER_LEN) {
     if (validate_elf_header(ELF_header)) {
-      // now read code length
-      number_of_read_bytes = read(fd, binary_buffer, SIZEOFUINT64);
+      if (binary_length <= MAX_BINARY_LENGTH) {
+        // now read binary including global variables and strings
+        number_of_read_bytes = sign_extend(read(fd, binary, binary_length), SYSCALL_BITWIDTH);
 
-      if (number_of_read_bytes == SIZEOFUINT64) {
-        code_length = *binary_buffer;
+        if (signed_less_than(0, number_of_read_bytes)) {
+          // check if we are really at EOF
+          if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
+            printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
+              selfie_name,
+              (uint64_t*) ELF_HEADER_LEN,
+              (uint64_t*) (code_length / INSTRUCTIONSIZE),
+              (uint64_t*) (binary_length - code_length),
+              binary_name);
 
-        if (binary_length <= MAX_BINARY_LENGTH) {
-          // now read binary including global variables and strings
-          number_of_read_bytes = sign_extend(read(fd, binary, binary_length), SYSCALL_BITWIDTH);
-
-          if (signed_less_than(0, number_of_read_bytes)) {
-            // check if we are really at EOF
-            if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-              printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
-                selfie_name,
-                (uint64_t*) (ELF_HEADER_LEN + SIZEOFUINT64 + binary_length),
-                (uint64_t*) (code_length / INSTRUCTIONSIZE),
-                (uint64_t*) (binary_length - code_length),
-                binary_name);
-
-              return;
-            }
+            return;
           }
         }
       }
@@ -6102,16 +6108,19 @@ void implement_write(uint64_t* context) {
 void emit_open() {
   create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
-  emit_ld(REG_A2, REG_SP, 0); // mode
+  emit_ld(REG_A3, REG_SP, 0); // mode
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A1, REG_SP, 0); // flags
+  emit_ld(REG_A2, REG_SP, 0); // flags
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_ld(REG_A0, REG_SP, 0); // filename
+  emit_ld(REG_A1, REG_SP, 0); // filename
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
-  emit_addi(REG_A7, REG_ZR, SYSCALL_OPEN);
+  // DIRFD_AT_FDCWD makes sure that openat behaves like open
+  emit_addi(REG_A0, REG_ZR, DIRFD_AT_FDCWD);
+
+  emit_addi(REG_A7, REG_ZR, SYSCALL_OPENAT);
 
   emit_ecall();
 
@@ -6167,7 +6176,7 @@ uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
   return 0;
 }
 
-void implement_open(uint64_t* context) {
+void implement_openat(uint64_t* context) {
   // parameters
   uint64_t vfilename;
   uint64_t flags;
@@ -6177,19 +6186,27 @@ void implement_open(uint64_t* context) {
   uint64_t fd;
 
   if (disassemble) {
-    print((uint64_t*) "(open): ");
+    print((uint64_t*) "(openat): ");
     print_register_hexadecimal(REG_A0);
     print((uint64_t*) ",");
     print_register_hexadecimal(REG_A1);
     print((uint64_t*) ",");
-    print_register_octal(REG_A2);
+    print_register_hexadecimal(REG_A2);
+    print((uint64_t*) ",");
+    print_register_octal(REG_A3);
     print((uint64_t*) " |- ");
-    print_register_value(REG_A0);
+    print_register_value(REG_A1);
   }
 
-  vfilename = *(get_regs(context) + REG_A0);
-  flags     = *(get_regs(context) + REG_A1);
-  mode      = *(get_regs(context) + REG_A2);
+  /* We actually emulate the part of the openat system call here that is
+     implemented by the open system call which is deprecated in Linux.
+     In particular, the first parameter (REG_A0) is ignored here while
+     set to DIRFD_AT_FDCWD in the wrapper for the open library call to
+     make sure openat behaves like open when bootstrapping selfie. */
+
+  vfilename = *(get_regs(context) + REG_A1);
+  flags     = *(get_regs(context) + REG_A2);
+  mode      = *(get_regs(context) + REG_A3);
 
   if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
     fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
@@ -9247,8 +9264,8 @@ uint64_t handle_system_call(uint64_t* context) {
     implement_read(context);
   else if (a7 == SYSCALL_WRITE)
     implement_write(context);
-  else if (a7 == SYSCALL_OPEN)
-    implement_open(context);
+  else if (a7 == SYSCALL_OPENAT)
+    implement_openat(context);
   else if (a7 == SYSCALL_EXIT) {
     implement_exit(context);
 
