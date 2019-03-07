@@ -249,13 +249,16 @@ def is_interleaved_output(returncode, output, interleaved_msg, number_of_interle
 def is_permutation_of(returncode, output, numbers):
   filtered_output = filter_status_messages(output)
 
-  printed_numbers = list(map(lambda x: int(x), filter(lambda s: len(s) > 0, filtered_output.split(' '))))
+  printed_numbers = list(map(lambda x: int(x), filter(lambda s: len(s) > 0 and s.isdigit(), filtered_output.split(' '))))
 
   if (len(printed_numbers) != len(numbers)):
     return (False, f'The amount of printed numbers ({len(printed_numbers)}) is not equal to the amount of numbers needed to be printed ({len(numbers)})')
 
   for number in numbers:
-    printed_numbers.remove(number)
+    if number in printed_numbers:
+      printed_numbers.remove(number)
+    else:
+      return (False, 'The printed numbers are not a permutation of {numbers}')
 
   return (len(printed_numbers) == 0, 'The printed numbers are not a permutation of {numbers}')
 
