@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015-2018, the Selfie Project authors. All rights reserved.
+Copyright (c) 2015-2019, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
 
@@ -27,8 +27,10 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 3. a self-hosting hypervisor called hypster that provides
    RISC-U virtual machines that can host all of selfie,
    that is, starc, mipster, and hypster itself,
-4. a prototypical symbolic execution engine called monster
-   that executes RISC-U code symbolically,
+4. a symbolic execution engine called monster that executes
+   RISC-U code symbolically and generates SMT-LIB files
+   that are satisfiable if and only if the code may exit
+   with non-zero exit codes,
 5. a simple SAT solver that reads CNF DIMACS files, and
 6. a tiny C* library called libcstar utilized by selfie.
 
@@ -70,12 +72,20 @@ selfie goes one step further by implementing microkernel functionality
 as part of the emulator and a hypervisor that can run as part of the
 emulator as well as on top of it, all with the same code.
 
+The symbolic execution engine implements a simple yet sound and
+complete translation of RISC-U code to SMT-LIB formulae. The SAT
+solver implements a naive brute-force enumeration of all possible
+variable assignments. Both engine and solver facilitate teaching
+the absolute basics of SAT and SMT solving applied to real code.
+
 Selfie is the result of many years of teaching systems engineering.
 The design of the compiler is inspired by the Oberon compiler of
 Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
 RISC-V community around Professor David Patterson from UC Berkeley.
-The design of the hypervisor is inspired by microkernels of
-Professor Jochen Liedtke from University of Karlsruhe.
+The design of the hypervisor is inspired by microkernels of Professor
+Jochen Liedtke from University of Karlsruhe. The symbolic execution
+engine and the SAT solver are inspired by Professor Armin Biere from
+JKU Linz.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -88,12 +98,14 @@ Professor Jochen Liedtke from University of Karlsruhe.
 // ----------------------- BUILTIN PROCEDURES ----------------------
 // -----------------------------------------------------------------
 
- // selfie bootstraps int to uint64_t!
+// selfie bootstraps int to uint64_t!
 void exit(int code);
 
 uint64_t read(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_read);
 uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
-uint64_t open(uint64_t* filename, uint64_t flags, uint64_t mode);
+
+// selfie bootstraps char to uint64_t!
+uint64_t open(char* filename, uint64_t flags, uint64_t mode);
 
 // selfie bootstraps void* and unsigned long to uint64_t* and uint64_t, respectively!
 void* malloc(unsigned long);
@@ -124,42 +136,47 @@ uint64_t is_signed_integer(uint64_t n, uint64_t b);
 uint64_t sign_extend(uint64_t n, uint64_t b);
 uint64_t sign_shrink(uint64_t n, uint64_t b);
 
-uint64_t  load_character(uint64_t* s, uint64_t i);
-uint64_t* store_character(uint64_t* s, uint64_t i, uint64_t c);
+uint64_t load_character(char* s, uint64_t i);
+char*    store_character(char* s, uint64_t i, uint64_t c);
 
-uint64_t  string_length(uint64_t* s);
-uint64_t* string_copy(uint64_t* s);
-void      string_reverse(uint64_t* s);
-uint64_t  string_compare(uint64_t* s, uint64_t* t);
+char*    string_alloc(uint64_t l);
+uint64_t string_length(char* s);
+char*    string_copy(char* s);
+void     string_reverse(char* s);
+uint64_t string_compare(char* s, char* t);
 
-uint64_t  atoi(uint64_t* s);
-uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a);
+uint64_t atoi(char* s);
+char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t a);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f);
 
 void put_character(uint64_t c);
 
-void print(uint64_t* s);
+void print(char* s);
 void println();
 
 void print_character(uint64_t c);
-void print_string(uint64_t* s);
+void print_string(char* s);
 void print_integer(uint64_t n);
 void unprint_integer(uint64_t n);
 void print_hexadecimal(uint64_t n, uint64_t a);
 void print_octal(uint64_t n, uint64_t a);
 void print_binary(uint64_t n, uint64_t a);
 
-uint64_t print_format0(uint64_t* s, uint64_t i);
-uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a);
+uint64_t print_format0(char* s, uint64_t i);
+uint64_t print_format1(char* s, uint64_t i, char* a);
 
-void printf1(uint64_t* s, uint64_t* a1);
-void printf2(uint64_t* s, uint64_t* a1, uint64_t* a2);
-void printf3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3);
-void printf4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4);
-void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5);
-void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6);
+void printf1(char* s, char* a1);
+void printf2(char* s, char* a1, char* a2);
+void printf3(char* s, char* a1, char* a2, char* a3);
+void printf4(char* s, char* a1, char* a2, char* a3, char* a4);
+void printf5(char* s, char* a1, char* a2, char* a3, char* a4, char* a5);
+void printf6(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6);
+
+void sprintf1(char* b, char* s, char* a1);
+void sprintf2(char* b, char* s, char* a1, char* a2);
+void sprintf3(char* b, char* s, char* a1, char* a2, char* a3);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -206,12 +223,15 @@ uint64_t INT64_MIN; // minimum numerical value of a signed 64-bit integer
 
 uint64_t UINT64_MAX; // maximum numerical value of an unsigned 64-bit integer
 
+uint64_t* character_buffer; // buffer for reading and writing characters
+
+char* integer_buffer; // buffer for formatting integers
+
 uint64_t MAX_FILENAME_LENGTH = 128;
 
-uint64_t* character_buffer; // buffer for reading and writing characters
-uint64_t* integer_buffer;   // buffer for printing integers
-uint64_t* filename_buffer;  // buffer for opening files
-uint64_t* binary_buffer;    // buffer for binary I/O
+char* filename_buffer; // buffer for opening files
+
+uint64_t* binary_buffer; // buffer for binary I/O
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -240,8 +260,11 @@ uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
 uint64_t number_of_written_characters = 0;
 
-uint64_t* output_name = (uint64_t*) 0;
-uint64_t  output_fd   = 1; // 1 is file descriptor of standard output
+char*    output_name = (char*) 0;
+uint64_t output_fd   = 1; // 1 is file descriptor of standard output
+
+char*    output_buffer = (char*) 0;
+uint64_t output_cursor = 0; // cursor for output buffer
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -274,10 +297,10 @@ void init_library() {
   *character_buffer = 0;
 
   // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
-  integer_buffer = smalloc(CPUBITWIDTH + 1);
+  integer_buffer = string_alloc(CPUBITWIDTH);
 
   // does not need to be mapped
-  filename_buffer = smalloc(MAX_FILENAME_LENGTH);
+  filename_buffer = string_alloc(MAX_FILENAME_LENGTH);
 
   // allocate and touch to make sure memory is mapped for read calls
   binary_buffer  = smalloc(SIZEOFUINT64);
@@ -302,11 +325,11 @@ void init_scanner();
 void reset_scanner();
 
 void print_symbol(uint64_t symbol);
-void print_line_number(uint64_t* message, uint64_t line);
+void print_line_number(char* message, uint64_t line);
 
-void syntax_error_message(uint64_t* message);
+void syntax_error_message(char* message);
 void syntax_error_character(uint64_t character);
-void syntax_error_identifier(uint64_t* expected);
+void syntax_error_identifier(char* expected);
 
 void get_character();
 
@@ -378,9 +401,9 @@ uint64_t MAX_STRING_LENGTH     = 128; // maximum number of characters in a strin
 
 uint64_t line_number = 1; // current line number for error reporting
 
-uint64_t* identifier = (uint64_t*) 0; // stores scanned identifier as string
-uint64_t* integer    = (uint64_t*) 0; // stores scanned integer as string
-uint64_t* string     = (uint64_t*) 0; // stores scanned string
+char* identifier = (char*) 0; // stores scanned identifier as string
+char* integer    = (char*) 0; // stores scanned integer as string
+char* string     = (char*) 0; // stores scanned string
 
 uint64_t literal = 0; // stores numerical value of scanned integer or character
 
@@ -396,8 +419,8 @@ uint64_t number_of_ignored_characters = 0;
 uint64_t number_of_comments           = 0;
 uint64_t number_of_scanned_symbols    = 0;
 
-uint64_t* source_name = (uint64_t*) 0; // name of source file
-uint64_t  source_fd   = 0;             // file descriptor of open source file
+char*    source_name = (char*) 0; // name of source file
+uint64_t source_fd   = 0; // file descriptor of open source file
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -461,11 +484,11 @@ void reset_symbol_tables();
 
 uint64_t hash(uint64_t* key);
 
-void create_symbol_table_entry(uint64_t which, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
+void create_symbol_table_entry(uint64_t which, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address);
 
-uint64_t* search_symbol_table(uint64_t* entry, uint64_t* string, uint64_t class);
-uint64_t* search_global_symbol_table(uint64_t* string, uint64_t class);
-uint64_t* get_scoped_symbol_table_entry(uint64_t* string, uint64_t class);
+uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class);
+uint64_t* search_global_symbol_table(char* string, uint64_t class);
+uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class);
 
 uint64_t is_undefined_procedure(uint64_t* entry);
 uint64_t report_undefined_procedures();
@@ -482,8 +505,12 @@ uint64_t report_undefined_procedures();
 // |  7 | scope   | REG_GP, REG_FP
 // +----+---------+
 
+uint64_t* allocate_symbol_table_entry() {
+  return smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+}
+
 uint64_t* get_next_entry(uint64_t* entry)  { return (uint64_t*) *entry; }
-uint64_t* get_string(uint64_t* entry)      { return (uint64_t*) *(entry + 1); }
+char*     get_string(uint64_t* entry)      { return (char*)     *(entry + 1); }
 uint64_t  get_line_number(uint64_t* entry) { return             *(entry + 2); }
 uint64_t  get_class(uint64_t* entry)       { return             *(entry + 3); }
 uint64_t  get_type(uint64_t* entry)        { return             *(entry + 4); }
@@ -492,7 +519,7 @@ uint64_t  get_address(uint64_t* entry)     { return             *(entry + 6); }
 uint64_t  get_scope(uint64_t* entry)       { return             *(entry + 7); }
 
 void set_next_entry(uint64_t* entry, uint64_t* next)   { *entry       = (uint64_t) next; }
-void set_string(uint64_t* entry, uint64_t* identifier) { *(entry + 1) = (uint64_t) identifier; }
+void set_string(uint64_t* entry, char* identifier)     { *(entry + 1) = (uint64_t) identifier; }
 void set_line_number(uint64_t* entry, uint64_t line)   { *(entry + 2) = line; }
 void set_class(uint64_t* entry, uint64_t class)        { *(entry + 3) = class; }
 void set_type(uint64_t* entry, uint64_t type)          { *(entry + 4) = type; }
@@ -575,17 +602,17 @@ void syntax_error_unexpected();
 void print_type(uint64_t type);
 void type_warning(uint64_t expected, uint64_t found);
 
-uint64_t* get_variable_or_big_int(uint64_t* variable, uint64_t class);
+uint64_t* get_variable_or_big_int(char* variable, uint64_t class);
 void      load_upper_base_address(uint64_t* entry);
-uint64_t  load_variable_or_big_int(uint64_t* variable, uint64_t class);
+uint64_t  load_variable_or_big_int(char* variable, uint64_t class);
 void      load_integer(uint64_t value);
-void      load_string(uint64_t* string);
+void      load_string(char* string);
 
-uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure);
+uint64_t help_call_codegen(uint64_t* entry, char* procedure);
 void     help_procedure_prologue(uint64_t number_of_local_variable_bytes);
 void     help_procedure_epilogue(uint64_t number_of_parameter_bytes);
 
-uint64_t compile_call(uint64_t* procedure);
+uint64_t compile_call(char* procedure);
 uint64_t compile_factor();
 uint64_t compile_term();
 uint64_t compile_simple_expression();
@@ -597,7 +624,7 @@ void     compile_statement();
 uint64_t compile_type();
 void     compile_variable(uint64_t offset);
 uint64_t compile_initialization(uint64_t type);
-void     compile_procedure(uint64_t* procedure, uint64_t type);
+void     compile_procedure(char* procedure, uint64_t type);
 void     compile_cstar();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -655,8 +682,8 @@ void selfie_compile();
 
 void init_register();
 
-uint64_t* get_register_name(uint64_t reg);
-void      print_register_name(uint64_t reg);
+char* get_register_name(uint64_t reg);
+void  print_register_name(uint64_t reg);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -829,7 +856,7 @@ void reset_instruction_counters();
 
 uint64_t get_total_number_of_instructions();
 
-void print_instruction_counter(uint64_t total, uint64_t counter, uint64_t* mnemonics);
+void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics);
 void print_instruction_counters();
 
 uint64_t load_instruction(uint64_t baddr);
@@ -875,7 +902,7 @@ uint64_t* allocate_elf_header();
 uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length);
 uint64_t  validate_elf_header(uint64_t* header);
 
-uint64_t open_write_only(uint64_t* name);
+uint64_t open_write_only(char* name);
 
 void selfie_output();
 
@@ -917,8 +944,8 @@ uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
 uint64_t* binary        = (uint64_t*) 0; // binary of code and data segments
-uint64_t  binary_length = 0; // length of binary in bytes including data segment
-uint64_t* binary_name   = (uint64_t*) 0; // file name of binary
+uint64_t  binary_length = 0;             // length of binary in bytes including data segment
+char*     binary_name   = (char*) 0;     // file name of binary
 
 uint64_t code_length = 0; // length of code segment in binary in bytes
 uint64_t entry_point = 0; // beginning of code segment in virtual address space
@@ -926,8 +953,8 @@ uint64_t entry_point = 0; // beginning of code segment in virtual address space
 uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
 uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
 
-uint64_t* assembly_name = (uint64_t*) 0; // name of assembly file
-uint64_t  assembly_fd   = 0; // file descriptor of open assembly file
+char*    assembly_name = (char*) 0; // name of assembly file
+uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 
 uint64_t* ELF_header = (uint64_t*) 0;
 
@@ -945,7 +972,7 @@ void emit_write();
 void implement_write(uint64_t* context);
 
 void     emit_open();
-uint64_t down_load_string(uint64_t* table, uint64_t vstring, uint64_t* s);
+uint64_t down_load_string(uint64_t* table, uint64_t vstring, char* s);
 void     implement_openat(uint64_t* context);
 
 void emit_malloc();
@@ -975,7 +1002,7 @@ uint64_t DIRFD_AT_FDCWD = -100;
 // -----------------------------------------------------------------
 
 void      emit_switch();
-void      do_switch(uint64_t* to_context, uint64_t timeout);
+uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout);
 void      implement_switch();
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout);
 
@@ -1064,35 +1091,30 @@ void print_addi_add_sub_mul_divu_remu_sltu_after();
 void do_addi();
 void constrain_addi();
 
-void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
+void print_add_sub_mul_divu_remu_sltu(char *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void do_add();
-void constrain_add();
+void constrain_add_sub_mul_divu_remu_sltu(char* operator);
 
 void do_sub();
-void constrain_sub();
 
 void do_mul();
-void constrain_mul();
 
 void record_divu_remu();
 void do_divu();
-void constrain_divu();
 
 void do_remu();
-void constrain_remu();
 
 void do_sltu();
-void constrain_sltu();
-void backtrack_sltu();
+void zero_extend_sltu();
 
 void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 void     record_ld();
 uint64_t do_ld();
-uint64_t constrain_ld();
+void     constrain_ld();
 
 void     print_sd();
 void     print_sd_before();
@@ -1100,30 +1122,29 @@ void     print_sd_after(uint64_t vaddr);
 void     record_sd();
 uint64_t do_sd();
 void     undo_sd();
-uint64_t constrain_sd();
-void     backtrack_sd();
+void     constrain_sd();
 
 void print_beq();
 void print_beq_before();
 void print_beq_after();
 void record_beq();
 void do_beq();
+void constrain_beq();
 
 void print_jal();
 void print_jal_before();
 void print_jal_jalr_after();
 void do_jal();
-void constrain_jal_jalr();
 
 void print_jalr();
 void print_jalr_before();
 void do_jalr();
+void constrain_jalr();
 
 void print_ecall();
 void record_ecall();
 void do_ecall();
 void undo_ecall();
-void backtrack_ecall();
 
 void print_data_line_number();
 void print_data_context(uint64_t data);
@@ -1158,115 +1179,71 @@ void init_replay_engine() {
 }
 
 // -----------------------------------------------------------------
+// ------------------------ SYMBOLIC MEMORY ------------------------
+// -----------------------------------------------------------------
+
+uint64_t* load_symbolic_memory(uint64_t vaddr);
+void      store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, uint64_t bits);
+
+uint64_t is_symbolic_value(uint64_t* sword);
+
+void print_symbolic_memory(uint64_t* sword);
+
+// symbolic memory word struct:
+// +---+-----------+
+// | 0 | next word | pointer to next memory word
+// | 1 | address   | address of memory word
+// | 2 | value     | concrete value of memory word
+// | 3 | symbolic  | symbolic value of memory word
+// | 4 | bits      | number of bits in bit vector
+// +---+-----------+
+
+uint64_t* allocate_symbolic_memory_word() {
+  return smalloc(2 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+}
+
+uint64_t* get_next_word(uint64_t* word)      { return (uint64_t*) *word; }
+uint64_t  get_word_address(uint64_t* word)   { return             *(word + 1); }
+uint64_t  get_word_value(uint64_t* word)     { return             *(word + 2); }
+char*     get_word_symbolic(uint64_t* word)  { return (char*)     *(word + 3); }
+uint64_t  get_number_of_bits(uint64_t* word) { return             *(word + 4); }
+
+void set_next_word(uint64_t* word, uint64_t* next)      { *word       = (uint64_t) next; }
+void set_word_address(uint64_t* word, uint64_t address) { *(word + 1) =            address; }
+void set_word_value(uint64_t* word, uint64_t value)     { *(word + 2) =            value; }
+void set_word_symbolic(uint64_t* word, char* sym)       { *(word + 3) = (uint64_t) sym; }
+void set_number_of_bits(uint64_t* word, uint64_t bits)  { *(word + 4) =            bits; }
+
+// -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
 
-void init_symbolic_engine();
+char* bv_constant(uint64_t value);
+char* bv_variable(uint64_t bits);
+char* bv_zero_extension(uint64_t bits);
 
-void print_symbolic_memory(uint64_t svc);
+char* smt_value(uint64_t val, char* sym);
+char* smt_variable(char* prefix, uint64_t bits);
 
-uint64_t cardinality(uint64_t lo, uint64_t up);
-uint64_t combined_cardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
-
-uint64_t is_symbolic_value(uint64_t type, uint64_t lo, uint64_t up);
-uint64_t is_safe_address(uint64_t vaddr, uint64_t reg);
-uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
-
-uint64_t is_trace_space_available();
-
-void ealloc();
-void efree();
-
-void store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb);
-
-void store_constrained_memory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb);
-void store_register_memory(uint64_t reg, uint64_t value);
-
-void constrain_memory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb);
-
-void set_constraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups);
-
-void take_branch(uint64_t b, uint64_t how_many_more);
-void create_constraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t how_many_more);
-
-uint64_t fuzz_lo(uint64_t value);
-uint64_t fuzz_up(uint64_t value);
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t MAX_TRACE_LENGTH = 100000;
-
-uint64_t debug_symbolic = 0;
+char* smt_unary(char* opt, char* op);
+char* smt_binary(char* opt, char* op1, char* op2);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-// trace
+uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
 
-uint64_t* tcs = (uint64_t*) 0; // trace of trace counters to previous values
+uint64_t variable_version = 0; // generates unique SMT-LIB variable names
 
-uint64_t* types = (uint64_t*) 0; // memory range or integer interval
+uint64_t* symbolic_contexts = (uint64_t*) 0;
 
-uint64_t* los = (uint64_t*) 0; // trace of lower bounds on values
-uint64_t* ups = (uint64_t*) 0; // trace of upper bounds on values
+char* path_condition = (char*) 0;
 
-uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
+uint64_t* symbolic_memory = (uint64_t*) 0;
 
-// read history
+uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in SMT-LIB format
 
-uint64_t rc = 0; // read counter
-
-uint64_t* read_values = (uint64_t*) 0;
-
-uint64_t* read_los = (uint64_t*) 0;
-uint64_t* read_ups = (uint64_t*) 0;
-
-// registers
-
-uint64_t* reg_typ = (uint64_t*) 0; // memory range or integer interval
-uint64_t* reg_los = (uint64_t*) 0; // lower bound on register value
-uint64_t* reg_ups = (uint64_t*) 0; // upper bound on register value
-
-// register constraints on memory
-
-uint64_t* reg_hasco = (uint64_t*) 0; // register has constraint
-uint64_t* reg_vaddr = (uint64_t*) 0; // vaddr of constrained memory
-uint64_t* reg_hasmn = (uint64_t*) 0; // constraint has minuend
-uint64_t* reg_colos = (uint64_t*) 0; // offset on lower bound
-uint64_t* reg_coups = (uint64_t*) 0; // offset on upper bound
-
-// trace counter of most recent constraint
-
-uint64_t mrcc = 0;
-
-// fuzzing
-
-uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
-
-// ------------------------- INITIALIZATION ------------------------
-
-void init_symbolic_engine() {
-  pcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  tcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  types  = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  vaddrs = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-
-  read_values = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  read_los    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  read_ups    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-
-  reg_typ = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_los = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_ups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-
-  reg_hasco = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_vaddr = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_hasmn = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_colos = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_coups = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-}
+char*    smt_name = (char*) 0; // name of SMT-LIB file
+uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1287,11 +1264,11 @@ void fetch();
 void decode_execute();
 void interrupt();
 
-uint64_t* run_until_exception();
+void run_until_exception();
 
 uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max);
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max);
-void     print_per_instruction_profile(uint64_t* message, uint64_t total, uint64_t* counters);
+void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters);
 
 void print_profile();
 
@@ -1306,7 +1283,6 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
-uint64_t EXCEPTION_MAXTRACE           = 7;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1321,7 +1297,6 @@ uint64_t undo        = 0; // flag for undoing code execution
 uint64_t redo        = 0; // flag for redoing code execution
 uint64_t disassemble = 0; // flag for disassembling code
 uint64_t symbolic    = 0; // flag for symbolically executing code
-uint64_t backtrack   = 0; // flag for backtracking symbolic execution
 
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
@@ -1330,7 +1305,7 @@ uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 // TODO: implement proper interrupt controller to turn interrupts on and off
 uint64_t TIMESLICE = 10000000;
 
-uint64_t TIMEROFF = 0;
+uint64_t TIMEROFF = 0; // must be 0 to turn off timer interrupt
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1362,7 +1337,7 @@ uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores p
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_MAXTRACE + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1371,7 +1346,6 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
-  *(EXCEPTIONS + EXCEPTION_MAXTRACE)           = (uint64_t) "trace length exceeded";
 }
 
 void reset_interpreter() {
@@ -1404,19 +1378,22 @@ void reset_interpreter() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-uint64_t* allocate_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
+uint64_t* new_context();
 
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in);
+void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
+void copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth);
+
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
 
 void      free_context(uint64_t* context);
 uint64_t* delete_context(uint64_t* context, uint64_t* from);
 
 // context struct:
-// +----+----------------+
+// +----+-----------------+
 // |  0 | next context    | pointer to next context
 // |  1 | prev context    | pointer to previous context
 // |  2 | program counter | program counter
-// |  3 | regs            | pointer to general purpose registers
+// |  3 | registers       | pointer to general purpose registers
 // |  4 | page table      | pointer to page table
 // |  5 | lo page         | lowest low unmapped page
 // |  6 | me page         | highest low unmapped page
@@ -1430,6 +1407,22 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 14 | virtual context | virtual context address
 // | 15 | name            | binary name loaded into context
 // +----+-----------------+
+// symbolic extension:
+// +----+-----------------+
+// | 16 | execution depth | number of executed instructions
+// | 17 | path condition  | pointer to path condition
+// | 18 | symbolic memory | pointer to symbolic memory
+// | 19 | symbolic regs   | pointer to symbolic registers
+// | 20 | related context | pointer to list of contexts of related branches
+// +----+-----------------+
+
+uint64_t* allocate_context() {
+  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
+}
+
+uint64_t* allocate_symbolic_context() {
+  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
+}
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
 uint64_t prev_context(uint64_t* context)    { return (uint64_t) (context + 1); }
@@ -1463,24 +1456,36 @@ uint64_t  get_faulting_page(uint64_t* context)   { return             *(context 
 uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 12); }
 uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 13); }
 uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 14); }
-uint64_t* get_name(uint64_t* context)            { return (uint64_t*) *(context + 15); }
+char*     get_name(uint64_t* context)            { return (char*)     *(context + 15); }
 
-void set_next_context(uint64_t* context, uint64_t* next)     { *context        = (uint64_t) next; }
-void set_prev_context(uint64_t* context, uint64_t* prev)     { *(context + 1)  = (uint64_t) prev; }
-void set_pc(uint64_t* context, uint64_t pc)                  { *(context + 2)  = pc; }
-void set_regs(uint64_t* context, uint64_t* regs)             { *(context + 3)  = (uint64_t) regs; }
-void set_pt(uint64_t* context, uint64_t* pt)                 { *(context + 4)  = (uint64_t) pt; }
-void set_lo_page(uint64_t* context, uint64_t lo_page)        { *(context + 5)  = lo_page; }
-void set_me_page(uint64_t* context, uint64_t me_page)        { *(context + 6)  = me_page; }
-void set_hi_page(uint64_t* context, uint64_t hi_page)        { *(context + 7)  = hi_page; }
-void set_original_break(uint64_t* context, uint64_t brk)     { *(context + 8)  = brk; }
-void set_program_break(uint64_t* context, uint64_t brk)      { *(context + 9)  = brk; }
-void set_exception(uint64_t* context, uint64_t exception)    { *(context + 10) = exception; }
-void set_faulting_page(uint64_t* context, uint64_t page)     { *(context + 11) = page; }
-void set_exit_code(uint64_t* context, uint64_t code)         { *(context + 12) = code; }
-void set_parent(uint64_t* context, uint64_t* parent)         { *(context + 13) = (uint64_t) parent; }
-void set_virtual_context(uint64_t* context, uint64_t* vctxt) { *(context + 14) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, uint64_t* name)             { *(context + 15) = (uint64_t) name; }
+uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 16); }
+char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 17); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 18); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 19); }
+uint64_t* get_related_context(uint64_t* context) { return (uint64_t*) *(context + 20); }
+
+void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
+void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
+void set_pc(uint64_t* context, uint64_t pc)                   { *(context + 2)  = pc; }
+void set_regs(uint64_t* context, uint64_t* regs)              { *(context + 3)  = (uint64_t) regs; }
+void set_pt(uint64_t* context, uint64_t* pt)                  { *(context + 4)  = (uint64_t) pt; }
+void set_lo_page(uint64_t* context, uint64_t lo_page)         { *(context + 5)  = lo_page; }
+void set_me_page(uint64_t* context, uint64_t me_page)         { *(context + 6)  = me_page; }
+void set_hi_page(uint64_t* context, uint64_t hi_page)         { *(context + 7)  = hi_page; }
+void set_original_break(uint64_t* context, uint64_t brk)      { *(context + 8)  = brk; }
+void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 9)  = brk; }
+void set_exception(uint64_t* context, uint64_t exception)     { *(context + 10) = exception; }
+void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 11) = page; }
+void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 12) = code; }
+void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 13) = (uint64_t) parent; }
+void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 14) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, char* name)                  { *(context + 15) = (uint64_t) name; }
+
+void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 16) =            depth; }
+void set_path_condition(uint64_t* context, char* path)         { *(context + 17) = (uint64_t) path; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 18) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 19) = (uint64_t) regs; }
+void set_related_context(uint64_t* context, uint64_t* related) { *(context + 20) = (uint64_t) related; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1489,13 +1494,10 @@ void set_name(uint64_t* context, uint64_t* name)             { *(context + 15) =
 void reset_microkernel();
 
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);
-
 uint64_t* cache_context(uint64_t* vctxt);
 
 void save_context(uint64_t* context);
-
 void map_page(uint64_t* context, uint64_t page, uint64_t frame);
-
 void restore_context(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1534,13 +1536,12 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data);
 
 void up_load_binary(uint64_t* context);
 
-uint64_t up_load_string(uint64_t* context, uint64_t* s, uint64_t SP);
+uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP);
 void     up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv);
 
 uint64_t handle_system_call(uint64_t* context);
 uint64_t handle_page_fault(uint64_t* context);
 uint64_t handle_division_by_zero(uint64_t* context);
-uint64_t handle_max_trace(uint64_t* context);
 uint64_t handle_timer(uint64_t* context);
 
 uint64_t handle_exception(uint64_t* context);
@@ -1555,10 +1556,11 @@ void     map_unmapped_pages(uint64_t* context);
 uint64_t minster(uint64_t* to_context);
 uint64_t mobster(uint64_t* to_context);
 
-void     backtrack_trace(uint64_t* context);
+char*    replace_extension(char* filename, uint64_t e);
 uint64_t monster(uint64_t* to_context);
 
 uint64_t is_boot_level_zero();
+void     boot_loader();
 
 uint64_t selfie_run(uint64_t machine);
 
@@ -1582,8 +1584,7 @@ uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 9;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 10;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 11;
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
-uint64_t EXITCODE_OUTOFTRACEMEMORY       = 13;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 14;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 13;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1630,7 +1631,7 @@ uint64_t SAT   = 1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t* dimacs_name = (uint64_t*) 0;
+char* dimacs_name = (char*) 0;
 
 uint64_t number_of_sat_variables = 0;
 
@@ -1650,7 +1651,7 @@ void selfie_print_dimacs();
 
 void     dimacs_find_next_character(uint64_t new_line);
 void     dimacs_get_symbol();
-void     dimacs_word(uint64_t* word);
+void     dimacs_word(char* word);
 uint64_t dimacs_number();
 void     dimacs_get_clause(uint64_t clause);
 void     dimacs_get_instance();
@@ -1668,9 +1669,9 @@ void init_selfie(uint64_t argc, uint64_t* argv);
 uint64_t  number_of_remaining_arguments();
 uint64_t* remaining_arguments();
 
-uint64_t* peek_argument();
-uint64_t* get_argument();
-void      set_argument(uint64_t* argv);
+char* peek_argument();
+char* get_argument();
+void  set_argument(char* argv);
 
 void print_usage();
 
@@ -1679,7 +1680,7 @@ void print_usage();
 uint64_t  selfie_argc = 0;
 uint64_t* selfie_argv = (uint64_t*) 0;
 
-uint64_t* selfie_name = (uint64_t*) 0;
+char* selfie_name = (char*) 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1808,7 +1809,7 @@ uint64_t sign_shrink(uint64_t n, uint64_t b) {
   return get_bits(n, 0, b);
 }
 
-uint64_t load_character(uint64_t* s, uint64_t i) {
+uint64_t load_character(char* s, uint64_t i) {
   // assert: i >= 0
   uint64_t a;
 
@@ -1816,11 +1817,14 @@ uint64_t load_character(uint64_t* s, uint64_t i) {
   // the to-be-loaded i-th character in s is
   a = i / SIZEOFUINT64;
 
+  // CAUTION: at boot levels higher than zero, s is only accessible
+  // in C* at machine word granularity, not individual characters
+
   // return i-th 8-bit character in s
-  return get_bits(*(s + a), (i % SIZEOFUINT64) * 8, 8);
+  return get_bits(*((uint64_t*) s + a), (i % SIZEOFUINT64) * 8, 8);
 }
 
-uint64_t* store_character(uint64_t* s, uint64_t i, uint64_t c) {
+char* store_character(char* s, uint64_t i, uint64_t c) {
   // assert: i >= 0, 0 <= c < 2^8 (all characters are 8-bit)
   uint64_t a;
 
@@ -1828,14 +1832,23 @@ uint64_t* store_character(uint64_t* s, uint64_t i, uint64_t c) {
   // the with c to-be-overwritten i-th character in s is
   a = i / SIZEOFUINT64;
 
+  // CAUTION: at boot levels higher than zero, s is only accessible
+  // in C* at machine word granularity, not individual characters
+
   // subtract the to-be-overwritten character to reset its bits in s
   // then add c to set its bits at the i-th position in s
-  *(s + a) = (*(s + a) - left_shift(load_character(s, i), (i % SIZEOFUINT64) * 8)) + left_shift(c, (i % SIZEOFUINT64) * 8);
+  *((uint64_t*) s + a) = (*((uint64_t*) s + a) - left_shift(load_character(s, i), (i % SIZEOFUINT64) * 8)) + left_shift(c, (i % SIZEOFUINT64) * 8);
 
   return s;
 }
 
-uint64_t string_length(uint64_t* s) {
+char* string_alloc(uint64_t l) {
+	// allocates zeroed memory for a string of l characters
+  // plus a null terminator aligned to machine word size
+	return (char*) zalloc(l + 1);
+}
+
+uint64_t string_length(char* s) {
   uint64_t i;
 
   i = 0;
@@ -1846,14 +1859,14 @@ uint64_t string_length(uint64_t* s) {
   return i;
 }
 
-uint64_t* string_copy(uint64_t* s) {
+char* string_copy(char* s) {
   uint64_t l;
-  uint64_t* t;
+  char* t;
   uint64_t i;
 
   l = string_length(s);
 
-  t = zalloc(l + 1);
+  t = string_alloc(l);
 
   i = 0;
 
@@ -1863,10 +1876,12 @@ uint64_t* string_copy(uint64_t* s) {
     i = i + 1;
   }
 
+  store_character(t, i, 0); // null-terminated string
+
   return t;
 }
 
-void string_reverse(uint64_t* s) {
+void string_reverse(char* s) {
   uint64_t i;
   uint64_t j;
   uint64_t tmp;
@@ -1885,7 +1900,7 @@ void string_reverse(uint64_t* s) {
   }
 }
 
-uint64_t string_compare(uint64_t* s, uint64_t* t) {
+uint64_t string_compare(char* s, char* t) {
   uint64_t i;
 
   i = 0;
@@ -1902,7 +1917,7 @@ uint64_t string_compare(uint64_t* s, uint64_t* t) {
       return 0;
 }
 
-uint64_t atoi(uint64_t* s) {
+uint64_t atoi(char* s) {
   uint64_t i;
   uint64_t n;
   uint64_t c;
@@ -1925,7 +1940,7 @@ uint64_t atoi(uint64_t* s) {
     c = c - '0';
 
     if (c > 9) {
-      printf2((uint64_t*) "%s: cannot convert non-decimal number %s\n", selfie_name, s);
+      printf2("%s: cannot convert non-decimal number %s\n", selfie_name, s);
 
       exit(EXITCODE_BADARGUMENTS);
     }
@@ -1940,13 +1955,13 @@ uint64_t atoi(uint64_t* s) {
         n = n * 10 + c;
       else {
         // s contains a decimal number larger than UINT64_MAX
-        printf2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfie_name, s);
+        printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
         exit(EXITCODE_BADARGUMENTS);
       }
     else {
       // s contains a decimal number larger than UINT64_MAX
-      printf2((uint64_t*) "%s: cannot convert out-of-bound number %s\n", selfie_name, s);
+      printf2("%s: cannot convert out-of-bound number %s\n", selfie_name, s);
 
       exit(EXITCODE_BADARGUMENTS);
     }
@@ -1962,7 +1977,7 @@ uint64_t atoi(uint64_t* s) {
   return n;
 }
 
-uint64_t* itoa(uint64_t n, uint64_t* s, uint64_t b, uint64_t a) {
+char* itoa(uint64_t n, char* s, uint64_t b, uint64_t a) {
   // assert: b in {2,4,8,10,16}
 
   uint64_t i;
@@ -2076,36 +2091,43 @@ uint64_t fixed_point_percentage(uint64_t r, uint64_t f) {
 }
 
 void put_character(uint64_t c) {
-  *character_buffer = c;
+  if (output_buffer) {
+    // buffering character instead of outputting
+    store_character(output_buffer, output_cursor, c);
 
-  // assert: character_buffer is mapped
-
-  // try to write 1 character from character_buffer
-  // into file with output_fd file descriptor
-  if (write(output_fd, character_buffer, 1) == 1) {
-    if (output_fd != 1)
-      // count number of characters written to a file,
-      // not the console which has file descriptor 1
-      number_of_written_characters = number_of_written_characters + 1;
+    output_cursor = output_cursor + 1;
   } else {
-    // write failed
-    if (output_fd != 1) {
-      // failed write was not to the console which has file descriptor 1
-      // to report the error we may thus still write to the console
-      output_fd = 1;
+    *character_buffer = c;
 
-      printf2((uint64_t*) "%s: could not write character to output file %s\n", selfie_name, output_name);
+    // assert: character_buffer is mapped
+
+    // try to write 1 character from character_buffer
+    // into file with output_fd file descriptor
+    if (write(output_fd, character_buffer, 1) == 1) {
+      if (output_fd != 1)
+        // count number of characters written to a file,
+        // not the console which has file descriptor 1
+        number_of_written_characters = number_of_written_characters + 1;
+    } else {
+      // write failed
+      if (output_fd != 1) {
+        // failed write was not to the console which has file descriptor 1
+        // to report the error we may thus still write to the console
+        output_fd = 1;
+
+        printf2("%s: could not write character to output file %s\n", selfie_name, output_name);
+      }
+
+      exit(EXITCODE_IOERROR);
     }
-
-    exit(EXITCODE_IOERROR);
   }
 }
 
-void print(uint64_t* s) {
+void print(char* s) {
   uint64_t i;
 
-  if (s == (uint64_t*) 0)
-    print((uint64_t*) "NULL");
+  if (s == (char*) 0)
+    print("NULL");
   else {
     i = 0;
 
@@ -2125,20 +2147,20 @@ void print_character(uint64_t c) {
   put_character(CHAR_SINGLEQUOTE);
 
   if (c == CHAR_EOF)
-    print((uint64_t*) "end of file");
+    print("end of file");
   else if (c == CHAR_TAB)
-    print((uint64_t*) "tabulator");
+    print("tabulator");
   else if (c == CHAR_LF)
-    print((uint64_t*) "line feed");
+    print("line feed");
   else if (c == CHAR_CR)
-    print((uint64_t*) "carriage return");
+    print("carriage return");
   else
     put_character(c);
 
   put_character(CHAR_SINGLEQUOTE);
 }
 
-void print_string(uint64_t* s) {
+void print_string(char* s) {
   put_character(CHAR_DOUBLEQUOTE);
 
   print(s);
@@ -2172,10 +2194,10 @@ void print_binary(uint64_t n, uint64_t a) {
   print(itoa(n, integer_buffer, 2, a));
 }
 
-uint64_t print_format0(uint64_t* s, uint64_t i) {
+uint64_t print_format0(char* s, uint64_t i) {
   // print string s from index i on
   // ignore % formatting codes except for %%
-  if (s == (uint64_t*) 0)
+  if (s == (char*) 0)
     return 0;
   else {
     while (load_character(s, i) != 0) {
@@ -2199,13 +2221,13 @@ uint64_t print_format0(uint64_t* s, uint64_t i) {
   }
 }
 
-uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a) {
+uint64_t print_format1(char* s, uint64_t i, char* a) {
   // print string s from index i on until next % formatting code except for %%
   // then print argument a according to the encountered % formatting code
 
   uint64_t p;
 
-  if (s == (uint64_t*) 0)
+  if (s == (char*) 0)
     return 0;
   else {
     while (load_character(s, i) != 0) {
@@ -2285,28 +2307,58 @@ uint64_t print_format1(uint64_t* s, uint64_t i, uint64_t* a) {
   }
 }
 
-void printf1(uint64_t* s, uint64_t* a1) {
+void printf1(char* s, char* a1) {
   print_format0(s, print_format1(s, 0, a1));
 }
 
-void printf2(uint64_t* s, uint64_t* a1, uint64_t* a2) {
+void printf2(char* s, char* a1, char* a2) {
   print_format0(s, print_format1(s, print_format1(s, 0, a1), a2));
 }
 
-void printf3(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3) {
+void printf3(char* s, char* a1, char* a2, char* a3) {
   print_format0(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3));
 }
 
-void printf4(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4) {
+void printf4(char* s, char* a1, char* a2, char* a3, char* a4) {
   print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4));
 }
 
-void printf5(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5) {
+void printf5(char* s, char* a1, char* a2, char* a3, char* a4, char* a5) {
   print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4), a5));
 }
 
-void printf6(uint64_t* s, uint64_t* a1, uint64_t* a2, uint64_t* a3, uint64_t* a4, uint64_t* a5, uint64_t* a6) {
+void printf6(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6) {
   print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4), a5), a6));
+}
+
+void sprintf1(char* b, char* s, char* a1) {
+  output_buffer = b;
+  output_cursor = 0;
+
+  printf1(s, a1);put_character(0);
+
+  output_buffer = (char*) 0;
+  output_cursor = 0;
+}
+
+void sprintf2(char* b, char* s, char* a1, char* a2) {
+  output_buffer = b;
+  output_cursor = 0;
+
+  printf2(s, a1, a2);put_character(0);
+
+  output_buffer = (char*) 0;
+  output_cursor = 0;
+}
+
+void sprintf3(char* b, char* s, char* a1, char* a2, char* a3) {
+  output_buffer = b;
+  output_cursor = 0;
+
+  printf3(s, a1, a2, a3);put_character(0);
+
+  output_buffer = (char*) 0;
+  output_cursor = 0;
 }
 
 uint64_t round_up(uint64_t n, uint64_t m) {
@@ -2326,8 +2378,8 @@ uint64_t* smalloc(uint64_t size) {
   if (size == 0)
     // any address including null
     return memory;
-  else if ((uint64_t) memory == 0) {
-    printf1((uint64_t*) "%s: malloc out of memory\n", selfie_name);
+  else if (memory == (uint64_t*) 0) {
+    printf1("%s: malloc out of memory\n", selfie_name);
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
@@ -2375,36 +2427,36 @@ void print_symbol(uint64_t symbol) {
   put_character(CHAR_DOUBLEQUOTE);
 
   if (symbol == SYM_EOF)
-    print((uint64_t*) "end of file");
+    print("end of file");
   else
-    print((uint64_t*) *(SYMBOLS + symbol));
+    print((char*) *(SYMBOLS + symbol));
 
   put_character(CHAR_DOUBLEQUOTE);
 }
 
-void print_line_number(uint64_t* message, uint64_t line) {
-  printf4((uint64_t*) "%s: %s in %s in line %d: ", selfie_name, message, source_name, (uint64_t*) line);
+void print_line_number(char* message, uint64_t line) {
+  printf4("%s: %s in %s in line %d: ", selfie_name, message, source_name, (char*) line);
 }
 
-void syntax_error_message(uint64_t* message) {
-  print_line_number((uint64_t*) "syntax error", line_number);
-  printf1((uint64_t*) "%s\n", message);
+void syntax_error_message(char* message) {
+  print_line_number("syntax error", line_number);
+  printf1("%s\n", message);
 }
 
 void syntax_error_character(uint64_t expected) {
-  print_line_number((uint64_t*) "syntax error", line_number);
+  print_line_number("syntax error", line_number);
   print_character(expected);
-  print((uint64_t*) " expected but ");
+  print(" expected but ");
   print_character(character);
-  print((uint64_t*) " found\n");
+  print(" found\n");
 }
 
-void syntax_error_identifier(uint64_t* expected) {
-  print_line_number((uint64_t*) "syntax error", line_number);
+void syntax_error_identifier(char* expected) {
+  print_line_number("syntax error", line_number);
   print_string(expected);
-  print((uint64_t*) " expected but ");
+  print(" expected but ");
   print_string(identifier);
-  print((uint64_t*) " found\n");
+  print(" found\n");
 }
 
 void get_character() {
@@ -2425,7 +2477,7 @@ void get_character() {
     // reached end of file
     character = CHAR_EOF;
   else {
-    printf2((uint64_t*) "%s: could not read character from input file %s\n", selfie_name, source_name);
+    printf2("%s: could not read character from input file %s\n", selfie_name, source_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -2498,7 +2550,7 @@ uint64_t find_next_character() {
           line_number = line_number + 1;
         else if (character == CHAR_EOF) {
           // multi-line comment is not terminated
-          syntax_error_message((uint64_t*) "runaway multi-line comment");
+          syntax_error_message("runaway multi-line comment");
 
           exit(EXITCODE_SCANNERERROR);
         }
@@ -2598,7 +2650,7 @@ uint64_t is_character_not_double_quote_or_new_line_or_eof() {
 }
 
 uint64_t identifier_string_match(uint64_t keyword) {
-  return string_compare(identifier, (uint64_t*) *(SYMBOLS + keyword));
+  return string_compare(identifier, (char*) *(SYMBOLS + keyword));
 }
 
 uint64_t identifier_or_keyword() {
@@ -2639,13 +2691,13 @@ void get_symbol() {
       // while looking for whitespace and "//"
       if (is_character_letter()) {
         // accommodate identifier and null for termination
-        identifier = smalloc(MAX_IDENTIFIER_LENGTH + 1);
+        identifier = string_alloc(MAX_IDENTIFIER_LENGTH);
 
         i = 0;
 
         while (is_character_letter_or_digit_or_underscore()) {
           if (i >= MAX_IDENTIFIER_LENGTH) {
-            syntax_error_message((uint64_t*) "identifier too long");
+            syntax_error_message("identifier too long");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2663,16 +2715,16 @@ void get_symbol() {
 
       } else if (is_character_digit()) {
         // accommodate integer and null for termination
-        integer = smalloc(MAX_INTEGER_LENGTH + 1);
+        integer = string_alloc(MAX_INTEGER_LENGTH);
 
         i = 0;
 
         while (is_character_digit()) {
           if (i >= MAX_INTEGER_LENGTH) {
             if (integer_is_signed)
-              syntax_error_message((uint64_t*) "signed integer out of bound");
+              syntax_error_message("signed integer out of bound");
             else
-              syntax_error_message((uint64_t*) "integer out of bound");
+              syntax_error_message("integer out of bound");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2690,7 +2742,7 @@ void get_symbol() {
 
         if (integer_is_signed)
           if (literal > INT64_MIN) {
-              syntax_error_message((uint64_t*) "signed integer out of bound");
+              syntax_error_message("signed integer out of bound");
 
               exit(EXITCODE_SCANNERERROR);
             }
@@ -2703,7 +2755,7 @@ void get_symbol() {
         literal = 0;
 
         if (character == CHAR_EOF) {
-          syntax_error_message((uint64_t*) "reached end of file looking for a character literal");
+          syntax_error_message("reached end of file looking for a character literal");
 
           exit(EXITCODE_SCANNERERROR);
         } else
@@ -2728,13 +2780,13 @@ void get_symbol() {
         // accommodate string and null for termination,
         // allocate zeroed memory since strings are emitted
         // in double words but may end non-word-aligned
-        string = zalloc(MAX_STRING_LENGTH + 1);
+        string = string_alloc(MAX_STRING_LENGTH);
 
         i = 0;
 
         while (is_character_not_double_quote_or_new_line_or_eof()) {
           if (i >= MAX_STRING_LENGTH) {
-            syntax_error_message((uint64_t*) "string too long");
+            syntax_error_message("string too long");
 
             exit(EXITCODE_SCANNERERROR);
           }
@@ -2852,8 +2904,8 @@ void get_symbol() {
           symbol = SYM_GT;
 
       } else {
-        print_line_number((uint64_t*) "syntax error", line_number);
-        print((uint64_t*) "found unknown character ");
+        print_line_number("syntax error", line_number);
+        print("found unknown character ");
         print_character(character);
         println();
 
@@ -2886,7 +2938,7 @@ void handle_escape_sequence() {
   else if (character == CHAR_BACKSLASH)
     character = CHAR_BACKSLASH;
   else {
-    syntax_error_message((uint64_t*) "unknown escape sequence found");
+    syntax_error_message("unknown escape sequence found");
 
     exit(EXITCODE_SCANNERERROR);
   }
@@ -2901,11 +2953,11 @@ uint64_t hash(uint64_t* key) {
   return (*key + (*key + (*key + (*key + (*key + *key / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) / HASH_TABLE_SIZE) % HASH_TABLE_SIZE;
 }
 
-void create_symbol_table_entry(uint64_t which_table, uint64_t* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
+void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line, uint64_t class, uint64_t type, uint64_t value, uint64_t address) {
   uint64_t* new_entry;
   uint64_t* hashed_entry_address;
 
-  new_entry = smalloc(2 * SIZEOFUINT64STAR + 6 * SIZEOFUINT64);
+  new_entry = allocate_symbol_table_entry();
 
   set_string(new_entry, string);
   set_line_number(new_entry, line);
@@ -2918,7 +2970,7 @@ void create_symbol_table_entry(uint64_t which_table, uint64_t* string, uint64_t 
   if (which_table == GLOBAL_TABLE) {
     set_scope(new_entry, REG_GP);
 
-    hashed_entry_address = global_symbol_table + hash(string);
+    hashed_entry_address = global_symbol_table + hash((uint64_t*) string);
 
     set_next_entry(new_entry, (uint64_t*) *hashed_entry_address);
     *hashed_entry_address = (uint64_t) new_entry;
@@ -2941,7 +2993,7 @@ void create_symbol_table_entry(uint64_t which_table, uint64_t* string, uint64_t 
   }
 }
 
-uint64_t* search_symbol_table(uint64_t* entry, uint64_t* string, uint64_t class) {
+uint64_t* search_symbol_table(uint64_t* entry, char* string, uint64_t class) {
   number_of_searches = number_of_searches + 1;
 
   while (entry != (uint64_t*) 0) {
@@ -2958,11 +3010,11 @@ uint64_t* search_symbol_table(uint64_t* entry, uint64_t* string, uint64_t class)
   return (uint64_t*) 0;
 }
 
-uint64_t* search_global_symbol_table(uint64_t* string, uint64_t class) {
-  return search_symbol_table((uint64_t*) *(global_symbol_table + hash(string)), string, class);
+uint64_t* search_global_symbol_table(char* string, uint64_t class) {
+  return search_symbol_table((uint64_t*) *(global_symbol_table + hash((uint64_t*) string)), string, class);
 }
 
-uint64_t* get_scoped_symbol_table_entry(uint64_t* string, uint64_t class) {
+uint64_t* get_scoped_symbol_table_entry(char* string, uint64_t class) {
   uint64_t* entry;
 
   if (class == VARIABLE)
@@ -3017,8 +3069,8 @@ uint64_t report_undefined_procedures() {
       if (is_undefined_procedure(entry)) {
         undefined = 1;
 
-        print_line_number((uint64_t*) "syntax error", get_line_number(entry));
-        printf1((uint64_t*) "procedure %s undefined\n", get_string(entry));
+        print_line_number("syntax error", get_line_number(entry));
+        printf1("procedure %s undefined\n", get_string(entry));
       }
 
       // keep looking
@@ -3163,7 +3215,7 @@ void talloc() {
   if (allocated_temporaries < NUMBEROFTEMPORARIES)
     allocated_temporaries = allocated_temporaries + 1;
   else {
-    syntax_error_message((uint64_t*) "out of registers");
+    syntax_error_message("out of registers");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -3176,7 +3228,7 @@ uint64_t current_temporary() {
     else
       return REG_S11 + allocated_temporaries - 3;
   else {
-    syntax_error_message((uint64_t*) "illegal register access");
+    syntax_error_message("illegal register access");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -3189,7 +3241,7 @@ uint64_t previous_temporary() {
     else
       return current_temporary() - 1;
   else {
-    syntax_error_message((uint64_t*) "illegal register access");
+    syntax_error_message("illegal register access");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -3202,7 +3254,7 @@ uint64_t next_temporary() {
     else
       return current_temporary() + 1;
   else {
-    syntax_error_message((uint64_t*) "out of registers");
+    syntax_error_message("out of registers");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -3212,7 +3264,7 @@ void tfree(uint64_t number_of_temporaries) {
   if (allocated_temporaries >= number_of_temporaries)
     allocated_temporaries = allocated_temporaries - number_of_temporaries;
   else {
-    syntax_error_message((uint64_t*) "illegal register deallocation");
+    syntax_error_message("illegal register deallocation");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -3239,41 +3291,41 @@ void restore_temporaries(uint64_t number_of_temporaries) {
 }
 
 void syntax_error_symbol(uint64_t expected) {
-  print_line_number((uint64_t*) "syntax error", line_number);
+  print_line_number("syntax error", line_number);
   print_symbol(expected);
-  print((uint64_t*) " expected but ");
+  print(" expected but ");
   print_symbol(symbol);
-  print((uint64_t*) " found\n");
+  print(" found\n");
 }
 
 void syntax_error_unexpected() {
-  print_line_number((uint64_t*) "syntax error", line_number);
-  print((uint64_t*) "unexpected symbol ");
+  print_line_number("syntax error", line_number);
+  print("unexpected symbol ");
   print_symbol(symbol);
-  print((uint64_t*) " found\n");
+  print(" found\n");
 }
 
 void print_type(uint64_t type) {
   if (type == UINT64_T)
-    print((uint64_t*) "uint64_t");
+    print("uint64_t");
   else if (type == UINT64STAR_T)
-    print((uint64_t*) "uint64_t*");
+    print("uint64_t*");
   else if (type == VOID_T)
-    print((uint64_t*) "void");
+    print("void");
   else
-    print((uint64_t*) "unknown");
+    print("unknown");
 }
 
 void type_warning(uint64_t expected, uint64_t found) {
-  print_line_number((uint64_t*) "warning", line_number);
-  print((uint64_t*) "type mismatch, ");
+  print_line_number("warning", line_number);
+  print("type mismatch, ");
   print_type(expected);
-  print((uint64_t*) " expected but ");
+  print(" expected but ");
   print_type(found);
-  print((uint64_t*) " found\n");
+  print(" found\n");
 }
 
-uint64_t* get_variable_or_big_int(uint64_t* variable_or_big_int, uint64_t class) {
+uint64_t* get_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   uint64_t* entry;
 
   if (class == BIGINT)
@@ -3282,8 +3334,8 @@ uint64_t* get_variable_or_big_int(uint64_t* variable_or_big_int, uint64_t class)
     entry = get_scoped_symbol_table_entry(variable_or_big_int, class);
 
     if (entry == (uint64_t*) 0) {
-      print_line_number((uint64_t*) "syntax error", line_number);
-      printf1((uint64_t*) "%s undeclared\n", variable_or_big_int);
+      print_line_number("syntax error", line_number);
+      printf1("%s undeclared\n", variable_or_big_int);
 
       exit(EXITCODE_PARSERERROR);
     }
@@ -3314,7 +3366,7 @@ void load_upper_base_address(uint64_t* entry) {
   // assert: allocated_temporaries == n + 1
 }
 
-uint64_t load_variable_or_big_int(uint64_t* variable_or_big_int, uint64_t class) {
+uint64_t load_variable_or_big_int(char* variable_or_big_int, uint64_t class) {
   uint64_t* entry;
   uint64_t offset;
 
@@ -3396,7 +3448,7 @@ void load_integer(uint64_t value) {
   // assert: allocated_temporaries == n + 1
 }
 
-void load_string(uint64_t* string) {
+void load_string(char* string) {
   uint64_t length;
 
   // assert: n = allocated_temporaries
@@ -3414,7 +3466,7 @@ void load_string(uint64_t* string) {
   // assert: allocated_temporaries == n + 1
 }
 
-uint64_t help_call_codegen(uint64_t* entry, uint64_t* procedure) {
+uint64_t help_call_codegen(uint64_t* entry, char* procedure) {
   uint64_t type;
 
   if (entry == (uint64_t*) 0) {
@@ -3499,7 +3551,7 @@ void help_procedure_epilogue(uint64_t number_of_parameter_bytes) {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t compile_call(uint64_t* procedure) {
+uint64_t compile_call(char* procedure) {
   uint64_t* entry;
   uint64_t number_of_temporaries;
   uint64_t type;
@@ -3573,7 +3625,7 @@ uint64_t compile_factor() {
   uint64_t type;
   uint64_t negative;
   uint64_t dereference;
-  uint64_t* variable_or_procedure_name;
+  char* variable_or_procedure_name;
 
   // assert: n = allocated_temporaries
 
@@ -3799,7 +3851,7 @@ uint64_t compile_simple_expression() {
           emit_left_shift_by(current_temporary(), 3);
         else
           // UINT64STAR_T + UINT64STAR_T
-          syntax_error_message((uint64_t*) "(uint64_t*) + (uint64_t*) is undefined");
+          syntax_error_message("(uint64_t*) + (uint64_t*) is undefined");
       } else if (rtype == UINT64STAR_T) {
         // UINT64_T + UINT64STAR_T
         // pointer arithmetic: factor of 2^3 of integer operand
@@ -3828,7 +3880,7 @@ uint64_t compile_simple_expression() {
         }
       } else if (rtype == UINT64STAR_T)
         // UINT64_T - UINT64STAR_T
-        syntax_error_message((uint64_t*) "(uint64_t) - (uint64_t*) is undefined");
+        syntax_error_message("(uint64_t) - (uint64_t*) is undefined");
       else
         // UINT64_T - UINT64_T
         emit_sub(previous_temporary(), previous_temporary(), current_temporary());
@@ -3865,6 +3917,9 @@ uint64_t compile_expression() {
 
     if (ltype != rtype)
       type_warning(ltype, rtype);
+
+    // for lack of boolean type
+    ltype = UINT64_T;
 
     if (operator_symbol == SYM_EQUALITY) {
       // a == b iff unsigned b - a < 1
@@ -4115,7 +4170,7 @@ void compile_return() {
 void compile_statement() {
   uint64_t ltype;
   uint64_t rtype;
-  uint64_t* variable_or_procedure_name;
+  char* variable_or_procedure_name;
   uint64_t* entry;
   uint64_t offset;
 
@@ -4318,7 +4373,7 @@ void compile_variable(uint64_t offset) {
   } else {
     syntax_error_symbol(SYM_IDENTIFIER);
 
-    create_symbol_table_entry(LOCAL_TABLE, (uint64_t*) "missing variable name", line_number, VARIABLE, type, 0, offset);
+    create_symbol_table_entry(LOCAL_TABLE, "missing variable name", line_number, VARIABLE, type, 0, offset);
   }
 }
 
@@ -4381,7 +4436,7 @@ uint64_t compile_initialization(uint64_t type) {
   return initial_value;
 }
 
-void compile_procedure(uint64_t* procedure, uint64_t type) {
+void compile_procedure(char* procedure, uint64_t type) {
   uint64_t is_undefined;
   uint64_t number_of_parameters;
   uint64_t parameters;
@@ -4473,7 +4528,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
         set_type(entry, type);
         set_address(entry, binary_length);
 
-        if (string_compare(procedure, (uint64_t*) "main")) {
+        if (string_compare(procedure, "main")) {
           // first source containing main procedure provides binary name
           binary_name = source_name;
 
@@ -4482,8 +4537,8 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
         }
       } else {
         // procedure already defined
-        print_line_number((uint64_t*) "warning", line_number);
-        printf1((uint64_t*) "redefinition of procedure %s ignored\n", procedure);
+        print_line_number("warning", line_number);
+        printf1("redefinition of procedure %s ignored\n", procedure);
       }
     }
 
@@ -4539,7 +4594,7 @@ void compile_procedure(uint64_t* procedure, uint64_t type) {
 
 void compile_cstar() {
   uint64_t type;
-  uint64_t* variable_or_procedure_name;
+  char* variable_or_procedure_name;
   uint64_t current_line_number;
   uint64_t initial_value;
   uint64_t* entry;
@@ -4609,8 +4664,8 @@ void compile_cstar() {
             create_symbol_table_entry(GLOBAL_TABLE, variable_or_procedure_name, current_line_number, VARIABLE, type, initial_value, -allocated_memory);
           } else {
             // global variable already declared or defined
-            print_line_number((uint64_t*) "warning", current_line_number);
-            printf1((uint64_t*) "redefinition of global variable %s ignored\n", variable_or_procedure_name);
+            print_line_number("warning", current_line_number);
+            printf1("redefinition of global variable %s ignored\n", variable_or_procedure_name);
           }
         }
       } else
@@ -4697,7 +4752,7 @@ void emit_bootstrapping() {
       // assert: generates no more than two instructions
       load_integer(gp);
     else {
-      syntax_error_message((uint64_t*) "maximum program break exceeded");
+      syntax_error_message("maximum program break exceeded");
 
       exit(EXITCODE_COMPILERERROR);
     }
@@ -4721,7 +4776,7 @@ void emit_bootstrapping() {
 
     // look up global variable _bump for storing malloc's bump pointer
     // copy "_bump" string into zeroed double word to obtain unique hash
-    entry = search_global_symbol_table(string_copy((uint64_t*) "_bump"), VARIABLE);
+    entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
 
     // store aligned program break in _bump
     emit_sd(get_scope(entry), get_address(entry), REG_A0);
@@ -4759,9 +4814,9 @@ void emit_bootstrapping() {
     //         with all other non-temporary registers zeroed
 
     // copy "main" string into zeroed double word to obtain unique hash
-    entry = get_scoped_symbol_table_entry(string_copy((uint64_t*) "main"), PROCEDURE);
+    entry = get_scoped_symbol_table_entry(string_copy("main"), PROCEDURE);
 
-    help_call_codegen(entry, (uint64_t*) "main");
+    help_call_codegen(entry, "main");
   }
 
   // we exit with exit code in return register pushed onto the stack
@@ -4790,12 +4845,12 @@ void selfie_compile() {
 
   number_of_source_files = 0;
 
-  source_name = (uint64_t*) "library";
+  source_name = "library";
 
   binary_name = source_name;
 
   // allocate memory for storing binary
-  binary       = smalloc(MAX_BINARY_LENGTH);
+  binary       = zalloc(MAX_BINARY_LENGTH);
   binary_length = 0;
 
   // reset code length
@@ -4821,7 +4876,7 @@ void selfie_compile() {
 
   // implicitly declare main procedure in global symbol table
   // copy "main" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy((uint64_t*) "main"), 0, PROCEDURE, UINT64_T, 0, 0);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("main"), 0, PROCEDURE, UINT64_T, 0, 0);
 
   while (link) {
     if (number_of_remaining_arguments() == 0)
@@ -4833,14 +4888,14 @@ void selfie_compile() {
 
       number_of_source_files = number_of_source_files + 1;
 
-      printf2((uint64_t*) "%s: selfie compiling %s with starc\n", selfie_name, source_name);
+      printf2("%s: selfie compiling %s with starc\n", selfie_name, source_name);
 
       // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
       source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
       if (signed_less_than(source_fd, 0)) {
-        printf2((uint64_t*) "%s: could not open input file %s\n", selfie_name, source_name);
+        printf2("%s: could not open input file %s\n", selfie_name, source_name);
 
         exit(EXITCODE_IOERROR);
       }
@@ -4850,32 +4905,32 @@ void selfie_compile() {
 
       compile_cstar();
 
-      printf4((uint64_t*) "%s: %d characters read in %d lines and %d comments\n", selfie_name,
-        (uint64_t*) number_of_read_characters,
-        (uint64_t*) line_number,
-        (uint64_t*) number_of_comments);
+      printf4("%s: %d characters read in %d lines and %d comments\n", selfie_name,
+        (char*) number_of_read_characters,
+        (char*) line_number,
+        (char*) number_of_comments);
 
-      printf4((uint64_t*) "%s: with %d(%.2d%%) characters in %d actual symbols\n", selfie_name,
-        (uint64_t*) (number_of_read_characters - number_of_ignored_characters),
-        (uint64_t*) fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
-        (uint64_t*) number_of_scanned_symbols);
+      printf4("%s: with %d(%.2d%%) characters in %d actual symbols\n", selfie_name,
+        (char*) (number_of_read_characters - number_of_ignored_characters),
+        (char*) fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
+        (char*) number_of_scanned_symbols);
 
-      printf4((uint64_t*) "%s: %d global variables, %d procedures, %d string literals\n", selfie_name,
-        (uint64_t*) number_of_global_variables,
-        (uint64_t*) number_of_procedures,
-        (uint64_t*) number_of_strings);
+      printf4("%s: %d global variables, %d procedures, %d string literals\n", selfie_name,
+        (char*) number_of_global_variables,
+        (char*) number_of_procedures,
+        (char*) number_of_strings);
 
-      printf6((uint64_t*) "%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfie_name,
-        (uint64_t*) number_of_calls,
-        (uint64_t*) number_of_assignments,
-        (uint64_t*) number_of_while,
-        (uint64_t*) number_of_if,
-        (uint64_t*) number_of_return);
+      printf6("%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfie_name,
+        (char*) number_of_calls,
+        (char*) number_of_assignments,
+        (char*) number_of_while,
+        (char*) number_of_if,
+        (char*) number_of_return);
     }
   }
 
   if (number_of_source_files == 0)
-    printf1((uint64_t*) "%s: nothing to compile, only library generated\n", selfie_name);
+    printf1("%s: nothing to compile, only library generated\n", selfie_name);
 
   emit_bootstrapping();
 
@@ -4885,12 +4940,14 @@ void selfie_compile() {
 
   entry_point = ELF_ENTRY_POINT;
 
-  printf3((uint64_t*) "%s: symbol table search time was %d iterations on average and %d in total\n", selfie_name, (uint64_t*) (total_search_time / number_of_searches), (uint64_t*) total_search_time);
+  printf3("%s: symbol table search time was %d iterations on average and %d in total\n", selfie_name,
+    (char*) (total_search_time / number_of_searches),
+    (char*) total_search_time);
 
-  printf4((uint64_t*) "%s: %d bytes generated with %d instructions and %d bytes of data\n", selfie_name,
-    (uint64_t*) binary_length,
-    (uint64_t*) (code_length / INSTRUCTIONSIZE),
-    (uint64_t*) (binary_length - code_length));
+  printf4("%s: %d bytes generated with %d instructions and %d bytes of data\n", selfie_name,
+    (char*) binary_length,
+    (char*) (code_length / INSTRUCTIONSIZE),
+    (char*) (binary_length - code_length));
 
   print_instruction_counters();
 }
@@ -4905,8 +4962,8 @@ void selfie_compile() {
 // --------------------------- REGISTER ----------------------------
 // -----------------------------------------------------------------
 
-uint64_t* get_register_name(uint64_t reg) {
-  return (uint64_t*) *(REGISTERS + reg);
+char* get_register_name(uint64_t reg) {
+  return (char*) *(REGISTERS + reg);
 }
 
 void print_register_name(uint64_t reg) {
@@ -4919,11 +4976,11 @@ void print_register_name(uint64_t reg) {
 
 void check_immediate_range(uint64_t immediate, uint64_t bits) {
   if (is_signed_integer(immediate, bits) == 0) {
-    print_line_number((uint64_t*) "encoding error", line_number);
-    printf3((uint64_t*) "%d expected between %d and %d\n",
-      (uint64_t*) immediate,
-      (uint64_t*) -two_to_the_power_of(bits - 1),
-      (uint64_t*) two_to_the_power_of(bits - 1) - 1);
+    print_line_number("encoding error", line_number);
+    printf3("%d expected between %d and %d\n",
+      (char*) immediate,
+      (char*) -two_to_the_power_of(bits - 1),
+      (char*) two_to_the_power_of(bits - 1) - 1);
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -5236,12 +5293,11 @@ uint64_t get_total_number_of_instructions() {
   return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
 }
 
-void print_instruction_counter(uint64_t total, uint64_t counter, uint64_t* mnemonics) {
-  printf3((uint64_t*)
-    "%s: %d(%.2d%%)",
+void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
+  printf3("%s: %d(%.2d%%)",
     mnemonics,
-    (uint64_t*) counter,
-    (uint64_t*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
+    (char*) counter,
+    (char*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
 }
 
 void print_instruction_counters() {
@@ -5249,40 +5305,40 @@ void print_instruction_counters() {
 
   ic = get_total_number_of_instructions();
 
-  printf1((uint64_t*) "%s: init:    ", selfie_name);
-  print_instruction_counter(ic, ic_lui, (uint64_t*) "lui");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_addi, (uint64_t*) "addi");
+  printf1("%s: init:    ", selfie_name);
+  print_instruction_counter(ic, ic_lui, "lui");
+  print(", ");
+  print_instruction_counter(ic, ic_addi, "addi");
   println();
 
-  printf1((uint64_t*) "%s: memory:  ", selfie_name);
-  print_instruction_counter(ic, ic_ld, (uint64_t*) "ld");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_sd, (uint64_t*) "sd");
+  printf1("%s: memory:  ", selfie_name);
+  print_instruction_counter(ic, ic_ld, "ld");
+  print(", ");
+  print_instruction_counter(ic, ic_sd, "sd");
   println();
 
-  printf1((uint64_t*) "%s: compute: ", selfie_name);
-  print_instruction_counter(ic, ic_add, (uint64_t*) "add");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_sub, (uint64_t*) "sub");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_mul, (uint64_t*) "mul");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_divu, (uint64_t*) "divu");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_remu, (uint64_t*) "remu");
+  printf1("%s: compute: ", selfie_name);
+  print_instruction_counter(ic, ic_add, "add");
+  print(", ");
+  print_instruction_counter(ic, ic_sub, "sub");
+  print(", ");
+  print_instruction_counter(ic, ic_mul, "mul");
+  print(", ");
+  print_instruction_counter(ic, ic_divu, "divu");
+  print(", ");
+  print_instruction_counter(ic, ic_remu, "remu");
   println();
 
-  printf1((uint64_t*) "%s: control: ", selfie_name);
-  print_instruction_counter(ic, ic_sltu, (uint64_t*) "sltu");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_beq, (uint64_t*) "beq");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_jal, (uint64_t*) "jal");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_jalr, (uint64_t*) "jalr");
-  print((uint64_t*) ", ");
-  print_instruction_counter(ic, ic_ecall, (uint64_t*) "ecall");
+  printf1("%s: control: ", selfie_name);
+  print_instruction_counter(ic, ic_sltu, "sltu");
+  print(", ");
+  print_instruction_counter(ic, ic_beq, "beq");
+  print(", ");
+  print_instruction_counter(ic, ic_jal, "jal");
+  print(", ");
+  print_instruction_counter(ic, ic_jalr, "jalr");
+  print(", ");
+  print_instruction_counter(ic, ic_ecall, "ecall");
   println();
 }
 
@@ -5297,7 +5353,7 @@ void store_instruction(uint64_t baddr, uint64_t instruction) {
   uint64_t temp;
 
   if (baddr >= MAX_CODE_LENGTH) {
-    syntax_error_message((uint64_t*) "maximum code length exceeded");
+    syntax_error_message("maximum code length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -5320,7 +5376,7 @@ uint64_t load_data(uint64_t baddr) {
 
 void store_data(uint64_t baddr, uint64_t data) {
   if (baddr >= MAX_CODE_LENGTH + MAX_DATA_LENGTH) {
-    syntax_error_message((uint64_t*) "maximum data length exceeded");
+    syntax_error_message("maximum data length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
   }
@@ -5473,7 +5529,7 @@ void emit_data_word(uint64_t data, uint64_t offset, uint64_t source_line_number)
 }
 
 void emit_string_data(uint64_t* entry) {
-  uint64_t* s;
+  char* s;
   uint64_t i;
   uint64_t l;
 
@@ -5484,9 +5540,11 @@ void emit_string_data(uint64_t* entry) {
   l = round_up(string_length(s) + 1, REGISTERSIZE);
 
   while (i < l) {
-    emit_data_word(*s, get_address(entry) + i, get_line_number(entry));
+    // CAUTION: at boot levels higher than zero, s is only accessible
+    // in C* at machine word granularity, not individual characters
+    emit_data_word(*((uint64_t*) s), get_address(entry) + i, get_line_number(entry));
 
-    s = s + 1;
+    s = (char*) ((uint64_t*) s + 1);
 
     i = i + REGISTERSIZE;
   }
@@ -5607,7 +5665,7 @@ uint64_t validate_elf_header(uint64_t* header) {
   return 1;
 }
 
-uint64_t open_write_only(uint64_t* name) {
+uint64_t open_write_only(char* name) {
   // we try opening write-only files using platform-specific flags
   // to make selfie platform-independent, this may nevertheless
   // not always work and require intervention
@@ -5634,7 +5692,7 @@ void selfie_output() {
   binary_name = get_argument();
 
   if (binary_length == 0) {
-    printf2((uint64_t*) "%s: nothing to emit to output file %s\n", selfie_name, binary_name);
+    printf2("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
 
     return;
   }
@@ -5644,7 +5702,7 @@ void selfie_output() {
   fd = open_write_only(binary_name);
 
   if (signed_less_than(fd, 0)) {
-    printf2((uint64_t*) "%s: could not create binary output file %s\n", selfie_name, binary_name);
+    printf2("%s: could not create binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5653,7 +5711,7 @@ void selfie_output() {
 
   // first write ELF header
   if (write(fd, ELF_header, ELF_HEADER_LEN) != ELF_HEADER_LEN) {
-    printf2((uint64_t*) "%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
+    printf2("%s: could not write ELF header of binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5662,16 +5720,15 @@ void selfie_output() {
 
   // then write binary
   if (write(fd, binary, binary_length) != binary_length) {
-    printf2((uint64_t*) "%s: could not write binary into binary output file %s\n", selfie_name, binary_name);
+    printf2("%s: could not write binary into binary output file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
 
-  printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data written into %s\n",
-    selfie_name,
-    (uint64_t*) (ELF_HEADER_LEN + binary_length),
-    (uint64_t*) (code_length / INSTRUCTIONSIZE),
-    (uint64_t*) (binary_length - code_length),
+  printf5("%s: %d bytes with %d instructions and %d bytes of data written into %s\n", selfie_name,
+    (char*) (ELF_HEADER_LEN + binary_length),
+    (char*) (code_length / INSTRUCTIONSIZE),
+    (char*) (binary_length - code_length),
     binary_name);
 }
 
@@ -5718,7 +5775,7 @@ void selfie_load() {
   fd = sign_extend(open(binary_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(fd, 0)) {
-    printf2((uint64_t*) "%s: could not open input file %s\n", selfie_name, binary_name);
+    printf2("%s: could not open input file %s\n", selfie_name, binary_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -5749,11 +5806,11 @@ void selfie_load() {
         if (signed_less_than(0, number_of_read_bytes)) {
           // check if we are really at EOF
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-            printf5((uint64_t*) "%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
+            printf5("%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
               selfie_name,
-              (uint64_t*) ELF_HEADER_LEN,
-              (uint64_t*) (code_length / INSTRUCTIONSIZE),
-              (uint64_t*) (binary_length - code_length),
+              (char*) ELF_HEADER_LEN,
+              (char*) (code_length / INSTRUCTIONSIZE),
+              (char*) (binary_length - code_length),
               binary_name);
 
             return;
@@ -5763,7 +5820,7 @@ void selfie_load() {
     }
   }
 
-  printf2((uint64_t*) "%s: failed to load code from input file %s\n", selfie_name, binary_name);
+  printf2("%s: failed to load code from input file %s\n", selfie_name, binary_name);
 
   exit(EXITCODE_IOERROR);
 }
@@ -5773,12 +5830,12 @@ void selfie_load() {
 // -----------------------------------------------------------------
 
 void emit_exit() {
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "exit", 0, PROCEDURE, VOID_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "exit", 0, PROCEDURE, VOID_T, 0, binary_length);
 
-  // load signed 32-bit integer argument for exit
+  // load signed 32-bit integer exit code
   emit_ld(REG_A0, REG_SP, 0);
 
-  // remove the argument from the stack
+  // remove the exit code from the stack
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
 
   // load the correct syscall number and invoke syscall
@@ -5790,27 +5847,40 @@ void emit_exit() {
 }
 
 void implement_exit(uint64_t* context) {
+  // parameter;
+  uint64_t signed_int_exit_code;
+
   if (disassemble) {
-    print((uint64_t*) "(exit): ");
+    print("(exit): ");
     print_register_hexadecimal(REG_A0);
-    print((uint64_t*) " |- ->\n");
+    print(" |- ->\n");
   }
 
-  set_exit_code(context, sign_shrink(*(get_regs(context) + REG_A0), SYSCALL_BITWIDTH));
+  signed_int_exit_code = *(get_regs(context) + REG_A0);
 
-  if (symbolic)
+  set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
+
+  if (symbolic) {
+    print("\n(push 1)\n");
+
+    printf2("(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
+      path_condition,
+      smt_value(*(registers + REG_A0), (char*) *(reg_sym + REG_A0)));
+    print_code_context_for_instruction(pc);
+
+    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
     return;
+  }
 
-  printf4((uint64_t*)
-    "%s: %s exiting with exit code %d and %.2dMB mallocated memory\n",
-    selfie_name,
+  printf4("%s: %s exiting with exit code %d and %.2dMB mallocated memory\n", selfie_name,
     get_name(context),
-    (uint64_t*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
-    (uint64_t*) fixed_point_ratio(get_program_break(context) - get_original_break(context), MEGABYTE, 2));
+    (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
+    (char*) fixed_point_ratio(get_program_break(context) - get_original_break(context), MEGABYTE, 2));
 }
 
 void emit_read() {
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "read", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "read", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
   emit_ld(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
@@ -5841,19 +5911,15 @@ void implement_read(uint64_t* context) {
   uint64_t failed;
   uint64_t* buffer;
   uint64_t actually_read;
-  uint64_t value;
-  uint64_t lo;
-  uint64_t up;
-  uint64_t mrvc;
 
   if (disassemble) {
-    print((uint64_t*) "(read): ");
+    print("(read): ");
     print_register_value(REG_A0);
-    print((uint64_t*) ",");
+    print(",");
     print_register_hexadecimal(REG_A1);
-    print((uint64_t*) ",");
+    print(",");
     print_register_value(REG_A2);
-    print((uint64_t*) " |- ");
+    print(" |- ");
     print_register_value(REG_A0);
   }
 
@@ -5862,68 +5928,48 @@ void implement_read(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_read)
-    printf4((uint64_t*) "%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfie_name, (uint64_t*) size, (uint64_t*) fd, (uint64_t*) vbuffer);
+    printf4("%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfie_name,
+      (char*) size,
+      (char*) fd,
+      (char*) vbuffer);
 
-  read_total   = 0;
+  read_total = 0;
+
   bytes_to_read = SIZEOFUINT64;
 
   failed = 0;
 
   while (size > 0) {
     if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+      if (size < bytes_to_read)
+        bytes_to_read = size;
+
+      if (symbolic) {
+        store_symbolic_memory(vbuffer,
+          0,
+          0,
+          smt_variable("r", bytes_to_read * 8),
+          bytes_to_read * 8);
+
+        // save symbolic memory here since context switching has already happened
+        set_symbolic_memory(context, symbolic_memory);
+
+        actually_read = bytes_to_read;
+      } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         buffer = tlb(get_pt(context), vbuffer);
 
-        if (size < bytes_to_read)
-          bytes_to_read = size;
+        actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
+      } else {
+        failed = 1;
 
-        if (symbolic) {
-          if (is_trace_space_available()) {
-            if (rc > 0) {
-              // do not read but reuse value, lower and upper bound
-              value = *(read_values + rc);
+        size = 0;
 
-              lo = *(read_los + rc);
-              up = *(read_ups + rc);
+        if (debug_read)
+          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name,
+            (char*) vbuffer);
+      }
 
-              actually_read = bytes_to_read;
-
-              rc = rc - 1;
-            } else {
-              // save mrvc in buffer
-              mrvc = load_physical_memory(buffer);
-
-              // caution: read only overwrites bytes_to_read number of bytes
-              // we therefore need to restore the actual value in buffer
-              // to preserve the original read semantics
-              store_physical_memory(buffer, *(values + load_symbolic_memory(get_pt(context), vbuffer)));
-
-              actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-
-              // retrieve read value
-              value = load_physical_memory(buffer);
-
-              // fuzz read value
-              lo = fuzz_lo(value);
-              up = fuzz_up(value);
-
-              // restore mrvc in buffer
-              store_physical_memory(buffer, mrvc);
-            }
-
-            if (mrcc == 0)
-              // no branching yet, we may overwrite symbolic memory
-              store_symbolic_memory(get_pt(context), vbuffer, value, 0, lo, up, 0);
-            else
-              store_symbolic_memory(get_pt(context), vbuffer, value, 0, lo, up, tc);
-          } else {
-            actually_read = 0;
-
-            throw_exception(EXCEPTION_MAXTRACE, 0);
-          }
-        } else
-          actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-
+      if (failed == 0) {
         if (actually_read == bytes_to_read) {
           read_total = read_total + actually_read;
 
@@ -5937,13 +5983,6 @@ void implement_read(uint64_t* context) {
 
           size = 0;
         }
-      } else {
-        failed = 1;
-
-        size = 0;
-
-        if (debug_read)
-          printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vbuffer);
       }
     } else {
       failed = 1;
@@ -5951,36 +5990,32 @@ void implement_read(uint64_t* context) {
       size = 0;
 
       if (debug_read)
-        printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (uint64_t*) vbuffer);
+        printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name,
+          (char*) vbuffer);
     }
   }
 
-  if (failed == 0)
-    *(get_regs(context) + REG_A0) = read_total;
-  else
+  if (failed)
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
-
-  if (symbolic) {
-    *(reg_typ + REG_A0) = 0;
-
-    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
-    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
-  }
+  else
+    *(get_regs(context) + REG_A0) = read_total;
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    printf3((uint64_t*) "%s: actually read %d bytes from file with descriptor %d\n", selfie_name, (uint64_t*) read_total, (uint64_t*) fd);
+    printf3("%s: actually read %d bytes from file with descriptor %d\n", selfie_name,
+      (char*) read_total,
+      (char*) fd);
 
   if (disassemble) {
-    print((uint64_t*) " -> ");
+    print(" -> ");
     print_register_value(REG_A0);
     println();
   }
 }
 
 void emit_write() {
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "write", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "write", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
   emit_ld(REG_A2, REG_SP, 0); // size
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
@@ -6012,13 +6047,13 @@ void implement_write(uint64_t* context) {
   uint64_t actually_written;
 
   if (disassemble) {
-    print((uint64_t*) "(write): ");
+    print("(write): ");
     print_register_value(REG_A0);
-    print((uint64_t*) ",");
+    print(",");
     print_register_hexadecimal(REG_A1);
-    print((uint64_t*) ",");
+    print(",");
     print_register_value(REG_A2);
-    print((uint64_t*) " |- ");
+    print(" |- ");
     print_register_value(REG_A0);
   }
 
@@ -6027,28 +6062,31 @@ void implement_write(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_write)
-    printf4((uint64_t*) "%s: trying to write %d bytes from buffer at virtual address %p into file with descriptor %d\n", selfie_name, (uint64_t*) size, (uint64_t*) vbuffer, (uint64_t*) fd);
+    printf4("%s: trying to write %d bytes from buffer at virtual address %p into file with descriptor %d\n", selfie_name,
+      (char*) size,
+      (char*) vbuffer,
+      (char*) fd);
 
   written_total = 0;
+
   bytes_to_write = SIZEOFUINT64;
 
   failed = 0;
 
   while (size > 0) {
     if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+      if (symbolic) {
+        // TODO: What should symbolically executed code actually output?
+        written_total = size;
+
+        size = 0;
+      } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         buffer = tlb(get_pt(context), vbuffer);
 
         if (size < bytes_to_write)
           bytes_to_write = size;
 
-        if (symbolic)
-          // TODO: What should symbolically executed code output?
-          // buffer points to a trace counter that refers to the actual value
-          // actually_written = sign_extend(write(fd, values + load_physical_memory(buffer), bytes_to_write), SYSCALL_BITWIDTH);
-          actually_written = bytes_to_write;
-        else
-          actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+        actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
         if (actually_written == bytes_to_write) {
           written_total = written_total + actually_written;
@@ -6069,7 +6107,8 @@ void implement_write(uint64_t* context) {
         size = 0;
 
         if (debug_write)
-          printf2((uint64_t*) "%s: writing into virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vbuffer);
+          printf2("%s: writing into virtual address %p failed because the address is unmapped\n", selfie_name,
+            (char*) vbuffer);
       }
     } else {
       failed = 1;
@@ -6077,36 +6116,32 @@ void implement_write(uint64_t* context) {
       size = 0;
 
       if (debug_write)
-        printf2((uint64_t*) "%s: writing into virtual address %p failed because the address is invalid\n", selfie_name, (uint64_t*) vbuffer);
+        printf2("%s: writing into virtual address %p failed because the address is invalid\n", selfie_name,
+          (char*) vbuffer);
     }
   }
 
-  if (failed == 0)
-    *(get_regs(context) + REG_A0) = written_total;
-  else
+  if (failed)
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
-
-  if (symbolic) {
-    *(reg_typ + REG_A0) = 0;
-
-    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
-    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
-  }
+  else
+    *(get_regs(context) + REG_A0) = written_total;
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    printf3((uint64_t*) "%s: actually wrote %d bytes into file with descriptor %d\n", selfie_name, (uint64_t*) written_total, (uint64_t*) fd);
+    printf3("%s: actually wrote %d bytes into file with descriptor %d\n", selfie_name,
+      (char*) written_total,
+      (char*) fd);
 
   if (disassemble) {
-    print((uint64_t*) " -> ");
+    print(" -> ");
     print_register_value(REG_A0);
     println();
   }
 }
 
 void emit_open() {
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "open", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "open", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
   emit_ld(REG_A3, REG_SP, 0); // mode
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
@@ -6127,50 +6162,64 @@ void emit_open() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t down_load_string(uint64_t* table, uint64_t vaddr, uint64_t* s) {
-  uint64_t mrvc;
+uint64_t down_load_string(uint64_t* table, uint64_t vaddr, char* s) {
   uint64_t i;
+  uint64_t* sword;
   uint64_t j;
 
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
     if (is_valid_virtual_address(vaddr)) {
-      if (is_virtual_address_mapped(table, vaddr)) {
-        if (symbolic) {
-          mrvc = load_symbolic_memory(table, vaddr);
+      if (symbolic) {
+        sword = load_symbolic_memory(vaddr);
 
-          *(s + i) = *(values + mrvc);
-
-          if (is_symbolic_value(*(types + mrvc), *(los + mrvc), *(ups + mrvc))) {
-            printf1((uint64_t*) "%s: detected symbolic value ", selfie_name);
-            print_symbolic_memory(mrvc);
-            print((uint64_t*) " in filename of open call\n");
+        if (sword) {
+          if (is_symbolic_value(sword)) {
+            printf1("%s: detected symbolic value ", selfie_name);
+            print_symbolic_memory(sword);
+            print(" in filename of open call\n");
 
             exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          }
+          } else
+            // CAUTION: at boot levels higher than zero, s is only accessible
+            // in C* at machine word granularity, not individual characters
+            *((uint64_t*) s + i) = get_word_value(sword);
         } else
-          *(s + i) = load_virtual_memory(table, vaddr);
+          // assert: vaddr is mapped
+          *((uint64_t*) s + i) = load_virtual_memory(table, vaddr);
+      } else if (is_virtual_address_mapped(table, vaddr))
+        *((uint64_t*) s + i) = load_virtual_memory(table, vaddr);
+      else {
+        if (debug_open)
+          printf2("%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name,
+            (char*) vaddr);
 
-        j = 0;
+        return 0;
+      }
 
-        // check if string ends in the current machine word
-        while (j < SIZEOFUINT64) {
-          if (load_character(s + i, j) == 0)
-            return 1;
+      j = 0;
 
-          j = j + 1;
-        }
+      // check if string ends in the current machine word
+      while (j < SIZEOFUINT64) {
+        if (load_character((char*) ((uint64_t*) s + i), j) == 0)
+          return 1;
 
-        // advance to the next machine word in virtual memory
-        vaddr = vaddr + SIZEOFUINT64;
+        j = j + 1;
+      }
 
-        // advance to the next machine word in our memory
-        i = i + 1;
-      } else if (debug_open)
-        printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vaddr);
-    } else if (debug_open)
-      printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the address is invalid\n", selfie_name, (uint64_t*) vaddr);
+      // advance to the next machine word in virtual memory
+      vaddr = vaddr + SIZEOFUINT64;
+
+      // advance to the next machine word in our memory
+      i = i + 1;
+    } else {
+      if (debug_open)
+        printf2("%s: opening file with name at virtual address %p failed because the address is invalid\n", selfie_name,
+          (char*) vaddr);
+
+      return 0;
+    }
   }
 
   return 0;
@@ -6186,15 +6235,15 @@ void implement_openat(uint64_t* context) {
   uint64_t fd;
 
   if (disassemble) {
-    print((uint64_t*) "(openat): ");
+    print("(openat): ");
     print_register_hexadecimal(REG_A0);
-    print((uint64_t*) ",");
+    print(",");
     print_register_hexadecimal(REG_A1);
-    print((uint64_t*) ",");
+    print(",");
     print_register_hexadecimal(REG_A2);
-    print((uint64_t*) ",");
+    print(",");
     print_register_octal(REG_A3);
-    print((uint64_t*) " |- ");
+    print(" |- ");
     print_register_value(REG_A1);
   }
 
@@ -6209,30 +6258,32 @@ void implement_openat(uint64_t* context) {
   mode      = *(get_regs(context) + REG_A3);
 
   if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
-    fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
+    if (symbolic)
+      // TODO: check if opening vfilename has been attempted before
+      fd = 0;
+    else
+      fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
-      printf5((uint64_t*) "%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfie_name, filename_buffer, (uint64_t*) flags, (uint64_t*) mode, (uint64_t*) fd);
+      printf5("%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfie_name,
+        filename_buffer,
+        (char*) flags,
+        (char*) mode,
+        (char*) fd);
   } else {
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
     if (debug_open)
-      printf2((uint64_t*) "%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name, (uint64_t*) vfilename);
-  }
-
-  if (symbolic) {
-    *(reg_typ + REG_A0) = 0;
-
-    *(reg_los + REG_A0) = *(get_regs(context) + REG_A0);
-    *(reg_ups + REG_A0) = *(get_regs(context) + REG_A0);
+      printf2("%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name,
+        (char*) vfilename);
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (disassemble) {
-    print((uint64_t*) " -> ");
+    print(" -> ");
     print_register_value(REG_A0);
     println();
   }
@@ -6241,11 +6292,11 @@ void implement_openat(uint64_t* context) {
 void emit_malloc() {
   uint64_t* entry;
 
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "malloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
   // on boot levels higher than zero, zalloc falls back to malloc
   // assuming that page frames are zeroed on boot level zero
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "zalloc", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
   // allocate memory in data segment for recording state of
   // malloc (bump pointer) in compiler-declared global variable
@@ -6253,12 +6304,12 @@ void emit_malloc() {
 
   // define global variable _bump for storing malloc's bump pointer
   // copy "_bump" string into zeroed double word to obtain unique hash
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy((uint64_t*) "_bump"), 1, VARIABLE, UINT64_T, 0, -allocated_memory);
+  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_bump"), 1, VARIABLE, UINT64_T, 0, -allocated_memory);
 
   // do not account for _bump as global variable
   number_of_global_variables = number_of_global_variables - 1;
 
-  entry = search_global_symbol_table(string_copy((uint64_t*) "_bump"), VARIABLE);
+  entry = search_global_symbol_table(string_copy("_bump"), VARIABLE);
 
   // allocate register for size parameter
   talloc();
@@ -6281,7 +6332,7 @@ void emit_malloc() {
   emit_ecall();
 
   // return 0 if memory allocation failed, that is,
-  // if new program break is still _bump and size !=0
+  // if new program break is still _bump and size != 0
   emit_beq(REG_A0, current_temporary(), 2 * INSTRUCTIONSIZE);
   emit_beq(REG_ZR, REG_ZR, 4 * INSTRUCTIONSIZE);
   emit_beq(REG_ZR, previous_temporary(), 3 * INSTRUCTIONSIZE);
@@ -6306,10 +6357,9 @@ void implement_brk(uint64_t* context) {
   // local variables
   uint64_t previous_program_break;
   uint64_t valid;
-  uint64_t size;
 
   if (disassemble) {
-    print((uint64_t*) "(brk): ");
+    print("(brk): ");
     print_register_hexadecimal(REG_A0);
   }
 
@@ -6326,59 +6376,30 @@ void implement_brk(uint64_t* context) {
 
   if (valid) {
     if (disassemble)
-      print((uint64_t*) " |- ->\n");
+      print(" |- ->\n");
 
     if (debug_brk)
-      printf2((uint64_t*) "%s: setting program break to %p\n", selfie_name, (uint64_t*) program_break);
+      printf2("%s: setting program break to %p\n", selfie_name, (char*) program_break);
 
     set_program_break(context, program_break);
-
-    if (symbolic) {
-      size = program_break - previous_program_break;
-
-      // interval is memory range, not symbolic value
-      *(reg_typ + REG_A0) = 1;
-
-      // remember start and size of memory block for checking memory safety
-      *(reg_los + REG_A0) = previous_program_break;
-      *(reg_ups + REG_A0) = size;
-
-      if (mrcc > 0) {
-        if (is_trace_space_available())
-          // since there has been branching record brk using vaddr == 0
-          store_symbolic_memory(get_pt(context), 0, previous_program_break, 1, previous_program_break, size, tc);
-        else {
-          throw_exception(EXCEPTION_MAXTRACE, 0);
-
-          return;
-        }
-      }
-    }
   } else {
     // error returns current program break
     program_break = previous_program_break;
 
     if (debug_brk)
-      printf2((uint64_t*) "%s: retrieving current program break %p\n", selfie_name, (uint64_t*) program_break);
+      printf2("%s: retrieving current program break %p\n", selfie_name, (char*) program_break);
 
     if (disassemble) {
-      print((uint64_t*) " |- ");
+      print(" |- ");
       print_register_hexadecimal(REG_A0);
     }
 
     *(get_regs(context) + REG_A0) = program_break;
 
     if (disassemble) {
-      print((uint64_t*) " -> ");
+      print(" -> ");
       print_register_hexadecimal(REG_A0);
       println();
-    }
-
-    if (symbolic) {
-      *(reg_typ + REG_A0) = 0;
-
-      *(reg_los + REG_A0) = 0;
-      *(reg_ups + REG_A0) = 0;
     }
   }
 
@@ -6391,7 +6412,7 @@ void implement_brk(uint64_t* context) {
 // -----------------------------------------------------------------
 
 void emit_switch() {
-  create_symbol_table_entry(LIBRARY_TABLE, (uint64_t*) "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "hypster_switch", 0, PROCEDURE, UINT64STAR_T, 0, binary_length);
 
   emit_ld(REG_A1, REG_SP, 0); // number of instructions to execute
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
@@ -6404,16 +6425,12 @@ void emit_switch() {
   emit_ecall();
 
   // save context from which we are switching here in return register
-  emit_addi(REG_A0, REG_A1, 0);
+  emit_addi(REG_A0, REG_A6, 0);
 
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-void do_switch(uint64_t* to_context, uint64_t timeout) {
-  uint64_t* from_context;
-
-  from_context = current_context;
-
+uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout) {
   restore_context(to_context);
 
   // restore machine state
@@ -6421,48 +6438,66 @@ void do_switch(uint64_t* to_context, uint64_t timeout) {
   registers = get_regs(to_context);
   pt        = get_pt(to_context);
 
-  // use REG_A1 instead of REG_A0 to avoid race condition with interrupt
-  if (get_parent(from_context) != MY_CONTEXT)
-    *(registers + REG_A1) = (uint64_t) get_virtual_context(from_context);
-  else
-    *(registers + REG_A1) = (uint64_t) from_context;
+  if (symbolic) {
+    path_condition  = get_path_condition(to_context);
+    symbolic_memory = get_symbolic_memory(to_context);
+    reg_sym         = get_symbolic_regs(to_context);
+  }
 
-  current_context = to_context;
+  // use REG_A6 instead of REG_A0 for returning from_context
+  // to avoid overwriting REG_A0 in to_context
+  if (get_parent(from_context) != MY_CONTEXT)
+    *(registers + REG_A6) = (uint64_t) get_virtual_context(from_context);
+  else
+    *(registers + REG_A6) = (uint64_t) from_context;
 
   timer = timeout;
 
   if (debug_switch) {
-    printf3((uint64_t*) "%s: switched from context %p to context %p", selfie_name, from_context, to_context);
+    printf3("%s: switched from context %p to context %p", selfie_name,
+      (char*) from_context,
+      (char*) to_context);
     if (timer != TIMEROFF)
-      printf1((uint64_t*) " to execute %d instructions", (uint64_t*) timer);
+      printf1(" to execute %d instructions", (char*) timer);
     println();
   }
+
+  return to_context;
 }
 
 void implement_switch() {
+  // parameters
+  uint64_t* to_context;
+  uint64_t timeout;
+
   if (disassemble) {
-    print((uint64_t*) "(switch): ");
+    print("(switch): ");
     print_register_hexadecimal(REG_A0);
-    print((uint64_t*) ",");
+    print(",");
     print_register_value(REG_A1);
-    print((uint64_t*) " |- ");
-    print_register_value(REG_A1);
+    print(" |- ");
+    print_register_value(REG_A6);
   }
+
+  to_context = (uint64_t*) *(registers + REG_A0);
+  timeout    =             *(registers + REG_A1);
 
   save_context(current_context);
 
   // cache context on my boot level before switching
-  do_switch(cache_context((uint64_t*) *(registers + REG_A0)), *(registers + REG_A1));
+  to_context = cache_context(to_context);
+
+  current_context = do_switch(current_context, to_context, timeout);
 
   if (disassemble) {
-    print((uint64_t*) " -> ");
-    print_register_hexadecimal(REG_A1);
+    print(" -> ");
+    print_register_hexadecimal(REG_A6);
     println();
   }
 }
 
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout) {
-  do_switch(to_context, timeout);
+  current_context = do_switch(current_context, to_context, timeout);
 
   run_until_exception();
 
@@ -6544,7 +6579,11 @@ uint64_t* tlb(uint64_t* table, uint64_t vaddr) {
   paddr = vaddr - page * PAGESIZE + frame;
 
   if (debug_tlb)
-    printf5((uint64_t*) "%s: tlb access:\n vaddr: %p\n page:  %p\n frame: %p\n paddr: %p\n", selfie_name, (uint64_t*) vaddr, (uint64_t*) (page * PAGESIZE), (uint64_t*) frame, (uint64_t*) paddr);
+    printf5("%s: tlb access:\n vaddr: %p\n page:  %p\n frame: %p\n paddr: %p\n", selfie_name,
+      (char*) vaddr,
+      (char*) (page * PAGESIZE),
+      (char*) frame,
+      (char*) paddr);
 
   return (uint64_t*) paddr;
 }
@@ -6569,35 +6608,38 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 
 void print_code_line_number_for_instruction(uint64_t a) {
   if (code_line_number != (uint64_t*) 0)
-    printf1((uint64_t*) "(~%d)", (uint64_t*) *(code_line_number + a / INSTRUCTIONSIZE));
+    printf1("(~%d)", (char*) *(code_line_number + a / INSTRUCTIONSIZE));
 }
 
 void print_code_context_for_instruction(uint64_t a) {
   if (execute) {
-    printf2((uint64_t*) "%s: $pc=%x", binary_name, (uint64_t*) a);
+    printf2("%s: $pc=%x", binary_name, (char*) a);
     print_code_line_number_for_instruction(a - entry_point);
+    if (symbolic)
+      // skip further output
+      return;
   } else {
-    printf1((uint64_t*) "%x", (uint64_t*) a);
+    printf1("%x", (char*) a);
     if (disassemble_verbose) {
       print_code_line_number_for_instruction(a);
-      printf1((uint64_t*) ": %p", (uint64_t*) ir);
+      printf1(": %p", (char*) ir);
     }
   }
-  print((uint64_t*) ": ");
+  print(": ");
 }
 
 void print_lui() {
   print_code_context_for_instruction(pc);
-  printf2((uint64_t*) "lui %s,%x", get_register_name(rd), (uint64_t*) sign_shrink(imm, 20));
+  printf2("lui %s,%x", get_register_name(rd), (char*) sign_shrink(imm, 20));
 }
 
 void print_lui_before() {
-  print((uint64_t*) ": |- ");
+  print(": |- ");
   print_register_hexadecimal(rd);
 }
 
 void print_lui_after() {
-  print((uint64_t*) " -> ");
+  print(" -> ");
   print_register_hexadecimal(rd);
 }
 
@@ -6622,16 +6664,8 @@ void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
 }
 
 void constrain_lui() {
-  if (rd != REG_ZR) {
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of lui
-    *(reg_los + rd) = left_shift(imm, 12);
-    *(reg_ups + rd) = left_shift(imm, 12);
-
-    // rd has no constraint
-    set_constraint(rd, 0, 0, 0, 0, 0);
-  }
+  if (rd != REG_ZR)
+    *(reg_sym + rd) = 0;
 }
 
 void print_addi() {
@@ -6640,23 +6674,23 @@ void print_addi() {
   if (rd == REG_ZR)
     if (rs1 == REG_ZR)
       if (imm == 0) {
-        print((uint64_t*) "nop");
+        print("nop");
 
         return;
       }
 
-  printf3((uint64_t*) "addi %s,%s,%d", get_register_name(rd), get_register_name(rs1), (uint64_t*) imm);
+  printf3("addi %s,%s,%d", get_register_name(rd), get_register_name(rs1), (char*) imm);
 }
 
 void print_addi_before() {
-  print((uint64_t*) ": ");
+  print(": ");
   print_register_value(rs1);
-  print((uint64_t*) " |- ");
+  print(" |- ");
   print_register_value(rd);
 }
 
 void print_addi_add_sub_mul_divu_remu_sltu_after() {
-  print((uint64_t*) " -> ");
+  print(" -> ");
   print_register_value(rd);
 }
 
@@ -6674,52 +6708,24 @@ void do_addi() {
 
 void constrain_addi() {
   if (rd != REG_ZR) {
-    if (*(reg_typ + rs1)) {
-      *(reg_typ + rd) = *(reg_typ + rs1);
-
-      *(reg_los + rd) = *(reg_los + rs1);
-      *(reg_ups + rd) = *(reg_ups + rs1);
-
-      // rd has no constraint if rs1 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    }
-
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of addi
-    *(reg_los + rd) = *(reg_los + rs1) + imm;
-    *(reg_ups + rd) = *(reg_ups + rs1) + imm;
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another addend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in operand of addi at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs1 constraint
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm);
-    } else
-      // rd has no constraint if rs1 has none
-      set_constraint(rd, 0, 0, 0, 0, 0);
+    if (*(reg_sym + rs1))
+      *(reg_sym + rd) = (uint64_t) smt_binary("bvadd", (char*) *(reg_sym + rs1), bv_constant(imm));
+    else
+      *(reg_sym + rd) = 0;
   }
 }
 
-void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics) {
+void print_add_sub_mul_divu_remu_sltu(char *mnemonics) {
   print_code_context_for_instruction(pc);
-  printf4((uint64_t*) "%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
+  printf4("%s %s,%s,%s", mnemonics, get_register_name(rd), get_register_name(rs1), get_register_name(rs2));
 }
 
 void print_add_sub_mul_divu_remu_sltu_before() {
-  print((uint64_t*) ": ");
+  print(": ");
   print_register_value(rs1);
-  print((uint64_t*) ",");
+  print(",");
   print_register_value(rs2);
-  print((uint64_t*) " |- ");
+  print(" |- ");
   print_register_value(rd);
 }
 
@@ -6733,79 +6739,25 @@ void do_add() {
   ic_add = ic_add + 1;
 }
 
-void constrain_add() {
+void constrain_add_sub_mul_divu_remu_sltu(char* operator) {
+  char* op1;
+  char* op2;
+
   if (rd != REG_ZR) {
-    if (*(reg_typ + rs1)) {
-      if (*(reg_typ + rs2)) {
-        // adding two pointers is undefined
-        printf2((uint64_t*) "%s: undefined addition of two pointers at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
+    op1 = (char*) *(reg_sym + rs1);
+    op2 = (char*) *(reg_sym + rs2);
 
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
+    if (op1 == (char*) 0) {
+      if (op2 == (char*) 0) {
+        *(reg_sym + rd) = 0;
 
-      *(reg_typ + rd) = *(reg_typ + rs1);
-
-      *(reg_los + rd) = *(reg_los + rs1);
-      *(reg_ups + rd) = *(reg_ups + rs1);
-
-      // rd has no constraint if rs1 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    } else if (*(reg_typ + rs2)) {
-      *(reg_typ + rd) = *(reg_typ + rs2);
-
-      *(reg_los + rd) = *(reg_los + rs2);
-      *(reg_ups + rd) = *(reg_ups + rs2);
-
-      // rd has no constraint if rs2 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    }
-
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of add
-    if (combined_cardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
-      *(reg_los + rd) = 0;
-      *(reg_ups + rd) = UINT64_MAX;
-    } else {
-      *(reg_los + rd) = *(reg_los + rs1) + *(reg_los + rs2);
-      *(reg_ups + rd) = *(reg_ups + rs1) + *(reg_ups + rs2);
-    }
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2))
-        // we cannot keep track of more than one constraint for add but
-        // need to warn about their earlier presence if used in comparisons
-        set_constraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
-      else if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another addend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of add at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        return;
       } else
-        // rd inherits rs1 constraint since rs2 has none
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) + *(reg_los + rs2), *(reg_coups + rs1) + *(reg_ups + rs2));
-    } else if (*(reg_hasco + rs2)) {
-      if (*(reg_hasmn + rs2)) {
-        // rs2 constraint has already minuend and cannot have another addend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of add at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
+        op1 = bv_constant(*(registers + rs1));
+    } else if (op2 == (char*) 0)
+        op2 = bv_constant(*(registers + rs2));
 
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs2 constraint since rs1 has none
-        set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0, *(reg_los + rs1) + *(reg_colos + rs2), *(reg_ups + rs1) + *(reg_coups + rs2));
-    } else
-      // rd has no constraint if both rs1 and rs2 have no constraints
-      set_constraint(rd, 0, 0, 0, 0, 0);
+    *(reg_sym + rd) = (uint64_t) smt_binary(operator, op1, op2);
   }
 }
 
@@ -6819,100 +6771,6 @@ void do_sub() {
   ic_sub = ic_sub + 1;
 }
 
-void constrain_sub() {
-  uint64_t sub_los;
-  uint64_t sub_ups;
-
-  if (rd != REG_ZR) {
-    if (*(reg_typ + rs1)) {
-      if (*(reg_typ + rs2)) {
-        if (*(reg_los + rs1) == *(reg_los + rs2))
-          if (*(reg_ups + rs1) == *(reg_ups + rs2)) {
-            *(reg_typ + rd) = 0;
-
-            *(reg_los + rd) = *(registers + rd);
-            *(reg_ups + rd) = *(registers + rd);
-
-            // rd has no constraint if rs1 and rs2 are memory range
-            set_constraint(rd, 0, 0, 0, 0, 0);
-
-            return;
-          }
-
-        // subtracting incompatible pointers
-        throw_exception(EXCEPTION_INVALIDADDRESS, 0);
-
-        return;
-      } else {
-        *(reg_typ + rd) = *(reg_typ + rs1);
-
-        *(reg_los + rd) = *(reg_los + rs1);
-        *(reg_ups + rd) = *(reg_ups + rs1);
-
-        // rd has no constraint if rs1 is memory range
-        set_constraint(rd, 0, 0, 0, 0, 0);
-
-        return;
-      }
-    } else if (*(reg_typ + rs2)) {
-      *(reg_typ + rd) = *(reg_typ + rs2);
-
-      *(reg_los + rd) = *(reg_los + rs2);
-      *(reg_ups + rd) = *(reg_ups + rs2);
-
-      // rd has no constraint if rs2 is memory range
-      set_constraint(rd, 0, 0, 0, 0, 0);
-
-      return;
-    }
-
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of sub
-    if (combined_cardinality(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2)) == 0) {
-      *(reg_los + rd) = 0;
-      *(reg_ups + rd) = UINT64_MAX;
-    } else {
-      // use temporary variables since rd may be rs1 or rs2
-      sub_los = *(reg_los + rs1) - *(reg_ups + rs2);
-      sub_ups = *(reg_ups + rs1) - *(reg_los + rs2);
-
-      *(reg_los + rd) = sub_los;
-      *(reg_ups + rd) = sub_ups;
-    }
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2))
-        // we cannot keep track of more than one constraint for sub but
-        // need to warn about their earlier presence if used in comparisons
-        set_constraint(rd, *(reg_hasco + rs1) + *(reg_hasco + rs2), 0, 0, 0, 0);
-      else if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another subtrahend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of sub at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs1 constraint since rs2 has none
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0, *(reg_colos + rs1) - *(reg_ups + rs2), *(reg_coups + rs1) - *(reg_los + rs2));
-    } else if (*(reg_hasco + rs2)) {
-      if (*(reg_hasmn + rs2)) {
-        // rs2 constraint has already minuend and cannot have another minuend
-        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of sub at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs2 constraint since rs1 has none
-        set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 1, *(reg_los + rs1) - *(reg_coups + rs2), *(reg_ups + rs1) - *(reg_colos + rs2));
-    } else
-      // rd has no constraint if both rs1 and rs2 have no constraints
-      set_constraint(rd, 0, 0, 0, 0, 0);
-  }
-}
-
 void do_mul() {
   if (rd != REG_ZR)
     // semantics of mul
@@ -6923,54 +6781,6 @@ void do_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
-}
-
-void constrain_mul() {
-  if (rd != REG_ZR) {
-    *(reg_typ + rd) = 0;
-
-    // interval semantics of mul
-    *(reg_los + rd) = *(reg_los + rs1) * *(reg_los + rs2);
-    *(reg_ups + rd) = *(reg_ups + rs1) * *(reg_ups + rs2);
-
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_hasco + rs2)) {
-        // non-linear expressions are not supported
-        printf2((uint64_t*) "%s: detected non-linear expression in mul at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else if (*(reg_hasmn + rs1)) {
-        // rs1 constraint has already minuend and cannot have another multiplier
-        printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of mul at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs1 constraint since rs2 has none
-        // assert: rs2 interval is singleton
-        set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-          *(reg_colos + rs1) + *(reg_los + rs1) * (*(reg_los + rs2) - 1), *(reg_coups + rs1) + *(reg_ups + rs1) * (*(reg_ups + rs2) - 1));
-    } else if (*(reg_hasco + rs2)) {
-      if (*(reg_hasmn + rs2)) {
-        // rs2 constraint has already minuend and cannot have another multiplicand
-        printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of mul at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      } else
-        // rd inherits rs2 constraint since rs1 has none
-        // assert: rs1 interval is singleton
-        set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-          (*(reg_los + rs1) - 1) * *(reg_los + rs2) + *(reg_colos + rs2),
-          (*(reg_ups + rs1) - 1) * *(reg_ups + rs2) + *(reg_coups + rs2));
-    } else
-      // rd has no constraint if both rs1 and rs2 have no constraints
-      set_constraint(rd, 0, 0, 0, 0, 0);
-  }
 }
 
 void record_divu_remu() {
@@ -6993,65 +6803,6 @@ void do_divu() {
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
 
-void constrain_divu() {
-  if (*(reg_los + rs2) != 0) {
-    if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
-      // 0 is not in interval
-      if (rd != REG_ZR) {
-        *(reg_typ + rd) = 0;
-
-        // interval semantics of divu
-        *(reg_los + rd) = *(reg_los + rs1) / *(reg_los + rs2);
-        *(reg_ups + rd) = *(reg_ups + rs1) / *(reg_ups + rs2);
-
-        if (*(reg_hasco + rs1)) {
-          if (*(reg_hasco + rs2)) {
-            // non-linear expressions are not supported
-            printf2((uint64_t*) "%s: detected non-linear expression in divu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else if (*(reg_hasmn + rs1)) {
-            // rs1 constraint has already minuend and cannot have another divisor
-            printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of divu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs1 constraint since rs2 has none
-            // assert: rs2 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1) -
-                (*(reg_los + rs1) - *(reg_los + rs1) / *(reg_los + rs2)),
-              *(reg_coups + rs1) -
-                (*(reg_ups + rs1) - *(reg_ups + rs1) / *(reg_ups + rs2)));
-        } else if (*(reg_hasco + rs2)) {
-          if (*(reg_hasmn + rs2)) {
-            // rs2 constraint has already minuend and cannot have another dividend
-            printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of divu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs2 constraint since rs1 has none
-            // assert: rs1 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_colos + rs2) -
-                (*(reg_los + rs2) - *(reg_los + rs1) / *(reg_los + rs2)),
-              *(reg_coups + rs2) -
-                (*(reg_ups + rs2) - *(reg_ups + rs1) / *(reg_ups + rs2)));
-        } else
-          // rd has no constraint if both rs1 and rs2 have no constraints
-          set_constraint(rd, 0, 0, 0, 0, 0);
-      }
-    } else
-      throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
-  }
-}
-
 void do_remu() {
   // remainder unsigned
 
@@ -7065,65 +6816,6 @@ void do_remu() {
     ic_remu = ic_remu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
-}
-
-void constrain_remu() {
-  if (*(reg_los + rs2) != 0) {
-    if (*(reg_ups + rs2) >= *(reg_los + rs2)) {
-      // 0 is not in interval
-      if (rd != REG_ZR) {
-        *(reg_typ + rd) = 0;
-
-        // interval semantics of remu
-        *(reg_los + rd) = *(reg_los + rs1) % *(reg_los + rs2);
-        *(reg_ups + rd) = *(reg_ups + rs1) % *(reg_ups + rs2);
-
-        if (*(reg_hasco + rs1)) {
-          if (*(reg_hasco + rs2)) {
-            // non-linear expressions are not supported
-            printf2((uint64_t*) "%s: detected non-linear expression in remu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else if (*(reg_hasmn + rs1)) {
-            // rs1 constraint has already minuend and cannot have another divisor
-            printf2((uint64_t*) "%s: detected invalid minuend expression in left operand of remu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs1 constraint since rs2 has none
-            // assert: rs2 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs1), *(reg_vaddr + rs1), 0,
-              *(reg_colos + rs1) -
-                (*(reg_los + rs1) - *(reg_los + rs1) % *(reg_los + rs2)),
-              *(reg_coups + rs1) -
-                (*(reg_ups + rs1) - *(reg_ups + rs1) % *(reg_ups + rs2)));
-        } else if (*(reg_hasco + rs2)) {
-          if (*(reg_hasmn + rs2)) {
-            // rs2 constraint has already minuend and cannot have another dividend
-            printf2((uint64_t*) "%s: detected invalid minuend expression in right operand of remu at %x", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            println();
-
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-          } else
-            // rd inherits rs2 constraint since rs1 has none
-            // assert: rs1 interval is singleton
-            set_constraint(rd, *(reg_hasco + rs2), *(reg_vaddr + rs2), 0,
-              *(reg_colos + rs2) -
-                (*(reg_los + rs2) - *(reg_los + rs1) % *(reg_los + rs2)),
-              *(reg_coups + rs2) -
-                (*(reg_ups + rs2) - *(reg_ups + rs1) % *(reg_ups + rs2)));
-        } else
-          // rd has no constraint if both rs1 and rs2 have no constraints
-          set_constraint(rd, 0, 0, 0, 0, 0);
-      }
-    } else
-      throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
-  }
 }
 
 void do_sltu() {
@@ -7142,92 +6834,15 @@ void do_sltu() {
   ic_sltu = ic_sltu + 1;
 }
 
-void constrain_sltu() {
-  // interval semantics of sltu
-  if (rd != REG_ZR) {
-    if (*(reg_hasco + rs1)) {
-      if (*(reg_vaddr + rs1) == 0) {
-        // constrained memory at vaddr 0 means that there is more than
-        // one constrained memory location in the sltu operand
-        printf3((uint64_t*) "%s: %d constrained memory locations in left sltu operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs1), (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
-    }
-
-    if (*(reg_hasco + rs2)) {
-      if (*(reg_vaddr + rs2) == 0) {
-        // constrained memory at vaddr 0 means that there is more than
-        // one constrained memory location in the sltu operand
-        printf3((uint64_t*) "%s: %d constrained memory locations in right sltu operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
-    }
-
-    // take local copy of mrcc to make sure that alias check considers old mrcc
-    if (*(reg_typ + rs1))
-      if (*(reg_typ + rs2))
-        create_constraints(*(registers + rs1), *(registers + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
-      else
-        create_constraints(*(registers + rs1), *(registers + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
-    else if (*(reg_typ + rs2))
-      create_constraints(*(reg_los + rs1), *(reg_ups + rs1), *(registers + rs2), *(registers + rs2), mrcc, 0);
-    else
-      create_constraints(*(reg_los + rs1), *(reg_ups + rs1), *(reg_los + rs2), *(reg_ups + rs2), mrcc, 0);
-  }
-
-  pc = pc + INSTRUCTIONSIZE;
-
-  ic_sltu = ic_sltu + 1;
-}
-
-void backtrack_sltu() {
-  uint64_t vaddr;
-
-  if (debug_symbolic) {
-    printf1((uint64_t*) "%s: backtracking sltu ", selfie_name);
-    print_symbolic_memory(tc);
-  }
-
-  vaddr = *(vaddrs + tc);
-
-  if (vaddr < NUMBEROFREGISTERS) {
-    if (vaddr > 0) {
-      // the register is identified by vaddr
-      *(registers + vaddr) = *(values + tc);
-
-      *(reg_typ + vaddr) = *(types + tc);
-
-      *(reg_los + vaddr) = *(los + tc);
-      *(reg_ups + vaddr) = *(ups + tc);
-
-      set_constraint(vaddr, 0, 0, 0, 0, 0);
-
-      // restoring mrcc
-      mrcc = *(tcs + tc);
-
-      if (vaddr != REG_FP)
-        if (vaddr != REG_SP) {
-          // stop backtracking and try next case
-          pc = pc + INSTRUCTIONSIZE;
-
-          ic_sltu = ic_sltu + 1;
-        }
-    }
-  } else
-    store_virtual_memory(pt, vaddr, *(tcs + tc));
-
-  efree();
+void zero_extend_sltu() {
+  if (rd != REG_ZR)
+    if (*(reg_sym + rd))
+      *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(1), (char*) *(reg_sym + rd));
 }
 
 void print_ld() {
   print_code_context_for_instruction(pc);
-  printf3((uint64_t*) "ld %s,%d(%s)", get_register_name(rd), (uint64_t*) imm, get_register_name(rs1));
+  printf3("ld %s,%d(%s)", get_register_name(rd), (char*) imm, get_register_name(rs1));
 }
 
 void print_ld_before() {
@@ -7235,29 +6850,29 @@ void print_ld_before() {
 
   vaddr = *(registers + rs1) + imm;
 
-  print((uint64_t*) ": ");
+  print(": ");
   print_register_hexadecimal(rs1);
 
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
       if (is_system_register(rd))
-        printf2((uint64_t*) ",mem[%x]=%x |- ", (uint64_t*) vaddr, (uint64_t*) load_virtual_memory(pt, vaddr));
+        printf2(",mem[%x]=%x |- ", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
       else
-        printf2((uint64_t*) ",mem[%x]=%d |- ", (uint64_t*) vaddr, (uint64_t*) load_virtual_memory(pt, vaddr));
+        printf2(",mem[%x]=%d |- ", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
       print_register_value(rd);
 
       return;
     }
 
-  print((uint64_t*) " |-");
+  print(" |-");
 }
 
 void print_ld_after(uint64_t vaddr) {
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      print((uint64_t*) " -> ");
+      print(" -> ");
       print_register_value(rd);
-      printf1((uint64_t*) "=mem[%x]", (uint64_t*) vaddr);
+      printf1("=mem[%x]", (char*) vaddr);
     }
 }
 
@@ -7303,58 +6918,68 @@ uint64_t do_ld() {
   return vaddr;
 }
 
-uint64_t constrain_ld() {
+void constrain_ld() {
   uint64_t vaddr;
-  uint64_t mrvc;
+  uint64_t* sword;
   uint64_t a;
 
   // load double word
 
+  if (*(reg_sym + rs1)) {
+    // symbolic memory addresses not yet supported
+    printf2("%s: symbolic memory address in ld instruction at %x", selfie_name, (char*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
   vaddr = *(registers + rs1) + imm;
 
-  if (is_safe_address(vaddr, rs1)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      if (rd != REG_ZR) {
-        mrvc = load_symbolic_memory(pt, vaddr);
+  if (is_valid_virtual_address(vaddr)) {
+    // semantics of ld
+    if (rd != REG_ZR) {
+      sword = load_symbolic_memory(vaddr);
 
-        // interval semantics of ld
-        *(registers + rd) = *(values + mrvc);
+      if (sword) {
+        *(registers + rd) = get_word_value(sword);
 
-        *(reg_typ + rd) = *(types + mrvc);
-
-        *(reg_los + rd) = *(los + mrvc);
-        *(reg_ups + rd) = *(ups + mrvc);
-
-        // assert: vaddr == *(vaddrs + mrvc)
-
-        if (is_symbolic_value(*(reg_typ + rd), *(reg_los + rd), *(reg_ups + rd)))
-          // vaddr is constrained by rd if value interval is not singleton
-          set_constraint(rd, 1, vaddr, 0, 0, 0);
+        if (get_number_of_bits(sword) < CPUBITWIDTH)
+          *(reg_sym + rd) = (uint64_t) smt_unary(bv_zero_extension(get_number_of_bits(sword)), get_word_symbolic(sword));
         else
-          set_constraint(rd, 0, 0, 0, 0, 0);
+          *(reg_sym + rd) = (uint64_t) get_word_symbolic(sword);
+      } else {
+        // assert: vaddr is mapped
+        *(registers + rd) = load_virtual_memory(pt, vaddr);
+        *(reg_sym + rd)   = 0;
       }
+    }
 
-      // keep track of instruction address for profiling loads
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
+    // keep track of instruction address for profiling loads
+    a = (pc - entry_point) / INSTRUCTIONSIZE;
 
-      pc = pc + INSTRUCTIONSIZE;
+    pc = pc + INSTRUCTIONSIZE;
 
-      // keep track of number of loads in total
-      ic_ld = ic_ld + 1;
+    // keep track of number of loads in total
+    ic_ld = ic_ld + 1;
 
-      // and individually
-      *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
-    } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
-  } else
-    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
+    // and individually
+    *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+  } else {
+    // invalid concrete memory address
+    printf3("%s: invalid concrete memory address %x in ld instruction at %x", selfie_name,
+      (char*) vaddr,
+      (char*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
 
-  return vaddr;
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
 }
 
 void print_sd() {
   print_code_context_for_instruction(pc);
-  printf3((uint64_t*) "sd %s,%d(%s)", get_register_name(rs2), (uint64_t*) imm, get_register_name(rs1));
+  printf3("sd %s,%d(%s)", get_register_name(rs2), (char*) imm, get_register_name(rs1));
 }
 
 void print_sd_before() {
@@ -7362,28 +6987,28 @@ void print_sd_before() {
 
   vaddr = *(registers + rs1) + imm;
 
-  print((uint64_t*) ": ");
+  print(": ");
   print_register_hexadecimal(rs1);
 
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      print((uint64_t*) ",");
+      print(",");
       print_register_value(rs2);
       if (is_system_register(rd))
-        printf2((uint64_t*) " |- mem[%x]=%x", (uint64_t*) vaddr, (uint64_t*) load_virtual_memory(pt, vaddr));
+        printf2(" |- mem[%x]=%x", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
       else
-        printf2((uint64_t*) " |- mem[%x]=%d", (uint64_t*) vaddr, (uint64_t*) load_virtual_memory(pt, vaddr));
+        printf2(" |- mem[%x]=%d", (char*) vaddr, (char*) load_virtual_memory(pt, vaddr));
 
       return;
     }
 
-  print((uint64_t*) " |-");
+  print(" |-");
 }
 
 void print_sd_after(uint64_t vaddr) {
   if (is_valid_virtual_address(vaddr))
     if (is_virtual_address_mapped(pt, vaddr)) {
-      printf1((uint64_t*) " -> mem[%x]=", (uint64_t*) vaddr);
+      printf1(" -> mem[%x]=", (char*) vaddr);
       print_register_value(rs2);
     }
 }
@@ -7429,60 +7054,6 @@ uint64_t do_sd() {
   return vaddr;
 }
 
-uint64_t constrain_sd() {
-  uint64_t vaddr;
-  uint64_t a;
-
-  // store double word
-
-  vaddr = *(registers + rs1) + imm;
-
-  if (is_safe_address(vaddr, rs1)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      // interval semantics of sd
-      if (*(reg_hasco + rs2)) {
-        if (*(reg_vaddr + rs2) == 0) {
-          // constrained memory at vaddr 0 means that there is more than
-          // one constrained memory location in the sd operand
-          printf3((uint64_t*) "%s: %d constrained memory locations in sd operand at %x", selfie_name, (uint64_t*) *(reg_hasco + rs2), (uint64_t*) pc);
-          print_code_line_number_for_instruction(pc - entry_point);
-          println();
-
-          //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-        }
-      }
-
-      store_symbolic_memory(pt, vaddr, *(registers + rs2), *(reg_typ + rs2), *(reg_los + rs2), *(reg_ups + rs2), mrcc);
-
-      // keep track of instruction address for profiling stores
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
-
-      pc = pc + INSTRUCTIONSIZE;
-
-      // keep track of number of stores in total
-      ic_sd = ic_sd + 1;
-
-      // and individually
-      *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
-    } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
-  } else
-    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
-
-  return vaddr;
-}
-
-void backtrack_sd() {
-  if (debug_symbolic) {
-    printf1((uint64_t*) "%s: backtracking sd ", selfie_name);
-    print_symbolic_memory(tc);
-  }
-
-  store_virtual_memory(pt, *(vaddrs + tc), *(tcs + tc));
-
-  efree();
-}
-
 void undo_sd() {
   uint64_t vaddr;
 
@@ -7491,21 +7062,68 @@ void undo_sd() {
   store_virtual_memory(pt, vaddr, *(values + (tc % MAX_REPLAY_LENGTH)));
 }
 
+void constrain_sd() {
+  uint64_t vaddr;
+  uint64_t a;
+
+  // store double word
+
+  if (*(reg_sym + rs1)) {
+    // symbolic memory addresses not yet supported
+    printf2("%s: symbolic memory address in sd instruction at %x", selfie_name, (char*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
+  vaddr = *(registers + rs1) + imm;
+
+  if (is_valid_virtual_address(vaddr)) {
+    // semantics of sd
+    store_symbolic_memory(vaddr,
+      *(registers + rs2),
+      (char*) *(reg_sym + rs2),
+      0,
+      CPUBITWIDTH);
+
+    // keep track of instruction address for profiling stores
+    a = (pc - entry_point) / INSTRUCTIONSIZE;
+
+    pc = pc + INSTRUCTIONSIZE;
+
+    // keep track of number of stores in total
+    ic_sd = ic_sd + 1;
+
+    // and individually
+    *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+  } else {
+    // invalid concrete memory address
+    printf3("%s: invalid concrete memory address %x in sd instruction at %x", selfie_name,
+      (char*) vaddr,
+      (char*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+}
+
 void print_beq() {
   print_code_context_for_instruction(pc);
-  printf4((uint64_t*) "beq %s,%s,%d[%x]", get_register_name(rs1), get_register_name(rs2), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
+  printf4("beq %s,%s,%d[%x]", get_register_name(rs1), get_register_name(rs2), (char*) signed_division(imm, INSTRUCTIONSIZE), (char*) (pc + imm));
 }
 
 void print_beq_before() {
-  print((uint64_t*) ": ");
+  print(": ");
   print_register_value(rs1);
-  print((uint64_t*) ",");
+  print(",");
   print_register_value(rs2);
-  printf1((uint64_t*) " |- $pc=%x", (uint64_t*) pc);
+  printf1(" |- $pc=%x", (char*) pc);
 }
 
 void print_beq_after() {
-  printf1((uint64_t*) " -> $pc=%x", (uint64_t*) pc);
+  printf1(" -> $pc=%x", (char*) pc);
 }
 
 void record_beq() {
@@ -7524,24 +7142,65 @@ void do_beq() {
   ic_beq = ic_beq + 1;
 }
 
+void constrain_beq() {
+  char* op1;
+  char* op2;
+  char* bvar;
+  char* pvar;
+
+  op1 = (char*) *(reg_sym + rs1);
+  op2 = (char*) *(reg_sym + rs2);
+
+  if (op1 == (char*) 0) {
+    if (op2 == (char*) 0) {
+      do_beq();
+
+      return;
+    } else
+      op1 = bv_constant(*(registers + rs1));
+  } else if (op2 == (char*) 0)
+    op2 = bv_constant(*(registers + rs2));
+
+  bvar = smt_variable("b", 1);
+
+  printf2("(assert (= %s %s)); beq in ", bvar, smt_binary("bvcomp", op1, op2));
+  print_code_context_for_instruction(pc);
+  println();
+
+  pvar = smt_variable("p", 1);
+
+  printf2("(assert (= %s %s)); path condition in ", pvar, path_condition);
+  print_code_context_for_instruction(pc);
+  println();
+
+  copy_context(current_context,
+    pc + INSTRUCTIONSIZE,
+    smt_binary("and", pvar, smt_unary("not", bvar)),
+    max_execution_depth - timer);
+
+  path_condition = smt_binary("and", pvar, bvar);
+
+  pc = pc + imm;
+}
+
 void print_jal() {
   print_code_context_for_instruction(pc);
-  printf3((uint64_t*) "jal %s,%d[%x]", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), (uint64_t*) (pc + imm));
+  printf3("jal %s,%d[%x]", get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE), (char*) (pc + imm));
 }
 
 void print_jal_before() {
-  print((uint64_t*) ": |- ");
+  print(": |- ");
   if (rd != REG_ZR) {
     print_register_hexadecimal(rd);
-    print((uint64_t*) ",");
+    print(",");
   }
-  printf1((uint64_t*) "$pc=%x", (uint64_t*) pc);
+  printf1("$pc=%x", (char*) pc);
 }
 
 void print_jal_jalr_after() {
   print_beq_after();
   if (rd != REG_ZR) {
-    print((uint64_t*) ",");
+    print(",");
     print_register_hexadecimal(rd);
   }
 }
@@ -7585,27 +7244,20 @@ void do_jal() {
   ic_jal = ic_jal + 1;
 }
 
-void constrain_jal_jalr() {
-  if (rd != REG_ZR) {
-    *(reg_los + rd) = *(registers + rd);
-    *(reg_ups + rd) = *(registers + rd);
-  }
-}
-
 void print_jalr() {
   print_code_context_for_instruction(pc);
-  printf3((uint64_t*) "jalr %s,%d(%s)", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
+  printf3("jalr %s,%d(%s)", get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
 }
 
 void print_jalr_before() {
-  print((uint64_t*) ": ");
+  print(": ");
   print_register_hexadecimal(rs1);
-  print((uint64_t*) " |- ");
+  print(" |- ");
   if (rd != REG_ZR) {
     print_register_hexadecimal(rd);
-    print((uint64_t*) ",");
+    print(",");
   }
-  printf1((uint64_t*) "$pc=%x", (uint64_t*) pc);
+  printf1("$pc=%x", (char*) pc);
 }
 
 void do_jalr() {
@@ -7632,9 +7284,20 @@ void do_jalr() {
   ic_jalr = ic_jalr + 1;
 }
 
+void constrain_jalr() {
+  if (*(reg_sym + rs1)) {
+    // symbolic memory addresses not yet supported
+    printf2("%s: symbolic memory address in jalr instruction at %x", selfie_name, (char*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+}
+
 void print_ecall() {
   print_code_context_for_instruction(pc);
-  print((uint64_t*) "ecall");
+  print("ecall");
 }
 
 void record_ecall() {
@@ -7652,11 +7315,11 @@ void do_ecall() {
     pc = pc + INSTRUCTIONSIZE;
   } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
-      printf1((uint64_t*) "%s: context switching during recording is unsupported\n", selfie_name);
+      printf1("%s: context switching during recording is unsupported\n", selfie_name);
 
       exit(EXITCODE_BADARGUMENTS);
     } else if (symbolic) {
-      printf1((uint64_t*) "%s: context switching during symbolic execution is unsupported\n", selfie_name);
+      printf1("%s: context switching during symbolic execution is unsupported\n", selfie_name);
 
       exit(EXITCODE_BADARGUMENTS);
     } else {
@@ -7681,63 +7344,26 @@ void undo_ecall() {
   *(values + (tc % MAX_REPLAY_LENGTH)) = a0;
 }
 
-void backtrack_ecall() {
-  if (debug_symbolic) {
-    printf1((uint64_t*) "%s: backtracking ecall ", selfie_name);
-    print_symbolic_memory(tc);
-  }
-
-  if (*(vaddrs + tc) == 0) {
-    // backtracking malloc
-    if (get_program_break(current_context) == *(los + tc) + *(ups + tc))
-      set_program_break(current_context, *(los + tc));
-    else {
-      printf1((uint64_t*) "%s: malloc backtracking error at ", selfie_name);
-      print_symbolic_memory(tc);
-      printf4((uint64_t*) " with current program break %x unequal %x which is previous program break %x plus size %d\n",
-        (uint64_t*) get_program_break(current_context),
-        (uint64_t*) (*(los + tc) + *(ups + tc)),
-        (uint64_t*) *(los + tc),
-        (uint64_t*) *(ups + tc));
-
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    }
-  } else {
-    // backtracking read
-    rc = rc + 1;
-
-    // record value, lower and upper bound
-    *(read_values + rc) = *(values + tc);
-
-    *(read_los + rc) = *(los + tc);
-    *(read_ups + rc) = *(ups + tc);
-
-    store_virtual_memory(pt, *(vaddrs + tc), *(tcs + tc));
-  }
-
-  efree();
-}
-
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    printf1((uint64_t*) "(~%d)", (uint64_t*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
+    printf1("(~%d)", (char*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
 }
 
 void print_data_context(uint64_t data) {
-  printf1((uint64_t*) "%x", (uint64_t*) pc);
+  printf1("%x", (char*) pc);
 
   if (disassemble_verbose) {
     print_data_line_number();
-    print((uint64_t*) ": ");
+    print(": ");
     print_hexadecimal(data, SIZEOFUINT64 * 2);
-    print((uint64_t*) " ");
+    print(" ");
   } else
-    print((uint64_t*) ": ");
+    print(": ");
 }
 
 void print_data(uint64_t data) {
   print_data_context(data);
-  printf1((uint64_t*) ".quad %x", (uint64_t*) data);
+  printf1(".quad %x", (char*) data);
 }
 
 // -----------------------------------------------------------------
@@ -7802,360 +7428,135 @@ void replay_trace() {
 }
 
 // -----------------------------------------------------------------
+// ------------------------ SYMBOLIC MEMORY ------------------------
+// -----------------------------------------------------------------
+
+uint64_t* load_symbolic_memory(uint64_t vaddr) {
+  uint64_t* sword;
+
+  sword = symbolic_memory;
+
+  while (sword != (uint64_t*) 0) {
+    if (get_word_address(sword) == vaddr)
+      return sword;
+
+    sword = get_next_word(sword);
+  }
+
+  return (uint64_t*) 0;
+}
+
+void store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, uint64_t bits) {
+  uint64_t* sword;
+
+  sword = allocate_symbolic_memory_word();
+
+  set_next_word(sword, symbolic_memory);
+  set_word_address(sword, vaddr);
+  set_word_value(sword, val);
+
+  if (var)
+    set_word_symbolic(sword, var);
+  else if (sym) {
+    set_word_symbolic(sword, smt_variable("m", SIZEOFUINT64 * 8));
+
+    printf2("(assert (= %s %s)); sd in ", get_word_symbolic(sword), sym);
+    print_code_context_for_instruction(pc);
+    println();
+  } else
+    set_word_symbolic(sword, 0);
+
+  set_number_of_bits(sword, bits);
+
+  symbolic_memory = sword;
+}
+
+uint64_t is_symbolic_value(uint64_t* sword) {
+  return get_word_symbolic(sword) != (char*) 0;
+}
+
+void print_symbolic_memory(uint64_t* sword) {
+  if (is_symbolic_value(sword))
+    print(get_word_symbolic(sword));
+
+  printf2("[%x]@%x\n", (char*) get_word_value(sword), (char*) get_word_address(sword));
+}
+
+// -----------------------------------------------------------------
 // ------------------- SYMBOLIC EXECUTION ENGINE -------------------
 // -----------------------------------------------------------------
 
-void print_symbolic_memory(uint64_t svc) {
-  printf3((uint64_t*) "@%d{@%d@%x", (uint64_t*) svc, (uint64_t*) *(tcs + svc), (uint64_t*) *(pcs + svc));
-  if (*(pcs + svc) >= entry_point)
-    print_code_line_number_for_instruction(*(pcs + svc) - entry_point);
-  if (*(vaddrs + svc) == 0) {
-    printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) *(values + svc), (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
-    return;
-  } else if (*(vaddrs + svc) < NUMBEROFREGISTERS)
-    printf2((uint64_t*) ";%s=%d", get_register_name(*(vaddrs + svc)), (uint64_t*) *(values + svc));
+char* bv_constant(uint64_t value) {
+  char* string;
+
+  string = string_alloc(5 + 20 + 4); // 64-bit numbers require up to 20 decimal digits
+
+  sprintf1(string, "(_ bv%d 64)", (char*) value);
+
+  return string;
+}
+
+char* bv_variable(uint64_t bits) {
+  char* string;
+
+  string = string_alloc(10 + 2); // up to 64-bit variables require up to 2 decimal digits
+
+  sprintf1(string, "(_ BitVec %d)", (char*) bits);
+
+  return string;
+}
+
+char* bv_zero_extension(uint64_t bits) {
+  char* string;
+
+  string = string_alloc(15 + 2); // up to 64-bit variables require up to 2 decimal digits
+
+  sprintf1(string, "(_ zero_extend %d)", (char*) (CPUBITWIDTH - bits));
+
+  return string;
+}
+
+char* smt_value(uint64_t val, char* sym) {
+  if (sym)
+    return sym;
   else
-    printf2((uint64_t*) ";%x=%d", (uint64_t*) *(vaddrs + svc), (uint64_t*) *(values + svc));
-  if (*(types + svc))
-    if (*(los + svc) == *(ups + svc))
-      printf1((uint64_t*) "(%d)}\n", (uint64_t*) *(los + svc));
-    else
-      printf2((uint64_t*) "(%d,%d)}\n", (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
-  else if (*(los + svc) == *(ups + svc))
-    printf1((uint64_t*) "[%d]}\n", (uint64_t*) *(los + svc));
-  else
-    printf2((uint64_t*) "[%d,%d]}\n", (uint64_t*) *(los + svc), (uint64_t*) *(ups + svc));
+    return bv_constant(val);
 }
 
-uint64_t cardinality(uint64_t lo, uint64_t up) {
-  // there are 2^64 values if the result is 0
-  return up - lo + 1;
+char* smt_variable(char* prefix, uint64_t bits) {
+  char* svar;
+
+  svar = string_alloc(string_length(prefix) + 20); // 64-bit numbers require up to 20 decimal digits
+
+  sprintf2(svar, "%s%d", prefix, (char*) variable_version);
+
+  printf2("(declare-fun %s () (_ BitVec %d)); variable for ", svar, (char*) bits);
+  print_code_context_for_instruction(pc);
+  println();
+
+  variable_version = variable_version + 1;
+
+  return svar;
 }
 
-uint64_t combined_cardinality(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
-  uint64_t c1;
-  uint64_t c2;
+char* smt_unary(char* opt, char* op) {
+  char* string;
 
-  c1 = cardinality(lo1, up1);
-  c2 = cardinality(lo2, up2);
+  string = string_alloc(1 + string_length(opt) + 1 + string_length(op) + 1);
 
-  if (c1 + c2 <= c1)
-    // there are at least 2^64 values
-    return 0;
-  else if (c1 + c2 <= c2)
-    // there are at least 2^64 values
-    return 0;
-  else
-    return c1 + c2;
+  sprintf2(string, "(%s %s)", opt, op);
+
+  return string;
 }
 
-uint64_t is_symbolic_value(uint64_t type, uint64_t lo, uint64_t up) {
-  if (type)
-    // memory range
-    return 0;
-  else if (lo == up)
-    // singleton interval
-    return 0;
-  else
-    // non-singleton interval
-    return 1;
-}
+char* smt_binary(char* opt, char* op1, char* op2) {
+  char* string;
 
-uint64_t is_safe_address(uint64_t vaddr, uint64_t reg) {
-  if (*(reg_typ + reg)) {
-    if (vaddr < *(reg_los + reg))
-      // memory access below start address of mallocated block
-      return 0;
-    else if (vaddr - *(reg_los + reg) >= *(reg_ups + reg))
-      // memory access above end address of mallocated block
-      return 0;
-    else
-      return 1;
-  } else if (*(reg_los + reg) == *(reg_ups + reg))
-    return 1;
-  else {
-    printf2((uint64_t*) "%s: detected unsupported symbolic access of memory interval at %x", selfie_name, (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
-    println();
+  string = string_alloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1);
 
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
-}
+  sprintf3(string, "(%s %s %s)", opt, op1, op2);
 
-uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr) {
-  uint64_t mrvc;
-
-  // assert: vaddr is valid and mapped
-  mrvc = load_virtual_memory(pt, vaddr);
-
-  if (mrvc <= tc)
-    return mrvc;
-  else {
-    printf4((uint64_t*) "%s: detected most recent value counter %d at vaddr %x greater than current trace counter %d\n", selfie_name, (uint64_t*) mrvc, (uint64_t*) vaddr, (uint64_t*) tc);
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
-}
-
-uint64_t is_trace_space_available() {
-  return tc + 1 < MAX_TRACE_LENGTH;
-}
-
-void ealloc() {
-  tc = tc + 1;
-}
-
-void efree() {
-  // assert: tc > 0
-  tc = tc - 1;
-}
-
-void store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t value, uint64_t type, uint64_t lo, uint64_t up, uint64_t trb) {
-  uint64_t mrvc;
-
-  if (vaddr == 0)
-    // tracking program break and size for malloc
-    mrvc = 0;
-  else if (vaddr < NUMBEROFREGISTERS)
-    // tracking a register value for sltu
-    mrvc = mrcc;
-  else {
-    // assert: vaddr is valid and mapped
-    mrvc = load_symbolic_memory(pt, vaddr);
-
-    if (value == *(values + mrvc))
-      if (type == *(types + mrvc))
-        if (lo == *(los + mrvc))
-          if (up == *(ups + mrvc))
-            // prevent tracking identical updates
-            return;
-  }
-
-  if (trb < mrvc) {
-    // current value at vaddr does not need to be tracked,
-    // just overwrite it in the trace
-    *(values + mrvc) = value;
-
-    *(types + mrvc) = type;
-
-    *(los + mrvc) = lo;
-    *(ups + mrvc) = up;
-
-    // assert: vaddr == *(vaddrs + mrvc)
-
-    if (debug_symbolic) {
-      printf1((uint64_t*) "%s: overwriting ", selfie_name);
-      print_symbolic_memory(mrvc);
-    }
-  } else if (is_trace_space_available()) {
-    // current value at vaddr is from before most recent branch,
-    // track that value by creating a new trace event
-    ealloc();
-
-    *(pcs + tc) = pc;
-    *(tcs + tc) = mrvc;
-
-    *(values + tc) = value;
-
-    *(types + tc) = type;
-
-    *(los + tc) = lo;
-    *(ups + tc) = up;
-
-    *(vaddrs + tc) = vaddr;
-
-    if (vaddr < NUMBEROFREGISTERS) {
-      if (vaddr > 0)
-        // register tracking marks most recent constraint
-        mrcc = tc;
-    } else
-      // assert: vaddr is valid and mapped
-      store_virtual_memory(pt, vaddr, tc);
-
-    if (debug_symbolic) {
-      printf1((uint64_t*) "%s: storing ", selfie_name);
-      print_symbolic_memory(tc);
-    }
-  } else
-    throw_exception(EXCEPTION_MAXTRACE, 0);
-}
-
-void store_constrained_memory(uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t trb) {
-  uint64_t mrvc;
-
-  if (vaddr >= get_program_break(current_context))
-    if (vaddr < *(registers + REG_SP))
-      // do not constrain free memory
-      return;
-
-  mrvc = load_virtual_memory(pt, vaddr);
-
-  if (mrvc < trb) {
-    // we do not support potentially aliased constrained memory
-    printf1((uint64_t*) "%s: detected potentially aliased constrained memory\n", selfie_name);
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
-
-  // always track constrained memory by using tc as most recent branch
-  store_symbolic_memory(pt, vaddr, lo, 0, lo, up, tc);
-}
-
-void store_register_memory(uint64_t reg, uint64_t value) {
-  // always track register memory by using tc as most recent branch
-  store_symbolic_memory(pt, reg, value, 0, value, value, tc);
-}
-
-void constrain_memory(uint64_t reg, uint64_t lo, uint64_t up, uint64_t trb) {
-  if (*(reg_hasco + reg)) {
-    if (*(reg_hasmn + reg))
-      store_constrained_memory(*(reg_vaddr + reg), *(reg_colos + reg) - lo, *(reg_coups + reg) - up, trb);
-    else
-      store_constrained_memory(*(reg_vaddr + reg), lo - *(reg_colos + reg), up - *(reg_coups + reg), trb);
-  }
-}
-
-void set_constraint(uint64_t reg, uint64_t hasco, uint64_t vaddr, uint64_t hasmn, uint64_t colos, uint64_t coups) {
-  *(reg_hasco + reg) = hasco;
-  *(reg_vaddr + reg) = vaddr;
-  *(reg_hasmn + reg) = hasmn;
-  *(reg_colos + reg) = colos;
-  *(reg_coups + reg) = coups;
-}
-
-void take_branch(uint64_t b, uint64_t how_many_more) {
-  if (how_many_more > 0) {
-    // record that we need to set rd to true
-    store_register_memory(rd, b);
-
-    // record frame and stack pointer
-    store_register_memory(REG_FP, *(registers + REG_FP));
-    store_register_memory(REG_SP, *(registers + REG_SP));
-  } else {
-    *(registers + rd) = b;
-
-    *(reg_typ + rd) = 0;
-
-    *(reg_los + rd) = b;
-    *(reg_ups + rd) = b;
-
-    set_constraint(rd, 0, 0, 0, 0, 0);
-  }
-}
-
-void create_constraints(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2, uint64_t trb, uint64_t how_many_more) {
-  if (lo1 <= up1) {
-    // rs1 interval is not wrapped around
-    if (lo2 <= up2) {
-      // both rs1 and rs2 intervals are not wrapped around
-      if (up1 < lo2) {
-        // rs1 interval is strictly less than rs2 interval
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        take_branch(1, how_many_more);
-      } else if (up2 <= lo1) {
-        // rs2 interval is less than or equal to rs1 interval
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        take_branch(0, how_many_more);
-      } else if (lo2 == up2) {
-        // rs2 interval is a singleton
-
-        // construct constraint for false case
-        constrain_memory(rs1, lo2, up1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        // record that we need to set rd to false
-        store_register_memory(rd, 0);
-
-        // record frame and stack pointer
-        store_register_memory(REG_FP, *(registers + REG_FP));
-        store_register_memory(REG_SP, *(registers + REG_SP));
-
-        // construct constraint for true case
-        constrain_memory(rs1, lo1, lo2 - 1, trb);
-        constrain_memory(rs2, lo2, up2, trb);
-
-        take_branch(1, how_many_more);
-      } else if (lo1 == up1) {
-        // rs1 interval is a singleton
-
-        // construct constraint for false case
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo2, lo1, trb);
-
-        // record that we need to set rd to false
-        store_register_memory(rd, 0);
-
-        // record frame and stack pointer
-        store_register_memory(REG_FP, *(registers + REG_FP));
-        store_register_memory(REG_SP, *(registers + REG_SP));
-
-        // construct constraint for true case
-        constrain_memory(rs1, lo1, up1, trb);
-        constrain_memory(rs2, lo1 + 1, up2, trb);
-
-        take_branch(1, how_many_more);
-      } else {
-        // we cannot handle non-singleton interval intersections in comparison
-        printf1((uint64_t*) "%s: detected non-singleton interval intersection\n", selfie_name);
-
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
-    } else {
-      // rs1 interval is not wrapped around but rs2 is
-
-      // unwrap rs2 interval and use higher portion first
-      create_constraints(lo1, up1, lo2, UINT64_MAX, trb, 1);
-
-      // then use lower portion of rs2 interval
-      create_constraints(lo1, up1, 0, up2, trb, 0);
-    }
-  } else if (lo2 <= up2) {
-    // rs2 interval is not wrapped around but rs1 is
-
-    // unwrap rs1 interval and use higher portion first
-    create_constraints(lo1, UINT64_MAX, lo2, up2, trb, 1);
-
-    // then use lower portion of rs1 interval
-    create_constraints(0, up1, lo2, up2, trb, 0);
-  } else {
-    // both rs1 and rs2 intervals are wrapped around
-
-    // unwrap rs1 and rs2 intervals and use higher portions
-    create_constraints(lo1, UINT64_MAX, lo2, UINT64_MAX, trb, 3);
-
-    // use higher portion of rs1 interval and lower portion of rs2 interval
-    create_constraints(lo1, UINT64_MAX, 0, up2, trb, 2);
-
-    // use lower portions of rs1 and rs2 intervals
-    create_constraints(0, up1, 0, up2, trb, 1);
-
-    // use lower portion of rs1 interval and higher portion of rs2 interval
-    create_constraints(0, up1, lo2, UINT64_MAX, trb, 0);
-  }
-}
-
-uint64_t fuzz_lo(uint64_t value) {
-  if (fuzz >= CPUBITWIDTH)
-    return 0;
-  else if (value > (two_to_the_power_of(fuzz) - 1) / 2)
-    return value - (two_to_the_power_of(fuzz) - 1) / 2;
-  else
-    return 0;
-}
-
-uint64_t fuzz_up(uint64_t value) {
-  if (fuzz >= CPUBITWIDTH)
-    return UINT64_MAX;
-  else if (UINT64_MAX - value < two_to_the_power_of(fuzz) / 2)
-    return UINT64_MAX;
-  else if (value > (two_to_the_power_of(fuzz) - 1) / 2)
-    return value + two_to_the_power_of(fuzz) / 2;
-  else
-    return two_to_the_power_of(fuzz) - 1;
+  return string;
 }
 
 // -----------------------------------------------------------------
@@ -8163,11 +7564,11 @@ uint64_t fuzz_up(uint64_t value) {
 // -----------------------------------------------------------------
 
 void print_register_hexadecimal(uint64_t reg) {
-  printf2((uint64_t*) "%s=%x", get_register_name(reg), (uint64_t*) *(registers + reg));
+  printf2("%s=%x", get_register_name(reg), (char*) *(registers + reg));
 }
 
 void print_register_octal(uint64_t reg) {
-  printf2((uint64_t*) "%s=%o", get_register_name(reg), (uint64_t*) *(registers + reg));
+  printf2("%s=%o", get_register_name(reg), (char*) *(registers + reg));
 }
 
 uint64_t is_system_register(uint64_t reg) {
@@ -8187,24 +7588,24 @@ void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
   else
-    printf3((uint64_t*) "%s=%d(%x)", get_register_name(reg), (uint64_t*) *(registers + reg), (uint64_t*) *(registers + reg));
+    printf3("%s=%d(%x)", get_register_name(reg), (char*) *(registers + reg), (char*) *(registers + reg));
 }
 
 void print_exception(uint64_t exception, uint64_t faulting_page) {
-  print((uint64_t*) *(EXCEPTIONS + exception));
+  print((char*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT)
-    printf1((uint64_t*) " at %p", (uint64_t*) faulting_page);
+    printf1(" at %p", (char*) faulting_page);
 }
 
 void throw_exception(uint64_t exception, uint64_t faulting_page) {
   if (get_exception(current_context) != EXCEPTION_NOEXCEPTION)
     if (get_exception(current_context) != exception) {
-      printf2((uint64_t*) "%s: context %p throws ", selfie_name, current_context);
+      printf2("%s: context %p throws ", selfie_name, (char*) current_context);
       print_exception(exception, faulting_page);
-      print((uint64_t*) " exception in presence of ");
+      print(" exception in presence of ");
       print_exception(get_exception(current_context), get_faulting_page(current_context));
-      print((uint64_t*) " exception\n");
+      print(" exception\n");
 
       exit(EXITCODE_MULTIPLEEXCEPTIONERROR);
     }
@@ -8215,9 +7616,9 @@ void throw_exception(uint64_t exception, uint64_t faulting_page) {
   trap = 1;
 
   if (debug_exception) {
-    printf2((uint64_t*) "%s: context %p throws ", selfie_name, current_context);
+    printf2("%s: context %p throws ", selfie_name, (char*) current_context);
     print_exception(exception, faulting_page);
-    print((uint64_t*) " exception\n");
+    print(" exception\n");
   }
 }
 
@@ -8304,8 +7705,6 @@ void decode_execute() {
           println();
         } else if (symbolic)
           constrain_sd();
-        else if (backtrack)
-          backtrack_sd();
       } else
         do_sd();
 
@@ -8321,7 +7720,7 @@ void decode_execute() {
             record_lui_addi_add_sub_mul_sltu_jal_jalr();
             do_add();
           } else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu((uint64_t*) "add");
+            print_add_sub_mul_divu_remu_sltu("add");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               do_add();
@@ -8329,8 +7728,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
+            constrain_add_sub_mul_divu_remu_sltu("bvadd");
             do_add();
-            constrain_add();
           }
         } else
           do_add();
@@ -8344,7 +7743,7 @@ void decode_execute() {
           } else if (undo)
             undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu((uint64_t*) "sub");
+            print_add_sub_mul_divu_remu_sltu("sub");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               do_sub();
@@ -8352,8 +7751,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
+            constrain_add_sub_mul_divu_remu_sltu("bvsub");
             do_sub();
-            constrain_sub();
           }
         } else
           do_sub();
@@ -8367,7 +7766,7 @@ void decode_execute() {
           } else if (undo)
             undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu((uint64_t*) "mul");
+            print_add_sub_mul_divu_remu_sltu("mul");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               do_mul();
@@ -8375,8 +7774,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
+            constrain_add_sub_mul_divu_remu_sltu("bvmul");
             do_mul();
-            constrain_mul();
           }
         } else
           do_mul();
@@ -8392,7 +7791,7 @@ void decode_execute() {
           } else if (undo)
             undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu((uint64_t*) "divu");
+            print_add_sub_mul_divu_remu_sltu("divu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               do_divu();
@@ -8400,8 +7799,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
+            constrain_add_sub_mul_divu_remu_sltu("bvudiv");
             do_divu();
-            constrain_divu();
           }
         } else
           do_divu();
@@ -8417,7 +7816,7 @@ void decode_execute() {
           } else if (undo)
             undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu((uint64_t*) "remu");
+            print_add_sub_mul_divu_remu_sltu("remu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               do_remu();
@@ -8425,8 +7824,8 @@ void decode_execute() {
             }
             println();
           } else if (symbolic) {
+            constrain_add_sub_mul_divu_remu_sltu("bvurem");
             do_remu();
-            constrain_remu();
           }
         } else
           do_remu();
@@ -8442,17 +7841,18 @@ void decode_execute() {
           } else if (undo)
             undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
           else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu((uint64_t*) "sltu");
+            print_add_sub_mul_divu_remu_sltu("sltu");
             if (execute) {
               print_add_sub_mul_divu_remu_sltu_before();
               do_sltu();
               print_addi_add_sub_mul_divu_remu_sltu_after();
             }
             println();
-          } else if (symbolic)
-            constrain_sltu();
-          else if (backtrack)
-            backtrack_sltu();
+          } else if (symbolic) {
+            constrain_add_sub_mul_divu_remu_sltu("bvult");
+            zero_extend_sltu();
+            do_sltu();
+          }
         } else
           do_sltu();
 
@@ -8476,7 +7876,7 @@ void decode_execute() {
           }
           println();
         } else if (symbolic)
-          do_beq();
+          constrain_beq();
       } else
         do_beq();
 
@@ -8499,10 +7899,8 @@ void decode_execute() {
           print_jal_jalr_after();
         }
         println();
-      } else if (symbolic) {
+      } else if (symbolic)
         do_jal();
-        constrain_jal_jalr();
-      }
     } else
       do_jal();
 
@@ -8526,8 +7924,8 @@ void decode_execute() {
           }
           println();
         } else if (symbolic) {
+          constrain_jalr();
           do_jalr();
-          constrain_jal_jalr();
         }
       } else
         do_jalr();
@@ -8552,8 +7950,8 @@ void decode_execute() {
         }
         println();
       } else if (symbolic) {
-        do_lui();
         constrain_lui();
+        do_lui();
       }
     } else
       do_lui();
@@ -8577,8 +7975,6 @@ void decode_execute() {
             println();
         } else if (symbolic)
           do_ecall();
-        else if (backtrack)
-          backtrack_ecall();
       } else
         do_ecall();
 
@@ -8592,7 +7988,7 @@ void decode_execute() {
     //report the error on the console
     output_fd = 1;
 
-    printf2((uint64_t*) "%s: unknown instruction with %x opcode detected\n", selfie_name, (uint64_t*) opcode);
+    printf2("%s: unknown instruction with %x opcode detected\n", selfie_name, (char*) opcode);
 
     exit(EXITCODE_UNKNOWNINSTRUCTION);
   }
@@ -8614,7 +8010,7 @@ void interrupt() {
   }
 }
 
-uint64_t* run_until_exception() {
+void run_until_exception() {
   trap = 0;
 
   while (trap == 0) {
@@ -8624,8 +8020,6 @@ uint64_t* run_until_exception() {
   }
 
   trap = 0;
-
-  return current_context;
 }
 
 uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max) {
@@ -8671,43 +8065,41 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf3((uint64_t*) ",%d(%.2d%%)@%x", (uint64_t*) c, (uint64_t*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (uint64_t*) a);
+    printf3(",%d(%.2d%%)@%x", (char*) c, (char*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (char*) a);
     print_code_line_number_for_instruction(a);
 
     return c;
   } else {
-    print((uint64_t*) ",0(0.00%)");
+    print(",0(0.00%)");
 
     return 0;
   }
 }
 
-void print_per_instruction_profile(uint64_t* message, uint64_t total, uint64_t* counters) {
-  printf3((uint64_t*) "%s%s%d", selfie_name, message, (uint64_t*) total);
+void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
+  printf3("%s%s%d", selfie_name, message, (char*) total);
   print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, UINT64_MAX)));
   println();
 }
 
 void print_profile() {
-  printf4((uint64_t*)
-    "%s: summary: %d executed instructions and %.2dMB(%.2d%%) mapped memory\n",
-    selfie_name,
-    (uint64_t*) get_total_number_of_instructions(),
-    (uint64_t*) fixed_point_ratio(pused(), MEGABYTE, 2),
-    (uint64_t*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, pused(), 4), 4));
+  printf4("%s: summary: %d executed instructions and %.2dMB(%.2d%%) mapped memory\n", selfie_name,
+    (char*) get_total_number_of_instructions(),
+    (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
+    (char*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, pused(), 4), 4));
 
   if (get_total_number_of_instructions() > 0) {
     print_instruction_counters();
 
     if (code_line_number != (uint64_t*) 0)
-      printf1((uint64_t*) "%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
+      printf1("%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
     else
-      printf1((uint64_t*) "%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
+      printf1("%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
 
-    print_per_instruction_profile((uint64_t*) ": calls:   ", calls, calls_per_procedure);
-    print_per_instruction_profile((uint64_t*) ": loops:   ", iterations, iterations_per_loop);
-    print_per_instruction_profile((uint64_t*) ": loads:   ", ic_ld, loads_per_instruction);
-    print_per_instruction_profile((uint64_t*) ": stores:  ", ic_sd, stores_per_instruction);
+    print_per_instruction_profile(": calls:   ", calls, calls_per_procedure);
+    print_per_instruction_profile(": loops:   ", iterations, iterations_per_loop);
+    print_per_instruction_profile(": loads:   ", ic_ld, loads_per_instruction);
+    print_per_instruction_profile(": stores:  ", ic_sd, stores_per_instruction);
   }
 }
 
@@ -8717,7 +8109,7 @@ void selfie_disassemble(uint64_t verbose) {
   assembly_name = get_argument();
 
   if (code_length == 0) {
-    printf2((uint64_t*) "%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
+    printf2("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
 
     return;
   }
@@ -8727,7 +8119,7 @@ void selfie_disassemble(uint64_t verbose) {
   assembly_fd = open_write_only(assembly_name);
 
   if (signed_less_than(assembly_fd, 0)) {
-    printf2((uint64_t*) "%s: could not create assembly output file %s\n", selfie_name, assembly_name);
+    printf2("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -8765,13 +8157,13 @@ void selfie_disassemble(uint64_t verbose) {
   disassemble         = 0;
   debug               = 0;
 
-  output_name = (uint64_t*) 0;
+  output_name = (char*) 0;
   output_fd   = 1;
 
-  printf5((uint64_t*) "%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
-    (uint64_t*) number_of_written_characters,
-    (uint64_t*) (code_length / INSTRUCTIONSIZE),
-    (uint64_t*) (binary_length - code_length),
+  printf5("%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
+    (char*) number_of_written_characters,
+    (char*) (code_length / INSTRUCTIONSIZE),
+    (char*) (binary_length - code_length),
     assembly_name);
 }
 
@@ -8779,23 +8171,32 @@ void selfie_disassemble(uint64_t verbose) {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
-uint64_t* allocate_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
+uint64_t* new_context() {
   uint64_t* context;
 
   if (free_contexts == (uint64_t*) 0)
-    context = smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
+    if (symbolic)
+      context = allocate_symbolic_context();
+    else
+      context = allocate_context();
   else {
     context = free_contexts;
 
     free_contexts = get_next_context(free_contexts);
   }
 
-  set_next_context(context, in);
+  set_next_context(context, used_contexts);
   set_prev_context(context, (uint64_t*) 0);
 
-  if (in != (uint64_t*) 0)
-    set_prev_context(in, context);
+  if (used_contexts != (uint64_t*) 0)
+    set_prev_context(used_contexts, context);
 
+  used_contexts = context;
+
+  return context;
+}
+
+void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_pc(context, 0);
 
   // allocate zeroed memory for general purpose registers
@@ -8819,15 +8220,70 @@ uint64_t* allocate_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
   set_parent(context, parent);
   set_virtual_context(context, vctxt);
 
-  set_name(context, (uint64_t*) 0);
+  set_name(context, 0);
 
-  return context;
+  if (symbolic) {
+    set_execution_depth(context, 0);
+    set_path_condition(context, "true");
+    set_symbolic_memory(context, (uint64_t*) 0);
+    set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+    set_related_context(context, (uint64_t*) 0);
+  }
 }
 
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt, uint64_t* in) {
+void copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth) {
+  uint64_t* context;
+  uint64_t r;
+
+  context = new_context();
+
+  set_pc(context, location);
+
+  set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_regs(context) + r) = *(get_regs(original) + r);
+
+    r = r + 1;
+  }
+
+  set_pt(context, pt);
+
+  set_lo_page(context, get_lo_page(original));
+  set_me_page(context, get_me_page(original));
+  set_hi_page(context, get_hi_page(original));
+  set_exception(context, get_exception(original));
+  set_faulting_page(context, get_faulting_page(original));
+  set_exit_code(context, get_exit_code(original));
+  set_parent(context, get_parent(original));
+  set_virtual_context(context, get_virtual_context(original));
+  set_name(context, get_name(original));
+
+  set_execution_depth(context, depth);
+  set_path_condition(context, condition);
+  set_symbolic_memory(context, symbolic_memory);
+
+  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_symbolic_regs(context) + r) = *(get_symbolic_regs(original) + r);
+
+    r = r + 1;
+  }
+
+  set_related_context(context, symbolic_contexts);
+
+  symbolic_contexts = context;
+}
+
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
   uint64_t* context;
 
-  context = in;
+  context = used_contexts;
 
   while (context != (uint64_t*) 0) {
     if (get_parent(context) == parent)
@@ -8866,23 +8322,25 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from) {
 // -----------------------------------------------------------------
 
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
-  // TODO: check if context already exists
-  used_contexts = allocate_context(parent, vctxt, used_contexts);
+  uint64_t* context;
 
-  if (current_context == (uint64_t*) 0)
-    current_context = used_contexts;
+  context = new_context();
+
+  init_context(context, parent, vctxt);
 
   if (debug_create)
-    printf3((uint64_t*) "%s: parent context %p created child context %p\n", selfie_name, parent, used_contexts);
+    printf3("%s: parent context %p created child context %p\n", selfie_name,
+      (char*) parent,
+      (char*) used_contexts);
 
-  return used_contexts;
+  return context;
 }
 
 uint64_t* cache_context(uint64_t* vctxt) {
   uint64_t* context;
 
   // find cached context on my boot level
-  context = find_context(current_context, vctxt, used_contexts);
+  context = find_context(current_context, vctxt);
 
   if (context == (uint64_t*) 0)
     // create cached context on my boot level
@@ -8895,11 +8353,16 @@ void save_context(uint64_t* context) {
   uint64_t* parent_table;
   uint64_t* vctxt;
   uint64_t r;
-  uint64_t* registers;
-  uint64_t* vregisters;
+  uint64_t* pregs;
+  uint64_t* vregs;
 
   // save machine state
   set_pc(context, pc);
+
+  if (symbolic) {
+    set_path_condition(context, path_condition);
+    set_symbolic_memory(context, symbolic_memory);
+  }
 
   if (get_parent(context) != MY_CONTEXT) {
     parent_table = get_pt(get_parent(context));
@@ -8910,12 +8373,11 @@ void save_context(uint64_t* context) {
 
     r = 0;
 
-    registers = get_regs(context);
-
-    vregisters = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
+    pregs = get_regs(context);
+    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      store_virtual_memory(parent_table, (uint64_t) (vregisters + r), *(registers + r));
+      store_virtual_memory(parent_table, (uint64_t) (vregs + r), *(pregs + r));
 
       r = r + 1;
     }
@@ -8946,9 +8408,9 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 
   if (debug_map) {
-    printf1((uint64_t*) "%s: page ", selfie_name);
+    printf1("%s: page ", selfie_name);
     print_hexadecimal(page, 4);
-    printf2((uint64_t*) " mapped to frame %p in context %p\n", (uint64_t*) frame, context);
+    printf2(" mapped to frame %p in context %p\n", (char*) frame, (char*) context);
   }
 }
 
@@ -8956,8 +8418,8 @@ void restore_context(uint64_t* context) {
   uint64_t* parent_table;
   uint64_t* vctxt;
   uint64_t r;
-  uint64_t* registers;
-  uint64_t* vregisters;
+  uint64_t* pregs;
+  uint64_t* vregs;
   uint64_t* table;
   uint64_t page;
   uint64_t me;
@@ -8972,12 +8434,11 @@ void restore_context(uint64_t* context) {
 
     r = 0;
 
-    registers = get_regs(context);
-
-    vregisters = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
+    pregs = get_regs(context);
+    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
 
     while (r < NUMBEROFREGISTERS) {
-      *(registers + r) = load_virtual_memory(parent_table, (uint64_t) (vregisters + r));
+      *(pregs + r) = load_virtual_memory(parent_table, (uint64_t) (vregs + r));
 
       r = r + 1;
     }
@@ -9080,7 +8541,7 @@ uint64_t* palloc() {
         free_page_frame_memory = free_page_frame_memory - PAGESIZE;
     } else {
       print(selfie_name);
-      print((uint64_t*) ": palloc out of physical memory\n");
+      print(": palloc out of physical memory\n");
 
       exit(EXITCODE_OUTOFPHYSICALMEMORY);
     }
@@ -9107,17 +8568,7 @@ void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
   if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
     map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
 
-  if (symbolic) {
-    if (is_trace_space_available())
-      // always track initialized memory by using tc as most recent branch
-      store_symbolic_memory(get_pt(context), vaddr, data, 0, data, data, tc);
-    else {
-      printf1((uint64_t*) "%s: ealloc out of memory\n", selfie_name);
-
-      exit(EXITCODE_OUTOFTRACEMEMORY);
-    }
-  } else
-    store_virtual_memory(get_pt(context), vaddr, data);
+  store_virtual_memory(get_pt(context), vaddr, data);
 }
 
 void up_load_binary(uint64_t* context) {
@@ -9133,20 +8584,6 @@ void up_load_binary(uint64_t* context) {
 
   baddr = 0;
 
-  if (symbolic) {
-    // code is never constrained...
-    symbolic = 0;
-
-    while (baddr < code_length) {
-      map_and_store(context, entry_point + baddr, load_data(baddr));
-
-      baddr = baddr + REGISTERSIZE;
-    }
-
-    // ... but data is
-    symbolic = 1;
-  }
-
   while (baddr < binary_length) {
     map_and_store(context, entry_point + baddr, load_data(baddr));
 
@@ -9156,7 +8593,7 @@ void up_load_binary(uint64_t* context) {
   set_name(context, binary_name);
 }
 
-uint64_t up_load_string(uint64_t* context, uint64_t* s, uint64_t SP) {
+uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
   uint64_t bytes;
   uint64_t i;
 
@@ -9168,9 +8605,11 @@ uint64_t up_load_string(uint64_t* context, uint64_t* s, uint64_t SP) {
   i = 0;
 
   while (i < bytes) {
-    map_and_store(context, SP + i, *s);
+    // CAUTION: at boot levels higher than zero, s is only accessible
+    // in C* at machine word granularity, not individual characters
+    map_and_store(context, SP + i, *((uint64_t*) s));
 
-    s = s + 1;
+    s = (char*) ((uint64_t*) s + 1);
 
     i = i + REGISTERSIZE;
   }
@@ -9200,7 +8639,7 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // push program parameters onto the stack
   while (i < argc) {
-    SP = up_load_string(context, (uint64_t*) *(argv + i), SP);
+    SP = up_load_string(context, (char*) *(argv + i), SP);
 
     // store pointer in virtual *argv
     *(vargv + i) = SP;
@@ -9241,14 +8680,6 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // store stack pointer value in stack pointer register
   *(get_regs(context) + REG_SP) = SP;
-
-  // set bounds to register value for symbolic execution
-  if (symbolic) {
-    *(reg_typ + REG_SP) = 0;
-
-    *(reg_los + REG_SP) = SP;
-    *(reg_ups + REG_SP) = SP;
-  }
 }
 
 uint64_t handle_system_call(uint64_t* context) {
@@ -9272,20 +8703,14 @@ uint64_t handle_system_call(uint64_t* context) {
     // TODO: exit only if all contexts have exited
     return EXIT;
   } else {
-    printf2((uint64_t*) "%s: unknown system call %d\n", selfie_name, (uint64_t*) a7);
+    printf2("%s: unknown system call %d\n", selfie_name, (char*) a7);
 
     set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
 
     return EXIT;
   }
 
-  if (get_exception(context) == EXCEPTION_MAXTRACE) {
-    // exiting during symbolic execution, no exit code necessary
-    set_exception(context, EXCEPTION_NOEXCEPTION);
-
-    return EXIT;
-  } else
-    return DONOTEXIT;
+  return DONOTEXIT;
 }
 
 uint64_t handle_page_fault(uint64_t* context) {
@@ -9301,13 +8726,13 @@ uint64_t handle_division_by_zero(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (record) {
-    printf1((uint64_t*) "%s: division by zero, replaying...\n", selfie_name);
+    printf1("%s: division by zero, replaying...\n", selfie_name);
 
     replay_trace();
 
     set_exit_code(context, EXITCODE_NOERROR);
   } else {
-    printf1((uint64_t*) "%s: division by zero\n", selfie_name);
+    printf1("%s: division by zero\n", selfie_name);
 
     set_exit_code(context, EXITCODE_DIVISIONBYZERO);
   }
@@ -9315,18 +8740,20 @@ uint64_t handle_division_by_zero(uint64_t* context) {
   return EXIT;
 }
 
-uint64_t handle_max_trace(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  set_exit_code(context, EXITCODE_OUTOFTRACEMEMORY);
-
-  return EXIT;
-}
-
 uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
-  return DONOTEXIT;
+  if (symbolic) {
+    print("(push 1)\n");
+
+    printf1("(assert (not %s)); timeout in ", path_condition);
+    print_code_context_for_instruction(pc);
+
+    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+    return EXIT;
+  } else
+    return DONOTEXIT;
 }
 
 uint64_t handle_exception(uint64_t* context) {
@@ -9340,12 +8767,10 @@ uint64_t handle_exception(uint64_t* context) {
     return handle_page_fault(context);
   else if (exception == EXCEPTION_DIVISIONBYZERO)
     return handle_division_by_zero(context);
-  else if (exception == EXCEPTION_MAXTRACE)
-    return handle_max_trace(context);
   else if (exception == EXCEPTION_TIMER)
     return handle_timer(context);
   else {
-    printf2((uint64_t*) "%s: context %s throws uncaught ", selfie_name, get_name(context));
+    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
     print_exception(exception, get_faulting_page(context));
     println();
 
@@ -9359,7 +8784,7 @@ uint64_t mipster(uint64_t* to_context) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  print((uint64_t*) "mipster\n");
+  print("mipster\n");
 
   timeout = TIMESLICE;
 
@@ -9385,7 +8810,7 @@ uint64_t mipster(uint64_t* to_context) {
 uint64_t hypster(uint64_t* to_context) {
   uint64_t* from_context;
 
-  print((uint64_t*) "hypster\n");
+  print("hypster\n");
 
   while (1) {
     from_context = hypster_switch(to_context, TIMESLICE);
@@ -9404,7 +8829,7 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  printf2((uint64_t*) "mixter (%d%% mipster/%d%% hypster)\n", (uint64_t*) mix, (uint64_t*) (100 - mix));
+  printf2("mixter (%d%% mipster/%d%% hypster)\n", (char*) mix, (char*) (100 - mix));
 
   mslice = TIMESLICE;
 
@@ -9474,7 +8899,7 @@ uint64_t minmob(uint64_t* to_context) {
     } else {
       // minster and mobster do not handle page faults
       if (get_exception(from_context) == EXCEPTION_PAGEFAULT) {
-        printf2((uint64_t*) "%s: context %s throws uncaught ", selfie_name, get_name(from_context));
+        printf2("%s: context %s throws uncaught ", selfie_name, get_name(from_context));
         print_exception(get_exception(from_context), get_faulting_page(from_context));
         println();
 
@@ -9508,7 +8933,7 @@ void map_unmapped_pages(uint64_t* context) {
 }
 
 uint64_t minster(uint64_t* to_context) {
-  print((uint64_t*) "minster\n");
+  print("minster\n");
 
   // virtual is like physical memory in initial context up to memory size
   // by mapping unmapped pages (for the heap) to all available page frames
@@ -9520,55 +8945,78 @@ uint64_t minster(uint64_t* to_context) {
 }
 
 uint64_t mobster(uint64_t* to_context) {
-  print((uint64_t*) "mobster\n");
+  print("mobster\n");
 
   // does not handle page faults, relies on fancy hypsters to do that
   return minmob(to_context);
 }
 
-void backtrack_trace(uint64_t* context) {
-  uint64_t savepc;
+char* replace_extension(char* filename, uint64_t e) {
+  char* s;
+  uint64_t i;
+  uint64_t c;
 
-  if (debug_symbolic)
-    printf3((uint64_t*) "%s: backtracking %s from exit code %d\n", selfie_name, get_name(context), (uint64_t*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH));
+  // assert: 0 < string_length(filename) - 2 < MAX_FILENAME_LENGTH
 
-  symbolic = 0;
+  s = string_alloc(string_length(filename) + 2);
 
-  backtrack = 1;
+  i = 0;
 
-  while (backtrack) {
-    pc = *(pcs + tc);
+  c = load_character(filename, i);
 
-    if (pc == 0)
-      // we have backtracked all code back to the data segment
-      backtrack = 0;
-    else {
-      savepc = pc;
+  while (c != 0) {
+    store_character(s, i, c);
 
-      fetch();
-      decode_execute();
+    if (c == '.') {
+      store_character(s, i, 0);
 
-      if (pc != savepc)
-        // backtracking stopped by sltu
-        backtrack = 0;
+      c = 0;
+    } else {
+      i = i + 1;
+
+      c = load_character(filename, i);
     }
   }
 
-  symbolic = 1;
+  // writing s plus extension into s works because we allocated two more bytes
+  sprintf2(s, "%s.%c", s, (char*) e);
 
-  set_pc(context, pc);
+  return s;
 }
 
 uint64_t monster(uint64_t* to_context) {
-  uint64_t b;
   uint64_t timeout;
   uint64_t* from_context;
 
-  print((uint64_t*) "monster\n");
+  print("monster\n");
 
-  b = 0;
+  // use extension ".t" in name of SMT-LIB file
+  smt_name = replace_extension(binary_name, 't');
 
-  timeout = TIMESLICE;
+  // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  smt_fd = open_write_only(smt_name);
+
+  if (signed_less_than(smt_fd, 0)) {
+    printf2("%s: could not create SMT-LIB output file %s\n", selfie_name, smt_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  output_name = smt_name;
+  output_fd   = smt_fd;
+
+  printf1("; SMT-LIB formulae selfie-generated by %s\n", selfie_name);
+  if (max_execution_depth)
+    printf2("; for %s with %d execution depth\n\n", binary_name, (char*) max_execution_depth);
+  else
+    printf1("; for %s with unbounded execution depth\n\n", binary_name);
+
+  print("(set-option :produce-models true)\n");
+  print("(set-option :incremental true)\n");
+  print("(set-logic QF_BV)\n\n");
+
+  timeout = max_execution_depth;
 
   while (1) {
     from_context = mipster_switch(to_context, timeout);
@@ -9580,28 +9028,29 @@ uint64_t monster(uint64_t* to_context) {
       timeout = TIMEROFF;
     } else {
       if (handle_exception(from_context) == EXIT) {
-        backtrack_trace(from_context);
+        if (symbolic_contexts) {
+          to_context = symbolic_contexts;
 
-        if (b == 0)
-          printf1((uint64_t*) "%s: backtracking ", selfie_name);
-        else
-          unprint_integer(b);
+          timeout = get_execution_depth(to_context);
 
-        b = b + 1;
+          symbolic_contexts = get_related_context(symbolic_contexts);
+        } else {
+          print("\n(exit)");
 
-        print_integer(b);
+          output_name = (char*) 0;
+          output_fd   = 1;
 
-        if (pc == 0) {
-          println();
+          printf3("%s: %d characters of SMT-LIB formulae written into %s\n", selfie_name,
+            (char*) number_of_written_characters,
+            smt_name);
 
           return EXITCODE_NOERROR;
         }
+      } else {
+        timeout = timer;
+
+        to_context = from_context;
       }
-
-      // TODO: scheduler should go here
-      to_context = from_context;
-
-      timeout = TIMESLICE;
     }
   }
 }
@@ -9626,11 +9075,22 @@ uint64_t is_boot_level_zero() {
   return 0;
 }
 
+void boot_loader() {
+  current_context = create_context(MY_CONTEXT, 0);
+
+  up_load_binary(current_context);
+
+  // pass binary name as first argument by replacing memory size
+  set_argument(binary_name);
+
+  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
+}
+
 uint64_t selfie_run(uint64_t machine) {
   uint64_t exit_code;
 
   if (binary_length == 0) {
-    printf1((uint64_t*) "%s: nothing to run, debug, or host\n", selfie_name);
+    printf1("%s: nothing to run, debug, or host\n", selfie_name);
 
     return EXITCODE_BADARGUMENTS;
   }
@@ -9646,32 +9106,26 @@ uint64_t selfie_run(uint64_t machine) {
   } else if (machine == MONSTER) {
     debug    = 1;
     symbolic = 1;
-
-    init_symbolic_engine();
   }
 
-  if (machine == MONSTER) {
-    init_memory(round_up(MAX_TRACE_LENGTH * SIZEOFUINT64, MEGABYTE) / MEGABYTE + 1);
-
-    fuzz = atoi(peek_argument());
-  } else
+  if (machine != MONSTER)
     init_memory(atoi(peek_argument()));
+  else {
+    init_memory(1);
+
+    max_execution_depth = atoi(peek_argument());
+  }
 
   execute = 1;
 
   reset_interpreter();
   reset_microkernel();
 
-  create_context(MY_CONTEXT, 0);
+  boot_loader();
 
-  up_load_binary(current_context);
-
-  // pass binary name as first argument by replacing memory size
-  set_argument(binary_name);
-
-  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
-
-  printf3((uint64_t*) "%s: selfie executing %s with %dMB physical memory on ", selfie_name, binary_name, (uint64_t*) (page_frame_memory / MEGABYTE));
+  printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
+    binary_name,
+    (char*) (page_frame_memory / MEGABYTE));
 
   if (machine == MIPSTER)
     exit_code = mipster(current_context);
@@ -9697,7 +9151,9 @@ uint64_t selfie_run(uint64_t machine) {
 
   execute = 0;
 
-  printf3((uint64_t*) "%s: selfie terminating %s with exit code %d\n", selfie_name, get_name(current_context), (uint64_t*) sign_extend(exit_code, SYSCALL_BITWIDTH));
+  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
+    get_name(current_context),
+    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
 
   print_profile();
 
@@ -9705,8 +9161,6 @@ uint64_t selfie_run(uint64_t machine) {
   record      = 0;
   disassemble = 0;
   debug       = 0;
-
-  fuzz = 0;
 
   return exit_code;
 }
@@ -9791,7 +9245,7 @@ void selfie_print_dimacs() {
   uint64_t clause;
   uint64_t variable;
 
-  printf2((uint64_t*) "p cnf %d %d\n", (uint64_t*) number_of_sat_variables, (uint64_t*) number_of_sat_clauses);
+  printf2("p cnf %d %d\n", (char*) number_of_sat_variables, (char*) number_of_sat_clauses);
 
   clause = 0;
 
@@ -9801,16 +9255,16 @@ void selfie_print_dimacs() {
     while (variable < number_of_sat_variables) {
       if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable) == TRUE) {
         print_integer(variable + 1);
-        print((uint64_t*) " ");
+        print(" ");
       } else if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable + 1) == TRUE) {
         print_integer(-(variable + 1));
-        print((uint64_t*) " ");
+        print(" ");
       }
 
       variable = variable + 1;
     }
 
-    print((uint64_t*) "0\n");
+    print("0\n");
 
     clause = clause + 1;
   }
@@ -9869,7 +9323,7 @@ void dimacs_get_symbol() {
   get_symbol();
 }
 
-void dimacs_word(uint64_t* word) {
+void dimacs_word(char* word) {
   if (symbol == SYM_IDENTIFIER) {
     if (string_compare(identifier, word)) {
       dimacs_get_symbol();
@@ -9916,7 +9370,7 @@ void dimacs_get_clause(uint64_t clause) {
 
         return;
       } else if (literal > number_of_sat_variables) {
-        syntax_error_message((uint64_t*) "clause exceeds declared number of variables");
+        syntax_error_message("clause exceeds declared number of variables");
 
         exit(EXITCODE_PARSERERROR);
       }
@@ -9948,13 +9402,13 @@ void dimacs_get_instance() {
 
       clauses = clauses + 1;
     } else {
-      syntax_error_message((uint64_t*) "instance has fewer clauses than declared");
+      syntax_error_message("instance has fewer clauses than declared");
 
       exit(EXITCODE_PARSERERROR);
     }
 
   if (symbol != SYM_EOF) {
-    syntax_error_message((uint64_t*) "instance has more clauses than declared");
+    syntax_error_message("instance has more clauses than declared");
 
     exit(EXITCODE_PARSERERROR);
   }
@@ -9963,14 +9417,14 @@ void dimacs_get_instance() {
 void selfie_load_dimacs() {
   source_name = get_argument();
 
-  printf2((uint64_t*) "%s: selfie loading SAT instance %s\n", selfie_name, source_name);
+  printf2("%s: selfie loading SAT instance %s\n", selfie_name, source_name);
 
   // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(source_fd, 0)) {
-    printf2((uint64_t*) "%s: could not open input file %s\n", selfie_name, source_name);
+    printf2("%s: could not open input file %s\n", selfie_name, source_name);
 
     exit(EXITCODE_IOERROR);
   }
@@ -9982,20 +9436,23 @@ void selfie_load_dimacs() {
 
   dimacs_get_symbol();
 
-  dimacs_word((uint64_t*) "p");
-  dimacs_word((uint64_t*) "cnf");
+  dimacs_word("p");
+  dimacs_word("cnf");
 
   number_of_sat_variables = dimacs_number();
 
-  sat_assignment = (uint64_t*) smalloc(number_of_sat_variables * SIZEOFUINT64);
+  sat_assignment = (uint64_t*) zalloc(number_of_sat_variables * SIZEOFUINT64);
 
   number_of_sat_clauses = dimacs_number();
 
-  sat_instance = (uint64_t*) smalloc(number_of_sat_clauses * 2 * number_of_sat_variables * SIZEOFUINT64);
+  sat_instance = (uint64_t*) zalloc(number_of_sat_clauses * 2 * number_of_sat_variables * SIZEOFUINT64);
 
   dimacs_get_instance();
 
-  printf4((uint64_t*) "%s: %d clauses with %d declared variables loaded from %s\n", selfie_name, (uint64_t*) number_of_sat_clauses, (uint64_t*) number_of_sat_variables, source_name);
+  printf4("%s: %d clauses with %d declared variables loaded from %s\n", selfie_name,
+    (char*) number_of_sat_clauses,
+    (char*) number_of_sat_variables,
+    source_name);
 
   dimacs_name = source_name;
 }
@@ -10005,8 +9462,8 @@ void selfie_sat() {
 
   selfie_load_dimacs();
 
-  if (dimacs_name == (uint64_t*) 0) {
-    printf1((uint64_t*) "%s: nothing to SAT solve\n", selfie_name);
+  if (dimacs_name == (char*) 0) {
+    printf1("%s: nothing to SAT solve\n", selfie_name);
 
     return;
   }
@@ -10014,20 +9471,20 @@ void selfie_sat() {
   selfie_print_dimacs();
 
   if (babysat(0) == SAT) {
-    printf2((uint64_t*) "%s: %s is satisfiable with ", selfie_name, dimacs_name);
+    printf2("%s: %s is satisfiable with ", selfie_name, dimacs_name);
 
     variable = 0;
 
     while (variable < number_of_sat_variables) {
       if (*(sat_assignment + variable) == FALSE)
-        printf1((uint64_t*) "-%d ", (uint64_t*) (variable + 1));
+        printf1("-%d ", (char*) (variable + 1));
       else
-        printf1((uint64_t*) "%d ", (uint64_t*) (variable + 1));
+        printf1("%d ", (char*) (variable + 1));
 
       variable = variable + 1;
     }
   } else
-    printf2((uint64_t*) "%s: %s is unsatisfiable", selfie_name, dimacs_name);
+    printf2("%s: %s is unsatisfiable", selfie_name, dimacs_name);
 
   println();
 }
@@ -10044,15 +9501,15 @@ uint64_t* remaining_arguments() {
   return selfie_argv;
 }
 
-uint64_t* peek_argument() {
+char* peek_argument() {
   if (number_of_remaining_arguments() > 0)
-    return (uint64_t*) *selfie_argv;
+    return (char*) *selfie_argv;
   else
-    return (uint64_t*) 0;
+    return (char*) 0;
 }
 
-uint64_t* get_argument() {
-  uint64_t* argument;
+char* get_argument() {
+  char* argument;
 
   argument = peek_argument();
 
@@ -10064,19 +9521,18 @@ uint64_t* get_argument() {
   return argument;
 }
 
-void set_argument(uint64_t* argv) {
+void set_argument(char* argv) {
   *selfie_argv = (uint64_t) argv;
 }
 
 void print_usage() {
-  printf3((uint64_t*) "%s: usage: selfie { %s } [ %s ]\n",
-    selfie_name,
-      (uint64_t*) "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
-      (uint64_t*) "( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ...");
+  printf3("%s: usage: selfie { %s } [ %s ]\n", selfie_name,
+    "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
+    "( -m | -d | -r | -n | -y | -min | -mob ) 0-4096 ... ");
 }
 
 uint64_t selfie() {
-  uint64_t* option;
+  char* option;
 
   if (number_of_remaining_arguments() == 0)
     print_usage();
@@ -10088,7 +9544,7 @@ uint64_t selfie() {
     while (number_of_remaining_arguments() > 0) {
       option = get_argument();
 
-      if (string_compare(option, (uint64_t*) "-c"))
+      if (string_compare(option, "-c"))
         selfie_compile();
 
       else if (number_of_remaining_arguments() == 0) {
@@ -10096,29 +9552,29 @@ uint64_t selfie() {
         print_usage();
 
         return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(option, (uint64_t*) "-o"))
+      } else if (string_compare(option, "-o"))
         selfie_output();
-      else if (string_compare(option, (uint64_t*) "-s"))
+      else if (string_compare(option, "-s"))
         selfie_disassemble(0);
-      else if (string_compare(option, (uint64_t*) "-S"))
+      else if (string_compare(option, "-S"))
         selfie_disassemble(1);
-      else if (string_compare(option, (uint64_t*) "-l"))
+      else if (string_compare(option, "-l"))
         selfie_load();
-      else if (string_compare(option, (uint64_t*) "-sat"))
+      else if (string_compare(option, "-sat"))
         selfie_sat();
-      else if (string_compare(option, (uint64_t*) "-m"))
+      else if (string_compare(option, "-m"))
         return selfie_run(MIPSTER);
-      else if (string_compare(option, (uint64_t*) "-d"))
+      else if (string_compare(option, "-d"))
         return selfie_run(DIPSTER);
-      else if (string_compare(option, (uint64_t*) "-r"))
+      else if (string_compare(option, "-r"))
         return selfie_run(RIPSTER);
-      else if (string_compare(option, (uint64_t*) "-n"))
+      else if (string_compare(option, "-n"))
         return selfie_run(MONSTER);
-      else if (string_compare(option, (uint64_t*) "-y"))
+      else if (string_compare(option, "-y"))
         return selfie_run(HYPSTER);
-      else if (string_compare(option, (uint64_t*) "-min"))
+      else if (string_compare(option, "-min"))
         return selfie_run(MINSTER);
-      else if (string_compare(option, (uint64_t*) "-mob"))
+      else if (string_compare(option, "-mob"))
         return selfie_run(MOBSTER);
       else {
         print_usage();
