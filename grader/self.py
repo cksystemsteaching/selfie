@@ -311,27 +311,29 @@ def test_hex_literal():
     'out of bounds hex integer literal has not compiled', should_succeed=False)
 
 
-def test_shift(direction):
-  if direction == 'left':
-    instruction = SLL_INSTRUCTION
-  else:
-    instruction = SRL_INSTRUCTION
+def test_shift():
+  for direction in ['right', 'left']:
 
-  literal_file = 'bitwise-' + direction + '-shift-literals.c'
-  variable_file = 'bitwise-' + direction + '-shift-variables.c'
+    if direction == 'left':
+      instruction = SLL_INSTRUCTION
+    else:
+      instruction = SRL_INSTRUCTION
 
-  test_compilable(literal_file,
-    'bitwise-' + direction + '-shift operator with literals compiled')
-  test_instruction_encoding(literal_file, instruction, R_FORMAT_MASK,
-    'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-  test_mipster_execution(literal_file, 2,
-    'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
-  test_compilable(variable_file,
-    'bitwise-' + direction + '-shift operator with variables compiled')
-  test_instruction_encoding(variable_file, instruction, R_FORMAT_MASK,
-    'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-  test_mipster_execution(variable_file, 2,
-    'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
+    literal_file = 'bitwise-' + direction + '-shift-literals.c'
+    variable_file = 'bitwise-' + direction + '-shift-variables.c'
+
+    test_compilable(literal_file,
+      'bitwise-' + direction + '-shift operator with literals compiled')
+    test_instruction_encoding(literal_file, instruction, R_FORMAT_MASK,
+      'bitwise-' + direction + '-shift operator has right RISC-V encoding')
+    test_mipster_execution(literal_file, 2,
+      'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
+    test_compilable(variable_file,
+      'bitwise-' + direction + '-shift operator with variables compiled')
+    test_instruction_encoding(variable_file, instruction, R_FORMAT_MASK,
+      'bitwise-' + direction + '-shift operator has right RISC-V encoding')
+    test_mipster_execution(variable_file, 2,
+      'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
 
 def test_structs():
@@ -514,9 +516,33 @@ def grade():
   print(f'your grade is: \033[{color}m\033[1m{grade}\033[0m')
 
 
+defined_tests = [
+    ('hex-literal', test_hex_literal),
+    ('shift', test_shift),
+    ('struct', test_structs),
+    ('assembler-1', lambda: test_assembler(1)),
+    ('assembler-2', lambda: test_assembler(2)),
+    ('concurrent-machines', test_concurrent_machines),
+    ('fork-wait', test_fork_and_wait),
+    ('lock', test_lock),
+    ('thread', test_thread),
+    ('treiber-stack', test_treiber_stack)
+  ]
+
+
+def print_usage():
+  print('usage: python3 grader/self.py { test_name }\n')
+
+  print('available tests: ')
+
+  for test in defined_tests:
+    print('  ', end='')
+    print(test[0])
+
+
 if __name__ == "__main__":
   if len(sys.argv) <= 1:
-    print('usage: python3 grader/self.py { test_name }')
+    print_usage()
     exit()
 
   sys.setrecursionlimit(5000)
@@ -528,29 +554,13 @@ if __name__ == "__main__":
   for test in tests:
     set_up()
 
-    if test == 'hex-literal':
-      test_hex_literal()
-    elif test == 'shift':
-      test_shift(direction='left')
-      test_shift(direction='right')
-    elif test == 'struct':
-      test_structs()
-    elif re.match(r'^assembler-([1-2])$', test):
-      stage = re.search(r'^assembler-([1-2])$', test).group(1)
+    test_to_execute = list(filter(lambda x: x[0] == test, defined_tests))
 
-      test_assembler(int(stage))
-    elif test == 'concurrent-machines':
-      test_concurrent_machines()
-    elif test == 'fork-wait':
-      test_fork_and_wait()
-    elif test == 'lock':
-      test_lock()
-    elif test == 'thread':
-      test_thread()
-    elif test == 'treiber-stack':
-      test_treiber_stack()
-    else:
+    if len(test_to_execute) == 0:
       print(f'unknown test: {test}')
+    else:
+      print(f'executing test \'{test}\'')
+      test_to_execute[0][1]()
 
   grade()
 
