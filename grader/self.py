@@ -312,29 +312,42 @@ def test_hex_literal():
     'out of bounds hex integer literal has not compiled', should_succeed=False)
 
 
-def test_shift():
-  for direction in ['right', 'left']:
+def test_bitwise_shift(stage):
+  if stage >= 1:
+    start_stage(1)
 
-    if direction == 'left':
-      instruction = SLL_INSTRUCTION
-    else:
-      instruction = SRL_INSTRUCTION
+    for direction in ['right', 'left']:
 
-    literal_file = 'bitwise-' + direction + '-shift-literals.c'
-    variable_file = 'bitwise-' + direction + '-shift-variables.c'
+      literal_file = 'bitwise-' + direction + '-shift-literals.c'
+      variable_file = 'bitwise-' + direction + '-shift-variables.c'
 
-    test_compilable(literal_file,
-      'bitwise-' + direction + '-shift operator with literals compiled')
-    test_instruction_encoding(literal_file, instruction, R_FORMAT_MASK,
-      'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-    test_mipster_execution(literal_file, 2,
-      'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
-    test_compilable(variable_file,
-      'bitwise-' + direction + '-shift operator with variables compiled')
-    test_instruction_encoding(variable_file, instruction, R_FORMAT_MASK,
-      'bitwise-' + direction + '-shift operator has right RISC-V encoding')
-    test_mipster_execution(variable_file, 2,
-      'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
+      test_compilable(literal_file,
+        'bitwise-' + direction + '-shift operator with literals compiled')
+      test_mipster_execution(literal_file, 2,
+        'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
+      test_compilable(variable_file,
+        'bitwise-' + direction + '-shift operator with variables compiled')
+      test_mipster_execution(variable_file, 2,
+        'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
+
+  if stage >= 2:
+    start_stage(2)
+
+    for direction in ['right', 'left']:
+
+      if direction == 'left':
+        instruction = SLL_INSTRUCTION
+      else:
+        instruction = SRL_INSTRUCTION
+
+      literal_file = 'bitwise-' + direction + '-shift-literals.c'
+      variable_file = 'bitwise-' + direction + '-shift-variables.c'
+
+      test_instruction_encoding(literal_file, instruction, R_FORMAT_MASK,
+        'bitwise-' + direction + '-shift operator has right RISC-V encoding')
+      test_instruction_encoding(variable_file, instruction, R_FORMAT_MASK,
+        'bitwise-' + direction + '-shift operator has right RISC-V encoding')
+
 
 
 def test_structs():
@@ -519,7 +532,8 @@ def grade():
 
 defined_tests = [
     ('hex-literal', test_hex_literal),
-    ('shift', test_shift),
+    ('bitwise-shift-1', lambda: test_bitwise_shift(1)),
+    ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
     ('struct', test_structs),
     ('assembler-1', lambda: test_assembler(1)),
     ('assembler-2', lambda: test_assembler(2)),
