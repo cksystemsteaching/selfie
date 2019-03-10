@@ -18,6 +18,7 @@ import sys
 import os
 import re
 import math
+import struct
 from subprocess import Popen, PIPE
 
 number_of_positive_tests_passed = [0]
@@ -45,10 +46,20 @@ F7_SLL = 0
 F7_SRL = 0
 
 def read_instruction(file):
-  return int.from_bytes(file.read(INSTRUCTIONSIZE), byteorder='little', signed=True)
+  b = file.read(INSTRUCTIONSIZE)
+
+  if len(b) == 0:
+    return 0
+
+  return struct.unpack('<i', b)[0]
 
 def read_data(file):
-  return int.from_bytes(file.read(REGISTERSIZE), byteorder='little', signed=False)
+  b = file.read(REGISTERSIZE)
+
+  if len(b) == 0:
+    return 0
+
+  return struct.unpack('<Q', b)[0]
 
 def encode_r_format(funct7, funct3, opcode):
   return (((((funct7 << 5) << 5) << 3) + funct3 << 5) << 7) + opcode
