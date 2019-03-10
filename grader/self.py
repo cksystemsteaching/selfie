@@ -13,6 +13,7 @@ This is the automatic grader of the selfie project.
 Students may use the grader for self-grading their solutions.
 """
 
+from __future__ import print_function
 import sys
 import os
 import re
@@ -134,7 +135,7 @@ def has_compiled(returncode, output, should_succeed=True):
 
 
 def test_instruction_encoding(file, instruction, instruction_mask, msg):
-  exit_code, output = execute(f'./selfie -c grader/{file} -o .tmp.bin')
+  exit_code, output = execute('./selfie -c grader/{} -o .tmp.bin'.format(file))
 
   if exit_code == 0:
     exit_code = 1
@@ -173,7 +174,7 @@ def test_instruction_encoding(file, instruction, instruction_mask, msg):
 
 
 def test_assembler_instruction_format(file, instruction, msg):
-  exit_code, output = execute(f'./selfie -c grader/{file} -s .tmp.s')
+  exit_code, output = execute('./selfie -c grader/{} -s .tmp.s'.format(file))
 
   if exit_code == 0:
     exit_code = 1
@@ -201,15 +202,15 @@ def test_execution(command, msg, success_criteria=True):
     should_succeed = success_criteria
 
     if should_succeed:
-      warning = f'Execution terminated with wrong exit code {returncode} instead of 0'
+      warning = 'Execution terminated with wrong exit code {} instead of 0'.format(returncode)
     else:
-      warning = f'Execution terminated with wrong exit code {returncode}'
+      warning = 'Execution terminated with wrong exit code {}'.format(returncode)
 
     record_result(returncode == 0, msg, output, warning, should_succeed, command)
 
   elif type(success_criteria) is int:
     record_result(returncode == success_criteria, msg, output,
-      f'Execution terminated with wrong exit code {returncode} instead of {success_criteria}', True, command)
+      'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command)
 
   elif type(success_criteria) is str:
     filtered_output = filter_status_messages(output)
@@ -267,7 +268,7 @@ def is_permutation_of(returncode, output, numbers):
   printed_numbers = list(map(lambda x: int(x), filter(lambda s: len(s) > 0 and s.isdigit(), filtered_output.split(' '))))
 
   if (len(printed_numbers) != len(numbers)):
-    return (False, f'The amount of printed numbers ({len(printed_numbers)}) is not equal to the amount of numbers needed to be printed ({len(numbers)})')
+    return (False, 'The amount of printed numbers ({}) is not equal to the amount of numbers needed to be printed ({})'.format(len(printed_numbers), len(numbers)))
 
   for number in numbers:
     if number in printed_numbers:
@@ -279,15 +280,15 @@ def is_permutation_of(returncode, output, numbers):
 
 
 def test_compilable(file, msg, should_succeed=True):
-  test_execution(f'./selfie -c grader/{file}', msg, success_criteria=lambda code, out: has_compiled(code, out, should_succeed=should_succeed))
+  test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code, out: has_compiled(code, out, should_succeed=should_succeed))
 
 
 def test_mipster_execution(file, result, msg):
-  test_execution(f'./selfie -c grader/{file} -m 128', msg, success_criteria=result)
+  test_execution('./selfie -c grader/{} -m 128'.format(file), msg, success_criteria=result)
 
 
 def test_hypster_execution(file, result, msg):
-  test_execution(f'./selfie -c selfie.c -m 128 -c grader/{file} -y 64', msg, success_criteria=result)
+  test_execution('./selfie -c selfie.c -m 128 -c grader/{} -y 64'.format(file), msg, success_criteria=result)
 
 
 def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg):
@@ -449,7 +450,7 @@ def start_stage(stage):
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
 
-  print(f'==== STAGE {stage} ====')
+  print('==== STAGE {} ===='.format(stage))
 
   if stage == 1:
     return
@@ -468,7 +469,7 @@ def grade():
 
   for stage in range(0, len(number_of_positive_tests_passed)):
     if len(number_of_positive_tests_passed) > 1:
-      name = f' of stage {stage + 1} '
+      name = ' of stage {} '.format(stage + 1)
     else:
       name = ' '
 
@@ -513,7 +514,7 @@ def grade():
     grade = 5
     color = 91
 
-  print(f'your grade is: \033[{color}m\033[1m{grade}\033[0m')
+  print('your grade is: \033[{}m\033[1m{}\033[0m'.format(color, grade))
 
 
 defined_tests = [
@@ -531,7 +532,7 @@ defined_tests = [
 
 
 def print_usage():
-  print('usage: python3 grader/self.py { test_name }\n')
+  print('usage: python grader/self.py { test_name }\n')
 
   print('available tests: ')
 
@@ -557,9 +558,9 @@ if __name__ == "__main__":
     test_to_execute = list(filter(lambda x: x[0] == test, defined_tests))
 
     if len(test_to_execute) == 0:
-      print(f'unknown test: {test}')
+      print('unknown test: {}'.format(test))
     else:
-      print(f'executing test \'{test}\'')
+      print('executing test \'{}\''.format(test))
       test_to_execute[0][1]()
 
   grade()
