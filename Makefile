@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu all clean
+.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector all clean
 
 # Self-compile
 compile: selfie
@@ -83,7 +83,6 @@ boolector: smt
 	boolector manuscript/code/symbolic.t -e 0 > selfie_boolector.sat
 	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
-
 
 # Run everything
 all: compile quine debug replay os vm min mob smt sat
