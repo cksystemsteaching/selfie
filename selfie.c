@@ -2542,7 +2542,6 @@ uint64_t find_next_character() {
         }
       }
 
-
       if (in_multi_line_comment) {
         // keep track of line numbers for error reporting and code annotation
         if (character == CHAR_LF)
