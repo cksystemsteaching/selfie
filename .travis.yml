@@ -9,14 +9,14 @@ compiler:
 script: travis_wait 60 make all
 stages:
   - test
-  - integration_test
+  - docker
   - name: deploy
     if: branch = master AND type = push AND fork = false
   - name: run
     if: branch = master AND type = push AND fork = false
 jobs:
   include:
-    - stage: integration_test
+    - stage: docker
       sudo: required
       services: docker
       os: linux
