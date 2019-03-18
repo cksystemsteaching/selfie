@@ -5,8 +5,10 @@ CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
+selfie.m: compile
+
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt sat spike riscv-tools all clean
+.PHONY : compile quine escape debug replay os vm min mob smt sat spike riscv-tools x86 all clean
 
 # Self-compile
 compile: selfie
@@ -76,6 +78,11 @@ riscv-tools:
 	docker login -u cksystemsteaching
 	docker push cksystemsteaching/riscv-tools
 
+x86: selfie selfie.m
+	./selfie -t selfie1.m -o selfie1.x86
+	mv selfie1.x86 selfie
+	chmod +x selfie
+
 # Run everything
 all: compile quine debug replay os vm min mob smt sat
 
@@ -84,6 +91,7 @@ clean:
 	rm -rf *.m
 	rm -rf *.s
 	rm -rf *.t
+	rm -rf *.x86
 	rm -rf selfie
 	rm -rf selfie.exe
 	rm -rf manuscript/code/*.t
