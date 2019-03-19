@@ -1261,7 +1261,14 @@ void print_exception(uint64_t exception, uint64_t faulting_page);
 void throw_exception(uint64_t exception, uint64_t faulting_page);
 
 void fetch();
-void decode_execute();
+void decode();
+void execute();
+
+void execute_record();
+void execute_undo();
+void execute_debug();
+void execute_symbolically();
+
 void interrupt();
 
 void run_until_exception();
@@ -1271,6 +1278,8 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters);
 
 void print_profile();
+
+void translate_to_assembler();
 
 void selfie_disassemble(uint64_t verbose);
 
@@ -1307,16 +1316,17 @@ uint64_t* EXCEPTIONS; // strings representing exceptions
 
 uint64_t debug_exception = 0;
 
-// enables recording, disassembling, debugging, and symbolically executing code
+uint64_t run = 0; // flag for running code
+
+// enables recording, symbolically executing, and debugging code
 uint64_t debug = 0;
 
-uint64_t execute     = 0; // flag for executing code
-uint64_t record      = 0; // flag for recording code execution
-uint64_t undo        = 0; // flag for undoing code execution
-uint64_t redo        = 0; // flag for redoing code execution
-uint64_t disassemble = 0; // flag for disassembling code
-uint64_t symbolic    = 0; // flag for symbolically executing code
+uint64_t record   = 0; // flag for recording code execution
+uint64_t symbolic = 0; // flag for symbolically executing code
 
+uint64_t redo = 0; // flag for redoing code execution
+
+uint64_t disassemble         = 0; // flag for disassembling code
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
 // number of instructions from context switch to timer interrupt
@@ -1382,7 +1392,7 @@ void reset_interpreter() {
 
   timer = TIMEROFF;
 
-  if (execute) {
+  if (run) {
     reset_instruction_counters();
 
     calls               = 0;
@@ -6633,7 +6643,7 @@ void print_code_line_number_for_instruction(uint64_t a) {
 }
 
 void print_code_context_for_instruction(uint64_t a) {
-  if (execute) {
+  if (run) {
     printf2("%s: $pc=%x", binary_name, (char*) a);
     print_code_line_number_for_instruction(a - entry_point);
     if (symbolic)
@@ -7408,7 +7418,6 @@ void replay_trace() {
     trace_length = MAX_REPLAY_LENGTH;
 
   record = 0;
-  undo   = 1;
 
   tl = trace_length;
 
@@ -7419,12 +7428,12 @@ void replay_trace() {
     pc = *(pcs + (tc % MAX_REPLAY_LENGTH));
 
     fetch();
-    decode_execute();
+    decode();
+    execute_undo();
 
     tl = tl - 1;
   }
 
-  undo = 0;
   redo = 1;
 
   disassemble = 1;
@@ -7436,7 +7445,8 @@ void replay_trace() {
     // assert: pc == *(pcs + (tc % MAX_REPLAY_LENGTH))
 
     fetch();
-    decode_execute();
+    decode();
+    execute_debug();
 
     tc = tc + 1;
     tl = tl - 1;
@@ -7719,7 +7729,7 @@ void decode() {
   }
 
   if (is == 0) {
-    if (execute)
+    if (run)
       throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, 0);
     else {
       //report the error on the console
@@ -7733,6 +7743,17 @@ void decode() {
 }
 
 void execute() {
+  if (debug) {
+    if (record)
+      execute_record();
+    else if (symbolic)
+      execute_symbolically();
+    else
+      execute_debug();
+
+    return;
+  }
+
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     do_addi();
@@ -7825,7 +7846,7 @@ void execute_undo() {
 }
 
 void execute_debug() {
-  disassemble();
+  translate_to_assembler();
 
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI){
@@ -7890,8 +7911,8 @@ void execute_debug() {
 void execute_symbolically() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI) {
-    do_addi();
     constrain_addi();
+    do_addi();
   } else if (is == LD)
     constrain_ld();
   else if (is == SD)
@@ -7929,38 +7950,6 @@ void execute_symbolically() {
     do_ecall();
 }
 
-void disassemble() {
-  // assert: 1 <= is <= number of RISC-U instructions
-  if (is == ADDI)
-    print_addi();
-  else if (is == LD)
-    print_ld();
-  else if (is == SD)
-    print_sd();
-  else if (is == ADD)
-    print_add_sub_mul_divu_remu_sltu("add");
-  else if (is == SUB)
-    print_add_sub_mul_divu_remu_sltu("sub");
-  else if (is == MUL)
-    print_add_sub_mul_divu_remu_sltu("mul");
-  else if (is == DIVU)
-    print_add_sub_mul_divu_remu_sltu("divu");
-  else if (is == REMU)
-    print_add_sub_mul_divu_remu_sltu("remu");
-  else if (is == SLTU)
-    print_add_sub_mul_divu_remu_sltu("sltu");
-  else if (is == BEQ)
-    print_beq();
-  else if (is == JAL)
-    print_jal();
-  else if (is == JALR)
-    print_jalr();
-  else if (is == LUI)
-    print_lui();
-  else if (is == ECALL)
-    print_ecall();
-}
-
 void interrupt() {
   if (timer != TIMEROFF) {
     timer = timer - 1;
@@ -7984,6 +7973,7 @@ void run_until_exception() {
     fetch();
     decode();
     execute();
+
     interrupt();
   }
 
@@ -8071,6 +8061,38 @@ void print_profile() {
   }
 }
 
+void translate_to_assembler() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI)
+    print_addi();
+  else if (is == LD)
+    print_ld();
+  else if (is == SD)
+    print_sd();
+  else if (is == ADD)
+    print_add_sub_mul_divu_remu_sltu("add");
+  else if (is == SUB)
+    print_add_sub_mul_divu_remu_sltu("sub");
+  else if (is == MUL)
+    print_add_sub_mul_divu_remu_sltu("mul");
+  else if (is == DIVU)
+    print_add_sub_mul_divu_remu_sltu("divu");
+  else if (is == REMU)
+    print_add_sub_mul_divu_remu_sltu("remu");
+  else if (is == SLTU)
+    print_add_sub_mul_divu_remu_sltu("sltu");
+  else if (is == BEQ)
+    print_beq();
+  else if (is == JAL)
+    print_jal();
+  else if (is == JALR)
+    print_jalr();
+  else if (is == LUI)
+    print_lui();
+  else if (is == ECALL)
+    print_ecall();
+}
+
 void selfie_disassemble(uint64_t verbose) {
   uint64_t data;
 
@@ -8095,19 +8117,20 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = assembly_name;
   output_fd   = assembly_fd;
 
-  execute = 0;
+  run = 0;
 
   reset_library();
   reset_interpreter();
 
-  debug               = 1;
   disassemble         = 1;
   disassemble_verbose = verbose;
 
   while (pc < code_length) {
     ir = load_instruction(pc);
 
-    decode_execute();
+    decode();
+
+    translate_to_assembler();
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -8123,7 +8146,6 @@ void selfie_disassemble(uint64_t verbose) {
 
   disassemble_verbose = 0;
   disassemble         = 0;
-  debug               = 0;
 
   output_name = (char*) 0;
   output_fd   = 1;
@@ -9084,7 +9106,7 @@ uint64_t selfie_run(uint64_t machine) {
     max_execution_depth = atoi(peek_argument());
   }
 
-  execute = 1;
+  run = 1;
 
   reset_interpreter();
   reset_microkernel();
@@ -9117,7 +9139,7 @@ uint64_t selfie_run(uint64_t machine) {
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
 
-  execute = 0;
+  run = 0;
 
   printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
     get_name(current_context),
