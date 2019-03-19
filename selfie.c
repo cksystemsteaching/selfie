@@ -8132,6 +8132,8 @@ void selfie_disassemble(uint64_t verbose) {
 
     translate_to_assembler();
 
+    println();
+
     pc = pc + INSTRUCTIONSIZE;
   }
 
