@@ -8202,6 +8202,7 @@ void selfie_disassemble(uint64_t verbose) {
 // -----------------------------------------------------------------
 
 void selfie_model_check() {
+  uint64_t i;
   uint64_t address_ceiling;
 
   model_name = get_argument();
@@ -8230,11 +8231,27 @@ void selfie_model_check() {
   reset_library();
   reset_interpreter();
 
-  print("1 sort bitvec 1\n2 sort bitvec 64\n3 sort array 2 2\n\n");
-  print("10 zero 1\n11 one 1\n\n");
-  print("20 zero 2\n21 one 2\n22 constd 2 2\n\n");
+  print("1 sort bitvec 1 ; Boolean\n");
+  print("2 sort bitvec 64 ; 64-bit machine word\n");
+  print("3 sort array 2 2 ; 64-bit memory\n\n");
 
-  address_ceiling = max(100, ten_to_the_power_of(log_ten(code_length) + 1));
+  print("10 zero 1\n11 one 1\n\n");
+  print("20 zero 2\n21 one 2\n\n");
+
+  i = 0;
+
+  while (i < NUMBEROFREGISTERS) {
+    if (i == 0)
+      printf1("%d one 2 ; register $0 is always 0\n", (char*) (100 + i));
+    else
+      printf2("%d input 2 ; uninitialized register $%d\n", (char*) (100 + i), (char*) i);
+
+    i = i + 1;
+  }
+
+  println();
+
+  address_ceiling = max(1000, ten_to_the_power_of(log_ten(code_length) + 1));
 
   while (pc < code_length) {
     printf1("%d state 1\n", (char*) (address_ceiling + pc));
