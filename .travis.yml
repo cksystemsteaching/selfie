@@ -9,20 +9,22 @@ compiler:
 script: travis_wait 60 make all
 stages:
   - test
-  - spike
+  - docker
   - name: deploy
     if: branch = master AND type = push AND fork = false
   - name: run
     if: branch = master AND type = push AND fork = false
 jobs:
   include:
-    - stage: spike
+    - stage: docker
       sudo: required
       services: docker
       os: linux
       script:
         - docker build -t cksystemsteaching/selfie .
         - docker run cksystemsteaching/selfie make spike
+        - docker run cksystemsteaching/selfie make qemu
+        - docker run cksystemsteaching/selfie make boolector
     - stage: deploy
       sudo: required
       services: docker
@@ -37,6 +39,8 @@ jobs:
       os: linux
       script:
         - docker run cksystemsteaching/selfie make spike
+        - docker run cksystemsteaching/selfie make qemu
+        - docker run cksystemsteaching/selfie make boolector
 notifications:
   email: false
   slack:
