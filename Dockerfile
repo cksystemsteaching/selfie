@@ -145,7 +145,9 @@ RUN apt-get update \
        ca-certificates \
        device-tree-compiler \
        git \
-  && rm -rf /var/lib/apt/lists/*
+       python3.5 \
+  && rm -rf /var/lib/apt/lists/* \
+  && echo "alias python='python3.5'" >> ~/.bash_aliases
 
 # copy spike, pk, qemu and boolector from builder images
 COPY --from=pkbuilder $RISCV/ $RISCV/

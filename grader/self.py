@@ -315,9 +315,9 @@ def test_hex_literal():
     'maximum hex integer literal compiled')
   test_mipster_execution('hex-integer-literal-max.c', 1,
     'maximum hex integer literal has the right value')
-  test_compilable('hex-integer-literal-max.c',
+  test_compilable('hex-integer-literal-min.c',
     'minimum hex integer literal compiled')
-  test_mipster_execution('hex-integer-literal-max.c', 1,
+  test_mipster_execution('hex-integer-literal-min.c', 1,
     'minimum hex integer literal has the right value')
   test_compilable('hex-integer-literal-invalid.c',
     'out of bounds hex integer literal has not compiled', should_succeed=False)
