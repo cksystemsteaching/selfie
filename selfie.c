@@ -1419,6 +1419,8 @@ uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
+uint64_t is_initialized_register(uint64_t reg);
+
 void selfie_model_check();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -8201,9 +8203,19 @@ void selfie_disassemble(uint64_t verbose) {
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
+uint64_t is_initialized_register(uint64_t reg) {
+  if (reg == REG_SP)
+    return 1;
+  else if (reg == REG_GP)
+    return 1;
+  else
+    return 0;
+}
+
 void selfie_model_check() {
   uint64_t i;
-  uint64_t address_ceiling;
+  uint64_t binary_ceiling;
+  uint64_t data;
 
   model_name = get_argument();
 
@@ -8236,32 +8248,46 @@ void selfie_model_check() {
   print("3 sort array 2 2 ; 64-bit memory\n\n");
 
   print("10 zero 1\n11 one 1\n\n");
-  print("20 zero 2\n21 one 2\n\n");
+  print("12 zero 2\n13 one 2\n\n");
+
+  printf1("20 constd 2 %d\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE);
+  printf1("30 constd 2 %d\n\n", (char*) binary_length);
 
   i = 0;
 
   while (i < NUMBEROFREGISTERS) {
     if (i == 0)
-      printf1("%d one 2 ; register $0 is always 0\n", (char*) (100 + i));
+      printf2("%d one 2 %s ; register $0 is always 0\n", (char*) (100 + i), get_register_name(i));
+    else if (is_initialized_register(i))
+      printf3("%d state 2 %s ; register $%d\n", (char*) (100 + i), get_register_name(i), (char*) i);
     else
-      printf2("%d input 2 ; uninitialized register $%d\n", (char*) (100 + i), (char*) i);
+      printf3("%d input 2 %s ; register $%d\n", (char*) (100 + i), get_register_name(i), (char*) i);
 
     i = i + 1;
   }
 
-  println();
+  printf2("\n200 init 2 %d 20 %s ; initial value\n", (char*) (100 + REG_SP), get_register_name(REG_SP));
+  printf2("300 init 2 %d 30 %s ; initial value\n\n", (char*) (100 + REG_GP), get_register_name(REG_GP));
 
-  address_ceiling = max(1000, ten_to_the_power_of(log_ten(code_length) + 1));
+  binary_ceiling = max(1000, ten_to_the_power_of(log_ten(binary_length) + 1));
 
   while (pc < code_length) {
-    printf1("%d state 1\n", (char*) (address_ceiling + pc));
+    printf1("%d state 1\n", (char*) (binary_ceiling + pc));
 
     if (pc == 0)
-      printf2("%d init 1 %d 11\n", (char*) (address_ceiling + pc + 1), (char*) (address_ceiling + pc));
+      printf2("%d init 1 %d 11 ; initial program counter\n", (char*) (binary_ceiling + pc + 1), (char*) (binary_ceiling + pc));
     else
-      printf2("%d init 1 %d 10\n", (char*) (address_ceiling + pc + 1), (char*) (address_ceiling + pc));
+      printf2("%d init 1 %d 10\n", (char*) (binary_ceiling + pc + 1), (char*) (binary_ceiling + pc));
 
     pc = pc + INSTRUCTIONSIZE;
+  }
+
+  println();
+
+  while (pc < binary_length) {
+    data = load_data(pc);
+
+    pc = pc + REGISTERSIZE;
   }
 
   output_name = (char*) 0;
