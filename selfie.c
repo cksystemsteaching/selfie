@@ -120,6 +120,8 @@ void reset_library();
 uint64_t two_to_the_power_of(uint64_t p);
 uint64_t ten_to_the_power_of(uint64_t p);
 
+uint64_t log_ten(uint64_t n);
+
 uint64_t left_shift(uint64_t n, uint64_t b);
 uint64_t right_shift(uint64_t n, uint64_t b);
 
@@ -128,6 +130,7 @@ uint64_t get_low_word(uint64_t n);
 uint64_t get_high_word(uint64_t n);
 
 uint64_t absolute(uint64_t n);
+uint64_t max(uint64_t a, uint64_t b);
 
 uint64_t signed_less_than(uint64_t a, uint64_t b);
 uint64_t signed_division(uint64_t a, uint64_t b);
@@ -953,9 +956,6 @@ uint64_t entry_point = 0; // beginning of code segment in virtual address space
 uint64_t* code_line_number = (uint64_t*) 0; // code line number per emitted instruction
 uint64_t* data_line_number = (uint64_t*) 0; // data line number per emitted data
 
-char*    assembly_name = (char*) 0; // name of assembly file
-uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
-
 uint64_t* ELF_header = (uint64_t*) 0;
 
 // -----------------------------------------------------------------
@@ -1279,10 +1279,6 @@ void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* 
 
 void print_profile();
 
-void translate_to_assembler();
-
-void selfie_disassemble(uint64_t verbose);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 // RISC-U instructions
@@ -1405,6 +1401,30 @@ void reset_interpreter() {
     stores_per_instruction = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
   }
 }
+
+// -----------------------------------------------------------------
+// -------------------------- DISASSEMBLER -------------------------
+// -----------------------------------------------------------------
+
+void translate_to_assembler();
+
+void selfie_disassemble(uint64_t verbose);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+char*    assembly_name = (char*) 0; // name of assembly file
+uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
+
+// -----------------------------------------------------------------
+// ------------------------- MODEL CHECKER -------------------------
+// -----------------------------------------------------------------
+
+void selfie_model_check();
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+char*    model_name = (char*) 0; // name of model file
+uint64_t model_fd   = 0;         // file descriptor of open model file
 
 // -----------------------------------------------------------------
 // ---------------------------- CONTEXTS ---------------------------
@@ -1747,6 +1767,15 @@ uint64_t ten_to_the_power_of(uint64_t p) {
     return ten_to_the_power_of(p - 1) * 10;
 }
 
+uint64_t log_ten(uint64_t n) {
+  // use recursion for simplicity and educational value
+  // for n < 1000000 performance is not relevant
+  if (n < 10)
+    return 0;
+  else
+    return log_ten(n / 10) + 1;
+}
+
 uint64_t left_shift(uint64_t n, uint64_t b) {
   // assert: 0 <= b < CPUBITWIDTH
   return n * two_to_the_power_of(b);
@@ -1781,6 +1810,13 @@ uint64_t absolute(uint64_t n) {
     return -n;
   else
     return n;
+}
+
+uint64_t max(uint64_t a, uint64_t b) {
+  if (a > b)
+    return a;
+  else
+    return b;
 }
 
 uint64_t signed_less_than(uint64_t a, uint64_t b) {
@@ -8061,6 +8097,10 @@ void print_profile() {
   }
 }
 
+// -----------------------------------------------------------------
+// -------------------------- DISASSEMBLER -------------------------
+// -----------------------------------------------------------------
+
 void translate_to_assembler() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
@@ -8129,9 +8169,7 @@ void selfie_disassemble(uint64_t verbose) {
     ir = load_instruction(pc);
 
     decode();
-
     translate_to_assembler();
-
     println();
 
     pc = pc + INSTRUCTIONSIZE;
@@ -8157,6 +8195,64 @@ void selfie_disassemble(uint64_t verbose) {
     (char*) (code_length / INSTRUCTIONSIZE),
     (char*) (binary_length - code_length),
     assembly_name);
+}
+
+// -----------------------------------------------------------------
+// ------------------------- MODEL CHECKER -------------------------
+// -----------------------------------------------------------------
+
+void selfie_model_check() {
+  uint64_t address_ceiling;
+
+  model_name = get_argument();
+
+  if (code_length == 0) {
+    printf2("%s: nothing to disassemble to output file %s\n", selfie_name, model_name);
+
+    return;
+  }
+
+  // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  model_fd = open_write_only(model_name);
+
+  if (signed_less_than(model_fd, 0)) {
+    printf2("%s: could not create model output file %s\n", selfie_name, model_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  output_name = model_name;
+  output_fd   = model_fd;
+
+  run = 0;
+
+  reset_library();
+  reset_interpreter();
+
+  print("1 sort bitvec 1\n2 sort bitvec 64\n3 sort array 2 2\n\n");
+  print("10 zero 1\n11 one 1\n\n");
+  print("20 zero 2\n21 one 2\n22 constd 2 2\n\n");
+
+  address_ceiling = max(100, ten_to_the_power_of(log_ten(code_length) + 1));
+
+  while (pc < code_length) {
+    printf1("%d state 1\n", (char*) (address_ceiling + pc));
+
+    if (pc == 0)
+      printf2("%d init 1 %d 11\n", (char*) (address_ceiling + pc + 1), (char*) (address_ceiling + pc));
+    else
+      printf2("%d init 1 %d 10\n", (char*) (address_ceiling + pc + 1), (char*) (address_ceiling + pc));
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+
+  output_name = (char*) 0;
+  output_fd   = 1;
+
+  printf3("%s: %d characters of model formulae written into %s\n", selfie_name,
+    (char*) number_of_written_characters,
+    model_name);
 }
 
 // -----------------------------------------------------------------
@@ -9520,7 +9616,7 @@ void set_argument(char* argv) {
 void print_usage() {
   printf3("%s: usage: selfie { %s } [ %s ]\n", selfie_name,
     "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
-    "( -m | -d | -r | -n | -y | -min | -mob ) 0-4096 ... ");
+    "( -m | -d | -r | -n | -mc | -y | -min | -mob ) 0-4096 ... ");
 }
 
 uint64_t selfie() {
@@ -9562,6 +9658,8 @@ uint64_t selfie() {
         return selfie_run(RIPSTER);
       else if (string_compare(option, "-n"))
         return selfie_run(MONSTER);
+      else if (string_compare(option, "-mc"))
+        selfie_model_check();
       else if (string_compare(option, "-y"))
         return selfie_run(HYPSTER);
       else if (string_compare(option, "-min"))
