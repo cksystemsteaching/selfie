@@ -5,10 +5,11 @@ CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
-selfie.m: compile
+selfie.m: selfie
+	./selfie -c selfie.c -o selfie.m
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt sat spike riscv-tools x86 all clean
+.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector all clean
 
 # Self-compile
 compile: selfie
@@ -72,14 +73,22 @@ spike: selfie
 	diff -q selfie.m selfie7.m
 	diff -q selfie.s selfie7.s
 
-# Build and update riscv-tools Docker image
-riscv-tools:
-	docker build -f Dockerfile-riscv-tools -t cksystemsteaching/selfie .
-	docker login -u cksystemsteaching
-	docker push cksystemsteaching/riscv-tools
+# Run selfie on qemu usermode emulation
+qemu: selfie
+	./selfie -c selfie.c -o selfie.m -s selfie.s
+	chmod +x selfie.m
+	qemu-riscv64-static selfie.m -c selfie.c -o selfie8.m -s selfie8.s -m 1
+	diff -q selfie.m selfie8.m
+	diff -q selfie.s selfie8.s
+
+# Test boolector SMT solver
+boolector: smt
+	boolector manuscript/code/symbolic.t -e 0 > selfie_boolector.sat
+	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
+	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
 
 x86: selfie selfie.m
-	./selfie -t selfie1.m -o selfie1.x86
+	./selfie -t selfie.m -o selfie1.x86
 	mv selfie1.x86 selfie
 	chmod +x selfie
 

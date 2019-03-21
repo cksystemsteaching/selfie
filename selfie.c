@@ -1352,7 +1352,15 @@ void print_exception(uint64_t exception, uint64_t faulting_page);
 void throw_exception(uint64_t exception, uint64_t faulting_page);
 
 void fetch();
-void decode_execute();
+void decode();
+void execute();
+
+void execute_record();
+void execute_undo();
+void execute_debug();
+void execute_symbolically();
+void execute_translate();
+
 void interrupt();
 
 void run_until_exception();
@@ -1363,9 +1371,30 @@ void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* 
 
 void print_profile();
 
+void translate_to_assembler();
+
 void selfie_disassemble(uint64_t verbose);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
+
+// RISC-U instructions
+
+uint64_t LUI   = 1; // 0 is reserved for unknown instructions
+uint64_t ADDI  = 2;
+uint64_t ADD   = 3;
+uint64_t SUB   = 4;
+uint64_t MUL   = 5;
+uint64_t DIVU  = 6;
+uint64_t REMU  = 7;
+uint64_t SLTU  = 8;
+uint64_t LD    = 9;
+uint64_t SD    = 10;
+uint64_t BEQ   = 11;
+uint64_t JAL   = 12;
+uint64_t JALR  = 13;
+uint64_t ECALL = 14;
+
+// exceptions
 
 uint64_t EXCEPTION_NOEXCEPTION        = 0;
 uint64_t EXCEPTION_PAGEFAULT          = 1;
@@ -1379,16 +1408,18 @@ uint64_t* EXCEPTIONS; // strings representing exceptions
 
 uint64_t debug_exception = 0;
 
-// enables recording, disassembling, debugging, and symbolically executing code
+uint64_t run = 0; // flag for running code
+
+// enables recording, symbolically executing, translating and debugging code
 uint64_t debug = 0;
 
-uint64_t execute     = 0; // flag for executing code
-uint64_t record      = 0; // flag for recording code execution
-uint64_t undo        = 0; // flag for undoing code execution
-uint64_t redo        = 0; // flag for redoing code execution
-uint64_t disassemble = 0; // flag for disassembling code
-uint64_t symbolic    = 0; // flag for symbolically executing code
-uint64_t translate   = 0; // flag for translating code to x86 instructions
+uint64_t record    = 0; // flag for recording code execution
+uint64_t symbolic  = 0; // flag for symbolically executing code
+uint64_t translate = 0; // flag for translating binary to x86
+
+uint64_t redo = 0; // flag for redoing code execution
+
+uint64_t disassemble         = 0; // flag for disassembling code
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
 // number of instructions from context switch to timer interrupt
@@ -1403,7 +1434,9 @@ uint64_t TIMEROFF = 0; // must be 0 to turn off timer interrupt
 // hardware thread state
 
 uint64_t pc = 0; // program counter
+
 uint64_t ir = 0; // instruction register
+uint64_t is = 0; // instruction id
 
 uint64_t* registers = (uint64_t*) 0; // general-purpose registers
 
@@ -1442,6 +1475,7 @@ void init_interpreter() {
 void reset_interpreter() {
   pc = 0;
   ir = 0;
+  is = 0;
 
   registers = (uint64_t*) 0;
 
@@ -1451,7 +1485,7 @@ void reset_interpreter() {
 
   timer = TIMEROFF;
 
-  if (execute) {
+  if (run) {
     reset_instruction_counters();
 
     calls               = 0;
@@ -2632,7 +2666,6 @@ uint64_t find_next_character() {
           get_character();
         }
       }
-
 
       if (in_multi_line_comment) {
         // keep track of line numbers for error reporting and code annotation
@@ -4797,15 +4830,17 @@ void x86Translate(){
      i = i + 1;
   }
   
-  while(pc < code_length + ELF_ENTRY_POINT){
+  while(pc < code_length + ELF_ENTRY_POINT) {
     fetch();
     x86SaveAddress();
-    decode_execute();
+    decode();
+    execute();
     pc = pc + INSTRUCTIONSIZE;
   }
 
   x86AdressFix();
 
+  // copy data segment of binary
   while (pc < code_length + dataLength + ELF_ENTRY_POINT) {
     fetch();
     *(instr_bytes + 0) = right_shift(left_shift(ir, 56), 56);
@@ -4829,11 +4864,12 @@ void x86Translate(){
   *(ELF_header + 5)  = 120;
   *(ELF_header + 7)  = 1
     + left_shift(64, 16)
-    + left_shift(3, 32)
-    + left_shift(2, 48);
+    + left_shift(3, 32)               // 3 section headers
+    + left_shift(2, 48);              // shstrtab section index
   *(ELF_header + 12) = x86binaryLength;
   *(ELF_header + 13) = x86binaryLength;
 
+  //first section header is always null
   *(ELF_header + 15) = 0;
   *(ELF_header + 16) = 0;
   *(ELF_header + 17) = 0;
@@ -7095,7 +7131,7 @@ void print_code_line_number_for_instruction(uint64_t a) {
 }
 
 void print_code_context_for_instruction(uint64_t a) {
-  if (execute) {
+  if (run) {
     printf2("%s: $pc=%x", binary_name, (char*) a);
     print_code_line_number_for_instruction(a - entry_point);
     if (symbolic)
@@ -7269,13 +7305,6 @@ void translate_addi() {
     translate_nop();
     return;
   }
-
-  //if (rd == REG_GP) {
-  //  binary_gp = binary_gp + imm;
-  //  translate_nop();
-  //  x86SetProgramArguments();
-  //  return; //FIXME
-  //}
 
   //if syscall number is set here then change syscall number for x86-64 platform
   if (rd == REG_A7) {
@@ -8543,7 +8572,6 @@ void replay_trace() {
     trace_length = MAX_REPLAY_LENGTH;
 
   record = 0;
-  undo   = 1;
 
   tl = trace_length;
 
@@ -8554,12 +8582,12 @@ void replay_trace() {
     pc = *(pcs + (tc % MAX_REPLAY_LENGTH));
 
     fetch();
-    decode_execute();
+    decode();
+    execute_undo();
 
     tl = tl - 1;
   }
 
-  undo = 0;
   redo = 1;
 
   disassemble = 1;
@@ -8571,7 +8599,8 @@ void replay_trace() {
     // assert: pc == *(pcs + (tc % MAX_REPLAY_LENGTH))
 
     fetch();
-    decode_execute();
+    decode();
+    execute_debug();
 
     tc = tc + 1;
     tl = tl - 1;
@@ -8788,395 +8817,325 @@ void fetch() {
     ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
 }
 
-void decode_execute() {
+void decode() {
   opcode = get_opcode(ir);
+
+  is = 0;
 
   if (opcode == OP_IMM) {
     decode_i_format();
 
-    if (funct3 == F3_ADDI) {
-      if (debug) {
-        if (record) {
-          record_lui_addi_add_sub_mul_sltu_jal_jalr();
-          do_addi();
-        } else if (undo)
-          undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-        else if (disassemble) {
-          print_addi();
-          if (execute) {
-            print_addi_before();
-            do_addi();
-            print_addi_add_sub_mul_divu_remu_sltu_after();
-          }
-          println();
-        } else if (symbolic) {
-          do_addi();
-          constrain_addi();
-        }
-      } else if (translate)
-	translate_addi();
-      else
-        do_addi();
-
-      return;
-    }
+    if (funct3 == F3_ADDI)
+      is = ADDI;
   } else if (opcode == OP_LD) {
     decode_i_format();
 
-    if (funct3 == F3_LD) {
-      if (debug) {
-        if (record) {
-          record_ld();
-          do_ld();
-        } else if (undo)
-          undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-        else if (disassemble) {
-          print_ld();
-          if (execute) {
-            print_ld_before();
-            print_ld_after(do_ld());
-          }
-          println();
-        } else if (symbolic)
-          constrain_ld();
-      }
-      else if (translate)
-	translate_ld();
-      else
-        do_ld();
-
-      return;
-    }
+    if (funct3 == F3_LD)
+      is = LD;
   } else if (opcode == OP_SD) {
     decode_s_format();
 
-    if (funct3 == F3_SD) {
-      if (debug) {
-        if (record) {
-          record_sd();
-          do_sd();
-        } else if (undo)
-          undo_sd();
-        else if (disassemble) {
-          print_sd();
-          if (execute) {
-            print_sd_before();
-            print_sd_after(do_sd());
-          }
-          println();
-        } else if (symbolic)
-          constrain_sd();
-      } else if (translate)
-	translate_sd();
-      else
-        do_sd();
-
-      return;
-    }
+    if (funct3 == F3_SD)
+      is = SD;
   } else if (opcode == OP_OP) { // could be ADD, SUB, MUL, DIVU, REMU, SLTU
     decode_r_format();
 
     if (funct3 == F3_ADD) { // = F3_SUB = F3_MUL
-      if (funct7 == F7_ADD) {
-        if (debug) {
-          if (record) {
-            record_lui_addi_add_sub_mul_sltu_jal_jalr();
-            do_add();
-          } else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu("add");
-            if (execute) {
-              print_add_sub_mul_divu_remu_sltu_before();
-              do_add();
-              print_addi_add_sub_mul_divu_remu_sltu_after();
-            }
-            println();
-          } else if (symbolic) {
-            constrain_add_sub_mul_divu_remu_sltu("bvadd");
-            do_add();
-          }
-        } else if (translate)
-	  translate_add();
-	else
-          do_add();
-
-        return;
-      } else if (funct7 == F7_SUB) {
-        if (debug) {
-          if (record) {
-            record_lui_addi_add_sub_mul_sltu_jal_jalr();
-            do_sub();
-          } else if (undo)
-            undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-          else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu("sub");
-            if (execute) {
-              print_add_sub_mul_divu_remu_sltu_before();
-              do_sub();
-              print_addi_add_sub_mul_divu_remu_sltu_after();
-            }
-            println();
-          } else if (symbolic) {
-            constrain_add_sub_mul_divu_remu_sltu("bvsub");
-            do_sub();
-          }
-        } else if (translate)
-	  translate_sub();
-	else
-          do_sub();
-
-        return;
-      } else if (funct7 == F7_MUL) {
-        if (debug) {
-          if (record) {
-            record_lui_addi_add_sub_mul_sltu_jal_jalr();
-            do_mul();
-          } else if (undo)
-            undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-          else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu("mul");
-            if (execute) {
-              print_add_sub_mul_divu_remu_sltu_before();
-              do_mul();
-              print_addi_add_sub_mul_divu_remu_sltu_after();
-            }
-            println();
-          } else if (symbolic) {
-            constrain_add_sub_mul_divu_remu_sltu("bvmul");
-            do_mul();
-          }
-        } else if (translate)
-	  translate_mul();
-	else
-          do_mul();
-
-        return;
-      }
+      if (funct7 == F7_ADD)
+        is = ADD;
+      else if (funct7 == F7_SUB)
+        is = SUB;
+      else if (funct7 == F7_MUL)
+        is = MUL;
     } else if (funct3 == F3_DIVU) {
-      if (funct7 == F7_DIVU) {
-        if (debug) {
-          if (record) {
-            record_divu_remu();
-            do_divu();
-          } else if (undo)
-            undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-          else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu("divu");
-            if (execute) {
-              print_add_sub_mul_divu_remu_sltu_before();
-              do_divu();
-              print_addi_add_sub_mul_divu_remu_sltu_after();
-            }
-            println();
-          } else if (symbolic) {
-            constrain_add_sub_mul_divu_remu_sltu("bvudiv");
-            do_divu();
-          }
-        } else if (translate)
-	  translate_divu();
-	else
-          do_divu();
-
-        return;
-      }
+      if (funct7 == F7_DIVU)
+        is = DIVU;
     } else if (funct3 == F3_REMU) {
-      if (funct7 == F7_REMU) {
-        if (debug) {
-          if (record) {
-            record_divu_remu();
-            do_remu();
-          } else if (undo)
-            undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-          else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu("remu");
-            if (execute) {
-              print_add_sub_mul_divu_remu_sltu_before();
-              do_remu();
-              print_addi_add_sub_mul_divu_remu_sltu_after();
-            }
-            println();
-          } else if (symbolic) {
-            constrain_add_sub_mul_divu_remu_sltu("bvurem");
-            do_remu();
-          }
-        } else if (translate)
-	  translate_remu();
-	else
-          do_remu();
-
-        return;
-      }
+      if (funct7 == F7_REMU)
+        is = REMU;
     } else if (funct3 == F3_SLTU) {
-      if (funct7 == F7_SLTU) {
-        if (debug) {
-          if (record) {
-            record_lui_addi_add_sub_mul_sltu_jal_jalr();
-            do_sltu();
-          } else if (undo)
-            undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-          else if (disassemble) {
-            print_add_sub_mul_divu_remu_sltu("sltu");
-            if (execute) {
-              print_add_sub_mul_divu_remu_sltu_before();
-              do_sltu();
-              print_addi_add_sub_mul_divu_remu_sltu_after();
-            }
-            println();
-          } else if (symbolic) {
-            constrain_add_sub_mul_divu_remu_sltu("bvult");
-            zero_extend_sltu();
-            do_sltu();
-          }
-        } else if (translate)
-	  translate_sltu();
-	else
-          do_sltu();
-
-        return;
-      }
+      if (funct7 == F7_SLTU)
+        is = SLTU;
     }
   } else if (opcode == OP_BRANCH) {
     decode_b_format();
 
-    if (funct3 == F3_BEQ) {
-      if (debug) {
-        if (record) {
-          record_beq();
-          do_beq();
-        } if (disassemble) {
-          print_beq();
-          if (execute) {
-            print_beq_before();
-            do_beq();
-            print_beq_after();
-          }
-          println();
-        } else if (symbolic)
-          constrain_beq();
-      } else if (translate)
-	translate_beq();
-      else
-        do_beq();
-
-      return;
-    }
+    if (funct3 == F3_BEQ)
+      is = BEQ;
   } else if (opcode == OP_JAL) {
     decode_j_format();
 
-    if (debug) {
-      if (record) {
-        record_lui_addi_add_sub_mul_sltu_jal_jalr();
-        do_jal();
-      } else if (undo)
-        undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-      else if (disassemble) {
-        print_jal();
-        if (execute) {
-          print_jal_before();
-          do_jal();
-          print_jal_jalr_after();
-        }
-        println();
-      } else if (symbolic)
-        do_jal();
-    } else if (translate)
-      translate_jal();
-    else
-      do_jal();
-
-    return;
+    is = JAL;
   } else if (opcode == OP_JALR) {
     decode_i_format();
 
-    if (funct3 == F3_JALR) {
-      if (debug) {
-        if (record) {
-          record_lui_addi_add_sub_mul_sltu_jal_jalr();
-          do_jalr();
-        } else if (undo)
-          undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-        else if (disassemble) {
-          print_jalr();
-          if (execute) {
-            print_jalr_before();
-            do_jalr();
-            print_jal_jalr_after();
-          }
-          println();
-        } else if (symbolic) {
-          constrain_jalr();
-          do_jalr();
-        }
-      } else if (translate)
-	translate_jalr();
-      else
-        do_jalr();
-
-      return;
-    }
+    if (funct3 == F3_JALR)
+      is = JALR;
   } else if (opcode == OP_LUI) {
     decode_u_format();
 
-    if (debug) {
-      if (record) {
-        record_lui_addi_add_sub_mul_sltu_jal_jalr();
-        do_lui();
-      } else if (undo)
-        undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
-      else if (disassemble) {
-        print_lui();
-        if (execute) {
-          print_lui_before();
-          do_lui();
-          print_lui_after();
-        }
-        println();
-      } else if (symbolic) {
-        constrain_lui();
-        do_lui();
-      }
-    } else if (translate)
-      translate_lui();
-    else
-      do_lui();
-
-    return;
+    is = LUI;
   } else if (opcode == OP_SYSTEM) {
     decode_i_format();
 
-    if (funct3 == F3_ECALL) {
-      if (debug) {
-        if (record) {
-          record_ecall();
-          do_ecall();
-        } else if (undo)
-          undo_ecall();
-        else if (disassemble) {
-          print_ecall();
-          if (execute)
-            do_ecall();
-          else
-            println();
-        } else if (symbolic)
-          do_ecall();
-      } else if (translate)
-	translate_ecall();
-      else
-        do_ecall();
+    if (funct3 == F3_ECALL)
+      is = ECALL;
+  }
 
-      return;
+  if (is == 0) {
+    if (run)
+      throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+    else {
+      //report the error on the console
+      output_fd = 1;
+
+      printf2("%s: unknown instruction with %x opcode detected\n", selfie_name, (char*) opcode);
+
+      exit(EXITCODE_UNKNOWNINSTRUCTION);
     }
   }
+}
 
-  if (execute)
-    throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, 0);
-  else {
-    //report the error on the console
-    output_fd = 1;
+void execute() {
+  if (debug) {
+    if (record)
+      execute_record();
+    else if (symbolic)
+      execute_symbolically();
+    else if (translate)
+      execute_translate();
+    else
+      execute_debug();
 
-    printf2("%s: unknown instruction with %x opcode detected\n", selfie_name, (char*) opcode);
-
-    exit(EXITCODE_UNKNOWNINSTRUCTION);
+    return;
   }
+
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI)
+    do_addi();
+  else if (is == LD)
+    do_ld();
+  else if (is == SD)
+    do_sd();
+  else if (is == ADD)
+    do_add();
+  else if (is == SUB)
+    do_sub();
+  else if (is == MUL)
+    do_mul();
+  else if (is == DIVU)
+    do_divu();
+  else if (is == REMU)
+    do_remu();
+  else if (is == SLTU)
+    do_sltu();
+  else if (is == BEQ)
+    do_beq();
+  else if (is == JAL)
+    do_jal();
+  else if (is == JALR)
+    do_jalr();
+  else if (is == LUI)
+    do_lui();
+  else if (is == ECALL)
+    do_ecall();
+}
+
+void execute_record() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_addi();
+  } else if (is == LD) {
+    record_ld();
+    do_ld();
+  } else if (is == SD) {
+    record_sd();
+    do_sd();
+  } else if (is == ADD) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_add();
+  } else if (is == SUB) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_sub();
+  } else if (is == MUL) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_mul();
+  } else if (is == DIVU) {
+    record_divu_remu();
+    do_divu();
+  } else if (is == REMU) {
+    record_divu_remu();
+    do_remu();
+  } else if (is == SLTU) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_sltu();
+  } else if (is == BEQ) {
+    record_beq();
+    do_beq();
+  } else if (is == JAL) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_jal();
+  } else if (is == JALR) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_jalr();
+  } else if (is == LUI) {
+    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    do_lui();
+  } else if (is == ECALL) {
+    record_ecall();
+    do_ecall();
+  }
+}
+
+void execute_undo() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == SD)
+    undo_sd();
+  else if (is == BEQ)
+    // beq does not require any undo
+    return;
+  else if (is == ECALL)
+    undo_ecall();
+  else
+    undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
+}
+
+void execute_debug() {
+  translate_to_assembler();
+
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI){
+    print_addi_before();
+    do_addi();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  } else if (is == LD) {
+    print_ld_before();
+    print_ld_after(do_ld());
+  } else if (is == SD) {
+    print_sd_before();
+    print_sd_after(do_sd());
+  } else if (is == ADD) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_add();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  } else if (is == SUB) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_sub();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  } else if (is == MUL) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_mul();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  } else if (is == DIVU) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_divu();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  } else if (is == REMU) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_remu();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  } else if (is == SLTU) {
+    print_add_sub_mul_divu_remu_sltu_before();
+    do_sltu();
+    print_addi_add_sub_mul_divu_remu_sltu_after();
+  } else if (is == BEQ) {
+    print_beq_before();
+    do_beq();
+    print_beq_after();
+  } else if (is == JAL) {
+    print_jal_before();
+    do_jal();
+    print_jal_jalr_after();
+  } else if (is == JALR) {
+    print_jalr_before();
+    do_jalr();
+    print_jal_jalr_after();
+  } else if (is == LUI) {
+    print_lui_before();
+    do_lui();
+    print_lui_after();
+  } else if (is == ECALL) {
+    do_ecall();
+
+    return;
+  }
+
+  println();
+}
+
+void execute_symbolically() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI) {
+    constrain_addi();
+    do_addi();
+  } else if (is == LD)
+    constrain_ld();
+  else if (is == SD)
+    constrain_sd();
+  else if (is == ADD) {
+    constrain_add_sub_mul_divu_remu_sltu("bvadd");
+    do_add();
+  } else if (is == SUB) {
+    constrain_add_sub_mul_divu_remu_sltu("bvsub");
+    do_sub();
+  } else if (is == MUL) {
+    constrain_add_sub_mul_divu_remu_sltu("bvmul");
+    do_mul();
+  } else if (is == DIVU) {
+    constrain_add_sub_mul_divu_remu_sltu("bvudiv");
+    do_divu();
+  } else if (is == REMU) {
+    constrain_add_sub_mul_divu_remu_sltu("bvurem");
+    do_remu();
+  } else if (is == SLTU) {
+    constrain_add_sub_mul_divu_remu_sltu("bvult");
+    zero_extend_sltu();
+    do_sltu();
+  } else if (is == BEQ)
+    constrain_beq();
+  else if (is == JAL)
+    do_jal();
+  else if (is == JALR) {
+    constrain_jalr();
+    do_jalr();
+  } else if (is == LUI) {
+    constrain_lui();
+    do_lui();
+  } else if (is == ECALL)
+    do_ecall();
+}
+
+void execute_translate() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI)
+    translate_addi();
+  else if (is == LD)
+    translate_ld();
+  else if (is == SD)
+    translate_sd();
+  else if (is == ADD)
+    translate_add();
+  else if (is == SUB)
+    translate_sub();
+  else if (is == MUL)
+    translate_mul();
+  else if (is == DIVU)
+    translate_divu();
+  else if (is == REMU)
+    translate_remu();
+  else if (is == SLTU)
+    translate_sltu();
+  else if (is == BEQ)
+    translate_beq();
+  else if (is == JAL)
+    translate_jal();
+  else if (is == JALR)
+    translate_jalr();
+  else if (is == LUI)
+    translate_lui();
+  else if (is == ECALL)
+    translate_ecall();
 }
 
 void interrupt() {
@@ -9200,7 +9159,9 @@ void run_until_exception() {
 
   while (trap == 0) {
     fetch();
-    decode_execute();
+    decode();
+    execute();
+
     interrupt();
   }
 
@@ -9288,6 +9249,38 @@ void print_profile() {
   }
 }
 
+void translate_to_assembler() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI)
+    print_addi();
+  else if (is == LD)
+    print_ld();
+  else if (is == SD)
+    print_sd();
+  else if (is == ADD)
+    print_add_sub_mul_divu_remu_sltu("add");
+  else if (is == SUB)
+    print_add_sub_mul_divu_remu_sltu("sub");
+  else if (is == MUL)
+    print_add_sub_mul_divu_remu_sltu("mul");
+  else if (is == DIVU)
+    print_add_sub_mul_divu_remu_sltu("divu");
+  else if (is == REMU)
+    print_add_sub_mul_divu_remu_sltu("remu");
+  else if (is == SLTU)
+    print_add_sub_mul_divu_remu_sltu("sltu");
+  else if (is == BEQ)
+    print_beq();
+  else if (is == JAL)
+    print_jal();
+  else if (is == JALR)
+    print_jalr();
+  else if (is == LUI)
+    print_lui();
+  else if (is == ECALL)
+    print_ecall();
+}
+
 void selfie_disassemble(uint64_t verbose) {
   uint64_t data;
 
@@ -9312,19 +9305,22 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = assembly_name;
   output_fd   = assembly_fd;
 
-  execute = 0;
+  run = 0;
 
   reset_library();
   reset_interpreter();
 
-  debug               = 1;
   disassemble         = 1;
   disassemble_verbose = verbose;
 
   while (pc < code_length) {
     ir = load_instruction(pc);
 
-    decode_execute();
+    decode();
+
+    translate_to_assembler();
+
+    println();
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -9340,7 +9336,6 @@ void selfie_disassemble(uint64_t verbose) {
 
   disassemble_verbose = 0;
   disassemble         = 0;
-  debug               = 0;
 
   output_name = (char*) 0;
   output_fd   = 1;
@@ -10301,7 +10296,7 @@ uint64_t selfie_run(uint64_t machine) {
     max_execution_depth = atoi(peek_argument());
   }
 
-  execute = 1;
+  run = 1;
 
   reset_interpreter();
   reset_microkernel();
@@ -10334,7 +10329,7 @@ uint64_t selfie_run(uint64_t machine) {
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
 
-  execute = 0;
+  run = 0;
 
   printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
     get_name(current_context),
@@ -10759,9 +10754,11 @@ uint64_t selfie() {
         return selfie_run(HYPSTER);
       else if (string_compare(option, "-t")) {
 	selfie_load();
+	debug = 1;
 	translate = 1;
 	x86Translate();
 	translate = 0;
+	debug = 0;
       }
       else if (string_compare(option, "-min"))
         return selfie_run(MINSTER);
