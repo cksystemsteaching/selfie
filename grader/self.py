@@ -331,15 +331,14 @@ def test_bitwise_shift(stage):
 
       literal_file = 'bitwise-' + direction + '-shift-literals.c'
       variable_file = 'bitwise-' + direction + '-shift-variables.c'
+      invalid_file = 'bitwise-' + direction + '-shift-invalid.c'
 
       test_compilable(literal_file,
-        'bitwise-' + direction + '-shift operator with literals compiled')
-      test_mipster_execution(literal_file, 2,
-        'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
+        'bitwise-' + direction + '-shift operator with literals does compile')
       test_compilable(variable_file,
-        'bitwise-' + direction + '-shift operator with variables compiled')
-      test_mipster_execution(variable_file, 2,
-        'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
+        'bitwise-' + direction + '-shift operator with variables does compile')
+      test_compilable(invalid_file,
+        'biwise-' + direction + '-shift operator with invalid syntax does not compile', should_succeed=False)
 
   if stage >= 2:
     start_stage(2)
@@ -356,8 +355,12 @@ def test_bitwise_shift(stage):
 
       test_instruction_encoding(literal_file, instruction, R_FORMAT_MASK,
         'bitwise-' + direction + '-shift operator has right RISC-V encoding')
+      test_mipster_execution(literal_file, 2,
+        'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
       test_instruction_encoding(variable_file, instruction, R_FORMAT_MASK,
         'bitwise-' + direction + '-shift operator has right RISC-V encoding')
+      test_mipster_execution(variable_file, 2,
+        'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
 
 
