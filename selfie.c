@@ -8214,8 +8214,11 @@ uint64_t is_initialized_register(uint64_t reg) {
 
 void selfie_model_check() {
   uint64_t i;
-  uint64_t binary_ceiling;
+  uint64_t pcs_nid;
+  uint64_t current_nid;
+  uint64_t data_nid;
   uint64_t data;
+  uint64_t memory_nid;
 
   model_name = get_argument();
 
@@ -8253,12 +8256,12 @@ void selfie_model_check() {
   printf1("20 constd 2 %d\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE);
   printf1("30 constd 2 %d\n\n", (char*) binary_length);
 
-  i = 0;
+  printf1("100 one 2 %s ; register $0 is always 0\n", get_register_name(REG_ZR));
+
+  i = 1;
 
   while (i < NUMBEROFREGISTERS) {
-    if (i == 0)
-      printf2("%d one 2 %s ; register $0 is always 0\n", (char*) (100 + i), get_register_name(i));
-    else if (is_initialized_register(i))
+    if (is_initialized_register(i))
       printf3("%d state 2 %s ; register $%d\n", (char*) (100 + i), get_register_name(i), (char*) i);
     else
       printf3("%d input 2 %s ; register $%d\n", (char*) (100 + i), get_register_name(i), (char*) i);
@@ -8269,26 +8272,59 @@ void selfie_model_check() {
   printf2("\n200 init 2 %d 20 %s ; initial value\n", (char*) (100 + REG_SP), get_register_name(REG_SP));
   printf2("300 init 2 %d 30 %s ; initial value\n\n", (char*) (100 + REG_GP), get_register_name(REG_GP));
 
-  binary_ceiling = max(1000, ten_to_the_power_of(log_ten(binary_length) + 1));
+  pcs_nid = max(1000, ten_to_the_power_of(log_ten(binary_length) + 1));
 
   while (pc < code_length) {
-    printf1("%d state 1\n", (char*) (binary_ceiling + pc));
+    current_nid = pcs_nid + pc;
+
+    printf1("%d state 1\n", (char*) current_nid);
 
     if (pc == 0)
-      printf2("%d init 1 %d 11 ; initial program counter\n", (char*) (binary_ceiling + pc + 1), (char*) (binary_ceiling + pc));
+      printf2("%d init 1 %d 11 ; initial program counter\n", (char*) (current_nid + 1), (char*) current_nid);
     else
-      printf2("%d init 1 %d 10\n", (char*) (binary_ceiling + pc + 1), (char*) (binary_ceiling + pc));
+      printf2("%d init 1 %d 10\n", (char*) (current_nid + 1), (char*) current_nid);
 
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  println();
+  current_nid = pcs_nid + pc;
+
+  printf1("\n%d state 3 data-segment\n", (char*) current_nid);
+
+  data_nid = current_nid;
+
+  current_nid = current_nid + 1;
 
   while (pc < binary_length) {
+    // address in data segment
+    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) pc);
+
     data = load_data(pc);
 
+    if (data == 0) {
+      // machine word is 0
+      printf3("%d write 3 %d %d 12\n", (char*) (current_nid + 1), (char*) data_nid, (char*) current_nid);
+
+      data_nid = current_nid + 1;
+    } else {
+      // non-zero machine word
+      printf2("%d constd 2 %d\n", (char*) (current_nid + 1), (char*) data);
+      printf4("%d write 3 %d %d %d\n", (char*) (current_nid + 2), (char*) data_nid, (char*) current_nid, (char*) (current_nid + 1));
+
+      data_nid = current_nid + 2;
+    }
+
     pc = pc + REGISTERSIZE;
+
+    current_nid = pcs_nid + pc;
   }
+
+  memory_nid = pcs_nid * 2;
+
+  current_nid = memory_nid;
+
+  printf1("\n%d state 3 memory\n", (char*) current_nid);
+  printf3("%d init 3 %d %d\n", (char*) (current_nid + 1), (char*) current_nid, (char*) data_nid);
 
   output_name = (char*) 0;
   output_fd   = 1;
