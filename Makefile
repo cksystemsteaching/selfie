@@ -5,8 +5,11 @@ CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
+selfie.m: selfie
+	./selfie -c selfie.c -o selfie.m
+
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector all clean
+.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector x86 all clean
 
 # Self-compile
 compile: selfie
@@ -84,6 +87,12 @@ boolector: smt
 	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
 
+# Translate a RISC-V selfie binary into a x86-64 binary
+x86: selfie selfie.m
+	./selfie -t selfie.m -o selfie.x86
+	mv selfie.x86 selfie
+	chmod +x selfie
+
 # Run everything
 all: compile quine debug replay os vm min mob smt sat
 
@@ -92,6 +101,7 @@ clean:
 	rm -rf *.m
 	rm -rf *.s
 	rm -rf *.t
+	rm -rf *.x86
 	rm -rf selfie
 	rm -rf selfie.exe
 	rm -rf manuscript/code/*.t
