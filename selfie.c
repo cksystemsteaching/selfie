@@ -1419,8 +1419,6 @@ uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
-uint64_t is_initialized_register(uint64_t reg);
-
 void selfie_model_check();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -8203,15 +8201,6 @@ void selfie_disassemble(uint64_t verbose) {
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
-uint64_t is_initialized_register(uint64_t reg) {
-  if (reg == REG_SP)
-    return 1;
-  else if (reg == REG_GP)
-    return 1;
-  else
-    return 0;
-}
-
 void selfie_model_check() {
   uint64_t i;
   uint64_t pcs_nid;
@@ -8253,24 +8242,35 @@ void selfie_model_check() {
   print("10 zero 1\n11 one 1\n\n");
   print("12 zero 2\n13 one 2\n\n");
 
-  printf1("20 constd 2 %d\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE);
-  printf1("30 constd 2 %d\n\n", (char*) binary_length);
+  printf1("20 constd 2 %d\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE); // initial $sp value
+  printf1("30 constd 2 %d\n\n", (char*) binary_length); // initial $gp value
 
   printf1("100 one 2 %s ; register $0 is always 0\n", get_register_name(REG_ZR));
 
   i = 1;
 
   while (i < NUMBEROFREGISTERS) {
-    if (is_initialized_register(i))
-      printf3("%d state 2 %s ; register $%d\n", (char*) (100 + i), get_register_name(i), (char*) i);
-    else
-      printf3("%d input 2 %s ; register $%d\n", (char*) (100 + i), get_register_name(i), (char*) i);
+    printf3("%d state 2 %s ; register $%d\n", (char*) (100 + i), get_register_name(i), (char*) i);
 
     i = i + 1;
   }
 
-  printf2("\n200 init 2 %d 20 %s ; initial value\n", (char*) (100 + REG_SP), get_register_name(REG_SP));
-  printf2("300 init 2 %d 30 %s ; initial value\n\n", (char*) (100 + REG_GP), get_register_name(REG_GP));
+  println();
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    if (i == REG_SP)
+      printf3("%d init 2 %d 20 %s ; initial value\n", (char*) (200 + i), (char*) (100 + i), get_register_name(i));
+    else if (i == REG_GP)
+      printf3("%d init 2 %d 30 %s ; initial value\n", (char*) (200 + i), (char*) (100 + i), get_register_name(i));
+    else
+      printf3("%d init 2 %d 12 %s ; initial value\n", (char*) (200 + i), (char*) (100 + i), get_register_name(i));
+
+    i = i + 1;
+  }
+
+  println();
 
   pcs_nid = max(1000, ten_to_the_power_of(log_ten(binary_length) + 1));
 
