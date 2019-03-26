@@ -8209,15 +8209,18 @@ uint64_t pcs_nid     = 0;
 uint64_t current_nid = 0;
 
 void model_lui() {
-  printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
+  if (rd != REG_ZR) {
+    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
 
-  printf4("%d ite 2 %d %d %d ; ",
-    (char*) (current_nid + 1),      // nid of this line
-    (char*) (pcs_nid + pc),         // nid of pc flag of this lui instruction
-    (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
-    (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) (current_nid + 1),      // nid of this line
+      (char*) (pcs_nid + pc),         // nid of pc flag of this lui instruction
+      (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-  *(reg_flow_nids + rd) = current_nid + 1;
+    *(reg_flow_nids + rd) = current_nid + 1;
+  } else
+    print("; ");
 
   print_lui();println();
 
@@ -8234,30 +8237,43 @@ void model_lui() {
 }
 
 void model_addi() {
-  if (imm == 0) {
-    printf4("%d ite 2 %d %d %d ; ",
-      (char*) current_nid,            // nid of this line
-      (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
-      (char*) (reg_nids + rs1),       // nid of current value in $rs1 register
-      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+  if (rd != REG_ZR) {
+    if (imm == 0) {
+      printf4("%d ite 2 %d %d %d ; ",
+        (char*) current_nid,            // nid of this line
+        (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+        (char*) (reg_nids + rs1),       // nid of current value in $rs1 register
+        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    *(reg_flow_nids + rd) = current_nid;
-  } else {
-    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
+      *(reg_flow_nids + rd) = current_nid;
+    } else {
+      printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
 
-    printf3("%d add 2 %d %d\n",
-      (char*) (current_nid + 1),
-      (char*) (reg_nids + rs1),
-      (char*) current_nid);
+      if (rs1 == REG_ZR) {
+        printf4("%d ite 2 %d %d %d ; ",
+          (char*) (current_nid + 1),      // nid of this line
+          (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+          (char*) current_nid,            // nid of immediate value
+          (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    printf4("%d ite 2 %d %d %d ; ",
-      (char*) (current_nid + 2),      // nid of this line
-      (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
-      (char*) (current_nid + 1),      // nid of addition of $rs1 register and immediate value
-      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+        *(reg_flow_nids + rd) = current_nid + 1;
+      } else {
+        printf3("%d add 2 %d %d\n",
+          (char*) (current_nid + 1),
+          (char*) (reg_nids + rs1),
+          (char*) current_nid);
 
-    *(reg_flow_nids + rd) = current_nid + 2;
-  }
+        printf4("%d ite 2 %d %d %d ; ",
+          (char*) (current_nid + 2),      // nid of this line
+          (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+          (char*) (current_nid + 1),      // nid of addition of $rs1 register and immediate value
+          (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+        *(reg_flow_nids + rd) = current_nid + 2;
+      }
+    }
+  } else
+    print("; ");
 
   print_addi();println();
 }
