@@ -1317,12 +1317,13 @@ uint64_t run = 0; // flag for running code
 // enables recording, symbolically executing, and debugging code
 uint64_t debug = 0;
 
+uint64_t debug_syscalls = 0; // flag for debugging syscalls
+
 uint64_t record   = 0; // flag for recording code execution
 uint64_t symbolic = 0; // flag for symbolically executing code
 
 uint64_t redo = 0; // flag for redoing code execution
 
-uint64_t disassemble         = 0; // flag for disassembling code
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
 // number of instructions from context switch to timer interrupt
@@ -5918,7 +5919,7 @@ void implement_exit(uint64_t* context) {
   // parameter;
   uint64_t signed_int_exit_code;
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print("(exit): ");
     print_register_hexadecimal(REG_A0);
     print(" |- ->\n");
@@ -5980,7 +5981,7 @@ void implement_read(uint64_t* context) {
   uint64_t* buffer;
   uint64_t actually_read;
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print("(read): ");
     print_register_value(REG_A0);
     print(",");
@@ -6075,7 +6076,7 @@ void implement_read(uint64_t* context) {
       (char*) read_total,
       (char*) fd);
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print(" -> ");
     print_register_value(REG_A0);
     println();
@@ -6114,7 +6115,7 @@ void implement_write(uint64_t* context) {
   uint64_t* buffer;
   uint64_t actually_written;
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print("(write): ");
     print_register_value(REG_A0);
     print(",");
@@ -6201,7 +6202,7 @@ void implement_write(uint64_t* context) {
       (char*) written_total,
       (char*) fd);
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print(" -> ");
     print_register_value(REG_A0);
     println();
@@ -6302,7 +6303,7 @@ void implement_openat(uint64_t* context) {
   // return value
   uint64_t fd;
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print("(openat): ");
     print_register_hexadecimal(REG_A0);
     print(",");
@@ -6350,7 +6351,7 @@ void implement_openat(uint64_t* context) {
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print(" -> ");
     print_register_value(REG_A0);
     println();
@@ -6426,7 +6427,7 @@ void implement_brk(uint64_t* context) {
   uint64_t previous_program_break;
   uint64_t valid;
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print("(brk): ");
     print_register_hexadecimal(REG_A0);
   }
@@ -6443,7 +6444,7 @@ void implement_brk(uint64_t* context) {
         valid = 1;
 
   if (valid) {
-    if (disassemble)
+    if (debug_syscalls)
       print(" |- ->\n");
 
     if (debug_brk)
@@ -6457,14 +6458,14 @@ void implement_brk(uint64_t* context) {
     if (debug_brk)
       printf2("%s: retrieving current program break %p\n", selfie_name, (char*) program_break);
 
-    if (disassemble) {
+    if (debug_syscalls) {
       print(" |- ");
       print_register_hexadecimal(REG_A0);
     }
 
     *(get_regs(context) + REG_A0) = program_break;
 
-    if (disassemble) {
+    if (debug_syscalls) {
       print(" -> ");
       print_register_hexadecimal(REG_A0);
       println();
@@ -6538,7 +6539,7 @@ void implement_switch() {
   uint64_t* to_context;
   uint64_t timeout;
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print("(switch): ");
     print_register_hexadecimal(REG_A0);
     print(",");
@@ -6557,7 +6558,7 @@ void implement_switch() {
 
   current_context = do_switch(current_context, to_context, timeout);
 
-  if (disassemble) {
+  if (debug_syscalls) {
     print(" -> ");
     print_register_hexadecimal(REG_A6);
     println();
@@ -7473,7 +7474,7 @@ void replay_trace() {
 
   redo = 1;
 
-  disassemble = 1;
+  debug_syscalls = 1;
 
   tl = trace_length;
 
@@ -7489,7 +7490,7 @@ void replay_trace() {
     tl = tl - 1;
   }
 
-  disassemble = 0;
+  debug_syscalls = 0;
 
   redo   = 0;
   record = 1;
@@ -8163,7 +8164,6 @@ void selfie_disassemble(uint64_t verbose) {
   reset_library();
   reset_interpreter();
 
-  disassemble         = 1;
   disassemble_verbose = verbose;
 
   while (pc < code_length) {
@@ -8186,7 +8186,6 @@ void selfie_disassemble(uint64_t verbose) {
   }
 
   disassemble_verbose = 0;
-  disassemble         = 0;
 
   output_name = (char*) 0;
   output_fd   = 1;
@@ -8410,6 +8409,8 @@ void selfie_model_check() {
   reset_library();
   reset_interpreter();
 
+  disassemble_verbose = 1;
+
   print("1 sort bitvec 1 ; Boolean\n");
   print("2 sort bitvec 64 ; 64-bit machine word\n");
   print("3 sort array 2 2 ; 64-bit memory\n\n");
@@ -8560,7 +8561,9 @@ void selfie_model_check() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  // TODO: update pc, registers, and memory
+  // TODO: update registers, pc, and memory
+
+  disassemble_verbose = 0;
 
   output_name = (char*) 0;
   output_fd   = 1;
@@ -9499,8 +9502,8 @@ uint64_t selfie_run(uint64_t machine) {
   }
 
   if (machine == DIPSTER) {
-    debug       = 1;
-    disassemble = 1;
+    debug          = 1;
+    debug_syscalls = 1;
   } else if (machine == RIPSTER) {
     debug  = 1;
     record = 1;
@@ -9560,10 +9563,11 @@ uint64_t selfie_run(uint64_t machine) {
 
   print_profile();
 
-  symbolic    = 0;
-  record      = 0;
-  disassemble = 0;
-  debug       = 0;
+  symbolic = 0;
+  record   = 0;
+
+  debug_syscalls = 0;
+  debug          = 0;
 
   return exit_code;
 }
