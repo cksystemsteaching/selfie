@@ -8202,6 +8202,7 @@ void selfie_disassemble(uint64_t verbose) {
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
+uint64_t  reg_nids      = 0;
 uint64_t* reg_flow_nids = (uint64_t*) 0;
 
 uint64_t pcs_nid     = 0;
@@ -8216,9 +8217,9 @@ void model_lui() {
     (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
     (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-  print_lui();println();
-
   *(reg_flow_nids + rd) = current_nid + 1;
+
+  print_lui();println();
 
   if (pc < code_length) {
     // TODO: control flow
@@ -8233,7 +8234,32 @@ void model_lui() {
 }
 
 void model_addi() {
+  if (imm == 0) {
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) current_nid,            // nid of this line
+      (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+      (char*) (reg_nids + rs1),       // nid of current value in $rs1 register
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
+    *(reg_flow_nids + rd) = current_nid;
+  } else {
+    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
+
+    printf3("%d add 2 %d %d\n",
+      (char*) (current_nid + 1),
+      (char*) (reg_nids + rs1),
+      (char*) current_nid);
+
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) (current_nid + 2),      // nid of this line
+      (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+      (char*) (current_nid + 1),      // nid of addition of $rs1 register and immediate value
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+    *(reg_flow_nids + rd) = current_nid + 2;
+  }
+
+  print_addi();println();
 }
 
 void model_add() {
@@ -8318,7 +8344,6 @@ void translate_to_model() {
 
 void selfie_model_check() {
   uint64_t i;
-  uint64_t regs_nid;
   uint64_t data_flow_nid;
   uint64_t machine_word;
   uint64_t memory_nid;
@@ -8360,11 +8385,11 @@ void selfie_model_check() {
   printf1("20 constd 2 %d\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE); // initial $sp value
   printf1("30 constd 2 %d\n\n", (char*) binary_length);                  // initial $gp value
 
-  regs_nid = 100;
+  reg_nids = 100;
 
   reg_flow_nids = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR);
 
-  *reg_flow_nids = regs_nid;
+  *reg_flow_nids = reg_nids;
 
   printf2("%d one 2 %s ; register $0 is always 0\n",
     (char*) *reg_flow_nids,     // nid of this line
@@ -8373,7 +8398,7 @@ void selfie_model_check() {
   i = 1;
 
   while (i < NUMBEROFREGISTERS) {
-    *(reg_flow_nids + i) = regs_nid + i;
+    *(reg_flow_nids + i) = reg_nids + i;
 
     printf3("%d state 2 %s ; register $%d\n",
       (char*) *(reg_flow_nids + i), // nid of this line
@@ -8390,18 +8415,18 @@ void selfie_model_check() {
   while (i < NUMBEROFREGISTERS) {
     if (i == REG_SP)
       printf3("%d init 2 %d 20 %s ; initial value\n", // initializing to highest memory address
-        (char*) (regs_nid * 2 + i), // nid of this line
-        (char*) (regs_nid + i),     // nid of state of $sp register
+        (char*) (reg_nids * 2 + i), // nid of this line
+        (char*) (reg_nids + i),     // nid of state of $sp register
         get_register_name(i));      // register name as comment
     else if (i == REG_GP)
       printf3("%d init 2 %d 30 %s ; initial value\n", // initializing to program break
-        (char*) (regs_nid * 2 + i),
-        (char*) (regs_nid + i),     // nid of state of $gp register
+        (char*) (reg_nids * 2 + i),
+        (char*) (reg_nids + i),     // nid of state of $gp register
         get_register_name(i));
     else
       printf3("%d init 2 %d 12 %s ; initial value\n", // initializing to 0
-        (char*) (regs_nid * 2 + i),
-        (char*) (regs_nid + i),     // nid of state of initialized register
+        (char*) (reg_nids * 2 + i),
+        (char*) (reg_nids + i),     // nid of state of initialized register
         get_register_name(i));
 
     i = i + 1;
@@ -8409,7 +8434,7 @@ void selfie_model_check() {
 
   println();
 
-  pcs_nid = max(regs_nid * 10, ten_to_the_power_of(log_ten(binary_length) + 1));
+  pcs_nid = max(reg_nids * 10, ten_to_the_power_of(log_ten(binary_length) + 1));
 
   while (pc < code_length) {
     current_nid = pcs_nid + pc;
