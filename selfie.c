@@ -8201,6 +8201,38 @@ void selfie_disassemble(uint64_t verbose) {
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
+void translate_to_model() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI)
+    print_addi();
+  else if (is == LD)
+    print_ld();
+  else if (is == SD)
+    print_sd();
+  else if (is == ADD)
+    print_add_sub_mul_divu_remu_sltu("add");
+  else if (is == SUB)
+    print_add_sub_mul_divu_remu_sltu("sub");
+  else if (is == MUL)
+    print_add_sub_mul_divu_remu_sltu("mul");
+  else if (is == DIVU)
+    print_add_sub_mul_divu_remu_sltu("divu");
+  else if (is == REMU)
+    print_add_sub_mul_divu_remu_sltu("remu");
+  else if (is == SLTU)
+    print_add_sub_mul_divu_remu_sltu("sltu");
+  else if (is == BEQ)
+    print_beq();
+  else if (is == JAL)
+    print_jal();
+  else if (is == JALR)
+    print_jalr();
+  else if (is == LUI)
+    print_lui();
+  else if (is == ECALL)
+    print_ecall();
+}
+
 void selfie_model_check() {
   uint64_t i;
   uint64_t pcs_nid;
@@ -8208,6 +8240,7 @@ void selfie_model_check() {
   uint64_t data_nid;
   uint64_t data;
   uint64_t memory_nid;
+  uint64_t code_nid;
 
   model_name = get_argument();
 
@@ -8324,7 +8357,27 @@ void selfie_model_check() {
   current_nid = memory_nid;
 
   printf1("\n%d state 3 memory\n", (char*) current_nid);
-  printf3("%d init 3 %d %d\n", (char*) (current_nid + 1), (char*) current_nid, (char*) data_nid);
+  printf3("%d init 3 %d %d\n\n", (char*) (current_nid + 1), (char*) current_nid, (char*) data_nid);
+
+  code_nid = pcs_nid * 3;
+
+  pc = 0;
+
+  while (pc < code_length) {
+    current_nid = code_nid + pc;
+
+    ir = load_instruction(pc);
+
+    decode();
+
+    translate_to_model();
+
+    println();
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+
+  // TODO: update pc, registers, and heap
 
   output_name = (char*) 0;
   output_fd   = 1;
