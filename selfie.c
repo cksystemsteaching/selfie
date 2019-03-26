@@ -8208,6 +8208,32 @@ uint64_t* reg_flow_nids = (uint64_t*) 0;
 uint64_t pcs_nid     = 0;
 uint64_t current_nid = 0;
 
+uint64_t* control_in = (uint64_t*) 0;
+
+void go_to_instruction(uint64_t a) {
+  uint64_t* in_edge;
+
+  if (a < code_length) {
+    in_edge = smalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+
+    *in_edge       = *(control_in + a / INSTRUCTIONSIZE);
+    *(in_edge + 1) = pc;
+
+    *(control_in + a / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+
+    return;
+  } else if (*(control_in + pc / INSTRUCTIONSIZE) != 0) {
+    // the instruction at pc is reachable and goes to an invalid instruction address a
+
+    //report the error on the console
+    output_fd = 1;
+
+    printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) a);
+
+    exit(EXITCODE_MODELCHECKINGERROR);
+  }
+}
+
 void model_lui() {
   if (rd != REG_ZR) {
     printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
@@ -8224,16 +8250,7 @@ void model_lui() {
 
   print_lui();println();
 
-  if (pc < code_length) {
-    // TODO: control flow
-  } else {
-    //report the error on the console
-    output_fd = 1;
-
-    printf2("%s: invalid program counter %x detected\n", selfie_name, (char*) (pc + INSTRUCTIONSIZE));
-
-    exit(EXITCODE_MODELCHECKINGERROR);
-  }
+  go_to_instruction(pc + INSTRUCTIONSIZE);
 }
 
 void model_addi() {
@@ -8276,6 +8293,8 @@ void model_addi() {
     print("; ");
 
   print_addi();println();
+
+  go_to_instruction(pc + INSTRUCTIONSIZE);
 }
 
 void model_add() {
@@ -8522,6 +8541,8 @@ void selfie_model_check() {
     (char*) (current_nid + 1), // nid of this line
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
+
+  control_in = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   code_nid = pcs_nid * 3;
 
