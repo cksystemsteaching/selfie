@@ -8201,7 +8201,7 @@ void selfie_disassemble(uint64_t verbose) {
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
-uint64_t* regs_flow = (uint64_t*) 0;
+uint64_t* reg_flow_nids = (uint64_t*) 0;
 
 uint64_t pcs_nid     = 0;
 uint64_t current_nid = 0;
@@ -8209,11 +8209,15 @@ uint64_t current_nid = 0;
 void model_lui() {
   printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
 
-  printf4("%d ite 2 %d %d %d ; ", (char*) (current_nid + 1), (char*) (pcs_nid + pc), (char*) current_nid, (char*) *(regs_flow + rd));
+  printf4("%d ite 2 %d %d %d ; ",
+    (char*) (current_nid + 1),      // nid of this line
+    (char*) (pcs_nid + pc),         // nid of pc flag of this lui instruction
+    (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
+    (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
   print_lui();println();
 
-  *(regs_flow + rd) = current_nid + 1;
+  *(reg_flow_nids + rd) = current_nid + 1;
 }
 
 void model_addi() {
@@ -8303,8 +8307,8 @@ void translate_to_model() {
 void selfie_model_check() {
   uint64_t i;
   uint64_t regs_nid;
-  uint64_t data_nid;
-  uint64_t data;
+  uint64_t data_flow_nid;
+  uint64_t machine_word;
   uint64_t memory_nid;
   uint64_t code_nid;
 
@@ -8342,22 +8346,27 @@ void selfie_model_check() {
   print("12 zero 2\n13 one 2\n\n");
 
   printf1("20 constd 2 %d\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE); // initial $sp value
-  printf1("30 constd 2 %d\n\n", (char*) binary_length); // initial $gp value
+  printf1("30 constd 2 %d\n\n", (char*) binary_length);                  // initial $gp value
 
   regs_nid = 100;
 
-  regs_flow = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR);
+  reg_flow_nids = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR);
 
-  *regs_flow = regs_nid;
+  *reg_flow_nids = regs_nid;
 
-  printf2("%d one 2 %s ; register $0 is always 0\n", (char*) *regs_flow, get_register_name(REG_ZR));
+  printf2("%d one 2 %s ; register $0 is always 0\n",
+    (char*) *reg_flow_nids,     // nid of this line
+    get_register_name(REG_ZR)); // register name as comment
 
   i = 1;
 
   while (i < NUMBEROFREGISTERS) {
-    *(regs_flow + i) = regs_nid + i;
+    *(reg_flow_nids + i) = regs_nid + i;
 
-    printf3("%d state 2 %s ; register $%d\n", (char*) *(regs_flow + i), get_register_name(i), (char*) i);
+    printf3("%d state 2 %s ; register $%d\n",
+      (char*) *(reg_flow_nids + i), // nid of this line
+      get_register_name(i),         // register name as comment
+      (char*) i);                   // register index as comment
 
     i = i + 1;
   }
@@ -8368,11 +8377,20 @@ void selfie_model_check() {
 
   while (i < NUMBEROFREGISTERS) {
     if (i == REG_SP)
-      printf3("%d init 2 %d 20 %s ; initial value\n", (char*) (regs_nid * 2 + i), (char*) (regs_nid + i), get_register_name(i));
+      printf3("%d init 2 %d 20 %s ; initial value\n", // initializing to highest memory address
+        (char*) (regs_nid * 2 + i), // nid of this line
+        (char*) (regs_nid + i),     // nid of state of $sp register
+        get_register_name(i));      // register name as comment
     else if (i == REG_GP)
-      printf3("%d init 2 %d 30 %s ; initial value\n", (char*) (regs_nid * 2 + i), (char*) (regs_nid + i), get_register_name(i));
+      printf3("%d init 2 %d 30 %s ; initial value\n", // initializing to program break
+        (char*) (regs_nid * 2 + i),
+        (char*) (regs_nid + i),     // nid of state of $gp register
+        get_register_name(i));
     else
-      printf3("%d init 2 %d 12 %s ; initial value\n", (char*) (regs_nid * 2 + i), (char*) (regs_nid + i), get_register_name(i));
+      printf3("%d init 2 %d 12 %s ; initial value\n", // initializing to 0
+        (char*) (regs_nid * 2 + i),
+        (char*) (regs_nid + i),     // nid of state of initialized register
+        get_register_name(i));
 
     i = i + 1;
   }
@@ -8384,12 +8402,16 @@ void selfie_model_check() {
   while (pc < code_length) {
     current_nid = pcs_nid + pc;
 
-    printf1("%d state 1\n", (char*) current_nid);
+    printf1("%d state 1\n", (char*) current_nid); // pc flag of current instruction
 
     if (pc == 0)
-      printf2("%d init 1 %d 11 ; initial program counter\n", (char*) (current_nid + 1), (char*) current_nid);
+      printf2("%d init 1 %d 11 ; initial program counter\n", // set pc here by initializing to true
+        (char*) (current_nid + 1), // nid of this line
+        (char*) current_nid);      // nid of pc flag of current instruction
     else
-      printf2("%d init 1 %d 10\n", (char*) (current_nid + 1), (char*) current_nid);
+      printf2("%d init 1 %d 10\n", // initializing to false
+        (char*) (current_nid + 1),
+        (char*) current_nid);
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -8398,27 +8420,38 @@ void selfie_model_check() {
 
   printf1("\n%d state 3 data-segment\n", (char*) current_nid);
 
-  data_nid = current_nid;
+  data_flow_nid = current_nid;
 
   current_nid = current_nid + 1;
 
   while (pc < binary_length) {
     // address in data segment
-    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) pc);
+    printf2("%d constd 2 %d\n",
+      (char*) current_nid, // nid of this line
+      (char*) pc);         // address of current machine word
 
-    data = load_data(pc);
+    machine_word = load_data(pc);
 
-    if (data == 0) {
+    if (machine_word == 0) {
       // machine word is 0
-      printf3("%d write 3 %d %d 12\n", (char*) (current_nid + 1), (char*) data_nid, (char*) current_nid);
+      printf3("%d write 3 %d %d 12\n", // loading 0
+        (char*) (current_nid + 1), // nid of this line
+        (char*) data_flow_nid,     // nid of most recent update to data segment
+        (char*) current_nid);      // nid of address of current machine word
 
-      data_nid = current_nid + 1;
+      data_flow_nid = current_nid + 1;
     } else {
       // non-zero machine word
-      printf2("%d constd 2 %d\n", (char*) (current_nid + 1), (char*) data);
-      printf4("%d write 3 %d %d %d\n", (char*) (current_nid + 2), (char*) data_nid, (char*) current_nid, (char*) (current_nid + 1));
+      printf2("%d constd 2 %d\n",
+        (char*) (current_nid + 1), // nid of this line
+        (char*) machine_word);     // value of machine word at current address
+      printf4("%d write 3 %d %d %d\n", // loading machine word
+        (char*) (current_nid + 2),  // nid of this line
+        (char*) data_flow_nid,      // nid of most recent update to data segment
+        (char*) current_nid,        // nid of address of current machine word
+        (char*) (current_nid + 1)); // nid of value of machine word at current address
 
-      data_nid = current_nid + 2;
+      data_flow_nid = current_nid + 2;
     }
 
     pc = pc + REGISTERSIZE;
@@ -8431,7 +8464,11 @@ void selfie_model_check() {
   current_nid = memory_nid;
 
   printf1("\n%d state 3 memory\n", (char*) current_nid);
-  printf3("%d init 3 %d %d\n\n", (char*) (current_nid + 1), (char*) current_nid, (char*) data_nid);
+
+  printf3("%d init 3 %d %d\n\n", // loading data segment
+    (char*) (current_nid + 1), // nid of this line
+    (char*) current_nid,       // nid of memory
+    (char*) data_flow_nid);    // nid of most recent update to data segment
 
   code_nid = pcs_nid * 3;
 
@@ -8449,7 +8486,7 @@ void selfie_model_check() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  // TODO: update pc, registers, and heap
+  // TODO: update pc, registers, and memory
 
   output_name = (char*) 0;
   output_fd   = 1;
