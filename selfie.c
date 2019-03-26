@@ -1636,7 +1636,8 @@ uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 9;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 10;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 11;
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 13;
+uint64_t EXITCODE_MODELCHECKINGERROR     = 13;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 14;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -8218,6 +8219,17 @@ void model_lui() {
   print_lui();println();
 
   *(reg_flow_nids + rd) = current_nid + 1;
+
+  if (pc < code_length) {
+    // TODO: control flow
+  } else {
+    //report the error on the console
+    output_fd = 1;
+
+    printf2("%s: invalid program counter %x detected\n", selfie_name, (char*) (pc + INSTRUCTIONSIZE));
+
+    exit(EXITCODE_MODELCHECKINGERROR);
+  }
 }
 
 void model_addi() {
