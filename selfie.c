@@ -8584,8 +8584,8 @@ void selfie_model_check() {
   while (i < NUMBEROFREGISTERS) {
     printf5("%d next 2 %d %d %s ; register $%d\n",
       (char*) (reg_update_nid + i), // nid of this line
-      (char*) (reg_nids + i),
-      (char*) *(reg_flow_nids + i),
+      (char*) (reg_nids + i),       // nid of register
+      (char*) *(reg_flow_nids + i), // nid of most recent update to register
       get_register_name(i),         // register name as comment
       (char*) i);                   // register index as comment
 
@@ -8593,8 +8593,6 @@ void selfie_model_check() {
   }
 
   // TODO: update memory
-
-  println();
 
   disassemble_verbose = 0;
 
