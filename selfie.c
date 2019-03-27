@@ -8420,7 +8420,9 @@ void selfie_model_check() {
   print("12 zero 2\n13 one 2\n\n");
 
   printf1("20 constd 2 %d\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE); // initial $sp value
-  printf1("30 constd 2 %d\n\n", (char*) binary_length);                  // initial $gp value
+  printf1("30 constd 2 %d\n", (char*) binary_length);                    // initial $gp value
+
+  print("\n; 32 64-bit general-purpose registers\n\n");
 
   reg_nids = 100;
 
@@ -8445,7 +8447,7 @@ void selfie_model_check() {
     i = i + 1;
   }
 
-  println();
+  print("\n; initializing registers\n\n");
 
   i = 1;
 
@@ -8469,7 +8471,7 @@ void selfie_model_check() {
     i = i + 1;
   }
 
-  println();
+  print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
   pcs_nid = max(reg_nids * 10, ten_to_the_power_of(log_ten(binary_length) + 1));
 
@@ -8533,16 +8535,20 @@ void selfie_model_check() {
     current_nid = pcs_nid + pc;
   }
 
+  print("\n; 64-bit memory\n\n");
+
   memory_nid = pcs_nid * 2;
 
   current_nid = memory_nid;
 
   printf1("\n%d state 3 memory\n", (char*) current_nid);
 
-  printf3("%d init 3 %d %d\n\n", // loading data segment
+  printf3("%d init 3 %d %d ; loading data segment into memory\n",
     (char*) (current_nid + 1), // nid of this line
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
+
+  print("\n; data flow\n\n");
 
   control_in = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
 
