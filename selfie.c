@@ -8391,6 +8391,7 @@ void selfie_model_check() {
   uint64_t machine_word;
   uint64_t memory_nid;
   uint64_t code_nid;
+  uint64_t control_nid;
   uint64_t reg_update_nid;
 
   model_name = get_argument();
@@ -8581,11 +8582,32 @@ void selfie_model_check() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  // TODO: update pc
+  print("\n; control flow\n\n");
+
+  control_nid = pcs_nid * 4;
+
+  pc = 0;
+
+  while (pc < code_length) {
+    current_nid = pc_nid(control_nid, pc);
+
+    if (*(control_in + pc / INSTRUCTIONSIZE) == 0) {
+      // no control-in edges
+      printf2("%d next 1 %d 10",
+        (char*) current_nid,
+        (char*) pc_nid(pcs_nid, pc));
+      if (pc > 0)
+        // TODO: warn about unreachable code
+        print(" ; unreachable");
+      println();
+    }
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
 
   print("\n; updating registers\n\n");
 
-  reg_update_nid = pcs_nid * 4;
+  reg_update_nid = pcs_nid * 5;
 
   i = 1;
 
