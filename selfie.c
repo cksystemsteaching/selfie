@@ -8231,7 +8231,7 @@ void go_to_instruction(uint64_t a) {
 
     return;
   } else if (*(control_in + pc / INSTRUCTIONSIZE) != 0) {
-    // the instruction at pc is reachable and goes to an invalid instruction address a
+    // the instruction at pc is reachable and proceeds to an invalid instruction address a
 
     //report the error on the console
     output_fd = 1;
@@ -8393,6 +8393,8 @@ void selfie_model_check() {
   uint64_t code_nid;
   uint64_t control_nid;
   uint64_t reg_update_nid;
+  uint64_t* in_edge;
+  uint64_t control_flow_nid;
 
   model_name = get_argument();
 
@@ -8591,7 +8593,9 @@ void selfie_model_check() {
   while (pc < code_length) {
     current_nid = pc_nid(control_nid, pc);
 
-    if (*(control_in + pc / INSTRUCTIONSIZE) == 0) {
+    in_edge = (uint64_t*) *(control_in + pc / INSTRUCTIONSIZE);
+
+    if (in_edge == (uint64_t*) 0) {
       // no control-in edges
       printf2("%d next 1 %d 10",
         (char*) current_nid,
@@ -8600,6 +8604,42 @@ void selfie_model_check() {
         // TODO: warn about unreachable code
         print(" ; unreachable");
       println();
+    } else {
+      control_flow_nid = 10;
+
+      i = 0;
+
+      while (in_edge != (uint64_t*) 0) {
+        // TODO: process in-edges from BEQ and JALR instructions
+
+        printf3("%d ite 1 %d 11 %d\n",
+          (char*) (current_nid + i),               // nid of this line
+          (char*) pc_nid(pcs_nid, *(in_edge + 1)), // nid of pc flag of instruction proceeding here
+          (char*) control_flow_nid);               // nid of 0 or previously processed in-edge
+
+        control_flow_nid = current_nid + i;
+
+        in_edge = (uint64_t*) *in_edge;
+
+        if (i < 39)
+          // we can only accommodate 39 in-edges
+          i = i + 1;
+        else {
+          // the instruction at pc is reachable by too many other instructions
+
+          //report the error on the console
+          output_fd = 1;
+
+          printf2("%s: too many in-edges at instruction address %x detected\n", selfie_name, (char*) pc);
+
+          exit(EXITCODE_MODELCHECKINGERROR);
+        }
+      }
+
+      printf3("%d next 1 %d %d\n",
+          (char*) (current_nid + i),   // nid of this line
+          (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
+          (char*) control_flow_nid);   // nid of most recently processed in-edge
     }
 
     pc = pc + INSTRUCTIONSIZE;
