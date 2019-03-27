@@ -8208,13 +8208,14 @@ void selfie_disassemble(uint64_t verbose) {
 uint64_t  reg_nids      = 0;
 uint64_t* reg_flow_nids = (uint64_t*) 0;
 
-uint64_t pcs_nid     = 0;
+uint64_t pcs_nid = 0;
+
 uint64_t current_nid = 0;
 
 uint64_t* control_in = (uint64_t*) 0;
 
-uint64_t pc_nid(uint64_t pc) {
-  return pcs_nid + pc * 10;
+uint64_t pc_nid(uint64_t nid, uint64_t pc) {
+  return nid + pc * 10;
 }
 
 void go_to_instruction(uint64_t a) {
@@ -8247,7 +8248,7 @@ void model_lui() {
 
     printf4("%d ite 2 %d %d %d ; ",
       (char*) (current_nid + 1),      // nid of this line
-      (char*) pc_nid(pc),             // nid of pc flag of this lui instruction
+      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this lui instruction
       (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8265,7 +8266,7 @@ void model_addi() {
     if (imm == 0) {
       printf4("%d ite 2 %d %d %d ; ",
         (char*) current_nid,            // nid of this line
-        (char*) pc_nid(pc),             // nid of pc flag of this addi instruction
+        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
         (char*) (reg_nids + rs1),       // nid of current value in $rs1 register
         (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8276,7 +8277,7 @@ void model_addi() {
       if (rs1 == REG_ZR) {
         printf4("%d ite 2 %d %d %d ; ",
           (char*) (current_nid + 1),      // nid of this line
-          (char*) pc_nid(pc),             // nid of pc flag of this addi instruction
+          (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
           (char*) current_nid,            // nid of immediate value
           (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8289,7 +8290,7 @@ void model_addi() {
 
         printf4("%d ite 2 %d %d %d ; ",
           (char*) (current_nid + 2),      // nid of this line
-          (char*) pc_nid(pc),             // nid of pc flag of this addi instruction
+          (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
           (char*) (current_nid + 1),      // nid of addition of $rs1 register and immediate value
           (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8488,7 +8489,7 @@ void selfie_model_check() {
   pcs_nid = ten_to_the_power_of(log_ten(binary_length) + 2);
 
   while (pc < code_length) {
-    current_nid = pc_nid(pc);
+    current_nid = pc_nid(pcs_nid, pc);
 
     printf1("%d state 1\n", (char*) current_nid); // pc flag of current instruction
 
@@ -8504,7 +8505,7 @@ void selfie_model_check() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  current_nid = pc_nid(pc);
+  current_nid = pc_nid(pcs_nid, pc);
 
   printf1("\n%d state 3 data-segment\n\n", (char*) current_nid);
 
@@ -8544,7 +8545,7 @@ void selfie_model_check() {
 
     pc = pc + REGISTERSIZE;
 
-    current_nid = pc_nid(pc);
+    current_nid = pc_nid(pcs_nid, pc);
   }
 
   print("\n; 64-bit memory\n\n");
@@ -8569,6 +8570,8 @@ void selfie_model_check() {
   pc = 0;
 
   while (pc < code_length) {
+    current_nid = pc_nid(code_nid, pc);
+
     ir = load_instruction(pc);
 
     decode();
