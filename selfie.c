@@ -8213,6 +8213,10 @@ uint64_t current_nid = 0;
 
 uint64_t* control_in = (uint64_t*) 0;
 
+uint64_t pc_nid(uint64_t pc) {
+  return pcs_nid + pc * 10;
+}
+
 void go_to_instruction(uint64_t a) {
   uint64_t* in_edge;
 
@@ -8243,7 +8247,7 @@ void model_lui() {
 
     printf4("%d ite 2 %d %d %d ; ",
       (char*) (current_nid + 1),      // nid of this line
-      (char*) (pcs_nid + pc),         // nid of pc flag of this lui instruction
+      (char*) pc_nid(pc),             // nid of pc flag of this lui instruction
       (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8261,7 +8265,7 @@ void model_addi() {
     if (imm == 0) {
       printf4("%d ite 2 %d %d %d ; ",
         (char*) current_nid,            // nid of this line
-        (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+        (char*) pc_nid(pc),             // nid of pc flag of this addi instruction
         (char*) (reg_nids + rs1),       // nid of current value in $rs1 register
         (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8272,7 +8276,7 @@ void model_addi() {
       if (rs1 == REG_ZR) {
         printf4("%d ite 2 %d %d %d ; ",
           (char*) (current_nid + 1),      // nid of this line
-          (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+          (char*) pc_nid(pc),             // nid of pc flag of this addi instruction
           (char*) current_nid,            // nid of immediate value
           (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8285,7 +8289,7 @@ void model_addi() {
 
         printf4("%d ite 2 %d %d %d ; ",
           (char*) (current_nid + 2),      // nid of this line
-          (char*) (pcs_nid + pc),         // nid of pc flag of this addi instruction
+          (char*) pc_nid(pc),             // nid of pc flag of this addi instruction
           (char*) (current_nid + 1),      // nid of addition of $rs1 register and immediate value
           (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8478,10 +8482,13 @@ void selfie_model_check() {
 
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  pcs_nid = max(reg_nids * 10, ten_to_the_power_of(log_ten(binary_length) + 1));
+  // 2 more digits to accommodate binary with
+  // 10*4 lines per 32-bit instruction (pc increments by 4) and
+  // 10*8 lines per 64-bit machine word in data segment
+  pcs_nid = ten_to_the_power_of(log_ten(binary_length) + 2);
 
   while (pc < code_length) {
-    current_nid = pcs_nid + pc;
+    current_nid = pc_nid(pc);
 
     printf1("%d state 1\n", (char*) current_nid); // pc flag of current instruction
 
@@ -8497,7 +8504,7 @@ void selfie_model_check() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  current_nid = pcs_nid + pc;
+  current_nid = pc_nid(pc);
 
   printf1("\n%d state 3 data-segment\n\n", (char*) current_nid);
 
@@ -8537,7 +8544,7 @@ void selfie_model_check() {
 
     pc = pc + REGISTERSIZE;
 
-    current_nid = pcs_nid + pc;
+    current_nid = pc_nid(pc);
   }
 
   print("\n; 64-bit memory\n\n");
@@ -8562,8 +8569,6 @@ void selfie_model_check() {
   pc = 0;
 
   while (pc < code_length) {
-    current_nid = code_nid + pc;
-
     ir = load_instruction(pc);
 
     decode();
