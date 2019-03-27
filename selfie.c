@@ -8382,6 +8382,7 @@ void selfie_model_check() {
   uint64_t machine_word;
   uint64_t memory_nid;
   uint64_t code_nid;
+  uint64_t reg_update_nid;
 
   model_name = get_argument();
 
@@ -8561,7 +8562,28 @@ void selfie_model_check() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  // TODO: update registers, pc, and memory
+  // TODO: update pc
+
+  print("\n; updating registers\n\n");
+
+  reg_update_nid = pcs_nid * 4;
+
+  i = 1;
+
+  while (i < NUMBEROFREGISTERS) {
+    printf5("%d next 2 %d %d %s ; register $%d\n",
+      (char*) (reg_update_nid + i), // nid of this line
+      (char*) (reg_nids + i),
+      (char*) *(reg_flow_nids + i),
+      get_register_name(i),         // register name as comment
+      (char*) i);                   // register index as comment
+
+    i = i + 1;
+  }
+
+  // TODO: update memory
+
+  println();
 
   disassemble_verbose = 0;
 
