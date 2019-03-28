@@ -8215,7 +8215,7 @@ uint64_t current_nid = 0;
 uint64_t* control_in = (uint64_t*) 0;
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
-  return nid + pc * 10;
+  return nid + pc * 100;
 }
 
 void go_to_instruction(uint64_t at_address, uint64_t nid) {
@@ -8255,10 +8255,9 @@ void model_lui() {
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
     *(reg_flow_nids + rd) = current_nid + 1;
-  } else
-    print("; ");
 
-  print_lui();println();
+    print_lui();println();
+  }
 
   go_to_instruction(pc + INSTRUCTIONSIZE, 0);
 }
@@ -8299,10 +8298,9 @@ void model_addi() {
         *(reg_flow_nids + rd) = current_nid + 2;
       }
     }
-  } else
-    print("; ");
 
-  print_addi();println();
+    print_addi();println();
+  }
 
   go_to_instruction(pc + INSTRUCTIONSIZE, 0);
 }
@@ -8357,7 +8355,21 @@ void model_beq() {
 }
 
 void model_jal() {
+  if (rd != REG_ZR) {
+    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) (pc + INSTRUCTIONSIZE));
 
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) (current_nid + 1),      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this jal instruction
+      (char*) current_nid,            // nid of address of next instruction
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+    *(reg_flow_nids + rd) = current_nid + 1;
+
+    print_jal();println();
+  }
+
+  go_to_instruction(pc + imm, 0);
 }
 
 void model_jalr() {
@@ -8501,10 +8513,10 @@ void selfie_model_check() {
 
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  // 2 more digits to accommodate binary with
-  // 10*4 lines per 32-bit instruction (pc increments by 4) and
-  // 10*8 lines per 64-bit machine word in data segment
-  pcs_nid = ten_to_the_power_of(log_ten(binary_length) + 2);
+  // 3 more digits to accommodate binary with
+  // 100*4 lines per 32-bit instruction (pc increments by 4) and
+  // 100*8 lines per 64-bit machine word in data segment
+  pcs_nid = ten_to_the_power_of(log_ten(binary_length) + 3);
 
   while (pc < code_length) {
     current_nid = pc_nid(pcs_nid, pc);
@@ -8612,7 +8624,7 @@ void selfie_model_check() {
 
     if (in_edge == (uint64_t*) 0) {
       // no control-in edges
-      printf3("%d next 1 %d 10 ; updating %x",
+      printf3("%d next 1 %d 10 ; updating %d",
         (char*) current_nid,         // nid of this line
         (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
         (char*) pc);                 // pc of current instruction
@@ -8622,7 +8634,7 @@ void selfie_model_check() {
       println();
     } else {
       if (*(in_edge + 1) == BEQ) {
-        printf4("%d and 1 %d %d ; incoming beq at %x\n",
+        printf4("%d and 1 %d %d ; beq from %d\n",
           (char*) current_nid,                     // nid of this line
           (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
           (char*) *(in_edge + 3),                  // nid of true or false beq condition
@@ -8643,7 +8655,7 @@ void selfie_model_check() {
         // TODO: process in-edges from JALR instructions
 
         if (*(in_edge + 1) == BEQ) {
-          printf4("%d and 1 %d %d ; incoming beq at %x\n",
+          printf4("%d and 1 %d %d ; beq from %d\n",
             (char*) (current_nid + i),               // nid of this line
             (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
             (char*) *(in_edge + 3),                  // nid of true or false beq condition
@@ -8652,14 +8664,19 @@ void selfie_model_check() {
           printf3("%d ite 1 %d 11 %d\n",
             (char*) (current_nid + i + 1), // nid of this line
             (char*) (current_nid + i),     // nid of preceding line
-            (char*) control_flow_nid);     // nid of 0 bit or previously processed in-edge
+            (char*) control_flow_nid);     // nid of previously processed in-edge
 
           i = i + 2;
         } else {
-          printf3("%d ite 1 %d 11 %d ; incoming sequential\n",
+          printf3("%d ite 1 %d 11 %d ; ",
             (char*) (current_nid + i),               // nid of this line
             (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
-            (char*) control_flow_nid);               // nid of 0 bit or previously processed in-edge
+            (char*) control_flow_nid);               // nid of previously processed in-edge
+
+          if (*(in_edge + 1) == JAL)
+            printf1("jal from %d\n", (char*) *(in_edge + 2));
+          else
+            printf1("seq from %d\n", (char*) *(in_edge + 2));
 
           i = i + 1;
         }
@@ -8669,13 +8686,13 @@ void selfie_model_check() {
         in_edge = (uint64_t*) *in_edge;
       }
 
-      printf4("%d next 1 %d %d ; updating %x\n",
+      printf4("%d next 1 %d %d ; updating %d\n",
         (char*) (current_nid + i),   // nid of this line
         (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
         (char*) control_flow_nid,    // nid of most recently processed in-edge
         (char*) pc);                 // pc of current instruction
 
-      if (i >= 40) {
+      if (i >= 400) {
         // the instruction at pc is reachable by too many other instructions
 
         //report the error on the console
