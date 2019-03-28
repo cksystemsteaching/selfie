@@ -8218,25 +8218,27 @@ uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 10;
 }
 
-void go_to_instruction(uint64_t a) {
+void go_to_instruction(uint64_t at_address, uint64_t nid) {
   uint64_t* in_edge;
 
-  if (a < code_length) {
-    in_edge = smalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+  if (at_address < code_length) {
+    in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-    *in_edge       = *(control_in + a / INSTRUCTIONSIZE);
-    *(in_edge + 1) = pc;
+    *in_edge       = *(control_in + at_address / INSTRUCTIONSIZE);
+    *(in_edge + 1) = is;  // from which instruction
+    *(in_edge + 2) = pc;  // at which address
+    *(in_edge + 3) = nid; // under which condition are we coming
 
-    *(control_in + a / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+    *(control_in + at_address / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
     return;
   } else if (*(control_in + pc / INSTRUCTIONSIZE) != 0) {
-    // the instruction at pc is reachable and proceeds to an invalid instruction address a
+    // the instruction at pc is reachable and proceeds to an invalid instruction at_address
 
     //report the error on the console
     output_fd = 1;
 
-    printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) a);
+    printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) at_address);
 
     exit(EXITCODE_MODELCHECKINGERROR);
   }
@@ -8258,7 +8260,7 @@ void model_lui() {
 
   print_lui();println();
 
-  go_to_instruction(pc + INSTRUCTIONSIZE);
+  go_to_instruction(pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_addi() {
@@ -8284,9 +8286,9 @@ void model_addi() {
         *(reg_flow_nids + rd) = current_nid + 1;
       } else {
         printf3("%d add 2 %d %d\n",
-          (char*) (current_nid + 1),
-          (char*) (reg_nids + rs1),
-          (char*) current_nid);
+          (char*) (current_nid + 1), // nid of this line
+          (char*) (reg_nids + rs1),  // nid of current value in $rs1 register
+          (char*) current_nid);      // nid of immediate value
 
         printf4("%d ite 2 %d %d %d ; ",
           (char*) (current_nid + 2),      // nid of this line
@@ -8302,7 +8304,7 @@ void model_addi() {
 
   print_addi();println();
 
-  go_to_instruction(pc + INSTRUCTIONSIZE);
+  go_to_instruction(pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_add() {
@@ -8338,7 +8340,20 @@ void model_sd() {
 }
 
 void model_beq() {
+  printf3("%d eq 1 %d %d ; ",
+    (char*) current_nid,       // nid of this line
+    (char*) (reg_nids + rs1),  // nid of current value in $rs1 register
+    (char*) (reg_nids + rs2)); // nid of current value in $rs2 register
 
+  print_beq();println();
+
+  go_to_instruction(pc + imm, current_nid); // true case
+
+  printf2("%d not 1 %d\n",
+    (char*) current_nid + 1, // nid of this line
+    (char*) current_nid);    // nid of preceding line
+
+  go_to_instruction(pc + INSTRUCTIONSIZE, current_nid + 1); // false case
 }
 
 void model_jal() {
@@ -8597,49 +8612,79 @@ void selfie_model_check() {
 
     if (in_edge == (uint64_t*) 0) {
       // no control-in edges
-      printf2("%d next 1 %d 10",
-        (char*) current_nid,
-        (char*) pc_nid(pcs_nid, pc));
+      printf3("%d next 1 %d 10 ; updating %x",
+        (char*) current_nid,         // nid of this line
+        (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
+        (char*) pc);                 // pc of current instruction
       if (pc > 0)
         // TODO: warn about unreachable code
-        print(" ; unreachable");
+        print(" (unreachable)");
       println();
     } else {
-      control_flow_nid = 10;
+      if (*(in_edge + 1) == BEQ) {
+        printf4("%d and 1 %d %d ; incoming beq at %x\n",
+          (char*) current_nid,                     // nid of this line
+          (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
+          (char*) *(in_edge + 3),                  // nid of true or false beq condition
+          (char*) *(in_edge + 2));                 // pc of instruction proceeding here
 
-      i = 0;
+        i = 1;
 
-      while (in_edge != (uint64_t*) 0) {
-        // TODO: process in-edges from BEQ and JALR instructions
+        control_flow_nid = current_nid;
+      } else {
+        i = 0;
 
-        printf3("%d ite 1 %d 11 %d\n",
-          (char*) (current_nid + i),               // nid of this line
-          (char*) pc_nid(pcs_nid, *(in_edge + 1)), // nid of pc flag of instruction proceeding here
-          (char*) control_flow_nid);               // nid of 0 or previously processed in-edge
-
-        control_flow_nid = current_nid + i;
-
-        in_edge = (uint64_t*) *in_edge;
-
-        if (i < 39)
-          // we can only accommodate 39 in-edges
-          i = i + 1;
-        else {
-          // the instruction at pc is reachable by too many other instructions
-
-          //report the error on the console
-          output_fd = 1;
-
-          printf2("%s: too many in-edges at instruction address %x detected\n", selfie_name, (char*) pc);
-
-          exit(EXITCODE_MODELCHECKINGERROR);
-        }
+        control_flow_nid = pc_nid(pcs_nid, *(in_edge + 2)); // nid of pc flag of instruction proceeding here
       }
 
-      printf3("%d next 1 %d %d\n",
-          (char*) (current_nid + i),   // nid of this line
-          (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
-          (char*) control_flow_nid);   // nid of most recently processed in-edge
+      in_edge = (uint64_t*) *in_edge;
+
+      while (in_edge != (uint64_t*) 0) {
+        // TODO: process in-edges from JALR instructions
+
+        if (*(in_edge + 1) == BEQ) {
+          printf4("%d and 1 %d %d ; incoming beq at %x\n",
+            (char*) (current_nid + i),               // nid of this line
+            (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
+            (char*) *(in_edge + 3),                  // nid of true or false beq condition
+            (char*) *(in_edge + 2));                 // pc of instruction proceeding here
+
+          printf3("%d ite 1 %d 11 %d\n",
+            (char*) (current_nid + i + 1), // nid of this line
+            (char*) (current_nid + i),     // nid of preceding line
+            (char*) control_flow_nid);     // nid of 0 bit or previously processed in-edge
+
+          i = i + 2;
+        } else {
+          printf3("%d ite 1 %d 11 %d ; incoming sequential\n",
+            (char*) (current_nid + i),               // nid of this line
+            (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
+            (char*) control_flow_nid);               // nid of 0 bit or previously processed in-edge
+
+          i = i + 1;
+        }
+
+        control_flow_nid = current_nid + i - 1;
+
+        in_edge = (uint64_t*) *in_edge;
+      }
+
+      printf4("%d next 1 %d %d ; updating %x\n",
+        (char*) (current_nid + i),   // nid of this line
+        (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
+        (char*) control_flow_nid,    // nid of most recently processed in-edge
+        (char*) pc);                 // pc of current instruction
+
+      if (i >= 40) {
+        // the instruction at pc is reachable by too many other instructions
+
+        //report the error on the console
+        output_fd = 1;
+
+        printf2("%s: too many in-edges at instruction address %x detected\n", selfie_name, (char*) pc);
+
+        exit(EXITCODE_MODELCHECKINGERROR);
+      }
     }
 
     pc = pc + INSTRUCTIONSIZE;
