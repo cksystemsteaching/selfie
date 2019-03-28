@@ -5918,6 +5918,9 @@ void emit_exit() {
   emit_ecall();
 
   // never returns here
+
+  // only necessary for initializing call-return detection in model checker
+  emit_jalr(REG_ZR, REG_ZR, binary_length);
 }
 
 void implement_exit(uint64_t* context) {
