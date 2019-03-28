@@ -1255,6 +1255,7 @@ uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
 
 void init_interpreter();
 void reset_interpreter();
+void reset_profiler();
 
 void     print_register_hexadecimal(uint64_t reg);
 void     print_register_octal(uint64_t reg);
@@ -1392,19 +1393,19 @@ void reset_interpreter() {
   trap = 0;
 
   timer = TIMEROFF;
+}
 
-  if (run) {
-    reset_instruction_counters();
+void reset_profiler() {
+  reset_instruction_counters();
 
-    calls               = 0;
-    calls_per_procedure = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  calls               = 0;
+  calls_per_procedure = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-    iterations          = 0;
-    iterations_per_loop = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  iterations          = 0;
+  iterations_per_loop = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-    loads_per_instruction  = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-    stores_per_instruction = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
-  }
+  loads_per_instruction  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  stores_per_instruction = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 }
 
 // -----------------------------------------------------------------
@@ -8163,10 +8164,10 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = assembly_name;
   output_fd   = assembly_fd;
 
-  run = 0;
-
   reset_library();
   reset_interpreter();
+
+  run = 0;
 
   disassemble_verbose = verbose;
 
@@ -8444,10 +8445,10 @@ void selfie_model_check() {
   output_name = model_name;
   output_fd   = model_fd;
 
-  run = 0;
-
   reset_library();
   reset_interpreter();
+
+  run = 0;
 
   disassemble_verbose = 1;
 
@@ -9688,9 +9689,8 @@ uint64_t selfie_run(uint64_t machine) {
     max_execution_depth = atoi(peek_argument());
   }
 
-  run = 1;
-
   reset_interpreter();
+  reset_profiler();
   reset_microkernel();
 
   boot_loader();
@@ -9698,6 +9698,8 @@ uint64_t selfie_run(uint64_t machine) {
   printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
     binary_name,
     (char*) (page_frame_memory / MEGABYTE));
+
+  run = 1;
 
   if (machine == MIPSTER)
     exit_code = mipster(current_context);
