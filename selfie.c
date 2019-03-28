@@ -6424,7 +6424,7 @@ void emit_malloc() {
 
   tfree(2);
 
-  emit_jalr(REG_ZR, REG_RA,0);
+  emit_jalr(REG_ZR, REG_RA, 0);
 }
 
 void implement_brk(uint64_t* context) {
@@ -8216,33 +8216,36 @@ uint64_t pcs_nid = 0;
 
 uint64_t current_nid = 0;
 
-uint64_t* control_in = (uint64_t*) 0;
+uint64_t* control_in  = (uint64_t*) 0;
+uint64_t* call_return = (uint64_t*) 0;
+
+uint64_t current_callee = 0;
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
 }
 
-void go_to_instruction(uint64_t at_address, uint64_t nid) {
+void go_to_instruction(uint64_t from_instruction, uint64_t from_address, uint64_t to_address, uint64_t nid) {
   uint64_t* in_edge;
 
-  if (at_address < code_length) {
+  if (to_address < code_length) {
     in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-    *in_edge       = *(control_in + at_address / INSTRUCTIONSIZE);
-    *(in_edge + 1) = is;  // from which instruction
-    *(in_edge + 2) = pc;  // at which address
-    *(in_edge + 3) = nid; // under which condition are we coming
+    *in_edge       = *(control_in + to_address / INSTRUCTIONSIZE);
+    *(in_edge + 1) = from_instruction; // from which instruction
+    *(in_edge + 2) = from_address;     // at which address
+    *(in_edge + 3) = nid;              // under which condition are we coming
 
-    *(control_in + at_address / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+    *(control_in + to_address / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
     return;
-  } else if (*(control_in + pc / INSTRUCTIONSIZE) != 0) {
-    // the instruction at pc is reachable and proceeds to an invalid instruction at_address
+  } else if (*(control_in + from_address / INSTRUCTIONSIZE) != 0) {
+    // the instruction at from_address is reachable and proceeds to an invalid instruction at to_address
 
     //report the error on the console
     output_fd = 1;
 
-    printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) at_address);
+    printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) to_address);
 
     exit(EXITCODE_MODELCHECKINGERROR);
   }
@@ -8263,7 +8266,7 @@ void model_lui() {
     print_lui();println();
   }
 
-  go_to_instruction(pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_addi() {
@@ -8306,7 +8309,7 @@ void model_addi() {
     print_addi();println();
   }
 
-  go_to_instruction(pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_add() {
@@ -8349,13 +8352,13 @@ void model_beq() {
 
   print_beq();println();
 
-  go_to_instruction(pc + imm, current_nid); // true case
+  go_to_instruction(is, pc, pc + imm, current_nid); // true branch
 
   printf2("%d not 1 %d\n",
     (char*) current_nid + 1, // nid of this line
     (char*) current_nid);    // nid of preceding line
 
-  go_to_instruction(pc + INSTRUCTIONSIZE, current_nid + 1); // false case
+  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, current_nid + 1); // false branch
 }
 
 void model_jal() {
@@ -8371,13 +8374,20 @@ void model_jal() {
     *(reg_flow_nids + rd) = current_nid + 1;
 
     print_jal();println();
+
+    go_to_instruction(JALR, pc + imm, pc + INSTRUCTIONSIZE, 0); // link next instruction
   }
 
-  go_to_instruction(pc + imm, 0);
+  go_to_instruction(is, pc, pc + imm, 0); // jump
 }
 
 void model_jalr() {
+  if (current_callee != 0)
+    *(call_return + current_callee / INSTRUCTIONSIZE) = pc;
 
+  // assert: next procedure begins right after JALR
+
+  current_callee = pc + INSTRUCTIONSIZE;
 }
 
 void model_ecall() {
@@ -8597,7 +8607,8 @@ void selfie_model_check() {
 
   print("\n; data flow\n\n");
 
-  control_in = zalloc(MAX_CODE_LENGTH / INSTRUCTIONSIZE * SIZEOFUINT64);
+  control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   code_nid = pcs_nid * 3;
 
