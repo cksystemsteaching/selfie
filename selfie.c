@@ -5918,9 +5918,6 @@ void emit_exit() {
   emit_ecall();
 
   // never returns here
-
-  // only necessary for initializing call-return detection in model checker
-  emit_jalr(REG_ZR, REG_ZR, binary_length);
 }
 
 void implement_exit(uint64_t* context) {
@@ -8216,10 +8213,12 @@ uint64_t pcs_nid = 0;
 
 uint64_t current_nid = 0;
 
-uint64_t* control_in  = (uint64_t*) 0;
-uint64_t* call_return = (uint64_t*) 0;
+uint64_t* control_in = (uint64_t*) 0;
 
-uint64_t current_callee = 0;
+uint64_t reg_a7 = 0;
+
+uint64_t* call_return    = (uint64_t*) 0;
+uint64_t  current_callee = 0;
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
@@ -8255,9 +8254,10 @@ void model_lui() {
   if (rd != REG_ZR) {
     printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
 
+    // if this instruction is active set $rd = imm << 12
     printf4("%d ite 2 %d %d %d ; ",
       (char*) (current_nid + 1),      // nid of this line
-      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this lui instruction
+      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
       (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
@@ -8272,10 +8272,11 @@ void model_lui() {
 void model_addi() {
   if (rd != REG_ZR) {
     if (imm == 0) {
+      // if this instruction is active set $rd = $rs1
       printf4("%d ite 2 %d %d %d ; ",
         (char*) current_nid,            // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
-        (char*) (reg_nids + rs1),       // nid of current value in $rs1 register
+        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+        (char*) (reg_nids + rs1),       // nid of current value of $rs1 register
         (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
       *(reg_flow_nids + rd) = current_nid;
@@ -8283,19 +8284,26 @@ void model_addi() {
       printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
 
       if (rs1 == REG_ZR) {
+        // if this instruction is active set $rd = imm
         printf4("%d ite 2 %d %d %d ; ",
           (char*) (current_nid + 1),      // nid of this line
-          (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
+          (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
           (char*) current_nid,            // nid of immediate value
           (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
         *(reg_flow_nids + rd) = current_nid + 1;
+
+        if (rd == REG_A7)
+          // assert: next instruction is ecall
+          reg_a7 = imm;
       } else {
+        // compute $rs1 + imm
         printf3("%d add 2 %d %d\n",
           (char*) (current_nid + 1), // nid of this line
-          (char*) (reg_nids + rs1),  // nid of current value in $rs1 register
+          (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
           (char*) current_nid);      // nid of immediate value
 
+        // if this instruction is active set $rd = $rs1 + imm
         printf4("%d ite 2 %d %d %d ; ",
           (char*) (current_nid + 2),      // nid of this line
           (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
@@ -8345,26 +8353,32 @@ void model_sd() {
 }
 
 void model_beq() {
+  // compute if beq condition is true
   printf3("%d eq 1 %d %d ; ",
     (char*) current_nid,       // nid of this line
-    (char*) (reg_nids + rs1),  // nid of current value in $rs1 register
-    (char*) (reg_nids + rs2)); // nid of current value in $rs2 register
+    (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
+    (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
 
   print_beq();println();
 
-  go_to_instruction(is, pc, pc + imm, current_nid); // true branch
+  // true branch
+  go_to_instruction(is, pc, pc + imm, current_nid);
 
+  // compute if beq condition is false
   printf2("%d not 1 %d\n",
     (char*) current_nid + 1, // nid of this line
     (char*) current_nid);    // nid of preceding line
 
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, current_nid + 1); // false branch
+  // false branch
+  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, current_nid + 1);
 }
 
 void model_jal() {
   if (rd != REG_ZR) {
+    // address of next instruction used here and in returning jalr instruction
     printf2("%d constd 2 %d\n", (char*) current_nid, (char*) (pc + INSTRUCTIONSIZE));
 
+    // if this instruction is active link $rd register to address of next instruction
     printf4("%d ite 2 %d %d %d ; ",
       (char*) (current_nid + 1),      // nid of this line
       (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this jal instruction
@@ -8375,23 +8389,43 @@ void model_jal() {
 
     print_jal();println();
 
-    go_to_instruction(JALR, pc + imm, pc + INSTRUCTIONSIZE, 0); // link next instruction
+    // link next instruction to returning jalr instruction via instruction at address pc + imm
+    go_to_instruction(JALR, pc + imm, pc + INSTRUCTIONSIZE, current_nid);
   }
 
-  go_to_instruction(is, pc, pc + imm, 0); // jump
+  // jump from this instruction to instruction at address pc + imm
+  go_to_instruction(is, pc, pc + imm, 0);
 }
 
 void model_jalr() {
-  if (current_callee != 0)
-    *(call_return + current_callee / INSTRUCTIONSIZE) = pc;
+  if (rd == REG_ZR)
+    if (imm == 0)
+      if (rs1 == REG_RA) {
+        if (current_callee != 0) {
+          // assert: current_callee points to an instruction to which a jal jumps
+          *(call_return + current_callee / INSTRUCTIONSIZE) = pc;
 
-  // assert: next procedure begins right after JALR
+          // assert: next procedure begins right after jalr
+          current_callee = pc + INSTRUCTIONSIZE;
+        } else {
+          //report the error on the console
+          output_fd = 1;
 
-  current_callee = pc + INSTRUCTIONSIZE;
+          printf2("%s: unsupported jalr at address %x detected\n", selfie_name, (char*) pc);
+
+          exit(EXITCODE_MODELCHECKINGERROR);
+        }
+      }
 }
 
 void model_ecall() {
+  if (reg_a7 == SYSCALL_EXIT)
+    // assert: exit ecall is immediately followed by first procedure in code
+    current_callee = pc + INSTRUCTIONSIZE;
+  else
+    go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
 
+  reg_a7 = 0;
 }
 
 void translate_to_model() {
@@ -8436,6 +8470,7 @@ void selfie_model_check() {
   uint64_t reg_update_nid;
   uint64_t* in_edge;
   uint64_t control_flow_nid;
+  uint64_t jalr_address;
 
   model_name = get_argument();
 
@@ -8512,15 +8547,17 @@ void selfie_model_check() {
 
   while (i < NUMBEROFREGISTERS) {
     if (i == REG_SP)
-      printf3("%d init 2 %d 20 %s ; initial value\n", // initializing to highest memory address
+      // initialize to highest memory address
+      printf3("%d init 2 %d 20 %s ; initial value\n",
         (char*) (reg_nids * 2 + i), // nid of this line
-        (char*) (reg_nids + i),     // nid of state of $sp register
+        (char*) (reg_nids + i),     // nid of $sp register
         get_register_name(i));      // register name as comment
     else
-      printf3("%d init 2 %d 12 %s ; initial value\n", // initializing to 0
-        (char*) (reg_nids * 2 + i),
-        (char*) (reg_nids + i),     // nid of state of initialized register
-        get_register_name(i));
+      // initialize to 0
+      printf3("%d init 2 %d 12 %s ; initial value\n",
+        (char*) (reg_nids * 2 + i), // nid of this line
+        (char*) (reg_nids + i),     // nid of to-be-initialized register
+        get_register_name(i));      // register name as comment
 
     i = i + 1;
   }
@@ -8535,16 +8572,19 @@ void selfie_model_check() {
   while (pc < code_length) {
     current_nid = pc_nid(pcs_nid, pc);
 
-    printf1("%d state 1\n", (char*) current_nid); // pc flag of current instruction
+    // pc flag of current instruction
+    printf1("%d state 1\n", (char*) current_nid);
 
     if (pc == 0)
-      printf2("%d init 1 %d 11 ; initial program counter\n", // set pc here by initializing to true
+      // set pc here by initializing pc flag of instruction at address 0 to true
+      printf2("%d init 1 %d 11 ; initial program counter\n",
         (char*) (current_nid + 1), // nid of this line
         (char*) current_nid);      // nid of pc flag of current instruction
     else
-      printf2("%d init 1 %d 10\n", // initializing to false
-        (char*) (current_nid + 1),
-        (char*) current_nid);
+      // initialize all other pc flags to false
+      printf2("%d init 1 %d 10\n",
+        (char*) (current_nid + 1), // nid of this line
+        (char*) current_nid);      // nid of pc flag of current instruction
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -8566,19 +8606,19 @@ void selfie_model_check() {
     machine_word = load_data(pc);
 
     if (machine_word == 0) {
-      // machine word is 0
-      printf3("%d write 3 %d %d 12\n", // loading 0
+      // load machine word == 0
+      printf3("%d write 3 %d %d 12\n",
         (char*) (current_nid + 1), // nid of this line
         (char*) data_flow_nid,     // nid of most recent update to data segment
         (char*) current_nid);      // nid of address of current machine word
 
       data_flow_nid = current_nid + 1;
     } else {
-      // non-zero machine word
+      // load non-zero machine word
       printf2("%d constd 2 %d\n",
         (char*) (current_nid + 1), // nid of this line
         (char*) machine_word);     // value of machine word at current address
-      printf4("%d write 3 %d %d %d\n", // loading machine word
+      printf4("%d write 3 %d %d %d\n",
         (char*) (current_nid + 2),  // nid of this line
         (char*) data_flow_nid,      // nid of most recent update to data segment
         (char*) current_nid,        // nid of address of current machine word
@@ -8638,51 +8678,93 @@ void selfie_model_check() {
     in_edge = (uint64_t*) *(control_in + pc / INSTRUCTIONSIZE);
 
     if (in_edge == (uint64_t*) 0) {
-      // no control-in edges
+      // deactivate this instruction since there are no control-in edges
       printf3("%d next 1 %d 10 ; updating %d",
         (char*) current_nid,         // nid of this line
         (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
-        (char*) pc);                 // pc of current instruction
+        (char*) pc);                 // address of current instruction
       if (pc > 0)
         // TODO: warn about unreachable code
         print(" (unreachable)");
       println();
     } else {
       if (*(in_edge + 1) == BEQ) {
+        // is beq active and its condition true or false?
         printf4("%d and 1 %d %d ; beq from %d\n",
           (char*) current_nid,                     // nid of this line
           (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
           (char*) *(in_edge + 3),                  // nid of true or false beq condition
-          (char*) *(in_edge + 2));                 // pc of instruction proceeding here
+          (char*) *(in_edge + 2));                 // address of instruction proceeding here
 
         i = 1;
 
         control_flow_nid = current_nid;
+      } else if (*(in_edge + 1) == JALR) {
+        jalr_address = *(call_return + *(in_edge + 2) / INSTRUCTIONSIZE);
+
+        if (jalr_address != 0) {
+          // is $ra register equal to address of this instruction?
+          // TODO: reset LSB of $ra register to be compliant with jalr semantics
+          printf4("%d eq 1 %d %d ; jalr from %d\n",
+            (char*) current_nid,         // nid of this line
+            (char*) (reg_nids + REG_RA), // nid of current value of $ra register
+            (char*) *(in_edge + 3),      // nid of address of this instruction (generated by jal)
+            (char*) jalr_address);       // address of instruction proceeding here
+
+          // is jalr active and the previous condition true or false?
+          printf3("%d and 1 %d %d\n",
+            (char*) current_nid + 1,               // nid of this line
+            (char*) pc_nid(pcs_nid, jalr_address), // nid of pc flag of instruction proceeding here
+            (char*) current_nid);                  // nid of return address condition
+
+          i = 2;
+
+          control_flow_nid = current_nid + 1;
+        } else {
+          // no jalr returning from jal found (exit ecall wrapper or runaway jal)
+
+          // deactivate this instruction if there is no more in-edges
+
+          i = 0;
+
+          control_flow_nid = 10; // nid of 0
+        }
       } else {
+        // activate this instruction if instruction proceeding here is active
+
         i = 0;
 
-        control_flow_nid = pc_nid(pcs_nid, *(in_edge + 2)); // nid of pc flag of instruction proceeding here
+        // nid of pc flag of instruction proceeding here
+        control_flow_nid = pc_nid(pcs_nid, *(in_edge + 2));
       }
 
       in_edge = (uint64_t*) *in_edge;
 
       while (in_edge != (uint64_t*) 0) {
-        // TODO: process in-edges from JALR instructions
-
         if (*(in_edge + 1) == BEQ) {
+          // is beq active and its condition true or false?
           printf4("%d and 1 %d %d ; beq from %d\n",
             (char*) (current_nid + i),               // nid of this line
             (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
             (char*) *(in_edge + 3),                  // nid of true or false beq condition
-            (char*) *(in_edge + 2));                 // pc of instruction proceeding here
+            (char*) *(in_edge + 2));                 // address of instruction proceeding here
 
+          // activate this instruction if beq is active and its condition is true (false)
           printf3("%d ite 1 %d 11 %d\n",
             (char*) (current_nid + i + 1), // nid of this line
             (char*) (current_nid + i),     // nid of preceding line
             (char*) control_flow_nid);     // nid of previously processed in-edge
 
           i = i + 2;
+        } else if (*(in_edge + 1) == JALR) {
+          //report the error on the console
+          output_fd = 1;
+
+          printf2("%s: more than one in-edge with at least one from jalr at address %x detected\n", selfie_name, (char*) *(in_edge + 2));
+
+          exit(EXITCODE_MODELCHECKINGERROR);
         } else {
+          // activate this instruction if instruction proceeding here is active
           printf3("%d ite 1 %d 11 %d ; ",
             (char*) (current_nid + i),               // nid of this line
             (char*) pc_nid(pcs_nid, *(in_edge + 2)), // nid of pc flag of instruction proceeding here
@@ -8701,11 +8783,12 @@ void selfie_model_check() {
         in_edge = (uint64_t*) *in_edge;
       }
 
+      // update pc flag of current instruction
       printf4("%d next 1 %d %d ; updating %d\n",
         (char*) (current_nid + i),   // nid of this line
         (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
         (char*) control_flow_nid,    // nid of most recently processed in-edge
-        (char*) pc);                 // pc of current instruction
+        (char*) pc);                 // address of current instruction
 
       if (i >= 400) {
         // the instruction at pc is reachable by too many other instructions
@@ -8729,6 +8812,7 @@ void selfie_model_check() {
   i = 1;
 
   while (i < NUMBEROFREGISTERS) {
+    // update register
     printf5("%d next 2 %d %d %s ; register $%d\n",
       (char*) (reg_update_nid + i), // nid of this line
       (char*) (reg_nids + i),       // nid of register
