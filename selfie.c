@@ -8223,6 +8223,8 @@ uint64_t  estimated_return = 0;
 
 uint64_t memory_nid = 0;
 
+uint64_t read_flow_nid = 0;
+
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
 }
@@ -8381,20 +8383,29 @@ void model_ld() {
 
   if (rd != REG_ZR) {
     if (imm == 0) {
+      // if this instruction is active provide current value of $rs1 register for checking address validity
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) current_nid,         // nid of this line
+        (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
+        (char*) (reg_nids + rs1),    // nid of current value of $rs1 register
+        (char*) read_flow_nid);      // nid of address of most recent memory read access
+
+      read_flow_nid = current_nid;
+
       // read from memory at address in $rs1 register
       printf3("%d read 2 %d %d\n",
-        (char*) current_nid,       // nid of this line
+        (char*) (current_nid + 1), // nid of this line
         (char*) memory_nid,        // nid of memory
         (char*) (reg_nids + rs1)); // nid of current value of $rs1 register
 
       // if this instruction is active set $rd = memory[$rs1]
       printf4("%d ite 2 %d %d %d ; ",
-        (char*) (current_nid + 1),      // nid of this line
+        (char*) (current_nid + 2),      // nid of this line
         (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) current_nid,            // nid of memory[$rs1]
+        (char*) (current_nid + 1),      // nid of memory[$rs1]
         (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-      *(reg_flow_nids + rd) = current_nid + 1;
+      *(reg_flow_nids + rd) = current_nid + 2;
     } else {
       printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
 
@@ -8404,20 +8415,29 @@ void model_ld() {
         (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
         (char*) current_nid);      // nid of immediate value
 
+      // if this instruction is active provide current value of $rs1 register for checking address validity
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 2),   // nid of this line
+        (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
+        (char*) (current_nid + 1),   // nid of $rs1 + imm
+        (char*) read_flow_nid);      // nid of address of most recent memory read access
+
+      read_flow_nid = current_nid + 2;
+
       // read from memory at address $rs1 + imm
       printf3("%d read 2 %d %d\n",
-        (char*) (current_nid + 2),  // nid of this line
+        (char*) (current_nid + 3),  // nid of this line
         (char*) memory_nid,         // nid of memory
         (char*) (current_nid + 1)); // nid of $rs1 + imm
 
       // if this instruction is active set $rd = memory[$rs1 + imm]
       printf4("%d ite 2 %d %d %d ; ",
-        (char*) (current_nid + 3),      // nid of this line
+        (char*) (current_nid + 4),      // nid of this line
         (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (current_nid + 2),      // nid of memory[$rs1 + imm]
+        (char*) (current_nid + 3),      // nid of memory[$rs1 + imm]
         (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-      *(reg_flow_nids + rd) = current_nid + 3;
+      *(reg_flow_nids + rd) = current_nid + 4;
     }
 
     print_ld();println();
@@ -8547,16 +8567,21 @@ void translate_to_model() {
 
 void selfie_model_check() {
   uint64_t i;
-  uint64_t data_flow_nid;
+
   uint64_t machine_word;
+
+  uint64_t data_flow_nid;
   uint64_t code_nid;
   uint64_t control_nid;
   uint64_t reg_update_nid;
-  uint64_t* in_edge;
   uint64_t control_flow_nid;
+  uint64_t condition_nid;
+  uint64_t address_validity_nid;
+
+  uint64_t* in_edge;
+
   uint64_t from_instruction;
   uint64_t from_address;
-  uint64_t condition_nid;
   uint64_t jalr_address;
 
   model_name = get_argument();
@@ -8597,11 +8622,18 @@ void selfie_model_check() {
   print("3 sort array 2 2 ; 64-bit memory\n\n");
 
   print("10 zero 1\n11 one 1\n\n");
-  print("12 zero 2\n13 one 2\n\n");
+
+  print("12 zero 2\n13 one 2\n18 constd 2 8\n\n");
 
   print("; highest address in 4GB of memory\n\n");
 
-  printf1("20 constd 2 %d\n\n", (char*) VIRTUALMEMORYSIZE - REGISTERSIZE); // initial $sp value
+  // highest virtual memory address is initial value of $sp register
+  printf1("20 constd 2 %d\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
+
+  print("; code length in bytes\n\n");
+
+  // size of code segment for checking address validity
+  printf1("30 constd 2 %d\n\n", (char*) code_length);
 
   print("; 32 64-bit general-purpose registers\n\n");
 
@@ -8738,6 +8770,10 @@ void selfie_model_check() {
   call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   code_nid = pcs_nid * 3;
+
+  // for checking address validity during state transitions with no memory read access
+  // we use nid of code length which must be a valid address (thus also checked here)
+  read_flow_nid = 30;
 
   pc = 0;
 
@@ -8922,8 +8958,6 @@ void selfie_model_check() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  // TODO: check validity of return addresses in jalr
-
   print("\n; updating registers\n\n");
 
   reg_update_nid = pcs_nid * 5;
@@ -8943,6 +8977,39 @@ void selfie_model_check() {
   }
 
   // TODO: update memory
+
+  print("\n; checking address validity\n\n");
+
+  address_validity_nid = pcs_nid * 6;
+
+  // check if address of most recent memory read access < code length
+  printf2("%d ult 1 %d 30\n",
+    (char*) address_validity_nid, // nid of this line
+    (char*) read_flow_nid);       // nid of address of most recent memory read access
+  printf2("%d bad %d ; read access in code segment\n",
+    (char*) (address_validity_nid + 1), // nid of this line
+    (char*) address_validity_nid);      // nid of previous check
+
+  // check if address of most recent memory read access > highest virtual memory address
+  printf2("%d ugt 1 %d 20\n",
+    (char*) (address_validity_nid + 2), // nid of this line
+    (char*) read_flow_nid);             // nid of address of most recent memory read access
+  printf2("%d bad %d ; read access outside virtual memory\n",
+    (char*) (address_validity_nid + 3),  // nid of this line
+    (char*) (address_validity_nid + 2)); // nid of previous check
+
+  // check if address of most recent memory read access is word-aligned
+  printf2("%d urem 2 %d 18\n",
+    (char*) (address_validity_nid + 4), // nid of this line
+    (char*) read_flow_nid);             // nid of address of most recent memory read access
+  printf2("%d ne 1 %d 12\n",
+    (char*) (address_validity_nid + 5),  // nid of this line
+    (char*) (address_validity_nid + 4)); // nid of 3 LSBs of address of most recent memory read access
+  printf2("%d bad %d ; word-unaligned read access\n",
+    (char*) (address_validity_nid + 6),  // nid of this line
+    (char*) (address_validity_nid + 5)); // nid of previous check
+
+  // TODO: check validity of write access to memory, return addresses in jalr
 
   disassemble_verbose = 0;
 
