@@ -6,7 +6,7 @@ selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector all clean
+.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector x86 all clean
 
 # Self-compile
 compile: selfie
@@ -84,6 +84,12 @@ boolector: smt
 	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
 
+# Test RISC-V to x86-64 binary translation
+x86: selfie
+	./selfie -c selfie.c -x86 selfie.x86
+	chmod +x selfie.x86
+	./selfie.x86 -c selfie.c -m 2
+
 # Run everything
 all: compile quine debug replay os vm min mob smt sat
 
@@ -92,6 +98,7 @@ clean:
 	rm -rf *.m
 	rm -rf *.s
 	rm -rf *.t
+	rm -rf *.x86
 	rm -rf selfie
 	rm -rf selfie.exe
 	rm -rf manuscript/code/*.t
