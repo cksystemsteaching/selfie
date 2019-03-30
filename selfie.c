@@ -8217,37 +8217,67 @@ uint64_t* control_in = (uint64_t*) 0;
 
 uint64_t reg_a7 = 0;
 
-uint64_t* call_return    = (uint64_t*) 0;
-uint64_t  current_callee = 0;
+uint64_t* call_return      = (uint64_t*) 0;
+uint64_t  current_callee   = 0;
+uint64_t  estimated_return = 0;
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
 }
 
-void go_to_instruction(uint64_t from_instruction, uint64_t from_address, uint64_t to_address, uint64_t condition_nid) {
+uint64_t is_procedure_call(uint64_t instruction, uint64_t link) {
+  if (instruction == JAL)
+    if (link != REG_ZR)
+      return 1;
+
+  return 0;
+}
+
+uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, uint64_t to_address) {
+  if (is_procedure_call(from_instruction, from_link) == 0) {
+    // no forward branches and jumps that are not "procedure calls" outside of "procedure body"
+    if (to_address > estimated_return)
+      // estimating address of jalr at the end of "procedure body"
+      estimated_return = to_address;
+
+    if (to_address < current_callee)
+      // no backward branches and jumps that are not "procedure calls" outside of "procedure body"
+      return 0;
+  }
+
+  return 1;
+}
+
+void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t from_address, uint64_t to_address, uint64_t condition_nid) {
   uint64_t* in_edge;
 
   if (to_address < code_length) {
-    in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+    if (validate_procedure_body(from_instruction, from_link, to_address)) {
+      in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-    *in_edge       = *(control_in + to_address / INSTRUCTIONSIZE);
-    *(in_edge + 1) = from_instruction; // from which instruction
-    *(in_edge + 2) = from_address;     // at which address
-    *(in_edge + 3) = condition_nid;    // under which condition are we coming
+      *in_edge       = *(control_in + to_address / INSTRUCTIONSIZE);
+      *(in_edge + 1) = from_instruction; // from which instruction
+      *(in_edge + 2) = from_address;     // at which address
+      *(in_edge + 3) = condition_nid;    // under which condition are we coming
 
-    *(control_in + to_address / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+      *(control_in + to_address / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
-    return;
-  } else if (*(control_in + from_address / INSTRUCTIONSIZE) != 0) {
-    // the instruction at from_address is reachable and proceeds to an invalid instruction at to_address
+      return;
+    }
+  } else if (from_address == code_length - INSTRUCTIONSIZE)
+    // from_instruction is last instruction in binary
+    if (*(control_in + from_address / INSTRUCTIONSIZE) == 0)
+      // and unreachable
+      return;
 
-    //report the error on the console
-    output_fd = 1;
+  // the instruction at from_address proceeds to an instruction at an invalid to_address
 
-    printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) to_address);
+  //report the error on the console
+  output_fd = 1;
 
-    exit(EXITCODE_MODELCHECKINGERROR);
-  }
+  printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) to_address);
+
+  exit(EXITCODE_MODELCHECKINGERROR);
 }
 
 void model_lui() {
@@ -8266,7 +8296,7 @@ void model_lui() {
     print_lui();println();
   }
 
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_addi() {
@@ -8317,39 +8347,39 @@ void model_addi() {
     print_addi();println();
   }
 
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_add() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_sub() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_mul() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_divu() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_remu() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_sltu() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_ld() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_sd() {
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void model_beq() {
@@ -8362,7 +8392,7 @@ void model_beq() {
   print_beq();println();
 
   // true branch
-  go_to_instruction(is, pc, pc + imm, current_nid);
+  go_to_instruction(is, REG_ZR, pc, pc + imm, current_nid);
 
   // compute if beq condition is false
   printf2("%d not 1 %d\n",
@@ -8370,7 +8400,7 @@ void model_beq() {
     (char*) current_nid);    // nid of preceding line
 
   // false branch
-  go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, current_nid + 1);
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, current_nid + 1);
 }
 
 void model_jal() {
@@ -8390,40 +8420,47 @@ void model_jal() {
     print_jal();println();
 
     // link next instruction to returning jalr instruction via instruction at address pc + imm
-    go_to_instruction(JALR, pc + imm, pc + INSTRUCTIONSIZE, current_nid);
+    go_to_instruction(JALR, REG_ZR, pc + imm, pc + INSTRUCTIONSIZE, current_nid);
   }
 
   // jump from this instruction to instruction at address pc + imm
-  go_to_instruction(is, pc, pc + imm, 0);
+  go_to_instruction(is, rd, pc, pc + imm, 0);
 }
 
 void model_jalr() {
   if (rd == REG_ZR)
     if (imm == 0)
-      if (rs1 == REG_RA) {
-        if (current_callee != 0) {
-          // assert: current_callee points to an instruction to which a jal jumps
-          *(call_return + current_callee / INSTRUCTIONSIZE) = pc;
+      if (rs1 == REG_RA)
+        if (pc >= estimated_return) {
+          // no forward branches and jumps outside of "procedure body"
+          if (current_callee > 0)
+            // assert: current_callee points to an instruction to which a jal jumps
+            *(call_return + current_callee / INSTRUCTIONSIZE) = pc;
 
-          // assert: next procedure begins right after jalr
-          current_callee = pc + INSTRUCTIONSIZE;
-        } else {
-          //report the error on the console
-          output_fd = 1;
+            // assert: next "procedure body" begins right after jalr
+            current_callee = pc + INSTRUCTIONSIZE;
 
-          printf2("%s: unsupported jalr at address %x detected\n", selfie_name, (char*) pc);
+            estimated_return = current_callee;
 
-          exit(EXITCODE_MODELCHECKINGERROR);
-        }
-      }
+            return;
+          }
+
+  //report the error on the console
+  output_fd = 1;
+
+  printf3("%s: unsupported jalr at address %x with estimated address %x detected\n", selfie_name, (char*) pc, (char*) estimated_return);
+
+  exit(EXITCODE_MODELCHECKINGERROR);
 }
 
 void model_ecall() {
-  if (reg_a7 == SYSCALL_EXIT)
+  if (reg_a7 == SYSCALL_EXIT) {
     // assert: exit ecall is immediately followed by first procedure in code
     current_callee = pc + INSTRUCTIONSIZE;
-  else
-    go_to_instruction(is, pc, pc + INSTRUCTIONSIZE, 0);
+
+    estimated_return = current_callee;
+  } else
+    go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 
   reg_a7 = 0;
 }
@@ -8837,6 +8874,8 @@ void selfie_model_check() {
 
     pc = pc + INSTRUCTIONSIZE;
   }
+
+  // TODO: check validity of return addresses in jalr
 
   print("\n; updating registers\n\n");
 
