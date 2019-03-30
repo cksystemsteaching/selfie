@@ -8206,20 +8206,22 @@ void selfie_disassemble(uint64_t verbose) {
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
+uint64_t current_nid = 0;
+
 uint64_t  reg_nids      = 0;
 uint64_t* reg_flow_nids = (uint64_t*) 0;
 
+uint64_t reg_a7 = 0;
+
 uint64_t pcs_nid = 0;
 
-uint64_t current_nid = 0;
-
 uint64_t* control_in = (uint64_t*) 0;
-
-uint64_t reg_a7 = 0;
 
 uint64_t* call_return      = (uint64_t*) 0;
 uint64_t  current_callee   = 0;
 uint64_t  estimated_return = 0;
+
+uint64_t memory_nid = 0;
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
@@ -8375,6 +8377,52 @@ void model_sltu() {
 }
 
 void model_ld() {
+  // TODO: check address validity
+
+  if (rd != REG_ZR) {
+    if (imm == 0) {
+      // read from memory at address in $rs1 register
+      printf3("%d read 2 %d %d\n",
+        (char*) current_nid,       // nid of this line
+        (char*) memory_nid,        // nid of memory
+        (char*) (reg_nids + rs1)); // nid of current value of $rs1 register
+
+      // if this instruction is active set $rd = memory[$rs1]
+      printf4("%d ite 2 %d %d %d ; ",
+        (char*) (current_nid + 1),      // nid of this line
+        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+        (char*) current_nid,            // nid of memory[$rs1]
+        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+      *(reg_flow_nids + rd) = current_nid + 1;
+    } else {
+      printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
+
+      // compute $rs1 + imm
+      printf3("%d add 2 %d %d\n",
+        (char*) (current_nid + 1), // nid of this line
+        (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
+        (char*) current_nid);      // nid of immediate value
+
+      // read from memory at address $rs1 + imm
+      printf3("%d read 2 %d %d\n",
+        (char*) (current_nid + 2),  // nid of this line
+        (char*) memory_nid,         // nid of memory
+        (char*) (current_nid + 1)); // nid of $rs1 + imm
+
+      // if this instruction is active set $rd = memory[$rs1 + imm]
+      printf4("%d ite 2 %d %d %d ; ",
+        (char*) (current_nid + 3),      // nid of this line
+        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+        (char*) (current_nid + 2),      // nid of memory[$rs1 + imm]
+        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+      *(reg_flow_nids + rd) = current_nid + 3;
+    }
+
+    print_ld();println();
+  }
+
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
@@ -8501,7 +8549,6 @@ void selfie_model_check() {
   uint64_t i;
   uint64_t data_flow_nid;
   uint64_t machine_word;
-  uint64_t memory_nid;
   uint64_t code_nid;
   uint64_t control_nid;
   uint64_t reg_update_nid;
