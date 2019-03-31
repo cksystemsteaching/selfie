@@ -8727,10 +8727,11 @@ void model_ecall() {
     current_callee = pc + INSTRUCTIONSIZE;
 
     estimated_return = current_callee;
-  } else
-    go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
+  }
 
   reg_a7 = 0;
+
+  go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
 void translate_to_model() {
@@ -8881,6 +8882,13 @@ void selfie_model_check() {
 
     i = i + 1;
   }
+
+  print("; exit syscall id\n\n");
+
+  printf1("300 constd 2 %d\n", (char*) SYSCALL_EXIT);
+
+  // is $a7 register not equal to SYSCALL_EXIT?
+  printf1("301 ne 1 %d 300 ; $a7 != SYSCALL_EXIT\n", (char*) (reg_nids + REG_A7));
 
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
@@ -9055,9 +9063,10 @@ void selfie_model_check() {
 
           control_flow_nid = current_nid + 1;
         } else {
-          // no jalr returning from jal found (exit ecall wrapper or runaway jal)
+          // no jalr returning from jal found
           if (*in_edge != 0) {
-            printf2("; exit ecall or runaway jal %d[%x]", (char*) from_address, (char*) from_address);
+            // print here if there are more in-edges, otherwise below
+            printf2("; exit ecall wrapper call or runaway jal %d[%x]", (char*) from_address, (char*) from_address);
             print_code_line_number_for_instruction(from_address);println();
           }
 
@@ -9067,13 +9076,24 @@ void selfie_model_check() {
 
           control_flow_nid = 10; // nid of 0
         }
+      } else if (from_instruction == ECALL) {
+        // is ecall active and $a7 != SYSCALL_EXIT?
+        printf2("%d and 1 %d 301\n",
+          (char*) current_nid,                    // nid of this line
+          (char*) pc_nid(pcs_nid, from_address)); // nid of pc flag of instruction proceeding here
+
+        i = 1;
+
+        control_flow_nid = current_nid;
       } else {
-        // activate this instruction if instruction proceeding here is active
         if (*in_edge != 0) {
+          // print here if there are more in-edges, otherwise below
           if (from_instruction == JAL) print("; jal"); else print("; seq");
           printf2(" %d[%x]", (char*) from_address, (char*) from_address);
           print_code_line_number_for_instruction(from_address);println();
         }
+
+        // activate this instruction if instruction proceeding here is active
 
         i = 0;
 
@@ -9111,6 +9131,19 @@ void selfie_model_check() {
           printf2("%s: more than one in-edge with at least one from jalr at address %x detected\n", selfie_name, (char*) from_address);
 
           exit(EXITCODE_MODELCHECKINGERROR);
+        } else if (from_instruction == ECALL) {
+          // is ecall active and $a7 != SYSCALL_EXIT?
+          printf2("%d and 1 %d 301\n",
+            (char*) (current_nid + i),              // nid of this line
+            (char*) pc_nid(pcs_nid, from_address)); // nid of pc flag of instruction proceeding here
+
+          // activate this instruction if ecall is active and $a7 != SYSCALL_EXIT
+          printf3("%d ite 1 %d 11 %d\n",
+            (char*) (current_nid + i + 1), // nid of this line
+            (char*) (current_nid + i),     // nid of preceding line
+            (char*) control_flow_nid);     // nid of previously processed in-edge
+
+          i = i + 2;
         } else {
           // activate this instruction if instruction proceeding here is active
           printf3("%d ite 1 %d 11 %d ; ",
