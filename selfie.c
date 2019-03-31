@@ -9078,9 +9078,11 @@ void selfie_model_check() {
         }
       } else if (from_instruction == ECALL) {
         // is ecall active and $a7 != SYSCALL_EXIT?
-        printf2("%d and 1 %d 301\n",
-          (char*) current_nid,                    // nid of this line
-          (char*) pc_nid(pcs_nid, from_address)); // nid of pc flag of instruction proceeding here
+        printf4("%d and 1 %d 301 ; ecall %d[%x]",
+          (char*) current_nid,                         // nid of this line
+          (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
+          (char*) from_address, (char*) from_address); // address of instruction proceeding here
+        print_code_line_number_for_instruction(from_address);println();
 
         i = 1;
 
@@ -9133,9 +9135,11 @@ void selfie_model_check() {
           exit(EXITCODE_MODELCHECKINGERROR);
         } else if (from_instruction == ECALL) {
           // is ecall active and $a7 != SYSCALL_EXIT?
-          printf2("%d and 1 %d 301\n",
-            (char*) (current_nid + i),              // nid of this line
-            (char*) pc_nid(pcs_nid, from_address)); // nid of pc flag of instruction proceeding here
+          printf4("%d and 1 %d 301 ; ecall %d[%x]",
+            (char*) (current_nid + i),                   // nid of this line
+            (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
+            (char*) from_address, (char*) from_address); // address of instruction proceeding here
+          print_code_line_number_for_instruction(from_address);println();
 
           // activate this instruction if ecall is active and $a7 != SYSCALL_EXIT
           printf3("%d ite 1 %d 11 %d\n",
@@ -9173,6 +9177,8 @@ void selfie_model_check() {
           print("jal");
         else if (from_instruction == JALR)
           print("exit ecall or runaway jal");
+        else if (from_instruction == ECALL)
+          print("ecall");
         else
           print("seq");
         printf2(" %d[%x]", (char*) from_address, (char*) from_address);
