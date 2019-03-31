@@ -8357,40 +8357,20 @@ void model_addi() {
 
 void model_add() {
   if (rd != REG_ZR) {
-    if (rs2 == REG_ZR) {
-      // if this instruction is active set $rd = $rs1
-      printf4("%d ite 2 %d %d %d ; ",
-        (char*) current_nid,            // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (reg_nids + rs1),       // nid of current value of $rs1 register
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+    // compute $rs1 + $rs2
+    printf3("%d add 2 %d %d\n",
+      (char*) current_nid,       // nid of this line
+      (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
+      (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
 
-      *(reg_flow_nids + rd) = current_nid;
-    } else if (rs1 == REG_ZR) {
-      // if this instruction is active set $rd = $rs2
-      printf4("%d ite 2 %d %d %d ; ",
-        (char*) current_nid,            // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (reg_nids + rs2),       // nid of current value of $rs2 register
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+    // if this instruction is active set $rd = $rs1 + $rs2
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) (current_nid + 1),      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
+      (char*) current_nid,            // nid of $rs1 + $rs2
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-      *(reg_flow_nids + rd) = current_nid;
-    } else {
-      // compute $rs1 + $rs2
-      printf3("%d add 2 %d %d\n",
-        (char*) current_nid,       // nid of this line
-        (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
-        (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
-
-      // if this instruction is active set $rd = $rs1 + $rs2
-      printf4("%d ite 2 %d %d %d ; ",
-        (char*) (current_nid + 1),      // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this addi instruction
-        (char*) current_nid,            // nid of $rs1 + $rs2
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
-
-      *(reg_flow_nids + rd) = current_nid + 1;
-    }
+    *(reg_flow_nids + rd) = current_nid + 1;
 
     print_add_sub_mul_divu_remu_sltu("add");println();
   }
@@ -8400,16 +8380,7 @@ void model_add() {
 
 void model_sub() {
   if (rd != REG_ZR) {
-    if (rs2 == REG_ZR) {
-      // if this instruction is active set $rd = $rs1
-      printf4("%d ite 2 %d %d %d ; ",
-        (char*) current_nid,            // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (reg_nids + rs1),       // nid of current value of $rs1 register
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
-
-      *(reg_flow_nids + rd) = current_nid;
-    } else if (rs1 == REG_ZR) {
+    if (rs1 == REG_ZR) {
       // compute 0 - $rs2
       printf2("%d sub 2 12 %d\n",
         (char*) current_nid,       // nid of this line
