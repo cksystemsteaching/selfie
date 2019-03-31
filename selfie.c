@@ -5403,15 +5403,19 @@ void print_instruction_counters() {
   print_instruction_counter(ic, ic_remu, "remu");
   println();
 
-  printf1("%s: control: ", selfie_name);
+  printf1("%s: compare: ", selfie_name);
   print_instruction_counter(ic, ic_sltu, "sltu");
-  print(", ");
+  println();
+
+  printf1("%s: control: ", selfie_name);
   print_instruction_counter(ic, ic_beq, "beq");
   print(", ");
   print_instruction_counter(ic, ic_jal, "jal");
   print(", ");
   print_instruction_counter(ic, ic_jalr, "jalr");
-  print(", ");
+  println();
+
+  printf1("%s: system:  ", selfie_name);
   print_instruction_counter(ic, ic_ecall, "ecall");
   println();
 }
