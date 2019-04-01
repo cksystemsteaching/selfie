@@ -8230,7 +8230,7 @@ uint64_t memory_flow_nid = 0;
 uint64_t read_flow_nid  = 0;
 uint64_t write_flow_nid = 0;
 
-uint64_t library_nid;
+uint64_t ecall_flow_nid = 0;
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
@@ -8733,14 +8733,15 @@ void model_ecall() {
 
   reg_a7 = 0;
 
-  // if this instruction is active check if $a7 register contains invalid syscall id
-  printf3("%d and 1 %d %d\n",
+  // keep track of whether any ecall instruction is active
+  printf3("%d ite 1 %d 11 %d ; ",
     (char*) current_nid,         // nid of this line
     (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
-    (char*) (library_nid + 24)); // nid of invalid syscall id check
-  printf2("%d bad %d ; ecall invalid syscall id check\n",
-    (char*) (current_nid + 1), // nid of this line
-    (char*) current_nid);      // nid of preceding line
+    (char*) ecall_flow_nid);     // nid of most recent update of ecall activation
+
+  ecall_flow_nid = current_nid;
+
+  print_ecall();println();
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
@@ -8784,6 +8785,7 @@ void selfie_model_check() {
 
   uint64_t data_flow_nid;
   uint64_t code_nid;
+  uint64_t library_nid;
   uint64_t control_nid;
   uint64_t reg_update_nid;
   uint64_t control_flow_nid;
@@ -8977,6 +8979,8 @@ void selfie_model_check() {
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
 
+  print("\n; data flow\n\n");
+
   memory_flow_nid = memory_nid;
 
   // for checking address validity during state transitions with no memory access
@@ -8984,67 +8988,12 @@ void selfie_model_check() {
   read_flow_nid  = 30;
   write_flow_nid = 30;
 
-  print("\n; syscalls\n\n");
-
-  library_nid = pcs_nid * 3;
-
-  current_nid = library_nid;
-
-  printf2("%d constd 2 %d\n", (char*) current_nid, (char*) SYSCALL_EXIT);
-  printf2("%d constd 2 %d\n", (char*) (current_nid + 1), (char*) SYSCALL_READ);
-  printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) SYSCALL_WRITE);
-  printf2("%d constd 2 %d\n", (char*) (current_nid + 3), (char*) SYSCALL_OPENAT);
-  printf2("%d constd 2 %d\n", (char*) (current_nid + 4), (char*) SYSCALL_BRK);
-
-  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_EXIT\n",
-    (char*) (current_nid + 10),  // nid of this line
-    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
-    (char*) current_nid);        // nid of SYSCALL_EXIT
-  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_READ\n",
-    (char*) (current_nid + 11),  // nid of this line
-    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
-    (char*) (current_nid + 1));  // nid of SYSCALL_READ
-  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_WRITE\n",
-    (char*) (current_nid + 12),  // nid of this line
-    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
-    (char*) (current_nid + 2));  // nid of SYSCALL_WRITE
-  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_OPENAT\n",
-    (char*) (current_nid + 13),  // nid of this line
-    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
-    (char*) (current_nid + 3));  // nid of SYSCALL_OPENAT
-  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_BRK\n",
-    (char*) (current_nid + 14),  // nid of this line
-    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
-    (char*) (current_nid + 4));  // nid of SYSCALL_BRK
-
-  printf3("%d and 1 %d %d\n",
-    (char*) (current_nid + 20),  // nid of this line
-    (char*) (current_nid + 10),  // nid of $a7 != SYSCALL_EXIT
-    (char*) (current_nid + 11)); // nid of $a7 != SYSCALL_READ
-  printf3("%d and 1 %d %d\n",
-    (char*) (current_nid + 22),  // nid of this line
-    (char*) (current_nid + 20),  // nid of preceding line
-    (char*) (current_nid + 12)); // nid of $a7 != SYSCALL_WRITE
-  printf3("%d and 1 %d %d\n",
-    (char*) (current_nid + 23),  // nid of this line
-    (char*) (current_nid + 22),  // nid of preceding line
-    (char*) (current_nid + 13)); // nid of $a7 != SYSCALL_OPENAT
-  printf3("%d and 1 %d %d ; if true, invalid syscall id in $a7 register detected\n",
-    (char*) (current_nid + 24),  // nid of this line
-    (char*) (current_nid + 23),  // nid of preceding line
-    (char*) (current_nid + 14)); // nid of $a7 != SYSCALL_BRK
-
-  printf1("%d state 2 exit-code\n", (char*) (current_nid + 1000));
-  printf2("%d init 2 %d 12 ; initial exit code is 0\n",
-    (char*) (current_nid + 1001),  // nid of this line
-    (char*) (current_nid + 1000)); // nid of exit code
-
-  print("\n; data flow\n\n");
+  ecall_flow_nid = 10;
 
   control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
   call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  code_nid = pcs_nid * 4;
+  code_nid = pcs_nid * 3;
 
   pc = 0;
 
@@ -9059,6 +9008,89 @@ void selfie_model_check() {
 
     pc = pc + INSTRUCTIONSIZE;
   }
+
+  print("\n; syscalls\n\n");
+
+  library_nid = pcs_nid * 4;
+
+  current_nid = library_nid;
+
+  printf2("%d constd 2 %d\n", (char*) current_nid, (char*) SYSCALL_EXIT);
+  printf2("%d constd 2 %d\n", (char*) (current_nid + 1), (char*) SYSCALL_READ);
+  printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) SYSCALL_WRITE);
+  printf2("%d constd 2 %d\n", (char*) (current_nid + 3), (char*) SYSCALL_OPENAT);
+  printf2("%d constd 2 %d\n\n", (char*) (current_nid + 4), (char*) SYSCALL_BRK);
+
+  printf3("%d eq 1 %d %d ; $a7 == SYSCALL_EXIT\n",
+    (char*) (current_nid + 10),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) current_nid);        // nid of SYSCALL_EXIT
+  printf3("%d eq 1 %d %d ; $a7 == SYSCALL_READ\n",
+    (char*) (current_nid + 11),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 1));  // nid of SYSCALL_READ
+  printf3("%d eq 1 %d %d ; $a7 == SYSCALL_WRITE\n",
+    (char*) (current_nid + 12),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 2));  // nid of SYSCALL_WRITE
+  printf3("%d eq 1 %d %d ; $a7 == SYSCALL_OPENAT\n",
+    (char*) (current_nid + 13),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 3));  // nid of SYSCALL_OPENAT
+  printf3("%d eq 1 %d %d ; $a7 == SYSCALL_BRK\n\n",
+    (char*) (current_nid + 14),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 4));  // nid of SYSCALL_BRK
+
+  printf2("%d not 1 %d\n",
+    (char*) (current_nid + 20),  // nid of this line
+    (char*) (current_nid + 10)); // nid of $a7 == SYSCALL_EXIT
+  printf3("%d ite 1 %d 10 %d\n",
+    (char*) (current_nid + 21),  // nid of this line
+    (char*) (current_nid + 11),  // nid of $a7 == SYSCALL_READ
+    (char*) (current_nid + 20)); // nid of preceding line
+  printf3("%d ite 1 %d 10 %d\n",
+    (char*) (current_nid + 22),  // nid of this line
+    (char*) (current_nid + 12),  // nid of $a7 == SYSCALL_WRITE
+    (char*) (current_nid + 21)); // nid of preceding line
+  printf3("%d ite 1 %d 10 %d\n",
+    (char*) (current_nid + 23),  // nid of this line
+    (char*) (current_nid + 13),  // nid of $a7 == SYSCALL_OPENAT
+    (char*) (current_nid + 22)); // nid of preceding line
+  printf3("%d ite 1 %d 10 %d ; if true, invalid syscall id in $a7 register detected\n\n",
+    (char*) (current_nid + 24),  // nid of this line
+    (char*) (current_nid + 14),  // nid of $a7 == SYSCALL_BRK
+    (char*) (current_nid + 23)); // nid of preceding line
+
+  // if any ecall instruction is active check if $a7 register contains invalid syscall id
+  printf3("%d and 1 %d %d ; ecall is active for invalid syscall id\n",
+    (char*) (current_nid + 30),  // nid of this line
+    (char*) ecall_flow_nid,      // nid of most recent update of ecall activation
+    (char*) (library_nid + 24)); // nid of invalid syscall id check
+  printf2("%d bad %d ; ecall invalid syscall id\n\n",
+    (char*) (current_nid + 31),  // nid of this line
+    (char*) (current_nid + 30)); // nid of preceding line
+
+  // if exit ecall instruction is active check if exit code in $a0 register is not 0
+  printf3("%d and 1 %d %d ; exit ecall is active\n",
+    (char*) (current_nid + 1000), // nid of this line
+    (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
+    (char*) (current_nid + 10));  // nid of $a7 == SYSCALL_EXIT
+  printf2("%d ne 1 %d 12 ; $a0 != 0\n",
+    (char*) (current_nid + 1001), // nid of this line
+    (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
+  printf3("%d and 1 %d %d ; exit ecall is active and $a0 != 0\n",
+    (char*) (current_nid + 1002),  // nid of this line
+    (char*) (current_nid + 1000),  // nid of exit ecall is active
+    (char*) (current_nid + 1001)); // nid of $a0 != 0
+  printf2("%d bad %d ; non-zero exit code\n\n",
+    (char*) (current_nid + 1003),  // nid of this line
+    (char*) (current_nid + 1002)); // nid of preceding line
+
+  printf1("%d state 2 file-descriptor\n", (char*) (current_nid + 3000));
+  printf2("%d init 2 %d 12 ; initial file descriptor is 0\n",
+    (char*) (current_nid + 3001),  // nid of this line
+    (char*) (current_nid + 3000)); // nid of file descriptor
 
   print("\n; control flow\n\n");
 
