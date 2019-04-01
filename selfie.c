@@ -8856,7 +8856,7 @@ void implement_syscalls() {
     (char*) (current_nid + 1200), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
     (char*) (current_nid + 12));  // nid of $a7 == SYSCALL_WRITE
-  printf4("%d ite 2 %d %d %d ; $a1 is start address of read buffer for checking address validity\n\n",
+  printf4("%d ite 2 %d %d %d ; $a1 is start address of read buffer for checking address validity\n",
     (char*) (current_nid + 1201), // nid of this line
     (char*) (current_nid + 1200), // nid of write ecall is active
     (char*) (reg_nids + REG_A1),  // nid of current value of $a1 register
@@ -8884,10 +8884,13 @@ void implement_syscalls() {
 
   read_flow_nid = current_nid + 1205;
 
-  // if write ecall instruction is active set $a0 = 0
-  printf3("%d ite 2 %d 12 %d ; write ecall is active\n\n",
+  // TODO: check file descriptor validity, return error codes
+
+  // if write ecall instruction is active set $a0 (written number of bytes) = $a2 (size)
+  printf4("%d ite 2 %d %d %d ; write ecall is active, set $a0 = $a2\n\n",
     (char*) (current_nid + 1206),       // nid of this line
     (char*) (current_nid + 1200),       // nid of write ecall is active
+    (char*) (reg_nids + REG_A2),        // nid of current value of $a2 register
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
   printf1("%d state 2 file-descriptor\n", (char*) (current_nid + 3000));
