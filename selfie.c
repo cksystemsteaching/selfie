@@ -8230,6 +8230,8 @@ uint64_t memory_flow_nid = 0;
 uint64_t read_flow_nid  = 0;
 uint64_t write_flow_nid = 0;
 
+uint64_t library_nid;
+
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
 }
@@ -8731,6 +8733,15 @@ void model_ecall() {
 
   reg_a7 = 0;
 
+  // if this instruction is active check if $a7 register contains invalid syscall id
+  printf3("%d and 1 %d %d\n",
+    (char*) current_nid,         // nid of this line
+    (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
+    (char*) (library_nid + 24)); // nid of invalid syscall id check
+  printf2("%d bad %d ; ecall invalid syscall id check\n",
+    (char*) (current_nid + 1), // nid of this line
+    (char*) current_nid);      // nid of preceding line
+
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
 }
 
@@ -8883,13 +8894,6 @@ void selfie_model_check() {
     i = i + 1;
   }
 
-  print("; exit syscall id\n\n");
-
-  printf1("300 constd 2 %d\n", (char*) SYSCALL_EXIT);
-
-  // is $a7 register not equal to SYSCALL_EXIT?
-  printf1("301 ne 1 %d 300 ; $a7 != SYSCALL_EXIT\n", (char*) (reg_nids + REG_A7));
-
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
   // 3 more digits to accommodate binary with
@@ -8973,19 +8977,74 @@ void selfie_model_check() {
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
 
-  print("\n; data flow\n\n");
-
-  control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-  call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-
-  code_nid = pcs_nid * 3;
-
   memory_flow_nid = memory_nid;
 
   // for checking address validity during state transitions with no memory access
   // we use nid of code length which must be a valid address (thus also checked)
   read_flow_nid  = 30;
   write_flow_nid = 30;
+
+  print("\n; syscalls\n\n");
+
+  library_nid = pcs_nid * 3;
+
+  current_nid = library_nid;
+
+  printf2("%d constd 2 %d\n", (char*) current_nid, (char*) SYSCALL_EXIT);
+  printf2("%d constd 2 %d\n", (char*) (current_nid + 1), (char*) SYSCALL_READ);
+  printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) SYSCALL_WRITE);
+  printf2("%d constd 2 %d\n", (char*) (current_nid + 3), (char*) SYSCALL_OPENAT);
+  printf2("%d constd 2 %d\n", (char*) (current_nid + 4), (char*) SYSCALL_BRK);
+
+  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_EXIT\n",
+    (char*) (current_nid + 10),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) current_nid);        // nid of SYSCALL_EXIT
+  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_READ\n",
+    (char*) (current_nid + 11),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 1));  // nid of SYSCALL_READ
+  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_WRITE\n",
+    (char*) (current_nid + 12),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 2));  // nid of SYSCALL_WRITE
+  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_OPENAT\n",
+    (char*) (current_nid + 13),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 3));  // nid of SYSCALL_OPENAT
+  printf3("%d ne 1 %d %d ; $a7 != SYSCALL_BRK\n",
+    (char*) (current_nid + 14),  // nid of this line
+    (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
+    (char*) (current_nid + 4));  // nid of SYSCALL_BRK
+
+  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 20),  // nid of this line
+    (char*) (current_nid + 10),  // nid of $a7 != SYSCALL_EXIT
+    (char*) (current_nid + 11)); // nid of $a7 != SYSCALL_READ
+  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 22),  // nid of this line
+    (char*) (current_nid + 20),  // nid of preceding line
+    (char*) (current_nid + 12)); // nid of $a7 != SYSCALL_WRITE
+  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 23),  // nid of this line
+    (char*) (current_nid + 22),  // nid of preceding line
+    (char*) (current_nid + 13)); // nid of $a7 != SYSCALL_OPENAT
+  printf3("%d and 1 %d %d ; if true, invalid syscall id in $a7 register detected\n",
+    (char*) (current_nid + 24),  // nid of this line
+    (char*) (current_nid + 23),  // nid of preceding line
+    (char*) (current_nid + 14)); // nid of $a7 != SYSCALL_BRK
+
+  printf1("%d state 2 exit-code\n", (char*) (current_nid + 1000));
+  printf2("%d init 2 %d 12 ; initial exit code is 0\n",
+    (char*) (current_nid + 1001),  // nid of this line
+    (char*) (current_nid + 1000)); // nid of exit code
+
+  print("\n; data flow\n\n");
+
+  control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+  call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+
+  code_nid = pcs_nid * 4;
 
   pc = 0;
 
@@ -9003,7 +9062,7 @@ void selfie_model_check() {
 
   print("\n; control flow\n\n");
 
-  control_nid = pcs_nid * 4;
+  control_nid = pcs_nid * 5;
 
   pc = 0;
 
@@ -9078,9 +9137,10 @@ void selfie_model_check() {
         }
       } else if (from_instruction == ECALL) {
         // is ecall active and $a7 != SYSCALL_EXIT?
-        printf4("%d and 1 %d 301 ; ecall %d[%x]",
+        printf5("%d and 1 %d %d ; ecall %d[%x]",
           (char*) current_nid,                         // nid of this line
           (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
+          (char*) (library_nid + 10),                  // nid of $a7 != SYSCALL_EXIT condition
           (char*) from_address, (char*) from_address); // address of instruction proceeding here
         print_code_line_number_for_instruction(from_address);println();
 
@@ -9135,9 +9195,10 @@ void selfie_model_check() {
           exit(EXITCODE_MODELCHECKINGERROR);
         } else if (from_instruction == ECALL) {
           // is ecall active and $a7 != SYSCALL_EXIT?
-          printf4("%d and 1 %d 301 ; ecall %d[%x]",
+          printf5("%d and 1 %d %d ; ecall %d[%x]",
             (char*) (current_nid + i),                   // nid of this line
             (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
+            (char*) (library_nid + 10),                  // nid of $a7 != SYSCALL_EXIT condition
             (char*) from_address, (char*) from_address); // address of instruction proceeding here
           print_code_line_number_for_instruction(from_address);println();
 
@@ -9203,7 +9264,7 @@ void selfie_model_check() {
 
   print("\n; updating registers\n\n");
 
-  reg_update_nid = pcs_nid * 5;
+  reg_update_nid = pcs_nid * 6;
 
   i = 1;
 
@@ -9221,7 +9282,7 @@ void selfie_model_check() {
 
   print("\n; updating memory\n\n");
 
-  memory_update_nid = pcs_nid * 6;
+  memory_update_nid = pcs_nid * 7;
 
   printf3("%d next 3 %d %d memory\n",
       (char*) memory_update_nid, // nid of this line
@@ -9230,7 +9291,7 @@ void selfie_model_check() {
 
   print("\n; checking address validity\n\n");
 
-  address_validity_nid = pcs_nid * 7;
+  address_validity_nid = pcs_nid * 8;
 
   // check if address of most recent memory read access < code length
   printf2("%d ult 1 %d 30\n",
