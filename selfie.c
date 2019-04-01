@@ -8851,6 +8851,51 @@ void implement_syscalls() {
     (char*) (current_nid + 1003),  // nid of this line
     (char*) (current_nid + 1002)); // nid of preceding line
 
+  // if write ecall instruction is active provide $a1 register as address for checking address validity
+  printf3("%d and 1 %d %d ; write ecall is active\n",
+    (char*) (current_nid + 1200), // nid of this line
+    (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
+    (char*) (current_nid + 12));  // nid of $a7 == SYSCALL_WRITE
+  printf4("%d ite 2 %d %d %d ; $a1 is start address of read buffer for checking address validity\n",
+    (char*) (current_nid + 1201), // nid of this line
+    (char*) (current_nid + 1200), // nid of write ecall is active
+    (char*) (reg_nids + REG_A1),  // nid of current value of $a1 register
+    (char*) read_flow_nid);       // nid of address of most recent memory read access
+
+  read_flow_nid = current_nid + 1201;
+
+  // if write ecall instruction is active provide $a1 + round_up($a2, 8)
+  // as address for checking address validity
+  printf2("%d urem 2 %d 18\n",
+    (char*) (current_nid + 1202), // nid of this line
+    (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
+  printf2("%d eq 1 %d 12\n",
+    (char*) (current_nid + 1203),  // nid of this line
+    (char*) (current_nid + 1202)); // nid of $a2 % 8
+  printf3("%d sub 2 %d %d\n",
+    (char*) (current_nid + 1204),  // nid of this line
+    (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
+    (char*) (current_nid + 1202)); // nid of $a2 % 8
+  printf2("%d add 2 %d 18\n",
+    (char*) (current_nid + 1205),  // nid of this line
+    (char*) (current_nid + 1204)); // nid of $a2 - $a2 % 8
+  printf4("%d ite 2 %d %d %d\n",
+    (char*) (current_nid + 1206),  // nid of this line
+    (char*) (current_nid + 1203),  // nid of $a2 % 8 == 0
+    (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
+    (char*) (current_nid + 1205)); // nid of $a2 - $a2 % 8 + 8
+  printf3("%d add 2 %d %d\n",
+    (char*) (current_nid + 1207),  // nid of this line
+    (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
+    (char*) (current_nid + 1206)); // nid of round_up($a2, 8)
+  printf4("%d ite 2 %d %d %d ; $a1 + round_up($a2, 8) is end address of read buffer for checking address validity\n",
+    (char*) (current_nid + 1208), // nid of this line
+    (char*) (current_nid + 1200), // nid of write ecall is active
+    (char*) (current_nid + 1207), // nid of $a1 + round_up($a2, 8)
+    (char*) read_flow_nid);       // nid of address of most recent memory read access
+
+  read_flow_nid = current_nid + 1208;
+
   printf1("%d state 2 file-descriptor\n", (char*) (current_nid + 3000));
   printf2("%d init 2 %d 12 ; initial file descriptor is 0\n",
     (char*) (current_nid + 3001),  // nid of this line
