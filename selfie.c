@@ -921,8 +921,8 @@ void selfie_load();
 
 uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGTH
 
-uint64_t MAX_CODE_LENGTH = 245760; // 240KB
-uint64_t MAX_DATA_LENGTH = 16384; // 16KB
+uint64_t MAX_CODE_LENGTH = 229376; // 224KB
+uint64_t MAX_DATA_LENGTH = 32768; // 32KB
 
 // page-aligned ELF header for storing file header (64 bytes),
 // program header (56 bytes), and code length (8 bytes)
@@ -5453,7 +5453,7 @@ uint64_t load_data(uint64_t baddr) {
 }
 
 void store_data(uint64_t baddr, uint64_t data) {
-  if (baddr >= MAX_CODE_LENGTH + MAX_DATA_LENGTH) {
+  if (baddr - code_length >= MAX_DATA_LENGTH) {
     syntax_error_message("maximum data length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
