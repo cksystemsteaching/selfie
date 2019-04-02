@@ -8931,7 +8931,7 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
     print("write access outside virtual memory\n");
 
   // check if address of most recent memory access is word-aligned
-  printf2("%d urem 2 %d 18\n",
+  printf2("%d and 2 %d 17\n",
     (char*) (current_nid + 4), // nid of this line
     (char*) flow_nid);         // nid of address of most recent memory access
   printf2("%d ne 1 %d 12\n",
