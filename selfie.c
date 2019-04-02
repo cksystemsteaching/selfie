@@ -8956,13 +8956,77 @@ void implement_syscalls() {
     (char*) (current_nid + 1353),  // nid of this line
     (char*) (current_nid + 1350),  // nid of fd-bump
     (char*) (current_nid + 1352)); // nid of fd-bump + 1
-  printf4("%d ite 2 %d %d %d ; openat ecall is active, set $a0 = fd-bump + 1\n",
+  printf4("%d ite 2 %d %d %d ; openat ecall is active, set $a0 = fd-bump + 1\n\n",
     (char*) (current_nid + 1354),       // nid of this line
     (char*) (current_nid + 1300),       // nid of openat ecall is active
     (char*) (current_nid + 1352),       // nid of fd-bump + 1
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
   *(reg_flow_nids + REG_A0) = current_nid + 1354;
+
+
+  // is brk ecall is active?
+  printf3("%d and 1 %d %d ; brk ecall is active\n",
+    (char*) (current_nid + 1400), // nid of this line
+    (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
+    (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
+
+  printf1("%d state 2 brk\n", (char*) (current_nid + 1450));
+  printf2("%d init 2 %d 40 ; initial program break is binary length\n",
+    (char*) (current_nid + 1451),  // nid of this line
+    (char*) (current_nid + 1450)); // nid of brk
+
+  // if brk ecall is active, set brk = $a0 if $a0 is valid or else set $a0 = brk
+  // $a0 is valid if brk <= $a0 < $sp and $a0 is word-aligned
+  printf3("%d ulte 1 %d %d\n",
+    (char*) (current_nid + 1452), // nid of this line
+    (char*) (current_nid + 1450), // nid of brk
+    (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
+  printf3("%d ult 1 %d %d\n",
+    (char*) (current_nid + 1453), // nid of this line
+    (char*) (reg_nids + REG_A0),  // nid of current value of $a0 register
+    (char*) (reg_nids + REG_SP)); // nid of current value of $sp register
+  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 1454),  // nid of this line
+    (char*) (current_nid + 1452),  // nid of brk <= $a0
+    (char*) (current_nid + 1453)); // nid of $a0 < $sp
+  printf2("%d and 2 %d 17\n",
+    (char*) (current_nid + 1455), // nid of this line
+    (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
+  printf2("%d eq 1 %d 12\n",
+    (char*) (current_nid + 1456),  // nid of this line
+    (char*) (current_nid + 1455)); // nid of 3 LSBs of current value of $a0 register
+  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 1457),  // nid of this line
+    (char*) (current_nid + 1454),  // nid of brk <= $a0 < $sp
+    (char*) (current_nid + 1456)); // nid of $a0 is word-aligned
+  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 1458),  // nid of this line
+    (char*) (current_nid + 1400),  // nid of brk ecall is active
+    (char*) (current_nid + 1457)); // nid of brk <= $a0 < $sp and $a0 is word-aligned
+  printf4("%d ite 2 %d %d %d\n",
+    (char*) (current_nid + 1459),  // nid of this line
+    (char*) (current_nid + 1458),  // nid of brk ecall is active and $a0 is valid
+    (char*) (reg_nids + REG_A0),   // nid of current value of $a0 register
+    (char*) (current_nid + 1450)); // nid of brk
+  printf3("%d next 2 %d %d ; brk ecall is active, set brk = $a0 if $a0 is valid\n",
+    (char*) (current_nid + 1460),  // nid of this line
+    (char*) (current_nid + 1450),  // nid of brk
+    (char*) (current_nid + 1459)); // nid of preceding line
+  printf2("%d not 1 %d\n",
+    (char*) (current_nid + 1461),  // nid of this line
+    (char*) (current_nid + 1457)); // nid of brk <= $a0 < $sp and $a0 is word-aligned
+  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 1462),  // nid of this line
+    (char*) (current_nid + 1400),  // nid of brk ecall is active
+    (char*) (current_nid + 1461)); // nid of $a0 is invalid
+  printf4("%d ite 2 %d %d %d ; brk ecall is active, set $a0 = brk if $a0 is invalid\n",
+    (char*) (current_nid + 1463),       // nid of this line
+    (char*) (current_nid + 1462),       // nid of brk ecall is active and $a0 is invalid
+    (char*) (current_nid + 1450),       // nid of brk
+    (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
+
+  *(reg_flow_nids + REG_A0) = current_nid + 1463;
 }
 
 void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
@@ -9079,6 +9143,11 @@ void selfie_model_check() {
 
   // size of code segment for checking address validity
   printf1("30 constd 2 %d\n\n", (char*) code_length);
+
+  print("; binary length in bytes\n\n");
+
+  // size of binary (code + data segment) for checking program break validity
+  printf1("40 constd 2 %d\n\n", (char*) binary_length);
 
   print("; 32 64-bit general-purpose registers\n\n");
 
