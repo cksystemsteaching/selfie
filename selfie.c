@@ -8234,7 +8234,7 @@ uint64_t read_flow_end_nid    = 30;
 uint64_t write_flow_start_nid = 30;
 uint64_t write_flow_end_nid   = 30;
 
-// keep track of pc flags of ecall instructions
+// keep track of pc flags of ecalls
 // 10 is nid of 1-bit 0
 uint64_t ecall_flow_nid = 10;
 
@@ -8763,7 +8763,7 @@ void model_ecall() {
 
   reg_a7 = 0;
 
-  // keep track of whether any ecall instruction is active
+  // keep track of whether any ecall is active
   printf3("%d ite 1 %d 11 %d ; ",
     (char*) current_nid,         // nid of this line
     (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
@@ -8856,7 +8856,7 @@ void implement_syscalls() {
     (char*) (current_nid + 14),  // nid of $a7 == SYSCALL_BRK
     (char*) (current_nid + 23)); // nid of preceding line
 
-  // if any ecall instruction is active check if $a7 register contains invalid syscall id
+  // if any ecall is active check if $a7 register contains invalid syscall id
   printf3("%d and 1 %d %d ; ecall is active for invalid syscall id\n",
     (char*) (current_nid + 30),  // nid of this line
     (char*) ecall_flow_nid,      // nid of most recent update of ecall activation
@@ -8865,7 +8865,8 @@ void implement_syscalls() {
     (char*) (current_nid + 31),  // nid of this line
     (char*) (current_nid + 30)); // nid of preceding line
 
-  // if exit ecall instruction is active check if exit code in $a0 register is not 0
+
+  // if exit ecall is active check if exit code in $a0 register is not 0
   printf3("%d and 1 %d %d ; exit ecall is active\n",
     (char*) (current_nid + 1000), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
@@ -8881,7 +8882,8 @@ void implement_syscalls() {
     (char*) (current_nid + 1003),  // nid of this line
     (char*) (current_nid + 1002)); // nid of preceding line
 
-  // if write ecall instruction is active provide $a1 register as address for checking address validity
+
+  // if write ecall is active provide $a1 register as address for checking address validity
   printf3("%d and 1 %d %d ; write ecall is active\n",
     (char*) (current_nid + 1200), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
@@ -8894,7 +8896,7 @@ void implement_syscalls() {
 
   read_flow_start_nid = current_nid + 1201;
 
-  // if write ecall instruction is active provide $a1 + ($a2 / 8) * 8
+  // if write ecall is active provide $a1 + ($a2 / 8) * 8
   // as address by resetting 3 LSBs for checking address validity
   printf1("%d not 2 17\n",
     (char*) (current_nid + 1202)); // nid of this line
@@ -8916,17 +8918,51 @@ void implement_syscalls() {
 
   // TODO: check file descriptor validity, return error codes
 
-  // if write ecall instruction is active set $a0 (written number of bytes) = $a2 (size)
+  // if write ecall is active set $a0 (written number of bytes) = $a2 (size)
   printf4("%d ite 2 %d %d %d ; write ecall is active, set $a0 = $a2\n\n",
     (char*) (current_nid + 1206),       // nid of this line
     (char*) (current_nid + 1200),       // nid of write ecall is active
     (char*) (reg_nids + REG_A2),        // nid of current value of $a2 register
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  printf1("%d state 2 file-descriptor\n", (char*) (current_nid + 3000));
-  printf2("%d init 2 %d 12 ; initial file descriptor is 0\n",
-    (char*) (current_nid + 3001),  // nid of this line
-    (char*) (current_nid + 3000)); // nid of file descriptor
+  *(reg_flow_nids + REG_A0) = current_nid + 1206;
+
+
+  // if openat ecall is active provide $a1 register as address for checking address validity
+  printf3("%d and 1 %d %d ; openat ecall is active\n",
+    (char*) (current_nid + 1300), // nid of this line
+    (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
+    (char*) (current_nid + 13));  // nid of $a7 == SYSCALL_OPENAT
+  printf4("%d ite 2 %d %d %d ; $a1 is start address of filename for checking address validity\n",
+    (char*) (current_nid + 1301), // nid of this line
+    (char*) (current_nid + 1300), // nid of openat ecall is active
+    (char*) (reg_nids + REG_A1),  // nid of current value of $a1 register
+    (char*) read_flow_start_nid); // nid of address of most recent memory read access
+
+  read_flow_start_nid = current_nid + 1301;
+
+  // TODO: check address validity of whole filename, flags and mode arguments
+
+  printf1("%d state 2 fd-bump\n", (char*) (current_nid + 1350));
+  printf2("%d init 2 %d 13 ; initial file descriptor bump pointer is 1\n",
+    (char*) (current_nid + 1351),  // nid of this line
+    (char*) (current_nid + 1350)); // nid of fd-bump
+
+  // if openat ecall is active set $a0 (file descriptor) = fd-bump + 1 (next file descriptor)
+  printf2("%d inc 2 %d\n",
+    (char*) (current_nid + 1352),  // nid of this line
+    (char*) (current_nid + 1350)); // nid of fd-bump
+  printf3("%d next 2 %d %d ; increment fd-bump\n",
+    (char*) (current_nid + 1353),  // nid of this line
+    (char*) (current_nid + 1350),  // nid of fd-bump
+    (char*) (current_nid + 1352)); // nid of fd-bump + 1
+  printf4("%d ite 2 %d %d %d ; openat ecall is active, set $a0 = fd-bump + 1\n",
+    (char*) (current_nid + 1354),       // nid of this line
+    (char*) (current_nid + 1300),       // nid of openat ecall is active
+    (char*) (current_nid + 1352),       // nid of fd-bump + 1
+    (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
+
+  *(reg_flow_nids + REG_A0) = current_nid + 1354;
 }
 
 void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
