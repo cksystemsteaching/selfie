@@ -1671,7 +1671,7 @@ uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
-void selfie_model_check();
+uint64_t selfie_model_check();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -9038,7 +9038,7 @@ void boot_loader() {
 
   up_load_binary(current_context);
 
-  // pass binary name as first argument by replacing memory size
+  // pass binary name as first argument by replacing current argument
   set_argument(binary_name);
 
   up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
@@ -9996,7 +9996,7 @@ void implement_syscalls() {
     (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
   printf1("%d state 2 brk\n", (char*) (current_nid + 1450));
-  printf2("%d init 2 %d 40 ; initial program break is end of binary\n",
+  printf2("%d init 2 %d 40 ; original program break is end of binary\n",
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
@@ -10096,11 +10096,12 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
   current_nid = current_nid + 7;
 }
 
-void selfie_model_check() {
+uint64_t selfie_model_check() {
   uint64_t i;
 
   uint64_t machine_word;
 
+  uint64_t loader_nid;
   uint64_t data_flow_nid;
   uint64_t code_nid;
   uint64_t library_nid;
@@ -10117,12 +10118,12 @@ void selfie_model_check() {
   uint64_t from_address;
   uint64_t jalr_address;
 
-  model_name = get_argument();
+  model_name = peek_argument();
 
   if (code_length == 0) {
     printf2("%s: nothing to disassemble to output file %s\n", selfie_name, model_name);
 
-    return;
+    return EXITCODE_BADARGUMENTS;
   }
 
   // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
@@ -10132,7 +10133,7 @@ void selfie_model_check() {
   if (signed_less_than(model_fd, 0)) {
     printf2("%s: could not create model output file %s\n", selfie_name, model_name);
 
-    exit(EXITCODE_IOERROR);
+    return EXITCODE_IOERROR;
   }
 
   output_name = model_name;
@@ -10173,10 +10174,10 @@ void selfie_model_check() {
   // end of code segment for checking address validity
   printf1("30 constd 2 %d\n\n", (char*) (entry_point + code_length));
 
-  print("; end of binary (program break) in memory\n\n");
+  print("; original program break in memory\n\n");
 
-  // end of binary (code + data segment) for checking program break validity
-  printf1("40 constd 2 %d\n\n", (char*) (entry_point + binary_length));
+  // original program break (end of binary = code + data segment) for checking program break validity
+  printf1("40 constd 2 %d\n\n", (char*) get_original_break(current_context));
 
   print("; initial stack pointer value\n\n");
 
@@ -10231,10 +10232,12 @@ void selfie_model_check() {
 
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  // 3 more digits to accommodate binary starting at entry point with
+  // 3 more digits to accommodate binary starting at entry point  and stack with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
   // 100*8 lines per 64-bit machine word in data segment
-  pcs_nid = ten_to_the_power_of(log_ten(entry_point + binary_length) + 3);
+  pcs_nid = ten_to_the_power_of(
+    log_ten(entry_point + binary_length +
+      (VIRTUALMEMORYSIZE - *(get_regs(current_context) + REG_SP))) + 3);
 
   pc = get_pc(current_context);
   pt = get_pt(current_context);
@@ -10261,14 +10264,25 @@ void selfie_model_check() {
 
   current_nid = pc_nid(pcs_nid, pc);
 
-  printf1("\n%d state 3 data-segment\n\n", (char*) current_nid);
+  printf1("\n%d state 3 boot-loader\n", (char*) current_nid);
 
+  loader_nid    = current_nid;
   data_flow_nid = current_nid;
+  current_nid   = current_nid + 1;
 
-  current_nid = current_nid + 1;
+  print("\n; data segment\n\n");
 
-  while (pc < entry_point + binary_length) {
-    // address in data segment
+  // assert: pc == entry_point + code_length
+
+  while (pc < VIRTUALMEMORYSIZE) {
+    if (pc == get_original_break(current_context)) {
+      // assert: stack pointer < VIRTUALMEMORYSIZE
+      pc = *(get_regs(current_context) + REG_SP);
+
+      print("\n; stack\n\n");
+    }
+
+    // address in data segment or stack
     printf2("%d constd 2 %d\n",
       (char*) current_nid, // nid of this line
       (char*) pc);         // address of current machine word
@@ -10299,7 +10313,10 @@ void selfie_model_check() {
 
     pc = pc + REGISTERSIZE;
 
-    current_nid = pc_nid(pcs_nid, pc);
+    if (current_nid == loader_nid + 1)
+      current_nid = loader_nid + REGISTERSIZE;
+    else
+      current_nid = current_nid + REGISTERSIZE;
   }
 
   print("\n; 64-bit memory\n\n");
@@ -10448,7 +10465,7 @@ void selfie_model_check() {
 
             printf2("%s: more than one in-edge with at least one from jalr at address %x detected\n", selfie_name, (char*) from_address);
 
-            exit(EXITCODE_MODELCHECKINGERROR);
+            return EXITCODE_MODELCHECKINGERROR;
           }
         } else if (from_instruction == ECALL) {
           // is ecall active and $a7 != SYSCALL_EXIT?
@@ -10501,7 +10518,7 @@ void selfie_model_check() {
 
         printf2("%s: too many in-edges at instruction address %x detected\n", selfie_name, (char*) pc);
 
-        exit(EXITCODE_MODELCHECKINGERROR);
+        return EXITCODE_MODELCHECKINGERROR;
       }
     }
 
@@ -10558,6 +10575,8 @@ void selfie_model_check() {
   printf3("%s: %d characters of model formulae written into %s\n", selfie_name,
     (char*) number_of_written_characters,
     model_name);
+
+  return EXITCODE_NOERROR;
 }
 
 // -----------------------------------------------------------------
@@ -10960,7 +10979,7 @@ uint64_t selfie() {
       else if (string_compare(option, "-n"))
         return selfie_run(MONSTER);
       else if (string_compare(option, "-mc"))
-        selfie_model_check();
+        return selfie_model_check();
       else if (string_compare(option, "-y"))
         return selfie_run(HYPSTER);
       else if (string_compare(option, "-min"))
