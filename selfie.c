@@ -9907,6 +9907,51 @@ void implement_syscalls() {
     (char*) (current_nid + 1002)); // nid of preceding line
 
 
+  // if read ecall is active provide $a1 register as address for checking address validity
+  printf3("%d and 1 %d %d ; read ecall is active\n",
+    (char*) (current_nid + 1100), // nid of this line
+    (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
+    (char*) (current_nid + 11));  // nid of $a7 == SYSCALL_READ
+  printf4("%d ite 2 %d %d %d ; $a1 is start address of write buffer for checking address validity\n",
+    (char*) (current_nid + 1101),  // nid of this line
+    (char*) (current_nid + 1100),  // nid of read ecall is active
+    (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
+    (char*) write_flow_start_nid); // nid of address of most recent memory write access
+
+  write_flow_start_nid = current_nid + 1101;
+
+  // if read ecall is active provide $a1 + ($a2 / 8) * 8
+  // as address by resetting 3 LSBs for checking address validity
+  printf1("%d not 2 17\n",
+    (char*) (current_nid + 1102)); // nid of this line
+  printf3("%d and 2 %d %d\n",
+    (char*) (current_nid + 1103),  // nid of this line
+    (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
+    (char*) (current_nid + 1102)); // nid of not 7
+  printf3("%d add 2 %d %d\n",
+    (char*) (current_nid + 1104),  // nid of this line
+    (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
+    (char*) (current_nid + 1103)); // nid of ($a2 / 8) * 8
+  printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of write buffer for checking address validity\n\n",
+    (char*) (current_nid + 1105),  // nid of this line
+    (char*) (current_nid + 1100),  // nid of read ecall is active
+    (char*) (current_nid + 1104),  // nid of $a1 + ($a2 / 8) * 8
+    (char*) write_flow_end_nid);   // nid of address of most recent memory write access
+
+  write_flow_end_nid = current_nid + 1105;
+
+  // TODO: check file descriptor validity, return error codes
+
+  // if read ecall is active set $a0 (read number of bytes) = $a2 (size)
+  printf4("%d ite 2 %d %d %d ; read ecall is active, set $a0 = $a2\n\n",
+    (char*) (current_nid + 1106),       // nid of this line
+    (char*) (current_nid + 1100),       // nid of read ecall is active
+    (char*) (reg_nids + REG_A2),        // nid of current value of $a2 register
+    (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
+
+  *(reg_flow_nids + REG_A0) = current_nid + 1106;
+
+
   // if write ecall is active provide $a1 register as address for checking address validity
   printf3("%d and 1 %d %d ; write ecall is active\n",
     (char*) (current_nid + 1200), // nid of this line
