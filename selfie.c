@@ -1019,7 +1019,7 @@ uint64_t debug_switch = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// ----------------------    R U N T I M E    ----------------------
+// -----------------    A R C H I T E C T U R E    -----------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
@@ -1408,29 +1408,11 @@ void reset_profiler() {
   stores_per_instruction = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 }
 
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// -------------------------- DISASSEMBLER -------------------------
+// ----------------------    R U N T I M E    ----------------------
 // -----------------------------------------------------------------
-
-void translate_to_assembler();
-
-void selfie_disassemble(uint64_t verbose);
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-char*    assembly_name = (char*) 0; // name of assembly file
-uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
-
-// -----------------------------------------------------------------
-// ------------------------- MODEL CHECKER -------------------------
-// -----------------------------------------------------------------
-
-void selfie_model_check();
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-char*    model_name = (char*) 0; // name of model file
-uint64_t model_fd   = 0;         // file descriptor of open model file
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
 // ---------------------------- CONTEXTS ---------------------------
@@ -1667,9 +1649,33 @@ uint64_t free_page_frame_memory      = 0;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// ----------------   T H E O R E M  P R O V E R    ----------------
+// -------------------   C O R R E C T N E S S    ------------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// -------------------------- DISASSEMBLER -------------------------
+// -----------------------------------------------------------------
+
+void translate_to_assembler();
+
+void selfie_disassemble(uint64_t verbose);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+char*    assembly_name = (char*) 0; // name of assembly file
+uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
+
+// -----------------------------------------------------------------
+// ------------------------- MODEL CHECKER -------------------------
+// -----------------------------------------------------------------
+
+void selfie_model_check();
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+char*    model_name = (char*) 0; // name of model file
+uint64_t model_fd   = 0;         // file descriptor of open model file
 
 // -----------------------------------------------------------------
 // -------------------------- SAT Solver ---------------------------
@@ -6590,7 +6596,7 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
-// ----------------------    R U N T I M E    ----------------------
+// -----------------    A R C H I T E C T U R E    -----------------
 // -----------------------------------------------------------------
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
@@ -8107,6 +8113,1021 @@ void print_profile() {
   }
 }
 
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------------    R U N T I M E    ----------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ---------------------------- CONTEXTS ---------------------------
+// -----------------------------------------------------------------
+
+uint64_t* new_context() {
+  uint64_t* context;
+
+  if (free_contexts == (uint64_t*) 0)
+    if (symbolic)
+      context = allocate_symbolic_context();
+    else
+      context = allocate_context();
+  else {
+    context = free_contexts;
+
+    free_contexts = get_next_context(free_contexts);
+  }
+
+  set_next_context(context, used_contexts);
+  set_prev_context(context, (uint64_t*) 0);
+
+  if (used_contexts != (uint64_t*) 0)
+    set_prev_context(used_contexts, context);
+
+  used_contexts = context;
+
+  return context;
+}
+
+void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
+  set_pc(context, 0);
+
+  // allocate zeroed memory for general purpose registers
+  // TODO: reuse memory
+  set_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  // allocate zeroed memory for page table
+  // TODO: save and reuse memory for page table
+  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+
+  // determine range of recently mapped pages
+  set_lo_page(context, 0);
+  set_me_page(context, 0);
+  set_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - REGISTERSIZE));
+
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+  set_faulting_page(context, 0);
+
+  set_exit_code(context, EXITCODE_NOERROR);
+
+  set_parent(context, parent);
+  set_virtual_context(context, vctxt);
+
+  set_name(context, 0);
+
+  if (symbolic) {
+    set_execution_depth(context, 0);
+    set_path_condition(context, "true");
+    set_symbolic_memory(context, (uint64_t*) 0);
+    set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+    set_related_context(context, (uint64_t*) 0);
+  }
+}
+
+void copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth) {
+  uint64_t* context;
+  uint64_t r;
+
+  context = new_context();
+
+  set_pc(context, location);
+
+  set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_regs(context) + r) = *(get_regs(original) + r);
+
+    r = r + 1;
+  }
+
+  set_pt(context, pt);
+
+  set_lo_page(context, get_lo_page(original));
+  set_me_page(context, get_me_page(original));
+  set_hi_page(context, get_hi_page(original));
+  set_exception(context, get_exception(original));
+  set_faulting_page(context, get_faulting_page(original));
+  set_exit_code(context, get_exit_code(original));
+  set_parent(context, get_parent(original));
+  set_virtual_context(context, get_virtual_context(original));
+  set_name(context, get_name(original));
+
+  set_execution_depth(context, depth);
+  set_path_condition(context, condition);
+  set_symbolic_memory(context, symbolic_memory);
+
+  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_symbolic_regs(context) + r) = *(get_symbolic_regs(original) + r);
+
+    r = r + 1;
+  }
+
+  set_related_context(context, symbolic_contexts);
+
+  symbolic_contexts = context;
+}
+
+uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
+  uint64_t* context;
+
+  context = used_contexts;
+
+  while (context != (uint64_t*) 0) {
+    if (get_parent(context) == parent)
+      if (get_virtual_context(context) == vctxt)
+        return context;
+
+    context = get_next_context(context);
+  }
+
+  return (uint64_t*) 0;
+}
+
+void free_context(uint64_t* context) {
+  set_next_context(context, free_contexts);
+
+  free_contexts = context;
+}
+
+uint64_t* delete_context(uint64_t* context, uint64_t* from) {
+  if (get_next_context(context) != (uint64_t*) 0)
+    set_prev_context(get_next_context(context), get_prev_context(context));
+
+  if (get_prev_context(context) != (uint64_t*) 0) {
+    set_next_context(get_prev_context(context), get_next_context(context));
+    set_prev_context(context, (uint64_t*) 0);
+  } else
+    from = get_next_context(context);
+
+  free_context(context);
+
+  return from;
+}
+
+// -----------------------------------------------------------------
+// -------------------------- MICROKERNEL --------------------------
+// -----------------------------------------------------------------
+
+uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
+  uint64_t* context;
+
+  context = new_context();
+
+  init_context(context, parent, vctxt);
+
+  if (debug_create)
+    printf3("%s: parent context %p created child context %p\n", selfie_name,
+      (char*) parent,
+      (char*) used_contexts);
+
+  return context;
+}
+
+uint64_t* cache_context(uint64_t* vctxt) {
+  uint64_t* context;
+
+  // find cached context on my boot level
+  context = find_context(current_context, vctxt);
+
+  if (context == (uint64_t*) 0)
+    // create cached context on my boot level
+    context = create_context(current_context, vctxt);
+
+  return context;
+}
+
+void save_context(uint64_t* context) {
+  uint64_t* parent_table;
+  uint64_t* vctxt;
+  uint64_t r;
+  uint64_t* pregs;
+  uint64_t* vregs;
+
+  // save machine state
+  set_pc(context, pc);
+
+  if (symbolic) {
+    set_path_condition(context, path_condition);
+    set_symbolic_memory(context, symbolic_memory);
+  }
+
+  if (get_parent(context) != MY_CONTEXT) {
+    parent_table = get_pt(get_parent(context));
+
+    vctxt = get_virtual_context(context);
+
+    store_virtual_memory(parent_table, program_counter(vctxt), get_pc(context));
+
+    r = 0;
+
+    pregs = get_regs(context);
+    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
+
+    while (r < NUMBEROFREGISTERS) {
+      store_virtual_memory(parent_table, (uint64_t) (vregs + r), *(pregs + r));
+
+      r = r + 1;
+    }
+
+    store_virtual_memory(parent_table, program_break(vctxt), get_program_break(context));
+
+    store_virtual_memory(parent_table, exception(vctxt), get_exception(context));
+    store_virtual_memory(parent_table, faulting_page(vctxt), get_faulting_page(context));
+    store_virtual_memory(parent_table, exit_code(vctxt), get_exit_code(context));
+  }
+}
+
+void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
+  uint64_t* table;
+
+  table = get_pt(context);
+
+  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
+
+  *(table + page) = frame;
+
+  if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
+    // exploit spatial locality in page table caching
+    if (page < get_lo_page(context))
+      set_lo_page(context, page);
+    else if (page > get_me_page(context))
+      set_me_page(context, page);
+  }
+
+  if (debug_map) {
+    printf1("%s: page ", selfie_name);
+    print_hexadecimal(page, 4);
+    printf2(" mapped to frame %p in context %p\n", (char*) frame, (char*) context);
+  }
+}
+
+void restore_context(uint64_t* context) {
+  uint64_t* parent_table;
+  uint64_t* vctxt;
+  uint64_t r;
+  uint64_t* pregs;
+  uint64_t* vregs;
+  uint64_t* table;
+  uint64_t page;
+  uint64_t me;
+  uint64_t frame;
+
+  if (get_parent(context) != MY_CONTEXT) {
+    parent_table = get_pt(get_parent(context));
+
+    vctxt = get_virtual_context(context);
+
+    set_pc(context, load_virtual_memory(parent_table, program_counter(vctxt)));
+
+    r = 0;
+
+    pregs = get_regs(context);
+    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
+
+    while (r < NUMBEROFREGISTERS) {
+      *(pregs + r) = load_virtual_memory(parent_table, (uint64_t) (vregs + r));
+
+      r = r + 1;
+    }
+
+    set_program_break(context, load_virtual_memory(parent_table, program_break(vctxt)));
+
+    set_exception(context, load_virtual_memory(parent_table, exception(vctxt)));
+    set_faulting_page(context, load_virtual_memory(parent_table, faulting_page(vctxt)));
+    set_exit_code(context, load_virtual_memory(parent_table, exit_code(vctxt)));
+
+    table = (uint64_t*) load_virtual_memory(parent_table, page_table(vctxt));
+
+    // assert: context page table is only mapped from beginning up and end down
+
+    page = load_virtual_memory(parent_table, lo_page(vctxt));
+    me   = load_virtual_memory(parent_table, me_page(vctxt));
+
+    while (page <= me) {
+      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page))) {
+        frame = load_virtual_memory(parent_table, frame_for_page(table, page));
+
+        map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
+      }
+
+      page = page + 1;
+    }
+
+    store_virtual_memory(parent_table, lo_page(vctxt), page);
+
+    page = load_virtual_memory(parent_table, hi_page(vctxt));
+
+    if (is_virtual_address_mapped(parent_table, frame_for_page(table, page)))
+      frame = load_virtual_memory(parent_table, frame_for_page(table, page));
+    else
+      frame = 0;
+
+    while (frame != 0) {
+      map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
+
+      page  = page - 1;
+
+      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page)))
+        frame = load_virtual_memory(parent_table, frame_for_page(table, page));
+      else
+        frame = 0;
+    }
+
+    store_virtual_memory(parent_table, hi_page(vctxt), page);
+  }
+}
+
+// -----------------------------------------------------------------
+// ---------------------------- KERNEL -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t pavailable() {
+  if (free_page_frame_memory > 0)
+    return 1;
+  else if (allocated_page_frame_memory + MEGABYTE <= page_frame_memory)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t pexcess() {
+  if (pavailable())
+    return 1;
+  else if (allocated_page_frame_memory + MEGABYTE <= 2 * page_frame_memory)
+    // tolerate twice as much memory mapped on demand than physically available
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t pused() {
+  return allocated_page_frame_memory - free_page_frame_memory;
+}
+
+uint64_t* palloc() {
+  uint64_t block;
+  uint64_t frame;
+
+  // assert: page_frame_memory is equal to or a multiple of MEGABYTE
+  // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
+
+  if (free_page_frame_memory == 0) {
+    if (pexcess()) {
+      free_page_frame_memory = MEGABYTE;
+
+      // on boot level zero allocate zeroed memory
+      block = (uint64_t) zalloc(free_page_frame_memory);
+
+      allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
+
+      // page frames must be page-aligned to work as page table index
+      next_page_frame = round_up(block, PAGESIZE);
+
+      if (next_page_frame > block)
+        // losing one page frame to fragmentation
+        free_page_frame_memory = free_page_frame_memory - PAGESIZE;
+    } else {
+      print(selfie_name);
+      print(": palloc out of physical memory\n");
+
+      exit(EXITCODE_OUTOFPHYSICALMEMORY);
+    }
+  }
+
+  frame = next_page_frame;
+
+  next_page_frame = next_page_frame + PAGESIZE;
+
+  free_page_frame_memory = free_page_frame_memory - PAGESIZE;
+
+  // strictly, touching is only necessary on boot levels higher than zero
+  return touch((uint64_t*) frame, PAGESIZE);
+}
+
+void pfree(uint64_t* frame) {
+  // TODO: implement free list of page frames
+  frame = frame + 1;
+}
+
+void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
+  // assert: is_valid_virtual_address(vaddr) == 1
+
+  if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
+    map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
+
+  store_virtual_memory(get_pt(context), vaddr, data);
+}
+
+void up_load_binary(uint64_t* context) {
+  uint64_t baddr;
+
+  // assert: entry_point is multiple of PAGESIZE and REGISTERSIZE
+
+  set_pc(context, entry_point);
+  set_lo_page(context, get_page_of_virtual_address(entry_point));
+  set_me_page(context, get_page_of_virtual_address(entry_point));
+  set_original_break(context, entry_point + binary_length);
+  set_program_break(context, get_original_break(context));
+
+  baddr = 0;
+
+  while (baddr < binary_length) {
+    map_and_store(context, entry_point + baddr, load_data(baddr));
+
+    baddr = baddr + REGISTERSIZE;
+  }
+
+  set_name(context, binary_name);
+}
+
+uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
+  uint64_t bytes;
+  uint64_t i;
+
+  bytes = round_up(string_length(s) + 1, REGISTERSIZE);
+
+  // allocate memory for storing string
+  SP = SP - bytes;
+
+  i = 0;
+
+  while (i < bytes) {
+    // CAUTION: at boot levels higher than zero, s is only accessible
+    // in C* at machine word granularity, not individual characters
+    map_and_store(context, SP + i, *((uint64_t*) s));
+
+    s = (char*) ((uint64_t*) s + 1);
+
+    i = i + REGISTERSIZE;
+  }
+
+  return SP;
+}
+
+void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
+  /* upload arguments like a UNIX system
+
+      SP
+      |
+      V
+   | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
+
+     with argc > 0, n == argc - 1, and m == 0 (that is, env is empty) */
+  uint64_t SP;
+  uint64_t* vargv;
+  uint64_t i;
+
+  // the call stack grows top down
+  SP = VIRTUALMEMORYSIZE;
+
+  vargv = smalloc(argc * SIZEOFUINT64STAR);
+
+  i = 0;
+
+  // push program parameters onto the stack
+  while (i < argc) {
+    SP = up_load_string(context, (char*) *(argv + i), SP);
+
+    // store pointer in virtual *argv
+    *(vargv + i) = SP;
+
+    i = i + 1;
+  }
+
+  // allocate memory for termination of env table
+  SP = SP - REGISTERSIZE;
+
+  // push null value to terminate env table
+  map_and_store(context, SP, 0);
+
+  // allocate memory for termination of argv table
+  SP = SP - REGISTERSIZE;
+
+  // push null value to terminate argv table
+  map_and_store(context, SP, 0);
+
+  // assert: i == argc
+
+  // push argv table onto the stack
+  while (i > 0) {
+    // allocate memory for argv table entry
+    SP = SP - REGISTERSIZE;
+
+    i = i - 1;
+
+    // push argv table entry
+    map_and_store(context, SP, *(vargv + i));
+  }
+
+  // allocate memory for argc
+  SP = SP - REGISTERSIZE;
+
+  // push argc
+  map_and_store(context, SP, argc);
+
+  // store stack pointer value in stack pointer register
+  *(get_regs(context) + REG_SP) = SP;
+}
+
+uint64_t handle_system_call(uint64_t* context) {
+  uint64_t a7;
+
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  a7 = *(get_regs(context) + REG_A7);
+
+  if (a7 == SYSCALL_BRK)
+    implement_brk(context);
+  else if (a7 == SYSCALL_READ)
+    implement_read(context);
+  else if (a7 == SYSCALL_WRITE)
+    implement_write(context);
+  else if (a7 == SYSCALL_OPENAT)
+    implement_openat(context);
+  else if (a7 == SYSCALL_EXIT) {
+    implement_exit(context);
+
+    // TODO: exit only if all contexts have exited
+    return EXIT;
+  } else {
+    printf2("%s: unknown system call %d\n", selfie_name, (char*) a7);
+
+    set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
+
+    return EXIT;
+  }
+
+  return DONOTEXIT;
+}
+
+uint64_t handle_page_fault(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  // TODO: use this table to unmap and reuse frames
+  map_page(context, get_faulting_page(context), (uint64_t) palloc());
+
+  return DONOTEXIT;
+}
+
+uint64_t handle_division_by_zero(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  if (record) {
+    printf1("%s: division by zero, replaying...\n", selfie_name);
+
+    replay_trace();
+
+    set_exit_code(context, EXITCODE_NOERROR);
+  } else {
+    printf1("%s: division by zero\n", selfie_name);
+
+    set_exit_code(context, EXITCODE_DIVISIONBYZERO);
+  }
+
+  return EXIT;
+}
+
+uint64_t handle_timer(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  if (symbolic) {
+    print("(push 1)\n");
+
+    printf1("(assert (not %s)); timeout in ", path_condition);
+    print_code_context_for_instruction(pc);
+
+    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+    return EXIT;
+  } else
+    return DONOTEXIT;
+}
+
+uint64_t handle_exception(uint64_t* context) {
+  uint64_t exception;
+
+  exception = get_exception(context);
+
+  if (exception == EXCEPTION_SYSCALL)
+    return handle_system_call(context);
+  else if (exception == EXCEPTION_PAGEFAULT)
+    return handle_page_fault(context);
+  else if (exception == EXCEPTION_DIVISIONBYZERO)
+    return handle_division_by_zero(context);
+  else if (exception == EXCEPTION_TIMER)
+    return handle_timer(context);
+  else {
+    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
+    print_exception(exception, get_faulting_page(context));
+    println();
+
+    set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
+
+    return EXIT;
+  }
+}
+
+uint64_t mipster(uint64_t* to_context) {
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  print("mipster\n");
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    from_context = mipster_switch(to_context, timeout);
+
+    if (get_parent(from_context) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      to_context = get_parent(from_context);
+
+      timeout = TIMEROFF;
+    } else if (handle_exception(from_context) == EXIT)
+      return get_exit_code(from_context);
+    else {
+      // TODO: scheduler should go here
+      to_context = from_context;
+
+      timeout = TIMESLICE;
+    }
+  }
+}
+
+uint64_t hypster(uint64_t* to_context) {
+  uint64_t* from_context;
+
+  print("hypster\n");
+
+  while (1) {
+    from_context = hypster_switch(to_context, TIMESLICE);
+
+    if (handle_exception(from_context) == EXIT)
+      return get_exit_code(from_context);
+    else
+      // TODO: scheduler should go here
+      to_context = from_context;
+  }
+}
+
+uint64_t mixter(uint64_t* to_context, uint64_t mix) {
+  // works with mipsters and hypsters
+  uint64_t mslice;
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  printf2("mixter (%d%% mipster/%d%% hypster)\n", (char*) mix, (char*) (100 - mix));
+
+  mslice = TIMESLICE;
+
+  if (mslice <= UINT64_MAX / 100)
+    mslice = mslice * mix / 100;
+  else if (mslice <= UINT64_MAX / 10)
+    mslice = mslice / 10 * (mix / 10);
+  else
+    mslice = mslice / 100 * mix;
+
+  if (mslice > 0) {
+    mix = 1;
+
+    timeout = mslice;
+  } else {
+    mix = 0;
+
+    timeout = TIMESLICE;
+  }
+
+  while (1) {
+    if (mix)
+      from_context = mipster_switch(to_context, timeout);
+    else
+      from_context = hypster_switch(to_context, timeout);
+
+    if (get_parent(from_context) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      to_context = get_parent(from_context);
+
+      timeout = TIMEROFF;
+    } else if (handle_exception(from_context) == EXIT)
+      return get_exit_code(from_context);
+    else {
+      // TODO: scheduler should go here
+      to_context = from_context;
+
+      if (mix) {
+        if (mslice != TIMESLICE) {
+          mix = 0;
+
+          timeout = TIMESLICE - mslice;
+        }
+      } else if (mslice > 0) {
+        mix = 1;
+
+        timeout = mslice;
+      }
+    }
+  }
+}
+
+uint64_t minmob(uint64_t* to_context) {
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  timeout = TIMESLICE;
+
+  while (1) {
+    from_context = mipster_switch(to_context, timeout);
+
+    if (get_parent(from_context) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      to_context = get_parent(from_context);
+
+      timeout = TIMEROFF;
+    } else {
+      // minster and mobster do not handle page faults
+      if (get_exception(from_context) == EXCEPTION_PAGEFAULT) {
+        printf2("%s: context %s throws uncaught ", selfie_name, get_name(from_context));
+        print_exception(get_exception(from_context), get_faulting_page(from_context));
+        println();
+
+        return EXITCODE_UNCAUGHTEXCEPTION;
+      } else if (handle_exception(from_context) == EXIT)
+        return get_exit_code(from_context);
+
+      // TODO: scheduler should go here
+      to_context = from_context;
+
+      timeout = TIMESLICE;
+    }
+  }
+}
+
+void map_unmapped_pages(uint64_t* context) {
+  uint64_t page;
+
+  // assert: page table is only mapped from beginning up and end down
+
+  page = get_lo_page(context);
+
+  while (is_page_mapped(get_pt(context), page))
+    page = page + 1;
+
+  while (pavailable()) {
+    map_page(context, page, (uint64_t) palloc());
+
+    page = page + 1;
+  }
+}
+
+uint64_t minster(uint64_t* to_context) {
+  print("minster\n");
+
+  // virtual is like physical memory in initial context up to memory size
+  // by mapping unmapped pages (for the heap) to all available page frames
+  // CAUTION: consumes memory even when not accessed
+  map_unmapped_pages(to_context);
+
+  // does not handle page faults, works only until running out of mapped pages
+  return minmob(to_context);
+}
+
+uint64_t mobster(uint64_t* to_context) {
+  print("mobster\n");
+
+  // does not handle page faults, relies on fancy hypsters to do that
+  return minmob(to_context);
+}
+
+char* replace_extension(char* filename, uint64_t e) {
+  char* s;
+  uint64_t i;
+  uint64_t c;
+
+  // assert: 0 < string_length(filename) - 2 < MAX_FILENAME_LENGTH
+
+  s = string_alloc(string_length(filename) + 2);
+
+  i = 0;
+
+  c = load_character(filename, i);
+
+  while (c != 0) {
+    store_character(s, i, c);
+
+    if (c == '.') {
+      store_character(s, i, 0);
+
+      c = 0;
+    } else {
+      i = i + 1;
+
+      c = load_character(filename, i);
+    }
+  }
+
+  // writing s plus extension into s works because we allocated two more bytes
+  sprintf2(s, "%s.%c", s, (char*) e);
+
+  return s;
+}
+
+uint64_t monster(uint64_t* to_context) {
+  uint64_t timeout;
+  uint64_t* from_context;
+
+  print("monster\n");
+
+  // use extension ".t" in name of SMT-LIB file
+  smt_name = replace_extension(binary_name, 't');
+
+  // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  smt_fd = open_write_only(smt_name);
+
+  if (signed_less_than(smt_fd, 0)) {
+    printf2("%s: could not create SMT-LIB output file %s\n", selfie_name, smt_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  output_name = smt_name;
+  output_fd   = smt_fd;
+
+  printf1("; %s\n\n", SELFIE_URL);
+
+  printf1("; SMT-LIB formulae generated by %s for\n", selfie_name);
+  printf1("; RISC-V code obtained from %s with ", binary_name);
+  if (max_execution_depth)
+    printf1("%d execution depth\n\n", (char*) max_execution_depth);
+  else
+    print("unbounded execution depth\n\n");
+
+  print("(set-option :produce-models true)\n");
+  print("(set-option :incremental true)\n");
+  print("(set-logic QF_BV)\n\n");
+
+  timeout = max_execution_depth;
+
+  while (1) {
+    from_context = mipster_switch(to_context, timeout);
+
+    if (get_parent(from_context) != MY_CONTEXT) {
+      // switch to parent which is in charge of handling exceptions
+      to_context = get_parent(from_context);
+
+      timeout = TIMEROFF;
+    } else {
+      if (handle_exception(from_context) == EXIT) {
+        if (symbolic_contexts) {
+          to_context = symbolic_contexts;
+
+          timeout = get_execution_depth(to_context);
+
+          symbolic_contexts = get_related_context(symbolic_contexts);
+        } else {
+          print("\n(exit)");
+
+          output_name = (char*) 0;
+          output_fd   = 1;
+
+          printf3("%s: %d characters of SMT-LIB formulae written into %s\n", selfie_name,
+            (char*) number_of_written_characters,
+            smt_name);
+
+          return EXITCODE_NOERROR;
+        }
+      } else {
+        timeout = timer;
+
+        to_context = from_context;
+      }
+    }
+  }
+}
+
+uint64_t is_boot_level_zero() {
+  // in C99 malloc(0) returns either a null pointer or a unique pointer.
+  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
+  // selfie's malloc implementation, on the other hand,
+  // returns the same not null address, if malloc(0) is called consecutively.
+  uint64_t first_malloc;
+  uint64_t second_malloc;
+
+  first_malloc = (uint64_t) malloc(0);
+  second_malloc = (uint64_t) malloc(0);
+
+  if (first_malloc == 0)
+    return 1;
+  if (first_malloc != second_malloc)
+    return 1;
+
+  // it is selfie's malloc, so it can not be boot level zero.
+  return 0;
+}
+
+void boot_loader() {
+  current_context = create_context(MY_CONTEXT, 0);
+
+  up_load_binary(current_context);
+
+  // pass binary name as first argument by replacing memory size
+  set_argument(binary_name);
+
+  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
+}
+
+uint64_t selfie_run(uint64_t machine) {
+  uint64_t exit_code;
+
+  if (binary_length == 0) {
+    printf1("%s: nothing to run, debug, or host\n", selfie_name);
+
+    return EXITCODE_BADARGUMENTS;
+  }
+
+  if (machine == DIPSTER) {
+    debug          = 1;
+    debug_syscalls = 1;
+  } else if (machine == RIPSTER) {
+    debug  = 1;
+    record = 1;
+
+    init_replay_engine();
+  } else if (machine == MONSTER) {
+    debug    = 1;
+    symbolic = 1;
+  }
+
+  if (machine != MONSTER)
+    init_memory(atoi(peek_argument()));
+  else {
+    init_memory(1);
+
+    max_execution_depth = atoi(peek_argument());
+  }
+
+  reset_interpreter();
+  reset_profiler();
+  reset_microkernel();
+
+  boot_loader();
+
+  printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
+    binary_name,
+    (char*) (page_frame_memory / MEGABYTE));
+
+  run = 1;
+
+  if (machine == MIPSTER)
+    exit_code = mipster(current_context);
+  else if (machine == DIPSTER)
+    exit_code = mipster(current_context);
+  else if (machine == RIPSTER)
+    exit_code = mipster(current_context);
+  else if (machine == MONSTER)
+    exit_code = monster(current_context);
+  else if (machine == MINSTER)
+    exit_code = minster(current_context);
+  else if (machine == MOBSTER)
+    exit_code = mobster(current_context);
+  else if (machine == HYPSTER)
+    if (is_boot_level_zero())
+      // no hypster on boot level zero
+      exit_code = mipster(current_context);
+    else
+      exit_code = hypster(current_context);
+  else
+    // change 0 to anywhere between 0% to 100% mipster
+    exit_code = mixter(current_context, 0);
+
+  run = 0;
+
+  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
+    get_name(current_context),
+    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
+
+  print_profile();
+
+  symbolic = 0;
+  record   = 0;
+
+  debug_syscalls = 0;
+  debug          = 0;
+
+  return exit_code;
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// -------------------   C O R R E C T N E S S    ------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
 // -----------------------------------------------------------------
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
@@ -9520,1015 +10541,6 @@ void selfie_model_check() {
     (char*) number_of_written_characters,
     model_name);
 }
-
-// -----------------------------------------------------------------
-// ---------------------------- CONTEXTS ---------------------------
-// -----------------------------------------------------------------
-
-uint64_t* new_context() {
-  uint64_t* context;
-
-  if (free_contexts == (uint64_t*) 0)
-    if (symbolic)
-      context = allocate_symbolic_context();
-    else
-      context = allocate_context();
-  else {
-    context = free_contexts;
-
-    free_contexts = get_next_context(free_contexts);
-  }
-
-  set_next_context(context, used_contexts);
-  set_prev_context(context, (uint64_t*) 0);
-
-  if (used_contexts != (uint64_t*) 0)
-    set_prev_context(used_contexts, context);
-
-  used_contexts = context;
-
-  return context;
-}
-
-void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
-  set_pc(context, 0);
-
-  // allocate zeroed memory for general purpose registers
-  // TODO: reuse memory
-  set_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
-
-  // allocate zeroed memory for page table
-  // TODO: save and reuse memory for page table
-  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
-
-  // determine range of recently mapped pages
-  set_lo_page(context, 0);
-  set_me_page(context, 0);
-  set_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - REGISTERSIZE));
-
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-  set_faulting_page(context, 0);
-
-  set_exit_code(context, EXITCODE_NOERROR);
-
-  set_parent(context, parent);
-  set_virtual_context(context, vctxt);
-
-  set_name(context, 0);
-
-  if (symbolic) {
-    set_execution_depth(context, 0);
-    set_path_condition(context, "true");
-    set_symbolic_memory(context, (uint64_t*) 0);
-    set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
-    set_related_context(context, (uint64_t*) 0);
-  }
-}
-
-void copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth) {
-  uint64_t* context;
-  uint64_t r;
-
-  context = new_context();
-
-  set_pc(context, location);
-
-  set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
-
-  r = 0;
-
-  while (r < NUMBEROFREGISTERS) {
-    *(get_regs(context) + r) = *(get_regs(original) + r);
-
-    r = r + 1;
-  }
-
-  set_pt(context, pt);
-
-  set_lo_page(context, get_lo_page(original));
-  set_me_page(context, get_me_page(original));
-  set_hi_page(context, get_hi_page(original));
-  set_exception(context, get_exception(original));
-  set_faulting_page(context, get_faulting_page(original));
-  set_exit_code(context, get_exit_code(original));
-  set_parent(context, get_parent(original));
-  set_virtual_context(context, get_virtual_context(original));
-  set_name(context, get_name(original));
-
-  set_execution_depth(context, depth);
-  set_path_condition(context, condition);
-  set_symbolic_memory(context, symbolic_memory);
-
-  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
-
-  r = 0;
-
-  while (r < NUMBEROFREGISTERS) {
-    *(get_symbolic_regs(context) + r) = *(get_symbolic_regs(original) + r);
-
-    r = r + 1;
-  }
-
-  set_related_context(context, symbolic_contexts);
-
-  symbolic_contexts = context;
-}
-
-uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
-  uint64_t* context;
-
-  context = used_contexts;
-
-  while (context != (uint64_t*) 0) {
-    if (get_parent(context) == parent)
-      if (get_virtual_context(context) == vctxt)
-        return context;
-
-    context = get_next_context(context);
-  }
-
-  return (uint64_t*) 0;
-}
-
-void free_context(uint64_t* context) {
-  set_next_context(context, free_contexts);
-
-  free_contexts = context;
-}
-
-uint64_t* delete_context(uint64_t* context, uint64_t* from) {
-  if (get_next_context(context) != (uint64_t*) 0)
-    set_prev_context(get_next_context(context), get_prev_context(context));
-
-  if (get_prev_context(context) != (uint64_t*) 0) {
-    set_next_context(get_prev_context(context), get_next_context(context));
-    set_prev_context(context, (uint64_t*) 0);
-  } else
-    from = get_next_context(context);
-
-  free_context(context);
-
-  return from;
-}
-
-// -----------------------------------------------------------------
-// -------------------------- MICROKERNEL --------------------------
-// -----------------------------------------------------------------
-
-uint64_t* create_context(uint64_t* parent, uint64_t* vctxt) {
-  uint64_t* context;
-
-  context = new_context();
-
-  init_context(context, parent, vctxt);
-
-  if (debug_create)
-    printf3("%s: parent context %p created child context %p\n", selfie_name,
-      (char*) parent,
-      (char*) used_contexts);
-
-  return context;
-}
-
-uint64_t* cache_context(uint64_t* vctxt) {
-  uint64_t* context;
-
-  // find cached context on my boot level
-  context = find_context(current_context, vctxt);
-
-  if (context == (uint64_t*) 0)
-    // create cached context on my boot level
-    context = create_context(current_context, vctxt);
-
-  return context;
-}
-
-void save_context(uint64_t* context) {
-  uint64_t* parent_table;
-  uint64_t* vctxt;
-  uint64_t r;
-  uint64_t* pregs;
-  uint64_t* vregs;
-
-  // save machine state
-  set_pc(context, pc);
-
-  if (symbolic) {
-    set_path_condition(context, path_condition);
-    set_symbolic_memory(context, symbolic_memory);
-  }
-
-  if (get_parent(context) != MY_CONTEXT) {
-    parent_table = get_pt(get_parent(context));
-
-    vctxt = get_virtual_context(context);
-
-    store_virtual_memory(parent_table, program_counter(vctxt), get_pc(context));
-
-    r = 0;
-
-    pregs = get_regs(context);
-    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
-
-    while (r < NUMBEROFREGISTERS) {
-      store_virtual_memory(parent_table, (uint64_t) (vregs + r), *(pregs + r));
-
-      r = r + 1;
-    }
-
-    store_virtual_memory(parent_table, program_break(vctxt), get_program_break(context));
-
-    store_virtual_memory(parent_table, exception(vctxt), get_exception(context));
-    store_virtual_memory(parent_table, faulting_page(vctxt), get_faulting_page(context));
-    store_virtual_memory(parent_table, exit_code(vctxt), get_exit_code(context));
-  }
-}
-
-void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
-  uint64_t* table;
-
-  table = get_pt(context);
-
-  // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
-
-  *(table + page) = frame;
-
-  if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
-    // exploit spatial locality in page table caching
-    if (page < get_lo_page(context))
-      set_lo_page(context, page);
-    else if (page > get_me_page(context))
-      set_me_page(context, page);
-  }
-
-  if (debug_map) {
-    printf1("%s: page ", selfie_name);
-    print_hexadecimal(page, 4);
-    printf2(" mapped to frame %p in context %p\n", (char*) frame, (char*) context);
-  }
-}
-
-void restore_context(uint64_t* context) {
-  uint64_t* parent_table;
-  uint64_t* vctxt;
-  uint64_t r;
-  uint64_t* pregs;
-  uint64_t* vregs;
-  uint64_t* table;
-  uint64_t page;
-  uint64_t me;
-  uint64_t frame;
-
-  if (get_parent(context) != MY_CONTEXT) {
-    parent_table = get_pt(get_parent(context));
-
-    vctxt = get_virtual_context(context);
-
-    set_pc(context, load_virtual_memory(parent_table, program_counter(vctxt)));
-
-    r = 0;
-
-    pregs = get_regs(context);
-    vregs = (uint64_t*) load_virtual_memory(parent_table, regs(vctxt));
-
-    while (r < NUMBEROFREGISTERS) {
-      *(pregs + r) = load_virtual_memory(parent_table, (uint64_t) (vregs + r));
-
-      r = r + 1;
-    }
-
-    set_program_break(context, load_virtual_memory(parent_table, program_break(vctxt)));
-
-    set_exception(context, load_virtual_memory(parent_table, exception(vctxt)));
-    set_faulting_page(context, load_virtual_memory(parent_table, faulting_page(vctxt)));
-    set_exit_code(context, load_virtual_memory(parent_table, exit_code(vctxt)));
-
-    table = (uint64_t*) load_virtual_memory(parent_table, page_table(vctxt));
-
-    // assert: context page table is only mapped from beginning up and end down
-
-    page = load_virtual_memory(parent_table, lo_page(vctxt));
-    me   = load_virtual_memory(parent_table, me_page(vctxt));
-
-    while (page <= me) {
-      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page))) {
-        frame = load_virtual_memory(parent_table, frame_for_page(table, page));
-
-        map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
-      }
-
-      page = page + 1;
-    }
-
-    store_virtual_memory(parent_table, lo_page(vctxt), page);
-
-    page = load_virtual_memory(parent_table, hi_page(vctxt));
-
-    if (is_virtual_address_mapped(parent_table, frame_for_page(table, page)))
-      frame = load_virtual_memory(parent_table, frame_for_page(table, page));
-    else
-      frame = 0;
-
-    while (frame != 0) {
-      map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
-
-      page  = page - 1;
-
-      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page)))
-        frame = load_virtual_memory(parent_table, frame_for_page(table, page));
-      else
-        frame = 0;
-    }
-
-    store_virtual_memory(parent_table, hi_page(vctxt), page);
-  }
-}
-
-// -----------------------------------------------------------------
-// ---------------------------- KERNEL -----------------------------
-// -----------------------------------------------------------------
-
-uint64_t pavailable() {
-  if (free_page_frame_memory > 0)
-    return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= page_frame_memory)
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t pexcess() {
-  if (pavailable())
-    return 1;
-  else if (allocated_page_frame_memory + MEGABYTE <= 2 * page_frame_memory)
-    // tolerate twice as much memory mapped on demand than physically available
-    return 1;
-  else
-    return 0;
-}
-
-uint64_t pused() {
-  return allocated_page_frame_memory - free_page_frame_memory;
-}
-
-uint64_t* palloc() {
-  uint64_t block;
-  uint64_t frame;
-
-  // assert: page_frame_memory is equal to or a multiple of MEGABYTE
-  // assert: PAGESIZE is a factor of MEGABYTE strictly less than MEGABYTE
-
-  if (free_page_frame_memory == 0) {
-    if (pexcess()) {
-      free_page_frame_memory = MEGABYTE;
-
-      // on boot level zero allocate zeroed memory
-      block = (uint64_t) zalloc(free_page_frame_memory);
-
-      allocated_page_frame_memory = allocated_page_frame_memory + free_page_frame_memory;
-
-      // page frames must be page-aligned to work as page table index
-      next_page_frame = round_up(block, PAGESIZE);
-
-      if (next_page_frame > block)
-        // losing one page frame to fragmentation
-        free_page_frame_memory = free_page_frame_memory - PAGESIZE;
-    } else {
-      print(selfie_name);
-      print(": palloc out of physical memory\n");
-
-      exit(EXITCODE_OUTOFPHYSICALMEMORY);
-    }
-  }
-
-  frame = next_page_frame;
-
-  next_page_frame = next_page_frame + PAGESIZE;
-
-  free_page_frame_memory = free_page_frame_memory - PAGESIZE;
-
-  // strictly, touching is only necessary on boot levels higher than zero
-  return touch((uint64_t*) frame, PAGESIZE);
-}
-
-void pfree(uint64_t* frame) {
-  // TODO: implement free list of page frames
-  frame = frame + 1;
-}
-
-void map_and_store(uint64_t* context, uint64_t vaddr, uint64_t data) {
-  // assert: is_valid_virtual_address(vaddr) == 1
-
-  if (is_virtual_address_mapped(get_pt(context), vaddr) == 0)
-    map_page(context, get_page_of_virtual_address(vaddr), (uint64_t) palloc());
-
-  store_virtual_memory(get_pt(context), vaddr, data);
-}
-
-void up_load_binary(uint64_t* context) {
-  uint64_t baddr;
-
-  // assert: entry_point is multiple of PAGESIZE and REGISTERSIZE
-
-  set_pc(context, entry_point);
-  set_lo_page(context, get_page_of_virtual_address(entry_point));
-  set_me_page(context, get_page_of_virtual_address(entry_point));
-  set_original_break(context, entry_point + binary_length);
-  set_program_break(context, get_original_break(context));
-
-  baddr = 0;
-
-  while (baddr < binary_length) {
-    map_and_store(context, entry_point + baddr, load_data(baddr));
-
-    baddr = baddr + REGISTERSIZE;
-  }
-
-  set_name(context, binary_name);
-}
-
-uint64_t up_load_string(uint64_t* context, char* s, uint64_t SP) {
-  uint64_t bytes;
-  uint64_t i;
-
-  bytes = round_up(string_length(s) + 1, REGISTERSIZE);
-
-  // allocate memory for storing string
-  SP = SP - bytes;
-
-  i = 0;
-
-  while (i < bytes) {
-    // CAUTION: at boot levels higher than zero, s is only accessible
-    // in C* at machine word granularity, not individual characters
-    map_and_store(context, SP + i, *((uint64_t*) s));
-
-    s = (char*) ((uint64_t*) s + 1);
-
-    i = i + REGISTERSIZE;
-  }
-
-  return SP;
-}
-
-void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
-  /* upload arguments like a UNIX system
-
-      SP
-      |
-      V
-   | argc | argv[0] | ... | argv[n] | 0 | env[0] | ... | env[m] | 0 |
-
-     with argc > 0, n == argc - 1, and m == 0 (that is, env is empty) */
-  uint64_t SP;
-  uint64_t* vargv;
-  uint64_t i;
-
-  // the call stack grows top down
-  SP = VIRTUALMEMORYSIZE;
-
-  vargv = smalloc(argc * SIZEOFUINT64STAR);
-
-  i = 0;
-
-  // push program parameters onto the stack
-  while (i < argc) {
-    SP = up_load_string(context, (char*) *(argv + i), SP);
-
-    // store pointer in virtual *argv
-    *(vargv + i) = SP;
-
-    i = i + 1;
-  }
-
-  // allocate memory for termination of env table
-  SP = SP - REGISTERSIZE;
-
-  // push null value to terminate env table
-  map_and_store(context, SP, 0);
-
-  // allocate memory for termination of argv table
-  SP = SP - REGISTERSIZE;
-
-  // push null value to terminate argv table
-  map_and_store(context, SP, 0);
-
-  // assert: i == argc
-
-  // push argv table onto the stack
-  while (i > 0) {
-    // allocate memory for argv table entry
-    SP = SP - REGISTERSIZE;
-
-    i = i - 1;
-
-    // push argv table entry
-    map_and_store(context, SP, *(vargv + i));
-  }
-
-  // allocate memory for argc
-  SP = SP - REGISTERSIZE;
-
-  // push argc
-  map_and_store(context, SP, argc);
-
-  // store stack pointer value in stack pointer register
-  *(get_regs(context) + REG_SP) = SP;
-}
-
-uint64_t handle_system_call(uint64_t* context) {
-  uint64_t a7;
-
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  a7 = *(get_regs(context) + REG_A7);
-
-  if (a7 == SYSCALL_BRK)
-    implement_brk(context);
-  else if (a7 == SYSCALL_READ)
-    implement_read(context);
-  else if (a7 == SYSCALL_WRITE)
-    implement_write(context);
-  else if (a7 == SYSCALL_OPENAT)
-    implement_openat(context);
-  else if (a7 == SYSCALL_EXIT) {
-    implement_exit(context);
-
-    // TODO: exit only if all contexts have exited
-    return EXIT;
-  } else {
-    printf2("%s: unknown system call %d\n", selfie_name, (char*) a7);
-
-    set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
-
-    return EXIT;
-  }
-
-  return DONOTEXIT;
-}
-
-uint64_t handle_page_fault(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  // TODO: use this table to unmap and reuse frames
-  map_page(context, get_faulting_page(context), (uint64_t) palloc());
-
-  return DONOTEXIT;
-}
-
-uint64_t handle_division_by_zero(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  if (record) {
-    printf1("%s: division by zero, replaying...\n", selfie_name);
-
-    replay_trace();
-
-    set_exit_code(context, EXITCODE_NOERROR);
-  } else {
-    printf1("%s: division by zero\n", selfie_name);
-
-    set_exit_code(context, EXITCODE_DIVISIONBYZERO);
-  }
-
-  return EXIT;
-}
-
-uint64_t handle_timer(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  if (symbolic) {
-    print("(push 1)\n");
-
-    printf1("(assert (not %s)); timeout in ", path_condition);
-    print_code_context_for_instruction(pc);
-
-    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
-
-    return EXIT;
-  } else
-    return DONOTEXIT;
-}
-
-uint64_t handle_exception(uint64_t* context) {
-  uint64_t exception;
-
-  exception = get_exception(context);
-
-  if (exception == EXCEPTION_SYSCALL)
-    return handle_system_call(context);
-  else if (exception == EXCEPTION_PAGEFAULT)
-    return handle_page_fault(context);
-  else if (exception == EXCEPTION_DIVISIONBYZERO)
-    return handle_division_by_zero(context);
-  else if (exception == EXCEPTION_TIMER)
-    return handle_timer(context);
-  else {
-    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
-    print_exception(exception, get_faulting_page(context));
-    println();
-
-    set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
-
-    return EXIT;
-  }
-}
-
-uint64_t mipster(uint64_t* to_context) {
-  uint64_t timeout;
-  uint64_t* from_context;
-
-  print("mipster\n");
-
-  timeout = TIMESLICE;
-
-  while (1) {
-    from_context = mipster_switch(to_context, timeout);
-
-    if (get_parent(from_context) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      to_context = get_parent(from_context);
-
-      timeout = TIMEROFF;
-    } else if (handle_exception(from_context) == EXIT)
-      return get_exit_code(from_context);
-    else {
-      // TODO: scheduler should go here
-      to_context = from_context;
-
-      timeout = TIMESLICE;
-    }
-  }
-}
-
-uint64_t hypster(uint64_t* to_context) {
-  uint64_t* from_context;
-
-  print("hypster\n");
-
-  while (1) {
-    from_context = hypster_switch(to_context, TIMESLICE);
-
-    if (handle_exception(from_context) == EXIT)
-      return get_exit_code(from_context);
-    else
-      // TODO: scheduler should go here
-      to_context = from_context;
-  }
-}
-
-uint64_t mixter(uint64_t* to_context, uint64_t mix) {
-  // works with mipsters and hypsters
-  uint64_t mslice;
-  uint64_t timeout;
-  uint64_t* from_context;
-
-  printf2("mixter (%d%% mipster/%d%% hypster)\n", (char*) mix, (char*) (100 - mix));
-
-  mslice = TIMESLICE;
-
-  if (mslice <= UINT64_MAX / 100)
-    mslice = mslice * mix / 100;
-  else if (mslice <= UINT64_MAX / 10)
-    mslice = mslice / 10 * (mix / 10);
-  else
-    mslice = mslice / 100 * mix;
-
-  if (mslice > 0) {
-    mix = 1;
-
-    timeout = mslice;
-  } else {
-    mix = 0;
-
-    timeout = TIMESLICE;
-  }
-
-  while (1) {
-    if (mix)
-      from_context = mipster_switch(to_context, timeout);
-    else
-      from_context = hypster_switch(to_context, timeout);
-
-    if (get_parent(from_context) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      to_context = get_parent(from_context);
-
-      timeout = TIMEROFF;
-    } else if (handle_exception(from_context) == EXIT)
-      return get_exit_code(from_context);
-    else {
-      // TODO: scheduler should go here
-      to_context = from_context;
-
-      if (mix) {
-        if (mslice != TIMESLICE) {
-          mix = 0;
-
-          timeout = TIMESLICE - mslice;
-        }
-      } else if (mslice > 0) {
-        mix = 1;
-
-        timeout = mslice;
-      }
-    }
-  }
-}
-
-uint64_t minmob(uint64_t* to_context) {
-  uint64_t timeout;
-  uint64_t* from_context;
-
-  timeout = TIMESLICE;
-
-  while (1) {
-    from_context = mipster_switch(to_context, timeout);
-
-    if (get_parent(from_context) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      to_context = get_parent(from_context);
-
-      timeout = TIMEROFF;
-    } else {
-      // minster and mobster do not handle page faults
-      if (get_exception(from_context) == EXCEPTION_PAGEFAULT) {
-        printf2("%s: context %s throws uncaught ", selfie_name, get_name(from_context));
-        print_exception(get_exception(from_context), get_faulting_page(from_context));
-        println();
-
-        return EXITCODE_UNCAUGHTEXCEPTION;
-      } else if (handle_exception(from_context) == EXIT)
-        return get_exit_code(from_context);
-
-      // TODO: scheduler should go here
-      to_context = from_context;
-
-      timeout = TIMESLICE;
-    }
-  }
-}
-
-void map_unmapped_pages(uint64_t* context) {
-  uint64_t page;
-
-  // assert: page table is only mapped from beginning up and end down
-
-  page = get_lo_page(context);
-
-  while (is_page_mapped(get_pt(context), page))
-    page = page + 1;
-
-  while (pavailable()) {
-    map_page(context, page, (uint64_t) palloc());
-
-    page = page + 1;
-  }
-}
-
-uint64_t minster(uint64_t* to_context) {
-  print("minster\n");
-
-  // virtual is like physical memory in initial context up to memory size
-  // by mapping unmapped pages (for the heap) to all available page frames
-  // CAUTION: consumes memory even when not accessed
-  map_unmapped_pages(to_context);
-
-  // does not handle page faults, works only until running out of mapped pages
-  return minmob(to_context);
-}
-
-uint64_t mobster(uint64_t* to_context) {
-  print("mobster\n");
-
-  // does not handle page faults, relies on fancy hypsters to do that
-  return minmob(to_context);
-}
-
-char* replace_extension(char* filename, uint64_t e) {
-  char* s;
-  uint64_t i;
-  uint64_t c;
-
-  // assert: 0 < string_length(filename) - 2 < MAX_FILENAME_LENGTH
-
-  s = string_alloc(string_length(filename) + 2);
-
-  i = 0;
-
-  c = load_character(filename, i);
-
-  while (c != 0) {
-    store_character(s, i, c);
-
-    if (c == '.') {
-      store_character(s, i, 0);
-
-      c = 0;
-    } else {
-      i = i + 1;
-
-      c = load_character(filename, i);
-    }
-  }
-
-  // writing s plus extension into s works because we allocated two more bytes
-  sprintf2(s, "%s.%c", s, (char*) e);
-
-  return s;
-}
-
-uint64_t monster(uint64_t* to_context) {
-  uint64_t timeout;
-  uint64_t* from_context;
-
-  print("monster\n");
-
-  // use extension ".t" in name of SMT-LIB file
-  smt_name = replace_extension(binary_name, 't');
-
-  // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  smt_fd = open_write_only(smt_name);
-
-  if (signed_less_than(smt_fd, 0)) {
-    printf2("%s: could not create SMT-LIB output file %s\n", selfie_name, smt_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
-  output_name = smt_name;
-  output_fd   = smt_fd;
-
-  printf1("; %s\n\n", SELFIE_URL);
-
-  printf1("; SMT-LIB formulae generated by %s for\n", selfie_name);
-  printf1("; RISC-V code obtained from %s with ", binary_name);
-  if (max_execution_depth)
-    printf1("%d execution depth\n\n", (char*) max_execution_depth);
-  else
-    print("unbounded execution depth\n\n");
-
-  print("(set-option :produce-models true)\n");
-  print("(set-option :incremental true)\n");
-  print("(set-logic QF_BV)\n\n");
-
-  timeout = max_execution_depth;
-
-  while (1) {
-    from_context = mipster_switch(to_context, timeout);
-
-    if (get_parent(from_context) != MY_CONTEXT) {
-      // switch to parent which is in charge of handling exceptions
-      to_context = get_parent(from_context);
-
-      timeout = TIMEROFF;
-    } else {
-      if (handle_exception(from_context) == EXIT) {
-        if (symbolic_contexts) {
-          to_context = symbolic_contexts;
-
-          timeout = get_execution_depth(to_context);
-
-          symbolic_contexts = get_related_context(symbolic_contexts);
-        } else {
-          print("\n(exit)");
-
-          output_name = (char*) 0;
-          output_fd   = 1;
-
-          printf3("%s: %d characters of SMT-LIB formulae written into %s\n", selfie_name,
-            (char*) number_of_written_characters,
-            smt_name);
-
-          return EXITCODE_NOERROR;
-        }
-      } else {
-        timeout = timer;
-
-        to_context = from_context;
-      }
-    }
-  }
-}
-
-uint64_t is_boot_level_zero() {
-  // in C99 malloc(0) returns either a null pointer or a unique pointer.
-  // (see http://pubs.opengroup.org/onlinepubs/9699919799/)
-  // selfie's malloc implementation, on the other hand,
-  // returns the same not null address, if malloc(0) is called consecutively.
-  uint64_t first_malloc;
-  uint64_t second_malloc;
-
-  first_malloc = (uint64_t) malloc(0);
-  second_malloc = (uint64_t) malloc(0);
-
-  if (first_malloc == 0)
-    return 1;
-  if (first_malloc != second_malloc)
-    return 1;
-
-  // it is selfie's malloc, so it can not be boot level zero.
-  return 0;
-}
-
-void boot_loader() {
-  current_context = create_context(MY_CONTEXT, 0);
-
-  up_load_binary(current_context);
-
-  // pass binary name as first argument by replacing memory size
-  set_argument(binary_name);
-
-  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
-}
-
-uint64_t selfie_run(uint64_t machine) {
-  uint64_t exit_code;
-
-  if (binary_length == 0) {
-    printf1("%s: nothing to run, debug, or host\n", selfie_name);
-
-    return EXITCODE_BADARGUMENTS;
-  }
-
-  if (machine == DIPSTER) {
-    debug          = 1;
-    debug_syscalls = 1;
-  } else if (machine == RIPSTER) {
-    debug  = 1;
-    record = 1;
-
-    init_replay_engine();
-  } else if (machine == MONSTER) {
-    debug    = 1;
-    symbolic = 1;
-  }
-
-  if (machine != MONSTER)
-    init_memory(atoi(peek_argument()));
-  else {
-    init_memory(1);
-
-    max_execution_depth = atoi(peek_argument());
-  }
-
-  reset_interpreter();
-  reset_profiler();
-  reset_microkernel();
-
-  boot_loader();
-
-  printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
-    binary_name,
-    (char*) (page_frame_memory / MEGABYTE));
-
-  run = 1;
-
-  if (machine == MIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == DIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == RIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == MONSTER)
-    exit_code = monster(current_context);
-  else if (machine == MINSTER)
-    exit_code = minster(current_context);
-  else if (machine == MOBSTER)
-    exit_code = mobster(current_context);
-  else if (machine == HYPSTER)
-    if (is_boot_level_zero())
-      // no hypster on boot level zero
-      exit_code = mipster(current_context);
-    else
-      exit_code = hypster(current_context);
-  else
-    // change 0 to anywhere between 0% to 100% mipster
-    exit_code = mixter(current_context, 0);
-
-  run = 0;
-
-  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
-    get_name(current_context),
-    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
-
-  print_profile();
-
-  symbolic = 0;
-  record   = 0;
-
-  debug_syscalls = 0;
-  debug          = 0;
-
-  return exit_code;
-}
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// ----------------   T H E O R E M  P R O V E R    ----------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 
 // -----------------------------------------------------------------
 // -------------------------- SAT Solver ---------------------------
