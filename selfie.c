@@ -1078,8 +1078,8 @@ void init_memory(uint64_t megabytes) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_code_line_number_for_instruction(uint64_t a);
-void print_code_context_for_instruction(uint64_t a);
+void print_code_line_number_for_instruction(uint64_t address, uint64_t offset);
+void print_code_context_for_instruction(uint64_t address);
 
 void print_lui();
 void print_lui_before();
@@ -1330,6 +1330,7 @@ uint64_t symbolic = 0; // flag for symbolically executing code
 uint64_t redo = 0; // flag for redoing code execution
 
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
+uint64_t model_check         = 0; // flag for model checking code
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -6689,22 +6690,24 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
 
-void print_code_line_number_for_instruction(uint64_t a) {
+void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
   if (code_line_number != (uint64_t*) 0)
-    printf1("(~%d)", (char*) *(code_line_number + a / INSTRUCTIONSIZE));
+    printf1("(~%d)", (char*) *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
 }
 
-void print_code_context_for_instruction(uint64_t a) {
+void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    printf2("%s: $pc=%x", binary_name, (char*) a);
-    print_code_line_number_for_instruction(a - entry_point);
+    printf2("%s: $pc=%x", binary_name, (char*) address);
+    print_code_line_number_for_instruction(address, entry_point);
     if (symbolic)
       // skip further output
       return;
   } else {
-    printf1("%x", (char*) a);
-    if (disassemble_verbose) {
-      print_code_line_number_for_instruction(a);
+    printf1("%x", (char*) address);
+    if (model_check)
+      print_code_line_number_for_instruction(address, entry_point);
+    else if (disassemble_verbose) {
+      print_code_line_number_for_instruction(address, 0);
       printf1(": %p", (char*) ir);
     }
   }
@@ -7011,7 +7014,7 @@ void constrain_ld() {
   if (*(reg_sym + rs1)) {
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in ld instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
+    print_code_line_number_for_instruction(pc, entry_point);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7053,7 +7056,7 @@ void constrain_ld() {
     printf3("%s: invalid concrete memory address %x in ld instruction at %x", selfie_name,
       (char*) vaddr,
       (char*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
+    print_code_line_number_for_instruction(pc, entry_point);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7154,7 +7157,7 @@ void constrain_sd() {
   if (*(reg_sym + rs1)) {
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in sd instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
+    print_code_line_number_for_instruction(pc, entry_point);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7185,7 +7188,7 @@ void constrain_sd() {
     printf3("%s: invalid concrete memory address %x in sd instruction at %x", selfie_name,
       (char*) vaddr,
       (char*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
+    print_code_line_number_for_instruction(pc, entry_point);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -7371,7 +7374,7 @@ void constrain_jalr() {
   if (*(reg_sym + rs1)) {
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in jalr instruction at %x", selfie_name, (char*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
+    print_code_line_number_for_instruction(pc, entry_point);
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -8076,7 +8079,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
     printf3(",%d(%.2d%%)@%x", (char*) c, (char*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (char*) a);
-    print_code_line_number_for_instruction(a);
+    print_code_line_number_for_instruction(a, 0);
 
     return c;
   } else {
@@ -9249,7 +9252,7 @@ uint64_t memory_nid      = 0;
 uint64_t memory_flow_nid = 0;
 
 // for checking address validity during state transitions with no memory access
-// 30 is nid of code length which must be a valid address (thus also checked)
+// 30 is nid of end of code segment which must be a valid address (thus also checked)
 uint64_t read_flow_start_nid  = 30;
 uint64_t read_flow_end_nid    = 30;
 uint64_t write_flow_start_nid = 30;
@@ -9289,22 +9292,22 @@ uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, 
 void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t from_address, uint64_t to_address, uint64_t condition_nid) {
   uint64_t* in_edge;
 
-  if (to_address < code_length) {
+  if (to_address < entry_point + code_length) {
     if (validate_procedure_body(from_instruction, from_link, to_address)) {
       in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-      *in_edge       = *(control_in + to_address / INSTRUCTIONSIZE);
+      *in_edge       = *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE);
       *(in_edge + 1) = from_instruction; // from which instruction
       *(in_edge + 2) = from_address;     // at which address
       *(in_edge + 3) = condition_nid;    // under which condition are we coming
 
-      *(control_in + to_address / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+      *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
       return;
     }
-  } else if (from_address == code_length - INSTRUCTIONSIZE)
+  } else if (from_address == entry_point + code_length - INSTRUCTIONSIZE)
     // from_instruction is last instruction in binary
-    if (*(control_in + from_address / INSTRUCTIONSIZE) == 0)
+    if (*(control_in + (from_address - entry_point) / INSTRUCTIONSIZE) == 0)
       // and unreachable
       return;
 
@@ -9754,9 +9757,9 @@ void model_jalr() {
       if (rs1 == REG_RA)
         if (pc >= estimated_return) {
           // no forward branches and jumps outside of "procedure body"
-          if (current_callee > 0)
+          if (current_callee > entry_point)
             // assert: current_callee points to an instruction to which a jal jumps
-            *(call_return + current_callee / INSTRUCTIONSIZE) = pc;
+            *(call_return + (current_callee - entry_point) / INSTRUCTIONSIZE) = pc;
 
             // assert: next "procedure body" begins right after jalr
             current_callee = pc + INSTRUCTIONSIZE;
@@ -9993,7 +9996,7 @@ void implement_syscalls() {
     (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
   printf1("%d state 2 brk\n", (char*) (current_nid + 1450));
-  printf2("%d init 2 %d 40 ; initial program break is binary length\n",
+  printf2("%d init 2 %d 40 ; initial program break is end of binary\n",
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
@@ -10051,7 +10054,7 @@ void implement_syscalls() {
 }
 
 void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
-  // check if address of most recent memory access < code length
+  // check if address of most recent memory access < end of code length
   printf2("%d ult 1 %d 30\n",
     (char*) current_nid, // nid of this line
     (char*) flow_nid);   // nid of address of most recent memory access
@@ -10145,7 +10148,7 @@ void selfie_model_check() {
 
   run = 0;
 
-  disassemble_verbose = 1;
+  model_check = 1;
 
   printf1("; %s\n\n", SELFIE_URL);
 
@@ -10162,18 +10165,23 @@ void selfie_model_check() {
 
   print("; highest address in 4GB of memory\n\n");
 
-  // highest virtual memory address is initial value of $sp register
+  // highest virtual memory address
   printf1("20 constd 2 %d\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
 
-  print("; code length in bytes\n\n");
+  print("; end of code segment in memory\n\n");
 
-  // size of code segment for checking address validity
-  printf1("30 constd 2 %d\n\n", (char*) code_length);
+  // end of code segment for checking address validity
+  printf1("30 constd 2 %d\n\n", (char*) (entry_point + code_length));
 
-  print("; binary length in bytes\n\n");
+  print("; end of binary (program break) in memory\n\n");
 
-  // size of binary (code + data segment) for checking program break validity
-  printf1("40 constd 2 %d\n\n", (char*) binary_length);
+  // end of binary (code + data segment) for checking program break validity
+  printf1("40 constd 2 %d\n\n", (char*) (entry_point + binary_length));
+
+  print("; initial stack pointer value\n\n");
+
+  // $sp register value from boot loader
+  printf1("50 constd 2 %d\n\n", (char*) *(get_regs(current_context) + REG_SP));
 
   print("; 32 64-bit general-purpose registers\n\n");
 
@@ -10206,8 +10214,8 @@ void selfie_model_check() {
 
   while (i < NUMBEROFREGISTERS) {
     if (i == REG_SP)
-      // initialize to highest memory address
-      printf3("%d init 2 %d 20 %s ; initial value\n",
+      // initialize to $sp register value from boot loader
+      printf3("%d init 2 %d 50 %s ; initial value\n",
         (char*) (reg_nids * 2 + i), // nid of this line
         (char*) (reg_nids + i),     // nid of $sp register
         get_register_name(i));      // register name as comment
@@ -10223,18 +10231,21 @@ void selfie_model_check() {
 
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  // 3 more digits to accommodate binary with
+  // 3 more digits to accommodate binary starting at entry point with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
   // 100*8 lines per 64-bit machine word in data segment
-  pcs_nid = ten_to_the_power_of(log_ten(binary_length) + 3);
+  pcs_nid = ten_to_the_power_of(log_ten(entry_point + binary_length) + 3);
 
-  while (pc < code_length) {
+  pc = get_pc(current_context);
+  pt = get_pt(current_context);
+
+  while (pc < entry_point + code_length) {
     current_nid = pc_nid(pcs_nid, pc);
 
     // pc flag of current instruction
     printf1("%d state 1\n", (char*) current_nid);
 
-    if (pc == 0)
+    if (pc == entry_point)
       // set pc here by initializing pc flag of instruction at address 0 to true
       printf2("%d init 1 %d 11 ; initial program counter\n",
         (char*) (current_nid + 1), // nid of this line
@@ -10256,13 +10267,13 @@ void selfie_model_check() {
 
   current_nid = current_nid + 1;
 
-  while (pc < binary_length) {
+  while (pc < entry_point + binary_length) {
     // address in data segment
     printf2("%d constd 2 %d\n",
       (char*) current_nid, // nid of this line
       (char*) pc);         // address of current machine word
 
-    machine_word = load_data(pc);
+    machine_word = load_virtual_memory(pt, pc);
 
     if (machine_word == 0) {
       // load machine word == 0
@@ -10306,6 +10317,8 @@ void selfie_model_check() {
 
   print("\n; data flow\n\n");
 
+  code_nid = pcs_nid * 3;
+
   memory_flow_nid = memory_nid;
 
   // per-instruction list of control-flow in-edges
@@ -10314,15 +10327,15 @@ void selfie_model_check() {
   // per-procedure (target of procedure call jal) address of matching jalr instruction
   call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
-  code_nid = pcs_nid * 3;
+  current_callee   = entry_point;
+  estimated_return = entry_point;
 
-  pc = 0;
+  pc = get_pc(current_context);
 
-  while (pc < code_length) {
+  while (pc < entry_point + code_length) {
     current_nid = pc_nid(code_nid, pc);
 
-    ir = load_instruction(pc);
-
+    fetch();
     decode();
 
     translate_to_model();
@@ -10342,12 +10355,12 @@ void selfie_model_check() {
 
   control_nid = pcs_nid * 5;
 
-  pc = 0;
+  pc = get_pc(current_context);
 
-  while (pc < code_length) {
+  while (pc < entry_point + code_length) {
     current_nid = pc_nid(control_nid, pc);
 
-    in_edge = (uint64_t*) *(control_in + pc / INSTRUCTIONSIZE);
+    in_edge = (uint64_t*) *(control_in + (pc - entry_point) / INSTRUCTIONSIZE);
 
     if (in_edge == (uint64_t*) 0) {
       // deactivate this instruction since there are no control-in edges
@@ -10355,8 +10368,8 @@ void selfie_model_check() {
         (char*) current_nid,         // nid of this line
         (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
         (char*) pc, (char*) pc);     // address of current instruction
-      print_code_line_number_for_instruction(pc);
-      if (pc > 0)
+      print_code_line_number_for_instruction(pc, entry_point);
+      if (pc > entry_point)
         // TODO: warn here about unreachable code
         print(" (unreachable)");
       println();
@@ -10378,7 +10391,7 @@ void selfie_model_check() {
             (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
             (char*) condition_nid,                       // nid of true or false beq condition
             (char*) from_address, (char*) from_address); // address of instruction proceeding here
-          print_code_line_number_for_instruction(from_address);println();
+          print_code_line_number_for_instruction(from_address, entry_point);println();
 
           // activate this instruction if beq is active and its condition is true (false)
           printf3("%d ite 1 %d 11 %d\n",
@@ -10389,14 +10402,14 @@ void selfie_model_check() {
           i = i + 2;
         } else if (from_instruction == JALR) {
           if (i == 0) {
-            jalr_address = *(call_return + from_address / INSTRUCTIONSIZE);
+            jalr_address = *(call_return + (from_address - entry_point) / INSTRUCTIONSIZE);
 
             if (jalr_address != 0) {
               // is value of $ra register with LSB reset equal to address of this instruction?
               printf3("%d not 2 13 ; jalr %d[%x]",
                 (char*) current_nid,                         // nid of this line
                 (char*) jalr_address, (char*) jalr_address); // address of instruction proceeding here
-              print_code_line_number_for_instruction(jalr_address);println();
+              print_code_line_number_for_instruction(jalr_address, entry_point);println();
               printf3("%d and 2 %d %d\n",
                 (char*) (current_nid + 1),   // nid of this line
                 (char*) (reg_nids + REG_RA), // nid of current value of $ra register
@@ -10424,7 +10437,7 @@ void selfie_model_check() {
               if (*in_edge != 0) {
                 // print here if there are more in-edges, otherwise below
                 printf2("; exit ecall wrapper call or runaway jal %d[%x]", (char*) from_address, (char*) from_address);
-                print_code_line_number_for_instruction(from_address);println();
+                print_code_line_number_for_instruction(from_address, entry_point);println();
               }
 
               // this instruction may stay deactivated if there is no more in-edges
@@ -10444,7 +10457,7 @@ void selfie_model_check() {
             (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
             (char*) (library_nid + 20),                  // nid of $a7 != SYSCALL_EXIT condition
             (char*) from_address, (char*) from_address); // address of instruction proceeding here
-          print_code_line_number_for_instruction(from_address);println();
+          print_code_line_number_for_instruction(from_address, entry_point);println();
 
           // activate this instruction if ecall is active and $a7 != SYSCALL_EXIT
           printf3("%d ite 1 %d 11 %d\n",
@@ -10461,7 +10474,7 @@ void selfie_model_check() {
             (char*) control_flow_nid);             // nid of previously processed in-edge
           if (from_instruction == JAL) print("jal ");
           printf2("%d[%x]", (char*) from_address, (char*) from_address);
-          print_code_line_number_for_instruction(from_address);println();
+          print_code_line_number_for_instruction(from_address, entry_point);println();
 
           i = i + 1;
         }
@@ -10478,7 +10491,7 @@ void selfie_model_check() {
         (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
         (char*) control_flow_nid,    // nid of most recently processed in-edge
         (char*) pc, (char*) pc);     // address of current instruction
-      print_code_line_number_for_instruction(pc);println();
+      print_code_line_number_for_instruction(pc, entry_point);println();
 
       if (i >= 400) {
         // the instruction at pc is reachable by too many other instructions
@@ -10537,7 +10550,7 @@ void selfie_model_check() {
 
   printf1("; end of BTOR2 %s\n", model_name);
 
-  disassemble_verbose = 0;
+  model_check = 0;
 
   output_name = (char*) 0;
   output_fd   = 1;
