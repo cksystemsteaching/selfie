@@ -77,6 +77,13 @@ SRL_INSTRUCTION = encode_r_format(F7_SRL, F3_SRL, OP_OP)
 LR_INSTRUCTION = encode_amo_format(F5_LR, F3_LR)
 SC_INSTRUCTION = encode_amo_format(F5_SC, F3_SC)
 
+class DummyWriter:
+  def __getattr__( self, name ):
+    return sys.__stdout__.__getattribute__(name)
+
+  def write(self, text):
+    return
+
 def print_passed(msg):
   print("\033[92m[PASSED]\033[0m " + msg)
 
@@ -506,7 +513,6 @@ def grade():
     number_of_tests_passed = number_of_positive_tests_passed[stage] + number_of_negative_tests_passed[stage]
 
     if number_of_tests == 0:
-      print('nothing to grade')
       return
 
     passed = number_of_tests_passed / number_of_tests
@@ -541,7 +547,36 @@ def grade():
     grade = 5
     color = 91
 
-  print('your grade is: \033[{}m\033[1m{}\033[0m'.format(color, grade))
+  print('your grade is: \033[{}m\033[1m'.format(color), end='')
+  print_loud('{}'.format(grade), end='')
+  print('\033[0m')
+
+
+def enter_quiet_mode():
+  sys.stdout = DummyWriter()
+
+
+def print_loud(msg, end='\n'):
+  quiet_writer = sys.stdout
+  sys.stdout = sys.__stdout__
+
+  print(msg, end)
+
+  sys.stdout = quiet_writer
+
+
+def print_usage():
+  print('usage: python grader/self.py { option } { test }\n')
+
+  print('options:')
+
+  for option in defined_options:
+    print('  {}   {}'.format(option[0], option[2]))
+
+  print('\ntests: ')
+
+  for test in defined_tests:
+    print('  {}'.format(test[0]))
 
 
 defined_tests = [
@@ -559,14 +594,10 @@ defined_tests = [
   ]
 
 
-def print_usage():
-  print('usage: python grader/self.py { test_name }\n')
-
-  print('available tests: ')
-
-  for test in defined_tests:
-    print('  ', end='')
-    print(test[0])
+defined_options = [
+    ('-q', enter_quiet_mode, 'only the grade is printed'),
+    ('-h', print_usage, 'this help text')
+  ]
 
 
 if __name__ == "__main__":
@@ -578,7 +609,17 @@ if __name__ == "__main__":
 
   home_path = os.path.dirname(sys.argv[0]) + '/../'
 
-  tests = sys.argv[1:]
+  options = list(filter(lambda x: x[0] == '-', sys.argv[1:]))
+
+  for option in options:
+    option_to_execute = list(filter(lambda x: x[0] == option, defined_options))
+
+    if len(option_to_execute) == 0:
+      print('unknown option: {}'.format(option))
+    else:
+      option_to_execute[0][1]()
+  
+  tests = list(set(sys.argv[1:]) - set(options))
 
   for test in tests:
     set_up()
