@@ -9050,6 +9050,10 @@ uint64_t selfie_run(uint64_t machine) {
     return EXITCODE_BADARGUMENTS;
   }
 
+  reset_interpreter();
+  reset_profiler();
+  reset_microkernel();
+
   if (machine == DIPSTER) {
     debug          = 1;
     debug_syscalls = 1;
@@ -9070,10 +9074,6 @@ uint64_t selfie_run(uint64_t machine) {
 
     max_execution_depth = atoi(peek_argument());
   }
-
-  reset_interpreter();
-  reset_profiler();
-  reset_microkernel();
 
   boot_loader();
 
@@ -10137,6 +10137,11 @@ void selfie_model_check() {
 
   reset_library();
   reset_interpreter();
+  reset_microkernel();
+
+  init_memory(1);
+
+  boot_loader();
 
   run = 0;
 
