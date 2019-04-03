@@ -9951,6 +9951,30 @@ void implement_syscalls() {
 
   *(reg_flow_nids + REG_A0) = current_nid + 1106;
 
+  // TODO: support reading any number of bytes in a single read ecall
+
+  // declare 1-byte input
+  printf1("%d input 80 ; 1 byte\n",
+    (char*) (current_nid + 1107)); // nid of this line
+  // unsigned-extend 1-byte input by 56 bits to 64 bits
+  printf2("%d uext 2 %d 56\n",
+    (char*) (current_nid + 1108),  // nid of this line
+    (char*) (current_nid + 1107)); // nid of 1-byte input
+  // write unsigned-extended 1-byte input to memory at address in $a1 register
+  printf4("%d write 3 %d %d %d\n",
+    (char*) (current_nid + 1109),  // nid of this line
+    (char*) memory_nid,            // nid of memory
+    (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
+    (char*) (current_nid + 1108)); // nid of unsigned-extended 1-byte input
+  // if read ecall is active set memory[$a1] = unsigned-extended 1-byte input
+  printf4("%d ite 3 %d %d %d ; read ecall is active, set memory[$a1] = unsigned-extended 1-byte input\n\n",
+    (char*) (current_nid + 1110), // nid of this line
+    (char*) (current_nid + 1100), // nid of read ecall is active
+    (char*) (current_nid + 1109), // nid of memory[$a1] = unsigned-extended 1-byte input
+    (char*) memory_flow_nid);     // nid of most recent update of memory
+
+  memory_flow_nid = current_nid + 1110;
+
 
   // if write ecall is active provide $a1 register as address for checking address validity
   printf3("%d and 1 %d %d ; write ecall is active\n",
@@ -10228,6 +10252,10 @@ uint64_t selfie_model_check() {
 
   // $sp register value from boot loader
   printf1("50 constd 2 %d\n\n", (char*) *(get_regs(current_context) + REG_SP));
+
+  print("; sorts for byte-wise reading\n\n");
+
+  print("80 sort bitvec 8 ; 1 byte\n\n");
 
   print("; 32 64-bit general-purpose registers\n\n");
 
