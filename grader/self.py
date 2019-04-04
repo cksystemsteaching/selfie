@@ -618,7 +618,7 @@ if __name__ == "__main__":
       print('unknown option: {}'.format(option))
     else:
       option_to_execute[0][1]()
-  
+
   tests = list(set(sys.argv[1:]) - set(options))
 
   for test in tests:
