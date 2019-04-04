@@ -22,14 +22,14 @@ for link in file.readlines():
 	repo   = link[4]
 	commit = link[6]
 
-	print "\n\n" + user + "/" + repo + ":"
+	print("" + user + "/" + repo + ": ", end="")
+	sys.stdout.flush()
 
 	os.chdir(user)
 	os.chdir(repo)
 
-	os.system("git fetch")
-	os.system("git checkout " + commit)
-	os.system("make")
+	os.system("git fetch -q")
+	os.system("git checkout -q " + commit)
 	os.system("python3 " + selfiedir + "/grader/self.py -q " + assignment)
 
 	os.chdir(os.path.pardir)
