@@ -9890,22 +9890,22 @@ void implement_syscalls() {
     (char*) (reg_nids + REG_A7), // nid of current value of $a7 register
     (char*) (current_nid + 4));  // nid of SYSCALL_BRK
 
-  printf2("%d not 1 %d\n",
+  printf2("%d not 1 %d ; $a7 != SYSCALL_EXIT\n",
     (char*) (current_nid + 20),  // nid of this line
     (char*) (current_nid + 10)); // nid of $a7 == SYSCALL_EXIT
-  printf3("%d ite 1 %d 10 %d\n",
+  printf3("%d ite 1 %d 10 %d ; ... and $a7 != SYSCALL_READ\n",
     (char*) (current_nid + 21),  // nid of this line
     (char*) (current_nid + 11),  // nid of $a7 == SYSCALL_READ
     (char*) (current_nid + 20)); // nid of preceding line
-  printf3("%d ite 1 %d 10 %d\n",
+  printf3("%d ite 1 %d 10 %d ; ... and $a7 != SYSCALL_WRITE\n",
     (char*) (current_nid + 22),  // nid of this line
     (char*) (current_nid + 12),  // nid of $a7 == SYSCALL_WRITE
     (char*) (current_nid + 21)); // nid of preceding line
-  printf3("%d ite 1 %d 10 %d\n",
+  printf3("%d ite 1 %d 10 %d ; ... and $a7 != SYSCALL_OPENAT\n",
     (char*) (current_nid + 23),  // nid of this line
     (char*) (current_nid + 13),  // nid of $a7 == SYSCALL_OPENAT
     (char*) (current_nid + 22)); // nid of preceding line
-  printf3("%d ite 1 %d 10 %d ; if true, invalid syscall id in $a7 register detected\n\n",
+  printf3("%d ite 1 %d 10 %d ; ... and $a7 != SYSCALL_BRK (invalid syscall id in $a7 detected\n\n",
     (char*) (current_nid + 24),  // nid of this line
     (char*) (current_nid + 14),  // nid of $a7 == SYSCALL_BRK
     (char*) (current_nid + 23)); // nid of preceding line
@@ -9954,15 +9954,15 @@ void implement_syscalls() {
   // as address by resetting 3 LSBs for checking address validity
   printf1("%d not 2 17\n",
     (char*) (current_nid + 1102)); // nid of this line
-  printf3("%d and 2 %d %d\n",
+  printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
     (char*) (current_nid + 1103),  // nid of this line
     (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
     (char*) (current_nid + 1102)); // nid of not 7
-  printf3("%d add 2 %d %d\n",
+  printf3("%d add 2 %d %d ; $a1 + ($a2 / 8) * 8\n",
     (char*) (current_nid + 1104),  // nid of this line
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
     (char*) (current_nid + 1103)); // nid of ($a2 / 8) * 8
-  printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of write buffer for checking address validity\n\n",
+  printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of write buffer for checking address validity\n",
     (char*) (current_nid + 1105),  // nid of this line
     (char*) (current_nid + 1100),  // nid of read ecall is active
     (char*) (current_nid + 1104),  // nid of $a1 + ($a2 / 8) * 8
@@ -9973,7 +9973,7 @@ void implement_syscalls() {
   // TODO: check file descriptor validity, return error codes
 
   // if read ecall is active set $a0 (read number of bytes) = $a2 (size)
-  printf4("%d ite 2 %d %d %d ; read ecall is active, set $a0 = $a2\n\n",
+  printf4("%d ite 2 %d %d %d ; set $a0 = $a2 if read ecall is active\n",
     (char*) (current_nid + 1106),       // nid of this line
     (char*) (current_nid + 1100),       // nid of read ecall is active
     (char*) (reg_nids + REG_A2),        // nid of current value of $a2 register
@@ -9987,17 +9987,17 @@ void implement_syscalls() {
   printf1("%d input 80 ; 1 byte\n",
     (char*) (current_nid + 1107)); // nid of this line
   // unsigned-extend 1-byte input by 56 bits to 64 bits
-  printf2("%d uext 2 %d 56\n",
+  printf2("%d uext 2 %d 56 ; unsigned-extend 1-byte input to 64 bits\n",
     (char*) (current_nid + 1108),  // nid of this line
     (char*) (current_nid + 1107)); // nid of 1-byte input
   // write unsigned-extended 1-byte input to memory at address in $a1 register
-  printf4("%d write 3 %d %d %d\n",
+  printf4("%d write 3 %d %d %d ; memory[$a1] = unsigned-extended 1-byte input\n",
     (char*) (current_nid + 1109),  // nid of this line
     (char*) memory_nid,            // nid of memory
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
     (char*) (current_nid + 1108)); // nid of unsigned-extended 1-byte input
   // if read ecall is active set memory[$a1] = unsigned-extended 1-byte input
-  printf4("%d ite 3 %d %d %d ; read ecall is active, set memory[$a1] = unsigned-extended 1-byte input\n\n",
+  printf4("%d ite 3 %d %d %d ; set memory[$a1] = unsigned-extended 1-byte input if read ecall is active\n\n",
     (char*) (current_nid + 1110), // nid of this line
     (char*) (current_nid + 1100), // nid of read ecall is active
     (char*) (current_nid + 1109), // nid of memory[$a1] = unsigned-extended 1-byte input
@@ -10023,15 +10023,15 @@ void implement_syscalls() {
   // as address by resetting 3 LSBs for checking address validity
   printf1("%d not 2 17\n",
     (char*) (current_nid + 1202)); // nid of this line
-  printf3("%d and 2 %d %d\n",
+  printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
     (char*) (current_nid + 1203),  // nid of this line
     (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
     (char*) (current_nid + 1202)); // nid of not 7
-  printf3("%d add 2 %d %d\n",
+  printf3("%d add 2 %d %d ; $a1 + ($a2 / 8) * 8\n",
     (char*) (current_nid + 1204),  // nid of this line
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
     (char*) (current_nid + 1203)); // nid of ($a2 / 8) * 8
-  printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of read buffer for checking address validity\n\n",
+  printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of read buffer for checking address validity\n",
     (char*) (current_nid + 1205), // nid of this line
     (char*) (current_nid + 1200), // nid of write ecall is active
     (char*) (current_nid + 1204), // nid of $a1 + ($a2 / 8) * 8
@@ -10042,7 +10042,7 @@ void implement_syscalls() {
   // TODO: check file descriptor validity, return error codes
 
   // if write ecall is active set $a0 (written number of bytes) = $a2 (size)
-  printf4("%d ite 2 %d %d %d ; write ecall is active, set $a0 = $a2\n\n",
+  printf4("%d ite 2 %d %d %d ; set $a0 = $a2 if write ecall is active\n\n",
     (char*) (current_nid + 1206),       // nid of this line
     (char*) (current_nid + 1200),       // nid of write ecall is active
     (char*) (reg_nids + REG_A2),        // nid of current value of $a2 register
@@ -10067,7 +10067,7 @@ void implement_syscalls() {
   // TODO: check address validity of whole filename, flags and mode arguments
 
   printf1("%d state 2 fd-bump\n", (char*) (current_nid + 1350));
-  printf2("%d init 2 %d 13 ; initial file descriptor bump pointer is 1\n",
+  printf2("%d init 2 %d 13 ; initial fd-bump is 1 (file descriptor bump pointer)\n",
     (char*) (current_nid + 1351),  // nid of this line
     (char*) (current_nid + 1350)); // nid of fd-bump
 
@@ -10079,7 +10079,7 @@ void implement_syscalls() {
     (char*) (current_nid + 1353),  // nid of this line
     (char*) (current_nid + 1350),  // nid of fd-bump
     (char*) (current_nid + 1352)); // nid of fd-bump + 1
-  printf4("%d ite 2 %d %d %d ; openat ecall is active, set $a0 = fd-bump + 1\n\n",
+  printf4("%d ite 2 %d %d %d ; set $a0 = fd-bump + 1 if openat ecall is active\n\n",
     (char*) (current_nid + 1354),       // nid of this line
     (char*) (current_nid + 1300),       // nid of openat ecall is active
     (char*) (current_nid + 1352),       // nid of fd-bump + 1
@@ -10101,49 +10101,49 @@ void implement_syscalls() {
 
   // if brk ecall is active, set brk = $a0 if $a0 is valid or else set $a0 = brk
   // $a0 is valid if brk <= $a0 < $sp and $a0 is word-aligned
-  printf3("%d ulte 1 %d %d\n",
+  printf3("%d ulte 1 %d %d ; brk <= $a0\n",
     (char*) (current_nid + 1452), // nid of this line
     (char*) (current_nid + 1450), // nid of brk
     (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
-  printf3("%d ult 1 %d %d\n",
+  printf3("%d ult 1 %d %d ; $a0 < $sp\n",
     (char*) (current_nid + 1453), // nid of this line
     (char*) (reg_nids + REG_A0),  // nid of current value of $a0 register
     (char*) (reg_nids + REG_SP)); // nid of current value of $sp register
-  printf3("%d and 1 %d %d\n",
+  printf3("%d and 1 %d %d ; brk <= $a0 < $sp\n",
     (char*) (current_nid + 1454),  // nid of this line
     (char*) (current_nid + 1452),  // nid of brk <= $a0
     (char*) (current_nid + 1453)); // nid of $a0 < $sp
-  printf2("%d and 2 %d 17\n",
+  printf2("%d and 2 %d 17 ; reset all but 3 LSBs of $a0\n",
     (char*) (current_nid + 1455), // nid of this line
     (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
-  printf2("%d eq 1 %d 12\n",
+  printf2("%d eq 1 %d 12 ; 3 LSBs of $a0 == 0 ($a0 is word-aligned)\n",
     (char*) (current_nid + 1456),  // nid of this line
     (char*) (current_nid + 1455)); // nid of 3 LSBs of current value of $a0 register
-  printf3("%d and 1 %d %d\n",
+  printf3("%d and 1 %d %d ; brk <= $a0 < $sp and $a0 is word-aligned ($a0 is valid)\n",
     (char*) (current_nid + 1457),  // nid of this line
     (char*) (current_nid + 1454),  // nid of brk <= $a0 < $sp
     (char*) (current_nid + 1456)); // nid of $a0 is word-aligned
-  printf3("%d and 1 %d %d\n",
+  printf3("%d and 1 %d %d ; brk ecall is active and $a0 is valid\n",
     (char*) (current_nid + 1458),  // nid of this line
     (char*) (current_nid + 1400),  // nid of brk ecall is active
-    (char*) (current_nid + 1457)); // nid of brk <= $a0 < $sp and $a0 is word-aligned
-  printf4("%d ite 2 %d %d %d\n",
+    (char*) (current_nid + 1457)); // nid of $a0 is valid
+  printf4("%d ite 2 %d %d %d ; brk = $a0 if brk ecall is active and $a0 is valid\n",
     (char*) (current_nid + 1459),  // nid of this line
     (char*) (current_nid + 1458),  // nid of brk ecall is active and $a0 is valid
     (char*) (reg_nids + REG_A0),   // nid of current value of $a0 register
     (char*) (current_nid + 1450)); // nid of brk
-  printf3("%d next 2 %d %d ; brk ecall is active, set brk = $a0 if $a0 is valid\n",
+  printf3("%d next 2 %d %d ; set brk = $a0 if brk ecall is active and $a0 is valid\n",
     (char*) (current_nid + 1460),  // nid of this line
     (char*) (current_nid + 1450),  // nid of brk
     (char*) (current_nid + 1459)); // nid of preceding line
-  printf2("%d not 1 %d\n",
+  printf2("%d not 1 %d ; $a0 is invalid\n",
     (char*) (current_nid + 1461),  // nid of this line
-    (char*) (current_nid + 1457)); // nid of brk <= $a0 < $sp and $a0 is word-aligned
-  printf3("%d and 1 %d %d\n",
+    (char*) (current_nid + 1457)); // nid of $a0 is valid
+  printf3("%d and 1 %d %d ; brk ecall is active and $a0 is invalid\n",
     (char*) (current_nid + 1462),  // nid of this line
     (char*) (current_nid + 1400),  // nid of brk ecall is active
     (char*) (current_nid + 1461)); // nid of $a0 is invalid
-  printf4("%d ite 2 %d %d %d ; brk ecall is active, set $a0 = brk if $a0 is invalid\n",
+  printf4("%d ite 2 %d %d %d ; set $a0 = brk if brk ecall is active and $a0 is invalid\n",
     (char*) (current_nid + 1463),       // nid of this line
     (char*) (current_nid + 1462),       // nid of brk ecall is active and $a0 is invalid
     (char*) (current_nid + 1450),       // nid of brk
@@ -10263,22 +10263,22 @@ uint64_t selfie_model_check() {
 
   print("12 zero 2\n13 one 2\n17 constd 2 7\n18 constd 2 8\n\n");
 
-  print("; highest address in 4GB of memory\n\n");
+  print("; highest word-aligned address in 4GB of memory\n\n");
 
   // highest virtual memory address
   printf1("20 constd 2 %d\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
 
-  print("; end of code segment in memory\n\n");
+  print("; word-aligned end of code segment in memory\n\n");
 
   // end of code segment for checking address validity
   printf1("30 constd 2 %d\n\n", (char*) (entry_point + code_length));
 
-  print("; original program break in memory\n\n");
+  print("; word-aligned end of data segment in memory (original program break)\n\n");
 
   // original program break (end of binary = code + data segment) for checking program break validity
   printf1("40 constd 2 %d\n\n", (char*) get_original_break(current_context));
 
-  print("; initial stack pointer value\n\n");
+  print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
   // $sp register value from boot loader
   printf1("50 constd 2 %d\n\n", (char*) *(get_regs(current_context) + REG_SP));
@@ -10319,13 +10319,13 @@ uint64_t selfie_model_check() {
   while (i < NUMBEROFREGISTERS) {
     if (i == REG_SP)
       // initialize to $sp register value from boot loader
-      printf3("%d init 2 %d 50 %s ; initial value\n",
+      printf3("%d init 2 %d 50 %s ; initial value from boot loader\n",
         (char*) (reg_nids * 2 + i), // nid of this line
         (char*) (reg_nids + i),     // nid of $sp register
         get_register_name(i));      // register name as comment
     else
       // initialize to 0
-      printf3("%d init 2 %d 12 %s ; initial value\n",
+      printf3("%d init 2 %d 12 %s ; initial value is 0\n",
         (char*) (reg_nids * 2 + i), // nid of this line
         (char*) (reg_nids + i),     // nid of to-be-initialized register
         get_register_name(i));      // register name as comment
@@ -10430,7 +10430,7 @@ uint64_t selfie_model_check() {
 
   printf1("%d state 3 memory\n\n", (char*) current_nid);
 
-  printf3("%d init 3 %d %d ; loading data segment into memory\n",
+  printf3("%d init 3 %d %d ; loading data segment and stack into memory\n",
     (char*) (current_nid + 1), // nid of this line
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
