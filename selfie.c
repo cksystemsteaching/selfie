@@ -1671,12 +1671,71 @@ uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
+uint64_t pc_nid(uint64_t nid, uint64_t pc);
+uint64_t is_procedure_call(uint64_t instruction, uint64_t link);
+uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, uint64_t to_address);
+
+void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t from_address, uint64_t to_address, uint64_t condition_nid);
+
+void model_lui();
+void model_addi();
+void model_add();
+void model_sub();
+void model_mul();
+void model_divu();
+void model_remu();
+void model_sltu();
+void model_ld();
+void model_sd();
+void model_beq();
+void model_jal();
+void model_jalr();
+void model_ecall();
+
+void translate_to_model();
+
+void implement_syscalls();
+void check_address_validity(uint64_t read_access, uint64_t flow_nid);
+
 uint64_t selfie_model_check();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
+
+uint64_t current_nid = 0; // nid of current line
+
+uint64_t  reg_nids      = 0;             // nids of registers
+uint64_t* reg_flow_nids = (uint64_t*) 0; // nids of most recent update of registers
+
+uint64_t reg_a7 = 0; // most recent update of $a7 register in sequential translation flow
+
+uint64_t pcs_nid = 0; // nid of first program counter flag
+
+// per-instruction list of control-flow in-edges
+uint64_t* control_in = (uint64_t*) 0;
+
+// per-procedure (target of procedure call jal) address of matching jalr instruction
+uint64_t* call_return = (uint64_t*) 0;
+
+uint64_t current_callee = 0; // address of first instruction of current callee
+
+// address of currently farthest forward branch or jump to find matching jalr instruction
+uint64_t estimated_return = 0;
+
+uint64_t memory_nid      = 0; // nid of memory
+uint64_t memory_flow_nid = 0; // nid of most recent update of memory
+
+// for checking address validity during state transitions with no memory access
+// 30 is nid of end of code segment which must be a valid address (thus also checked)
+uint64_t read_flow_start_nid  = 30;
+uint64_t read_flow_end_nid    = 30;
+uint64_t write_flow_start_nid = 30;
+uint64_t write_flow_end_nid   = 30;
+
+// keep track of pc flags of ecalls, 10 is nid of 1-bit 0
+uint64_t ecall_flow_nid = 10;
 
 // -----------------------------------------------------------------
 // -------------------------- SAT Solver ---------------------------
@@ -9233,35 +9292,6 @@ void selfie_disassemble(uint64_t verbose) {
 // ------------------------- MODEL CHECKER -------------------------
 // -----------------------------------------------------------------
 
-uint64_t current_nid = 0;
-
-uint64_t  reg_nids      = 0;
-uint64_t* reg_flow_nids = (uint64_t*) 0;
-
-uint64_t reg_a7 = 0;
-
-uint64_t pcs_nid = 0;
-
-uint64_t* control_in = (uint64_t*) 0;
-
-uint64_t* call_return      = (uint64_t*) 0;
-uint64_t  current_callee   = 0;
-uint64_t  estimated_return = 0;
-
-uint64_t memory_nid      = 0;
-uint64_t memory_flow_nid = 0;
-
-// for checking address validity during state transitions with no memory access
-// 30 is nid of end of code segment which must be a valid address (thus also checked)
-uint64_t read_flow_start_nid  = 30;
-uint64_t read_flow_end_nid    = 30;
-uint64_t write_flow_start_nid = 30;
-uint64_t write_flow_end_nid   = 30;
-
-// keep track of pc flags of ecalls
-// 10 is nid of 1-bit 0
-uint64_t ecall_flow_nid = 10;
-
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
 }
@@ -10411,10 +10441,7 @@ uint64_t selfie_model_check() {
 
   memory_flow_nid = memory_nid;
 
-  // per-instruction list of control-flow in-edges
   control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
-
-  // per-procedure (target of procedure call jal) address of matching jalr instruction
   call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   current_callee   = entry_point;
