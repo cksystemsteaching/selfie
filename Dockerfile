@@ -41,7 +41,7 @@ RUN mkdir -p $RISCV \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:16.04 AS spikebuilder
+FROM ubuntu:18.04 AS spikebuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -95,7 +95,7 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:16.04 AS boolectorbuilder
+FROM ubuntu:18.04 AS boolectorbuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -132,7 +132,7 @@ RUN mkdir -p $RISCV \
 ##################################
 # Selfie interactive final image #
 ##################################
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
