@@ -30,7 +30,7 @@ for link in file.readlines():
 	os.system("git fetch")
 	os.system("git checkout " + commit)
 	os.system("make")
-	os.system("python3 " + selfiedir + "/grader/self.py " + assignment)
+	os.system("python3 " + selfiedir + "/grader/self.py -q " + assignment)
 
 	os.chdir(os.path.pardir)
 	os.chdir(os.path.pardir)

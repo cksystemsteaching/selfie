@@ -41,7 +41,7 @@ RUN mkdir -p $RISCV \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:16.04 AS spikebuilder
+FROM ubuntu:18.04 AS spikebuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -60,17 +60,18 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
-RUN git clone https://github.com/riscv/riscv-tools.git \
-  && cd riscv-tools \
-  && git submodule update --init --recursive riscv-fesvr riscv-isa-sim
+RUN git clone https://github.com/riscv/riscv-isa-sim.git
 
 # use multiple cores to speed up compilation
 ENV MAKEFLAGS=-j4
 
 # build spike ISA simulator
 RUN mkdir -p $RISCV \
-  && cd riscv-tools \
-  && ./build-spike-only.sh
+  && mkdir -p riscv-isa-sim/build \
+  && cd riscv-isa-sim/build \
+  && ../configure --prefix=$RISCV \
+  && make \
+  && make install
 
 ######################
 # QEMU builder image #
@@ -94,7 +95,7 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:16.04 AS boolectorbuilder
+FROM ubuntu:18.04 AS boolectorbuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -131,7 +132,7 @@ RUN mkdir -p $RISCV \
 ##################################
 # Selfie interactive final image #
 ##################################
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
