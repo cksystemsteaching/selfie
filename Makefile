@@ -60,7 +60,7 @@ smt: selfie
 
 # Run modeler, the model checking generator
 mc: selfie
-	./selfie -c selfie.c -mc selfie.btor2
+	./selfie -c manuscript/code/symbolic.c -mc symbolic.btor2
 
 # Run SAT solver
 sat: selfie.m
@@ -88,7 +88,7 @@ boolector: smt
 
 # Test btormc model checker
 btormc: mc
-	btormc selfie.btor2
+	btormc symbolic.btor2
 
 # Run everything
 all: compile quine debug replay os vm min mob smt mc sat
