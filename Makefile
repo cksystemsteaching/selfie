@@ -50,15 +50,15 @@ min: selfie.m selfie.s
 	diff -q selfie.m selfie4.m
 	diff -q selfie.s selfie4.s
 
-# Run mobster
+# Run mobster, the emulator without pager
 mob: selfie
 	./selfie -c -mob 1
 
-# Run monster
+# Run monster, the symbolic execution engine
 smt: selfie
 	./selfie -c manuscript/code/symbolic.c -n 0
 
-# Run model checker
+# Run modeler, the model checking generator
 mc: selfie
 	./selfie -c selfie.c -mc selfie.btor2
 

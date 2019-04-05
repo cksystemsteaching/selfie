@@ -1668,7 +1668,7 @@ char*    assembly_name = (char*) 0; // name of assembly file
 uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 
 // -----------------------------------------------------------------
-// ------------------------- MODEL CHECKER -------------------------
+// ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc);
@@ -1697,7 +1697,7 @@ void translate_to_model();
 void implement_syscalls();
 void check_address_validity(uint64_t read_access, uint64_t flow_nid);
 
-uint64_t selfie_model_check();
+uint64_t selfie_model_generate();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -9289,7 +9289,7 @@ void selfie_disassemble(uint64_t verbose) {
 }
 
 // -----------------------------------------------------------------
-// ------------------------- MODEL CHECKER -------------------------
+// ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
@@ -10195,7 +10195,7 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
   current_nid = current_nid + 7;
 }
 
-uint64_t selfie_model_check() {
+uint64_t selfie_model_generate() {
   uint64_t i;
 
   uint64_t machine_word;
@@ -11079,7 +11079,7 @@ uint64_t selfie() {
       else if (string_compare(option, "-n"))
         return selfie_run(MONSTER);
       else if (string_compare(option, "-mc"))
-        return selfie_model_check();
+        return selfie_model_generate();
       else if (string_compare(option, "-y"))
         return selfie_run(HYPSTER);
       else if (string_compare(option, "-min"))
