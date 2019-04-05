@@ -84,11 +84,13 @@ boolector: smt
 	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
 
-# Test RISC-V to x86-64 binary translation
+# Test RISC-U to x86-64 binary translation
 x86: selfie
-	./selfie -c selfie.c -x86 selfie.x86
+	./selfie -c selfie.c -o selfie.m -s selfie.s -x86 selfie.x86
 	chmod +x selfie.x86
-	./selfie.x86 -c selfie.c -m 2
+	./selfie.x86 -c selfie.c -o selfie9.o -s selfie9.s -m 1
+	diff -q selfie.m selfie9.m
+	diff -q selfie.s selfie9.s
 
 # Run everything
 all: compile quine debug replay os vm min mob smt sat
