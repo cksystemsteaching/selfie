@@ -25,6 +25,7 @@ jobs:
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
+        - docker run cksystemsteaching/selfie make x86
     - stage: deploy
       sudo: required
       services: docker
@@ -41,6 +42,7 @@ jobs:
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
+        - docker run cksystemsteaching/selfie make x86
 notifications:
   email: false
   slack:
