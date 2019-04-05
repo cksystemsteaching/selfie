@@ -10,7 +10,7 @@ selfie.m selfie.s: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt mc sat spike qemu boolector all clean
+.PHONY : compile quine escape debug replay os vm min mob smt mc sat spike qemu boolector btormc all clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -85,6 +85,10 @@ boolector: smt
 	boolector manuscript/code/symbolic.t -e 0 > selfie_boolector.sat
 	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
+
+# Test btormc model checker
+btormc: mc
+	btormc selfie.btor2
 
 # Run everything
 all: compile quine debug replay os vm min mob smt mc sat
