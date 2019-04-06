@@ -33,17 +33,23 @@ REGISTERSIZE    = 8  # in bytes
 
 OP_OP  = 51
 OP_AMO = 47
+OP_IMM = 19
 
-F3_SLL = 1
-F3_SRL = 5
-F3_LR  = 3
-F3_SC  = 3
+F3_SLL  = 1
+F3_SRL  = 5
+F3_OR   = 6
+F3_AND  = 7
+F3_XORI = 4
+F3_LR   = 3
+F3_SC   = 3
 
 F5_LR  = 2
 F5_SC  = 3
 
 F7_SLL = 0
 F7_SRL = 0
+F7_AND = 0
+F7_OR  = 0
 
 def read_instruction(file):
   b = file.read(INSTRUCTIONSIZE)
@@ -61,18 +67,25 @@ def read_data(file):
 
   return struct.unpack('<Q', b)[0]
 
+def encode_i_format(immediate, funct3, opcode):
+  return ((((immediate << 5) << 3) + funct3 << 5) << 7) + opcode
+
 def encode_r_format(funct7, funct3, opcode):
   return (((((funct7 << 5) << 5) << 3) + funct3 << 5) << 7) + opcode
 
 def encode_amo_format(funct5, funct3):
   return (((((funct5 << 7) << 5) << 3) + funct3 << 5) << 7) + OP_AMO
 
+NOT_FORMAT_MASK = 0b11111111111100000111000001111111
 R_FORMAT_MASK   = 0b11111110000000000111000001111111
 AMO_FORMAT_MASK = 0b11111000000000000111000001111111
 LR_FORMAT_MASK  = 0b11111001111100000111000001111111
 
 SLL_INSTRUCTION = encode_r_format(F7_SLL, F3_SLL, OP_OP)
 SRL_INSTRUCTION = encode_r_format(F7_SRL, F3_SRL, OP_OP)
+OR_INSTRUCTION  = encode_r_format(F7_OR, F3_OR, OP_OP)
+AND_INSTRUCTION = encode_r_format(F7_AND, F3_AND, OP_OP)
+NOT_INSTRUCTION = encode_i_format(4095, F3_XORI, OP_IMM)
 
 LR_INSTRUCTION = encode_amo_format(F5_LR, F3_LR)
 SC_INSTRUCTION = encode_amo_format(F5_SC, F3_SC)
@@ -153,41 +166,45 @@ def has_compiled(returncode, output, should_succeed=True):
 
 
 def test_instruction_encoding(file, instruction, instruction_mask, msg):
-  exit_code, output = execute('./selfie -c grader/{} -o .tmp.bin'.format(file))
+  command = './selfie -c grader/{} -o .tmp.bin'.format(file)
+  exit_code, output = execute(command)
 
   if exit_code == 0:
     exit_code = 1
 
-    with open('.tmp.bin', 'rb') as f:
-      ignored_elf_header_size = 14 * REGISTERSIZE
+    try:
+      with open('.tmp.bin', 'rb') as f:
+        ignored_elf_header_size = 14 * REGISTERSIZE
 
-      f.read(ignored_elf_header_size)
+        f.read(ignored_elf_header_size)
 
-      code_start  = read_data(f)
-      code_length = read_data(f)
+        code_start  = read_data(f)
+        code_length = read_data(f)
 
-      # ignore all pading bytes
-      no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
+        # ignore all pading bytes
+        no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
 
-      if no_of_bytes_until_code < 0:
-        no_of_bytes_until_code = 0
+        if no_of_bytes_until_code < 0: 
+          no_of_bytes_until_code = 0
 
-      f.read(no_of_bytes_until_code)
+        f.read(no_of_bytes_until_code)
 
-      # read all RISC-V instructions from binary
-      read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
+        # read all RISC-V instructions from binary
+        read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
 
-      if any(map(lambda x: x & instruction_mask == instruction, read_instructions)):
-        # at least one instruction has the right encoding
-        exit_code = 0
+        if any(map(lambda x: x & instruction_mask == instruction, read_instructions)):
+          # at least one instruction has the right encoding
+          exit_code = 0
+      
+      if os.path.isfile('.tmp.bin'):
+        os.remove('.tmp.bin')
 
-      os.remove('.tmp.bin')
+      record_result(exit_code == 0, msg, output, 'No instruction matching the RISC-V encoding found')
 
-      warning = None
+    except FileNotFoundError:
+      record_result(False, msg, '', 'The binary file has not been created by selfie')
   else:
-    warning = 'No instruction matching the RISC-V encoding found'
-
-  record_result(exit_code == 0, msg, output, warning)
+    record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
 
 
 
@@ -368,6 +385,34 @@ def test_bitwise_shift(stage):
         'bitwise-' + direction + '-shift operator has right RISC-V encoding')
       test_mipster_execution(variable_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
+
+
+
+def test_bitwise_and_or_not():
+  for operation, instruction, format_mask in [('and', AND_INSTRUCTION, R_FORMAT_MASK), ('or', OR_INSTRUCTION, R_FORMAT_MASK), ('not', NOT_INSTRUCTION, NOT_FORMAT_MASK)]:
+    literal_file = 'bitwise-' + operation + '-literals.c'
+    variable_file = 'bitwise-' + operation + '-variables.c'
+    invalid_file = 'bitwise-' + operation + '-invalid.c'
+
+    test_compilable(literal_file,
+      'bitwise-' + operation + ' operator with literals does compile')
+    test_compilable(variable_file,
+      'bitwise-' + operation + ' operator with variables does compile')
+    test_compilable(invalid_file,
+      'biwise-' + operation + ' operator with invalid syntax does not compile', should_succeed=False)
+    test_mipster_execution(literal_file, 42,
+      'bitwise-' + operation + ' operator calculates the right result for literals when executed with MIPSTER')
+    test_mipster_execution(variable_file, 42,
+      'bitwise-' + operation + ' operator calculates the right result for variables when executed with MIPSTER')
+    test_instruction_encoding(literal_file, instruction, format_mask,
+      'bitwise-' + operation + ' operator has right RISC-V encoding')
+    test_instruction_encoding(variable_file, instruction, format_mask,
+      'bitwise-' + operation + ' operator has right RISC-V encoding')
+
+  test_mipster_execution('bitwise-and-or-not-precedence.c', 42,
+    'bitwise and, or & not '  + ' operators respect the precedence of the C operators: &,|,~')
+  test_mipster_execution('bitwise-and-or-not-other-precedence.c', 42,
+    'bitwise and, or & not '  + ' operators respect the precedence of the C operators: +,-')
 
 
 
@@ -583,6 +628,7 @@ defined_tests = [
     ('hex-literal', test_hex_literal),
     ('bitwise-shift-1', lambda: test_bitwise_shift(1)),
     ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
+    ('bitwise-and-or-not', test_bitwise_and_or_not),
     ('struct', test_structs),
     ('assembler-1', lambda: test_assembler(1)),
     ('assembler-2', lambda: test_assembler(2)),
@@ -599,17 +645,16 @@ defined_options = [
     ('-h', print_usage, 'this help text')
   ]
 
-
-if __name__ == "__main__":
-  if len(sys.argv) <= 1:
+def main(argv):
+  if len(argv) <= 1:
     print_usage()
     exit()
 
   sys.setrecursionlimit(5000)
 
-  home_path = os.path.dirname(sys.argv[0]) + '/../'
+  home_path = os.path.dirname(argv[0]) + '/../'
 
-  options = list(filter(lambda x: x[0] == '-', sys.argv[1:]))
+  options = list(filter(lambda x: x[0] == '-', argv[1:]))
 
   for option in options:
     option_to_execute = list(filter(lambda x: x[0] == option, defined_options))
@@ -618,8 +663,8 @@ if __name__ == "__main__":
       print('unknown option: {}'.format(option))
     else:
       option_to_execute[0][1]()
-
-  tests = list(set(sys.argv[1:]) - set(options))
+  
+  tests = list(set(argv[1:]) - set(options))
 
   for test in tests:
     set_up()
@@ -633,4 +678,8 @@ if __name__ == "__main__":
       test_to_execute[0][1]()
 
   grade()
+
+
+if __name__ == "__main__":
+  main(sys.argv)
 
