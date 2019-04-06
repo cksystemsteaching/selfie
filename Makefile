@@ -82,6 +82,10 @@ boolector: smt
 	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
 
+# Test grader
+grader: selfie
+	python -m unittest grader/tests/test-bitwise-and-or-not.py 
+
 # Run everything
 all: compile quine debug replay os vm min mob smt sat
 
