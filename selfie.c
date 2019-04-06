@@ -10295,7 +10295,7 @@ uint64_t selfie_model_generate() {
 
   *reg_flow_nids = reg_nids;
 
-  printf2("%d one 2 %s ; register $0 is always 0\n",
+  printf2("%d zero 2 %s ; register $0 is always 0\n",
     (char*) *reg_flow_nids,     // nid of this line
     get_register_name(REG_ZR)); // register name as comment
 
