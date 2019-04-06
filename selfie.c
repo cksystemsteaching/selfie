@@ -1699,6 +1699,11 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid);
 
 uint64_t selfie_model_generate();
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t LO_FLOW = 32; // offset factor of nids of most recent update of low address in registers
+uint64_t HI_FLOW = 64; // offset factor of nids of most recent update of high address in registers
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 char*    model_name = (char*) 0; // name of model file
@@ -10136,20 +10141,51 @@ void implement_syscalls() {
     (char*) (current_nid + 1460),  // nid of this line
     (char*) (current_nid + 1450),  // nid of brk
     (char*) (current_nid + 1459)); // nid of preceding line
+
+  printf4("%d ite 2 %d %d %d ; low $t0 = brk if brk ecall is active and $a0 is valid\n",
+    (char*) (current_nid + 1461),                 // nid of this line
+    (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
+    (char*) (current_nid + 1450),                 // nid of brk
+    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of low $t0 register
+
+  *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1461;
+
+  printf4("%d ite 2 %d %d %d ; high $t0 = $a0 if brk ecall is active and $a0 is valid\n",
+    (char*) (current_nid + 1462),                 // nid of this line
+    (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
+    (char*) (reg_nids + REG_A0),                  // nid of current value of $a0 register
+    (char*) *(reg_flow_nids + HI_FLOW + REG_T0)); // nid of most recent update of high $t0 register
+
+  *(reg_flow_nids + HI_FLOW + REG_T0) = current_nid + 1462;
+
   printf2("%d not 1 %d ; $a0 is invalid\n",
-    (char*) (current_nid + 1461),  // nid of this line
+    (char*) (current_nid + 1463),  // nid of this line
     (char*) (current_nid + 1457)); // nid of $a0 is valid
   printf3("%d and 1 %d %d ; brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1462),  // nid of this line
+    (char*) (current_nid + 1464),  // nid of this line
     (char*) (current_nid + 1400),  // nid of brk ecall is active
-    (char*) (current_nid + 1461)); // nid of $a0 is invalid
+    (char*) (current_nid + 1463)); // nid of $a0 is invalid
   printf4("%d ite 2 %d %d %d ; set $a0 = brk if brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1463),       // nid of this line
-    (char*) (current_nid + 1462),       // nid of brk ecall is active and $a0 is invalid
+    (char*) (current_nid + 1465),       // nid of this line
+    (char*) (current_nid + 1464),       // nid of brk ecall is active and $a0 is invalid
     (char*) (current_nid + 1450),       // nid of brk
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_nid + 1463;
+  *(reg_flow_nids + REG_A0) = current_nid + 1465;
+
+  printf3("%d ite 2 %d 12 %d ; low $t0 = 0 if brk ecall is active and $a0 is invalid\n",
+    (char*) (current_nid + 1466),                 // nid of this line
+    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
+    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of low $t0 register
+
+  *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1466;
+
+  printf3("%d ite 2 %d 12 %d ; high $t0 = 0 if brk ecall is active and $a0 is invalid\n",
+    (char*) (current_nid + 1467),                 // nid of this line
+    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
+    (char*) *(reg_flow_nids + HI_FLOW + REG_T0)); // nid of most recent update of high $t0 register
+
+  *(reg_flow_nids + HI_FLOW + REG_T0) = current_nid + 1467;
 }
 
 void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
@@ -10291,44 +10327,54 @@ uint64_t selfie_model_generate() {
 
   reg_nids = 100;
 
-  reg_flow_nids = smalloc(NUMBEROFREGISTERS * SIZEOFUINT64STAR);
+  reg_flow_nids = smalloc((HI_FLOW + NUMBEROFREGISTERS) * SIZEOFUINT64STAR);
 
-  *reg_flow_nids = reg_nids;
+  i = 0;
 
-  printf2("%d zero 2 %s ; register $0 is always 0\n",
-    (char*) *reg_flow_nids,     // nid of this line
-    get_register_name(REG_ZR)); // register name as comment
-
-  i = 1;
-
-  while (i < NUMBEROFREGISTERS) {
+  while (i < HI_FLOW + NUMBEROFREGISTERS) {
     *(reg_flow_nids + i) = reg_nids + i;
 
-    printf3("%d state 2 %s ; register $%d\n",
-      (char*) *(reg_flow_nids + i), // nid of this line
-      get_register_name(i),         // register name as comment
-      (char*) i);                   // register index as comment
+    if (i % NUMBEROFREGISTERS == 0)
+      printf2("%d zero 2 %s ; register $0 is always 0\n",
+        (char*) *(reg_flow_nids + i), // nid of this line
+        get_register_name(REG_ZR));   // register name
+    else {
+      printf1("%d state 2 ", (char*) *(reg_flow_nids + i));
+
+      if (i < NUMBEROFREGISTERS)
+        printf2("%s ; register $%d\n",
+          get_register_name(i), // register name
+          (char*) i);           // register index as comment
+      else if (i < LO_FLOW + NUMBEROFREGISTERS)
+        printf2("lo-%s ; lo $%d\n",
+          get_register_name(i % NUMBEROFREGISTERS), // register name
+          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+      else if (i < HI_FLOW + NUMBEROFREGISTERS)
+        printf2("hi-%s ; hi $%d\n",
+          get_register_name(i % NUMBEROFREGISTERS), // register name
+          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+    }
 
     i = i + 1;
   }
 
   print("\n; initializing registers\n\n");
 
-  i = 1;
+  i = 0;
 
-  while (i < NUMBEROFREGISTERS) {
+  while (i < HI_FLOW + NUMBEROFREGISTERS) {
     if (i == REG_SP)
       // initialize to $sp register value from boot loader
       printf3("%d init 2 %d 50 %s ; initial value from boot loader\n",
         (char*) (reg_nids * 2 + i), // nid of this line
         (char*) (reg_nids + i),     // nid of $sp register
         get_register_name(i));      // register name as comment
-    else
+    else if (i % NUMBEROFREGISTERS != 0)
       // initialize to 0
       printf3("%d init 2 %d 12 %s ; initial value is 0\n",
-        (char*) (reg_nids * 2 + i), // nid of this line
-        (char*) (reg_nids + i),     // nid of to-be-initialized register
-        get_register_name(i));      // register name as comment
+        (char*) (reg_nids * 2 + i),                // nid of this line
+        (char*) (reg_nids + i),                    // nid of to-be-initialized register
+        get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
 
     i = i + 1;
   }
@@ -10629,16 +10675,29 @@ uint64_t selfie_model_generate() {
 
   reg_update_nid = pcs_nid * 6;
 
-  i = 1;
+  i = 0;
 
-  while (i < NUMBEROFREGISTERS) {
-    // update register
-    printf5("%d next 2 %d %d %s ; register $%d\n",
-      (char*) (reg_update_nid + i), // nid of this line
-      (char*) (reg_nids + i),       // nid of register
-      (char*) *(reg_flow_nids + i), // nid of most recent update to register
-      get_register_name(i),         // register name as comment
-      (char*) i);                   // register index as comment
+  while (i < HI_FLOW + NUMBEROFREGISTERS) {
+    if (i % NUMBEROFREGISTERS != 0) {
+      // update register
+      printf3("%d next 2 %d %d ",
+        (char*) (reg_update_nid + i),  // nid of this line
+        (char*) (reg_nids + i),        // nid of register
+        (char*) *(reg_flow_nids + i)); // nid of most recent update to register
+
+      if (i < NUMBEROFREGISTERS)
+        printf2("%s ; register $%d\n",
+          get_register_name(i), // register name
+          (char*) i);           // register index as comment
+      else if (i < LO_FLOW + NUMBEROFREGISTERS)
+        printf2("lo-%s ; lo $%d\n",
+          get_register_name(i % NUMBEROFREGISTERS), // register name
+          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+      else if (i < HI_FLOW + NUMBEROFREGISTERS)
+        printf2("hi-%s ; hi $%d\n",
+          get_register_name(i % NUMBEROFREGISTERS), // register name
+          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+    }
 
     i = i + 1;
   }
