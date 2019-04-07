@@ -1735,6 +1735,11 @@ uint64_t memory_flow_nid = 0; // nid of most recent update of memory
 uint64_t lo_flow_nid = 0; // nid of most recent update of low addresses memory
 uint64_t hi_flow_nid = 0; // nid of most recent update of high addresses memory
 
+// for checking division and remainder by zero
+// 13 is nid of 1 which is ok as divisor
+uint64_t division_flow_nid  = 13;
+uint64_t remainder_flow_nid = 13;
+
 // for checking address validity during state transitions with no memory access
 // 30 is nid of end of code segment which must be a valid address (thus also checked)
 uint64_t read_flow_start_nid  = 30;
@@ -9516,32 +9521,30 @@ void model_mul() {
 
 void model_divu() {
   if (rd != REG_ZR) {
-    // if this instruction is active check if $rs2 == 0
-    printf2("%d eq 1 %d 12\n",
-      (char*) current_nid,       // nid of this line
-      (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
-    printf3("%d and 1 %d %d\n",
-      (char*) (current_nid + 1),   // nid of this line
+    // if this instruction is active record $rs2 for checking if $rs2 == 0
+    printf5("%d ite 2 %d %d %d ; record %s for checking division by zero\n",
+      (char*) current_nid,         // nid of this line
       (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
-      (char*) current_nid);        // nid of $rs2 == 0
-    printf2("%d bad %d ; division by zero\n",
-      (char*) (current_nid + 2),  // nid of this line
-      (char*) (current_nid + 1)); // nid of $rs2 == 0
+      (char*) (reg_nids + rs2),    // nid of current value of $rs2 register
+      (char*) division_flow_nid,   // nid of divisor of most recent division
+      get_register_name(rs2));     // register name
+
+    division_flow_nid = current_nid;
 
     // compute $rs1 / $rs2
     printf3("%d udiv 2 %d %d\n",
-      (char*) (current_nid + 3), // nid of this line
+      (char*) (current_nid + 1), // nid of this line
       (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
       (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
 
     // if this instruction is active set $rd = $rs1 / $rs2
     printf4("%d ite 2 %d %d %d ; ",
-      (char*) (current_nid + 4),      // nid of this line
+      (char*) (current_nid + 2),      // nid of this line
       (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-      (char*) (current_nid + 3),      // nid of $rs1 / $rs2
+      (char*) (current_nid + 1),      // nid of $rs1 / $rs2
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    *(reg_flow_nids + rd) = current_nid + 4;
+    *(reg_flow_nids + rd) = current_nid + 2;
 
     print_add_sub_mul_divu_remu_sltu("divu");println();
   }
@@ -9551,32 +9554,30 @@ void model_divu() {
 
 void model_remu() {
   if (rd != REG_ZR) {
-    // if this instruction is active check if $rs2 == 0
-    printf2("%d eq 1 %d 12\n",
-      (char*) current_nid,       // nid of this line
-      (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
-    printf3("%d and 1 %d %d\n",
-      (char*) (current_nid + 1),   // nid of this line
-      (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
-      (char*) current_nid);        // nid of $rs2 == 0
-    printf2("%d bad %d ; remainder by zero\n",
-      (char*) (current_nid + 2),  // nid of this line
-      (char*) (current_nid + 1)); // nid of $rs2 == 0
+    // if this instruction is active record $rs2 for checking if $rs2 == 0
+    printf5("%d ite 2 %d %d %d ; record %s for checking remainder by zero\n",
+      (char*) current_nid,          // nid of this line
+      (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
+      (char*) (reg_nids + rs2),     // nid of current value of $rs2 register
+      (char*) remainder_flow_nid,   // nid of divisor of most recent remainder
+      get_register_name(rs2));      // register name
+
+    remainder_flow_nid = current_nid;
 
     // compute $rs1 % $rs2
     printf3("%d urem 2 %d %d\n",
-      (char*) (current_nid + 3), // nid of this line
+      (char*) (current_nid + 1), // nid of this line
       (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
       (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
 
     // if this instruction is active set $rd = $rs1 % $rs2
     printf4("%d ite 2 %d %d %d ; ",
-      (char*) (current_nid + 4),      // nid of this line
+      (char*) (current_nid + 2),      // nid of this line
       (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-      (char*) (current_nid + 3),      // nid of $rs1 % $rs2
+      (char*) (current_nid + 1),      // nid of $rs1 % $rs2
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    *(reg_flow_nids + rd) = current_nid + 4;
+    *(reg_flow_nids + rd) = current_nid + 2;
 
     print_add_sub_mul_divu_remu_sltu("remu");println();
   }
@@ -9615,7 +9616,7 @@ void model_sltu() {
 void model_ld() {
   if (rd != REG_ZR) {
     if (imm == 0) {
-      // if this instruction is active provide $rs1 register as address for checking address validity
+      // if this instruction is active record $rs1 register as address for checking address validity
       printf4("%d ite 2 %d %d %d\n",
         (char*) current_nid,          // nid of this line
         (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
@@ -9647,7 +9648,7 @@ void model_ld() {
         (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
         (char*) current_nid);      // nid of immediate value
 
-      // if this instruction is active provide $rs1 + imm as address for checking address validity
+      // if this instruction is active record $rs1 + imm as address for checking address validity
       printf4("%d ite 2 %d %d %d\n",
         (char*) (current_nid + 2),    // nid of this line
         (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
@@ -9680,7 +9681,7 @@ void model_ld() {
 
 void model_sd() {
   if (imm == 0) {
-    // if this instruction is active provide $rs1 register as address for checking address validity
+    // if this instruction is active record $rs1 register as address for checking address validity
     printf4("%d ite 2 %d %d %d\n",
       (char*) current_nid,           // nid of this line
       (char*) pc_nid(pcs_nid, pc),   // nid of pc flag of this instruction
@@ -9713,7 +9714,7 @@ void model_sd() {
       (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
       (char*) current_nid);      // nid of immediate value
 
-    // if this instruction is active provide $rs1 + imm as address for checking address validity
+    // if this instruction is active record $rs1 + imm as address for checking address validity
     printf4("%d ite 2 %d %d %d\n",
       (char*) (current_nid + 2),     // nid of this line
       (char*) pc_nid(pcs_nid, pc),   // nid of pc flag of this instruction
@@ -9945,7 +9946,7 @@ void implement_syscalls() {
     (char*) (current_nid + 1002)); // nid of preceding line
 
 
-  // if read ecall is active provide $a1 register as address for checking address validity
+  // if read ecall is active record $a1 register as address for checking address validity
   printf3("%d and 1 %d %d ; read ecall is active\n",
     (char*) (current_nid + 1100), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
@@ -9958,8 +9959,7 @@ void implement_syscalls() {
 
   write_flow_start_nid = current_nid + 1101;
 
-  // if read ecall is active provide $a1 + ($a2 / 8) * 8
-  // as address by resetting 3 LSBs for checking address validity
+  // if read ecall is active record $a1 + ($a2 / 8) * 8 as address for checking address validity
   printf1("%d not 2 17\n",
     (char*) (current_nid + 1102)); // nid of this line
   printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
@@ -10014,7 +10014,7 @@ void implement_syscalls() {
   memory_flow_nid = current_nid + 1110;
 
 
-  // if write ecall is active provide $a1 register as address for checking address validity
+  // if write ecall is active record $a1 register as address for checking address validity
   printf3("%d and 1 %d %d ; write ecall is active\n",
     (char*) (current_nid + 1200), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
@@ -10027,8 +10027,7 @@ void implement_syscalls() {
 
   read_flow_start_nid = current_nid + 1201;
 
-  // if write ecall is active provide $a1 + ($a2 / 8) * 8
-  // as address by resetting 3 LSBs for checking address validity
+  // if write ecall is active record $a1 + ($a2 / 8) * 8 as address for checking address validity
   printf1("%d not 2 17\n",
     (char*) (current_nid + 1202)); // nid of this line
   printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
@@ -10059,7 +10058,7 @@ void implement_syscalls() {
   *(reg_flow_nids + REG_A0) = current_nid + 1206;
 
 
-  // if openat ecall is active provide $a1 register as address for checking address validity
+  // if openat ecall is active record $a1 register as address for checking address validity
   printf3("%d and 1 %d %d ; openat ecall is active\n",
     (char*) (current_nid + 1300), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
@@ -10191,6 +10190,22 @@ void implement_syscalls() {
   *(reg_flow_nids + HI_FLOW + REG_T0) = current_nid + 1467;
 }
 
+void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
+  // check if divisor == 0
+  printf2("%d eq 1 %d 12\n",
+    (char*) current_nid, // nid of this line
+    (char*) flow_nid);   // nid of divisor of most recent division or remainder
+  printf2("%d bad %d ; ",
+    (char*) (current_nid + 1), // nid of this line
+    (char*) current_nid);      // nid of divisor == 0
+  if (division)
+    print("division by zero\n\n");
+  else
+    print("remainder by zero\n\n");
+
+  current_nid = current_nid + 2;
+}
+
 void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
   // check if address of most recent memory access < end of code length
   printf2("%d ult 1 %d 30\n",
@@ -10227,9 +10242,9 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
     (char*) (current_nid + 6),  // nid of this line
     (char*) (current_nid + 5)); // nid of previous check
   if (read_access)
-    print("word-unaligned read access\n");
+    print("word-unaligned read access\n\n");
   else
-    print("word-unaligned write access\n");
+    print("word-unaligned write access\n\n");
 
   current_nid = current_nid + 7;
 }
@@ -10731,14 +10746,21 @@ uint64_t selfie_model_generate() {
       (char*) (memory_nid + 2),  // nid of high addresses memory
       (char*) hi_flow_nid);      // nid of most recent write to high addresses memory
 
-  print("\n; checking address validity\n\n");
+  print("\n; checking division and remainder by zero\n\n");
 
   current_nid = pcs_nid * 8;
 
-  check_address_validity(1, read_flow_start_nid);println();
-  check_address_validity(1, read_flow_end_nid);println();
-  check_address_validity(0, write_flow_start_nid);println();
-  check_address_validity(0, write_flow_end_nid);println();
+  check_division_by_zero(1, division_flow_nid);
+  check_division_by_zero(0, remainder_flow_nid);
+
+  print("; checking address validity\n\n");
+
+  current_nid = pcs_nid * 9;
+
+  check_address_validity(1, read_flow_start_nid);
+  check_address_validity(1, read_flow_end_nid);
+  check_address_validity(0, write_flow_start_nid);
+  check_address_validity(0, write_flow_end_nid);
 
   // TODO: check validity of return addresses in jalr
 
