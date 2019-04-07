@@ -26,6 +26,8 @@ number_of_positive_tests_failed = [0]
 number_of_negative_tests_passed = [0]
 number_of_negative_tests_failed = [0]
 
+failed_mandatory_test = False
+
 home_path = ''
 
 INSTRUCTIONSIZE = 4  # in bytes
@@ -114,23 +116,36 @@ def filter_status_messages(selfie_output):
   return re.sub(r'([a-zA-Z]:\\|(./)?selfie)[^\n]*\n', '', selfie_output).replace('\n', '')
 
 
-def record_result(result, msg, output, warning, should_succeed=True, command=None):
+def record_result(result, msg, output, warning, should_succeed=True, command=None, mandatory=False):
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
+  global failed_mandatory_test
 
-  if result == True:
+  if result:
     if should_succeed:
-      number_of_positive_tests_passed[-1] += 1
+      if not mandatory:
+        number_of_positive_tests_passed[-1] += 1
+      
       print_passed(msg)
     else:
-      number_of_negative_tests_failed[-1] += 1
+      if mandatory:
+        failed_mandatory_test = True
+      else:
+        number_of_negative_tests_failed[-1] += 1
+      
       print_failed(msg, warning, output, command)
   else:
     if should_succeed:
-      number_of_positive_tests_failed[-1] += 1
+      if mandatory:
+        failed_mandatory_test = True
+      else:
+        number_of_positive_tests_failed[-1] += 1
+      
       print_failed(msg, warning, output, command)
     else:
-      number_of_negative_tests_passed[-1] += 1
+      if not mandatory:
+        number_of_negative_tests_passed[-1] += 1
+      
       print_passed(msg)
 
 
@@ -138,10 +153,13 @@ def execute(command):
   command = command.replace('grader/', home_path + 'grader/')
   command = command.replace('manuscript/code/', home_path + 'manuscript/code/')
 
-  process = Popen(command, stdout=PIPE, shell=True)
-  output = process.communicate()[0].decode(sys.stdout.encoding)
+  process = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
+  stdoutdata, stderrdata = process.communicate()
+  
+  output = stdoutdata.decode(sys.stdout.encoding)
+  error_output = stderrdata.decode(sys.stderr.encoding)
 
-  return (process.returncode, output)
+  return (process.returncode, output, error_output)
 
 
 def set_up():
@@ -165,9 +183,30 @@ def has_compiled(returncode, output, should_succeed=True):
   return (succeeded, warning)
 
 
+def has_no_compile_warnings(return_value, output):
+  if return_value != 0:
+    warning = 'selfie terminates with an error code of {} during self-compilation'.format(return_value)
+    succeeded = False
+  else:
+    syntax_error_matcher = re.search('(syntax error [^\n]*)', output)
+    type_warning_matcher = re.search('(warning [^\n]*)', output)
+
+    if syntax_error_matcher != None:
+      warning = syntax_error_matcher.group(0)
+      succeeded = False
+    elif type_warning_matcher != None:
+      warning = type_warning_matcher.group(0)
+      succeeded = False
+    else:
+      warning = None
+      succeeded = True
+
+  return (succeeded, warning)
+
+
 def test_instruction_encoding(file, instruction, instruction_mask, msg):
   command = './selfie -c grader/{} -o .tmp.bin'.format(file)
-  exit_code, output = execute(command)
+  exit_code, output, _ = execute(command)
 
   if exit_code == 0:
     exit_code = 1
@@ -209,7 +248,7 @@ def test_instruction_encoding(file, instruction, instruction_mask, msg):
 
 
 def test_assembler_instruction_format(file, instruction, msg):
-  exit_code, output = execute('./selfie -c grader/{} -s .tmp.s'.format(file))
+  exit_code, output, _ = execute('./selfie -c grader/{} -s .tmp.s'.format(file))
 
   if exit_code == 0:
     exit_code = 1
@@ -230,8 +269,8 @@ def test_assembler_instruction_format(file, instruction, msg):
 
 
 
-def test_execution(command, msg, success_criteria=True):
-  returncode, output = execute(command)
+def test_execution(command, msg, success_criteria=True, mandatory=False):
+  returncode, output, _ = execute(command)
 
   if type(success_criteria) is bool:
     should_succeed = success_criteria
@@ -241,21 +280,21 @@ def test_execution(command, msg, success_criteria=True):
     else:
       warning = 'Execution terminated with wrong exit code {}'.format(returncode)
 
-    record_result(returncode == 0, msg, output, warning, should_succeed, command)
+    record_result(returncode == 0, msg, output, warning, should_succeed, command, mandatory)
 
   elif type(success_criteria) is int:
     record_result(returncode == success_criteria, msg, output,
-      'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command)
+      'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command, mandatory)
 
   elif type(success_criteria) is str:
     filtered_output = filter_status_messages(output)
 
-    record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command)
+    record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command, mandatory)
 
   elif callable(success_criteria):
     result, warning = success_criteria(returncode, output)
 
-    record_result(result, msg, output, warning, True, command)
+    record_result(result, msg, output, warning, True, command, mandatory)
 
 
 class Memoize:
@@ -328,6 +367,10 @@ def test_hypster_execution(file, result, msg):
 
 def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg):
   test_execution(command, msg, success_criteria=lambda code, out: is_interleaved_output(code, out, interleaved_msg, number_of_interleaved))
+ 
+
+def test_compile_warnings(file, msg, mandatory=False):
+  test_execution('./selfie -c {}'.format(file), msg, success_criteria=has_no_compile_warnings, mandatory=mandatory)
 
 
 def test_hex_literal():
@@ -524,6 +567,10 @@ def test_treiber_stack():
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
 
+def test_base():
+  test_execution('make selfie', 'cc compiles selfie.c', mandatory=True)
+  test_compile_warnings('selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=True)
+
 
 def start_stage(stage):
   global number_of_positive_tests_passed, number_of_positive_tests_failed
@@ -592,6 +639,10 @@ def grade():
     grade = 5
     color = 91
 
+  if failed_mandatory_test == True:
+    print('you failed a mandatory test')
+    grade = 5
+
   print('your grade is: \033[{}m\033[1m'.format(color), end='')
   print_loud('{}'.format(grade), end='')
   print('\033[0m')
@@ -625,6 +676,7 @@ def print_usage():
 
 
 defined_tests = [
+    ('base', test_base),
     ('hex-literal', test_hex_literal),
     ('bitwise-shift-1', lambda: test_bitwise_shift(1)),
     ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
@@ -667,6 +719,9 @@ def main(argv):
       option_to_execute[0][1]()
   
   tests = list(set(argv[1:]) - set(options))
+
+  if 'base' not in tests and len(tests) > 0:
+    tests.insert(0, 'base')
 
   for test in tests:
     set_up()

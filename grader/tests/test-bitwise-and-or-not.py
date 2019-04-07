@@ -18,7 +18,7 @@ class TestBitwiseAndOrNot(unittest.TestCase):
       elif 'bitwise-not' in command:
         assemble_for_selfie('bitwise-not.s')
 
-    return (0, '')
+    return (0, '', '')
 
   def check_encoding_results(self, result, msg):
     if 'RISC-V encoding' in msg:
