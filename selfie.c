@@ -1701,8 +1701,8 @@ uint64_t selfie_model_generate();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t LO_FLOW = 32; // offset factor of nids of most recent update of low address in registers
-uint64_t HI_FLOW = 64; // offset factor of nids of most recent update of high address in registers
+uint64_t LO_FLOW = 32; // offset of nids of most recent update of low address in registers
+uint64_t HI_FLOW = 64; // offset of nids of most recent update of high address in registers
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1731,6 +1731,9 @@ uint64_t estimated_return = 0;
 
 uint64_t memory_nid      = 0; // nid of memory
 uint64_t memory_flow_nid = 0; // nid of most recent update of memory
+
+uint64_t lo_flow_nid = 0; // nid of most recent update of low addresses memory
+uint64_t hi_flow_nid = 0; // nid of most recent update of high addresses memory
 
 // for checking address validity during state transitions with no memory access
 // 30 is nid of end of code segment which must be a valid address (thus also checked)
@@ -10237,15 +10240,13 @@ uint64_t selfie_model_generate() {
   uint64_t machine_word;
 
   uint64_t loader_nid;
-  uint64_t data_flow_nid;
   uint64_t code_nid;
   uint64_t library_nid;
   uint64_t control_nid;
-  uint64_t control_flow_nid;
   uint64_t condition_nid;
-  uint64_t reg_update_nid;
-  uint64_t memory_update_nid;
-  uint64_t address_validity_nid;
+
+  uint64_t data_flow_nid;
+  uint64_t control_flow_nid;
 
   uint64_t* in_edge;
 
@@ -10327,11 +10328,11 @@ uint64_t selfie_model_generate() {
 
   reg_nids = 100;
 
-  reg_flow_nids = smalloc((HI_FLOW + NUMBEROFREGISTERS) * SIZEOFUINT64STAR);
+  reg_flow_nids = smalloc(3 * NUMBEROFREGISTERS * SIZEOFUINT64STAR);
 
   i = 0;
 
-  while (i < HI_FLOW + NUMBEROFREGISTERS) {
+  while (i < 3 * NUMBEROFREGISTERS) {
     *(reg_flow_nids + i) = reg_nids + i;
 
     if (i % NUMBEROFREGISTERS == 0)
@@ -10362,7 +10363,7 @@ uint64_t selfie_model_generate() {
 
   i = 0;
 
-  while (i < HI_FLOW + NUMBEROFREGISTERS) {
+  while (i < 3 * NUMBEROFREGISTERS) {
     if (i == REG_SP)
       // initialize to $sp register value from boot loader
       printf3("%d init 2 %d 50 %s ; initial value from boot loader\n",
@@ -10474,18 +10475,29 @@ uint64_t selfie_model_generate() {
 
   current_nid = memory_nid;
 
-  printf1("%d state 3 memory\n\n", (char*) current_nid);
+  printf1("%d state 3 memory ; data segment, heap, stack\n", (char*) current_nid);
+  printf1("%d state 3 lo-address ; for checking address validity in memory blocks\n", (char*) (current_nid + 1));
+  printf1("%d state 3 hi-address ; for checking address validity in memory blocks\n\n", (char*) (current_nid + 2));
 
   printf3("%d init 3 %d %d ; loading data segment and stack into memory\n",
-    (char*) (current_nid + 1), // nid of this line
+    (char*) (current_nid + 3), // nid of this line
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
+  printf2("%d init 3 %d 12 ; initializing low addresses to 0\n",
+    (char*) (current_nid + 4),  // nid of this line
+    (char*) (current_nid + 1)); // nid of low addresses
+  printf2("%d init 3 %d 12 ; initializing high addresses to 0\n",
+    (char*) (current_nid + 5),  // nid of this line
+    (char*) (current_nid + 2)); // nid of high addresses
+
+  memory_flow_nid = memory_nid;
+
+  lo_flow_nid = (memory_nid + 1);
+  hi_flow_nid = (memory_nid + 2);
 
   print("\n; data flow\n\n");
 
   code_nid = pcs_nid * 3;
-
-  memory_flow_nid = memory_nid;
 
   control_in  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
   call_return = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
@@ -10673,15 +10685,15 @@ uint64_t selfie_model_generate() {
 
   print("\n; updating registers\n\n");
 
-  reg_update_nid = pcs_nid * 6;
+  current_nid = pcs_nid * 6;
 
   i = 0;
 
-  while (i < HI_FLOW + NUMBEROFREGISTERS) {
+  while (i < 3 * NUMBEROFREGISTERS) {
     if (i % NUMBEROFREGISTERS != 0) {
       // update register
       printf3("%d next 2 %d %d ",
-        (char*) (reg_update_nid + i),  // nid of this line
+        (char*) (current_nid + i),     // nid of this line
         (char*) (reg_nids + i),        // nid of register
         (char*) *(reg_flow_nids + i)); // nid of most recent update to register
 
@@ -10704,18 +10716,24 @@ uint64_t selfie_model_generate() {
 
   print("\n; updating memory\n\n");
 
-  memory_update_nid = pcs_nid * 7;
+  current_nid = pcs_nid * 7;
 
   printf3("%d next 3 %d %d memory\n",
-      (char*) memory_update_nid, // nid of this line
-      (char*) memory_nid,        // nid of memory
-      (char*) memory_flow_nid);  // nid of most recent write to memory
+      (char*) current_nid,      // nid of this line
+      (char*) memory_nid,       // nid of memory
+      (char*) memory_flow_nid); // nid of most recent write to memory
+  printf3("%d next 3 %d %d lo-address\n",
+      (char*) (current_nid + 1), // nid of this line
+      (char*) (memory_nid + 1),  // nid of low addresses memory
+      (char*) lo_flow_nid);      // nid of most recent write to low addresses memory
+  printf3("%d next 3 %d %d hi-address\n",
+      (char*) (current_nid + 2), // nid of this line
+      (char*) (memory_nid + 2),  // nid of high addresses memory
+      (char*) hi_flow_nid);      // nid of most recent write to high addresses memory
 
   print("\n; checking address validity\n\n");
 
-  address_validity_nid = pcs_nid * 8;
-
-  current_nid = address_validity_nid;
+  current_nid = pcs_nid * 8;
 
   check_address_validity(1, read_flow_start_nid);println();
   check_address_validity(1, read_flow_end_nid);println();
