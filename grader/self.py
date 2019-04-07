@@ -646,6 +646,8 @@ defined_options = [
   ]
 
 def main(argv):
+  global home_path
+
   if len(argv) <= 1:
     print_usage()
     exit()
