@@ -405,7 +405,7 @@ def test_bitwise_shift(stage):
       test_compilable(variable_file,
         'bitwise-' + direction + '-shift operator with variables does compile')
       test_compilable(invalid_file,
-        'biwise-' + direction + '-shift operator with invalid syntax does not compile', should_succeed=False)
+        'bitwise-' + direction + '-shift operator with invalid syntax does not compile', should_succeed=False)
 
   if stage >= 2:
     start_stage(2)
@@ -442,7 +442,7 @@ def test_bitwise_and_or_not():
     test_compilable(variable_file,
       'bitwise-' + operation + ' operator with variables does compile')
     test_compilable(invalid_file,
-      'biwise-' + operation + ' operator with invalid syntax does not compile', should_succeed=False)
+      'bitwise-' + operation + ' operator with invalid syntax does not compile', should_succeed=False)
     test_mipster_execution(literal_file, 42,
       'bitwise-' + operation + ' operator calculates the right result for literals when executed with MIPSTER')
     test_mipster_execution(variable_file, 42,
