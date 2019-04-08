@@ -1875,9 +1875,9 @@ char* store_character(char* s, uint64_t i, uint64_t c) {
 }
 
 char* string_alloc(uint64_t l) {
-	// allocates zeroed memory for a string of l characters
+  // allocates zeroed memory for a string of l characters
   // plus a null terminator aligned to machine word size
-	return (char*) zalloc(l + 1);
+  return (char*) zalloc(l + 1);
 }
 
 uint64_t string_length(char* s) {
