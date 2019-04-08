@@ -86,7 +86,7 @@ boolector: smt
 x86: selfie.m selfie.s
 	./selfie -c selfie.c -x86 selfie.x86
 	chmod +x selfie.x86
-	./selfie.x86 -c selfie.c -o selfie7.o -s selfie7.s -m 1
+	./selfie.x86 -c selfie.c -o selfie7.m -s selfie7.s -m 1
 	diff -q selfie.m selfie7.m
 	diff -q selfie.s selfie7.s
 
