@@ -1695,14 +1695,14 @@ void model_ecall();
 void translate_to_model();
 
 void implement_syscalls();
-void check_address_validity(uint64_t read_access, uint64_t flow_nid);
+void check_address_validity(uint64_t read_access, uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid);
 
 uint64_t selfie_model_generate();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t LO_FLOW = 32; // offset of nids of most recent update of low address in registers
-uint64_t HI_FLOW = 64; // offset of nids of most recent update of high address in registers
+uint64_t LO_FLOW = 32; // offset of nids of lower bounds on addresses in registers
+uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registers
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1732,20 +1732,33 @@ uint64_t estimated_return = 0;
 uint64_t memory_nid      = 0; // nid of memory
 uint64_t memory_flow_nid = 0; // nid of most recent update of memory
 
-uint64_t lo_flow_nid = 0; // nid of most recent update of low addresses memory
-uint64_t hi_flow_nid = 0; // nid of most recent update of high addresses memory
+uint64_t lo_memory_flow_nid = 0; // nid of most recent update of lower bounds on addresses in memory
+uint64_t up_memory_flow_nid = 0; // nid of most recent update of upper bounds on addresses in memory
 
 // for checking division and remainder by zero
 // 13 is nid of 1 which is ok as divisor
 uint64_t division_flow_nid  = 13;
 uint64_t remainder_flow_nid = 13;
 
-// for checking address validity during state transitions with no memory access
+// for checking address validity during state transitions with no memory access:
 // 20 is nid of end of code segment which must be a valid address (thus also checked)
-uint64_t read_flow_start_nid  = 20;
+uint64_t read_flow_start_nid = 20;
+
+// 50 is nid of highest virtual address
+uint64_t lo_read_flow_start_nid = 20; // nid of most recent update of current lower bound
+uint64_t up_read_flow_start_nid = 50; // nid of most recent update of current upper bound
+
 uint64_t read_flow_end_nid    = 20;
-uint64_t write_flow_start_nid = 20;
-uint64_t write_flow_end_nid   = 20;
+uint64_t lo_read_flow_end_nid = 20;
+uint64_t up_read_flow_end_nid = 50;
+
+uint64_t write_flow_start_nid    = 20;
+uint64_t lo_write_flow_start_nid = 20;
+uint64_t up_write_flow_start_nid = 50;
+
+uint64_t write_flow_end_nid    = 20;
+uint64_t lo_write_flow_end_nid = 20;
+uint64_t up_write_flow_end_nid = 50;
 
 // keep track of pc flags of ecalls, 10 is nid of 1-bit 0
 uint64_t ecall_flow_nid = 10;
@@ -6480,6 +6493,9 @@ void emit_malloc() {
   // allocate register to compute new bump pointer
   talloc();
 
+  // assert: current temporary is $t0 register to enable propagation of
+  // lower and upper bounds on addresses in model generation of brk syscall
+
   // get current _bump which will be returned upon success
   emit_ld(current_temporary(), get_scope(entry), get_address(entry));
 
@@ -9615,62 +9631,80 @@ void model_sltu() {
 
 void model_ld() {
   if (rd != REG_ZR) {
+    // if this instruction is active record lower bound on $rs1 register for checking address validity
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) current_nid,                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
+      (char*) (reg_nids + LO_FLOW + rs1), // nid of current lower bound on $rs1 register
+      (char*) lo_read_flow_start_nid);    // nid of most recent update of lower bound on memory read access
+
+    lo_read_flow_start_nid = current_nid;
+
+    // if this instruction is active record upper bound on $rs1 register for checking address validity
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 1),          // nid of this line
+      (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
+      (char*) (reg_nids + UP_FLOW + rs1), // nid of current upper bound on $rs1 register
+      (char*) up_read_flow_start_nid);    // nid of most recent update of upper bound on memory read access
+
+    up_read_flow_start_nid = current_nid + 1;
+
     if (imm == 0) {
       // if this instruction is active record $rs1 register as address for checking address validity
       printf4("%d ite 2 %d %d %d\n",
-        (char*) current_nid,          // nid of this line
+        (char*) (current_nid + 2),    // nid of this line
         (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
         (char*) (reg_nids + rs1),     // nid of current value of $rs1 register
         (char*) read_flow_start_nid); // nid of address of most recent memory read access
 
-      read_flow_start_nid = current_nid;
+      read_flow_start_nid = current_nid + 2;
 
       // read from memory at address in $rs1 register
       printf3("%d read 2 %d %d\n",
-        (char*) (current_nid + 1), // nid of this line
+        (char*) (current_nid + 3), // nid of this line
         (char*) memory_nid,        // nid of memory
         (char*) (reg_nids + rs1)); // nid of current value of $rs1 register
 
       // if this instruction is active set $rd = memory[$rs1]
       printf4("%d ite 2 %d %d %d ; ",
-        (char*) (current_nid + 2),      // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (current_nid + 1),      // nid of memory[$rs1]
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
-
-      *(reg_flow_nids + rd) = current_nid + 2;
-    } else {
-      printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
-
-      // compute $rs1 + imm
-      printf3("%d add 2 %d %d\n",
-        (char*) (current_nid + 1), // nid of this line
-        (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
-        (char*) current_nid);      // nid of immediate value
-
-      // if this instruction is active record $rs1 + imm as address for checking address validity
-      printf4("%d ite 2 %d %d %d\n",
-        (char*) (current_nid + 2),    // nid of this line
-        (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
-        (char*) (current_nid + 1),    // nid of $rs1 + imm
-        (char*) read_flow_start_nid); // nid of address of most recent memory read access
-
-      read_flow_start_nid = current_nid + 2;
-
-      // read from memory at address $rs1 + imm
-      printf3("%d read 2 %d %d\n",
-        (char*) (current_nid + 3),  // nid of this line
-        (char*) memory_nid,         // nid of memory
-        (char*) (current_nid + 1)); // nid of $rs1 + imm
-
-      // if this instruction is active set $rd = memory[$rs1 + imm]
-      printf4("%d ite 2 %d %d %d ; ",
         (char*) (current_nid + 4),      // nid of this line
         (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (current_nid + 3),      // nid of memory[$rs1 + imm]
+        (char*) (current_nid + 3),      // nid of memory[$rs1]
         (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
       *(reg_flow_nids + rd) = current_nid + 4;
+    } else {
+      printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) imm);
+
+      // compute $rs1 + imm
+      printf3("%d add 2 %d %d\n",
+        (char*) (current_nid + 3),  // nid of this line
+        (char*) (reg_nids + rs1),   // nid of current value of $rs1 register
+        (char*) (current_nid + 2)); // nid of immediate value
+
+      // if this instruction is active record $rs1 + imm as address for checking address validity
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 4),    // nid of this line
+        (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
+        (char*) (current_nid + 3),    // nid of $rs1 + imm
+        (char*) read_flow_start_nid); // nid of address of most recent memory read access
+
+      read_flow_start_nid = current_nid + 4;
+
+      // read from memory at address $rs1 + imm
+      printf3("%d read 2 %d %d\n",
+        (char*) (current_nid + 5),  // nid of this line
+        (char*) memory_nid,         // nid of memory
+        (char*) (current_nid + 3)); // nid of $rs1 + imm
+
+      // if this instruction is active set $rd = memory[$rs1 + imm]
+      printf4("%d ite 2 %d %d %d ; ",
+        (char*) (current_nid + 6),      // nid of this line
+        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+        (char*) (current_nid + 5),      // nid of memory[$rs1 + imm]
+        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+      *(reg_flow_nids + rd) = current_nid + 6;
     }
 
     print_ld();println();
@@ -10144,21 +10178,21 @@ void implement_syscalls() {
     (char*) (current_nid + 1450),  // nid of brk
     (char*) (current_nid + 1459)); // nid of preceding line
 
-  printf4("%d ite 2 %d %d %d ; low $t0 = brk if brk ecall is active and $a0 is valid\n",
+  printf4("%d ite 2 %d %d %d ; lower bound on $t0 = brk if brk ecall is active and $a0 is valid\n",
     (char*) (current_nid + 1461),                 // nid of this line
     (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
     (char*) (current_nid + 1450),                 // nid of brk
-    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of low $t0 register
+    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of lower bound on $t0 register
 
   *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1461;
 
-  printf4("%d ite 2 %d %d %d ; high $t0 = $a0 if brk ecall is active and $a0 is valid\n",
+  printf4("%d ite 2 %d %d %d ; upper bound on $t0 = $a0 if brk ecall is active and $a0 is valid\n",
     (char*) (current_nid + 1462),                 // nid of this line
     (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
     (char*) (reg_nids + REG_A0),                  // nid of current value of $a0 register
-    (char*) *(reg_flow_nids + HI_FLOW + REG_T0)); // nid of most recent update of high $t0 register
+    (char*) *(reg_flow_nids + UP_FLOW + REG_T0)); // nid of most recent update of upper bound on $t0 register
 
-  *(reg_flow_nids + HI_FLOW + REG_T0) = current_nid + 1462;
+  *(reg_flow_nids + UP_FLOW + REG_T0) = current_nid + 1462;
 
   printf2("%d not 1 %d ; $a0 is invalid\n",
     (char*) (current_nid + 1463),  // nid of this line
@@ -10174,20 +10208,6 @@ void implement_syscalls() {
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
   *(reg_flow_nids + REG_A0) = current_nid + 1465;
-
-  printf3("%d ite 2 %d 12 %d ; low $t0 = 0 if brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1466),                 // nid of this line
-    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of low $t0 register
-
-  *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1466;
-
-  printf3("%d ite 2 %d 12 %d ; high $t0 = 0 if brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1467),                 // nid of this line
-    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + HI_FLOW + REG_T0)); // nid of most recent update of high $t0 register
-
-  *(reg_flow_nids + HI_FLOW + REG_T0) = current_nid + 1467;
 }
 
 void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
@@ -10206,30 +10226,32 @@ void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
   current_nid = current_nid + 2;
 }
 
-void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
-  // check if address of most recent memory access < end of code length
-  printf2("%d ult 1 %d 20\n",
-    (char*) current_nid, // nid of this line
-    (char*) flow_nid);   // nid of address of most recent memory access
+void check_address_validity(uint64_t read_access, uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid) {
+  // check if address of most recent memory access < current lower bound
+  printf3("%d ult 1 %d %d\n",
+    (char*) current_nid,  // nid of this line
+    (char*) flow_nid,     // nid of address of most recent memory access
+    (char*) lo_flow_nid); // nid of current lower bound on memory addresses
   printf2("%d bad %d ; ",
     (char*) (current_nid + 1), // nid of this line
     (char*) current_nid);      // nid of previous check
   if (read_access)
-    print("read access in code segment\n");
+    print("read access below lower bound\n");
   else
-    print("write access in code segment\n");
+    print("write access below lower bound\n");
 
-  // check if address of most recent memory access > highest virtual memory address
-  printf2("%d ugt 1 %d 50\n",
+  // check if address of most recent memory access > current upper bound
+  printf3("%d ugt 1 %d %d\n",
     (char*) (current_nid + 2), // nid of this line
-    (char*) flow_nid);         // nid of address of most recent memory access
+    (char*) flow_nid,          // nid of address of most recent memory access
+    (char*) up_flow_nid);      // nid of current upper bound on memory addresses
   printf2("%d bad %d ; ",
     (char*) (current_nid + 3),  // nid of this line
     (char*) (current_nid + 2)); // nid of previous check
   if (read_access)
-    print("read access outside virtual memory\n");
+    print("read access above upper bound\n");
   else
-    print("write access outside virtual memory\n");
+    print("write access above upper bound\n");
 
   // check if address of most recent memory access is word-aligned
   printf2("%d and 2 %d 17\n",
@@ -10357,7 +10379,7 @@ uint64_t selfie_model_generate() {
       printf2("\n%d constd 2 %d\n",
         (char*) *(reg_flow_nids + i),         // nid of this line
         (char*) (entry_point + code_length)); // end of code segment
-    else if (i == HI_FLOW)
+    else if (i == UP_FLOW)
       printf2("\n%d constd 2 %d\n",
         (char*) *(reg_flow_nids + i),                // nid of this line
         (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE)); // highest virtual address
@@ -10369,11 +10391,11 @@ uint64_t selfie_model_generate() {
           get_register_name(i), // register name
           (char*) i);           // register index as comment
       else if (i < LO_FLOW + NUMBEROFREGISTERS)
-        printf2("lo-%s ; lo $%d\n",
+        printf2("lo-%s ; lower bound on $%d\n",
           get_register_name(i % NUMBEROFREGISTERS), // register name
           (char*) (i % NUMBEROFREGISTERS));         // register index as comment
-      else if (i < HI_FLOW + NUMBEROFREGISTERS)
-        printf2("hi-%s ; hi $%d\n",
+      else if (i < UP_FLOW + NUMBEROFREGISTERS)
+        printf2("up-%s ; upper bound on $%d\n",
           get_register_name(i % NUMBEROFREGISTERS), // register name
           (char*) (i % NUMBEROFREGISTERS));         // register index as comment
     }
@@ -10402,7 +10424,7 @@ uint64_t selfie_model_generate() {
           (char*) (reg_nids * 2 + i),                // nid of this line
           (char*) (reg_nids + i),                    // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
-      else if (i < HI_FLOW + NUMBEROFREGISTERS)
+      else if (i < UP_FLOW + NUMBEROFREGISTERS)
         printf3("%d init 2 %d 50 %s ; initial value is highest virtual address\n",
           (char*) (reg_nids * 2 + i),                // nid of this line
           (char*) (reg_nids + i),                    // nid of to-be-initialized register
@@ -10509,24 +10531,24 @@ uint64_t selfie_model_generate() {
   current_nid = memory_nid;
 
   printf1("%d state 3 memory ; data segment, heap, stack\n", (char*) current_nid);
-  printf1("%d state 3 lo-address ; for checking address validity\n", (char*) (current_nid + 1));
-  printf1("%d state 3 hi-address ; for checking address validity\n\n", (char*) (current_nid + 2));
+  printf1("%d state 3 lower-bounds ; for checking address validity\n", (char*) (current_nid + 1));
+  printf1("%d state 3 upper-bounds ; for checking address validity\n\n", (char*) (current_nid + 2));
 
   printf3("%d init 3 %d %d ; loading data segment and stack into memory\n",
     (char*) (current_nid + 3), // nid of this line
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
-  printf2("%d init 3 %d 20 ; initializing low addresses to end of code segment\n",
+  printf2("%d init 3 %d 20 ; initializing lower bounds to end of code segment\n",
     (char*) (current_nid + 4),  // nid of this line
-    (char*) (current_nid + 1)); // nid of low addresses
-  printf2("%d init 3 %d 50 ; initializing high addresses to highest virtual address\n",
+    (char*) (current_nid + 1)); // nid of lower bounds on addresses in memory
+  printf2("%d init 3 %d 50 ; initializing upper bounds to highest virtual address\n",
     (char*) (current_nid + 5),  // nid of this line
-    (char*) (current_nid + 2)); // nid of high addresses
+    (char*) (current_nid + 2)); // nid of upper bounds on addresses in memory
 
   memory_flow_nid = memory_nid;
 
-  lo_flow_nid = (memory_nid + 1);
-  hi_flow_nid = (memory_nid + 2);
+  lo_memory_flow_nid = (memory_nid + 1);
+  up_memory_flow_nid = (memory_nid + 2);
 
   print("\n; data flow\n\n");
 
@@ -10735,11 +10757,11 @@ uint64_t selfie_model_generate() {
           get_register_name(i), // register name
           (char*) i);           // register index as comment
       else if (i < LO_FLOW + NUMBEROFREGISTERS)
-        printf2("lo-%s ; lo $%d\n",
+        printf2("lo-%s ; lower bound on $%d\n",
           get_register_name(i % NUMBEROFREGISTERS), // register name
           (char*) (i % NUMBEROFREGISTERS));         // register index as comment
-      else if (i < HI_FLOW + NUMBEROFREGISTERS)
-        printf2("hi-%s ; hi $%d\n",
+      else if (i < UP_FLOW + NUMBEROFREGISTERS)
+        printf2("up-%s ; upper bound on $%d\n",
           get_register_name(i % NUMBEROFREGISTERS), // register name
           (char*) (i % NUMBEROFREGISTERS));         // register index as comment
     } else
@@ -10756,14 +10778,14 @@ uint64_t selfie_model_generate() {
       (char*) current_nid,      // nid of this line
       (char*) memory_nid,       // nid of memory
       (char*) memory_flow_nid); // nid of most recent write to memory
-  printf3("%d next 3 %d %d lo-address\n",
-      (char*) (current_nid + 1), // nid of this line
-      (char*) (memory_nid + 1),  // nid of low addresses memory
-      (char*) lo_flow_nid);      // nid of most recent write to low addresses memory
-  printf3("%d next 3 %d %d hi-address\n",
-      (char*) (current_nid + 2), // nid of this line
-      (char*) (memory_nid + 2),  // nid of high addresses memory
-      (char*) hi_flow_nid);      // nid of most recent write to high addresses memory
+  printf3("%d next 3 %d %d lower-bounds\n",
+      (char*) (current_nid + 1),   // nid of this line
+      (char*) (memory_nid + 1),    // nid of lower bounds on addresses in memory
+      (char*) lo_memory_flow_nid); // nid of most recent write to lower bounds on addresses in memory
+  printf3("%d next 3 %d %d upper-bounds\n",
+      (char*) (current_nid + 2),   // nid of this line
+      (char*) (memory_nid + 2),    // nid of upper bounds on addresses in memory
+      (char*) up_memory_flow_nid); // nid of most recent write to upper bounds on addresses in memory
 
   print("\n; checking division and remainder by zero\n\n");
 
@@ -10776,10 +10798,10 @@ uint64_t selfie_model_generate() {
 
   current_nid = pcs_nid * 9;
 
-  check_address_validity(1, read_flow_start_nid);
-  check_address_validity(1, read_flow_end_nid);
-  check_address_validity(0, write_flow_start_nid);
-  check_address_validity(0, write_flow_end_nid);
+  check_address_validity(1, read_flow_start_nid, lo_read_flow_start_nid, up_read_flow_start_nid);
+  check_address_validity(1, read_flow_end_nid, lo_read_flow_end_nid, up_read_flow_end_nid);
+  check_address_validity(0, write_flow_start_nid, lo_write_flow_start_nid, up_write_flow_start_nid);
+  check_address_validity(0, write_flow_end_nid, lo_write_flow_end_nid, up_write_flow_end_nid);
 
   // TODO: check validity of return addresses in jalr
 
