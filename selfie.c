@@ -1741,11 +1741,11 @@ uint64_t division_flow_nid  = 13;
 uint64_t remainder_flow_nid = 13;
 
 // for checking address validity during state transitions with no memory access
-// 30 is nid of end of code segment which must be a valid address (thus also checked)
-uint64_t read_flow_start_nid  = 30;
-uint64_t read_flow_end_nid    = 30;
-uint64_t write_flow_start_nid = 30;
-uint64_t write_flow_end_nid   = 30;
+// 20 is nid of end of code segment which must be a valid address (thus also checked)
+uint64_t read_flow_start_nid  = 20;
+uint64_t read_flow_end_nid    = 20;
+uint64_t write_flow_start_nid = 20;
+uint64_t write_flow_end_nid   = 20;
 
 // keep track of pc flags of ecalls, 10 is nid of 1-bit 0
 uint64_t ecall_flow_nid = 10;
@@ -10102,7 +10102,7 @@ void implement_syscalls() {
     (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
   printf1("%d state 2 brk\n", (char*) (current_nid + 1450));
-  printf2("%d init 2 %d 40 ; original program break is end of binary\n",
+  printf2("%d init 2 %d 30 ; original program break is end of binary\n",
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
@@ -10208,7 +10208,7 @@ void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
 
 void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
   // check if address of most recent memory access < end of code length
-  printf2("%d ult 1 %d 30\n",
+  printf2("%d ult 1 %d 20\n",
     (char*) current_nid, // nid of this line
     (char*) flow_nid);   // nid of address of most recent memory access
   printf2("%d bad %d ; ",
@@ -10220,7 +10220,7 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
     print("write access in code segment\n");
 
   // check if address of most recent memory access > highest virtual memory address
-  printf2("%d ugt 1 %d 20\n",
+  printf2("%d ugt 1 %d 50\n",
     (char*) (current_nid + 2), // nid of this line
     (char*) flow_nid);         // nid of address of most recent memory access
   printf2("%d bad %d ; ",
@@ -10315,31 +10315,30 @@ uint64_t selfie_model_generate() {
 
   print("12 zero 2\n13 one 2\n17 constd 2 7\n18 constd 2 8\n\n");
 
-  print("; highest word-aligned address in 4GB of memory\n\n");
-
-  // highest virtual memory address
-  printf1("20 constd 2 %d\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
-
   print("; word-aligned end of code segment in memory\n\n");
 
   // end of code segment for checking address validity
-  printf1("30 constd 2 %d\n\n", (char*) (entry_point + code_length));
+  printf1("20 constd 2 %d\n\n", (char*) (entry_point + code_length));
 
   print("; word-aligned end of data segment in memory (original program break)\n\n");
 
   // original program break (end of binary = code + data segment) for checking program break validity
-  printf1("40 constd 2 %d\n\n", (char*) get_original_break(current_context));
+  printf1("30 constd 2 %d\n\n", (char*) get_original_break(current_context));
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
   // $sp register value from boot loader
-  printf1("50 constd 2 %d\n\n", (char*) *(get_regs(current_context) + REG_SP));
+  printf1("40 constd 2 %d\n\n", (char*) *(get_regs(current_context) + REG_SP));
+
+  print("; highest word-aligned address in 4GB of memory\n\n");
+
+  printf1("50 constd 2 %d\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
 
   print("; sorts for byte-wise reading\n\n");
 
   print("80 sort bitvec 8 ; 1 byte\n\n");
 
-  print("; 32 64-bit general-purpose registers\n\n");
+  print("; 32 64-bit general-purpose registers\n");
 
   reg_nids = 100;
 
@@ -10350,10 +10349,18 @@ uint64_t selfie_model_generate() {
   while (i < 3 * NUMBEROFREGISTERS) {
     *(reg_flow_nids + i) = reg_nids + i;
 
-    if (i % NUMBEROFREGISTERS == 0)
-      printf2("%d zero 2 %s ; register $0 is always 0\n",
+    if (i == 0)
+      printf2("\n%d zero 2 %s ; register $0 is always 0\n",
         (char*) *(reg_flow_nids + i), // nid of this line
         get_register_name(REG_ZR));   // register name
+    else if (i == LO_FLOW)
+      printf2("\n%d constd 2 %d\n",
+        (char*) *(reg_flow_nids + i),         // nid of this line
+        (char*) (entry_point + code_length)); // end of code segment
+    else if (i == HI_FLOW)
+      printf2("\n%d constd 2 %d\n",
+        (char*) *(reg_flow_nids + i),                // nid of this line
+        (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE)); // highest virtual address
     else {
       printf1("%d state 2 ", (char*) *(reg_flow_nids + i));
 
@@ -10374,23 +10381,34 @@ uint64_t selfie_model_generate() {
     i = i + 1;
   }
 
-  print("\n; initializing registers\n\n");
+  print("\n; initializing registers\n");
 
   i = 0;
 
   while (i < 3 * NUMBEROFREGISTERS) {
     if (i == REG_SP)
-      // initialize to $sp register value from boot loader
-      printf3("%d init 2 %d 50 %s ; initial value from boot loader\n",
+      printf3("%d init 2 %d 40 %s ; initial value from boot loader\n",
         (char*) (reg_nids * 2 + i), // nid of this line
         (char*) (reg_nids + i),     // nid of $sp register
         get_register_name(i));      // register name as comment
-    else if (i % NUMBEROFREGISTERS != 0)
-      // initialize to 0
-      printf3("%d init 2 %d 12 %s ; initial value is 0\n",
-        (char*) (reg_nids * 2 + i),                // nid of this line
-        (char*) (reg_nids + i),                    // nid of to-be-initialized register
-        get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
+    else if (i % NUMBEROFREGISTERS != 0) {
+      if (i < NUMBEROFREGISTERS)
+        printf3("%d init 2 %d 12 %s ; initial value is 0\n",
+          (char*) (reg_nids * 2 + i), // nid of this line
+          (char*) (reg_nids + i),     // nid of to-be-initialized register
+          get_register_name(i));      // register name as comment
+      else if (i < LO_FLOW + NUMBEROFREGISTERS)
+        printf3("%d init 2 %d 20 %s ; initial value is end of code segment\n",
+          (char*) (reg_nids * 2 + i),                // nid of this line
+          (char*) (reg_nids + i),                    // nid of to-be-initialized register
+          get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
+      else if (i < HI_FLOW + NUMBEROFREGISTERS)
+        printf3("%d init 2 %d 50 %s ; initial value is highest virtual address\n",
+          (char*) (reg_nids * 2 + i),                // nid of this line
+          (char*) (reg_nids + i),                    // nid of to-be-initialized register
+          get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
+    } else
+      println();
 
     i = i + 1;
   }
@@ -10491,17 +10509,17 @@ uint64_t selfie_model_generate() {
   current_nid = memory_nid;
 
   printf1("%d state 3 memory ; data segment, heap, stack\n", (char*) current_nid);
-  printf1("%d state 3 lo-address ; for checking address validity in memory blocks\n", (char*) (current_nid + 1));
-  printf1("%d state 3 hi-address ; for checking address validity in memory blocks\n\n", (char*) (current_nid + 2));
+  printf1("%d state 3 lo-address ; for checking address validity\n", (char*) (current_nid + 1));
+  printf1("%d state 3 hi-address ; for checking address validity\n\n", (char*) (current_nid + 2));
 
   printf3("%d init 3 %d %d ; loading data segment and stack into memory\n",
     (char*) (current_nid + 3), // nid of this line
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
-  printf2("%d init 3 %d 12 ; initializing low addresses to 0\n",
+  printf2("%d init 3 %d 20 ; initializing low addresses to end of code segment\n",
     (char*) (current_nid + 4),  // nid of this line
     (char*) (current_nid + 1)); // nid of low addresses
-  printf2("%d init 3 %d 12 ; initializing high addresses to 0\n",
+  printf2("%d init 3 %d 50 ; initializing high addresses to highest virtual address\n",
     (char*) (current_nid + 5),  // nid of this line
     (char*) (current_nid + 2)); // nid of high addresses
 
@@ -10698,7 +10716,7 @@ uint64_t selfie_model_generate() {
     pc = pc + INSTRUCTIONSIZE;
   }
 
-  print("\n; updating registers\n\n");
+  print("\n; updating registers\n");
 
   current_nid = pcs_nid * 6;
 
@@ -10724,7 +10742,8 @@ uint64_t selfie_model_generate() {
         printf2("hi-%s ; hi $%d\n",
           get_register_name(i % NUMBEROFREGISTERS), // register name
           (char*) (i % NUMBEROFREGISTERS));         // register index as comment
-    }
+    } else
+      println();
 
     i = i + 1;
   }
