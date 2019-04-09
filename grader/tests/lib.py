@@ -1,6 +1,10 @@
-import os
 import sys
+from os import listdir, system, WEXITSTATUS
+from os.path import isfile, join
 from io import TextIOWrapper, BytesIO
+
+def list_files(path, extension=''):
+  return [f for f in listdir(path) if isfile(join(path, f)) and f.endswith(extension)]
 
 class Console():
   def __init__(self):
@@ -19,23 +23,23 @@ class Console():
     return self.console_output.read()
 
 def assemble_for_selfie(file):
-  os.system('riscv64-linux-gnu-as grader/tests/' + file + ' -o .instruction.o')
-  os.system('riscv64-linux-gnu-ld .instruction.o -o .instruction.bin --oformat=binary >/dev/null 2>&1')
-  os.system('cat grader/tests/elf-header.m .instruction.bin > .tmp.bin')
-  os.system('rm .instruction.o .instruction.bin')
+  system('riscv64-linux-gnu-as grader/tests/' + file + ' -o .instruction.o')
+  system('riscv64-linux-gnu-ld .instruction.o -o .instruction.bin --oformat=binary >/dev/null 2>&1')
+  system('cat grader/tests/elf-header.m .instruction.bin > .tmp.bin')
+  system('rm .instruction.o .instruction.bin')
 
 def compile_with_gcc(file):
-  return_value = os.WEXITSTATUS(os.system('gcc -w -D\'uint64_t=unsigned long long\' grader/' + file + ' -o .prog >/dev/null 2>&1'))
+  return_value = WEXITSTATUS(system('gcc -w -D\'uint64_t=unsigned long long\' grader/' + file + ' -o .prog >/dev/null 2>&1'))
   
   if return_value != 0:
-    os.system('rm ./.prog')
+    system('rm ./.prog')
   
   return return_value
 
 def compile_with_gcc_and_run(file):
-  os.system('gcc -w -D\'uint64_t=unsigned long long\' grader/' + file + ' -o .prog')
-  return_value = os.WEXITSTATUS(os.system('./.prog'))
-  os.system('rm ./.prog')
+  system('gcc -w -D\'uint64_t=unsigned long long\' grader/' + file + ' -o .prog')
+  return_value = WEXITSTATUS(system('./.prog'))
+  system('rm ./.prog')
   return return_value
 
 def for_all_test_results(output, function):

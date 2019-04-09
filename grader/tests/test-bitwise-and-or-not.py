@@ -9,31 +9,6 @@ import grader.self
 
 class TestBitwiseAndOrNot(unittest.TestCase):
 
-  def execute_mock(self, command):
-    if '.tmp.bin' in command:
-      if 'bitwise-and' in command:
-        assemble_for_selfie('bitwise-and.s')
-      elif 'bitwise-or' in command:
-        assemble_for_selfie('bitwise-or.s')
-      elif 'bitwise-not' in command:
-        assemble_for_selfie('bitwise-not.s')
-
-    return (0, '', '')
-
-  def check_encoding_results(self, result, msg):
-    if 'RISC-V encoding' in msg:
-      self.assertTrue(result, 'following encoding test passed: "' + msg + '"')
-
-  @patch('grader.self.execute')
-  def test_instruction_encoding(self, mock):
-    mock.side_effect = lambda c: self.execute_mock(c)
-
-    with Console() as console:
-      main([sys.argv[0], 'bitwise-and-or-not'])
-      output = console.get_output()
-
-    for_all_test_results(output, self.check_encoding_results)
-
   def mipster_execution_mock(self, file, result, msg):
     if 'invalid' not in file:
       return_value = compile_with_gcc_and_run(file)

@@ -84,7 +84,8 @@ boolector: smt
 
 # Test grader
 grader: selfie
-	python -m unittest grader/tests/test-bitwise-and-or-not.py 
+	python -m unittest grader.tests.test-bitwise-and-or-not \
+										 grader.tests.test-instruction-encoding
 
 # Run everything
 all: compile quine debug replay os vm min mob smt sat

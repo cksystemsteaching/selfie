@@ -56,7 +56,7 @@ F7_OR  = 0
 def read_instruction(file):
   b = file.read(INSTRUCTIONSIZE)
 
-  if len(b) == 0:
+  if len(b) != INSTRUCTIONSIZE:
     return 0
 
   return struct.unpack('<i', b)[0]
@@ -64,7 +64,7 @@ def read_instruction(file):
 def read_data(file):
   b = file.read(REGISTERSIZE)
 
-  if len(b) == 0:
+  if len(b) != REGISTERSIZE:
     return 0
 
   return struct.unpack('<Q', b)[0]
@@ -83,14 +83,13 @@ R_FORMAT_MASK   = 0b11111110000000000111000001111111
 AMO_FORMAT_MASK = 0b11111000000000000111000001111111
 LR_FORMAT_MASK  = 0b11111001111100000111000001111111
 
-SLL_INSTRUCTION = encode_r_format(F7_SLL, F3_SLL, OP_OP)
-SRL_INSTRUCTION = encode_r_format(F7_SRL, F3_SRL, OP_OP)
-OR_INSTRUCTION  = encode_r_format(F7_OR, F3_OR, OP_OP)
-AND_INSTRUCTION = encode_r_format(F7_AND, F3_AND, OP_OP)
-NOT_INSTRUCTION = encode_i_format(4095, F3_XORI, OP_IMM)
-
-LR_INSTRUCTION = encode_amo_format(F5_LR, F3_LR)
-SC_INSTRUCTION = encode_amo_format(F5_SC, F3_SC)
+SLL_INSTRUCTION = ('bitwise-left-shift', encode_r_format(F7_SLL, F3_SLL, OP_OP), R_FORMAT_MASK)
+SRL_INSTRUCTION = ('bitwise-right-shift', encode_r_format(F7_SRL, F3_SRL, OP_OP), R_FORMAT_MASK)
+OR_INSTRUCTION  = ('bitwise-or', encode_r_format(F7_OR, F3_OR, OP_OP), R_FORMAT_MASK)
+AND_INSTRUCTION = ('bitwise-and', encode_r_format(F7_AND, F3_AND, OP_OP), R_FORMAT_MASK)
+NOT_INSTRUCTION = ('bitwise-not', encode_i_format(4095, F3_XORI, OP_IMM), NOT_FORMAT_MASK)
+LR_INSTRUCTION  = ('load-reserved', encode_amo_format(F5_LR, F3_LR), LR_FORMAT_MASK)
+SC_INSTRUCTION  = ('store-conditional', encode_amo_format(F5_SC, F3_SC), AMO_FORMAT_MASK)
 
 class DummyWriter:
   def __getattr__( self, name ):
@@ -204,9 +203,14 @@ def has_no_compile_warnings(return_value, output):
   return (succeeded, warning)
 
 
-def test_instruction_encoding(file, instruction, instruction_mask, msg):
+def test_instruction_encoding(instruction, file):
   command = './selfie -c grader/{} -o .tmp.bin'.format(file)
   exit_code, output, _ = execute(command)
+
+  msg = instruction[0] + ' has right RISC-V encoding'
+
+  instruction_value = instruction[1]
+  instruction_mask  = instruction[2]
 
   if exit_code == 0:
     exit_code = 1
@@ -231,7 +235,7 @@ def test_instruction_encoding(file, instruction, instruction_mask, msg):
         # read all RISC-V instructions from binary
         read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
 
-        if any(map(lambda x: x & instruction_mask == instruction, read_instructions)):
+        if any(map(lambda x: x & instruction_mask == instruction_value, read_instructions)):
           # at least one instruction has the right encoding
           exit_code = 0
       
@@ -248,24 +252,29 @@ def test_instruction_encoding(file, instruction, instruction_mask, msg):
 
 
 def test_assembler_instruction_format(file, instruction, msg):
-  exit_code, output, _ = execute('./selfie -c grader/{} -s .tmp.s'.format(file))
+  command = './selfie -c grader/{} -s .tmp.s'.format(file)
+  exit_code, output, _ = execute(command)
 
   if exit_code == 0:
     exit_code = 1
 
-    with open('.tmp.s', 'rt') as f:
-      for line in f:
-        if instruction in line:
-          # at least one assembler instruction has the right encoding
-          exit_code = 0
+    try:
+      with open('.tmp.s', 'rt') as f:
+        for line in f:
+          if instruction in line:
+            # at least one assembler instruction has the right encoding
+            exit_code = 0
 
-    os.remove('.tmp.s')
+        record_result(exit_code == 0, msg, output, 'No assembler instruction matching the RISC-V encoding found')
 
-    warning = None
+      if os.path.isfile('.tmp.s'):
+        os.remove('.tmp.s')
+
+    except FileNotFoundError:
+      record_result(False, msg, output, 'The assembler file has not been created by selfie')
   else:
-    warning = 'No assembler instruction matching the RISC-V encoding found'
+    record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
 
-  record_result(exit_code == 0, msg, output, warning)
 
 
 
@@ -410,47 +419,40 @@ def test_bitwise_shift(stage):
   if stage >= 2:
     start_stage(2)
 
-    for direction in ['right', 'left']:
+    for instruction in [SRL_INSTRUCTION, SLL_INSTRUCTION]:
 
-      if direction == 'left':
-        instruction = SLL_INSTRUCTION
-      else:
-        instruction = SRL_INSTRUCTION
+      literal_file = instruction[0] + '-literals.c'
+      variable_file = instruction[0] + '-variables.c'
 
-      literal_file = 'bitwise-' + direction + '-shift-literals.c'
-      variable_file = 'bitwise-' + direction + '-shift-variables.c'
-
-      test_instruction_encoding(literal_file, instruction, R_FORMAT_MASK,
-        'bitwise-' + direction + '-shift operator has right RISC-V encoding')
+      test_instruction_encoding(instruction, literal_file)
+      test_instruction_encoding(instruction, variable_file)
       test_mipster_execution(literal_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
-      test_instruction_encoding(variable_file, instruction, R_FORMAT_MASK,
-        'bitwise-' + direction + '-shift operator has right RISC-V encoding')
       test_mipster_execution(variable_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
 
 
 def test_bitwise_and_or_not():
-  for operation, instruction, format_mask in [('and', AND_INSTRUCTION, R_FORMAT_MASK), ('or', OR_INSTRUCTION, R_FORMAT_MASK), ('not', NOT_INSTRUCTION, NOT_FORMAT_MASK)]:
-    literal_file = 'bitwise-' + operation + '-literals.c'
-    variable_file = 'bitwise-' + operation + '-variables.c'
-    invalid_file = 'bitwise-' + operation + '-invalid.c'
+  for instruction in [AND_INSTRUCTION, OR_INSTRUCTION, NOT_INSTRUCTION]:
+    operation = instruction[0]
+
+    literal_file = operation + '-literals.c'
+    variable_file = operation + '-variables.c'
+    invalid_file = operation + '-invalid.c'
 
     test_compilable(literal_file,
-      'bitwise-' + operation + ' operator with literals does compile')
+      operation + ' operator with literals does compile')
     test_compilable(variable_file,
-      'bitwise-' + operation + ' operator with variables does compile')
+      operation + ' operator with variables does compile')
     test_compilable(invalid_file,
-      'bitwise-' + operation + ' operator with invalid syntax does not compile', should_succeed=False)
+      operation + ' operator with invalid syntax does not compile', should_succeed=False)
     test_mipster_execution(literal_file, 42,
-      'bitwise-' + operation + ' operator calculates the right result for literals when executed with MIPSTER')
+      operation + ' operator calculates the right result for literals when executed with MIPSTER')
     test_mipster_execution(variable_file, 42,
-      'bitwise-' + operation + ' operator calculates the right result for variables when executed with MIPSTER')
-    test_instruction_encoding(literal_file, instruction, format_mask,
-      'bitwise-' + operation + ' operator has right RISC-V encoding')
-    test_instruction_encoding(variable_file, instruction, format_mask,
-      'bitwise-' + operation + ' operator has right RISC-V encoding')
+      operation + ' operator calculates the right result for variables when executed with MIPSTER')
+    test_instruction_encoding(instruction, literal_file)
+    test_instruction_encoding(instruction, variable_file)
 
   test_mipster_execution('bitwise-and-or-not-precedence.c', 42,
     'bitwise and, or & not '  + ' operators respect the precedence of the C operators: &,|,~')
@@ -551,10 +553,8 @@ def test_thread():
 
 
 def test_treiber_stack():
-  test_instruction_encoding('../manuscript/code/hello-world.c', LR_INSTRUCTION, LR_FORMAT_MASK,
-    'LR RISC-V instruction has right binary encoding')
-  test_instruction_encoding('../manuscript/code/hello-world.c', SC_INSTRUCTION, AMO_FORMAT_MASK,
-    'SC RISC-V instruction has right binary encoding')
+  test_instruction_encoding(LR_INSTRUCTION, 'load-reserved.c')
+  test_instruction_encoding(SC_INSTRUCTION, 'store-conditional.c')
   test_assembler_instruction_format('../manuscript/code/hello-world.c', 'lr.d',
     'LR RISC-V instruction has right assembly instructin format')
   test_assembler_instruction_format('../manuscript/code/hello-world.c', 'sc.d',
