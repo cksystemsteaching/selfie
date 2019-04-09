@@ -395,8 +395,6 @@ def test_hex_literal():
     'minimum hex integer literal compiled')
   test_mipster_execution('hex-integer-literal-min.c', 1,
     'minimum hex integer literal has the right value')
-  test_compilable('hex-integer-literal-invalid.c',
-    'out of bounds hex integer literal has not compiled', should_succeed=False)
 
 
 def test_bitwise_shift(stage):

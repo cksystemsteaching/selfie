@@ -3,7 +3,7 @@ from unittest.mock import patch
 import sys
 import os
 from grader.tests.lib import assemble_for_selfie, Console, for_all_test_results, list_files
-from grader.self import DummyWriter, execute, main, defined_tests
+from grader.self import execute, main, defined_tests
 import grader.self
 
 class TestInstructionEncoding(unittest.TestCase):
