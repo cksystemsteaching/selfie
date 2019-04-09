@@ -607,7 +607,7 @@ def grade():
     if number_of_tests == 0:
       return
 
-    passed = number_of_tests_passed / number_of_tests
+    passed = number_of_tests_passed / float(number_of_tests)
 
     print('tests{}passed: {:02.1f}%'.format(name, passed * 100))
 
@@ -621,7 +621,7 @@ def grade():
   number_of_tests =  sum(number_of_positive_tests_passed) + sum(number_of_positive_tests_failed)
   number_of_tests += sum(number_of_negative_tests_passed) + sum(number_of_negative_tests_failed)
 
-  passed = number_of_tests_passed / number_of_tests
+  passed = number_of_tests_passed / float(number_of_tests)
 
   if grade_is_negative:
     grade = 5
