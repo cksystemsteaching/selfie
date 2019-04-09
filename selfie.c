@@ -594,6 +594,12 @@ uint64_t look_for_factor();
 uint64_t look_for_statement();
 uint64_t look_for_type();
 
+void     talloc();
+uint64_t current_temporary();
+uint64_t previous_temporary();
+uint64_t next_temporary();
+void     tfree(uint64_t number_of_temporaries);
+
 void save_temporaries();
 void restore_temporaries(uint64_t number_of_temporaries);
 
