@@ -10034,36 +10034,36 @@ void implement_syscalls() {
 
   // if read ecall is active set $a0 (read number of bytes) = $a2 (size)
   printf4("%d ite 2 %d %d %d ; set $a0 = $a2 if read ecall is active\n",
-    (char*) (current_nid + 1106),       // nid of this line
+    (char*) (current_nid + 1150),       // nid of this line
     (char*) (current_nid + 1100),       // nid of read ecall is active
     (char*) (reg_nids + REG_A2),        // nid of current value of $a2 register
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_nid + 1106;
+  *(reg_flow_nids + REG_A0) = current_nid + 1150;
 
   // TODO: support reading any number of bytes in a single read ecall
 
   // declare 1-byte input
   printf1("%d input 80 ; 1 byte\n",
-    (char*) (current_nid + 1107)); // nid of this line
+    (char*) (current_nid + 1151)); // nid of this line
   // unsigned-extend 1-byte input by 56 bits to 64 bits
   printf2("%d uext 2 %d 56 ; unsigned-extend 1-byte input to 64 bits\n",
-    (char*) (current_nid + 1108),  // nid of this line
-    (char*) (current_nid + 1107)); // nid of 1-byte input
+    (char*) (current_nid + 1152),  // nid of this line
+    (char*) (current_nid + 1151)); // nid of 1-byte input
   // write unsigned-extended 1-byte input to memory at address in $a1 register
   printf4("%d write 3 %d %d %d ; memory[$a1] = unsigned-extended 1-byte input\n",
-    (char*) (current_nid + 1109),  // nid of this line
+    (char*) (current_nid + 1153),  // nid of this line
     (char*) memory_nid,            // nid of memory
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1108)); // nid of unsigned-extended 1-byte input
+    (char*) (current_nid + 1152)); // nid of unsigned-extended 1-byte input
   // if read ecall is active set memory[$a1] = unsigned-extended 1-byte input
   printf4("%d ite 3 %d %d %d ; set memory[$a1] = unsigned-extended 1-byte input if read ecall is active\n\n",
-    (char*) (current_nid + 1110), // nid of this line
+    (char*) (current_nid + 1154), // nid of this line
     (char*) (current_nid + 1100), // nid of read ecall is active
-    (char*) (current_nid + 1109), // nid of memory[$a1] = unsigned-extended 1-byte input
+    (char*) (current_nid + 1153), // nid of memory[$a1] = unsigned-extended 1-byte input
     (char*) memory_flow_nid);     // nid of most recent update of memory
 
-  memory_flow_nid = current_nid + 1110;
+  memory_flow_nid = current_nid + 1154;
 
 
   // if write ecall is active record $a1 register as address for checking address validity
@@ -10102,12 +10102,12 @@ void implement_syscalls() {
 
   // if write ecall is active set $a0 (written number of bytes) = $a2 (size)
   printf4("%d ite 2 %d %d %d ; set $a0 = $a2 if write ecall is active\n\n",
-    (char*) (current_nid + 1206),       // nid of this line
+    (char*) (current_nid + 1250),       // nid of this line
     (char*) (current_nid + 1200),       // nid of write ecall is active
     (char*) (reg_nids + REG_A2),        // nid of current value of $a2 register
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_nid + 1206;
+  *(reg_flow_nids + REG_A0) = current_nid + 1250;
 
 
   // if openat ecall is active record $a1 register as address for checking address validity
