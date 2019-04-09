@@ -15,16 +15,16 @@ file = open(filename, 'r')
 os.chdir(target)
 
 for link in file.readlines():
-  link = link.replace('\n', '').split('/')
+  splitted_link = link.replace('\n', '').split('/')
 
-  user = link[3]
-  repo = link[4]
+  user = splitted_link[3]
+  repo = splitted_link[4]
 
   os.mkdir(user)
 
   os.chdir(user)
 
-  os.system('git clone git@github.com:' + user + '/' + repo)
+  os.system('git clone https://github.com/' + user + '/' + repo)
 
   os.chdir(os.path.pardir)
 

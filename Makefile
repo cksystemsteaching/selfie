@@ -10,7 +10,7 @@ selfie.m selfie.s: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector all clean
+.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector grader all clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -83,11 +83,12 @@ boolector: smt
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
 
 # Test grader
-grader: selfie
+grader:
 	python -m unittest \
 		grader.tests.test-compilable \
 		grader.tests.test-instruction-encoding \
-		grader.tests.test-mipster-execution
+		grader.tests.test-mipster-execution \
+		grader.tests.test-bulk-grader
 
 # Run everything
 all: compile quine debug replay os vm min mob smt sat

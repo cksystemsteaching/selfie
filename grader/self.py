@@ -565,9 +565,9 @@ def test_treiber_stack():
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
 
-def test_base():
-  test_execution('make selfie', 'cc compiles selfie.c', mandatory=True)
-  test_compile_warnings('selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=True)
+def test_base(mandatory=True):
+  test_execution('make selfie', 'cc compiles selfie.c', mandatory=mandatory)
+  test_compile_warnings('selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 
 
 def start_stage(stage):
@@ -674,7 +674,7 @@ def print_usage():
 
 
 defined_tests = [
-    ('base', test_base),
+    ('base', lambda: test_base(mandatory=False)),
     ('hex-literal', test_hex_literal),
     ('bitwise-shift-1', lambda: test_bitwise_shift(1)),
     ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
