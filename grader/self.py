@@ -478,6 +478,46 @@ def test_bitwise_and_or_not():
 
 
 
+def test_for_loop():
+  test_compilable('for-loop-invalid-missing-assignment.c', 
+    'for loop with missing assignment do not compile', should_succeed=False)
+  test_compilable('for-loop-single-statement.c',
+    'for loop with one statement do compile')
+  test_compilable('for-loop-multiple-statements.c',
+    'for loop with multiple statements do compile')
+  test_compilable('for-loop-nested.c', 
+    'nested for loops do compile')
+  test_mipster_execution('for-loop-single-statement.c', 3,
+    'for loop with one statement are implement with the right semantics')
+  test_mipster_execution('for-loop-multiple-statements.c', 3,
+    'for loop with multiple statements are implemented with the right semantics')
+  test_mipster_execution('for-loop-multiple-statements.c', 3,
+    'for loop with multiple statements are implemented with the right semantics')
+  test_mipster_execution('for-loop-nested.c', 9,
+    'nested for loops are implemented with the right semantics')
+
+
+
+def test_array():
+  test_compilable('array-declaration.c', 
+    'array declaration do compile')
+  test_compilable('array-assignment.c',
+    'assignments on arrays do compile')
+  test_compilable('array-invalid-assignment.c',
+    'invalid assignments to an array do not compile', should_succeed=False)
+  test_compilable('array-multidimensional.c',
+    'multidimensional array declarations do compile')
+  test_compilable('array-in-function.c',
+    'arrays in the function signature do compile')
+  test_mipster_execution('array-assignment.c', 4,
+    'arrays assignments are implemented with the right semantics')
+  test_mipster_execution('array-assignment.c', 4,
+    'multidimensional arrays assignments are implemented with the right semantics')
+  test_mipster_execution('array-in-function.c', 4,
+    'array assignments in functions are implemented with the right semantics')
+
+
+
 def test_structs():
   test_compilable('struct-declaration.c',
     'empty struct declarations compiled')
@@ -694,6 +734,8 @@ defined_tests = [
     ('bitwise-shift-1', lambda: test_bitwise_shift(1)),
     ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
     ('bitwise-and-or-not', test_bitwise_and_or_not),
+    ('for-loop', test_for_loop),
+    ('array', test_array),
     ('struct', test_structs),
     ('assembler-1', lambda: test_assembler(1)),
     ('assembler-2', lambda: test_assembler(2)),
