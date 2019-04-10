@@ -10118,18 +10118,35 @@ void implement_syscalls() {
   *(reg_flow_nids + REG_A0) = current_nid + 1250;
 
 
-  // if openat ecall is active record $a1 register as address for checking address validity
+  // if openat ecall is active record $a1 register and bounds for checking address validity
   printf3("%d and 1 %d %d ; openat ecall is active\n",
     (char*) (current_nid + 1300), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
     (char*) (current_nid + 13));  // nid of $a7 == SYSCALL_OPENAT
+
+  printf4("%d ite 2 %d %d %d ; lower bound on $a1 for checking address validity\n",
+    (char*) (current_nid + 1301),          // nid of this line
+    (char*) (current_nid + 1300),          // nid of openat ecall is active
+    (char*) (reg_nids + LO_FLOW + REG_A1), // nid of current lower bound on $a1 register
+    (char*) lo_flow_nid);                  // nid of most recent update of lower bound on memory access
+
+  lo_flow_nid = current_nid + 1301;
+
+  printf4("%d ite 2 %d %d %d ; upper bound on $a1 for checking address validity\n",
+    (char*) (current_nid + 1302),          // nid of this line
+    (char*) (current_nid + 1300),          // nid of openat ecall is active
+    (char*) (reg_nids + UP_FLOW + REG_A1), // nid of current upper bound on $a1 register
+    (char*) up_flow_nid);                  // nid of most recent update of upper bound on memory access
+
+  up_flow_nid = current_nid + 1302;
+
   printf4("%d ite 2 %d %d %d ; $a1 is start address of filename for checking address validity\n",
-    (char*) (current_nid + 1301), // nid of this line
+    (char*) (current_nid + 1303), // nid of this line
     (char*) (current_nid + 1300), // nid of openat ecall is active
     (char*) (reg_nids + REG_A1),  // nid of current value of $a1 register
     (char*) read_flow_start_nid); // nid of address of most recent memory read access
 
-  read_flow_start_nid = current_nid + 1301;
+  read_flow_start_nid = current_nid + 1303;
 
   // TODO: check address validity of whole filename, flags and mode arguments
 
