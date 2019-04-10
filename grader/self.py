@@ -428,6 +428,9 @@ def test_bitwise_shift(stage):
         'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
       test_mipster_execution(variable_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
+    
+    test_mipster_execution('bitwise-shift-precedence.c', 42,
+      'bitwise shift operators respect the precedence of the C operators: <<, >>')
 
 
 
