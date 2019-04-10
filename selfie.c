@@ -9616,6 +9616,20 @@ void model_sltu() {
     *(reg_flow_nids + rd) = current_nid + 2;
 
     print_add_sub_mul_divu_remu_sltu("sltu");println();
+
+    printf3("%d ite 2 %d 20 %d ; reset lower bound\n",
+      (char*) (current_nid + 3),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 3;
+
+    printf3("%d ite 2 %d 50 %d ; reset upper bound\n",
+      (char*) (current_nid + 4),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 4;
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -10273,14 +10287,14 @@ void model_syscalls() {
   printf3("%d ite 2 %d 20 %d ; lower bound on $t0 = end of code segment if brk ecall is active and $a0 is invalid\n",
     (char*) (current_nid + 1466),                 // nid of this line
     (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of low $t0 register
+    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of lower bound on $t0 register
 
   *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1466;
 
   printf3("%d ite 2 %d 50 %d ; upper bound on $t0 = highest virtual address if brk ecall is active and $a0 is invalid\n",
     (char*) (current_nid + 1467),                 // nid of this line
     (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + UP_FLOW + REG_T0)); // nid of most recent update of high $t0 register
+    (char*) *(reg_flow_nids + UP_FLOW + REG_T0)); // nid of most recent update of upper bound on $t0 register
 
   *(reg_flow_nids + UP_FLOW + REG_T0) = current_nid + 1467;
 }
