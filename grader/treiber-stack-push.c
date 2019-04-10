@@ -27,7 +27,7 @@ void print_integer(uint64_t i) {
   write(1, c, 2);
 }
 
-uint64_t main(uint64_t argc, uint64_t* argv) { 
+int main(int argc, char** argv) { 
   uint64_t pid1;
   uint64_t pid2;
   uint64_t pid3;

@@ -2,7 +2,7 @@
 uint64_t* foo;
 
 // main procedure for printing "Hello World!    " on the console
-uint64_t* main() {
+int main(int argc, char** argv) {
   // create 2^3 processes
   fork();
   fork();
