@@ -1694,7 +1694,8 @@ void model_ecall();
 
 void translate_to_model();
 
-void implement_syscalls();
+void model_syscalls();
+
 void check_address_validity(uint64_t read_access, uint64_t flow_nid);
 
 uint64_t selfie_model_generate();
@@ -9914,7 +9915,7 @@ void translate_to_model() {
     model_ecall();
 }
 
-void implement_syscalls() {
+void model_syscalls() {
   printf2("%d constd 2 %d\n", (char*) current_nid, (char*) SYSCALL_EXIT);
   printf2("%d constd 2 %d\n", (char*) (current_nid + 1), (char*) SYSCALL_READ);
   printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) SYSCALL_WRITE);
@@ -10251,6 +10252,20 @@ void implement_syscalls() {
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
   *(reg_flow_nids + REG_A0) = current_nid + 1465;
+
+  printf3("%d ite 2 %d 20 %d ; lower bound on $t0 = end of code segment if brk ecall is active and $a0 is invalid\n",
+    (char*) (current_nid + 1466),                 // nid of this line
+    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
+    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of low $t0 register
+
+  *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1466;
+
+  printf3("%d ite 2 %d 50 %d ; upper bound on $t0 = highest virtual address if brk ecall is active and $a0 is invalid\n",
+    (char*) (current_nid + 1467),                 // nid of this line
+    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
+    (char*) *(reg_flow_nids + UP_FLOW + REG_T0)); // nid of most recent update of high $t0 register
+
+  *(reg_flow_nids + UP_FLOW + REG_T0) = current_nid + 1467;
 }
 
 void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
@@ -10622,7 +10637,7 @@ uint64_t selfie_model_generate() {
 
   current_nid = library_nid;
 
-  implement_syscalls();
+  model_syscalls();
 
   print("\n; control flow\n\n");
 
