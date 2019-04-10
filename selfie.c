@@ -9374,32 +9374,32 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
 
 void model_lui() {
   if (rd != REG_ZR) {
-    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
-
-    // if this instruction is active set $rd = imm << 12
-    printf4("%d ite 2 %d %d %d ; ",
-      (char*) (current_nid + 1),      // nid of this line
-      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-      (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
-      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
-
-    *(reg_flow_nids + rd) = current_nid + 1;
-
-    print_lui();println();
-
-    printf3("%d ite 2 %d 20 %d ; reset lower bound\n",
-      (char*) (current_nid + 2),                // nid of this line
+    printf3("%d ite 2 %d 20 %d\n",
+      (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
       (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
 
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 2;
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
 
-    printf3("%d ite 2 %d 50 %d ; reset upper bound\n",
-      (char*) (current_nid + 3),                // nid of this line
+    printf3("%d ite 2 %d 50 %d\n",
+      (char*) (current_nid + 1),                // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
       (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
 
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 3;
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
+
+    printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) left_shift(imm, 12));
+
+    // if this instruction is active set $rd = imm << 12
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) (current_nid + 3),      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+      (char*) (current_nid + 2),      // nid of immediate argument left-shifted by 12 bits
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+    *(reg_flow_nids + rd) = current_nid + 3;
+
+    print_lui();println();
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
@@ -9609,41 +9609,41 @@ void model_remu() {
 
 void model_sltu() {
   if (rd != REG_ZR) {
+    printf3("%d ite 2 %d 20 %d\n",
+      (char*) current_nid,                      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
+
+    printf3("%d ite 2 %d 50 %d\n",
+      (char*) (current_nid + 1),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
+
     // compute $rs1 < $rs2
     printf3("%d ult 1 %d %d\n",
-      (char*) current_nid,       // nid of this line
+      (char*) (current_nid + 2), // nid of this line
       (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
       (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
 
     // unsigned-extend $rs1 < $rs2 by 63 bits to 64 bits
     printf2("%d uext 2 %d 63\n",
-      (char*) (current_nid + 1), // nid of this line
-      (char*) current_nid);      // nid of $rs1 < $rs2
+      (char*) (current_nid + 3),  // nid of this line
+      (char*) (current_nid + 2)); // nid of $rs1 < $rs2
 
     // if this instruction is active set $rd = $rs1 < $rs2
     printf4("%d ite 2 %d %d %d ; ",
-      (char*) (current_nid + 2),      // nid of this line
+      (char*) (current_nid + 4),      // nid of this line
       (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-      (char*) (current_nid + 1),      // nid of unsigned-64-bit-extended $rs1 < $rs2
+      (char*) (current_nid + 3),      // nid of unsigned-64-bit-extended $rs1 < $rs2
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    *(reg_flow_nids + rd) = current_nid + 2;
+    *(reg_flow_nids + rd) = current_nid + 4;
 
     print_add_sub_mul_divu_remu_sltu("sltu");println();
-
-    printf3("%d ite 2 %d 20 %d ; reset lower bound\n",
-      (char*) (current_nid + 3),                // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
-
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 3;
-
-    printf3("%d ite 2 %d 50 %d ; reset upper bound\n",
-      (char*) (current_nid + 4),                // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
-
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 4;
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
