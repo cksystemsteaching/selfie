@@ -9650,6 +9650,8 @@ void model_sltu() {
 }
 
 void model_ld() {
+  uint64_t address_nid;
+
   if (rd != REG_ZR) {
     // if this instruction is active record lower bound on $rs1 register for checking address validity
     printf4("%d ite 2 %d %d %d\n",
@@ -9669,31 +9671,9 @@ void model_ld() {
 
     up_flow_nid = current_nid + 1;
 
-    if (imm == 0) {
-      // if this instruction is active record $rs1 register as address for checking address validity
-      printf4("%d ite 2 %d %d %d\n",
-        (char*) (current_nid + 2),    // nid of this line
-        (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
-        (char*) (reg_nids + rs1),     // nid of current value of $rs1 register
-        (char*) read_flow_start_nid); // nid of address of most recent memory read access
-
-      read_flow_start_nid = current_nid + 2;
-
-      // read from memory at address in $rs1 register
-      printf3("%d read 2 %d %d\n",
-        (char*) (current_nid + 3), // nid of this line
-        (char*) memory_nid,        // nid of memory
-        (char*) (reg_nids + rs1)); // nid of current value of $rs1 register
-
-      // if this instruction is active set $rd = memory[$rs1]
-      printf4("%d ite 2 %d %d %d ; ",
-        (char*) (current_nid + 4),      // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (current_nid + 3),      // nid of memory[$rs1]
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
-
-      *(reg_flow_nids + rd) = current_nid + 4;
-    } else {
+    if (imm == 0)
+      address_nid = reg_nids + rs1; // nid of current value of $rs1 register
+    else {
       printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) imm);
 
       // compute $rs1 + imm
@@ -9702,30 +9682,64 @@ void model_ld() {
         (char*) (reg_nids + rs1),   // nid of current value of $rs1 register
         (char*) (current_nid + 2)); // nid of immediate value
 
-      // if this instruction is active record $rs1 + imm as address for checking address validity
-      printf4("%d ite 2 %d %d %d\n",
-        (char*) (current_nid + 4),    // nid of this line
-        (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
-        (char*) (current_nid + 3),    // nid of $rs1 + imm
-        (char*) read_flow_start_nid); // nid of address of most recent memory read access
+      address_nid = current_nid + 3; // nid of $rs1 + imm
 
-      read_flow_start_nid = current_nid + 4;
-
-      // read from memory at address $rs1 + imm
-      printf3("%d read 2 %d %d\n",
-        (char*) (current_nid + 5),  // nid of this line
-        (char*) memory_nid,         // nid of memory
-        (char*) (current_nid + 3)); // nid of $rs1 + imm
-
-      // if this instruction is active set $rd = memory[$rs1 + imm]
-      printf4("%d ite 2 %d %d %d ; ",
-        (char*) (current_nid + 6),      // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (current_nid + 5),      // nid of memory[$rs1 + imm]
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
-
-      *(reg_flow_nids + rd) = current_nid + 6;
+      current_nid = current_nid + 2;
     }
+
+    // if this instruction is active record address of memory read access for checking address validity
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 2),    // nid of this line
+      (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
+      (char*) address_nid,          // nid of address of memory read access
+      (char*) read_flow_start_nid); // nid of address of most recent memory read access
+
+    read_flow_start_nid = current_nid + 2;
+    /*
+    // read from lower-bounds memory at address of memory read access
+    printf3("%d read 2 %d %d\n",
+      (char*) (current_nid + 3), // nid of this line
+      (char*) (memory_nid + 1),  // nid of lower-bounds memory
+      (char*) address_nid);      // nid of address of memory read access
+
+    // if this instruction is active set lower bound on $rd = lower-bounds memory at address of memory read access
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 4),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (current_nid + 3),                // nid of lower-bounds memory at address of memory read access
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 4;
+
+    // read from upper-bounds memory at address of memory read access
+    printf3("%d read 2 %d %d\n",
+      (char*) (current_nid + 5), // nid of this line
+      (char*) (memory_nid + 2),  // nid of upper-bounds memory
+      (char*) address_nid);      // nid of address of memory read access
+
+    // if this instruction is active set upper bound on $rd = upper-bounds memory at address of memory read access
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 6),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (current_nid + 5),                // nid of upper-bounds memory at address of memory read access
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 6;
+    */
+    // read from memory at address of memory read access
+    printf3("%d read 2 %d %d\n",
+      (char*) (current_nid + 7), // nid of this line
+      (char*) memory_nid,        // nid of memory
+      (char*) address_nid);      // nid of address of memory read access
+
+    // if this instruction is active set $rd = memory at address of memory read access
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) (current_nid + 8),      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+      (char*) (current_nid + 7),      // nid of memory at address of memory read access
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+    *(reg_flow_nids + rd) = current_nid + 8;
 
     print_ld();println();
   }
@@ -10650,8 +10664,8 @@ uint64_t selfie_model_generate() {
 
   memory_flow_nid = memory_nid;
 
-  lo_memory_flow_nid = (memory_nid + 1);
-  up_memory_flow_nid = (memory_nid + 2);
+  lo_memory_flow_nid = memory_nid + 1;
+  up_memory_flow_nid = memory_nid + 2;
 
   print("\n; data flow\n\n");
 
