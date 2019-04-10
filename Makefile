@@ -86,7 +86,7 @@ boolector: smt
 grader:
 	python -m unittest \
 		grader.tests.test-compilable \
-		grader.tests.test-instruction-encoding \
+		grader.tests.test-riscv-instruction \
 		grader.tests.test-mipster-execution \
 		grader.tests.test-bulk-grader
 

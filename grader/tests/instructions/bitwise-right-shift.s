@@ -1,1 +1,1 @@
-srl t0, t1, t2
+srl t0,t1,t2

@@ -83,13 +83,22 @@ R_FORMAT_MASK   = 0b11111110000000000111000001111111
 AMO_FORMAT_MASK = 0b11111000000000000111000001111111
 LR_FORMAT_MASK  = 0b11111001111100000111000001111111
 
-SLL_INSTRUCTION = ('bitwise-left-shift', encode_r_format(F7_SLL, F3_SLL, OP_OP), R_FORMAT_MASK)
-SRL_INSTRUCTION = ('bitwise-right-shift', encode_r_format(F7_SRL, F3_SRL, OP_OP), R_FORMAT_MASK)
-OR_INSTRUCTION  = ('bitwise-or', encode_r_format(F7_OR, F3_OR, OP_OP), R_FORMAT_MASK)
-AND_INSTRUCTION = ('bitwise-and', encode_r_format(F7_AND, F3_AND, OP_OP), R_FORMAT_MASK)
-NOT_INSTRUCTION = ('bitwise-not', encode_i_format(4095, F3_XORI, OP_IMM), NOT_FORMAT_MASK)
-LR_INSTRUCTION  = ('load-reserved', encode_amo_format(F5_LR, F3_LR), LR_FORMAT_MASK)
-SC_INSTRUCTION  = ('store-conditional', encode_amo_format(F5_SC, F3_SC), AMO_FORMAT_MASK)
+REGISTER_REGEX = '(zero|ra|sp|gp|tp|t[0-6]|s[0-9]|s10|s11|a[0-7])'
+
+SLL_INSTRUCTION = ('bitwise-left-shift', encode_r_format(F7_SLL, F3_SLL, OP_OP), R_FORMAT_MASK,
+                  '^sll\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+SRL_INSTRUCTION = ('bitwise-right-shift', encode_r_format(F7_SRL, F3_SRL, OP_OP), R_FORMAT_MASK,
+                  '^srl\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+OR_INSTRUCTION  = ('bitwise-or', encode_r_format(F7_OR, F3_OR, OP_OP), R_FORMAT_MASK,
+                  '^or\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+AND_INSTRUCTION = ('bitwise-and', encode_r_format(F7_AND, F3_AND, OP_OP), R_FORMAT_MASK,
+                  '^and\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+NOT_INSTRUCTION = ('bitwise-not', encode_i_format(4095, F3_XORI, OP_IMM), NOT_FORMAT_MASK,
+                  '^xori\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',-1$')
+LR_INSTRUCTION  = ('load-reserved', encode_amo_format(F5_LR, F3_LR), LR_FORMAT_MASK,
+                  '^lr\\.d\\s+' + REGISTER_REGEX + ',\\(' + REGISTER_REGEX + '\\)$')
+SC_INSTRUCTION  = ('store-conditional', encode_amo_format(F5_SC, F3_SC), AMO_FORMAT_MASK,
+                  '^sc\\.d\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',\\(' + REGISTER_REGEX + '\\)$')
 
 class DummyWriter:
   def __getattr__( self, name ):
@@ -251,9 +260,11 @@ def test_instruction_encoding(instruction, file):
 
 
 
-def test_assembler_instruction_format(file, instruction, msg):
+def test_assembler_instruction_format(instruction, file):
   command = './selfie -c grader/{} -s .tmp.s'.format(file)
   exit_code, output, _ = execute(command)
+
+  msg = instruction[0] + ' RISC-V instruction has right assembly instruction format'
 
   if exit_code == 0:
     exit_code = 1
@@ -261,7 +272,7 @@ def test_assembler_instruction_format(file, instruction, msg):
     try:
       with open('.tmp.s', 'rt') as f:
         for line in f:
-          if instruction in line:
+          if re.match(instruction[3], line) != None:
             # at least one assembler instruction has the right encoding
             exit_code = 0
 
@@ -366,6 +377,11 @@ def test_compilable(file, msg, should_succeed=True):
   test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code, out: has_compiled(code, out, should_succeed=should_succeed))
 
 
+def test_riscv_instruction(instruction, file):
+  test_instruction_encoding(instruction, file)
+  test_assembler_instruction_format(instruction, file)
+
+
 def test_mipster_execution(file, result, msg):
   test_execution('./selfie -c grader/{} -m 128'.format(file), msg, success_criteria=result)
 
@@ -422,8 +438,8 @@ def test_bitwise_shift(stage):
       literal_file = instruction[0] + '-literals.c'
       variable_file = instruction[0] + '-variables.c'
 
-      test_instruction_encoding(instruction, literal_file)
-      test_instruction_encoding(instruction, variable_file)
+      test_riscv_instruction(instruction, literal_file)
+      test_riscv_instruction(instruction, variable_file)
       test_mipster_execution(literal_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
       test_mipster_execution(variable_file, 2,
@@ -452,8 +468,8 @@ def test_bitwise_and_or_not():
       operation + ' operator calculates the right result for literals when executed with MIPSTER')
     test_mipster_execution(variable_file, 42,
       operation + ' operator calculates the right result for variables when executed with MIPSTER')
-    test_instruction_encoding(instruction, literal_file)
-    test_instruction_encoding(instruction, variable_file)
+    test_riscv_instruction(instruction, literal_file)
+    test_riscv_instruction(instruction, variable_file)
 
   test_mipster_execution('bitwise-and-or-not-precedence.c', 42,
     'bitwise and, or & not '  + ' operators respect the precedence of the C operators: &,|,~')
@@ -554,12 +570,8 @@ def test_thread():
 
 
 def test_treiber_stack():
-  test_instruction_encoding(LR_INSTRUCTION, 'load-reserved.c')
-  test_instruction_encoding(SC_INSTRUCTION, 'store-conditional.c')
-  test_assembler_instruction_format('../manuscript/code/hello-world.c', 'lr.d',
-    'LR RISC-V instruction has right assembly instructin format')
-  test_assembler_instruction_format('../manuscript/code/hello-world.c', 'sc.d',
-    'SC RISC-V instruction has right assembly instructin format')
+  test_riscv_instruction(LR_INSTRUCTION, 'load-reserved.c')
+  test_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c')
   test_execution('./selfie -c treiber-stack.c grader/treiber-stack-push.c -m 128',
     'all pushed elements are actually in the treiber-stack',
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
