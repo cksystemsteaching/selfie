@@ -9386,6 +9386,20 @@ void model_lui() {
     *(reg_flow_nids + rd) = current_nid + 1;
 
     print_lui();println();
+
+    printf3("%d ite 2 %d 20 %d ; reset lower bound\n",
+      (char*) (current_nid + 2),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 2;
+
+    printf3("%d ite 2 %d 50 %d ; reset upper bound\n",
+      (char*) (current_nid + 3),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 3;
   }
 
   go_to_instruction(is, REG_ZR, pc, pc + INSTRUCTIONSIZE, 0);
