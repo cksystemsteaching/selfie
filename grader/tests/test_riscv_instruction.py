@@ -9,6 +9,11 @@ import grader.self
 
 class TestRiscvInstruction(unittest.TestCase):
 
+  def setUp(self):
+    patcher = patch('grader.self.print_loud')
+    self.addCleanup(patcher.stop)
+    self.mock_foo = patcher.start()
+
   @classmethod
   def setUpClass(self):
     self.instructions = list(map(lambda f: f[:-2], list_files('grader/tests/instructions', extension='.s')))

@@ -13,13 +13,22 @@ This is the automatic grader of the selfie project.
 Students may use the grader for self-grading their solutions.
 """
 
-from __future__ import print_function
 import sys
+
+def version_error():
+  print('This Python script must be executed with Python V3.3 or newer')
+  exit(1)
+
+if sys.version_info[0] < 3:
+  version_error()
+elif sys.version_info[0] == 3 and sys.version_info[1] < 3:
+  version_error()
+
 import os
 import re
 import math
 import struct
-from subprocess import Popen, PIPE
+from subprocess import Popen, TimeoutExpired, PIPE
 
 number_of_positive_tests_passed = [0]
 number_of_positive_tests_failed = [0]
@@ -157,21 +166,42 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
       print_passed(msg)
 
 
-def execute(command):
+class TimeoutException(Exception):
+  def __init__(self, command, timeout, output, error_output):
+    Exception.__init__(self, 'The command \"' + command + '\" has timed out after ' + str(timeout) + 's')
+
+    self.output = output
+    self.error_output = error_output
+
+
+def execute(command, timeout=10):
   command = command.replace('grader/', home_path + 'grader/')
   command = command.replace('manuscript/code/', home_path + 'manuscript/code/')
 
-  process = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
-  stdoutdata, stderrdata = process.communicate()
-  
+  process = Popen(command.split(' '), stdout=PIPE, stderr=PIPE)
+
+  try:
+    stdoutdata, stderrdata = process.communicate(timeout=timeout)
+
+    timedout = False
+  except TimeoutExpired:
+    process.kill()
+    stdoutdata, stderrdata = process.communicate()
+
+    timedout = True
+
   output = stdoutdata.decode(sys.stdout.encoding)
   error_output = stderrdata.decode(sys.stderr.encoding)
+
+  if timedout:
+    raise TimeoutException(command, timeout, output, error_output)
 
   return (process.returncode, output, error_output)
 
 
 def set_up():
-  execute('make clean && make selfie')
+  execute('make clean')
+  execute('make selfie')
 
 
 def has_compiled(returncode, output, should_succeed=True):
@@ -290,31 +320,34 @@ def test_assembler_instruction_format(instruction, file):
 
 
 def test_execution(command, msg, success_criteria=True, mandatory=False):
-  returncode, output, _ = execute(command)
+  try:
+    returncode, output, _ = execute(command)
 
-  if type(success_criteria) is bool:
-    should_succeed = success_criteria
+    if type(success_criteria) is bool:
+      should_succeed = success_criteria
 
-    if should_succeed:
-      warning = 'Execution terminated with wrong exit code {} instead of 0'.format(returncode)
-    else:
-      warning = 'Execution terminated with wrong exit code {}'.format(returncode)
+      if should_succeed:
+        warning = 'Execution terminated with wrong exit code {} instead of 0'.format(returncode)
+      else:
+        warning = 'Execution terminated with wrong exit code {}'.format(returncode)
 
-    record_result(returncode == 0, msg, output, warning, should_succeed, command, mandatory)
+      record_result(returncode == 0, msg, output, warning, should_succeed, command, mandatory)
 
-  elif type(success_criteria) is int:
-    record_result(returncode == success_criteria, msg, output,
-      'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command, mandatory)
+    elif type(success_criteria) is int:
+      record_result(returncode == success_criteria, msg, output,
+        'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command, mandatory)
 
-  elif type(success_criteria) is str:
-    filtered_output = filter_status_messages(output)
+    elif type(success_criteria) is str:
+      filtered_output = filter_status_messages(output)
 
-    record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command, mandatory)
+      record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command, mandatory)
 
-  elif callable(success_criteria):
-    result, warning = success_criteria(returncode, output)
+    elif callable(success_criteria):
+      result, warning = success_criteria(returncode, output)
 
-    record_result(result, msg, output, warning, True, command, mandatory)
+      record_result(result, msg, output, warning, True, command, mandatory)
+  except TimeoutException as e:
+    record_result(False, msg, e.output, str(e), True, command, mandatory)
 
 
 class Memoize:
@@ -555,9 +588,9 @@ def test_assembler(stage):
 
   if stage >= 2:
     start_stage(2)
-    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s '
-     + '&& diff -q selfie1.s selfie2.s',
-      'selfie can assemble its own binary file and both assembly files are exactly the same')
+    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s ',
+      'selfie can assemble its own binary file')
+    test_execution('diff -q selfie1.s selfie2.s', 'both assembly files are exactly the same')
 
 
 def test_concurrent_machines():

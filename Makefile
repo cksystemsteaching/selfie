@@ -84,11 +84,7 @@ boolector: smt
 
 # Test grader
 grader:
-	python -m unittest \
-		grader.tests.test-compilable \
-		grader.tests.test-riscv-instruction \
-		grader.tests.test-mipster-execution \
-		grader.tests.test-bulk-grader
+	python -m unittest -v grader.tests.test_all
 
 # Run everything
 all: compile quine debug replay os vm min mob smt sat
