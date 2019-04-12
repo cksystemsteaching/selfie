@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import os
 
@@ -6,7 +8,7 @@ if len(sys.argv) == 3:
 
   target = sys.argv[2]
 else:
-  print('usage: python clone-from-links.py text-file-with-github-links directory-to-clone-repos-into')
+  print('usage: python3 clone-from-links.py text-file-with-github-links directory-to-clone-repos-into')
 
   sys.exit(1)
 

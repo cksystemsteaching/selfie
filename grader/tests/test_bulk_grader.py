@@ -14,7 +14,7 @@ class TestBulkGrader(unittest.TestCase):
   @classmethod
   def setUpClass(self):
     system('rm -rf grader/tests/.build && mkdir grader/tests/.build >/dev/null 2>&1')
-    system('python grader/tools/clone-from-links.py grader/tests/links.txt grader/tests/.build >/dev/null 2>&1')
+    system('python3 grader/tools/clone-from-links.py grader/tests/links.txt grader/tests/.build >/dev/null 2>&1')
 
   @classmethod
   def tearDownClass(self):
@@ -32,7 +32,7 @@ class TestBulkGrader(unittest.TestCase):
     self.assertFalse(isfile('grader/tests/.build/ChristianMoesl/selfie/grader/self.py'))
     self.assertFalse(isfile('grader/tests/.build/cksystemsteaching/selfie/grader/self.py'))
 
-    process = Popen('python grader/tools/grade-from-links.py grader/tests/links.txt ../../../../.. grader/tests/.build base', stdout=PIPE, stderr=PIPE, shell=True)
+    process = Popen('python3 grader/tools/grade-from-links.py grader/tests/links.txt ../../../../.. grader/tests/.build base', stdout=PIPE, stderr=PIPE, shell=True)
     output = process.communicate()[0].decode(sys.stdout.encoding)
 
     self.assertEqual(process.returncode, 0)

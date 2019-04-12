@@ -84,7 +84,7 @@ boolector: smt
 
 # Test grader
 grader:
-	python -m unittest -v grader.tests.test_all
+	python3 -m unittest -v grader.tests.test_all
 
 # Run everything
 all: compile quine debug replay os vm min mob smt sat

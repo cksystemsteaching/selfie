@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import os
 
@@ -6,7 +8,7 @@ if len(sys.argv) > 2:
 
   command = ' '.join(sys.argv[2:])
 else:
-  print('usage: python run-in-user-repos.py parent-directory command-with-any-number-of-options')
+  print('usage: python3 run-in-user-repos.py parent-directory command-with-any-number-of-options')
 
   sys.exit(1)
 

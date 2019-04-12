@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Copyright (c) 2015-2019, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is governed
@@ -13,22 +14,19 @@ This is the automatic grader of the selfie project.
 Students may use the grader for self-grading their solutions.
 """
 
+from __future__ import print_function
 import sys
-
-def version_error():
-  print('This Python script must be executed with Python V3.3 or newer')
-  exit(1)
-
-if sys.version_info[0] < 3:
-  version_error()
-elif sys.version_info[0] == 3 and sys.version_info[1] < 3:
-  version_error()
-
 import os
 import re
 import math
 import struct
-from subprocess import Popen, TimeoutExpired, PIPE
+
+if sys.version_info < (3, 3):
+  from subprocess import Popen, PIPE
+  print('warning: python V3.3 or newer is recommended')
+  print('mipster execution timeout is disabled with this python version\n')
+else:
+  from subprocess import Popen, TimeoutExpired, PIPE
 
 number_of_positive_tests_passed = [0]
 number_of_positive_tests_failed = [0]
@@ -180,21 +178,24 @@ def execute(command, timeout=10):
 
   process = Popen(command.split(' '), stdout=PIPE, stderr=PIPE)
 
-  try:
-    stdoutdata, stderrdata = process.communicate(timeout=timeout)
-
-    timedout = False
-  except TimeoutExpired:
-    process.kill()
+  if sys.version_info < (3, 3):
     stdoutdata, stderrdata = process.communicate()
+  else:
+    try:
+      stdoutdata, stderrdata = process.communicate(timeout=timeout)
 
-    timedout = True
+      timedout = False
+    except TimeoutExpired:
+      process.kill()
+      stdoutdata, stderrdata = process.communicate()
 
-  output = stdoutdata.decode(sys.stdout.encoding)
-  error_output = stderrdata.decode(sys.stderr.encoding)
+      timedout = True
 
-  if timedout:
-    raise TimeoutException(command, timeout, output, error_output)
+    output = stdoutdata.decode(sys.stdout.encoding)
+    error_output = stderrdata.decode(sys.stderr.encoding)
+
+    if timedout:
+      raise TimeoutException(command, timeout, output, error_output)
 
   return (process.returncode, output, error_output)
 
@@ -748,7 +749,7 @@ def print_loud(msg, end='\n'):
 
 
 def print_usage():
-  print('usage: python grader/self.py { option } { test }\n')
+  print('usage: python3 grader/self.py { option } { test }\n')
 
   print('options:')
 
