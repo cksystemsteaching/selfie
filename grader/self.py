@@ -532,23 +532,30 @@ def test_for_loop():
 
 
 
-def test_array():
-  test_compilable('array-declaration.c', 
-    'array declaration do compile')
-  test_compilable('array-assignment.c',
-    'assignments on arrays do compile')
-  test_compilable('array-invalid-assignment.c',
-    'invalid assignments to an array do not compile', should_succeed=False)
-  test_compilable('array-multidimensional.c',
-    'multidimensional array declarations do compile')
-  test_compilable('array-in-function.c',
-    'arrays in the function signature do compile')
-  test_mipster_execution('array-assignment.c', 4,
-    'arrays assignments are implemented with the right semantics')
-  test_mipster_execution('array-assignment.c', 4,
-    'multidimensional arrays assignments are implemented with the right semantics')
-  test_mipster_execution('array-in-function.c', 4,
-    'array assignments in functions are implemented with the right semantics')
+def test_array(part):
+  if part == 1:
+    test_compilable('array-global-declaration.c', 
+      'array declaration do compile')
+    test_compilable('array-assignment.c',
+      'assignments on arrays do compile')
+    test_compilable('array-invalid-assignment.c',
+      'invalid assignments to an array do not compile', should_succeed=False)
+    test_compilable('array-call-by-reference.c',
+      'arrays in the function signature do compile')
+    test_mipster_execution('array-assignment.c', 10,
+      'arrays assignments are implemented with the right semantics')
+    test_mipster_execution('array-call-by-reference.c', 4,
+      'array assignments in functions are implemented with the right semantics')
+
+  if part == 2:
+    test_compilable('array-multidimensional.c',
+      'multidimensional array declarations do compile')
+    test_mipster_execution('array-multidimensional.c', 4,
+      'multidimensional arrays assignments are implemented with the right semantics')
+    test_compilable('array-access-order.c',
+      'access to start-address of multidimensional is possible')
+    test_mipster_execution('array-access-order.c', 0,
+      'access to multidimensional arrays is implemented in row-major order')
 
 
 
@@ -769,7 +776,8 @@ defined_tests = [
     ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
     ('bitwise-and-or-not', test_bitwise_and_or_not),
     ('for-loop', test_for_loop),
-    ('array', test_array),
+    ('array-1', lambda: test_array(1)),
+    ('array-2', lambda: test_array(2)),
     ('struct', test_structs),
     ('assembler-1', lambda: test_assembler(1)),
     ('assembler-2', lambda: test_assembler(2)),
