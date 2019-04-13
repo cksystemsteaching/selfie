@@ -9642,20 +9642,22 @@ void model_remu() {
 
     remainder_flow_nid = current_nid;
 
+    current_nid = current_nid + 1;
+
     // compute $rs1 % $rs2
     printf3("%d urem 2 %d %d\n",
-      (char*) (current_nid + 1), // nid of this line
+      (char*) current_nid,       // nid of this line
       (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
       (char*) (reg_nids + rs2)); // nid of current value of $rs2 register
 
     // if this instruction is active set $rd = $rs1 % $rs2
     printf4("%d ite 2 %d %d %d ; ",
-      (char*) (current_nid + 2),      // nid of this line
+      (char*) (current_nid + 1),      // nid of this line
       (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-      (char*) (current_nid + 1),      // nid of $rs1 % $rs2
+      (char*) current_nid,            // nid of $rs1 % $rs2
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    *(reg_flow_nids + rd) = current_nid + 2;
+    *(reg_flow_nids + rd) = current_nid + 1;
 
     print_add_sub_mul_divu_remu_sltu("remu");println();
   }
