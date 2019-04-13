@@ -10458,35 +10458,39 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
   else
     print("write access below lower bound\n");
 
+  current_nid = current_nid + 2;
+
   // check if address of most recent memory access > current upper bound
   printf3("%d ugt 1 %d %d\n",
-    (char*) (current_nid + 2), // nid of this line
-    (char*) flow_nid,          // nid of address of most recent memory access
-    (char*) up_flow_nid);      // nid of current upper bound on memory addresses
+    (char*) current_nid,  // nid of this line
+    (char*) flow_nid,     // nid of address of most recent memory access
+    (char*) up_flow_nid); // nid of current upper bound on memory addresses
   printf2("%d bad %d ; ",
-    (char*) (current_nid + 3),  // nid of this line
-    (char*) (current_nid + 2)); // nid of previous check
+    (char*) (current_nid + 1), // nid of this line
+    (char*) current_nid);      // nid of previous check
   if (read_access)
     print("read access above upper bound\n");
   else
     print("write access above upper bound\n");
 
+  current_nid = current_nid + 2;
+
   // check if address of most recent memory access is word-aligned
   printf2("%d and 2 %d 17\n",
-    (char*) (current_nid + 4), // nid of this line
-    (char*) flow_nid);         // nid of address of most recent memory access
+    (char*) current_nid, // nid of this line
+    (char*) flow_nid);   // nid of address of most recent memory access
   printf2("%d ne 1 %d 12\n",
-    (char*) (current_nid + 5),  // nid of this line
-    (char*) (current_nid + 4)); // nid of 3 LSBs of address of most recent memory access
+    (char*) (current_nid + 1), // nid of this line
+    (char*) current_nid);      // nid of 3 LSBs of address of most recent memory access
   printf2("%d bad %d ; ",
-    (char*) (current_nid + 6),  // nid of this line
-    (char*) (current_nid + 5)); // nid of previous check
+    (char*) (current_nid + 2),  // nid of this line
+    (char*) (current_nid + 1)); // nid of previous check
   if (read_access)
     print("word-unaligned read access\n\n");
   else
     print("word-unaligned write access\n\n");
 
-  current_nid = current_nid + 7;
+  current_nid = current_nid + 3;
 }
 
 uint64_t selfie_model_generate() {
