@@ -9595,6 +9595,9 @@ void model_sub() {
 
 void model_mul() {
   if (rd != REG_ZR) {
+    // TODO: check if bounds on $rs1 and $rs2 are really initial bounds
+    reset_bounds();
+
     // compute $rs1 * $rs2
     printf3("%d mul 2 %d %d\n",
       (char*) current_nid,       // nid of this line
@@ -9618,6 +9621,9 @@ void model_mul() {
 
 void model_divu() {
   if (rd != REG_ZR) {
+    // TODO: check if bounds on $rs1 and $rs2 are really initial bounds
+    reset_bounds();
+
     // if this instruction is active record $rs2 for checking if $rs2 == 0
     printf5("%d ite 2 %d %d %d ; record %s for checking division by zero\n",
       (char*) current_nid,         // nid of this line
@@ -9653,6 +9659,9 @@ void model_divu() {
 
 void model_remu() {
   if (rd != REG_ZR) {
+    // TODO: check if bounds on $rs1 and $rs2 are really initial bounds
+    reset_bounds();
+
     // if this instruction is active record $rs2 for checking if $rs2 == 0
     printf5("%d ite 2 %d %d %d ; record %s for checking remainder by zero\n",
       (char*) current_nid,          // nid of this line
@@ -9688,23 +9697,7 @@ void model_remu() {
 
 void model_sltu() {
   if (rd != REG_ZR) {
-    printf3("%d ite 2 %d 20 %d\n",
-      (char*) current_nid,                      // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
-
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
-
-    printf3("%d ite 2 %d 50 %d\n",
-      (char*) current_nid,                      // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
-
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
+    reset_bounds();
 
     // compute $rs1 < $rs2
     printf3("%d ult 1 %d %d\n",
