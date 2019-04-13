@@ -9374,6 +9374,7 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
 
 void model_lui() {
   if (rd != REG_ZR) {
+    // if this instruction is active reset lower bound on $rd register to end of code segment
     printf3("%d ite 2 %d 20 %d\n",
       (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
@@ -9381,6 +9382,7 @@ void model_lui() {
 
     *(reg_flow_nids + LO_FLOW + rd) = current_nid;
 
+    // if this instruction is active reset upper bound on $rd register to highest virtual address
     printf3("%d ite 2 %d 50 %d\n",
       (char*) (current_nid + 1),                // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
@@ -9406,28 +9408,18 @@ void model_lui() {
 }
 
 void model_addi() {
-  if (rd != REG_ZR) {
-    if (imm == 0) {
-      // if this instruction is active set $rd = $rs1
-      printf4("%d ite 2 %d %d %d ; ",
-        (char*) current_nid,            // nid of this line
-        (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-        (char*) (reg_nids + rs1),       // nid of current value of $rs1 register
-        (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+  uint64_t result_nid;
 
-      *(reg_flow_nids + rd) = current_nid;
-    } else {
+  if (rd != REG_ZR) {
+    if (imm == 0)
+      result_nid = reg_nids + rs1;
+    else {
       printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
 
       if (rs1 == REG_ZR) {
-        // if this instruction is active set $rd = imm
-        printf4("%d ite 2 %d %d %d ; ",
-          (char*) (current_nid + 1),      // nid of this line
-          (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-          (char*) current_nid,            // nid of immediate value
-          (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+        result_nid = current_nid;
 
-        *(reg_flow_nids + rd) = current_nid + 1;
+        current_nid = current_nid + 1;
 
         if (rd == REG_A7)
           // assert: next instruction is ecall
@@ -9439,16 +9431,20 @@ void model_addi() {
           (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
           (char*) current_nid);      // nid of immediate value
 
-        // if this instruction is active set $rd = $rs1 + imm
-        printf4("%d ite 2 %d %d %d ; ",
-          (char*) (current_nid + 2),      // nid of this line
-          (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-          (char*) (current_nid + 1),      // nid of $rs1 + ismm
-          (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+        result_nid = current_nid + 1;
 
-        *(reg_flow_nids + rd) = current_nid + 2;
+        current_nid = current_nid + 2;
       }
     }
+
+    // if this instruction is active set $rd = $rs1 + imm
+    printf4("%d ite 2 %d %d %d ; ",
+      (char*) current_nid,            // nid of this line
+      (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
+      (char*) result_nid,             // nid of $rs1 + ismm
+      (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
+
+    *(reg_flow_nids + rd) = current_nid;
 
     print_addi();println();
   }
