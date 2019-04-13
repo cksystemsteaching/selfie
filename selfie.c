@@ -9848,43 +9848,9 @@ void model_ld() {
 void model_sd() {
   uint64_t address_nid;
 
-  // if this instruction is active record lower bound on $rs1 register for checking address validity
-  printf4("%d ite 2 %d %d %d\n",
-    (char*) current_nid,                // nid of this line
-    (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
-    (char*) (reg_nids + LO_FLOW + rs1), // nid of current lower bound on $rs1 register
-    (char*) lo_flow_nid);               // nid of most recent update of lower bound on memory access
+  record_bounds();
 
-  lo_flow_nid = current_nid;
-
-  current_nid = current_nid + 1;
-
-  // if this instruction is active record upper bound on $rs1 register for checking address validity
-  printf4("%d ite 2 %d %d %d\n",
-    (char*) current_nid,                // nid of this line
-    (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
-    (char*) (reg_nids + UP_FLOW + rs1), // nid of current upper bound on $rs1 register
-    (char*) up_flow_nid);               // nid of most recent update of upper bound on memory access
-
-  up_flow_nid = current_nid;
-
-  current_nid = current_nid + 1;
-
-  if (imm == 0)
-    address_nid = reg_nids + rs1; // nid of current value of $rs1 register
-  else {
-    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
-
-    // compute $rs1 + imm
-    printf3("%d add 2 %d %d\n",
-      (char*) (current_nid + 1), // nid of this line
-      (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
-      (char*) current_nid);      // nid of immediate value
-
-    address_nid = current_nid + 1; // nid of $rs1 + imm
-
-    current_nid = current_nid + 2;
-  }
+  address_nid = compute_address();
 
   // if this instruction is active record $rs1 + imm for checking address validity
   printf4("%d ite 2 %d %d %d\n",
