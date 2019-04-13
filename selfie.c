@@ -9480,6 +9480,54 @@ void model_addi() {
 
 void model_add() {
   if (rd != REG_ZR) {
+    // lower bound on $rs1 register > lower bound on $rs2 register
+    printf3("%d ugt 1 %d %d\n",
+      (char*) current_nid,                 // nid of this line
+      (char*) (reg_nids + LO_FLOW + rs1),  // nid of lower bound on $rs1 register
+      (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
+
+    // greater lower bound of $rs1 and $rs2 registers
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 1),           // nid of this line
+      (char*) current_nid,                 // nid of lower bound on $rs1 > lower bound on $rs2
+      (char*) (reg_nids + LO_FLOW + rs1),  // nid of lower bound on $rs1 register
+      (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
+
+    // if this instruction is active set lower bound on $rd = greater lower bound of $rs1 and $rs2 registers
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 2),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (current_nid + 1),                // nid of greater lower bound of $rs1 and $rs2 registers
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 2;
+
+    current_nid = current_nid + 3;
+
+    // upper bound on $rs1 register < upper bound on $rs2 register
+    printf3("%d ult 1 %d %d\n",
+      (char*) current_nid,                 // nid of this line
+      (char*) (reg_nids + UP_FLOW + rs1),  // nid of upper bound on $rs1 register
+      (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
+
+    // lesser upper bound of $rs1 and $rs2 registers
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 1),           // nid of this line
+      (char*) current_nid,                 // nid of upper bound on $rs1 < upper bound on $rs2
+      (char*) (reg_nids + UP_FLOW + rs1),  // nid of upper bound on $rs1 register
+      (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
+
+    // if this instruction is active set upper bound on $rd = lesser upper bound of $rs1 and $rs2 registers
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 2),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (current_nid + 1),                // nid of lesser upper bound of $rs1 and $rs2 registers
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 2;
+
+    current_nid = current_nid + 3;
+
     // compute $rs1 + $rs2
     printf3("%d add 2 %d %d\n",
       (char*) current_nid,       // nid of this line
