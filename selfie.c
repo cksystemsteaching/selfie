@@ -9382,15 +9382,17 @@ void model_lui() {
 
     *(reg_flow_nids + LO_FLOW + rd) = current_nid;
 
+    current_nid = current_nid + 1;
+
     // if this instruction is active reset upper bound on $rd register to highest virtual address
     printf3("%d ite 2 %d 50 %d\n",
-      (char*) (current_nid + 1),                // nid of this line
+      (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
       (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
 
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
 
-    current_nid = current_nid + 2;
+    current_nid = current_nid + 1;
 
     printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
 
