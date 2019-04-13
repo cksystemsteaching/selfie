@@ -1677,7 +1677,12 @@ uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, 
 
 void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t from_address, uint64_t to_address, uint64_t condition_nid);
 
+void reset_bounds();
+
 void model_lui();
+
+void transfer_bounds();
+
 void model_addi();
 void model_add();
 void model_sub();
@@ -1685,8 +1690,13 @@ void model_mul();
 void model_divu();
 void model_remu();
 void model_sltu();
+
+void     record_bounds();
+uint64_t compute_address();
+
 void model_ld();
 void model_sd();
+
 void model_beq();
 void model_jal();
 void model_jalr();
@@ -9372,27 +9382,31 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
   exit(EXITCODE_MODELCHECKINGERROR);
 }
 
+void reset_bounds() {
+  // if this instruction is active reset lower bound on $rd register to end of code segment
+  printf3("%d ite 2 %d 20 %d\n",
+    (char*) current_nid,                      // nid of this line
+    (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+    (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+  *(reg_flow_nids + LO_FLOW + rd) = current_nid;
+
+  current_nid = current_nid + 1;
+
+  // if this instruction is active reset upper bound on $rd register to highest virtual address
+  printf3("%d ite 2 %d 50 %d\n",
+    (char*) current_nid,                      // nid of this line
+    (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+    (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+  *(reg_flow_nids + UP_FLOW + rd) = current_nid;
+
+  current_nid = current_nid + 1;
+}
+
 void model_lui() {
   if (rd != REG_ZR) {
-    // if this instruction is active reset lower bound on $rd register to end of code segment
-    printf3("%d ite 2 %d 20 %d\n",
-      (char*) current_nid,                      // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
-
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
-
-    // if this instruction is active reset upper bound on $rd register to highest virtual address
-    printf3("%d ite 2 %d 50 %d\n",
-      (char*) current_nid,                      // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
-
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
-
-    current_nid = current_nid + 1;
+    reset_bounds();
 
     printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
 
