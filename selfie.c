@@ -9390,16 +9390,18 @@ void model_lui() {
 
     *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
 
-    printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) left_shift(imm, 12));
+    current_nid = current_nid + 2;
+
+    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
 
     // if this instruction is active set $rd = imm << 12
     printf4("%d ite 2 %d %d %d ; ",
-      (char*) (current_nid + 3),      // nid of this line
+      (char*) (current_nid + 1),      // nid of this line
       (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
-      (char*) (current_nid + 2),      // nid of immediate argument left-shifted by 12 bits
+      (char*) current_nid,            // nid of immediate argument left-shifted by 12 bits
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    *(reg_flow_nids + rd) = current_nid + 3;
+    *(reg_flow_nids + rd) = current_nid + 1;
 
     print_lui();println();
   }
