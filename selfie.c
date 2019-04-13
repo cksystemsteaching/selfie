@@ -9411,13 +9411,31 @@ void model_addi() {
   uint64_t result_nid;
 
   if (rd != REG_ZR) {
+    // if this instruction is active set lower bound on $rd = lower bound on $rs1 register
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) current_nid,                      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (reg_nids + LO_FLOW + rd),        // nid of lower bound on $rs1 register
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
+
+    // if this instruction is active set upper bound on $rd = upper bound on $rs1 register
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) (current_nid + 1),                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (reg_nids + UP_FLOW + rd),        // nid of upper bound on $rs1 register
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
+
     if (imm == 0)
       result_nid = reg_nids + rs1;
     else {
-      printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
+      printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) imm);
 
       if (rs1 == REG_ZR) {
-        result_nid = current_nid;
+        result_nid = current_nid + 2;
 
         current_nid = current_nid + 1;
 
@@ -9427,11 +9445,11 @@ void model_addi() {
       } else {
         // compute $rs1 + imm
         printf3("%d add 2 %d %d\n",
-          (char*) (current_nid + 1), // nid of this line
-          (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
-          (char*) current_nid);      // nid of immediate value
+          (char*) (current_nid + 3),  // nid of this line
+          (char*) (reg_nids + rs1),   // nid of current value of $rs1 register
+          (char*) (current_nid + 2)); // nid of immediate value
 
-        result_nid = current_nid + 1;
+        result_nid = current_nid + 3;
 
         current_nid = current_nid + 2;
       }
@@ -9439,12 +9457,12 @@ void model_addi() {
 
     // if this instruction is active set $rd = $rs1 + imm
     printf4("%d ite 2 %d %d %d ; ",
-      (char*) current_nid,            // nid of this line
+      (char*) (current_nid + 2),      // nid of this line
       (char*) pc_nid(pcs_nid, pc),    // nid of pc flag of this instruction
       (char*) result_nid,             // nid of $rs1 + ismm
       (char*) *(reg_flow_nids + rd)); // nid of most recent update of $rd register
 
-    *(reg_flow_nids + rd) = current_nid;
+    *(reg_flow_nids + rd) = current_nid + 2;
 
     print_addi();println();
   }
