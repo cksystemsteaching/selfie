@@ -9786,8 +9786,6 @@ void model_ld() {
 
     current_nid = current_nid + 1;
 
-    /*
-
     // read from lower-bounds memory[$rs1 + imm] into lower bound on $rd register
     printf3("%d read 2 %d %d\n",
       (char*) current_nid,      // nid of this line
@@ -9821,8 +9819,6 @@ void model_ld() {
     *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
 
     current_nid = current_nid + 2;
-
-    */
 
     // read from memory[$rs1 + imm] into $rd register
     printf3("%d read 2 %d %d\n",
