@@ -10304,17 +10304,22 @@ void model_syscalls() {
   printf2("%d inc 2 %d\n",
     (char*) (current_nid + 1352),  // nid of this line
     (char*) (current_nid + 1350)); // nid of fd-bump
-  printf3("%d next 2 %d %d ; increment fd-bump\n",
+  printf4("%d ite 2 %d %d %d ; fd-bump + 1 if openat ecall is active\n",
     (char*) (current_nid + 1353),  // nid of this line
+    (char*) (current_nid + 1300),  // nid of openat ecall is active
+    (char*) (current_nid + 1352),  // nid of fd-bump + 1
+    (char*) (current_nid + 1350)); // nid of fd-bump
+  printf3("%d next 2 %d %d ; increment fd-bump if openat ecall is active\n",
+    (char*) (current_nid + 1354),  // nid of this line
     (char*) (current_nid + 1350),  // nid of fd-bump
-    (char*) (current_nid + 1352)); // nid of fd-bump + 1
+    (char*) (current_nid + 1353)); // nid of fd-bump + 1
   printf4("%d ite 2 %d %d %d ; set $a0 = fd-bump + 1 if openat ecall is active\n\n",
-    (char*) (current_nid + 1354),       // nid of this line
+    (char*) (current_nid + 1355),       // nid of this line
     (char*) (current_nid + 1300),       // nid of openat ecall is active
     (char*) (current_nid + 1352),       // nid of fd-bump + 1
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_nid + 1354;
+  *(reg_flow_nids + REG_A0) = current_nid + 1355;
 
 
   // is brk ecall is active?
