@@ -6495,7 +6495,7 @@ void emit_malloc() {
   // allocate register to compute new bump pointer
   talloc();
 
-  // assert: current temporary is $t0 register to enable propagation of
+  // assert: current temporary is $t1 register to enable propagation of
   // lower and upper bounds on addresses in model generation of brk syscall
 
   // get current _bump which will be returned upon success
@@ -10371,21 +10371,21 @@ void model_syscalls() {
     (char*) (current_nid + 1450),  // nid of brk
     (char*) (current_nid + 1459)); // nid of preceding line
 
-  printf4("%d ite 2 %d %d %d ; lower bound on $t0 = brk if brk ecall is active and $a0 is valid\n",
+  printf4("%d ite 2 %d %d %d ; lower bound on $t1 = brk if brk ecall is active and $a0 is valid\n",
     (char*) (current_nid + 1461),                 // nid of this line
     (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
     (char*) (current_nid + 1450),                 // nid of brk
-    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of lower bound on $t0 register
+    (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
 
-  *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1461;
+  *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1461;
 
-  printf4("%d ite 2 %d %d %d ; upper bound on $t0 = $a0 if brk ecall is active and $a0 is valid\n",
+  printf4("%d ite 2 %d %d %d ; upper bound on $t1 = $a0 if brk ecall is active and $a0 is valid\n",
     (char*) (current_nid + 1462),                 // nid of this line
     (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
     (char*) (reg_nids + REG_A0),                  // nid of current value of $a0 register
-    (char*) *(reg_flow_nids + UP_FLOW + REG_T0)); // nid of most recent update of upper bound on $t0 register
+    (char*) *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
 
-  *(reg_flow_nids + UP_FLOW + REG_T0) = current_nid + 1462;
+  *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1462;
 
   printf2("%d not 1 %d ; $a0 is invalid\n",
     (char*) (current_nid + 1463),  // nid of this line
@@ -10402,19 +10402,19 @@ void model_syscalls() {
 
   *(reg_flow_nids + REG_A0) = current_nid + 1465;
 
-  printf3("%d ite 2 %d 20 %d ; lower bound on $t0 = end of code segment if brk ecall is active and $a0 is invalid\n",
+  printf3("%d ite 2 %d 20 %d ; lower bound on $t1 = end of code segment if brk ecall is active and $a0 is invalid\n",
     (char*) (current_nid + 1466),                 // nid of this line
     (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + LO_FLOW + REG_T0)); // nid of most recent update of lower bound on $t0 register
+    (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
 
-  *(reg_flow_nids + LO_FLOW + REG_T0) = current_nid + 1466;
+  *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1466;
 
-  printf3("%d ite 2 %d 50 %d ; upper bound on $t0 = highest virtual address if brk ecall is active and $a0 is invalid\n",
+  printf3("%d ite 2 %d 50 %d ; upper bound on $t1 = highest virtual address if brk ecall is active and $a0 is invalid\n",
     (char*) (current_nid + 1467),                 // nid of this line
     (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + UP_FLOW + REG_T0)); // nid of most recent update of upper bound on $t0 register
+    (char*) *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
 
-  *(reg_flow_nids + UP_FLOW + REG_T0) = current_nid + 1467;
+  *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1467;
 }
 
 void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
