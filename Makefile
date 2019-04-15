@@ -10,7 +10,8 @@ selfie.m selfie.s: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt sat spike qemu boolector grader all clean
+
+.PHONY : compile quine escape debug replay os vm min mob smt sat assemble spike qemu boolector grader all clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -62,6 +63,11 @@ smt: selfie
 sat: selfie.m
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -l selfie.m -m 1 -sat manuscript/cnfs/rivest.cnf
+
+# Assemble RISC-U with GNU toolchain
+assemble: selfie.m selfie.s
+	riscv64-linux-gnu-as selfie.s -o a.out
+	rm -rf a.out
 
 # Run selfie on spike
 spike: selfie.m selfie.s
