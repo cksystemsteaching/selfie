@@ -22,6 +22,7 @@ jobs:
       os: linux
       script:
         - docker build -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make assemble
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
@@ -39,6 +40,7 @@ jobs:
       services: docker
       os: linux
       script:
+        - docker run cksystemsteaching/selfie make assemble
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
