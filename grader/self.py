@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Copyright (c) 2015-2019, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is governed
@@ -19,7 +20,13 @@ import os
 import re
 import math
 import struct
-from subprocess import Popen, PIPE
+
+if sys.version_info < (3, 3):
+  from subprocess import Popen, PIPE
+  print('warning: python V3.3 or newer is recommended')
+  print('mipster execution timeout is disabled with this python version\n')
+else:
+  from subprocess import Popen, TimeoutExpired, PIPE
 
 number_of_positive_tests_passed = [0]
 number_of_positive_tests_failed = [0]
@@ -83,13 +90,22 @@ R_FORMAT_MASK   = 0b11111110000000000111000001111111
 AMO_FORMAT_MASK = 0b11111000000000000111000001111111
 LR_FORMAT_MASK  = 0b11111001111100000111000001111111
 
-SLL_INSTRUCTION = ('bitwise-left-shift', encode_r_format(F7_SLL, F3_SLL, OP_OP), R_FORMAT_MASK)
-SRL_INSTRUCTION = ('bitwise-right-shift', encode_r_format(F7_SRL, F3_SRL, OP_OP), R_FORMAT_MASK)
-OR_INSTRUCTION  = ('bitwise-or', encode_r_format(F7_OR, F3_OR, OP_OP), R_FORMAT_MASK)
-AND_INSTRUCTION = ('bitwise-and', encode_r_format(F7_AND, F3_AND, OP_OP), R_FORMAT_MASK)
-NOT_INSTRUCTION = ('bitwise-not', encode_i_format(4095, F3_XORI, OP_IMM), NOT_FORMAT_MASK)
-LR_INSTRUCTION  = ('load-reserved', encode_amo_format(F5_LR, F3_LR), LR_FORMAT_MASK)
-SC_INSTRUCTION  = ('store-conditional', encode_amo_format(F5_SC, F3_SC), AMO_FORMAT_MASK)
+REGISTER_REGEX = '(zero|ra|sp|gp|tp|t[0-6]|s[0-9]|s10|s11|a[0-7])'
+
+SLL_INSTRUCTION = ('bitwise-left-shift', encode_r_format(F7_SLL, F3_SLL, OP_OP), R_FORMAT_MASK,
+                  '^sll\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+SRL_INSTRUCTION = ('bitwise-right-shift', encode_r_format(F7_SRL, F3_SRL, OP_OP), R_FORMAT_MASK,
+                  '^srl\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+OR_INSTRUCTION  = ('bitwise-or', encode_r_format(F7_OR, F3_OR, OP_OP), R_FORMAT_MASK,
+                  '^or\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+AND_INSTRUCTION = ('bitwise-and', encode_r_format(F7_AND, F3_AND, OP_OP), R_FORMAT_MASK,
+                  '^and\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
+NOT_INSTRUCTION = ('bitwise-not', encode_i_format(4095, F3_XORI, OP_IMM), NOT_FORMAT_MASK,
+                  '^xori\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',-1$')
+LR_INSTRUCTION  = ('load-reserved', encode_amo_format(F5_LR, F3_LR), LR_FORMAT_MASK,
+                  '^lr\\.d\\s+' + REGISTER_REGEX + ',\\(' + REGISTER_REGEX + '\\)$')
+SC_INSTRUCTION  = ('store-conditional', encode_amo_format(F5_SC, F3_SC), AMO_FORMAT_MASK,
+                  '^sc\\.d\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',\\(' + REGISTER_REGEX + '\\)$')
 
 class DummyWriter:
   def __getattr__( self, name ):
@@ -148,21 +164,45 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
       print_passed(msg)
 
 
-def execute(command):
+class TimeoutException(Exception):
+  def __init__(self, command, timeout, output, error_output):
+    Exception.__init__(self, 'The command \"' + command + '\" has timed out after ' + str(timeout) + 's')
+
+    self.output = output
+    self.error_output = error_output
+
+
+def execute(command, timeout=10):
   command = command.replace('grader/', home_path + 'grader/')
   command = command.replace('manuscript/code/', home_path + 'manuscript/code/')
 
-  process = Popen(command, stdout=PIPE, stderr=PIPE, shell=True)
-  stdoutdata, stderrdata = process.communicate()
-  
-  output = stdoutdata.decode(sys.stdout.encoding)
-  error_output = stderrdata.decode(sys.stderr.encoding)
+  process = Popen(command.split(' '), stdout=PIPE, stderr=PIPE)
+
+  if sys.version_info < (3, 3):
+    stdoutdata, stderrdata = process.communicate()
+  else:
+    try:
+      stdoutdata, stderrdata = process.communicate(timeout=timeout)
+
+      timedout = False
+    except TimeoutExpired:
+      process.kill()
+      stdoutdata, stderrdata = process.communicate()
+
+      timedout = True
+
+    output = stdoutdata.decode(sys.stdout.encoding)
+    error_output = stderrdata.decode(sys.stderr.encoding)
+
+    if timedout:
+      raise TimeoutException(command, timeout, output, error_output)
 
   return (process.returncode, output, error_output)
 
 
 def set_up():
-  execute('make clean && make selfie')
+  execute('make clean')
+  execute('make selfie')
 
 
 def has_compiled(returncode, output, should_succeed=True):
@@ -251,9 +291,11 @@ def test_instruction_encoding(instruction, file):
 
 
 
-def test_assembler_instruction_format(file, instruction, msg):
+def test_assembler_instruction_format(instruction, file):
   command = './selfie -c grader/{} -s .tmp.s'.format(file)
   exit_code, output, _ = execute(command)
+
+  msg = instruction[0] + ' RISC-V instruction has right assembly instruction format'
 
   if exit_code == 0:
     exit_code = 1
@@ -261,7 +303,7 @@ def test_assembler_instruction_format(file, instruction, msg):
     try:
       with open('.tmp.s', 'rt') as f:
         for line in f:
-          if instruction in line:
+          if re.match(instruction[3], line) != None:
             # at least one assembler instruction has the right encoding
             exit_code = 0
 
@@ -279,31 +321,34 @@ def test_assembler_instruction_format(file, instruction, msg):
 
 
 def test_execution(command, msg, success_criteria=True, mandatory=False):
-  returncode, output, _ = execute(command)
+  try:
+    returncode, output, _ = execute(command)
 
-  if type(success_criteria) is bool:
-    should_succeed = success_criteria
+    if type(success_criteria) is bool:
+      should_succeed = success_criteria
 
-    if should_succeed:
-      warning = 'Execution terminated with wrong exit code {} instead of 0'.format(returncode)
-    else:
-      warning = 'Execution terminated with wrong exit code {}'.format(returncode)
+      if should_succeed:
+        warning = 'Execution terminated with wrong exit code {} instead of 0'.format(returncode)
+      else:
+        warning = 'Execution terminated with wrong exit code {}'.format(returncode)
 
-    record_result(returncode == 0, msg, output, warning, should_succeed, command, mandatory)
+      record_result(returncode == 0, msg, output, warning, should_succeed, command, mandatory)
 
-  elif type(success_criteria) is int:
-    record_result(returncode == success_criteria, msg, output,
-      'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command, mandatory)
+    elif type(success_criteria) is int:
+      record_result(returncode == success_criteria, msg, output,
+        'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command, mandatory)
 
-  elif type(success_criteria) is str:
-    filtered_output = filter_status_messages(output)
+    elif type(success_criteria) is str:
+      filtered_output = filter_status_messages(output)
 
-    record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command, mandatory)
+      record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command, mandatory)
 
-  elif callable(success_criteria):
-    result, warning = success_criteria(returncode, output)
+    elif callable(success_criteria):
+      result, warning = success_criteria(returncode, output)
 
-    record_result(result, msg, output, warning, True, command, mandatory)
+      record_result(result, msg, output, warning, True, command, mandatory)
+  except TimeoutException as e:
+    record_result(False, msg, e.output, str(e), True, command, mandatory)
 
 
 class Memoize:
@@ -366,6 +411,11 @@ def test_compilable(file, msg, should_succeed=True):
   test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code, out: has_compiled(code, out, should_succeed=should_succeed))
 
 
+def test_riscv_instruction(instruction, file):
+  test_instruction_encoding(instruction, file)
+  test_assembler_instruction_format(instruction, file)
+
+
 def test_mipster_execution(file, result, msg):
   test_execution('./selfie -c grader/{} -m 128'.format(file), msg, success_criteria=result)
 
@@ -422,12 +472,15 @@ def test_bitwise_shift(stage):
       literal_file = instruction[0] + '-literals.c'
       variable_file = instruction[0] + '-variables.c'
 
-      test_instruction_encoding(instruction, literal_file)
-      test_instruction_encoding(instruction, variable_file)
+      test_riscv_instruction(instruction, literal_file)
+      test_riscv_instruction(instruction, variable_file)
       test_mipster_execution(literal_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
       test_mipster_execution(variable_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
+    
+    test_mipster_execution('bitwise-shift-precedence.c', 42,
+      'bitwise shift operators respect the precedence of the C operators: <<, >>')
 
 
 
@@ -449,13 +502,60 @@ def test_bitwise_and_or_not():
       operation + ' operator calculates the right result for literals when executed with MIPSTER')
     test_mipster_execution(variable_file, 42,
       operation + ' operator calculates the right result for variables when executed with MIPSTER')
-    test_instruction_encoding(instruction, literal_file)
-    test_instruction_encoding(instruction, variable_file)
+    test_riscv_instruction(instruction, literal_file)
+    test_riscv_instruction(instruction, variable_file)
 
   test_mipster_execution('bitwise-and-or-not-precedence.c', 42,
     'bitwise and, or & not '  + ' operators respect the precedence of the C operators: &,|,~')
   test_mipster_execution('bitwise-and-or-not-other-precedence.c', 42,
     'bitwise and, or & not '  + ' operators respect the precedence of the C operators: +,-')
+
+
+
+def test_for_loop():
+  test_compilable('for-loop-invalid-missing-assignment.c', 
+    'for loop with missing assignment do not compile', should_succeed=False)
+  test_compilable('for-loop-single-statement.c',
+    'for loop with one statement do compile')
+  test_compilable('for-loop-multiple-statements.c',
+    'for loop with multiple statements do compile')
+  test_compilable('for-loop-nested.c', 
+    'nested for loops do compile')
+  test_mipster_execution('for-loop-single-statement.c', 3,
+    'for loop with one statement are implement with the right semantics')
+  test_mipster_execution('for-loop-multiple-statements.c', 3,
+    'for loop with multiple statements are implemented with the right semantics')
+  test_mipster_execution('for-loop-multiple-statements.c', 3,
+    'for loop with multiple statements are implemented with the right semantics')
+  test_mipster_execution('for-loop-nested.c', 9,
+    'nested for loops are implemented with the right semantics')
+
+
+
+def test_array(part):
+  if part == 1:
+    test_compilable('array-global-declaration.c', 
+      'array declaration do compile')
+    test_compilable('array-assignment.c',
+      'assignments on arrays do compile')
+    test_compilable('array-invalid-assignment.c',
+      'invalid assignments to an array do not compile', should_succeed=False)
+    test_compilable('array-call-by-reference.c',
+      'arrays in the function signature do compile')
+    test_mipster_execution('array-assignment.c', 10,
+      'arrays assignments are implemented with the right semantics')
+    test_mipster_execution('array-call-by-reference.c', 4,
+      'array assignments in functions are implemented with the right semantics')
+
+  if part == 2:
+    test_compilable('array-multidimensional.c',
+      'multidimensional array declarations do compile')
+    test_mipster_execution('array-multidimensional.c', 4,
+      'multidimensional arrays assignments are implemented with the right semantics')
+    test_compilable('array-access-order.c',
+      'access to start-address of multidimensional is possible')
+    test_mipster_execution('array-access-order.c', 0,
+      'access to multidimensional arrays is implemented in row-major order')
 
 
 
@@ -496,9 +596,9 @@ def test_assembler(stage):
 
   if stage >= 2:
     start_stage(2)
-    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s '
-     + '&& diff -q selfie1.s selfie2.s',
-      'selfie can assemble its own binary file and both assembly files are exactly the same')
+    test_execution('./selfie -c selfie.c -s selfie1.s -a selfie1.s -m 128 -a selfie1.s -s selfie2.s ',
+      'selfie can assemble its own binary file')
+    test_execution('diff -q selfie1.s selfie2.s', 'both assembly files are exactly the same')
 
 
 def test_concurrent_machines():
@@ -551,12 +651,8 @@ def test_thread():
 
 
 def test_treiber_stack():
-  test_instruction_encoding(LR_INSTRUCTION, 'load-reserved.c')
-  test_instruction_encoding(SC_INSTRUCTION, 'store-conditional.c')
-  test_assembler_instruction_format('../manuscript/code/hello-world.c', 'lr.d',
-    'LR RISC-V instruction has right assembly instructin format')
-  test_assembler_instruction_format('../manuscript/code/hello-world.c', 'sc.d',
-    'SC RISC-V instruction has right assembly instructin format')
+  test_riscv_instruction(LR_INSTRUCTION, 'load-reserved.c')
+  test_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c')
   test_execution('./selfie -c treiber-stack.c grader/treiber-stack-push.c -m 128',
     'all pushed elements are actually in the treiber-stack',
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
@@ -565,9 +661,9 @@ def test_treiber_stack():
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
 
-def test_base():
-  test_execution('make selfie', 'cc compiles selfie.c', mandatory=True)
-  test_compile_warnings('selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=True)
+def test_base(mandatory=True):
+  test_execution('make selfie', 'cc compiles selfie.c', mandatory=mandatory)
+  test_compile_warnings('selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 
 
 def start_stage(stage):
@@ -660,7 +756,7 @@ def print_loud(msg, end='\n'):
 
 
 def print_usage():
-  print('usage: python grader/self.py { option } { test }\n')
+  print('usage: python3 grader/self.py { option } { test }\n')
 
   print('options:')
 
@@ -674,11 +770,14 @@ def print_usage():
 
 
 defined_tests = [
-    ('base', test_base),
+    ('base', lambda: test_base(mandatory=False)),
     ('hex-literal', test_hex_literal),
     ('bitwise-shift-1', lambda: test_bitwise_shift(1)),
     ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
     ('bitwise-and-or-not', test_bitwise_and_or_not),
+    ('for-loop', test_for_loop),
+    ('array-1', lambda: test_array(1)),
+    ('array-2', lambda: test_array(2)),
     ('struct', test_structs),
     ('assembler-1', lambda: test_assembler(1)),
     ('assembler-2', lambda: test_assembler(2)),

@@ -32,7 +32,7 @@ def compile_with_gcc(file):
   return_value = WEXITSTATUS(system('gcc -w -D\'uint64_t=unsigned long long\' grader/' + file + ' -o .prog >/dev/null 2>&1'))
   
   if return_value != 0:
-    system('rm ./.prog')
+    system('rm -rf ./.prog')
   
   return return_value
 

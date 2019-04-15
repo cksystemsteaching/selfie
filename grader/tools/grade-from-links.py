@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import os
 
@@ -7,7 +9,7 @@ if len(sys.argv) == 5:
   reposdir   = sys.argv[3]
   assignment = sys.argv[4]
 else:
-  print('usage: python grade-from-links.py text-file-with-github-links selfie-directory repos-directory assignment')
+  print('usage: python3 grade-from-links.py text-file-with-github-links selfie-directory repos-directory assignment')
 
   sys.exit(1)
 

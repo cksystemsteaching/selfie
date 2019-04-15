@@ -2,11 +2,17 @@ import unittest
 from unittest.mock import patch
 import sys
 import os
+from shutil import copyfile
 from grader.tests.lib import assemble_for_selfie, Console, for_all_test_results, list_files
 from grader.self import execute, main, defined_tests
 import grader.self
 
-class TestInstructionEncoding(unittest.TestCase):
+class TestRiscvInstruction(unittest.TestCase):
+
+  def setUp(self):
+    patcher = patch('grader.self.print_loud')
+    self.addCleanup(patcher.stop)
+    self.mock_foo = patcher.start()
 
   @classmethod
   def setUpClass(self):
@@ -18,14 +24,21 @@ class TestInstructionEncoding(unittest.TestCase):
         if instruction in command:
           assemble_for_selfie('instructions/' + instruction + '.s')
 
+    if '.tmp.s' in command:
+      for instruction in self.instructions:
+        if instruction in command:
+          copyfile('grader/tests/instructions/' + instruction + '.s', '.tmp.s')
+
     return (0, '', '')
 
   def check_encoding_results(self, result, msg):
     if 'RISC-V encoding' in msg:
       self.assertTrue(result, 'following encoding test passed: "' + msg + '"')
+    if 'assembly instruction format' in msg:
+      self.assertTrue(result, 'following format test passed: "' + msg + '"')
 
   @patch('grader.self.execute')
-  def test_instruction_encoding(self, mock):
+  def test_instruction(self, mock):
     mock.side_effect = lambda c: self.execute_mock(c)
 
     with Console() as console:

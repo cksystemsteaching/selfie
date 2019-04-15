@@ -8,6 +8,11 @@ import grader.self
 
 class TestMipsterExecution(unittest.TestCase):
 
+  def setUp(self):
+    patcher = patch('grader.self.print_loud')
+    self.addCleanup(patcher.stop)
+    self.mock_foo = patcher.start()
+
   def mipster_execution_mock(self, file, result, msg):
     if 'invalid' not in file:
       return_value = compile_with_gcc_and_run(file)

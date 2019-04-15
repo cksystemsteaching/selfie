@@ -9,6 +9,11 @@ import grader.self
 
 class TestCompilable(unittest.TestCase):
 
+  def setUp(self):
+    patcher = patch('grader.self.print_loud')
+    self.addCleanup(patcher.stop)
+    self.mock_foo = patcher.start()
+
   def compilable_mock(self, file, msg, should_succeed=True):
     if 'invalid' in file:
       self.assertFalse(should_succeed)

@@ -15,7 +15,7 @@ uint64_t modify_member(struct nested_struct* parameter) {
   return previous;
 }
 
-uint64_t main(uint64_t argc, uint64_t* argv) { 
+int main(int argc, char** argv) { 
   my_struct = malloc(16);
 
   my_struct->another_struct = malloc(16);
