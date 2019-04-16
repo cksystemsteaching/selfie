@@ -244,78 +244,88 @@ def has_no_compile_warnings(return_value, output):
 
 
 def test_instruction_encoding(instruction, file):
-  command = './selfie -c grader/{} -o .tmp.bin'.format(file)
-  exit_code, output, _ = execute(command)
-
   msg = instruction[0] + ' has right RISC-V encoding'
 
-  instruction_value = instruction[1]
-  instruction_mask  = instruction[2]
+  command = './selfie -c grader/{} -o .tmp.bin'.format(file)
 
-  if exit_code == 0:
-    exit_code = 1
+  try:
+    exit_code, output, _ = execute(command)
 
-    try:
-      with open('.tmp.bin', 'rb') as f:
-        ignored_elf_header_size = 14 * REGISTERSIZE
+    instruction_value = instruction[1]
+    instruction_mask  = instruction[2]
 
-        f.read(ignored_elf_header_size)
+    if exit_code == 0:
+      exit_code = 1
 
-        code_start  = read_data(f)
-        code_length = read_data(f)
+      try:
+        with open('.tmp.bin', 'rb') as f:
+          ignored_elf_header_size = 14 * REGISTERSIZE
 
-        # ignore all pading bytes
-        no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
+          f.read(ignored_elf_header_size)
 
-        if no_of_bytes_until_code < 0: 
-          no_of_bytes_until_code = 0
+          code_start  = read_data(f)
+          code_length = read_data(f)
 
-        f.read(no_of_bytes_until_code)
+          # ignore all pading bytes
+          no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
 
-        # read all RISC-V instructions from binary
-        read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
+          if no_of_bytes_until_code < 0: 
+            no_of_bytes_until_code = 0
 
-        if any(map(lambda x: x & instruction_mask == instruction_value, read_instructions)):
-          # at least one instruction has the right encoding
-          exit_code = 0
-      
-      if os.path.isfile('.tmp.bin'):
-        os.remove('.tmp.bin')
+          f.read(no_of_bytes_until_code)
 
-      record_result(exit_code == 0, msg, output, 'No instruction matching the RISC-V encoding found')
+          # read all RISC-V instructions from binary
+          read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
 
-    except FileNotFoundError:
-      record_result(False, msg, '', 'The binary file has not been created by selfie')
-  else:
-    record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+          if any(map(lambda x: x & instruction_mask == instruction_value, read_instructions)):
+            # at least one instruction has the right encoding
+            exit_code = 0
+        
+        if os.path.isfile('.tmp.bin'):
+          os.remove('.tmp.bin')
+
+        record_result(exit_code == 0, msg, output, 'No instruction matching the RISC-V encoding found')
+
+      except FileNotFoundError:
+        record_result(False, msg, '', 'The binary file has not been created by selfie')
+    else:
+      record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+  except FileNotFoundError as e:
+    # the program to execute can not be found (e.g. selfie is not built)
+    record_result(False, msg, '', str(e), True, command, mandatory=False)
 
 
 
 def test_assembler_instruction_format(instruction, file):
-  command = './selfie -c grader/{} -s .tmp.s'.format(file)
-  exit_code, output, _ = execute(command)
-
   msg = instruction[0] + ' RISC-V instruction has right assembly instruction format'
 
-  if exit_code == 0:
-    exit_code = 1
+  command = './selfie -c grader/{} -s .tmp.s'.format(file)
 
-    try:
-      with open('.tmp.s', 'rt') as f:
-        for line in f:
-          if re.match(instruction[3], line) != None:
-            # at least one assembler instruction has the right encoding
-            exit_code = 0
+  try:
+    exit_code, output, _ = execute(command)
 
-        record_result(exit_code == 0, msg, output, 'No assembler instruction matching the RISC-V encoding found')
+    if exit_code == 0:
+      exit_code = 1
 
-      if os.path.isfile('.tmp.s'):
-        os.remove('.tmp.s')
+      try:
+        with open('.tmp.s', 'rt') as f:
+          for line in f:
+            if re.match(instruction[3], line) != None:
+              # at least one assembler instruction has the right encoding
+              exit_code = 0
 
-    except FileNotFoundError:
-      record_result(False, msg, output, 'The assembler file has not been created by selfie')
-  else:
-    record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+          record_result(exit_code == 0, msg, output, 'No assembler instruction matching the RISC-V encoding found')
+
+        if os.path.isfile('.tmp.s'):
+          os.remove('.tmp.s')
+
+      except FileNotFoundError:
+        record_result(False, msg, output, 'The assembler file has not been created by selfie')
+    else:
+      record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+  except FileNotFoundError as e:
+    # the program to execute can not be found (e.g. selfie is not built)
+    record_result(False, msg, '', str(e), True, command, mandatory=False)
 
 
 
@@ -349,6 +359,10 @@ def test_execution(command, msg, success_criteria=True, mandatory=False):
       record_result(result, msg, output, warning, True, command, mandatory)
   except TimeoutException as e:
     record_result(False, msg, e.output, str(e), True, command, mandatory)
+  except FileNotFoundError as e:
+    # the program to execute can not be found (e.g. selfie is not built)
+    record_result(False, msg, '', str(e), True, command, mandatory)
+  
 
 
 class Memoize:
