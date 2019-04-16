@@ -144,11 +144,14 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        build-essential \
        ca-certificates \
+       gcc-riscv64-linux-gnu \
+       libc-dev-riscv64-cross \
+       make \
        device-tree-compiler \
        git \
-       python3.5 \
-  && rm -rf /var/lib/apt/lists/* \
-  && echo "alias python='python3.5'" >> ~/.bash_aliases
+       python3.6 \
+  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 \
+  && rm -rf /var/lib/apt/lists/*
 
 # copy spike, pk, qemu and boolector from builder images
 COPY --from=pkbuilder $RISCV/ $RISCV/

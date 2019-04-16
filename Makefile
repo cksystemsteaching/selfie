@@ -10,7 +10,7 @@ selfie.m selfie.s: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt mc sat spike qemu boolector btormc all clean
+.PHONY : compile quine escape debug replay os vm min mob smt mc sat assemble spike qemu boolector btormc grader all clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -67,6 +67,11 @@ sat: selfie.m
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -l selfie.m -m 1 -sat manuscript/cnfs/rivest.cnf
 
+# Assemble RISC-U with GNU toolchain
+assemble: selfie.m selfie.s
+	riscv64-linux-gnu-as selfie.s -o a.out
+	rm -rf a.out
+
 # Run selfie on spike
 spike: selfie.m selfie.s
 	spike pk selfie.m -c selfie.c -o selfie5.m -s selfie5.s -m 1
@@ -89,6 +94,10 @@ boolector: smt
 # Test btormc model checker
 btormc: mc
 	btormc symbolic.btor2
+
+# Test grader
+grader:
+	python3 -m unittest -v grader.tests.test_all
 
 # Run everything
 all: compile quine debug replay os vm min mob smt mc sat

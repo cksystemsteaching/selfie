@@ -22,10 +22,12 @@ jobs:
       os: linux
       script:
         - docker build -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make assemble
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
         - docker run cksystemsteaching/selfie make btormc
+        - docker run cksystemsteaching/selfie make grader
     - stage: deploy
       sudo: required
       services: docker
@@ -39,10 +41,12 @@ jobs:
       services: docker
       os: linux
       script:
+        - docker run cksystemsteaching/selfie make assemble
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
         - docker run cksystemsteaching/selfie make btormc
+        - docker run cksystemsteaching/selfie make grader
 notifications:
   email: false
   slack:

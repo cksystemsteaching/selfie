@@ -1,4 +1,4 @@
-uint64_t* malloc(uint64_t s);
+void* malloc(unsigned long);
 uint64_t  pthread_create();
 uint64_t  pthread_join(uint64_t* wstatus);
 
@@ -17,7 +17,7 @@ uint64_t sumChilds(uint64_t pid, uint64_t acc) {
   return acc;
 }
 
-uint64_t main(uint64_t argc, uint64_t* argv) {
+int main(int argc, char** argv) {
   uint64_t pid1;
   uint64_t pid2;
   uint64_t pid3;
