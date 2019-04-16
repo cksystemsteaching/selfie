@@ -6,7 +6,7 @@ The Selfie Project provides an educational platform for teaching undergraduate a
 
 Slides providing an overview of selfie and an introduction to its design and implementation are made available incrementally [here](http://selfie.cs.uni-salzburg.at/slides). There is also a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
 
-Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to
@@ -16,10 +16,12 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 3. a self-hosting hypervisor called hypster that provides
    RISC-U virtual machines that can host all of selfie,
    that is, starc, mipster, and hypster itself,
-4. a symbolic execution engine called monster that executes
-   RISC-U code symbolically and generates SMT-LIB files
-   that are satisfiable if and only if the code may exit
-   with non-zero exit codes,
+4. a self-translating modeling engine called monster that
+   translates RISC-U code including itself to SMT-LIB and
+   BTOR2 formulae that are satisfiable if and only if
+   there is input to the code such that the code exits
+   with non-zero exit codes, performs division by zero,
+   or accesses memory outside of allocated memory blocks,
 5. a simple SAT solver that reads CNF DIMACS files, and
 6. a tiny C* library called libcstar utilized by selfie.
 
@@ -57,7 +59,7 @@ Once you have successfully compiled `selfie.c` you may invoke `selfie` without a
 
 ```bash
 $ ./selfie
-./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-4096 ... ]
+./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ]
 ```
 
 In this case, `selfie` responds with its usage pattern.
@@ -112,7 +114,7 @@ which is again semantically equivalent to executing `selfie` without any argumen
 
 The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code. See below for an example.
 
-The `-n` option invokes the symbolic execution engine which interprets the `0-4096` value as bound on the length of any symbolically executed code branch in number of instructions. Value `0` means that code is executed symbolically without a bound. While executing code symbolically an SMT-LIB file named after the executed binary but with extension `.t` is generated.
+The `-se` and `-mc` options invoke the monster model generator which interprets the `0-4096` value as bound on the length of any symbolically executed code branch in number of instructions. Value `0` means that code is executed symbolically without a bound. With option `-se`, monster generates an SMT-LIB file named after the given binary but with extension `.smt`. With option `-mc`, monster ignores the bound and instead generates a BTOR2 file named after the executed binary but with extension `.btor2`.
 
 The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The implementation is naive and only works on small instances.
 

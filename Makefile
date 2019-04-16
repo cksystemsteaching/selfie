@@ -54,13 +54,13 @@ min: selfie.m selfie.s
 mob: selfie
 	./selfie -c -mob 1
 
-# Run monster, the symbolic execution engine
+# Run monster as symbolic execution engine
 smt: selfie
-	./selfie -c manuscript/code/symbolic.c -n 0
+	./selfie -c manuscript/code/symbolic.c -se 0
 
-# Run modeler, the model checking generator
+# Run monster as symbolic model generator
 mc: selfie
-	./selfie -c manuscript/code/symbolic.c -mc symbolic.btor2
+	./selfie -c manuscript/code/symbolic.c -mc 0
 
 # Run SAT solver
 sat: selfie.m
@@ -87,13 +87,13 @@ qemu: selfie.m selfie.s
 
 # Test boolector SMT solver
 boolector: smt
-	boolector manuscript/code/symbolic.t -e 0 > selfie_boolector.sat
+	boolector manuscript/code/symbolic.smt -e 0 > selfie_boolector.sat
 	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 	[ $$(grep ^unsat$$ selfie_boolector.sat | wc -l) -eq 1 ]
 
-# Test btormc model checker
+# Test btormc bounded model checker
 btormc: mc
-	btormc symbolic.btor2
+	btormc manuscript/code/symbolic.btor2
 
 # Test grader
 grader:
@@ -106,8 +106,10 @@ all: compile quine debug replay os vm min mob smt mc sat
 clean:
 	rm -rf *.m
 	rm -rf *.s
-	rm -rf *.t
+	rm -rf *.smt
 	rm -rf *.btor2
+	rm -rf *.sat
 	rm -rf selfie
 	rm -rf selfie.exe
-	rm -rf manuscript/code/*.t
+	rm -rf manuscript/code/*.smt
+	rm -rf manuscript/code/*.btor2

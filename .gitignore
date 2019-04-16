@@ -1,7 +1,10 @@
 *__pycache__*
 /*.m
 /*.s
-/*.t
+/*.smt
+/*.btor2
+/*.sat
 selfie
 selfie.exe
-manuscript/code/*.t
+manuscript/code/*.smt
+manuscript/code/*.btor2

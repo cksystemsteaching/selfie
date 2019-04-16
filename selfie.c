@@ -17,7 +17,7 @@ virtual machine monitors. The common theme is to identify and
 resolve self-reference in systems code which is seen as the key
 challenge when teaching systems engineering, hence the name.
 
-Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to
@@ -27,10 +27,12 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 3. a self-hosting hypervisor called hypster that provides
    RISC-U virtual machines that can host all of selfie,
    that is, starc, mipster, and hypster itself,
-4. a symbolic execution engine called monster that executes
-   RISC-U code symbolically and generates SMT-LIB files
-   that are satisfiable if and only if the code may exit
-   with non-zero exit codes,
+4. a self-translating modeling engine called monster that
+   translates RISC-U code including itself to SMT-LIB and
+   BTOR2 formulae that are satisfiable if and only if
+   there is input to the code such that the code exits
+   with non-zero exit codes, performs division by zero,
+   or accesses memory outside of allocated memory blocks,
 5. a simple SAT solver that reads CNF DIMACS files, and
 6. a tiny C* library called libcstar utilized by selfie.
 
@@ -72,8 +74,8 @@ selfie goes one step further by implementing microkernel functionality
 as part of the emulator and a hypervisor that can run as part of the
 emulator as well as on top of it, all with the same code.
 
-The symbolic execution engine implements a simple yet sound and
-complete translation of RISC-U code to SMT-LIB formulae. The SAT
+The modeling engine implements a simple yet sound and complete
+translation of RISC-U code to SMT-LIB and BTOR2 formulae. The SAT
 solver implements a naive brute-force enumeration of all possible
 variable assignments. Both engine and solver facilitate teaching
 the absolute basics of SAT and SMT solving applied to real code.
@@ -83,9 +85,8 @@ The design of the compiler is inspired by the Oberon compiler of
 Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
 RISC-V community around Professor David Patterson from UC Berkeley.
 The design of the hypervisor is inspired by microkernels of Professor
-Jochen Liedtke from University of Karlsruhe. The symbolic execution
-engine and the SAT solver are inspired by Professor Armin Biere from
-JKU Linz.
+Jochen Liedtke from University of Karlsruhe. The modeling engine and
+the SAT solver are inspired by Professor Armin Biere from JKU Linz.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1603,7 +1604,7 @@ void     map_unmapped_pages(uint64_t* context);
 uint64_t minster(uint64_t* to_context);
 uint64_t mobster(uint64_t* to_context);
 
-char*    replace_extension(char* filename, uint64_t e);
+char*    replace_extension(char* filename, char* extension);
 uint64_t monster(uint64_t* to_context);
 
 uint64_t is_boot_level_zero();
@@ -9010,14 +9011,14 @@ uint64_t mobster(uint64_t* to_context) {
   return minmob(to_context);
 }
 
-char* replace_extension(char* filename, uint64_t e) {
+char* replace_extension(char* filename, char* extension) {
   char* s;
   uint64_t i;
   uint64_t c;
 
-  // assert: 0 < string_length(filename) - 2 < MAX_FILENAME_LENGTH
+  // assert: string_length(filename) + 1 + string_length(extension) < MAX_FILENAME_LENGTH
 
-  s = string_alloc(string_length(filename) + 2);
+  s = string_alloc(string_length(filename) + 1 + string_length(extension));
 
   i = 0;
 
@@ -9037,8 +9038,8 @@ char* replace_extension(char* filename, uint64_t e) {
     }
   }
 
-  // writing s plus extension into s works because we allocated two more bytes
-  sprintf2(s, "%s.%c", s, (char*) e);
+  // writing s plus extension into s
+  sprintf2(s, "%s.%s", s, extension);
 
   return s;
 }
@@ -9049,8 +9050,8 @@ uint64_t monster(uint64_t* to_context) {
 
   print("monster\n");
 
-  // use extension ".t" in name of SMT-LIB file
-  smt_name = replace_extension(binary_name, 't');
+  // use extension ".smt" in name of SMT-LIB file
+  smt_name = replace_extension(binary_name, "smt");
 
   // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
 
@@ -10516,7 +10517,8 @@ uint64_t selfie_model_generate() {
   uint64_t from_address;
   uint64_t jalr_address;
 
-  model_name = peek_argument();
+  // use extension ".btor2" in name of SMT-LIB file
+  model_name = replace_extension(binary_name, "btor2");
 
   if (code_length == 0) {
     printf2("%s: nothing to disassemble to output file %s\n", selfie_name, model_name);
@@ -11401,7 +11403,7 @@ void set_argument(char* argv) {
 void print_usage() {
   printf3("%s: usage: selfie { %s } [ %s ]\n", selfie_name,
     "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
-    "( -m | -d | -r | -n | -mc | -y | -min | -mob ) 0-4096 ... ");
+    "( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ");
 }
 
 uint64_t selfie() {
@@ -11441,16 +11443,16 @@ uint64_t selfie() {
         return selfie_run(DIPSTER);
       else if (string_compare(option, "-r"))
         return selfie_run(RIPSTER);
-      else if (string_compare(option, "-n"))
-        return selfie_run(MONSTER);
-      else if (string_compare(option, "-mc"))
-        return selfie_model_generate();
       else if (string_compare(option, "-y"))
         return selfie_run(HYPSTER);
       else if (string_compare(option, "-min"))
         return selfie_run(MINSTER);
       else if (string_compare(option, "-mob"))
         return selfie_run(MOBSTER);
+      else if (string_compare(option, "-se"))
+        return selfie_run(MONSTER);
+      else if (string_compare(option, "-mc"))
+        return selfie_model_generate();
       else {
         print_usage();
 
