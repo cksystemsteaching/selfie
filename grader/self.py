@@ -178,24 +178,24 @@ def execute(command, timeout=10):
 
   process = Popen(command.split(' '), stdout=PIPE, stderr=PIPE)
 
+  timedout = False
+
   if sys.version_info < (3, 3):
     stdoutdata, stderrdata = process.communicate()
   else:
     try:
       stdoutdata, stderrdata = process.communicate(timeout=timeout)
-
-      timedout = False
     except TimeoutExpired:
       process.kill()
       stdoutdata, stderrdata = process.communicate()
 
       timedout = True
 
-    output = stdoutdata.decode(sys.stdout.encoding)
-    error_output = stderrdata.decode(sys.stderr.encoding)
+  output = stdoutdata.decode(sys.stdout.encoding)
+  error_output = stderrdata.decode(sys.stderr.encoding)
 
-    if timedout:
-      raise TimeoutException(command, timeout, output, error_output)
+  if timedout:
+    raise TimeoutException(command, timeout, output, error_output)
 
   return (process.returncode, output, error_output)
 
@@ -733,7 +733,7 @@ def grade():
     grade = 5
     color = 91
 
-  if failed_mandatory_test == True:
+  if failed_mandatory_test:
     print('you failed a mandatory test')
     grade = 5
 
@@ -818,7 +818,7 @@ def main(argv):
   tests = list(set(argv[1:]) - set(options))
 
   if 'base' not in tests and len(tests) > 0:
-    tests.insert(0, 'base')
+    test_base()
 
   for test in tests:
     set_up()
