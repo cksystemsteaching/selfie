@@ -752,7 +752,7 @@ void init_register() {
   *(REGISTERS + REG_T0)  = (uint64_t) "t0";
   *(REGISTERS + REG_T1)  = (uint64_t) "t1";
   *(REGISTERS + REG_T2)  = (uint64_t) "t2";
-  *(REGISTERS + REG_FP)  = (uint64_t) "s0";
+  *(REGISTERS + REG_FP)  = (uint64_t) "s0"; // used to be fp
   *(REGISTERS + REG_S1)  = (uint64_t) "s1";
   *(REGISTERS + REG_A0)  = (uint64_t) "a0";
   *(REGISTERS + REG_A1)  = (uint64_t) "a1";
@@ -1338,6 +1338,7 @@ uint64_t redo = 0; // flag for redoing code execution
 
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 uint64_t model_check         = 0; // flag for model checking code
+uint64_t check_block_access  = 0; // flag for checking memory access validity on malloced block level
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -1750,7 +1751,10 @@ uint64_t estimated_return = 0;
 uint64_t memory_nid      = 0; // nid of memory
 uint64_t memory_flow_nid = 0; // nid of most recent update of memory
 
+uint64_t lo_memory_nid      = 0; // nid of lower bounds on addresses in memory
 uint64_t lo_memory_flow_nid = 0; // nid of most recent update of lower bounds on addresses in memory
+
+uint64_t up_memory_nid      = 0; // nid of upper bounds on addresses in memory
 uint64_t up_memory_flow_nid = 0; // nid of most recent update of upper bounds on addresses in memory
 
 // for checking division and remainder by zero
@@ -9398,25 +9402,27 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
 }
 
 void reset_bounds() {
-  // if this instruction is active reset lower bound on $rd register to end of code segment
-  printf3("%d ite 2 %d 20 %d\n",
-    (char*) current_nid,                      // nid of this line
-    (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-    (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+  if (check_block_access) {
+    // if this instruction is active reset lower bound on $rd register to end of code segment
+    printf3("%d ite 2 %d 20 %d\n",
+      (char*) current_nid,                      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
 
-  *(reg_flow_nids + LO_FLOW + rd) = current_nid;
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
 
-  current_nid = current_nid + 1;
+    current_nid = current_nid + 1;
 
-  // if this instruction is active reset upper bound on $rd register to highest virtual address
-  printf3("%d ite 2 %d 50 %d\n",
-    (char*) current_nid,                      // nid of this line
-    (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-    (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+    // if this instruction is active reset upper bound on $rd register to highest virtual address
+    printf3("%d ite 2 %d 50 %d\n",
+      (char*) current_nid,                      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
 
-  *(reg_flow_nids + UP_FLOW + rd) = current_nid;
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
 
-  current_nid = current_nid + 1;
+    current_nid = current_nid + 1;
+  }
 }
 
 void model_lui() {
@@ -9441,27 +9447,29 @@ void model_lui() {
 }
 
 void transfer_bounds() {
-  // if this instruction is active set lower bound on $rd = lower bound on $rs1 register
-  printf4("%d ite 2 %d %d %d\n",
-    (char*) current_nid,                      // nid of this line
-    (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-    (char*) (reg_nids + LO_FLOW + rd),        // nid of lower bound on $rs1 register
-    (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+  if (check_block_access) {
+    // if this instruction is active set lower bound on $rd = lower bound on $rs1 register
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) current_nid,                      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (reg_nids + LO_FLOW + rd),        // nid of lower bound on $rs1 register
+      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
 
-  *(reg_flow_nids + LO_FLOW + rd) = current_nid;
+    *(reg_flow_nids + LO_FLOW + rd) = current_nid;
 
-  current_nid = current_nid + 1;
+    current_nid = current_nid + 1;
 
-  // if this instruction is active set upper bound on $rd = upper bound on $rs1 register
-  printf4("%d ite 2 %d %d %d\n",
-    (char*) current_nid,                      // nid of this line
-    (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-    (char*) (reg_nids + UP_FLOW + rd),        // nid of upper bound on $rs1 register
-    (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+    // if this instruction is active set upper bound on $rd = upper bound on $rs1 register
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) current_nid,                      // nid of this line
+      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+      (char*) (reg_nids + UP_FLOW + rd),        // nid of upper bound on $rs1 register
+      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
 
-  *(reg_flow_nids + UP_FLOW + rd) = current_nid;
+    *(reg_flow_nids + UP_FLOW + rd) = current_nid;
 
-  current_nid = current_nid + 1;
+    current_nid = current_nid + 1;
+  }
 }
 
 void model_addi() {
@@ -9513,53 +9521,55 @@ void model_addi() {
 
 void model_add() {
   if (rd != REG_ZR) {
-    // lower bound on $rs1 register > lower bound on $rs2 register
-    printf3("%d ugt 1 %d %d\n",
-      (char*) current_nid,                 // nid of this line
-      (char*) (reg_nids + LO_FLOW + rs1),  // nid of lower bound on $rs1 register
-      (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
+    if (check_block_access) {
+      // lower bound on $rs1 register > lower bound on $rs2 register
+      printf3("%d ugt 1 %d %d\n",
+        (char*) current_nid,                 // nid of this line
+        (char*) (reg_nids + LO_FLOW + rs1),  // nid of lower bound on $rs1 register
+        (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
 
-    // greater lower bound of $rs1 and $rs2 registers
-    printf4("%d ite 2 %d %d %d\n",
-      (char*) (current_nid + 1),           // nid of this line
-      (char*) current_nid,                 // nid of lower bound on $rs1 > lower bound on $rs2
-      (char*) (reg_nids + LO_FLOW + rs1),  // nid of lower bound on $rs1 register
-      (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
+      // greater lower bound of $rs1 and $rs2 registers
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 1),           // nid of this line
+        (char*) current_nid,                 // nid of lower bound on $rs1 > lower bound on $rs2
+        (char*) (reg_nids + LO_FLOW + rs1),  // nid of lower bound on $rs1 register
+        (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
 
-    // if this instruction is active set lower bound on $rd = greater lower bound of $rs1 and $rs2 registers
-    printf4("%d ite 2 %d %d %d\n",
-      (char*) (current_nid + 2),                // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) (current_nid + 1),                // nid of greater lower bound of $rs1 and $rs2 registers
-      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+      // if this instruction is active set lower bound on $rd = greater lower bound of $rs1 and $rs2 registers
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 2),                // nid of this line
+        (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+        (char*) (current_nid + 1),                // nid of greater lower bound of $rs1 and $rs2 registers
+        (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
 
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 2;
+      *(reg_flow_nids + LO_FLOW + rd) = current_nid + 2;
 
-    current_nid = current_nid + 3;
+      current_nid = current_nid + 3;
 
-    // upper bound on $rs1 register < upper bound on $rs2 register
-    printf3("%d ult 1 %d %d\n",
-      (char*) current_nid,                 // nid of this line
-      (char*) (reg_nids + UP_FLOW + rs1),  // nid of upper bound on $rs1 register
-      (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
+      // upper bound on $rs1 register < upper bound on $rs2 register
+      printf3("%d ult 1 %d %d\n",
+        (char*) current_nid,                 // nid of this line
+        (char*) (reg_nids + UP_FLOW + rs1),  // nid of upper bound on $rs1 register
+        (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
 
-    // lesser upper bound of $rs1 and $rs2 registers
-    printf4("%d ite 2 %d %d %d\n",
-      (char*) (current_nid + 1),           // nid of this line
-      (char*) current_nid,                 // nid of upper bound on $rs1 < upper bound on $rs2
-      (char*) (reg_nids + UP_FLOW + rs1),  // nid of upper bound on $rs1 register
-      (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
+      // lesser upper bound of $rs1 and $rs2 registers
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 1),           // nid of this line
+        (char*) current_nid,                 // nid of upper bound on $rs1 < upper bound on $rs2
+        (char*) (reg_nids + UP_FLOW + rs1),  // nid of upper bound on $rs1 register
+        (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
 
-    // if this instruction is active set upper bound on $rd = lesser upper bound of $rs1 and $rs2 registers
-    printf4("%d ite 2 %d %d %d\n",
-      (char*) (current_nid + 2),                // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) (current_nid + 1),                // nid of lesser upper bound of $rs1 and $rs2 registers
-      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+      // if this instruction is active set upper bound on $rd = lesser upper bound of $rs1 and $rs2 registers
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 2),                // nid of this line
+        (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+        (char*) (current_nid + 1),                // nid of lesser upper bound of $rs1 and $rs2 registers
+        (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
 
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 2;
+      *(reg_flow_nids + UP_FLOW + rd) = current_nid + 2;
 
-    current_nid = current_nid + 3;
+      current_nid = current_nid + 3;
+    }
 
     // compute $rs1 + $rs2
     printf3("%d add 2 %d %d\n",
@@ -9741,27 +9751,29 @@ void model_sltu() {
 }
 
 void record_bounds() {
-  // if this instruction is active record lower bound on $rs1 register for checking address validity
-  printf4("%d ite 2 %d %d %d\n",
-    (char*) current_nid,                // nid of this line
-    (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
-    (char*) (reg_nids + LO_FLOW + rs1), // nid of current lower bound on $rs1 register
-    (char*) lo_flow_nid);               // nid of most recent update of lower bound on memory access
+  if (check_block_access) {
+    // if this instruction is active record lower bound on $rs1 register for checking address validity
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) current_nid,                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
+      (char*) (reg_nids + LO_FLOW + rs1), // nid of current lower bound on $rs1 register
+      (char*) lo_flow_nid);               // nid of most recent update of lower bound on memory access
 
-  lo_flow_nid = current_nid;
+    lo_flow_nid = current_nid;
 
-  current_nid = current_nid + 1;
+    current_nid = current_nid + 1;
 
-  // if this instruction is active record upper bound on $rs1 register for checking address validity
-  printf4("%d ite 2 %d %d %d\n",
-    (char*) current_nid,                // nid of this line
-    (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
-    (char*) (reg_nids + UP_FLOW + rs1), // nid of current upper bound on $rs1 register
-    (char*) up_flow_nid);               // nid of most recent update of upper bound on memory access
+    // if this instruction is active record upper bound on $rs1 register for checking address validity
+    printf4("%d ite 2 %d %d %d\n",
+      (char*) current_nid,                // nid of this line
+      (char*) pc_nid(pcs_nid, pc),        // nid of pc flag of this instruction
+      (char*) (reg_nids + UP_FLOW + rs1), // nid of current upper bound on $rs1 register
+      (char*) up_flow_nid);               // nid of most recent update of upper bound on memory access
 
-  up_flow_nid = current_nid;
+    up_flow_nid = current_nid;
 
-  current_nid = current_nid + 1;
+    current_nid = current_nid + 1;
+  }
 }
 
 uint64_t compute_address() {
@@ -9801,39 +9813,41 @@ void model_ld() {
 
     current_nid = current_nid + 1;
 
-    // read from lower-bounds memory[$rs1 + imm] into lower bound on $rd register
-    printf3("%d read 2 %d %d\n",
-      (char*) current_nid,      // nid of this line
-      (char*) (memory_nid + 1), // nid of lower-bounds memory
-      (char*) address_nid);     // nid of $rs1 + imm
+    if (check_block_access) {
+      // read from lower-bounds memory[$rs1 + imm] into lower bound on $rd register
+      printf3("%d read 2 %d %d\n",
+        (char*) current_nid,   // nid of this line
+        (char*) lo_memory_nid, // nid of lower bounds on addresses in memory
+        (char*) address_nid);  // nid of $rs1 + imm
 
-    // if this instruction is active set lower bound on $rd = lower-bounds memory[$rs1 + imm]
-    printf4("%d ite 2 %d %d %d\n",
-      (char*) (current_nid + 1),                // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) current_nid,                      // nid of lower-bounds memory[$rs1 + imm]
-      (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
+      // if this instruction is active set lower bound on $rd = lower-bounds memory[$rs1 + imm]
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 1),                // nid of this line
+        (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+        (char*) current_nid,                      // nid of lower-bounds memory[$rs1 + imm]
+        (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
 
-    *(reg_flow_nids + LO_FLOW + rd) = current_nid + 1;
+      *(reg_flow_nids + LO_FLOW + rd) = current_nid + 1;
 
-    current_nid = current_nid + 2;
+      current_nid = current_nid + 2;
 
-    // read from upper-bounds memory[$rs1 + imm] into upper bound on $rd register
-    printf3("%d read 2 %d %d\n",
-      (char*) current_nid,      // nid of this line
-      (char*) (memory_nid + 2), // nid of upper-bounds memory
-      (char*) address_nid);     // nid of $rs1 + imm
+      // read from upper-bounds memory[$rs1 + imm] into upper bound on $rd register
+      printf3("%d read 2 %d %d\n",
+        (char*) current_nid,   // nid of this line
+        (char*) up_memory_nid, // nid of upper bounds on addresses in memory
+        (char*) address_nid);  // nid of $rs1 + imm
 
-    // if this instruction is active set upper bound on $rd = upper-bounds memory[$rs1 + imm]
-    printf4("%d ite 2 %d %d %d\n",
-      (char*) (current_nid + 1),                // nid of this line
-      (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) current_nid,                      // nid of upper-bounds memory[$rs1 + imm]
-      (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
+      // if this instruction is active set upper bound on $rd = upper-bounds memory[$rs1 + imm]
+      printf4("%d ite 2 %d %d %d\n",
+        (char*) (current_nid + 1),                // nid of this line
+        (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
+        (char*) current_nid,                      // nid of upper-bounds memory[$rs1 + imm]
+        (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
 
-    *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
+      *(reg_flow_nids + UP_FLOW + rd) = current_nid + 1;
 
-    current_nid = current_nid + 2;
+      current_nid = current_nid + 2;
+    }
 
     // read from memory[$rs1 + imm] into $rd register
     printf3("%d read 2 %d %d\n",
@@ -9874,41 +9888,43 @@ void model_sd() {
 
   current_nid = current_nid + 1;
 
-  // write lower bound on $rs2 register to lower-bounds memory[$rs1 + imm]
-  printf4("%d write 3 %d %d %d\n",
-    (char*) current_nid,                 // nid of this line
-    (char*) (memory_nid + 1),            // nid of lower-bounds memory
-    (char*) address_nid,                 // nid of $rs1 + imm
-    (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
+  if (check_block_access) {
+    // write lower bound on $rs2 register to lower-bounds memory[$rs1 + imm]
+    printf4("%d write 3 %d %d %d\n",
+      (char*) current_nid,                 // nid of this line
+      (char*) lo_memory_nid,               // nid of lower bounds on addresses in memory
+      (char*) address_nid,                 // nid of $rs1 + imm
+      (char*) (reg_nids + LO_FLOW + rs2)); // nid of lower bound on $rs2 register
 
-  // if this instruction is active set lower-bounds memory[$rs1 + imm] = lower bound on $rs2
-  printf4("%d ite 3 %d %d %d\n",
-    (char*) (current_nid + 1),   // nid of this line
-    (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
-    (char*) current_nid,         // nid of lower-bounds memory[$rs1 + imm]
-    (char*) lo_memory_flow_nid); // nid of most recent update of lower-bounds memory
+    // if this instruction is active set lower-bounds memory[$rs1 + imm] = lower bound on $rs2
+    printf4("%d ite 3 %d %d %d\n",
+      (char*) (current_nid + 1),   // nid of this line
+      (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
+      (char*) current_nid,         // nid of lower-bounds memory[$rs1 + imm]
+      (char*) lo_memory_flow_nid); // nid of most recent update of lower-bounds memory
 
-  lo_memory_flow_nid = current_nid + 1;
+    lo_memory_flow_nid = current_nid + 1;
 
-  current_nid = current_nid + 2;
+    current_nid = current_nid + 2;
 
-  // write upper bound on $rs2 register to upper-bounds memory[$rs1 + imm]
-  printf4("%d write 3 %d %d %d\n",
-    (char*) current_nid,                 // nid of this line
-    (char*) (memory_nid + 2),            // nid of upper-bounds memory
-    (char*) address_nid,                 // nid of $rs1 + imm
-    (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
+    // write upper bound on $rs2 register to upper-bounds memory[$rs1 + imm]
+    printf4("%d write 3 %d %d %d\n",
+      (char*) current_nid,                 // nid of this line
+      (char*) up_memory_nid,               // nid of upper bounds on addresses in memory
+      (char*) address_nid,                 // nid of $rs1 + imm
+      (char*) (reg_nids + UP_FLOW + rs2)); // nid of upper bound on $rs2 register
 
-  // if this instruction is active set upper-bounds memory[$rs1 + imm] = upper bound on $rs2
-  printf4("%d ite 3 %d %d %d\n",
-    (char*) (current_nid + 1),   // nid of this line
-    (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
-    (char*) current_nid,         // nid of upper-bounds memory[$rs1 + imm]
-    (char*) up_memory_flow_nid); // nid of most recent update of upper-bounds memory
+    // if this instruction is active set upper-bounds memory[$rs1 + imm] = upper bound on $rs2
+    printf4("%d ite 3 %d %d %d\n",
+      (char*) (current_nid + 1),   // nid of this line
+      (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
+      (char*) current_nid,         // nid of upper-bounds memory[$rs1 + imm]
+      (char*) up_memory_flow_nid); // nid of most recent update of upper-bounds memory
 
-  up_memory_flow_nid = current_nid + 1;
+    up_memory_flow_nid = current_nid + 1;
 
-  current_nid = current_nid + 2;
+    current_nid = current_nid + 2;
+  }
 
   // write $rs2 register to memory[$rs1 + imm]
   printf4("%d write 3 %d %d %d\n",
@@ -10132,54 +10148,59 @@ void model_syscalls() {
     (char*) (current_nid + 1002)); // nid of preceding line
 
 
-  // if read ecall is active record $a1 register and bounds for checking address validity
+  // read ecall
   printf3("%d and 1 %d %d ; read ecall is active\n",
     (char*) (current_nid + 1100), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
     (char*) (current_nid + 11));  // nid of $a7 == SYSCALL_READ
 
-  printf4("%d ite 2 %d %d %d ; lower bound on $a1 for checking address validity\n",
-    (char*) (current_nid + 1101),          // nid of this line
-    (char*) (current_nid + 1100),          // nid of write ecall is active
-    (char*) (reg_nids + LO_FLOW + REG_A1), // nid of current lower bound on $a1 register
-    (char*) lo_flow_nid);                  // nid of most recent update of lower bound on memory access
-
-  lo_flow_nid = current_nid + 1101;
-
-  printf4("%d ite 2 %d %d %d ; upper bound on $a1 for checking address validity\n",
-    (char*) (current_nid + 1102),          // nid of this line
-    (char*) (current_nid + 1100),          // nid of write ecall is active
-    (char*) (reg_nids + UP_FLOW + REG_A1), // nid of current upper bound on $a1 register
-    (char*) up_flow_nid);                  // nid of most recent update of upper bound on memory access
-
-  up_flow_nid = current_nid + 1102;
-
+  // if read ecall is active record $a1 register for checking address validity
   printf4("%d ite 2 %d %d %d ; $a1 is start address of write buffer for checking address validity\n",
-    (char*) (current_nid + 1103),  // nid of this line
+    (char*) (current_nid + 1101),  // nid of this line
     (char*) (current_nid + 1100),  // nid of read ecall is active
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
     (char*) write_flow_start_nid); // nid of address of most recent memory write access
 
-  write_flow_start_nid = current_nid + 1103;
+  write_flow_start_nid = current_nid + 1101;
 
   // if read ecall is active record $a1 + ($a2 / 8) * 8 as address for checking address validity
   printf1("%d not 2 17\n",
-    (char*) (current_nid + 1104)); // nid of this line
+    (char*) (current_nid + 1102)); // nid of this line
   printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
-    (char*) (current_nid + 1105),  // nid of this line
+    (char*) (current_nid + 1103),  // nid of this line
     (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
-    (char*) (current_nid + 1104)); // nid of not 7
+    (char*) (current_nid + 1102)); // nid of not 7
   printf3("%d add 2 %d %d ; $a1 + ($a2 / 8) * 8\n",
-    (char*) (current_nid + 1106),  // nid of this line
+    (char*) (current_nid + 1104),  // nid of this line
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1105)); // nid of ($a2 / 8) * 8
+    (char*) (current_nid + 1103)); // nid of ($a2 / 8) * 8
   printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of write buffer for checking address validity\n",
-    (char*) (current_nid + 1107),  // nid of this line
+    (char*) (current_nid + 1105),  // nid of this line
     (char*) (current_nid + 1100),  // nid of read ecall is active
-    (char*) (current_nid + 1106),  // nid of $a1 + ($a2 / 8) * 8
+    (char*) (current_nid + 1104),  // nid of $a1 + ($a2 / 8) * 8
     (char*) write_flow_end_nid);   // nid of address of most recent memory write access
 
-  write_flow_end_nid = current_nid + 1107;
+  write_flow_end_nid = current_nid + 1105;
+
+  if (check_block_access) {
+    // if read ecall is active record $a1 bounds for checking address validity
+
+    printf4("%d ite 2 %d %d %d ; lower bound on $a1 for checking address validity\n",
+      (char*) (current_nid + 1106),          // nid of this line
+      (char*) (current_nid + 1100),          // nid of write ecall is active
+      (char*) (reg_nids + LO_FLOW + REG_A1), // nid of current lower bound on $a1 register
+      (char*) lo_flow_nid);                  // nid of most recent update of lower bound on memory access
+
+    lo_flow_nid = current_nid + 1106;
+
+    printf4("%d ite 2 %d %d %d ; upper bound on $a1 for checking address validity\n",
+      (char*) (current_nid + 1107),          // nid of this line
+      (char*) (current_nid + 1100),          // nid of write ecall is active
+      (char*) (reg_nids + UP_FLOW + REG_A1), // nid of current upper bound on $a1 register
+      (char*) up_flow_nid);                  // nid of most recent update of upper bound on memory access
+
+    up_flow_nid = current_nid + 1107;
+  }
 
   // TODO: check file descriptor validity, return error codes
 
@@ -10217,54 +10238,59 @@ void model_syscalls() {
   memory_flow_nid = current_nid + 1154;
 
 
-  // if write ecall is active record $a1 register and bounds for checking address validity
+  // write ecall
   printf3("%d and 1 %d %d ; write ecall is active\n",
     (char*) (current_nid + 1200), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
     (char*) (current_nid + 12));  // nid of $a7 == SYSCALL_WRITE
 
-  printf4("%d ite 2 %d %d %d ; lower bound on $a1 for checking address validity\n",
-    (char*) (current_nid + 1201),          // nid of this line
-    (char*) (current_nid + 1200),          // nid of write ecall is active
-    (char*) (reg_nids + LO_FLOW + REG_A1), // nid of current lower bound on $a1 register
-    (char*) lo_flow_nid);                  // nid of most recent update of lower bound on memory access
-
-  lo_flow_nid = current_nid + 1201;
-
-  printf4("%d ite 2 %d %d %d ; upper bound on $a1 for checking address validity\n",
-    (char*) (current_nid + 1202),          // nid of this line
-    (char*) (current_nid + 1200),          // nid of write ecall is active
-    (char*) (reg_nids + UP_FLOW + REG_A1), // nid of current upper bound on $a1 register
-    (char*) up_flow_nid);                  // nid of most recent update of upper bound on memory access
-
-  up_flow_nid = current_nid + 1202;
-
+  // if write ecall is active record $a1 register for checking address validity
   printf4("%d ite 2 %d %d %d ; $a1 is start address of read buffer for checking address validity\n",
-    (char*) (current_nid + 1203), // nid of this line
+    (char*) (current_nid + 1201), // nid of this line
     (char*) (current_nid + 1200), // nid of write ecall is active
     (char*) (reg_nids + REG_A1),  // nid of current value of $a1 register
     (char*) read_flow_start_nid); // nid of address of most recent memory read access
 
-  read_flow_start_nid = current_nid + 1203;
+  read_flow_start_nid = current_nid + 1201;
 
   // if write ecall is active record $a1 + ($a2 / 8) * 8 as address for checking address validity
   printf1("%d not 2 17\n",
-    (char*) (current_nid + 1204)); // nid of this line
+    (char*) (current_nid + 1202)); // nid of this line
   printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
-    (char*) (current_nid + 1205),  // nid of this line
+    (char*) (current_nid + 1203),  // nid of this line
     (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
-    (char*) (current_nid + 1204)); // nid of not 7
+    (char*) (current_nid + 1202)); // nid of not 7
   printf3("%d add 2 %d %d ; $a1 + ($a2 / 8) * 8\n",
-    (char*) (current_nid + 1206),  // nid of this line
+    (char*) (current_nid + 1204),  // nid of this line
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1205)); // nid of ($a2 / 8) * 8
+    (char*) (current_nid + 1203)); // nid of ($a2 / 8) * 8
   printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of read buffer for checking address validity\n",
-    (char*) (current_nid + 1207), // nid of this line
+    (char*) (current_nid + 1205), // nid of this line
     (char*) (current_nid + 1200), // nid of write ecall is active
-    (char*) (current_nid + 1206), // nid of $a1 + ($a2 / 8) * 8
+    (char*) (current_nid + 1204), // nid of $a1 + ($a2 / 8) * 8
     (char*) read_flow_end_nid);   // nid of address of most recent memory read access
 
-  read_flow_end_nid = current_nid + 1207;
+  read_flow_end_nid = current_nid + 1205;
+
+  if (check_block_access) {
+    // if write ecall is active record $a1 bounds for checking address validity
+
+    printf4("%d ite 2 %d %d %d ; lower bound on $a1 for checking address validity\n",
+      (char*) (current_nid + 1206),          // nid of this line
+      (char*) (current_nid + 1200),          // nid of write ecall is active
+      (char*) (reg_nids + LO_FLOW + REG_A1), // nid of current lower bound on $a1 register
+      (char*) lo_flow_nid);                  // nid of most recent update of lower bound on memory access
+
+    lo_flow_nid = current_nid + 1206;
+
+    printf4("%d ite 2 %d %d %d ; upper bound on $a1 for checking address validity\n",
+      (char*) (current_nid + 1207),          // nid of this line
+      (char*) (current_nid + 1200),          // nid of write ecall is active
+      (char*) (reg_nids + UP_FLOW + REG_A1), // nid of current upper bound on $a1 register
+      (char*) up_flow_nid);                  // nid of most recent update of upper bound on memory access
+
+    up_flow_nid = current_nid + 1207;
+  }
 
   // TODO: check file descriptor validity, return error codes
 
@@ -10278,35 +10304,40 @@ void model_syscalls() {
   *(reg_flow_nids + REG_A0) = current_nid + 1250;
 
 
-  // if openat ecall is active record $a1 register and bounds for checking address validity
+  // openat ecall
   printf3("%d and 1 %d %d ; openat ecall is active\n",
     (char*) (current_nid + 1300), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
     (char*) (current_nid + 13));  // nid of $a7 == SYSCALL_OPENAT
 
-  printf4("%d ite 2 %d %d %d ; lower bound on $a1 for checking address validity\n",
-    (char*) (current_nid + 1301),          // nid of this line
-    (char*) (current_nid + 1300),          // nid of openat ecall is active
-    (char*) (reg_nids + LO_FLOW + REG_A1), // nid of current lower bound on $a1 register
-    (char*) lo_flow_nid);                  // nid of most recent update of lower bound on memory access
-
-  lo_flow_nid = current_nid + 1301;
-
-  printf4("%d ite 2 %d %d %d ; upper bound on $a1 for checking address validity\n",
-    (char*) (current_nid + 1302),          // nid of this line
-    (char*) (current_nid + 1300),          // nid of openat ecall is active
-    (char*) (reg_nids + UP_FLOW + REG_A1), // nid of current upper bound on $a1 register
-    (char*) up_flow_nid);                  // nid of most recent update of upper bound on memory access
-
-  up_flow_nid = current_nid + 1302;
-
+  // if openat ecall is active record $a1 register for checking address validity
   printf4("%d ite 2 %d %d %d ; $a1 is start address of filename for checking address validity\n",
-    (char*) (current_nid + 1303), // nid of this line
+    (char*) (current_nid + 1301), // nid of this line
     (char*) (current_nid + 1300), // nid of openat ecall is active
     (char*) (reg_nids + REG_A1),  // nid of current value of $a1 register
     (char*) read_flow_start_nid); // nid of address of most recent memory read access
 
-  read_flow_start_nid = current_nid + 1303;
+  read_flow_start_nid = current_nid + 1301;
+
+  if (check_block_access) {
+    // if openat ecall is active record $a1 bounds for checking address validity
+
+    printf4("%d ite 2 %d %d %d ; lower bound on $a1 for checking address validity\n",
+      (char*) (current_nid + 1302),          // nid of this line
+      (char*) (current_nid + 1300),          // nid of openat ecall is active
+      (char*) (reg_nids + LO_FLOW + REG_A1), // nid of current lower bound on $a1 register
+      (char*) lo_flow_nid);                  // nid of most recent update of lower bound on memory access
+
+    lo_flow_nid = current_nid + 1302;
+
+    printf4("%d ite 2 %d %d %d ; upper bound on $a1 for checking address validity\n",
+      (char*) (current_nid + 1303),          // nid of this line
+      (char*) (current_nid + 1300),          // nid of openat ecall is active
+      (char*) (reg_nids + UP_FLOW + REG_A1), // nid of current upper bound on $a1 register
+      (char*) up_flow_nid);                  // nid of most recent update of upper bound on memory access
+
+    up_flow_nid = current_nid + 1303;
+  }
 
   // TODO: check address validity of whole filename, flags and mode arguments
 
@@ -10348,7 +10379,7 @@ void model_syscalls() {
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
-  // if brk ecall is active, set brk = $a0 if $a0 is valid or else set $a0 = brk
+  // if brk ecall is active and $a0 is valid set brk = $a0
   // $a0 is valid if brk <= $a0 < $sp and $a0 is word-aligned
   printf3("%d ulte 1 %d %d ; brk <= $a0\n",
     (char*) (current_nid + 1452), // nid of this line
@@ -10386,50 +10417,53 @@ void model_syscalls() {
     (char*) (current_nid + 1450),  // nid of brk
     (char*) (current_nid + 1459)); // nid of preceding line
 
-  printf4("%d ite 2 %d %d %d ; lower bound on $t1 = brk if brk ecall is active and $a0 is valid\n",
-    (char*) (current_nid + 1461),                 // nid of this line
-    (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
-    (char*) (current_nid + 1450),                 // nid of brk
-    (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
-
-  *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1461;
-
-  printf4("%d ite 2 %d %d %d ; upper bound on $t1 = $a0 if brk ecall is active and $a0 is valid\n",
-    (char*) (current_nid + 1462),                 // nid of this line
-    (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
-    (char*) (reg_nids + REG_A0),                  // nid of current value of $a0 register
-    (char*) *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
-
-  *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1462;
-
+  // if brk ecall is active and $a0 is invalid set $a0 = brk
   printf2("%d not 1 %d ; $a0 is invalid\n",
-    (char*) (current_nid + 1463),  // nid of this line
+    (char*) (current_nid + 1461),  // nid of this line
     (char*) (current_nid + 1457)); // nid of $a0 is valid
   printf3("%d and 1 %d %d ; brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1464),  // nid of this line
+    (char*) (current_nid + 1462),  // nid of this line
     (char*) (current_nid + 1400),  // nid of brk ecall is active
-    (char*) (current_nid + 1463)); // nid of $a0 is invalid
+    (char*) (current_nid + 1461)); // nid of $a0 is invalid
   printf4("%d ite 2 %d %d %d ; set $a0 = brk if brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1465),       // nid of this line
-    (char*) (current_nid + 1464),       // nid of brk ecall is active and $a0 is invalid
+    (char*) (current_nid + 1463),       // nid of this line
+    (char*) (current_nid + 1462),       // nid of brk ecall is active and $a0 is invalid
     (char*) (current_nid + 1450),       // nid of brk
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_nid + 1465;
+  *(reg_flow_nids + REG_A0) = current_nid + 1463;
 
-  printf3("%d ite 2 %d 20 %d ; lower bound on $t1 = end of code segment if brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1466),                 // nid of this line
-    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
+  if (check_block_access) {
+    printf4("%d ite 2 %d %d %d ; lower bound on $t1 = brk if brk ecall is active and $a0 is valid\n",
+      (char*) (current_nid + 1464),                 // nid of this line
+      (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
+      (char*) (current_nid + 1450),                 // nid of brk
+      (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
 
-  *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1466;
+    *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1464;
 
-  printf3("%d ite 2 %d 50 %d ; upper bound on $t1 = highest virtual address if brk ecall is active and $a0 is invalid\n",
-    (char*) (current_nid + 1467),                 // nid of this line
-    (char*) (current_nid + 1464),                 // nid of brk ecall is active and $a0 is invalid
-    (char*) *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
+    printf4("%d ite 2 %d %d %d ; upper bound on $t1 = $a0 if brk ecall is active and $a0 is valid\n",
+      (char*) (current_nid + 1465),                 // nid of this line
+      (char*) (current_nid + 1458),                 // nid of brk ecall is active and $a0 is valid
+      (char*) (reg_nids + REG_A0),                  // nid of current value of $a0 register
+      (char*) *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
 
-  *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1467;
+    *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1465;
+
+    printf3("%d ite 2 %d 20 %d ; lower bound on $t1 = end of code segment if brk ecall is active and $a0 is invalid\n",
+      (char*) (current_nid + 1466),                 // nid of this line
+      (char*) (current_nid + 1462),                 // nid of brk ecall is active and $a0 is invalid
+      (char*) *(reg_flow_nids + LO_FLOW + REG_T1)); // nid of most recent update of lower bound on $t1 register
+
+    *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1466;
+
+    printf3("%d ite 2 %d 50 %d ; upper bound on $t1 = highest virtual address if brk ecall is active and $a0 is invalid\n",
+      (char*) (current_nid + 1467),                 // nid of this line
+      (char*) (current_nid + 1462),                 // nid of brk ecall is active and $a0 is invalid
+      (char*) *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
+
+    *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1467;
+  }
 }
 
 void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
@@ -10545,6 +10579,11 @@ uint64_t selfie_model_generate() {
 
   init_memory(1);
 
+  if (string_compare(peek_argument(), "--check-block-access"))
+    check_block_access = 1;
+  else
+    check_block_access = 0;
+
   boot_loader();
 
   run = 0;
@@ -10603,76 +10642,94 @@ uint64_t selfie_model_generate() {
 
   i = 0;
 
-  while (i < 3 * NUMBEROFREGISTERS) {
+  while (i < NUMBEROFREGISTERS) {
     *(reg_flow_nids + i) = reg_nids + i;
 
     if (i == 0)
       printf2("\n%d zero 2 %s ; register $0 is always 0\n",
         (char*) *(reg_flow_nids + i), // nid of this line
-        get_register_name(REG_ZR));   // register name
-    else if (i == LO_FLOW)
-      printf2("\n%d constd 2 %d\n",
-        (char*) *(reg_flow_nids + i),         // nid of this line
-        (char*) (entry_point + code_length)); // end of code segment
-    else if (i == UP_FLOW)
-      printf2("\n%d constd 2 %d\n",
-        (char*) *(reg_flow_nids + i),                // nid of this line
-        (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE)); // highest virtual address
-    else {
-      printf1("%d state 2 ", (char*) *(reg_flow_nids + i));
-
-      if (i < NUMBEROFREGISTERS)
-        printf2("%s ; register $%d\n",
-          get_register_name(i), // register name
-          (char*) i);           // register index as comment
-      else if (i < LO_FLOW + NUMBEROFREGISTERS)
-        printf2("lo-%s ; lower bound on $%d\n",
-          get_register_name(i % NUMBEROFREGISTERS), // register name
-          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
-      else if (i < UP_FLOW + NUMBEROFREGISTERS)
-        printf2("up-%s ; upper bound on $%d\n",
-          get_register_name(i % NUMBEROFREGISTERS), // register name
-          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
-    }
+        get_register_name(i));        // register name
+    else
+      printf3("%d state 2 %s ; register $%d\n",
+        (char*) *(reg_flow_nids + i), // nid of this line
+        get_register_name(i),         // register name
+        (char*) i);                   // register index as comment
 
     i = i + 1;
   }
+
+  if (check_block_access)
+    while (i < 3 * NUMBEROFREGISTERS) {
+      *(reg_flow_nids + i) = reg_nids + i;
+
+      if (i == LO_FLOW)
+        printf2("\n%d constd 2 %d\n",
+          (char*) *(reg_flow_nids + i),         // nid of this line
+          (char*) (entry_point + code_length)); // end of code segment
+      else if (i == UP_FLOW)
+        printf2("\n%d constd 2 %d\n",
+          (char*) *(reg_flow_nids + i),                // nid of this line
+          (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE)); // highest virtual address
+      else {
+        printf1("%d state 2 ", (char*) *(reg_flow_nids + i));
+
+        if (i < LO_FLOW + NUMBEROFREGISTERS)
+          printf2("lo-%s ; lower bound on $%d\n",
+            get_register_name(i % NUMBEROFREGISTERS), // register name
+            (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+        else if (i < UP_FLOW + NUMBEROFREGISTERS)
+          printf2("up-%s ; upper bound on $%d\n",
+            get_register_name(i % NUMBEROFREGISTERS), // register name
+            (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+      }
+
+      i = i + 1;
+    }
 
   print("\n; initializing registers\n");
 
   i = 0;
 
-  while (i < 3 * NUMBEROFREGISTERS) {
-    if (i == REG_SP)
+  while (i < NUMBEROFREGISTERS) {
+    if (i == 0)
+      println();
+    else if (i == REG_SP)
       printf3("%d init 2 %d 40 %s ; initial value from boot loader\n",
         (char*) (reg_nids * 2 + i), // nid of this line
         (char*) (reg_nids + i),     // nid of $sp register
         get_register_name(i));      // register name as comment
-    else if (i % NUMBEROFREGISTERS != 0) {
-      if (i < NUMBEROFREGISTERS)
-        printf3("%d init 2 %d 12 %s ; initial value is 0\n",
-          (char*) (reg_nids * 2 + i), // nid of this line
-          (char*) (reg_nids + i),     // nid of to-be-initialized register
-          get_register_name(i));      // register name as comment
-      else if (i < LO_FLOW + NUMBEROFREGISTERS)
-        printf3("%d init 2 %d 20 %s ; initial value is end of code segment\n",
-          (char*) (reg_nids * 2 + i),                // nid of this line
-          (char*) (reg_nids + i),                    // nid of to-be-initialized register
-          get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
-      else if (i < UP_FLOW + NUMBEROFREGISTERS)
-        printf3("%d init 2 %d 50 %s ; initial value is highest virtual address\n",
-          (char*) (reg_nids * 2 + i),                // nid of this line
-          (char*) (reg_nids + i),                    // nid of to-be-initialized register
-          get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
-    } else
-      println();
+    else
+      printf3("%d init 2 %d 12 %s ; initial value is 0\n",
+        (char*) (reg_nids * 2 + i), // nid of this line
+        (char*) (reg_nids + i),     // nid of to-be-initialized register
+        get_register_name(i));      // register name as comment
 
     i = i + 1;
   }
 
+  if (check_block_access)
+    while (i < 3 * NUMBEROFREGISTERS) {
+      if (i % NUMBEROFREGISTERS == 0)
+        println();
+      else {
+        if (i < LO_FLOW + NUMBEROFREGISTERS)
+          printf3("%d init 2 %d 20 %s ; initial value is end of code segment\n",
+            (char*) (reg_nids * 2 + i),                // nid of this line
+            (char*) (reg_nids + i),                    // nid of to-be-initialized register
+            get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
+        else if (i < UP_FLOW + NUMBEROFREGISTERS)
+          printf3("%d init 2 %d 50 %s ; initial value is highest virtual address\n",
+            (char*) (reg_nids * 2 + i),                // nid of this line
+            (char*) (reg_nids + i),                    // nid of to-be-initialized register
+            get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
+      }
+
+      i = i + 1;
+    }
+
   print("\n; 64-bit program counter encoded in Boolean flags\n\n");
 
-  // 3 more digits to accommodate binary starting at entry point  and stack with
+  // 3 more digits to accommodate binary starting at entry point and stack with
   // 100*4 lines per 32-bit instruction (pc increments by 4) and
   // 100*8 lines per 64-bit machine word in data segment
   pcs_nid = ten_to_the_power_of(
@@ -10766,24 +10823,36 @@ uint64_t selfie_model_generate() {
   current_nid = memory_nid;
 
   printf1("%d state 3 memory ; data segment, heap, stack\n", (char*) current_nid);
-  printf1("%d state 3 lower-bounds ; for checking address validity\n", (char*) (current_nid + 1));
-  printf1("%d state 3 upper-bounds ; for checking address validity\n\n", (char*) (current_nid + 2));
-
   printf3("%d init 3 %d %d ; loading data segment and stack into memory\n",
-    (char*) (current_nid + 3), // nid of this line
+    (char*) (current_nid + 1), // nid of this line
     (char*) current_nid,       // nid of memory
     (char*) data_flow_nid);    // nid of most recent update to data segment
-  printf2("%d init 3 %d 20 ; initializing lower bounds to end of code segment\n",
-    (char*) (current_nid + 4),  // nid of this line
-    (char*) (current_nid + 1)); // nid of lower bounds on addresses in memory
-  printf2("%d init 3 %d 50 ; initializing upper bounds to highest virtual address\n",
-    (char*) (current_nid + 5),  // nid of this line
-    (char*) (current_nid + 2)); // nid of upper bounds on addresses in memory
 
-  memory_flow_nid = memory_nid;
+  memory_flow_nid = current_nid;
 
-  lo_memory_flow_nid = memory_nid + 1;
-  up_memory_flow_nid = memory_nid + 2;
+  if (check_block_access) {
+    current_nid = current_nid + 2;
+
+    lo_memory_nid = current_nid;
+
+    printf1("\n%d state 3 lower-bounds ; for checking address validity\n", (char*) current_nid);
+    printf2("%d init 3 %d 20 ; initializing lower bounds to end of code segment\n",
+      (char*) (current_nid + 1), // nid of this line
+      (char*) current_nid);      // nid of lower bounds on addresses in memory
+
+    lo_memory_flow_nid = current_nid;
+
+    current_nid = current_nid + 2;
+
+    up_memory_nid = current_nid;
+
+    printf1("\n%d state 3 upper-bounds ; for checking address validity\n", (char*) current_nid);
+    printf2("%d init 3 %d 50 ; initializing upper bounds to highest virtual address\n",
+      (char*) (current_nid + 1), // nid of this line
+      (char*) current_nid);      // nid of upper bounds on addresses in memory
+
+    up_memory_flow_nid = current_nid;
+  }
 
   print("\n; data flow\n\n");
 
@@ -10979,31 +11048,43 @@ uint64_t selfie_model_generate() {
 
   i = 0;
 
-  while (i < 3 * NUMBEROFREGISTERS) {
-    if (i % NUMBEROFREGISTERS != 0) {
-      // update register
-      printf3("%d next 2 %d %d ",
-        (char*) (current_nid + i),     // nid of this line
-        (char*) (reg_nids + i),        // nid of register
-        (char*) *(reg_flow_nids + i)); // nid of most recent update to register
-
-      if (i < NUMBEROFREGISTERS)
-        printf2("%s ; register $%d\n",
-          get_register_name(i), // register name
-          (char*) i);           // register index as comment
-      else if (i < LO_FLOW + NUMBEROFREGISTERS)
-        printf2("lo-%s ; lower bound on $%d\n",
-          get_register_name(i % NUMBEROFREGISTERS), // register name
-          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
-      else if (i < UP_FLOW + NUMBEROFREGISTERS)
-        printf2("up-%s ; upper bound on $%d\n",
-          get_register_name(i % NUMBEROFREGISTERS), // register name
-          (char*) (i % NUMBEROFREGISTERS));         // register index as comment
-    } else
+  while (i < NUMBEROFREGISTERS) {
+    if (i == 0)
       println();
+    else {
+      printf5("%d next 2 %d %d %s ; register $%d\n",
+        (char*) (current_nid + i),    // nid of this line
+        (char*) (reg_nids + i),       // nid of register
+        (char*) *(reg_flow_nids + i), // nid of most recent update to register
+        get_register_name(i),         // register name
+        (char*) i);                   // register index as comment
+    }
 
     i = i + 1;
   }
+
+  if (check_block_access)
+    while (i < 3 * NUMBEROFREGISTERS) {
+      if (i % NUMBEROFREGISTERS == 0)
+        println();
+      else {
+        printf3("%d next 2 %d %d ",
+          (char*) (current_nid + i),     // nid of this line
+          (char*) (reg_nids + i),        // nid of register
+          (char*) *(reg_flow_nids + i)); // nid of most recent update to register
+
+        if (i < LO_FLOW + NUMBEROFREGISTERS)
+          printf2("lo-%s ; lower bound on $%d\n",
+            get_register_name(i % NUMBEROFREGISTERS), // register name
+            (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+        else if (i < UP_FLOW + NUMBEROFREGISTERS)
+          printf2("up-%s ; upper bound on $%d\n",
+            get_register_name(i % NUMBEROFREGISTERS), // register name
+            (char*) (i % NUMBEROFREGISTERS));         // register index as comment
+      }
+
+      i = i + 1;
+    }
 
   print("\n; updating memory\n\n");
 
@@ -11013,14 +11094,17 @@ uint64_t selfie_model_generate() {
       (char*) current_nid,      // nid of this line
       (char*) memory_nid,       // nid of memory
       (char*) memory_flow_nid); // nid of most recent write to memory
-  printf3("%d next 3 %d %d lower-bounds\n",
-      (char*) (current_nid + 1),   // nid of this line
-      (char*) (memory_nid + 1),    // nid of lower bounds on addresses in memory
-      (char*) lo_memory_flow_nid); // nid of most recent write to lower bounds on addresses in memory
-  printf3("%d next 3 %d %d upper-bounds\n",
-      (char*) (current_nid + 2),   // nid of this line
-      (char*) (memory_nid + 2),    // nid of upper bounds on addresses in memory
-      (char*) up_memory_flow_nid); // nid of most recent write to upper bounds on addresses in memory
+
+  if (check_block_access) {
+    printf3("%d next 3 %d %d lower-bounds\n",
+        (char*) (current_nid + 1),   // nid of this line
+        (char*) lo_memory_nid,       // nid of lower bounds on addresses in memory
+        (char*) lo_memory_flow_nid); // nid of most recent write to lower bounds on addresses in memory
+    printf3("%d next 3 %d %d upper-bounds\n",
+        (char*) (current_nid + 2),   // nid of this line
+        (char*) up_memory_nid,       // nid of upper bounds on addresses in memory
+        (char*) up_memory_flow_nid); // nid of most recent write to upper bounds on addresses in memory
+  }
 
   print("\n; checking division and remainder by zero\n\n");
 
@@ -11429,7 +11513,6 @@ uint64_t selfie() {
 
       if (string_compare(option, "-c"))
         selfie_compile();
-
       else if (number_of_remaining_arguments() == 0) {
         // remaining options have at least one argument
         print_usage();
