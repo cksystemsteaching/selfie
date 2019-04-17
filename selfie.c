@@ -9996,9 +9996,9 @@ void model_jalr() {
   if (rd == REG_ZR)
     if (imm == 0)
       if (rs1 == REG_RA)
-        if (pc >= estimated_return) {
+        if (pc >= estimated_return)
           // no forward branches and jumps outside of "procedure body"
-          if (current_callee > entry_point)
+          if (current_callee > entry_point) {
             // assert: current_callee points to an instruction to which a jal jumps
             *(call_return + (current_callee - entry_point) / INSTRUCTIONSIZE) = pc;
 
