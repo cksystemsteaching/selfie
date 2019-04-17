@@ -10136,7 +10136,7 @@ void model_syscalls() {
     (char*) (current_nid + 1000), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
     (char*) (current_nid + 10));  // nid of $a7 == SYSCALL_EXIT
-  printf2("%d ne 1 %d 12 ; $a0 != 0\n",
+  printf2("%d neq 1 %d 12 ; $a0 != 0\n",
     (char*) (current_nid + 1001), // nid of this line
     (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
   printf3("%d and 1 %d %d ; exit ecall is active and $a0 != 0\n",
@@ -10517,7 +10517,7 @@ void check_address_validity(uint64_t read_access, uint64_t flow_nid) {
   printf2("%d and 2 %d 17\n",
     (char*) current_nid, // nid of this line
     (char*) flow_nid);   // nid of address of most recent memory access
-  printf2("%d ne 1 %d 12\n",
+  printf2("%d neq 1 %d 12\n",
     (char*) (current_nid + 1), // nid of this line
     (char*) current_nid);      // nid of 3 LSBs of address of most recent memory access
   printf2("%d bad %d ; ",
