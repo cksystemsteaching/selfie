@@ -158,14 +158,14 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
     if should_succeed:
       if not mandatory:
         number_of_positive_tests_passed[-1] += 1
-      
+
       print_passed(msg)
     else:
       if mandatory:
         failed_mandatory_test = True
       else:
         number_of_negative_tests_failed[-1] += 1
-      
+
       print_failed(msg, warning, output, command)
   else:
     if should_succeed:
@@ -173,12 +173,12 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
         failed_mandatory_test = True
       else:
         number_of_positive_tests_failed[-1] += 1
-      
+
       print_failed(msg, warning, output, command)
     else:
       if not mandatory:
         number_of_negative_tests_passed[-1] += 1
-      
+
       print_passed(msg)
 
 
@@ -287,7 +287,7 @@ def test_instruction_encoding(instruction, file):
           # ignore all pading bytes
           no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
 
-          if no_of_bytes_until_code < 0: 
+          if no_of_bytes_until_code < 0:
             no_of_bytes_until_code = 0
 
           f.read(no_of_bytes_until_code)
@@ -298,7 +298,7 @@ def test_instruction_encoding(instruction, file):
           if any(map(lambda x: x & instruction_mask == instruction_value, read_instructions)):
             # at least one instruction has the right encoding
             exit_code = 0
-        
+
         if os.path.isfile('.tmp.bin'):
           os.remove('.tmp.bin')
 
@@ -308,9 +308,9 @@ def test_instruction_encoding(instruction, file):
         record_result(False, msg, '', 'The binary file has not been created by selfie')
     else:
       record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
-  except FileNotFoundError as e:
+  except OSError as e:
     # the program to execute can not be found (e.g. selfie is not built)
-    record_result(False, msg, '', str(e), True, command, mandatory=False)
+    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), True, command, mandatory=False)
 
 
 
@@ -341,16 +341,19 @@ def test_assembler_instruction_format(instruction, file):
         record_result(False, msg, output, 'The assembler file has not been created by selfie')
     else:
       record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
-  except FileNotFoundError as e:
+  except OSError as e:
     # the program to execute can not be found (e.g. selfie is not built)
-    record_result(False, msg, '', str(e), True, command, mandatory=False)
+    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), True, command, mandatory=False)
 
 
 
 
 def test_execution(command, msg, success_criteria=True, mandatory=False):
   try:
-    returncode, output, _ = execute(command)
+    returncode, output, error_output = execute(command)
+
+    if returncode != 0 and len(output) == 0:
+      output = error_output
 
     if type(success_criteria) is bool:
       should_succeed = success_criteria
@@ -377,10 +380,10 @@ def test_execution(command, msg, success_criteria=True, mandatory=False):
       record_result(result, msg, output, warning, True, command, mandatory)
   except TimeoutException as e:
     record_result(False, msg, e.output, str(e), True, command, mandatory)
-  except FileNotFoundError as e:
+  except OSError as e:
     # the program to execute can not be found (e.g. selfie is not built)
-    record_result(False, msg, '', str(e), True, command, mandatory)
-  
+    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), True, command, mandatory=False)
+
 
 
 class Memoize:
@@ -458,7 +461,7 @@ def test_hypster_execution(file, result, msg):
 
 def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg):
   test_execution(command, msg, success_criteria=lambda code, out: is_interleaved_output(code, out, interleaved_msg, number_of_interleaved))
- 
+
 
 def test_compile_warnings(file, msg, mandatory=False):
   test_execution('./selfie -c {}'.format(file), msg, success_criteria=has_no_compile_warnings, mandatory=mandatory)
@@ -510,7 +513,7 @@ def test_bitwise_shift(stage):
         'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
       test_mipster_execution(variable_file, 2,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
-    
+
     test_mipster_execution('bitwise-shift-precedence.c', 42,
       'bitwise shift operators respect the precedence of the C operators: <<, >>')
 
@@ -545,13 +548,13 @@ def test_bitwise_and_or_not():
 
 
 def test_for_loop():
-  test_compilable('for-loop-invalid-missing-assignment.c', 
+  test_compilable('for-loop-invalid-missing-assignment.c',
     'for loop with missing assignment do not compile', should_succeed=False)
   test_compilable('for-loop-single-statement.c',
     'for loop with one statement do compile')
   test_compilable('for-loop-multiple-statements.c',
     'for loop with multiple statements do compile')
-  test_compilable('for-loop-nested.c', 
+  test_compilable('for-loop-nested.c',
     'nested for loops do compile')
   test_mipster_execution('for-loop-single-statement.c', 3,
     'for loop with one statement are implement with the right semantics')
@@ -566,7 +569,7 @@ def test_for_loop():
 
 def test_array(part):
   if part == 1:
-    test_compilable('array-global-declaration.c', 
+    test_compilable('array-global-declaration.c',
       'array declaration do compile')
     test_compilable('array-assignment.c',
       'assignments on arrays do compile')
@@ -694,7 +697,7 @@ def test_treiber_stack():
 
 
 def test_base(mandatory=True):
-  test_execution('make selfie', 'cc compiles selfie.c', mandatory=mandatory)
+  test_execution('make clean selfie', 'cc compiles selfie.c', mandatory=mandatory)
   test_compile_warnings('selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 
 
@@ -790,7 +793,7 @@ def enable_bulk_grader(file):
   if not os.path.isfile(file):
     print('the path "' + file + '" is not a file')
     exit(1)
-  
+
   bulk_grade_mode = True
   file_with_commit_links = os.path.abspath(file)
 
@@ -876,7 +879,7 @@ def parse_options(args):
     else:
       print('unknown option: ' + args[i])
       exit(1)
-    
+
     i += 1
 
   return args[i:]
@@ -893,7 +896,7 @@ def parse_tests(args):
     else:
       print('unknown test: {}'.format(arg))
       exit(1)
-  
+
   return to_execute
 
 
@@ -915,7 +918,7 @@ def do_bulk_grading(tests):
   working_directory = os.getcwd()
 
   os.chdir(bulk_grade_directory)
-  
+
   with open(file_with_commit_links, 'rt') as file:
     for line in file.readlines():
       matcher = re.match('^https://github.com/([^/]+)/([^/]+)/commit/([0-9a-f]+)$', line)
@@ -934,7 +937,7 @@ def do_bulk_grading(tests):
         os.system('git clone -q https://github.com/{}/{} {}/{}'.format(user, repo, user, repo))
 
       os.chdir(clone_dir)
-      
+
       # remove all changes in local repository
       os.system('git reset --hard -q')
 
