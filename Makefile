@@ -111,5 +111,5 @@ clean:
 	rm -rf *.sat
 	rm -rf selfie
 	rm -rf selfie.exe
-	rm -rf manuscript/code/*.smt
-	rm -rf manuscript/code/*.btor2
+	rm -rf manuscript/code/symbolic/*.smt
+	rm -rf manuscript/code/symbolic/*.btor2
