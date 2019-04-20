@@ -39,7 +39,7 @@ Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
 Selfie is implemented in a single (!) file and kept minimal for simplicity.
 There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
 and a debugger with replay as well as minimal operating system support in
-the form of RISC-V system calls built into the emulator.
+the form of RISC-V system calls built into the emulator and hypervisor.
 
 C* is a tiny Turing-complete subset of C that includes dereferencing
 (the * operator) but excludes composite data types, bitwise and Boolean
