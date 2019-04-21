@@ -10926,7 +10926,7 @@ uint64_t selfie_model_generate() {
         if (from_instruction == BEQ) {
           // is beq active and its condition true or false?
           printf5("%d and 1 %d %d ; beq %d[%x]",
-            (char*) (current_nid + i),                   // nid of this line
+            (char*) current_nid,                         // nid of this line
             (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
             (char*) condition_nid,                       // nid of true or false beq condition
             (char*) from_address, (char*) from_address); // address of instruction proceeding here
@@ -10934,9 +10934,11 @@ uint64_t selfie_model_generate() {
 
           // activate this instruction if beq is active and its condition is true (false)
           printf3("%d ite 1 %d 11 %d\n",
-            (char*) (current_nid + i + 1), // nid of this line
-            (char*) (current_nid + i),     // nid of preceding line
-            (char*) control_flow_nid);     // nid of previously processed in-edge
+            (char*) (current_nid + 1), // nid of this line
+            (char*) current_nid,       // nid of preceding line
+            (char*) control_flow_nid); // nid of previously processed in-edge
+
+          control_flow_nid = current_nid + 1;
 
           i = i + 2;
         } else if (from_instruction == JALR) {
@@ -10970,6 +10972,8 @@ uint64_t selfie_model_generate() {
                 (char*) (current_nid + 3), // nid of preceding line
                 (char*) control_flow_nid); // nid of previously processed in-edge
 
+              control_flow_nid = current_nid + 4;
+
               i = 5;
             } else {
               // no jalr returning from jal found
@@ -10992,7 +10996,7 @@ uint64_t selfie_model_generate() {
         } else if (from_instruction == ECALL) {
           // is ecall active and $a7 != SYSCALL_EXIT?
           printf5("%d and 1 %d %d ; ecall %d[%x]",
-            (char*) (current_nid + i),                   // nid of this line
+            (char*) current_nid,                         // nid of this line
             (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
             (char*) (library_nid + 20),                  // nid of $a7 != SYSCALL_EXIT condition
             (char*) from_address, (char*) from_address); // address of instruction proceeding here
@@ -11000,33 +11004,36 @@ uint64_t selfie_model_generate() {
 
           // activate this instruction if ecall is active and $a7 != SYSCALL_EXIT
           printf3("%d ite 1 %d 11 %d\n",
-            (char*) (current_nid + i + 1), // nid of this line
-            (char*) (current_nid + i),     // nid of preceding line
-            (char*) control_flow_nid);     // nid of previously processed in-edge
+            (char*) (current_nid + 1), // nid of this line
+            (char*) current_nid,       // nid of preceding line
+            (char*) control_flow_nid); // nid of previously processed in-edge
+
+          control_flow_nid = current_nid + 1;
 
           i = i + 2;
         } else {
           // activate this instruction if instruction proceeding here is active
           printf3("%d ite 1 %d 11 %d ; ",
-            (char*) (current_nid + i),             // nid of this line
+            (char*) current_nid,                   // nid of this line
             (char*) pc_nid(pcs_nid, from_address), // nid of pc flag of instruction proceeding here
             (char*) control_flow_nid);             // nid of previously processed in-edge
           if (from_instruction == JAL) print("jal ");
           printf2("%d[%x]", (char*) from_address, (char*) from_address);
           print_code_line_number_for_instruction(from_address, entry_point);println();
 
+          control_flow_nid = current_nid;
+
           i = i + 1;
         }
 
-        if (i > 0)
-          control_flow_nid = current_nid + i - 1;
+        current_nid = current_nid + i;
 
         in_edge = (uint64_t*) *in_edge;
       }
 
       // update pc flag of current instruction
       printf5("%d next 1 %d %d ; ->%d[%x]",
-        (char*) (current_nid + i),   // nid of this line
+        (char*) current_nid,         // nid of this line
         (char*) pc_nid(pcs_nid, pc), // nid of pc flag of current instruction
         (char*) control_flow_nid,    // nid of most recently processed in-edge
         (char*) pc, (char*) pc);     // address of current instruction
