@@ -10977,11 +10977,9 @@ uint64_t selfie_model_generate() {
               i = 5;
             } else {
               // no jalr returning from jal found
-              if (*in_edge != 0) {
-                // print here if there are more in-edges, otherwise below
-                printf2("; exit ecall wrapper call or runaway jal %d[%x]", (char*) from_address, (char*) from_address);
-                print_code_line_number_for_instruction(from_address, entry_point);println();
-              }
+
+              printf2("; exit ecall wrapper call or runaway jal %d[%x]", (char*) from_address, (char*) from_address);
+              print_code_line_number_for_instruction(from_address, entry_point);println();
 
               // this instruction may stay deactivated if there is no more in-edges
             }
