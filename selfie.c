@@ -9429,7 +9429,7 @@ void model_lui() {
   if (rd != REG_ZR) {
     reset_bounds();
 
-    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) left_shift(imm, 12));
+    printf3("%d constd 2 %d ; %x << 12\n", (char*) current_nid, (char*) left_shift(imm, 12), (char*) imm);
 
     // if this instruction is active set $rd = imm << 12
     printf4("%d ite 2 %d %d %d ; ",
@@ -9481,7 +9481,7 @@ void model_addi() {
     if (imm == 0)
       result_nid = reg_nids + rs1;
     else {
-      printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
+      printf3("%d constd 2 %d ; %x\n", (char*) current_nid, (char*) imm, (char*) imm);
 
       if (rs1 == REG_ZR) {
         result_nid = current_nid;
@@ -9689,11 +9689,11 @@ void model_remu() {
 
     // if this instruction is active record $rs2 for checking if $rs2 == 0
     printf5("%d ite 2 %d %d %d ; record %s for checking remainder by zero\n",
-      (char*) current_nid,          // nid of this line
-      (char*) pc_nid(pcs_nid, pc),  // nid of pc flag of this instruction
-      (char*) (reg_nids + rs2),     // nid of current value of $rs2 register
-      (char*) remainder_flow_nid,   // nid of divisor of most recent remainder
-      get_register_name(rs2));      // register name
+      (char*) current_nid,         // nid of this line
+      (char*) pc_nid(pcs_nid, pc), // nid of pc flag of this instruction
+      (char*) (reg_nids + rs2),    // nid of current value of $rs2 register
+      (char*) remainder_flow_nid,  // nid of divisor of most recent remainder
+      get_register_name(rs2));     // register name
 
     remainder_flow_nid = current_nid;
 
@@ -9780,13 +9780,13 @@ uint64_t compute_address() {
   if (imm == 0)
     return reg_nids + rs1; // nid of current value of $rs1 register
   else {
-    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) imm);
+    printf3("%d constd 2 %d ; %x\n", (char*) current_nid, (char*) imm, (char*) imm);
 
     // compute $rs1 + imm
     printf3("%d add 2 %d %d\n",
-      (char*) (current_nid + 1),  // nid of this line
-      (char*) (reg_nids + rs1),   // nid of current value of $rs1 register
-      (char*) current_nid);       // nid of immediate value
+      (char*) (current_nid + 1), // nid of this line
+      (char*) (reg_nids + rs1),  // nid of current value of $rs1 register
+      (char*) current_nid);      // nid of immediate value
 
     current_nid = current_nid + 2;
 
@@ -9971,7 +9971,10 @@ void model_beq() {
 void model_jal() {
   if (rd != REG_ZR) {
     // address of next instruction used here and in returning jalr instruction
-    printf2("%d constd 2 %d\n", (char*) current_nid, (char*) (pc + INSTRUCTIONSIZE));
+    printf3("%d constd 2 %d ; %x\n",
+      (char*) current_nid,             // nid of this line
+      (char*) (pc + INSTRUCTIONSIZE),  // address of next instruction
+      (char*) (pc + INSTRUCTIONSIZE)); // address of next instruction
 
     // if this instruction is active link $rd register to address of next instruction
     printf4("%d ite 2 %d %d %d ; ",
@@ -10074,11 +10077,11 @@ void translate_to_model() {
 }
 
 void model_syscalls() {
-  printf2("%d constd 2 %d\n", (char*) current_nid, (char*) SYSCALL_EXIT);
-  printf2("%d constd 2 %d\n", (char*) (current_nid + 1), (char*) SYSCALL_READ);
-  printf2("%d constd 2 %d\n", (char*) (current_nid + 2), (char*) SYSCALL_WRITE);
-  printf2("%d constd 2 %d\n", (char*) (current_nid + 3), (char*) SYSCALL_OPENAT);
-  printf2("%d constd 2 %d\n\n", (char*) (current_nid + 4), (char*) SYSCALL_BRK);
+  printf2("%d constd 2 %d ; SYSCALL_EXIT\n", (char*) current_nid, (char*) SYSCALL_EXIT);
+  printf2("%d constd 2 %d ; SYSCALL_READ\n", (char*) (current_nid + 1), (char*) SYSCALL_READ);
+  printf2("%d constd 2 %d ; SYSCALL_WRITE\n", (char*) (current_nid + 2), (char*) SYSCALL_WRITE);
+  printf2("%d constd 2 %d ; SYSCALL_OPENAT\n", (char*) (current_nid + 3), (char*) SYSCALL_OPENAT);
+  printf2("%d constd 2 %d ; SYSCALL_BRK\n\n", (char*) (current_nid + 4), (char*) SYSCALL_BRK);
 
   printf3("%d eq 1 %d %d ; $a7 == SYSCALL_EXIT\n",
     (char*) (current_nid + 10),  // nid of this line
@@ -10614,21 +10617,21 @@ uint64_t selfie_model_generate() {
   print("; word-aligned end of code segment in memory\n\n");
 
   // end of code segment for checking address validity
-  printf1("20 constd 2 %d\n\n", (char*) (entry_point + code_length));
+  printf2("20 constd 2 %d ; %x\n\n", (char*) (entry_point + code_length), (char*) (entry_point + code_length));
 
   print("; word-aligned end of data segment in memory (original program break)\n\n");
 
   // original program break (end of binary = code + data segment) for checking program break validity
-  printf1("30 constd 2 %d\n\n", (char*) get_original_break(current_context));
+  printf2("30 constd 2 %d ; %x\n\n", (char*) get_original_break(current_context), (char*) get_original_break(current_context));
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
   // $sp register value from boot loader
-  printf1("40 constd 2 %d\n\n", (char*) *(get_regs(current_context) + REG_SP));
+  printf2("40 constd 2 %d ; %x\n\n", (char*) *(get_regs(current_context) + REG_SP), (char*) *(get_regs(current_context) + REG_SP));
 
   print("; highest word-aligned address in 4GB of memory\n\n");
 
-  printf1("50 constd 2 %d\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
+  printf2("50 constd 2 %d ; %x\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE), (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
 
   print("; sorts for byte-wise reading\n\n");
 
@@ -10663,12 +10666,14 @@ uint64_t selfie_model_generate() {
       *(reg_flow_nids + i) = reg_nids + i;
 
       if (i == LO_FLOW)
-        printf2("\n%d constd 2 %d\n",
+        printf3("\n%d constd 2 %d ; %x\n",
           (char*) *(reg_flow_nids + i),         // nid of this line
+          (char*) (entry_point + code_length),  // end of code segment
           (char*) (entry_point + code_length)); // end of code segment
       else if (i == UP_FLOW)
-        printf2("\n%d constd 2 %d\n",
+        printf3("\n%d constd 2 %d ; %x\n",
           (char*) *(reg_flow_nids + i),                // nid of this line
+          (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE),  // highest virtual address
           (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE)); // highest virtual address
       else {
         printf1("%d state 2 ", (char*) *(reg_flow_nids + i));
@@ -10780,9 +10785,9 @@ uint64_t selfie_model_generate() {
     }
 
     // address in data segment or stack
-    printf2("%d constd 2 %d\n",
-      (char*) current_nid, // nid of this line
-      (char*) pc);         // address of current machine word
+    printf3("%d constd 2 %d ; %x\n",
+      (char*) current_nid,     // nid of this line
+      (char*) pc, (char*) pc); // address of current machine word
 
     machine_word = load_virtual_memory(pt, pc);
 
@@ -10796,9 +10801,9 @@ uint64_t selfie_model_generate() {
       data_flow_nid = current_nid + 1;
     } else {
       // load non-zero machine word
-      printf2("%d constd 2 %d\n",
-        (char*) (current_nid + 1), // nid of this line
-        (char*) machine_word);     // value of machine word at current address
+      printf3("%d constd 2 %d ; %x\n",
+        (char*) (current_nid + 1),                   // nid of this line
+        (char*) machine_word, (char*) machine_word); // value of machine word at current address
       printf4("%d write 3 %d %d %d\n",
         (char*) (current_nid + 2),  // nid of this line
         (char*) data_flow_nid,      // nid of most recent update to data segment
