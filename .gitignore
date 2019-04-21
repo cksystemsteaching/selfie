@@ -6,5 +6,5 @@
 /*.sat
 selfie
 selfie.exe
-manuscript/code/*.smt
-manuscript/code/*.btor2
+manuscript/code/symbolic/*.smt
+manuscript/code/symbolic/*.btor2
