@@ -1714,6 +1714,10 @@ void translate_to_model();
 
 void model_syscalls();
 
+uint64_t control_flow(uint64_t activate_nid, uint64_t control_flow_nid);
+
+void check_division_by_zero(uint64_t division, uint64_t flow_nid);
+
 void check_address_validity(uint64_t read_access, uint64_t flow_nid);
 
 uint64_t selfie_model_generate();
@@ -10469,6 +10473,23 @@ void model_syscalls() {
   }
 }
 
+uint64_t control_flow(uint64_t activate_nid, uint64_t control_flow_nid) {
+  if (control_flow_nid == 10)
+    // instruction proceeding here is first instruction to do so
+    return activate_nid;
+  else {
+    // activate current instruction if instruction proceeding here is active
+    printf3("%d ite 1 %d 11 %d\n",
+      (char*) current_nid,       // nid of this line
+      (char*) activate_nid,      // nid of pc flag of instruction proceeding here
+      (char*) control_flow_nid); // nid of previously processed in-edge
+
+    current_nid = current_nid + 1;
+
+    return current_nid - 1;
+  }
+}
+
 void check_division_by_zero(uint64_t division, uint64_t flow_nid) {
   // check if divisor == 0
   printf2("%d eq 1 %d 12\n",
@@ -10930,15 +10951,10 @@ uint64_t selfie_model_generate() {
             (char*) from_address, (char*) from_address); // address of instruction proceeding here
           print_code_line_number_for_instruction(from_address, entry_point);println();
 
+          current_nid = current_nid + 1;
+
           // activate this instruction if beq is active and its condition is true (false)
-          printf3("%d ite 1 %d 11 %d\n",
-            (char*) (current_nid + 1), // nid of this line
-            (char*) current_nid,       // nid of preceding line
-            (char*) control_flow_nid); // nid of previously processed in-edge
-
-          control_flow_nid = current_nid + 1;
-
-          current_nid = current_nid + 2;
+          control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
         } else if (from_instruction == JALR) {
           jalr_address = *(call_return + (from_address - entry_point) / INSTRUCTIONSIZE);
 
@@ -10963,15 +10979,10 @@ uint64_t selfie_model_generate() {
               (char*) pc_nid(pcs_nid, jalr_address), // nid of pc flag of instruction proceeding here
               (char*) (current_nid + 2));            // nid of return address condition
 
+            current_nid = current_nid + 4;
+
             // activate this instruction if jalr is active and its condition is true (false)
-            printf3("%d ite 1 %d 11 %d\n",
-              (char*) (current_nid + 4), // nid of this line
-              (char*) (current_nid + 3), // nid of preceding line
-              (char*) control_flow_nid); // nid of previously processed in-edge
-
-            control_flow_nid = current_nid + 4;
-
-            current_nid = current_nid + 5;
+            control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
           } else {
             // no jalr returning from jal found
 
@@ -10989,35 +11000,17 @@ uint64_t selfie_model_generate() {
             (char*) from_address, (char*) from_address); // address of instruction proceeding here
           print_code_line_number_for_instruction(from_address, entry_point);println();
 
+          current_nid = current_nid + 1;
+
           // activate this instruction if ecall is active and $a7 != SYSCALL_EXIT
-          printf3("%d ite 1 %d 11 %d\n",
-            (char*) (current_nid + 1), // nid of this line
-            (char*) current_nid,       // nid of preceding line
-            (char*) control_flow_nid); // nid of previously processed in-edge
-
-          control_flow_nid = current_nid + 1;
-
-          current_nid = current_nid + 2;
+          control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
         } else {
-          if (control_flow_nid != 10) {
-            // activate this instruction if instruction proceeding here is active
-            printf3("%d ite 1 %d 11 %d ; ",
-              (char*) current_nid,                   // nid of this line
-              (char*) pc_nid(pcs_nid, from_address), // nid of pc flag of instruction proceeding here
-              (char*) control_flow_nid);             // nid of previously processed in-edge
-
-            control_flow_nid = current_nid;
-
-            current_nid = current_nid + 1;
-          } else {
-            print("; ");
-
-            control_flow_nid = pc_nid(pcs_nid, from_address);
-          }
-
-          if (from_instruction == JAL) print("jal ");
+          if (from_instruction == JAL) print("; jal "); else print("; ");
           printf2("%d[%x]", (char*) from_address, (char*) from_address);
           print_code_line_number_for_instruction(from_address, entry_point);println();
+
+          // activate this instruction if instruction proceeding here is active
+          control_flow_nid = control_flow(pc_nid(pcs_nid, from_address), control_flow_nid);
         }
 
         in_edge = (uint64_t*) *in_edge;
