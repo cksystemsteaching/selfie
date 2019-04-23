@@ -114,7 +114,7 @@ which is again semantically equivalent to executing `selfie` without any argumen
 
 The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code. See below for an example.
 
-The `-se` and `-mc` options invoke the monster model generator which interprets the `0-4096` value as bound on the length of any symbolically executed code branch in number of instructions. Value `0` means that code is executed symbolically without a bound. With option `-se`, monster generates an SMT-LIB file named after the given binary but with extension `.smt`. With option `-mc`, monster ignores the bound and instead generates a BTOR2 file named after the executed binary but with extension `.btor2`.
+The `-se` and `-mc` options invoke the monster model generator. With option `-se`, monster generates an SMT-LIB file named after the given binary but with extension `.smt`. The `0-4096` value is interpreted as bound on the length of any symbolically executed code branch in number of instructions. Value `0` means that the code is executed symbolically without a bound. With option `-mc`, monster generates a BTOR2 file named after the executed binary but with extension `.btor2`. The `0-4096` value is interpreted as exit code. Value `0` means that any code execution that terminates with a non-zero exit code is seen as erroneous whereas a non-zero value means that any code execution that terminates with a different exit code is seen as erroneous.
 
 The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The implementation is naive and only works on small instances.
 

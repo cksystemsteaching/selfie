@@ -1732,6 +1732,8 @@ uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registe
 char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
 
+uint64_t bad_exit_code = 0; // model check for this exit code
+
 uint64_t current_nid = 0; // nid of current line
 
 uint64_t  reg_nids      = 0;             // nids of registers
@@ -1837,7 +1839,8 @@ void init_selfie(uint64_t argc, uint64_t* argv);
 uint64_t  number_of_remaining_arguments();
 uint64_t* remaining_arguments();
 
-char* peek_argument();
+char* peek_argument(uint64_t lookahead);
+
 char* get_argument();
 void  set_argument(char* argv);
 
@@ -5064,7 +5067,7 @@ void selfie_compile() {
   while (link) {
     if (number_of_remaining_arguments() == 0)
       link = 0;
-    else if (load_character(peek_argument(), 0) == '-')
+    else if (load_character(peek_argument(0), 0) == '-')
       link = 0;
     else {
       source_name = get_argument();
@@ -9184,11 +9187,11 @@ uint64_t selfie_run(uint64_t machine) {
   }
 
   if (machine != MONSTER)
-    init_memory(atoi(peek_argument()));
+    init_memory(atoi(peek_argument(0)));
   else {
     init_memory(1);
 
-    max_execution_depth = atoi(peek_argument());
+    max_execution_depth = atoi(peek_argument(0));
   }
 
   boot_loader();
@@ -10109,7 +10112,7 @@ void model_syscalls() {
     (char*) (current_nid + 4));  // nid of SYSCALL_BRK
 
   printf2("%d not 1 %d ; $a7 != SYSCALL_EXIT\n",
-    (char*) (current_nid + 20),  // nid of this line
+    (char*) (current_nid + 20),  // nid of this line (also referenced in ecall control flow)
     (char*) (current_nid + 10)); // nid of $a7 == SYSCALL_EXIT
   printf3("%d ite 1 %d 10 %d ; ... and $a7 != SYSCALL_READ\n",
     (char*) (current_nid + 21),  // nid of this line
@@ -10143,16 +10146,26 @@ void model_syscalls() {
     (char*) (current_nid + 1000), // nid of this line
     (char*) ecall_flow_nid,       // nid of most recent update of ecall activation
     (char*) (current_nid + 10));  // nid of $a7 == SYSCALL_EXIT
-  printf2("%d neq 1 %d 12 ; $a0 != 0\n",
-    (char*) (current_nid + 1001), // nid of this line
-    (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
-  printf3("%d and 1 %d %d ; exit ecall is active and $a0 != 0\n",
-    (char*) (current_nid + 1002),  // nid of this line
-    (char*) (current_nid + 1000),  // nid of exit ecall is active
-    (char*) (current_nid + 1001)); // nid of $a0 != 0
-  printf2("%d bad %d ; non-zero exit code\n\n",
+  if (bad_exit_code == 0)
+    printf2("%d neq 1 %d 12 ; $a0 != zero exit code\n",
+      (char*) (current_nid + 1002), // nid of this line
+      (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
+  else {
+    printf2("%d constd 2 %d ; bad exit code\n",
+      (char*) (current_nid + 1001), // nid of this line
+      (char*) bad_exit_code);       // value of bad exit code
+    printf3("%d eq 1 %d %d ; $a0 == bad non-zero exit code\n",
+      (char*) (current_nid + 1002),  // nid of this line
+      (char*) (reg_nids + REG_A0),   // nid of current value of $a0 register
+      (char*) (current_nid + 1001)); // nid of value of bad non-zero exit code
+  }
+  printf3("%d and 1 %d %d ; exit ecall is active and non-zero exit code\n",
     (char*) (current_nid + 1003),  // nid of this line
-    (char*) (current_nid + 1002)); // nid of preceding line
+    (char*) (current_nid + 1000),  // nid of exit ecall is active
+    (char*) (current_nid + 1002)); // nid of non-zero exit code
+  printf2("%d bad %d ; non-zero exit code\n\n",
+    (char*) (current_nid + 1004),  // nid of this line
+    (char*) (current_nid + 1003)); // nid of preceding line
 
 
   // read ecall
@@ -10603,10 +10616,16 @@ uint64_t selfie_model_generate() {
 
   init_memory(1);
 
-  if (string_compare(peek_argument(), "--check-block-access"))
-    check_block_access = 1;
-  else
-    check_block_access = 0;
+  bad_exit_code = atoi(peek_argument(0));
+
+  check_block_access = 0;
+
+  if (number_of_remaining_arguments() > 1)
+    if (string_compare(peek_argument(1), "--check-block-access")) {
+      check_block_access = 1;
+
+      get_argument();
+    }
 
   boot_loader();
 
@@ -11457,9 +11476,9 @@ uint64_t* remaining_arguments() {
   return selfie_argv;
 }
 
-char* peek_argument() {
-  if (number_of_remaining_arguments() > 0)
-    return (char*) *selfie_argv;
+char* peek_argument(uint64_t lookahead) {
+  if (number_of_remaining_arguments() > lookahead)
+    return (char*) *(selfie_argv + lookahead);
   else
     return (char*) 0;
 }
@@ -11467,7 +11486,7 @@ char* peek_argument() {
 char* get_argument() {
   char* argument;
 
-  argument = peek_argument();
+  argument = peek_argument(0);
 
   if (number_of_remaining_arguments() > 0) {
     selfie_argc = selfie_argc - 1;
