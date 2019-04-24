@@ -7147,7 +7147,7 @@ void constrain_sd() {
 void print_beq() {
   print_code_context_for_instruction(pc);
   printf3("beq %s,%s,%d", get_register_name(rs1), get_register_name(rs2), (char*) signed_division(imm, INSTRUCTIONSIZE));
-  
+
   if (disassemble_verbose)
     printf1("[%x]", (char*) (pc + imm));
 }
@@ -7224,7 +7224,7 @@ void constrain_beq() {
 void print_jal() {
   print_code_context_for_instruction(pc);
   printf2("jal %s,%d", get_register_name(rd), (char*) signed_division(imm, INSTRUCTIONSIZE));
-  
+
   if (disassemble_verbose)
     printf1("[%x]", (char*) (pc + imm));
 }
@@ -7405,7 +7405,7 @@ void print_data_context(uint64_t data) {
 void print_data(uint64_t data) {
   if (disassemble_verbose)
     print_data_context(data);
-  
+
   printf1(".quad %x", (char*) data);
 }
 
