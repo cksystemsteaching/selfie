@@ -1,39 +1,34 @@
-/* 
+/*
 The purpose of this code is to demonstrate the capabilities
 of the monster model generator of selfie. Monster translates
 the code to an SMT-LIB or BTOR2 formula that is satisfiable
 if and only if the code exits with a non-zero exit code.
 
-Solutions: (#b00000011, #b00000000)
-           (#b00000010, #b00000001)
-           (#b00000001, #b00000010)
-           (#b00000000, #b00000011)
+Input == #b00110001 (== 49 == '1')
 */
 
 uint64_t main() {
   uint64_t  a;
   uint64_t* x;
-  uint64_t* y;
 
-  a = 0;
+  a = 37;
   x = malloc(8);
-  y = malloc(8);
 
   read(1, x, 1);
-  read(1, y, 1);
 
-  while(*x < 5) {
+  *x = *x - 47;
 
-    while(*y < 5) {
+  while (*x < 7) {
+    while (*x < 5) {
       a = a + 1;
-      *y = *y + 1;
+      *x = *x + 1;
     }
-    
+
     a = a + 1;
     *x = *x + 1;
   }
 
-  if (a == 7)
+  if (a == 42)
     return 1;
   else
     return 0;
