@@ -35,7 +35,25 @@ number_of_negative_tests_failed = [0]
 
 failed_mandatory_test = False
 
+def reset_assignment_results():
+  global number_of_positive_tests_passed, number_of_positive_tests_failed
+  global number_of_negative_tests_passed, number_of_negative_tests_failed
+  global failed_mandatory_test
+
+  number_of_positive_tests_passed = [0]
+  number_of_positive_tests_failed = [0]
+  number_of_negative_tests_passed = [0]
+  number_of_negative_tests_failed = [0]
+
+  failed_mandatory_test = False
+
 home_path = ''
+
+DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
+
+bulk_grade_mode = False
+file_with_commit_links = None
+bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
 
 INSTRUCTIONSIZE = 4  # in bytes
 REGISTERSIZE    = 8  # in bytes
@@ -173,29 +191,29 @@ class TimeoutException(Exception):
 
 
 def execute(command, timeout=10):
-  command = command.replace('grader/', home_path + 'grader/')
-  command = command.replace('manuscript/code/', home_path + 'manuscript/code/')
+  command = command.replace('grader/', home_path + '/grader/')
+  command = command.replace('manuscript/code/', home_path + '/manuscript/code/')
 
   process = Popen(command.split(' '), stdout=PIPE, stderr=PIPE)
+
+  timedout = False
 
   if sys.version_info < (3, 3):
     stdoutdata, stderrdata = process.communicate()
   else:
     try:
       stdoutdata, stderrdata = process.communicate(timeout=timeout)
-
-      timedout = False
     except TimeoutExpired:
       process.kill()
       stdoutdata, stderrdata = process.communicate()
 
       timedout = True
 
-    output = stdoutdata.decode(sys.stdout.encoding)
-    error_output = stderrdata.decode(sys.stderr.encoding)
+  output = stdoutdata.decode(sys.stdout.encoding)
+  error_output = stderrdata.decode(sys.stderr.encoding)
 
-    if timedout:
-      raise TimeoutException(command, timeout, output, error_output)
+  if timedout:
+    raise TimeoutException(command, timeout, output, error_output)
 
   return (process.returncode, output, error_output)
 
@@ -244,78 +262,88 @@ def has_no_compile_warnings(return_value, output):
 
 
 def test_instruction_encoding(instruction, file):
-  command = './selfie -c grader/{} -o .tmp.bin'.format(file)
-  exit_code, output, _ = execute(command)
-
   msg = instruction[0] + ' has right RISC-V encoding'
 
-  instruction_value = instruction[1]
-  instruction_mask  = instruction[2]
+  command = './selfie -c grader/{} -o .tmp.bin'.format(file)
 
-  if exit_code == 0:
-    exit_code = 1
+  try:
+    exit_code, output, _ = execute(command)
 
-    try:
-      with open('.tmp.bin', 'rb') as f:
-        ignored_elf_header_size = 14 * REGISTERSIZE
+    instruction_value = instruction[1]
+    instruction_mask  = instruction[2]
 
-        f.read(ignored_elf_header_size)
+    if exit_code == 0:
+      exit_code = 1
 
-        code_start  = read_data(f)
-        code_length = read_data(f)
+      try:
+        with open('.tmp.bin', 'rb') as f:
+          ignored_elf_header_size = 14 * REGISTERSIZE
 
-        # ignore all pading bytes
-        no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
+          f.read(ignored_elf_header_size)
 
-        if no_of_bytes_until_code < 0: 
-          no_of_bytes_until_code = 0
+          code_start  = read_data(f)
+          code_length = read_data(f)
 
-        f.read(no_of_bytes_until_code)
+          # ignore all pading bytes
+          no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
 
-        # read all RISC-V instructions from binary
-        read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
+          if no_of_bytes_until_code < 0: 
+            no_of_bytes_until_code = 0
 
-        if any(map(lambda x: x & instruction_mask == instruction_value, read_instructions)):
-          # at least one instruction has the right encoding
-          exit_code = 0
-      
-      if os.path.isfile('.tmp.bin'):
-        os.remove('.tmp.bin')
+          f.read(no_of_bytes_until_code)
 
-      record_result(exit_code == 0, msg, output, 'No instruction matching the RISC-V encoding found')
+          # read all RISC-V instructions from binary
+          read_instructions = map(lambda x: read_instruction(f), range(int(code_length / INSTRUCTIONSIZE)))
 
-    except FileNotFoundError:
-      record_result(False, msg, '', 'The binary file has not been created by selfie')
-  else:
-    record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+          if any(map(lambda x: x & instruction_mask == instruction_value, read_instructions)):
+            # at least one instruction has the right encoding
+            exit_code = 0
+        
+        if os.path.isfile('.tmp.bin'):
+          os.remove('.tmp.bin')
+
+        record_result(exit_code == 0, msg, output, 'No instruction matching the RISC-V encoding found')
+
+      except FileNotFoundError:
+        record_result(False, msg, '', 'The binary file has not been created by selfie')
+    else:
+      record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+  except FileNotFoundError as e:
+    # the program to execute can not be found (e.g. selfie is not built)
+    record_result(False, msg, '', str(e), True, command, mandatory=False)
 
 
 
 def test_assembler_instruction_format(instruction, file):
-  command = './selfie -c grader/{} -s .tmp.s'.format(file)
-  exit_code, output, _ = execute(command)
-
   msg = instruction[0] + ' RISC-V instruction has right assembly instruction format'
 
-  if exit_code == 0:
-    exit_code = 1
+  command = './selfie -c grader/{} -s .tmp.s'.format(file)
 
-    try:
-      with open('.tmp.s', 'rt') as f:
-        for line in f:
-          if re.match(instruction[3], line) != None:
-            # at least one assembler instruction has the right encoding
-            exit_code = 0
+  try:
+    exit_code, output, _ = execute(command)
 
-        record_result(exit_code == 0, msg, output, 'No assembler instruction matching the RISC-V encoding found')
+    if exit_code == 0:
+      exit_code = 1
 
-      if os.path.isfile('.tmp.s'):
-        os.remove('.tmp.s')
+      try:
+        with open('.tmp.s', 'rt') as f:
+          for line in f:
+            if re.match(instruction[3], line) != None:
+              # at least one assembler instruction has the right encoding
+              exit_code = 0
 
-    except FileNotFoundError:
-      record_result(False, msg, output, 'The assembler file has not been created by selfie')
-  else:
-    record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+          record_result(exit_code == 0, msg, output, 'No assembler instruction matching the RISC-V encoding found')
+
+        if os.path.isfile('.tmp.s'):
+          os.remove('.tmp.s')
+
+      except FileNotFoundError:
+        record_result(False, msg, output, 'The assembler file has not been created by selfie')
+    else:
+      record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
+  except FileNotFoundError as e:
+    # the program to execute can not be found (e.g. selfie is not built)
+    record_result(False, msg, '', str(e), True, command, mandatory=False)
 
 
 
@@ -349,6 +377,10 @@ def test_execution(command, msg, success_criteria=True, mandatory=False):
       record_result(result, msg, output, warning, True, command, mandatory)
   except TimeoutException as e:
     record_result(False, msg, e.output, str(e), True, command, mandatory)
+  except FileNotFoundError as e:
+    # the program to execute can not be found (e.g. selfie is not built)
+    record_result(False, msg, '', str(e), True, command, mandatory)
+  
 
 
 class Memoize:
@@ -733,24 +765,48 @@ def grade():
     grade = 5
     color = 91
 
-  if failed_mandatory_test == True:
-    print('you failed a mandatory test')
+  if failed_mandatory_test:
+    print('warning: you have failed a mandatory test')
     grade = 5
 
   print('your grade is: \033[{}m\033[1m'.format(color), end='')
   print_loud('{}'.format(grade), end='')
   print('\033[0m')
 
+  reset_assignment_results()
+
 
 def enter_quiet_mode():
   sys.stdout = DummyWriter()
+
+
+def enable_bulk_grader(file):
+  global bulk_grade_mode, file_with_commit_links
+
+  if not os.path.exists(file):
+    print('the file "' + file + '" does not exist')
+    exit(1)
+
+  if not os.path.isfile(file):
+    print('the path "' + file + '" is not a file')
+    exit(1)
+  
+  bulk_grade_mode = True
+  file_with_commit_links = os.path.abspath(file)
+
+
+def set_bulk_grade_directory(directory):
+  global bulk_grade_directory
+
+  bulk_grade_directory = os.path.abspath(directory)
+
 
 
 def print_loud(msg, end='\n'):
   quiet_writer = sys.stdout
   sys.stdout = sys.__stdout__
 
-  print(msg, end)
+  print(msg, end=end)
 
   sys.stdout = quiet_writer
 
@@ -760,8 +816,10 @@ def print_usage():
 
   print('options:')
 
+  width = max(map(lambda x: 0 if x[2] is None else len(x[2]), defined_options))
+
   for option in defined_options:
-    print('  {}   {}'.format(option[0], option[2]))
+    print('  {0} {1:{width}}  {2}'.format(option[0], option[2] if option[2] is not None else '', option[3], width=width))
 
   print('\ntests: ')
 
@@ -790,9 +848,127 @@ defined_tests = [
 
 
 defined_options = [
-    ('-q', enter_quiet_mode, 'only the grade is printed'),
-    ('-h', print_usage, 'this help text')
+    ('-q', enter_quiet_mode, None, 'only the grade is printed'),
+    ('-h', print_usage, None, 'this help text'),
+    ('-b', enable_bulk_grader, '<file>', 'bulk grade assignments defined by a file with github commit links'),
+    ('-d', set_bulk_grade_directory, '<directory>', 'path where all bulk graded repositories should be saved')
   ]
+
+def parse_options(args):
+  i = 0
+
+  options = list(map(lambda x: x[0], defined_options))
+
+  while len(args) > i and args[i][0] == '-':
+    if args[i] in options:
+      index = options.index(args[i])
+
+      if defined_options[index][2] is None:
+        defined_options[index][1]()
+      else:
+        i += 1
+
+        if len(args) > i:
+          defined_options[index][1](args[i])
+        else:
+          print('option flag "' + defined_options[index][0] + '" needs an argument ' + defined_options[index][2])
+          exit(1)
+    else:
+      print('unknown option: ' + args[i])
+      exit(1)
+    
+    i += 1
+
+  return args[i:]
+
+
+def parse_tests(args):
+  tests = list(map(lambda x: x[0], defined_tests))
+
+  to_execute = []
+
+  for arg in args:
+    if arg in tests:
+      to_execute.append(defined_tests[tests.index(arg)])
+    else:
+      print('unknown test: {}'.format(arg))
+      exit(1)
+  
+  return to_execute
+
+
+def validate_options_for(tests):
+  if bulk_grade_mode and len(tests) == 0:
+    print('please specify a test used for bulk grading')
+  else:
+    return
+
+  exit(1)
+
+
+def do_bulk_grading(tests):
+  enter_quiet_mode()
+
+  if not os.path.exists(bulk_grade_directory):
+    os.mkdir(bulk_grade_directory)
+
+  working_directory = os.getcwd()
+
+  os.chdir(bulk_grade_directory)
+  
+  with open(file_with_commit_links, 'rt') as file:
+    for line in file.readlines():
+      matcher = re.match('^https://github.com/([^/]+)/([^/]+)/commit/([0-9a-f]+)$', line)
+
+      if matcher is None:
+        print('the link "' + line + '" is not a valid github commit link')
+        exit(1)
+
+      user   = matcher.group(1)
+      repo   = matcher.group(2)
+      commit = matcher.group(3)
+
+      clone_dir = os.path.join(bulk_grade_directory, '{}/{}'.format(user, repo))
+
+      if not os.path.exists(clone_dir):
+        os.system('git clone -q https://github.com/{}/{} {}/{}'.format(user, repo, user, repo))
+
+      os.chdir(clone_dir)
+      
+      # remove all changes in local repository
+      os.system('git reset --hard -q')
+
+      # fetch updates from github repository
+      os.system('git fetch -q')
+
+      # change the local repository state using the commit ID
+      os.system('git checkout -q {}'.format(commit))
+
+      print_loud('{}/{}: '.format(user, repo), end='')
+      check_assignments(tests)
+      print_loud('')
+
+      os.chdir(bulk_grade_directory)
+
+  os.chdir(working_directory)
+
+  if bulk_grade_directory is DEFAULT_BULK_GRADE_DIRECTORY:
+    os.system('rm -rf {}'.format(bulk_grade_directory))
+
+
+def check_assignments(assignments):
+  if len(assignments) > 0:
+    if defined_tests[0] not in assignments:
+      print('executing mandatory test \'{}\''.format(defined_tests[0][0]))
+      test_base(mandatory=True)
+
+  for test in assignments:
+    print('executing test \'{}\''.format(test[0]))
+    test[1]()
+
+  if len(assignments) > 0:
+    grade()
+
 
 def main(argv):
   global home_path
@@ -803,35 +979,18 @@ def main(argv):
 
   sys.setrecursionlimit(5000)
 
-  home_path = os.path.dirname(argv[0]) + '/../'
+  home_path = os.path.abspath(os.getcwd())
 
-  options = list(filter(lambda x: x[0] == '-', argv[1:]))
+  args = parse_options(argv[1:])
 
-  for option in options:
-    option_to_execute = list(filter(lambda x: x[0] == option, defined_options))
+  tests = parse_tests(args)
 
-    if len(option_to_execute) == 0:
-      print('unknown option: {}'.format(option))
-    else:
-      option_to_execute[0][1]()
-  
-  tests = list(set(argv[1:]) - set(options))
+  validate_options_for(tests)
 
-  if 'base' not in tests and len(tests) > 0:
-    tests.insert(0, 'base')
-
-  for test in tests:
-    set_up()
-
-    test_to_execute = list(filter(lambda x: x[0] == test, defined_tests))
-
-    if len(test_to_execute) == 0:
-      print('unknown test: {}'.format(test))
-    else:
-      print('executing test \'{}\''.format(test))
-      test_to_execute[0][1]()
-
-  grade()
+  if bulk_grade_mode:
+    do_bulk_grading(tests)
+  else:
+    check_assignments(tests)
 
 
 if __name__ == "__main__":

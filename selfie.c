@@ -4972,7 +4972,7 @@ void emit_bootstrapping() {
 
     // assert: stack is set up with argv pointer still missing
     //
-    //    $sp
+    //    sp
     //     |
     //     V
     // | argc | argv[0] | argv[1] | ... | argv[n]
@@ -4981,7 +4981,7 @@ void emit_bootstrapping() {
 
     // first obtain pointer to argv
     //
-    //    $sp + REGISTERSIZE
+    //    sp + REGISTERSIZE
     //            |
     //            V
     // | argc | argv[0] | argv[1] | ... | argv[n]
@@ -6805,7 +6805,7 @@ void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
 
 void print_code_context_for_instruction(uint64_t address) {
   if (run) {
-    printf2("%s: $pc=%x", binary_name, (char*) address);
+    printf2("%s: pc=%x", binary_name, (char*) address);
     print_code_line_number_for_instruction(address, entry_point);
     if (symbolic)
       // skip further output
@@ -7318,11 +7318,11 @@ void print_beq_before() {
   print_register_value(rs1);
   print(",");
   print_register_value(rs2);
-  printf1(" |- $pc=%x", (char*) pc);
+  printf1(" |- pc=%x", (char*) pc);
 }
 
 void print_beq_after() {
-  printf1(" -> $pc=%x", (char*) pc);
+  printf1(" -> pc=%x", (char*) pc);
 }
 
 void record_beq() {
@@ -7395,7 +7395,7 @@ void print_jal_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf1("$pc=%x", (char*) pc);
+  printf1("pc=%x", (char*) pc);
 }
 
 void print_jal_jalr_after() {
@@ -7458,7 +7458,7 @@ void print_jalr_before() {
     print_register_hexadecimal(rd);
     print(",");
   }
-  printf1("$pc=%x", (char*) pc);
+  printf1("pc=%x", (char*) pc);
 }
 
 void do_jalr() {
