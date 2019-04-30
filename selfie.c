@@ -9459,7 +9459,7 @@ void transfer_bounds() {
     printf4("%d ite 2 %d %d %d\n",
       (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) (reg_nids + LO_FLOW + rd),        // nid of lower bound on $rs1 register
+      (char*) (reg_nids + LO_FLOW + rs1),       // nid of lower bound on $rs1 register
       (char*) *(reg_flow_nids + LO_FLOW + rd)); // nid of most recent update of lower bound on $rd register
 
     *(reg_flow_nids + LO_FLOW + rd) = current_nid;
@@ -9470,7 +9470,7 @@ void transfer_bounds() {
     printf4("%d ite 2 %d %d %d\n",
       (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
-      (char*) (reg_nids + UP_FLOW + rd),        // nid of upper bound on $rs1 register
+      (char*) (reg_nids + UP_FLOW + rs1),       // nid of upper bound on $rs1 register
       (char*) *(reg_flow_nids + UP_FLOW + rd)); // nid of most recent update of upper bound on $rd register
 
     *(reg_flow_nids + UP_FLOW + rd) = current_nid;
