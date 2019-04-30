@@ -10756,18 +10756,16 @@ uint64_t selfie_model_generate() {
     while (i < 3 * NUMBEROFREGISTERS) {
       if (i % NUMBEROFREGISTERS == 0)
         println();
-      else {
-        if (i < LO_FLOW + NUMBEROFREGISTERS)
-          printf3("%d init 2 %d 20 %s ; initial value is end of code segment\n",
-            (char*) (reg_nids * 2 + i),                // nid of this line
-            (char*) (reg_nids + i),                    // nid of to-be-initialized register
-            get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
-        else if (i < UP_FLOW + NUMBEROFREGISTERS)
-          printf3("%d init 2 %d 50 %s ; initial value is highest virtual address\n",
-            (char*) (reg_nids * 2 + i),                // nid of this line
-            (char*) (reg_nids + i),                    // nid of to-be-initialized register
-            get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
-      }
+      else if (i < LO_FLOW + NUMBEROFREGISTERS)
+        printf3("%d init 2 %d 20 %s ; initial value is end of code segment\n",
+          (char*) (reg_nids * 2 + i),                // nid of this line
+          (char*) (reg_nids + i),                    // nid of to-be-initialized register
+          get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
+      else if (i < UP_FLOW + NUMBEROFREGISTERS)
+        printf3("%d init 2 %d 50 %s ; initial value is highest virtual address\n",
+          (char*) (reg_nids * 2 + i),                // nid of this line
+          (char*) (reg_nids + i),                    // nid of to-be-initialized register
+          get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
 
       i = i + 1;
     }
@@ -11059,14 +11057,13 @@ uint64_t selfie_model_generate() {
   while (i < NUMBEROFREGISTERS) {
     if (i == 0)
       println();
-    else {
+    else
       printf5("%d next 2 %d %d %s ; register $%d\n",
         (char*) (current_nid + i),    // nid of this line
         (char*) (reg_nids + i),       // nid of register
         (char*) *(reg_flow_nids + i), // nid of most recent update to register
         get_register_name(i),         // register name
         (char*) i);                   // register index as comment
-    }
 
     i = i + 1;
   }
