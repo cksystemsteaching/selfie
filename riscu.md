@@ -8,7 +8,7 @@ This document provides an overview of the RISC-U instruction set. RISC-U is a ti
 
 ## Machine State
 
-A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers (`zero`, `ra`, `sp`, `gp`, `tp`, `t0-t2`, `s0`, `s1`, `a0-a7`, `s2-s11`, `t3-t6`), and 4GB of byte-addressed memory.
+A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers (`zero`, `ra`, `sp`, `gp`, `tp`, `t0-t2`, `s0-s1`, `a0-a7`, `s2-s11`, `t3-t6`), and 4GB of byte-addressed memory.
 
 Register `zero` always contains the value `0`. Any attempts to update the value in `zero` are ignored.
 
@@ -26,6 +26,12 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 `addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
+#### Memory
+
+`ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
+
+`sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
+
 #### Arithmetic
 
 `add rd,rs1,rs2`: `rd = rs1 + rs2; pc = pc + 4`
@@ -38,13 +44,9 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 `remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4`
 
+#### Comparison
+
 `sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = 1 } else { rd = 0 } pc = pc + 4`
-
-#### Memory
-
-`ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
-
-`sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
 #### Control
 
