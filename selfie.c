@@ -1773,7 +1773,7 @@ uint64_t remainder_flow_nid = 13;
 // 20 is nid of end of code segment which must be a valid address (thus also checked)
 uint64_t access_flow_start_nid = 20;
 
-// 50 is nid of highest virtual address
+// 50 is nid of 4GB of memory addresses
 uint64_t lo_flow_start_nid = 20; // nid of most recent update of current lower bound
 uint64_t up_flow_start_nid = 50; // nid of most recent update of current upper bound
 
@@ -9424,7 +9424,7 @@ void reset_bounds() {
 
     current_nid = current_nid + 1;
 
-    // if this instruction is active reset upper bound on $rd register to highest virtual address
+    // if this instruction is active reset upper bound on $rd register to 4GB of memory addresses
     printf3("%d ite 2 %d 50 %d\n",
       (char*) current_nid,                      // nid of this line
       (char*) pc_nid(pcs_nid, pc),              // nid of pc flag of this instruction
@@ -10458,7 +10458,7 @@ void model_syscalls() {
 
     *(reg_flow_nids + LO_FLOW + REG_T1) = current_nid + 1466;
 
-    printf3("%d ite 2 %d 50 %d ; upper bound on $t1 = highest virtual address if brk ecall is active and $a0 is invalid\n",
+    printf3("%d ite 2 %d 50 %d ; upper bound on $t1 = 4GB of memory addresses if brk ecall is active and $a0 is invalid\n",
       (char*) (current_nid + 1467),                 // nid of this line
       (char*) (current_nid + 1462),                 // nid of brk ecall is active and $a0 is invalid
       (char*) *(reg_flow_nids + UP_FLOW + REG_T1)); // nid of most recent update of upper bound on $t1 register
@@ -10517,12 +10517,12 @@ void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_
 
   current_nid = current_nid + 2;
 
-  // check if address of most recent memory access > current upper bound
-  printf3("%d ugt 1 %d %d\n",
+  // check if address of most recent memory access >= current upper bound
+  printf3("%d ugte 1 %d %d\n",
     (char*) current_nid,  // nid of this line
     (char*) flow_nid,     // nid of address of most recent memory access
     (char*) up_flow_nid); // nid of current upper bound on memory addresses
-  printf2("%d bad %d ; memory access above upper bound\n",
+  printf2("%d bad %d ; memory access at or above upper bound\n",
     (char*) (current_nid + 1), // nid of this line
     (char*) current_nid);      // nid of previous check
 
@@ -10643,9 +10643,9 @@ uint64_t selfie_model_generate() {
   // $sp register value from boot loader
   printf2("40 constd 2 %d ; %x\n\n", (char*) *(get_regs(current_context) + REG_SP), (char*) *(get_regs(current_context) + REG_SP));
 
-  print("; highest word-aligned address in 4GB of memory\n\n");
+  print("; 4GB of memory\n\n");
 
-  printf2("50 constd 2 %d ; %x\n\n", (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE), (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE));
+  printf2("50 constd 2 %d ; %x\n\n", (char*) VIRTUALMEMORYSIZE, (char*) VIRTUALMEMORYSIZE);
 
   print("; sorts for byte-wise reading\n\n");
 
@@ -10686,9 +10686,9 @@ uint64_t selfie_model_generate() {
           (char*) (entry_point + code_length)); // end of code segment
       else if (i == UP_FLOW)
         printf3("\n%d constd 2 %d ; %x\n",
-          (char*) *(reg_flow_nids + i),                // nid of this line
-          (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE),  // highest virtual address
-          (char*) (VIRTUALMEMORYSIZE - REGISTERSIZE)); // highest virtual address
+          (char*) *(reg_flow_nids + i), // nid of this line
+          (char*) VIRTUALMEMORYSIZE,    // 4GB of memory addresses
+          (char*) VIRTUALMEMORYSIZE);   // 4GB of memory addresses
       else {
         printf1("%d state 2 ", (char*) *(reg_flow_nids + i));
 
@@ -10736,7 +10736,7 @@ uint64_t selfie_model_generate() {
           (char*) (reg_nids + i),                    // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
       else if (i < UP_FLOW + NUMBEROFREGISTERS)
-        printf3("%d init 2 %d 50 %s ; initial value is highest virtual address\n",
+        printf3("%d init 2 %d 50 %s ; initial value is 4GB of memory addresses\n",
           (char*) (reg_nids * 2 + i),                // nid of this line
           (char*) (reg_nids + i),                    // nid of to-be-initialized register
           get_register_name(i % NUMBEROFREGISTERS)); // register name as comment
@@ -10864,7 +10864,7 @@ uint64_t selfie_model_generate() {
     up_memory_nid = current_nid;
 
     printf1("\n%d state 3 upper-bounds ; for checking address validity\n", (char*) current_nid);
-    printf2("%d init 3 %d 50 ; initializing upper bounds to highest virtual address\n",
+    printf2("%d init 3 %d 50 ; initializing upper bounds to 4GB of memory addresses\n",
       (char*) (current_nid + 1), // nid of this line
       (char*) current_nid);      // nid of upper bounds on addresses in memory
 
