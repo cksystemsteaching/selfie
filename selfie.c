@@ -10338,7 +10338,7 @@ void model_syscalls() {
   access_flow_start_nid = current_nid + 1301;
 
   // if openat ecall is active record $a1 bounds for checking address validity
-  record_end_bounds(record_start_bounds(1302, current_nid + 1300, REG_A1), current_nid + 1300, REG_A1);
+  record_start_bounds(1302, current_nid + 1300, REG_A1);
 
   // TODO: check address validity of whole filename, flags and mode arguments
 
