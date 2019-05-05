@@ -10215,27 +10215,39 @@ void model_syscalls() {
 
   access_flow_start_nid = current_nid + 1101;
 
-  // if read ecall is active record $a1 + ($a2 / 8) * 8 as address for checking address validity
-  printf1("%d not 2 17\n",
-    (char*) (current_nid + 1102)); // nid of this line
-  printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
-    (char*) (current_nid + 1103),  // nid of this line
-    (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
-    (char*) (current_nid + 1102)); // nid of not 7
-  printf3("%d add 2 %d %d ; $a1 + ($a2 / 8) * 8\n",
+  // if read ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
+  // $a1 otherwise, as address for checking address validity
+  printf2("%d dec 2 %d ; $a2 - 1\n",
+    (char*) (current_nid + 1102), // nid of this line
+    (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
+  printf1("%d not 2 17 ; not 7\n",
+    (char*) (current_nid + 1103)); // nid of this line
+  printf3("%d and 2 %d %d ; reset 3 LSBs of $a2 - 1\n",
     (char*) (current_nid + 1104),  // nid of this line
-    (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1103)); // nid of ($a2 / 8) * 8
-  printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of write buffer for checking address validity\n",
+    (char*) (current_nid + 1102),  // nid of $a2 - 1
+    (char*) (current_nid + 1103)); // nid of not 7
+  printf3("%d add 2 %d %d ; $a1 + (($a2 - 1) / 8)) * 8\n",
     (char*) (current_nid + 1105),  // nid of this line
-    (char*) (current_nid + 1100),  // nid of read ecall is active
-    (char*) (current_nid + 1104),  // nid of $a1 + ($a2 / 8) * 8
-    (char*) access_flow_end_nid);  // nid of address of most recent memory write access
+    (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
+    (char*) (current_nid + 1104)); // nid of (($a2 - 1) / 8)) * 8
+  printf2("%d ugt 1 %d 12 ; $a2 > 0\n",
+    (char*) (current_nid + 1106), // nid of this line
+    (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise\n",
+    (char*) (current_nid + 1107), // nid of this line
+    (char*) (current_nid + 1106), // nid of $a2 > 0
+    (char*) (current_nid + 1105), // nid of $a1 + (($a2 - 1) / 8)) * 8
+    (char*) (reg_nids + REG_A1)); // nid of current value of $a1 register
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 is end address of write buffer for checking address validity\n",
+    (char*) (current_nid + 1108), // nid of this line
+    (char*) (current_nid + 1100), // nid of read ecall is active
+    (char*) (current_nid + 1107), // nid of $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise
+    (char*) access_flow_end_nid); // nid of address of most recent memory access
 
-  access_flow_end_nid = current_nid + 1105;
+  access_flow_end_nid = current_nid + 1108;
 
   // if read ecall is active record $a1 bounds for checking address validity
-  record_end_bounds(record_start_bounds(1106, current_nid + 1100, REG_A1), current_nid + 1100, REG_A1);
+  record_end_bounds(record_start_bounds(1109, current_nid + 1100, REG_A1), current_nid + 1100, REG_A1);
 
   // TODO: check file descriptor validity, return error codes
 
@@ -10288,27 +10300,39 @@ void model_syscalls() {
 
   access_flow_start_nid = current_nid + 1201;
 
-  // if write ecall is active record $a1 + ($a2 / 8) * 8 as address for checking address validity
-  printf1("%d not 2 17\n",
-    (char*) (current_nid + 1202)); // nid of this line
-  printf3("%d and 2 %d %d ; reset 3 LSBs of $a2\n",
-    (char*) (current_nid + 1203),  // nid of this line
-    (char*) (reg_nids + REG_A2),   // nid of current value of $a2 register
-    (char*) (current_nid + 1202)); // nid of not 7
-  printf3("%d add 2 %d %d ; $a1 + ($a2 / 8) * 8\n",
+  // if write ecall is active record $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and
+  // $a1 otherwise, as address for checking address validity
+  printf2("%d dec 2 %d ; $a2 - 1\n",
+    (char*) (current_nid + 1202), // nid of this line
+    (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
+  printf1("%d not 2 17 ; not 7\n",
+    (char*) (current_nid + 1203)); // nid of this line
+  printf3("%d and 2 %d %d ; reset 3 LSBs of $a2 - 1\n",
     (char*) (current_nid + 1204),  // nid of this line
+    (char*) (current_nid + 1202),  // nid of $a2 - 1
+    (char*) (current_nid + 1203)); // nid of not 7
+  printf3("%d add 2 %d %d ; $a1 + (($a2 - 1) / 8)) * 8\n",
+    (char*) (current_nid + 1205),  // nid of this line
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1203)); // nid of ($a2 / 8) * 8
-  printf4("%d ite 2 %d %d %d ; $a1 + ($a2 / 8) * 8 is end address of read buffer for checking address validity\n",
-    (char*) (current_nid + 1205), // nid of this line
+    (char*) (current_nid + 1204)); // nid of (($a2 - 1) / 8)) * 8
+  printf2("%d ugt 1 %d 12 ; $a2 > 0\n",
+    (char*) (current_nid + 1206), // nid of this line
+    (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise\n",
+    (char*) (current_nid + 1207), // nid of this line
+    (char*) (current_nid + 1206), // nid of $a2 > 0
+    (char*) (current_nid + 1205), // nid of $a1 + (($a2 - 1) / 8)) * 8
+    (char*) (reg_nids + REG_A1)); // nid of current value of $a1 register
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 is end address of read buffer for checking address validity\n",
+    (char*) (current_nid + 1208), // nid of this line
     (char*) (current_nid + 1200), // nid of write ecall is active
-    (char*) (current_nid + 1204), // nid of $a1 + ($a2 / 8) * 8
-    (char*) access_flow_end_nid); // nid of address of most recent memory read access
+    (char*) (current_nid + 1207), // nid of $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise
+    (char*) access_flow_end_nid); // nid of address of most recent memory access
 
-  access_flow_end_nid = current_nid + 1205;
+  access_flow_end_nid = current_nid + 1208;
 
   // if write ecall is active record $a1 bounds for checking address validity
-  record_end_bounds(record_start_bounds(1206, current_nid + 1200, REG_A1), current_nid + 1200, REG_A1);
+  record_end_bounds(record_start_bounds(1209, current_nid + 1200, REG_A1), current_nid + 1200, REG_A1);
 
   // TODO: check file descriptor validity, return error codes
 
