@@ -10226,22 +10226,22 @@ void model_syscalls() {
     (char*) (current_nid + 1104),  // nid of this line
     (char*) (current_nid + 1102),  // nid of $a2 - 1
     (char*) (current_nid + 1103)); // nid of not 7
-  printf3("%d add 2 %d %d ; $a1 + (($a2 - 1) / 8)) * 8\n",
+  printf3("%d add 2 %d %d ; $a1 + (($a2 - 1) / 8) * 8\n",
     (char*) (current_nid + 1105),  // nid of this line
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1104)); // nid of (($a2 - 1) / 8)) * 8
+    (char*) (current_nid + 1104)); // nid of (($a2 - 1) / 8) * 8
   printf2("%d ugt 1 %d 12 ; $a2 > 0\n",
     (char*) (current_nid + 1106), // nid of this line
     (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
-  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise\n",
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
     (char*) (current_nid + 1107), // nid of this line
     (char*) (current_nid + 1106), // nid of $a2 > 0
-    (char*) (current_nid + 1105), // nid of $a1 + (($a2 - 1) / 8)) * 8
+    (char*) (current_nid + 1105), // nid of $a1 + (($a2 - 1) / 8) * 8
     (char*) (reg_nids + REG_A1)); // nid of current value of $a1 register
-  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 is end address of write buffer for checking address validity\n",
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8) * 8 is end address of write buffer for checking address validity\n",
     (char*) (current_nid + 1108), // nid of this line
     (char*) (current_nid + 1100), // nid of read ecall is active
-    (char*) (current_nid + 1107), // nid of $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise
+    (char*) (current_nid + 1107), // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
     (char*) access_flow_end_nid); // nid of address of most recent memory access
 
   access_flow_end_nid = current_nid + 1108;
@@ -10311,22 +10311,22 @@ void model_syscalls() {
     (char*) (current_nid + 1204),  // nid of this line
     (char*) (current_nid + 1202),  // nid of $a2 - 1
     (char*) (current_nid + 1203)); // nid of not 7
-  printf3("%d add 2 %d %d ; $a1 + (($a2 - 1) / 8)) * 8\n",
+  printf3("%d add 2 %d %d ; $a1 + (($a2 - 1) / 8) * 8\n",
     (char*) (current_nid + 1205),  // nid of this line
     (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1204)); // nid of (($a2 - 1) / 8)) * 8
+    (char*) (current_nid + 1204)); // nid of (($a2 - 1) / 8) * 8
   printf2("%d ugt 1 %d 12 ; $a2 > 0\n",
     (char*) (current_nid + 1206), // nid of this line
     (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
-  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise\n",
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise\n",
     (char*) (current_nid + 1207), // nid of this line
     (char*) (current_nid + 1206), // nid of $a2 > 0
-    (char*) (current_nid + 1205), // nid of $a1 + (($a2 - 1) / 8)) * 8
+    (char*) (current_nid + 1205), // nid of $a1 + (($a2 - 1) / 8) * 8
     (char*) (reg_nids + REG_A1)); // nid of current value of $a1 register
-  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8)) * 8 is end address of read buffer for checking address validity\n",
+  printf4("%d ite 2 %d %d %d ; $a1 + (($a2 - 1) / 8) * 8 is end address of read buffer for checking address validity\n",
     (char*) (current_nid + 1208), // nid of this line
     (char*) (current_nid + 1200), // nid of write ecall is active
-    (char*) (current_nid + 1207), // nid of $a1 + (($a2 - 1) / 8)) * 8 if $a2 > 0, and $a1 otherwise
+    (char*) (current_nid + 1207), // nid of $a1 + (($a2 - 1) / 8) * 8 if $a2 > 0, and $a1 otherwise
     (char*) access_flow_end_nid); // nid of address of most recent memory access
 
   access_flow_end_nid = current_nid + 1208;
