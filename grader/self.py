@@ -190,7 +190,7 @@ class TimeoutException(Exception):
     self.error_output = error_output
 
 
-def execute(command, timeout=10):
+def execute(command, timeout=60):
   command = command.replace('grader/', home_path + '/grader/')
   command = command.replace('manuscript/code/', home_path + '/manuscript/code/')
 
