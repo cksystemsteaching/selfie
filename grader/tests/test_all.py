@@ -5,6 +5,7 @@ from grader.tests.test_mipster_execution import TestMipsterExecution
 from grader.tests.test_riscv_instruction import TestRiscvInstruction
 from grader.tests.test_bulk_grader import TestBulkGrader
 from grader.tests.test_execution_timeout import TestExecutionTimeout
+from grader.tests.test_robustness import TestRobustness
 
 def suite():
     suite = TestSuite()
@@ -13,6 +14,7 @@ def suite():
     suite.addTest(TestRiscvInstruction())
     suite.addTest(TestBulkGrader())
     suite.addTest(TestExecutionTimeout())
+    suite.addTest(TestRobustness())
     return suite
 
 if __name__ == '__main__':

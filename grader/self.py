@@ -20,6 +20,7 @@ import os
 import re
 import math
 import struct
+import shlex
 
 if sys.version_info < (3, 3):
   from subprocess import Popen, PIPE
@@ -54,6 +55,21 @@ DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
 bulk_grade_mode = False
 file_with_commit_links = None
 bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
+
+EXITCODE_NOERROR                = 0
+EXITCODE_BADARGUMENTS           = 1
+EXITCODE_IOERROR                = 2
+EXITCODE_SCANNERERROR           = 3
+EXITCODE_PARSERERROR            = 4
+EXITCODE_COMPILERERROR          = 5
+EXITCODE_OUTOFVIRTUALMEMORY     = 6
+EXITCODE_OUTOFPHYSICALMEMORY    = 7
+EXITCODE_DIVISIONBYZERO         = 8
+EXITCODE_UNKNOWNINSTRUCTION     = 9
+EXITCODE_UNKNOWNSYSCALL         = 10
+EXITCODE_MULTIPLEEXCEPTIONERROR = 11
+EXITCODE_SYMBOLICEXECUTIONERROR = 12
+EXITCODE_UNCAUGHTEXCEPTION      = 13
 
 INSTRUCTIONSIZE = 4  # in bytes
 REGISTERSIZE    = 8  # in bytes
@@ -189,12 +205,15 @@ class TimeoutException(Exception):
     self.output = output
     self.error_output = error_output
 
+def insert_home_path(command, path):
+  return re.sub(r'(' + path + r'([^\s]*))', r'"' + home_path + r'/' + path + r'\2"', command)
+
 
 def execute(command, timeout=60):
-  command = command.replace('grader/', home_path + '/grader/')
-  command = command.replace('manuscript/code/', home_path + '/manuscript/code/')
+  command = insert_home_path(command, 'grader/')
+  command = insert_home_path(command, 'manuscript/code/')
 
-  process = Popen(command.split(' '), stdout=PIPE, stderr=PIPE)
+  process = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
 
   timedout = False
 
@@ -998,4 +1017,3 @@ def main(argv):
 
 if __name__ == "__main__":
   main(sys.argv)
-
