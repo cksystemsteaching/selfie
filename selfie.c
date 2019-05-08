@@ -5412,7 +5412,7 @@ uint64_t load_data(uint64_t baddr) {
 }
 
 void store_data(uint64_t baddr, uint64_t data) {
-  if (baddr >= MAX_CODE_LENGTH + MAX_DATA_LENGTH) {
+  if (baddr - code_length >= MAX_DATA_LENGTH) {
     syntax_error_message("maximum data length exceeded");
 
     exit(EXITCODE_COMPILERERROR);
