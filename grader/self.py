@@ -71,6 +71,8 @@ EXITCODE_MULTIPLEEXCEPTIONERROR = 11
 EXITCODE_SYMBOLICEXECUTIONERROR = 12
 EXITCODE_UNCAUGHTEXCEPTION      = 13
 
+EXITCODE_ERROR_RANGE = range(EXITCODE_BADARGUMENTS, EXITCODE_UNCAUGHTEXCEPTION + 1)
+
 INSTRUCTIONSIZE = 4  # in bytes
 REGISTERSIZE    = 8  # in bytes
 
@@ -489,15 +491,15 @@ def test_compile_warnings(file, msg, mandatory=False):
 def test_hex_literal():
   test_compilable('hex-integer-literal.c',
     'hex integer literal with all characters compiled')
-  test_mipster_execution('hex-integer-literal.c', 1,
+  test_mipster_execution('hex-integer-literal.c', 42,
     'hex integer literal with all characters has the right value')
   test_compilable('hex-integer-literal-max.c',
     'maximum hex integer literal compiled')
-  test_mipster_execution('hex-integer-literal-max.c', 1,
+  test_mipster_execution('hex-integer-literal-max.c', 42,
     'maximum hex integer literal has the right value')
   test_compilable('hex-integer-literal-min.c',
     'minimum hex integer literal compiled')
-  test_mipster_execution('hex-integer-literal-min.c', 1,
+  test_mipster_execution('hex-integer-literal-min.c', 42,
     'minimum hex integer literal has the right value')
 
 
@@ -528,9 +530,9 @@ def test_bitwise_shift(stage):
 
       test_riscv_instruction(instruction, literal_file)
       test_riscv_instruction(instruction, variable_file)
-      test_mipster_execution(literal_file, 2,
+      test_mipster_execution(literal_file, 42,
         'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
-      test_mipster_execution(variable_file, 2,
+      test_mipster_execution(variable_file, 42,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
     test_mipster_execution('bitwise-shift-precedence.c', 42,
@@ -575,13 +577,13 @@ def test_for_loop():
     'for loop with multiple statements do compile')
   test_compilable('for-loop-nested.c',
     'nested for loops do compile')
-  test_mipster_execution('for-loop-single-statement.c', 3,
+  test_mipster_execution('for-loop-single-statement.c', 42,
     'for loop with one statement are implement with the right semantics')
-  test_mipster_execution('for-loop-multiple-statements.c', 3,
+  test_mipster_execution('for-loop-multiple-statements.c', 42,
     'for loop with multiple statements are implemented with the right semantics')
-  test_mipster_execution('for-loop-multiple-statements.c', 3,
+  test_mipster_execution('for-loop-multiple-statements.c', 42,
     'for loop with multiple statements are implemented with the right semantics')
-  test_mipster_execution('for-loop-nested.c', 9,
+  test_mipster_execution('for-loop-nested.c', 42,
     'nested for loops are implemented with the right semantics')
 
 
@@ -596,15 +598,15 @@ def test_array(part):
       'invalid assignments to an array do not compile', should_succeed=False)
     test_compilable('array-call-by-reference.c',
       'arrays in the function signature do compile')
-    test_mipster_execution('array-assignment.c', 10,
+    test_mipster_execution('array-assignment.c', 42,
       'arrays assignments are implemented with the right semantics')
-    test_mipster_execution('array-call-by-reference.c', 4,
+    test_mipster_execution('array-call-by-reference.c', 42,
       'array assignments in functions are implemented with the right semantics')
 
   if part == 2:
     test_compilable('array-multidimensional.c',
       'multidimensional array declarations do compile')
-    test_mipster_execution('array-multidimensional.c', 4,
+    test_mipster_execution('array-multidimensional.c', 42,
       'multidimensional arrays assignments are implemented with the right semantics')
     test_compilable('array-access-order.c',
       'access to start-address of multidimensional is possible')
@@ -622,17 +624,17 @@ def test_structs():
     'empty struct with initialization compiled')
   test_compilable('struct-member-initialization.c',
     'initialization of trivial struct members compiled')
-  test_mipster_execution('struct-member-initialization.c', 123,
+  test_mipster_execution('struct-member-initialization.c', 42,
     'read and write operations of trivial struct member works when executed with MIPSTER')
   test_compilable('struct-nested-declaration.c',
     'struct declaration with struct members compiled')
   test_compilable('struct-nested-initialization.c',
     'struct initialization with struct members compiled')
-  test_mipster_execution('struct-nested-initialization.c', 123,
+  test_mipster_execution('struct-nested-initialization.c', 42,
     'read and write operations of nested struct member works when executed with MIPSTER')
   test_compilable('struct-as-parameter.c',
     'struct as function parameter compiled')
-  test_mipster_execution('struct-as-parameter.c', 1,
+  test_mipster_execution('struct-as-parameter.c', 42,
     'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
@@ -689,18 +691,14 @@ def test_thread():
     'creates a thread, where the parent can join the thread with MIPSTER', success_criteria=70)
   test_execution('./selfie -c selfie.c -m 128 -c grader/thread-implementation.c -y 64',
     'creates a thread, where the parent can join the thread with HYPSTER', success_criteria=70)
-  test_execution('./selfie -c grader/thread-data-shared.c -m 128',
-    'data section is shared for threads on MIPSTER',
-    success_criteria=1)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-data-shared.c -y 64',
-    'data section is shared for threads on HYPSTER',
-    success_criteria=1)
-  test_execution('./selfie -c grader/thread-heap-shared.c -m 128',
-    'heap data is shared for threads on MIPSTER',
-    success_criteria=1)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-heap-shared.c -y 64',
-    'heap data is shared for threads on HYPSTER',
-    success_criteria=1)
+  test_mipster_execution('grader/thread-data-shared.c', 42,
+    'data section is shared for threads on MIPSTER')
+  test_hypster_execution('grader/thread-data-shared.c', 42,
+    'data section is shared for threads on HYPSTER')
+  test_mipster_execution('grader/thread-heap-shared.c', 42,
+    'heap data is shared for threads on MIPSTER')
+  test_hypster_execution('grader/thread-heap-shared.c', 42,
+    'heap data is shared for threads on HYPSTER')
 
 
 
