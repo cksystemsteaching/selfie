@@ -10272,27 +10272,19 @@ void model_syscalls() {
 
   // TODO: support reading any number of bytes in a single read ecall
 
-  // declare 1-byte input
-  printf1("%d input 80 ; 1 byte\n",
-    (char*) (current_nid + 1151)); // nid of this line
-  // unsigned-extend 1-byte input by 56 bits to 64 bits
-  printf2("%d uext 2 %d 56 ; unsigned-extend 1-byte input to 64 bits\n",
-    (char*) (current_nid + 1152),  // nid of this line
-    (char*) (current_nid + 1151)); // nid of 1-byte input
   // write unsigned-extended 1-byte input to memory at address in $a1 register
-  printf4("%d write 3 %d %d %d ; memory[$a1] = unsigned-extended 1-byte input\n",
-    (char*) (current_nid + 1153),  // nid of this line
-    (char*) memory_nid,            // nid of memory
-    (char*) (reg_nids + REG_A1),   // nid of current value of $a1 register
-    (char*) (current_nid + 1152)); // nid of unsigned-extended 1-byte input
+  printf3("%d write 3 %d %d 91 ; memory[$a1] = unsigned-extended 1-byte input\n",
+    (char*) (current_nid + 1151), // nid of this line
+    (char*) memory_nid,           // nid of memory
+    (char*) (reg_nids + REG_A1)); // nid of current value of $a1 register
   // if read ecall is active set memory[$a1] = unsigned-extended 1-byte input
   printf4("%d ite 3 %d %d %d ; set memory[$a1] = unsigned-extended 1-byte input if read ecall is active\n\n",
-    (char*) (current_nid + 1154), // nid of this line
+    (char*) (current_nid + 1152), // nid of this line
     (char*) (current_nid + 1100), // nid of read ecall is active
-    (char*) (current_nid + 1153), // nid of memory[$a1] = unsigned-extended 1-byte input
+    (char*) (current_nid + 1151), // nid of memory[$a1] = unsigned-extended 1-byte input
     (char*) memory_flow_nid);     // nid of most recent update of memory
 
-  memory_flow_nid = current_nid + 1154;
+  memory_flow_nid = current_nid + 1152;
 
 
   // write ecall
@@ -10690,9 +10682,32 @@ uint64_t selfie_model_generate() {
   print("61 init 1 60 10 kernel-mode ; initial value is false\n");
   print("62 not 1 60\n\n");
 
-  print("; sorts for byte-wise reading\n\n");
+  print("; unsigned-extended inputs for byte-wise reading\n\n");
 
-  print("80 sort bitvec 8 ; 1 byte\n\n");
+  print("71 sort bitvec 8 ; 1 byte\n");
+  print("72 sort bitvec 16 ; 2 bytes\n");
+  print("73 sort bitvec 24 ; 3 bytes\n");
+  print("74 sort bitvec 32 ; 4 bytes\n");
+  print("75 sort bitvec 40 ; 5 bytes\n");
+  print("76 sort bitvec 48 ; 6 bytes\n");
+  print("77 sort bitvec 56 ; 7 bytes\n\n");
+
+  print("81 input 71 ; 1 byte\n");
+  print("82 input 72 ; 2 bytes\n");
+  print("83 input 73 ; 3 bytes\n");
+  print("84 input 74 ; 4 bytes\n");
+  print("85 input 75 ; 5 bytes\n");
+  print("86 input 76 ; 6 bytes\n");
+  print("87 input 77 ; 7 bytes\n\n");
+
+  print("91 uext 2 81 56 ; 1 byte\n");
+  print("92 uext 2 82 48 ; 2 bytes\n");
+  print("93 uext 2 83 40 ; 3 bytes\n");
+  print("94 uext 2 84 32 ; 4 bytes\n");
+  print("95 uext 2 85 24 ; 5 bytes\n");
+  print("96 uext 2 86 16 ; 6 bytes\n");
+  print("97 uext 2 87 8 ; 7 bytes\n");
+  print("98 input 2 ; 8 bytes\n\n");
 
   print("; 32 64-bit general-purpose registers\n");
 
