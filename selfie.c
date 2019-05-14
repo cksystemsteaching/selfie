@@ -10201,8 +10201,8 @@ void model_syscalls() {
     (char*) (current_nid + 1004),  // nid of this line
     (char*) (current_nid + 1003)); // nid of preceding line
 
-  // if exit ecall is active do not terminate by staying in kernel mode indefinitely
-  printf3("%d ite 1 60 %d %d ; stay in kernel mode if exit ecall is active\n\n",
+  // if exit ecall is active stay in kernel mode indefinitely
+  printf3("%d ite 1 60 %d %d ; stay in kernel mode indefinitely if exit ecall is active\n\n",
     (char*) (current_nid + 1050),  // nid of this line
     (char*) (current_nid + 10),    // nid of $a7 == SYSCALL_EXIT
     (char*) (current_nid + 1000)); // nid of exit ecall is active
@@ -10272,19 +10272,47 @@ void model_syscalls() {
 
   // TODO: support reading any number of bytes in a single read ecall
 
+  printf3("%d ult 1 %d %d ; $a0 < $a2\n",
+    (char*) (current_nid + 1151), // nid of this line
+    (char*) (reg_nids + REG_A0),  // nid of current value of $a0 register
+    (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
+
+  printf3("%d and 1 %d %d ; $a7 == SYSCALL_READ and $a0 < $a2\n",
+    (char*) (current_nid + 1152),  // nid of this line
+    (char*) (current_nid + 11),    // nid of $a7 == SYSCALL_READ
+    (char*) (current_nid + 1151)); // nid of $a0 < $a2
+
+  printf2("%d and 1 60 %d ; read ecall is in kernel mode and not done yet\n",
+    (char*) (current_nid + 1153),  // nid of this line
+    (char*) (current_nid + 1152)); // nid of $a7 == SYSCALL_READ and $a0 < $a2
+
   // write unsigned-extended 1-byte input to memory at address in $a1 register
   printf3("%d write 3 %d %d 91 ; memory[$a1] = unsigned-extended 1-byte input\n",
-    (char*) (current_nid + 1151), // nid of this line
+    (char*) (current_nid + 1154), // nid of this line
     (char*) memory_nid,           // nid of memory
     (char*) (reg_nids + REG_A1)); // nid of current value of $a1 register
   // if read ecall is active set memory[$a1] = unsigned-extended 1-byte input
-  printf4("%d ite 3 %d %d %d ; set memory[$a1] = unsigned-extended 1-byte input if read ecall is active\n\n",
-    (char*) (current_nid + 1152), // nid of this line
+  printf4("%d ite 3 %d %d %d ; set memory[$a1] = unsigned-extended 1-byte input if read ecall is active\n",
+    (char*) (current_nid + 1155), // nid of this line
     (char*) (current_nid + 1100), // nid of read ecall is active
-    (char*) (current_nid + 1151), // nid of memory[$a1] = unsigned-extended 1-byte input
+    (char*) (current_nid + 1154), // nid of memory[$a1] = unsigned-extended 1-byte input
     (char*) memory_flow_nid);     // nid of most recent update of memory
 
-  memory_flow_nid = current_nid + 1152;
+  memory_flow_nid = current_nid + 1155;
+
+  // if read ecall is active go into kernel mode
+  printf3("%d ite 1 %d 11 %d ; go into kernel mode if read ecall is active\n",
+    (char*) (current_nid + 1190),  // nid of this line
+    (char*) (current_nid + 1100),  // nid of read ecall is active
+    (char*) kernel_mode_flow_nid); // nid of most recent update of kernel-mode flag
+
+  // if read ecall is in kernel mode and not done yet stay in kernel mode
+  printf3("%d ite 1 %d 11 %d ; stay in kernel mode if read ecall is in kernel mode and not done yet\n\n",
+    (char*) (current_nid + 1191),  // nid of this line
+    (char*) (current_nid + 1153),  // nid of read ecall is in kernel mode and not done yet
+    (char*) (current_nid + 1190)); // nid of previous line
+
+  kernel_mode_flow_nid = current_nid + 1191;
 
 
   // write ecall
