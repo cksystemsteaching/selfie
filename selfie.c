@@ -10116,6 +10116,8 @@ void translate_to_model() {
 }
 
 void model_syscalls() {
+  uint64_t kernel_mode_flow_nid;
+
   printf2("%d constd 2 %d ; SYSCALL_EXIT\n", (char*) current_nid, (char*) SYSCALL_EXIT);
   printf2("%d constd 2 %d ; SYSCALL_READ\n", (char*) (current_nid + 1), (char*) SYSCALL_READ);
   printf2("%d constd 2 %d ; SYSCALL_WRITE\n", (char*) (current_nid + 2), (char*) SYSCALL_WRITE);
@@ -10144,7 +10146,7 @@ void model_syscalls() {
     (char*) (current_nid + 4));  // nid of SYSCALL_BRK
 
   printf2("%d not 1 %d ; $a7 != SYSCALL_EXIT\n",
-    (char*) (current_nid + 20),  // nid of this line (also referenced in ecall control flow)
+    (char*) (current_nid + 20),  // nid of this line
     (char*) (current_nid + 10)); // nid of $a7 == SYSCALL_EXIT
   printf3("%d ite 1 %d 10 %d ; ... and $a7 != SYSCALL_READ\n",
     (char*) (current_nid + 21),  // nid of this line
@@ -10191,13 +10193,21 @@ void model_syscalls() {
       (char*) (reg_nids + REG_A0),   // nid of current value of $a0 register
       (char*) (current_nid + 1001)); // nid of value of bad non-zero exit code
   }
-  printf3("%d and 1 %d %d ; exit ecall is active and non-zero exit code\n",
+  printf3("%d and 1 %d %d ; exit ecall is active with non-zero exit code\n",
     (char*) (current_nid + 1003),  // nid of this line
     (char*) (current_nid + 1000),  // nid of exit ecall is active
     (char*) (current_nid + 1002)); // nid of non-zero exit code
-  printf2("%d bad %d ; non-zero exit code\n\n",
+  printf2("%d bad %d ; non-zero exit code\n",
     (char*) (current_nid + 1004),  // nid of this line
     (char*) (current_nid + 1003)); // nid of preceding line
+
+  // if exit ecall is active do not terminate by staying in kernel mode indefinitely
+  printf3("%d ite 1 60 %d %d ; stay in kernel mode if exit ecall is active\n\n",
+    (char*) (current_nid + 1050),  // nid of this line
+    (char*) (current_nid + 10),    // nid of $a7 == SYSCALL_EXIT
+    (char*) (current_nid + 1000)); // nid of exit ecall is active
+
+  kernel_mode_flow_nid = current_nid + 1050;
 
 
   // read ecall
@@ -10489,6 +10499,10 @@ void model_syscalls() {
 
     *(reg_flow_nids + UP_FLOW + REG_T1) = current_nid + 1467;
   }
+
+  printf2("\n%d next 1 60 %d ; update kernel-mode flag\n",
+    (char*) (current_nid + 1500),  // nid of this line
+    (char*) kernel_mode_flow_nid); // nid of most recent update of kernel-mode flag
 }
 
 uint64_t control_flow(uint64_t activate_nid, uint64_t control_flow_nid) {
@@ -10573,7 +10587,6 @@ uint64_t selfie_model_generate() {
 
   uint64_t loader_nid;
   uint64_t code_nid;
-  uint64_t library_nid;
   uint64_t control_nid;
   uint64_t condition_nid;
 
@@ -10670,6 +10683,12 @@ uint64_t selfie_model_generate() {
   print("; 4GB of memory\n\n");
 
   printf2("50 constd 2 %d ; %x\n\n", (char*) VIRTUALMEMORYSIZE, (char*) VIRTUALMEMORYSIZE);
+
+  print("; kernel-mode flag\n\n");
+
+  print("60 state 1 kernel-mode\n");
+  print("61 init 1 60 10 kernel-mode ; initial value is false\n");
+  print("62 not 1 60\n\n");
 
   print("; sorts for byte-wise reading\n\n");
 
@@ -10920,9 +10939,7 @@ uint64_t selfie_model_generate() {
 
   print("\n; syscalls\n\n");
 
-  library_nid = pcs_nid * 4;
-
-  current_nid = library_nid;
+  current_nid = pcs_nid * 4;
 
   model_syscalls();
 
@@ -10995,17 +11012,32 @@ uint64_t selfie_model_generate() {
           // this instruction may stay deactivated if there is no more in-edges
         }
       } else if (from_instruction == ECALL) {
-        // is ecall active and $a7 != SYSCALL_EXIT?
-        printf5("%d and 1 %d %d ; ecall %d[%x]",
+        printf3("%d state 1 ; kernel-mode pc flag of ecall %d[%x]",
           (char*) current_nid,                         // nid of this line
-          (char*) pc_nid(pcs_nid, from_address),       // nid of pc flag of instruction proceeding here
-          (char*) (library_nid + 20),                  // nid of $a7 != SYSCALL_EXIT condition
           (char*) from_address, (char*) from_address); // address of instruction proceeding here
         print_code_line_number_for_instruction(from_address, entry_point);println();
 
-        current_nid = current_nid + 1;
+        printf2("%d init 1 %d 10 ; ecall is initially inactive\n",
+          (char*) (current_nid + 1), // nid of this line
+          (char*) current_nid);      // nid of kernel-mode pc flag of ecall
 
-        // activate this instruction if ecall is active and $a7 != SYSCALL_EXIT
+        printf3("%d ite 1 %d 60 %d ; activate ecall and keep active while in kernel mode\n",
+          (char*) (current_nid + 2),              // nid of this line
+          (char*) current_nid,                    // nid of kernel-mode pc flag of ecall
+          (char*) pc_nid(pcs_nid, from_address)); // nid of pc flag of instruction proceeding here
+
+        printf3("%d next 1 %d %d ; keep ecall active while in kernel mode\n",
+          (char*) (current_nid + 3),  // nid of this line
+          (char*) current_nid,        // nid of kernel-mode pc flag of ecall
+          (char*) (current_nid + 2)); // nid of previous line
+
+        printf2("%d and 1 %d 62 ; ecall is active but not in kernel mode anymore\n",
+          (char*) (current_nid + 4), // nid of this line
+          (char*) current_nid);      // nid of kernel-mode pc flag of ecall
+
+        current_nid = current_nid + 5;
+
+        // activate this instruction if ecall is active but not in kernel mode anymore
         control_flow_nid = control_flow(current_nid - 1, control_flow_nid);
       } else {
         if (from_instruction == JAL) print("; jal "); else print("; ");
