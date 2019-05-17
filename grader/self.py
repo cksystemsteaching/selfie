@@ -244,21 +244,15 @@ def set_up():
   execute('make selfie')
 
 
-def has_compiled(returncode, output, should_succeed=True):
-  warning = None
-
-  succeeded = (should_succeed and returncode == 0) or (should_succeed == False and returncode != 0)
-
+def has_compiled(returncode, output):
   match = re.search('(syntax error [^\n]*)', output)
 
   if match != None:
-    if should_succeed == False:
-      succeeded = True
-    else:
-      succeeded = False
-      warning = match.group(0)
+    return (False, match.group(0))
+  elif returncode != 0:
+    return (False, 'compiler returned status {}'.format(returncode))
 
-  return (succeeded, warning)
+  return (True, None)
 
 
 def has_no_compile_warnings(return_value, output):
@@ -369,7 +363,7 @@ def test_assembler_instruction_format(instruction, file):
 
 
 
-def test_execution(command, msg, success_criteria=True, mandatory=False):
+def test_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False):
   try:
     returncode, output, error_output = execute(command)
 
@@ -377,8 +371,6 @@ def test_execution(command, msg, success_criteria=True, mandatory=False):
       output = error_output
 
     if type(success_criteria) is bool:
-      should_succeed = success_criteria
-
       if should_succeed:
         warning = 'Execution terminated with wrong exit code {} instead of 0'.format(returncode)
       else:
@@ -388,22 +380,22 @@ def test_execution(command, msg, success_criteria=True, mandatory=False):
 
     elif type(success_criteria) is int:
       record_result(returncode == success_criteria, msg, output,
-        'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command, mandatory)
+        'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), should_succeed, command, mandatory)
 
     elif type(success_criteria) is str:
       filtered_output = filter_status_messages(output)
 
-      record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command, mandatory)
+      record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', should_succeed, command, mandatory)
 
     elif callable(success_criteria):
       result, warning = success_criteria(returncode, output)
 
-      record_result(result, msg, output, warning, True, command, mandatory)
+      record_result(result, msg, output, warning, should_succeed, command, mandatory)
   except TimeoutException as e:
-    record_result(False, msg, e.output, str(e), True, command, mandatory)
+    record_result(False, msg, e.output, str(e), should_succeed, command, mandatory)
   except OSError as e:
     # the program to execute can not be found (e.g. selfie is not built)
-    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), True, command, mandatory=False)
+    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), should_succeed, command, mandatory)
 
 
 
@@ -458,13 +450,13 @@ def is_permutation_of(returncode, output, numbers):
     if number in printed_numbers:
       printed_numbers.remove(number)
     else:
-      return (False, 'The printed numbers are not a permutation of {numbers}')
+      return (False, 'The printed numbers are not a permutation of {}'.format(numbers))
 
-  return (len(printed_numbers) == 0, 'The printed numbers are not a permutation of {numbers}')
+  return (len(printed_numbers) == 0, 'The printed numbers are not a permutation of {}'.format(numbers))
 
 
 def test_compilable(file, msg, should_succeed=True):
-  test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code, out: has_compiled(code, out, should_succeed=should_succeed))
+  test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code, out: has_compiled(code, out), should_succeed=should_succeed)
 
 
 def test_riscv_instruction(instruction, file):
@@ -1011,6 +1003,8 @@ def main(argv):
     do_bulk_grading(tests)
   else:
     check_assignments(tests)
+
+  sys.stdout = sys.__stdout__
 
 
 if __name__ == "__main__":
