@@ -10290,60 +10290,116 @@ void model_syscalls() {
     (char*) (current_nid + 1161),  // nid of $a2 - $a0 >= 8 bytes
     (char*) (current_nid + 1160)); // nid of $a2 - $a0
 
-  printf2("%d eq 1 %d 21 ; increment == 1\n",
-    (char*) (current_nid + 1163),  // nid of this line
+  // compute unsigned-extended input
+  printf2("%d eq 1 %d 22 ; increment == 2\n",
+    (char*) (current_nid + 1170),  // nid of this line
     (char*) (current_nid + 1162)); // nid of increment
-  printf2("%d ite 2 %d 91 20 ; unsigned-extended 1-byte input if increment == 1\n",
-    (char*) (current_nid + 1164),  // nid of this line
-    (char*) (current_nid + 1163)); // nid of increment == 1
+  printf2("%d ite 2 %d 92 91 ; unsigned-extended 2-byte input if increment == 2, or else unsigned-extended 1-byte input\n",
+    (char*) (current_nid + 1171),  // nid of this line
+    (char*) (current_nid + 1170)); // nid of increment == 2
+  printf2("%d eq 1 %d 23 ; increment == 3\n",
+    (char*) (current_nid + 1172),  // nid of this line
+    (char*) (current_nid + 1162)); // nid of increment
+  printf3("%d ite 2 %d 93 %d ; unsigned-extended 3-byte input if increment == 3\n",
+    (char*) (current_nid + 1173),  // nid of this line
+    (char*) (current_nid + 1172),  // nid of increment == 3
+    (char*) (current_nid + 1171)); // nid of unsigned-extended 2-byte input
+  printf2("%d eq 1 %d 24 ; increment == 4\n",
+    (char*) (current_nid + 1174),  // nid of this line
+    (char*) (current_nid + 1162)); // nid of increment
+  printf3("%d ite 2 %d 94 %d ; unsigned-extended 4-byte input if increment == 4\n",
+    (char*) (current_nid + 1175),  // nid of this line
+    (char*) (current_nid + 1174),  // nid of increment == 4
+    (char*) (current_nid + 1173)); // nid of unsigned-extended 3-byte input
+  printf2("%d eq 1 %d 25 ; increment == 5\n",
+    (char*) (current_nid + 1176),  // nid of this line
+    (char*) (current_nid + 1162)); // nid of increment
+  printf3("%d ite 2 %d 95 %d ; unsigned-extended 5-byte input if increment == 5\n",
+    (char*) (current_nid + 1177),  // nid of this line
+    (char*) (current_nid + 1176),  // nid of increment == 5
+    (char*) (current_nid + 1175)); // nid of unsigned-extended 4-byte input
+  printf2("%d eq 1 %d 26 ; increment == 6\n",
+    (char*) (current_nid + 1178),  // nid of this line
+    (char*) (current_nid + 1162)); // nid of increment
+  printf3("%d ite 2 %d 96 %d ; unsigned-extended 6-byte input if increment == 6\n",
+    (char*) (current_nid + 1179),  // nid of this line
+    (char*) (current_nid + 1178),  // nid of increment == 6
+    (char*) (current_nid + 1177)); // nid of unsigned-extended 5-byte input
+  printf2("%d eq 1 %d 27 ; increment == 7\n",
+    (char*) (current_nid + 1180),  // nid of this line
+    (char*) (current_nid + 1162)); // nid of increment
+  printf3("%d ite 2 %d 97 %d ; unsigned-extended 7-byte input if increment == 7\n",
+    (char*) (current_nid + 1181),  // nid of this line
+    (char*) (current_nid + 1180),  // nid of increment == 7
+    (char*) (current_nid + 1179)); // nid of unsigned-extended 6-byte input
+  printf2("%d eq 1 %d 28 ; increment == 8\n",
+    (char*) (current_nid + 1182),  // nid of this line
+    (char*) (current_nid + 1162)); // nid of increment
+  printf3("%d ite 2 %d 98 %d ; 8-byte input if increment == 8\n",
+    (char*) (current_nid + 1183),  // nid of this line
+    (char*) (current_nid + 1182),  // nid of increment == 8
+    (char*) (current_nid + 1181)); // nid of unsigned-extended 7-byte input
 
-  // write unsigned-extended 1-byte input to memory at address in $a1 register
-  printf3("%d write 3 %d %d 91 ; memory[$a1] = unsigned-extended 1-byte input\n",
-    (char*) (current_nid + 1170), // nid of this line
-    (char*) memory_nid,           // nid of memory
-    (char*) (reg_nids + REG_A1)); // nid of current value of $a1 register
-  // if read ecall is active set memory[$a1] = unsigned-extended 1-byte input
-  printf4("%d ite 3 %d %d %d ; set memory[$a1] = unsigned-extended 1-byte input if read ecall is active\n",
-    (char*) (current_nid + 1171), // nid of this line
-    (char*) (current_nid + 1100), // nid of read ecall is active
-    (char*) (current_nid + 1170), // nid of memory[$a1] = unsigned-extended 1-byte input
-    (char*) memory_flow_nid);     // nid of most recent update of memory
-
-  memory_flow_nid = current_nid + 1171;
+  // write input to memory at address $a1 + $a0
+  printf3("%d add 2 %d %d ; $a1 + $a0\n",
+    (char*) (current_nid + 1184), // nid of this line
+    (char*) (reg_nids + REG_A1),  // nid of current value of $a1 register
+    (char*) (reg_nids + REG_A0)); // nid of current value of $a0 register
+  printf4("%d write 3 %d %d %d ; memory[$a1 + $a0] = input\n",
+    (char*) (current_nid + 1185),  // nid of this line
+    (char*) memory_nid,            // nid of memory
+    (char*) (current_nid + 1184),  // nid of $a1 + $a0
+    (char*) (current_nid + 1183)); // nid of input
 
   // read ecall is in kernel mode and not done yet
   printf3("%d ult 1 %d %d ; $a0 < $a2\n",
-    (char*) (current_nid + 1180), // nid of this line
+    (char*) (current_nid + 1190), // nid of this line
     (char*) (reg_nids + REG_A0),  // nid of current value of $a0 register
     (char*) (reg_nids + REG_A2)); // nid of current value of $a2 register
   printf3("%d and 1 %d %d ; $a7 == SYSCALL_READ and $a0 < $a2\n",
-    (char*) (current_nid + 1181),  // nid of this line
+    (char*) (current_nid + 1191),  // nid of this line
     (char*) (current_nid + 11),    // nid of $a7 == SYSCALL_READ
-    (char*) (current_nid + 1180)); // nid of $a0 < $a2
+    (char*) (current_nid + 1190)); // nid of $a0 < $a2
   printf2("%d and 1 60 %d ; read ecall is in kernel mode and not done yet\n",
-    (char*) (current_nid + 1182),  // nid of this line
-    (char*) (current_nid + 1181)); // nid of $a7 == SYSCALL_READ and $a0 < $a2
+    (char*) (current_nid + 1192),  // nid of this line
+    (char*) (current_nid + 1191)); // nid of $a7 == SYSCALL_READ and $a0 < $a2
+
+  // if read ecall is in kernel mode and not done yet write input to memory at address $a1 + $a0
+  printf2("%d ugt 1 %d 20 ; increment > 0\n",
+    (char*) (current_nid + 1193),  // nid of this line
+    (char*) (current_nid + 1162)); // nid of increment
+  printf3("%d and 1 %d %d ; read ecall is in kernel mode and not done yet and increment > 0\n",
+    (char*) (current_nid + 1194),  // nid of this line
+    (char*) (current_nid + 1192),  // nid of read ecall is in kernel mode and not done yet
+    (char*) (current_nid + 1193)); // nid of increment > 0
+  printf4("%d ite 3 %d %d %d ; set memory[$a1 + $a0] = input if read ecall is in kernel mode and not done yet and increment > 0\n",
+    (char*) (current_nid + 1195), // nid of this line
+    (char*) (current_nid + 1194), // nid of read ecall is in kernel mode and not done yet and increment > 0
+    (char*) (current_nid + 1185), // nid of memory[$a1 + $a0] = input
+    (char*) memory_flow_nid);     // nid of most recent update of memory
+
+  memory_flow_nid = current_nid + 1195;
 
   // if read ecall is in kernel mode and not done yet increment number of bytes read
   printf3("%d add 2 %d %d ; $a0 + increment\n",
-    (char*) (current_nid + 1183),  // nid of this line
+    (char*) (current_nid + 1196),  // nid of this line
     (char*) (reg_nids + REG_A0),   // nid of current value of $a0 register
     (char*) (current_nid + 1162)); // nid of increment
   printf4("%d ite 2 %d %d %d ; set $a0 = $a0 + increment if read ecall is in kernel mode and not done yet\n",
-    (char*) (current_nid + 1184),       // nid of this line
-    (char*) (current_nid + 1182),       // nid of read ecall is in kernel mode and not done yet
-    (char*) (current_nid + 1183),       // nid of $a0 + increment
+    (char*) (current_nid + 1197),       // nid of this line
+    (char*) (current_nid + 1192),       // nid of read ecall is in kernel mode and not done yet
+    (char*) (current_nid + 1196),       // nid of $a0 + increment
     (char*) *(reg_flow_nids + REG_A0)); // nid of most recent update of $a0 register
 
-  *(reg_flow_nids + REG_A0) = current_nid + 1184;
+  *(reg_flow_nids + REG_A0) = current_nid + 1197;
 
   // if read ecall is in kernel mode and not done yet stay in kernel mode
   printf3("%d ite 1 %d 11 %d ; stay in kernel mode if read ecall is in kernel mode and not done yet\n\n",
-    (char*) (current_nid + 1190),  // nid of this line
-    (char*) (current_nid + 1182),  // nid of read ecall is in kernel mode and not done yet
+    (char*) (current_nid + 1198),  // nid of this line
+    (char*) (current_nid + 1192),  // nid of read ecall is in kernel mode and not done yet
     (char*) kernel_mode_flow_nid); // nid of most recent update of kernel-mode flag
 
-  kernel_mode_flow_nid = current_nid + 1190;
+  kernel_mode_flow_nid = current_nid + 1198;
 
 
   // write ecall
