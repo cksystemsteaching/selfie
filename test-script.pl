@@ -6,7 +6,7 @@ use POSIX qw( WNOHANG );
 use File::Basename;
 
 #CONSTANTS
-use constant TIME_TO_WAIT => 20; #wait 10 seconds per test
+use constant TIME_TO_WAIT => 20; #wait 20 seconds per test
 
 #Variables
 my $input_to_test;
@@ -111,7 +111,7 @@ sub exec_test {
     my $command = "$testCmd 2>&1 > $testOutput";
 
     local $SIG{ALRM} = sub { `echo "KILLED" >> $FileLog`; exit(-1); }; #avoid parent freezed forever ...
-    alarm TIME_TO_WAIT; #5 seconds
+    alarm TIME_TO_WAIT; #TIME_TO_WAIT seconds
 
     `$command`; #execute
 
@@ -132,8 +132,6 @@ sub exec_test {
   }
   # ---> heavy stuff but working in case of infinite loops
   `pkill selfie`; # kill grandchild commands
-
-  #die "error in test execution" if($?); (needs good return 0)
 
   ###Check
   if(&verifyOutcomes($testOutput, $return_codes)) {
