@@ -607,27 +607,32 @@ def test_array(part):
 
 
 
-def test_structs():
-  test_compilable('struct-declaration.c',
-    'empty struct declarations compiled')
-  test_compilable('struct-member-declaration.c',
-    'struct declaration with trivial members compiled')
-  test_compilable('struct-initialization.c',
-    'empty struct with initialization compiled')
-  test_compilable('struct-member-initialization.c',
-    'initialization of trivial struct members compiled')
-  test_mipster_execution('struct-member-initialization.c', 42,
-    'read and write operations of trivial struct member works when executed with MIPSTER')
-  test_compilable('struct-nested-declaration.c',
-    'struct declaration with struct members compiled')
-  test_compilable('struct-nested-initialization.c',
-    'struct initialization with struct members compiled')
-  test_mipster_execution('struct-nested-initialization.c', 42,
-    'read and write operations of nested struct member works when executed with MIPSTER')
-  test_compilable('struct-as-parameter.c',
-    'struct as function parameter compiled')
-  test_mipster_execution('struct-as-parameter.c', 42,
-    'read and write operations of structs as parameter work when executed with MIPSTER')
+def test_structs(part):
+  if part == 1:
+    test_compilable('struct-declaration.c',
+      'empty struct declarations compiled')
+    test_compilable('struct-member-declaration.c',
+      'struct declaration with trivial members compiled')
+    test_compilable('struct-nested-declaration.c',
+      'struct declaration with struct members compiled')
+    test_compilable('struct-definition.c',
+      'struct definition with global and local scope compiled')
+
+  if part == 2:
+    test_compilable('struct-initialization.c',
+      'empty struct with initialization compiled')
+    test_compilable('struct-member-initialization.c',
+      'initialization of trivial struct members compiled')
+    test_mipster_execution('struct-member-initialization.c', 42,
+      'read and write operations of trivial struct member works when executed with MIPSTER')
+    test_compilable('struct-nested-initialization.c',
+      'struct initialization with struct members compiled')
+    test_mipster_execution('struct-nested-initialization.c', 42,
+      'read and write operations of nested struct member works when executed with MIPSTER')
+    test_compilable('struct-as-parameter.c',
+      'struct as function parameter compiled')
+    test_mipster_execution('struct-as-parameter.c', 42,
+      'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
 def test_assembler(stage):
@@ -848,7 +853,8 @@ defined_tests = [
     ('for-loop', test_for_loop),
     ('array-1', lambda: test_array(1)),
     ('array-2', lambda: test_array(2)),
-    ('struct', test_structs),
+    ('struct-1', lambda: test_structs(1)),
+    ('struct-2', lambda: test_structs(2)),
     ('assembler-1', lambda: test_assembler(1)),
     ('assembler-2', lambda: test_assembler(2)),
     ('concurrent-machines', test_concurrent_machines),
