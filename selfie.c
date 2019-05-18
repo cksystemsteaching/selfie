@@ -948,9 +948,6 @@ void     implement_open(uint64_t* context);
 void emit_malloc();
 void implement_brk(uint64_t* context);
 
-void emit_input();
-void implement_input(uint64_t* context);
-
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t debug_read             = 0;
@@ -970,7 +967,6 @@ uint64_t SYSCALL_READ  = 63;
 uint64_t SYSCALL_WRITE = 64;
 uint64_t SYSCALL_OPEN  = 1024;
 uint64_t SYSCALL_BRK   = 214;
-uint64_t SYSCALL_INPUT = 42;
 
 // -----------------------------------------------------------------
 // ----------------------- HYPSTER SYSCALLS ------------------------
@@ -1056,49 +1052,31 @@ void print_lui();
 void print_lui_before();
 void print_lui_after();
 void do_lui();
-void constrain_lui();
 
 void print_addi();
 void print_addi_before();
 void print_addi_add_sub_mul_divu_remu_sltu_after();
 void do_addi();
-void constrain_addi();
 
 void print_add_sub_mul_divu_remu_sltu(uint64_t *mnemonics);
 void print_add_sub_mul_divu_remu_sltu_before();
 
 void do_add();
-void constrain_add();
-
 void do_sub();
-void constrain_sub();
-
 void do_mul();
-void constrain_mul();
-
 void do_divu();
-void constrain_divu();
-
 void do_remu();
-void constrain_remu_step_1();
-void constrain_remu();
-
 void do_sltu();
-void constrain_sltu();
-void backtrack_sltu();
 
 void     print_ld();
 void     print_ld_before();
 void     print_ld_after(uint64_t vaddr);
 uint64_t do_ld();
-uint64_t constrain_ld();
 
 void     print_sd();
 void     print_sd_before();
 void     print_sd_after(uint64_t vaddr);
 uint64_t do_sd();
-uint64_t constrain_sd();
-void     backtrack_sd();
 
 void print_beq();
 void print_beq_before();
@@ -1119,271 +1097,10 @@ void print_ecall();
 void print_ecall_before();
 void print_ecall_after();
 void do_ecall();
-void backtrack_ecall();
 
 void print_data_line_number();
 void print_data_context(uint64_t data);
 void print_data(uint64_t data);
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t MAX_REPLAY_LENGTH = 100;
-
-// -----------------------------------------------------------------
-// ------------------- SYMBOLIC EXECUTION ENGINE -------------------
-// -----------------------------------------------------------------
-
-void init_symbolic_engine();
-
-void print_stype(uint64_t stype);
-void print_symbolic_memory(uint64_t svc);
-void print_symbolic_register(uint64_t reg);
-
-//MSIID
-//[in] a modular stride interval
-//print a slide of concrete values: {start, start + s, [up, lo], end - s, end}
-void print_concrete_bounds(uint64_t start, uint64_t end, uint64_t step);
-void print_msiid(uint64_t start, uint64_t end, uint64_t st);
-
-//error case
-void print_over_approx();
-void print_unreachable(uint64_t* label, uint64_t unreachable_pc);
-void error_minuend(uint64_t* operand, uint64_t* operation);
-void print_bad_expression();
-
-//MSIID API
-//[in] a modular stride interval
-//[out] is a correct abstract value (end = start + i*s)
-uint64_t is_erroneous(uint64_t start, uint64_t end, uint64_t step);
-//[in] a start, step and MAX value
-//[out] return a correct upper bound (up) such that up <= MAX (wrapped thinking)
-uint64_t compute_upper_bound(uint64_t start, uint64_t step, uint64_t max);
-
-//soundness and completness conditions
-uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
-uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
-uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k);
-uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t k);
-uint64_t is_power_of_two(uint64_t n);
-uint64_t gcd(uint64_t n1, uint64_t n2);
-
-void addi_msiid(uint64_t src, uint64_t vaddr);
-void add_msiid();
-void sub_msiid();
-void mul_msiid();
-void divu_msiid();
-void remu_msiid();
-//stlu ?? (in constrain_memory)
-
-//Pointers API
-void addi_pointer(uint64_t src, uint64_t vaddr);
-void add_pointer();
-void sub_pointer();
-
-//trace
-uint64_t is_trace_space_available();
-void ealloc();
-void efree();
-
-uint64_t is_symbolic_value(uint64_t type);
-uint64_t is_safe_address(uint64_t vaddr, uint64_t reg);
-
-uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
-void store_symbolic_memory(uint64_t* pt, uint64_t stc, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t corr_id, uint64_t trb);
-
-//constraints
-void fill_constraint_buffer(uint64_t stc, uint64_t vaddr, uint64_t t, uint64_t h, uint64_t exp, uint64_t col, uint64_t cou, uint64_t f);
-void store_propagate_constraint(uint64_t typ, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
-void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step);
-void store_register_memory(uint64_t reg, uint64_t value);
-
-void constrain_memory(uint64_t mrvc, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb);
-void set_constraint(uint64_t reg, uint64_t stc, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step);
-void set_correction(uint64_t reg, uint64_t hasmn, uint64_t expr, uint64_t colos, uint64_t coups, uint64_t operand);
-
-//branch
-void take_branch(uint64_t b, uint64_t how_many_more);
-void create_constraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, uint64_t up2, uint64_t s2, uint64_t trb, uint64_t how_many_more);
-
-//fuzzing input
-uint64_t fuzz_lo(uint64_t value);
-uint64_t fuzz_up(uint64_t value);
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-// symbolic BOUNDS
-uint64_t MAX_TRACE_LENGTH = 100000;
-uint64_t MAX_PATH_LENGTH  = 50000000; //=5 * TIMESLICE
-uint64_t MAX_READ         = 10;     // read bound
-
-//Abstract Domain types
-uint64_t CONCRETE_T   = 0;
-uint64_t MSIID_T      = 1;
-uint64_t ARRAY_T      = 2;
-//uint64_t BITSVECT_T = 3;    next step
-//uint64_t INCOMPLETE_T = 4;  next step
-
-//reg_expr completness watchdog
-uint64_t CONST_T = 0;
-uint64_t SUM_T = 1;
-uint64_t MUL_T = 2;
-uint64_t DIV_T = 3;
-uint64_t REM_T = 4;
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t has_true_branch  = 1;
-uint64_t has_false_branch = 1;
-
-uint64_t path_length = 0; // number of instructions for the current path
-
-uint64_t tc = 0;        // current trace index
-uint64_t mrvc_rs1 = 0;  // rs1's trace index before constraining
-uint64_t mrvc_rs2 = 0;  // rs2's trace index before constraining
-
-// trace entry:
-// +----+---------+
-// |  0 | pc      | pointer to instruction
-// |  1 | tc      | previous value of vaddr
-// ---------------------- register type
-// |  2 | stc     | source index
-// |  3 | vaddr   | virtual address
-// |  4 | type    | CONCRETE_T, MSIID_T, ARRAY_T
-// |  5 | alpha1  | CONCRETE_T: value, MSIID_T: starting value, ARRAY_T: pointer value
-// |  6 | alpha2  | MSIID_T: ending value, ARRAY_T: base
-// |  7 | alpha3  | MSIID_T: step, ARRAY_T: size
-// |  8 | corrs   | MSIID_T: correction, remember the relationship betw. src address
-// +----+---------+
-
-// trace entry
-uint64_t* pcs = (uint64_t*) 0;    // trace of program counter values
-uint64_t* tcs = (uint64_t*) 0;    // trace of trace counters to previous values
-// memory link
-uint64_t* stcs = (uint64_t*) 0;   // trace of source indexes
-uint64_t* vaddrs = (uint64_t*) 0; // trace of virtual addresses
-// abstract
-uint64_t* types     = (uint64_t*) 0;
-uint64_t* alpha1s   = (uint64_t*) 0;
-uint64_t* alpha2s   = (uint64_t*) 0;
-uint64_t* alpha3s   = (uint64_t*) 0;
-uint64_t* corrs     = (uint64_t*) 0;
-
-// correction entry
-uint64_t cc = 0;  // current correction index
-uint64_t* hasmns    = (uint64_t*) 0;
-uint64_t* exprs     = (uint64_t*) 0;
-uint64_t* colos     = (uint64_t*) 0;
-uint64_t* coups     = (uint64_t*) 0;
-uint64_t* factors   = (uint64_t*) 0;
-
-// buffer correction (used in constrain_memory): symbolic register tvp
-uint64_t buffer_typ       =  0;
-uint64_t buffer_vaddr     =  0;
-uint64_t buffer_stc       =  0;
-uint64_t buffer_hasmn     =  0;
-uint64_t buffer_expr      =  0;
-uint64_t buffer_colo      =  0;
-uint64_t buffer_coup      =  0;
-uint64_t buffer_factor    =  0;
-
-// read history
-uint64_t number_of_reads  = 0;     // number of reads
-uint64_t rcc = 0;     // read current counter
-uint64_t* stored_read_tcs    = (uint64_t*) 0;
-uint64_t* stored_read_values = (uint64_t*) 0;
-
-uint64_t  get_trace_pc(uint64_t index)     { return *(pcs + index);}
-uint64_t  get_trace_tc(uint64_t index)     { return *(tcs + index);}
-uint64_t  get_trace_src(uint64_t index)    { return *(stcs + index);}
-uint64_t  get_trace_vaddr(uint64_t index)  { return *(vaddrs + index);}
-uint64_t  get_trace_type(uint64_t index)   { return *(types + index);}
-uint64_t  get_trace_a1(uint64_t index)     { return *(alpha1s + index);}
-uint64_t  get_trace_a2(uint64_t index)     { return *(alpha2s + index);}
-uint64_t  get_trace_a3(uint64_t index)     { return *(alpha3s + index);}
-uint64_t  get_trace_corr(uint64_t index)   { return *(corrs + index);}
-
-void  set_trace_pc(uint64_t index, uint64_t st_pc)        { *(pcs + index)      = st_pc;}
-void  set_trace_tc(uint64_t index, uint64_t st_idx)       { *(tcs + index)      = st_idx;}
-void  set_trace_src(uint64_t index, uint64_t st_src)      { *(stcs + index)     = st_src;}
-void  set_trace_vaddr(uint64_t index, uint64_t st_vaddr)  { *(vaddrs + index)   = st_vaddr;}
-void  set_trace_type(uint64_t index, uint64_t st_typ)     { *(types + index)    = st_typ;}
-void  set_trace_a1(uint64_t index, uint64_t st_a1)        { *(alpha1s + index)  = st_a1;}
-void  set_trace_a2(uint64_t index, uint64_t st_a2)        { *(alpha2s + index)  = st_a2;}
-void  set_trace_a3(uint64_t index, uint64_t st_a3)        { *(alpha3s + index)  = st_a3;}
-void  set_trace_corr(uint64_t index, uint64_t st_corr)    { *(corrs + index)    = st_corr;}
-
-void print_trace();
-void print_src_list(uint64_t idx);
-uint64_t get_src_input(uint64_t idx); //witness
-
-// registers
-// abstract domains for tempory computations
-uint64_t* reg_typ   = (uint64_t*) 0;  // type: memory range | integer interval
-// abstract domain values (alpha)
-uint64_t* reg_stc  = (uint64_t*) 0;     // source indexes (renaming)
-uint64_t* reg_vaddr  = (uint64_t*) 0;   // vaddr of constrained memory
-//uint64_t* reg_alpha1 = (uint64_t*) 0; // lower bound pt: value --> registers
-uint64_t* reg_alpha2 = (uint64_t*) 0;   // upper bound | pt: start
-uint64_t* reg_alpha3 = (uint64_t*) 0;   // step | pt: size
-
-// MSIID_T Zone 1 (complete with correction)
-// accumumated constraints
-uint64_t* reg_hasmn   = (uint64_t*) 0;  // constraint has minuend
-uint64_t* reg_expr    = (uint64_t*) 0;  // constraint can be corrected
-uint64_t* reg_colos   = (uint64_t*) 0;  // offset on lower bound
-uint64_t* reg_coups   = (uint64_t*) 0;  // offset on upper bound
-uint64_t* reg_factor  = (uint64_t*) 0;  // constant operand in a mdr
-
-// trace counter of most recent constraint
-uint64_t mrcc = 0;
-
-// fuzzing
-uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
-
-// line exit code
-uint64_t last_jal_from = 0;
-
-// ------------------------- INITIALIZATION ------------------------
-
-void init_symbolic_engine() {
-  uint64_t i;
-
-  pcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  tcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  types   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  stcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  vaddrs  = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  alpha1s = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  alpha2s = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  alpha3s = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  corrs   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-
-  hasmns    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  exprs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  colos     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  coups     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-  factors   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
-
-  stored_read_values = zalloc(MAX_READ * SIZEOFUINT64);
-  stored_read_tcs    = zalloc(MAX_READ * SIZEOFUINT64);
-
-  reg_typ       = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_stc       = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_vaddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  //reg_alpha1  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE); == registers
-  reg_alpha2    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_alpha3    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_hasmn     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_expr      = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_colos     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_coups     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  reg_factor    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-
-  // initialise registers with concrete value (step 1) -->####
-  i = 0;
-  while (i < NUMBEROFREGISTERS) {
-    *(reg_alpha3 + i) = 1;
-    i = i + 1;
-  }
-}
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1439,10 +1156,6 @@ uint64_t symbolic    = 0; // flag for symbolically executing code
 uint64_t backtrack   = 0; // flag for backtracking symbolic execution
 
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
-
-uint64_t sdebug_context   = 0;
-uint64_t sdebug_trace     = 0;
-uint64_t sdebug_propagate = 0;
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -1730,6 +1443,316 @@ uint64_t next_page_frame = 0;
 
 uint64_t allocated_page_frame_memory = 0;
 uint64_t free_page_frame_memory      = 0;
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// --------------   S Y M B O L I C  A N A L Y S I S   -------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+// Symbolic bounds
+uint64_t MAX_TRACE_LENGTH = 100000;
+uint64_t MAX_PATH_LENGTH  = 50000000; //=5 * TIMESLICE
+uint64_t MAX_READ         = 10;       // read bound
+
+uint64_t CONST_T  = 0;
+uint64_t SUM_T    = 1;
+uint64_t MUL_T    = 2;
+uint64_t DIV_T    = 3;
+uint64_t REM_T    = 4;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t path_length = 0; // number of instructions for the current path
+
+uint64_t sdebug_trace     = 0;
+uint64_t sdebug_context   = 0;
+uint64_t sdebug_propagate = 0;
+
+// -----------------------------------------------------------------
+// --------------------- SYMBOLIC INSTRUCTIONS ---------------------
+// -----------------------------------------------------------------
+
+void constrain_lui();
+void constrain_addi();
+
+void constrain_add();
+void constrain_sub();
+void constrain_mul();
+void constrain_divu();
+void constrain_remu_step_1();
+void constrain_remu();
+void constrain_sltu();
+
+uint64_t constrain_ld();
+uint64_t constrain_sd();
+
+void backtrack_sltu();
+void backtrack_sd();
+void backtrack_ecall();
+
+// -----------------------------------------------------------------
+// ---------------------- SYMBOLIC INTERFACE -----------------------
+// -----------------------------------------------------------------
+
+void emit_input();
+void implement_input(uint64_t* context);
+
+uint64_t fuzz_lo(uint64_t value);
+uint64_t fuzz_up(uint64_t value);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t SYSCALL_INPUT = 42;
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
+
+// read history
+uint64_t number_of_reads  = 0;     // number of reads
+uint64_t rcc              = 0;     // read current counter
+
+uint64_t* stored_read_tcs    = (uint64_t*) 0;
+uint64_t* stored_read_values = (uint64_t*) 0;
+
+uint64_t last_jal_from = 0;
+
+// -----------------------------------------------------------------
+// ----------------------------- TRACE -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t  is_trace_space_available();
+void      ealloc();
+void      efree();
+
+uint64_t  load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
+void      store_symbolic_memory(uint64_t* pt, uint64_t stc, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t corr_id, uint64_t trb);
+
+uint64_t is_safe_address(uint64_t vaddr, uint64_t reg);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t tc       = 0;  // current trace index
+
+uint64_t* pcs = (uint64_t*) 0;    // trace of program counter values
+uint64_t* tcs = (uint64_t*) 0;    // trace of trace counters to previous values
+
+uint64_t* stcs    = (uint64_t*) 0;    // trace of source indexes
+uint64_t* vaddrs  = (uint64_t*) 0;    // trace of virtual addresses
+
+uint64_t* types     = (uint64_t*) 0;
+uint64_t* alpha1s   = (uint64_t*) 0;
+uint64_t* alpha2s   = (uint64_t*) 0;
+uint64_t* alpha3s   = (uint64_t*) 0;
+uint64_t* corrs     = (uint64_t*) 0;
+
+// trace entry
+// +----+---------+
+// |  0 | pc      | pointer to instruction
+// |  1 | tc      | previous value of vaddr
+// |  2 | stc     | source index
+// |  3 | vaddr   | virtual address
+// |  4 | type    | CONCRETE_T, MSIID_T, ARRAY_T
+// |  5 | alpha1  | CONCRETE_T: value, MSIID_T: starting value, ARRAY_T: pointer value
+// |  6 | alpha2  | MSIID_T: ending value, ARRAY_T: base
+// |  7 | alpha3  | MSIID_T: step, ARRAY_T: size
+// |  8 | corrs   | MSIID_T: correction, remember the relationship betw. src address
+// +----+---------+
+
+uint64_t  get_trace_pc(uint64_t index)     { return *(pcs + index);}
+uint64_t  get_trace_tc(uint64_t index)     { return *(tcs + index);}
+uint64_t  get_trace_src(uint64_t index)    { return *(stcs + index);}
+uint64_t  get_trace_vaddr(uint64_t index)  { return *(vaddrs + index);}
+uint64_t  get_trace_type(uint64_t index)   { return *(types + index);}
+uint64_t  get_trace_a1(uint64_t index)     { return *(alpha1s + index);}
+uint64_t  get_trace_a2(uint64_t index)     { return *(alpha2s + index);}
+uint64_t  get_trace_a3(uint64_t index)     { return *(alpha3s + index);}
+uint64_t  get_trace_corr(uint64_t index)   { return *(corrs + index);}
+
+void  set_trace_pc(uint64_t index, uint64_t st_pc)        { *(pcs + index)      = st_pc;}
+void  set_trace_tc(uint64_t index, uint64_t st_idx)       { *(tcs + index)      = st_idx;}
+void  set_trace_src(uint64_t index, uint64_t st_src)      { *(stcs + index)     = st_src;}
+void  set_trace_vaddr(uint64_t index, uint64_t st_vaddr)  { *(vaddrs + index)   = st_vaddr;}
+void  set_trace_type(uint64_t index, uint64_t st_typ)     { *(types + index)    = st_typ;}
+void  set_trace_a1(uint64_t index, uint64_t st_a1)        { *(alpha1s + index)  = st_a1;}
+void  set_trace_a2(uint64_t index, uint64_t st_a2)        { *(alpha2s + index)  = st_a2;}
+void  set_trace_a3(uint64_t index, uint64_t st_a3)        { *(alpha3s + index)  = st_a3;}
+void  set_trace_corr(uint64_t index, uint64_t st_corr)    { *(corrs + index)    = st_corr;}
+
+void print_symbolic_memory(uint64_t svc);
+void print_trace();
+
+// -----------------------------------------------------------------
+// --------------------------- REGISTER ----------------------------
+// -----------------------------------------------------------------
+
+void print_symbolic_register(uint64_t reg);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t* reg_typ     = (uint64_t*) 0;  // type: memory range | integer interval
+uint64_t* reg_vaddr   = (uint64_t*) 0;  // vaddr of constrained memory
+//registers                                lower bound pt: value
+uint64_t* reg_alpha2  = (uint64_t*) 0;  // upper bound | pt: start
+uint64_t* reg_alpha3  = (uint64_t*) 0;  // step | pt: size
+
+uint64_t* reg_stc     = (uint64_t*) 0;  // source address
+uint64_t* reg_hasmn   = (uint64_t*) 0;  // constraint has minuend
+uint64_t* reg_expr    = (uint64_t*) 0;  // constraint can be corrected
+uint64_t* reg_colos   = (uint64_t*) 0;  // offset on lower bound
+uint64_t* reg_coups   = (uint64_t*) 0;  // offset on upper bound
+uint64_t* reg_factor  = (uint64_t*) 0;  // constant operand in a mdr
+
+// -----------------------------------------------------------------
+// ----------------------- ABSTRACT DOMAIN -------------------------
+// -----------------------------------------------------------------
+
+uint64_t  is_symbolic_value(uint64_t type);
+void      print_stype(uint64_t stype);
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t CONCRETE_T   = 0;
+uint64_t MSIID_T      = 1;
+uint64_t ARRAY_T      = 2;
+//uint64_t BITSVECT_T = 3;    next step
+//uint64_t INCOMPLETE_T = 4;  next step
+
+// ---------------------------- MSIID ------------------------------
+// -----------------------------------------------------------------
+
+void addi_msiid(uint64_t src, uint64_t vaddr);
+void add_msiid();
+void sub_msiid();
+void mul_msiid();
+void divu_msiid();
+void remu_msiid();
+
+uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
+uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
+uint64_t remu_condition(uint64_t lo, uint64_t up, uint64_t k);
+uint64_t stride_remu_condition(uint64_t lo, uint64_t up, uint64_t step, uint64_t k);
+
+void set_constraint(uint64_t reg, uint64_t stc, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step);
+void set_correction(uint64_t reg, uint64_t hasmn, uint64_t expr, uint64_t colos, uint64_t coups, uint64_t operand);
+
+void take_branch(uint64_t b, uint64_t how_many_more);
+void create_constraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, uint64_t up2, uint64_t s2, uint64_t trb, uint64_t how_many_more);
+
+//---
+uint64_t is_power_of_two(uint64_t n);
+uint64_t gcd(uint64_t n1, uint64_t n2);
+uint64_t is_erroneous(uint64_t start, uint64_t end, uint64_t step);
+uint64_t compute_upper_bound(uint64_t start, uint64_t step, uint64_t max);
+
+void print_over_approx();
+void print_unreachable(uint64_t* label, uint64_t unreachable_pc);
+void error_minuend(uint64_t* operand, uint64_t* operation);
+void print_bad_expression();
+
+void print_concrete_bounds(uint64_t start, uint64_t end, uint64_t step);
+void print_msiid(uint64_t start, uint64_t end, uint64_t st);
+
+// ---------------------------- RANGE ------------------------------
+// -----------------------------------------------------------------
+
+void addi_pointer(uint64_t src, uint64_t vaddr);
+void add_pointer();
+void sub_pointer();
+
+// -----------------------------------------------------------------
+// ---------------------- DEPENDENCE GRAPH -------------------------
+// -----------------------------------------------------------------
+
+uint64_t get_src_input(uint64_t idx);
+
+void print_src_list(uint64_t idx);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t cc = 0;  // current correction index
+
+uint64_t* hasmns    = (uint64_t*) 0;
+uint64_t* exprs     = (uint64_t*) 0;
+uint64_t* colos     = (uint64_t*) 0;
+uint64_t* coups     = (uint64_t*) 0;
+uint64_t* factors   = (uint64_t*) 0;
+
+// -----------------------------------------------------------------
+// ------------------------ PROPAGATION ----------------------------
+// -----------------------------------------------------------------
+
+void constrain_memory(uint64_t mrvc, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb);
+
+void fill_constraint_buffer(uint64_t stc, uint64_t vaddr, uint64_t t, uint64_t h, uint64_t exp, uint64_t col, uint64_t cou, uint64_t f);
+void store_propagate_constraint(uint64_t typ, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step);
+void store_register_memory(uint64_t reg, uint64_t value);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t mrcc     = 0;  // trace counter of most recent constraint
+uint64_t mrvc_rs1 = 0;  // rs1's trace index before constraining
+uint64_t mrvc_rs2 = 0;  // rs2's trace index before constraining
+
+// buffer correction (used in constrain_memory): symbolic register tvp
+uint64_t buffer_typ       =  0;
+uint64_t buffer_vaddr     =  0;
+uint64_t buffer_stc       =  0;
+uint64_t buffer_hasmn     =  0;
+uint64_t buffer_expr      =  0;
+uint64_t buffer_colo      =  0;
+uint64_t buffer_coup      =  0;
+uint64_t buffer_factor    =  0;
+
+uint64_t has_true_branch  = 1;
+uint64_t has_false_branch = 1;
+
+// ------------------------- INITIALIZATION ------------------------
+
+void init_symbolic_engine() {
+  uint64_t i;
+
+  pcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  tcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  types   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  stcs    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  vaddrs  = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  alpha1s = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  alpha2s = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  alpha3s = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  corrs   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+
+  hasmns    = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  exprs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  colos     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  coups     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+  factors   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
+
+  stored_read_values = zalloc(MAX_READ * SIZEOFUINT64);
+  stored_read_tcs    = zalloc(MAX_READ * SIZEOFUINT64);
+
+  reg_typ       = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_stc       = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_vaddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  //reg_alpha1  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE); == registers
+  reg_alpha2    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_alpha3    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_hasmn     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_expr      = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_colos     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_coups     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reg_factor    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  // initialise registers with concrete value (step 1) -->####
+  i = 0;
+  while (i < NUMBEROFREGISTERS) {
+    *(reg_alpha3 + i) = 1;
+    i = i + 1;
+  }
+}
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
