@@ -1433,33 +1433,34 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  2 | program counter | program counter
 // |  3 | registers       | pointer to general purpose registers
 // |  4 | page table      | pointer to page table
-// |  5 | lo page         | lowest low unmapped page
-// |  6 | me page         | highest low unmapped page
-// |  7 | hi page         | highest high unmapped page
-// |  8 | original break  | original end of data segment
-// |  9 | program break   | end of data segment
-// | 10 | exception       | exception ID
-// | 11 | faulting page   | faulting page
-// | 12 | exit code       | exit code
-// | 13 | parent          | context that created this context
-// | 14 | virtual context | virtual context address
-// | 15 | name            | binary name loaded into context
+// |  5 | lowest lo page  | lowest low unmapped page (code, data, heap)
+// |  6 | highest lo page | highest low unmapped page (code, data, heap)
+// |  7 | lowest hi page  | lowest high unmapped page (stack)
+// |  8 | highest hi page | highest high unmapped page (stack)
+// |  9 | original break  | original end of data segment
+// | 10 | program break   | end of data segment
+// | 11 | exception       | exception ID
+// | 12 | faulting page   | faulting page
+// | 13 | exit code       | exit code
+// | 14 | parent          | context that created this context
+// | 15 | virtual context | virtual context address
+// | 16 | name            | binary name loaded into context
 // +----+-----------------+
 // symbolic extension:
 // +----+-----------------+
-// | 16 | execution depth | number of executed instructions
-// | 17 | path condition  | pointer to path condition
-// | 18 | symbolic memory | pointer to symbolic memory
-// | 19 | symbolic regs   | pointer to symbolic registers
-// | 20 | related context | pointer to list of contexts of related branches
+// | 17 | execution depth | number of executed instructions
+// | 18 | path condition  | pointer to path condition
+// | 19 | symbolic memory | pointer to symbolic memory
+// | 20 | symbolic regs   | pointer to symbolic registers
+// | 21 | related context | pointer to list of contexts of related branches
 // +----+-----------------+
 
 uint64_t* allocate_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1467,63 +1468,66 @@ uint64_t prev_context(uint64_t* context)    { return (uint64_t) (context + 1); }
 uint64_t program_counter(uint64_t* context) { return (uint64_t) (context + 2); }
 uint64_t regs(uint64_t* context)            { return (uint64_t) (context + 3); }
 uint64_t page_table(uint64_t* context)      { return (uint64_t) (context + 4); }
-uint64_t lo_page(uint64_t* context)         { return (uint64_t) (context + 5); }
-uint64_t me_page(uint64_t* context)         { return (uint64_t) (context + 6); }
-uint64_t hi_page(uint64_t* context)         { return (uint64_t) (context + 7); }
-uint64_t original_break(uint64_t* context)  { return (uint64_t) (context + 8); }
-uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 9); }
-uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 10); }
-uint64_t faulting_page(uint64_t* context)   { return (uint64_t) (context + 11); }
-uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 12); }
-uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 13); }
-uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 14); }
-uint64_t name(uint64_t* context)            { return (uint64_t) (context + 15); }
+uint64_t lowest_lo_page(uint64_t* context)  { return (uint64_t) (context + 5); }
+uint64_t highest_lo_page(uint64_t* context) { return (uint64_t) (context + 6); }
+uint64_t lowest_hi_page(uint64_t* context)  { return (uint64_t) (context + 7); }
+uint64_t highest_hi_page(uint64_t* context) { return (uint64_t) (context + 8); }
+uint64_t original_break(uint64_t* context)  { return (uint64_t) (context + 9); }
+uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 10); }
+uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 11); }
+uint64_t faulting_page(uint64_t* context)   { return (uint64_t) (context + 12); }
+uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 13); }
+uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 14); }
+uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 15); }
+uint64_t name(uint64_t* context)            { return (uint64_t) (context + 16); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
 uint64_t  get_pc(uint64_t* context)              { return             *(context + 2); }
 uint64_t* get_regs(uint64_t* context)            { return (uint64_t*) *(context + 3); }
 uint64_t* get_pt(uint64_t* context)              { return (uint64_t*) *(context + 4); }
-uint64_t  get_lo_page(uint64_t* context)         { return             *(context + 5); }
-uint64_t  get_me_page(uint64_t* context)         { return             *(context + 6); }
-uint64_t  get_hi_page(uint64_t* context)         { return             *(context + 7); }
-uint64_t  get_original_break(uint64_t* context)  { return             *(context + 8); }
-uint64_t  get_program_break(uint64_t* context)   { return             *(context + 9); }
-uint64_t  get_exception(uint64_t* context)       { return             *(context + 10); }
-uint64_t  get_faulting_page(uint64_t* context)   { return             *(context + 11); }
-uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 12); }
-uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 13); }
-uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 14); }
-char*     get_name(uint64_t* context)            { return (char*)     *(context + 15); }
+uint64_t  get_lowest_lo_page(uint64_t* context)  { return             *(context + 5); }
+uint64_t  get_highest_lo_page(uint64_t* context) { return             *(context + 6); }
+uint64_t  get_lowest_hi_page(uint64_t* context)  { return             *(context + 7); }
+uint64_t  get_highest_hi_page(uint64_t* context) { return             *(context + 8); }
+uint64_t  get_original_break(uint64_t* context)  { return             *(context + 9); }
+uint64_t  get_program_break(uint64_t* context)   { return             *(context + 10); }
+uint64_t  get_exception(uint64_t* context)       { return             *(context + 11); }
+uint64_t  get_faulting_page(uint64_t* context)   { return             *(context + 12); }
+uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 13); }
+uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 14); }
+uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 15); }
+char*     get_name(uint64_t* context)            { return (char*)     *(context + 16); }
 
-uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 16); }
-char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 17); }
-uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 18); }
-uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 19); }
-uint64_t* get_related_context(uint64_t* context) { return (uint64_t*) *(context + 20); }
+uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 17); }
+char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 18); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 19); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 20); }
+uint64_t* get_related_context(uint64_t* context) { return (uint64_t*) *(context + 21); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
 void set_pc(uint64_t* context, uint64_t pc)                   { *(context + 2)  = pc; }
 void set_regs(uint64_t* context, uint64_t* regs)              { *(context + 3)  = (uint64_t) regs; }
 void set_pt(uint64_t* context, uint64_t* pt)                  { *(context + 4)  = (uint64_t) pt; }
-void set_lo_page(uint64_t* context, uint64_t lo_page)         { *(context + 5)  = lo_page; }
-void set_me_page(uint64_t* context, uint64_t me_page)         { *(context + 6)  = me_page; }
-void set_hi_page(uint64_t* context, uint64_t hi_page)         { *(context + 7)  = hi_page; }
-void set_original_break(uint64_t* context, uint64_t brk)      { *(context + 8)  = brk; }
-void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 9)  = brk; }
-void set_exception(uint64_t* context, uint64_t exception)     { *(context + 10) = exception; }
-void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 11) = page; }
-void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 12) = code; }
-void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 13) = (uint64_t) parent; }
-void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 14) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, char* name)                  { *(context + 15) = (uint64_t) name; }
+void set_lowest_lo_page(uint64_t* context, uint64_t page)     { *(context + 5)  = page; }
+void set_highest_lo_page(uint64_t* context, uint64_t page)    { *(context + 6)  = page; }
+void set_lowest_hi_page(uint64_t* context, uint64_t page)     { *(context + 7)  = page; }
+void set_highest_hi_page(uint64_t* context, uint64_t page)    { *(context + 8)  = page; }
+void set_original_break(uint64_t* context, uint64_t brk)      { *(context + 9)  = brk; }
+void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 10)  = brk; }
+void set_exception(uint64_t* context, uint64_t exception)     { *(context + 11) = exception; }
+void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 12) = page; }
+void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 13) = code; }
+void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 14) = (uint64_t) parent; }
+void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 15) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, char* name)                  { *(context + 16) = (uint64_t) name; }
 
-void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 16) =            depth; }
-void set_path_condition(uint64_t* context, char* path)         { *(context + 17) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 18) = (uint64_t) memory; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 19) = (uint64_t) regs; }
-void set_related_context(uint64_t* context, uint64_t* related) { *(context + 20) = (uint64_t) related; }
+void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 17) =            depth; }
+void set_path_condition(uint64_t* context, char* path)         { *(context + 18) = (uint64_t) path; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 19) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 20) = (uint64_t) regs; }
+void set_related_context(uint64_t* context, uint64_t* related) { *(context + 21) = (uint64_t) related; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -8212,9 +8216,10 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
 
   // determine range of recently mapped pages
-  set_lo_page(context, 0);
-  set_me_page(context, 0);
-  set_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - REGISTERSIZE));
+  set_lowest_lo_page(context, 0);
+  set_highest_lo_page(context, get_lowest_lo_page(context));
+  set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - REGISTERSIZE));
+  set_highest_hi_page(context, get_lowest_hi_page(context));
 
   set_exception(context, EXCEPTION_NOEXCEPTION);
   set_faulting_page(context, 0);
@@ -8255,9 +8260,10 @@ void copy_context(uint64_t* original, uint64_t location, char* condition, uint64
 
   set_pt(context, pt);
 
-  set_lo_page(context, get_lo_page(original));
-  set_me_page(context, get_me_page(original));
-  set_hi_page(context, get_hi_page(original));
+  set_lowest_lo_page(context, get_lowest_lo_page(original));
+  set_highest_lo_page(context, get_highest_lo_page(original));
+  set_lowest_hi_page(context, get_lowest_hi_page(original));
+  set_highest_hi_page(context, get_highest_hi_page(original));
   set_exception(context, get_exception(original));
   set_faulting_page(context, get_faulting_page(original));
   set_exit_code(context, get_exit_code(original));
@@ -8405,10 +8411,15 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
     // exploit spatial locality in page table caching
-    if (page < get_lo_page(context))
-      set_lo_page(context, page);
-    else if (page > get_me_page(context))
-      set_me_page(context, page);
+    if (page < get_lowest_lo_page(context))
+      set_lowest_lo_page(context, page);
+    else if (page > get_highest_lo_page(context))
+      set_highest_lo_page(context, page);
+  } else {
+    if (page < get_lowest_hi_page(context))
+      set_lowest_hi_page(context, page);
+    else if (page > get_highest_hi_page(context))
+      set_highest_hi_page(context, page);
   }
 
   if (debug_map) {
@@ -8426,7 +8437,8 @@ void restore_context(uint64_t* context) {
   uint64_t* vregs;
   uint64_t* table;
   uint64_t page;
-  uint64_t me;
+  uint64_t lo;
+  uint64_t hi;
   uint64_t frame;
 
   if (get_parent(context) != MY_CONTEXT) {
@@ -8457,10 +8469,10 @@ void restore_context(uint64_t* context) {
 
     // assert: context page table is only mapped from beginning up and end down
 
-    page = load_virtual_memory(parent_table, lo_page(vctxt));
-    me   = load_virtual_memory(parent_table, me_page(vctxt));
+    page = load_virtual_memory(parent_table, lowest_lo_page(vctxt));
+    hi   = load_virtual_memory(parent_table, highest_lo_page(vctxt));
 
-    while (page <= me) {
+    while (page <= hi) {
       if (is_virtual_address_mapped(parent_table, frame_for_page(table, page))) {
         frame = load_virtual_memory(parent_table, frame_for_page(table, page));
 
@@ -8470,27 +8482,23 @@ void restore_context(uint64_t* context) {
       page = page + 1;
     }
 
-    store_virtual_memory(parent_table, lo_page(vctxt), page);
+    store_virtual_memory(parent_table, lowest_lo_page(vctxt), page);
 
-    page = load_virtual_memory(parent_table, hi_page(vctxt));
 
-    if (is_virtual_address_mapped(parent_table, frame_for_page(table, page)))
-      frame = load_virtual_memory(parent_table, frame_for_page(table, page));
-    else
-      frame = 0;
+    page = load_virtual_memory(parent_table, highest_hi_page(vctxt));
+    lo   = load_virtual_memory(parent_table, lowest_hi_page(vctxt));
 
-    while (frame != 0) {
-      map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
-
-      page  = page - 1;
-
-      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page)))
+    while (page >= lo) {
+      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page))) {
         frame = load_virtual_memory(parent_table, frame_for_page(table, page));
-      else
-        frame = 0;
+
+        map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
+      }
+
+      page = page - 1;
     }
 
-    store_virtual_memory(parent_table, hi_page(vctxt), page);
+    store_virtual_memory(parent_table, highest_hi_page(vctxt), page);
   }
 }
 
@@ -8581,8 +8589,8 @@ void up_load_binary(uint64_t* context) {
   // assert: entry_point is multiple of PAGESIZE and REGISTERSIZE
 
   set_pc(context, entry_point);
-  set_lo_page(context, get_page_of_virtual_address(entry_point));
-  set_me_page(context, get_page_of_virtual_address(entry_point));
+  set_lowest_lo_page(context, get_page_of_virtual_address(entry_point));
+  set_highest_lo_page(context, get_lowest_lo_page(context));
   set_original_break(context, entry_point + binary_length);
   set_program_break(context, get_original_break(context));
 
@@ -8924,7 +8932,7 @@ void map_unmapped_pages(uint64_t* context) {
 
   // assert: page table is only mapped from beginning up and end down
 
-  page = get_lo_page(context);
+  page = get_lowest_lo_page(context);
 
   while (is_page_mapped(get_pt(context), page))
     page = page + 1;
