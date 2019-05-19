@@ -9001,11 +9001,6 @@ void constrain_add() {
     add_pointer();
   else if (stype == MSIID_T)
     add_msiid();
-  // if (stype == incomplete_t) { --> next step
-  //   print_bad_expression();
-  //   throw_exception(EXCEPTION_INCOMPLETENESS, 0);
-  //   return;
-  // }
   else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     // c + c
@@ -9032,11 +9027,6 @@ void constrain_sub() {
     sub_pointer();
   else if (stype == MSIID_T)
     sub_msiid();
-  // if (stype == incomplete_t) {
-  //   print_bad_expression();
-  //   throw_exception(EXCEPTION_INCOMPLETENESS, 0);
-  //   return;
-  // }
   else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     // c - c
@@ -9057,13 +9047,6 @@ void constrain_mul() {
     return;
 
   stype = which_type(rs1, rs2);
-
-  // next step
-  // if (stype == incomplete_t) {
-  //   print_bad_expression();
-  //   throw_exception(EXCEPTION_INCOMPLETENESS, 0);
-  //   return;
-  // }
 
   if (stype == ARRAY_T)
     pointer_error();
@@ -9105,37 +9088,11 @@ void constrain_divu() {
         set_correction(rd, 0, 0, 0, 0, 0);
         set_constraint(rd, 0, 0, *(registers + rs1) / *(reg_alpha2 + rs2), *(reg_alpha2 + rs1) / *(registers + rs2), 1);
       }
-    //next step
-    // if (*(reg_alpha3 + rs1) > 1) { //create k-MSIID (previously mult)
-    //   if (prev_step < div_steps) {
-    //     print_over_approx((uint64_t*) "div");
-    //     throw_exception(EXCEPTION_INCOMPLETENESS, 0);
-    //   } else {
-    //     setMeta(rd, bitsVect_t, 0, 0);
-    //     set_correction(rd, 0, 0, 0); //reset correction
-    //
-    //     print((uint64_t*) "~~~~ ");
-    //     print_integer(*(reg_type + rs1));
-    //     print_msiid(*(registers + rs1), *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
-    //
-    //     if(*(reg_type + rs1) == incomplete_t)
-    //       div_ups = compute_upper_bound(*(registers + rs1), prev_step, UINT64_MAX) / *(registers + rs2);
-    //
-    //     set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), div_los,  div_ups, UINT64_MAX / *(registers + rs2)); //bitVects <l,u,umax> (step always 1)
-    //
-    //     print((uint64_t*) "~~~~ divu ~~~~ /");
-    //     print_integer(*(registers + rs2));
-    //     print((uint64_t*) " = ");
-    //     print_integer(*(reg_type + rd));
-    //     print_msiid(*(registers + rd), *(reg_alpha2 + rd), *(reg_alpha3 + rd));
-    //     println();
-    //
-    //     return;
-    //   }
-    // }
+
     pc = pc + INSTRUCTIONSIZE;
     ic_divu = ic_divu + 1;
     path_length = path_length + 1;
+
     } else  // 0 is in interval
       throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
   } else
@@ -9241,8 +9198,6 @@ void constrain_remu_step_1() {
     *(reg_type + rd) = CONCRETE_T;
   else
     *(reg_type + rd) = MSIID_T;
-  //else
-  //  setMeta(rd, bitsVect_t, 0, expr);
 }
 
 void constrain_remu() {
@@ -9276,16 +9231,11 @@ void constrain_remu() {
       set_correction(rd, 0, 0, 0, 0, 0);
       set_constraint(rd, 0, 0, *(registers + rs1) % *(registers + rs2), *(reg_alpha2 + rs1) % *(reg_alpha2 + rs2), 1);
     }
-    // next step
-    // if (stype == incomplete_t) {
-    //   print_bad_expression();
-    //   throw_exception(EXCEPTION_INCOMPLETENESS, 0);
-    //   return;
-    // }
 
     pc = pc + INSTRUCTIONSIZE;
     ic_remu = ic_remu + 1;
     path_length = path_length + 1;
+
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
@@ -9359,7 +9309,6 @@ uint64_t constrain_ld() {
         mrvc = load_symbolic_memory(pt, vaddr);
 
         // interval semantics of ld
-        // assert: vaddr == getTraceVaddr(mrvc)
         if (is_symbolic_value(get_trace_type(mrvc))) {
             *(reg_type + rd) = get_trace_type(mrvc);
             set_constraint(rd, get_trace_src(mrvc), vaddr, get_trace_a1(mrvc), get_trace_a2(mrvc), get_trace_a3(mrvc));
@@ -9416,10 +9365,6 @@ uint64_t constrain_sd() {
       // interval semantics of sd
       if (*(reg_type + rs2) == MSIID_T) {
         if (*(reg_vaddr + rs2) == 0) {
-          // constrained memory at vaddr 0 means that:
-          // [read syscall] there is more than
-          //                one constrained memory location in the sd operand
-          // [input syscall] just return from the input call
           printf2((uint64_t*) "%s: constrained memory locations in sd operand at %x", selfie_name, (uint64_t*) pc);
           print_code_line_number_for_instruction(pc - entry_point);
           println();
@@ -9510,7 +9455,6 @@ void backtrack_sltu() {
       *(reg_type + vaddr) = get_trace_type(tc);
       set_correction(vaddr, 0, 0, 0, 0, 0);
       set_constraint(vaddr, 0, 0, get_trace_a1(tc), get_trace_a2(tc), get_trace_a3(tc));
-      //no src here (otherwise use a2 for path_length)
 
       // restoring mrcc
       mrcc = get_trace_tc(tc);
@@ -9713,12 +9657,6 @@ void print_end_point_status(uint64_t* context) {
 
   if (sdebug_trace)
     print_trace();
-
-  //correct value (msiid)
-  //if(get_exit_code_a3(context) != 0) {
-  //  print_concrete_bounds(get_exit_code(context), get_exit_code_a2(context), get_exit_code_a3(context));
-  //  println();
-  //}
 }
 
 // -----------------------------------------------------------------
@@ -9827,8 +9765,6 @@ uint64_t overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, ui
         set_trace_a1(mrvc, lo);
         set_trace_a2(mrvc, up);
         set_trace_a3(mrvc, step);
-
-        // assert: vaddr == getTraceVaddr(mrvc)
 
         if (debug_symbolic) {
           printf1((uint64_t*) "%s: overwriting ", selfie_name);
@@ -9979,11 +9915,6 @@ void addi_msiid(uint64_t src, uint64_t vaddr) {
   *(reg_type + rd) = *(reg_type + rs1);
   // rd inherits rs1 constraint
   set_correction(rd, 0, flag_round(rs1, SUM_T), *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm, *(reg_factor + rs1));
-
-  // interval semantics of addi
-  // *(registers + rd) = *(registers + rs1) + imm;
-  // *(reg_alpha2 + rd) = *(reg_alpha2 + rs1) + imm;
-
   set_constraint(rd, src, vaddr, *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, *(reg_alpha3 + rs1));
 }
 
@@ -9993,22 +9924,16 @@ void add_msiid() {
   uint64_t add_steps;
 
   //integer abstract domain
-  //domain-overflow?
     if (add_sub_condition(*(registers + rs1), *(reg_alpha2 + rs1), *(registers + rs2), *(reg_alpha2 + rs2))) {
       add_los = *(registers + rs1) + *(registers + rs2);
       add_ups = *(reg_alpha2 + rs1) + *(reg_alpha2 + rs2);
     } else {
       //now: exit analysis (result too big for the abstract domain)
-
-      //add_los = 0;
-      //add_ups = UINT64_MAX;
-      //*(reg_alpha3 + rd) = 1;
       print_over_approx((uint64_t*) "add");
       throw_exception(EXCEPTION_INCOMPLETENESS, 0);
       return;
     }
 
-    //typ is MSIID_T or 0 (concrete)
     //interval add semantics
     if (*(reg_type + rs1)) {
       if (*(reg_type + rs2)) {
@@ -10026,11 +9951,10 @@ void add_msiid() {
           //now: expression not managed -> fail
           print_bad_expression();
           throw_exception(EXCEPTION_INCOMPLETENESS, 0);
-          //setMeta(rd, *(reg_type + rs1), 0, fail_t); //TODO: minuend? / iscorrect rs2?
         } else
-          *(reg_type + rd) = *(reg_type + rs1); //TODO: minuend? / iscorrect rs2?
+          *(reg_type + rd) = *(reg_type + rs1);
 
-        set_correction(rd, 0, SUM_T, 0, 0, *(reg_factor + rs1)); //TODO: manage witness
+        set_correction(rd, 0, SUM_T, 0, 0, *(reg_factor + rs1));
         set_constraint(rd, 0, 0, add_los, add_ups, add_steps);
       } else if (*(reg_hasmn + rs1))
           // rs1 constraint has already minuend and cannot have another addend
@@ -10069,16 +9993,11 @@ void sub_msiid() {
   uint64_t sub_steps;
 
   //integer abstract domain
-  //domain-overflow?
   if (add_sub_condition(*(registers + rs1), *(reg_alpha2 + rs1), *(registers + rs2), *(reg_alpha2 + rs2))) {
     sub_los = *(registers + rs1) - *(reg_alpha2 + rs2);
     sub_ups = *(reg_alpha2 + rs1) - *(registers + rs2);
   } else {
     //now: exit analysis (result too big for the abstract domain)
-
-    //add_los = 0;
-    //add_ups = UINT64_MAX;
-    //*(reg_alpha3 + rd) = 1;
     print_over_approx((uint64_t*) "sub");
     throw_exception(EXCEPTION_INCOMPLETENESS, 0);
     return;
@@ -10102,7 +10021,6 @@ void sub_msiid() {
       //now: expression not managed -> fail
       print_bad_expression();
       throw_exception(EXCEPTION_INCOMPLETENESS, 0);
-      //setMeta(rd, *(reg_type + rs1), 0, fail_t); //TODO: minuend? / iscorrect rs2?
     } else
       *(reg_type + rd) =  *(reg_type + rs1);
 
@@ -10164,11 +10082,10 @@ void mul_msiid() {
         // s * c
 
         if (check_mul_condition(rs1, rs2) == 0) {
-          // next step
-          // it is a potentiial bitVects value (detected with MUL_T during division)
-          //setMeta(rd, incomplete_t, 0, MUL_T);
+
           print_over_approx((uint64_t*) "mul");
           throw_exception(EXCEPTION_INCOMPLETENESS, 0);
+
         } else if (can_mul_correction(*(reg_expr + rs1)) == 0) {
               //now: expression not managed -> fail
               print_bad_expression();
@@ -10180,14 +10097,8 @@ void mul_msiid() {
               set_correction(rd, 0, MUL_T, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
             else  //cumul factors
               set_correction(rd, 0, MUL_T, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_factor + rs1) * *(registers + rs2));
-            set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), mul_los, mul_ups, *(reg_alpha3 + rs1) * *(registers + rs2)); //interval mul semantics
 
-            // print((uint64_t*) " ~~~~ mul ~~~~ *");
-            // print_integer(*(registers + rs2));
-            // print((uint64_t*) " = ");
-            // print_integer(*(reg_type + rd));
-            // print_msiid(*(registers + rd), *(reg_alpha2 + rd), *(reg_alpha3 + rd));
-            // println();
+            set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), mul_los, mul_ups, *(reg_alpha3 + rs1) * *(registers + rs2)); //interval mul semantics
           }
       }
   } else if (*(reg_type + rs2)) {
@@ -10199,9 +10110,7 @@ void mul_msiid() {
       // assert: rs1 interval is singleton
       // c * s
       if (check_mul_condition(rs2, rs1) == 0) {
-        // next step
-        // it is a potentiial bitVects value (detected with MUL_T during division)
-        //setMeta(rd, incomplete_t, 0, MUL_T);
+
         print_over_approx((uint64_t*) "mul");
         throw_exception(EXCEPTION_INCOMPLETENESS, 0);
       } else if (*(reg_expr + rs1) > 0) {
@@ -10212,7 +10121,7 @@ void mul_msiid() {
           *(reg_type + rd) = MSIID_T;
           set_correction(rd, 0, MUL_T, *(reg_colos + rs2), *(reg_coups + rs2), *(registers + rs1));
           set_constraint(rd, *(reg_saddr + rs2), *(reg_vaddr + rs2), mul_los, mul_ups, *(reg_alpha3 + rs2) * *(registers + rs1)); //interval mul semantics
-      }
+        }
     }
   }
 
@@ -10298,6 +10207,7 @@ void divu_msiid() {
           *(reg_type + rd) = CONCRETE_T;
         else
           *(reg_type + rd) = *(reg_type + rs1);
+
       }
     } else if (*(reg_type + rs2)) {
       printf2((uint64_t*) "%s: detected division of constant by interval at %x", selfie_name, (uint64_t*) pc);
@@ -10483,25 +10393,11 @@ void check_add_sub_step(uint64_t reg_min, uint64_t reg_max, uint64_t gcd_step) {
 uint64_t check_mul_condition(uint64_t reg_int, uint64_t reg_k) {
   if (mul_condition(*(registers + reg_int), *(reg_alpha2 + reg_int), *(registers + reg_k))) {
     //now: exit analysis (result too big for the abstract domain)
-
-    // TODO: improve
-    //*(reg_alpha3 + rd) = 1;
-    //*(registers + rd)   = 0;
-    //*(reg_alpha2 + rd)   = UINT64_MAX;
-
-    //TODO: raise the overflow if the incomplete part interval is used
-    //print_over_approx((uint64_t*) "mul");
-    //throw_exception(EXCEPTION_INCOMPLETENESS, 0);
     return 0;
   } else {
     if (*(reg_alpha3 + reg_int) * *(registers + reg_k) < *(reg_alpha3 + reg_int)) {
       if (*(registers + reg_k) != 0) {
         //now: exit analysis (step overflow)
-
-        // TODO: improve
-        //*(reg_alpha3 + rd) = 1;
-        //*(registers + rd)   = 0;
-        //*(reg_alpha2 + rd)   = UINT64_MAX;
         print_over_approx((uint64_t*) "step mul");
         throw_exception(EXCEPTION_INCOMPLETENESS, 0);
         return 0;
