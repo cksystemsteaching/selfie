@@ -1464,11 +1464,7 @@ uint64_t MAX_CORRECTION   = 100;        // max number of relational domains
 uint64_t MAX_ALIAS        = 0;          // alias bound
 uint64_t MAX_PREDECESSOR  = 5;
 
-uint64_t CONST_T  = 0;
-uint64_t SUM_T    = 1;
-uint64_t MUL_T    = 2;
-uint64_t DIV_T    = 3;
-uint64_t REM_T    = 4;
+uint64_t MAX_CALL         = 50;         // watchdog recursive symbolic bound
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1682,6 +1678,14 @@ void      print_concrete_bounds(uint64_t start, uint64_t end, uint64_t step);
 void      print_msiid(uint64_t start, uint64_t end, uint64_t st);
 uint64_t  print_on_diff(uint64_t lastPrint, uint64_t toPrint);
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t CONST_T  = 0;
+uint64_t SUM_T    = 1;
+uint64_t MUL_T    = 2;
+uint64_t DIV_T    = 3;
+uint64_t REM_T    = 4;
+
 // ---------------------------- RANGE ------------------------------
 // -----------------------------------------------------------------
 
@@ -1822,10 +1826,6 @@ void constrain_jalr();
 void backtrack_jalr();
 
 void print_watchdogs();
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t MAX_CALL         = 10;         // watchdog recursive symbolic bound
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
