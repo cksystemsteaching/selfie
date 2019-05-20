@@ -1553,7 +1553,6 @@ uint64_t  load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
 uint64_t  store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t ctc, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
 uint64_t  overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
-uint64_t  is_safe_address(uint64_t vaddr, uint64_t reg);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
