@@ -1788,9 +1788,9 @@ uint64_t* factors   = (uint64_t*) 0;
 
 void constrain_memory(uint64_t mrvc, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb);
 
-void fill_constraint_buffer(uint64_t stc, uint64_t vaddr, uint64_t t, uint64_t h, uint64_t exp, uint64_t col, uint64_t cou, uint64_t f);
-void store_propagate_constraint(uint64_t typ, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
-void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step);
+void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint64_t exp_t, uint64_t colo, uint64_t coup, uint64_t factor);
+void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step);
 void store_register_memory(uint64_t reg, uint64_t value);
 
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc);
@@ -10759,16 +10759,18 @@ void create_constraints(uint64_t lo1, uint64_t up1, uint64_t s1, uint64_t lo2, u
 
 void apply_correction(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uint64_t trb) {
   if (*(reg_type + reg) == MSIID_T) {
-    fill_constraint_buffer(*(reg_saddr + reg), *(reg_vaddr + reg), *(reg_type + reg), *(reg_hasmn + reg), *(reg_expr + reg),*(reg_colos + reg), *(reg_coups + reg), *(reg_factor + reg));
+    //avoid the propagation of assigment stores
+    fill_constraint_buffer(*(reg_type + reg), *(reg_vaddr + reg), *(reg_hasmn + reg), *(reg_expr + reg),*(reg_colos + reg), *(reg_coups + reg), *(reg_factor + reg));
     constrain_memory(mrvc, reg, lo, up, trb);
-  }
+  } else {
 
-  //concrete case
-  if (print_branch) {
-    if (print_concrete_branch < 1)
-      branch_to_print = 0;
-    else
-      branch_to_print = 1;
+    //concrete case
+    if (print_branch) {
+      if (print_concrete_branch < 1)
+        branch_to_print = 0;
+      else
+        branch_to_print = 1;
+    }
   }
 }
 
@@ -11414,7 +11416,9 @@ void print_dg() {
 // ------------------------ PROPAGATION ----------------------------
 // -----------------------------------------------------------------
 
-void constrain_memory(uint64_t mrvc, uint64_t from,  uint64_t lo, uint64_t up, uint64_t trb) {
+//assert(constraint buffer filled)
+void constrain_memory(uint64_t ctc, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb) {
+  uint64_t constrained_tc;
   uint64_t tmp;
   uint64_t highest;
   uint64_t lowest;
@@ -11451,38 +11455,38 @@ void constrain_memory(uint64_t mrvc, uint64_t from,  uint64_t lo, uint64_t up, u
     //special case
     if (lo == 0) {
       if (up == (uint64_t) -1) {
-        lo = get_trace_a1(mrvc);
-        up = get_trace_a2(mrvc);
+        lo = get_trace_a1(ctc);
+        up = get_trace_a2(ctc);
         return;
       }
     }
 
-    if (get_trace_a1(mrvc) <= get_trace_a2(mrvc)) {
+    if (get_trace_a1(ctc) <= get_trace_a2(ctc)) {
       // original interval not wrapped around
-      if (lo <= get_trace_a1(mrvc))  // intersect with the lower original interval
-        lo = get_trace_a1(mrvc);
+      if (lo <= get_trace_a1(ctc))  // intersect with the lower original interval
+        lo = get_trace_a1(ctc);
       else
-        lo = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), lo); // fitting the steps
-      if (get_trace_a2(mrvc) < up) // intersect with the upper original interval
-        up = compute_upper_bound(lo, get_trace_a3(mrvc), get_trace_a2(mrvc)); // fitting the steps
+        lo = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), lo); // fitting the steps
+      if (get_trace_a2(ctc) < up) // intersect with the upper original interval
+        up = compute_upper_bound(lo, get_trace_a3(ctc), get_trace_a2(ctc)); // fitting the steps
       else
-        up = compute_upper_bound(lo, get_trace_a3(mrvc), up);
+        up = compute_upper_bound(lo, get_trace_a3(ctc), up);
   } else {
     //original interval wrapped around
     //bound values
-    highest = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), -1);
-    lowest = highest + get_trace_a3(mrvc);
+    highest = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), -1);
+    lowest = highest + get_trace_a3(ctc);
 
-    if (lo <= get_trace_a2(mrvc)) {
+    if (lo <= get_trace_a2(ctc)) {
       //intersect with the lower original interval
-      lo = compute_upper_bound(lowest, get_trace_a3(mrvc), lo + get_trace_a3(mrvc) - 1); // fitting the steps
+      lo = compute_upper_bound(lowest, get_trace_a3(ctc), lo + get_trace_a3(ctc) - 1); // fitting the steps
 
-      if (up < get_trace_a1(mrvc)) {
+      if (up < get_trace_a1(ctc)) {
 
-        if (up >= get_trace_a2(mrvc))
-          up = get_trace_a2(mrvc);
+        if (up >= get_trace_a2(ctc))
+          up = get_trace_a2(ctc);
         else
-          up = compute_upper_bound(lo, get_trace_a3(mrvc), up);
+          up = compute_upper_bound(lo, get_trace_a3(ctc), up);
 
       } else {
         //not allowed constrained result is not an interval
@@ -11496,12 +11500,12 @@ void constrain_memory(uint64_t mrvc, uint64_t from,  uint64_t lo, uint64_t up, u
       }
     } else {
       // intersect with the upper original interval
-      up = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), up);
+      up = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), up);
 
-      if (lo <= get_trace_a1(mrvc))
-        lo = get_trace_a1(mrvc);
+      if (lo <= get_trace_a1(ctc))
+        lo = get_trace_a1(ctc);
       else
-        lo = compute_upper_bound(get_trace_a1(mrvc), get_trace_a3(mrvc), lo + get_trace_a3(mrvc) - 1); // fitting the steps
+        lo = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), lo + get_trace_a3(ctc) - 1); // fitting the steps
       }
     }
   } else if (buffer_expr == REM_T) {  //one remainder
@@ -11515,14 +11519,20 @@ void constrain_memory(uint64_t mrvc, uint64_t from,  uint64_t lo, uint64_t up, u
     return;
   }
 
-  //cast singleton intervals into concrete values
-  if (lo == up)
-    store_propagate_constraint(CONCRETE_T, buffer_stc, buffer_vaddr, lo, up, 1, trb);
+  // shadow address
+  if (from == NUMBEROFREGISTERS)
+    constrained_tc = ctc;
   else
-    store_propagate_constraint(buffer_typ, buffer_stc, buffer_vaddr, lo, up, get_trace_a3(mrvc), trb);
+    constrained_tc = load_symbolic_memory(pt, get_trace_vaddr(ctc));
+
+  //cast singleton intervals into concrete values
+  if (lo == up) //required for updating the heading tc (when constraining after the first time)
+    propagate_constraint(CONCRETE_T, buffer_vaddr, constrained_tc, lo, up, 1, trb);
+  else
+    propagate_constraint(buffer_type, buffer_vaddr, constrained_tc, lo, up, get_trace_a3(ctc), trb);
 
   if (sdebug_trace) {
-    printf2((uint64_t*) "%s: constrain-memory at %d", selfie_name, (uint64_t*) pc);
+    printf2((uint64_t*) "%s: constrain-memory at %x", selfie_name, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     if (from < NUMBEROFREGISTERS)
       printf1((uint64_t*) " for register ", get_register_name(from));
@@ -11532,57 +11542,78 @@ void constrain_memory(uint64_t mrvc, uint64_t from,  uint64_t lo, uint64_t up, u
   }
 }
 
-void fill_constraint_buffer(uint64_t stc, uint64_t vaddr, uint64_t t, uint64_t h, uint64_t exp, uint64_t col, uint64_t cou, uint64_t f) {
-  buffer_stc  = stc;
+void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint64_t exp_t, uint64_t colo, uint64_t coup, uint64_t factor) {
   buffer_vaddr  = vaddr;
-  buffer_typ    = t;
-  buffer_hasmn  = h;
-  buffer_expr   = exp;
-  buffer_colo  = col;
-  buffer_coup  = cou;
-  buffer_factor = f;
+  buffer_type   = type;
+  buffer_hasmn  = hasmn;
+  buffer_expr   = exp_t;
+  buffer_colo   = colo;
+  buffer_coup   = coup;
+  buffer_factor = factor;
 }
 
-void store_propagate_constraint(uint64_t typ, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
-  uint64_t pcc;
+void propagate_constraint(uint64_t typ, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+  uint64_t* ltentry;
+  uint64_t  stc_vaddr;
+  uint64_t  stc;
+  uint64_t  pcc;
+
   if (sdebug_propagate) {
-    printf6((uint64_t*) "%s: store constrained memory at %x with <%d,%d,%d>::@%d\n", selfie_name, (uint64_t*) vaddr, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) step, (uint64_t*) stc);
+    printf6((uint64_t*) "%s: store constrained memory %d(%x) with <%d,%d,%d>\n", selfie_name, (uint64_t*) ctc, (uint64_t*) vaddr, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) step);
   }
 
-  if (stc)  { //side effect constraining
-    pcc = get_trace_corr(load_symbolic_memory(pt,vaddr));
+  ltentry = search_alias(ctc);
+  stc     = get_source(ctc);
 
-    if (sdebug_propagate) {
+  if (stc)  {
+    pcc = get_assign_correction(ltentry);
+
+    if (get_trace_vaddr(stc) != vaddr) // self propagation
+      stc_vaddr = get_trace_vaddr(stc);
+    else
+      stc_vaddr = NUMBEROFREGISTERS;
+
+    if (sdebug_propagate)
       printf3((uint64_t*) "%s: but propagate before to @%d with correction @%d\n", selfie_name, (uint64_t*) stc, (uint64_t*) pcc);
-    }
 
-    //update first the sources (for stc fields)
-    if (pcc != (uint64_t) -1) {//relational constraint with the source address
-      fill_constraint_buffer(get_trace_src(stc), get_trace_vaddr(stc), get_trace_type(stc),
-      *(hasmns + pcc), *(exprs + pcc), *(colos + pcc), *(coups + pcc), *(factors + pcc));
+      //update first the sources
+      if (pcc != (uint64_t) EQ_ALIASED) {
+        fill_constraint_buffer(get_trace_type(stc), stc_vaddr,
+          *(hasmns + pcc), *(exprs + pcc), *(colos + pcc), *(coups + pcc), *(factors + pcc));
 
-      constrain_memory(stc, get_trace_vaddr(stc), lo, up, trb);
-    } else //otherwise equals
-      store_propagate_constraint(typ, get_trace_src(stc), get_trace_vaddr(stc), lo, up, step, trb);
+        constrain_memory(stc, stc_vaddr, lo, up, trb);
+      } else
+        propagate_constraint(typ, stc_vaddr, stc, lo, up, step, trb);
 
     //store current constraint with updated stc
-    store_constrained_memory(typ, load_virtual_memory(pt, get_trace_vaddr(stc)), vaddr, lo, up, step);
-  } else
-    store_constrained_memory(typ, stc, vaddr, lo, up, step);
+    store_constrained_memory(typ, vaddr, ctc, lo, up, step);
+    return;
+  }   //store and constrain witness
+
+  if (ctc == (uint64_t) -1)
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+
+  //root
+  store_constrained_memory(typ, vaddr, ctc, lo, up, step);
+  update_witness(ctc, tc);
 }
 
-void store_constrained_memory(uint64_t type, uint64_t stc, uint64_t vaddr, uint64_t lo, uint64_t up, uint64_t step) {
-  uint64_t mrvc;
+void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step) {
 
   if (vaddr >= get_program_break(current_context))
     if (vaddr < *(registers + REG_SP))
       // do not constrain free memory
       return;
 
-  mrvc = load_virtual_memory(pt, vaddr);
+  // handle constraints of shadowed memory (do not update vaddr)
+  if (vaddr != NUMBEROFREGISTERS)
+    if (ctc != load_symbolic_memory(pt, vaddr))
+      vaddr = NUMBEROFREGISTERS;
 
   // always track constrained memory by using tc as most recent branch
-  store_symbolic_memory(pt, vaddr, ctc, type, lo, up, step, tc)
+  if (store_symbolic_memory(pt, vaddr, ctc, type, lo, up, step, tc))
+    update_alias_tc(ctc, tc);
+
 }
 
 void store_register_memory(uint64_t reg, uint64_t value) {
