@@ -1457,8 +1457,8 @@ uint64_t free_page_frame_memory      = 0;
 // Symbolic bounds
 uint64_t MAX_TRACE_LENGTH = 100000;
 uint64_t MAX_PATH_LENGTH  = 50000000;   // 5 * TIMESLICE
-uint64_t MAX_READ         = 10;         // read bound
-uint64_t MAX_CORRECTION   = 100;        // max number relational domains
+uint64_t MAX_SYMBOLIC     = 10;         // input bound
+uint64_t MAX_CORRECTION   = 100;        // max number of relational domains
 
 uint64_t CONST_T  = 0;
 uint64_t SUM_T    = 1;
@@ -1472,8 +1472,9 @@ uint64_t path_length = 0; // number of instructions for the current path
 
 uint64_t sdebug_trace     = 0;
 uint64_t sdebug_context   = 0;
-uint64_t sdebug_propagate = 0;
+uint64_t sdebug_witness   = 0;
 uint64_t sdebug_alias     = 0;
+uint64_t sdebug_propagate = 0;
 
 // -----------------------------------------------------------------
 // --------------------- SYMBOLIC INSTRUCTIONS ---------------------
@@ -1511,10 +1512,12 @@ uint64_t fuzz_lo(uint64_t value);
 uint64_t fuzz_up(uint64_t value);
 
 uint64_t init_type(uint64_t lo, uint64_t up);
-uint64_t is_it_constrained(uint64_t pre);
+uint64_t is_constrained(uint64_t pre);
 
-void input_witness();
-void read_witness();
+void      create_witness(uint64_t ctc);
+uint64_t  look_for_witness(uint64_t vtc);
+uint64_t  update_witness(uint64_t old, uint64_t new);
+
 void print_witness();
 void print_end_point_status(uint64_t* context);
 
@@ -1526,12 +1529,12 @@ uint64_t SYSCALL_INPUT = 42;
 
 uint64_t fuzz = 0; // power-of-two fuzzing factor for read calls
 
-// read history
-uint64_t number_of_reads  = 0;     // number of reads
-uint64_t rcc              = 0;     // read current counter
+uint64_t  ic_symbolic           = 0;                // number of symbolic entries
+uint64_t  bk_read               = 0;                // number of backtracked read
 
-uint64_t* stored_read_tcs    = (uint64_t*) 0;
-uint64_t* stored_read_values = (uint64_t*) 0;
+uint64_t* symbolic_tcs          = (uint64_t*) 0;    // array of witnesses
+uint64_t* read_values           = (uint64_t*) 0;    // actual read values
+uint64_t* syscall_pc            = (uint64_t*) 0;    // syscall pc
 
 uint64_t last_jal_from = 0;
 
@@ -1764,8 +1767,9 @@ void init_symbolic_engine() {
   coups     = zalloc(MAX_CORRECTION * SIZEOFUINT64);
   factors   = zalloc(MAX_CORRECTION * SIZEOFUINT64);
 
-  stored_read_values = zalloc(MAX_READ * SIZEOFUINT64);
-  stored_read_tcs    = zalloc(MAX_READ * SIZEOFUINT64);
+  symbolic_tcs        = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
+  read_values         = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
+  syscall_pc          = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
 
   reg_vaddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_type      = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -6058,10 +6062,9 @@ void implement_read(uint64_t* context) {
   if (debug_read)
     printf4((uint64_t*) "%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfie_name, (uint64_t*) size, (uint64_t*) fd, (uint64_t*) vbuffer);
 
-  read_total   = 0;
   bytes_to_read = SIZEOFUINT64;
-
-  failed = 0;
+  read_total    = 0;
+  failed        = 0;
 
   while (size > 0) {
     if (is_valid_virtual_address(vbuffer)) {
@@ -6078,24 +6081,24 @@ void implement_read(uint64_t* context) {
             mrvc = load_physical_memory(buffer);
 
             //bound
-            if ((number_of_reads - rcc) < MAX_READ) {
-              if (rcc > 0) {
+            if ((ic_symbolic - bk_read) < MAX_SYMBOLIC) {
+              if (bk_read > 0) {
                 // do not read but reuse value, lower and upper bound
-                value = *(stored_read_values + (number_of_reads - rcc));
-                lo = fuzz_lo(value);
-                up = fuzz_up(value);
+                value = *(read_values + (ic_symbolic - bk_read));
+                lo    = fuzz_lo(value);
+                up    = fuzz_up(value);
 
                 actually_read = bytes_to_read;
-                rcc = rcc - 1;
+                bk_read       = bk_read - 1;
 
                 if (debug_read)
-                  printf5((uint64_t*) "%s: fake read %d storing %d, %d at read index %d\n", selfie_name, (uint64_t*) (number_of_reads - rcc), (uint64_t*) lo, (uint64_t*) up, (uint64_t*) rcc);
+                  printf5((uint64_t*) "%s: fake read %d storing %d, %d at read index %d\n", selfie_name, (uint64_t*) (ic_symbolic - bk_read), (uint64_t*) lo, (uint64_t*) up, (uint64_t*) bk_read);
               } else {
                 // caution: read only overwrites bytes_to_read number of bytes
                 // we therefore need to restore the actual value in buffer
                 // to preserve the original read semantics
-                if (number_of_reads > 0)
-                  store_physical_memory(buffer, *(stored_read_values + (number_of_reads - 1)));
+                if (ic_symbolic > 0)
+                  store_physical_memory(buffer, *(read_values + (ic_symbolic - 1)));
                 else
                   store_physical_memory(buffer, 0);
 
@@ -6108,55 +6111,57 @@ void implement_read(uint64_t* context) {
                 lo = fuzz_lo(value);
                 up = fuzz_up(value);
 
-                *(stored_read_values + number_of_reads)   = value;
-                number_of_reads = number_of_reads + 1;
+                *(read_values + ic_symbolic)    = value;
+                ic_symbolic                     = ic_symbolic + 1;
 
                 // restore mrvc in buffer
                 store_physical_memory(buffer, mrvc);
                 if (debug_read)
-                  printf6((uint64_t*) "%s: read %d storing %d, %d at read index %d and index %d\n", selfie_name, (uint64_t*) (number_of_reads - rcc), (uint64_t*) lo, (uint64_t*) up, (uint64_t*) number_of_reads, (uint64_t*) mrvc);
+                  printf6((uint64_t*) "%s: read %d storing %d, %d at read index %d and index %d\n", selfie_name, (uint64_t*) (ic_symbolic - bk_read), (uint64_t*) lo, (uint64_t*) up, (uint64_t*) ic_symbolic, (uint64_t*) mrvc);
+
+                if (sdebug_witness) {
+                  printf4((uint64_t*) "%s: [w] new read symbol %d leading at index %d at %x", selfie_name, (uint64_t*) mrvc, (uint64_t*) ((ic_symbolic - bk_read) - 1), (uint64_t*) pc);
+                  print_code_line_number_for_instruction(pc - entry_point);
+                  println();
+                }
               }
             } else {
-              value = CHAR_EOF;
-              lo    = CHAR_EOF;
-              up    = CHAR_EOF;
-              actually_read = 0;
 
-              number_of_reads = number_of_reads + 1;
+              value         = CHAR_EOF;
+              lo            = CHAR_EOF;
+              up            = CHAR_EOF;
+              actually_read = 0;
+              ic_symbolic   = ic_symbolic + 1;
+
               if (debug_read)
-                printf3((uint64_t*) "%s: max number of reads reached, storing %d, %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up);
+                printf3((uint64_t*) "%s: [w] max number of reads reached, storing %d, %d\n", selfie_name, (uint64_t*) lo, (uint64_t*) up);
             }
 
-            if (is_it_constrained(get_trace_tc(mrvc)))
+            if (is_constrained(get_trace_tc(mrvc)))
               store_symbolic_memory(get_pt(context), vbuffer, 0, init_type(lo, up), lo, up, 1, tc);
             else
               store_symbolic_memory(get_pt(context), vbuffer, 0, init_type(lo, up), lo, up, 1, 0);
 
-            if ((number_of_reads - (1 + rcc)) < MAX_READ) {
-              // initialize current read
-              *(stored_read_tcs + (number_of_reads - (1 + rcc))) = load_physical_memory(buffer);
+            // initialize current read
+            if ((ic_symbolic - (1 + bk_read)) < MAX_SYMBOLIC) {
+              *(symbolic_tcs + (ic_symbolic - (1 + bk_read)))   = load_physical_memory(buffer);
+              *(syscall_pc + (ic_symbolic - (1 + bk_read)))     = last_jal_from;
             }
-
-            // the witness needs the previous read's last mrvc
-            if (signed_less_than(-1, number_of_reads - (2 + rcc)))
-              if ((number_of_reads - (2 + rcc)) < MAX_READ)
-                *(stored_read_tcs + (number_of_reads - (2 + rcc))) = mrvc;
 
             if (debug_read)
                 print_symbolic_memory(load_symbolic_memory(get_pt(context), vbuffer));
 
           } else {
             actually_read = 0;
-
             throw_exception(EXCEPTION_MAXTRACE, 0);
           }
         } else
           actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
 
         if (actually_read == bytes_to_read) {
-          read_total = read_total + actually_read;
 
-          size = size - actually_read;
+          read_total  = read_total + actually_read;
+          size        = size - actually_read;
 
           if (size > 0)
             vbuffer = vbuffer + SIZEOFUINT64;
@@ -6167,17 +6172,15 @@ void implement_read(uint64_t* context) {
           size = 0;
         }
       } else {
-        failed = 1;
-
-        size = 0;
+        failed  = 1;
+        size    = 0;
 
         if (debug_read)
           printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (uint64_t*) vbuffer);
       }
     } else {
-      failed = 1;
-
-      size = 0;
+      failed  = 1;
+      size    = 0;
 
       if (debug_read)
         printf2((uint64_t*) "%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (uint64_t*) vbuffer);
@@ -9416,7 +9419,7 @@ uint64_t constrain_sd() {
             symbolic_calling_pc = pc; //only for debug
           }
         } else  //input system call
-          create_symbolic_entry(load_virtual_memory(pt, vaddr));
+          create_witness(load_virtual_memory(pt, vaddr));
       }
 
     if (context) {
@@ -9539,6 +9542,34 @@ void backtrack_ecall() {
   efree();
 }
 
+void backtrack_brk() {
+  if (get_trace_vaddr(tc) == 0) {
+    // backtracking malloc
+    if (get_program_break(current_context) == get_trace_a2(tc) + get_trace_a3(tc))
+      set_program_break(current_context, get_trace_a2(tc));
+    else {
+      printf1((uint64_t*) "%s: malloc backtracking error at ", selfie_name);
+      print_symbolic_memory(tc);
+      printf4((uint64_t*) " with current program break %x unequal %x which is previous program break %x plus size %d\n",
+        (uint64_t*) get_program_break(current_context),
+        (uint64_t*) (get_trace_a2(tc) + get_trace_a3(tc)),
+        (uint64_t*) get_trace_a2(tc),
+        (uint64_t*) get_trace_a3(tc));
+
+      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+  } else
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+}
+
+void backtrack_read() {
+  if (ic_symbolic > MAX_SYMBOLIC)
+    ic_symbolic = ic_symbolic - 1;
+  else
+    bk_read = bk_read + 1;
+  store_virtual_memory(pt, get_trace_vaddr(tc), get_trace_tc(tc));
+}
+
 // -----------------------------------------------------------------
 // ---------------------- SYMBOLIC INTERFACE -----------------------
 // -----------------------------------------------------------------
@@ -9613,53 +9644,78 @@ uint64_t init_type(uint64_t lo, uint64_t up) {
   return MSIID_T;
 }
 
-uint64_t is_it_constrained(uint64_t pre) {
+uint64_t is_constrained(uint64_t pre) {
   if (mrcc == 0)
     return pre != 0;
   return 1;
 }
 
-void input_witness() {
-  uint64_t idx;
-  uint64_t input_idx;
-  idx = tc;
-
-  while (idx != 0) {
-    if (get_trace_type(idx) == MSIID_T) { //look for the first symbolic value into the trace
-      //get the most recent value
-      input_idx = load_virtual_memory(pt, get_trace_vaddr(get_src_input(idx)));
-      printf1((uint64_t*) "%s: symbolic values witness:\n", selfie_name);
-      print_msiid(get_trace_a1(input_idx), get_trace_a2(input_idx), get_trace_a3(input_idx));
-      printf2((uint64_t*) " for variable: %x at index [%d]\n", (uint64_t*) get_trace_vaddr(input_idx), (uint64_t*) input_idx);
-      if (sdebug_context)
-        print_src_list(idx);
-      return;
-    }
-    idx = idx - 1;
+void create_witness(uint64_t ctc) {
+  if (ic_symbolic == MAX_SYMBOLIC) {
+    printf2((uint64_t*) "%s: too many symbolic variables at %x\n", selfie_name, (uint64_t*) pc);
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
-  printf1((uint64_t*) "%s: no symbolic values: concrete execution?\n", selfie_name);
+
+  if (sdebug_witness) {
+    printf4((uint64_t*) "%s: [w] new input symbol %d leading at index %d at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) ic_symbolic, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+  }
+
+  *(symbolic_tcs  + ic_symbolic) = ctc;
+  *(syscall_pc    + ic_symbolic) = pc; //assuming the store at the same line
+
+  ic_symbolic = ic_symbolic + 1;
 }
 
-void read_witness() {
-  uint64_t idx;
-  printf2((uint64_t*) "%s: symbolic values witness with %d reads:\n", selfie_name, (uint64_t*) number_of_reads - rcc);
+uint64_t look_for_witness(uint64_t vtc) {
+  uint64_t curr;
+  curr = ic_symbolic - bk_read - 1;
 
-  idx = 0;
-  while (idx < (number_of_reads - rcc)) {
-      printf4((uint64_t*) "%s: read %d (%d) stored at [%d]: ", selfie_name, (uint64_t*) idx, (uint64_t*) *(stored_read_values + idx), (uint64_t*) *(stored_read_tcs + idx));
-      print_symbolic_memory(*(stored_read_tcs + idx));
-
-      idx = idx + 1;
-      if(idx == MAX_READ) return;
+  while (*(symbolic_tcs + curr) != vtc) {
+    if (curr == 0) return -1; // not found
+    curr = curr - 1;
   }
+
+  return curr;
+}
+
+uint64_t update_witness(uint64_t old, uint64_t new) {
+  uint64_t wtc;
+
+  wtc = look_for_witness(old);
+
+  if (wtc < ic_symbolic) { // witness found
+    *(symbolic_tcs + wtc) = new;
+    if (sdebug_witness) {
+      printf5((uint64_t*) "%s: [w] update %d -> %d at index %d at %x", selfie_name, (uint64_t*) old, (uint64_t*) new, (uint64_t*) wtc, (uint64_t*) pc);
+      print_code_line_number_for_instruction(pc - entry_point);
+      println();
+    }
+    return 1;
+  }
+
+  printf3((uint64_t*) "%s: error in update witness, tc %d not found at %x", selfie_name, (uint64_t*) old, (uint64_t*) pc);
+  print_code_line_number_for_instruction(pc - entry_point);
+  println();
+  exit(EXITCODE_SYMBOLICEXECUTIONERROR);
 }
 
 void print_witness() {
-  // assume not input and read syscalls
-  if (number_of_reads > 0)
-    read_witness();
-  else
-    input_witness();
+  uint64_t idx;
+  idx = 0;
+
+  printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) ic_symbolic - bk_read);
+
+  while (idx < (ic_symbolic - bk_read)) {
+    printf3((uint64_t*) "%s:  -  symbolic %d created at %x", selfie_name, (uint64_t*) (idx + 1), (uint64_t*) *(syscall_pc + idx));
+    print_code_line_number_for_instruction(*(syscall_pc + idx) - entry_point);
+    printf1((uint64_t*) " and stored at [%d]: ", (uint64_t*) *(symbolic_tcs + idx));
+    print_symbolic_memory(*(symbolic_tcs + idx));
+
+    idx = idx + 1;
+    if(idx == MAX_SYMBOLIC) return;
+  }
 }
 
 void print_end_point_status(uint64_t* context) {
@@ -9670,12 +9726,14 @@ void print_end_point_status(uint64_t* context) {
   if (print_sum_up) {
     printf2((uint64_t*) "%s: trace length %d.\n", selfie_name, (uint64_t*) tc);
     printf3((uint64_t*) "%s: %d instructions executed for the path, total instructions %d.\n", selfie_name, (uint64_t*) path_length, (uint64_t*) get_total_number_of_instructions());
-    //witness
     print_witness();
   }
 
   if (sdebug_trace)
     print_trace();
+
+  if (sdebug_alias)
+    print_ddg();
 }
 
 // -----------------------------------------------------------------
@@ -9773,7 +9831,7 @@ uint64_t overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, ui
   // prevent from overwrite whenever the value is aliased (correcness of backward semantics)
   if (search_alias(mrvc) == (uint64_t*) 0) {
   // prevent from overwriting witnesses that might be concrete
-    if (is_witness(mrvc) == 0) {
+    if (look_for_witness(mrvc) == -1) {
       if (trb < mrvc) {
         // current value at vaddr does not need to be tracked,
         // just overwrite it in the trace
