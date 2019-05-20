@@ -1473,6 +1473,7 @@ uint64_t path_length = 0; // number of instructions for the current path
 uint64_t sdebug_trace     = 0;
 uint64_t sdebug_context   = 0;
 uint64_t sdebug_propagate = 0;
+uint64_t sdebug_alias     = 0;
 
 // -----------------------------------------------------------------
 // --------------------- SYMBOLIC INSTRUCTIONS ---------------------
@@ -1495,6 +1496,9 @@ uint64_t constrain_sd();
 void backtrack_sltu();
 void backtrack_sd();
 void backtrack_ecall();
+
+void backtrack_brk();
+void backtrack_read();
 
 // -----------------------------------------------------------------
 // ---------------------- SYMBOLIC INTERFACE -----------------------
@@ -1623,18 +1627,16 @@ void      print_stype(uint64_t stype);
 uint64_t CONCRETE_T   = 0;
 uint64_t MSIID_T      = 1;
 uint64_t ARRAY_T      = 2;
-//uint64_t BITSVECT_T = 3;    next step
-//uint64_t INCOMPLETE_T = 4;  next step
 
 // ---------------------------- MSIID ------------------------------
 // -----------------------------------------------------------------
 
-void addi_msiid(uint64_t src, uint64_t vaddr);
-void add_msiid();
-void sub_msiid();
-void mul_msiid();
-void divu_msiid();
-void remu_msiid();
+void msiid_addi(uint64_t src, uint64_t vaddr);
+void msiid_add();
+void msiid_sub();
+void msiid_mul();
+void msiid_divu();
+void msiid_remu();
 
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2);
 uint64_t mul_condition(uint64_t lo, uint64_t up, uint64_t k);
@@ -1691,14 +1693,19 @@ void pointer_error();
 
 uint64_t get_src_input(uint64_t idx);
 
-uint64_t is_renamming(uint64_t vaddr, uint64_t reg);
-uint64_t is_from_return(uint64_t reg);
+uint64_t is_argument(uint64_t vaddr, uint64_t reg);
+uint64_t is_return(uint64_t reg);
 
 void print_src_list(uint64_t idx);
 
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t NOT_ALIASED  = -1;
+uint64_t EQ_ALIASED   = -2;
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t cc = 0;  // current correction index
+uint64_t ic_correction = 0;   // current correction index
 
 uint64_t* hasmns    = (uint64_t*) 0;
 uint64_t* exprs     = (uint64_t*) 0;
@@ -8955,13 +8962,12 @@ void constrain_addi() {
   uint64_t vaddr;
 
   if (rd != REG_ZR) {
-
     // context-sensitivity
-    if (is_from_return(rs1)) {
-        //reduce the src depence list
+    if (is_return(rs1)) {
+        //pop the src list at return points
         if (*(reg_saddr + rs1)) {
           vaddr = get_trace_vaddr(*(reg_saddr + rs1));
-          src   = get_trace_src(*(reg_saddr + rs1));
+          src   = get_source(load_symbolic_memory(pt, vaddr));
         } else {
           vaddr = *(reg_vaddr + rs1);
           src   = *(reg_saddr + rs1);
@@ -8974,7 +8980,7 @@ void constrain_addi() {
     if (*(reg_type + rs1) == ARRAY_T)
       addi_pointer(src, vaddr);
     else if (*(reg_type + rs1) == MSIID_T)
-      addi_msiid(src, vaddr);
+      msiid_addi(src, vaddr);
     else { //concrete
       // rd has no constraint if rs1 has none
       *(reg_type + rd) = CONCRETE_T;
@@ -9000,7 +9006,7 @@ void constrain_add() {
   if (stype == ARRAY_T)
     add_pointer();
   else if (stype == MSIID_T)
-    add_msiid();
+    msiid_add();
   else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     // c + c
@@ -9026,7 +9032,7 @@ void constrain_sub() {
   if (stype == ARRAY_T)
     sub_pointer();
   else if (stype == MSIID_T)
-    sub_msiid();
+    msiid_sub();
   else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     // c - c
@@ -9051,7 +9057,7 @@ void constrain_mul() {
   if (stype == ARRAY_T)
     pointer_error();
   else if (stype == MSIID_T)
-    mul_msiid();
+    msiid_mul();
   else {
     // rd has no constraint if both rs1 and rs2 have no constraints
     // c * c
@@ -9080,7 +9086,7 @@ void constrain_divu() {
       if (stype == ARRAY_T)
         pointer_error();
       else if (stype == MSIID_T)
-        divu_msiid();
+        msiid_divu();
       else {
         // rd has no constraint if both rs1 and rs2 have no constraints
         // c / c
@@ -9092,7 +9098,6 @@ void constrain_divu() {
     pc = pc + INSTRUCTIONSIZE;
     ic_divu = ic_divu + 1;
     path_length = path_length + 1;
-
     } else  // 0 is in interval
       throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
   } else
@@ -9223,7 +9228,7 @@ void constrain_remu() {
     if (stype == ARRAY_T)
       pointer_error();
     else if (stype == MSIID_T) {
-      remu_msiid();
+      msiid_remu();
     } else {
       // rd has no constraint if both rs1 and rs2 have no constraints
       // c % c
@@ -9235,17 +9240,17 @@ void constrain_remu() {
     pc = pc + INSTRUCTIONSIZE;
     ic_remu = ic_remu + 1;
     path_length = path_length + 1;
-
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
-
 
 void constrain_sltu() {
   // interval semantics of sltu
   if (rd != REG_ZR) {
 
     if (*(reg_type + rs1) == MSIID_T) {
+      // remember the true value before constraining (lost if wrapped interval)
+      mrvc_rs1 = load_virtual_memory(pt, *(reg_vaddr + rs1));
       if (*(reg_vaddr + rs1) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
@@ -9257,6 +9262,8 @@ void constrain_sltu() {
     }
 
     if (*(reg_type + rs2) == MSIID_T) {
+      // remember the true value before constraining (lost if wrapped interval)
+      mrvc_rs2 = load_virtual_memory(pt, *(reg_vaddr + rs2));
       if (*(reg_vaddr + rs2) == 0) {
         // constrained memory at vaddr 0 means that there is more than
         // one constrained memory location in the sltu operand
@@ -9270,12 +9277,6 @@ void constrain_sltu() {
     // number of constraints given a stlu (detect unreachable case)
     has_true_branch  = 0;
     has_false_branch = 0;
-
-    // remember the true value before constraining (lost if wrapped interval)
-     if (*(reg_type + rs1) == MSIID_T)
-       mrvc_rs1 = load_virtual_memory(pt, *(reg_vaddr + rs1));
-     if (*(reg_type + rs2) == MSIID_T)
-       mrvc_rs2 = load_virtual_memory(pt, *(reg_vaddr + rs2));
 
     // take local copy of mrcc to make sure that alias check considers old mrcc
     if (*(reg_type + rs1) == ARRAY_T)
@@ -9311,9 +9312,18 @@ uint64_t constrain_ld() {
         // interval semantics of ld
         if (is_symbolic_value(get_trace_type(mrvc))) {
             *(reg_type + rd) = get_trace_type(mrvc);
-            set_constraint(rd, get_trace_src(mrvc), vaddr, get_trace_a1(mrvc), get_trace_a2(mrvc), get_trace_a3(mrvc));
+            set_constraint(rd, get_source(mrvc), vaddr, get_trace_a1(mrvc), get_trace_a2(mrvc), get_trace_a3(mrvc));
 
             if (get_trace_type(mrvc) == MSIID_T) {
+              if (alias_depth(vaddr) > MAX_ALIAS) {
+                printf2((uint64_t*) "%s: aliased access detected at %x", selfie_name, (uint64_t*) pc);
+                print_code_line_number_for_instruction(pc - entry_point);
+                println();
+
+                throw_exception(EXCEPTION_INCOMPLETENESS, 0);
+                return vaddr;
+              }
+
               if (*(reg_alpha3 + rd) == 0) {
                 printf2((uint64_t*) "%s: detected step 0 at %x", selfie_name, (uint64_t*) pc);
                 print_code_line_number_for_instruction(pc - entry_point);
@@ -9353,84 +9363,77 @@ uint64_t constrain_sd() {
   uint64_t a;
   uint64_t context;
   uint64_t corr_value;
-  context = 0;
-  corr_value = -1;
+
+  context     = 0;
+  corr_value  = -1;
 
   // store double word
-
   vaddr = *(registers + rs1) + imm;
 
   if (is_safe_address(vaddr, rs1)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
+
       // interval semantics of sd
-      if (*(reg_type + rs2) == MSIID_T) {
-        if (*(reg_vaddr + rs2) == 0) {
-          printf2((uint64_t*) "%s: constrained memory locations in sd operand at %x", selfie_name, (uint64_t*) pc);
-          print_code_line_number_for_instruction(pc - entry_point);
-          println();
-          //exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-        }
+      if (*(reg_vaddr + rs2)) {
+        stc = load_symbolic_memory(pt, *(reg_vaddr + rs2));
 
-        //call renaming management
-        if (is_renamming(vaddr, rs1)) {
-          //TODO: problem with save_tempories?
-          if(*(reg_vaddr + rs2)) {
-            stc = load_virtual_memory(pt, *(reg_vaddr + rs2));
+        if (has_correction(rs2)) {
+          if (ic_correction + 1 < MAX_CORRECTION) { //if relational-trace space available
+            *(hasmns + ic_correction)  = *(reg_hasmn + rs2);
+            *(exprs + ic_correction)   = *(reg_expr + rs2);
+            *(colos + ic_correction)   = *(reg_colos + rs2);
+            *(coups + ic_correction)   = *(reg_coups + rs2);
+            *(factors + ic_correction) = *(reg_factor + rs2);
+            corr_value = ic_correction;
 
-            if (has_correction(rs2)) { //if has co
-              // allocate correction entry
-              *(hasmns + cc)  = *(reg_hasmn + rs2);
-              *(exprs + cc)   = *(reg_expr + rs2);
-              *(colos + cc)   = *(reg_colos + rs2);
-              *(coups + cc)   = *(reg_coups + rs2);
-              *(factors + cc) = *(reg_factor + rs2);
-              corr_value      = cc;
-              cc = cc + 1;
-            }
-          } else
-            stc = 0; //first return from input syscall
-
-          if (sdebug_context) {
-            context = 1;
-            printf2((uint64_t*) "%s: symbolic argument at %d", selfie_name, (uint64_t*) pc);
-            print_code_line_number_for_instruction(pc - entry_point);
-            print((uint64_t*) " from ");
-            print_symbolic_register(rs2);
-            if (corr_value != (uint64_t) -1)
-              printf5((uint64_t*) " with correction (%d,%d,[%d,%d],%d)",
-              (uint64_t*) *(hasmns + corr_value),
-              (uint64_t*) *(exprs + corr_value),
-              (uint64_t*) *(colos + corr_value),
-              (uint64_t*) *(coups + corr_value),
-              (uint64_t*) *(factors + corr_value));
-
-            println();
+            ic_correction = ic_correction + 1;
+          } else {
+            throw_exception(EXCEPTION_MAXTRACE, 0);
+            return -1;
           }
         } else
-          stc = *(reg_saddr + rs2);
+          corr_value = EQ_ALIASED;
       } else
-        stc = *(reg_saddr + rs2);
+        stc = 0; //first return from input syscall
 
       if (*(reg_type + rs2) == MSIID_T) //no overwrite if symbolic
         store_symbolic_memory(pt, vaddr, 0, *(reg_type + rs2), *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2), tc);
       else
         store_symbolic_memory(pt, vaddr, 0, *(reg_type + rs2), *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2), mrcc);
 
-      if (context) {
-        printf1((uint64_t*) "%s: ", selfie_name);
-        print_symbolic_memory(load_symbolic_memory(pt, vaddr));
-        println();
+      //only for msiid
+      if (*(reg_type + rs2) == MSIID_T) {
+        if (*(reg_vaddr + rs2)) {
+          push_assignment(load_symbolic_memory(pt, vaddr), corr_value, stc);
+          if (is_argument(imm, rs1)) {
+            if (symbolic_calling) {
+              printf2((uint64_t*) "%s: only one symbolic argument at a time at %x", selfie_name, (uint64_t*) pc);
+              print_code_line_number_for_instruction(pc - entry_point);
+              println();
+              exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+            }
+            symbolic_calling    = load_symbolic_memory(pt, vaddr);
+            symbolic_calling_pc = pc; //only for debug
+          }
+        } else  //input system call
+          create_symbolic_entry(load_virtual_memory(pt, vaddr));
       }
 
-      pc = pc + INSTRUCTIONSIZE;
-      ic_sd = ic_sd + 1;
-      path_length = path_length + 1;
-      // keep track of number of stores per instruction
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
+    if (context) {
+      printf1((uint64_t*) "%s: ", selfie_name);
+      print_symbolic_memory(load_symbolic_memory(pt, vaddr));
+      println();
+    }
 
-      *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
-    } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+    pc = pc + INSTRUCTIONSIZE;
+    ic_sd = ic_sd + 1;
+    path_length = path_length + 1;
+    // keep track of number of stores per instruction
+    a = (pc - entry_point) / INSTRUCTIONSIZE;
+
+    *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+  } else
+    throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
   } else
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 
@@ -9438,7 +9441,7 @@ uint64_t constrain_sd() {
 }
 
 void backtrack_sltu() {
-  uint64_t vaddr;
+  uint64_t  vaddr;
 
   if (debug_symbolic) {
     printf1((uint64_t*) "%s: backtracking sltu ", selfie_name);
@@ -9450,9 +9453,9 @@ void backtrack_sltu() {
   if (vaddr < NUMBEROFREGISTERS) {
     if (vaddr > 0) {
       // the register is identified by vaddr
-      *(registers + vaddr) = get_trace_a1(tc);
+      *(registers + vaddr)  = get_trace_a1(tc);
+      *(reg_type + vaddr)   = get_trace_type(tc);
 
-      *(reg_type + vaddr) = get_trace_type(tc);
       set_correction(vaddr, 0, 0, 0, 0, 0);
       set_constraint(vaddr, 0, 0, get_trace_a1(tc), get_trace_a2(tc), get_trace_a3(tc));
 
@@ -9460,7 +9463,7 @@ void backtrack_sltu() {
       mrcc = get_trace_tc(tc);
 
       // restoring path_length
-      path_length = get_trace_src(tc);
+      path_length = get_trace_a3(tc);
 
       if (vaddr != REG_FP)
         if (vaddr != REG_SP) {
@@ -9471,20 +9474,54 @@ void backtrack_sltu() {
           path_length = path_length + 1;
         }
     }
-  } else
-    store_virtual_memory(pt, vaddr, get_trace_tc(tc));
+  } else {
+    if (get_source(tc) == 0) //only for roots
+      update_witness(tc, get_trace_tc(tc));
 
+    if (vaddr != NUMBEROFREGISTERS)
+      store_virtual_memory(pt, vaddr, get_trace_tc(tc));
+
+    // trace / dependent graph consistency
+    update_alias_tc(tc, get_trace_tc(tc));
+
+  }
   efree();
 }
 
 void backtrack_sd() {
+
   if (debug_symbolic) {
     printf1((uint64_t*) "%s: backtracking sd ", selfie_name);
     print_symbolic_memory(tc);
   }
 
-  store_virtual_memory(pt, get_trace_vaddr(tc), get_trace_tc(tc));
+  if (get_trace_type(tc) == MSIID_T) {
+      if(get_source(tc) == 0) //undo symbolic creation
+        ic_symbolic = ic_symbolic - 1;
+  }
 
+  if (search_alias(tc)) {
+    //alias
+    global_dg = delete_assignment(tc, global_dg);
+
+    //calls
+    if (ccf) {
+      if (tc == *(watchdog_tc + (ccf - 1))) {
+
+        if (sdebug_alias) {
+          printf5((uint64_t*) "%s: [f] backtrack sd: stop monitoring @%d<%x,%d> at %x\n", selfie_name, (uint64_t*) (ccf-1), (uint64_t*) *(watchdog_func + (ccf - 1)), (uint64_t*) *(watchdog_tc + (ccf - 1)), (uint64_t*) pc);
+          print_code_line_number_for_instruction(pc - entry_point);
+          println();
+        }
+
+        *(watchdog_func + (ccf - 1))    = 0;
+        *(watchdog_tc + (ccf - 1))      = 0;
+        ccf = ccf - 1;
+      }
+    }
+  }
+
+  store_virtual_memory(pt, get_trace_vaddr(tc), get_trace_tc(tc));
   efree();
 }
 
@@ -9494,29 +9531,11 @@ void backtrack_ecall() {
     print_symbolic_memory(tc);
   }
 
-  if (get_trace_vaddr(tc) == 0) {
-    // backtracking malloc
-    if (get_program_break(current_context) == get_trace_a2(tc) + get_trace_a3(tc))
-      set_program_break(current_context, get_trace_a2(tc));
-    else {
-      printf1((uint64_t*) "%s: malloc backtracking error at ", selfie_name);
-      print_symbolic_memory(tc);
-      printf4((uint64_t*) " with current program break %x unequal %x which is previous program break %x plus size %d\n",
-        (uint64_t*) get_program_break(current_context),
-        (uint64_t*) (get_trace_a2(tc) + get_trace_a3(tc)),
-        (uint64_t*) get_trace_a2(tc),
-        (uint64_t*) get_trace_a3(tc));
+  if (get_trace_vaddr(tc) == 0)
+    backtrack_brk();
+  else
+    backtrack_read();
 
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-    }
-  } else {
-    // backtracking read
-    if (number_of_reads > MAX_READ)
-      number_of_reads = number_of_reads - 1;
-    else
-      rcc = rcc + 1;
-    store_virtual_memory(pt, get_trace_vaddr(tc), get_trace_tc(tc));
-  }
   efree();
 }
 
@@ -9908,7 +9927,7 @@ void print_stype(uint64_t stype) {
 // ---------------------------- MSIID ------------------------------
 // -----------------------------------------------------------------
 
-void addi_msiid(uint64_t src, uint64_t vaddr) {
+void msiid_addi(uint64_t src, uint64_t vaddr) {
   // rs1 constraint has already minuend and cannot have another addend
   if (*(reg_hasmn + rs1)) error_minuend((uint64_t*) "left",(uint64_t*) "addi");
 
@@ -9918,7 +9937,7 @@ void addi_msiid(uint64_t src, uint64_t vaddr) {
   set_constraint(rd, src, vaddr, *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, *(reg_alpha3 + rs1));
 }
 
-void add_msiid() {
+void msiid_add() {
   uint64_t add_los;
   uint64_t add_ups;
   uint64_t add_steps;
@@ -9987,7 +10006,7 @@ void add_msiid() {
   }
 }
 
-void sub_msiid() {
+void msiid_sub() {
   uint64_t sub_los;
   uint64_t sub_ups;
   uint64_t sub_steps;
@@ -10056,7 +10075,7 @@ void sub_msiid() {
   }
 }
 
-void mul_msiid() {
+void msiid_mul() {
   uint64_t mul_los;
   uint64_t mul_ups;
 
@@ -10133,7 +10152,7 @@ void mul_msiid() {
   }
 }
 
-void divu_msiid() {
+void msiid_divu() {
   uint64_t div_los;
   uint64_t div_ups;
   uint64_t div_steps;
@@ -10217,7 +10236,7 @@ void divu_msiid() {
     }
 }
 
-void remu_msiid() {
+void msiid_remu() {
   uint64_t lo;
   uint64_t up;
   uint64_t divisor;
@@ -10850,14 +10869,14 @@ uint64_t get_src_input(uint64_t idx) {
   return jdx;
 }
 
-uint64_t is_renamming(uint64_t vaddr, uint64_t reg) {
+uint64_t is_argument(uint64_t vaddr, uint64_t reg) {
   if (vaddr == *(registers + REG_SP)) //also match last local variable accesses
    if (reg == REG_SP)
     return 1;                         //SD $ti 0($sp)
   return 0;
 }
 
-uint64_t is_from_return(uint64_t reg) {
+uint64_t is_return(uint64_t reg) {
   if (*(reg_saddr + reg))
     return reg == REG_A0;
   return 0;
