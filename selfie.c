@@ -1087,7 +1087,6 @@ void print_jal();
 void print_jal_before();
 void print_jal_jalr_after();
 void do_jal();
-void constrain_jal_jalr();
 
 void print_jalr();
 void print_jalr_before();
@@ -1476,7 +1475,6 @@ uint64_t REM_T    = 4;
 uint64_t path_length = 0; // number of instructions for the current path
 
 uint64_t sdebug_trace     = 0;
-uint64_t sdebug_context   = 0;
 uint64_t sdebug_witness   = 0;
 uint64_t sdebug_alias     = 0;
 uint64_t sdebug_propagate = 0;
@@ -1693,6 +1691,8 @@ void add_pointer();
 void sub_pointer();
 void sub_2pointer();
 
+uint64_t is_safe_address(uint64_t vaddr, uint64_t reg);
+
 void pointer_error();
 
 // -----------------------------------------------------------------
@@ -1801,10 +1801,9 @@ uint64_t mrcc     = 0;  // trace counter of most recent constraint
 uint64_t mrvc_rs1 = 0;  // rs1's trace index before constraining
 uint64_t mrvc_rs2 = 0;  // rs2's trace index before constraining
 
-// buffer correction (used in constrain_memory): symbolic register tvp
-uint64_t buffer_typ       =  0;
+// buffer correction
+uint64_t buffer_type      =  0;
 uint64_t buffer_vaddr     =  0;
-uint64_t buffer_stc       =  0;
 uint64_t buffer_hasmn     =  0;
 uint64_t buffer_expr      =  0;
 uint64_t buffer_colo      =  0;
@@ -1813,6 +1812,31 @@ uint64_t buffer_factor    =  0;
 
 uint64_t has_true_branch  = 1;
 uint64_t has_false_branch = 1;
+
+// -----------------------------------------------------------------
+// ------------------------ CALL GRAPH -----------------------------
+// -----------------------------------------------------------------
+
+void constrain_jal();
+void constrain_jalr();
+
+void backtrack_jalr();
+
+void print_watchdogs();
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t MAX_CALL         = 10;         // watchdog recursive symbolic bound
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t ccf              = 0;  //current call function
+
+uint64_t* watchdog_func;
+uint64_t* watchdog_tc;
+
+uint64_t symbolic_calling     = 0;
+uint64_t symbolic_calling_pc  = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1849,6 +1873,9 @@ void init_symbolic_engine() {
   reg_colos     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_coups     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_factor    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  watchdog_func = zalloc(MAX_CALL * REGISTERSIZE);
+  watchdog_tc   = zalloc(MAX_CALL * REGISTERSIZE);
 
   // initialise registers with concrete value (step 1) -->####
   i = 0;
@@ -2913,10 +2940,6 @@ void get_symbol() {
         store_character(identifier, i, 0); // null-terminated string
 
         symbol = identifier_or_keyword();
-
-        // dummy store to avoid potentially aliased constrained memory error ~~~~~??
-        //character = character - 1;
-        //character = character + 1;
 
       } else if (is_character_digit()) {
         // accommodate integer and null for termination
@@ -7259,13 +7282,6 @@ void do_jal() {
   ic_jal = ic_jal + 1;
 }
 
-void constrain_jal_jalr() {
-  if (rd != REG_ZR) {
-    *(reg_alpha2 + rd) = *(registers + rd);
-  }
-  path_length = path_length + 1;
-}
-
 void print_jalr() {
   print_code_context_for_instruction(pc);
   printf3((uint64_t*) "jalr %s,%d(%s)", get_register_name(rd), (uint64_t*) signed_division(imm, INSTRUCTIONSIZE), get_register_name(rs1));
@@ -7323,10 +7339,15 @@ void print_ecall_after() {
 
 void do_ecall() {
   ic_ecall = ic_ecall + 1;
-  if (symbolic)
-    path_length = path_length + 1;
+  if (symbolic) {
 
-if (*(registers + REG_A7) == SYSCALL_SWITCH)
+    if (symbolic_calling)
+      symbolic_calling = 0;
+
+    path_length = path_length + 1;
+  }
+
+  if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (symbolic) {
       printf1((uint64_t*) "%s: context switching during symbolic execution is unsupported\n", selfie_name);
 
@@ -7517,13 +7538,12 @@ void decode_execute() {
           if (debug_symbolic) {
             print_sd();
             print_sd_before();
-            println();
             print_sd_after(constrain_sd());
             println();
           } else
             constrain_sd();
-          } else if (backtrack)
-            backtrack_sd();
+        } else if (backtrack)
+          backtrack_sd();
       } else
         do_sd();
 
@@ -7678,8 +7698,8 @@ void decode_execute() {
               println();
             } else
               constrain_sltu();
-            } else if (backtrack)
-              backtrack_sltu();
+          } else if (backtrack)
+            backtrack_sltu();
         } else
           do_sltu();
 
@@ -7731,12 +7751,12 @@ void decode_execute() {
           print_jal();
           print_jal_before();
           do_jal();
-          constrain_jal_jalr();
+          constrain_jal();
           print_jal_jalr_after();
           println();
         } else {
           do_jal();
-          constrain_jal_jalr();
+          constrain_jal();
        }
       }
     } else
@@ -7760,15 +7780,13 @@ void decode_execute() {
           if (debug_symbolic) {
             print_jalr();
             print_jalr_before();
-            do_jalr();
-            constrain_jal_jalr();
+            constrain_jalr();
             print_jal_jalr_after();
             println();
-          } else {
-            do_jalr();
-            constrain_jal_jalr();
-         }
-        }
+          } else
+            constrain_jalr();
+        } else if (backtrack)
+          backtrack_jalr();
       } else
         do_jalr();
 
@@ -9441,7 +9459,6 @@ uint64_t constrain_sd() {
 
   if (is_safe_address(vaddr, rs1)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
-
       // interval semantics of sd
       if (*(reg_vaddr + rs2)) {
         stc = load_symbolic_memory(pt, *(reg_vaddr + rs2));
@@ -9482,7 +9499,7 @@ uint64_t constrain_sd() {
               exit(EXITCODE_SYMBOLICEXECUTIONERROR);
             }
             symbolic_calling    = load_symbolic_memory(pt, vaddr);
-            symbolic_calling_pc = pc; //only for debug
+            symbolic_calling_pc = pc; //only for debug clarity
           }
         } else  //input system call
           create_witness(load_virtual_memory(pt, vaddr));
@@ -9736,8 +9753,9 @@ void create_witness(uint64_t ctc) {
 
 uint64_t look_for_witness(uint64_t vtc) {
   uint64_t curr;
-  curr = ic_symbolic - bk_read - 1;
+  if (ic_symbolic == 0) return -1; // not found
 
+  curr = ic_symbolic - bk_read - 1;
   while (*(symbolic_tcs + curr) != vtc) {
     if (curr == 0) return -1; // not found
     curr = curr - 1;
@@ -9918,28 +9936,6 @@ uint64_t overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, ui
     }
   }
   return 0;
-}
-
-uint64_t is_safe_address(uint64_t vaddr, uint64_t reg) {
-
-  if (*(reg_type + reg) == ARRAY_T) {
-    if (vaddr < *(registers + reg))
-      // memory access below start address of mallocated block
-      return 0;
-    else if (vaddr - *(registers + reg) >= *(reg_alpha2 + reg))
-      // memory access above end address of mallocated block
-      return 0;
-    else
-      return 1;
-  } else if (*(registers + reg) == *(reg_alpha2 + reg))
-    return 1;
-  else {
-    printf2((uint64_t*) "%s: detected unsupported symbolic access of memory interval at %x", selfie_name, (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
 }
 
 void print_symbolic_memory(uint64_t svc) {
@@ -10957,6 +10953,28 @@ void sub_2pointer() {
   throw_exception(EXCEPTION_INVALIDADDRESS, 0);
 }
 
+uint64_t is_safe_address(uint64_t vaddr, uint64_t reg) {
+
+  if (*(reg_type + reg) == ARRAY_T) {
+    if (vaddr < *(registers + reg))
+      // memory access below start address of mallocated block
+      return 0;
+    else if (vaddr - *(registers + reg) >= *(reg_alpha2 + reg))
+      // memory access above end address of mallocated block
+      return 0;
+    else
+      return 1;
+  } else if (*(registers + reg) == *(reg_alpha2 + reg))
+    return 1;
+  else {
+    printf2((uint64_t*) "%s: detected unsupported symbolic access of memory interval at %x", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+}
+
 void pointer_error() {
   // adding two pointers is undefined
   printf2((uint64_t*) "%s: undefined addition of two pointers at %x", selfie_name, (uint64_t*) pc);
@@ -11327,10 +11345,11 @@ uint64_t get_vaddr_with_alias(uint64_t ctc) {
   return a;
 }
 
-uint64_t is_argument(uint64_t vaddr, uint64_t reg) {
-  if (vaddr == *(registers + REG_SP)) //also match last local variable accesses
+uint64_t is_argument(uint64_t immediate, uint64_t reg) {
+  if (immediate == 0) {
    if (reg == REG_SP)
     return 1;                         //SD $ti 0($sp)
+  }
   return 0;
 }
 
@@ -11629,6 +11648,113 @@ void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc) {
 
   has_true_branch   = 1;
   has_false_branch  = 1; // prevent from other raises by the same beq
+}
+
+// -----------------------------------------------------------------
+// ------------------------ CALL GRAPH -----------------------------
+// -----------------------------------------------------------------
+
+void constrain_jal() {
+  if (rd != REG_ZR) {
+    *(reg_alpha2 + rd) = *(registers + rd);
+
+    //create function watchdog cause of symbolic argument
+    if (symbolic_calling) {
+      if (ccf == MAX_CALL) {
+        printf2((uint64_t*) "%s: list of symbolic call to monitore full at %x", selfie_name, (uint64_t*) symbolic_calling_pc);
+        print_code_line_number_for_instruction(symbolic_calling_pc - entry_point);
+        println();
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      }
+
+      *(watchdog_func + ccf) = *(registers + rd);
+      *(watchdog_tc + ccf)   = symbolic_calling;
+      ccf = ccf + 1;
+
+      if (sdebug_alias) {
+        printf5((uint64_t*) "%s: [f] watchdog activated for @%d<%x,%d> calling at %x", selfie_name, (uint64_t*) (ccf-1), (uint64_t*) *(watchdog_func + (ccf-1)), (uint64_t*) *(watchdog_tc + (ccf-1)), (uint64_t*) symbolic_calling_pc);
+        print_code_line_number_for_instruction(symbolic_calling_pc - entry_point);
+        println();
+      }
+
+      symbolic_calling    = 0;
+      symbolic_calling_pc = 0;
+    }
+  }
+
+  path_length = path_length + 1;
+}
+
+void constrain_jalr() {
+  uint64_t old_pc;
+  old_pc = pc;
+
+  do_jalr();
+
+  if (rd != REG_ZR)
+    *(reg_alpha2 + rd) = *(registers + rd);
+
+  if (ccf) {
+    if (*(watchdog_func + (ccf - 1)) == pc) {
+
+      pc = old_pc;
+      store_symbolic_memory(pt, 0, 0, 0, *(watchdog_func + (ccf - 1)), *(watchdog_tc + (ccf - 1)), 0, tc);
+      pc = *(watchdog_func + (ccf - 1));
+      if (sdebug_alias) {
+        printf3((uint64_t*) "%s: [f] jalr: save watchdog into @%d at %x", selfie_name, (uint64_t*) tc, (uint64_t*) pc);
+        print_code_line_number_for_instruction(pc - entry_point);
+        println();
+      }
+
+      //disable the alias and save it into the trace (for backtracking)
+      disable_alias(*(watchdog_tc + (ccf - 1)));
+      if (sdebug_alias) {
+        printf5((uint64_t*) "%s: [f] jalr: stop monitoring @%d<%x,%d> at %x", selfie_name,(uint64_t*) (ccf - 1), (uint64_t*) *(watchdog_func + (ccf - 1)), (uint64_t*) *(watchdog_tc + (ccf - 1)), (uint64_t*) pc);
+        print_code_line_number_for_instruction(pc - entry_point);
+        println();
+      }
+
+      *(watchdog_func + (ccf - 1))    = 0;
+      *(watchdog_tc + (ccf - 1))      = 0;
+      ccf = ccf - 1;
+    }
+  }
+
+  path_length = path_length + 1;
+}
+
+void backtrack_jalr() {
+
+  if (debug_symbolic) {
+    printf1((uint64_t*) "%s: backtracking jalr ", selfie_name);
+    print_symbolic_memory(tc);
+  }
+
+  *(watchdog_func + ccf)  = get_trace_a1(tc);
+  *(watchdog_tc + ccf)    = get_trace_a2(tc);
+
+  enable_alias(*(watchdog_tc + ccf));
+
+  ccf = ccf + 1;
+
+  if (sdebug_alias) {
+    printf5((uint64_t*) "%s: [f] backtrack jalr: enable back the monitoring of @%d<%x,%d> at %x\n", selfie_name,(uint64_t*) (ccf-1), (uint64_t*) *(watchdog_func + (ccf - 1)), (uint64_t*) *(watchdog_tc + (ccf - 1)), (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+  }
+
+  efree();
+}
+
+void print_watchdogs() {
+  uint64_t i;
+  i = 0;
+
+  printf2((uint64_t*) "%s: [f] + --------- %d watchdogs +\n", selfie_name, (uint64_t*) ccf);
+  while (i < ccf) {
+    printf2((uint64_t*) "[f] <%x,%d>\n", (uint64_t*) *(watchdog_func + i), (uint64_t*) *(watchdog_tc + i));
+    i = i + 1;
+  }
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
