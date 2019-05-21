@@ -9941,13 +9941,18 @@ void print_symbolic_memory(uint64_t svc) {
   if (get_trace_pc(svc) >= entry_point)
     print_code_line_number_for_instruction(get_trace_pc(svc) - entry_point);
   if (get_trace_vaddr(svc) == 0) {
-    printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+    if (get_trace_type(svc) == ARRAY_T)
+      printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+    else
+      printf2((uint64_t*) ";watch%x=%d", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
     return;
   } else if (get_trace_vaddr(svc) < NUMBEROFREGISTERS)
     printf2((uint64_t*) ";%s=%d", get_register_name(get_trace_vaddr(svc)), (uint64_t*) get_trace_a1(svc));
+  else if (get_trace_vaddr(svc) == NUMBEROFREGISTERS)
+    printf1((uint64_t*) ";xxx%x", (uint64_t*) get_vaddr_with_alias(svc));
   else
     printf2((uint64_t*) ";%x=%d", (uint64_t*) get_trace_vaddr(svc), (uint64_t*) get_trace_a1(svc));
-  if (get_trace_type(svc))
+  if (get_trace_type(svc) == MSIID_T)
     if (get_trace_a1(svc) == get_trace_a2(svc))
       printf1((uint64_t*) "(%d)}\n", (uint64_t*) get_trace_a1(svc));
     else
