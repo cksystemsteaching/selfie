@@ -1721,12 +1721,6 @@ uint64_t  get_source(uint64_t ctc);
 uint64_t  get_correction(uint64_t ctc);
 uint64_t  get_vaddr_with_alias(uint64_t ctc);
 
-uint64_t is_argument(uint64_t vaddr, uint64_t reg);
-uint64_t is_return(uint64_t reg);
-
-void disable_alias(uint64_t ctc);
-void enable_alias(uint64_t ctc);
-
 void print_dg();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1819,6 +1813,12 @@ uint64_t has_false_branch = 1;
 // -----------------------------------------------------------------
 // ------------------------ CALL GRAPH -----------------------------
 // -----------------------------------------------------------------
+
+uint64_t is_argument(uint64_t vaddr, uint64_t reg);
+uint64_t is_return(uint64_t reg);
+
+void disable_alias(uint64_t ctc);
+void enable_alias(uint64_t ctc);
 
 void constrain_jal();
 void constrain_jalr();
@@ -7244,6 +7244,9 @@ void do_jal() {
 
   // jump and link
 
+  // save last ecall line
+  last_jal_from = pc;
+
   if (rd != REG_ZR) {
     // first link
     *(registers + rd) = pc + INSTRUCTIONSIZE;
@@ -7270,13 +7273,9 @@ void do_jal() {
     iterations = iterations + 1;
 
     *(iterations_per_loop + a) = *(iterations_per_loop + a) + 1;
-  } else {
-    // save last exit line
-    last_jal_from = pc;
-
+  } else
     // just jump forward
     pc = pc + imm;
-  }
 
   ic_jal = ic_jal + 1;
 }
@@ -11344,54 +11343,6 @@ uint64_t get_vaddr_with_alias(uint64_t ctc) {
   return a;
 }
 
-uint64_t is_argument(uint64_t immediate, uint64_t reg) {
-  if (immediate == 0) {
-   if (reg == REG_SP)
-    return 1;                         //SD $ti 0($sp)
-  }
-  return 0;
-}
-
-uint64_t is_return(uint64_t reg) {
-  if (*(reg_saddr + reg))
-    return reg == REG_A0;
-  return 0;
-}
-
-void disable_alias(uint64_t ctc) {
-  uint64_t* ltentry;
-  ltentry = search_alias(ctc);
-
-  if (ltentry)
-    set_assign_flag(ltentry, 0);
-
-  if (sdebug_alias) {
-    if (ltentry)
-      printf4((uint64_t*) "%s: [a] node %d(%x) [disabled] at %x", selfie_name, (uint64_t*) get_assign_tc(ltentry), (uint64_t*) get_trace_vaddr(get_assign_tc(ltentry)), (uint64_t*) pc);
-    else
-      printf4((uint64_t*) "%s: [a] no node %d(%x) to disable at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) get_trace_vaddr(ctc), (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
-    println();
-  }
-}
-
-void enable_alias(uint64_t ctc) {
-  uint64_t* ltentry;
-  ltentry = search_alias(ctc);
-
-  if (ltentry)
-    set_assign_flag(ltentry, 1);
-
-  if (sdebug_alias) {
-    if (ltentry)
-      printf4((uint64_t*) "%s: [a] node %d(%x) [enabled] at %x", selfie_name, (uint64_t*) get_assign_tc(ltentry), (uint64_t*) get_trace_vaddr(get_assign_tc(ltentry)), (uint64_t*) pc);
-    else
-      printf4((uint64_t*) "%s: [a] no node %d(%x) to enable at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) get_trace_vaddr(ctc), (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
-    println();
-  }
-}
-
 void print_dg() {
   uint64_t* entry;
   uint64_t* tl_entry;
@@ -11570,7 +11521,7 @@ void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint6
   buffer_factor = factor;
 }
 
-void propagate_constraint(uint64_t typ, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   uint64_t* ltentry;
   uint64_t  stc_vaddr;
   uint64_t  stc;
@@ -11601,10 +11552,10 @@ void propagate_constraint(uint64_t typ, uint64_t vaddr, uint64_t ctc, uint64_t l
 
         constrain_memory(stc, stc_vaddr, lo, up, trb);
       } else
-        propagate_constraint(typ, stc_vaddr, stc, lo, up, step, trb);
+        propagate_constraint(type, stc_vaddr, stc, lo, up, step, trb);
 
     //store current constraint with updated stc
-    store_constrained_memory(typ, vaddr, ctc, lo, up, step);
+    store_constrained_memory(type, vaddr, ctc, lo, up, step);
     return;
   }   //store and constrain witness
 
@@ -11612,7 +11563,7 @@ void propagate_constraint(uint64_t typ, uint64_t vaddr, uint64_t ctc, uint64_t l
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
 
   //root
-  store_constrained_memory(typ, vaddr, ctc, lo, up, step);
+  store_constrained_memory(type, vaddr, ctc, lo, up, step);
   update_witness(ctc, tc);
 }
 
@@ -11652,6 +11603,54 @@ void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc) {
 // -----------------------------------------------------------------
 // ------------------------ CALL GRAPH -----------------------------
 // -----------------------------------------------------------------
+
+uint64_t is_argument(uint64_t immediate, uint64_t reg) {
+  if (immediate == 0) {
+   if (reg == REG_SP)
+    return 1;                         //SD $ti 0($sp)
+  }
+  return 0;
+}
+
+uint64_t is_return(uint64_t reg) {
+  if (*(reg_saddr + reg))
+    return reg == REG_A0;
+  return 0;
+}
+
+void disable_alias(uint64_t ctc) {
+  uint64_t* ltentry;
+  ltentry = search_alias(ctc);
+
+  if (ltentry)
+    set_assign_flag(ltentry, 0);
+
+  if (sdebug_alias) {
+    if (ltentry)
+      printf4((uint64_t*) "%s: [a] node %d(%x) [disabled] at %x", selfie_name, (uint64_t*) get_assign_tc(ltentry), (uint64_t*) get_trace_vaddr(get_assign_tc(ltentry)), (uint64_t*) pc);
+    else
+      printf4((uint64_t*) "%s: [a] no node %d(%x) to disable at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) get_trace_vaddr(ctc), (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+  }
+}
+
+void enable_alias(uint64_t ctc) {
+  uint64_t* ltentry;
+  ltentry = search_alias(ctc);
+
+  if (ltentry)
+    set_assign_flag(ltentry, 1);
+
+  if (sdebug_alias) {
+    if (ltentry)
+      printf4((uint64_t*) "%s: [a] node %d(%x) [enabled] at %x", selfie_name, (uint64_t*) get_assign_tc(ltentry), (uint64_t*) get_trace_vaddr(get_assign_tc(ltentry)), (uint64_t*) pc);
+    else
+      printf4((uint64_t*) "%s: [a] no node %d(%x) to enable at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) get_trace_vaddr(ctc), (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+  }
+}
 
 void constrain_jal() {
   if (rd != REG_ZR) {
