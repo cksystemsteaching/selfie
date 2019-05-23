@@ -1632,7 +1632,7 @@ uint64_t ARRAY_T      = 2;
 // ---------------------------- MSIID ------------------------------
 // -----------------------------------------------------------------
 
-void msiid_addi(uint64_t src, uint64_t vaddr);
+void msiid_addi();
 void msiid_add();
 void msiid_sub();
 void msiid_mul();
@@ -1689,7 +1689,7 @@ uint64_t REM_T    = 4;
 // ---------------------------- RANGE ------------------------------
 // -----------------------------------------------------------------
 
-void addi_pointer(uint64_t src, uint64_t vaddr);
+void addi_pointer();
 void add_pointer();
 void sub_pointer();
 void sub_2pointer();
@@ -1815,7 +1815,6 @@ uint64_t has_false_branch = 1;
 // -----------------------------------------------------------------
 
 uint64_t is_argument(uint64_t vaddr, uint64_t reg);
-uint64_t is_return(uint64_t reg);
 
 void disable_alias(uint64_t ctc);
 void enable_alias(uint64_t ctc);
@@ -9043,29 +9042,11 @@ void constrain_lui() {
 }
 
 void constrain_addi() {
-  uint64_t src;
-  uint64_t vaddr;
-
   if (rd != REG_ZR) {
-    // context-sensitivity
-    if (is_return(rs1)) {
-        //pop the src list at return points
-        if (*(reg_saddr + rs1)) {
-          vaddr = get_trace_vaddr(*(reg_saddr + rs1));
-          src   = get_source(load_symbolic_memory(pt, vaddr));
-        } else {
-          vaddr = *(reg_vaddr + rs1);
-          src   = *(reg_saddr + rs1);
-        }
-    } else {
-        vaddr = *(reg_vaddr + rs1);
-        src   = *(reg_saddr + rs1);
-    }
-
     if (*(reg_type + rs1) == ARRAY_T)
-      addi_pointer(src, vaddr);
+      addi_pointer();
     else if (*(reg_type + rs1) == MSIID_T)
-      msiid_addi(src, vaddr);
+      msiid_addi();
     else { //concrete
       // rd has no constraint if rs1 has none
       *(reg_type + rd) = CONCRETE_T;
@@ -9944,7 +9925,7 @@ void print_symbolic_memory(uint64_t svc) {
     if (get_trace_type(svc) == ARRAY_T)
       printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
     else
-      printf2((uint64_t*) ";watch%x=%d", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
+      printf2((uint64_t*) ";watch%x=%d}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
     return;
   } else if (get_trace_vaddr(svc) < NUMBEROFREGISTERS)
     printf2((uint64_t*) ";%s=%d", get_register_name(get_trace_vaddr(svc)), (uint64_t*) get_trace_a1(svc));
@@ -10037,14 +10018,14 @@ void print_stype(uint64_t stype) {
 // ---------------------------- MSIID ------------------------------
 // -----------------------------------------------------------------
 
-void msiid_addi(uint64_t src, uint64_t vaddr) {
+void msiid_addi() {
   // rs1 constraint has already minuend and cannot have another addend
   if (*(reg_hasmn + rs1)) error_minuend((uint64_t*) "left",(uint64_t*) "addi");
 
   *(reg_type + rd) = *(reg_type + rs1);
   // rd inherits rs1 constraint
   set_correction(rd, 0, flag_round(rs1, SUM_T), *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm, *(reg_factor + rs1));
-  set_constraint(rd, src, vaddr, *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, *(reg_alpha3 + rs1));
+  set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, *(reg_alpha3 + rs1));
 }
 
 void msiid_add() {
@@ -10902,11 +10883,11 @@ uint64_t print_on_diff(uint64_t lastPrint, uint64_t toPrint) {
 // ---------------------------- RANGE ------------------------------
 // -----------------------------------------------------------------
 
-void addi_pointer(uint64_t src, uint64_t vaddr) {
+void addi_pointer() {
   // rd has no constraint if rs1 is memory range
   *(reg_type + rd) = *(reg_type + rs1);
   set_correction(rd, 0, 0, 0, 0, 0);
-  set_constraint(rd, src, vaddr, *(registers + rs1) + imm, *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
+  set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
 }
 
 void add_pointer() {
@@ -11400,8 +11381,10 @@ void constrain_memory(uint64_t ctc, uint64_t from, uint64_t lo, uint64_t up, uin
   // load trace counter of previous constraint
   if (buffer_vaddr >= get_program_break(current_context))
     if (buffer_vaddr < *(registers + REG_SP))
-      // do not constrain free memory
-      return;
+    // do not constrain free memory
+      if (search_node(load_symbolic_memory(pt, buffer_vaddr) == 0))
+      // if not into a constrain chain
+        return;
 
   //corrections computation
   //additions / substractions
@@ -11614,12 +11597,6 @@ uint64_t is_argument(uint64_t immediate, uint64_t reg) {
    if (reg == REG_SP)
     return 1;                         //SD $ti 0($sp)
   }
-  return 0;
-}
-
-uint64_t is_return(uint64_t reg) {
-  if (*(reg_saddr + reg))
-    return reg == REG_A0;
   return 0;
 }
 
