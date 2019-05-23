@@ -1703,6 +1703,7 @@ void pointer_error();
 // -----------------------------------------------------------------
 
 uint64_t* allocate_list(uint64_t size);
+void      init_list(uint64_t* l, uint64_t size);
 void      push(uint64_t* l, uint64_t it, uint64_t size);
 uint64_t  pop(uint64_t* l, uint64_t size);
 void      print_list(uint64_t* l, uint64_t size);
@@ -10978,6 +10979,16 @@ uint64_t* allocate_list(uint64_t size) {
   return list;
 }
 
+void init_list(uint64_t* l, uint64_t size) {
+  uint64_t i;
+  i = 0;
+
+  while (i < size) {
+    *(l + i) = 0;
+    i = i + 1;
+  }
+}
+
 void push(uint64_t* l, uint64_t it, uint64_t size) {
   uint64_t index;
   uint64_t val;
@@ -11072,6 +11083,7 @@ uint64_t* allocate_assignment(uint64_t ctc, uint64_t* p_assign, uint64_t* s_assi
   set_assign_correction(new_assign, pcc);
 
   pred_list = allocate_list(MAX_PREDECESSOR);
+  init_list(pred_list, MAX_PREDECESSOR);
   push(pred_list, (uint64_t) p_assign, MAX_PREDECESSOR);
   set_assign_predecessors(new_assign, pred_list);
 
