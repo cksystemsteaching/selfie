@@ -20,6 +20,7 @@ import os
 import re
 import math
 import struct
+import shlex
 
 if sys.version_info < (3, 3):
   from subprocess import Popen, PIPE
@@ -54,6 +55,23 @@ DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
 bulk_grade_mode = False
 file_with_commit_links = None
 bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
+
+EXITCODE_NOERROR                = 0
+EXITCODE_BADARGUMENTS           = 1
+EXITCODE_IOERROR                = 2
+EXITCODE_SCANNERERROR           = 3
+EXITCODE_PARSERERROR            = 4
+EXITCODE_COMPILERERROR          = 5
+EXITCODE_OUTOFVIRTUALMEMORY     = 6
+EXITCODE_OUTOFPHYSICALMEMORY    = 7
+EXITCODE_DIVISIONBYZERO         = 8
+EXITCODE_UNKNOWNINSTRUCTION     = 9
+EXITCODE_UNKNOWNSYSCALL         = 10
+EXITCODE_MULTIPLEEXCEPTIONERROR = 11
+EXITCODE_SYMBOLICEXECUTIONERROR = 12
+EXITCODE_UNCAUGHTEXCEPTION      = 13
+
+EXITCODE_ERROR_RANGE = range(EXITCODE_BADARGUMENTS, EXITCODE_UNCAUGHTEXCEPTION + 1)
 
 INSTRUCTIONSIZE = 4  # in bytes
 REGISTERSIZE    = 8  # in bytes
@@ -158,14 +176,14 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
     if should_succeed:
       if not mandatory:
         number_of_positive_tests_passed[-1] += 1
-      
+
       print_passed(msg)
     else:
       if mandatory:
         failed_mandatory_test = True
       else:
         number_of_negative_tests_failed[-1] += 1
-      
+
       print_failed(msg, warning, output, command)
   else:
     if should_succeed:
@@ -173,12 +191,12 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
         failed_mandatory_test = True
       else:
         number_of_positive_tests_failed[-1] += 1
-      
+
       print_failed(msg, warning, output, command)
     else:
       if not mandatory:
         number_of_negative_tests_passed[-1] += 1
-      
+
       print_passed(msg)
 
 
@@ -189,12 +207,15 @@ class TimeoutException(Exception):
     self.output = output
     self.error_output = error_output
 
+def insert_home_path(command, path):
+  return re.sub(r'(' + path + r'([^\s]*))', r'"' + home_path + r'/' + path + r'\2"', command)
 
-def execute(command, timeout=10):
-  command = command.replace('grader/', home_path + '/grader/')
-  command = command.replace('manuscript/code/', home_path + '/manuscript/code/')
 
-  process = Popen(command.split(' '), stdout=PIPE, stderr=PIPE)
+def execute(command, timeout=60):
+  command = insert_home_path(command, 'grader/')
+  command = insert_home_path(command, 'manuscript/code/')
+
+  process = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
 
   timedout = False
 
@@ -223,21 +244,15 @@ def set_up():
   execute('make selfie')
 
 
-def has_compiled(returncode, output, should_succeed=True):
-  warning = None
-
-  succeeded = (should_succeed and returncode == 0) or (should_succeed == False and returncode != 0)
-
+def has_compiled(returncode, output):
   match = re.search('(syntax error [^\n]*)', output)
 
   if match != None:
-    if should_succeed == False:
-      succeeded = True
-    else:
-      succeeded = False
-      warning = match.group(0)
+    return (False, match.group(0))
+  elif returncode != 0:
+    return (False, 'compiler returned status {}'.format(returncode))
 
-  return (succeeded, warning)
+  return (True, None)
 
 
 def has_no_compile_warnings(return_value, output):
@@ -287,7 +302,7 @@ def test_instruction_encoding(instruction, file):
           # ignore all pading bytes
           no_of_bytes_until_code = code_start - ignored_elf_header_size - 2 * REGISTERSIZE
 
-          if no_of_bytes_until_code < 0: 
+          if no_of_bytes_until_code < 0:
             no_of_bytes_until_code = 0
 
           f.read(no_of_bytes_until_code)
@@ -298,7 +313,7 @@ def test_instruction_encoding(instruction, file):
           if any(map(lambda x: x & instruction_mask == instruction_value, read_instructions)):
             # at least one instruction has the right encoding
             exit_code = 0
-        
+
         if os.path.isfile('.tmp.bin'):
           os.remove('.tmp.bin')
 
@@ -308,9 +323,9 @@ def test_instruction_encoding(instruction, file):
         record_result(False, msg, '', 'The binary file has not been created by selfie')
     else:
       record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
-  except FileNotFoundError as e:
+  except OSError as e:
     # the program to execute can not be found (e.g. selfie is not built)
-    record_result(False, msg, '', str(e), True, command, mandatory=False)
+    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), True, command, mandatory=False)
 
 
 
@@ -341,20 +356,21 @@ def test_assembler_instruction_format(instruction, file):
         record_result(False, msg, output, 'The assembler file has not been created by selfie')
     else:
       record_result(False, msg, output, 'Selfie returned an error when executing "' + command + '"')
-  except FileNotFoundError as e:
+  except OSError as e:
     # the program to execute can not be found (e.g. selfie is not built)
-    record_result(False, msg, '', str(e), True, command, mandatory=False)
+    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), True, command, mandatory=False)
 
 
 
 
-def test_execution(command, msg, success_criteria=True, mandatory=False):
+def test_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False):
   try:
-    returncode, output, _ = execute(command)
+    returncode, output, error_output = execute(command)
+
+    if returncode != 0 and len(output) == 0:
+      output = error_output
 
     if type(success_criteria) is bool:
-      should_succeed = success_criteria
-
       if should_succeed:
         warning = 'Execution terminated with wrong exit code {} instead of 0'.format(returncode)
       else:
@@ -364,23 +380,23 @@ def test_execution(command, msg, success_criteria=True, mandatory=False):
 
     elif type(success_criteria) is int:
       record_result(returncode == success_criteria, msg, output,
-        'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), True, command, mandatory)
+        'Execution terminated with wrong exit code {} instead of {}'.format(returncode, success_criteria), should_succeed, command, mandatory)
 
     elif type(success_criteria) is str:
       filtered_output = filter_status_messages(output)
 
-      record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', True, command, mandatory)
+      record_result(filtered_output == success_criteria, msg, output, 'The actual printed output does not match', should_succeed, command, mandatory)
 
     elif callable(success_criteria):
       result, warning = success_criteria(returncode, output)
 
-      record_result(result, msg, output, warning, True, command, mandatory)
+      record_result(result, msg, output, warning, should_succeed, command, mandatory)
   except TimeoutException as e:
-    record_result(False, msg, e.output, str(e), True, command, mandatory)
-  except FileNotFoundError as e:
+    record_result(False, msg, e.output, str(e), should_succeed, command, mandatory)
+  except OSError as e:
     # the program to execute can not be found (e.g. selfie is not built)
-    record_result(False, msg, '', str(e), True, command, mandatory)
-  
+    record_result(False, msg, str(e), 'Failed to execute "{}"'.format(command), should_succeed, command, mandatory)
+
 
 
 class Memoize:
@@ -434,13 +450,13 @@ def is_permutation_of(returncode, output, numbers):
     if number in printed_numbers:
       printed_numbers.remove(number)
     else:
-      return (False, 'The printed numbers are not a permutation of {numbers}')
+      return (False, 'The printed numbers are not a permutation of {}'.format(numbers))
 
-  return (len(printed_numbers) == 0, 'The printed numbers are not a permutation of {numbers}')
+  return (len(printed_numbers) == 0, 'The printed numbers are not a permutation of {}'.format(numbers))
 
 
 def test_compilable(file, msg, should_succeed=True):
-  test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code, out: has_compiled(code, out, should_succeed=should_succeed))
+  test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code, out: has_compiled(code, out), should_succeed=should_succeed)
 
 
 def test_riscv_instruction(instruction, file):
@@ -458,7 +474,7 @@ def test_hypster_execution(file, result, msg):
 
 def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg):
   test_execution(command, msg, success_criteria=lambda code, out: is_interleaved_output(code, out, interleaved_msg, number_of_interleaved))
- 
+
 
 def test_compile_warnings(file, msg, mandatory=False):
   test_execution('./selfie -c {}'.format(file), msg, success_criteria=has_no_compile_warnings, mandatory=mandatory)
@@ -467,15 +483,15 @@ def test_compile_warnings(file, msg, mandatory=False):
 def test_hex_literal():
   test_compilable('hex-integer-literal.c',
     'hex integer literal with all characters compiled')
-  test_mipster_execution('hex-integer-literal.c', 1,
+  test_mipster_execution('hex-integer-literal.c', 42,
     'hex integer literal with all characters has the right value')
   test_compilable('hex-integer-literal-max.c',
     'maximum hex integer literal compiled')
-  test_mipster_execution('hex-integer-literal-max.c', 1,
+  test_mipster_execution('hex-integer-literal-max.c', 42,
     'maximum hex integer literal has the right value')
   test_compilable('hex-integer-literal-min.c',
     'minimum hex integer literal compiled')
-  test_mipster_execution('hex-integer-literal-min.c', 1,
+  test_mipster_execution('hex-integer-literal-min.c', 42,
     'minimum hex integer literal has the right value')
 
 
@@ -506,11 +522,11 @@ def test_bitwise_shift(stage):
 
       test_riscv_instruction(instruction, literal_file)
       test_riscv_instruction(instruction, variable_file)
-      test_mipster_execution(literal_file, 2,
+      test_mipster_execution(literal_file, 42,
         'bitwise-' + direction + '-shift operator calculates the right result for literals when executed with MIPSTER')
-      test_mipster_execution(variable_file, 2,
+      test_mipster_execution(variable_file, 42,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
-    
+
     test_mipster_execution('bitwise-shift-precedence.c', 42,
       'bitwise shift operators respect the precedence of the C operators: <<, >>')
 
@@ -545,28 +561,28 @@ def test_bitwise_and_or_not():
 
 
 def test_for_loop():
-  test_compilable('for-loop-invalid-missing-assignment.c', 
+  test_compilable('for-loop-invalid-missing-assignment.c',
     'for loop with missing assignment do not compile', should_succeed=False)
   test_compilable('for-loop-single-statement.c',
     'for loop with one statement do compile')
   test_compilable('for-loop-multiple-statements.c',
     'for loop with multiple statements do compile')
-  test_compilable('for-loop-nested.c', 
+  test_compilable('for-loop-nested.c',
     'nested for loops do compile')
-  test_mipster_execution('for-loop-single-statement.c', 3,
+  test_mipster_execution('for-loop-single-statement.c', 42,
     'for loop with one statement are implement with the right semantics')
-  test_mipster_execution('for-loop-multiple-statements.c', 3,
+  test_mipster_execution('for-loop-multiple-statements.c', 42,
     'for loop with multiple statements are implemented with the right semantics')
-  test_mipster_execution('for-loop-multiple-statements.c', 3,
+  test_mipster_execution('for-loop-multiple-statements.c', 42,
     'for loop with multiple statements are implemented with the right semantics')
-  test_mipster_execution('for-loop-nested.c', 9,
+  test_mipster_execution('for-loop-nested.c', 42,
     'nested for loops are implemented with the right semantics')
 
 
 
 def test_array(part):
   if part == 1:
-    test_compilable('array-global-declaration.c', 
+    test_compilable('array-global-declaration.c',
       'array declaration do compile')
     test_compilable('array-assignment.c',
       'assignments on arrays do compile')
@@ -574,15 +590,15 @@ def test_array(part):
       'invalid assignments to an array do not compile', should_succeed=False)
     test_compilable('array-call-by-reference.c',
       'arrays in the function signature do compile')
-    test_mipster_execution('array-assignment.c', 10,
+    test_mipster_execution('array-assignment.c', 42,
       'arrays assignments are implemented with the right semantics')
-    test_mipster_execution('array-call-by-reference.c', 4,
+    test_mipster_execution('array-call-by-reference.c', 42,
       'array assignments in functions are implemented with the right semantics')
 
   if part == 2:
     test_compilable('array-multidimensional.c',
       'multidimensional array declarations do compile')
-    test_mipster_execution('array-multidimensional.c', 4,
+    test_mipster_execution('array-multidimensional.c', 42,
       'multidimensional arrays assignments are implemented with the right semantics')
     test_compilable('array-access-order.c',
       'access to start-address of multidimensional is possible')
@@ -591,27 +607,32 @@ def test_array(part):
 
 
 
-def test_structs():
-  test_compilable('struct-declaration.c',
-    'empty struct declarations compiled')
-  test_compilable('struct-member-declaration.c',
-    'struct declaration with trivial members compiled')
-  test_compilable('struct-initialization.c',
-    'empty struct with initialization compiled')
-  test_compilable('struct-member-initialization.c',
-    'initialization of trivial struct members compiled')
-  test_mipster_execution('struct-member-initialization.c', 123,
-    'read and write operations of trivial struct member works when executed with MIPSTER')
-  test_compilable('struct-nested-declaration.c',
-    'struct declaration with struct members compiled')
-  test_compilable('struct-nested-initialization.c',
-    'struct initialization with struct members compiled')
-  test_mipster_execution('struct-nested-initialization.c', 123,
-    'read and write operations of nested struct member works when executed with MIPSTER')
-  test_compilable('struct-as-parameter.c',
-    'struct as function parameter compiled')
-  test_mipster_execution('struct-as-parameter.c', 1,
-    'read and write operations of structs as parameter work when executed with MIPSTER')
+def test_structs(part):
+  if part == 1:
+    test_compilable('struct-declaration.c',
+      'empty struct declarations compiled')
+    test_compilable('struct-member-declaration.c',
+      'struct declaration with trivial members compiled')
+    test_compilable('struct-nested-declaration.c',
+      'struct declaration with struct members compiled')
+    test_compilable('struct-definition.c',
+      'struct definition with global and local scope compiled')
+
+  if part == 2:
+    test_compilable('struct-initialization.c',
+      'empty struct with initialization compiled')
+    test_compilable('struct-member-initialization.c',
+      'initialization of trivial struct members compiled')
+    test_mipster_execution('struct-member-initialization.c', 42,
+      'read and write operations of trivial struct member works when executed with MIPSTER')
+    test_compilable('struct-nested-initialization.c',
+      'struct initialization with struct members compiled')
+    test_mipster_execution('struct-nested-initialization.c', 42,
+      'read and write operations of nested struct member works when executed with MIPSTER')
+    test_compilable('struct-as-parameter.c',
+      'struct as function parameter compiled')
+    test_mipster_execution('struct-as-parameter.c', 42,
+      'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
 def test_assembler(stage):
@@ -667,18 +688,14 @@ def test_thread():
     'creates a thread, where the parent can join the thread with MIPSTER', success_criteria=70)
   test_execution('./selfie -c selfie.c -m 128 -c grader/thread-implementation.c -y 64',
     'creates a thread, where the parent can join the thread with HYPSTER', success_criteria=70)
-  test_execution('./selfie -c grader/thread-data-shared.c -m 128',
-    'data section is shared for threads on MIPSTER',
-    success_criteria=1)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-data-shared.c -y 64',
-    'data section is shared for threads on HYPSTER',
-    success_criteria=1)
-  test_execution('./selfie -c grader/thread-heap-shared.c -m 128',
-    'heap data is shared for threads on MIPSTER',
-    success_criteria=1)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-heap-shared.c -y 64',
-    'heap data is shared for threads on HYPSTER',
-    success_criteria=1)
+  test_mipster_execution('grader/thread-data-shared.c', 42,
+    'data section is shared for threads on MIPSTER')
+  test_hypster_execution('grader/thread-data-shared.c', 42,
+    'data section is shared for threads on HYPSTER')
+  test_mipster_execution('grader/thread-heap-shared.c', 42,
+    'heap data is shared for threads on MIPSTER')
+  test_hypster_execution('grader/thread-heap-shared.c', 42,
+    'heap data is shared for threads on HYPSTER')
 
 
 
@@ -694,7 +711,7 @@ def test_treiber_stack():
 
 
 def test_base(mandatory=True):
-  test_execution('make selfie', 'cc compiles selfie.c', mandatory=mandatory)
+  test_execution('make clean selfie', 'cc compiles selfie.c', mandatory=mandatory)
   test_compile_warnings('selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 
 
@@ -790,7 +807,7 @@ def enable_bulk_grader(file):
   if not os.path.isfile(file):
     print('the path "' + file + '" is not a file')
     exit(1)
-  
+
   bulk_grade_mode = True
   file_with_commit_links = os.path.abspath(file)
 
@@ -836,7 +853,8 @@ defined_tests = [
     ('for-loop', test_for_loop),
     ('array-1', lambda: test_array(1)),
     ('array-2', lambda: test_array(2)),
-    ('struct', test_structs),
+    ('struct-1', lambda: test_structs(1)),
+    ('struct-2', lambda: test_structs(2)),
     ('assembler-1', lambda: test_assembler(1)),
     ('assembler-2', lambda: test_assembler(2)),
     ('concurrent-machines', test_concurrent_machines),
@@ -876,7 +894,7 @@ def parse_options(args):
     else:
       print('unknown option: ' + args[i])
       exit(1)
-    
+
     i += 1
 
   return args[i:]
@@ -893,7 +911,7 @@ def parse_tests(args):
     else:
       print('unknown test: {}'.format(arg))
       exit(1)
-  
+
   return to_execute
 
 
@@ -915,7 +933,7 @@ def do_bulk_grading(tests):
   working_directory = os.getcwd()
 
   os.chdir(bulk_grade_directory)
-  
+
   with open(file_with_commit_links, 'rt') as file:
     for line in file.readlines():
       matcher = re.match('^https://github.com/([^/]+)/([^/]+)/commit/([0-9a-f]+)$', line)
@@ -934,7 +952,7 @@ def do_bulk_grading(tests):
         os.system('git clone -q https://github.com/{}/{} {}/{}'.format(user, repo, user, repo))
 
       os.chdir(clone_dir)
-      
+
       # remove all changes in local repository
       os.system('git reset --hard -q')
 
@@ -992,7 +1010,8 @@ def main(argv):
   else:
     check_assignments(tests)
 
+  sys.stdout = sys.__stdout__
+
 
 if __name__ == "__main__":
   main(sys.argv)
-

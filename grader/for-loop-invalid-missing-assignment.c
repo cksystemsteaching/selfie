@@ -7,5 +7,5 @@ int main(int argc, char** argv) {
   for (i = 0; i < 3)
     sum = sum + i;
 
-  return sum;
+  return sum + 39;
 }
