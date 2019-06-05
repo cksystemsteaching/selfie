@@ -11043,6 +11043,7 @@ uint64_t* allocate_dg_node(uint64_t ctc, uint64_t* in) {
 
   set_next_node(new_node, in);
   set_prev_node(new_node, (uint64_t*) 0);
+  set_assigns(new_node, (uint64_t*) 0);
 
   if (in != (uint64_t*) 0)
     set_prev_node(in, new_node);
