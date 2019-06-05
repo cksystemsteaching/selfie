@@ -9462,10 +9462,7 @@ uint64_t constrain_sd() {
       } else
         stc = 0; //first return from input syscall
 
-      if (*(reg_type + rs2) == MSIID_T) //no overwrite if symbolic
-        store_symbolic_memory(pt, vaddr, 0, *(reg_type + rs2), *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2), tc);
-      else
-        store_symbolic_memory(pt, vaddr, 0, *(reg_type + rs2), *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2), mrcc);
+      store_symbolic_memory(pt, vaddr, 0, *(reg_type + rs2), *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2), mrcc);
 
       //only for msiid
       if (*(reg_type + rs2) == MSIID_T) {
@@ -9890,30 +9887,28 @@ uint64_t store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t ctc, uint6
   return 0;
 }
 
-
 uint64_t overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
-  // prevent from overwrite whenever the value is aliased (correcness of backward semantics)
-  if (search_alias(mrvc) == (uint64_t*) 0) {
-  // prevent from overwriting witnesses that might be concrete
-    if (look_for_witness(mrvc) == (uint64_t) -1) {
-      if (trb < mrvc) {
-        // current value at vaddr does not need to be tracked,
-        // just overwrite it in the trace
+  if (type != CONCRETE_T)     // no overwriting for symbolic
+    return 0;
+  if (search_alias(mrvc))     // from symbolic
+    return 0;
+  if (look_for_witness(mrvc)) // and witnesses values (a from symbolic can be concrete and without constraints)
+    return 0;
+  if (trb < mrvc) {
+    // current value at vaddr does not need to be tracked,
+    // just overwrite it in the trace
+    set_trace_type(mrvc, type);
+    set_trace_pc(mrvc, pc);
 
-        set_trace_type(mrvc, type);
-        set_trace_pc(mrvc, pc);
+    set_trace_a1(mrvc, lo);
+    set_trace_a2(mrvc, up);
+    set_trace_a3(mrvc, step);
 
-        set_trace_a1(mrvc, lo);
-        set_trace_a2(mrvc, up);
-        set_trace_a3(mrvc, step);
-
-        if (debug_symbolic) {
-          printf1((uint64_t*) "%s: overwriting ", selfie_name);
-          print_symbolic_memory(mrvc);
-        }
-        return 1;
-      }
+    if (debug_symbolic) {
+      printf1((uint64_t*) "%s: overwriting ", selfie_name);
+      print_symbolic_memory(mrvc);
     }
+    return 1;
   }
   return 0;
 }
