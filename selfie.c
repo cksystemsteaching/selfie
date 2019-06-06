@@ -1414,7 +1414,7 @@ uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores p
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_MERGE + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -7759,7 +7759,10 @@ void copy_symbolic_memory(uint64_t* from_context, uint64_t* to_context) {
   uint64_t* previous;
 
   sword = get_symbolic_memory(from_context);
+
+  sword_copy           = (uint64_t*) 0;
   symbolic_memory_copy = (uint64_t*) 0;
+  previous             = (uint64_t*) 0;
 
   while (sword) {
     sword_copy = allocate_symbolic_memory_word();
