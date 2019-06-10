@@ -1276,6 +1276,8 @@ uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in
 char*    smt_name = (char*) 0; // name of SMT-LIB file
 uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
 
+uint64_t merge_enabled = 1; // enable or disable the merging
+
 uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
 uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
 uint64_t* prologues_and_corresponding_merge_locations = (uint64_t*) 0; // stack which stores possible function prologues and their corresponding merge locations
@@ -1288,7 +1290,7 @@ uint64_t prologue_start = 0;
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t BEQ_LIMIT = 100;  // limit of symbolic beq instructions on any given path
+uint64_t BEQ_LIMIT = 35;  // limit of symbolic beq instructions on any given path
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -7439,7 +7441,9 @@ void constrain_beq() {
 
     path_condition = smt_binary("and", pvar, smt_unary("not", bvar));
 
-    set_merge_location(current_context, find_merge_location(imm));
+    // set the merge location only when merging is enabled
+    if (merge_enabled)
+      set_merge_location(current_context, find_merge_location(imm));
   
     // check if a context is waiting to be merged
     if (current_mergeable_context != (uint64_t*) 0) {
