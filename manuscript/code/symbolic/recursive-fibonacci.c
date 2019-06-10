@@ -23,11 +23,11 @@ uint64_t main() {
 
   read(1, x, 1);
 
-  *x = *x - 47;
+  *x = *x - 45;
 
   a = fibonacci(*x);
 
-  if (a == 1)
+  if (a == 3)
     return 1;
   else
     return 0;
