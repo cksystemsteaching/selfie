@@ -1290,7 +1290,8 @@ uint64_t prologue_start = 0;
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t BEQ_LIMIT = 35;  // limit of symbolic beq instructions on any given path
+uint64_t BEQ_LIMIT                 = 35;  // limit of symbolic beq instructions on any given path
+uint64_t MAX_PATH_CONDITION_LENGTH = 1000000;
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -8045,6 +8046,16 @@ uint64_t is_start_of_procedure_prologue(uint64_t prologue_start) {
 }
 
 void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location) {
+  // do not merge if merging is disabled
+  if (merge_enabled == 0) {
+    if (current_mergeable_context != (uint64_t*) 0) {
+      add_mergeable_context(current_mergeable_context);
+      current_mergeable_context = (uint64_t*) 0;
+    }
+
+    return;
+  }
+
   print("; merging two contexts at ");
   print_code_context_for_instruction(location);
   println();
@@ -8056,6 +8067,10 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
 
   // merging the symbolic store
   merge_symbolic_store(active_context, mergeable_context);
+
+  // disable merging if the path condition becomes too large
+  if (string_length(smt_binary("or", get_path_condition(active_context), get_path_condition(mergeable_context))) > MAX_PATH_CONDITION_LENGTH)
+    merge_enabled = 0;
 
   // merging the path condition
   path_condition = smt_binary("or", get_path_condition(active_context), get_path_condition(mergeable_context));
@@ -8201,7 +8216,10 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
   uint64_t mergeable;
   uint64_t pauseable;
 
-  merge_not_finished = 1;
+  if (merge_enabled)
+    merge_not_finished = 1;
+  else
+    merge_not_finished = 0;
 
   while (merge_not_finished) {
     mergeable = 1;
@@ -8220,9 +8238,12 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
         current_mergeable_context = get_mergeable_context();
 
       if (current_mergeable_context != (uint64_t*) 0) {
-        if (get_pc(context) == get_pc(current_mergeable_context))
-          merge(context, current_mergeable_context, get_pc(context));
-        else
+        if (get_pc(context) == get_pc(current_mergeable_context)) {
+          if (merge_enabled)
+            merge(context, current_mergeable_context, get_pc(context));
+          else
+            mergeable = 0;
+        } else
           mergeable = 0;
       } else
         mergeable = 0;
@@ -8260,6 +8281,9 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
   // check if there are contexts which have been paused and were not merged yet
   if (context == (uint64_t*) 0)
     context = get_mergeable_context();
+
+  if (merge_enabled == 0)
+    merge_not_finished = 0;
 
   return context;
 }
