@@ -1290,6 +1290,9 @@ uint64_t prologue_start = 0;
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t DELETED = -1; // indicates that a symbolic memory word has been deleted
+uint64_t MERGED  = -2; // indicates that a symbolic memory word has been merged
+
 uint64_t BEQ_LIMIT                 = 35;  // limit of symbolic beq instructions on any given path
 uint64_t MAX_PATH_CONDITION_LENGTH = 1000000;
 
@@ -7798,8 +7801,12 @@ void delete_word_from_symbolic_memory(uint64_t vaddr) {
 
   while (sword) {
     if (get_word_address(sword) == vaddr)
-      // note: we do not really delete the word, we just set the virtual address to -1
-      set_word_address(sword, -1);
+      /* we indicate that this word has been deleted in order to avoid finding
+         outdated values when searching the symbolic memory later on
+
+         note: the word is not actually deleted, rather the word address is changed
+         to an address that indicates that the word should be considered as deleted */
+      set_word_address(sword, DELETED);
 
     sword = get_next_word(sword);
   }
@@ -8092,72 +8099,75 @@ void merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context)
   sword_from_active_context = symbolic_memory;
   // merging the symbolic memory
   while (sword_from_active_context) {
-    // check if the word has not already been 'deleted' (note: 'deleted' would mean a virtual address of -1)
-    if (get_word_address(sword_from_active_context) != (uint64_t) -1) {
-      sword_from_mergeable_context = get_symbolic_memory(mergeable_context);
+    // check if the word has not already been deleted
+    if (get_word_address(sword_from_active_context) != (uint64_t) DELETED) {
+    // check if the word has not already been merged
+      if (get_word_address(sword_from_active_context) != (uint64_t) MERGED) {
+        sword_from_mergeable_context = get_symbolic_memory(mergeable_context);
 
-      while (sword_from_mergeable_context) {
-        if (get_word_address(sword_from_active_context) == get_word_address(sword_from_mergeable_context)) {
-          if (get_word_symbolic(sword_from_active_context) != (char*) 0) {
-            if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
-              if (get_word_symbolic(sword_from_active_context) != get_word_symbolic(sword_from_mergeable_context)) {
-                // merge symbolic values if they are different
+        while (sword_from_mergeable_context) {
+          if (get_word_address(sword_from_active_context) == get_word_address(sword_from_mergeable_context)) {
+            if (get_word_symbolic(sword_from_active_context) != (char*) 0) {
+              if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
+                if (get_word_symbolic(sword_from_active_context) != get_word_symbolic(sword_from_mergeable_context)) {
+                  // merge symbolic values if they are different
+                  set_word_symbolic(sword_from_active_context, 
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      get_word_symbolic(sword_from_active_context), 
+                      get_word_symbolic(sword_from_mergeable_context)
+                    )
+                  );
+
+                  // indicate that the word has been merged since it does not need to be merged again
+                  set_word_address(sword_from_mergeable_context, MERGED);
+                }
+              } else {
+                // merge symbolic value and concrete value
                 set_word_symbolic(sword_from_active_context, 
                   smt_ternary("ite", 
                     get_path_condition(active_context), 
                     get_word_symbolic(sword_from_active_context), 
-                    get_word_symbolic(sword_from_mergeable_context)
-                  )
-                );
-
-                // 'delete' the word since it does not need to be merged again
-                set_word_address(sword_from_mergeable_context, -1);
-              }
-            } else {
-              // merge symbolic value and concrete value
-              set_word_symbolic(sword_from_active_context, 
-                smt_ternary("ite", 
-                  get_path_condition(active_context), 
-                  get_word_symbolic(sword_from_active_context), 
-                  bv_constant(get_word_value(sword_from_mergeable_context))
-                )
-              );
-
-              // 'delete' the word since it does not need to be merged again
-              set_word_address(sword_from_mergeable_context, -1);
-            }
-          } else {
-            if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
-              // merge concrete value and symbolic value
-              set_word_symbolic(sword_from_active_context, 
-                smt_ternary("ite", 
-                  get_path_condition(active_context), 
-                  bv_constant(get_word_value(sword_from_active_context)), 
-                  get_word_symbolic(sword_from_mergeable_context)
-                )
-              );
-
-              // 'delete' the word since it does not need to be merged again
-              set_word_address(sword_from_mergeable_context, -1);
-            } else {
-              if (get_word_value(sword_from_active_context) != get_word_value(sword_from_mergeable_context)) {
-                // merge concrete values if they are different
-                set_word_symbolic(sword_from_active_context, 
-                  smt_ternary("ite", 
-                    get_path_condition(active_context), 
-                    bv_constant(get_word_value(sword_from_active_context)),
                     bv_constant(get_word_value(sword_from_mergeable_context))
                   )
                 );
 
-                // 'delete' the word since it does not need to be merged again
-                set_word_address(sword_from_mergeable_context, -1);
+                // indicate that the word has been merged since it does not need to be merged again
+                set_word_address(sword_from_mergeable_context, MERGED);
+              }
+            } else {
+              if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
+                // merge concrete value and symbolic value
+                set_word_symbolic(sword_from_active_context, 
+                  smt_ternary("ite", 
+                    get_path_condition(active_context), 
+                    bv_constant(get_word_value(sword_from_active_context)), 
+                    get_word_symbolic(sword_from_mergeable_context)
+                  )
+                );
+
+                // indicate that the word has been merged since it does not need to be merged again
+                set_word_address(sword_from_mergeable_context, MERGED);
+              } else {
+                if (get_word_value(sword_from_active_context) != get_word_value(sword_from_mergeable_context)) {
+                  // merge concrete values if they are different
+                  set_word_symbolic(sword_from_active_context, 
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      bv_constant(get_word_value(sword_from_active_context)),
+                      bv_constant(get_word_value(sword_from_mergeable_context))
+                    )
+                  );
+
+                  // indicate that the word has been merged since it does not need to be merged again
+                  set_word_address(sword_from_mergeable_context, MERGED);
+                }
               }
             }
           }
-        }
 
-        sword_from_mergeable_context = get_next_word(sword_from_mergeable_context);
+          sword_from_mergeable_context = get_next_word(sword_from_mergeable_context);
+        }
       }
     }
 
