@@ -1253,7 +1253,7 @@ uint64_t* get_waiting_context();
 
 void      add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location);
 uint64_t  get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start);
-uint64_t  is_start_of_procedure_prologue(uint64_t prologue_start);
+uint64_t  already_called_procedure(uint64_t prologue_start);
 
 void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
 void      merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context);
@@ -1280,13 +1280,12 @@ uint64_t merge_enabled = 1; // enable or disable the merging
 
 uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
 uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
-uint64_t* prologues_and_corresponding_merge_locations = (uint64_t*) 0; // stack which stores possible function prologues and their corresponding merge locations
+uint64_t* prologues_and_corresponding_merge_locations = (uint64_t*) 0; // stack which stores procedure prologues and their corresponding merge locations
 
 uint64_t* current_mergeable_context                   = (uint64_t*) 0; // current context with which the active context can possibly be merged
 
-uint64_t in_recursion = 0;
-uint64_t prologue_and_corresponding_merge_location = 0;
-uint64_t prologue_start = 0;
+uint64_t in_recursion                 = 0;
+uint64_t recursive_merge_location     = 0;
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -7927,22 +7926,28 @@ uint64_t find_merge_location(uint64_t beq_imm) {
   decode();
   
   if (is != JAL)
-    // no jal instruction -> end of if without else branch
-    // merge is directly at target location of the beq instruction possible
+    /* no jal instruction -> end of if without else branch
+       merge is directly at target location of the beq instruction possible
+
+    note: this is a dependency on the selfie compiler */
     merge_location = original_pc + beq_imm;
   else {
     if (signed_less_than(imm, 0) == 0) { 
-      // jal with positive imm -> end of if with else branch
-      // (the selfie compiler emits a jal instruction with a positive immediate value if it sees an else branch)
-      // we have to skip the else branch in order to merge afterwards
+      /* jal with positive imm -> end of if with else branch
+         we have to skip the else branch in order to merge afterwards
+
+         note: this is a dependency on the selfie compiler
+         the selfie compiler emits a jal instruction with a positive immediate value if it sees an else branch) */
       merge_location = pc + imm;
 
       pc = original_pc + INSTRUCTIONSIZE;
     } else
-      // jal with negative imm -> end of loop body
-      // (the selfie compiler emits a jal instruction with a negative immediate value at
-      // the end of the loop body in order to jump back to the loop condition)
-      // merge is only outside of the loop body possible
+      /* jal with negative imm -> end of loop body
+         merge is only outside of the loop body possible
+
+         note: this is a dependency on the selfie compiler
+         the selfie compiler emits a jal instruction with a negative immediate value at
+         the end of the loop body in order to jump back to the loop condition */
       merge_location = pc + INSTRUCTIONSIZE;
   }
 
@@ -7952,12 +7957,18 @@ uint64_t find_merge_location(uint64_t beq_imm) {
     decode();
 
     if (is == JAL)
-      if (is_start_of_procedure_prologue(pc + imm)) {
-        // if we are inside of a recursion (nested arbitrarily deep), 
-        // we merge only after the entire recursion has been finished (i.e. the program
-        // has reached a program location which is not part of any recursion)
+      // if we are inside of a recursion (nested arbitrarily deep), 
+      // we merge only after the entire recursion has been finished (i.e. the program
+      // has reached a program location which is not part of any recursion)
+      if (already_called_procedure(pc + imm)) {
+        if (in_recursion)
+          merge_location = recursive_merge_location;
+        else {
+          recursive_merge_location = get_merge_location_from_corresponding_prologue_start(pc + imm);
+          merge_location = recursive_merge_location;
+        }
+
         in_recursion = 1;
-        merge_location = get_merge_location_from_corresponding_prologue_start(pc + imm);
       }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -8055,7 +8066,7 @@ uint64_t get_merge_location_from_corresponding_prologue_start(uint64_t prologue_
   return -1;
 }
 
-uint64_t is_start_of_procedure_prologue(uint64_t prologue_start) {
+uint64_t already_called_procedure(uint64_t prologue_start) {
   return (get_merge_location_from_corresponding_prologue_start(prologue_start) != (uint64_t) -1);
 }
 
@@ -8625,8 +8636,10 @@ void execute_debug() {
 }
 
 void execute_symbolically() {
-  uint64_t pc_after_jal;
+  uint64_t prologue_start;
+  uint64_t corresponding_merge_location;
   uint64_t pc_before_jal;
+  uint64_t jal_rd;
 
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI) {
@@ -8659,51 +8672,20 @@ void execute_symbolically() {
     constrain_beq();
   else if (is == JAL) {
     pc_before_jal = pc;
+    jal_rd = rd;
+
     do_jal();
-
-    pc_after_jal = pc;
-
-    // we need to check if we jump into a recursion
-    fetch();
-    decode();
-
-    if (is == ADDI) {
-      pc = pc + INSTRUCTIONSIZE;
-      fetch();
-      decode();
-
-      if (is == SD) {
-        pc = pc + INSTRUCTIONSIZE;
-        fetch();
-        decode();
-
-        if (is == ADDI) {
-          pc = pc + INSTRUCTIONSIZE;
-          fetch();
-          decode();
-
-          if (is == SD) {
-            pc = pc + INSTRUCTIONSIZE;
-            fetch();
-            decode();
-
-            // note: this check is not completely sufficient to determine a prologue of a procedure
-            // we would still have to check the registers, however, for the sake of simplicity this has been omitted
-            // we assume that we have identified a prologue of a procedure
-            if (is == ADDI)
-              // if we are already in a recursion, we do not change the merge location since we only merge when the recursion is finished
-              if (in_recursion == 0) {
-                prologue_and_corresponding_merge_location = pc_before_jal + 4 * INSTRUCTIONSIZE;
-                prologue_start = pc_after_jal;
-                add_prologue_start_and_corresponding_merge_location(prologue_start, prologue_and_corresponding_merge_location);
-              }
-
-          }
-        }
+    // note: this is a dependency on the selfie compiler
+    // the selfie compiler uses jal with the RA register to call a procedure
+    if (jal_rd == REG_RA)
+      // if we are already in a recursion, we do not add a new merge location since we only merge when the 
+      // recursion is finished (i.e. the program has reached a program location which is not part of any recursion)
+      if (in_recursion == 0) {
+        corresponding_merge_location = pc_before_jal + INSTRUCTIONSIZE;
+        prologue_start = pc;
+        add_prologue_start_and_corresponding_merge_location(prologue_start, corresponding_merge_location);
       }
-    }
 
-    pc = pc_after_jal;
   } else if (is == JALR) {
     constrain_jalr();
     do_jalr();
@@ -8730,6 +8712,12 @@ void interrupt() {
   }
 
   if (symbolic) {
+    if (in_recursion == 0)
+      if (prologues_and_corresponding_merge_locations != (uint64_t*) 0)
+        if (pc == *(prologues_and_corresponding_merge_locations + 2))
+          // pop prologue off the stack if we have finished the function
+          prologues_and_corresponding_merge_locations = (uint64_t*) *(prologues_and_corresponding_merge_locations + 0);
+
     if (current_mergeable_context != (uint64_t*) 0)
       // if both contexts are at the same program location, they can be merged
       if (pc == get_pc(current_mergeable_context))
