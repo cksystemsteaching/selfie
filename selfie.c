@@ -7451,7 +7451,7 @@ void constrain_beq() {
   
     // check if a context is waiting to be merged
     if (current_mergeable_context != (uint64_t*) 0) {
-      // we cannot merge with this one (yet), so we add it back to the stack of mergeable contexts
+      // we cannot merge with this one (yet), so we push it back onto the stack of mergeable contexts
       add_mergeable_context(current_mergeable_context);
       current_mergeable_context = (uint64_t*) 0;
     }
@@ -7933,24 +7933,29 @@ uint64_t find_merge_location(uint64_t beq_imm) {
   else {
     if (signed_less_than(imm, 0) == 0) { 
       // jal with positive imm -> end of if with else branch
+      // (the selfie compiler emits a jal instruction with a positive immediate value if it sees an else branch)
       // we have to skip the else branch in order to merge afterwards
       merge_location = pc + imm;
 
       pc = original_pc + INSTRUCTIONSIZE;
     } else
       // jal with negative imm -> end of loop body
-      // merge is only outside of the loop possible
+      // (the selfie compiler emits a jal instruction with a negative immediate value at
+      // the end of the loop body in order to jump back to the loop condition)
+      // merge is only outside of the loop body possible
       merge_location = pc + INSTRUCTIONSIZE;
   }
 
   // we need to check if we are inside of a recursion before we reach the merge location
-  // if we are, we merge only when the recursion is finished
   while (pc != merge_location) {
     fetch();
     decode();
 
     if (is == JAL)
       if (is_start_of_procedure_prologue(pc + imm)) {
+        // if we are inside of a recursion (nested arbitrarily deep), 
+        // we merge only after the entire recursion has been finished (i.e. the program
+        // has reached a program location which is not part of any recursion)
         in_recursion = 1;
         merge_location = get_merge_location_from_corresponding_prologue_start(pc + imm);
       }
@@ -7961,6 +7966,8 @@ uint64_t find_merge_location(uint64_t beq_imm) {
   // restore the original program state
   pc = original_pc;
   imm = original_imm;
+  fetch();
+  decode();
 
   return merge_location;
 }
