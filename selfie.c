@@ -1253,7 +1253,7 @@ uint64_t* get_waiting_context();
 
 void      add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location);
 uint64_t  get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start);
-uint64_t  already_called_procedure(uint64_t prologue_start);
+uint64_t  currently_in_this_procedure(uint64_t prologue_start);
 
 void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
 void      merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context);
@@ -7801,7 +7801,7 @@ void delete_word_from_symbolic_memory(uint64_t vaddr) {
   while (sword) {
     if (get_word_address(sword) == vaddr)
       /* we indicate that this word has been deleted in order to avoid finding
-         outdated values when searching the symbolic memory later on
+         outdated values when searching the symbolic memory
 
          note: the word is not actually deleted, rather the word address is changed
          to an address that indicates that the word should be considered as deleted */
@@ -7937,7 +7937,7 @@ uint64_t find_merge_location(uint64_t beq_imm) {
          we have to skip the else branch in order to merge afterwards
 
          note: this is a dependency on the selfie compiler
-         the selfie compiler emits a jal instruction with a positive immediate value if it sees an else branch) */
+         the selfie compiler emits a jal instruction with a positive immediate value if it sees an else branch */
       merge_location = pc + imm;
 
       pc = original_pc + INSTRUCTIONSIZE;
@@ -7957,17 +7957,14 @@ uint64_t find_merge_location(uint64_t beq_imm) {
     decode();
 
     if (is == JAL)
-      // if we are inside of a recursion (nested arbitrarily deep), 
+      // if we are inside of a (arbitrarily deep nested) recursion,
       // we merge only after the entire recursion has been finished (i.e. the program
       // has reached a program location which is not part of any recursion)
-      if (already_called_procedure(pc + imm)) {
-        if (in_recursion)
-          merge_location = recursive_merge_location;
-        else {
+      if (currently_in_this_procedure(pc + imm)) {
+        if (in_recursion == 0)
           recursive_merge_location = get_merge_location_from_corresponding_prologue_start(pc + imm);
-          merge_location = recursive_merge_location;
-        }
 
+        merge_location = recursive_merge_location;
         in_recursion = 1;
       }
 
@@ -8066,7 +8063,7 @@ uint64_t get_merge_location_from_corresponding_prologue_start(uint64_t prologue_
   return -1;
 }
 
-uint64_t already_called_procedure(uint64_t prologue_start) {
+uint64_t currently_in_this_procedure(uint64_t prologue_start) {
   return (get_merge_location_from_corresponding_prologue_start(prologue_start) != (uint64_t) -1);
 }
 
@@ -8087,7 +8084,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
 
   if (prologues_and_corresponding_merge_locations != (uint64_t*) 0)
     if (get_pc(active_context) == *(prologues_and_corresponding_merge_locations + 2))
-      // we have finished the recursion
+      // we have finished the recursion (i.e. the program has reached a program location which is not part of any recursion)
       in_recursion = 0;
 
   // merging the symbolic store
@@ -8715,7 +8712,7 @@ void interrupt() {
     if (in_recursion == 0)
       if (prologues_and_corresponding_merge_locations != (uint64_t*) 0)
         if (pc == *(prologues_and_corresponding_merge_locations + 2))
-          // pop prologue off the stack if we have finished the function
+          // pop prologue off the stack if we have finished the procedure
           prologues_and_corresponding_merge_locations = (uint64_t*) *(prologues_and_corresponding_merge_locations + 0);
 
     if (current_mergeable_context != (uint64_t*) 0)
