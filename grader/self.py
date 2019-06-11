@@ -21,6 +21,8 @@ import re
 import math
 import struct
 import shlex
+import threading
+import time
 
 if sys.version_info < (3, 3):
   from subprocess import Popen, PIPE
@@ -150,6 +152,44 @@ class DummyWriter:
   def write(self, text):
     return
 
+
+class SpinnerThread(threading.Thread):
+  def __init__(self, msg):
+    def spinning_cursor():
+      while True:
+        for cursor in '|/-\\':
+          yield cursor
+
+    threading.Thread.__init__(self)
+    self.msg = msg
+    self.should_stop = False
+    self.spinner = spinning_cursor()
+
+  def stop(self):
+    self.should_stop = True
+
+  def run(self):
+    while not self.should_stop:
+      sys.stdout.write('[  ' + next(self.spinner) + '   ] ' + self.msg)
+      sys.stdout.flush()
+      time.sleep(0.15)
+      sys.stdout.write('\b' * (len(self.msg) + 9))
+
+    sys.stdout.flush()
+
+def print_processing(msg):
+  global spinner_thread
+  spinner_thread = SpinnerThread(msg)
+  spinner_thread.daemon = True  # die when parent dies
+  spinner_thread.start()
+
+
+def stop_processing():
+  global spinner_thread
+  spinner_thread.stop()
+  spinner_thread.join()
+
+
 def print_passed(msg):
   print("\033[92m[PASSED]\033[0m " + msg)
 
@@ -171,6 +211,8 @@ def record_result(result, msg, output, warning, should_succeed=True, command=Non
   global number_of_positive_tests_passed, number_of_positive_tests_failed
   global number_of_negative_tests_passed, number_of_negative_tests_failed
   global failed_mandatory_test
+
+  stop_processing()
 
   if result:
     if should_succeed:
@@ -279,6 +321,8 @@ def has_no_compile_warnings(return_value, output):
 def test_instruction_encoding(instruction, file):
   msg = instruction[0] + ' has right RISC-V encoding'
 
+  print_processing(msg)
+
   command = './selfie -c grader/{} -o .tmp.bin'.format(file)
 
   try:
@@ -332,6 +376,8 @@ def test_instruction_encoding(instruction, file):
 def test_assembler_instruction_format(instruction, file):
   msg = instruction[0] + ' RISC-V instruction has right assembly instruction format'
 
+  print_processing(msg)
+
   command = './selfie -c grader/{} -s .tmp.s'.format(file)
 
   try:
@@ -364,6 +410,8 @@ def test_assembler_instruction_format(instruction, file):
 
 
 def test_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False):
+  print_processing(msg)
+
   try:
     returncode, output, error_output = execute(command)
 
@@ -991,27 +1039,32 @@ def check_assignments(assignments):
 def main(argv):
   global home_path
 
-  if len(argv) <= 1:
-    print_usage()
-    exit()
+  try:
+    if len(argv) <= 1:
+      print_usage()
+      exit()
 
-  sys.setrecursionlimit(5000)
+    sys.setrecursionlimit(5000)
 
-  home_path = os.path.abspath(os.getcwd())
+    home_path = os.path.abspath(os.getcwd())
 
-  args = parse_options(argv[1:])
+    args = parse_options(argv[1:])
 
-  tests = parse_tests(args)
+    tests = parse_tests(args)
 
-  validate_options_for(tests)
+    validate_options_for(tests)
 
-  if bulk_grade_mode:
-    do_bulk_grading(tests)
-  else:
-    check_assignments(tests)
+    if bulk_grade_mode:
+      do_bulk_grading(tests)
+    else:
+      check_assignments(tests)
 
-  sys.stdout = sys.__stdout__
+  finally:
+    sys.stdout = sys.__stdout__
 
 
 if __name__ == "__main__":
-  main(sys.argv)
+  try:
+    main(sys.argv)
+  except KeyboardInterrupt:
+    print('\naborting...')
