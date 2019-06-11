@@ -9428,6 +9428,7 @@ uint64_t handle_timer(uint64_t* context) {
   if (symbolic) {
     printf1("; timeout in ", path_condition);
     print_code_context_for_instruction(pc);
+    println();
 
     return EXIT;
   } else
