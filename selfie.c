@@ -11158,11 +11158,6 @@ uint64_t* delete_assignment(uint64_t ctc, uint64_t* from) {
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
-  // remove succ.'s predecessor
-  s_assign = get_assign_successor(assign);
-  if (s_assign)
-    pop(get_assign_predecessors(s_assign), MAX_PREDECESSOR);
-
   if (get_assign_correction(assign) < ic_correction)
     // deallocate correction entry
     ic_correction = ic_correction - 1;
@@ -11180,6 +11175,17 @@ uint64_t* delete_assignment(uint64_t ctc, uint64_t* from) {
         set_prev_node(node, (uint64_t*) 0);
       } else
         from = get_next_node(node);
+  }
+
+  // remove succ.'s predecessor
+  // after node for self assignments
+  s_assign = get_assign_successor(assign);
+  if (s_assign) {
+    pop(get_assign_predecessors(s_assign), MAX_PREDECESSOR);
+    // remove successor if empty
+    if (*get_assign_predecessors(s_assign) == 0)
+      if (get_assign_successor(s_assign) == (uint64_t*) 0)
+        from = delete_assignment(get_assign_tc(s_assign), from);
   }
 
   if (sdebug_alias) {
