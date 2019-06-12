@@ -1489,6 +1489,7 @@ void constrain_divu();
 void constrain_remu_step_1();
 void constrain_remu();
 void constrain_sltu();
+void constrain_beq();
 
 uint64_t constrain_ld();
 uint64_t constrain_sd();
@@ -7212,8 +7213,6 @@ void do_beq() {
   }
 
   ic_beq = ic_beq + 1;
-  if (symbolic)
-    path_length = path_length + 1;
 }
 
 void print_jal() {
@@ -7720,11 +7719,11 @@ void decode_execute() {
           if (debug_symbolic) {
             print_beq();
             print_beq_before();
-            do_beq();
+            constrain_beq();
             print_beq_after();
             println();
           } else
-            do_beq();
+            constrain_beq();
         }
       } else
         do_beq();
@@ -9358,6 +9357,18 @@ void constrain_sltu() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_sltu = ic_sltu + 1;
+  path_length = path_length + 1;
+}
+
+void constrain_beq() {
+  if (*(reg_type + rs1) == MSIID_T) {
+    printf2((uint64_t*) "%s: symbolic beq %x", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
+  do_beq();
   path_length = path_length + 1;
 }
 
