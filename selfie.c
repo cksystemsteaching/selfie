@@ -1841,6 +1841,11 @@ uint64_t symbolic_calling_pc  = 0;
 void init_symbolic_engine() {
   uint64_t i;
 
+  if (MAX_ALIAS > 0) {
+    print((uint64_t*) "alias propagation not implemented, MAX_ALIAS should be 0\n");
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
   pcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
   tcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
   types   = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
