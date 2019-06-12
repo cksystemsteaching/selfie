@@ -1704,7 +1704,7 @@ void pointer_error();
 // -----------------------------------------------------------------
 
 uint64_t* allocate_list(uint64_t size);
-void      push(uint64_t* l, uint64_t it, uint64_t size);
+void      push(uint64_t* l, uint64_t new, uint64_t size);
 uint64_t  pop(uint64_t* l, uint64_t size);
 void      print_list(uint64_t* l, uint64_t size);
 
@@ -10984,28 +10984,28 @@ uint64_t* allocate_list(uint64_t size) {
   return list;
 }
 
-void push(uint64_t* l, uint64_t it, uint64_t size) {
+void push(uint64_t* l, uint64_t new, uint64_t size) {
   uint64_t index;
   uint64_t val;
   uint64_t tmp;
 
   index = 0;
-  val   = it;
+  val   = new;
 
-  while (val) {
+  while (*(l + index)) {
     tmp           = *(l + index);
     *(l + index)  = val;
+    val           = tmp;
 
+    index = index + 1;
     if (index >= size) {
       printf3((uint64_t*) "%s: error list full (size %d) at %x", selfie_name, (uint64_t*) size, (uint64_t*) pc);
       print_code_line_number_for_instruction(pc - entry_point);
       println();
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
     }
-
-    index = index + 1;
-    val   = *(l + index);
   }
+  *(l + index) = val;
 }
 
 uint64_t pop(uint64_t* l, uint64_t size) {
