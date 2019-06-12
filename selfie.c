@@ -1514,7 +1514,7 @@ uint64_t fuzz_up(uint64_t value);
 uint64_t init_type(uint64_t lo, uint64_t up);
 uint64_t is_constrained(uint64_t pre);
 
-void      create_witness(uint64_t ctc);
+void      create_witness(uint64_t taddr);
 uint64_t  look_for_witness(uint64_t vtc);
 uint64_t  update_witness(uint64_t old, uint64_t new);
 
@@ -1547,7 +1547,7 @@ void      ealloc();
 void      efree();
 
 uint64_t  load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
-uint64_t  store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t ctc, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+uint64_t  store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t taddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
 uint64_t  overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
@@ -1707,19 +1707,19 @@ void      push(uint64_t* l, uint64_t new, uint64_t size);
 uint64_t  pop(uint64_t* l, uint64_t size);
 void      print_list(uint64_t* l, uint64_t size);
 
-uint64_t* allocate_dg_node(uint64_t ctc, uint64_t* in);
-uint64_t* allocate_assignment(uint64_t ctc, uint64_t* p_assign, uint64_t* s_assign, uint64_t pcc, uint64_t* in);
-void      push_assignment(uint64_t ctc, uint64_t pcc, uint64_t stc);
-uint64_t* delete_assignment(uint64_t ctc, uint64_t* from);
+uint64_t* allocate_dg_node(uint64_t taddr, uint64_t* in);
+uint64_t* allocate_assignment(uint64_t taddr, uint64_t* p_assign, uint64_t* s_assign, uint64_t pcc, uint64_t* in);
+void      push_assignment(uint64_t taddr, uint64_t pcc, uint64_t stc);
+uint64_t* delete_assignment(uint64_t taddr, uint64_t* from);
 
-uint64_t* search_node(uint64_t ctc);
-uint64_t* search_alias(uint64_t ctc);
-void      update_alias_tc(uint64_t vaddr, uint64_t ctc);
+uint64_t* search_node(uint64_t taddr);
+uint64_t* search_alias(uint64_t taddr);
+void      update_alias_tc(uint64_t vaddr, uint64_t taddr);
 uint64_t  alias_depth(uint64_t vaddr);
 
-uint64_t  get_source(uint64_t ctc);
-uint64_t  get_correction(uint64_t ctc);
-uint64_t  get_vaddr_with_alias(uint64_t ctc);
+uint64_t  get_source(uint64_t taddr);
+uint64_t  get_correction(uint64_t taddr);
+uint64_t  get_vaddr_with_alias(uint64_t taddr);
 
 void print_dg();
 
@@ -1750,8 +1750,8 @@ void set_assigns(uint64_t* entry, uint64_t* assigns)   { *(entry + 2) = (uint64_
 // assign
 // +----+---------+
 // |  0 | next    | next assignments
-// |  1 | tc      | assignment's most recent tc
-// |  2 | flag    | is the dependence enable
+// |  1 | taddr   | assignment's most recent trace index
+// |  2 | flag    | is the dependence enabled
 // |  3 | plist   | list of predecessor's assignments
 // |  4 | s       | successor's assignment
 // |  5 | corr    | correction
@@ -1765,7 +1765,7 @@ uint64_t* get_assign_successor(uint64_t* assign)   { return (uint64_t*)  *(assig
 uint64_t  get_assign_correction(uint64_t* assign)  { return              *(assign + 5); }
 
 void set_next_assign(uint64_t* assign, uint64_t* next)          { *assign         = (uint64_t)  next; }
-void set_assign_tc(uint64_t* assign, uint64_t ctc)              { *(assign + 1)   = ctc; }
+void set_assign_tc(uint64_t* assign, uint64_t taddr)            { *(assign + 1)   = taddr; }
 void set_assign_flag(uint64_t* assign, uint64_t f)              { *(assign + 2)   = f; }
 void set_assign_predecessors(uint64_t* assign, uint64_t* plist) { *(assign + 3)   = (uint64_t) plist; }
 void set_assign_successor(uint64_t* assign, uint64_t* s_assign) { *(assign + 4)   = (uint64_t) s_assign; }
@@ -1786,8 +1786,8 @@ uint64_t* factors   = (uint64_t*) 0;
 void constrain_memory(uint64_t mrvc, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb);
 
 void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint64_t exp_t, uint64_t colo, uint64_t coup, uint64_t factor);
-void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
-void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step);
+void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step);
 void store_register_memory(uint64_t reg, uint64_t value);
 
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc);
@@ -1816,8 +1816,8 @@ uint64_t has_false_branch = 1;
 
 uint64_t is_argument(uint64_t vaddr, uint64_t reg);
 
-void disable_alias(uint64_t ctc);
-void enable_alias(uint64_t ctc);
+void disable_alias(uint64_t taddr);
+void enable_alias(uint64_t taddr);
 
 void constrain_jal();
 void constrain_jalr();
@@ -9718,19 +9718,19 @@ uint64_t is_constrained(uint64_t pre) {
   return 1;
 }
 
-void create_witness(uint64_t ctc) {
+void create_witness(uint64_t taddr) {
   if (ic_symbolic == MAX_SYMBOLIC) {
     printf2((uint64_t*) "%s: too many symbolic variables at %x\n", selfie_name, (uint64_t*) pc);
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
   if (sdebug_witness) {
-    printf4((uint64_t*) "%s: [w] new input symbol %d leading at index %d at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) ic_symbolic, (uint64_t*) pc);
+    printf4((uint64_t*) "%s: [w] new input symbol %d leading at index %d at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) ic_symbolic, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
 
-  *(symbolic_tcs  + ic_symbolic) = ctc;
+  *(symbolic_tcs  + ic_symbolic) = taddr;
   *(syscall_pc    + ic_symbolic) = pc; //assuming the store at the same line
 
   ic_symbolic = ic_symbolic + 1;
@@ -9774,7 +9774,7 @@ void print_witness() {
   uint64_t idx;
   idx = 0;
 
-  printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) ic_symbolic - bk_read);
+  printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) (ic_symbolic - bk_read));
 
   while (idx < (ic_symbolic - bk_read)) {
     printf3((uint64_t*) "%s:  -  symbolic %d created at %x", selfie_name, (uint64_t*) (idx + 1), (uint64_t*) *(syscall_pc + idx));
@@ -9837,38 +9837,38 @@ uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr) {
   }
 }
 
-uint64_t store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t ctc, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+uint64_t store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t taddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   //specific cases
   if (vaddr == 0)
     // tracking program break and size for malloc
-    ctc = 0;
+    taddr = 0;
   else if (vaddr < NUMBEROFREGISTERS)
     // tracking a register value for sltu
-    ctc = mrcc;
+    taddr = mrcc;
     // not tracking previous aliased memory
   else if (vaddr != NUMBEROFREGISTERS) {
     // assert: vaddr is valid and mapped
-    ctc = load_symbolic_memory(pt, vaddr);
+    taddr = load_symbolic_memory(pt, vaddr);
 
     // prevent from 'void store' whenever the value is aliased (correcness of backward semantics)
-    if (search_alias(ctc) == (uint64_t*) 0)
-      if (vaddr == get_trace_vaddr(ctc))
-        if (type == get_trace_type(ctc))
-          if (lo == get_trace_a1(ctc))
-            if (up == get_trace_a2(ctc))
-              if (step == get_trace_a3(ctc))
+    if (search_alias(taddr) == (uint64_t*) 0)
+      if (vaddr == get_trace_vaddr(taddr))
+        if (type == get_trace_type(taddr))
+          if (lo == get_trace_a1(taddr))
+            if (up == get_trace_a2(taddr))
+              if (step == get_trace_a3(taddr))
                 // prevent tracking identical updates
                 return 0;
   }
 
-  if (overwritten(ctc, type, lo, up, step, trb) == 0) {
+  if (overwritten(taddr, type, lo, up, step, trb) == 0) {
     if (is_trace_space_available()) {
       // current value at vaddr is from before most recent branch,
       // track that value by creating a new trace event
       ealloc();
 
       set_trace_pc(tc, pc);
-      set_trace_tc(tc, ctc);
+      set_trace_tc(tc, taddr);
       set_trace_type(tc, type);
       set_trace_vaddr(tc, vaddr);
 
@@ -11037,11 +11037,11 @@ void print_list(uint64_t* l, uint64_t size) {
   print((uint64_t*) "]");
 }
 
-uint64_t* allocate_dg_node(uint64_t ctc, uint64_t* in) {
+uint64_t* allocate_dg_node(uint64_t taddr, uint64_t* in) {
   uint64_t* new_node;
 
   if (sdebug_alias) {
-    printf3((uint64_t*) "%s: [a] new aliased variable %d at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) pc);
+    printf3((uint64_t*) "%s: [a] new aliased variable %d at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
@@ -11058,14 +11058,14 @@ uint64_t* allocate_dg_node(uint64_t ctc, uint64_t* in) {
   return new_node;
 }
 
-uint64_t* allocate_assignment(uint64_t ctc, uint64_t* p_assign, uint64_t* s_assign, uint64_t pcc, uint64_t* in) {
+uint64_t* allocate_assignment(uint64_t taddr, uint64_t* p_assign, uint64_t* s_assign, uint64_t pcc, uint64_t* in) {
   uint64_t* new_assign;
   uint64_t* pred_list;
 
   new_assign = smalloc(3 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
   set_next_assign(new_assign, in);
 
-  set_assign_tc(new_assign, ctc);
+  set_assign_tc(new_assign, taddr);
   set_assign_flag(new_assign, 1);
 
   set_assign_successor(new_assign, s_assign);
@@ -11092,7 +11092,7 @@ uint64_t* allocate_assignment(uint64_t ctc, uint64_t* p_assign, uint64_t* s_assi
   return new_assign;
 }
 
-void push_assignment(uint64_t ctc, uint64_t pcc, uint64_t stc) {
+void push_assignment(uint64_t taddr, uint64_t pcc, uint64_t stc) {
     uint64_t* node;
     uint64_t* s_node;
     uint64_t* s_assign;
@@ -11112,43 +11112,43 @@ void push_assignment(uint64_t ctc, uint64_t pcc, uint64_t stc) {
     }
 
     // node
-    node = search_node(ctc);
+    node = search_node(taddr);
     if (node == (uint64_t*) 0) {
-      global_dg = allocate_dg_node(ctc, global_dg);
+      global_dg = allocate_dg_node(taddr, global_dg);
       node = global_dg;
     }
 
     // current tc assignment
-    set_assigns(node, allocate_assignment(ctc, 0, s_assign, pcc, get_assigns(node)));
+    set_assigns(node, allocate_assignment(taddr, 0, s_assign, pcc, get_assigns(node)));
 
     // set predecessor
     push(get_assign_predecessors(s_assign), (uint64_t) get_assigns(node), MAX_PREDECESSOR);
 
     if (sdebug_alias) {
-      printf4((uint64_t*) "%s: [a] push dependence %d -> %d at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) stc, (uint64_t*) pc);
+      printf4((uint64_t*) "%s: [a] push dependence %d -> %d at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) stc, (uint64_t*) pc);
       print_code_line_number_for_instruction(pc - entry_point);
       println();
       print_dg();
     }
 }
 
-uint64_t* delete_assignment(uint64_t ctc, uint64_t* from) {
+uint64_t* delete_assignment(uint64_t taddr, uint64_t* from) {
   uint64_t* node;
   uint64_t* assign;
   uint64_t* s_assign;
 
-  node     = search_node(ctc);
+  node     = search_node(taddr);
   assign   = get_assigns(node);
 
   if (assign == (uint64_t*) 0) {
-    printf3((uint64_t*) "%s: error cannot remove my dependency for %d at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) pc);
+    printf3((uint64_t*) "%s: error cannot remove my dependency for %d at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
   if (*(get_assign_predecessors(assign))) {
-    printf3((uint64_t*) "%s: error there is a predecessor while removing my timelife for %d at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) pc);
+    printf3((uint64_t*) "%s: error there is a predecessor while removing my timelife for %d at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
@@ -11185,19 +11185,19 @@ uint64_t* delete_assignment(uint64_t ctc, uint64_t* from) {
   }
 
   if (sdebug_alias) {
-    printf3((uint64_t*) "%s: [a] pop dependence of %d at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) pc);
+    printf3((uint64_t*) "%s: [a] pop dependence of %d at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
   return from;
 }
 
-uint64_t* search_node(uint64_t ctc) {
+uint64_t* search_node(uint64_t taddr) {
   uint64_t* node;
   uint64_t  vaddr_tc;
   uint64_t  vaddr_assign;
 
-  vaddr_tc    = get_vaddr_with_alias(ctc);
+  vaddr_tc    = get_vaddr_with_alias(taddr);
   node        = global_dg;
 
   while (node != (uint64_t*) 0) {
@@ -11214,16 +11214,16 @@ uint64_t* search_node(uint64_t ctc) {
   return (uint64_t*) 0;
 }
 
-uint64_t* search_alias(uint64_t ctc) {
+uint64_t* search_alias(uint64_t taddr) {
   uint64_t* node;
   uint64_t* assign;
 
-  node = search_node(ctc);
+  node = search_node(taddr);
   if (node) {
     assign = get_assigns(node);
 
     while (assign != (uint64_t*) 0) {
-      if (get_assign_tc(assign) == ctc)
+      if (get_assign_tc(assign) == taddr)
         return assign;
       assign = get_next_assign(assign);
     }
@@ -11232,17 +11232,17 @@ uint64_t* search_alias(uint64_t ctc) {
   return (uint64_t*) 0;
 }
 
-void update_alias_tc(uint64_t old, uint64_t ctc) {
+void update_alias_tc(uint64_t old, uint64_t taddr) {
   uint64_t* assign;
 
   assign = search_alias(old);
 
   if (assign)
-    set_assign_tc(assign, ctc);
+    set_assign_tc(assign, taddr);
 
   else {
     if (ic_correction) {
-      printf4((uint64_t*) "%s: error while updating %d with %d at %x", selfie_name, (uint64_t*) old, (uint64_t*) ctc, (uint64_t*) pc);
+      printf4((uint64_t*) "%s: error while updating %d with %d at %x", selfie_name, (uint64_t*) old, (uint64_t*) taddr, (uint64_t*) pc);
       print_code_line_number_for_instruction(pc - entry_point);
       println();
       print_dg();
@@ -11252,7 +11252,7 @@ void update_alias_tc(uint64_t old, uint64_t ctc) {
 
   //keep track tc into function'summaries
   if (*(watchdog_tc + (ccf - 1)) == old) {
-    *(watchdog_tc + (ccf - 1)) = ctc;
+    *(watchdog_tc + (ccf - 1)) = taddr;
 
     if (sdebug_alias) {
       printf4((uint64_t*) "%s: [f] watchdog updated from %d to %d at %x\n", selfie_name, (uint64_t*) old, (uint64_t*) *(watchdog_tc + (ccf-1)), (uint64_t*) pc);
@@ -11262,7 +11262,7 @@ void update_alias_tc(uint64_t old, uint64_t ctc) {
   }
 
   if (sdebug_alias) {
-    printf5((uint64_t*) "%s: [a] %d is now %d (%x) at %x", selfie_name, (uint64_t*) old, (uint64_t*) ctc, (uint64_t*) get_trace_vaddr(ctc), (uint64_t*) pc);
+    printf5((uint64_t*) "%s: [a] %d is now %d (%x) at %x", selfie_name, (uint64_t*) old, (uint64_t*) taddr, (uint64_t*) get_trace_vaddr(taddr), (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
     print_dg();
@@ -11293,32 +11293,32 @@ uint64_t alias_depth(uint64_t vaddr) {
   return count;
 }
 
-uint64_t get_source(uint64_t ctc) {
+uint64_t get_source(uint64_t taddr) {
   uint64_t* assign;
 
-  assign = search_alias(ctc);
+  assign = search_alias(taddr);
   if (assign != (uint64_t*) 0)
     if (get_assign_successor(assign))
       return get_assign_tc(get_assign_successor(assign));
   return 0;
 }
 
-uint64_t get_correction(uint64_t ctc) {
+uint64_t get_correction(uint64_t taddr) {
   uint64_t* assign;
 
-  assign = search_alias(ctc);
+  assign = search_alias(taddr);
   if (assign == (uint64_t*) 0)
     return NOT_ALIASED;
   return get_assign_correction(assign);
 }
 
-uint64_t get_vaddr_with_alias(uint64_t ctc) {
+uint64_t get_vaddr_with_alias(uint64_t taddr) {
   uint64_t vaddr;
 
-  vaddr = get_trace_vaddr(ctc);
+  vaddr = get_trace_vaddr(taddr);
   while (vaddr == NUMBEROFREGISTERS) {
-    ctc   = get_trace_tc(ctc);
-    vaddr = get_trace_vaddr(ctc);
+    taddr = get_trace_tc(taddr);
+    vaddr = get_trace_vaddr(taddr);
   }
   return vaddr;
 }
@@ -11362,7 +11362,7 @@ void print_dg() {
 // -----------------------------------------------------------------
 
 //assert(constraint buffer filled)
-void constrain_memory(uint64_t ctc, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb) {
+void constrain_memory(uint64_t taddr, uint64_t from, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t constrained_tc;
   uint64_t tmp;
   uint64_t highest;
@@ -11402,38 +11402,38 @@ void constrain_memory(uint64_t ctc, uint64_t from, uint64_t lo, uint64_t up, uin
     //special case
     if (lo == 0) {
       if (up == (uint64_t) -1) {
-        lo = get_trace_a1(ctc);
-        up = get_trace_a2(ctc);
+        lo = get_trace_a1(taddr);
+        up = get_trace_a2(taddr);
         return;
       }
     }
 
-    if (get_trace_a1(ctc) <= get_trace_a2(ctc)) {
+    if (get_trace_a1(taddr) <= get_trace_a2(taddr)) {
       // original interval not wrapped around
-      if (lo <= get_trace_a1(ctc))  // intersect with the lower original interval
-        lo = get_trace_a1(ctc);
+      if (lo <= get_trace_a1(taddr))  // intersect with the lower original interval
+        lo = get_trace_a1(taddr);
       else
-        lo = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), lo); // fitting the steps
-      if (get_trace_a2(ctc) < up) // intersect with the upper original interval
-        up = compute_upper_bound(lo, get_trace_a3(ctc), get_trace_a2(ctc)); // fitting the steps
+        lo = compute_upper_bound(get_trace_a1(taddr), get_trace_a3(taddr), lo); // fitting the steps
+      if (get_trace_a2(taddr) < up) // intersect with the upper original interval
+        up = compute_upper_bound(lo, get_trace_a3(taddr), get_trace_a2(taddr)); // fitting the steps
       else
-        up = compute_upper_bound(lo, get_trace_a3(ctc), up);
+        up = compute_upper_bound(lo, get_trace_a3(taddr), up);
   } else {
     //original interval wrapped around
     //bound values
-    highest = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), -1);
-    lowest = highest + get_trace_a3(ctc);
+    highest = compute_upper_bound(get_trace_a1(taddr), get_trace_a3(taddr), -1);
+    lowest = highest + get_trace_a3(taddr);
 
-    if (lo <= get_trace_a2(ctc)) {
+    if (lo <= get_trace_a2(taddr)) {
       //intersect with the lower original interval
-      lo = compute_upper_bound(lowest, get_trace_a3(ctc), lo + get_trace_a3(ctc) - 1); // fitting the steps
+      lo = compute_upper_bound(lowest, get_trace_a3(taddr), lo + get_trace_a3(taddr) - 1); // fitting the steps
 
-      if (up < get_trace_a1(ctc)) {
+      if (up < get_trace_a1(taddr)) {
 
-        if (up >= get_trace_a2(ctc))
-          up = get_trace_a2(ctc);
+        if (up >= get_trace_a2(taddr))
+          up = get_trace_a2(taddr);
         else
-          up = compute_upper_bound(lo, get_trace_a3(ctc), up);
+          up = compute_upper_bound(lo, get_trace_a3(taddr), up);
 
       } else {
         //not allowed constrained result is not an interval
@@ -11447,12 +11447,12 @@ void constrain_memory(uint64_t ctc, uint64_t from, uint64_t lo, uint64_t up, uin
       }
     } else {
       // intersect with the upper original interval
-      up = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), up);
+      up = compute_upper_bound(get_trace_a1(taddr), get_trace_a3(taddr), up);
 
-      if (lo <= get_trace_a1(ctc))
-        lo = get_trace_a1(ctc);
+      if (lo <= get_trace_a1(taddr))
+        lo = get_trace_a1(taddr);
       else
-        lo = compute_upper_bound(get_trace_a1(ctc), get_trace_a3(ctc), lo + get_trace_a3(ctc) - 1); // fitting the steps
+        lo = compute_upper_bound(get_trace_a1(taddr), get_trace_a3(taddr), lo + get_trace_a3(taddr) - 1); // fitting the steps
       }
     }
   } else if (buffer_expr == REM_T) {  //one remainder
@@ -11468,15 +11468,15 @@ void constrain_memory(uint64_t ctc, uint64_t from, uint64_t lo, uint64_t up, uin
 
   // shadow address
   if (from == NUMBEROFREGISTERS)
-    constrained_tc = ctc;
+    constrained_tc = taddr;
   else
-    constrained_tc = load_symbolic_memory(pt, get_trace_vaddr(ctc));
+    constrained_tc = load_symbolic_memory(pt, get_trace_vaddr(taddr));
 
   //cast singleton intervals into concrete values
   if (lo == up) //required for updating the heading tc (when constraining after the first time)
     propagate_constraint(CONCRETE_T, buffer_vaddr, constrained_tc, lo, up, 1, trb);
   else
-    propagate_constraint(buffer_type, buffer_vaddr, constrained_tc, lo, up, get_trace_a3(ctc), trb);
+    propagate_constraint(buffer_type, buffer_vaddr, constrained_tc, lo, up, get_trace_a3(taddr), trb);
 
   if (sdebug_trace) {
     printf2((uint64_t*) "%s: constrain-memory at %x", selfie_name, (uint64_t*) pc);
@@ -11499,18 +11499,18 @@ void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint6
   buffer_factor = factor;
 }
 
-void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   uint64_t* assign;
   uint64_t  saddr;
   uint64_t  stc;
   uint64_t  pcc;
 
   if (sdebug_propagate) {
-    printf6((uint64_t*) "%s: store constrained memory %d(%x) with <%d,%d,%d>\n", selfie_name, (uint64_t*) ctc, (uint64_t*) vaddr, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) step);
+    printf6((uint64_t*) "%s: store constrained memory %d(%x) with <%d,%d,%d>\n", selfie_name, (uint64_t*) taddr, (uint64_t*) vaddr, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) step);
   }
 
-  assign  = search_alias(ctc);
-  stc     = get_source(ctc);
+  assign  = search_alias(taddr);
+  stc     = get_source(taddr);
   if (stc)  {
     pcc = get_assign_correction(assign);
     saddr = get_trace_vaddr(stc);
@@ -11530,19 +11530,19 @@ void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t 
         propagate_constraint(type, saddr, stc, lo, up, step, trb);
 
     //store current constraint with updated stc
-    store_constrained_memory(type, vaddr, ctc, lo, up, step);
+    store_constrained_memory(type, vaddr, taddr, lo, up, step);
     return;
   }   //store and constrain witness
 
-  if (ctc == (uint64_t) -1)
+  if (taddr == (uint64_t) -1)
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
 
   //root
-  store_constrained_memory(type, vaddr, ctc, lo, up, step);
-  update_witness(ctc, tc);
+  store_constrained_memory(type, vaddr, taddr, lo, up, step);
+  update_witness(taddr, tc);
 }
 
-void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t ctc, uint64_t lo, uint64_t up, uint64_t step) {
+void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step) {
 
   if (vaddr >= get_program_break(current_context))
     if (vaddr < *(registers + REG_SP))
@@ -11551,12 +11551,12 @@ void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t ctc, uint6
 
   // handle constraints of shadowed memory (do not update vaddr)
   if (vaddr != NUMBEROFREGISTERS)
-    if (ctc != load_symbolic_memory(pt, vaddr))
+    if (taddr != load_symbolic_memory(pt, vaddr))
       vaddr = NUMBEROFREGISTERS;
 
   // always track constrained memory by using tc as most recent branch
-  if (store_symbolic_memory(pt, vaddr, ctc, type, lo, up, step, tc))
-    update_alias_tc(ctc, tc);
+  if (store_symbolic_memory(pt, vaddr, taddr, type, lo, up, step, tc))
+    update_alias_tc(taddr, tc);
 
 }
 
@@ -11587,9 +11587,9 @@ uint64_t is_argument(uint64_t immediate, uint64_t reg) {
   return 0;
 }
 
-void disable_alias(uint64_t ctc) {
+void disable_alias(uint64_t taddr) {
   uint64_t* assign;
-  assign = search_alias(ctc);
+  assign = search_alias(taddr);
 
   if (assign)
     set_assign_flag(assign, 0);
@@ -11598,15 +11598,15 @@ void disable_alias(uint64_t ctc) {
     if (assign)
       printf4((uint64_t*) "%s: [a] node %d(%x) [disabled] at %x", selfie_name, (uint64_t*) get_assign_tc(assign), (uint64_t*) get_trace_vaddr(get_assign_tc(assign)), (uint64_t*) pc);
     else
-      printf4((uint64_t*) "%s: [a] no node %d(%x) to disable at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) get_trace_vaddr(ctc), (uint64_t*) pc);
+      printf4((uint64_t*) "%s: [a] no node %d(%x) to disable at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) get_trace_vaddr(taddr), (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
 }
 
-void enable_alias(uint64_t ctc) {
+void enable_alias(uint64_t taddr) {
   uint64_t* assign;
-  assign = search_alias(ctc);
+  assign = search_alias(taddr);
 
   if (assign)
     set_assign_flag(assign, 1);
@@ -11615,7 +11615,7 @@ void enable_alias(uint64_t ctc) {
     if (assign)
       printf4((uint64_t*) "%s: [a] node %d(%x) [enabled] at %x", selfie_name, (uint64_t*) get_assign_tc(assign), (uint64_t*) get_trace_vaddr(get_assign_tc(assign)), (uint64_t*) pc);
     else
-      printf4((uint64_t*) "%s: [a] no node %d(%x) to enable at %x", selfie_name, (uint64_t*) ctc, (uint64_t*) get_trace_vaddr(ctc), (uint64_t*) pc);
+      printf4((uint64_t*) "%s: [a] no node %d(%x) to enable at %x", selfie_name, (uint64_t*) taddr, (uint64_t*) get_trace_vaddr(taddr), (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
