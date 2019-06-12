@@ -1610,7 +1610,6 @@ uint64_t* reg_type    = (uint64_t*) 0;   // type: concrete | msiid | memory rang
 uint64_t* reg_alpha2  = (uint64_t*) 0;   // upper bound             | start
 uint64_t* reg_alpha3  = (uint64_t*) 0;   // step                    | size
 
-uint64_t* reg_saddr   = (uint64_t*) 0;  // source address
 uint64_t* reg_hasmn   = (uint64_t*) 0;  // constraint has minuend
 uint64_t* reg_expr    = (uint64_t*) 0;  // constraint can be corrected
 uint64_t* reg_colos   = (uint64_t*) 0;  // offset on lower bound
@@ -1656,7 +1655,7 @@ uint64_t reverse_up_division(uint64_t up, uint64_t factor);
 
 uint64_t flag_round(uint64_t reg_from, uint64_t lower_flag);
 
-void set_constraint(uint64_t reg, uint64_t stc, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step);
+void set_constraint(uint64_t reg, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step);
 void set_correction(uint64_t reg, uint64_t hasmn, uint64_t expr, uint64_t colos, uint64_t coups, uint64_t operand);
 
 void take_branch(uint64_t b, uint64_t how_many_more);
@@ -1866,7 +1865,6 @@ void init_symbolic_engine() {
   reg_alpha2    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_alpha3    = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
-  reg_saddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_hasmn     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_expr      = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_colos     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -9032,7 +9030,7 @@ void constrain_lui() {
     // rd has no constraint
     *(reg_type + rd) = CONCRETE_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, left_shift(imm, 12), left_shift(imm, 12), 1);
+    set_constraint(rd, 0, left_shift(imm, 12), left_shift(imm, 12), 1);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -9050,7 +9048,7 @@ void constrain_addi() {
       // rd has no constraint if rs1 has none
       *(reg_type + rd) = CONCRETE_T;
       set_correction(rd, 0, 0, 0, 0, 0);
-      set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, 1);
+      set_constraint(rd, *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, 1);
     }
   }
 
@@ -9077,7 +9075,7 @@ void constrain_add() {
     // c + c
     *(reg_type + rd) = CONCRETE_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, *(registers + rs1) + *(registers + rs2), *(reg_alpha2 + rs1) + *(reg_alpha2 + rs2), 1);
+    set_constraint(rd, 0, *(registers + rs1) + *(registers + rs2), *(reg_alpha2 + rs1) + *(reg_alpha2 + rs2), 1);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -9103,7 +9101,7 @@ void constrain_sub() {
     // c - c
     *(reg_type + rd) = CONCRETE_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, *(registers + rs1) - *(reg_alpha2 + rs2), *(reg_alpha2 + rs1) - *(registers + rs2), 1);
+    set_constraint(rd, 0, *(registers + rs1) - *(reg_alpha2 + rs2), *(reg_alpha2 + rs1) - *(registers + rs2), 1);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -9128,7 +9126,7 @@ void constrain_mul() {
     // c * c
     *(reg_type + rd) = CONCRETE_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, *(registers + rs1) * *(registers + rs2), *(reg_alpha2 + rs1) * *(reg_alpha2 + rs2), 1);
+    set_constraint(rd, 0, *(registers + rs1) * *(registers + rs2), *(reg_alpha2 + rs1) * *(reg_alpha2 + rs2), 1);
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -9157,7 +9155,7 @@ void constrain_divu() {
         // c / c
         *(reg_type + rd) = CONCRETE_T;
         set_correction(rd, 0, 0, 0, 0, 0);
-        set_constraint(rd, 0, 0, *(registers + rs1) / *(reg_alpha2 + rs2), *(reg_alpha2 + rs1) / *(registers + rs2), 1);
+        set_constraint(rd, 0, *(registers + rs1) / *(reg_alpha2 + rs2), *(reg_alpha2 + rs1) / *(registers + rs2), 1);
       }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -9262,7 +9260,7 @@ void constrain_remu_step_1() {
   // rd inherits rs1 constraint since rs2 has none
   // assert: rs2 interval is singleton
   set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
-  set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), lo, up, 1);
+  set_constraint(rd, *(reg_vaddr + rs1), lo, up, 1);
 
   if (*(registers + rd) == *(reg_alpha2 + rd))
     *(reg_type + rd) = CONCRETE_T;
@@ -9299,7 +9297,7 @@ void constrain_remu() {
       // c % c
       *(reg_type + rd) = CONCRETE_T;
       set_correction(rd, 0, 0, 0, 0, 0);
-      set_constraint(rd, 0, 0, *(registers + rs1) % *(registers + rs2), *(reg_alpha2 + rs1) % *(reg_alpha2 + rs2), 1);
+      set_constraint(rd, 0, *(registers + rs1) % *(registers + rs2), *(reg_alpha2 + rs1) % *(reg_alpha2 + rs2), 1);
     }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -9389,7 +9387,7 @@ uint64_t constrain_ld() {
         // interval semantics of ld
         if (is_symbolic_value(get_trace_type(mrvc))) {
             *(reg_type + rd) = get_trace_type(mrvc);
-            set_constraint(rd, get_source(mrvc), vaddr, get_trace_a1(mrvc), get_trace_a2(mrvc), get_trace_a3(mrvc));
+            set_constraint(rd, vaddr, get_trace_a1(mrvc), get_trace_a2(mrvc), get_trace_a3(mrvc));
 
             if (get_trace_type(mrvc) == MSIID_T) {
               if (alias_depth(vaddr) > MAX_ALIAS) {
@@ -9410,7 +9408,7 @@ uint64_t constrain_ld() {
             }
         } else {
             *(reg_type + rd) = get_trace_type(mrvc);
-            set_constraint(rd, 0, 0, get_trace_a1(mrvc), get_trace_a2(mrvc), 1);
+            set_constraint(rd, 0, get_trace_a1(mrvc), get_trace_a2(mrvc), 1);
         }
 
         set_correction(rd, 0, 0, 0, 0, 0);
@@ -9530,7 +9528,7 @@ void backtrack_sltu() {
       *(reg_type + vaddr)   = get_trace_type(tc);
 
       set_correction(vaddr, 0, 0, 0, 0, 0);
-      set_constraint(vaddr, 0, 0, get_trace_a1(tc), get_trace_a2(tc), get_trace_a3(tc));
+      set_constraint(vaddr, 0, get_trace_a1(tc), get_trace_a2(tc), get_trace_a3(tc));
 
       // restoring mrcc
       mrcc = get_trace_tc(tc);
@@ -9967,7 +9965,7 @@ void print_trace() {
 
 uint64_t has_correction(uint64_t reg) {
   if ( *(reg_expr + reg) > SUM_T)       return 1;
-  if ( *(reg_expr + reg) == CONCRETE_T) return 0;
+  if ( *(reg_expr + reg) == CONST_T)    return 0;
   if ( *(reg_colos + reg) == 0)         return *(reg_coups + reg);
   return 1;
 }
@@ -9990,9 +9988,8 @@ void print_symbolic_register(uint64_t reg) {
     printf1((uint64_t*) "[%d]}", (uint64_t*) *(registers + reg));
   else
     printf3((uint64_t*) "[%d,%d,%d]}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
-  if (*(reg_saddr + reg) != 0) {
-    printf1((uint64_t*) "::@%d", (uint64_t*) *(reg_saddr + reg));
-    printf5((uint64_t*) "<%d,%d,[%d,%d],%d>",
+  if (has_correction(reg)) {
+    printf5((uint64_t*) "::<%d,%d,[%d,%d],%d>",
     (uint64_t*) *(reg_hasmn + reg),
     (uint64_t*) *(reg_expr + reg),
     (uint64_t*) *(reg_colos + reg),
@@ -10031,7 +10028,7 @@ void msiid_addi() {
   *(reg_type + rd) = *(reg_type + rs1);
   // rd inherits rs1 constraint
   set_correction(rd, 0, flag_round(rs1, SUM_T), *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm, *(reg_factor + rs1));
-  set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, *(reg_alpha3 + rs1));
+  set_constraint(rd, *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, *(reg_alpha3 + rs1));
 }
 
 void msiid_add() {
@@ -10071,7 +10068,7 @@ void msiid_add() {
           *(reg_type + rd) = *(reg_type + rs1);
 
         set_correction(rd, 0, SUM_T, 0, 0, *(reg_factor + rs1));
-        set_constraint(rd, 0, 0, add_los, add_ups, add_steps);
+        set_constraint(rd, 0, add_los, add_ups, add_steps);
       } else if (*(reg_hasmn + rs1))
           // rs1 constraint has already minuend and cannot have another addend
           error_minuend((uint64_t*) "left", (uint64_t*) "add");
@@ -10087,7 +10084,7 @@ void msiid_add() {
             *(reg_type + rd) = *(reg_type + rs1);
 
         set_correction(rd, 0, SUM_T, *(reg_colos + rs1) + *(registers + rs2), *(reg_coups + rs1) + *(reg_alpha2 + rs2), *(reg_factor + rs1));
-        set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), add_los, add_ups, *(reg_alpha3 + rs1)); //interval add semantics
+        set_constraint(rd, *(reg_vaddr + rs1), add_los, add_ups, *(reg_alpha3 + rs1)); //interval add semantics
       }
   } else if (*(reg_type + rs2)) {
     if (*(reg_hasmn + rs2))
@@ -10098,7 +10095,7 @@ void msiid_add() {
       // c + s
       *(reg_type + rd) = *(reg_type + rs2);
       set_correction(rd, 0, flag_round(rs2, SUM_T), *(registers + rs1) + *(reg_colos + rs2), *(reg_alpha2 + rs1) + *(reg_coups + rs2), *(reg_factor + rs2));
-      set_constraint(rd, *(reg_saddr + rs2), *(reg_vaddr + rs2), add_los, add_ups, *(reg_alpha3 + rs2)); //interval add semantics
+      set_constraint(rd, *(reg_vaddr + rs2), add_los, add_ups, *(reg_alpha3 + rs2)); //interval add semantics
     }
   }
 }
@@ -10141,7 +10138,7 @@ void msiid_sub() {
       *(reg_type + rd) =  *(reg_type + rs1);
 
     set_correction(rd, 0, SUM_T, 0, 0, *(reg_factor + rs1)); //TODO: manage witness
-    set_constraint(rd, 0, 0, sub_los, sub_ups, sub_steps);
+    set_constraint(rd, 0, sub_los, sub_ups, sub_steps);
     } else if (*(reg_hasmn + rs1))
         // rs1 constraint has already minuend and cannot have another addend
             error_minuend((uint64_t*) "left", (uint64_t*) "sub");
@@ -10156,7 +10153,7 @@ void msiid_sub() {
               *(reg_type + rd) = *(reg_type + rs1);
 
             set_correction(rd, 0, SUM_T, *(reg_colos + rs1) - *(reg_alpha2 + rs2), *(reg_coups + rs1) - *(registers + rs2), *(reg_factor + rs1));
-            set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), sub_los, sub_ups, *(reg_alpha3 + rs1)); //interval sub semantics
+            set_constraint(rd, *(reg_vaddr + rs1), sub_los, sub_ups, *(reg_alpha3 + rs1)); //interval sub semantics
           }
   } else if (*(reg_type + rs2)) {
     if (*(reg_hasmn + rs2))
@@ -10167,7 +10164,7 @@ void msiid_sub() {
       // c - s
       *(reg_type + rd) = *(reg_type + rs2);
       set_correction(rd, 1, flag_round(rs2, SUM_T), *(registers + rs1) - *(reg_coups + rs2), *(reg_alpha2 + rs1) - *(reg_colos + rs2), *(reg_factor + rs2));
-      set_constraint(rd, *(reg_saddr + rs2), *(reg_vaddr + rs2), sub_los, sub_ups, *(reg_alpha3 + rs2)); //interval sub semantics
+      set_constraint(rd, *(reg_vaddr + rs2), sub_los, sub_ups, *(reg_alpha3 + rs2)); //interval sub semantics
     }
   }
 }
@@ -10214,7 +10211,7 @@ void msiid_mul() {
             else  //cumul factors
               set_correction(rd, 0, MUL_T, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_factor + rs1) * *(registers + rs2));
 
-            set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), mul_los, mul_ups, *(reg_alpha3 + rs1) * *(registers + rs2)); //interval mul semantics
+            set_constraint(rd, *(reg_vaddr + rs1), mul_los, mul_ups, *(reg_alpha3 + rs1) * *(registers + rs2)); //interval mul semantics
           }
       }
   } else if (*(reg_type + rs2)) {
@@ -10236,7 +10233,7 @@ void msiid_mul() {
         } else {
           *(reg_type + rd) = MSIID_T;
           set_correction(rd, 0, MUL_T, *(reg_colos + rs2), *(reg_coups + rs2), *(registers + rs1));
-          set_constraint(rd, *(reg_saddr + rs2), *(reg_vaddr + rs2), mul_los, mul_ups, *(reg_alpha3 + rs2) * *(registers + rs1)); //interval mul semantics
+          set_constraint(rd, *(reg_vaddr + rs2), mul_los, mul_ups, *(reg_alpha3 + rs2) * *(registers + rs1)); //interval mul semantics
         }
     }
   }
@@ -10245,7 +10242,7 @@ void msiid_mul() {
   if (*(reg_alpha3 + rd) == 0) {
     *(reg_type + rd) = CONCRETE_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, *(reg_saddr + rd), *(reg_vaddr + rd), mul_los, mul_ups, 1);
+    set_constraint(rd, *(reg_vaddr + rd), mul_los, mul_ups, 1);
   }
 }
 
@@ -10309,14 +10306,14 @@ void msiid_divu() {
             set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
           else  //cumul factors
             set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_factor + rs1) * *(registers + rs2));
-          set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), (max + prev_step) / *(registers + rs2), max / *(reg_alpha2 + rs2), div_steps);
+          set_constraint(rd, *(reg_vaddr + rs1), (max + prev_step) / *(registers + rs2), max / *(reg_alpha2 + rs2), div_steps);
         } else {
           // rs1 constraint is not wrapped
           if (*(reg_factor + rs1) == 0)
             set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
           else  //cumul factors
             set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(reg_factor + rs1) * *(registers + rs2));
-          set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), div_los, div_ups, div_steps);
+          set_constraint(rd, *(reg_vaddr + rs1), div_los, div_ups, div_steps);
         }
 
         if (*(registers + rd) == *(reg_alpha2 + rd))
@@ -10430,7 +10427,7 @@ void msiid_remu() {
   }
 
   set_correction(rd, 0, expr, *(reg_colos + rs1), *(reg_coups + rs1), *(registers + rs2));
-  set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), lo, up, step);
+  set_constraint(rd, *(reg_vaddr + rs1), lo, up, step);
 
   if (*(registers + rd) == *(reg_alpha2 + rd))
     *(reg_type + rd) = CONCRETE_T;
@@ -10577,10 +10574,9 @@ uint64_t flag_round(uint64_t reg_from, uint64_t lower_flag) {
   return *(reg_expr + reg_from);
 }
 
-void set_constraint(uint64_t reg, uint64_t stc, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step) {
-  *(reg_saddr + reg) = stc;
-  *(reg_vaddr + reg) = vaddr;
-  *(registers + reg) = start;
+void set_constraint(uint64_t reg, uint64_t vaddr, uint64_t start, uint64_t end, uint64_t step) {
+  *(reg_vaddr + reg)  = vaddr;
+  *(registers + reg)  = start;
   *(reg_alpha2 + reg) = end;
   *(reg_alpha3 + reg) = step;
 }
@@ -10606,7 +10602,7 @@ void take_branch(uint64_t b, uint64_t how_many_more) {
 
     *(reg_type + rd) =  0;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, b, b, 1);
+    set_constraint(rd, 0, b, b, 1);
   }
 }
 
@@ -10893,7 +10889,7 @@ void addi_pointer() {
   // rd has no constraint if rs1 is memory range
   *(reg_type + rd) = *(reg_type + rs1);
   set_correction(rd, 0, 0, 0, 0, 0);
-  set_constraint(rd, *(reg_saddr + rs1), *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
+  set_constraint(rd, *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
 }
 
 void add_pointer() {
@@ -10903,11 +10899,11 @@ void add_pointer() {
 
     *(reg_type + rd) = ARRAY_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, *(registers + rs1) + *(registers + rs2), *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
+    set_constraint(rd, 0, *(registers + rs1) + *(registers + rs2), *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
   } else {
     *(reg_type + rd) = ARRAY_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, *(registers + rs1) + *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2));
+    set_constraint(rd, 0, *(registers + rs1) + *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2));
   }
 }
 
@@ -10921,16 +10917,16 @@ void sub_pointer() {
       // rd has no constraint if rs1 and rs2 are memory range
       *(reg_type + rd) = CONCRETE_T;
       set_correction(rd, 0, 0, 0, 0, 0);
-      set_constraint(rd, 0, 0, rd_val, rd_val, 1);
+      set_constraint(rd, 0, rd_val, rd_val, 1);
     } else {
     *(reg_type + rd) = ARRAY_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, rd_val, *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
+    set_constraint(rd, 0, rd_val, *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
     }
   } else {
     *(reg_type + rd) = ARRAY_T;
     set_correction(rd, 0, 0, 0, 0, 0);
-    set_constraint(rd, 0, 0, rd_val, *(reg_alpha2 + rs2), *(reg_alpha3 + rs2));
+    set_constraint(rd, 0, rd_val, *(reg_alpha2 + rs2), *(reg_alpha3 + rs2));
   }
 }
 
