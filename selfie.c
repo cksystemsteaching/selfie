@@ -7736,7 +7736,7 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, u
 
   sword = allocate_symbolic_memory_word();
 
-  // we 'delete' the word, if it already exists in the symbolic memory
+  // we mark the word as deleted, if it already exists in the symbolic memory
   delete_word_from_symbolic_memory(vaddr);
 
   set_next_word(sword, symbolic_memory);
@@ -7800,7 +7800,7 @@ void delete_word_from_symbolic_memory(uint64_t vaddr) {
 
   while (sword) {
     if (get_word_address(sword) == vaddr)
-      /* we indicate that this word has been deleted in order to avoid finding
+      /* we mark this word as deleted in order to avoid finding
          outdated values when searching the symbolic memory
 
          note: the word is not actually deleted, rather the word address is changed
@@ -7911,12 +7911,10 @@ char* smt_ternary(char* opt, char* op1, char* op2, char* op3) {
 
 uint64_t find_merge_location(uint64_t beq_imm) {
   uint64_t original_pc;
-  uint64_t original_imm;
   uint64_t merge_location;
 
   // assert: the current instruction is a symbolic beq instruction
   original_pc = pc;
-  original_imm = imm;
 
   // examine last instruction before target location of the beq instruction
   pc = pc + (beq_imm - INSTRUCTIONSIZE);
@@ -7973,7 +7971,6 @@ uint64_t find_merge_location(uint64_t beq_imm) {
 
   // restore the original program state
   pc = original_pc;
-  imm = original_imm;
   fetch();
   decode();
 
@@ -8134,7 +8131,7 @@ void merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context)
                     )
                   );
 
-                  // indicate that the word has been merged since it does not need to be merged again
+                  // we mark the word as merged since it does not need to be merged again
                   set_word_address(sword_from_mergeable_context, MERGED);
                 }
               } else {
@@ -8147,7 +8144,7 @@ void merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context)
                   )
                 );
 
-                // indicate that the word has been merged since it does not need to be merged again
+                // we mark the word as merged since it does not need to be merged again
                 set_word_address(sword_from_mergeable_context, MERGED);
               }
             } else {
@@ -8161,7 +8158,7 @@ void merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context)
                   )
                 );
 
-                // indicate that the word has been merged since it does not need to be merged again
+                // we mark the word as merged since it does not need to be merged again
                 set_word_address(sword_from_mergeable_context, MERGED);
               } else {
                 if (get_word_value(sword_from_active_context) != get_word_value(sword_from_mergeable_context)) {
@@ -8174,7 +8171,7 @@ void merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context)
                     )
                   );
 
-                  // indicate that the word has been merged since it does not need to be merged again
+                  // we mark the word as merged since it does not need to be merged again
                   set_word_address(sword_from_mergeable_context, MERGED);
                 }
               }
