@@ -1251,9 +1251,9 @@ uint64_t* get_mergeable_context();
 void      add_waiting_context(uint64_t* context);
 uint64_t* get_waiting_context();
 
-void      add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location);
-uint64_t  get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start);
-uint64_t  currently_in_this_procedure(uint64_t prologue_start);
+void      add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location, uint64_t* context);
+uint64_t  get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start, uint64_t* context);
+uint64_t  currently_in_this_procedure(uint64_t prologue_start, uint64_t* context);
 
 void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
 void      merge_symbolic_store(uint64_t* active_context, uint64_t* mergeable_context);
@@ -1280,12 +1280,8 @@ uint64_t merge_enabled = 1; // enable or disable the merging
 
 uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
 uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
-uint64_t* prologues_and_corresponding_merge_locations = (uint64_t*) 0; // stack which stores procedure prologues and their corresponding merge locations
 
 uint64_t* current_mergeable_context                   = (uint64_t*) 0; // current context with which the active context can possibly be merged
-
-uint64_t in_recursion                 = 0;
-uint64_t recursive_merge_location     = 0;
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1505,6 +1501,9 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 19 | symbolic regs   | pointer to symbolic registers
 // | 20 | beq counter     | number of executed symbolic beq instructions
 // | 21 | merge location  | program location at which the context can possibly be merged (later)
+// | 22 | prologues       | pointer to a stack that stores the prologues of procedures within which the context is currently located
+// | 23 | in recursion    | if the value is 1, then the context is currently in a recursion
+// | 24 | outside rec loc | program location at which the context has finished the recursion
 // +----+-----------------+
 
 uint64_t* allocate_context() {
@@ -1512,7 +1511,7 @@ uint64_t* allocate_context() {
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64 + 3 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 5 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1555,6 +1554,9 @@ uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context 
 uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 19); }
 uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 20); }
 uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 21); }
+uint64_t* get_prologues(uint64_t* context)       { return (uint64_t*) *(context + 22); }
+uint64_t  get_in_recursion(uint64_t* context)    { return             *(context + 23); }
+uint64_t  get_outside_rec_loc(uint64_t* context) { return             *(context + 24); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1579,6 +1581,9 @@ void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 18)
 void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 19) = (uint64_t) regs; }
 void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 20) =            counter; }
 void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 21) =            location; }
+void set_prologues(uint64_t* context, uint64_t* prologues)     { *(context + 22) = (uint64_t) prologues; }
+void set_in_recursion(uint64_t* context, uint64_t in_rec)      { *(context + 23) =            in_rec; }
+void set_outside_rec_loc(uint64_t* context, uint64_t location) { *(context + 24) =            location; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -7958,12 +7963,12 @@ uint64_t find_merge_location(uint64_t beq_imm) {
       // if we are inside of a (arbitrarily deep nested) recursion,
       // we merge only after the entire recursion has been finished (i.e. the program
       // has reached a program location which is not part of any recursion)
-      if (currently_in_this_procedure(pc + imm)) {
-        if (in_recursion == 0)
-          recursive_merge_location = get_merge_location_from_corresponding_prologue_start(pc + imm);
+      if (currently_in_this_procedure(pc + imm, current_context)) {
+        if (get_in_recursion(current_context) == 0)
+          set_outside_rec_loc(current_context, get_merge_location_from_corresponding_prologue_start(pc + imm, current_context));
 
-        merge_location = recursive_merge_location;
-        in_recursion = 1;
+        merge_location = get_outside_rec_loc(current_context);
+        set_in_recursion(current_context, 1);
       }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -8023,10 +8028,10 @@ uint64_t* get_waiting_context() {
   return (uint64_t*) *(head + 1);
 }
 
-void add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location) {
+void add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location, uint64_t* context) {
   uint64_t* entry;
 
-  entry = prologues_and_corresponding_merge_locations;
+  entry = get_prologues(context);
 
   // do not add duplicates
   while (entry) {
@@ -8038,17 +8043,17 @@ void add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start
 
   entry = smalloc(3 * SIZEOFUINT64STAR);
 
-  *(entry + 0) = (uint64_t) prologues_and_corresponding_merge_locations;
+  *(entry + 0) = (uint64_t) get_prologues(context);
   *(entry + 1) = (uint64_t) prologue_start;
   *(entry + 2) = (uint64_t) merge_location;
 
-  prologues_and_corresponding_merge_locations = entry;
+  set_prologues(context, entry);
 }
 
-uint64_t get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start) {
+uint64_t get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start, uint64_t* context) {
   uint64_t* entry;
 
-  entry = prologues_and_corresponding_merge_locations;
+  entry = get_prologues(context);
 
   while (entry) {
     if (*(entry + 1) == prologue_start)
@@ -8060,8 +8065,8 @@ uint64_t get_merge_location_from_corresponding_prologue_start(uint64_t prologue_
   return -1;
 }
 
-uint64_t currently_in_this_procedure(uint64_t prologue_start) {
-  return (get_merge_location_from_corresponding_prologue_start(prologue_start) != (uint64_t) -1);
+uint64_t currently_in_this_procedure(uint64_t prologue_start, uint64_t* context) {
+  return (get_merge_location_from_corresponding_prologue_start(prologue_start, context) != (uint64_t) -1);
 }
 
 void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location) {
@@ -8079,10 +8084,10 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   print_code_context_for_instruction(location);
   println();
 
-  if (prologues_and_corresponding_merge_locations != (uint64_t*) 0)
-    if (get_pc(active_context) == *(prologues_and_corresponding_merge_locations + 2))
+  if (get_prologues(active_context) != (uint64_t*) 0)
+    if (get_pc(active_context) == *(get_prologues(active_context) + 2))
       // we have finished the recursion (i.e. the program has reached a program location which is not part of any recursion)
-      in_recursion = 0;
+      set_in_recursion(active_context, 0);
 
   // merging the symbolic store
   merge_symbolic_store(active_context, mergeable_context);
@@ -8674,10 +8679,10 @@ void execute_symbolically() {
     if (jal_rd == REG_RA)
       // if we are already in a recursion, we do not add a new merge location since we only merge when the 
       // recursion is finished (i.e. the program has reached a program location which is not part of any recursion)
-      if (in_recursion == 0) {
+      if (get_in_recursion(current_context) == 0) {
         corresponding_merge_location = pc_before_jal + INSTRUCTIONSIZE;
         prologue_start = pc;
-        add_prologue_start_and_corresponding_merge_location(prologue_start, corresponding_merge_location);
+        add_prologue_start_and_corresponding_merge_location(prologue_start, corresponding_merge_location, current_context);
       }
 
   } else if (is == JALR) {
@@ -8706,11 +8711,11 @@ void interrupt() {
   }
 
   if (symbolic) {
-    if (in_recursion == 0)
-      if (prologues_and_corresponding_merge_locations != (uint64_t*) 0)
-        if (pc == *(prologues_and_corresponding_merge_locations + 2))
+    if (get_in_recursion(current_context) == 0)
+      if (get_prologues(current_context) != (uint64_t*) 0)
+        if (pc == *(get_prologues(current_context) + 2))
           // pop prologue off the stack if we have finished the procedure
-          prologues_and_corresponding_merge_locations = (uint64_t*) *(prologues_and_corresponding_merge_locations + 0);
+          set_prologues(current_context, (uint64_t*) *(get_prologues(current_context) + 0));
 
     if (current_mergeable_context != (uint64_t*) 0)
       // if both contexts are at the same program location, they can be merged
@@ -8928,6 +8933,10 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition, u
   set_merge_location(context, get_merge_location(original));
 
   copy_symbolic_memory(original, context);
+
+  set_prologues(context, get_prologues(original));
+  set_in_recursion(context, get_in_recursion(original));
+  set_outside_rec_loc(context, get_outside_rec_loc(original));
 
   set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
