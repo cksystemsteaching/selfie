@@ -7020,6 +7020,13 @@ void constrain_add_sub_mul_divu_remu_sltu(char* operator) {
         op2 = bv_constant(*(registers + rs2));
 
     *(reg_sym + rd) = (uint64_t) smt_binary(operator, op1, op2);
+
+    // checking for division by zero
+    if (string_compare(operator, "bvudiv")) {
+      print("(push 1)\n");
+      printf2("(assert (and %s %s)); check if a division by zero is possible", path_condition, smt_binary("=", op2, bv_constant(0)));
+      print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+    }
   }
 }
 
@@ -9404,6 +9411,16 @@ uint64_t handle_division_by_zero(uint64_t* context) {
     replay_trace();
 
     set_exit_code(context, EXITCODE_NOERROR);
+  } else if (symbolic) {
+    // check if this division by zero is reachable
+    print("(push 1)\n");
+    printf1("(assert %s); divison-by-zero error detected; check if this division by zero is reachable", path_condition);
+    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+    // we terminate the exeuction of the context, because if the location is not reachable, 
+    // the rest of the path is not reachable either, and otherwise 
+    // the execution would be terminated by this error anyway
+    set_exit_code(context, EXITCODE_DIVISIONBYZERO);
   } else {
     printf1("%s: division by zero\n", selfie_name);
 
