@@ -7234,16 +7234,9 @@ void constrain_ld() {
 
     // and individually
     *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
-  } else {
+  } else
     // invalid concrete memory address
-    printf3("%s: invalid concrete memory address %x in ld instruction at %x", selfie_name,
-      (char*) vaddr,
-      (char*) pc);
-    print_code_line_number_for_instruction(pc, entry_point);
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
+    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 }
 
 void print_sd() {
@@ -7366,16 +7359,9 @@ void constrain_sd() {
 
     // and individually
     *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
-  } else {
+  } else
     // invalid concrete memory address
-    printf3("%s: invalid concrete memory address %x in sd instruction at %x", selfie_name,
-      (char*) vaddr,
-      (char*) pc);
-    print_code_line_number_for_instruction(pc, entry_point);
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
+    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 }
 
 void print_beq() {
@@ -9467,6 +9453,21 @@ uint64_t handle_exception(uint64_t* context) {
   else if (exception == EXCEPTION_MERGE)
     return handle_merge(context);
   else {
+    if (symbolic)
+      if (exception == EXCEPTION_INVALIDADDRESS) {
+        // check if this invalid memory access is reachable
+        print("(push 1)\n");
+        printf1("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
+        print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+        set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
+
+        // we terminate the exeuction of the context, because if the location is not reachable, 
+        // the rest of the path is not reachable either, and otherwise 
+        // the execution would be terminated by this error anyway
+        return EXIT;
+      }
+
     printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
     print_exception(exception, get_faulting_page(context));
     println();
