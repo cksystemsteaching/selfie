@@ -9414,7 +9414,7 @@ uint64_t handle_division_by_zero(uint64_t* context) {
   } else if (symbolic) {
     // check if this division by zero is reachable
     print("(push 1)\n");
-    printf1("(assert %s); divison-by-zero error detected; check if this division by zero is reachable", path_condition);
+    printf1("(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
     print("\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     // we terminate the exeuction of the context, because if the location is not reachable, 
