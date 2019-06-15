@@ -8,11 +8,13 @@ performs division by zero or invalid/unsafe memory accesses.
 Input == #b00110001 (== 49 == '1')
 */
 
-uint64_t fibonacci(uint64_t n) {
-  if (n <= 1)
-    return n;
+uint64_t ackermann(uint64_t m, uint64_t n) {
+  if (m == 0)
+    return n + 1;
+  else if (n == 0)
+    return ackermann(m - 1, 1);
   else
-    return fibonacci(n - 1) + fibonacci(n - 2);
+    return ackermann(m - 1, ackermann(m, n - 1));
 }
 
 uint64_t main() {
@@ -23,11 +25,11 @@ uint64_t main() {
 
   read(1, x, 1);
 
-  *x = *x - 45;
+  *x = *x - 47;
 
-  a = fibonacci(*x);
+  a = ackermann(1, *x);
 
-  if (a == 3)
+  if (a == 4)
     return 1;
   else
     return 0;
