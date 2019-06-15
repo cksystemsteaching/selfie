@@ -8085,10 +8085,6 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   // merging the symbolic store
   merge_symbolic_store(active_context, mergeable_context);
 
-  // disable merging if the path condition becomes too large
-  if (string_length(smt_binary("or", get_path_condition(active_context), get_path_condition(mergeable_context))) > MAX_PATH_CONDITION_LENGTH)
-    merge_enabled = 0;
-
   // merging the path condition
   path_condition = smt_binary("or", get_path_condition(active_context), get_path_condition(mergeable_context));
   set_path_condition(active_context, path_condition);
