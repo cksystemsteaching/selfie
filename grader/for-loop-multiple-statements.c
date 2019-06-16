@@ -12,5 +12,5 @@ int main(int argc, char** argv) {
     j = j + 1;
   }
 
-  return sum;
+  return sum + 39;
 }
