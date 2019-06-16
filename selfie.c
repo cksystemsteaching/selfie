@@ -8429,6 +8429,20 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 }
 
+void restore_pt_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t hi, uint64_t lo) {
+  uint64_t frame;
+
+  while (lo <= hi) {
+      if (is_virtual_address_mapped(parent_table, frame_for_page(table, lo))) {
+        frame = load_virtual_memory(parent_table, frame_for_page(table, lo));
+
+        map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
+      }
+
+      lo = lo + 1;
+    }
+}
+
 void restore_context(uint64_t* context) {
   uint64_t* parent_table;
   uint64_t* vctxt;
@@ -8436,10 +8450,8 @@ void restore_context(uint64_t* context) {
   uint64_t* pregs;
   uint64_t* vregs;
   uint64_t* table;
-  uint64_t page;
   uint64_t lo;
   uint64_t hi;
-  uint64_t frame;
 
   if (get_parent(context) != MY_CONTEXT) {
     parent_table = get_pt(get_parent(context));
@@ -8469,36 +8481,19 @@ void restore_context(uint64_t* context) {
 
     // assert: context page table is only mapped from beginning up and end down
 
-    page = load_virtual_memory(parent_table, lowest_lo_page(vctxt));
-    hi   = load_virtual_memory(parent_table, highest_lo_page(vctxt));
+    hi = load_virtual_memory(parent_table, highest_lo_page(vctxt));
+    lo = load_virtual_memory(parent_table, lowest_lo_page(vctxt));
 
-    while (page <= hi) {
-      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page))) {
-        frame = load_virtual_memory(parent_table, frame_for_page(table, page));
+    restore_pt_region(context, table, parent_table, hi, lo);
 
-        map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
-      }
+    store_virtual_memory(parent_table, lowest_lo_page(vctxt), hi);
 
-      page = page + 1;
-    }
+    hi = load_virtual_memory(parent_table, highest_hi_page(vctxt));
+    lo = load_virtual_memory(parent_table, lowest_hi_page(vctxt));
 
-    store_virtual_memory(parent_table, lowest_lo_page(vctxt), page);
+    restore_pt_region(context, table, parent_table, hi, lo);
 
-
-    page = load_virtual_memory(parent_table, highest_hi_page(vctxt));
-    lo   = load_virtual_memory(parent_table, lowest_hi_page(vctxt));
-
-    while (page >= lo) {
-      if (is_virtual_address_mapped(parent_table, frame_for_page(table, page))) {
-        frame = load_virtual_memory(parent_table, frame_for_page(table, page));
-
-        map_page(context, page, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
-      }
-
-      page = page - 1;
-    }
-
-    store_virtual_memory(parent_table, highest_hi_page(vctxt), page);
+    store_virtual_memory(parent_table, highest_hi_page(vctxt), lo);
   }
 }
 
