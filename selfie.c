@@ -886,8 +886,8 @@ void selfie_load();
 
 uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGTH
 
-uint64_t MAX_CODE_LENGTH = 245760; // 240KB
-uint64_t MAX_DATA_LENGTH = 16384; // 16KB
+uint64_t MAX_CODE_LENGTH = 237568; // 232KB
+uint64_t MAX_DATA_LENGTH = 24576; // 24KB
 
 uint64_t ELF_HEADER_LEN = 120; // = 64 + 56 bytes (file + program header)
 
