@@ -1457,12 +1457,12 @@ uint64_t free_page_frame_memory      = 0;
 uint64_t MAX_TRACE_LENGTH = 100000;
 uint64_t MAX_PATH_LENGTH  = 50000000;   // 5 * TIMESLICE
 
-uint64_t MAX_SYMBOLIC     = 10;         // input bound
+uint64_t MAX_SYMBOLIC     = 50;         // input bound
 
 uint64_t MAX_CORRECTION   = 100;        // max number of relational domains
 
 uint64_t MAX_ALIAS        = 0;          // alias bound
-uint64_t MAX_PREDECESSOR  = 20;
+uint64_t MAX_PREDECESSOR  = 50;
 
 uint64_t MAX_CALL         = 50;         // watchdog recursive symbolic bound
 
@@ -1536,7 +1536,7 @@ uint64_t  bk_read               = 0;                // number of backtracked rea
 
 uint64_t* symbolic_tcs          = (uint64_t*) 0;    // array of witnesses
 uint64_t* read_values           = (uint64_t*) 0;    // actual read values
-uint64_t* syscall_pc            = (uint64_t*) 0;    // syscall pc
+uint64_t* head_taddrs           = (uint64_t*) 0;    // syscall first symbolic store
 
 uint64_t last_jal_from = 0;
 
@@ -1865,7 +1865,7 @@ void init_symbolic_engine() {
 
   symbolic_tcs        = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
   read_values         = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
-  syscall_pc          = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
+  head_taddrs         = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
 
   reg_vaddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_type      = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -6239,7 +6239,7 @@ void implement_read(uint64_t* context) {
             // initialize current read
             if ((ic_symbolic - (1 + bk_read)) < MAX_SYMBOLIC) {
               *(symbolic_tcs + (ic_symbolic - (1 + bk_read)))   = load_physical_memory(buffer);
-              *(syscall_pc + (ic_symbolic - (1 + bk_read)))     = last_jal_from;
+              *(head_taddrs + (ic_symbolic - (1 + bk_read)))    = load_physical_memory(buffer);
             }
 
             if (debug_read)
@@ -9740,8 +9740,8 @@ void create_witness(uint64_t taddr) {
     println();
   }
 
-  *(symbolic_tcs  + ic_symbolic) = taddr;
-  *(syscall_pc    + ic_symbolic) = pc; //assuming the store at the same line
+  *(symbolic_tcs  + ic_symbolic)  = taddr;
+  *(head_taddrs   + ic_symbolic)  = taddr; //assuming the store at the same line
 
   ic_symbolic = ic_symbolic + 1;
 }
@@ -9782,6 +9782,8 @@ uint64_t update_witness(uint64_t old, uint64_t new) {
 
 void print_witness() {
   uint64_t idx;
+  uint64_t head_size;
+  uint64_t input_size;
   idx = 0;
 
   if ((ic_symbolic - bk_read) > MAX_SYMBOLIC)
@@ -9790,8 +9792,12 @@ void print_witness() {
     printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) (ic_symbolic - bk_read));
 
   while (idx < (ic_symbolic - bk_read)) {
-    printf3((uint64_t*) "%s:  -  symbolic %d created at %x", selfie_name, (uint64_t*) (idx + 1), (uint64_t*) *(syscall_pc + idx));
-    print_code_line_number_for_instruction(*(syscall_pc + idx) - entry_point);
+    head_size   = get_trace_a2(*(head_taddrs + idx)) - get_trace_a1(*(head_taddrs + idx));
+    input_size  = get_trace_a2(*(symbolic_tcs + idx)) - get_trace_a1(*(symbolic_tcs + idx));
+
+    printf3((uint64_t*) "%s:  -  symbolic %d created at %x", selfie_name, (uint64_t*) (idx + 1), (uint64_t*) get_trace_pc(*(head_taddrs + idx)));
+    print_code_line_number_for_instruction(get_trace_pc(*(head_taddrs + idx)) - entry_point);
+
     printf1((uint64_t*) " and stored at [%d]: ", (uint64_t*) *(symbolic_tcs + idx));
     print_symbolic_memory(*(symbolic_tcs + idx));
 
