@@ -1462,7 +1462,7 @@ uint64_t MAX_SYMBOLIC     = 10;         // input bound
 uint64_t MAX_CORRECTION   = 100;        // max number of relational domains
 
 uint64_t MAX_ALIAS        = 0;          // alias bound
-uint64_t MAX_PREDECESSOR  = 5;
+uint64_t MAX_PREDECESSOR  = 20;
 
 uint64_t MAX_CALL         = 50;         // watchdog recursive symbolic bound
 
@@ -1523,7 +1523,9 @@ void print_end_point_status(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t SYSCALL_INPUT = 42;
+uint64_t SYSCALL_INPUT  = 42;
+
+uint64_t NOT_FOUND      = -1;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1547,9 +1549,10 @@ void      ealloc();
 void      efree();
 
 uint64_t  load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
+uint64_t  new_trace_entry(uint64_t* pt, uint64_t mrvc, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step);
 uint64_t  store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t taddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
-uint64_t  overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+uint64_t  has_symbolic_link(uint64_t mrvc, uint64_t type);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -9551,30 +9554,32 @@ void backtrack_sltu() {
         }
     }
   } else {
-    if (get_source(tc) == 0) //only for roots
+
+    if (look_for_witness(tc) != NOT_FOUND) //only for roots
       update_witness(tc, get_trace_tc(tc));
+
+    // trace / dependent graph consistency
+    update_alias(tc, get_trace_tc(tc));
 
     if (vaddr != NUMBEROFREGISTERS)
       store_virtual_memory(pt, vaddr, get_trace_tc(tc));
-
-    // trace / dependent graph consistency
-    update_alias_tc(tc, get_trace_tc(tc));
 
   }
   efree();
 }
 
 void backtrack_sd() {
+  uint64_t wtc;
 
   if (debug_symbolic) {
     printf1((uint64_t*) "%s: backtracking sd ", selfie_name);
     print_symbolic_memory(tc);
   }
 
-  if (get_trace_type(tc) == MSIID_T) {
-      if(get_source(tc) == 0) //undo symbolic creation
-        ic_symbolic = ic_symbolic - 1;
-  }
+  wtc = look_for_witness(tc);
+  if (wtc != NOT_FOUND)
+    if (*(head_taddrs + wtc) == tc)
+        ic_symbolic = ic_symbolic - 1; //undo symbolic creation
 
   if (search_alias(tc)) {
     //alias
@@ -9743,11 +9748,11 @@ void create_witness(uint64_t taddr) {
 
 uint64_t look_for_witness(uint64_t vtc) {
   uint64_t curr;
-  if (ic_symbolic == 0) return -1; // not found
+  if (ic_symbolic - bk_read == 0) return NOT_FOUND; // not found
 
   curr = ic_symbolic - bk_read - 1;
   while (*(symbolic_tcs + curr) != vtc) {
-    if (curr == 0) return -1; // not found
+    if (curr == 0) return NOT_FOUND; // not found
     curr = curr - 1;
   }
 
@@ -9759,7 +9764,7 @@ uint64_t update_witness(uint64_t old, uint64_t new) {
 
   wtc = look_for_witness(old);
 
-  if (wtc < ic_symbolic) { // witness found
+  if (wtc != NOT_FOUND) { // witness found
     *(symbolic_tcs + wtc) = new;
     if (sdebug_witness) {
       printf5((uint64_t*) "%s: [w] update %d -> %d at index %d at %x", selfie_name, (uint64_t*) old, (uint64_t*) new, (uint64_t*) wtc, (uint64_t*) pc);
@@ -9779,7 +9784,10 @@ void print_witness() {
   uint64_t idx;
   idx = 0;
 
-  printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) (ic_symbolic - bk_read));
+  if ((ic_symbolic - bk_read) > MAX_SYMBOLIC)
+    printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) MAX_SYMBOLIC);
+  else
+    printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) (ic_symbolic - bk_read));
 
   while (idx < (ic_symbolic - bk_read)) {
     printf3((uint64_t*) "%s:  -  symbolic %d created at %x", selfie_name, (uint64_t*) (idx + 1), (uint64_t*) *(syscall_pc + idx));
@@ -9842,71 +9850,76 @@ uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr) {
   }
 }
 
-uint64_t store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t taddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+uint64_t new_trace_entry(uint64_t* pt, uint64_t mrvc, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step) {
+  if (is_trace_space_available()) {
+    // current value at vaddr is from before most recent branch,
+    // track that value by creating a new trace event
+    ealloc();
+
+    set_trace_pc(tc, pc);
+    set_trace_tc(tc, mrvc);
+    set_trace_type(tc, type);
+    set_trace_vaddr(tc, vaddr);
+
+    set_trace_a1(tc, lo);
+    set_trace_a2(tc, up);
+    set_trace_a3(tc, step);
+
+    if (vaddr < NUMBEROFREGISTERS) {
+      if (vaddr > 0)
+        // register tracking marks most recent constraint
+        mrcc = tc;
+    } else if (vaddr > NUMBEROFREGISTERS)
+      // assert: vaddr is valid and mapped
+      store_virtual_memory(pt, vaddr, tc);
+
+    if (debug_symbolic) {
+      printf1((uint64_t*) "%s: storing ", selfie_name);
+      print_symbolic_memory(tc);
+    }
+    return 1;
+  } else {
+    throw_exception(EXCEPTION_MAXTRACE, 0);
+    return 0;
+  }
+}
+
+uint64_t has_symbolic_link(uint64_t mrvc, uint64_t type) {
+  if (type != CONCRETE_T)                   return 1;
+  if (get_trace_type(mrvc) != CONCRETE_T)   return 1;
+  if (search_alias(mrvc) != (uint64_t*) 0)  return 1;
+  if (look_for_witness(mrvc) != NOT_FOUND)  return 1;
+  return 0;
+}
+
+uint64_t store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t mrvc, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   //specific cases
   if (vaddr == 0)
     // tracking program break and size for malloc
-    taddr = 0;
+    mrvc = 0;
   else if (vaddr < NUMBEROFREGISTERS)
     // tracking a register value for sltu
-    taddr = mrcc;
-    // not tracking previous aliased memory
-  else if (vaddr != NUMBEROFREGISTERS) {
+    mrvc = mrcc;
+  else if (vaddr > NUMBEROFREGISTERS)
     // assert: vaddr is valid and mapped
-    taddr = load_symbolic_memory(pt, vaddr);
+    mrvc = load_symbolic_memory(pt, vaddr);
+
+  // symbolic case
+  if (has_symbolic_link(mrvc, type))
+    return new_trace_entry(pt, mrvc, vaddr, type, lo, up, step);
+
+  if (vaddr > NUMBEROFREGISTERS) {
 
     // prevent from 'void store' whenever the value is aliased (correcness of backward semantics)
-    if (search_alias(taddr) == (uint64_t*) 0)
-      if (vaddr == get_trace_vaddr(taddr))
-        if (type == get_trace_type(taddr))
-          if (lo == get_trace_a1(taddr))
-            if (up == get_trace_a2(taddr))
-              if (step == get_trace_a3(taddr))
+      if (vaddr == get_trace_vaddr(mrvc))
+        if (type == get_trace_type(mrvc))
+          if (lo == get_trace_a1(mrvc))
+            if (up == get_trace_a2(mrvc))
+              if (step == get_trace_a3(mrvc))
                 // prevent tracking identical updates
                 return 0;
   }
 
-  if (overwritten(taddr, type, lo, up, step, trb) == 0) {
-    if (is_trace_space_available()) {
-      // current value at vaddr is from before most recent branch,
-      // track that value by creating a new trace event
-      ealloc();
-
-      set_trace_pc(tc, pc);
-      set_trace_tc(tc, taddr);
-      set_trace_type(tc, type);
-      set_trace_vaddr(tc, vaddr);
-
-      set_trace_a1(tc, lo);
-      set_trace_a2(tc, up);
-      set_trace_a3(tc, step);
-
-      if (vaddr < NUMBEROFREGISTERS) {
-        if (vaddr > 0)
-          // register tracking marks most recent constraint
-          mrcc = tc;
-      } else if (vaddr != NUMBEROFREGISTERS) // not tracking previous aliased memory
-        // assert: vaddr is valid and mapped
-        store_virtual_memory(pt, vaddr, tc);
-
-      if (debug_symbolic) {
-        printf1((uint64_t*) "%s: storing ", selfie_name);
-        print_symbolic_memory(tc);
-      }
-      return 1;
-    } else
-      throw_exception(EXCEPTION_MAXTRACE, 0);
-  }
-  return 0;
-}
-
-uint64_t overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
-  if (type != CONCRETE_T)     // no overwriting for symbolic
-    return 0;
-  if (search_alias(mrvc))     // from symbolic
-    return 0;
-  if (look_for_witness(mrvc)) // and witnesses values (a from symbolic can be concrete and without constraints)
-    return 0;
   if (trb < mrvc) {
     // current value at vaddr does not need to be tracked,
     // just overwrite it in the trace
@@ -9921,8 +9934,8 @@ uint64_t overwritten(uint64_t mrvc,  uint64_t type, uint64_t lo, uint64_t up, ui
       printf1((uint64_t*) "%s: overwriting ", selfie_name);
       print_symbolic_memory(mrvc);
     }
-    return 1;
-  }
+  } else
+    return new_trace_entry(pt, mrvc, vaddr, type, lo, up, step);
   return 0;
 }
 
@@ -11544,7 +11557,6 @@ void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_
 
   //root
   store_constrained_memory(type, vaddr, taddr, lo, up, step);
-  update_witness(taddr, tc);
 }
 
 void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step) {
@@ -11555,14 +11567,17 @@ void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uin
       return;
 
   // handle constraints of shadowed memory (do not update vaddr)
-  if (vaddr != NUMBEROFREGISTERS)
+  if (vaddr > NUMBEROFREGISTERS)
     if (taddr != load_symbolic_memory(pt, vaddr))
       vaddr = NUMBEROFREGISTERS;
 
   // always track constrained memory by using tc as most recent branch
-  if (store_symbolic_memory(pt, vaddr, taddr, type, lo, up, step, tc))
-    update_alias_tc(taddr, tc);
-
+  if (store_symbolic_memory(pt, vaddr, taddr, type, lo, up, step, tc)) {
+    // update symbolics mrvc pointers
+    update_alias(get_trace_tc(tc), tc);                   // if it has dependence
+    if(look_for_witness(get_trace_tc(tc)) != NOT_FOUND)   // if it is an input
+      update_witness(get_trace_tc(tc), tc);
+  }
 }
 
 void store_register_memory(uint64_t reg, uint64_t value) {
