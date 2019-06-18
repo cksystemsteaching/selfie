@@ -1,4 +1,4 @@
-uint64_t COUNT = 100;
+uint64_t COUNT = 300;
 uint64_t* array;
 
 uint64_t SIZEOFUINT64 = 8; // must be the same as REGISTERSIZE
