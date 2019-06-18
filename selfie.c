@@ -11255,35 +11255,36 @@ void update_alias(uint64_t old, uint64_t taddr) {
 
   assign = search_alias(old);
 
-  if (assign)
+  if (assign) {
     set_assign_tc(assign, taddr);
 
-  else {
-    if (ic_correction) {
-      printf4((uint64_t*) "%s: error while updating %d with %d at %x", selfie_name, (uint64_t*) old, (uint64_t*) taddr, (uint64_t*) pc);
+    if (sdebug_alias) {
+      printf5((uint64_t*) "%s: [a] %d is now %d (%x) at %x", selfie_name, (uint64_t*) old, (uint64_t*) taddr, (uint64_t*) get_trace_vaddr(taddr), (uint64_t*) pc);
       print_code_line_number_for_instruction(pc - entry_point);
       println();
       print_dg();
-      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+    }
+  }
+  else {
+    if (sdebug_alias) {
+      printf3((uint64_t*) "%s: [a] %d not found at %x", selfie_name, (uint64_t*) old, (uint64_t*) pc);
+      print_code_line_number_for_instruction(pc - entry_point);
+      println();
+      print_dg();
     }
   }
 
   //keep track tc into function'summaries
-  if (*(watchdog_tc + (ic_scall - 1)) == old) {
-    *(watchdog_tc + (ic_scall - 1)) = taddr;
+  if (ic_scall) {
+    if (*(watchdog_tc + (ic_scall - 1)) == old) {
+      *(watchdog_tc + (ic_scall - 1)) = taddr;
 
-    if (sdebug_alias) {
-      printf4((uint64_t*) "%s: [f] watchdog updated from %d to %d at %x\n", selfie_name, (uint64_t*) old, (uint64_t*) *(watchdog_tc + (ic_scall-1)), (uint64_t*) pc);
-      print_code_line_number_for_instruction(pc - entry_point);
-      println();
+      if (sdebug_alias) {
+        printf4((uint64_t*) "%s: [f] watchdog updated from %d to %d at %x", selfie_name, (uint64_t*) old, (uint64_t*) *(watchdog_tc + (ic_scall-1)), (uint64_t*) pc);
+        print_code_line_number_for_instruction(pc - entry_point);
+        println();
+      }
     }
-  }
-
-  if (sdebug_alias) {
-    printf5((uint64_t*) "%s: [a] %d is now %d (%x) at %x", selfie_name, (uint64_t*) old, (uint64_t*) taddr, (uint64_t*) get_trace_vaddr(taddr), (uint64_t*) pc);
-    print_code_line_number_for_instruction(pc - entry_point);
-    println();
-    print_dg();
   }
 }
 
@@ -11367,7 +11368,6 @@ void print_dg() {
       if (assign)
         print((uint64_t*) " and ");
     }
-@
     println();
     node = get_next_node(node);
   }
