@@ -1717,8 +1717,8 @@ uint64_t* delete_assignment(uint64_t taddr, uint64_t* from);
 
 uint64_t* search_node(uint64_t taddr);
 uint64_t* search_alias(uint64_t taddr);
-void      update_alias_tc(uint64_t vaddr, uint64_t taddr);
-uint64_t  alias_depth(uint64_t vaddr);
+void      update_alias(uint64_t vaddr, uint64_t taddr);
+uint64_t  alias_height(uint64_t vaddr);
 
 uint64_t  get_source(uint64_t taddr);
 uint64_t  get_correction(uint64_t taddr);
@@ -1737,9 +1737,9 @@ uint64_t* global_dg            = (uint64_t*) 0;
 
 // node
 // +----+----------+
-// |  0 | next     | next node
-// |  1 | prev     | prev node
-// |  2 | l-list   | list of asssignemnts
+// |  0 | next     | next     node
+// |  1 | prev     | previous node
+// |  2 | l-list   | stack of assignments
 // +----+----------+
 
 uint64_t* get_next_node(uint64_t* entry)    { return (uint64_t*)  *entry; }
@@ -1752,7 +1752,7 @@ void set_assigns(uint64_t* entry, uint64_t* assigns)   { *(entry + 2) = (uint64_
 
 // assign
 // +----+---------+
-// |  0 | next    | next assignments
+// |  0 | prev    | previous assignment
 // |  1 | taddr   | assignment's most recent trace index
 // |  2 | flag    | is the dependence enabled
 // |  3 | plist   | list of predecessor's assignments
@@ -1760,7 +1760,7 @@ void set_assigns(uint64_t* entry, uint64_t* assigns)   { *(entry + 2) = (uint64_
 // |  5 | corr    | correction
 // +----+---------+
 
-uint64_t* get_next_assign(uint64_t* assign)        { return (uint64_t*)  *assign; }
+uint64_t* get_prev_assign(uint64_t* assign)        { return (uint64_t*)  *assign; }
 uint64_t  get_assign_tc(uint64_t* assign)          { return              *(assign + 1); }
 uint64_t  get_assign_flag(uint64_t* assign)        { return              *(assign + 2); }
 uint64_t* get_assign_predecessors(uint64_t* assign){ return (uint64_t*)  *(assign + 3); }
@@ -1831,7 +1831,7 @@ void print_watchdogs();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
-uint64_t ccf              = 0;  //current call function
+uint64_t ic_scall              = 0;  //current call function
 
 uint64_t* watchdog_func;
 uint64_t* watchdog_tc;
@@ -9398,7 +9398,7 @@ uint64_t constrain_ld() {
             set_constraint(rd, vaddr, get_trace_a1(mrvc), get_trace_a2(mrvc), get_trace_a3(mrvc));
 
             if (get_trace_type(mrvc) == MSIID_T) {
-              if (alias_depth(vaddr) > MAX_ALIAS) {
+              if (alias_height(vaddr) > MAX_ALIAS) {
                 printf2((uint64_t*) "%s: aliased access detected at %x", selfie_name, (uint64_t*) pc);
                 print_code_line_number_for_instruction(pc - entry_point);
                 println();
@@ -9586,18 +9586,18 @@ void backtrack_sd() {
     global_dg = delete_assignment(tc, global_dg);
 
     //calls
-    if (ccf) {
-      if (tc == *(watchdog_tc + (ccf - 1))) {
+    if (ic_scall) {
+      if (tc == *(watchdog_tc + (ic_scall - 1))) {
 
         if (sdebug_alias) {
-          printf5((uint64_t*) "%s: [f] backtrack sd: stop monitoring @%d<%x,%d> at %x\n", selfie_name, (uint64_t*) (ccf-1), (uint64_t*) *(watchdog_func + (ccf - 1)), (uint64_t*) *(watchdog_tc + (ccf - 1)), (uint64_t*) pc);
+          printf5((uint64_t*) "%s: [f] backtrack sd: stop monitoring @%d<%x,%d> at %x\n", selfie_name, (uint64_t*) (ic_scall-1), (uint64_t*) *(watchdog_func + (ic_scall - 1)), (uint64_t*) *(watchdog_tc + (ic_scall - 1)), (uint64_t*) pc);
           print_code_line_number_for_instruction(pc - entry_point);
           println();
         }
 
-        *(watchdog_func + (ccf - 1))    = 0;
-        *(watchdog_tc + (ccf - 1))      = 0;
-        ccf = ccf - 1;
+        *(watchdog_func + (ic_scall - 1))    = 0;
+        *(watchdog_tc + (ic_scall - 1))      = 0;
+        ic_scall = ic_scall - 1;
       }
     }
   }
@@ -11100,9 +11100,9 @@ uint64_t* allocate_assignment(uint64_t taddr, uint64_t* p_assign, uint64_t* s_as
     else
       printf1((uint64_t*) "pred: %d, ", (uint64_t*) *get_assign_predecessors(new_assign));
     if (get_assign_successor(new_assign))
-      printf4((uint64_t*) "succ: - c%d - > %d, next:%x at %x", (uint64_t*) get_assign_correction(new_assign), (uint64_t*) get_assign_tc(get_assign_successor(new_assign)), get_next_assign(new_assign), (uint64_t*) pc);
+      printf4((uint64_t*) "succ: - c%d - > %d, prev:%x at %x", (uint64_t*) get_assign_correction(new_assign), (uint64_t*) get_assign_tc(get_assign_successor(new_assign)), get_prev_assign(new_assign), (uint64_t*) pc);
     else
-      printf4((uint64_t*) "succ: - c%d - > %d, next:%x at %x", (uint64_t*) get_assign_correction(new_assign), (uint64_t*) get_assign_successor(new_assign), get_next_assign(new_assign), (uint64_t*) pc);
+      printf4((uint64_t*) "succ: - c%d - > %d, prev:%x at %x", (uint64_t*) get_assign_correction(new_assign), (uint64_t*) get_assign_successor(new_assign), get_prev_assign(new_assign), (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
@@ -11177,8 +11177,8 @@ uint64_t* delete_assignment(uint64_t taddr, uint64_t* from) {
     ic_correction = ic_correction - 1;
 
     // remove current assignment
-  if (get_next_assign(assign))
-    set_assigns(node, get_next_assign(assign));
+  if (get_prev_assign(assign))
+    set_assigns(node, get_prev_assign(assign));
 
   else { // remove node
     if (get_next_node(node) != (uint64_t*) 0)
@@ -11243,14 +11243,14 @@ uint64_t* search_alias(uint64_t taddr) {
     while (assign != (uint64_t*) 0) {
       if (get_assign_tc(assign) == taddr)
         return assign;
-      assign = get_next_assign(assign);
+      assign = get_prev_assign(assign);
     }
 
   }
   return (uint64_t*) 0;
 }
 
-void update_alias_tc(uint64_t old, uint64_t taddr) {
+void update_alias(uint64_t old, uint64_t taddr) {
   uint64_t* assign;
 
   assign = search_alias(old);
@@ -11269,11 +11269,11 @@ void update_alias_tc(uint64_t old, uint64_t taddr) {
   }
 
   //keep track tc into function'summaries
-  if (*(watchdog_tc + (ccf - 1)) == old) {
-    *(watchdog_tc + (ccf - 1)) = taddr;
+  if (*(watchdog_tc + (ic_scall - 1)) == old) {
+    *(watchdog_tc + (ic_scall - 1)) = taddr;
 
     if (sdebug_alias) {
-      printf4((uint64_t*) "%s: [f] watchdog updated from %d to %d at %x\n", selfie_name, (uint64_t*) old, (uint64_t*) *(watchdog_tc + (ccf-1)), (uint64_t*) pc);
+      printf4((uint64_t*) "%s: [f] watchdog updated from %d to %d at %x\n", selfie_name, (uint64_t*) old, (uint64_t*) *(watchdog_tc + (ic_scall-1)), (uint64_t*) pc);
       print_code_line_number_for_instruction(pc - entry_point);
       println();
     }
@@ -11287,7 +11287,7 @@ void update_alias_tc(uint64_t old, uint64_t taddr) {
   }
 }
 
-uint64_t alias_depth(uint64_t vaddr) {
+uint64_t alias_height(uint64_t vaddr) {
   uint64_t  count;
   uint64_t* assign;
 
@@ -11363,11 +11363,11 @@ void print_dg() {
       else
         printf1((uint64_t*) " -> (%d)", (uint64_t*) get_assign_tc(assign));
 
-      assign = get_next_assign(assign);
+      assign = get_prev_assign(assign);
       if (assign)
         print((uint64_t*) " and ");
     }
-
+@
     println();
     node = get_next_node(node);
   }
@@ -11500,7 +11500,7 @@ void constrain_memory(uint64_t taddr, uint64_t from, uint64_t lo, uint64_t up, u
     printf2((uint64_t*) "%s: constrain-memory at %x", selfie_name, (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     if (from < NUMBEROFREGISTERS)
-      printf1((uint64_t*) " for register ", get_register_name(from));
+      printf1((uint64_t*) " for register %s ", get_register_name(from));
     else
       printf1((uint64_t*) " for memory address %x ", (uint64_t*) from);
     print_symbolic_memory(tc);
@@ -11647,19 +11647,19 @@ void constrain_jal() {
 
     //create function watchdog cause of symbolic argument
     if (symbolic_calling) {
-      if (ccf == MAX_CALL) {
+      if (ic_scall == MAX_CALL) {
         printf2((uint64_t*) "%s: list of symbolic call to monitore full at %x", selfie_name, (uint64_t*) symbolic_calling_pc);
         print_code_line_number_for_instruction(symbolic_calling_pc - entry_point);
         println();
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
       }
 
-      *(watchdog_func + ccf) = *(registers + rd);
-      *(watchdog_tc + ccf)   = symbolic_calling;
-      ccf = ccf + 1;
+      *(watchdog_func + ic_scall) = *(registers + rd);
+      *(watchdog_tc + ic_scall)   = symbolic_calling;
+      ic_scall = ic_scall + 1;
 
       if (sdebug_alias) {
-        printf5((uint64_t*) "%s: [f] watchdog activated for @%d<%x,%d> calling at %x", selfie_name, (uint64_t*) (ccf-1), (uint64_t*) *(watchdog_func + (ccf-1)), (uint64_t*) *(watchdog_tc + (ccf-1)), (uint64_t*) symbolic_calling_pc);
+        printf5((uint64_t*) "%s: [f] watchdog activated for @%d<%x,%d> calling at %x", selfie_name, (uint64_t*) (ic_scall-1), (uint64_t*) *(watchdog_func + (ic_scall-1)), (uint64_t*) *(watchdog_tc + (ic_scall-1)), (uint64_t*) symbolic_calling_pc);
         print_code_line_number_for_instruction(symbolic_calling_pc - entry_point);
         println();
       }
@@ -11681,12 +11681,12 @@ void constrain_jalr() {
   if (rd != REG_ZR)
     *(reg_alpha2 + rd) = *(registers + rd);
 
-  if (ccf) {
-    if (*(watchdog_func + (ccf - 1)) == pc) {
+  if (ic_scall) {
+    if (*(watchdog_func + (ic_scall - 1)) == pc) {
 
       pc = old_pc;
-      store_symbolic_memory(pt, 0, 0, 0, *(watchdog_func + (ccf - 1)), *(watchdog_tc + (ccf - 1)), 0, tc);
-      pc = *(watchdog_func + (ccf - 1));
+      store_symbolic_memory(pt, 0, 0, 0, *(watchdog_func + (ic_scall - 1)), *(watchdog_tc + (ic_scall - 1)), 0, tc);
+      pc = *(watchdog_func + (ic_scall - 1));
       if (sdebug_alias) {
         printf3((uint64_t*) "%s: [f] jalr: save watchdog into @%d at %x", selfie_name, (uint64_t*) tc, (uint64_t*) pc);
         print_code_line_number_for_instruction(pc - entry_point);
@@ -11694,16 +11694,16 @@ void constrain_jalr() {
       }
 
       //disable the alias and save it into the trace (for backtracking)
-      disable_alias(*(watchdog_tc + (ccf - 1)));
+      disable_alias(*(watchdog_tc + (ic_scall - 1)));
       if (sdebug_alias) {
-        printf5((uint64_t*) "%s: [f] jalr: stop monitoring @%d<%x,%d> at %x", selfie_name,(uint64_t*) (ccf - 1), (uint64_t*) *(watchdog_func + (ccf - 1)), (uint64_t*) *(watchdog_tc + (ccf - 1)), (uint64_t*) pc);
+        printf5((uint64_t*) "%s: [f] jalr: stop monitoring @%d<%x,%d> at %x", selfie_name,(uint64_t*) (ic_scall - 1), (uint64_t*) *(watchdog_func + (ic_scall - 1)), (uint64_t*) *(watchdog_tc + (ic_scall - 1)), (uint64_t*) pc);
         print_code_line_number_for_instruction(pc - entry_point);
         println();
       }
 
-      *(watchdog_func + (ccf - 1))    = 0;
-      *(watchdog_tc + (ccf - 1))      = 0;
-      ccf = ccf - 1;
+      *(watchdog_func + (ic_scall - 1))    = 0;
+      *(watchdog_tc + (ic_scall - 1))      = 0;
+      ic_scall = ic_scall - 1;
     }
   }
 
@@ -11717,15 +11717,15 @@ void backtrack_jalr() {
     print_symbolic_memory(tc);
   }
 
-  *(watchdog_func + ccf)  = get_trace_a1(tc);
-  *(watchdog_tc + ccf)    = get_trace_a2(tc);
+  *(watchdog_func + ic_scall)  = get_trace_a1(tc);
+  *(watchdog_tc + ic_scall)    = get_trace_a2(tc);
 
-  enable_alias(*(watchdog_tc + ccf));
+  enable_alias(*(watchdog_tc + ic_scall));
 
-  ccf = ccf + 1;
+  ic_scall = ic_scall + 1;
 
   if (sdebug_alias) {
-    printf5((uint64_t*) "%s: [f] backtrack jalr: enable back the monitoring of @%d<%x,%d> at %x\n", selfie_name,(uint64_t*) (ccf-1), (uint64_t*) *(watchdog_func + (ccf - 1)), (uint64_t*) *(watchdog_tc + (ccf - 1)), (uint64_t*) pc);
+    printf5((uint64_t*) "%s: [f] backtrack jalr: enable back the monitoring of @%d<%x,%d> at %x\n", selfie_name,(uint64_t*) (ic_scall-1), (uint64_t*) *(watchdog_func + (ic_scall - 1)), (uint64_t*) *(watchdog_tc + (ic_scall - 1)), (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
@@ -11737,8 +11737,8 @@ void print_watchdogs() {
   uint64_t i;
   i = 0;
 
-  printf2((uint64_t*) "%s: [f] + --------- %d watchdogs +\n", selfie_name, (uint64_t*) ccf);
-  while (i < ccf) {
+  printf2((uint64_t*) "%s: [f] + --------- %d watchdogs +\n", selfie_name, (uint64_t*) ic_scall);
+  while (i < ic_scall) {
     printf2((uint64_t*) "[f] <%x,%d>\n", (uint64_t*) *(watchdog_func + i), (uint64_t*) *(watchdog_tc + i));
     i = i + 1;
   }
