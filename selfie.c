@@ -10069,6 +10069,9 @@ void msiid_add() {
     if (*(reg_type + rs1)) {
       if (*(reg_type + rs2)) {
 
+        printf1((uint64_t*) "%s: error addition with two msiids not implemented\n", selfie_name);
+        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+
         // s + s
         add_steps = gcd(*(reg_alpha3 + rs1), *(reg_alpha3 + rs2));
         if (*(reg_alpha3 + rs1) < *(reg_alpha3 + rs2))
@@ -10138,6 +10141,9 @@ void msiid_sub() {
   //interval sub semantics
   if (*(reg_type + rs1)) {
     if (*(reg_type + rs2)) {
+
+      printf1((uint64_t*) "%s: error subtraction with two msiids not implemented\n", selfie_name);
+      exit(EXITCODE_SYMBOLICEXECUTIONERROR);
 
       // s - s
       sub_steps = gcd(*(reg_alpha3 + rs1), *(reg_alpha3 + rs2));
