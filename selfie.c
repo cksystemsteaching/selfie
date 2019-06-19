@@ -10176,7 +10176,9 @@ void msiid_add() {
     if (*(reg_type + rs1)) {
       if (*(reg_type + rs2)) {
 
-        printf1((uint64_t*) "%s: error addition with two msiids not implemented\n", selfie_name);
+        printf2((uint64_t*) "%s: error addition with two msiids not implemented at %x", selfie_name, (uint64_t*) pc);
+        print_code_line_number_for_instruction(pc - entry_point);
+        println();
         exit(EXITCODE_SYMBOLICEXECUTIONERROR);
 
         // s + s
@@ -10250,8 +10252,11 @@ void msiid_sub() {
   if (*(reg_type + rs1)) {
     if (*(reg_type + rs2)) {
 
-      printf1((uint64_t*) "%s: error subtraction with two msiids not implemented\n", selfie_name);
+      printf2((uint64_t*) "%s: error subtraction with two msiids not implemented at %x", selfie_name, (uint64_t*) pc);
+      print_code_line_number_for_instruction(pc - entry_point);
+      println();
       exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+
 
       // s - s
       sub_steps = gcd(*(reg_alpha3 + rs1), *(reg_alpha3 + rs2));
