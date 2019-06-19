@@ -31,7 +31,7 @@ uint64_t is_digit(uint64_t c) {
 
 uint64_t main(uint64_t argc, uint64_t* argv) {
   uint64_t source_fd;
-
+  uint64_t c;
 
   // initialize selfie's libcstar library
   init_library();
@@ -49,7 +49,8 @@ uint64_t main(uint64_t argc, uint64_t* argv) {
     return *buffer;
 
   if (is_digit(*buffer)) {
-    return 10 / (*buffer - '0');
+    c = (*buffer - '0');
+    return 10 / (c / 10);
   }
 
   return 1;
