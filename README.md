@@ -1,234 +1,11 @@
-# Selfie [![Build Status](https://travis-ci.org/cksystemsteaching/selfie.svg?branch=master)](https://travis-ci.org/cksystemsteaching/selfie)
-
-Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
-
-The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and even virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
-
-Slides providing an overview of selfie and an introduction to its design and implementation are made available incrementally [here](http://selfie.cs.uni-salzburg.at/slides). There is also a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
-
-Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
-
-1. a self-compiling compiler called starc that compiles
-   a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to
-   a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
-2. a self-executing emulator called mipster that executes
-   RISC-U code including itself when compiled with starc,
-3. a self-hosting hypervisor called hypster that provides
-   RISC-U virtual machines that can host all of selfie,
-   that is, starc, mipster, and hypster itself,
-4. a prototypical symbolic execution engine called monster
-   that executes RISC-U code symbolically,
-5. a simple SAT solver that reads CNF DIMACS files, and
-6. a tiny C* library called libcstar utilized by selfie.
-
-Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support built into the emulator. Selfie generates ELF binaries that are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
-
-For further information and support please refer to [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
-
-## Supported Platforms
-
-Selfie runs on Mac, Linux, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
-
-## Installing Selfie
-
-There are at least three ways to install and run selfie, from real simple to a bit more difficult:
-
-1. If you have access to a Mac, Linux, or Windows machine download and install [docker](https://docker.com). Then, open a terminal window and type `docker run -it cksystemsteaching/selfie`. Besides simplicity, the key advantage of using docker is that you can run selfie out of the box natively on your machine but also on spike and pk which are both pre-installed in the [selfie docker image](https://hub.docker.com/r/cksystemsteaching/selfie).
-
-2. Instead of using docker, you may also just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip), and then open a terminal window to run selfie on your machine. However, for this to work you need to have a C compiler installed on your machine. We recommend using [clang](https://clang.llvm.org) or [gcc](https://gcc.gnu.org).
-
-3. If you only have access to a web browser, create a [github](https://github.com) account, unless you already have one, and fork [selfie](https://github.com/cksystemsteaching/selfie) into your github account. Then, create a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
-
-At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
-
-The next step is to produce a selfie binary. To do that type `make` in your terminal. With docker, the system will respond `make: 'selfie' is up to date` since there is already a selfie binary pre-installed. Without docker, `make` will invoke the C compiler on your machine or in the cloud9 workspace:
-
-```bash
-cc -Wall -Wextra -O3 -m64 -Duint64_t='unsigned long long' selfie.c -o selfie
-```
-
-and then compile `selfie.c` into an executable called `selfie` as directed by the `-o` option. The executable contains the C\* compiler, the mipster emulator, and the hypster hypervisor. The `-Wall` and `-Wextra` options enable all compiler warnings which is useful during further development of selfie. The `-O3` option instructs the compiler to generate optimized code. The `-m64` option makes the compiler generate a 64-bit executable. The `-Duint64_t='unsigned long long'` option is needed to bootstrap the code. It defines the data type `uint64_t` which would otherwise be undefined since C\* does not support including the necessary definitions.
-
-## Running Selfie
-
-Once you have successfully compiled `selfie.c` you may invoke `selfie` without any arguments as follows:
-
-```bash
-$ ./selfie
-./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs }  [ -v 0-4 ] [ ( -m | -d | -r | -n | -y | -min | -mob ) 0-64 ... ]
-```
-
-In this case, `selfie` responds with its usage pattern.
-
-The order in which the options are provided matters for taking full advantage of self-referentiality.
-
-The `-c` option invokes the C\* compiler on the given list of `source` files compiling and linking them into RISC-U code that is stored internally. For example, `selfie` may be used to compile its own source code `selfie.c` as follows:
-
-```bash
-$ ./selfie -c selfie.c
-```
-
-The `-o` option writes RISC-U code produced by the most recent compiler invocation to the given `binary` file. For example, `selfie` may be instructed to compile itself and then output the generated RISC-U code into a RISC-U binary file called `selfie.m`:
-
-```bash
-$ ./selfie -c selfie.c -o selfie.m
-```
-
-The `-s` option writes RISC-U assembly of the RISC-U code produced by the most recent compiler invocation to the given `assembly` file while the `-S` option additionally includes approximate line numbers and the binary representation of the instructions. Similarly as before, `selfie` may be instructed to compile itself and then output the generated RISC-U code into a RISC-U assembly file called `selfie.s`:
-
-```bash
-$ ./selfie -c selfie.c -s selfie.s
-```
-
-The `-l` option loads RISC-U code from the given `binary` file. The `-o` and `-s` options can also be used after the `-l` option. However, in this case the `-s` option does not generate approximate source line numbers. For example, the previously generated RISC-U binary file `selfie.m` may be loaded as follows:
-
-```bash
-$ ./selfie -l selfie.m
-```
-
-The `-m` option invokes the mipster emulator to execute RISC-U code most recently loaded or produced by a compiler invocation. The emulator creates a machine instance with `0-64` MB of memory. The `source` or `binary` name of the RISC-U code and any remaining `...` arguments are passed to the main function of the code. For example, the following invocation executes `selfie.m` using mipster:
-
-```bash
-$ ./selfie -l selfie.m -m 1
-```
-
-This is in fact semantically equivalent to executing `selfie` without any arguments:
-
-```bash
-$ ./selfie
-```
-
-The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state. Alternatively, the `-r` option limits the amount of output created with the `-d` option by having mipster merely replay code execution when runtime errors such as division by zero occur. In this case, mipster outputs only the instructions that were executed right before the error occurred. The `-min` and `-mob` options invoke special versions of the mipster emulator used for teaching.
-
-If you are using docker you can also execute `selfie.m` directly on spike and pk as follows:
-
-```bash
-$ spike pk selfie.m
-```
-
-which is again semantically equivalent to executing `selfie` without any arguments.
-
-The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code. See below for an example.
-
-The `-n` option invokes the symbolic execution engine which interprets the `0-64` value as fuzzing parameter. Value `0` means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The `64` value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value. Note that the current implementation is incomplete and buggy.
-
-The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The current implementation is naive and only works on small instances.
-
-### Self-compilation
-
-Here is an example of how to perform self-compilation of `selfie.c` and then check if the RISC-U code `selfie1.m` generated for `selfie.c` by executing the `./selfie` binary is equivalent to the code `selfie2.m` generated by executing the just generated `selfie1.m` binary:
-
-```bash
-$ ./selfie -c selfie.c -o selfie1.m -m 2 -c selfie.c -o selfie2.m
-$ diff -s selfie1.m selfie2.m
-Files selfie1.m and selfie2.m are identical
-```
-
-Note that at least 2MB of memory is required for this to work.
-
-### Self-execution
-
-The following example shows how to perform self-execution of the mipster emulator. In this case we invoke mipster to invoke itself to execute `selfie`:
-
-```bash
-$ ./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -m 1
-```
-
-which is again semantically equivalent to executing `selfie` without any arguments but this time with `selfie` printing its usage pattern much slower since there is a mipster running on top of another mipster.
-
-### Self-hosting
-
-The previous example can also be done by running hypster on mipster. This is significantly faster and requires less memory since hypster does not create a second emulator instance on top of the first emulator instance. Instead, hypster creates a virtual machine to execute selfie that runs concurrently to hypster on the first emulator instance:
-
-```bash
-$ ./selfie -c selfie.c -o selfie.m -m 1 -l selfie.m -y 1
-```
-
-We may even run hypster on hypster on mipster which is still reasonably fast since there is still only one emulator instance involved and hypster itself does not add much overhead:
-
-```bash
-$ ./selfie -c selfie.c -o selfie.m -m 2 -l selfie.m -y 1 -l selfie.m -y 1
-```
-
-### Workflow
-
-To compile any C\* source code and execute it right away in a single invocation of `selfie` without generating a RISC-U binary use:
-
-```bash
-$ ./selfie -c any-cstar-file.c -m 1 "arguments for any-cstar-file.c"
-```
-
-Equivalently, you may also use a selfie-compiled version of `selfie` and have the mipster emulator execute selfie to compile any C\* source code and then execute it right away with hypster on the same emulator instance:
-
-```bash
-$ ./selfie -c selfie.c -m 1 -c any-cstar-file.c -y 1 "arguments for any-cstar-file.c"
-```
-
-You may also generate RISC-U binaries both ways which will then be identical:
-
-```bash
-$ ./selfie -c any-cstar-file.c -o any-cstar-file1.m
-$ ./selfie -c selfie.c -m 1 -c any-cstar-file.c -o any-cstar-file2.m
-$ diff -s any-cstar-file1.m any-cstar-file2.m
-Files any-cstar-file1.m and any-cstar-file2.m are identical
-```
-
-This can also be done in a single invocation of `selfie`:
-
-```bash
-$ ./selfie -c any-cstar-file.c -o any-cstar-file1.m -c selfie.c -m 1 -c any-cstar-file.c -o any-cstar-file2.m
-$ diff -s any-cstar-file1.m any-cstar-file2.m
-Files any-cstar-file1.m and any-cstar-file2.m are identical
-```
-
-The generated RISC-U binaries can then be loaded and executed as follows:
-
-```bash
-$ ./selfie -l any-cstar-file1.m -m 1 "arguments for any-cstar-file1.m"
-```
-
-#### Linking
-
-To compile and link any C\* source code from multiple source files use:
-
-```bash
-$ ./selfie -c any-cstar-file1.c any-cstar-file2.c ... -m 1
-```
-
-For example, to make the source code of `selfie.c` available as library code in any C\* source code use:
-
-```bash
-$ ./selfie -c any-cstar-file.c selfie.c -m 1
-```
-
-Note that multiple definitions of symbols are ignored by the compiler with a warning.
-
-#### Debugging
-
-Selfie's console messages always begin with the name of the source or binary file currently running. The mipster emulator also shows the amount of memory allocated for its machine instance and how execution terminated (exit code).
-
-As discussed before, RISC-U assembly for `selfie` and any other C\* file is generated as follows:
-
-```bash
-$ ./selfie -c selfie.c -s selfie.s
-```
-
-If the assembly code is generated from a binary generated by the compiler (and not loaded from a file) approximate source line numbers are included in the assembly file.
-
-Verbose debugging information is printed with the `-d` option, for example:
-
-```bash
-$ ./selfie -c selfie.c -d 1
-```
-
-Similarly, if the executed binary is generated by the compiler (and not loaded from a file) approximate source line numbers are included in the debug information.
-
 # Littlemonster [![Build Status](https://travis-ci.org/cksystemsteaching/selfie.svg?branch=littlemonster)](https://travis-ci.org/cksystemsteaching/selfie/branches)
 
-The -n option invokes the symbolic execution engine which interprets the 0-64 value as fuzzing parameter. Value 0 means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The 64 value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value. Note that the current implementation is incomplete and buggy.
+*Monster* is a symbolic engine based on *selfie*, to read more about *selfie* version and description read the file [selfie.md](https://github.com/cksystemsteaching/selfie/blob/littlemonster/selfie.md).
+
+The symbolic engine is invoked by the option `-n` and interprets the 0-64 value as fuzzing parameter. Value 0 means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The 64 value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value.
 
 ## Bugs Hunting
-Littlemonster provides a symbolic emulator by executing a RISC-U binary for a set of input values. You may use this feature to test your binary for several (ideally all) its possible executions. You can find examples of test files in the `test` folder. Use the option `-n` instead of `-m` in order to execute symbolically your code.
+*Monster* tests your binary for several possible executions. For instance, the following command compiles the file [**read_test**](https://github.com/cksystemsteaching/selfie/blob/littlemonster/test/read_test.c) (`-c`) and symbolically executes it fuzzing any *reads* with `+-2^2`.
 ```bash
 $ ./selfie -c test/read_test.c selfie.c -n 2
 [...]
@@ -236,8 +13,9 @@ $ ./selfie -c test/read_test.c selfie.c -n 2
 ./selfie: backtracking 1
 ./selfie: selfie terminating test/read_test.c with exit code 0
 ```
-By default only the number of backtracks is printed during a symbolic execution. In order to see more detail, the verbose option `-v` should be set.
-
+By default the engine only prints the number of backtracks, that is to say the number of distinct paths executed.
+The verbose option `-v`
+prints more about the symbolic state.
 ```bash
 $ ./selfie -c test/read_test.c selfie.c -v 1 -n 2
 [...]
@@ -246,41 +24,83 @@ $ ./selfie -c test/read_test.c selfie.c -v 1 -n 2
 ./selfie: backtracking 1
 ./selfie: selfie terminating test/read_test.c with exit code 0
 ```
+Contrary to usual symbolic execution engines,
+*monster* uses [abstract domains](https://en.wikipedia.org/wiki/Abstract_interpretation#Examples_of_abstract_domains) and executes a program with sets of concrete values.
+Here, the triple `<49,52,1>` specifies that the set of possible exit code values is `{49, 50, 51, 52}` which are the fuzzed values read with the option `-n 2`.
 
-The sets of values `littlemonster` uses to abstract possible program executions are called **symbolic** values. The exit code returned here is one of them and is called `msuiid`. The triple `<49,52,1>` specifies that the set of possible exit code values is `{49, 50, 51, 52}` and corresponds to the values fuzzed by the system call `read` in read_test.c and the option `-n 2`.
-
-A `msuiid` value is three integers, a start, an end and a step. It specifies the set with the starting value and each steps more until the end value. The set models overflows, for example `<-3,3,2>` corresponds to the set `{-3, -1, 1, 3}`.
-
-The `read/fuzz` feature is one possible way to initialize symbolic values into an execution. A second possibility exists with the system call `input`. This function allows the user to debug more precisely its own code by explicitly setting the `msuiid` into a specific variable.
-
-*Notice that we handle for the moment exclusive uses of input and read system calls into one file.*
-
+### Specify your values
+The system call `input` allows to insert a symbolic value into a variable.
+For instance,
+the file [**input_test**](https://github.com/cksystemsteaching/selfie/blob/littlemonster/test/input_test.c) is executed
+for a value of `x` from `0` to `10` with verbose `2`.
 ```bash
 $ ./selfie -c test/input_test.c -v 2 -n 2
 [...]
 ./selfie: selfie executing test/input_test.c with 2MB physical memory on monster
-./selfie: constrained memory locations in sd operand at 0x101A0(~4)
 ./selfie: test/input_test.c reaching end point at: 0x000001BC(~6) with exit code <0,10,1>
-./selfie: trace length 15.
-./selfie: 65 instructions executed for the path, total instructions 65.
-./selfie: symbolic values witness:
-<0,10,1> for variable: 0xFFFFFFA8 at index [15]
+./selfie: instructions:           - total 65 : path 65(53.27% of 122 instructions).
+./selfie:                symbolic - total 11(16.92%).
+./selfie: trace:   length 18
+./selfie: state:   2 symbolic variable(s) and 2 assignment(s), 0 symbolic call(s), and 0 correction(s).
+./selfie: memory:  1184(0.05%)
+./selfie: end with 1 symbolic input value(s):
+./selfie:  -  symbolic 1 from @16{0xFFFFFFA8=(0,10,1)} at 0x101A0(~4) -> @17{0xFFFFFFA8=(0,10,1)} (100.00%)
 ./selfie: backtracking 1
-./selfie: selfie terminating test/input_test.c with exit code 0
 ```
-The verbose option `-v` prints information about a symbolic execution. The level `1` shows the exit codes at each possible end, the level `2` adds a sum-up containing the current **trace** length (the symbolic memory), the number of instructions executed for this path, the total number of executed instructions, and the witness specifying the input values to reproduce this path. The other verbose values enable the unreachable branch warnings whenever a condition is evaluated with symbolic values (level `3`) or any unreachable branches (level `4`). Finally, level `5` enables the symbolic debugger which is similar to `-d` but with symbolic values.
+At each end point,
+the verbose `2` outputs
+the set of possible exit code values,
+the number of instructions executed,
+the number of symbolic memory entries,
+the whole symbolic states with its memory consumption, and
+for each symbolic variable
+the set of values and the line
+of its initialization and ending points
+(the possible values to reproduce that path) with its input coverage.
+
+In our case,
+there is only one possible path with `11` symbolic instructions (among `65`).
+The engine executed `53.27%` of the program instructions.
+There are `18` trace entries
+and two symbolic variables
+using `1184`Bytes.
+Finally, the set of input values created at line `4`
+is completely covered,
+meaning that the same path is taken
+for `x` between `0` and `10`.
+
+#### Verbose values
+The option values `-v 3` and `-v 4` print the unreachable branches *during a path execution*,
+and `-v 5` enables the symbolic debugger which is similar to `-d` but with symbolic values.
 
 ### Bounded Execution
 ```c
 // symbolic BOUNDS
 uint64_t MAX_TRACE_LENGTH
 uint64_t MAX_PATH_LENGTH
-uint64_t MAX_READ
+uint64_t MAX_SYMBOLIC
+uint64_t MAX_CORRECTION
+uint64_t MAX_ALIAS
+uint64_t MAX_NODE
+uint64_t MAX_ASSIGN
+uint64_t MAX_PREDECESSOR
+uint64_t MAX_CALL
 ```
-Littlemonster provides three parameters to limit your symbolic execution and prevent from infinite runs. `MAX_TRACE_LENGTH` will limit the number of values stored into the symbolic memory. Littlemonster executes a path until `MAX_PATH_LENGTH` instructions and will not analyze it further. Finally, `MAX_READ` is the maximum number of reads the analysis will consider (along one path), next reads will return `EOF`.
+
+*Monster* has constants to limit
+a symbolic execution.
+Whenever the execution reaches one of that constant, the current path is aborted and the engine backtracks.
+- `MAX_TRACE_LENGTH` limits the number of values stored into the symbolic memory.
+- *Monster* executes a path until `MAX_PATH_LENGTH` instructions and will not analyze further.
+- `MAX_SYMBOLIC` is the maximum number of symbolic inputs the analysis will consider (along one path), a next read will return `EOF`.
+- `MAX_CORRECTION` is the number of relational domains stored into memory.
+- `MAX_ALIAS` is the alias depth for which it is allowed to load a variable.
+- `MAX_NODE` and `MAX_ASSIGN` are the number of symbolic variables and total assignments of a path
+- `MAX_PREDECESSOR` the number of aliased assignments a symbolic variable can have.
+- `MAX_CALL` the number of recursive symbolic calls a path can do.
 
 # Test file
-You can automatically test a set of files using `test-script.pl`. The script symbolically executes the files and checks their actual outputs. A `test` file is a **C*** file with a header specifying the command and the expected results.
+The script `test-script.pl` symbolically executes a folder of test files and checks their actual outputs. A `test` file is a **C*** file with a header specifying the command and the expected results.
 ```c
 // [-c test/input_test.c -v 4 -n 2;<6,0,10,1>;<8,false>;]
 uint64_t main(uint64_t argc, uint64_t* argv) {
@@ -303,6 +123,7 @@ Each run of `test-script.pl` will create a log file in which the tests and their
 
 *Be aware that the path is checked against the first compiled .c file  and the current tested file.*
 
+The following output depicts the result of feeding `input_test.c` to the script.
 ```bash
 $ cat log_119.0.19.5.56.txt
 ~~~--~~~------~~~---~~~ test/input_test.c:
@@ -314,7 +135,6 @@ PASS
 - - - - - - -
 1 test(s) executed
 ```
-Congrats, you have just passed your first `littlemonster` test!
 
 # Expected value format
 The expected format to specify test headers is the following:
@@ -325,4 +145,4 @@ with output :=        '<'line ',' start ',' end ',' step '>'
                     | '<' line ',' "true" '>'
 ```
 
-The file `test.zip` contains the last regression tests for the `msuiid` (01/03/2019). To test your `littlemonster` version, unzip it and run `make test`.
+The file `test.zip` contains the last regression tests for the `msuiid` (01/03/2019). To test your `monster` version, unzip it and run `make test`.
