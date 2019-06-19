@@ -9877,7 +9877,7 @@ void print_symbolic_profile() {
     printf3((uint64_t*) "%s:                symbolic - total %d(%.2d%%).\n", selfie_name, (uint64_t*) get_total_number_of_symbolic_instructions(), (uint64_t*) fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(), get_total_number_of_symbolic_instructions(), 4), 4));
     printf2((uint64_t*) "%s: trace:   length %d\n", selfie_name, (uint64_t*) tc);
     printf5((uint64_t*) "%s: state:   %d symbolic variable(s) and %d assignment(s), %d symbolic call(s), and %d correction(s).\n", selfie_name, (uint64_t*) ic_node, (uint64_t*) ic_assign, (uint64_t*) ic_scall, (uint64_t*) ic_correction);
-    printf3((uint64_t*) "%s: memory:  %d(%.2d%%)\n", selfie_name, (uint64_t*) get_symbolic_size(), (uint64_t*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, get_symbolic_size(), 4), 4));
+    printf3((uint64_t*) "%s: memory:  %dB(%.2d%%)\n", selfie_name, (uint64_t*) get_symbolic_state_size(), (uint64_t*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, get_symbolic_state_size(), 4), 4));
     print_witness();
   }
 
@@ -10046,18 +10046,20 @@ void print_symbolic_memory(uint64_t svc) {
 
 void print_short_symbolic(uint64_t svc) {
   printf1((uint64_t*) "@%d{", (uint64_t*) svc);
+
   if (get_trace_vaddr(svc) == 0) {
     if (get_trace_type(svc) == ARRAY_T)
-      printf3((uint64_t*) ";%x=%x=malloc(%d)}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+      printf3((uint64_t*) "%x=%x=malloc(%d)}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
     else
-      printf2((uint64_t*) ";watch%x=%d}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
+      printf2((uint64_t*) "watch%x=%d}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
     return;
   } else if (get_trace_vaddr(svc) < NUMBEROFREGISTERS)
-    printf2((uint64_t*) ";%s=%d", get_register_name(get_trace_vaddr(svc)), (uint64_t*) get_trace_a1(svc));
+    printf1((uint64_t*) "%s=", get_register_name(get_trace_vaddr(svc)));
   else if (get_trace_vaddr(svc) == NUMBEROFREGISTERS)
-    printf1((uint64_t*) ";xxx%x", (uint64_t*) get_vaddr_with_alias(svc));
+    printf1((uint64_t*) "xxx%x=;", (uint64_t*) get_vaddr_with_alias(svc));
   else
-    printf2((uint64_t*) ";%x=%d", (uint64_t*) get_trace_vaddr(svc), (uint64_t*) get_trace_a1(svc));
+    printf1((uint64_t*) "%x=", (uint64_t*) get_trace_vaddr(svc));
+
   if (get_trace_type(svc) == MSIID_T)
     if (get_trace_a1(svc) == get_trace_a2(svc))
       printf1((uint64_t*) "(%d)}", (uint64_t*) get_trace_a1(svc));
