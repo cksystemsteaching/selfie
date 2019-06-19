@@ -1462,6 +1462,8 @@ uint64_t MAX_SYMBOLIC     = 50;         // input bound
 uint64_t MAX_CORRECTION   = 100;        // max number of relational domains
 
 uint64_t MAX_ALIAS        = 0;          // alias bound
+uint64_t MAX_NODE         = 20;
+uint64_t MAX_ASSIGN       = 100;
 uint64_t MAX_PREDECESSOR  = 50;
 
 uint64_t MAX_CALL         = 50;         // watchdog recursive symbolic bound
@@ -1474,6 +1476,22 @@ uint64_t sdebug_trace     = 0;
 uint64_t sdebug_witness   = 0;
 uint64_t sdebug_alias     = 0;
 uint64_t sdebug_propagate = 0;
+
+// symbolic instruction counters
+
+uint64_t ics_addi  = 0;
+uint64_t ics_add   = 0;
+uint64_t ics_sub   = 0;
+uint64_t ics_mul   = 0;
+uint64_t ics_divu  = 0;
+uint64_t ics_remu  = 0;
+uint64_t ics_sltu  = 0;
+uint64_t ics_ld    = 0;
+uint64_t ics_sd    = 0;
+uint64_t ics_beq   = 0;
+uint64_t ics_jal   = 0;
+uint64_t ics_jalr  = 0;
+uint64_t ics_ecall = 0;
 
 // -----------------------------------------------------------------
 // --------------------- SYMBOLIC INSTRUCTIONS ---------------------
@@ -1501,6 +1519,7 @@ void backtrack_ecall();
 void backtrack_brk();
 void backtrack_read();
 
+void is_symbolic_state_complete();
 // -----------------------------------------------------------------
 // ---------------------- SYMBOLIC INTERFACE -----------------------
 // -----------------------------------------------------------------
@@ -1519,7 +1538,12 @@ uint64_t  look_for_witness(uint64_t vtc);
 uint64_t  update_witness(uint64_t old, uint64_t new);
 
 void print_witness();
+void print_symbolic_profile();
 void print_end_point_status(uint64_t* context);
+
+
+uint64_t get_symbolic_state_size();
+uint64_t get_total_number_of_symbolic_instructions();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1594,6 +1618,7 @@ void  set_trace_a2(uint64_t index, uint64_t st_a2)        { *(alpha2s + index)  
 void  set_trace_a3(uint64_t index, uint64_t st_a3)        { *(alpha3s + index)  = st_a3;}
 
 void print_symbolic_memory(uint64_t svc);
+void print_short_symbolic(uint64_t svc);
 void print_trace();
 
 // -----------------------------------------------------------------
@@ -1796,6 +1821,9 @@ void store_register_memory(uint64_t reg, uint64_t value);
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t ic_node    = 0;
+uint64_t ic_assign  = 0;
 
 uint64_t mrcc     = 0;  // trace counter of most recent constraint
 uint64_t mrvc_rs1 = 0;  // rs1's trace index before constraining
@@ -6089,6 +6117,7 @@ void implement_exit(uint64_t* context) {
     set_exit_code(context,    *(registers + REG_A0));
     set_exit_code_a2(context, *(reg_alpha2 + REG_A0));
     set_exit_code_a3(context, *(reg_alpha3 + REG_A0));
+    ics_ecall = ics_ecall + 1;
     return;
   }
 
@@ -6290,6 +6319,7 @@ void implement_read(uint64_t* context) {
     *(reg_type + REG_A0)    = CONCRETE_T;
     *(registers + REG_A0)   = *(get_regs(context) + REG_A0);
     *(reg_alpha2 + REG_A0)  = *(get_regs(context) + REG_A0);
+    ics_ecall = ics_ecall + 1;
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
@@ -6415,6 +6445,7 @@ void implement_write(uint64_t* context) {
     *(reg_type + REG_A0)    = CONCRETE_T;
     *(registers + REG_A0)   = *(get_regs(context) + REG_A0);
     *(reg_alpha2 + REG_A0)  = *(get_regs(context) + REG_A0);
+    ics_ecall = ics_ecall + 1;
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
@@ -6538,6 +6569,7 @@ void implement_open(uint64_t* context) {
   if (symbolic) {
     *(reg_type + REG_A0)    = CONCRETE_T;
     *(reg_alpha2 + REG_A0)  = *(get_regs(context) + REG_A0);
+    ics_ecall = ics_ecall + 1;
   }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
@@ -6662,6 +6694,7 @@ void implement_brk(uint64_t* context) {
           return;
         }
       }
+      ics_ecall = ics_ecall + 1;
     }
   } else {
     // error returns current program break
@@ -8868,6 +8901,13 @@ void backtrack_trace(uint64_t* context) {
   set_pc(context, pc);
 }
 
+void is_symbolic_state_complete() {
+  if ( ((ic_symbolic - bk_read) + ic_node + ic_assign + ic_scall) > 0) {
+    print((uint64_t*) "%s: symbolic state not completely undone\n");
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+}
+
 uint64_t monster(uint64_t* to_context) {
   uint64_t b;
   uint64_t timeout;
@@ -8906,6 +8946,12 @@ uint64_t monster(uint64_t* to_context) {
 
         if (pc == 0) {
           println();
+
+          is_symbolic_state_complete();
+          if (print_end_point) {
+            printf1((uint64_t*) "%s: symbolic execution finished\n", selfie_name);
+            print_symbolic_profile();
+          }
 
           return EXITCODE_NOERROR;
         }
@@ -9030,10 +9076,6 @@ uint64_t selfie_run(uint64_t machine) {
 
 void constrain_lui() {
   if (rd != REG_ZR) {
-
-    // interval semantics of lui
-    // *(registers + rd) = left_shift(imm, 12);
-    // *(reg_alpha2 + rd) = left_shift(imm, 12);
 
     // rd has no constraint
     *(reg_type + rd) = CONCRETE_T;
@@ -9363,6 +9405,7 @@ void constrain_sltu() {
 
   pc = pc + INSTRUCTIONSIZE;
   ic_sltu = ic_sltu + 1;
+  ics_sltu = ics_sltu + 1;
   path_length = path_length + 1;
 }
 
@@ -9414,6 +9457,7 @@ uint64_t constrain_ld() {
                 exit(EXITCODE_SYMBOLICEXECUTIONERROR);
               }
             }
+            ics_ld = ics_ld + 1;
         } else {
             *(reg_type + rd) = get_trace_type(mrvc);
             set_constraint(rd, 0, get_trace_a1(mrvc), get_trace_a2(mrvc), 1);
@@ -9496,6 +9540,7 @@ uint64_t constrain_sd() {
           }
         } else  //input system call
           create_witness(load_virtual_memory(pt, vaddr));
+        ics_sd = ics_sd + 1;
       }
 
     if (context) {
@@ -9688,7 +9733,7 @@ void implement_input(uint64_t* context) {
     *(reg_alpha3 + REG_A0)  = step;
 
     set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-
+    ics_ecall = ics_ecall + 1;
   } else {
     print(selfie_name);
     print((uint64_t*) ": input syscall during concrete execution ");
@@ -9792,28 +9837,43 @@ void print_witness() {
     printf2((uint64_t*) "%s: end with %d symbolic input value(s):\n", selfie_name, (uint64_t*) (ic_symbolic - bk_read));
 
   while (idx < (ic_symbolic - bk_read)) {
-    head_size   = get_trace_a2(*(head_taddrs + idx)) - get_trace_a1(*(head_taddrs + idx));
-    input_size  = get_trace_a2(*(symbolic_tcs + idx)) - get_trace_a1(*(symbolic_tcs + idx));
+    head_size   = get_trace_a2(*(head_taddrs + idx)) - get_trace_a1(*(head_taddrs + idx)) + 1;
+    input_size  = get_trace_a2(*(symbolic_tcs + idx)) - get_trace_a1(*(symbolic_tcs + idx)) + 1;
 
-    printf3((uint64_t*) "%s:  -  symbolic %d created at %x", selfie_name, (uint64_t*) (idx + 1), (uint64_t*) get_trace_pc(*(head_taddrs + idx)));
-    print_code_line_number_for_instruction(get_trace_pc(*(head_taddrs + idx)) - entry_point);
-
-    printf1((uint64_t*) " and stored at [%d]: ", (uint64_t*) *(symbolic_tcs + idx));
-    print_symbolic_memory(*(symbolic_tcs + idx));
+    printf2((uint64_t*) "%s:  -  symbolic %d from ", selfie_name, (uint64_t*) (idx + 1));
+    print_short_symbolic(*(head_taddrs + idx));
+    printf1((uint64_t*) " at %x", (uint64_t*) *(syscall_pc + idx));
+    print_code_line_number_for_instruction(*(syscall_pc + idx) - entry_point);
+    print((uint64_t*) " -> ");
+    print_short_symbolic(*(symbolic_tcs + idx));
+    printf1((uint64_t*) " (%.2d%%) ", (uint64_t*) fixed_point_percentage(fixed_point_ratio(head_size, input_size, 4), 4));
+    println();
 
     idx = idx + 1;
     if(idx == MAX_SYMBOLIC) return;
   }
 }
 
-void print_end_point_status(uint64_t* context) {
-  printf3((uint64_t*) "%s: %s reaching end point at: %p", selfie_name, get_name(context), (uint64_t*) (last_jal_from - entry_point));
-  print_code_line_number_for_instruction(last_jal_from - entry_point);
-  printf3((uint64_t*) " with exit code <%d,%d,%d>\n", (uint64_t*) get_exit_code(context), (uint64_t*) get_exit_code_a2(context), (uint64_t*) get_exit_code_a3(context));
+uint64_t get_symbolic_state_size() {
+    return  (tc * 7 * SIZEOFUINT64) +
+            (ic_correction * 5 * SIZEOFUINT64) +
+            ((ic_symbolic - bk_read) * 4 * SIZEOFUINT64) +
+            (ic_node * 3 * SIZEOFUINT64STAR) +
+            (ic_assign * (3 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64)) +
+            (ic_scall * 2 * SIZEOFUINT64);
+}
 
+uint64_t get_total_number_of_symbolic_instructions() {
+  return ics_addi + ics_add + ics_sub + ics_mul + ics_divu + ics_remu + ics_sltu + ics_ld + ics_sd + ics_jal + ics_jalr + ics_ecall;
+}
+
+void print_symbolic_profile() {
   if (print_sum_up) {
-    printf2((uint64_t*) "%s: trace length %d.\n", selfie_name, (uint64_t*) tc);
-    printf3((uint64_t*) "%s: %d instructions executed for the path, total instructions %d.\n", selfie_name, (uint64_t*) path_length, (uint64_t*) get_total_number_of_instructions());
+    printf5((uint64_t*) "%s: instructions:           - total %d : path %d(%.2d%% of %d instructions).\n", selfie_name, (uint64_t*) get_total_number_of_instructions(), (uint64_t*) path_length, (uint64_t*) fixed_point_percentage(fixed_point_ratio((code_length / INSTRUCTIONSIZE), path_length, 4), 4), (uint64_t*) (code_length / INSTRUCTIONSIZE));
+    printf3((uint64_t*) "%s:                symbolic - total %d(%.2d%%).\n", selfie_name, (uint64_t*) get_total_number_of_symbolic_instructions(), (uint64_t*) fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(), get_total_number_of_symbolic_instructions(), 4), 4));
+    printf2((uint64_t*) "%s: trace:   length %d\n", selfie_name, (uint64_t*) tc);
+    printf5((uint64_t*) "%s: state:   %d symbolic variable(s) and %d assignment(s), %d symbolic call(s), and %d correction(s).\n", selfie_name, (uint64_t*) ic_node, (uint64_t*) ic_assign, (uint64_t*) ic_scall, (uint64_t*) ic_correction);
+    printf3((uint64_t*) "%s: memory:  %d(%.2d%%)\n", selfie_name, (uint64_t*) get_symbolic_size(), (uint64_t*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, get_symbolic_size(), 4), 4));
     print_witness();
   }
 
@@ -9822,6 +9882,14 @@ void print_end_point_status(uint64_t* context) {
 
   if (sdebug_alias)
     print_dg();
+}
+
+void print_end_point_status(uint64_t* context) {
+  printf3((uint64_t*) "%s: %s reaching end point at: %p", selfie_name, get_name(context), (uint64_t*) (last_jal_from - entry_point));
+  print_code_line_number_for_instruction(last_jal_from - entry_point);
+  printf3((uint64_t*) " with exit code <%d,%d,%d>\n", (uint64_t*) get_exit_code(context), (uint64_t*) get_exit_code_a2(context), (uint64_t*) get_exit_code_a3(context));
+
+  print_symbolic_profile();
 }
 
 // -----------------------------------------------------------------
@@ -9972,6 +10040,31 @@ void print_symbolic_memory(uint64_t svc) {
     printf3((uint64_t*) "[%d,%d,%d]}\n", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
 }
 
+void print_short_symbolic(uint64_t svc) {
+  printf1((uint64_t*) "@%d{", (uint64_t*) svc);
+  if (get_trace_vaddr(svc) == 0) {
+    if (get_trace_type(svc) == ARRAY_T)
+      printf3((uint64_t*) ";%x=%x=malloc(%d)}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+    else
+      printf2((uint64_t*) ";watch%x=%d}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
+    return;
+  } else if (get_trace_vaddr(svc) < NUMBEROFREGISTERS)
+    printf2((uint64_t*) ";%s=%d", get_register_name(get_trace_vaddr(svc)), (uint64_t*) get_trace_a1(svc));
+  else if (get_trace_vaddr(svc) == NUMBEROFREGISTERS)
+    printf1((uint64_t*) ";xxx%x", (uint64_t*) get_vaddr_with_alias(svc));
+  else
+    printf2((uint64_t*) ";%x=%d", (uint64_t*) get_trace_vaddr(svc), (uint64_t*) get_trace_a1(svc));
+  if (get_trace_type(svc) == MSIID_T)
+    if (get_trace_a1(svc) == get_trace_a2(svc))
+      printf1((uint64_t*) "(%d)}", (uint64_t*) get_trace_a1(svc));
+    else
+      printf3((uint64_t*) "(%d,%d,%d)}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+  else if (get_trace_a1(svc) == get_trace_a2(svc))
+    printf1((uint64_t*) "[%d]}", (uint64_t*) get_trace_a1(svc));
+  else
+    printf3((uint64_t*) "[%d,%d,%d]}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+}
+
 void print_trace() {
   uint64_t idx;
   idx = tc;
@@ -10053,6 +10146,8 @@ void msiid_addi() {
   // rd inherits rs1 constraint
   set_correction(rd, 0, flag_round(rs1, SUM_T), *(reg_colos + rs1) + imm, *(reg_coups + rs1) + imm, *(reg_factor + rs1));
   set_constraint(rd, *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1) + imm, *(reg_alpha3 + rs1));
+
+  ics_addi = ics_addi + 1;
 }
 
 void msiid_add() {
@@ -10125,6 +10220,7 @@ void msiid_add() {
       set_constraint(rd, *(reg_vaddr + rs2), add_los, add_ups, *(reg_alpha3 + rs2)); //interval add semantics
     }
   }
+  ics_add = ics_add + 1;
 }
 
 void msiid_sub() {
@@ -10197,6 +10293,7 @@ void msiid_sub() {
       set_constraint(rd, *(reg_vaddr + rs2), sub_los, sub_ups, *(reg_alpha3 + rs2)); //interval sub semantics
     }
   }
+  ics_sub = ics_sub + 1;
 }
 
 void msiid_mul() {
@@ -10274,6 +10371,7 @@ void msiid_mul() {
     set_correction(rd, 0, 0, 0, 0, 0);
     set_constraint(rd, *(reg_vaddr + rd), mul_los, mul_ups, 1);
   }
+  ics_mul = ics_mul + 1;
 }
 
 void msiid_divu() {
@@ -10358,6 +10456,7 @@ void msiid_divu() {
       println();
       throw_exception(EXCEPTION_INCOMPLETENESS, 0);
     }
+  ics_divu = ics_divu + 1;
 }
 
 void msiid_remu() {
@@ -10463,6 +10562,8 @@ void msiid_remu() {
     *(reg_type + rd) = CONCRETE_T;
   else
     *(reg_type + rd) = *(reg_type + rs1);
+
+  ics_remu = ics_remu + 1;
 }
 
 uint64_t add_sub_condition(uint64_t lo1, uint64_t up1, uint64_t lo2, uint64_t up2) {
@@ -10920,6 +11021,8 @@ void addi_pointer() {
   *(reg_type + rd) = *(reg_type + rs1);
   set_correction(rd, 0, 0, 0, 0, 0);
   set_constraint(rd, *(reg_vaddr + rs1), *(registers + rs1) + imm, *(reg_alpha2 + rs1), *(reg_alpha3 + rs1));
+
+  ics_addi = ics_addi + 1;
 }
 
 void add_pointer() {
@@ -10935,6 +11038,7 @@ void add_pointer() {
     set_correction(rd, 0, 0, 0, 0, 0);
     set_constraint(rd, 0, *(registers + rs1) + *(registers + rs2), *(reg_alpha2 + rs2), *(reg_alpha3 + rs2));
   }
+  ics_add = ics_add + 1;
 }
 
 void sub_pointer() {
@@ -10958,11 +11062,13 @@ void sub_pointer() {
     set_correction(rd, 0, 0, 0, 0, 0);
     set_constraint(rd, 0, rd_val, *(reg_alpha2 + rs2), *(reg_alpha3 + rs2));
   }
+  ics_sub = ics_sub + 1;
 }
 
 void sub_2pointer() {
   if (*(reg_alpha2 + rs1) == *(reg_alpha2 + rs2))
     if (*(reg_alpha3 + rs1) == *(reg_alpha3 + rs2)) {
+      ics_sub = ics_sub + 1;
       return; //ok
     }
   // subtracting incompatible pointers
@@ -11085,6 +11191,15 @@ uint64_t* allocate_dg_node(uint64_t taddr, uint64_t* in) {
   if (in != (uint64_t*) 0)
     set_prev_node(in, new_node);
 
+  if (ic_node < MAX_NODE)
+   ic_node = ic_node + 1;
+  else {
+    printf3((uint64_t*) "%s: [a] max number (%d) of symbolic variables reached (dg nodes) at %x", selfie_name, (uint64_t*) ic_node, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+
   return new_node;
 }
 
@@ -11117,6 +11232,15 @@ uint64_t* allocate_assignment(uint64_t taddr, uint64_t* p_assign, uint64_t* s_as
       printf4((uint64_t*) "succ: - c%d - > %d, prev:%x at %x", (uint64_t*) get_assign_correction(new_assign), (uint64_t*) get_assign_successor(new_assign), get_prev_assign(new_assign), (uint64_t*) pc);
     print_code_line_number_for_instruction(pc - entry_point);
     println();
+  }
+
+  if (ic_assign < MAX_ASSIGN)
+    ic_assign = ic_assign + 1;
+  else {
+    printf3((uint64_t*) "%s: [a] max number (%d) of symbolic assignments reached at %x", selfie_name, (uint64_t*) ic_assign, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    println();
+    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
   }
 
   return new_assign;
@@ -11201,6 +11325,7 @@ uint64_t* delete_assignment(uint64_t taddr, uint64_t* from) {
         set_prev_node(node, (uint64_t*) 0);
       } else
         from = get_next_node(node);
+    ic_node = ic_node - 1;
   }
 
   // remove succ.'s predecessor
@@ -11219,6 +11344,7 @@ uint64_t* delete_assignment(uint64_t taddr, uint64_t* from) {
     print_code_line_number_for_instruction(pc - entry_point);
     println();
   }
+  ic_assign = ic_assign - 1;
   return from;
 }
 
@@ -11678,6 +11804,7 @@ void constrain_jal() {
 
       symbolic_calling    = 0;
       symbolic_calling_pc = 0;
+      ics_jal = ics_jal + 1;
     }
   }
 
@@ -11717,6 +11844,7 @@ void constrain_jalr() {
       *(watchdog_tc + (ic_scall - 1))      = 0;
       ic_scall = ic_scall - 1;
     }
+    ics_jalr = ics_jalr + 1;
   }
 
   path_length = path_length + 1;
