@@ -1561,6 +1561,7 @@ uint64_t  bk_read               = 0;                // number of backtracked rea
 uint64_t* symbolic_tcs          = (uint64_t*) 0;    // array of witnesses
 uint64_t* read_values           = (uint64_t*) 0;    // actual read values
 uint64_t* head_taddrs           = (uint64_t*) 0;    // syscall first symbolic store
+uint64_t* syscall_pc            = (uint64_t*) 0;    // the first call's line
 
 uint64_t last_jal_from = 0;
 
@@ -1894,6 +1895,7 @@ void init_symbolic_engine() {
   symbolic_tcs        = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
   read_values         = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
   head_taddrs         = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
+  syscall_pc          = zalloc(MAX_SYMBOLIC * SIZEOFUINT64);
 
   reg_vaddr     = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
   reg_type      = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
@@ -6269,6 +6271,7 @@ void implement_read(uint64_t* context) {
             if ((ic_symbolic - (1 + bk_read)) < MAX_SYMBOLIC) {
               *(symbolic_tcs + (ic_symbolic - (1 + bk_read)))   = load_physical_memory(buffer);
               *(head_taddrs + (ic_symbolic - (1 + bk_read)))    = load_physical_memory(buffer);
+              *(syscall_pc + (ic_symbolic - (1 + bk_read)))     = last_jal_from;
             }
 
             if (debug_read)
@@ -9787,6 +9790,7 @@ void create_witness(uint64_t taddr) {
 
   *(symbolic_tcs  + ic_symbolic)  = taddr;
   *(head_taddrs   + ic_symbolic)  = taddr; //assuming the store at the same line
+  *(syscall_pc    + ic_symbolic)  = pc;
 
   ic_symbolic = ic_symbolic + 1;
 }
