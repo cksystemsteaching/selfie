@@ -1471,7 +1471,7 @@ void reset_profiler() {
 uint64_t* new_context();
 
 void      init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
-uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth);
+uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition);
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
 
@@ -7445,7 +7445,7 @@ void constrain_beq() {
     set_symbolic_memory(current_context, symbolic_memory);
 
     // the copied context is executed later and takes the other path
-    add_waiting_context(copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar), max_execution_depth - timer));
+    add_waiting_context(copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar)));
 
     path_condition = smt_binary("and", pvar, smt_unary("not", bvar));
 
@@ -8910,6 +8910,9 @@ void interrupt() {
   if (timer != TIMEROFF) {
     timer = timer - 1;
 
+    if (symbolic)
+      set_execution_depth(current_context, get_execution_depth(current_context) + 1);
+
     if (timer == 0) {
       if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
         // only throw exception if no other is pending
@@ -9112,7 +9115,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   }
 }
 
-uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth) {
+uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   uint64_t* context;
   uint64_t* begin_of_shared_symbolic_memory;
   uint64_t r;
@@ -9143,7 +9146,7 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition, u
   set_virtual_context(context, get_virtual_context(original));
   set_name(context, get_name(original));
 
-  set_execution_depth(context, depth);
+  set_execution_depth(context, get_execution_depth(original));
   set_path_condition(context, condition);
   set_beq_counter(context, get_beq_counter(original));
   set_merge_location(context, get_merge_location(original));
