@@ -1293,7 +1293,6 @@ uint64_t MERGED                          = -2; // indicates that a symbolic memo
 uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the begin of the shared symbolic memory space
 
 uint64_t BEQ_LIMIT                 = 35;  // limit of symbolic beq instructions on any given path
-uint64_t MAX_PATH_CONDITION_LENGTH = 1000000;
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
