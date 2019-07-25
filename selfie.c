@@ -1292,7 +1292,7 @@ uint64_t DELETED                         = -1; // indicates that a symbolic memo
 uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
 uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the begin of the shared symbolic memory space
 
-uint64_t BEQ_LIMIT                 = 35;  // limit of symbolic beq instructions on any given path
+uint64_t BEQ_LIMIT                 = 35;  // limit of symbolic beq instructions on each part of the path between two merge locations
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -7461,8 +7461,8 @@ void constrain_beq() {
 
     pc = pc + INSTRUCTIONSIZE;
   } else {
-    // if the limit of symbolic beq instructions is reached, the path still continues until it has reached its 
-    // maximal execution depth, but only by following the true case of the next encountered symbolic beq instructions
+    // if the limit of symbolic beq instructions is reached, the part of the path still continues until it can be merged or has reached its 
+    // maximal execution depth, respectively, but only by following the true case of the next encountered symbolic beq instructions
     path_condition = smt_binary("and", pvar, bvar);
   
     pc = pc + imm;
