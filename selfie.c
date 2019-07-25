@@ -7451,7 +7451,7 @@ void constrain_beq() {
     // set the merge location only when merging is enabled
     if (merge_enabled)
       set_merge_location(current_context, find_merge_location(imm));
-  
+
     // check if a context is waiting to be merged
     if (current_mergeable_context != (uint64_t*) 0) {
       // we cannot merge with this one (yet), so we push it back onto the stack of mergeable contexts
@@ -7461,10 +7461,10 @@ void constrain_beq() {
 
     pc = pc + INSTRUCTIONSIZE;
   } else {
-    // if the limit of symbolic beq instructions is reached, the part of the path still continues until it can be merged or has reached its 
+    // if the limit of symbolic beq instructions is reached, the part of the path still continues until it can be merged or has reached its
     // maximal execution depth, respectively, but only by following the true case of the next encountered symbolic beq instructions
     path_condition = smt_binary("and", pvar, bvar);
-  
+
     pc = pc + imm;
   }
 }
@@ -7911,7 +7911,7 @@ uint64_t find_merge_location(uint64_t beq_imm) {
   // we need to know which instruction it is
   fetch();
   decode();
-  
+
   if (is != JAL)
     /* no jal instruction -> end of if without else branch
        merge is directly at target location of the beq instruction possible
@@ -7919,7 +7919,7 @@ uint64_t find_merge_location(uint64_t beq_imm) {
     note: this is a dependency on the selfie compiler */
     merge_location = original_pc + beq_imm;
   else {
-    if (signed_less_than(imm, 0) == 0) { 
+    if (signed_less_than(imm, 0) == 0) {
       /* jal with positive imm -> end of if with else branch
          we have to skip the else branch in order to merge afterwards
 
@@ -8124,7 +8124,7 @@ void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t*
         in_unshared_symbolic_memory = 1;
 
         while (sword_from_mergeable_context) {
-          // we need to know if we are in the unshared symbolic memory space of the mergeable context 
+          // we need to know if we are in the unshared symbolic memory space of the mergeable context
           if (get_word_address(sword_from_mergeable_context) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY)
             in_unshared_symbolic_memory = 0;
 
@@ -8133,10 +8133,10 @@ void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t*
               if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
                 if (get_word_symbolic(sword_from_active_context) != get_word_symbolic(sword_from_mergeable_context)) {
                   // merge symbolic values if they are different
-                  set_word_symbolic(sword_from_active_context, 
-                    smt_ternary("ite", 
-                      get_path_condition(active_context), 
-                      get_word_symbolic(sword_from_active_context), 
+                  set_word_symbolic(sword_from_active_context,
+                    smt_ternary("ite",
+                      get_path_condition(active_context),
+                      get_word_symbolic(sword_from_active_context),
                       get_word_symbolic(sword_from_mergeable_context)
                     )
                   );
@@ -8150,10 +8150,10 @@ void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t*
                 }
               } else {
                 // merge symbolic value and concrete value
-                set_word_symbolic(sword_from_active_context, 
-                  smt_ternary("ite", 
-                    get_path_condition(active_context), 
-                    get_word_symbolic(sword_from_active_context), 
+                set_word_symbolic(sword_from_active_context,
+                  smt_ternary("ite",
+                    get_path_condition(active_context),
+                    get_word_symbolic(sword_from_active_context),
                     bv_constant(get_word_value(sword_from_mergeable_context))
                   )
                 );
@@ -8168,10 +8168,10 @@ void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t*
             } else {
               if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
                 // merge concrete value and symbolic value
-                set_word_symbolic(sword_from_active_context, 
-                  smt_ternary("ite", 
-                    get_path_condition(active_context), 
-                    bv_constant(get_word_value(sword_from_active_context)), 
+                set_word_symbolic(sword_from_active_context,
+                  smt_ternary("ite",
+                    get_path_condition(active_context),
+                    bv_constant(get_word_value(sword_from_active_context)),
                     get_word_symbolic(sword_from_mergeable_context)
                   )
                 );
@@ -8185,9 +8185,9 @@ void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t*
               } else {
                 if (get_word_value(sword_from_active_context) != get_word_value(sword_from_mergeable_context)) {
                   // merge concrete values if they are different
-                  set_word_symbolic(sword_from_active_context, 
-                    smt_ternary("ite", 
-                      get_path_condition(active_context), 
+                  set_word_symbolic(sword_from_active_context,
+                    smt_ternary("ite",
+                      get_path_condition(active_context),
                       bv_constant(get_word_value(sword_from_active_context)),
                       bv_constant(get_word_value(sword_from_mergeable_context))
                     )
@@ -8253,10 +8253,10 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
                 if (get_word_symbolic(sword_from_active_context) != get_word_symbolic(sword_from_mergeable_context)) {
                   // merge symbolic values if they are different
                   if (shared_symbolic_memory_depth < 2)
-                    set_word_symbolic(sword_from_active_context, 
-                      smt_ternary("ite", 
-                        get_path_condition(active_context), 
-                        get_word_symbolic(sword_from_active_context), 
+                    set_word_symbolic(sword_from_active_context,
+                      smt_ternary("ite",
+                        get_path_condition(active_context),
+                        get_word_symbolic(sword_from_active_context),
                         get_word_symbolic(sword_from_mergeable_context)
                       )
                     );
@@ -8267,10 +8267,10 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
                     set_word_address(sword, get_word_address(sword_from_active_context));
                     set_word_value(sword, get_word_value(sword_from_active_context));
                     set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
-                    set_word_symbolic(sword, 
-                      smt_ternary("ite", 
-                        get_path_condition(active_context), 
-                        get_word_symbolic(sword_from_active_context), 
+                    set_word_symbolic(sword,
+                      smt_ternary("ite",
+                        get_path_condition(active_context),
+                        get_word_symbolic(sword_from_active_context),
                         get_word_symbolic(sword_from_mergeable_context)
                       )
                     );
@@ -8283,10 +8283,10 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
               } else {
                 // merge symbolic value and concrete value
                 if (shared_symbolic_memory_depth < 2)
-                  set_word_symbolic(sword_from_active_context, 
-                    smt_ternary("ite", 
-                      get_path_condition(active_context), 
-                      get_word_symbolic(sword_from_active_context), 
+                  set_word_symbolic(sword_from_active_context,
+                    smt_ternary("ite",
+                      get_path_condition(active_context),
+                      get_word_symbolic(sword_from_active_context),
                       bv_constant(get_word_value(sword_from_mergeable_context))
                     )
                   );
@@ -8297,10 +8297,10 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
                   set_word_address(sword, get_word_address(sword_from_active_context));
                   set_word_value(sword, get_word_value(sword_from_active_context));
                   set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
-                  set_word_symbolic(sword, 
-                    smt_ternary("ite", 
-                      get_path_condition(active_context), 
-                      get_word_symbolic(sword_from_active_context), 
+                  set_word_symbolic(sword,
+                    smt_ternary("ite",
+                      get_path_condition(active_context),
+                      get_word_symbolic(sword_from_active_context),
                       bv_constant(get_word_value(sword_from_mergeable_context))
                     )
                   );
@@ -8314,10 +8314,10 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
               if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
                 // merge concrete value and symbolic value
                 if (shared_symbolic_memory_depth < 2)
-                  set_word_symbolic(sword_from_active_context, 
-                    smt_ternary("ite", 
-                      get_path_condition(active_context), 
-                      bv_constant(get_word_value(sword_from_active_context)), 
+                  set_word_symbolic(sword_from_active_context,
+                    smt_ternary("ite",
+                      get_path_condition(active_context),
+                      bv_constant(get_word_value(sword_from_active_context)),
                       get_word_symbolic(sword_from_mergeable_context)
                     )
                   );
@@ -8328,10 +8328,10 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
                   set_word_address(sword, get_word_address(sword_from_active_context));
                   set_word_value(sword, get_word_value(sword_from_active_context));
                   set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
-                  set_word_symbolic(sword,  
-                    smt_ternary("ite", 
-                      get_path_condition(active_context), 
-                      bv_constant(get_word_value(sword_from_active_context)), 
+                  set_word_symbolic(sword,
+                    smt_ternary("ite",
+                      get_path_condition(active_context),
+                      bv_constant(get_word_value(sword_from_active_context)),
                       get_word_symbolic(sword_from_mergeable_context)
                     )
                   );
@@ -8344,9 +8344,9 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
                 if (get_word_value(sword_from_active_context) != get_word_value(sword_from_mergeable_context)) {
                   // merge concrete values if they are different
                   if (shared_symbolic_memory_depth < 2)
-                    set_word_symbolic(sword_from_active_context, 
-                      smt_ternary("ite", 
-                        get_path_condition(active_context), 
+                    set_word_symbolic(sword_from_active_context,
+                      smt_ternary("ite",
+                        get_path_condition(active_context),
                         bv_constant(get_word_value(sword_from_active_context)),
                         bv_constant(get_word_value(sword_from_mergeable_context))
                       )
@@ -8358,9 +8358,9 @@ void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64
                     set_word_address(sword, get_word_address(sword_from_active_context));
                     set_word_value(sword, get_word_value(sword_from_active_context));
                     set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
-                    set_word_symbolic(sword,  
-                      smt_ternary("ite", 
-                        get_path_condition(active_context), 
+                    set_word_symbolic(sword,
+                      smt_ternary("ite",
+                        get_path_condition(active_context),
                         bv_constant(get_word_value(sword_from_active_context)),
                         bv_constant(get_word_value(sword_from_mergeable_context))
                       )
@@ -8394,7 +8394,7 @@ void merge_registers(uint64_t* active_context, uint64_t* mergeable_context) {
   uint64_t i;
 
   i = 0;
-    
+
   // merging the symbolic registers
   while (i < NUMBEROFREGISTERS) {
     if (*(get_symbolic_regs(active_context) + i) != 0) {
@@ -8430,7 +8430,7 @@ void merge_registers(uint64_t* active_context, uint64_t* mergeable_context) {
                                         bv_constant(*(get_regs(mergeable_context) + i))
                                       );
     }
-  
+
     i = i + 1;
   }
 
@@ -8501,7 +8501,7 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
       } else {
         if (current_mergeable_context == (uint64_t*) 0)
           current_mergeable_context = get_mergeable_context();
-        
+
         if (current_mergeable_context != (uint64_t*) 0)
           if (get_pc(context) == get_pc(current_mergeable_context))
             mergeable = 1;
@@ -8887,7 +8887,7 @@ void execute_symbolically() {
     // note: this is a dependency on the selfie compiler
     // the selfie compiler uses jal with the RA register to call a procedure
     if (jal_rd == REG_RA)
-      // if we are already in a recursion, we do not add a new merge location since we only merge when the 
+      // if we are already in a recursion, we do not add a new merge location since we only merge when the
       // recursion is finished (i.e. the program has reached a program location which is not part of any recursion)
       if (get_in_recursion(current_context) == 0) {
         corresponding_merge_location = pc_before_jal + INSTRUCTIONSIZE;
@@ -8934,7 +8934,7 @@ void interrupt() {
       // if both contexts are at the same program location, they can be merged
       if (pc == get_pc(current_mergeable_context))
         merge(current_context, current_mergeable_context, pc);
-    
+
     // check if the current context has reached a merge location
     if (pc == get_merge_location(current_context))
       if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
@@ -9648,8 +9648,8 @@ uint64_t handle_division_by_zero(uint64_t* context) {
     printf1("(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
     print("\n(check-sat)\n(get-model)\n(pop 1)\n");
 
-    // we terminate the exeuction of the context, because if the location is not reachable, 
-    // the rest of the path is not reachable either, and otherwise 
+    // we terminate the exeuction of the context, because if the location is not reachable,
+    // the rest of the path is not reachable either, and otherwise
     // the execution would be terminated by this error anyway
     set_exit_code(context, EXITCODE_DIVISIONBYZERO);
   } else {
@@ -9707,8 +9707,8 @@ uint64_t handle_exception(uint64_t* context) {
 
         set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
 
-        // we terminate the exeuction of the context, because if the location is not reachable, 
-        // the rest of the path is not reachable either, and otherwise 
+        // we terminate the exeuction of the context, because if the location is not reachable,
+        // the rest of the path is not reachable either, and otherwise
         // the execution would be terminated by this error anyway
         return EXIT;
       }
