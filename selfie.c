@@ -181,6 +181,7 @@ void printf6(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6
 void sprintf1(char* b, char* s, char* a1);
 void sprintf2(char* b, char* s, char* a1, char* a2);
 void sprintf3(char* b, char* s, char* a1, char* a2, char* a3);
+void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4);
 
 uint64_t round_up(uint64_t n, uint64_t m);
 
@@ -1195,6 +1196,8 @@ void init_replay_engine() {
 
 uint64_t* load_symbolic_memory(uint64_t vaddr);
 void      store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, uint64_t bits);
+uint64_t* find_word_in_unshared_symbolic_memory(uint64_t vaddr);
+void      update_begin_of_shared_symbolic_memory(uint64_t* context);
 
 uint64_t is_symbolic_value(uint64_t* sword);
 
@@ -1238,6 +1241,26 @@ char* smt_variable(char* prefix, uint64_t bits);
 
 char* smt_unary(char* opt, char* op);
 char* smt_binary(char* opt, char* op1, char* op2);
+char* smt_ternary(char* opt, char* op1, char* op2, char* op3);
+
+uint64_t  find_merge_location(uint64_t beq_imm);
+
+void      add_mergeable_context(uint64_t* context);
+uint64_t* get_mergeable_context();
+
+void      add_waiting_context(uint64_t* context);
+uint64_t* get_waiting_context();
+
+void      add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location, uint64_t* context);
+uint64_t  get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start, uint64_t* context);
+uint64_t  currently_in_this_procedure(uint64_t prologue_start, uint64_t* context);
+
+void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
+void      merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
+void      merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
+void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
+void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
+uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1255,6 +1278,21 @@ uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in
 
 char*    smt_name = (char*) 0; // name of SMT-LIB file
 uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
+
+uint64_t merge_enabled = 1; // enable or disable the merging
+
+uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
+uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
+
+uint64_t* current_mergeable_context                   = (uint64_t*) 0; // current context with which the active context can possibly be merged
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t DELETED                         = -1; // indicates that a symbolic memory word has been deleted
+uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
+uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the begin of the shared symbolic memory space
+
+uint64_t BEQ_LIMIT                 = 35;  // limit of symbolic beq instructions on each part of the path between two merge locations
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1319,6 +1357,7 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
+uint64_t EXCEPTION_MERGE              = 7;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1379,7 +1418,7 @@ uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores p
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_MERGE + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1388,6 +1427,7 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_MERGE)              = (uint64_t) "merge interrupt";
 }
 
 void reset_interpreter() {
@@ -1429,8 +1469,8 @@ void reset_profiler() {
 
 uint64_t* new_context();
 
-void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
-void copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth);
+void      init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
+uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition);
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
 
@@ -1462,7 +1502,12 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 17 | path condition  | pointer to path condition
 // | 18 | symbolic memory | pointer to symbolic memory
 // | 19 | symbolic regs   | pointer to symbolic registers
-// | 20 | related context | pointer to list of contexts of related branches
+// | 20 | beq counter     | number of executed symbolic beq instructions
+// | 21 | merge location  | program location at which the context can possibly be merged (later)
+// | 22 | prologues       | pointer to a stack that stores the prologues of procedures within which the context is currently located
+// | 23 | in recursion    | if the value is 1, then the context is currently in a recursion
+// | 24 | outside rec loc | program location at which the context has finished the recursion
+// | 25 | merge partner   | pointer to the context from which this context was created
 // +----+-----------------+
 
 uint64_t* allocate_context() {
@@ -1470,7 +1515,7 @@ uint64_t* allocate_context() {
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 1 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 9 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 5 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1511,7 +1556,12 @@ uint64_t  get_execution_depth(uint64_t* context) { return             *(context 
 char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 17); }
 uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 18); }
 uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 19); }
-uint64_t* get_related_context(uint64_t* context) { return (uint64_t*) *(context + 20); }
+uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 20); }
+uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 21); }
+uint64_t* get_prologues(uint64_t* context)       { return (uint64_t*) *(context + 22); }
+uint64_t  get_in_recursion(uint64_t* context)    { return             *(context + 23); }
+uint64_t  get_outside_rec_loc(uint64_t* context) { return             *(context + 24); }
+uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 25); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1534,7 +1584,12 @@ void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 16)
 void set_path_condition(uint64_t* context, char* path)         { *(context + 17) = (uint64_t) path; }
 void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 18) = (uint64_t) memory; }
 void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 19) = (uint64_t) regs; }
-void set_related_context(uint64_t* context, uint64_t* related) { *(context + 20) = (uint64_t) related; }
+void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 20) =            counter; }
+void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 21) =            location; }
+void set_prologues(uint64_t* context, uint64_t* prologues)     { *(context + 22) = (uint64_t) prologues; }
+void set_in_recursion(uint64_t* context, uint64_t in_rec)      { *(context + 23) =            in_rec; }
+void set_outside_rec_loc(uint64_t* context, uint64_t location) { *(context + 24) =            location; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 25) = (uint64_t) partner; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1592,6 +1647,7 @@ uint64_t handle_system_call(uint64_t* context);
 uint64_t handle_page_fault(uint64_t* context);
 uint64_t handle_division_by_zero(uint64_t* context);
 uint64_t handle_timer(uint64_t* context);
+uint64_t handle_merge(uint64_t* context);
 
 uint64_t handle_exception(uint64_t* context);
 
@@ -1619,6 +1675,7 @@ uint64_t* MY_CONTEXT = (uint64_t*) 0;
 
 uint64_t DONOTEXIT = 0;
 uint64_t EXIT      = 1;
+uint64_t MERGE     = 2;
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_BADARGUMENTS           = 1;
@@ -2547,6 +2604,16 @@ void sprintf3(char* b, char* s, char* a1, char* a2, char* a3) {
   output_cursor = 0;
 
   printf3(s, a1, a2, a3);put_character(0);
+
+  output_buffer = (char*) 0;
+  output_cursor = 0;
+}
+
+void sprintf4(char* b, char* s, char* a1, char* a2, char* a3, char* a4) {
+  output_buffer = b;
+  output_cursor = 0;
+
+  printf4(s, a1, a2, a3, a4);put_character(0);
 
   output_buffer = (char*) 0;
   output_cursor = 0;
@@ -6959,6 +7026,13 @@ void constrain_add_sub_mul_divu_remu_sltu(char* operator) {
         op2 = bv_constant(*(registers + rs2));
 
     *(reg_sym + rd) = (uint64_t) smt_binary(operator, op1, op2);
+
+    // checking for division by zero
+    if (string_compare(operator, "bvudiv")) {
+      print("(push 1)\n");
+      printf2("(assert (and %s %s)); check if a division by zero is possible", path_condition, smt_binary("=", op2, bv_constant(0)));
+      print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+    }
   }
 }
 
@@ -7166,16 +7240,9 @@ void constrain_ld() {
 
     // and individually
     *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
-  } else {
+  } else
     // invalid concrete memory address
-    printf3("%s: invalid concrete memory address %x in ld instruction at %x", selfie_name,
-      (char*) vaddr,
-      (char*) pc);
-    print_code_line_number_for_instruction(pc, entry_point);
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
+    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 }
 
 void print_sd() {
@@ -7298,16 +7365,9 @@ void constrain_sd() {
 
     // and individually
     *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
-  } else {
+  } else
     // invalid concrete memory address
-    printf3("%s: invalid concrete memory address %x in sd instruction at %x", selfie_name,
-      (char*) vaddr,
-      (char*) pc);
-    print_code_line_number_for_instruction(pc, entry_point);
-    println();
-
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
+    throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 }
 
 void print_beq() {
@@ -7376,14 +7436,37 @@ void constrain_beq() {
   print_code_context_for_instruction(pc);
   println();
 
-  copy_context(current_context,
-    pc + INSTRUCTIONSIZE,
-    smt_binary("and", pvar, smt_unary("not", bvar)),
-    max_execution_depth - timer);
+  // increase the number of executed symbolic beq instructions
+  set_beq_counter(current_context, get_beq_counter(current_context) + 1);
 
-  path_condition = smt_binary("and", pvar, bvar);
+  if (get_beq_counter(current_context) < BEQ_LIMIT) {
+    // save symbolic memory so that it is copied correctly afterwards
+    set_symbolic_memory(current_context, symbolic_memory);
 
-  pc = pc + imm;
+    // the copied context is executed later and takes the other path
+    add_waiting_context(copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar)));
+
+    path_condition = smt_binary("and", pvar, smt_unary("not", bvar));
+
+    // set the merge location only when merging is enabled
+    if (merge_enabled)
+      set_merge_location(current_context, find_merge_location(imm));
+  
+    // check if a context is waiting to be merged
+    if (current_mergeable_context != (uint64_t*) 0) {
+      // we cannot merge with this one (yet), so we push it back onto the stack of mergeable contexts
+      add_mergeable_context(current_mergeable_context);
+      current_mergeable_context = (uint64_t*) 0;
+    }
+
+    pc = pc + INSTRUCTIONSIZE;
+  } else {
+    // if the limit of symbolic beq instructions is reached, the part of the path still continues until it can be merged or has reached its 
+    // maximal execution depth, respectively, but only by following the true case of the next encountered symbolic beq instructions
+    path_condition = smt_binary("and", pvar, bvar);
+  
+    pc = pc + imm;
+  }
 }
 
 void print_jal() {
@@ -7655,9 +7738,16 @@ uint64_t* load_symbolic_memory(uint64_t vaddr) {
 void store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, uint64_t bits) {
   uint64_t* sword;
 
-  sword = allocate_symbolic_memory_word();
+  // we overwrite values, if they already exist in the unshared symbolic memory space, so that there are no duplicates in any unshared symbolic memory space
+  sword = find_word_in_unshared_symbolic_memory(vaddr);
 
-  set_next_word(sword, symbolic_memory);
+  // new value in this unshared symbolic memory space
+  if (sword == (uint64_t*) 0) {
+    sword = allocate_symbolic_memory_word();
+    set_next_word(sword, symbolic_memory);
+    symbolic_memory = sword;
+  }
+
   set_word_address(sword, vaddr);
   set_word_value(sword, val);
 
@@ -7673,8 +7763,41 @@ void store_symbolic_memory(uint64_t vaddr, uint64_t val, char* sym, char* var, u
     set_word_symbolic(sword, 0);
 
   set_number_of_bits(sword, bits);
+}
 
-  symbolic_memory = sword;
+uint64_t* find_word_in_unshared_symbolic_memory(uint64_t vaddr) {
+  uint64_t* sword;
+
+  sword = get_symbolic_memory(current_context);
+
+  while (sword) {
+    if (get_word_address(sword) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY)
+      return (uint64_t*) 0;
+    if (get_word_address(sword) == vaddr)
+      return sword;
+
+    sword = get_next_word(sword);
+  }
+
+  return (uint64_t*) 0;
+}
+
+void update_begin_of_shared_symbolic_memory(uint64_t* context) {
+  uint64_t* sword;
+
+  if (context == (uint64_t*) 0)
+    return;
+
+  sword = get_symbolic_memory(context);
+
+  while (sword) {
+    if (get_word_address(sword) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY) {
+      set_word_address(sword, DELETED);
+      return;
+    }
+
+    sword = get_next_word(sword);
+  }
 }
 
 uint64_t is_symbolic_value(uint64_t* sword) {
@@ -7764,6 +7887,644 @@ char* smt_binary(char* opt, char* op1, char* op2) {
 
   return string;
 }
+
+char* smt_ternary(char* opt, char* op1, char* op2, char* op3) {
+  char* string;
+
+  string = string_alloc(1 + string_length(opt) + 1 + string_length(op1) + 1 + string_length(op2) + 1 + string_length(op3) + 1);
+
+  sprintf4(string, "(%s %s %s %s)", opt, op1, op2, op3);
+
+  return string;
+}
+
+uint64_t find_merge_location(uint64_t beq_imm) {
+  uint64_t original_pc;
+  uint64_t merge_location;
+
+  // assert: the current instruction is a symbolic beq instruction
+  original_pc = pc;
+
+  // examine last instruction before target location of the beq instruction
+  pc = pc + (beq_imm - INSTRUCTIONSIZE);
+
+  // we need to know which instruction it is
+  fetch();
+  decode();
+  
+  if (is != JAL)
+    /* no jal instruction -> end of if without else branch
+       merge is directly at target location of the beq instruction possible
+
+    note: this is a dependency on the selfie compiler */
+    merge_location = original_pc + beq_imm;
+  else {
+    if (signed_less_than(imm, 0) == 0) { 
+      /* jal with positive imm -> end of if with else branch
+         we have to skip the else branch in order to merge afterwards
+
+         note: this is a dependency on the selfie compiler
+         the selfie compiler emits a jal instruction with a positive immediate value if it sees an else branch */
+      merge_location = pc + imm;
+
+      pc = original_pc + INSTRUCTIONSIZE;
+    } else
+      /* jal with negative imm -> end of loop body
+         merge is only outside of the loop body possible
+
+         note: this is a dependency on the selfie compiler
+         the selfie compiler emits a jal instruction with a negative immediate value at
+         the end of the loop body in order to jump back to the loop condition */
+      merge_location = pc + INSTRUCTIONSIZE;
+  }
+
+  // we need to check if we are inside of a recursion before we reach the merge location
+  while (pc != merge_location) {
+    fetch();
+    decode();
+
+    if (is == JAL)
+      // if we are inside of a (arbitrarily deep nested) recursion,
+      // we merge only after the entire recursion has been finished (i.e. the program
+      // has reached a program location which is not part of any recursion)
+      if (currently_in_this_procedure(pc + imm, current_context)) {
+        if (get_in_recursion(current_context) == 0)
+          set_outside_rec_loc(current_context, get_merge_location_from_corresponding_prologue_start(pc + imm, current_context));
+
+        merge_location = get_outside_rec_loc(current_context);
+        set_in_recursion(current_context, 1);
+      }
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+
+  // restore the original program state
+  pc = original_pc;
+  fetch();
+  decode();
+
+  return merge_location;
+}
+
+void add_mergeable_context(uint64_t* context) {
+  uint64_t* entry;
+
+  entry = smalloc(2 * SIZEOFUINT64STAR);
+
+  *(entry + 0) = (uint64_t) mergeable_contexts;
+  *(entry + 1) = (uint64_t) context;
+
+  mergeable_contexts = entry;
+}
+
+uint64_t* get_mergeable_context() {
+  uint64_t* head;
+
+  if (mergeable_contexts == (uint64_t*) 0)
+    return (uint64_t*) 0;
+
+  head = mergeable_contexts;
+  mergeable_contexts = (uint64_t*) *(head + 0);
+
+  return (uint64_t*) *(head + 1);
+}
+
+void add_waiting_context(uint64_t* context) {
+  uint64_t* entry;
+
+  entry = smalloc(2 * SIZEOFUINT64STAR);
+
+  *(entry + 0) = (uint64_t) waiting_contexts;
+  *(entry + 1) = (uint64_t) context;
+
+  waiting_contexts = entry;
+}
+
+uint64_t* get_waiting_context() {
+  uint64_t* head;
+
+  if (waiting_contexts == (uint64_t*) 0)
+    return (uint64_t*) 0;
+
+  head = waiting_contexts;
+  waiting_contexts = (uint64_t*) *(head + 0);
+
+  return (uint64_t*) *(head + 1);
+}
+
+void add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location, uint64_t* context) {
+  uint64_t* entry;
+
+  entry = get_prologues(context);
+
+  // do not add duplicates
+  while (entry) {
+    if (*(entry + 1) == prologue_start)
+      return;
+
+    entry = (uint64_t*) *(entry + 0);
+  }
+
+  entry = smalloc(3 * SIZEOFUINT64STAR);
+
+  *(entry + 0) = (uint64_t) get_prologues(context);
+  *(entry + 1) = (uint64_t) prologue_start;
+  *(entry + 2) = (uint64_t) merge_location;
+
+  set_prologues(context, entry);
+}
+
+uint64_t get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start, uint64_t* context) {
+  uint64_t* entry;
+
+  entry = get_prologues(context);
+
+  while (entry) {
+    if (*(entry + 1) == prologue_start)
+      return (uint64_t) *(entry + 2);
+
+    entry = (uint64_t*) *(entry + 0);
+  }
+
+  return -1;
+}
+
+uint64_t currently_in_this_procedure(uint64_t prologue_start, uint64_t* context) {
+  return (get_merge_location_from_corresponding_prologue_start(prologue_start, context) != (uint64_t) -1);
+}
+
+void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location) {
+  // do not merge if merging is disabled
+  if (merge_enabled == 0) {
+    if (current_mergeable_context != (uint64_t*) 0) {
+      add_mergeable_context(current_mergeable_context);
+      current_mergeable_context = (uint64_t*) 0;
+    }
+
+    return;
+  }
+
+  print("; merging two contexts at ");
+  print_code_context_for_instruction(location);
+  println();
+
+  if (get_prologues(active_context) != (uint64_t*) 0)
+    if (get_pc(active_context) == *(get_prologues(active_context) + 2))
+      // we have finished the recursion (i.e. the program has reached a program location which is not part of any recursion)
+      set_in_recursion(active_context, 0);
+
+  // merging the symbolic store
+  merge_symbolic_memory_and_registers(active_context, mergeable_context);
+
+  // merging the path condition
+  path_condition = smt_binary("or", get_path_condition(active_context), get_path_condition(mergeable_context));
+  set_path_condition(active_context, path_condition);
+
+  if (get_execution_depth(mergeable_context) > get_execution_depth(active_context))
+    set_execution_depth(active_context, get_execution_depth(mergeable_context));
+
+  current_mergeable_context = get_mergeable_context();
+
+  // it may be possible that more contexts can be merged
+  if (current_mergeable_context != (uint64_t*) 0)
+    if (pc == get_pc(current_mergeable_context))
+      merge(active_context, current_mergeable_context, pc);
+
+}
+
+void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context) {
+  // merging the symbolic memory
+  merge_symbolic_memory_of_active_context(active_context, mergeable_context);
+  merge_symbolic_memory_of_mergeable_context(active_context, mergeable_context);
+
+  // merging the registers
+  merge_registers(active_context, mergeable_context);
+
+  // the shared symbolic memory space needs needs to be updated since the other context was merged into the active context
+  update_begin_of_shared_symbolic_memory(active_context);
+}
+
+void merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context) {
+  uint64_t* sword_from_active_context;
+  uint64_t* sword_from_mergeable_context;
+  uint64_t  in_unshared_symbolic_memory;
+
+  sword_from_active_context = symbolic_memory;
+
+  while (sword_from_active_context) {
+    // we need to stop at the end of the unshared symbolic memory space of the active context
+    if (get_word_address(sword_from_active_context) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY)
+      return;
+
+    // check if the word has not already been deleted
+    if (get_word_address(sword_from_active_context) != (uint64_t) DELETED) {
+      // check if the word has not already been merged
+      if (get_word_address(sword_from_active_context) != (uint64_t) MERGED) {
+        sword_from_mergeable_context = get_symbolic_memory(mergeable_context);
+        in_unshared_symbolic_memory = 1;
+
+        while (sword_from_mergeable_context) {
+          // we need to know if we are in the unshared symbolic memory space of the mergeable context 
+          if (get_word_address(sword_from_mergeable_context) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY)
+            in_unshared_symbolic_memory = 0;
+
+          if (get_word_address(sword_from_active_context) == get_word_address(sword_from_mergeable_context)) {
+            if (get_word_symbolic(sword_from_active_context) != (char*) 0) {
+              if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
+                if (get_word_symbolic(sword_from_active_context) != get_word_symbolic(sword_from_mergeable_context)) {
+                  // merge symbolic values if they are different
+                  set_word_symbolic(sword_from_active_context, 
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      get_word_symbolic(sword_from_active_context), 
+                      get_word_symbolic(sword_from_mergeable_context)
+                    )
+                  );
+
+                  // we mark the word as merged so that we do not merge it again when merging from the side of the mergeable context
+                  if (in_unshared_symbolic_memory)
+                    set_word_address(sword_from_mergeable_context, MERGED);
+
+                  // we need to break out of the loop
+                  sword_from_mergeable_context = (uint64_t*) - 1;
+                }
+              } else {
+                // merge symbolic value and concrete value
+                set_word_symbolic(sword_from_active_context, 
+                  smt_ternary("ite", 
+                    get_path_condition(active_context), 
+                    get_word_symbolic(sword_from_active_context), 
+                    bv_constant(get_word_value(sword_from_mergeable_context))
+                  )
+                );
+
+                // we mark the word as merged so that we do not merge it again when merging from the side of the mergeable context
+                if (in_unshared_symbolic_memory)
+                  set_word_address(sword_from_mergeable_context, MERGED);
+
+                // we need to break out of the loop
+                sword_from_mergeable_context = (uint64_t*) - 1;
+              }
+            } else {
+              if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
+                // merge concrete value and symbolic value
+                set_word_symbolic(sword_from_active_context, 
+                  smt_ternary("ite", 
+                    get_path_condition(active_context), 
+                    bv_constant(get_word_value(sword_from_active_context)), 
+                    get_word_symbolic(sword_from_mergeable_context)
+                  )
+                );
+
+                // we mark the word as merged so that we do not merge it again when merging from the side of the mergeable context
+                if (in_unshared_symbolic_memory)
+                  set_word_address(sword_from_mergeable_context, MERGED);
+
+                // we need to break out of the loop
+                sword_from_mergeable_context = (uint64_t*) - 1;
+              } else {
+                if (get_word_value(sword_from_active_context) != get_word_value(sword_from_mergeable_context)) {
+                  // merge concrete values if they are different
+                  set_word_symbolic(sword_from_active_context, 
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      bv_constant(get_word_value(sword_from_active_context)),
+                      bv_constant(get_word_value(sword_from_mergeable_context))
+                    )
+                  );
+
+                  // we mark the word as merged so that we do not merge it again when merging from the side of the mergeable context
+                  if (in_unshared_symbolic_memory)
+                    set_word_address(sword_from_mergeable_context, MERGED);
+
+                  // we need to break out of the loop
+                  sword_from_mergeable_context = (uint64_t*) - 1;
+                }
+              }
+            }
+          }
+          if (sword_from_mergeable_context == (uint64_t*) - 1)
+            sword_from_mergeable_context = (uint64_t*) 0;
+          else
+            sword_from_mergeable_context = get_next_word(sword_from_mergeable_context);
+        }
+      }
+    }
+
+    sword_from_active_context = get_next_word(sword_from_active_context);
+  }
+}
+
+void merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context) {
+  uint64_t* sword_from_active_context;
+  uint64_t* sword_from_mergeable_context;
+  uint64_t* sword;
+  uint64_t* additional_memory;
+  uint64_t  shared_symbolic_memory_depth;
+
+  additional_memory = symbolic_memory;
+  sword_from_mergeable_context = get_symbolic_memory(mergeable_context);
+
+  while (sword_from_mergeable_context) {
+    // we need to stop at the end of the unshared symbolic memory space of the mergeable context
+    if (get_word_address(sword_from_mergeable_context) == BEGIN_OF_SHARED_SYMBOLIC_MEMORY) {
+      symbolic_memory = additional_memory;
+
+      // the active context contains now the merged symbolic memory
+      set_symbolic_memory(active_context, symbolic_memory);
+      return;
+    }
+
+    // check if the word has not already been deleted
+    if (get_word_address(sword_from_mergeable_context) != (uint64_t) DELETED) {
+      // check if the word has not already been merged
+      if (get_word_address(sword_from_mergeable_context) != (uint64_t) MERGED) {
+        sword_from_active_context = symbolic_memory;
+        shared_symbolic_memory_depth = 0;
+
+        while (sword_from_active_context) {
+          // we need to know how far we are into the shared symbolic memory space
+          if (get_word_address(sword_from_active_context) == (uint64_t) BEGIN_OF_SHARED_SYMBOLIC_MEMORY)
+            shared_symbolic_memory_depth = shared_symbolic_memory_depth + 1;
+
+          if (get_word_address(sword_from_active_context) == get_word_address(sword_from_mergeable_context)) {
+            if (get_word_symbolic(sword_from_active_context) != (char*) 0) {
+              if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
+                if (get_word_symbolic(sword_from_active_context) != get_word_symbolic(sword_from_mergeable_context)) {
+                  // merge symbolic values if they are different
+                  if (shared_symbolic_memory_depth < 2)
+                    set_word_symbolic(sword_from_active_context, 
+                      smt_ternary("ite", 
+                        get_path_condition(active_context), 
+                        get_word_symbolic(sword_from_active_context), 
+                        get_word_symbolic(sword_from_mergeable_context)
+                      )
+                    );
+                  else {
+                    // if we are too far into the shared symbolic memory space, we must not overwrite the value,
+                    // but insert it into the unshared symbolic memory space of the active context
+                    sword = allocate_symbolic_memory_word();
+                    set_word_address(sword, get_word_address(sword_from_active_context));
+                    set_word_value(sword, get_word_value(sword_from_active_context));
+                    set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
+                    set_word_symbolic(sword, 
+                      smt_ternary("ite", 
+                        get_path_condition(active_context), 
+                        get_word_symbolic(sword_from_active_context), 
+                        get_word_symbolic(sword_from_mergeable_context)
+                      )
+                    );
+                    set_next_word(sword, additional_memory);
+                  }
+
+                  // we need to break out of the loop
+                  sword_from_active_context = (uint64_t*) - 1;
+                }
+              } else {
+                // merge symbolic value and concrete value
+                if (shared_symbolic_memory_depth < 2)
+                  set_word_symbolic(sword_from_active_context, 
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      get_word_symbolic(sword_from_active_context), 
+                      bv_constant(get_word_value(sword_from_mergeable_context))
+                    )
+                  );
+                else {
+                  // if we are too far into the shared symbolic memory space, we must not overwrite the value,
+                  // but insert it into the unshared symbolic memory space of the active context
+                  sword = allocate_symbolic_memory_word();
+                  set_word_address(sword, get_word_address(sword_from_active_context));
+                  set_word_value(sword, get_word_value(sword_from_active_context));
+                  set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
+                  set_word_symbolic(sword, 
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      get_word_symbolic(sword_from_active_context), 
+                      bv_constant(get_word_value(sword_from_mergeable_context))
+                    )
+                  );
+                  set_next_word(sword, additional_memory);
+                }
+
+                // we need to break out of the loop
+                sword_from_active_context = (uint64_t*) - 1;
+              }
+            } else {
+              if (get_word_symbolic(sword_from_mergeable_context) != (char*) 0) {
+                // merge concrete value and symbolic value
+                if (shared_symbolic_memory_depth < 2)
+                  set_word_symbolic(sword_from_active_context, 
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      bv_constant(get_word_value(sword_from_active_context)), 
+                      get_word_symbolic(sword_from_mergeable_context)
+                    )
+                  );
+                else {
+                  // if we are too far into the shared symbolic memory space, we must not overwrite the value,
+                  // but insert it into the unshared symbolic memory space of the active context
+                  sword = allocate_symbolic_memory_word();
+                  set_word_address(sword, get_word_address(sword_from_active_context));
+                  set_word_value(sword, get_word_value(sword_from_active_context));
+                  set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
+                  set_word_symbolic(sword,  
+                    smt_ternary("ite", 
+                      get_path_condition(active_context), 
+                      bv_constant(get_word_value(sword_from_active_context)), 
+                      get_word_symbolic(sword_from_mergeable_context)
+                    )
+                  );
+                  set_next_word(sword, additional_memory);
+                }
+
+                // we need to break out of the loop
+                sword_from_active_context = (uint64_t*) - 1;
+              } else {
+                if (get_word_value(sword_from_active_context) != get_word_value(sword_from_mergeable_context)) {
+                  // merge concrete values if they are different
+                  if (shared_symbolic_memory_depth < 2)
+                    set_word_symbolic(sword_from_active_context, 
+                      smt_ternary("ite", 
+                        get_path_condition(active_context), 
+                        bv_constant(get_word_value(sword_from_active_context)),
+                        bv_constant(get_word_value(sword_from_mergeable_context))
+                      )
+                    );
+                  else {
+                    // if we are too far into the shared symbolic memory space, we must not overwrite the value,
+                    // but insert it into the unshared symbolic memory space of the active context
+                    sword = allocate_symbolic_memory_word();
+                    set_word_address(sword, get_word_address(sword_from_active_context));
+                    set_word_value(sword, get_word_value(sword_from_active_context));
+                    set_number_of_bits(sword, get_number_of_bits(sword_from_active_context));
+                    set_word_symbolic(sword,  
+                      smt_ternary("ite", 
+                        get_path_condition(active_context), 
+                        bv_constant(get_word_value(sword_from_active_context)),
+                        bv_constant(get_word_value(sword_from_mergeable_context))
+                      )
+                    );
+                    set_next_word(sword, additional_memory);
+                  }
+
+                  // we need to break out of the loop
+                  sword_from_active_context = (uint64_t*) - 1;
+                }
+              }
+            }
+          }
+          if (sword_from_active_context == (uint64_t*) - 1)
+            sword_from_active_context = (uint64_t*) 0;
+          else
+            sword_from_active_context = get_next_word(sword_from_active_context);
+        }
+      }
+    }
+    sword_from_mergeable_context = get_next_word(sword_from_mergeable_context);
+  }
+
+  symbolic_memory = additional_memory;
+
+  // the active context contains now the merged symbolic memory
+  set_symbolic_memory(active_context, symbolic_memory);
+}
+
+void merge_registers(uint64_t* active_context, uint64_t* mergeable_context) {
+  uint64_t i;
+
+  i = 0;
+    
+  // merging the symbolic registers
+  while (i < NUMBEROFREGISTERS) {
+    if (*(get_symbolic_regs(active_context) + i) != 0) {
+      if (*(get_symbolic_regs(mergeable_context) + i) != 0) {
+        if (*(get_symbolic_regs(active_context) + i) != *(get_symbolic_regs(mergeable_context) + i))
+          // merge symbolic values if they are different
+          *(reg_sym + i) = (uint64_t) smt_ternary("ite",
+                                        get_path_condition(active_context),
+                                        (char*) *(get_symbolic_regs(active_context) + i),
+                                        (char*) *(get_symbolic_regs(mergeable_context) + i)
+                                      );
+      } else
+        // merge symbolic value and concrete value
+        *(reg_sym + i) = (uint64_t) smt_ternary("ite",
+                                      get_path_condition(active_context),
+                                      (char*) *(get_symbolic_regs(active_context) + i),
+                                      bv_constant(*(get_regs(mergeable_context) + i))
+                                    );
+    } else {
+      if (*(get_symbolic_regs(mergeable_context) + i) != 0)
+        // merge concrete value and symbolic value
+        *(reg_sym + i) = (uint64_t) smt_ternary("ite",
+                                      get_path_condition(active_context),
+                                      bv_constant(*(get_regs(active_context) + i)),
+                                      (char*) *(get_symbolic_regs(mergeable_context) + i)
+                                    );
+      else
+        if (*(get_regs(active_context) + i) != *(get_regs(mergeable_context) + i))
+          // merge concrete values if they are different
+          *(reg_sym + i) = (uint64_t) smt_ternary("ite",
+                                        get_path_condition(active_context),
+                                        bv_constant(*(get_regs(active_context) + i)),
+                                        bv_constant(*(get_regs(mergeable_context) + i))
+                                      );
+    }
+  
+    i = i + 1;
+  }
+
+  set_symbolic_regs(active_context, reg_sym);
+}
+
+uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
+  uint64_t merge_not_finished;
+  uint64_t mergeable;
+  uint64_t pauseable;
+
+  if (merge_enabled)
+    merge_not_finished = 1;
+  else
+    merge_not_finished = 0;
+
+  while (merge_not_finished) {
+    mergeable = 1;
+    pauseable = 1;
+
+    if (context == (uint64_t*) 0) {
+      // break out of the loop
+      mergeable = 0;
+      pauseable = 0;
+    } else
+      symbolic_memory = get_symbolic_memory(context);
+
+    // check if the context can be merged with one or more mergeable contexts
+    while (mergeable) {
+      if (current_mergeable_context == (uint64_t*) 0)
+        current_mergeable_context = get_mergeable_context();
+
+      if (current_mergeable_context != (uint64_t*) 0) {
+        if (get_pc(context) == get_pc(current_mergeable_context)) {
+          if (merge_enabled)
+            merge(context, current_mergeable_context, get_pc(context));
+          else
+            mergeable = 0;
+        } else
+          mergeable = 0;
+      } else
+        mergeable = 0;
+    }
+
+    // check if the context has reached a merge location and needs to be paused
+    while (pauseable) {
+      if (get_pc(context) == get_merge_location(context)) {
+        current_mergeable_context = context;
+        context = get_waiting_context();
+
+        if (context) {
+          if (get_pc(context) == get_pc(current_mergeable_context)) {
+            pauseable = 0;
+            mergeable = 1;
+          }
+          else {
+            add_mergeable_context(current_mergeable_context);
+            current_mergeable_context = (uint64_t*) 0;
+          }
+        }
+
+        // break out of the loop
+        if (context == (uint64_t*) 0) {
+          mergeable = 0;
+          pauseable = 0;
+        }
+
+      } else {
+        if (current_mergeable_context == (uint64_t*) 0)
+          current_mergeable_context = get_mergeable_context();
+        
+        if (current_mergeable_context != (uint64_t*) 0)
+          if (get_pc(context) == get_pc(current_mergeable_context))
+            mergeable = 1;
+
+        pauseable = 0;
+      }
+    }
+
+    if (mergeable == 0)
+      if (pauseable == 0)
+        merge_not_finished = 0;
+  }
+
+  // check if there are contexts which have been paused and were not merged yet
+  if (context == (uint64_t*) 0)
+    context = get_mergeable_context();
+
+  if (merge_enabled == 0)
+    merge_not_finished = 0;
+
+  return context;
+}
+
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -8084,6 +8845,11 @@ void execute_debug() {
 }
 
 void execute_symbolically() {
+  uint64_t prologue_start;
+  uint64_t corresponding_merge_location;
+  uint64_t pc_before_jal;
+  uint64_t jal_rd;
+
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI) {
     constrain_addi();
@@ -8113,9 +8879,23 @@ void execute_symbolically() {
     do_sltu();
   } else if (is == BEQ)
     constrain_beq();
-  else if (is == JAL)
+  else if (is == JAL) {
+    pc_before_jal = pc;
+    jal_rd = rd;
+
     do_jal();
-  else if (is == JALR) {
+    // note: this is a dependency on the selfie compiler
+    // the selfie compiler uses jal with the RA register to call a procedure
+    if (jal_rd == REG_RA)
+      // if we are already in a recursion, we do not add a new merge location since we only merge when the 
+      // recursion is finished (i.e. the program has reached a program location which is not part of any recursion)
+      if (get_in_recursion(current_context) == 0) {
+        corresponding_merge_location = pc_before_jal + INSTRUCTIONSIZE;
+        prologue_start = pc;
+        add_prologue_start_and_corresponding_merge_location(prologue_start, corresponding_merge_location, current_context);
+      }
+
+  } else if (is == JALR) {
     constrain_jalr();
     do_jalr();
   } else if (is == LUI) {
@@ -8129,6 +8909,9 @@ void interrupt() {
   if (timer != TIMEROFF) {
     timer = timer - 1;
 
+    if (symbolic)
+      set_execution_depth(current_context, get_execution_depth(current_context) + 1);
+
     if (timer == 0) {
       if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
         // only throw exception if no other is pending
@@ -8138,6 +8921,26 @@ void interrupt() {
         // trigger timer in the next interrupt cycle
         timer = 1;
     }
+  }
+
+  if (symbolic) {
+    if (get_in_recursion(current_context) == 0)
+      if (get_prologues(current_context) != (uint64_t*) 0)
+        if (pc == *(get_prologues(current_context) + 2))
+          // pop prologue off the stack if we have finished the procedure
+          set_prologues(current_context, (uint64_t*) *(get_prologues(current_context) + 0));
+
+    if (current_mergeable_context != (uint64_t*) 0)
+      // if both contexts are at the same program location, they can be merged
+      if (pc == get_pc(current_mergeable_context))
+        merge(current_context, current_mergeable_context, pc);
+    
+    // check if the current context has reached a merge location
+    if (pc == get_merge_location(current_context))
+      if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
+        // only throw exception if no other is pending
+        // TODO: handle multiple pending exceptions
+        throw_exception(EXCEPTION_MERGE, 0);
   }
 }
 
@@ -8302,12 +9105,18 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
     set_path_condition(context, "true");
     set_symbolic_memory(context, (uint64_t*) 0);
     set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
-    set_related_context(context, (uint64_t*) 0);
+    set_beq_counter(context, 0);
+    set_merge_location(context, -1);
+    set_prologues(context, (uint64_t*) 0);
+    set_in_recursion(context, 0);
+    set_outside_rec_loc(context, 0);
+    set_merge_partner(context, (uint64_t*) 0);
   }
 }
 
-void copy_context(uint64_t* original, uint64_t location, char* condition, uint64_t depth) {
+uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   uint64_t* context;
+  uint64_t* begin_of_shared_symbolic_memory;
   uint64_t r;
 
   context = new_context();
@@ -8336,11 +9145,38 @@ void copy_context(uint64_t* original, uint64_t location, char* condition, uint64
   set_virtual_context(context, get_virtual_context(original));
   set_name(context, get_name(original));
 
-  set_execution_depth(context, depth);
+  set_execution_depth(context, get_execution_depth(original));
   set_path_condition(context, condition);
-  set_symbolic_memory(context, symbolic_memory);
+  set_beq_counter(context, get_beq_counter(original));
+  set_merge_location(context, get_merge_location(original));
+
+  begin_of_shared_symbolic_memory = allocate_symbolic_memory_word();
+
+  // mark begin of shared symbolic memory space in the copied context
+  set_next_word(begin_of_shared_symbolic_memory, get_symbolic_memory(original));
+  set_word_address(begin_of_shared_symbolic_memory, BEGIN_OF_SHARED_SYMBOLIC_MEMORY);
+
+  // begin of the unshared symbolic memory space of the copied context
+  set_symbolic_memory(context, begin_of_shared_symbolic_memory);
+
+  begin_of_shared_symbolic_memory = allocate_symbolic_memory_word();
+
+  // mark begin of shared symbolic memory space in the original context
+  set_next_word(begin_of_shared_symbolic_memory, get_symbolic_memory(original));
+  set_word_address(begin_of_shared_symbolic_memory, BEGIN_OF_SHARED_SYMBOLIC_MEMORY);
+
+  // begin of the unshared symbolic memory space of the original context
+  set_symbolic_memory(original, begin_of_shared_symbolic_memory);
+
+  symbolic_memory = get_symbolic_memory(original);
+
+  set_prologues(context, get_prologues(original));
+  set_in_recursion(context, get_in_recursion(original));
+  set_outside_rec_loc(context, get_outside_rec_loc(original));
 
   set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  set_merge_partner(context, original);
 
   r = 0;
 
@@ -8350,9 +9186,9 @@ void copy_context(uint64_t* original, uint64_t location, char* condition, uint64
     r = r + 1;
   }
 
-  set_related_context(context, symbolic_contexts);
-
   symbolic_contexts = context;
+
+  return context;
 }
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
@@ -8806,6 +9642,16 @@ uint64_t handle_division_by_zero(uint64_t* context) {
     replay_trace();
 
     set_exit_code(context, EXITCODE_NOERROR);
+  } else if (symbolic) {
+    // check if this division by zero is reachable
+    print("(push 1)\n");
+    printf1("(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
+    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+    // we terminate the exeuction of the context, because if the location is not reachable, 
+    // the rest of the path is not reachable either, and otherwise 
+    // the execution would be terminated by this error anyway
+    set_exit_code(context, EXITCODE_DIVISIONBYZERO);
   } else {
     printf1("%s: division by zero\n", selfie_name);
 
@@ -8819,16 +9665,21 @@ uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (symbolic) {
-    print("(push 1)\n");
-
-    printf1("(assert (not %s)); timeout in ", path_condition);
+    printf1("; timeout in ", path_condition);
     print_code_context_for_instruction(pc);
-
-    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+    println();
 
     return EXIT;
   } else
     return DONOTEXIT;
+}
+
+uint64_t handle_merge(uint64_t* context) {
+  add_mergeable_context(current_context);
+
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  return MERGE;
 }
 
 uint64_t handle_exception(uint64_t* context) {
@@ -8844,7 +9695,24 @@ uint64_t handle_exception(uint64_t* context) {
     return handle_division_by_zero(context);
   else if (exception == EXCEPTION_TIMER)
     return handle_timer(context);
+  else if (exception == EXCEPTION_MERGE)
+    return handle_merge(context);
   else {
+    if (symbolic)
+      if (exception == EXCEPTION_INVALIDADDRESS) {
+        // check if this invalid memory access is reachable
+        print("(push 1)\n");
+        printf1("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
+        print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+        set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
+
+        // we terminate the exeuction of the context, because if the location is not reachable, 
+        // the rest of the path is not reachable either, and otherwise 
+        // the execution would be terminated by this error anyway
+        return EXIT;
+      }
+
     printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
     print_exception(exception, get_faulting_page(context));
     println();
@@ -9060,8 +9928,9 @@ char* replace_extension(char* filename, char* extension) {
 }
 
 uint64_t monster(uint64_t* to_context) {
-  uint64_t timeout;
+  uint64_t  timeout;
   uint64_t* from_context;
+  uint64_t  exception;
 
   print("monster\n");
 
@@ -9094,7 +9963,7 @@ uint64_t monster(uint64_t* to_context) {
   print("(set-option :incremental true)\n");
   print("(set-logic QF_BV)\n\n");
 
-  timeout = max_execution_depth;
+  timeout = max_execution_depth - get_execution_depth(to_context);
 
   while (1) {
     from_context = mipster_switch(to_context, timeout);
@@ -9105,14 +9974,37 @@ uint64_t monster(uint64_t* to_context) {
 
       timeout = TIMEROFF;
     } else {
-      if (handle_exception(from_context) == EXIT) {
-        if (symbolic_contexts) {
-          to_context = symbolic_contexts;
+      exception = handle_exception(from_context);
 
-          timeout = get_execution_depth(to_context);
+      if (exception == EXIT) {
+        // we need to update the end of the shared symbolic memory of the corresponding context
+        update_begin_of_shared_symbolic_memory(get_merge_partner(from_context));
 
-          symbolic_contexts = get_related_context(symbolic_contexts);
-        } else {
+        // if a context is currently waiting to be merged, we need to switch to this one
+        if (current_mergeable_context != (uint64_t*) 0) {
+          // update the merge location, so the 'new' context can be merged later
+          set_merge_location(current_mergeable_context, get_merge_location(current_context));
+
+          to_context = current_mergeable_context;
+
+        // if no context is currently waiting to be merged, we switch to the next waiting context
+        } else
+          to_context = get_waiting_context();
+
+        // it may be possible that there are no waiting contexts, but mergeable contexts
+        if (to_context == (uint64_t*) 0) {
+          to_context = get_mergeable_context();
+
+          if (to_context)
+            // update the merge location, so the 'new' context can be merged later
+            set_merge_location(to_context, get_merge_location(current_context));
+        }
+
+        to_context = merge_if_possible_and_get_next_context(to_context);
+
+        if (to_context)
+          timeout = max_execution_depth - get_execution_depth(to_context);
+        else {
           print("\n(exit)");
 
           output_name = (char*) 0;
@@ -9124,6 +10016,10 @@ uint64_t monster(uint64_t* to_context) {
 
           return EXITCODE_NOERROR;
         }
+      } else if (exception == MERGE) {
+        to_context = merge_if_possible_and_get_next_context(get_waiting_context());
+
+        timeout = max_execution_depth - get_execution_depth(to_context);
       } else {
         timeout = timer;
 
