@@ -9,12 +9,13 @@ Input == #b00110001 (== 49 == '1')
 */
 
 uint64_t ackermann(uint64_t m, uint64_t n) {
-  if (m == 0)
+  if (m != 0) {
+    if (n != 0)
+      return ackermann(m - 1, ackermann(m, n - 1));
+    else
+      return ackermann(m - 1, 1);
+  } else
     return n + 1;
-  else if (n == 0)
-    return ackermann(m - 1, 1);
-  else
-    return ackermann(m - 1, ackermann(m, n - 1));
 }
 
 uint64_t main() {
