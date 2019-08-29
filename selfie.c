@@ -9475,10 +9475,9 @@ uint64_t constrain_ld() {
             }
             ics_ld = ics_ld + 1;
         } else {
-            *(reg_type + rd) = get_trace_type(mrvc);
-            set_constraint(rd, 0, get_trace_a1(mrvc), get_trace_a2(mrvc), 1);
+          *(reg_type + rd) = CONCRETE_T;
+          set_constraint(rd, 0, get_trace_a1(mrvc), get_trace_a2(mrvc), 1);
         }
-
         set_correction(rd, 0, 0, 0, 0, 0);
       }
 
