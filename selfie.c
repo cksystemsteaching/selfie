@@ -1574,8 +1574,8 @@ void      ealloc();
 void      efree();
 
 uint64_t  load_symbolic_memory(uint64_t* pt, uint64_t vaddr);
-uint64_t  new_trace_entry(uint64_t* pt, uint64_t mrvc, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step);
-uint64_t  store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t taddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void      new_trace_entry(uint64_t* pt, uint64_t mrvc, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step);
+void      store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t taddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 
 uint64_t  has_symbolic_link(uint64_t mrvc, uint64_t type);
 
@@ -1820,6 +1820,8 @@ void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint6
 void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step);
 void store_register_memory(uint64_t reg, uint64_t value);
+
+void update_trace_pointer(uint64_t old, uint64_t new);
 
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc);
 
@@ -9930,15 +9932,15 @@ uint64_t load_symbolic_memory(uint64_t* pt, uint64_t vaddr) {
   }
 }
 
-uint64_t new_trace_entry(uint64_t* pt, uint64_t mrvc, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step) {
+void new_trace_entry(uint64_t* pt, uint64_t taddr, uint64_t vaddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step) {
   if (is_trace_space_available()) {
     // current value at vaddr is from before most recent branch,
     // track that value by creating a new trace event
     ealloc();
 
-    set_trace_pc(tc, pc);
-    set_trace_tc(tc, mrvc);
-    set_trace_type(tc, type);
+    set_trace_pc(tc,    pc);
+    set_trace_tc(tc,    taddr);
+    set_trace_type(tc,  type);
     set_trace_vaddr(tc, vaddr);
 
     set_trace_a1(tc, lo);
@@ -9957,11 +9959,8 @@ uint64_t new_trace_entry(uint64_t* pt, uint64_t mrvc, uint64_t vaddr, uint64_t t
       printf1((uint64_t*) "%s: storing ", selfie_name);
       print_symbolic_memory(tc);
     }
-    return 1;
-  } else {
+  } else
     throw_exception(EXCEPTION_MAXTRACE, 0);
-    return 0;
-  }
 }
 
 uint64_t has_symbolic_link(uint64_t taddr, uint64_t type) {
@@ -9972,51 +9971,52 @@ uint64_t has_symbolic_link(uint64_t taddr, uint64_t type) {
   return 0;
 }
 
-uint64_t store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t mrvc, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+void store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t taddr, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
   //specific cases
   if (vaddr == 0)
     // tracking program break and size for malloc
-    mrvc = 0;
+    taddr = 0;
   else if (vaddr < NUMBEROFREGISTERS)
     // tracking a register value for sltu
-    mrvc = mrcc;
+    taddr = mrcc;
   else if (vaddr > NUMBEROFREGISTERS)
     // assert: vaddr is valid and mapped
-    mrvc = load_symbolic_memory(pt, vaddr);
+    taddr = load_symbolic_memory(pt, vaddr);
 
   // symbolic case
-  if (has_symbolic_link(mrvc, type))
-    return new_trace_entry(pt, mrvc, vaddr, type, lo, up, step);
+  if (has_symbolic_link(taddr, type)) {
+    new_trace_entry(pt, taddr, vaddr, type, lo, up, step);
+    return;
+  }
 
   if (vaddr > NUMBEROFREGISTERS) {
 
     // prevent from 'void store' whenever the value is aliased (correcness of backward semantics)
-      if (vaddr == get_trace_vaddr(mrvc))
-        if (type == get_trace_type(mrvc))
-          if (lo == get_trace_a1(mrvc))
-            if (up == get_trace_a2(mrvc))
-              if (step == get_trace_a3(mrvc))
+      if (vaddr == get_trace_vaddr(taddr))
+        if (type == get_trace_type(taddr))
+          if (lo == get_trace_a1(taddr))
+            if (up == get_trace_a2(taddr))
+              if (step == get_trace_a3(taddr))
                 // prevent tracking identical updates
-                return 0;
+                return;
   }
 
-  if (trb < mrvc) {
+  if (trb < taddr) {
     // current value at vaddr does not need to be tracked,
     // just overwrite it in the trace
-    set_trace_type(mrvc, type);
-    set_trace_pc(mrvc, pc);
+    set_trace_type(taddr, type);
+    set_trace_pc(taddr, pc);
 
-    set_trace_a1(mrvc, lo);
-    set_trace_a2(mrvc, up);
-    set_trace_a3(mrvc, step);
+    set_trace_a1(taddr, lo);
+    set_trace_a2(taddr, up);
+    set_trace_a3(taddr, step);
 
     if (debug_symbolic) {
       printf1((uint64_t*) "%s: overwriting ", selfie_name);
-      print_symbolic_memory(mrvc);
+      print_symbolic_memory(taddr);
     }
   } else
-    return new_trace_entry(pt, mrvc, vaddr, type, lo, up, step);
-  return 0;
+    new_trace_entry(pt, taddr, vaddr, type, lo, up, step);
 }
 
 void print_domain_memory(uint64_t svc) {
@@ -11712,7 +11712,6 @@ void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_
 }
 
 void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step) {
-
   if (vaddr >= get_program_break(current_context))
     if (vaddr < *(registers + REG_SP))
       // do not constrain free memory
@@ -11724,17 +11723,20 @@ void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uin
       vaddr = NUMBEROFREGISTERS;
 
   // always track constrained memory by using tc as most recent branch
-  if (store_symbolic_memory(pt, vaddr, taddr, type, lo, up, step, tc)) {
-    // update symbolics mrvc pointers
-    update_alias(get_trace_tc(tc), tc);                   // if it has dependence
-    if(look_for_witness(get_trace_tc(tc)) != NOT_FOUND)   // if it is an input
-      update_witness(get_trace_tc(tc), tc);
-  }
+  store_symbolic_memory(pt, vaddr, taddr, type, lo, up, step, tc);
+  update_trace_pointer(taddr, tc);
 }
 
 void store_register_memory(uint64_t reg, uint64_t value) {
   // always track register memory by using tc as most recent branch
   store_symbolic_memory(pt, reg, 0, CONCRETE_T, value, value, path_length, tc);
+}
+
+void update_trace_pointer(uint64_t old, uint64_t new) {
+  // update symbolics mrvc pointers
+  update_alias(old, new);                     // if it has dependence
+  if(look_for_witness(old) != NOT_FOUND)      // if it is an input
+    update_witness(old, new);
 }
 
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc) {
