@@ -1,6 +1,7 @@
 # Littlemonster [![Build Status](https://travis-ci.org/cksystemsteaching/selfie.svg?branch=littlemonster)](https://travis-ci.org/cksystemsteaching/selfie/branches)
 
-*Monster* is a symbolic engine based on *selfie*, to read more about *selfie* version and description read the file [selfie.md](https://github.com/cksystemsteaching/selfie/blob/littlemonster/selfie.md).
+*Monster* is a symbolic engine based on *selfie*.
+Read [selfie.md](https://github.com/cksystemsteaching/selfie/blob/littlemonster/selfie.md) to know more about the *selfie* version.
 
 The symbolic engine is invoked by the option `-n` and interprets the 0-64 value as fuzzing parameter. Value 0 means that code is executed symbolically but without any fuzzing of its input. In other words, code execution uses the symbolic execution engine but is effectively concrete. The 64 value, on the other hand, means that all input read from files is fuzzed to the extent that any machine word read from files may represent any 64-bit value.
 

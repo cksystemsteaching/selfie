@@ -1462,9 +1462,9 @@ uint64_t MAX_SYMBOLIC     = 50;         // input bound
 uint64_t MAX_CORRECTION   = 100;        // max number of relational domains
 
 uint64_t MAX_ALIAS        = 0;          // alias bound
-uint64_t MAX_NODE         = 20;
-uint64_t MAX_ASSIGN       = 100;
-uint64_t MAX_PREDECESSOR  = 50;
+uint64_t MAX_NODE         = 20;         // max number of dependent symbolic variables
+uint64_t MAX_ASSIGN       = 100;        // max number of dependent assignments
+uint64_t MAX_PREDECESSOR  = 50;         // max number of own dependent assignments
 
 uint64_t MAX_CALL         = 50;         // watchdog recursive symbolic bound
 
@@ -1618,6 +1618,7 @@ void  set_trace_a1(uint64_t index, uint64_t st_a1)        { *(alpha1s + index)  
 void  set_trace_a2(uint64_t index, uint64_t st_a2)        { *(alpha2s + index)  = st_a2;}
 void  set_trace_a3(uint64_t index, uint64_t st_a3)        { *(alpha3s + index)  = st_a3;}
 
+void print_domain_memory(uint64_t svc);
 void print_symbolic_memory(uint64_t svc);
 void print_short_symbolic(uint64_t svc);
 void print_trace();
@@ -1629,6 +1630,7 @@ void print_trace();
 uint64_t has_correction(uint64_t reg);
 uint64_t which_type(uint64_t reg1, uint64_t reg2);
 
+void print_domain_register(uint64_t reg);
 void print_symbolic_register(uint64_t reg);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -9517,7 +9519,7 @@ uint64_t constrain_sd() {
 
             ic_correction = ic_correction + 1;
           } else {
-            throw_exception(EXCEPTION_MAXTRACE, 0);
+            throw_exception(EXCEPTION_MAXCORRECTION, 0);
             return -1;
           }
         } else
@@ -9962,11 +9964,11 @@ uint64_t new_trace_entry(uint64_t* pt, uint64_t mrvc, uint64_t vaddr, uint64_t t
   }
 }
 
-uint64_t has_symbolic_link(uint64_t mrvc, uint64_t type) {
-  if (type != CONCRETE_T)                   return 1;
-  if (get_trace_type(mrvc) != CONCRETE_T)   return 1;
-  if (search_alias(mrvc) != (uint64_t*) 0)  return 1;
-  if (look_for_witness(mrvc) != NOT_FOUND)  return 1;
+uint64_t has_symbolic_link(uint64_t taddr, uint64_t type) {
+  if (type != CONCRETE_T)                     return 1;
+  if (get_trace_type(taddr) != CONCRETE_T)    return 1;
+  if (search_alias(taddr) != (uint64_t*) 0)   return 1;
+  if (look_for_witness(taddr) != NOT_FOUND)   return 1;
   return 0;
 }
 
@@ -10017,58 +10019,42 @@ uint64_t store_symbolic_memory(uint64_t* pt, uint64_t vaddr, uint64_t mrvc, uint
   return 0;
 }
 
-void print_symbolic_memory(uint64_t svc) {
-  printf3((uint64_t*) "@%d{@%d@%x", (uint64_t*) svc, (uint64_t*) get_trace_tc(svc), (uint64_t*) get_trace_pc(svc));
-  if (get_trace_pc(svc) >= entry_point)
-    print_code_line_number_for_instruction(get_trace_pc(svc) - entry_point);
+void print_domain_memory(uint64_t svc) {
+  print_stype(get_trace_type(svc));
   if (get_trace_vaddr(svc) == 0) {
     if (get_trace_type(svc) == ARRAY_T)
-      printf3((uint64_t*) ";%x=%x=malloc(%d)}\n", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+      printf3((uint64_t*) ";%x=malloc(%d):at%x}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
     else
-      printf2((uint64_t*) ";watch%x=%d}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
-    return;
-  } else if (get_trace_vaddr(svc) < NUMBEROFREGISTERS)
-    printf2((uint64_t*) ";%s=%d", get_register_name(get_trace_vaddr(svc)), (uint64_t*) get_trace_a1(svc));
+      printf2((uint64_t*) ";sfunc:%x=%d}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
+  return;
+  }
+
+  if (get_trace_vaddr(svc) < NUMBEROFREGISTERS)
+    printf1((uint64_t*) ";%s=", get_register_name(get_trace_vaddr(svc)));
   else if (get_trace_vaddr(svc) == NUMBEROFREGISTERS)
-    printf1((uint64_t*) ";xxx%x", (uint64_t*) get_vaddr_with_alias(svc));
+    printf1((uint64_t*) ";xxx%x=", (uint64_t*) get_vaddr_with_alias(svc));
   else
-    printf2((uint64_t*) ";%x=%d", (uint64_t*) get_trace_vaddr(svc), (uint64_t*) get_trace_a1(svc));
+    printf1((uint64_t*) ";%x=", (uint64_t*) get_trace_vaddr(svc));
+
   if (get_trace_type(svc) == MSIID_T)
-    if (get_trace_a1(svc) == get_trace_a2(svc))
-      printf1((uint64_t*) "(%d)}\n", (uint64_t*) get_trace_a1(svc));
-    else
-      printf3((uint64_t*) "(%d,%d,%d)}\n", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
-  else if (get_trace_a1(svc) == get_trace_a2(svc))
-    printf1((uint64_t*) "[%d]}\n", (uint64_t*) get_trace_a1(svc));
-  else
-    printf3((uint64_t*) "[%d,%d,%d]}\n", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+    printf3((uint64_t*) "(%d,%d,%d)}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+  else if (get_trace_type(svc) == CONCRETE_T)
+    printf1((uint64_t*) "[%d]}", (uint64_t*) get_trace_a1(svc));
+}
+
+void print_symbolic_memory(uint64_t svc) {
+  printf3((uint64_t*) "@%d{@%d@%x", (uint64_t*) svc, (uint64_t*) get_trace_tc(svc), (uint64_t*) get_trace_pc(svc));
+
+  if (get_trace_pc(svc) >= entry_point)
+    print_code_line_number_for_instruction(get_trace_pc(svc) - entry_point);
+
+  print_domain_memory(svc);
+  println();
 }
 
 void print_short_symbolic(uint64_t svc) {
   printf1((uint64_t*) "@%d{", (uint64_t*) svc);
-
-  if (get_trace_vaddr(svc) == 0) {
-    if (get_trace_type(svc) == ARRAY_T)
-      printf3((uint64_t*) "%x=%x=malloc(%d)}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
-    else
-      printf2((uint64_t*) "watch%x=%d}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc));
-    return;
-  } else if (get_trace_vaddr(svc) < NUMBEROFREGISTERS)
-    printf1((uint64_t*) "%s=", get_register_name(get_trace_vaddr(svc)));
-  else if (get_trace_vaddr(svc) == NUMBEROFREGISTERS)
-    printf1((uint64_t*) "xxx%x=;", (uint64_t*) get_vaddr_with_alias(svc));
-  else
-    printf1((uint64_t*) "%x=", (uint64_t*) get_trace_vaddr(svc));
-
-  if (get_trace_type(svc) == MSIID_T)
-    if (get_trace_a1(svc) == get_trace_a2(svc))
-      printf1((uint64_t*) "(%d)}", (uint64_t*) get_trace_a1(svc));
-    else
-      printf3((uint64_t*) "(%d,%d,%d)}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
-  else if (get_trace_a1(svc) == get_trace_a2(svc))
-    printf1((uint64_t*) "[%d]}", (uint64_t*) get_trace_a1(svc));
-  else
-    printf3((uint64_t*) "[%d,%d,%d]}", (uint64_t*) get_trace_a1(svc), (uint64_t*) get_trace_a2(svc), (uint64_t*) get_trace_a3(svc));
+  print_domain_memory(svc);
 }
 
 void print_trace() {
@@ -10098,10 +10084,10 @@ uint64_t which_type(uint64_t reg1, uint64_t reg2) {
   return *(reg_type + reg2);
 }
 
-void print_symbolic_register(uint64_t reg) {
-  print_register_name(reg);
-  print((uint64_t*) "=");
-  printf1((uint64_t*) "{@%x", (uint64_t*) *(reg_vaddr + reg));
+void print_domain_register(uint64_t reg) {
+  printf1((uint64_t*) "{@%x;", (uint64_t*) *(reg_vaddr + reg));
+  print_stype(*(reg_type + reg));
+
   if (*(reg_type + reg))
     if (*(registers + reg) == *(reg_alpha2 + reg))
       printf1((uint64_t*) "(%d)}", (uint64_t*) *(registers + reg));
@@ -10111,6 +10097,19 @@ void print_symbolic_register(uint64_t reg) {
     printf1((uint64_t*) "[%d]}", (uint64_t*) *(registers + reg));
   else
     printf3((uint64_t*) "[%d,%d,%d]}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
+
+  if (*(reg_type + reg) == ARRAY_T)
+    printf3((uint64_t*) ";%x=malloc(%d):at%x}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
+  else if (*(reg_type + reg) == MSIID_T)
+      printf3((uint64_t*) "(%d,%d,%d)}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
+  else if (*(reg_type + reg) == CONCRETE_T)
+    printf1((uint64_t*) "[%d]}", (uint64_t*) *(registers + reg));
+}
+
+void print_symbolic_register(uint64_t reg) {
+  print_register_name(reg);
+  print((uint64_t*) "=");
+  print_domain_register(reg);
   if (has_correction(reg)) {
     printf5((uint64_t*) "::<%d,%d,[%d,%d],%d>",
     (uint64_t*) *(reg_hasmn + reg),
@@ -10132,11 +10131,11 @@ uint64_t is_symbolic_value(uint64_t type) {
 
 void print_stype(uint64_t stype) {
   if (stype == CONCRETE_T)
-    print_character('C');
+    print((uint64_t*) "[C]");
   else if (stype == MSIID_T)
-    print_character('M');
+    print((uint64_t*) "[M]");
   else if (stype == ARRAY_T)
-    print_character('A');
+    print((uint64_t*) "[A]");
   else
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
 }
@@ -11497,10 +11496,14 @@ void print_dg() {
 
   node = global_dg;
   printf1((uint64_t*) "%s: [a] + ---------  Dependence graph   +\n", selfie_name);
+  printf3((uint64_t*) "%s: [a] + size: %d node(s) and %d assignment(s)\n", selfie_name, (uint64_t*) ic_node, (uint64_t*) ic_assign);
 
   while (node) {
     assign = get_assigns(node);
-    printf1((uint64_t*) "node %x with: ", (uint64_t*) get_trace_vaddr(get_assign_tc(assign)));
+    if (get_trace_vaddr(get_assign_tc(assign)) == NUMBEROFREGISTERS)
+      printf1((uint64_t*) "node xxx:%x with: ", (uint64_t*) get_vaddr_with_alias(get_assign_tc(assign))); //shadowed
+    else
+      printf1((uint64_t*) "node %x with: ", (uint64_t*) get_trace_vaddr(get_assign_tc(assign)));
 
     while (assign) {
       if (get_assign_flag(assign) == 0)
