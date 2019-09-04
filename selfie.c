@@ -1710,6 +1710,8 @@ void      print_concrete_bounds(uint64_t start, uint64_t end, uint64_t step);
 void      print_msiid(uint64_t start, uint64_t end, uint64_t st);
 uint64_t  print_on_diff(uint64_t lastPrint, uint64_t toPrint);
 
+void print_correction(uint64_t is_reverted, uint64_t type, uint64_t acc_lo, uint64_t acc_up, uint64_t prod, uint64_t k);
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t CONST_T  = 0;
@@ -11037,6 +11039,16 @@ uint64_t print_on_diff(uint64_t lastPrint, uint64_t toPrint) {
   return lastPrint;
 }
 
+void print_correction(uint64_t is_reverted, uint64_t type, uint64_t acc_lo, uint64_t acc_up, uint64_t prod, uint64_t k) {
+  printf6((uint64_t*) "::<%d,%d,[%d,%d],%d,%d>",
+      (uint64_t*) is_reverted,
+      (uint64_t*) type,
+      (uint64_t*) acc_lo,
+      (uint64_t*) acc_up,
+      (uint64_t*) prod,
+      (uint64_t*) k);
+}
+
 // ---------------------------- RANGE ------------------------------
 // -----------------------------------------------------------------
 
@@ -11551,6 +11563,13 @@ void constrain_memory(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, u
   uint64_t tmp;
   uint64_t highest;
   uint64_t lowest;
+
+  if (sdebug_propagate) {
+    printf1((uint64_t*) "%s: constrain memory with:\nbase=", selfie_name);
+    print_symbolic_memory(base);
+    printf2((uint64_t*) "<lo,up>=<%d,%d>\n", (uint64_t*) lo, (uint64_t*) up);
+    print_correction(buffer_hasmn, buffer_expr, buffer_colo, buffer_coup, buffer_loprod, buffer_factor);
+  }
 
   // load trace counter of previous constraint
   if (buffer_vaddr >= get_program_break(current_context))
