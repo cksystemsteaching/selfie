@@ -1822,9 +1822,11 @@ uint64_t* factors   = (uint64_t*) 0;
 // -----------------------------------------------------------------
 
 void constrain_memory_backward(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t trb);
+void constrain_memory_forward(uint64_t base, uint64_t* assign, uint64_t lo, uint64_t up, uint64_t trb);
 
 void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint64_t exp_t, uint64_t colo, uint64_t coup, uint64_t prod, uint64_t factor);
 void propagate_back(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
+void propagate_front(uint64_t* assign, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step);
 void store_register_memory(uint64_t reg, uint64_t value);
 
@@ -11686,6 +11688,72 @@ void constrain_memory_backward(uint64_t base, uint64_t taddr, uint64_t lo, uint6
   }
 }
 
+// assert(constraint buffer filled)
+// base: domain before sltu | assign: current assignement | <lo,up>: constrained domain
+void constrain_memory_forward(uint64_t base, uint64_t* assign, uint64_t lo, uint64_t up, uint64_t trb) {
+  uint64_t tmp;
+
+  if (sdebug_propagate) {
+    printf1((uint64_t*) "%s: constrain memory with:\nbase=", selfie_name);
+    print_symbolic_memory(base);
+    printf2((uint64_t*) "<lo,up>=<%d,%d>\n", (uint64_t*) lo, (uint64_t*) up);
+    print_correction(buffer_hasmn, buffer_expr, buffer_colo, buffer_coup, buffer_loprod, buffer_factor);
+  }
+
+  // load trace counter of previous constraint
+  if (buffer_vaddr >= get_program_break(current_context))
+    if (buffer_vaddr < *(registers + REG_SP))
+    // do not constrain free memory
+      if (search_node(load_symbolic_memory(pt, buffer_vaddr) == 0))
+      // if not into a constrain chain
+        return;
+
+  //corrections forward application
+  //one multiplication or division or modulo
+  if (buffer_expr == MUL_T) {         //one multiplication
+    lo = lo * buffer_factor;
+    up = up * buffer_factor;
+  } else if (buffer_expr == DIV_T) {  //one division
+    lo = lo / buffer_factor;
+    up = up / buffer_factor;
+  } else if (buffer_expr == REM_T) {  //one remainder
+    lo = lo % buffer_factor;
+    up = up % buffer_factor;
+  }
+
+  //additions / substractions (like backward)
+  if (buffer_hasmn) {       //one minuend
+    tmp = lo;
+    lo = buffer_colo - up;
+    up = buffer_coup - tmp;
+  } else {                  //no minuend
+    lo = lo + buffer_colo;
+    up = up + buffer_coup;
+  }
+
+  //cast singleton intervals into concrete values
+  if (lo == up) {
+    //store current constraint with updated stc
+    if (get_assign_flag(assign))
+      store_constrained_memory(CONCRETE_T, buffer_vaddr, get_assign_tc(assign), lo, up, 1);
+    propagate_front(assign, CONCRETE_T, lo, up, 1, trb);
+  } else {
+    //store current constraint with updated stc
+    if (get_assign_flag(assign))
+      store_constrained_memory(buffer_type, buffer_vaddr, get_assign_tc(assign), lo, up, get_trace_a3(base));
+    propagate_front(assign, buffer_type, lo, up, get_trace_a3(base), trb);
+  }
+
+  if (sdebug_trace) {
+    printf2((uint64_t*) "%s: constrain-memory at %x", selfie_name, (uint64_t*) pc);
+    print_code_line_number_for_instruction(pc - entry_point);
+    if (get_trace_vaddr(get_assign_tc(assign)) < NUMBEROFREGISTERS)
+      printf1((uint64_t*) " for register %s ", get_register_name(get_trace_vaddr(get_assign_tc(assign))));
+    else
+      printf1((uint64_t*) " for memory address %x ", (uint64_t*) get_trace_vaddr(get_assign_tc(assign)));
+    print_symbolic_memory(tc);
+  }
+}
 
 void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint64_t exp_t, uint64_t colo, uint64_t coup, uint64_t prod, uint64_t factor) {
   buffer_vaddr  = vaddr;
@@ -11740,6 +11808,49 @@ void propagate_back(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, 
 
   //root
   store_constrained_memory(type, vaddr, taddr, lo, up, step);
+
+  if (assign != (uint64_t*) 0) {
+    if (*get_assign_predecessors(assign))
+    //update then the predecessors (forward)
+    propagate_front(assign, type, lo, up, step, trb);
+  }
+}
+
+void propagate_front(uint64_t* assign, uint64_t type, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+  uint64_t* p_assign;
+  uint64_t  paddr;
+  uint64_t  base;
+  uint64_t  pcc;
+  uint64_t  index;
+
+  index     = 0;
+  p_assign  = (uint64_t*) *get_assign_predecessors(assign);
+
+  while (p_assign) {
+    pcc       = get_assign_correction(p_assign);
+    paddr     = get_trace_vaddr(get_assign_tc(p_assign));
+
+    if (sdebug_propagate)
+      printf3((uint64_t*) "%s: and propagate @%d forward with correction @%d\n", selfie_name, (uint64_t*) get_assign_tc(p_assign), (uint64_t*) pcc);
+
+    base = get_assign_base(p_assign);
+    if (pcc != (uint64_t) EQ_ALIASED) {
+      fill_constraint_buffer(get_trace_type(base), paddr,
+        *(hasmns + pcc), *(exprs + pcc), *(colos + pcc), *(coups + pcc), *(loprods + pcc), *(factors + pcc));
+
+      constrain_memory_forward(base, p_assign, lo, up, trb);
+    } else {
+      if (get_assign_flag(p_assign))
+        store_constrained_memory(type, paddr, get_assign_tc(p_assign), lo, up, 1);
+      propagate_front(p_assign, type, lo, up, step, trb);
+    }
+
+    index = index + 1;
+    if (index == MAX_PREDECESSOR)
+      return;
+
+    p_assign  = (uint64_t*) *(get_assign_predecessors(assign) + index);
+  }
 }
 
 void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step) {
