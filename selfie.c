@@ -1821,10 +1821,10 @@ uint64_t* factors   = (uint64_t*) 0;
 // ------------------------ PROPAGATION ----------------------------
 // -----------------------------------------------------------------
 
-void constrain_memory(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t it, uint64_t trb);
+void constrain_memory_backward(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t trb);
 
 void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint64_t exp_t, uint64_t colo, uint64_t coup, uint64_t prod, uint64_t factor);
-void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t it, uint64_t trb);
+void propagate_back(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb);
 void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step);
 void store_register_memory(uint64_t reg, uint64_t value);
 
@@ -10890,7 +10890,7 @@ void apply_correction(uint64_t reg, uint64_t mrvc, uint64_t lo, uint64_t up, uin
   if (*(reg_type + reg) == MSIID_T) {
     //avoid the propagation of assigment stores
     fill_constraint_buffer(*(reg_type + reg), *(reg_vaddr + reg), *(reg_hasmn + reg), *(reg_expr + reg), *(reg_colo + reg), *(reg_coup + reg), *(reg_loprod + reg), *(reg_factor + reg));
-    constrain_memory(mrvc, mrvc, lo, up, 0, trb);
+    constrain_memory_backward(mrvc, load_symbolic_memory(pt, *(reg_vaddr + reg)), lo, up, trb);
   } else {
 
     //concrete case
@@ -11548,14 +11548,14 @@ void print_dg() {
 // -----------------------------------------------------------------
 
 // assert(constraint buffer filled)
-// base: domain before sltu | taddr: current index | <lo,up>: constrained domain | it: dependence chain position
-void constrain_memory(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t it, uint64_t trb) {
+// base: domain before sltu | taddr: current index | <lo,up>: constrained domain
+void constrain_memory_backward(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t trb) {
   uint64_t tmp;
   uint64_t highest;
   uint64_t lowest;
 
   if (sdebug_propagate) {
-    printf1((uint64_t*) "%s: constrain memory with:\nbase=", selfie_name);
+    printf1((uint64_t*) "%s: constrain back memory with:\nbase=", selfie_name);
     print_symbolic_memory(base);
     printf2((uint64_t*) "<lo,up>=<%d,%d>\n", (uint64_t*) lo, (uint64_t*) up);
     print_correction(buffer_hasmn, buffer_expr, buffer_colo, buffer_coup, buffer_loprod, buffer_factor);
@@ -11564,23 +11564,23 @@ void constrain_memory(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, u
   // load trace counter of previous constraint
   if (buffer_vaddr >= get_program_break(current_context))
     if (buffer_vaddr < *(registers + REG_SP))
-    // do not constrain free memory
+      // do not constrain free memory
       if (search_node(load_symbolic_memory(pt, buffer_vaddr) == 0))
-      // if not into a constrain chain
+        // if not into a constrain chain
         return;
 
-  //corrections computation
-  //additions / substractions
-  if (buffer_hasmn) {       //one minuend
-    //backward semantics:rs2 = rs1 - rd
-    //undo substraction (a-d,b-c)
-    tmp = lo;
-    lo = buffer_colo - up;
-    up = buffer_coup - tmp;
-  } else {                        //no minuend
-    lo = lo - buffer_colo;
-    up = up - buffer_coup;
-  }
+    //corrections computation
+    //additions / substractions
+    if (buffer_hasmn) {             //one minuend
+      //backward semantics:rs2 = rs1 - rd
+      //undo substraction (a-d,b-c)
+      tmp = lo;
+      lo = buffer_colo - up;
+      up = buffer_coup - tmp;
+    } else {                        //no minuend
+      lo = lo - buffer_colo;
+      up = up - buffer_coup;
+    }
 
   //one multiplication or division or modulo
   if (buffer_expr == MUL_T) {         //one multiplication
@@ -11615,45 +11615,46 @@ void constrain_memory(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, u
           lo = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), lo + get_trace_a3(base)); // over_fit_x (not modulo)
         else
           lo = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), lo); // match steps (modulo)
+
       if (get_trace_a2(base) < up) // intersect with the upper original interval
         up = compute_upper_bound(lo, get_trace_a3(base), get_trace_a2(base)); // fitting the steps
       else
         up = compute_upper_bound(lo, get_trace_a3(base), up);
-  } else {
-    //original interval wrapped around
-    //bound values
-    highest = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), -1);
-    lowest = highest + get_trace_a3(base);
-
-    if (lo <= get_trace_a2(base)) {
-      //intersect with the lower original interval
-      lo = compute_upper_bound(lowest, get_trace_a3(base), lo + get_trace_a3(base) - 1); // fitting the steps
-
-      if (up < get_trace_a1(base)) {
-
-        if (up >= get_trace_a2(base))
-          up = get_trace_a2(base);
-        else
-          up = compute_upper_bound(lo, get_trace_a3(base), up);
-
-      } else {
-        //not allowed constrained result is not an interval
-        //should be -----| sltu |-----
-        printf2((uint64_t*) "%s: detected a divu of bad wrapped interval at %x", selfie_name, (uint64_t*) pc);
-        print_code_line_number_for_instruction(pc - entry_point);
-        println();
-
-        throw_exception(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
-        exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-      }
     } else {
-      // intersect with the upper original interval
-      up = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), up);
+      //original interval wrapped around
+      //bound values
+      highest = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), -1);
+      lowest = highest + get_trace_a3(base);
 
-      if (lo <= get_trace_a1(base))
-        lo = get_trace_a1(base);
-      else
-        lo = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), lo + get_trace_a3(base) - 1); // fitting the steps
+      if (lo <= get_trace_a2(base)) {
+        //intersect with the lower original interval
+        lo = compute_upper_bound(lowest, get_trace_a3(base), lo + get_trace_a3(base) - 1); // fitting the steps
+
+        if (up < get_trace_a1(base)) {
+
+          if (up >= get_trace_a2(base))
+            up = get_trace_a2(base);
+          else
+            up = compute_upper_bound(lo, get_trace_a3(base), up);
+
+        } else {
+          //not allowed constrained result is not an interval
+          //should be -----| sltu |-----
+          printf2((uint64_t*) "%s: detected a divu of bad wrapped interval at %x", selfie_name, (uint64_t*) pc);
+          print_code_line_number_for_instruction(pc - entry_point);
+          println();
+
+          throw_exception(EXCEPTION_INCOMPLETENESS, 0); //never in selfie
+          exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+        }
+      } else {
+        // intersect with the upper original interval
+        up = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), up);
+
+        if (lo <= get_trace_a1(base))
+          lo = get_trace_a1(base);
+        else
+          lo = compute_upper_bound(get_trace_a1(base), get_trace_a3(base), lo + get_trace_a3(base) - 1); // fitting the steps
       }
     }
   } else if (buffer_expr == REM_T) {  //one remainder
@@ -11667,11 +11668,12 @@ void constrain_memory(uint64_t base, uint64_t taddr, uint64_t lo, uint64_t up, u
     return;
   }
 
+  //end of application cases --
   //cast singleton intervals into concrete values
   if (lo == up)
-    propagate_constraint(CONCRETE_T, buffer_vaddr, taddr, lo, up, 1, it, trb);
+    propagate_back(CONCRETE_T, buffer_vaddr, taddr, lo, up, 1, trb);
   else
-    propagate_constraint(buffer_type, buffer_vaddr, taddr, lo, up, get_trace_a3(base), it, trb);
+    propagate_back(buffer_type, buffer_vaddr, taddr, lo, up, get_trace_a3(base), trb);
 
   if (sdebug_trace) {
     printf2((uint64_t*) "%s: constrain-memory at %x", selfie_name, (uint64_t*) pc);
@@ -11696,51 +11698,45 @@ void fill_constraint_buffer(uint64_t type, uint64_t vaddr, uint64_t hasmn, uint6
   buffer_factor = factor;
 }
 
-void propagate_constraint(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t it, uint64_t trb) {
+void propagate_back(uint64_t type, uint64_t vaddr, uint64_t taddr, uint64_t lo, uint64_t up, uint64_t step, uint64_t trb) {
+  uint64_t* s_assign;
   uint64_t* assign;
   uint64_t  saddr;
   uint64_t  base;
-  uint64_t  stc;
   uint64_t  pcc;
 
   if (sdebug_propagate) {
     printf6((uint64_t*) "%s: store constrained memory %d(%x) with <%d,%d,%d>\n", selfie_name, (uint64_t*) taddr, (uint64_t*) vaddr, (uint64_t*) lo, (uint64_t*) up, (uint64_t*) step);
   }
 
-  // load current trace for the head variable
-  if (it == 0)
-    taddr = load_symbolic_memory(pt, vaddr);
+  assign = search_alias(taddr);
 
-  assign    = search_alias(taddr);
-  stc       = get_source(taddr);
+  if (assign != (uint64_t*) 0) {
+    s_assign = get_assign_successor(assign);
 
-  if (stc)  {
-    pcc   = get_assign_correction(assign);
-    saddr = get_trace_vaddr(stc);
+    if (s_assign)  {
+      pcc       = get_assign_correction(assign);
+      saddr     = get_trace_vaddr(get_assign_tc(s_assign));
 
-    if (saddr == get_trace_vaddr(taddr)) // self propagation
-      saddr = NUMBEROFREGISTERS;
+      if (saddr == get_trace_vaddr(taddr)) // self propagation
+        saddr = NUMBEROFREGISTERS;
 
-    if (sdebug_propagate)
-      printf3((uint64_t*) "%s: but propagate before to @%d with correction @%d\n", selfie_name, (uint64_t*) stc, (uint64_t*) pcc);
+      if (sdebug_propagate)
+        printf3((uint64_t*) "%s: propagate @%d backward with correction @%d\n", selfie_name, (uint64_t*) get_assign_tc(s_assign), (uint64_t*) pcc);
 
-    base = get_assign_base(search_alias(stc));
+      base = get_assign_base(s_assign);
       //update first the sources
-    if (pcc != (uint64_t) EQ_ALIASED) {
-      fill_constraint_buffer(get_trace_type(base), saddr,
-        *(hasmns + pcc), *(exprs + pcc), *(colos + pcc), *(coups + pcc), *(loprods + pcc), *(factors + pcc));
+      if (pcc != (uint64_t) EQ_ALIASED) {
+        fill_constraint_buffer(get_trace_type(base), saddr,
+          *(hasmns + pcc), *(exprs + pcc), *(colos + pcc), *(coups + pcc), *(loprods + pcc), *(factors + pcc));
 
-      constrain_memory(base, stc, lo, up, it + 1, trb);
-    } else
-      propagate_constraint(type, saddr, stc, lo, up, step, it + 1, trb);
+        constrain_memory_backward(base, get_assign_tc(s_assign), lo, up, trb);
+      } else
+        propagate_back(type, saddr, get_assign_tc(s_assign), lo, up, step, trb);
 
-    //store current constraint with updated stc
-    store_constrained_memory(type, vaddr, taddr, lo, up, step);
-    return;
-  }   //store and constrain witness
-
-  if (taddr == (uint64_t) -1)
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+      return; // stop if a source (it will be stored by the front propagation)
+    }
+  }
 
   //root
   store_constrained_memory(type, vaddr, taddr, lo, up, step);
