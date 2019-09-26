@@ -1831,6 +1831,7 @@ void store_constrained_memory(uint64_t type, uint64_t vaddr, uint64_t taddr, uin
 void store_register_memory(uint64_t reg, uint64_t value);
 
 void update_trace_pointer(uint64_t old, uint64_t new);
+void save_base_predecessors(uint64_t* from);
 void save_base(uint64_t taddr);
 
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc);
@@ -11881,20 +11882,43 @@ void update_trace_pointer(uint64_t old, uint64_t new) {
     update_witness(old, new);
 }
 
+void save_base_predecessors(uint64_t* from) {
+  uint64_t* assign;
+  uint64_t  index;
+
+  // save base for ptc
+  assign  = (uint64_t*) *(get_assign_predecessors(from));
+  index   = 0;
+
+  while(assign) {
+    set_assign_base(assign, get_assign_tc(assign));
+    save_base_predecessors(assign);
+
+    index = index + 1;
+    if (index == MAX_PREDECESSOR)
+      return;
+
+    assign = (uint64_t*) *(get_assign_predecessors(from) + index);
+  }
+}
+
 void save_base(uint64_t taddr) {
   uint64_t* assign;
-  uint64_t  stc;
+  uint64_t* s_assign;
 
-  assign = search_alias(taddr);
-  stc    = get_source(taddr);
+  s_assign  = search_alias(taddr);
+  assign    = s_assign;
 
-  while (stc) {
-    set_assign_base(assign, get_assign_tc(assign));
-    assign  = search_alias(stc);
-    stc     = get_source(stc);
+  // get root
+  while (s_assign) {
+    assign    = s_assign;
+    s_assign  = get_assign_successor(assign);
   }
-  if (assign != (uint64_t*) 0)
+
+  if (assign != (uint64_t*) 0) {
     set_assign_base(assign, get_assign_tc(assign));
+    save_base_predecessors(assign);
+  }
 }
 
 void test_unreachable_branch(uint64_t* label, uint64_t unreach_pc) {
