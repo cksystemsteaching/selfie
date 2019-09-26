@@ -1461,7 +1461,7 @@ uint64_t MAX_SYMBOLIC     = 50;         // input bound
 
 uint64_t MAX_CORRECTION   = 100;        // max number of relational domains
 
-uint64_t MAX_ALIAS        = 0;          // alias bound
+uint64_t MAX_ALIAS        = 1;          // alias bound
 uint64_t MAX_NODE         = 20;         // max number of dependent symbolic variables
 uint64_t MAX_ASSIGN       = 100;        // max number of dependent assignments
 uint64_t MAX_PREDECESSOR  = 50;         // max number of own dependent assignments
@@ -1888,11 +1888,6 @@ uint64_t symbolic_calling_pc  = 0;
 
 void init_symbolic_engine() {
   uint64_t i;
-
-  if (MAX_ALIAS > 0) {
-    print((uint64_t*) "alias propagation not implemented, MAX_ALIAS should be 0\n");
-    exit(EXITCODE_SYMBOLICEXECUTIONERROR);
-  }
 
   pcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
   tcs     = zalloc(MAX_TRACE_LENGTH * SIZEOFUINT64);
@@ -11465,9 +11460,10 @@ uint64_t alias_height(uint64_t vaddr) {
   while (assign != (uint64_t*) 0) {
     assign  = (uint64_t*) *get_assign_predecessors(assign);
     if (assign) {
-      if (get_assign_tc(assign) == load_symbolic_memory(pt, get_trace_vaddr(get_assign_tc(assign))))  //current value
-        if (get_assign_flag(assign))                                                                  //current call
-          count = count + 1;
+      if (get_trace_vaddr(get_assign_tc(assign)) > NUMBEROFREGISTERS)
+        if (get_assign_tc(assign) == load_symbolic_memory(pt, get_trace_vaddr(get_assign_tc(assign))))  //current value
+          if (get_assign_flag(assign))                                                                  //current call
+            count = count + 1;
     }
   }
 
