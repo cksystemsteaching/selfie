@@ -10103,16 +10103,6 @@ void print_domain_register(uint64_t reg) {
   printf1((uint64_t*) "{@%x;", (uint64_t*) *(reg_vaddr + reg));
   print_stype(*(reg_type + reg));
 
-  if (*(reg_type + reg))
-    if (*(registers + reg) == *(reg_alpha2 + reg))
-      printf1((uint64_t*) "(%d)}", (uint64_t*) *(registers + reg));
-    else
-      printf3((uint64_t*) "(%d,%d,%d)}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
-  else if (*(registers + reg) == *(reg_alpha2 + reg))
-    printf1((uint64_t*) "[%d]}", (uint64_t*) *(registers + reg));
-  else
-    printf3((uint64_t*) "[%d,%d,%d]}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
-
   if (*(reg_type + reg) == ARRAY_T)
     printf3((uint64_t*) ";%x=malloc(%d):at%x}", (uint64_t*) *(registers + reg), (uint64_t*) *(reg_alpha2 + reg), (uint64_t*) *(reg_alpha3 + reg));
   else if (*(reg_type + reg) == MSIID_T)
