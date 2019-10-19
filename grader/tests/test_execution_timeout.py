@@ -9,46 +9,48 @@ from grader.tests.lib import Console, for_all_test_results
 from grader.self import execute, TimeoutException, test_base
 import grader.self as grader
 
+
 class TestExecutionTimeout(unittest.TestCase):
 
-  original_execute = execute
+    original_execute = execute
 
-  @classmethod
-  def setUpClass(self):
-    system('make selfie >/dev/null 2>&1')
+    @classmethod
+    def setUpClass(self):
+        system('make selfie >/dev/null 2>&1')
 
-  def insert_home_path_mock(self, command):
-    return command
+    def insert_home_path_mock(self, command):
+        return command
 
-  @patch('grader.self.insert_home_path')
-  def test_timeout(self, mock):
-    mock.side_effect = self.insert_home_path_mock
+    @patch('grader.self.insert_home_path')
+    def test_timeout(self, mock):
+        mock.side_effect = self.insert_home_path_mock
 
-    start = time()
+        start = time()
 
-    grader.home_path = './'
+        grader.home_path = './'
 
-    self.assertRaises(TimeoutException, TestExecutionTimeout.original_execute, 
-      './selfie -c grader/tests/sleep-forever.c -m 10', 3)
+        self.assertRaises(TimeoutException, TestExecutionTimeout.original_execute,
+                          './selfie -c grader/tests/sleep-forever.c -m 10', 3)
 
-    self.assertLess(time() - start, 4)
+        self.assertLess(time() - start, 4)
 
-  def execute_mock(self, command, timeout=10):
-    return TestExecutionTimeout.original_execute(command, timeout=0)
+    def execute_mock(self, command, timeout=10):
+        return TestExecutionTimeout.original_execute(command, timeout=0)
 
-  def check_output(self, result, msg):
-    self.assertFalse(result)
+    def check_output(self, result, msg):
+        self.assertFalse(result)
 
-  @patch('grader.self.execute')
-  def test_result_of_timed_out_test(self, mock):
-    mock.side_effect = self.execute_mock
+    @patch('grader.self.execute')
+    def test_result_of_timed_out_test(self, mock):
+        mock.side_effect = self.execute_mock
 
-    with Console() as console: 
-      test_base()
+        with Console() as console:
+            test_base()
 
-      output = console.get_output()
+            output = console.get_output()
 
-    for_all_test_results(output, self.check_output)
+        for_all_test_results(output, self.check_output)
+
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

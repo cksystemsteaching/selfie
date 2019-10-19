@@ -8,6 +8,7 @@ from grader.tests.test_execution_timeout import TestExecutionTimeout
 from grader.tests.test_robustness import TestRobustness
 from grader.tests.test_grading import TestGrading
 
+
 def suite():
     suite = TestSuite()
 
@@ -21,6 +22,8 @@ def suite():
 
     return suite
 
+
 if __name__ == '__main__':
     runner = TextTestRunner()
     runner.run(suite())
+

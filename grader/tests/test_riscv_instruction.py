@@ -7,49 +7,55 @@ from grader.tests.lib import assemble_for_selfie, Console, for_all_test_results,
 from grader.self import execute, main, defined_tests
 import grader.self
 
+
 class TestRiscvInstruction(unittest.TestCase):
 
-  def setUp(self):
-    patcher = patch('grader.self.print_loud')
-    self.addCleanup(patcher.stop)
-    self.mock_foo = patcher.start()
+    def setUp(self):
+        patcher = patch('grader.self.print_loud')
+        self.addCleanup(patcher.stop)
+        self.mock_foo = patcher.start()
 
-  @classmethod
-  def setUpClass(self):
-    self.instructions = list(map(lambda f: f[:-2], list_files('grader/tests/instructions', extension='.s')))
+    @classmethod
+    def setUpClass(self):
+        self.instructions = list(
+            map(lambda f: f[:-2], list_files('grader/tests/instructions', extension='.s')))
 
-  def execute_mock(self, command):
-    if '.tmp.bin' in command:
-      for instruction in self.instructions:
-        if instruction in command:
-          assemble_for_selfie('instructions/' + instruction + '.s')
+    def execute_mock(self, command):
+        if '.tmp.bin' in command:
+            for instruction in self.instructions:
+                if instruction in command:
+                    assemble_for_selfie('instructions/' + instruction + '.s')
 
-    if '.tmp.s' in command:
-      for instruction in self.instructions:
-        if instruction in command:
-          copyfile('grader/tests/instructions/' + instruction + '.s', '.tmp.s')
+        if '.tmp.s' in command:
+            for instruction in self.instructions:
+                if instruction in command:
+                    copyfile('grader/tests/instructions/' +
+                             instruction + '.s', '.tmp.s')
 
-    return (0, '', '')
+        return (0, '', '')
 
-  def check_encoding_results(self, result, msg):
-    if 'RISC-V encoding' in msg:
-      self.assertTrue(result, 'following encoding test passed: "' + msg + '"')
-    if 'assembly instruction format' in msg:
-      self.assertTrue(result, 'following format test passed: "' + msg + '"')
+    def check_encoding_results(self, result, msg):
+        if 'RISC-V encoding' in msg:
+            self.assertTrue(
+                result, 'following encoding test passed: "' + msg + '"')
+        if 'assembly instruction format' in msg:
+            self.assertTrue(
+                result, 'following format test passed: "' + msg + '"')
 
-  @patch('grader.self.execute')
-  def test_instruction(self, mock):
-    mock.side_effect = lambda c: self.execute_mock(c)
+    @patch('grader.self.execute')
+    def test_instruction(self, mock):
+        mock.side_effect = lambda c: self.execute_mock(c)
 
-    output = ''
+        output = ''
 
-    for test in defined_tests:
-      with Console() as console:
-        main([sys.argv[0], test[0]])
+        for test in defined_tests:
+            with Console() as console:
+                main([sys.argv[0], test[0]])
 
-        output = output + console.get_output()
+                output = output + console.get_output()
 
-    for_all_test_results(output, self.check_encoding_results)
+        for_all_test_results(output, self.check_encoding_results)
+
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

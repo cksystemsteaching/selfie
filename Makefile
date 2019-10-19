@@ -96,7 +96,7 @@ btormc: mc
 
 # Test grader
 grader:
-	python3 -m unittest -v grader.tests.test_all
+	cd grader && python3 -m unittest discover -v
 
 # Run everything
 all: compile quine debug replay os vm min mob smt mc sat
