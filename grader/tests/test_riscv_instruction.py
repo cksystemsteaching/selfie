@@ -41,9 +41,13 @@ class TestRiscvInstruction(unittest.TestCase):
   def test_instruction(self, mock):
     mock.side_effect = lambda c: self.execute_mock(c)
 
-    with Console() as console:
-      main([sys.argv[0]] + list(map(lambda t: t[0], defined_tests)))
-      output = console.get_output()
+    output = ''
+
+    for test in defined_tests:
+      with Console() as console:
+        main([sys.argv[0], test[0]])
+
+        output = output + console.get_output()
 
     for_all_test_results(output, self.check_encoding_results)
 

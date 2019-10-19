@@ -22,6 +22,8 @@ class TestRobustness(TestCase):
     self.addCleanup(patcher.stop)
     self.mock_foo = patcher.start()
 
+    rmtree('/tmp/sel fie', ignore_errors=True)
+
   def execute_mock(self, command):
     ret_code, output, error_output = original_execute(command)
 
@@ -33,13 +35,13 @@ class TestRobustness(TestCase):
   def test_path_name_with_whitespaces(self, mock):
     mock.side_effect = lambda c: self.execute_mock(c)
 
-    dst = 'grader/tests/.tmp/sel fie'
+    dst = '/tmp/sel fie'
 
     copytree('.', dst, ignore=ignore)
 
     cwd = getcwd()
 
-    chdir('grader/tests/.tmp/sel fie')
+    chdir('/tmp/sel fie')
 
     with Console():
       grader_main([getcwd(), 'hex-literal'])
@@ -48,8 +50,6 @@ class TestRobustness(TestCase):
 
     rmtree(dst)
 
-  def tearDown(self):
-    rmtree('grader/tests/.tmp', ignore_errors=True)
 
 if __name__ == '__main__':
   main()

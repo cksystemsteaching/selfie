@@ -51,6 +51,7 @@ def reset_assignment_results():
   failed_mandatory_test = False
 
 home_path = ''
+assignment_path = ''
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
 
@@ -249,13 +250,11 @@ class TimeoutException(Exception):
     self.output = output
     self.error_output = error_output
 
-def insert_home_path(command, path):
-  return re.sub(r'(' + path + r'([^\s]*))', r'"' + home_path + r'/' + path + r'\2"', command)
-
+def insert_home_path(command):
+  return re.sub(r'(grader/([^\s]*))', r'"' + home_path + r'/grader/assignments/' + assignment_path + r'/\2"', command)
 
 def execute(command, timeout=60):
-  command = insert_home_path(command, 'grader/')
-  command = insert_home_path(command, 'manuscript/code/')
+  command = insert_home_path(command)
 
   process = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
 
@@ -529,17 +528,17 @@ def test_compile_warnings(file, msg, mandatory=False):
 
 
 def test_hex_literal():
-  test_compilable('hex-integer-literal.c',
+  test_compilable('hex-literal.c',
     'hex integer literal with all characters compiled')
-  test_mipster_execution('hex-integer-literal.c', 42,
+  test_mipster_execution('hex-literal.c', 42,
     'hex integer literal with all characters has the right value')
-  test_compilable('hex-integer-literal-max.c',
+  test_compilable('hex-literal-max.c',
     'maximum hex integer literal compiled')
-  test_mipster_execution('hex-integer-literal-max.c', 42,
+  test_mipster_execution('hex-literal-max.c', 42,
     'maximum hex integer literal has the right value')
-  test_compilable('hex-integer-literal-min.c',
+  test_compilable('hex-literal-min.c',
     'minimum hex integer literal compiled')
-  test_mipster_execution('hex-integer-literal-min.c', 42,
+  test_mipster_execution('hex-literal-min.c', 42,
     'minimum hex integer literal has the right value')
 
 
@@ -703,9 +702,9 @@ def test_assembler(stage):
 
 
 def test_concurrent_machines():
-  test_interleaved_output('./selfie -c manuscript/code/hello-world.c -x 10', 'Hello World!    ', 10,
+  test_interleaved_output('./selfie -c grader/hello-world.c -x 10', 'Hello World!    ', 10,
     '10 Mipster machines are running concurrently')
-  test_interleaved_output('./selfie -c selfie.c -m 128 -c manuscript/code/hello-world.c -z 10', 'Hello World!    ', 10,
+  test_interleaved_output('./selfie -c selfie.c -m 128 -c grader/hello-world.c -z 10', 'Hello World!    ', 10,
     '10 Hypster machines are running concurrently')
 
 
@@ -893,23 +892,23 @@ def print_usage():
 
 
 defined_tests = [
-    ('base', lambda: test_base(mandatory=False)),
-    ('hex-literal', test_hex_literal),
-    ('bitwise-shift-1', lambda: test_bitwise_shift(1)),
-    ('bitwise-shift-2', lambda: test_bitwise_shift(2)),
-    ('bitwise-and-or-not', test_bitwise_and_or_not),
-    ('for-loop', test_for_loop),
-    ('array-1', lambda: test_array(1)),
-    ('array-2', lambda: test_array(2)),
-    ('struct-1', lambda: test_structs(1)),
-    ('struct-2', lambda: test_structs(2)),
-    ('assembler-1', lambda: test_assembler(1)),
-    ('assembler-2', lambda: test_assembler(2)),
-    ('concurrent-machines', test_concurrent_machines),
-    ('fork-wait', test_fork_and_wait),
-    ('lock', test_lock),
-    ('thread', test_thread),
-    ('treiber-stack', test_treiber_stack)
+    ('base', '', lambda: test_base(mandatory=False)),
+    ('hex-literal', 'hex-literal', test_hex_literal),
+    ('bitwise-shift-1', 'bitwise-shift', lambda: test_bitwise_shift(1)),
+    ('bitwise-shift-2', 'bitwise-shift', lambda: test_bitwise_shift(2)),
+    ('bitwise-and-or-not', 'bitwise-logic', test_bitwise_and_or_not),
+    ('for-loop', 'for-loop', test_for_loop),
+    ('array-1', 'array', lambda: test_array(1)),
+    ('array-2', 'array', lambda: test_array(2)),
+    ('struct-1', 'struct', lambda: test_structs(1)),
+    ('struct-2', 'struct', lambda: test_structs(2)),
+    ('assembler-1', 'assembler', lambda: test_assembler(1)),
+    ('assembler-2', 'assembler', lambda: test_assembler(2)),
+    ('concurrent-machines', 'concurrent-machines', test_concurrent_machines),
+    ('fork-wait', 'fork-wait', test_fork_and_wait),
+    ('lock', 'lock', test_lock),
+    ('thread', 'thread', test_thread),
+    ('treiber-stack', 'treiber-stack', test_treiber_stack)
   ]
 
 
@@ -948,23 +947,25 @@ def parse_options(args):
   return args[i:]
 
 
-def parse_tests(args):
-  tests = list(map(lambda x: x[0], defined_tests))
+def parse_assignment(args):
+  assignments = list(map(lambda x: x[0], defined_tests))
 
-  to_execute = []
+  if len(args) == 0:
+    return None
 
-  for arg in args:
-    if arg in tests:
-      to_execute.append(defined_tests[tests.index(arg)])
-    else:
-      print('unknown test: {}'.format(arg))
-      exit(1)
+  if len(args) > 1:
+    print('only 1 assignment allowed')
+    exit(1)
 
-  return to_execute
+  if args[0] in assignments:
+    return defined_tests[assignments.index(args[0])]
+    
+  print('unknown test: {}'.format(args))
+  exit(1)
 
 
-def validate_options_for(tests):
-  if bulk_grade_mode and len(tests) == 0:
+def validate_options_for(assignment):
+  if bulk_grade_mode and assignment == '':
     print('please specify a test used for bulk grading')
   else:
     return
@@ -972,7 +973,7 @@ def validate_options_for(tests):
   exit(1)
 
 
-def do_bulk_grading(tests):
+def do_bulk_grading(assignment):
   enter_quiet_mode()
 
   if not os.path.exists(bulk_grade_directory):
@@ -1011,7 +1012,7 @@ def do_bulk_grading(tests):
       os.system('git checkout -q {}'.format(commit))
 
       print_loud('{}/{}: '.format(user, repo), end='')
-      check_assignments(tests)
+      check_assignment(assignment)
       print_loud('')
 
       os.chdir(bulk_grade_directory)
@@ -1022,18 +1023,21 @@ def do_bulk_grading(tests):
     os.system('rm -rf {}'.format(bulk_grade_directory))
 
 
-def check_assignments(assignments):
-  if len(assignments) > 0:
-    if defined_tests[0] not in assignments:
-      print('executing mandatory test \'{}\''.format(defined_tests[0][0]))
-      test_base(mandatory=True)
+def check_assignment(assignment):
+  global assignment_path 
 
-  for test in assignments:
-    print('executing test \'{}\''.format(test[0]))
-    test[1]()
+  if assignment is not 'base':
+    print('executing mandatory test \'{}\''.format(defined_tests[0][0]))
+    test_base(mandatory=True)
 
-  if len(assignments) > 0:
-    grade()
+  assignment_path = assignment[1]
+
+  print('executing test \'{}\''.format(assignment[0]))
+  assignment[2]()
+
+  assignment_path = ''
+
+  grade()
 
 
 def main(argv):
@@ -1050,14 +1054,14 @@ def main(argv):
 
     args = parse_options(argv[1:])
 
-    tests = parse_tests(args)
+    assignment = parse_assignment(args)
 
-    validate_options_for(tests)
+    validate_options_for(assignment)
 
     if bulk_grade_mode:
-      do_bulk_grading(tests)
+      do_bulk_grading(assignment)
     else:
-      check_assignments(tests)
+      check_assignment(assignment)
 
   finally:
     sys.stdout = sys.__stdout__

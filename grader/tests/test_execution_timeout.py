@@ -17,7 +17,13 @@ class TestExecutionTimeout(unittest.TestCase):
   def setUpClass(self):
     system('make selfie >/dev/null 2>&1')
 
-  def test_timeout(self):
+  def insert_home_path_mock(self, command):
+    return command
+
+  @patch('grader.self.insert_home_path')
+  def test_timeout(self, mock):
+    mock.side_effect = self.insert_home_path_mock
+
     start = time()
 
     grader.home_path = './'
@@ -37,8 +43,9 @@ class TestExecutionTimeout(unittest.TestCase):
   def test_result_of_timed_out_test(self, mock):
     mock.side_effect = self.execute_mock
 
-    with Console() as console:
+    with Console() as console: 
       test_base()
+
       output = console.get_output()
 
     for_all_test_results(output, self.check_output)
