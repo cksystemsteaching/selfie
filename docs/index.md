@@ -2,9 +2,9 @@ Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzb
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and even virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
-Slides providing an overview of selfie and an introduction to its design and implementation are made available incrementally [here](http://selfie.cs.uni-salzburg.at/slides). There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
+Slides providing an overview of selfie and an introduction to its design and implementation are made available incrementally [here](http://selfie.cs.uni-salzburg.at/slides). There is also a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
 
-Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
+Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
 
 1. a self-compiling compiler called starc that compiles
    a tiny but still fast subset of C called C Star (C*) to
@@ -14,12 +14,16 @@ Selfie is a self-contained 64-bit, 10-KLOC C implementation of:
 3. a self-hosting hypervisor called hypster that provides
    RISC-U virtual machines that can host all of selfie,
    that is, starc, mipster, and hypster itself,
-4. a prototypical symbolic execution engine called monster
-   that executes RISC-U code symbolically,
+4. a self-translating modeling engine called monster that
+   translates RISC-U code including itself to SMT-LIB and
+   BTOR2 formulae that are satisfiable if and only if
+   there is input to the code such that the code exits
+   with non-zero exit codes, performs division by zero,
+   or accesses memory outside of allocated memory blocks,
 5. a simple SAT solver that reads CNF DIMACS files, and
 6. a tiny C* library called libcstar utilized by selfie.
 
-Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support in the form of RISC-V system calls built into the emulator.
+Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support built into the emulator. Selfie generates ELF binaries that run on QEMU and are compatible with the official RISC-V toolchain.
 
 C* is a tiny Turing-complete subset of C that includes dereferencing (the * operator) but excludes composite data types, bitwise and Boolean operators, and many other features. There are only unsigned 64-bit integers and 64-bit pointers as well as character and string literals. This choice turns out to be helpful for students to understand the true role of composite data types such as arrays and records. Bitwise operations are implemented in libcstar using unsigned integer arithmetics helping students better understand arithmetic operators. C* is supposed to be close to the minimum necessary for implementing a self-compiling, single-pass, recursive-descent compiler. C* can be taught in one to two weeks of classes depending on student background.
 
