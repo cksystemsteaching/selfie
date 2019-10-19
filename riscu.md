@@ -40,13 +40,13 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 `mul rd,rs1,rs2`: `rd = rs1 * rs2; pc = pc + 4`
 
-`divu rd,rs1,rs2`: `rd = rs1 / rs2; pc = pc + 4`
+`divu rd,rs1,rs2`: `rd = rs1 / rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
 
-`remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4`
+`remu rd,rs1,rs2`: `rd = rs1 % rs2; pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
 
 #### Comparison
 
-`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = 1 } else { rd = 0 } pc = pc + 4`
+`sltu rd,rs1,rs2`: `if (rs1 < rs2) { rd = 1 } else { rd = 0 } pc = pc + 4` where `rs1` and `rs2` are unsigned integers.
 
 #### Control
 

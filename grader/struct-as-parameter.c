@@ -21,8 +21,7 @@ int main(int argc, char** argv) {
   my_struct->another_struct = malloc(16);
   my_struct->another_struct->member = 123;
 
-  if (modify_member(my_struct) == 123 && my_struct->another_struct->member == 321)
-    return 42;
-  else
-    return 0;
+  if (modify_member(my_struct) == 123)
+    if (my_struct->another_struct->member == 321)
+      return 42;
 }
