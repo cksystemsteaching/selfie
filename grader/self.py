@@ -131,15 +131,15 @@ LR_FORMAT_MASK  = 0b11111001111100000111000001111111
 
 REGISTER_REGEX = '(zero|ra|sp|gp|tp|t[0-6]|s[0-9]|s10|s11|a[0-7])'
 
-SLL_INSTRUCTION = ('bitwise-left-shift', encode_r_format(F7_SLL, F3_SLL, OP_OP), R_FORMAT_MASK,
+SLL_INSTRUCTION = ('left-shift', encode_r_format(F7_SLL, F3_SLL, OP_OP), R_FORMAT_MASK,
                   '^sll\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
-SRL_INSTRUCTION = ('bitwise-right-shift', encode_r_format(F7_SRL, F3_SRL, OP_OP), R_FORMAT_MASK,
+SRL_INSTRUCTION = ('right-shift', encode_r_format(F7_SRL, F3_SRL, OP_OP), R_FORMAT_MASK,
                   '^srl\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
-OR_INSTRUCTION  = ('bitwise-or', encode_r_format(F7_OR, F3_OR, OP_OP), R_FORMAT_MASK,
+OR_INSTRUCTION  = ('or', encode_r_format(F7_OR, F3_OR, OP_OP), R_FORMAT_MASK,
                   '^or\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
-AND_INSTRUCTION = ('bitwise-and', encode_r_format(F7_AND, F3_AND, OP_OP), R_FORMAT_MASK,
+AND_INSTRUCTION = ('and', encode_r_format(F7_AND, F3_AND, OP_OP), R_FORMAT_MASK,
                   '^and\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',' + REGISTER_REGEX + '$')
-NOT_INSTRUCTION = ('bitwise-not', encode_i_format(4095, F3_XORI, OP_IMM), NOT_FORMAT_MASK,
+NOT_INSTRUCTION = ('not', encode_i_format(4095, F3_XORI, OP_IMM), NOT_FORMAT_MASK,
                   '^xori\\s+' + REGISTER_REGEX + ',' + REGISTER_REGEX + ',-1$')
 LR_INSTRUCTION  = ('load-reserved', encode_amo_format(F5_LR, F3_LR), LR_FORMAT_MASK,
                   '^lr\\.d\\s+' + REGISTER_REGEX + ',\\(' + REGISTER_REGEX + '\\)$')
@@ -528,17 +528,17 @@ def test_compile_warnings(file, msg, mandatory=False):
 
 
 def test_hex_literal():
-  test_compilable('hex-literal.c',
+  test_compilable('all-digit-characters.c',
     'hex integer literal with all characters compiled')
-  test_mipster_execution('hex-literal.c', 42,
+  test_mipster_execution('all-digit-characters.c', 42,
     'hex integer literal with all characters has the right value')
-  test_compilable('hex-literal-max.c',
+  test_compilable('max-value.c',
     'maximum hex integer literal compiled')
-  test_mipster_execution('hex-literal-max.c', 42,
+  test_mipster_execution('max-value.c', 42,
     'maximum hex integer literal has the right value')
-  test_compilable('hex-literal-min.c',
+  test_compilable('min-value.c',
     'minimum hex integer literal compiled')
-  test_mipster_execution('hex-literal-min.c', 42,
+  test_mipster_execution('min-value.c', 42,
     'minimum hex integer literal has the right value')
 
 
@@ -548,9 +548,9 @@ def test_bitwise_shift(stage):
 
     for direction in ['right', 'left']:
 
-      literal_file = 'bitwise-' + direction + '-shift-literals.c'
-      variable_file = 'bitwise-' + direction + '-shift-variables.c'
-      invalid_file = 'bitwise-' + direction + '-shift-invalid.c'
+      literal_file = direction + '-shift-with-literals.c'
+      variable_file = direction + '-shift-with-variables.c'
+      invalid_file = 'invalid-' + direction + '-shift.c'
 
       test_compilable(literal_file,
         'bitwise-' + direction + '-shift operator with literals does compile')
@@ -564,8 +564,8 @@ def test_bitwise_shift(stage):
 
     for instruction in [SRL_INSTRUCTION, SLL_INSTRUCTION]:
 
-      literal_file = instruction[0] + '-literals.c'
-      variable_file = instruction[0] + '-variables.c'
+      literal_file = instruction[0] + '-with-literals.c'
+      variable_file = instruction[0] + '-with-variables.c'
 
       test_riscv_instruction(instruction, literal_file)
       test_riscv_instruction(instruction, variable_file)
@@ -574,7 +574,7 @@ def test_bitwise_shift(stage):
       test_mipster_execution(variable_file, 42,
         'bitwise-' + direction + '-shift operator calculates the right result for variables when executed with MIPSTER')
 
-    test_mipster_execution('bitwise-shift-precedence.c', 42,
+    test_mipster_execution('precedence.c', 42,
       'bitwise shift operators respect the precedence of the C operators: <<, >>')
 
 
@@ -583,9 +583,9 @@ def test_bitwise_and_or_not():
   for instruction in [AND_INSTRUCTION, OR_INSTRUCTION, NOT_INSTRUCTION]:
     operation = instruction[0]
 
-    literal_file = operation + '-literals.c'
-    variable_file = operation + '-variables.c'
-    invalid_file = operation + '-invalid.c'
+    literal_file = operation + '-with-literals.c'
+    variable_file = operation + '-with-variables.c'
+    invalid_file = 'invalid-' + operation + '.c'
 
     test_compilable(literal_file,
       operation + ' operator with literals does compile')
@@ -600,85 +600,83 @@ def test_bitwise_and_or_not():
     test_riscv_instruction(instruction, literal_file)
     test_riscv_instruction(instruction, variable_file)
 
-  test_mipster_execution('bitwise-and-or-not-precedence.c', 42,
+  test_mipster_execution('precedence.c', 42,
     'bitwise and, or & not '  + ' operators respect the precedence of the C operators: &,|,~')
-  test_mipster_execution('bitwise-and-or-not-other-precedence.c', 42,
+  test_mipster_execution('precedence2.c', 42,
     'bitwise and, or & not '  + ' operators respect the precedence of the C operators: +,-')
 
 
 
 def test_for_loop():
-  test_compilable('for-loop-invalid-missing-assignment.c',
+  test_compilable('missing-assignment.c',
     'for loop with missing assignment do not compile', should_succeed=False)
-  test_compilable('for-loop-single-statement.c',
+  test_compilable('single-statement.c',
     'for loop with one statement do compile')
-  test_compilable('for-loop-multiple-statements.c',
+  test_compilable('multiple-statements.c',
     'for loop with multiple statements do compile')
-  test_compilable('for-loop-nested.c',
+  test_compilable('nested.c',
     'nested for loops do compile')
-  test_mipster_execution('for-loop-single-statement.c', 42,
+  test_mipster_execution('single-statement.c', 42,
     'for loop with one statement are implement with the right semantics')
-  test_mipster_execution('for-loop-multiple-statements.c', 42,
+  test_mipster_execution('multiple-statements.c', 42,
     'for loop with multiple statements are implemented with the right semantics')
-  test_mipster_execution('for-loop-multiple-statements.c', 42,
-    'for loop with multiple statements are implemented with the right semantics')
-  test_mipster_execution('for-loop-nested.c', 42,
+  test_mipster_execution('nested.c', 42,
     'nested for loops are implemented with the right semantics')
 
 
 
 def test_array(part):
   if part == 1:
-    test_compilable('array-global-declaration.c',
+    test_compilable('global-declaration.c',
       'array declaration do compile')
-    test_compilable('array-assignment.c',
+    test_compilable('assignment.c',
       'assignments on arrays do compile')
-    test_compilable('array-invalid-assignment.c',
+    test_compilable('invalid-assignment.c',
       'invalid assignments to an array do not compile', should_succeed=False)
-    test_compilable('array-call-by-reference.c',
+    test_compilable('call-by-reference.c',
       'arrays in the function signature do compile')
-    test_mipster_execution('array-assignment.c', 42,
+    test_mipster_execution('assignment.c', 42,
       'arrays assignments are implemented with the right semantics')
-    test_mipster_execution('array-call-by-reference.c', 42,
+    test_mipster_execution('call-by-reference.c', 42,
       'array assignments in functions are implemented with the right semantics')
 
   if part == 2:
-    test_compilable('array-multidimensional.c',
+    test_compilable('multidimensional.c',
       'multidimensional array declarations do compile')
-    test_mipster_execution('array-multidimensional.c', 42,
+    test_mipster_execution('multidimensional.c', 42,
       'multidimensional arrays assignments are implemented with the right semantics')
-    test_compilable('array-access-order.c',
+    test_compilable('access-order.c',
       'access to start-address of multidimensional is possible')
-    test_mipster_execution('array-access-order.c', 0,
+    test_mipster_execution('access-order.c', 0,
       'access to multidimensional arrays is implemented in row-major order')
 
 
 
 def test_structs(part):
   if part == 1:
-    test_compilable('struct-declaration.c',
+    test_compilable('declaration.c',
       'empty struct declarations compiled')
-    test_compilable('struct-member-declaration.c',
-      'struct declaration with trivial members compiled')
-    test_compilable('struct-nested-declaration.c',
-      'struct declaration with struct members compiled')
-    test_compilable('struct-definition.c',
+    test_compilable('definition.c',
       'struct definition with global and local scope compiled')
+    test_compilable('member-declaration.c',
+      'struct declaration with trivial members compiled')
+    test_compilable('nested-declaration.c',
+      'struct declaration with struct members compiled')
 
   if part == 2:
-    test_compilable('struct-initialization.c',
+    test_compilable('initialization.c',
       'empty struct with initialization compiled')
-    test_compilable('struct-member-initialization.c',
+    test_compilable('member-initialization.c',
       'initialization of trivial struct members compiled')
-    test_mipster_execution('struct-member-initialization.c', 42,
+    test_mipster_execution('member-initialization.c', 42,
       'read and write operations of trivial struct member works when executed with MIPSTER')
-    test_compilable('struct-nested-initialization.c',
+    test_compilable('nested-initialization.c',
       'struct initialization with struct members compiled')
-    test_mipster_execution('struct-nested-initialization.c', 42,
+    test_mipster_execution('nested-initialization.c', 42,
       'read and write operations of nested struct member works when executed with MIPSTER')
-    test_compilable('struct-as-parameter.c',
+    test_compilable('as-parameter.c',
       'struct as function parameter compiled')
-    test_mipster_execution('struct-as-parameter.c', 42,
+    test_mipster_execution('as-parameter.c', 42,
       'read and write operations of structs as parameter work when executed with MIPSTER')
 
 
@@ -687,11 +685,11 @@ def test_assembler(stage):
     start_stage(1)
     test_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
       'selfie can parse its own implementation in assembly')
-    test_execution('./selfie -a grader/assembler-missing-address.s',
+    test_execution('./selfie -a grader/missing-address.s',
       'assembly file with a missing address is not parseable', success_criteria=False)
-    test_execution('./selfie -a grader/assembler-missing-instruction.s',
+    test_execution('./selfie -a grader/missing-instruction.s',
       'assembly file with a missing instruction is not parseable', success_criteria=False)
-    test_execution('./selfie -a grader/assembler-missing-literal.s',
+    test_execution('./selfie -a grader/missing-literal.s',
       'assembly file with a missing literal is not parseable', success_criteria=False)
 
   if stage >= 2:
@@ -709,39 +707,39 @@ def test_concurrent_machines():
 
 
 def test_fork_and_wait():
-  test_execution('./selfie -c grader/fork-wait.c -m 128',
+  test_execution('./selfie -c grader/syscalls.c -m 128',
     'fork creates a child process, where the parent can wait for the child process with MIPSTER', success_criteria=70)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/fork-wait.c -y 64',
+  test_execution('./selfie -c selfie.c -m 128 -c grader/syscalls.c -y 64',
     'fork creates a child process, where the parent can wait for the child process with HYPSTER', success_criteria=70)
 
 
 def test_lock():
-  test_execution('./selfie -c grader/hello-world-without-lock.c -m 128',
+  test_execution('./selfie -c grader/print-without-lock.c -m 128',
     '16 processes are running concurrently on MIPSTER',
     success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 8))
-  test_execution('./selfie -c selfie.c -m 128 -c grader/hello-world-without-lock.c -y 10',
+  test_execution('./selfie -c selfie.c -m 128 -c grader/print-without-lock.c -y 10',
     '16 processes are running concurrently on HYPSTER',
     success_criteria=lambda code, out: is_interleaved_output(code, out, 'Hello World!    ', 8))
-  test_execution('./selfie -c grader/hello-world-with-lock.c -m 128',
+  test_execution('./selfie -c grader/print-with-lock.c -m 128',
     '16 processes are printing in sequential order with the use of locks on MIPSTER',
     success_criteria='Hello World!    ' * 8)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/hello-world-with-lock.c -y 10',
+  test_execution('./selfie -c selfie.c -m 128 -c grader/print-with-lock.c -y 10',
     '16 processes are printing in sequential order with the use of locks on HYPSTER',
     success_criteria='Hello World!    ' * 8)
 
 
 def test_thread():
-  test_execution('./selfie -c grader/thread-implementation.c -m 128',
+  test_execution('./selfie -c grader/syscalls.c -m 128',
     'creates a thread, where the parent can join the thread with MIPSTER', success_criteria=70)
-  test_execution('./selfie -c selfie.c -m 128 -c grader/thread-implementation.c -y 64',
+  test_execution('./selfie -c selfie.c -m 128 -c grader/syscalls.c -y 64',
     'creates a thread, where the parent can join the thread with HYPSTER', success_criteria=70)
-  test_mipster_execution('grader/thread-data-shared.c', 42,
+  test_mipster_execution('grader/shared-data.c', 42,
     'data section is shared for threads on MIPSTER')
-  test_hypster_execution('grader/thread-data-shared.c', 42,
+  test_hypster_execution('grader/shared-data.c', 42,
     'data section is shared for threads on HYPSTER')
-  test_mipster_execution('grader/thread-heap-shared.c', 42,
+  test_mipster_execution('grader/shared-heap.c', 42,
     'heap data is shared for threads on MIPSTER')
-  test_hypster_execution('grader/thread-heap-shared.c', 42,
+  test_hypster_execution('grader/shared-heap.c', 42,
     'heap data is shared for threads on HYPSTER')
 
 
@@ -749,10 +747,10 @@ def test_thread():
 def test_treiber_stack():
   test_riscv_instruction(LR_INSTRUCTION, 'load-reserved.c')
   test_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c')
-  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-push.c -m 128',
+  test_execution('./selfie -c treiber-stack.c grader/stack-push.c -m 128',
     'all pushed elements are actually in the treiber-stack',
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
-  test_execution('./selfie -c treiber-stack.c grader/treiber-stack-pop.c -m 128',
+  test_execution('./selfie -c treiber-stack.c grader/stack-pop.c -m 128',
     'all treiber-stack elements can be popped ',
     success_criteria=lambda code, out: is_permutation_of(code, out, [0, 1, 2, 3, 4, 5, 6, 7]))
 

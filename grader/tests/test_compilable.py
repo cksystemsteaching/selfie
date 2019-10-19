@@ -13,15 +13,17 @@ class TestCompilable(unittest.TestCase):
     self.addCleanup(patcher.stop)
     self.mock_foo = patcher.start()
 
+  def is_compilable(self, file):
+      return not ('invalid' in file or 'missing' in file)
+
   def compilable_mock(self, file, msg, should_succeed=True):
     file_path = 'assignments/' + self.assignment + '/' + file
 
-    if 'invalid' in file:
-      self.assertFalse(should_succeed)
-    if not should_succeed:
-      self.assertIn('invalid', file)
+    is_compilable = self.is_compilable(file)
 
-    if 'invalid' in file:
+    self.assertEqual(is_compilable, should_succeed)
+
+    if not is_compilable:
       self.assertNotEqual(compile_with_gcc(file_path), 0, 'compiling ' + file + ' with gcc leads to an error')
     else:
       self.assertEqual(compile_with_gcc(file_path), 0, 'compiling ' + file + ' with gcc leads to no error')
