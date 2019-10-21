@@ -3,54 +3,56 @@ from os import chdir, getcwd
 from shutil import copytree, rmtree
 from unittest.mock import patch
 
-from grader.tests.lib import Console
-from grader.self import main as grader_main, execute, EXITCODE_IOERROR
-import grader.self
+from self import main as grader_main
+import lib.print
+import lib.runner
+from lib.runner import execute
+from lib.system import EXITCODE_IOERROR
+from tests.utils import Console
 
-original_execute = execute
-
-
-def ignore(root, paths):
-    if './grader/tests/.tmp' in root:
-        return paths
-
-    return []
+dst = '/tmp/sel fie'
 
 
 class TestRobustness(TestCase):
 
     def setUp(self):
-        patcher = patch('grader.self.print_loud')
+        patcher = patch('lib.grade.print_loud')
         self.addCleanup(patcher.stop)
         self.mock_foo = patcher.start()
 
-        rmtree('/tmp/sel fie', ignore_errors=True)
+        rmtree(dst, ignore_errors=True)
 
     def execute_mock(self, command):
-        ret_code, output, error_output = original_execute(command)
+        ret_code, output, error_output = execute(command)
 
         self.assertNotEqual(ret_code, EXITCODE_IOERROR)
 
         return (ret_code, output, error_output)
 
-    @patch('grader.self.execute')
+    def insert_home_path(self, command):
+        return command.replace("grader/", "grader/assignments/hex-literal/")
+
+    @patch('lib.runner.execute')
     def test_path_name_with_whitespaces(self, mock):
-        mock.side_effect = lambda c: self.execute_mock(c)
+        mock.side_effect = self.execute_mock
 
-        dst = '/tmp/sel fie'
-
-        copytree('.', dst, ignore=ignore)
+        copytree('..', dst)
 
         cwd = getcwd()
 
-        chdir('/tmp/sel fie')
+        chdir(dst)
 
-        with Console():
+        with Console(), patch('lib.runner.insert_home_path') as home_path_mock:
+            home_path_mock.side_effect = self.insert_home_path
+
             grader_main([getcwd(), 'hex-literal'])
 
         chdir(cwd)
 
         rmtree(dst)
+
+    def tearDown(self):
+        rmtree(dst, ignore_errors=True)
 
 
 if __name__ == '__main__':

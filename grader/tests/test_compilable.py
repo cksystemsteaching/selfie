@@ -3,14 +3,13 @@ from unittest.mock import patch
 import sys
 import os
 
-from grader.tests.lib import Console, compile_with_gcc
-from grader.self import main, defined_tests
-
+from self import main, assignments, name, test, directory
+from tests.utils import Console, compile_with_gcc, run_compilable_assignments
 
 class TestCompilable(unittest.TestCase):
 
     def setUp(self):
-        patcher = patch('grader.self.print_loud')
+        patcher = patch('lib.grade.print_loud')
         self.addCleanup(patcher.stop)
         self.mock_foo = patcher.start()
 
@@ -31,28 +30,15 @@ class TestCompilable(unittest.TestCase):
             self.assertEqual(compile_with_gcc(file_path), 0,
                              'compiling ' + file + ' with gcc leads to no error')
 
-    @patch('grader.self.test_compilable')
+    def save_assignment(self, assignment):
+        self.assignment = directory(assignment)
+
+    @patch('self.test_compilable')
     def test_compilability_of_test_files(self, test_compilable_mock):
 
         test_compilable_mock.side_effect = self.compilable_mock
 
-        not_compilable = [
-            'assembler-1',
-            'assembler-2',
-            'concurrent-machines',
-            'fork-wait',
-            'lock',
-            'thread',
-            'treiber-stack'
-        ]
-
-        tests = [t for t in defined_tests if t[0] not in not_compilable]
-
-        for test in tests:
-            self.assignment = test[1]
-
-            with Console():
-                main([sys.argv[0], test[0]])
+        run_compilable_assignments(self.save_assignment)
 
 
 if __name__ == '__main__':

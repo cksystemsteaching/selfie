@@ -1,8 +1,12 @@
 import sys
+from importlib import reload
 from os import listdir, system, WEXITSTATUS
 from os.path import isfile, join
 from io import TextIOWrapper, BytesIO
 
+from self import name
+
+import self as grader 
 
 def list_files(path, extension=''):
     return [f for f in listdir(path) if isfile(join(path, f)) and f.endswith(extension)]
@@ -26,15 +30,15 @@ class Console():
 
 
 def assemble_for_selfie(file):
-    system('riscv64-linux-gnu-as grader/tests/' + file + ' -o .instruction.o')
+    system('riscv64-linux-gnu-as tests/' + file + ' -o .instruction.o')
     system('riscv64-linux-gnu-ld .instruction.o -o .instruction.bin --oformat=binary >/dev/null 2>&1')
-    system('cat grader/tests/elf-header.m .instruction.bin > .tmp.bin')
+    system('cat tests/elf-header.m .instruction.bin > .tmp.bin')
     system('rm .instruction.o .instruction.bin')
 
 
 def compile_with_gcc(file):
     return_value = WEXITSTATUS(system(
-        'gcc -w -D\'uint64_t=unsigned long long\' grader/' + file + ' -o .prog >/dev/null 2>&1'))
+        'gcc -w -D\'uint64_t=unsigned long long\' ' + file + ' -o .prog >/dev/null 2>&1'))
 
     if return_value != 0:
         system('rm -rf ./.prog')
@@ -43,10 +47,40 @@ def compile_with_gcc(file):
 
 
 def compile_with_gcc_and_run(file):
-    system('gcc -w -D\'uint64_t=unsigned long long\' grader/' + file + ' -o .prog')
+    system('gcc -w -D\'uint64_t=unsigned long long\' ' + file + ' -o .prog')
     return_value = WEXITSTATUS(system('./.prog'))
     system('rm ./.prog')
     return return_value
+
+
+
+not_compilable = [
+    'assembler-parser',
+    'self-assembler',
+    'concurrent-machines',
+    'fork-wait',
+    'lock',
+    'thread',
+    'treiber-stack'
+]
+
+compilable_assignments = [a for a in grader.assignments if grader.name(a) not in not_compilable]
+
+def run_compilable_assignments(prev=None, after=None):
+    for assignment in compilable_assignments:
+        if prev != None:
+            prev(assignment)
+        
+        with Console() as console:
+            grader.main([sys.argv[0], name(assignment)])
+
+            output = console.get_output()
+
+            if after != None:
+                after(output)
+
+        reload(grader)
+
 
 
 def for_all_test_results(output, function):
