@@ -1279,7 +1279,7 @@ uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in
 char*    smt_name = (char*) 0; // name of SMT-LIB file
 uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
 
-uint64_t merge_enabled = 1; // enable or disable the merging
+uint64_t merge_enabled = 0; // enable or disable the merging of paths
 
 uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
 uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
@@ -9953,6 +9953,13 @@ uint64_t monster(uint64_t* to_context) {
 
   output_name = smt_name;
   output_fd   = smt_fd;
+
+  if (number_of_remaining_arguments() > 1)
+    if (string_compare(peek_argument(1), "--merge-enabled")) {
+      merge_enabled = 1;
+
+      get_argument();
+    }
 
   printf1("; %s\n\n", SELFIE_URL);
 
