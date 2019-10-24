@@ -11,8 +11,6 @@ from tests.utils import Console, for_all_test_results
 
 class TestExecutionTimeout(unittest.TestCase):
 
-    original_execute = execute
-
     @classmethod
     def setUpClass(self):
         system('make selfie >/dev/null 2>&1')
@@ -26,13 +24,13 @@ class TestExecutionTimeout(unittest.TestCase):
 
         start = time()
 
-        self.assertRaises(TimeoutException, TestExecutionTimeout.original_execute,
+        self.assertRaises(TimeoutException, execute,
                           '../selfie -c tests/sleep-forever.c -m 10', 3)
 
         self.assertLess(time() - start, 4)
 
     def execute_mock(self, command, timeout=10):
-        return TestExecutionTimeout.original_execute(command, timeout=0)
+        return execute(command, timeout=0)
 
     def check_output(self, result, msg):
         self.assertFalse(result)

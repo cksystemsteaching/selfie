@@ -41,13 +41,12 @@ def grade():
     else:
         passed = number_of_tests_passed / float(number_of_tests)
 
-    if number_of_positive_tests_passed == 0:
-        print('warning: you have not passed at least one positive test')
-        grade_is_negative = True
 
     if failed_mandatory_test or number_of_positive_tests_passed == 0:
-        if number_of_positive_tests_passed == 0:
+        if failed_mandatory_test: 
             print('warning: you have failed a mandatory test')
+        if number_of_positive_tests_passed == 0: 
+            print('warning: you have not passed at least one positive test')
         
         grade = 5
         color = 91
