@@ -9,6 +9,7 @@ DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
 bulk_grade_mode = False
 file_with_commit_links = None
 bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
+assignment_path = ''
 
 
 def parse_options(args, option_flags):
@@ -71,11 +72,11 @@ def check_assignment(assignment, base_test):
 
     if assignment[3] != base_test:
         base_test(mandatory=True)
-    
-    assignment_path = assignment[1]
+
+    assignment_path = assignment[2]
 
     print('executing test \'{}\''.format(assignment[0]))
-    
+
     assignment[3]()
 
     assignment_path = ''
@@ -158,6 +159,7 @@ def do_bulk_grading(assignment, base_test):
 
 
 print_usage_flag = False
+
 
 def set_print_usage():
     global print_usage_flag

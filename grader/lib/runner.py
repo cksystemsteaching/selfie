@@ -6,7 +6,7 @@ from .output_processing import is_interleaved_output, has_compiled, has_no_compi
 from .system import REGISTERSIZE, INSTRUCTIONSIZE, read_data, read_instruction
 from .print import print_processing, stop_processing_spinner
 from .grade import record_result
-
+import lib.cli as cli
 
 if sys.version_info < (3, 3):
     from subprocess import Popen, PIPE
@@ -16,7 +16,6 @@ else:
     from subprocess import Popen, TimeoutExpired, PIPE
 
 home_path = os.path.abspath(os.getcwd())
-assignment_path = ''
 
 class TimeoutException(Exception):
     def __init__(self, command, timeout, output, error_output):
@@ -28,7 +27,7 @@ class TimeoutException(Exception):
 
 
 def insert_home_path(command):
-    return re.sub(r'(grader/([^\s]*))', r'"' + home_path + r'/grader/assignments/' + assignment_path + r'/\2"', command)
+    return re.sub(r'(grader/([^\s]*))', r'"' + home_path + r'/grader/assignments/' + cli.assignment_path + r'/\2"', command)
 
 
 def set_up():
