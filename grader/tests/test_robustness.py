@@ -3,53 +3,57 @@ from os import chdir, getcwd
 from shutil import copytree, rmtree
 from unittest.mock import patch
 
-from grader.tests.lib import Console
-from grader.self import main as grader_main, execute, EXITCODE_IOERROR
-import grader.self
+from self import main as grader_main
+import lib.print
+import lib.runner
+from lib.runner import execute
+from lib.system import EXITCODE_IOERROR
+from tests.utils import Console
 
-original_execute = execute
+dst = '/tmp/sel fie'
 
-def ignore(root, paths):
-  if './grader/tests/.tmp' in root:
-    return paths
-
-  return []
 
 class TestRobustness(TestCase):
 
-  def setUp(self):
-    patcher = patch('grader.self.print_loud')
-    self.addCleanup(patcher.stop)
-    self.mock_foo = patcher.start()
+    def setUp(self):
+        patcher = patch('lib.grade.print_loud')
+        self.addCleanup(patcher.stop)
+        self.mock_foo = patcher.start()
 
-  def execute_mock(self, command):
-    ret_code, output, error_output = original_execute(command)
+        rmtree(dst, ignore_errors=True)
 
-    self.assertNotEqual(ret_code, EXITCODE_IOERROR)
+    def execute_mock(self, command):
+        ret_code, output, error_output = execute(command)
 
-    return (ret_code, output, error_output)
+        self.assertNotEqual(ret_code, EXITCODE_IOERROR)
 
-  @patch('grader.self.execute')
-  def test_path_name_with_whitespaces(self, mock):
-    mock.side_effect = lambda c: self.execute_mock(c)
+        return (ret_code, output, error_output)
 
-    dst = 'grader/tests/.tmp/sel fie'
+    def insert_home_path(self, command):
+        return command.replace("grader/", "grader/assignments/hex-literal/")
 
-    copytree('.', dst, ignore=ignore)
+    @patch('lib.runner.execute')
+    def test_path_name_with_whitespaces(self, mock):
+        mock.side_effect = self.execute_mock
 
-    cwd = getcwd()
+        copytree('..', dst)
 
-    chdir('grader/tests/.tmp/sel fie')
+        cwd = getcwd()
 
-    with Console():
-      grader_main([getcwd(), 'hex-literal'])
+        chdir(dst)
 
-    chdir(cwd)
+        with Console(), patch('lib.runner.insert_home_path') as home_path_mock:
+            home_path_mock.side_effect = self.insert_home_path
 
-    rmtree(dst)
+            grader_main([getcwd(), 'hex-literal'])
 
-  def tearDown(self):
-    rmtree('grader/tests/.tmp', ignore_errors=True)
+        chdir(cwd)
+
+        rmtree(dst)
+
+    def tearDown(self):
+        rmtree(dst, ignore_errors=True)
+
 
 if __name__ == '__main__':
-  main()
+    main()

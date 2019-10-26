@@ -88,7 +88,7 @@ qemu: selfie.m selfie.s
 # Test boolector SMT solver
 boolector: smt
 	boolector manuscript/code/symbolic/simple-assignment.smt -e 0 > selfie_boolector.sat
-	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 1 ]
+	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
 
 # Test btormc bounded model checker
 btormc: mc
@@ -96,7 +96,7 @@ btormc: mc
 
 # Test grader
 grader:
-	python3 -m unittest -v grader.tests.test_all
+	cd grader && python3 -m unittest discover -v
 
 # Run everything
 all: compile quine debug replay os vm min mob smt mc sat
