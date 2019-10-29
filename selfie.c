@@ -2808,7 +2808,7 @@ uint64_t find_next_character() {
       if (in_multi_line_comment) {
         // keep track of line numbers for error reporting and code annotation
         if (character == CHAR_LF)
-          // only linefeeds count, not carriage returns
+          // only line feeds count, not carriage returns
           line_number = line_number + 1;
         else if (character == CHAR_EOF) {
           // multi-line comment is not terminated
@@ -5864,7 +5864,7 @@ uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length) {
                 + left_shift((uint64_t) 'L', 16)    // magic number part 2
                 + left_shift((uint64_t) 'F', 24)    // magic number part 3
                 + left_shift(2, 32)                 // file class is ELFCLASS64
-                + left_shift(1, 40)                 // object file data structures endianess is ELFDATA2LSB
+                + left_shift(1, 40)                 // object file data structures endianness is ELFDATA2LSB
                 + left_shift(1, 48);                // version of the object file format
   *(header + 1) = 0;                                // ABI version and start of padding bytes
   *(header + 2) = 2                                 // object file type is ET_EXEC
@@ -9652,7 +9652,7 @@ uint64_t handle_division_by_zero(uint64_t* context) {
     printf1("(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
     print("\n(check-sat)\n(get-model)\n(pop 1)\n");
 
-    // we terminate the exeuction of the context, because if the location is not reachable,
+    // we terminate the execution of the context, because if the location is not reachable,
     // the rest of the path is not reachable either, and otherwise
     // the execution would be terminated by this error anyway
     set_exit_code(context, EXITCODE_DIVISIONBYZERO);
@@ -9711,7 +9711,7 @@ uint64_t handle_exception(uint64_t* context) {
 
         set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
 
-        // we terminate the exeuction of the context, because if the location is not reachable,
+        // we terminate the execution of the context, because if the location is not reachable,
         // the rest of the path is not reachable either, and otherwise
         // the execution would be terminated by this error anyway
         return EXIT;
