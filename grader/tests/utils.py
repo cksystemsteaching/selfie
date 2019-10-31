@@ -1,15 +1,52 @@
 import sys
 from importlib import reload
-from os import listdir, system, WEXITSTATUS
+from io import BytesIO, TextIOWrapper
+from os import WEXITSTATUS, listdir, system
 from os.path import isfile, join
-from io import TextIOWrapper, BytesIO
+from unittest.mock import patch
 
+import self as grader
 from self import name
 
-import self as grader 
 
 def list_files(path, extension=''):
     return [f for f in listdir(path) if isfile(join(path, f)) and f.endswith(extension)]
+
+
+class CaptureOutput:
+    def __init__(self):
+        self.patcher = patch('lib.print.println')
+        self.output = ''
+        self.loud_output = ''
+        self.combined_output = ''
+
+    def println(self, msg='', end='\n', loud=False):
+        self.combined_output = self.combined_output + msg + end
+
+        if loud:
+            self.loud_output = self.loud_output + msg + end
+        else:
+            self.output = self.output + msg + end
+
+    def __enter__(self):
+        self.mock = self.patcher.start()
+        self.mock.side_effect = self.println
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_trace):
+        self.output = ''
+        self.loud_output = ''
+        self.combined_output = ''
+        self.patcher.stop()
+
+    def get_quiet_output(self):
+        return self.output
+
+    def get_loud_output(self):
+        return self.loud_output
+
+    def get_output(self):
+        return self.combined_output
 
 
 class Console():
@@ -53,7 +90,6 @@ def compile_with_gcc_and_run(file):
     return return_value
 
 
-
 not_compilable = [
     'assembler-parser',
     'self-assembler',
@@ -64,23 +100,24 @@ not_compilable = [
     'treiber-stack'
 ]
 
-compilable_assignments = [a for a in grader.assignments if grader.name(a) not in not_compilable]
+compilable_assignments = [
+    a for a in grader.assignments if grader.name(a) not in not_compilable]
+
 
 def run_compilable_assignments(prev=None, after=None):
     for assignment in compilable_assignments:
         if prev != None:
             prev(assignment)
-        
-        with Console() as console:
+
+        with CaptureOutput() as capture:
             grader.main([sys.argv[0], name(assignment)])
 
-            output = console.get_output()
+            output = capture.get_output()
 
             if after != None:
                 after(output)
 
         reload(grader)
-
 
 
 def for_all_test_results(output, function):

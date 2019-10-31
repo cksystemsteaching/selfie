@@ -1,21 +1,26 @@
-import re
-import sys
 import os
+import re
 import shlex
-from .output_processing import is_interleaved_output, has_compiled, has_no_compile_warnings, is_permutation_of, filter_status_messages
-from .system import REGISTERSIZE, INSTRUCTIONSIZE, read_data, read_instruction
-from .print import print_processing, stop_processing_spinner
-from .grade import record_result
+import sys
+
 import lib.cli as cli
+
+from .grade import record_result
+from .output_processing import (filter_status_messages, has_compiled,
+                                has_no_compile_warnings, is_interleaved_output,
+                                is_permutation_of)
+from .print import print_processing, print_warning, stop_processing_spinner
+from .system import INSTRUCTIONSIZE, REGISTERSIZE, read_data, read_instruction
 
 if sys.version_info < (3, 3):
     from subprocess import Popen, PIPE
-    print('warning: python V3.3 or newer is recommended')
-    print('mipster execution timeout is disabled with this python version\n')
+    print_warning('python V3.3 or newer is recommended\n' +
+                  'mipster execution timeout is disabled with this python version\n')
 else:
     from subprocess import Popen, TimeoutExpired, PIPE
 
 home_path = os.path.abspath(os.getcwd())
+
 
 class TimeoutException(Exception):
     def __init__(self, command, timeout, output, error_output):

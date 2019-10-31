@@ -14,8 +14,6 @@ This is the automatic grader of the selfie project.
 Students may use the grader for self-grading their solutions.
 """
 
-from __future__ import print_function
-
 from lib.cli import process_arguments
 from lib.output_processing import *
 from lib.runner import (test_assembler_instruction_format, test_compilable,

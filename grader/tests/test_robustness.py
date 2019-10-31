@@ -8,7 +8,7 @@ import lib.print
 import lib.runner
 from lib.runner import execute
 from lib.system import EXITCODE_IOERROR
-from tests.utils import Console
+from tests.utils import CaptureOutput
 
 dst = '/tmp/sel fie'
 
@@ -16,10 +16,6 @@ dst = '/tmp/sel fie'
 class TestRobustness(TestCase):
 
     def setUp(self):
-        patcher = patch('lib.grade.print_loud')
-        self.addCleanup(patcher.stop)
-        self.mock_foo = patcher.start()
-
         rmtree(dst, ignore_errors=True)
 
     def execute_mock(self, command):
@@ -42,7 +38,7 @@ class TestRobustness(TestCase):
 
         chdir(dst)
 
-        with Console(), patch('lib.runner.insert_home_path') as home_path_mock:
+        with CaptureOutput(), patch('lib.runner.insert_home_path') as home_path_mock:
             home_path_mock.side_effect = self.insert_home_path
 
             grader_main([getcwd(), 'hex-literal'])

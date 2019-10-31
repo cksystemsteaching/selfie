@@ -5,7 +5,7 @@ import os
 
 from self import main, assignments, name, test, directory
 from lib.runner import insert_home_path
-from tests.utils import Console, compile_with_gcc, run_compilable_assignments
+from tests.utils import CaptureOutput, compile_with_gcc, run_compilable_assignments
 
 
 class TestConcurrentMachines(unittest.TestCase):
@@ -26,10 +26,10 @@ class TestConcurrentMachines(unittest.TestCase):
     def test_concurrent_machines(self, mock):
         mock.side_effect = self.insert_assignment_stub
 
-        with patch('lib.grade.print_loud') as print_mock:
+        with CaptureOutput() as capture:
             main([sys.argv[0], 'concurrent-machines'])
 
-            print_mock.assert_any_call('2', end='')
+            self.assertIs('2', capture.get_loud_output())
 
 
 if __name__ == '__main__':
