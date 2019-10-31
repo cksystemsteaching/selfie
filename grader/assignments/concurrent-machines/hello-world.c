@@ -2,7 +2,7 @@
 uint64_t* foo;
 
 // main procedure for printing "Hello World!    " on the console
-uint64_t* main() {
+int main(int argc, char** argv) {
   // point to the "Hello World!    " string
   foo = "Hello World!    ";
 
