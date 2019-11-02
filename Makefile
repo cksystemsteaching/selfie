@@ -56,7 +56,22 @@ mob: selfie
 
 # Run monster as symbolic execution engine
 smt: selfie
-	./selfie -c manuscript/code/symbolic/simple-assignment.c -se 0
+	./selfie -c manuscript/code/symbolic/division-by-zero.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/invalid-memory-access.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/memory-access.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/nested-if-else.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/nested-if-else-reverse.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/nested-recursion.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/recursive-ackermann.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/recursive-factorial.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-assignment.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-decreasing-loop.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-if-else.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-if-else-reverse.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-if-without-else.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-increasing-loop.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/three-level-nested-loop.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/two-level-nested-loop.c -se 0 --merge-enabled
 
 # Run monster as symbolic model generator
 mc: selfie
@@ -87,8 +102,38 @@ qemu: selfie.m selfie.s
 
 # Test boolector SMT solver
 boolector: smt
-	boolector manuscript/code/symbolic/simple-assignment.smt -e 0 > selfie_boolector.sat
-	[ $$(grep ^sat$$ selfie_boolector.sat | wc -l) -eq 2 ]
+	boolector manuscript/code/symbolic/division-by-zero.smt -e 0 > division-by-zero.sat
+	[ $$(grep ^sat$$ division-by-zero.sat | wc -l) -eq 3 ]
+	boolector manuscript/code/symbolic/invalid-memory-access.smt -e 0 > invalid-memory-access.sat
+	[ $$(grep ^sat$$ invalid-memory-access.sat | wc -l) -eq 2 ]
+	boolector manuscript/code/symbolic/memory-access.smt -e 0 > memory-access.sat
+	[ $$(grep ^sat$$ memory-access.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/nested-if-else.smt -e 0 > nested-if-else.sat
+	[ $$(grep ^sat$$ nested-if-else.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/nested-if-else-reverse.smt -e 0 > nested-if-else-reverse.sat
+	[ $$(grep ^sat$$ nested-if-else-reverse.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/nested-recursion.smt -e 0 > nested-recursion.sat
+	[ $$(grep ^sat$$ nested-recursion.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/recursive-ackermann.smt -e 0 > recursive-ackermann.sat
+	[ $$(grep ^sat$$ recursive-ackermann.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/recursive-factorial.smt -e 0 > recursive-factorial.sat
+	[ $$(grep ^sat$$ recursive-factorial.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/simple-assignment.smt -e 0 > simple-assignment.sat
+	[ $$(grep ^sat$$ simple-assignment.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/simple-decreasing-loop.smt -e 0 > simple-decreasing-loop.sat
+	[ $$(grep ^sat$$ simple-decreasing-loop.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/simple-if-else.smt -e 0 > simple-if-else.sat
+	[ $$(grep ^sat$$ simple-if-else.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/simple-if-else-reverse.smt -e 0 > simple-if-else-reverse.sat
+	[ $$(grep ^sat$$ simple-if-else-reverse.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/simple-if-without-else.smt -e 0 > simple-if-without-else.sat
+	[ $$(grep ^sat$$ simple-if-without-else.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/simple-increasing-loop.smt -e 0 > simple-increasing-loop.sat
+	[ $$(grep ^sat$$ simple-increasing-loop.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/three-level-nested-loop.smt -e 0 > three-level-nested-loop.sat
+	[ $$(grep ^sat$$ three-level-nested-loop.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/two-level-nested-loop.smt -e 0 > two-level-nested-loop.sat
+	[ $$(grep ^sat$$ two-level-nested-loop.sat | wc -l) -eq 1 ]
 
 # Test btormc bounded model checker
 btormc: mc
