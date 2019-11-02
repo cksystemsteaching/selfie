@@ -1251,10 +1251,6 @@ uint64_t* get_mergeable_context();
 void      add_waiting_context(uint64_t* context);
 uint64_t* get_waiting_context();
 
-void      add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location, uint64_t* context);
-uint64_t  get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start, uint64_t* context);
-uint64_t  currently_in_this_procedure(uint64_t prologue_start, uint64_t* context);
-
 void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
 void      merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
 void      merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
@@ -1505,10 +1501,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 20 | symbolic regs   | pointer to symbolic registers
 // | 21 | beq counter     | number of executed symbolic beq instructions
 // | 22 | merge location  | program location at which the context can possibly be merged (later)
-// | 23 | prologues       | pointer to a stack that stores the prologues of procedures within which the context is currently located
-// | 24 | in recursion    | if the value is 1, then the context is currently in a recursion
-// | 25 | outside rec loc | program location at which the context has finished the recursion
-// | 26 | merge partner   | pointer to the context from which this context was created
+// | 23 | merge partner   | pointer to the context from which this context was created
 // +----+-----------------+
 
 uint64_t* allocate_context() {
@@ -1516,7 +1509,7 @@ uint64_t* allocate_context() {
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 5 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1561,10 +1554,7 @@ uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context 
 uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 20); }
 uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 21); }
 uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 22); }
-uint64_t* get_prologues(uint64_t* context)       { return (uint64_t*) *(context + 23); }
-uint64_t  get_in_recursion(uint64_t* context)    { return             *(context + 24); }
-uint64_t  get_outside_rec_loc(uint64_t* context) { return             *(context + 25); }
-uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 26); }
+uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 23); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1590,10 +1580,7 @@ void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 19)
 void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 20) = (uint64_t) regs; }
 void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 21) =            counter; }
 void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 22) =            location; }
-void set_prologues(uint64_t* context, uint64_t* prologues)     { *(context + 23) = (uint64_t) prologues; }
-void set_in_recursion(uint64_t* context, uint64_t in_rec)      { *(context + 24) =            in_rec; }
-void set_outside_rec_loc(uint64_t* context, uint64_t location) { *(context + 25) =            location; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 26) = (uint64_t) partner; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 23) = (uint64_t) partner; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -7943,26 +7930,6 @@ uint64_t find_merge_location(uint64_t beq_imm) {
       merge_location = pc + INSTRUCTIONSIZE;
   }
 
-  // we need to check if we are inside of a recursion before we reach the merge location
-  while (pc != merge_location) {
-    fetch();
-    decode();
-
-    if (is == JAL)
-      // if we are inside of a (arbitrarily deep nested) recursion,
-      // we merge only after the entire recursion has been finished (i.e. the program
-      // has reached a program location which is not part of any recursion)
-      if (currently_in_this_procedure(pc + imm, current_context)) {
-        if (get_in_recursion(current_context) == 0)
-          set_outside_rec_loc(current_context, get_merge_location_from_corresponding_prologue_start(pc + imm, current_context));
-
-        merge_location = get_outside_rec_loc(current_context);
-        set_in_recursion(current_context, 1);
-      }
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
-
   // restore the original program state
   pc = original_pc;
   fetch();
@@ -8017,47 +7984,6 @@ uint64_t* get_waiting_context() {
   return (uint64_t*) *(head + 1);
 }
 
-void add_prologue_start_and_corresponding_merge_location(uint64_t prologue_start, uint64_t merge_location, uint64_t* context) {
-  uint64_t* entry;
-
-  entry = get_prologues(context);
-
-  // do not add duplicates
-  while (entry) {
-    if (*(entry + 1) == prologue_start)
-      return;
-
-    entry = (uint64_t*) *(entry + 0);
-  }
-
-  entry = smalloc(3 * SIZEOFUINT64STAR);
-
-  *(entry + 0) = (uint64_t) get_prologues(context);
-  *(entry + 1) = (uint64_t) prologue_start;
-  *(entry + 2) = (uint64_t) merge_location;
-
-  set_prologues(context, entry);
-}
-
-uint64_t get_merge_location_from_corresponding_prologue_start(uint64_t prologue_start, uint64_t* context) {
-  uint64_t* entry;
-
-  entry = get_prologues(context);
-
-  while (entry) {
-    if (*(entry + 1) == prologue_start)
-      return (uint64_t) *(entry + 2);
-
-    entry = (uint64_t*) *(entry + 0);
-  }
-
-  return -1;
-}
-
-uint64_t currently_in_this_procedure(uint64_t prologue_start, uint64_t* context) {
-  return (get_merge_location_from_corresponding_prologue_start(prologue_start, context) != (uint64_t) -1);
-}
-
 void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location) {
   // do not merge if merging is disabled
   if (merge_enabled == 0) {
@@ -8072,11 +7998,6 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   print("; merging two contexts at ");
   print_code_context_for_instruction(location);
   println();
-
-  if (get_prologues(active_context) != (uint64_t*) 0)
-    if (get_pc(active_context) == *(get_prologues(active_context) + 2))
-      // we have finished the recursion (i.e. the program has reached a program location which is not part of any recursion)
-      set_in_recursion(active_context, 0);
 
   // merging the symbolic store
   merge_symbolic_memory_and_registers(active_context, mergeable_context);
@@ -8850,11 +8771,6 @@ void execute_debug() {
 }
 
 void execute_symbolically() {
-  uint64_t prologue_start;
-  uint64_t corresponding_merge_location;
-  uint64_t pc_before_jal;
-  uint64_t jal_rd;
-
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI) {
     constrain_addi();
@@ -8884,23 +8800,9 @@ void execute_symbolically() {
     do_sltu();
   } else if (is == BEQ)
     constrain_beq();
-  else if (is == JAL) {
-    pc_before_jal = pc;
-    jal_rd = rd;
-
+  else if (is == JAL)
     do_jal();
-    // note: this is a dependency on the selfie compiler
-    // the selfie compiler uses jal with the RA register to call a procedure
-    if (jal_rd == REG_RA)
-      // if we are already in a recursion, we do not add a new merge location since we only merge when the
-      // recursion is finished (i.e. the program has reached a program location which is not part of any recursion)
-      if (get_in_recursion(current_context) == 0) {
-        corresponding_merge_location = pc_before_jal + INSTRUCTIONSIZE;
-        prologue_start = pc;
-        add_prologue_start_and_corresponding_merge_location(prologue_start, corresponding_merge_location, current_context);
-      }
-
-  } else if (is == JALR) {
+  else if (is == JALR) {
     constrain_jalr();
     do_jalr();
   } else if (is == LUI) {
@@ -8929,12 +8831,6 @@ void interrupt() {
   }
 
   if (symbolic) {
-    if (get_in_recursion(current_context) == 0)
-      if (get_prologues(current_context) != (uint64_t*) 0)
-        if (pc == *(get_prologues(current_context) + 2))
-          // pop prologue off the stack if we have finished the procedure
-          set_prologues(current_context, (uint64_t*) *(get_prologues(current_context) + 0));
-
     if (current_mergeable_context != (uint64_t*) 0)
       // if both contexts are at the same program location, they can be merged
       if (pc == get_pc(current_mergeable_context))
@@ -9113,9 +9009,6 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
     set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
     set_beq_counter(context, 0);
     set_merge_location(context, -1);
-    set_prologues(context, (uint64_t*) 0);
-    set_in_recursion(context, 0);
-    set_outside_rec_loc(context, 0);
     set_merge_partner(context, (uint64_t*) 0);
   }
 }
@@ -9176,10 +9069,6 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   set_symbolic_memory(original, begin_of_shared_symbolic_memory);
 
   symbolic_memory = get_symbolic_memory(original);
-
-  set_prologues(context, get_prologues(original));
-  set_in_recursion(context, get_in_recursion(original));
-  set_outside_rec_loc(context, get_outside_rec_loc(original));
 
   set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
