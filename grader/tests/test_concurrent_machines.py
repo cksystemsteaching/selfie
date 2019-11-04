@@ -4,7 +4,7 @@ import sys
 import os
 
 from self import main, assignments, name, test, directory
-from lib.runner import insert_home_path
+from lib.runner import insert_assignment_path
 from tests.utils import CaptureOutput, compile_with_gcc, run_compilable_assignments
 
 
@@ -17,12 +17,12 @@ class TestConcurrentMachines(unittest.TestCase):
         os.chdir("grader")
 
     def insert_assignment_stub(self, command):
-        return insert_home_path(command) \
+        return insert_assignment_path(command) \
             .replace(' -x ', ' -m ') \
             .replace(' -z ', ' -m ') \
-            .replace('grader/grader/assignments/', 'grader/tests/assignment_stubs/')
+            .replace('assignments/', 'grader/tests/assignment_stubs/')
 
-    @patch('lib.runner.insert_home_path')
+    @patch('lib.runner.insert_assignment_path')
     def test_concurrent_machines(self, mock):
         mock.side_effect = self.insert_assignment_stub
 

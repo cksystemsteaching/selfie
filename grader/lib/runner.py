@@ -2,8 +2,7 @@ import os
 import re
 import shlex
 import sys
-
-import lib.cli as cli
+from pathlib import Path
 
 from .grade import record_result
 from .output_processing import (filter_status_messages, has_compiled,
@@ -19,8 +18,15 @@ if sys.version_info < (3, 3):
 else:
     from subprocess import Popen, TimeoutExpired, PIPE
 
-home_path = os.path.abspath(os.getcwd())
+assignment_name = ''
 
+def set_assignment_name(name):
+    global assignment_name
+    assignment_name = name
+
+def set_home_path(path):
+    global home_path
+    home_path = path
 
 class TimeoutException(Exception):
     def __init__(self, command, timeout, output, error_output):
@@ -31,8 +37,37 @@ class TimeoutException(Exception):
         self.error_output = error_output
 
 
-def insert_home_path(command):
-    return re.sub(r'(grader/([^\s]*))', r'"' + home_path + r'/grader/assignments/' + cli.assignment_path + r'/\2"', command)
+def insert_assignment_path(command):
+    matches = re.finditer(r'<assignment>([^\s]+)', command)
+
+    if matches is None: return command
+
+    result = [ ]
+    idx = 0
+
+    working_dir_path = Path.cwd()
+
+    assignment_path = home_path / 'assignments' / assignment_name
+
+    # try to build a relative path from the current working directory
+    # to the grading script location
+    try:
+        assignment_path = assignment_path.relative_to(working_dir_path)
+    except ValueError:
+        # assignment_path is not a sub directory of working_dir_path
+        pass # assignment path has to be a absolute path
+
+    for match in matches:
+        file = match.group(1)
+
+        result.append(command[idx:match.start()])
+        result.append('"' + str(assignment_path / file) + '"')
+
+        idx = match.end()
+
+    result.append(command[idx:len(command)])
+
+    return ''.join(result)
 
 
 def set_up():
@@ -41,8 +76,6 @@ def set_up():
 
 
 def execute(command, timeout=60):
-    command = insert_home_path(command)
-
     process = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
 
     timedout = False
@@ -72,7 +105,8 @@ def test_instruction_encoding(instruction, file):
 
     print_processing(msg)
 
-    command = './selfie -c grader/{} -o .tmp.bin'.format(file)
+    command = './selfie -c <assignment>{} -o .tmp.bin'.format(file)
+    command = insert_assignment_path(command)
 
     try:
         exit_code, output, _ = execute(command)
@@ -134,7 +168,8 @@ def test_assembler_instruction_format(instruction, file):
 
     print_processing(msg)
 
-    command = './selfie -c grader/{} -s .tmp.s'.format(file)
+    command = './selfie -c <assignment>{} -s .tmp.s'.format(file)
+    command = insert_assignment_path(command)
 
     try:
         exit_code, output, _ = execute(command)
@@ -171,6 +206,8 @@ def test_assembler_instruction_format(instruction, file):
 
 def test_execution(command, msg, success_criteria=True, should_succeed=True, mandatory=False):
     print_processing(msg)
+
+    command = insert_assignment_path(command)
 
     try:
         returncode, output, error_output = execute(command)
@@ -216,7 +253,7 @@ def test_execution(command, msg, success_criteria=True, should_succeed=True, man
 
 
 def test_compilable(file, msg, should_succeed=True):
-    test_execution('./selfie -c grader/{}'.format(file), msg, success_criteria=lambda code,
+    test_execution('./selfie -c <assignment>{}'.format(file), msg, success_criteria=lambda code,
                    out: has_compiled(code, out), should_succeed=should_succeed)
 
 
@@ -226,12 +263,12 @@ def test_riscv_instruction(instruction, file):
 
 
 def test_mipster_execution(file, result, msg):
-    test_execution('./selfie -c grader/{} -m 128'.format(file),
+    test_execution('./selfie -c <assignment>{} -m 128'.format(file),
                    msg, success_criteria=result)
 
 
 def test_hypster_execution(file, result, msg):
-    test_execution('./selfie -c selfie.c -m 128 -c grader/{} -y 64'.format(file),
+    test_execution('./selfie -c selfie.c -m 128 -c <assignment>{} -y 64'.format(file),
                    msg, success_criteria=result)
 
 

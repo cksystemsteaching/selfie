@@ -3,29 +3,30 @@ import sys
 import os
 from os import system
 from time import time
+from pathlib import Path
 from unittest.mock import patch
 
 from self import test_self_compilation
-from lib.runner import execute, TimeoutException
-from tests.utils import Console, for_all_test_results
+from lib.runner import execute, TimeoutException, set_home_path
+from tests.utils import CaptureOutput, for_all_test_results
 
 class TestExecutionTimeout(unittest.TestCase):
 
+    def setUp(self):
+        os.chdir('..')
+
+    def tearDown(self):
+        os.chdir('grader')
+
     @classmethod
     def setUpClass(self):
-        system('make selfie >/dev/null 2>&1')
+        system('cd .. && make selfie >/dev/null 2>&1')
 
-    def insert_home_path_mock(self, command):
-        return command
-
-    @patch('lib.runner.insert_home_path')
-    def test_timeout(self, mock):
-        mock.side_effect = self.insert_home_path_mock
-
+    def test_timeout(self):
         start = time()
 
         self.assertRaises(TimeoutException, execute,
-                          '../selfie -c tests/sleep-forever.c -m 10', 3)
+                        './selfie -c grader/tests/sleep-forever.c -m 10', 3)
 
         self.assertLess(time() - start, 4)
 
@@ -39,10 +40,12 @@ class TestExecutionTimeout(unittest.TestCase):
     def test_result_of_timed_out_test(self, mock):
         mock.side_effect = self.execute_mock
 
-        with Console() as console:
+        set_home_path(Path('..'))
+
+        with CaptureOutput() as capture:
             test_self_compilation()
 
-            output = console.get_output()
+            output = capture.get_output()
 
         for_all_test_results(output, self.check_output)
 

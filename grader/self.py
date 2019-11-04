@@ -14,8 +14,9 @@ This is the automatic grader of the selfie project.
 Students may use the grader for self-grading their solutions.
 """
 
+import sys
 from lib.cli import process_arguments
-from lib.output_processing import *
+from lib.output_processing import is_interleaved_output, is_permutation_of, contains_name
 from lib.runner import (test_assembler_instruction_format, test_compilable,
                         test_compile_warnings, test_execution,
                         test_hypster_execution, test_interleaved_output,
@@ -186,11 +187,11 @@ def test_struct_execution():
 def test_assembler_parser():
     test_execution('./selfie -c selfie.c -s selfie.s -a selfie.s',
                    'selfie can parse its own implementation in assembly')
-    test_execution('./selfie -a grader/missing-address.s',
+    test_execution('./selfie -a <assignment>missing-address.s',
                    'assembly file with a missing address is not parseable', success_criteria=False)
-    test_execution('./selfie -a grader/missing-instruction.s',
+    test_execution('./selfie -a <assignment>missing-instruction.s',
                    'assembly file with a missing instruction is not parseable', success_criteria=False)
-    test_execution('./selfie -a grader/missing-literal.s',
+    test_execution('./selfie -a <assignment>missing-literal.s',
                    'assembly file with a missing literal is not parseable', success_criteria=False)
 
 
@@ -202,56 +203,56 @@ def test_self_assemblation():
 
 
 def test_concurrent_machines():
-    test_interleaved_output('./selfie -c grader/hello-world.c -x 10', 'Hello World!    ', 10,
+    test_interleaved_output('./selfie -c <assignment>hello-world.c -x 10', 'Hello World!    ', 10,
                             '10 Mipster machines are running concurrently')
-    test_interleaved_output('./selfie -c selfie.c -m 128 -c grader/hello-world.c -z 10', 'Hello World!    ', 10,
+    test_interleaved_output('./selfie -c selfie.c -m 128 -c <assignment>hello-world.c -z 10', 'Hello World!    ', 10,
                             '10 Hypster machines are running concurrently')
 
 
 def test_fork_and_wait():
-    test_execution('./selfie -c grader/syscalls.c -m 128',
+    test_execution('./selfie -c <assignment>syscalls.c -m 128',
                    'fork creates a child process, where the parent can wait for the child process with MIPSTER', success_criteria=70)
-    test_execution('./selfie -c selfie.c -m 128 -c grader/syscalls.c -y 64',
+    test_execution('./selfie -c selfie.c -m 128 -c <assignment>syscalls.c -y 64',
                    'fork creates a child process, where the parent can wait for the child process with HYPSTER', success_criteria=70)
 
 
 def test_lock():
-    test_execution('./selfie -c grader/print-without-lock.c -m 128',
+    test_execution('./selfie -c <assignment>print-without-lock.c -m 128',
                    '16 processes are running concurrently on MIPSTER',
                    success_criteria=lambda code, out: is_interleaved_output(out, 'Hello World!    ', 8))
-    test_execution('./selfie -c selfie.c -m 128 -c grader/print-without-lock.c -y 10',
+    test_execution('./selfie -c selfie.c -m 128 -c <assignment>print-without-lock.c -y 10',
                    '16 processes are running concurrently on HYPSTER',
                    success_criteria=lambda code, out: is_interleaved_output(out, 'Hello World!    ', 8))
-    test_execution('./selfie -c grader/print-with-lock.c -m 128',
+    test_execution('./selfie -c <assignment>print-with-lock.c -m 128',
                    '16 processes are printing in sequential order with the use of locks on MIPSTER',
                    success_criteria='Hello World!    ' * 8)
-    test_execution('./selfie -c selfie.c -m 128 -c grader/print-with-lock.c -y 10',
+    test_execution('./selfie -c selfie.c -m 128 -c <assignment>print-with-lock.c -y 10',
                    '16 processes are printing in sequential order with the use of locks on HYPSTER',
                    success_criteria='Hello World!    ' * 8)
 
 
 def test_thread():
-    test_execution('./selfie -c grader/syscalls.c -m 128',
+    test_execution('./selfie -c <assignment>syscalls.c -m 128',
                    'creates a thread, where the parent can join the thread with MIPSTER', success_criteria=70)
-    test_execution('./selfie -c selfie.c -m 128 -c grader/syscalls.c -y 64',
+    test_execution('./selfie -c selfie.c -m 128 -c <assignment>syscalls.c -y 64',
                    'creates a thread, where the parent can join the thread with HYPSTER', success_criteria=70)
-    test_mipster_execution('grader/shared-data.c', 42,
+    test_mipster_execution('shared-data.c', 42,
                            'data section is shared for threads on MIPSTER')
-    test_hypster_execution('grader/shared-data.c', 42,
+    test_hypster_execution('shared-data.c', 42,
                            'data section is shared for threads on HYPSTER')
-    test_mipster_execution('grader/shared-heap.c', 42,
+    test_mipster_execution('shared-heap.c', 42,
                            'heap data is shared for threads on MIPSTER')
-    test_hypster_execution('grader/shared-heap.c', 42,
+    test_hypster_execution('shared-heap.c', 42,
                            'heap data is shared for threads on HYPSTER')
 
 
 def test_treiber_stack():
     test_riscv_instruction(LR_INSTRUCTION, 'load-reserved.c')
     test_riscv_instruction(SC_INSTRUCTION, 'store-conditional.c')
-    test_execution('./selfie -c treiber-stack.c grader/stack-push.c -m 128',
+    test_execution('./selfie -c treiber-stack.c <assignment>stack-push.c -m 128',
                    'all pushed elements are actually in the treiber-stack',
                    success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]))
-    test_execution('./selfie -c treiber-stack.c grader/stack-pop.c -m 128',
+    test_execution('./selfie -c treiber-stack.c <assignment>stack-pop.c -m 128',
                    'all treiber-stack elements can be popped ',
                    success_criteria=lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]))
 
