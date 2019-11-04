@@ -118,8 +118,6 @@ def parse_commit_url(url):
 
 
 def do_bulk_grading(assignment, base_test):
-    enter_quiet_mode()
-
     if not os.path.exists(bulk_grade_directory):
         os.mkdir(bulk_grade_directory)
 
@@ -162,6 +160,7 @@ def do_bulk_grading(assignment, base_test):
                 'git checkout -q {} >/dev/null 2>&1'.format(info['commit']))
 
             if status == 0:
+                print_message('')
                 check_assignment(assignment, base_test)
                 print_message('', loud=True)
             else:
