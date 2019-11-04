@@ -163,7 +163,7 @@ def do_bulk_grading(assignment, base_test):
 
             if status == 0:
                 check_assignment(assignment, base_test)
-                print_message('')
+                print_message('', loud=True)
             else:
                 print_message(
                     'commit hash "{}" is not valid'.format(info['commit']))
