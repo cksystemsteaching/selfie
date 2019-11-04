@@ -129,6 +129,8 @@ def stop_processing_spinner():
 
 quiet_mode = False
 
+def is_in_quiet_mode():
+    return quiet_mode
 
 def enter_quiet_mode():
     global quiet_mode

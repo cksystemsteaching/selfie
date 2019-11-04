@@ -4,7 +4,7 @@ import sys
 from subprocess import run
 
 from lib.grade import grade
-from lib.print import (enter_quiet_mode, leave_quiet_mode, print_error,
+from lib.print import (is_in_quiet_mode, enter_quiet_mode, leave_quiet_mode, print_error,
                        print_message, print_usage)
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
@@ -63,8 +63,8 @@ def parse_assignment(args, assignments):
 
 
 def validate_options_for(assignment):
-    if bulk_grade_mode and assignment == '':
-        error('please specify a test used for bulk grading')
+    if not bulk_grade_mode and is_in_quiet_mode() and assignment is None:
+        error('please specify a assignment')
 
 
 def check_assignment(assignment, base_test):
@@ -160,9 +160,12 @@ def do_bulk_grading(assignment, base_test):
                 'git checkout -q {} >/dev/null 2>&1'.format(info['commit']))
 
             if status == 0:
-                print_message('')
-                check_assignment(assignment, base_test)
-                print_message('', loud=True)
+                if assignment is None:
+                    print_message('updated', loud=True)
+                else:
+                    print_message('')
+                    check_assignment(assignment, base_test)
+                    print_message('', loud=True)
             else:
                 print_message(
                     'commit hash "{}" is not valid'.format(info['commit']))
