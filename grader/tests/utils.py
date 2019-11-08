@@ -1,7 +1,8 @@
 import sys
-from importlib import reload
+import shlex
 from io import BytesIO, TextIOWrapper
 from os import WEXITSTATUS, listdir, system
+from subprocess import Popen, PIPE
 from os.path import isfile, join
 from unittest.mock import patch
 
@@ -85,16 +86,23 @@ def compile_with_gcc(file):
 
 def compile_with_gcc_and_run(file):
     system('gcc -w -D\'uint64_t=unsigned long long\' ' + file + ' -o .prog')
-    return_value = WEXITSTATUS(system('./.prog'))
+
+    process = Popen(shlex.split('./.prog'), stdout=PIPE, stderr=PIPE)
+
+    stdoutdata, stderrdata = process.communicate()
+
+    output = stdoutdata.decode(sys.stdout.encoding)
+    error_output = stderrdata.decode(sys.stderr.encoding)
+
     system('rm ./.prog')
-    return return_value
+
+    return (process.returncode, output, error_output)
 
 
 not_compilable = [
     'assembler-parser',
     'self-assembler',
     'concurrent-machines',
-    'fork-wait',
     'lock',
     'thread',
     'treiber-stack'
@@ -116,8 +124,6 @@ def run_compilable_assignments(prev=None, after=None):
 
             if after != None:
                 after(output)
-
-        reload(grader)
 
 
 def for_all_test_results(output, function):

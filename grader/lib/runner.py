@@ -262,14 +262,14 @@ def test_riscv_instruction(instruction, file):
     test_assembler_instruction_format(instruction, file)
 
 
-def test_mipster_execution(file, result, msg):
+def test_mipster_execution(file, success_criteria, msg):
     test_execution('./selfie -c <assignment>{} -m 128'.format(file),
-                   msg, success_criteria=result)
+                   msg, success_criteria=success_criteria)
 
 
-def test_hypster_execution(file, result, msg):
+def test_hypster_execution(file, success_criteria, msg):
     test_execution('./selfie -c selfie.c -m 128 -c <assignment>{} -y 64'.format(file),
-                   msg, success_criteria=result)
+                   msg, success_criteria=success_criteria)
 
 
 def test_interleaved_output(command, interleaved_msg, number_of_interleaved, msg):

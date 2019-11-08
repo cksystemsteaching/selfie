@@ -210,10 +210,21 @@ def test_concurrent_machines():
 
 
 def test_fork_and_wait():
-    test_execution('./selfie -c <assignment>syscalls.c -m 128',
-                   'fork creates a child process, where the parent can wait for the child process with MIPSTER', success_criteria=70)
-    test_execution('./selfie -c selfie.c -m 128 -c <assignment>syscalls.c -y 64',
-                   'fork creates a child process, where the parent can wait for the child process with HYPSTER', success_criteria=70)
+    test_compilable('parallel-print.c', 'fork and wait compiled')
+    test_mipster_execution('parallel-print.c',
+                   lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]),
+                   'fork creates a child process, where the parent can wait for the child process with MIPSTER')
+    test_hypster_execution('parallel-print.c',
+                   lambda code, out: is_permutation_of(out, [0, 1, 2, 3, 4, 5, 6, 7]),
+                   'fork creates a child process, where the parent can wait for the child process with HYPSTER')
+
+
+def test_fork_wait_exit():
+    test_compilable('sum-exit-code.c', 'fork and wait compiled')
+    test_mipster_execution('sum-exit-code.c', 28,
+                           'exit code is returned as status parameter from wait with MIPSTER')
+    test_hypster_execution('sum-exit-code.c', 28,
+                           'exit code is returned as status parameter from wait with HYPSTER')
 
 
 def test_lock():
@@ -291,6 +302,7 @@ assignments = [
     ('self-assembler', 'OS', 'assembler', test_self_assemblation),
     ('concurrent-machines', 'OS', 'concurrent-machines', test_concurrent_machines),
     ('fork-wait', 'OS', 'fork-wait', test_fork_and_wait),
+    ('fork-wait-with-status', 'OS', 'fork-wait', test_fork_wait_exit),
     ('lock', 'OS', 'lock', test_lock),
     ('thread', 'OS', 'thread', test_thread),
     ('treiber-stack', 'OS', 'treiber-stack', test_treiber_stack)

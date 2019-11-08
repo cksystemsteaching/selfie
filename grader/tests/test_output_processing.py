@@ -30,12 +30,13 @@ class TestOutputProcessing(TestCase):
             'abcdabcdabcd', 'abcd', 3)[0])
 
     def test_permutation_detection(self):
-        self.assertTrue(is_permutation_of('123', [1, 2, 3]))
-        self.assertTrue(is_permutation_of('312', [1, 2, 3]))
-        self.assertTrue(is_permutation_of('167', [6, 1, 7]))
+        self.assertTrue(is_permutation_of('1 2 3', [1, 2, 3])[0])
+        self.assertTrue(is_permutation_of('3 1 2', [1, 2, 3])[0])
+        self.assertTrue(is_permutation_of('1 6 7', [6, 1, 7])[0])
         self.assertFalse(is_permutation_of('1', [1, 2])[0])
-        self.assertFalse(is_permutation_of('123', [1, 2])[0])
-        self.assertFalse(is_permutation_of('124', [1, 2, 3])[0])
+        self.assertFalse(is_permutation_of('1 2 3', [1, 2])[0])
+        self.assertFalse(is_permutation_of('1 2 4', [1, 2, 3])[0])
+        self.assertTrue(is_permutation_of('1 2 3\n', [1, 2, 3])[0], 'should ignore newlines')
 
 
 
