@@ -1358,6 +1358,7 @@ uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
 uint64_t EXCEPTION_MERGE              = 7;
+uint64_t EXCEPTION_RECURSION          = 8;
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1648,6 +1649,7 @@ uint64_t handle_page_fault(uint64_t* context);
 uint64_t handle_division_by_zero(uint64_t* context);
 uint64_t handle_timer(uint64_t* context);
 uint64_t handle_merge(uint64_t* context);
+uint64_t handle_recursion(uint64_t* context);
 
 uint64_t handle_exception(uint64_t* context);
 
@@ -1676,6 +1678,7 @@ uint64_t* MY_CONTEXT = (uint64_t*) 0;
 uint64_t DONOTEXIT = 0;
 uint64_t EXIT      = 1;
 uint64_t MERGE     = 2;
+uint64_t RECURSION = 3;
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_BADARGUMENTS           = 1;
@@ -7460,12 +7463,14 @@ void constrain_beq() {
     }
 
     pc = pc + INSTRUCTIONSIZE;
+
   } else {
     // if the limit of symbolic beq instructions is reached, the part of the path still continues until it can be merged or has reached its
     // maximal execution depth, respectively, but only by following the true case of the next encountered symbolic beq instructions
-    path_condition = smt_binary("and", pvar, bvar);
+    //path_condition = smt_binary("and", pvar, bvar);
+    throw_exception(EXCEPTION_TIMER, 0);
 
-    pc = pc + imm;
+    //pc = pc + imm;
   }
 }
 
@@ -7993,8 +7998,24 @@ uint64_t* get_waiting_context() {
 }
 
 void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location) {
+  uint64_t callstack_comparison;
+
   // do not merge if merging is disabled
   if (merge_enabled == 0) {
+    if (current_mergeable_context != (uint64_t*) 0) {
+      add_mergeable_context(current_mergeable_context);
+      current_mergeable_context = (uint64_t*) 0;
+    }
+
+    return;
+  }
+
+  callstack_comparison = compare_call_stacks(active_context, mergeable_context);
+
+  if (callstack_comparison == 2) { // mergeable context has longer call stack
+    throw_exception(EXCEPTION_RECURSION, 0);
+    return;
+  } else if (callstack_comparison != 0) { // not equal 
     if (current_mergeable_context != (uint64_t*) 0) {
       add_mergeable_context(current_mergeable_context);
       current_mergeable_context = (uint64_t*) 0;
@@ -8017,13 +8038,15 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   if (get_execution_depth(mergeable_context) > get_execution_depth(active_context))
     set_execution_depth(active_context, get_execution_depth(mergeable_context));
 
+  if (get_beq_counter(mergeable_context) < get_beq_counter(active_context))
+    set_beq_counter(active_context, get_beq_counter(mergeable_context));
+
   current_mergeable_context = get_mergeable_context();
 
   // it may be possible that more contexts can be merged
   if (current_mergeable_context != (uint64_t*) 0)
     if (pc == get_pc(current_mergeable_context))
       merge(active_context, current_mergeable_context, pc);
-
 }
 
 void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context) {
@@ -8417,8 +8440,11 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
 
         if (context) {
           if (get_pc(context) == get_pc(current_mergeable_context)) {
-            pauseable = 0;
-            mergeable = 1;
+            if (compare_call_stacks(context, current_mergeable_context) == 0) {
+              pauseable = 0;
+              mergeable = 1;
+            } else if (compare_call_stacks(context, current_mergeable_context) == 2)
+              throw_exception(EXCEPTION_RECURSION, 0);
           }
           else {
             add_mergeable_context(current_mergeable_context);
@@ -8437,8 +8463,12 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
           current_mergeable_context = get_mergeable_context();
 
         if (current_mergeable_context != (uint64_t*) 0)
-          if (get_pc(context) == get_pc(current_mergeable_context))
-            mergeable = 1;
+          if (get_pc(context) == get_pc(current_mergeable_context)) {
+            if (compare_call_stacks(context, current_mergeable_context) == 0)
+              mergeable = 1;
+            else if (compare_call_stacks(context, current_mergeable_context) == 2)
+              throw_exception(EXCEPTION_RECURSION, 0);
+          }
 
         pauseable = 0;
       }
@@ -9702,6 +9732,12 @@ uint64_t handle_merge(uint64_t* context) {
   return MERGE;
 }
 
+uint64_t handle_recursion(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  return RECURSION;
+}
+
 uint64_t handle_exception(uint64_t* context) {
   uint64_t exception;
 
@@ -9717,6 +9753,8 @@ uint64_t handle_exception(uint64_t* context) {
     return handle_timer(context);
   else if (exception == EXCEPTION_MERGE)
     return handle_merge(context);
+  else if (exception == EXCEPTION_RECURSION)
+    return handle_recursion(context);
   else {
     if (symbolic)
       if (exception == EXCEPTION_INVALIDADDRESS) {
@@ -10047,6 +10085,16 @@ uint64_t monster(uint64_t* to_context) {
         to_context = merge_if_possible_and_get_next_context(get_waiting_context());
 
         timeout = max_execution_depth - get_execution_depth(to_context);
+      } else if (exception == RECURSION) {
+        if (current_mergeable_context != (uint64_t*) 0) {
+          to_context = current_mergeable_context;
+
+          current_mergeable_context = current_context;
+        } else {
+          timeout = timer;
+
+          to_context = from_context;
+        }
       } else {
         timeout = timer;
 
