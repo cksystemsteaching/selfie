@@ -1258,6 +1258,10 @@ void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, u
 void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
 uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
 
+void      push_onto_call_stack(uint64_t* context, uint64_t address);
+uint64_t  pop_off_call_stack(uint64_t* context);
+uint64_t  compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context);
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
@@ -1466,6 +1470,7 @@ void reset_profiler() {
 uint64_t* new_context();
 
 void      init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
+void      copy_call_stack(uint64_t* from_context, uint64_t* to_context);
 uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition);
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
@@ -1502,6 +1507,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 21 | beq counter     | number of executed symbolic beq instructions
 // | 22 | merge location  | program location at which the context can possibly be merged (later)
 // | 23 | merge partner   | pointer to the context from which this context was created
+// | 24 | call stack      | pointer to a list containing the addresses of the procedures on the call stack
 // +----+-----------------+
 
 uint64_t* allocate_context() {
@@ -1509,7 +1515,7 @@ uint64_t* allocate_context() {
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 4 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1555,6 +1561,7 @@ uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context 
 uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 21); }
 uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 22); }
 uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 23); }
+uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 24); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1581,6 +1588,7 @@ void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 20)
 void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 21) =            counter; }
 void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 22) =            location; }
 void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 23) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)        { *(context + 24) = (uint64_t) stack; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -8451,6 +8459,84 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
   return context;
 }
 
+void push_onto_call_stack(uint64_t* context, uint64_t address) {
+  uint64_t* entry;
+
+  entry = smalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+
+  *(entry + 0) = (uint64_t) get_call_stack(context);
+  *(entry + 1) = (uint64_t) address;
+
+  set_call_stack(context, entry);
+}
+
+uint64_t pop_off_call_stack(uint64_t* context) {
+  uint64_t* head;
+
+  if (get_call_stack(context) == (uint64_t*) 0)
+    return 0;
+
+  head = get_call_stack(context);
+  set_call_stack(context, (uint64_t*) *(head + 0));
+
+  return *(head + 1);
+}
+
+// 0, they are equal
+// 1, active_context has longer call stack
+// 2, mergeable_context has longer call stack
+// 3, an entry is different
+uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context) {
+  uint64_t* entry_active;
+  uint64_t* entry_mergeable;
+
+  uint64_t active_context_stack_length;
+  uint64_t mergeable_context_stack_length;
+
+  active_context_stack_length = 0;
+  mergeable_context_stack_length = 0;
+
+  entry_active = get_call_stack(active_context);
+  entry_mergeable = get_call_stack(mergeable_context);
+
+  while(entry_active) {
+    active_context_stack_length = active_context_stack_length + 1;
+    entry_active = (uint64_t*) *(entry_active + 0);
+  }
+
+  while(entry_mergeable) {
+    mergeable_context_stack_length = mergeable_context_stack_length + 1;
+    entry_mergeable = (uint64_t*) *(entry_mergeable + 0);
+  }
+
+  if (mergeable_context_stack_length > active_context_stack_length)
+    return 2;
+  else if (mergeable_context_stack_length < active_context_stack_length)
+    return 1;
+
+  entry_active = get_call_stack(active_context);
+  entry_mergeable = get_call_stack(mergeable_context);
+
+  if (entry_active == (uint64_t*) 0)
+    if (entry_mergeable == (uint64_t*) 0)
+      return 0; // both have no call stack
+
+  while (entry_active) {
+    if (entry_mergeable == (uint64_t*) 0)
+      return 1; // active context has an entry, but mergeable context does not
+
+    if (*(entry_active + 1) != *(entry_mergeable + 1))
+      return 3; // an entry is different
+
+    entry_active = (uint64_t*) *(entry_active + 0);
+    entry_mergeable = (uint64_t*) *(entry_mergeable + 0);
+  }
+
+  if (entry_mergeable == (uint64_t*) 0)
+    return 0; // both stacks have the same length and entries
+  else
+    return 2; // active context has no more entries on the stack, but mergeable context still does
+}
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -8800,9 +8886,18 @@ void execute_symbolically() {
     do_sltu();
   } else if (is == BEQ)
     constrain_beq();
-  else if (is == JAL)
+  else if (is == JAL) {
+    // the JAL instruction is a procedure call, if rd is REG_RA
+    if (rd == REG_RA)
+      // push the procedure at pc + imm onto the callstack of the current context
+      push_onto_call_stack(current_context, pc + imm);
     do_jal();
-  else if (is == JALR) {
+  } else if (is == JALR) {
+    // pop off call stack, when we return from a procedure
+    if (rd == REG_ZR)
+      if (rs1 == REG_RA)
+        if (imm == 0)
+          pop_off_call_stack(current_context);
     constrain_jalr();
     do_jalr();
   } else if (is == LUI) {
@@ -9013,6 +9108,36 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   }
 }
 
+void copy_call_stack(uint64_t* from_context, uint64_t* to_context) {
+  uint64_t* entry;
+  uint64_t* entry_copy;
+  uint64_t* call_stack_copy;
+  uint64_t* previous_entry;
+
+  entry = get_call_stack(from_context);
+
+  entry_copy           = (uint64_t*) 0;
+  call_stack_copy      = (uint64_t*) 0;
+  previous_entry       = (uint64_t*) 0;
+
+  while (entry) {
+    entry_copy = smalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+
+    *(entry_copy + 1) = *(entry + 1);
+
+    if (previous_entry != (uint64_t*) 0)
+      *(previous_entry + 0) = (uint64_t) entry_copy;
+
+    if (call_stack_copy == (uint64_t*) 0)
+      call_stack_copy = entry_copy;
+
+    previous_entry = entry_copy;
+    entry = (uint64_t*) *(entry + 0);
+  }
+
+  set_call_stack(to_context, call_stack_copy);
+}
+
 uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   uint64_t* context;
   uint64_t* begin_of_shared_symbolic_memory;
@@ -9073,6 +9198,8 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
 
   set_merge_partner(context, original);
+
+  copy_call_stack(original, context);
 
   r = 0;
 
