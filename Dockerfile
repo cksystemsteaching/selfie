@@ -111,6 +111,7 @@ RUN apt-get update \
        git \
        libc-dev \
        make \
+       wget \
   && rm -rf /var/lib/apt/lists/*
 
 # get sources from HEAD
