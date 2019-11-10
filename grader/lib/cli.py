@@ -1,15 +1,24 @@
 import os
 import re
 import sys
-from lib.print import print_usage, print_loud, enter_quiet_mode, leave_quiet_mode
+from pathlib import Path
+from subprocess import run
+
 from lib.grade import grade
+from lib.runner import set_home_path, set_assignment_name
+from lib.print import (is_in_quiet_mode, enter_quiet_mode, leave_quiet_mode, print_error,
+                       print_message, print_usage)
 
 DEFAULT_BULK_GRADE_DIRECTORY = os.path.abspath('./.repositories')
 
 bulk_grade_mode = False
 file_with_commit_links = None
 bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
-assignment_path = ''
+
+
+def error(msg):
+    print_error(msg)
+    exit(1)
 
 
 def parse_options(args, option_flags):
@@ -29,12 +38,10 @@ def parse_options(args, option_flags):
                 if len(args) > i:
                     option_flags[index][1](args[i])
                 else:
-                    print('option flag "' + option_flags[index][0] +
+                    error('option flag "' + option_flags[index][0] +
                           '" needs an argument ' + option_flags[index][2])
-                    exit(1)
         else:
-            print('unknown option: ' + args[i])
-            exit(1)
+            error('unknown option: ' + args[i])
 
         i += 1
 
@@ -48,38 +55,30 @@ def parse_assignment(args, assignments):
         return None
 
     if len(args) > 1:
-        print('only 1 assignment allowed')
-        exit(1)
+        error('only 1 assignment allowed')
 
     if args[0] in assignment_names:
         return assignments[assignment_names.index(args[0])]
 
-    print('unknown test: {}'.format(args))
-    exit(1)
+    error('unknown test: {}'.format(args))
 
 
 def validate_options_for(assignment):
-    if bulk_grade_mode and assignment == '':
-        print('please specify a test used for bulk grading')
-    else:
-        return
-
-    exit(1)
+    if not bulk_grade_mode and is_in_quiet_mode() and assignment is None:
+        error('please specify a assignment')
 
 
 def check_assignment(assignment, base_test):
-    global assignment_path
-
     if assignment[3] != base_test:
         base_test(mandatory=True)
 
-    assignment_path = assignment[2]
+    set_assignment_name(assignment[2])
 
-    print('executing test \'{}\''.format(assignment[0]))
+    print_message('executing test \'{}\''.format(assignment[0]))
 
     assignment[3]()
 
-    assignment_path = ''
+    set_assignment_name('')
 
     grade()
 
@@ -88,12 +87,10 @@ def enable_bulk_grader(file):
     global bulk_grade_mode, file_with_commit_links
 
     if not os.path.exists(file):
-        print('the file "' + file + '" does not exist')
-        exit(1)
+        error('the file "' + file + '" does not exist')
 
     if not os.path.isfile(file):
-        print('the path "' + file + '" is not a file')
-        exit(1)
+        error('the path "' + file + '" is not a file')
 
     bulk_grade_mode = True
     file_with_commit_links = os.path.abspath(file)
@@ -105,9 +102,21 @@ def set_bulk_grade_directory(directory):
     bulk_grade_directory = os.path.abspath(directory)
 
 
-def do_bulk_grading(assignment, base_test):
-    enter_quiet_mode()
+def parse_commit_url(url):
+    matcher = re.match(
+        '^https://github.com/([^/]+)/([^/]+)/commit/([0-9a-f]+)$', url)
 
+    if matcher is None:
+        return None
+    else:
+        return {
+            'user': matcher.group(1),
+            'repo': matcher.group(2),
+            'commit': matcher.group(3)
+        }
+
+
+def do_bulk_grading(assignment, base_test):
     if not os.path.exists(bulk_grade_directory):
         os.mkdir(bulk_grade_directory)
 
@@ -117,38 +126,48 @@ def do_bulk_grading(assignment, base_test):
 
     with open(file_with_commit_links, 'rt') as file:
         for line in file.readlines():
-            matcher = re.match(
-                '^https://github.com/([^/]+)/([^/]+)/commit/([0-9a-f]+)$', line)
+            info = parse_commit_url(line)
 
-            if matcher is None:
-                print('the link "' + line + '" is not a valid github commit link')
-                exit(1)
+            if info is None:
+                print_message(line + '" is not a valid github commit link')
+                continue
 
-            user = matcher.group(1)
-            repo = matcher.group(2)
-            commit = matcher.group(3)
+            repo_id = '{}/{}'.format(info['user'], info['repo'])
 
-            clone_dir = os.path.join(
-                bulk_grade_directory, '{}/{}'.format(user, repo))
+            print_message(repo_id + ': ', end='', loud=True)
+
+            clone_dir = os.path.join(bulk_grade_directory, repo_id)
 
             if not os.path.exists(clone_dir):
-                os.system(
-                    'git clone -q https://github.com/{}/{} {}/{}'.format(user, repo, user, repo))
+                status = os.system(
+                    'git clone -q git@github.com:{} {} >/dev/null 2>&1'.format(repo_id, repo_id))
+
+                if status != 0:
+                    print_message('error when cloning ' + repo_id, loud=True)
+                    continue
 
             os.chdir(clone_dir)
 
             # remove all changes in local repository
-            os.system('git reset --hard -q')
+            os.system('git reset --hard -q >/dev/null 2>&1')
 
             # fetch updates from github repository
-            os.system('git fetch -q')
+            os.system('git fetch -q >/dev/null 2>&1')
 
             # change the local repository state using the commit ID
-            os.system('git checkout -q {}'.format(commit))
+            status = os.system(
+                'git checkout -q {} >/dev/null 2>&1'.format(info['commit']))
 
-            print_loud('{}/{}: '.format(user, repo), end='')
-            check_assignment(assignment, base_test)
-            print_loud('')
+            if status == 0:
+                if assignment is None:
+                    print_message('updated', loud=True)
+                else:
+                    print_message('')
+                    check_assignment(assignment, base_test)
+                    print_message('', loud=True)
+            else:
+                print_message(
+                    'commit hash "{}" is not valid'.format(info['commit']))
 
             os.chdir(bulk_grade_directory)
 
@@ -176,11 +195,27 @@ option_flags = [
 ]
 
 
+def reset_state():
+    global bulk_grade_mode, bulk_grade_directory
+    global file_with_commit_links
+    global print_usage_flag
+
+    bulk_grade_mode = False
+    file_with_commit_links = None
+    bulk_grade_directory = DEFAULT_BULK_GRADE_DIRECTORY
+    set_assignment_name('')
+    print_usage_flag = False
+
+    leave_quiet_mode()
+
+
 def process_arguments(argv, assignments):
     try:
         if len(argv) <= 1:
             print_usage(option_flags, assignments)
             exit()
+
+        set_home_path(Path(os.path.abspath(os.path.dirname(argv[0]))))
 
         args = parse_options(argv[1:], option_flags)
 
@@ -200,4 +235,4 @@ def process_arguments(argv, assignments):
             check_assignment(assignment, base_test)
 
     finally:
-        leave_quiet_mode()
+        reset_state()

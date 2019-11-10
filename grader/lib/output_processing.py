@@ -56,7 +56,7 @@ def is_interleaved_output(output, interleaved_msg, number_of_interleaved):
 
 
 def is_permutation_of(output, numbers):
-    filtered_output = filter_status_messages(output)
+    filtered_output = filter_status_messages(output).strip()
 
     printed_numbers = list(map(lambda x: int(x), filter(
         lambda s: len(s) > 0 and s.isdigit(), filtered_output.split(' '))))

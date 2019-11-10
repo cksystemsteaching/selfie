@@ -8,11 +8,6 @@ from tests.utils import Console, compile_with_gcc, run_compilable_assignments
 
 class TestCompilable(unittest.TestCase):
 
-    def setUp(self):
-        patcher = patch('lib.grade.print_loud')
-        self.addCleanup(patcher.stop)
-        self.mock_foo = patcher.start()
-
     def is_compilable(self, file):
         return not ('invalid' in file or 'missing' in file)
 
