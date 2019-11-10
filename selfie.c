@@ -1292,7 +1292,7 @@ uint64_t DELETED                         = -1; // indicates that a symbolic memo
 uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
 uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the begin of the shared symbolic memory space
 
-uint64_t BEQ_LIMIT                 = 35;  // limit of symbolic beq instructions on each part of the path between two merge locations
+uint64_t BEQ_LIMIT                 = 25;  // limit of symbolic beq instructions on each part of the path between two merge locations
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
