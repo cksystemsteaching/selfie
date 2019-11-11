@@ -1279,7 +1279,8 @@ uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in
 char*    smt_name = (char*) 0; // name of SMT-LIB file
 uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
 
-uint64_t merge_enabled = 0; // enable or disable the merging of paths
+uint64_t merge_enabled  = 0; // enable or disable the merging of paths
+uint64_t debug_merge    = 0; // enable or disable the debugging of merging in monster
 
 uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
 uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
@@ -7413,6 +7414,7 @@ void constrain_beq() {
   char* op2;
   char* bvar;
   char* pvar;
+  uint64_t* waiting_context;
 
   op1 = (char*) *(reg_sym + rs1);
   op2 = (char*) *(reg_sym + rs2);
@@ -7446,8 +7448,16 @@ void constrain_beq() {
     // save symbolic memory so that it is copied correctly afterwards
     set_symbolic_memory(current_context, symbolic_memory);
 
+    waiting_context = copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar));
+
+    if (debug_merge) {
+      print("; a new context was created at ");
+      print_code_context_for_instruction(pc);
+      printf2(" -> active context: %d, waiting context: %d \n", (char*) current_context, (char*) waiting_context);
+    }
+
     // the copied context is executed later and takes the other path
-    add_waiting_context(copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar)));
+    add_waiting_context(waiting_context);
 
     path_condition = smt_binary("and", pvar, smt_unary("not", bvar));
 
@@ -8026,7 +8036,13 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
 
   print("; merging two contexts at ");
   print_code_context_for_instruction(location);
+
+  if (debug_merge)
+    printf2(" -> active context: %d, mergeable context: %d", (char*) active_context, (char*) mergeable_context);
+
   println();
+
+
 
   // merging the symbolic store
   merge_symbolic_memory_and_registers(active_context, mergeable_context);
@@ -8529,43 +8545,78 @@ uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_conte
   entry_active = get_call_stack(active_context);
   entry_mergeable = get_call_stack(mergeable_context);
 
+  if (debug_merge) 
+    printf1("; Call stack of active context (%d):\n", (char*) active_context);
+
   while(entry_active) {
+
+    if (debug_merge) 
+      printf1("; %x\n", (char*) *(entry_active + 1));
+
     active_context_stack_length = active_context_stack_length + 1;
     entry_active = (uint64_t*) *(entry_active + 0);
   }
 
+  if (debug_merge) 
+    printf1("; Call stack of mergeable context (%d):\n", (char*) mergeable_context);
+
   while(entry_mergeable) {
+
+    if (debug_merge) 
+      printf1("; %x\n", (char*) *(entry_mergeable + 1));
+
     mergeable_context_stack_length = mergeable_context_stack_length + 1;
     entry_mergeable = (uint64_t*) *(entry_mergeable + 0);
   }
 
-  if (mergeable_context_stack_length > active_context_stack_length)
+  if (mergeable_context_stack_length > active_context_stack_length) {
+    if (debug_merge)
+      print("; Result of call stack comparison -> 2 (mergeable_context has longer call stack)\n");
     return 2;
-  else if (mergeable_context_stack_length < active_context_stack_length)
+  }
+  else if (mergeable_context_stack_length < active_context_stack_length) {
+    if (debug_merge)
+      print("; Result of call stack comparison -> 1 (active_context has longer call stack)\n");
     return 1;
+  }
 
   entry_active = get_call_stack(active_context);
   entry_mergeable = get_call_stack(mergeable_context);
 
   if (entry_active == (uint64_t*) 0)
-    if (entry_mergeable == (uint64_t*) 0)
+    if (entry_mergeable == (uint64_t*) 0) {
+      if (debug_merge)
+        print("; Result of call stack comparison -> 0 (they are equal)\n");
       return 0; // both have no call stack
+    }
 
   while (entry_active) {
-    if (entry_mergeable == (uint64_t*) 0)
+    if (entry_mergeable == (uint64_t*) 0) {
+      if (debug_merge)
+        print("; Result of call stack comparison -> 1 (active_context has longer call stack)\n");
       return 1; // active context has an entry, but mergeable context does not
+    }
 
-    if (*(entry_active + 1) != *(entry_mergeable + 1))
+    if (*(entry_active + 1) != *(entry_mergeable + 1)) {
+      if (debug_merge)
+        print("; Result of call stack comparison -> 3 (an entry is different)\n");
       return 3; // an entry is different
+    }
 
     entry_active = (uint64_t*) *(entry_active + 0);
     entry_mergeable = (uint64_t*) *(entry_mergeable + 0);
   }
 
-  if (entry_mergeable == (uint64_t*) 0)
+  if (entry_mergeable == (uint64_t*) 0) {
+    if (debug_merge)
+        print("; Result of call stack comparison -> 0 (they are equal)\n");
     return 0; // both stacks have the same length and entries
-  else
+  }
+  else {
+    if (debug_merge)
+        print("; Result of call stack comparison -> 2 (mergeable_context has longer call stack)\n");
     return 2; // active context has no more entries on the stack, but mergeable context still does
+  }
 }
 
 // -----------------------------------------------------------------
@@ -9717,6 +9768,9 @@ uint64_t handle_timer(uint64_t* context) {
   if (symbolic) {
     printf1("; timeout in ", path_condition);
     print_code_context_for_instruction(pc);
+    if (debug_merge) {
+      printf1(" -> timed out context: %d", (char*) context);
+    }
     println();
 
     return EXIT;
@@ -10010,6 +10064,14 @@ uint64_t monster(uint64_t* to_context) {
 
   if (number_of_remaining_arguments() > 1)
     if (string_compare(peek_argument(1), "--merge-enabled")) {
+      merge_enabled = 1;
+
+      get_argument();
+    }
+
+  if (number_of_remaining_arguments() > 1)
+    if (string_compare(peek_argument(1), "--debug-merge")) {
+      debug_merge = 1;
       merge_enabled = 1;
 
       get_argument();
