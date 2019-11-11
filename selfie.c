@@ -6133,6 +6133,9 @@ void implement_exit(uint64_t* context) {
       smt_value(*(registers + REG_A0), (char*) *(reg_sym + REG_A0)));
     print_code_context_for_instruction(pc);
 
+    if (debug_merge)
+      printf1(" -> exiting context: %d", (char*) context);
+
     print("\n(check-sat)\n(get-model)\n(pop 1)\n");
 
     return;
@@ -7453,7 +7456,8 @@ void constrain_beq() {
     if (debug_merge) {
       print("; a new context was created at ");
       print_code_context_for_instruction(pc);
-      printf2(" -> active context: %d, waiting context: %d \n", (char*) current_context, (char*) waiting_context);
+      printf4(" -> active context: %d, waiting context: %d (merge locations: %x, %x)\n", (char*) current_context, (char*) waiting_context, (char*) get_merge_location(current_context), (char*) get_merge_location(waiting_context));
+
     }
 
     // the copied context is executed later and takes the other path
@@ -10044,6 +10048,9 @@ uint64_t monster(uint64_t* to_context) {
   uint64_t* from_context;
   uint64_t  exception;
 
+  if (debug_merge)
+    from_context = (uint64_t*) 0;
+
   print("monster\n");
 
   // use extension ".smt" in name of SMT-LIB file
@@ -10093,6 +10100,10 @@ uint64_t monster(uint64_t* to_context) {
   timeout = max_execution_depth - get_execution_depth(to_context);
 
   while (1) {
+
+    if (debug_merge)
+      printf2("; switching from context %d to context %d\n", (char*) from_context, (char*) to_context);
+
     from_context = mipster_switch(to_context, timeout);
 
     if (get_parent(from_context) != MY_CONTEXT) {
