@@ -8512,7 +8512,7 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
 void push_onto_call_stack(uint64_t* context, uint64_t address) {
   uint64_t* entry;
 
-  entry = smalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+  entry = zalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
 
   *(entry + 0) = (uint64_t) get_call_stack(context);
   *(entry + 1) = (uint64_t) address;
@@ -9206,7 +9206,7 @@ void copy_call_stack(uint64_t* from_context, uint64_t* to_context) {
   previous_entry       = (uint64_t*) 0;
 
   while (entry) {
-    entry_copy = smalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+    entry_copy = zalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
 
     *(entry_copy + 1) = *(entry + 1);
 
