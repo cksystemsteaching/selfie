@@ -6216,7 +6216,7 @@ void implement_read(uint64_t* context) {
         store_symbolic_memory(vbuffer,
           0,
           0,
-          smt_variable("r", bytes_to_read * 8),
+          smt_variable("i", bytes_to_read * 8),
           bytes_to_read * 8);
 
         // save symbolic memory here since context switching has already happened
