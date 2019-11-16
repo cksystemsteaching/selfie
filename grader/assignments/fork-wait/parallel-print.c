@@ -1,5 +1,5 @@
 void* malloc(unsigned long);
-void exit(int);
+void exit(int exit_code);
 uint64_t write(uint64_t fd, uint64_t* buffer, uint64_t bytes_to_write);
 
 uint64_t fork();
