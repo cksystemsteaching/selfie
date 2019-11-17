@@ -7459,10 +7459,8 @@ void constrain_beq() {
     path_condition = smt_binary("and", pvar, smt_unary("not", bvar));
 
     // set the merge location only when merging is enabled
-    if (merge_enabled) {
+    if (merge_enabled)
       set_merge_location(current_context, find_merge_location(imm));
-      set_merge_location(waiting_context, get_merge_location(current_context));
-    }
 
     if (debug_merge) {
       print("; a new context was created at ");
