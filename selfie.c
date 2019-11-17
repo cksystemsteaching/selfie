@@ -8067,7 +8067,8 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   // it may be possible that more contexts can be merged
   if (current_mergeable_context != (uint64_t*) 0)
     if (pc == get_pc(current_mergeable_context))
-      merge(active_context, current_mergeable_context, pc);
+      if (compare_call_stacks(active_context, current_mergeable_context) != 1)
+        merge(active_context, current_mergeable_context, pc);
 }
 
 void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context) {
@@ -8444,7 +8445,10 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
       if (current_mergeable_context != (uint64_t*) 0) {
         if (get_pc(context) == get_pc(current_mergeable_context)) {
           if (merge_enabled)
-            merge(context, current_mergeable_context, get_pc(context));
+            if (compare_call_stacks(context, current_mergeable_context) != 1)
+              merge(context, current_mergeable_context, get_pc(context));
+            else
+              mergeable = 0;
           else
             mergeable = 0;
         } else
@@ -9015,7 +9019,8 @@ void interrupt() {
     if (current_mergeable_context != (uint64_t*) 0)
       // if both contexts are at the same program location, they can be merged
       if (pc == get_pc(current_mergeable_context))
-        merge(current_context, current_mergeable_context, pc);
+        if (compare_call_stacks(current_context, current_mergeable_context) != 1)
+          merge(current_context, current_mergeable_context, pc);
 
     // check if the current context has reached a merge location
     if (pc == get_merge_location(current_context))
