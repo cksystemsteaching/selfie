@@ -8056,8 +8056,6 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
 
   println();
 
-
-
   // merging the symbolic store
   merge_symbolic_memory_and_registers(active_context, mergeable_context);
 
