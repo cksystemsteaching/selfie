@@ -8025,6 +8025,15 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
     return;
   }
 
+  if (active_context == mergeable_context) {
+    current_mergeable_context = get_mergeable_context();
+
+    if (current_mergeable_context != (uint64_t*) 0)
+      if (pc == get_pc(current_mergeable_context))
+        merge(active_context, current_mergeable_context, pc);
+    return;
+  }
+
   callstack_comparison = compare_call_stacks(active_context, mergeable_context);
 
   if (callstack_comparison == 2) { // mergeable context has longer call stack
