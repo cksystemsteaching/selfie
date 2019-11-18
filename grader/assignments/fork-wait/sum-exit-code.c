@@ -1,5 +1,5 @@
 void* malloc(unsigned long);
-void exit(int);
+void exit(int code);
 
 uint64_t fork();
 uint64_t wait(uint64_t* wstatus);
