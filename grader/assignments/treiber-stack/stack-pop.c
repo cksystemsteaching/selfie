@@ -27,7 +27,7 @@ void print_integer(uint64_t i) {
   write(1, c, 2);
 }
 
-int main(int argc, char** argv) { 
+int main(int argc, char** argv) {
   uint64_t pid1;
   uint64_t pid2;
   uint64_t pid3;
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
   push(allocate_id());
   push(allocate_id());
 
-  // 3^2 processes
+  // 2^3 processes
   pid1 = pthread_create();
   pid2 = pthread_create();
   pid3 = pthread_create();
