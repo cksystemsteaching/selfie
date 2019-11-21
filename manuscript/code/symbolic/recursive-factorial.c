@@ -9,10 +9,10 @@ Input == #b00110001 (== 49 == '1')
 */
 
 uint64_t factorial(uint64_t n) {
-  if (n > 1)
-    return n * factorial(n - 1);
-  else
+  if (n <= 1)
     return n;
+  else
+    return n * factorial(n - 1);
 }
 
 uint64_t main() {
