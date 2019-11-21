@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
   uint64_t pid3;
   uint64_t result;
 
-  // 3^2 processes
+  // 2^3 processes
   pid1 = pthread_create();
   pid2 = pthread_create();
   pid3 = pthread_create();
@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     pid1 = 0;
 
   result = sumChilds(pid3, sumChilds(pid2, sumChilds(pid1, 0)));
-  
+
   if (pid1 != 0)
     if (pid2 != 0)
       if (pid3 != 0)
