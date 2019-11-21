@@ -56,22 +56,23 @@ mob: selfie
 
 # Run monster as symbolic execution engine
 smt: selfie
-	./selfie -c manuscript/code/symbolic/division-by-zero.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/invalid-memory-access.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/memory-access.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/nested-if-else.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/nested-if-else-reverse.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/nested-recursion.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/recursive-ackermann.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/recursive-factorial.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/simple-assignment.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/simple-decreasing-loop.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/simple-if-else.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/simple-if-else-reverse.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/simple-if-without-else.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/simple-increasing-loop.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/three-level-nested-loop.c -se 0 --merge-enabled
-	./selfie -c manuscript/code/symbolic/two-level-nested-loop.c -se 0 --merge-enabled
+	./selfie -c manuscript/code/symbolic/division-by-zero.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/invalid-memory-access.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/memory-access.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/nested-if-else.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/nested-if-else-reverse.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/nested-recursion.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/recursive-ackermann.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/recursive-factorial.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/recursive-fibonacci.c -se 0 10 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-assignment.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-decreasing-loop.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-if-else.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-if-else-reverse.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-if-without-else.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/simple-increasing-loop.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/three-level-nested-loop.c -se 0 35 --merge-enabled
+	./selfie -c manuscript/code/symbolic/two-level-nested-loop.c -se 0 35 --merge-enabled
 
 # Run monster as symbolic model generator
 mc: selfie
@@ -118,6 +119,8 @@ boolector: smt
 	[ $$(grep ^sat$$ recursive-ackermann.sat | wc -l) -eq 1 ]
 	boolector manuscript/code/symbolic/recursive-factorial.smt -e 0 > recursive-factorial.sat
 	[ $$(grep ^sat$$ recursive-factorial.sat | wc -l) -eq 1 ]
+	boolector manuscript/code/symbolic/recursive-fibonacci.smt -e 0 > recursive-fibonacci.sat
+	[ $$(grep ^sat$$ recursive-fibonacci.sat | wc -l) -eq 1 ]
 	boolector manuscript/code/symbolic/simple-assignment.smt -e 0 > simple-assignment.sat
 	[ $$(grep ^sat$$ simple-assignment.sat | wc -l) -eq 1 ]
 	boolector manuscript/code/symbolic/simple-decreasing-loop.smt -e 0 > simple-decreasing-loop.sat
