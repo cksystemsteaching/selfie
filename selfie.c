@@ -10080,9 +10080,6 @@ uint64_t monster(uint64_t* to_context) {
   output_name = smt_name;
   output_fd   = smt_fd;
 
-  beq_limit = atoi(peek_argument(1));
-  get_argument();
-
   if (number_of_remaining_arguments() > 1)
     if (string_compare(peek_argument(1), "--merge-enabled")) {
       merge_enabled = 1;
@@ -10254,7 +10251,15 @@ uint64_t selfie_run(uint64_t machine) {
   else {
     init_memory(1);
 
-    max_execution_depth = atoi(peek_argument(0));
+    max_execution_depth = atoi(get_argument());
+
+    if (number_of_remaining_arguments() == 0) {
+      print_usage();
+
+      return EXITCODE_BADARGUMENTS;
+    }
+
+    beq_limit = atoi(peek_argument(0));
   }
 
   boot_loader();
