@@ -1291,7 +1291,7 @@ uint64_t* current_mergeable_context                   = (uint64_t*) 0; // curren
 
 uint64_t DELETED                         = -1; // indicates that a symbolic memory word has been deleted
 uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
-uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the begin of the shared symbolic memory space
+uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the beginning of the shared symbolic memory space
 
 uint64_t beq_limit; // limit of symbolic beq instructions on each part of the path between two merge locations
 
