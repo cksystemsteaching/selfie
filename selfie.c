@@ -7476,15 +7476,9 @@ void constrain_beq() {
     }
 
     pc = pc + INSTRUCTIONSIZE;
-
-  } else {
-    // if the limit of symbolic beq instructions is reached, the part of the path still continues until it can be merged or has reached its
-    // maximal execution depth, respectively, but only by following the true case of the next encountered symbolic beq instructions
-    //path_condition = smt_binary("and", pvar, bvar);
+  } else
+    // terminate context, if the beq_limit is reached
     throw_exception(EXCEPTION_TIMER, 0);
-
-    //pc = pc + imm;
-  }
 }
 
 void print_jal() {
@@ -8037,7 +8031,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   if (callstack_comparison == 2) { // mergeable context has longer call stack
     throw_exception(EXCEPTION_RECURSION, 0);
     return;
-  } else if (callstack_comparison != 0) { // not equal 
+  } else if (callstack_comparison != 0) { // call stacks are not equal
     if (current_mergeable_context != (uint64_t*) 0) {
       add_mergeable_context(current_mergeable_context);
       current_mergeable_context = (uint64_t*) 0;
