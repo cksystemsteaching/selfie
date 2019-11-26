@@ -10,10 +10,64 @@ This book is the result of many years of teaching and working with students and 
 
 ## Information
 
+### Memory
+
+### Numbers
+
+### Characters
+
+### Text
+
+### Images
+
+### Video
+
+### Audio
+
+### Code
+
 ## The Machine
+
+### Processor
+
+### Memory
+
+### Input/Output
+
+### Instructions
 
 ## Programming
 
+### Variable
+
+### Expression
+
+### Assignment
+
+### Conditional
+
+### Loop
+
+### Procedure
+
+### Library
+
+### Apps
+
 ## Tools
 
-### Glossary
+### Translation
+
+### Interpretation
+
+### Semantics
+
+## Virtualization
+
+### Emulation
+
+### Isolation
+
+### The Cloud
+
+## Glossary
