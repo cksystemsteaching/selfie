@@ -149,6 +149,8 @@ char*    string_copy(char* s);
 void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
+char* extract_filename_from_path(char *path);
+
 uint64_t atoi(char* s);
 char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t a);
 
@@ -234,7 +236,7 @@ uint64_t* character_buffer; // buffer for reading and writing characters
 
 char* integer_buffer; // buffer for formatting integers
 
-uint64_t MAX_FILENAME_LENGTH = 128;
+uint64_t MAX_FILENAME_LENGTH = 255; // same as ext4
 
 char* filename_buffer; // buffer for opening files
 
@@ -2168,6 +2170,40 @@ uint64_t string_compare(char* s, char* t) {
       i = i + 1;
     else
       return 0;
+}
+
+char *extract_filename_from_path(char *path) {
+  uint64_t tmp;
+  uint64_t l;
+  char* source;
+  uint64_t current_pos_of_reading;
+  uint64_t current_pos_of_writing;
+
+  l = string_length(path);
+  source = string_alloc(l + 1);
+  // source = (char*) 0;
+
+  current_pos_of_reading = 0;
+  current_pos_of_writing = 0;
+
+  tmp = load_character(path, current_pos_of_reading);
+
+  while (tmp != 0) {
+    if (tmp != CHAR_SLASH) {
+      store_character(source, current_pos_of_writing, tmp);
+      current_pos_of_writing = current_pos_of_writing + 1;
+    } else {
+      *source = (char)0;
+      current_pos_of_writing = 0;
+    }
+
+    current_pos_of_reading = current_pos_of_reading + 1;
+    tmp = load_character(path, current_pos_of_reading);
+  }
+
+  *(source + current_pos_of_writing) = (char)0;
+
+  return source;
 }
 
 uint64_t atoi(char* s) {
@@ -12536,6 +12572,7 @@ uint64_t number_of_remaining_arguments() {
 
 uint64_t* remaining_arguments() {
   return selfie_argv;
+
 }
 
 char* peek_argument(uint64_t lookahead) {
@@ -12547,8 +12584,16 @@ char* peek_argument(uint64_t lookahead) {
 
 char* get_argument() {
   char* argument;
+  char* argument_without_path;
 
   argument = peek_argument(0);
+  argument_without_path = extract_filename_from_path(argument);
+
+  if (string_length(argument_without_path) > MAX_FILENAME_LENGTH) {
+    printf3("%s having %d characters exceeds maximum allowed filename length %d\n", argument_without_path, (char*) string_length(argument_without_path), (char*) MAX_FILENAME_LENGTH);
+
+    exit(EXITCODE_BADARGUMENTS);
+  }
 
   if (number_of_remaining_arguments() > 0) {
     selfie_argc = selfie_argc - 1;
@@ -12627,9 +12672,9 @@ uint64_t selfie() {
 
 // selfie bootstraps int and char** to uint64_t and uint64_t*, respectively!
 int main(int argc, char** argv) {
-  init_selfie((uint64_t) argc, (uint64_t*) argv);
-
   init_library();
+
+  init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   return selfie();
 }
