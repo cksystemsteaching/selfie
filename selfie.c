@@ -149,7 +149,7 @@ char*    string_copy(char* s);
 void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
-char* extract_filename_from_path(char *path);
+char* extract_filename_from_path(char* path);
 
 uint64_t atoi(char* s);
 char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t a);
@@ -2172,7 +2172,7 @@ uint64_t string_compare(char* s, char* t) {
       return 0;
 }
 
-char *extract_filename_from_path(char *path) {
+char* extract_filename_from_path(char* path) {
   uint64_t tmp;
   uint64_t l;
   char* source;
