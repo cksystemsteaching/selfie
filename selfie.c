@@ -2180,8 +2180,7 @@ char *extract_filename_from_path(char *path) {
   uint64_t current_pos_of_writing;
 
   l = string_length(path);
-  source = string_alloc(l + 1);
-  // source = (char*) 0;
+  source = string_alloc(l);
 
   current_pos_of_reading = 0;
   current_pos_of_writing = 0;
