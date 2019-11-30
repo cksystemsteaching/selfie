@@ -1510,6 +1510,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 22 | merge location  | program location at which the context can possibly be merged (later)
 // | 23 | merge partner   | pointer to the context from which this context was created
 // | 24 | call stack      | pointer to a list containing the addresses of the procedures on the call stack
+// | 25 | call stack size | size of callstack
 // +----+-----------------+
 
 uint64_t* allocate_context() {
@@ -1517,7 +1518,7 @@ uint64_t* allocate_context() {
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 4 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1564,6 +1565,7 @@ uint64_t  get_beq_counter(uint64_t* context)     { return             *(context 
 uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 22); }
 uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 23); }
 uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 24); }
+uint64_t  get_call_stack_size(uint64_t* context) { return             *(context + 25); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1583,14 +1585,15 @@ void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 14) 
 void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 15) = (uint64_t) vctxt; }
 void set_name(uint64_t* context, char* name)                  { *(context + 16) = (uint64_t) name; }
 
-void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 17) =            depth; }
-void set_path_condition(uint64_t* context, char* path)         { *(context + 18) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 19) = (uint64_t) memory; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 20) = (uint64_t) regs; }
-void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 21) =            counter; }
-void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 22) =            location; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 23) = (uint64_t) partner; }
-void set_call_stack(uint64_t* context, uint64_t* stack)        { *(context + 24) = (uint64_t) stack; }
+void set_execution_depth(uint64_t* context, uint64_t depth)      { *(context + 17) =            depth; }
+void set_path_condition(uint64_t* context, char* path)           { *(context + 18) = (uint64_t) path; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory)    { *(context + 19) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)        { *(context + 20) = (uint64_t) regs; }
+void set_beq_counter(uint64_t* context, uint64_t counter)        { *(context + 21) =            counter; }
+void set_merge_location(uint64_t* context, uint64_t location)    { *(context + 22) =            location; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)     { *(context + 23) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)          { *(context + 24) = (uint64_t) stack; }
+void set_call_stack_size(uint64_t* context, uint64_t stack_size) { *(context + 25) = stack_size; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -8522,6 +8525,7 @@ void push_onto_call_stack(uint64_t* context, uint64_t address) {
   *(entry + 1) = (uint64_t) address;
 
   set_call_stack(context, entry);
+  set_call_stack_size(context, get_call_stack_size(context) + 1);
 }
 
 uint64_t pop_off_call_stack(uint64_t* context) {
@@ -8532,6 +8536,7 @@ uint64_t pop_off_call_stack(uint64_t* context) {
 
   head = get_call_stack(context);
   set_call_stack(context, (uint64_t*) *(head + 0));
+  set_call_stack_size(context, get_call_stack_size(context) - 1);
 
   return *(head + 1);
 }
@@ -9195,6 +9200,8 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
     set_beq_counter(context, 0);
     set_merge_location(context, -1);
     set_merge_partner(context, (uint64_t*) 0);
+    set_call_stack(context, (uint64_t*) 0);
+    set_call_stack_size(context, 0);
   }
 }
 
