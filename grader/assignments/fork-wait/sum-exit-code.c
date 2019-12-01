@@ -19,12 +19,6 @@ uint64_t i_am_parent(uint64_t depth) {
   return *(pids + depth) != 0;
 }
 
-// computes the exit code from the status value
-// exit code is in the least significant bits from 8 to 16
-uint64_t wexitstatus(uint64_t status) {
-  return status * 281474976710656 / 72057594037927936;
-}
-
 uint64_t child(uint64_t depth) { return *(pids + depth); }
 
 // computes the process identity which is given by the execution tree
@@ -66,7 +60,7 @@ uint64_t parallel_sum(uint64_t depth) {
     if (i_am_parent(depth)) {
       wait(status);
 
-      sum = sum + wexitstatus(*status);
+      sum = sum + *status;
 
       return sum;
     } else
