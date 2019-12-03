@@ -1258,8 +1258,11 @@ void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, u
 void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
 uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
 
-void      push_onto_call_stack(uint64_t* context, uint64_t address);
-uint64_t  pop_off_call_stack(uint64_t* context);
+uint64_t* allocate_node();
+void      add_child(uint64_t* parent, uint64_t* child);
+void      step_into_call(uint64_t* context, uint64_t address);
+void      step_out_of_call(uint64_t* context);
+
 uint64_t  compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
@@ -1286,6 +1289,8 @@ uint64_t* mergeable_contexts = (uint64_t*) 0; // contexts that have reached thei
 uint64_t* waiting_contexts   = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
 
 uint64_t* current_mergeable_context = (uint64_t*) 0; // current context with which the active context can possibly be merged
+
+uint64_t* call_stack_tree = (uint64_t*) 0; // tree representing the program structure (each node represents a procedure call)
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1472,7 +1477,6 @@ void reset_profiler() {
 uint64_t* new_context();
 
 void      init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt);
-void      copy_call_stack(uint64_t* from_context, uint64_t* to_context);
 uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition);
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt);
@@ -1509,8 +1513,7 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 21 | beq counter     | number of executed symbolic beq instructions
 // | 22 | merge location  | program location at which the context can possibly be merged (later)
 // | 23 | merge partner   | pointer to the context from which this context was created
-// | 24 | call stack      | pointer to a list containing the addresses of the procedures on the call stack
-// | 25 | call stack size | size of callstack
+// | 24 | call stack      | pointer to the corresponding node in the call stack tree
 // +----+-----------------+
 
 uint64_t* allocate_context() {
@@ -1518,7 +1521,7 @@ uint64_t* allocate_context() {
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 4 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1565,7 +1568,6 @@ uint64_t  get_beq_counter(uint64_t* context)     { return             *(context 
 uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 22); }
 uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 23); }
 uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 24); }
-uint64_t  get_call_stack_size(uint64_t* context) { return             *(context + 25); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1593,7 +1595,6 @@ void set_beq_counter(uint64_t* context, uint64_t counter)        { *(context + 2
 void set_merge_location(uint64_t* context, uint64_t location)    { *(context + 22) =            location; }
 void set_merge_partner(uint64_t* context, uint64_t* partner)     { *(context + 23) = (uint64_t) partner; }
 void set_call_stack(uint64_t* context, uint64_t* stack)          { *(context + 24) = (uint64_t) stack; }
-void set_call_stack_size(uint64_t* context, uint64_t stack_size) { *(context + 25) = stack_size; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -8516,29 +8517,77 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
   return context;
 }
 
-void push_onto_call_stack(uint64_t* context, uint64_t address) {
-  uint64_t* entry;
+// node struct of the call stack tree:
+// +---+----------+
+// | 0 | parent   | pointer to parent node
+// | 1 | children | pointer to list of children
+// | 2 | sibling  | pointer to next sibling node
+// | 3 | address  | address of the method call
+// | 4 | depth    | size of the call stack represented by the given node
+// +---+----------+
 
-  entry = zalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
-
-  *(entry + 0) = (uint64_t) get_call_stack(context);
-  *(entry + 1) = (uint64_t) address;
-
-  set_call_stack(context, entry);
-  set_call_stack_size(context, get_call_stack_size(context) + 1);
+uint64_t* allocate_node() {
+  return zalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
 }
 
-uint64_t pop_off_call_stack(uint64_t* context) {
+void add_child(uint64_t* parent, uint64_t* child) {
   uint64_t* head;
 
-  if (get_call_stack(context) == (uint64_t*) 0)
-    return 0;
+  head = (uint64_t*) *(parent + 1);
 
-  head = get_call_stack(context);
-  set_call_stack(context, (uint64_t*) *(head + 0));
-  set_call_stack_size(context, get_call_stack_size(context) - 1);
+  // insert child at the beginning of the list of children
+  *(parent + 1) = (uint64_t) child;
+  *(child + 2) = (uint64_t) head;
 
-  return *(head + 1);
+  // set parent of child
+  *(child + 0) = (uint64_t) parent;
+}
+
+void step_into_call(uint64_t* context, uint64_t address) {
+  uint64_t* node;
+  uint64_t* child;
+
+  if (call_stack_tree == (uint64_t*) 0) {
+    // create root node
+    call_stack_tree = allocate_node();
+
+    *(call_stack_tree + 3) = address;
+    *(call_stack_tree + 4) = 1;
+
+    set_call_stack(context, call_stack_tree);
+  } else {
+    // assert: call stack of the context is not null
+    node = get_call_stack(context);
+    child = (uint64_t*) *(node + 1);
+
+    while (child) {
+      // corresponding node already exists
+      if (*(child + 3) == address) {
+        set_call_stack(context, child);
+        return;
+      }
+      child = (uint64_t*) *(child + 2);
+    }
+
+    // no corresponding node exists, therefore we need to create one
+    child = allocate_node();
+
+    // set address of method call
+    *(child + 3) = address;
+
+    // increase depth
+    *(child + 4) = *(node + 4) + 1;
+
+    add_child(node, child);
+
+    set_call_stack(context, child);
+  }
+}
+
+void step_out_of_call(uint64_t* context) {
+  if (get_call_stack(context))
+    // return to parent level
+    set_call_stack(context, (uint64_t*) *(get_call_stack(context) + 0));
 }
 
 // 0, they are equal
@@ -8546,90 +8595,14 @@ uint64_t pop_off_call_stack(uint64_t* context) {
 // 2, mergeable_context has longer call stack
 // 3, an entry is different
 uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context) {
-  uint64_t* entry_active;
-  uint64_t* entry_mergeable;
-
-  uint64_t active_context_stack_length;
-  uint64_t mergeable_context_stack_length;
-
-  active_context_stack_length = 0;
-  mergeable_context_stack_length = 0;
-
-  entry_active = get_call_stack(active_context);
-  entry_mergeable = get_call_stack(mergeable_context);
-
-  if (debug_merge) 
-    printf1("; Call stack of active context (%d):\n", (char*) active_context);
-
-  while(entry_active) {
-
-    if (debug_merge) 
-      printf1("; %x\n", (char*) *(entry_active + 1));
-
-    active_context_stack_length = active_context_stack_length + 1;
-    entry_active = (uint64_t*) *(entry_active + 0);
-  }
-
-  if (debug_merge) 
-    printf1("; Call stack of mergeable context (%d):\n", (char*) mergeable_context);
-
-  while(entry_mergeable) {
-
-    if (debug_merge) 
-      printf1("; %x\n", (char*) *(entry_mergeable + 1));
-
-    mergeable_context_stack_length = mergeable_context_stack_length + 1;
-    entry_mergeable = (uint64_t*) *(entry_mergeable + 0);
-  }
-
-  if (mergeable_context_stack_length > active_context_stack_length) {
-    if (debug_merge)
-      print("; Result of call stack comparison -> 2 (mergeable_context has longer call stack)\n");
-    return 2;
-  }
-  else if (mergeable_context_stack_length < active_context_stack_length) {
-    if (debug_merge)
-      print("; Result of call stack comparison -> 1 (active_context has longer call stack)\n");
+  if (*(get_call_stack(active_context) + 4) > *(get_call_stack(mergeable_context) + 4))
     return 1;
-  }
-
-  entry_active = get_call_stack(active_context);
-  entry_mergeable = get_call_stack(mergeable_context);
-
-  if (entry_active == (uint64_t*) 0)
-    if (entry_mergeable == (uint64_t*) 0) {
-      if (debug_merge)
-        print("; Result of call stack comparison -> 0 (they are equal)\n");
-      return 0; // both have no call stack
-    }
-
-  while (entry_active) {
-    if (entry_mergeable == (uint64_t*) 0) {
-      if (debug_merge)
-        print("; Result of call stack comparison -> 1 (active_context has longer call stack)\n");
-      return 1; // active context has an entry, but mergeable context does not
-    }
-
-    if (*(entry_active + 1) != *(entry_mergeable + 1)) {
-      if (debug_merge)
-        print("; Result of call stack comparison -> 3 (an entry is different)\n");
-      return 3; // an entry is different
-    }
-
-    entry_active = (uint64_t*) *(entry_active + 0);
-    entry_mergeable = (uint64_t*) *(entry_mergeable + 0);
-  }
-
-  if (entry_mergeable == (uint64_t*) 0) {
-    if (debug_merge)
-        print("; Result of call stack comparison -> 0 (they are equal)\n");
-    return 0; // both stacks have the same length and entries
-  }
-  else {
-    if (debug_merge)
-        print("; Result of call stack comparison -> 2 (mergeable_context has longer call stack)\n");
-    return 2; // active context has no more entries on the stack, but mergeable context still does
-  }
+  else if (*(get_call_stack(active_context) + 4) < *(get_call_stack(mergeable_context) + 4))
+    return 2;
+  else if (get_call_stack(active_context) != get_call_stack(mergeable_context))
+    return 3;
+  else
+    return 0;
 }
 
 // -----------------------------------------------------------------
@@ -8984,14 +8957,14 @@ void execute_symbolically() {
     // the JAL instruction is a procedure call, if rd is REG_RA
     if (rd == REG_RA)
       // push the procedure at pc + imm onto the callstack of the current context
-      push_onto_call_stack(current_context, pc + imm);
+      step_into_call(current_context, pc + imm);
     do_jal();
   } else if (is == JALR) {
     // pop off call stack, when we return from a procedure
     if (rd == REG_ZR)
       if (rs1 == REG_RA)
         if (imm == 0)
-          pop_off_call_stack(current_context);
+          step_out_of_call(current_context);
     constrain_jalr();
     do_jalr();
   } else if (is == LUI) {
@@ -9200,39 +9173,8 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
     set_beq_counter(context, 0);
     set_merge_location(context, -1);
     set_merge_partner(context, (uint64_t*) 0);
-    set_call_stack(context, (uint64_t*) 0);
-    set_call_stack_size(context, 0);
+    set_call_stack(context, call_stack_tree);
   }
-}
-
-void copy_call_stack(uint64_t* from_context, uint64_t* to_context) {
-  uint64_t* entry;
-  uint64_t* entry_copy;
-  uint64_t* call_stack_copy;
-  uint64_t* previous_entry;
-
-  entry = get_call_stack(from_context);
-
-  entry_copy           = (uint64_t*) 0;
-  call_stack_copy      = (uint64_t*) 0;
-  previous_entry       = (uint64_t*) 0;
-
-  while (entry) {
-    entry_copy = zalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
-
-    *(entry_copy + 1) = *(entry + 1);
-
-    if (previous_entry != (uint64_t*) 0)
-      *(previous_entry + 0) = (uint64_t) entry_copy;
-
-    if (call_stack_copy == (uint64_t*) 0)
-      call_stack_copy = entry_copy;
-
-    previous_entry = entry_copy;
-    entry = (uint64_t*) *(entry + 0);
-  }
-
-  set_call_stack(to_context, call_stack_copy);
 }
 
 uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
@@ -9296,7 +9238,7 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
 
   set_merge_partner(context, original);
 
-  copy_call_stack(original, context);
+  set_call_stack(context, get_call_stack(original));
 
   r = 0;
 
