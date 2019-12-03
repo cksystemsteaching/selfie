@@ -1282,10 +1282,10 @@ uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
 uint64_t merge_enabled  = 0; // enable or disable the merging of paths
 uint64_t debug_merge    = 0; // enable or disable the debugging of merging in monster
 
-uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
-uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
+uint64_t* mergeable_contexts = (uint64_t*) 0; // contexts that have reached their merge location
+uint64_t* waiting_contexts   = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
 
-uint64_t* current_mergeable_context                   = (uint64_t*) 0; // current context with which the active context can possibly be merged
+uint64_t* current_mergeable_context = (uint64_t*) 0; // current context with which the active context can possibly be merged
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
