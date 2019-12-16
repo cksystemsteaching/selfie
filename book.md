@@ -36,7 +36,7 @@ Readers should be at least 14 years old and planning to obtain or already holdin
 
 Computer science is about the automation of everything. Think of something you would like to do but then not do it yourself but have a machine do it for you. Whether this is always possible is still being debated but not our concern here. Well, we believe that it is always possible but many people and thus companies often underestimate the enormous complexity involved in seemingly simple tasks such as driving a car. The issue is that whatever problem you are trying to solve you first need to *encode* the *information* involved in solving the problem in such a way that a machine can handle it. And then you need to tell the machine every single step of how to *manipulate* that information which is tedious even for extremely simple tasks such as adding two numbers. Finally, you need to *decode* the result back into something a human can experience.
 
-Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a digital computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their bit-encoded form. Finally, the result will be a number but of course encoded in bits. We therefore need to take those bits and decode them back to a human-readable form which is hopefully 92.
+Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a digital computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. In fact, we say we encode them as *binary* number. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their binary form. Finally, the result will be a number but of course encoded in binary. We therefore need to take those bits and decode them back to a more human-readable form which is hopefully 92.
 
 ### Bits
 
@@ -55,6 +55,8 @@ Everything you see the machine does, play a song, play a movie, call someone, se
 The key lesson to be learned here is to accept the fact that computers just store and flip bits. In a computer there is no text, no audio, no video, just bits. The only reason computers are so cool is because they can store incredibly many bits, billions and billions of bits, and they can flip these bits incredibly fast and efficiently, that is, they can flip billions of bits per second with very little power consumption. But still there are so many different states billions of bits can be in that a computer can never explore all possible states. This gives us room for unlimited innovation.
 
 ### Numbers
+
+Let us go back to the example of adding the two decimal numbers 85 and 7.
 
 85 + 7
 
@@ -79,9 +81,9 @@ The key lesson to be learned here is to accept the fact that computers just stor
 
 ### Bytes
 
-### Memory
-
 ### Characters
+
+### Memory
 
 ### Text
 
