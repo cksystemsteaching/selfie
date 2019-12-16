@@ -56,7 +56,9 @@ The key lesson to be learned here is to accept the fact that computers just stor
 
 ### Numbers
 
-Let us go back to the example of adding the two decimal numbers 85 and 7.
+Let us go back to the example of adding the two decimal numbers 85 and 7. Do you remember how to do that by hand? Of course, you do! We go from right to left, digit by digit. First, take the two rightmost digits 5 and 7 and add them. The result is obviously 12. The 2 in 12 is already the rightmost digit of the sum of 85 and 7 which is obviously 92. The more interesting phenomenon here is that the result of adding 5 and 7 needs an extra digit, that is, the 1 in front of the 2. We need to acknowledge that by *carrying* that extra digit to the left and in our example here add it to 8 which is of course 9. And that is the digit to the left of 2 in the sum of 85 and 7. Done!
+
+The reason why we go through this is because a computer does the exact same thing, just with binary numbers. But that only works if we encode our decimal numbers properly in binary. Out of the many different ways of encoding numbers there is only one way that makes addition in binary work the same way it works in decimal. To understand how to do that we need to remind ourselves how decimal notation actually works.
 
 85 + 7
 
