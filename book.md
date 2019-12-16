@@ -56,9 +56,17 @@ The key lesson to be learned here is to accept the fact that computers just stor
 
 ### Numbers
 
-Let us go back to the example of adding the two decimal numbers 85 and 7. Do you remember how to do that by hand? Of course, you do! We go from right to left, digit by digit. First, take the two rightmost digits 5 and 7 and add them. The result is obviously 12. The 2 in 12 is already the rightmost digit of the sum of 85 and 7 which is obviously 92. The more interesting phenomenon here is that the result of adding 5 and 7 needs an extra digit, that is, the 1 in front of the 2. We need to acknowledge that by *carrying* that extra digit to the left and in our example here add it to 8 which is of course 9. And that is the digit to the left of 2 in the sum of 85 and 7. Done!
+Let us go back to the example of adding the two decimal numbers 85 and 7. Do you remember how to do that by hand? Of course, you do! We go from right to left, digit by digit. First, take the two rightmost digits 5 and 7 and add them. The result is obviously 12. The 2 in 12 is already the rightmost digit of the sum of 85 and 7 which is obviously 92. The more interesting phenomenon here is that the result of adding 5 and 7 needs an extra digit, that is, the 1 in front of the 2. We need to acknowledge that by *carrying* that extra digit to the left and, in our example here, add it to 8 which results in 9, of course. And that is the digit to the left of 2 in the sum of 85 and 7. Done!
 
 The reason why we go through this is because a computer does the exact same thing, just with binary numbers. But that only works if we encode our decimal numbers properly in binary. Out of the many different ways of encoding numbers there is only one way that makes addition in binary work the same way it works in decimal. To understand how to do that we need to remind ourselves how decimal notation actually works.
+
+Take 85, for example. The decimal number 85 represents the value **8**\*10+**5**. With an even bigger decimal number, say, 285 you should see how this works in general. It represents the value (**2**\*10+**8**)\*10+**5**. Decimal notation is positional. That means that the value of a digit, say, of 8 in 285 depends on its position relative to the digits to its right, and it depends on the number of different symbols we use per digit which is of course 10 with decimal notation, that is, the 10 different symbols 0, 1, 2, 3, 4, 5, 6, 7, 8, and 9. The number of different symbols per digit is called *base*. So, decimal notation uses base 10.
+
+The only difference between decimal and binary notation is the number of different symbols per digit, that is, the base. With binary notation there are of course just two symbols, say, 0 and 1. Thus the base of binary notation is 2. Calculating the value of a binary number works accordingly. For example, the binary number 111 represents the decimal number 7 because (**1**\*2+**1**)\*2+**1**. The binary number 1010101 represents 85 because (((((**1**\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**. Take a piece of paper and a pen (!) and convert a few other numbers for yourself!
+
+Also, counting in binary is just as easy as in decimal. Remember the sequence of 3-bit states from above, that is, 000, 001, 010, 011, 100, 101, 110, and 111? That sequence corresponds to the binary encoding of the decimal numbers 0, 1, 2, 3, 4, 5, 6, and 7.
+
+Notice that the value of a digit increases as it appears further to the left of other digits. In fact, with binary notation it increases by a factor of 2, that is, by an *order of magnitude*, for each digit to the right of it. Similarly, with decimal notation it increases by a factor of 10. This is genius. The idea is called *hindu-arabic* notation. And the thing that is arabic about it is that the value of numbers written in this way develops from right to left (zeros to the right matter!), rather than all other writing in Western culture which is of course done from left to right.
 
 85 + 7
 
@@ -66,6 +74,12 @@ The reason why we go through this is because a computer does the exact same thin
 0000111
 ——————-
 1011100
+
+Boolean logic
+
+Unary, octal, hexadecimal
+
+### Negative Numbers
 
 85 - 7 = 85 + (100 - 7) - 100 =
 85 + (100 - 1 - 7 + 1) - 100 =
