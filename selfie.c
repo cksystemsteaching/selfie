@@ -10171,9 +10171,9 @@ uint64_t monster(uint64_t* to_context) {
         }
       } else if (exception == SCHEDULE) {
 
-        to_context = schedule_next_symbolic_context();
+        check_if_mergeable_and_merge_if_possible(from_context);
 
-        check_if_mergeable_and_merge_if_possible(to_context);
+        to_context = schedule_next_symbolic_context();
 
         timeout = 1;//max_execution_depth - get_execution_depth(to_context);
       } else {
