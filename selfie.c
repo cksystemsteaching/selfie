@@ -1258,6 +1258,9 @@ void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, u
 void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
 uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
 
+uint64_t* schedule_next_symbolic_context();
+void      check_if_mergeable_and_merge_if_possible(uint64_t* context);
+
 uint64_t* allocate_node();
 void      add_child(uint64_t* parent, uint64_t* child);
 void      step_into_call(uint64_t* context, uint64_t address);
@@ -1684,6 +1687,7 @@ uint64_t DONOTEXIT = 0;
 uint64_t EXIT      = 1;
 uint64_t MERGE     = 2;
 uint64_t RECURSION = 3;
+uint64_t SCHEDULE  = 4;
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_BADARGUMENTS           = 1;
@@ -7480,9 +7484,7 @@ void constrain_beq() {
     }
 
     pc = pc + INSTRUCTIONSIZE;
-  } else
-    // terminate context, if the beq_limit is reached
-    throw_exception(EXCEPTION_TIMER, 0);
+  }
 }
 
 void print_jal() {
@@ -8009,7 +8011,6 @@ uint64_t* get_waiting_context() {
 }
 
 void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location) {
-  uint64_t callstack_comparison;
 
   // do not merge if merging is disabled
   if (merge_enabled == 0) {
@@ -8019,30 +8020,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
     }
 
     return;
-  }
-
-  if (active_context == mergeable_context) {
-    current_mergeable_context = get_mergeable_context();
-
-    if (current_mergeable_context != (uint64_t*) 0)
-      if (pc == get_pc(current_mergeable_context))
-        merge(active_context, current_mergeable_context, pc);
-    return;
-  }
-
-  callstack_comparison = compare_call_stacks(active_context, mergeable_context);
-
-  if (callstack_comparison == 2) { // mergeable context has longer call stack
-    throw_exception(EXCEPTION_RECURSION, 0);
-    return;
-  } else if (callstack_comparison != 0) { // call stacks are not equal
-    if (current_mergeable_context != (uint64_t*) 0) {
-      add_mergeable_context(current_mergeable_context);
-      current_mergeable_context = (uint64_t*) 0;
-    }
-
-    return;
-  }
+  } 
 
   print("; merging two contexts at ");
   print_code_context_for_instruction(location);
@@ -8065,13 +8043,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   if (get_beq_counter(mergeable_context) < get_beq_counter(active_context))
     set_beq_counter(active_context, get_beq_counter(mergeable_context));
 
-  current_mergeable_context = get_mergeable_context();
-
-  // it may be possible that more contexts can be merged
-  if (current_mergeable_context != (uint64_t*) 0)
-    if (pc == get_pc(current_mergeable_context))
-      if (compare_call_stacks(active_context, current_mergeable_context) != 1)
-        merge(active_context, current_mergeable_context, pc);
+  set_execution_depth(mergeable_context, -1);
 }
 
 void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context) {
@@ -8515,6 +8487,64 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
     merge_not_finished = 0;
 
   return context;
+}
+
+uint64_t* schedule_next_symbolic_context() {
+  uint64_t* context;
+  uint64_t  max_call_stack_size;
+  uint64_t* max_call_stack;
+  uint64_t  min_pc;
+  uint64_t* next_context;
+
+  context = symbolic_contexts;
+  max_call_stack_size = 0;
+  max_call_stack = (uint64_t*) 0;
+  min_pc = UINT64_MAX;
+  next_context = (uint64_t*) 0;
+
+  // find max call stack
+  while (context) {
+    if (get_execution_depth(context) != -1)
+      if (get_call_stack(context) != 0)
+        if (*(get_call_stack(context) + 4) > max_call_stack_size) {
+          max_call_stack_size = *(get_call_stack(context) + 4);
+          max_call_stack = get_call_stack(context);
+        }
+
+    context = get_next_context(context);
+  }
+
+  context = symbolic_contexts;
+
+  // find min program counter
+  while (context) {
+    if (get_execution_depth(context) != -1)
+      if (get_call_stack(context) == max_call_stack)
+        if (get_pc(context) < min_pc) {
+          min_pc = get_pc(context);
+          next_context = context;
+        }
+
+    context = get_next_context(context);
+  }
+
+  return next_context;
+}
+
+void check_if_mergeable_and_merge_if_possible(uint64_t* context) {
+  uint64_t* mergeable_context;
+
+  mergeable_context = symbolic_contexts;
+
+  while (mergeable_context) {
+    if (get_execution_depth(mergeable_context) != -1)
+      if (mergeable_context != context)
+        if (get_pc(context) == get_pc(mergeable_context))
+          if (get_call_stack(context) == get_call_stack(mergeable_context))
+            merge(context, mergeable_context, get_pc(context));
+
+    mergeable_context = get_next_context(mergeable_context);
+  }
 }
 
 // node struct of the call stack tree:
@@ -8992,7 +9022,7 @@ void interrupt() {
     }
   }
 
-  if (symbolic) {
+  /*if (symbolic) {
     if (current_mergeable_context != (uint64_t*) 0)
       // if both contexts are at the same program location, they can be merged
       if (pc == get_pc(current_mergeable_context))
@@ -9005,7 +9035,7 @@ void interrupt() {
         // only throw exception if no other is pending
         // TODO: handle multiple pending exceptions
         throw_exception(EXCEPTION_MERGE, 0);
-  }
+  }*/
 }
 
 void run_until_exception() {
@@ -9166,6 +9196,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_name(context, 0);
 
   if (symbolic) {
+    set_next_context(context, (uint64_t*) 0);
     set_execution_depth(context, 0);
     set_path_condition(context, "true");
     set_symbolic_memory(context, (uint64_t*) 0);
@@ -9247,6 +9278,9 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
 
     r = r + 1;
   }
+
+  // contexts in a linked list, we insert in the front
+  set_next_context(context, symbolic_contexts);
 
   symbolic_contexts = context;
 
@@ -9724,14 +9758,31 @@ uint64_t handle_timer(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   if (symbolic) {
-    printf1("; timeout in ", path_condition);
-    print_code_context_for_instruction(pc);
-    if (debug_merge) {
-      printf1(" -> timed out context: %d", (char*) context);
-    }
-    println();
+    if (get_beq_counter(context) >= beq_limit) {
+      printf1("; timeout in ", path_condition);
+        print_code_context_for_instruction(pc);
+        if (debug_merge) {
+          printf1(" -> timed out context: %d", (char*) context);
+        }
+        println();
 
-    return EXIT;
+        return EXIT;
+    }
+
+    if (max_execution_depth) {
+      if (get_execution_depth(context) >= max_execution_depth) {
+        printf1("; timeout in ", path_condition);
+        print_code_context_for_instruction(pc);
+        if (debug_merge) {
+          printf1(" -> timed out context: %d", (char*) context);
+        }
+        println();
+
+        return EXIT;
+      } else
+        return SCHEDULE;
+    } else
+      return SCHEDULE;
   } else
     return DONOTEXIT;
 }
@@ -10002,6 +10053,8 @@ uint64_t monster(uint64_t* to_context) {
   uint64_t* from_context;
   uint64_t  exception;
 
+  symbolic_contexts = to_context;
+
   if (debug_merge)
     from_context = (uint64_t*) 0;
 
@@ -10051,7 +10104,7 @@ uint64_t monster(uint64_t* to_context) {
   print("(set-option :incremental true)\n");
   print("(set-logic QF_BV)\n\n");
 
-  timeout = max_execution_depth - get_execution_depth(to_context);
+  timeout = 1;//max_execution_depth - get_execution_depth(to_context);
 
   while (1) {
 
@@ -10073,8 +10126,15 @@ uint64_t monster(uint64_t* to_context) {
         // we need to update the end of the shared symbolic memory of the corresponding context
         update_begin_of_shared_symbolic_memory(get_merge_partner(from_context));
 
+        // context must not be scheduled again
+        set_execution_depth(from_context, -1);
+
+        to_context = schedule_next_symbolic_context();
+
+        check_if_mergeable_and_merge_if_possible(to_context);
+
         // if a context is currently waiting to be merged, we need to switch to this one
-        if (current_mergeable_context != (uint64_t*) 0) {
+        /*if (current_mergeable_context != (uint64_t*) 0) {
           // update the merge location, so the 'new' context can be merged later
           set_merge_location(current_mergeable_context, get_merge_location(current_context));
 
@@ -10093,10 +10153,10 @@ uint64_t monster(uint64_t* to_context) {
             set_merge_location(to_context, get_merge_location(current_context));
         }
 
-        to_context = merge_if_possible_and_get_next_context(to_context);
+        to_context = merge_if_possible_and_get_next_context(to_context);*/
 
         if (to_context)
-          timeout = max_execution_depth - get_execution_depth(to_context);
+          timeout = 1;//max_execution_depth - get_execution_depth(to_context);
         else {
           print("\n(exit)");
 
@@ -10109,20 +10169,13 @@ uint64_t monster(uint64_t* to_context) {
 
           return EXITCODE_NOERROR;
         }
-      } else if (exception == MERGE) {
-        to_context = merge_if_possible_and_get_next_context(get_waiting_context());
+      } else if (exception == SCHEDULE) {
 
-        timeout = max_execution_depth - get_execution_depth(to_context);
-      } else if (exception == RECURSION) {
-        if (current_mergeable_context != (uint64_t*) 0) {
-          to_context = current_mergeable_context;
+        to_context = schedule_next_symbolic_context();
 
-          current_mergeable_context = current_context;
-        } else {
-          timeout = timer;
+        check_if_mergeable_and_merge_if_possible(to_context);
 
-          to_context = from_context;
-        }
+        timeout = 1;//max_execution_depth - get_execution_depth(to_context);
       } else {
         timeout = timer;
 
