@@ -68,6 +68,16 @@ Also, counting in binary is just as easy as in decimal. Remember the sequence of
 
 Notice that the value of a digit increases as it appears further to the left of other digits. In fact, with binary notation it increases by a factor of 2, that is, by an *order of magnitude*, for each digit to the right of it. Similarly, with decimal notation it increases by a factor of 10. This is genius. The idea is called *hindu-arabic* notation. And the thing that is arabic about it is that the value of digits depends on what is written to the right of their position rather than all other writing in Western culture where content develops from left to right.
 
+The other thing that is cool about that notation is that it is so compact, in fact, exponentially more compact than *unary* notation using base 1, so just one symbol, say, the bar | symbol. Take 85, for example, in unary:
+
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+Have you verified the number of bars? Decimal notation needs just two digits to do that! Binary needs seven digits, or bits. Why do we then use binary rather than decimal in computers? Well, because decimal only requires about three times fewer digits than binary, no matter which number, which is negligible compared to the exponential savings compared to unary. Also, constructing a machine that can distinguish ten rather than just two states per digit is much harder. So, we are good. The only reason why people sometimes use unary is because addition including counting is fast, just add bars to the right. But we see below that binary addition is still fast enough.
+
+Ok, but writing numbers down in binary by hand is still about three times more work than in decimal. We understand that but there is a solution that is even better than decimal. It is called hexadecimal notation using base 16, so sixteen different symbols per digit. In hexadecimal we use 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, and the letters A, B, C, D, E, and F. The letter A represents the value 10, B 11, C 12, D 13, E 14, and F 15. Since base 16 is a power of base 2, that is, 2 to the power of 4 actually, each hexadecimal digit encodes exactly four bits which makes it much more convenient to convert between binary and hexadecimal rather than binary and decimal. And, we save four (!) times the number of digits with hexadecimal notation compared to binary notation. Try 85, that is, 1010101 in hexadecimal. It is 55. In fact, to avoid confusion, we say 0x55 where the prefix 0x indicates that the following number is in hexadecimal rather than decimal notation. Let us verify that 0x55 is indeed 85 by calculating **5**\*16 + **5**. What is 0xFF in binary and in decimal? It is 11111111 and 255, respectively. Try to verify that!
+
+Octal and binary prefix.
+
 Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer. Take the rightmost bits in 101010**1** and 11**1**, also called the *least-significant bits* (LSBs). They are both 1. Adding 1 and 1 in binary is of course 10 which is 2 in decimal. This means that the LSB of the sum of 1010101 and 111 is the 0 in 1**0**. But we need to carry the 1 in **1**0, also called the *carry bit*, to the left now and add it to the second LSBs 0 and 1 in 10101**0**1 and 1**1**1. So, we are actually adding three digits now, 0 and 1 plus the carry bit 1. The result is of course 10. The 0 in 1**0** is now the second LSB of the sum and the 1 in **1**0 is the new carry bit. Now, we need to add that carry bit to the third LSBs 1 and 1 in 1010**1**01 and **1**11. This means we are adding 1 and 1 plus the carry bit 1. The result is of course 11 which is 3 in decimal. Not that hard, right? So, the 1 in 1**1** is now the third LSB of the sum and the 1 in **1**1 is the new carry bit. From now on the process continues with no further surprises until we reach the leftmost or *most-significant bits* (MSBs). Here is a summary but try to complete it yourself on a piece of paper:
 
 ```
@@ -77,9 +87,11 @@ Let us again go back to the example of adding 85 and 7. By now, we know their bi
  1011100 = 92
 ```
 
-Boolean logic
+Speed?
 
-Unary, octal, hexadecimal
+Why do we make you go through this? It is not just because binary addition is one of the most important operations computers including your cell phone can do, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean Logic, the fundamental building block of all digital computers.
+
+### Boolean Logic
 
 ### Negative Numbers
 
@@ -96,6 +108,8 @@ Unary, octal, hexadecimal
 11111001
 ————————
 01001110
+
+ternary, trit
 
 ### Bytes
 
