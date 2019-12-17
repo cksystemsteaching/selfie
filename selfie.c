@@ -1256,8 +1256,6 @@ void      add_child(uint64_t* parent, uint64_t* child);
 void      step_into_call(uint64_t* context, uint64_t address);
 void      step_out_of_call(uint64_t* context);
 
-uint64_t  compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context);
-
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
@@ -8403,21 +8401,6 @@ void step_out_of_call(uint64_t* context) {
   if (get_call_stack(context))
     // return to parent level
     set_call_stack(context, get_parent_node(get_call_stack(context)));
-}
-
-// 0, they are equal
-// 1, active_context has longer call stack
-// 2, mergeable_context has longer call stack
-// 3, an entry is different
-uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context) {
-  if (get_depth(get_call_stack(active_context)) > get_depth(get_call_stack(mergeable_context)))
-    return 1;
-  else if (get_depth(get_call_stack(active_context)) < get_depth(get_call_stack(mergeable_context)))
-    return 2;
-  else if (get_call_stack(active_context) != get_call_stack(mergeable_context))
-    return 3;
-  else
-    return 0;
 }
 
 // -----------------------------------------------------------------
