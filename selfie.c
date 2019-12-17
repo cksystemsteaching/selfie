@@ -7443,6 +7443,7 @@ void constrain_beq() {
     // save symbolic memory so that it is copied correctly afterwards
     set_symbolic_memory(current_context, symbolic_memory);
 
+    // the copied context is executed later and takes the other path
     copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar));
 
     path_condition = smt_binary("and", pvar, smt_unary("not", bvar));
@@ -8293,7 +8294,7 @@ uint64_t* schedule_next_symbolic_context() {
   min_pc = UINT64_MAX;
   next_context = (uint64_t*) 0;
 
-  // find max call stack
+  // find the currently highest call stack
   while (context) {
     if (get_execution_depth(context) != (uint64_t) -1)
       if (get_call_stack(context) != 0)
@@ -8307,7 +8308,7 @@ uint64_t* schedule_next_symbolic_context() {
 
   context = symbolic_contexts;
 
-  // find min program counter
+  // find the context with the lowest program counter and the highest call stack
   while (context) {
     if (get_execution_depth(context) != (uint64_t) -1)
       if (get_call_stack(context) == max_call_stack)
@@ -8319,6 +8320,7 @@ uint64_t* schedule_next_symbolic_context() {
     context = get_next_context(context);
   }
 
+  // the context with the highest call stack and the lowest program counter is returned
   return next_context;
 }
 
@@ -8328,9 +8330,13 @@ void check_if_mergeable_and_merge_if_possible(uint64_t* context) {
   mergeable_context = symbolic_contexts;
 
   while (mergeable_context) {
+    // only compare with unfinished contexts
     if (get_execution_depth(mergeable_context) != (uint64_t) -1)
+      // a context cannot be merged with itself
       if (mergeable_context != context)
+        // mergeable contexts must have the same program counter
         if (get_pc(context) == get_pc(mergeable_context))
+          // merge contexts must have the same call stack
           if (get_call_stack(context) == get_call_stack(mergeable_context))
             merge(context, mergeable_context, get_pc(context));
 
@@ -9891,8 +9897,10 @@ uint64_t monster(uint64_t* to_context) {
         // context must not be scheduled again
         set_execution_depth(from_context, -1);
 
+        // schedule the context with the highest call stack and the lowest program counter
         to_context = schedule_next_symbolic_context();
 
+        // check if contexts can be merged
         check_if_mergeable_and_merge_if_possible(to_context);
 
         if (to_context)
@@ -9910,8 +9918,10 @@ uint64_t monster(uint64_t* to_context) {
           return EXITCODE_NOERROR;
         }
       } else if (exception == SCHEDULE) {
+        // check if contexts can be merged
         check_if_mergeable_and_merge_if_possible(from_context);
 
+        // schedule the context with the highest call stack and the lowest program counter
         to_context = schedule_next_symbolic_context();
 
         timeout = 1;
