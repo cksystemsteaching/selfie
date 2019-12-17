@@ -1261,7 +1261,6 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
 uint64_t* schedule_next_symbolic_context();
 void      check_if_mergeable_and_merge_if_possible(uint64_t* context);
 
-uint64_t* allocate_node();
 void      add_child(uint64_t* parent, uint64_t* child);
 void      step_into_call(uint64_t* context, uint64_t address);
 void      step_out_of_call(uint64_t* context);
@@ -7916,6 +7915,31 @@ char* smt_ternary(char* opt, char* op1, char* op2, char* op3) {
   return string;
 }
 
+// node struct of the call stack tree:
+// +---+----------+
+// | 0 | parent   | pointer to parent node
+// | 1 | children | pointer to list of children
+// | 2 | sibling  | pointer to next sibling node
+// | 3 | address  | address of the method call
+// | 4 | depth    | size of the call stack represented by the given node
+// +---+----------+
+
+uint64_t* allocate_node() {
+  return zalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
+}
+
+uint64_t* get_parent_node(uint64_t* node)  { return (uint64_t*) *(node + 0); }
+uint64_t* get_children(uint64_t* node)     { return (uint64_t*) *(node + 1); }
+uint64_t* get_sibling(uint64_t* node)      { return (uint64_t*) *(node + 2); }
+uint64_t  get_node_address(uint64_t* node) { return             *(node + 3); }
+uint64_t  get_depth(uint64_t* node)        { return             *(node + 4); }
+
+void set_parent_node(uint64_t* node, uint64_t* parent)  { *(node + 0) = (uint64_t) parent; }
+void set_children(uint64_t* node, uint64_t* children)   { *(node + 1) = (uint64_t) children; }
+void set_sibling(uint64_t* node, uint64_t* sibling)     { *(node + 2) = (uint64_t) sibling; }
+void set_node_address(uint64_t* node, uint64_t address) { *(node + 3) = address; }
+void set_depth(uint64_t* node, uint64_t depth)          { *(node + 4) = depth; }
+
 uint64_t find_merge_location(uint64_t beq_imm) {
   uint64_t original_pc;
   uint64_t merge_location;
@@ -8506,8 +8530,8 @@ uint64_t* schedule_next_symbolic_context() {
   while (context) {
     if (get_execution_depth(context) != -1)
       if (get_call_stack(context) != 0)
-        if (*(get_call_stack(context) + 4) > max_call_stack_size) {
-          max_call_stack_size = *(get_call_stack(context) + 4);
+        if (get_depth(get_call_stack(context)) > max_call_stack_size) {
+          max_call_stack_size = get_depth(get_call_stack(context));
           max_call_stack = get_call_stack(context);
         }
 
@@ -8547,30 +8571,17 @@ void check_if_mergeable_and_merge_if_possible(uint64_t* context) {
   }
 }
 
-// node struct of the call stack tree:
-// +---+----------+
-// | 0 | parent   | pointer to parent node
-// | 1 | children | pointer to list of children
-// | 2 | sibling  | pointer to next sibling node
-// | 3 | address  | address of the method call
-// | 4 | depth    | size of the call stack represented by the given node
-// +---+----------+
-
-uint64_t* allocate_node() {
-  return zalloc(3 * SIZEOFUINT64STAR + 2 * SIZEOFUINT64);
-}
-
 void add_child(uint64_t* parent, uint64_t* child) {
   uint64_t* head;
 
-  head = (uint64_t*) *(parent + 1);
+  head = get_children(parent);
 
   // insert child at the beginning of the list of children
-  *(parent + 1) = (uint64_t) child;
-  *(child + 2) = (uint64_t) head;
+  set_children(parent, (uint64_t*) child);
+  set_sibling(child, (uint64_t*) head);
 
   // set parent of child
-  *(child + 0) = (uint64_t) parent;
+  set_parent_node(child, (uint64_t*) parent);
 }
 
 void step_into_call(uint64_t* context, uint64_t address) {
@@ -8581,32 +8592,33 @@ void step_into_call(uint64_t* context, uint64_t address) {
     // create root node
     call_stack_tree = allocate_node();
 
-    *(call_stack_tree + 3) = address;
-    *(call_stack_tree + 4) = 1;
+    set_node_address(call_stack_tree, address);
+    set_depth(call_stack_tree, 1);
 
     set_call_stack(context, call_stack_tree);
   } else {
     // assert: call stack of the context is not null
     node = get_call_stack(context);
-    child = (uint64_t*) *(node + 1);
+    child = get_children(node);
 
     while (child) {
       // corresponding node already exists
-      if (*(child + 3) == address) {
+      if (get_node_address(child) == address) {
         set_call_stack(context, child);
         return;
       }
-      child = (uint64_t*) *(child + 2);
+
+      child = get_sibling(child);
     }
 
     // no corresponding node exists, therefore we need to create one
     child = allocate_node();
 
     // set address of method call
-    *(child + 3) = address;
+    set_node_address(child, address);
 
     // increase depth
-    *(child + 4) = *(node + 4) + 1;
+    set_depth(child, get_depth(node) + 1);
 
     add_child(node, child);
 
@@ -8617,7 +8629,7 @@ void step_into_call(uint64_t* context, uint64_t address) {
 void step_out_of_call(uint64_t* context) {
   if (get_call_stack(context))
     // return to parent level
-    set_call_stack(context, (uint64_t*) *(get_call_stack(context) + 0));
+    set_call_stack(context, get_parent_node(get_call_stack(context)));
 }
 
 // 0, they are equal
@@ -8625,9 +8637,9 @@ void step_out_of_call(uint64_t* context) {
 // 2, mergeable_context has longer call stack
 // 3, an entry is different
 uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context) {
-  if (*(get_call_stack(active_context) + 4) > *(get_call_stack(mergeable_context) + 4))
+  if (get_depth(get_call_stack(active_context)) > get_depth(get_call_stack(mergeable_context)))
     return 1;
-  else if (*(get_call_stack(active_context) + 4) < *(get_call_stack(mergeable_context) + 4))
+  else if (get_depth(get_call_stack(active_context)) < get_depth(get_call_stack(mergeable_context)))
     return 2;
   else if (get_call_stack(active_context) != get_call_stack(mergeable_context))
     return 3;
