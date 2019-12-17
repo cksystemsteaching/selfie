@@ -9866,7 +9866,7 @@ uint64_t monster(uint64_t* to_context) {
   print("(set-option :incremental true)\n");
   print("(set-logic QF_BV)\n\n");
 
-  timeout = 1;//max_execution_depth - get_execution_depth(to_context);
+  timeout = 1;
 
   while (1) {
 
@@ -9910,7 +9910,6 @@ uint64_t monster(uint64_t* to_context) {
           return EXITCODE_NOERROR;
         }
       } else if (exception == SCHEDULE) {
-
         check_if_mergeable_and_merge_if_possible(from_context);
 
         to_context = schedule_next_symbolic_context();
