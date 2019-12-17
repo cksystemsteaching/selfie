@@ -8528,7 +8528,7 @@ uint64_t* schedule_next_symbolic_context() {
 
   // find max call stack
   while (context) {
-    if (get_execution_depth(context) != -1)
+    if (get_execution_depth(context) != (uint64_t) -1)
       if (get_call_stack(context) != 0)
         if (get_depth(get_call_stack(context)) > max_call_stack_size) {
           max_call_stack_size = get_depth(get_call_stack(context));
@@ -8542,7 +8542,7 @@ uint64_t* schedule_next_symbolic_context() {
 
   // find min program counter
   while (context) {
-    if (get_execution_depth(context) != -1)
+    if (get_execution_depth(context) != (uint64_t) -1)
       if (get_call_stack(context) == max_call_stack)
         if (get_pc(context) < min_pc) {
           min_pc = get_pc(context);
@@ -8561,7 +8561,7 @@ void check_if_mergeable_and_merge_if_possible(uint64_t* context) {
   mergeable_context = symbolic_contexts;
 
   while (mergeable_context) {
-    if (get_execution_depth(mergeable_context) != -1)
+    if (get_execution_depth(mergeable_context) != (uint64_t) -1)
       if (mergeable_context != context)
         if (get_pc(context) == get_pc(mergeable_context))
           if (get_call_stack(context) == get_call_stack(mergeable_context))
