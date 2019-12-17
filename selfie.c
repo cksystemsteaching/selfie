@@ -1243,20 +1243,11 @@ char* smt_unary(char* opt, char* op);
 char* smt_binary(char* opt, char* op1, char* op2);
 char* smt_ternary(char* opt, char* op1, char* op2, char* op3);
 
-uint64_t  find_merge_location(uint64_t beq_imm);
-
-void      add_mergeable_context(uint64_t* context);
-uint64_t* get_mergeable_context();
-
-void      add_waiting_context(uint64_t* context);
-uint64_t* get_waiting_context();
-
 void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
 void      merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
 void      merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
 void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
 void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
-uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
 
 uint64_t* schedule_next_symbolic_context();
 void      check_if_mergeable_and_merge_if_possible(uint64_t* context);
@@ -1286,11 +1277,6 @@ uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
 
 uint64_t merge_enabled  = 0; // enable or disable the merging of paths
 uint64_t debug_merge    = 0; // enable or disable the debugging of merging in monster
-
-uint64_t* mergeable_contexts = (uint64_t*) 0; // contexts that have reached their merge location
-uint64_t* waiting_contexts   = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
-
-uint64_t* current_mergeable_context = (uint64_t*) 0; // current context with which the active context can possibly be merged
 
 uint64_t* call_stack_tree = (uint64_t*) 0; // tree representing the program structure (each node represents a procedure call)
 
@@ -7424,7 +7410,6 @@ void constrain_beq() {
   char* op2;
   char* bvar;
   char* pvar;
-  uint64_t* waiting_context;
 
   op1 = (char*) *(reg_sym + rs1);
   op2 = (char*) *(reg_sym + rs2);
@@ -7458,29 +7443,9 @@ void constrain_beq() {
     // save symbolic memory so that it is copied correctly afterwards
     set_symbolic_memory(current_context, symbolic_memory);
 
-    waiting_context = copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar));
-
-    // the copied context is executed later and takes the other path
-    add_waiting_context(waiting_context);
+    copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar));
 
     path_condition = smt_binary("and", pvar, smt_unary("not", bvar));
-
-    // set the merge location only when merging is enabled
-    if (merge_enabled)
-      set_merge_location(current_context, find_merge_location(imm));
-
-    if (debug_merge) {
-      print("; a new context was created at ");
-      print_code_context_for_instruction(pc);
-      printf4(" -> active context: %d, waiting context: %d (merge locations: %x, %x)\n", (char*) current_context, (char*) waiting_context, (char*) get_merge_location(current_context), (char*) get_merge_location(waiting_context));
-    }
-
-    // check if a context is waiting to be merged
-    if (current_mergeable_context != (uint64_t*) 0) {
-      // we cannot merge with this one (yet), so we push it back onto the stack of mergeable contexts
-      add_mergeable_context(current_mergeable_context);
-      current_mergeable_context = (uint64_t*) 0;
-    }
 
     pc = pc + INSTRUCTIONSIZE;
   }
@@ -7940,111 +7905,11 @@ void set_sibling(uint64_t* node, uint64_t* sibling)     { *(node + 2) = (uint64_
 void set_node_address(uint64_t* node, uint64_t address) { *(node + 3) = address; }
 void set_depth(uint64_t* node, uint64_t depth)          { *(node + 4) = depth; }
 
-uint64_t find_merge_location(uint64_t beq_imm) {
-  uint64_t original_pc;
-  uint64_t merge_location;
-
-  // assert: the current instruction is a symbolic beq instruction
-  original_pc = pc;
-
-  // examine last instruction before target location of the beq instruction
-  pc = pc + (beq_imm - INSTRUCTIONSIZE);
-
-  // we need to know which instruction it is
-  fetch();
-  decode();
-
-  if (is != JAL)
-    /* no jal instruction -> end of if without else branch
-       merge is directly at target location of the beq instruction possible
-
-    note: this is a dependency on the selfie compiler */
-    merge_location = original_pc + beq_imm;
-  else {
-    if (signed_less_than(imm, 0) == 0) {
-      /* jal with positive imm -> end of if with else branch
-         we have to skip the else branch in order to merge afterwards
-
-         note: this is a dependency on the selfie compiler
-         the selfie compiler emits a jal instruction with a positive immediate value if it sees an else branch */
-      merge_location = pc + imm;
-
-      pc = original_pc + INSTRUCTIONSIZE;
-    } else
-      /* jal with negative imm -> end of loop body
-         merge is only outside of the loop body possible
-
-         note: this is a dependency on the selfie compiler
-         the selfie compiler emits a jal instruction with a negative immediate value at
-         the end of the loop body in order to jump back to the loop condition */
-      merge_location = pc + INSTRUCTIONSIZE;
-  }
-
-  // restore the original program state
-  pc = original_pc;
-  fetch();
-  decode();
-
-  return merge_location;
-}
-
-void add_mergeable_context(uint64_t* context) {
-  uint64_t* entry;
-
-  entry = smalloc(2 * SIZEOFUINT64STAR);
-
-  *(entry + 0) = (uint64_t) mergeable_contexts;
-  *(entry + 1) = (uint64_t) context;
-
-  mergeable_contexts = entry;
-}
-
-uint64_t* get_mergeable_context() {
-  uint64_t* head;
-
-  if (mergeable_contexts == (uint64_t*) 0)
-    return (uint64_t*) 0;
-
-  head = mergeable_contexts;
-  mergeable_contexts = (uint64_t*) *(head + 0);
-
-  return (uint64_t*) *(head + 1);
-}
-
-void add_waiting_context(uint64_t* context) {
-  uint64_t* entry;
-
-  entry = smalloc(2 * SIZEOFUINT64STAR);
-
-  *(entry + 0) = (uint64_t) waiting_contexts;
-  *(entry + 1) = (uint64_t) context;
-
-  waiting_contexts = entry;
-}
-
-uint64_t* get_waiting_context() {
-  uint64_t* head;
-
-  if (waiting_contexts == (uint64_t*) 0)
-    return (uint64_t*) 0;
-
-  head = waiting_contexts;
-  waiting_contexts = (uint64_t*) *(head + 0);
-
-  return (uint64_t*) *(head + 1);
-}
-
 void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location) {
 
   // do not merge if merging is disabled
-  if (merge_enabled == 0) {
-    if (current_mergeable_context != (uint64_t*) 0) {
-      add_mergeable_context(current_mergeable_context);
-      current_mergeable_context = (uint64_t*) 0;
-    }
-
+  if (merge_enabled == 0)
     return;
-  } 
 
   print("; merging two contexts at ");
   print_code_context_for_instruction(location);
@@ -8413,104 +8278,6 @@ void merge_registers(uint64_t* active_context, uint64_t* mergeable_context) {
   }
 
   set_symbolic_regs(active_context, reg_sym);
-}
-
-uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
-  uint64_t merge_not_finished;
-  uint64_t mergeable;
-  uint64_t pauseable;
-
-  if (merge_enabled)
-    merge_not_finished = 1;
-  else
-    merge_not_finished = 0;
-
-  while (merge_not_finished) {
-    mergeable = 1;
-    pauseable = 1;
-
-    if (context == (uint64_t*) 0) {
-      // break out of the loop
-      mergeable = 0;
-      pauseable = 0;
-    } else
-      symbolic_memory = get_symbolic_memory(context);
-
-    // check if the context can be merged with one or more mergeable contexts
-    while (mergeable) {
-      if (current_mergeable_context == (uint64_t*) 0)
-        current_mergeable_context = get_mergeable_context();
-
-      if (current_mergeable_context != (uint64_t*) 0) {
-        if (get_pc(context) == get_pc(current_mergeable_context)) {
-          if (merge_enabled)
-            if (compare_call_stacks(context, current_mergeable_context) != 1)
-              merge(context, current_mergeable_context, get_pc(context));
-            else
-              mergeable = 0;
-          else
-            mergeable = 0;
-        } else
-          mergeable = 0;
-      } else
-        mergeable = 0;
-    }
-
-    // check if the context has reached a merge location and needs to be paused
-    while (pauseable) {
-      if (get_pc(context) == get_merge_location(context)) {
-        current_mergeable_context = context;
-        context = get_waiting_context();
-
-        if (context) {
-          if (get_pc(context) == get_pc(current_mergeable_context)) {
-            if (compare_call_stacks(context, current_mergeable_context) == 0) {
-              pauseable = 0;
-              mergeable = 1;
-            } else if (compare_call_stacks(context, current_mergeable_context) == 2)
-              throw_exception(EXCEPTION_RECURSION, 0);
-          }
-          else {
-            add_mergeable_context(current_mergeable_context);
-            current_mergeable_context = (uint64_t*) 0;
-          }
-        }
-
-        // break out of the loop
-        if (context == (uint64_t*) 0) {
-          mergeable = 0;
-          pauseable = 0;
-        }
-
-      } else {
-        if (current_mergeable_context == (uint64_t*) 0)
-          current_mergeable_context = get_mergeable_context();
-
-        if (current_mergeable_context != (uint64_t*) 0)
-          if (get_pc(context) == get_pc(current_mergeable_context)) {
-            if (compare_call_stacks(context, current_mergeable_context) == 0)
-              mergeable = 1;
-            else if (compare_call_stacks(context, current_mergeable_context) == 2)
-              throw_exception(EXCEPTION_RECURSION, 0);
-          }
-
-        pauseable = 0;
-      }
-    }
-
-    if (mergeable == 0)
-      if (pauseable == 0)
-        merge_not_finished = 0;
-  }
-
-  // check if there are contexts which have been paused and were not merged yet
-  if (context == (uint64_t*) 0)
-    context = get_mergeable_context();
-
-  if (merge_enabled == 0)
-    merge_not_finished = 0;
-
-  return context;
 }
 
 uint64_t* schedule_next_symbolic_context() {
@@ -9033,21 +8800,6 @@ void interrupt() {
         timer = 1;
     }
   }
-
-  /*if (symbolic) {
-    if (current_mergeable_context != (uint64_t*) 0)
-      // if both contexts are at the same program location, they can be merged
-      if (pc == get_pc(current_mergeable_context))
-        if (compare_call_stacks(current_context, current_mergeable_context) != 1)
-          merge(current_context, current_mergeable_context, pc);
-
-    // check if the current context has reached a merge location
-    if (pc == get_merge_location(current_context))
-      if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
-        // only throw exception if no other is pending
-        // TODO: handle multiple pending exceptions
-        throw_exception(EXCEPTION_MERGE, 0);
-  }*/
 }
 
 void run_until_exception() {
@@ -9800,8 +9552,6 @@ uint64_t handle_timer(uint64_t* context) {
 }
 
 uint64_t handle_merge(uint64_t* context) {
-  add_mergeable_context(current_context);
-
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   return MERGE;
@@ -10145,30 +9895,8 @@ uint64_t monster(uint64_t* to_context) {
 
         check_if_mergeable_and_merge_if_possible(to_context);
 
-        // if a context is currently waiting to be merged, we need to switch to this one
-        /*if (current_mergeable_context != (uint64_t*) 0) {
-          // update the merge location, so the 'new' context can be merged later
-          set_merge_location(current_mergeable_context, get_merge_location(current_context));
-
-          to_context = current_mergeable_context;
-
-        // if no context is currently waiting to be merged, we switch to the next waiting context
-        } else
-          to_context = get_waiting_context();
-
-        // it may be possible that there are no waiting contexts, but mergeable contexts
-        if (to_context == (uint64_t*) 0) {
-          to_context = get_mergeable_context();
-
-          if (to_context)
-            // update the merge location, so the 'new' context can be merged later
-            set_merge_location(to_context, get_merge_location(current_context));
-        }
-
-        to_context = merge_if_possible_and_get_next_context(to_context);*/
-
         if (to_context)
-          timeout = 1;//max_execution_depth - get_execution_depth(to_context);
+          timeout = 1;
         else {
           print("\n(exit)");
 
@@ -10187,7 +9915,7 @@ uint64_t monster(uint64_t* to_context) {
 
         to_context = schedule_next_symbolic_context();
 
-        timeout = 1;//max_execution_depth - get_execution_depth(to_context);
+        timeout = 1;
       } else {
         timeout = timer;
 
