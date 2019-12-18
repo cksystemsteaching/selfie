@@ -42,9 +42,29 @@ Let us take a look at an example. Suppose we would like a machine add two decima
 
 A *bit* is a unit of information that can distinguish exactly two different things. In fact, we say that a bit can be in exactly one out of two different *states*. It can be either 0 or 1, on or off, true or false, or whatever we want to call it. The only thing that is relevant about a bit is that it is always in exactly one out of two states. And the only thing a computer can do is storing bits and changing bits from one state to the other and back, that is, from, say, 0 to 1 and from 1 to 0.
 
-How can then a bit be used to do anything useful beyond that? Well, by taking more than one bit, of course. Let us take two bits. Now, we can suddenly be in *four* different states denoted by, say, 00, 01, 10, and 11, which could be used to encode the decimal numbers 0, 1, 2, and 3, but not more. What if we take three bits? It is then *eight* different states, that is, 000, 001, 010, 011, 100, 101, 110, and 111, which allow us to encode, say, the decimal numbers 0 through 7. By now, we can already anticipate how this continues. With each additional bit, the number of different states that we can be in *doubles*! This is huge. It is called *exponential* growth.
+How can then a bit be used to do anything useful beyond that? Well, by taking more than one bit, of course. Let us take two bits. Now, we can suddenly be in *four* different states denoted by, say:
 
-Let us look a bit closer at how many states a growing number of bits can be in. One bit can be in two states, two bits can be in four states, and so on. So, it is 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 states, and so on. This is like the tables up to ten (bits) but of a computer scientist! You may have actually seen these numbers before but probably never knew where they came from. Try continuing the series yourself with more bits! 2048, 4096,... You will quickly run out of room.
+00, 01, 10, and 11,
+
+which could be used to encode the decimal numbers:
+
+0, 1, 2, and 3,
+
+but not more. What if we take three bits? It is then *eight* different states, that is:
+
+000, 001, 010, 011, 100, 101, 110, and 111,
+
+which allow us to encode, say, the decimal numbers:
+
+0, 1, 2, 3, 4, 5, 6, and 7.
+
+By now, we can already anticipate how this continues. With each additional bit, the number of different states that we can be in *doubles*! This is huge. It is called *exponential* growth.
+
+Let us look a bit closer at how many states a growing number of bits can be in. One bit can be in two states, two bits can be in four states, and so on. So, it is:
+
+2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 states,
+
+and so on. This is like the tables up to ten (bits) but of a computer scientist! You may have actually seen these numbers before but probably never knew where they came from. Try continuing the series yourself with more bits! 2048, 4096,... You will quickly run out of room.
 
 Imagine, your cell phone can probably store a few billion bits. How many states is that? Far more than there are atoms in the known universe! Just in your pocket! This also means that the bits in your phone can be in so many different states that your phone would have long turned to dust before being able to try out all possible states these bits can be in. Conversely, it is unlikely that the bits in your phone will ever be in a state they have been in before since some bits are usually used to keep track of time and other environmental factors such as battery health which keep changing over time.
 
@@ -58,13 +78,41 @@ The key lesson to be learned here is to accept the fact that computers just stor
 
 Let us go back to the example of adding the two decimal numbers 85 and 7. Do you remember how to do that by hand? Of course, you do! We go from right to left, digit by digit. First, take the two rightmost digits 5 and 7 and add them. The result is obviously 12. The 2 in 1**2** is already the rightmost digit of the sum of 85 and 7 which is obviously 9**2**. The more interesting phenomenon here is that the result of adding 5 and 7 needs an extra digit, that is, the 1 in **1**2. We need to acknowledge that by *carrying* that extra digit to the left and, in our example here, add it to 8 which results in 9, of course. And that 9 is the digit to the left of 2 in the sum of 85 and 7. Done!
 
-The reason why we go through this is because a computer does the exact same thing, just with binary numbers. But that only works if we encode our decimal numbers properly in binary. Out of the many different ways of encoding numbers there is only one way that makes addition in binary work the same way it works in decimal. To understand how to do that we need to remind ourselves how decimal notation actually works.
+The reason why we go through this is because a computer does the exact same thing, just with binary numbers. But that only works if we encode our decimal numbers properly in binary. Out of the many different ways of encoding numbers in binary there is only one way that makes addition in binary work the same way it works in decimal. To understand how to do that we need to remind ourselves how decimal notation actually works.
 
-Take 85, for example. The decimal number 85 represents the value **8**\*10+**5**. With an even bigger decimal number, say, 285 you should see how this works in general. It represents the value (**2**\*10+**8**)\*10+**5**. Decimal notation is positional. That means that the value of a digit, say, of 8 in 2**8**5 depends on its position relative to the digits to its right, and it depends on the number of different symbols we use per digit which is of course 10 with decimal notation, that is, the 10 different symbols 0, 1, 2, 3, 4, 5, 6, 7, 8, and 9. The number of different symbols per digit is called *base*. So, decimal notation uses base 10.
+Take 85, for example. The decimal number 85 represents the value:
 
-The only difference between decimal and binary notation is the number of different symbols per digit, that is, the base. With binary notation there are of course just two symbols, say, 0 and 1. Thus the base of binary notation is 2. Calculating the value of a binary number works accordingly. For example, the binary number 111 represents the decimal number 7 because (**1**\*2+**1**)\*2+**1**. The binary number 1010101 represents 85 because (((((**1**\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**. Take a piece of paper and a pen (not a computer!) and convert a few other numbers for yourself!
+**8**\*10+**5**.
 
-Also, counting in binary is just as easy as in decimal. Remember the sequence of 3-bit states from above, that is, 000, 001, 010, 011, 100, 101, 110, and 111? That sequence corresponds to the binary encoding of the decimal numbers 0, 1, 2, 3, 4, 5, 6, and 7. Try to count with four bits!
+With an even bigger decimal number, say, 285 you should see how this works in general. It represents the value:
+
+(**2**\*10+**8**)\*10+**5**.
+
+Decimal notation is positional. That means that the value of a digit, say, of 8 in 2**8**5 depends on its position relative to the digits to its right, and it depends on the number of different symbols we use per digit which is of course 10 with decimal notation, that is, the 10 different symbols:
+
+0, 1, 2, 3, 4, 5, 6, 7, 8, and 9.
+
+The number of different symbols per digit is called *base*. So, decimal notation uses base 10.
+
+The only difference between decimal and binary notation is the number of different symbols per digit, that is, the base. With binary notation there are of course just two symbols, say, 0 and 1. Thus the base of binary notation is 2. Calculating the value of a binary number works accordingly. For example, the binary number 111 represents the decimal number 7 because:
+
+(**1**\*2+**1**)\*2+**1** = 7.
+
+The binary number 1010101 represents 85 because:
+
+(((((**1**\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = 85.
+
+Take a piece of paper and a pen (not a computer!) and convert a few other binary numbers for yourself!
+
+Also, counting in binary is just as easy as in decimal. Remember the sequence of 3-bit states from above:
+
+000, 001, 010, 011, 100, 101, 110, and 111?
+
+That sequence corresponds to the binary encoding of the decimal numbers:
+
+0, 1, 2, 3, 4, 5, 6, and 7.
+
+Try to count with four bits!
 
 Notice that the value of a digit increases as it appears further to the left of other digits. In fact, with binary notation it increases by a factor of 2, that is, by an *order of magnitude*, for each digit to the right of it. Similarly, with decimal notation it increases by a factor of 10. This is genius. The idea is called *hindu-arabic* notation. And the thing that is arabic about it is that the value of digits depends on what is written to the right of their position rather than all other writing in Western culture where content develops from left to right.
 
@@ -72,13 +120,37 @@ The other thing that is cool about that notation is that it is so compact, in fa
 
 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
-Have you verified the number of bars? Decimal notation needs just two digits to do that! Binary needs seven digits, or bits. Why do we then use binary rather than decimal in computers? Well, because decimal only requires about three times fewer digits than binary, no matter which number, which is negligible compared to the exponential savings compared to unary. Also, constructing a machine that can distinguish ten rather than just two states per digit is much harder. So, we are good. The only reason why people sometimes use unary is because addition including counting is fast, just add bars to the right. But we see below that binary addition is still fast enough.
+Have you verified the number of bars? Decimal notation needs just two digits to encode the 85 bars! Binary needs seven digits, or bits. Why do we then use binary rather than decimal in computers? Well, because decimal only requires about three times fewer digits than binary, no matter which number, which is negligible compared to the exponential savings compared to unary. Also, constructing a machine that can distinguish ten rather than just two states per digit is much harder. So, we are good. The only reason why people sometimes use unary is because addition including counting is fast. Just add bars to the right. But we see below that binary addition is still fast enough.
 
-Ok, but writing numbers down in binary by hand is still about three times more work than in decimal. We understand that but there is a solution that is even better than decimal. It is called hexadecimal notation using base 16, so sixteen different symbols per digit. In hexadecimal we use 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, and the letters A, B, C, D, E, and F. The letter A represents the value 10, B 11, C 12, D 13, E 14, and F 15. Since base 16 is a power of base 2, that is, 2 to the power of 4 actually, each hexadecimal digit encodes exactly four bits which makes it much more convenient to convert between binary and hexadecimal rather than binary and decimal. And, we save four (!) times the number of digits with hexadecimal notation compared to binary notation. Try 85, that is, 1010101 in hexadecimal. It is 55. In fact, to avoid confusion, we say 0x55 where the prefix 0x indicates that the following number is in hexadecimal rather than decimal notation. Let us verify that 0x55 is indeed 85 by calculating **5**\*16 + **5**. What is 0xFF in binary and in decimal? It is 11111111 and 255, respectively. Try to verify that!
+Ok, but writing numbers down in binary by hand is still about three times more work than in decimal. We understand that but there is a solution that is even better than decimal. It is called hexadecimal notation using base 16, so sixteen different symbols per digit. In hexadecimal we use:
+
+the digits 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, and:
+
+the letters A, B, C, D, E, and F.
+
+The letter A represents the value 10, B 11, C 12, D 13, E 14, and F 15.
+
+Since base 16 is a power of base 2, that is, 2 to the power of 4 actually, each hexadecimal digit encodes exactly four bits which makes it much more convenient to convert between binary and hexadecimal rather than binary and decimal. And, we save four (!) times the number of digits with hexadecimal notation compared to binary notation. Try 85, that is, 1010101 in hexadecimal. It is 55. In fact, to avoid confusion, we say 0x55 where the prefix 0x indicates that the following number is in hexadecimal rather than decimal notation. Let us verify that 0x55 is indeed 85 by calculating:
+
+**5**\*16+**5** = 85.
+
+What is, say, 0xFF in binary and in decimal? It is 11111111 and 255, respectively. Try to verify that!
 
 Octal and binary prefix.
 
-Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer. Take the rightmost bits in 101010**1** and 11**1**, also called the *least-significant bits* (LSBs). They are both 1. Adding 1 and 1 in binary is of course 10 which is 2 in decimal. This means that the LSB of the sum of 1010101 and 111 is the 0 in 1**0**. But we need to carry the 1 in **1**0, also called the *carry bit*, to the left now and add it to the second LSBs 0 and 1 in 10101**0**1 and 1**1**1. So, we are actually adding three digits now, 0 and 1 plus the carry bit 1. The result is of course 10. The 0 in 1**0** is now the second LSB of the sum and the 1 in **1**0 is the new carry bit. Now, we need to add that carry bit to the third LSBs 1 and 1 in 1010**1**01 and **1**11. This means we are adding 1 and 1 plus the carry bit 1. The result is of course 11 which is 3 in decimal. Not that hard, right? So, the 1 in 1**1** is now the third LSB of the sum and the 1 in **1**1 is the new carry bit. From now on the process continues with no further surprises until we reach the leftmost or *most-significant bits* (MSBs). Here is a summary but try to complete it yourself on a piece of paper:
+Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer. Take the rightmost bits in:
+
+101010**1** and 11**1**,
+
+also called the *least-significant bits* (LSBs). They are both 1. Adding 1 and 1 in binary is of course 10 which is 2 in decimal. This means that the LSB of the sum of 1010101 and 111 is the 0 in 1**0**. But we need to carry the 1 in **1**0, also called the *carry bit*, to the left now and add it to the second LSBs 0 and 1 in:
+
+10101**0**1 and 1**1**1.
+
+So, we are actually adding three bits now, 0 and 1 plus the carry bit 1. The result is of course 10. The 0 in 1**0** is now the second LSB of the sum and the 1 in **1**0 is the new carry bit. Now, we need to add that carry bit to the third LSBs 1 and 1 in:
+
+1010**1**01 and **1**11.
+
+This means we are adding 1 and 1 plus the carry bit 1. The result is of course 11 which is 3 in decimal. Not that hard, right? So, the 1 in 1**1** is now the third LSB of the sum and the 1 in **1**1 is the new carry bit. From now on the process continues with no further surprises until we reach the leftmost or *most-significant bits* (MSBs). Here is a summary but try to complete it yourself on a piece of paper:
 
 ```
  1010101 = 85
