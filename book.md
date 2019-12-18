@@ -136,13 +136,23 @@ Since base 16 is a power of base 2, that is, 2 to the power of 4 actually, each 
 
 What is, say, 0xFF in binary and in decimal? It is 11111111 and 255, respectively. Try to verify that!
 
-Octal and binary prefix.
+There is one more notation that is popular among computer scientists and we would like to mention that here. It is octal notation using base 8, so eight different symbols:
 
-Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer. Take the rightmost bits in:
+0, 1, 2, 3, 4, 5, 6, and 7.
+
+The reason why it is popular is because base 8 is also a power of 2, in fact, it is 2 to the power of 3. Thus each octal digit encodes exactly three bits. Take 1010101, for example, which is 125 in octal notation because:
+
+(**1**\*8+**2**)\*8+**5** = 85.
+
+In order to avoid confusion, we may use the prefix 00 with octal numbers, that is, 00125, for example, and the prefix b with binary numbers, that is, b1010101, for example.
+
+In sum, we have seen binary, octal, decimal, and hexadecimal notation that all work exactly the same, just using different bases and thus a different number of symbols per digit. Did you know that before? Probably not. But, if you knew decimal notation already, and you likely did, then you already understood the other notations as well just without being aware of that and without being used to them. Just try to convert a few more numbers now to practice!
+
+Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer, by doing exactly what a human does with decimal addition. Take the rightmost digits, that is, bits in:
 
 101010**1** and 11**1**,
 
-also called the *least-significant bits* (LSBs). They are both 1. Adding 1 and 1 in binary is of course 10 which is 2 in decimal. This means that the LSB of the sum of 1010101 and 111 is the 0 in 1**0**. But we need to carry the 1 in **1**0, also called the *carry bit*, to the left now and add it to the second LSBs 0 and 1 in:
+also called the *least-significant bits* (LSBs), and add them. They are both 1. Adding 1 and 1 in binary is of course 10 which is 2 in decimal. This means that the LSB of the sum of 1010101 and 111 is the 0 in 1**0**. But we need to carry the 1 in **1**0, also called the *carry bit*, to the left now and add it to the second LSBs 0 and 1 in:
 
 10101**0**1 and 1**1**1.
 
@@ -154,7 +164,7 @@ This means we are adding 1 and 1 plus the carry bit 1. The result is of course 1
 
 ```
  1010101 = 85
-+0000111 =  7
++    111 =  7
 —————————————
  1011100 = 92
 ```
