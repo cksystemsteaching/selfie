@@ -88,13 +88,13 @@ With an even bigger decimal number, say, 285 you should see how this works in ge
 
 (**2**\*10+**8**)\*10+**5**.
 
-Decimal notation is positional. That means that the value of a digit, say, of 8 in 2**8**5 depends on its position relative to the digits to its right, and it depends on the number of different symbols we use per digit which is of course 10 with decimal notation, that is, the 10 different symbols:
+Decimal notation is positional. That means that the value of a digit, say, of 8 in 2**8**5 depends on its position relative to the digits to its right, and it depends on the number of symbols available per digit which is of course 10 with decimal notation, that is, the 10 different symbols:
 
 0, 1, 2, 3, 4, 5, 6, 7, 8, and 9.
 
-The number of different symbols per digit is called *base*. So, decimal notation uses base 10.
+The number of symbols available per digit is called *base*. So, decimal notation uses base 10.
 
-The only difference between decimal and binary notation is the number of different symbols per digit, that is, the base. With binary notation there are of course just two symbols, say, 0 and 1. Thus the base of binary notation is 2. Calculating the value of a binary number works accordingly. For example, the binary number 111 represents the decimal number 7 because:
+The only difference between decimal and binary notation is the number of symbols available per digit, that is, the base. With binary notation there are of course just two symbols, say, 0 and 1. Thus the base of binary notation is 2. Calculating the value of a binary number works accordingly. For example, the binary number 111 represents the decimal number 7 because:
 
 (**1**\*2+**1**)\*2+**1** = 7.
 
@@ -146,7 +146,7 @@ The reason why it is popular is because base 8 is also a power of 2, in fact, it
 
 In order to avoid confusion, we may use the prefix 00 with octal numbers, that is, 00125, for example, and the prefix b with binary numbers, that is, b1010101, for example.
 
-In sum, we have seen binary, octal, decimal, and hexadecimal notation that all work exactly the same, just using different bases and thus a different number of symbols per digit. Did you know that before? Probably not. But, if you knew decimal notation already, and you likely did, then you already understood the other notations as well just without being aware of that and without being used to them. Just try to convert a few more numbers now to practice!
+In sum, we have seen unary, binary, octal, decimal, and hexadecimal notation that all work exactly the same, except for unary, just using different bases and thus a different number of symbols per digit. Did you know that before? Probably not. But, if you knew decimal notation already, and you likely did, then you already understood the other notations as well just without being aware of that and without being used to them. Just try to convert a few more numbers now to practice!
 
 Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer, by doing exactly what a human does with decimal addition. Take the rightmost digits, that is, bits in:
 
@@ -169,9 +169,9 @@ This means we are adding 1 and 1 plus the carry bit 1. The result is of course 1
  1011100 = 92
 ```
 
-Speed?
+So, who would have thought that binary notation and addition works exactly the same as decimal notation and addition? The only difference is the base and thus the number of symbols available per digit. Now, just one more thought about this. Notice that binary and decimal addition takes as many steps as there are digits in the addend with the most digits. This is why manual counting in anything but unary is less convenient. However, since any positional notation with base higher than 1 is exponentially more compact than unary, addition is effectively still fast because the *value* of the involved numbers can get very large even with relatively few digits.
 
-Why do we make you go through this? It is not just because binary addition is one of the most important operations computers including your cell phone can do, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean Logic, the fundamental building block of all digital computers.
+Ok, but why do we make you go through all this? It is not just because binary addition is one of the most important operations computers including your cell phone perform, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean Logic, the fundamental building block of all digital computers.
 
 ### Boolean Logic
 
