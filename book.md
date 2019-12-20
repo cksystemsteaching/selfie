@@ -34,9 +34,13 @@ Readers should be at least 14 years old and planning to obtain or already holdin
 
 ## Information
 
-Computer science is about the automation of everything. Think of something you would like to do but then not do it yourself but have a machine do it for you. Whether this is always possible is still being debated but not our concern here. Well, we believe that it is always possible but many people and thus companies often underestimate the enormous complexity involved in seemingly simple tasks such as driving a car. The issue is that whatever problem you are trying to solve you first need to *encode* the *information* involved in solving the problem in such a way that a machine can handle it. And then you need to tell the machine every single step of how to *manipulate* that information which is tedious even for extremely simple tasks such as adding two numbers. Finally, you need to *decode* the result back into something a human can experience.
+Computer science is about the automation of everything. Think of something you would like to do but then not do it yourself but have a machine do it for you. Whether this is always possible is still being debated but not our concern here. Well, we believe that it is always possible but many people and thus companies often underestimate the enormous complexity involved in seemingly simple tasks such as driving a car. The issue is that whatever problem you are trying to solve you first need to *encode* the *information* involved in solving the problem in such a way that a machine can handle it. And then you need to tell the machine every single step of how to *manipulate* that information which is tedious even for extremely simple tasks. Finally, you need to *decode* the result back into something a human can experience.
 
-Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a digital computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. In fact, we say we encode them as *binary* number. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their binary form. Finally, the result will be a number but of course encoded in binary. We therefore need to take those bits and decode them back to a more human-readable form which is hopefully 92.
+Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a digital computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. In fact, we say we encode them as *binary* number. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their binary form. Finally, the result will be a number but of course encoded in binary. We therefore need to take those bits and decode them back to a more human-readable form which is hopefully 92. The cool thing is that you already know how to do all that, if you know decimal numbers. You are just not aware of that!
+
+Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information, images, video, audio, even code. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Logic which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then natural numbers, and then Boolean Logic. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool.
+
+TODO: more overview.
 
 ### Bits
 
@@ -174,6 +178,8 @@ So, who would have thought that binary notation and addition works exactly the s
 Ok, but why do we make you go through all this? It is not just because binary addition is one of the most important operations computers including your cell phone perform, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean Logic, the fundamental building block of all digital computers.
 
 ### Boolean Logic
+
+Next, we show you how negative numbers are handled, that is, how binary subtraction works. Binary multiplication and division is also important but we leave that out here. In principle, both work the way you learned in school but we do not need to remember exactly how to follow the material here.
 
 ### Negative Numbers
 
