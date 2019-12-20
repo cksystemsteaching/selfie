@@ -152,7 +152,7 @@ In order to avoid confusion, we may use the prefix 00 with octal numbers, that i
 
 In sum, we have seen unary, binary, octal, decimal, and hexadecimal notation that all work exactly the same, except for unary, just using different bases and thus a different number of symbols per digit. Did you know that before? Probably not. But, if you knew decimal notation already, and you likely did, then you already understood the other notations as well just without being aware of that and without being used to them. Just try to convert a few more numbers now to practice!
 
-Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer, by doing exactly what a human does with decimal addition. Take the rightmost digits, that is, bits in:
+Let us again go back to the example of adding 85 and 7. By now, we know their binary encoding, that is, 1010101 and 111. We are thus ready to perform binary addition, just like a computer, by doing exactly what a human does with decimal addition. Take the rightmost digits (bits) of the two *addends*:
 
 101010**1** and 11**1**,
 
@@ -173,7 +173,7 @@ This means we are adding 1 and 1 plus the carry bit 1. The result is of course 1
  1011100 = 92
 ```
 
-So, who would have thought that binary notation and addition works exactly the same as decimal notation and addition? The only difference is the base and thus the number of symbols available per digit. Now, just one more thought about this. Notice that binary and decimal addition takes as many steps as there are digits in the addend with the most digits. This is why manual counting in anything but unary is less convenient. However, since any positional notation with base higher than 1 is exponentially more compact than unary, addition is effectively still fast because the *value* of the involved numbers can get very large even with relatively few digits.
+So, who would have thought that binary notation and addition works exactly the same as decimal notation and addition? The only difference is the base and thus the number of symbols available per digit. Now, just one more thought about this. Notice that binary and decimal addition takes as many steps as there are digits in the addend with the most digits. This is why manual counting in anything but unary is less convenient. However, since any positional notation with base higher than 1 is exponentially more compact than unary, addition is effectively still fast because the *value* of the involved numbers can get very large even with relatively few digits. Also, there are ways to improve on the number of steps necessary to perform binary addition which we nevertheless ignore here.
 
 Ok, but why do we make you go through all this? It is not just because binary addition is one of the most important operations computers including your cell phone perform, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean Algebra, the fundamental building block of all digital computers.
 
@@ -188,16 +188,16 @@ Let us take an even closer look at how binary addition works. Adding two bits re
 1+1 = b10 = 2
 ```
 
-There are at least two interesting observations we can make here. Firstly, the carry bit is only 1 if both addends are 1. This corresponds to a logical *AND* operation! Secondly, the sum bit is only 1 if either the first addend is 1, or else the second addend is 1. This is logical *EXCLUSIVE-OR* or *XOR*! There is also logical *OR* but that is 1 if either of the two addends or *operands* is 1 including both. So, not the right choice here but still important for other things.
+There are at least two interesting observations we can make here. Firstly, the carry bit is only 1 if both addends are 1. This corresponds to a logical *AND* operator! Secondly, the sum bit is only 1 if either the first addend is 1, or else the second addend is 1. This is logical *EXCLUSIVE-OR* or *XOR*! There is also logical *OR* but that is 1 if either of the two addends or *operands* is 1 including both. So, not the right choice here but still important for other things.
 
-Boolean Algebra can only talk about 0 and 1 (and is called Boolean Logic if 0 and 1 represent false and true, respectively), and apply logical operations such as AND, OR, and XOR. Those are called binary operations because they have two operands, not because they operate on bits! There is also one unary operation called logical *NEGATION* or *NOT* which obviously just flips the bit of its operand:
+Boolean Algebra can only talk about 0s and 1s, and is called Boolean Logic if 0 and 1 represent false and true, respectively. In addition to 0 and 1, Boolean Algebra features logical operators such as the above AND, OR, and XOR. They are referred to as binary operators because they have two operands, not because they operate on bits! There is also one unary operator called logical *NEGATION* or *NOT* which obviously just flips the bit of its single operand:
 
 ```
 NOT 0 = 1
 NOT 1 = 0
 ```
 
-And here is an overview of the binary operators for completeness:
+This is called a *truth table*, which is a bit more interesting for the above binary operators:
 
 ```
 0 AND 0 = 0
@@ -228,9 +228,7 @@ And vice versa:
 X AND Y = NOT ((NOT X) OR (NOT Y))
 ```
 
-These formulae are known as the De Morgan’s Laws, something I remember from my first semester more than thirty years ago.
-
-TODO: gates, half adder, full adder
+These formulae are known as De Morgan’s Laws, something I remember from my first semester more than thirty years ago. However, what is important here is that all these operators can be implemented by *logic gates* which are then put together to form an *electronic circuit* and ultimately a *central processing unit* or *CPU*. The AND and XOR operators, for example, can be put together as logic gates to form a so-called *half adder* which performs binary addition as described above. We can then extend the half adder to a *full adder*, one for each bit of the addends, which incorporates the carry bit of the less-significant full adder next to it. We skip the details here. If you are interested in the topic look for books on computer architecture. It is an incredibly exciting, highly active field that is the foundation of the computer revolution.
 
 Next, we show you how negative numbers are handled, that is, how binary subtraction works. Binary multiplication and division is also important but we leave that out here. In principle, both work the way you learned in school but we do not need to remember exactly how to follow the material here.
 
