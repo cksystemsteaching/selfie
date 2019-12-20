@@ -30,7 +30,7 @@ Even the most convenient high-level programming languages are by far not enough 
 
 One of the key breakthroughs of recent years is that computation has become a utility just like electricity and water. Cloud computing and, in the near future, edge computing creates enormous potential, just like the reliable availability of power and water. The key enabling technology is virtualization which is a concept whose understanding is elusive even to many computer science students. However, we believe we have found a way to teach virtualization even to broad audiences based on a combination of our machine model, programming language, and tool set. The idea is to demonstrate how software can create the illusion of any machine, in particular the one it runs on, very efficiently. This is another form of self-referentialy that is fundamental in computer science. Seeing that enables you to grasp the full extent of the universality of digital computing.
 
-Readers should be at least 14 years old and planning to obtain or already holding at least a high school degree. The only prerequisite will be an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers) and Boolean logic (logical AND, OR, and NEGATION of true and false statements). Both topics are anyway revisited in the book.
+Readers should be at least 14 years old and planning to obtain or already holding at least a high school degree. The only prerequisite will be an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of decimal numbers) and Boolean logic (logical AND, OR, and NEGATION of true and false statements). Both topics are anyway revisited in the book.
 
 ## Information
 
@@ -38,7 +38,7 @@ Computer science is about the automation of everything. Think of something you w
 
 Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a digital computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. In fact, we say we encode them as *binary* number. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their binary form. Finally, the result will be a number but of course encoded in binary. We therefore need to take those bits and decode them back to a more human-readable form which is hopefully 92. The cool thing is that you already know how to do all that, if you know decimal numbers. You are just not aware of that!
 
-Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information, images, video, audio, even code. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Logic which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then natural numbers, and then Boolean Logic. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool.
+Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information, images, video, audio, even code. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then natural numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool.
 
 TODO: more overview.
 
@@ -175,9 +175,62 @@ This means we are adding 1 and 1 plus the carry bit 1. The result is of course 1
 
 So, who would have thought that binary notation and addition works exactly the same as decimal notation and addition? The only difference is the base and thus the number of symbols available per digit. Now, just one more thought about this. Notice that binary and decimal addition takes as many steps as there are digits in the addend with the most digits. This is why manual counting in anything but unary is less convenient. However, since any positional notation with base higher than 1 is exponentially more compact than unary, addition is effectively still fast because the *value* of the involved numbers can get very large even with relatively few digits.
 
-Ok, but why do we make you go through all this? It is not just because binary addition is one of the most important operations computers including your cell phone perform, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean Logic, the fundamental building block of all digital computers.
+Ok, but why do we make you go through all this? It is not just because binary addition is one of the most important operations computers including your cell phone perform, in fact, billions of times per second. It is also to show you something that is even more basic than binary addition. It is called Boolean Algebra, the fundamental building block of all digital computers.
 
-### Boolean Logic
+### Boolean Algebra
+
+Let us take an even closer look at how binary addition works. Adding two bits requires another two bits for storing the result. One bit for the sum, which is the LSB of the result, and one bit for the carry bit, which is the MSB of the result. Here is an overview of all possible combinations:
+
+```
+0+0 = b00 = 0
+0+1 = b01 = 1
+1+0 = b01 = 1
+1+1 = b10 = 2
+```
+
+There are at least two interesting observations we can make here. Firstly, the carry bit is only 1 if both addends are 1. This corresponds to a logical *AND* operation! Secondly, the sum bit is only 1 if either the first addend is 1, or else the second addend is 1. This is logical *EXCLUSIVE-OR* or *XOR*! There is also logical *OR* but that is 1 if either of the two addends or *operands* is 1 including both. So, not the right choice here but still important for other things.
+
+Boolean Algebra can only talk about 0 and 1 (and is called Boolean Logic if 0 and 1 represent false and true, respectively), and apply logical operations such as AND, OR, and XOR. Those are called binary operations because they have two operands, not because they operate on bits! There is also one unary operation called logical *NEGATION* or *NOT* which obviously just flips the bit of its operand:
+
+```
+NOT 0 = 1
+NOT 1 = 0
+```
+
+And here is an overview of the binary operators for completeness:
+
+```
+0 AND 0 = 0
+0 AND 1 = 0
+1 AND 0 = 0
+1 AND 1 = 1
+
+0 OR 0 = 0
+0 OR 1 = 1
+1 OR 0 = 1
+1 OR 1 = 1
+
+0 XOR 0 = 0
+0 XOR 1 = 1
+1 XOR 0 = 1
+1 XOR 1 = 0
+```
+
+There are of course more binary operators possible. How many? In total, there are 16, that is, 2 to the power of 4, different binary operators in Boolean Algebra, simply because their two operands can be in 4 different states requiring 4 results per operator. However, just AND and NOT, for example, can be combined in Boolean *formulae* to mimic all other possible operators such as OR, for example, where X and Y are one bit each:
+
+```
+X OR Y = NOT ((NOT X) AND (NOT Y))
+```
+
+And vice versa:
+
+```
+X AND Y = NOT ((NOT X) OR (NOT Y))
+```
+
+These formulae are known as the De Morgan’s Laws, something I remember from my first semester more than thirty years ago.
+
+TODO: gates, half adder, full adder
 
 Next, we show you how negative numbers are handled, that is, how binary subtraction works. Binary multiplication and division is also important but we leave that out here. In principle, both work the way you learned in school but we do not need to remember exactly how to follow the material here.
 
