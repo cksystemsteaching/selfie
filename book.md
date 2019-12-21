@@ -228,31 +228,74 @@ And vice versa:
 X AND Y = NOT ((NOT X) OR (NOT Y))
 ```
 
-These formulae are known as De Morgan’s Laws, something I remember from my first semester more than thirty years ago. However, what is important here is that all these operators can be implemented by *logic gates* which are then put together to form an *electronic circuit* and ultimately a *central processing unit* or *CPU*. The AND and XOR operators, for example, can be put together as logic gates to form a so-called *half adder* which performs binary addition as described above. We can then extend the half adder to a *full adder*, one for each bit of the addends, which incorporates the carry bit of the less-significant full adder next to it. We skip the details here. If you are interested in the topic look for books on computer architecture. It is an incredibly exciting, highly active field that is the foundation of the computer revolution.
+These formulae are known as De Morgan’s Laws, something I remember from my first semester more than thirty years ago. However, what is important here is that all these operators can be implemented by *logic gates* which are then put together to form an *electronic circuit* and ultimately a *central processing unit* or *CPU*. The AND and XOR operators, for example, can be arranged as logic gates to form a so-called *half adder* which performs binary addition as described above. We can then extend the half adder to a *full adder*, one for each bit of the addends, which incorporates the carry bit of the less-significant full adder next to it. We skip the details here. If you are interested in the topic look for books on computer architecture. It is an incredibly exciting, highly active field that is the foundation of the computer revolution.
 
 Next, we show you how negative numbers are handled, that is, how binary subtraction works. Binary multiplication and division is also important but we leave that out here. In principle, both work the way you learned in school but we do not need to remember exactly how to follow the material here.
 
 ### Negative Numbers
 
-85 - 7 = 85 + (100 - 7) - 100 =
-85 + (100 - 1 - 7 + 1) - 100 =
-85 + (99 - 7 + 1) - 100 =
-85 + ((99 - 07) + 1) - 100 =
-85 + (92 + 1) - 100 =
-85 + 93 - 100 =
-178 - 100 =
-78
+```
+85 - 7 = 85 + (100 - 7) - 100 = 85 + (100 - 1 - 7 + 1) - 100 = 85 + (99 - 7 + 1) - 100
+```
 
-01010101
-11111001
-————————
-01001110
+```
+85 + (99 - 7 + 1) - 100 = 85 + (92 + 1) - 100
+```
+
+```
+85 + (92 + 1) - 100 = 85 + 93 - 100
+```
+
+```
+85 + 93 - 100 = 178 - 100 = 78
+```
+
+```
+85 - 7 = 85 + 93 - 100 = 78
+```
+
+```
+ 1010101 = 85
+-    111 =  7
+—————————————>
+  1010101 = 85
++10000000
+-     111 =  7
+-10000000
+—————————————>
+  1010101 = 85
++10000000
+-       1
+-     111 =  7
++       1
+-10000000
+—————————————>
+  1010101 = 85
++ 1111111
+-     111 =  7
++       1
+-10000000
+—————————————>
+  1010101 = 85
++ 1111000 = ones’ complement of 7
++       1
+-10000000
+—————————————>
+  1010101 = 85
++ 1111001 = two’s complement of 7
+-10000000
+—————————————>
+ 11001110 = 85 + two’s complement of 7
+-10000000
+——————————————
+  1001110 = 78
+```
 
 ternary, trit
 
-### Bytes
-
 ### Characters
+
+### Bytes
 
 ### Memory
 
