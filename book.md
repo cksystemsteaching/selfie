@@ -238,6 +238,23 @@ Why are negative numbers and binary subtraction so important to know about? Ther
 
 What may be surprising about subtraction is that a hypothetical computer that can only subtract numbers, compare the result with zero, and depending on the outcome can choose to perform different subtractions and comparisons subsequently and so on, can do anything any other computer in the world can do. Such a machine is called a *one instruction set computer* (OISC). It may be slower than other machines but it can still mimic everything any other machine can do, in particular addition, multiplication, division, and whatever else computers can do.
 
+So, subtraction is special. Suppose we would like to subtract 7 from 85. To do that we first convert the subtrahend 7 into its negative *complement* (without using the sign symbol) and then add that complement to the minuend 85. In other words, we mimic subtraction by using addition on the minuend and the complement of the subtrahend. We first show how to do that with decimal notation and then move on to do the same with binary notation which explains, at least in principle, how a computer does subtraction.
+
+The negative complement or *radix complement* of a number depends on the radix or base of the notation in which the number is written down. Thus the radix complement of a decimal number is the *tens complement* of that number. To calculate the tens complement we first need to decide the maximum number of digits we support in any of the involved numbers. For the example here, we need at least 2 digits (because of 85). The tens complement of 7 (with a maximum of 2 digits) is:
+
+```
+100 - 7 = 93
+```
+
+So, 93 represents -7 here. If we were to support 3 digits the tens complement of 7 would be:
+
+```
+1000 - 7 = 993
+```
+
+and so on.
+
+
 ```
 85 - 7 = 85 + (100 - 7) - 100 = 85 + (100 - 1 - 7 + 1) - 100 = 85 + (99 - 7 + 1) - 100
 ```
@@ -261,34 +278,49 @@ What may be surprising about subtraction is that a hypothetical computer that ca
 ```
   1010101 = 85
 -     111 =  7
-—————————————>
+```
+
+```
   1010101 = 85
 +10000000
 -     111 =  7
 -10000000
-—————————————>
+```
+
+```
   1010101 = 85
 +10000000
 -       1
 -     111 =  7
 +       1
 -10000000
-—————————————>
+```
+
+```
   1010101 = 85
 + 1111111
 -     111 =  7
 +       1
 -10000000
-—————————————>
+```
+
+```
   1010101 = 85
 + 1111000 = ones’ complement of 7
 +       1
 -10000000
-—————————————>
+```
+
+```
   1010101 = 85
 + 1111001 = two’s complement of 7
 -10000000
-—————————————>
+```
+
+```
+  1010101 = 85
++ 1111001 = two’s complement of 7
+——————————————
  11001110 = 85 + two’s complement of 7
 -10000000
 ——————————————
