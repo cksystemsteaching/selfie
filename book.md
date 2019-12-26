@@ -270,7 +270,7 @@ and
 9 - 7 = 2
 ```
 
-However, we need the radix complement, not the diminished radix complement. The difference though is only an increment of 1. So, calculating the radix complement is done by first calculating the diminished radix complement and then increment the result by 1.
+However, we need the radix complement, not the diminished radix complement. The difference though is only an increment by 1. So, calculating the radix complement is done by first calculating the diminished radix complement and then increment the result by 1.
 
 ```
 99 - 7 + 1 = 92 + 1 = 93
@@ -288,12 +288,14 @@ The two subtractions, 99 - 7 and 85 + () - 100 are both trivial to do:
 85 + (99 - 7 + 1) - 100 = 85 + (92 + 1) - 100 = 85 + 93 - 100 = 178 - 100 = 78
 ```
 
-We are now ready to do the exact same thing with binary numbers and their ones and twos complement.
+We are now ready to do the exact same thing with binary numbers and their ones and twos complement:
 
 ```
   1010101 = 85
 -     111 =  7
 ```
+
+We choose to support seven bits, that is, the twos complement is inserted into the calculation as follows:
 
 ```
   1010101 = 85
@@ -301,6 +303,8 @@ We are now ready to do the exact same thing with binary numbers and their ones a
 -     111 =  7
 -10000000
 ```
+
+Since calculating 10000000 - 111 is still difficult, we replace the twos complement with the ones complement and an increment by 1:
 
 ```
   1010101 = 85
@@ -311,6 +315,8 @@ We are now ready to do the exact same thing with binary numbers and their ones a
 -10000000
 ```
 
+Calculating the ones complement 1111111 - 111 is easy:
+
 ```
   1010101 = 85
 + 1111111
@@ -319,22 +325,28 @@ We are now ready to do the exact same thing with binary numbers and their ones a
 -10000000
 ```
 
+Just flip the seven bits of the subtrahend 111:
+
 ```
   1010101 = 85
-+ 1111000 = ones’ complement of 7
++ 1111000 = ones complement of 7
 +       1
 -10000000
 ```
 
-```
-  1010101 = 85
-+ 1111001 = two’s complement of 7
--10000000
-```
+And then increment by 1 to obtain the twos complement:
 
 ```
   1010101 = 85
-+ 1111001 = two’s complement of 7
++ 1111001 = twos complement of 7
+-10000000
+```
+
+Now add the minuend and the twos complement of the subtrahend and finally get rid of the MSB to correct for introducing the twos complement:
+
+```
+  1010101 = 85
++ 1111001 = twos complement of 7
 ——————————————
  11001110 = 85 + two’s complement of 7
 -10000000
@@ -342,7 +354,18 @@ We are now ready to do the exact same thing with binary numbers and their ones a
   1001110 = 78
 ```
 
-ternary, trit
+Try to practice this with different numbers. You may notice that depending on the involved numbers there may be *overflows* where the seven bits are insufficient to calculate the correct result. It may be possible, for example, that a large number suddenly becomes zero if we ignore any bits beyond seven:
+
+```
+  1111111 = 127
++       1 =   1
+---------
+  0000000 =   0
+```
+
+Overflows are a major source of errors in software. Essentially, they are encoding errors where the programmer did not reserve enough bits to represent the involved information. However, the topic is beyond our reach here.
+
+There is one more interesting notation, in addition to unary, binary, octal, decimal, and hexadecimal, that we would like to mention. It is ternary notation with base 3. A digit in ternary notation is called a trit which are often denoted to be either +1, 0, or -1. There were in fact attempts to build ternary computers a long time ago. The reason is that positive and negative numbers can be encoded naturally in ternary notation, and that ternary arithmetics is to some extent simpler than binary arithmetics. However, distinguishing three rather than two states in electronic circuits is not easy making it hard for ternary computers to compete.
 
 ### Characters
 
