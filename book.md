@@ -356,7 +356,7 @@ Now add the minuend and the twos complement of the subtrahend and finally get ri
 
 Try to practice this with different numbers!
 
-Before going just a bit further into the details, there is one more interesting notation, in addition to unary, binary, octal, decimal, and hexadecimal, that we would like to mention first. It is ternary notation with base 3. A digit in ternary notation is called a trit which are often denoted to be either +1, 0, or -1. There were in fact attempts to build ternary computers a long time ago. The reason is that positive as well as negative numbers can be encoded naturally in ternary notation, and that ternary arithmetics is to some extent simpler than binary arithmetics. However, distinguishing three rather than two states in electronic circuits is not easy making it hard for ternary computers to compete. So, for now we are stuck with binary.
+Before going just a bit further into the details, there is one more interesting notation, in addition to unary, binary, octal, decimal, and hexadecimal, that we would like to mention first. It is *ternary* notation with base 3. A digit in a ternary number is called a *trit* which can either be denoted by 0, 1, and 2 but also by -1, 0, and +1. There were in fact attempts to build ternary computers a long time ago. The reason is that positive as well as negative numbers can be encoded naturally in ternary notation, and that ternary arithmetics may in theory be faster than binary arithmetics. However, distinguishing three rather than two states in electronic circuits adds complexity to the design making it hard for ternary computers to compete. So, for now we are stuck with binary.
 
 ### Overflows
 
@@ -392,6 +392,8 @@ Overflows are a major source of errors in software. Essentially, they are encodi
 
 ### Memory
 
+TODO: addition and subtraction necessary for data flow (address computation)
+
 ### Text
 
 ### Images
@@ -411,6 +413,8 @@ Overflows are a major source of errors in software. Essentially, they are encodi
 ### Input/Output
 
 ### Instructions
+
+TODO: addition and subtraction necessary for control flow (program counter)
 
 ## Programming
 
