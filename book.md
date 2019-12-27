@@ -234,9 +234,9 @@ Next, we show you how negative numbers are handled, that is, how binary subtract
 
 ### Negative Numbers
 
-Why are negative numbers and binary subtraction so important to know about? There is a pedagogical and a technical reason. Seeing how negative numbers are encoded in bits is surprisingly simple as well as educational since it can be done in such a way that binary addition, subtraction, and even multiplication works without any modifications. Only division requires attention because it works differently depending on whether the involved bits are supposed to encode positive or negative numbers.
+Why are negative numbers and binary subtraction so important to know about? There is a pedagogical and a technical reason. Seeing how negative numbers are encoded in bits is surprisingly simple as well as educational since it can be done in such a way that binary addition, subtraction, and even multiplication works without any modifications. Only division requires attention because it works differently depending on whether the involved bits are supposed to encode positive or negative numbers. Also, subtraction allows us to find out if two numbers are equal or not, simply by subtracting one from the other and comparing the result with 0.
 
-What may be surprising about subtraction is that a hypothetical computer that can only subtract numbers, compare the result with zero, and depending on the outcome can choose to perform different subtractions and comparisons subsequently and so on, can do anything any other computer in the world can do. Such a machine is called a *one instruction set computer* (OISC). It may be slower than other machines but it can still mimic everything any other machine can do, in particular addition, multiplication, division, and whatever else computers can do.
+In fact, what may be surprising about subtraction is that a hypothetical computer that can only subtract numbers, compare the result with 0, and depending on the outcome can choose to perform different subtractions and comparisons subsequently and so on, can do anything any other computer in the world can do. Such a machine is called a *one instruction set computer* (OISC). It may be slower than other machines but it can still mimic everything any other machine can do, in particular addition, multiplication, division, and whatever else computers can do.
 
 So, subtraction is special. Suppose we would like to subtract 7 from 85. To do that we first convert the subtrahend 7 into its negative *complement* (without using the sign symbol) and then add that complement to the minuend 85. In other words, we mimic subtraction by using addition on the minuend and the complement of the subtrahend. We first show how to do that with decimal numbers and then move on to do the same with binary numbers which explains, at least in principle, how a computer does subtraction.
 
@@ -375,7 +375,13 @@ You may have noticed that depending on the involved numbers subtraction using ra
  -0000001 = -1
 ```
 
-It may be possible, for example, that a large number suddenly becomes zero if we ignore any bits beyond seven:
+The result appears to be correct but either requires the sign symbol to represent it or skip the last step and simply interpret 1111111 as -1. Well, the latter is what is done. After all, the twos complement of 1111111 (with seven bits) is 1. However, we need to be clear about the consequences. Using radix complement to encode negative numbers effectively cuts the number of values that a given number of digits can distinguish in half.
+
+Seven bits, for example, can distinguish 128 different values. Thus binary encoding in seven bits but without twos complement supports representing 0 through 127. With twos complement it is the same number of different values but -64 through 63 including 0. Adding more bits, fortunately, still doubles the number of different values that can be represented, no matter if we use twos complement or not.
+
+TODO: explain above discrepancy with 85 > 63.
+
+It may be possible, for example, that a large number suddenly becomes 0 if we ignore any bits beyond seven:
 
 ```
   1111111 = 127
@@ -384,7 +390,7 @@ It may be possible, for example, that a large number suddenly becomes zero if we
   0000000 =   0
 ```
 
-Overflows are a major source of errors in software. Essentially, they are encoding errors where the programmer did not reserve enough bits to represent the involved information.
+Unintended overflows are a major source of errors in software. Essentially, they are encoding errors where the programmer did not reserve enough bits to represent the involved information.
 
 ### Characters
 
