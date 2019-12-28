@@ -40,7 +40,7 @@ Let us take a look at an example. Suppose we would like a machine add two decima
 
 Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information, images, video, audio, even code. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then natural numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool.
 
-TODO: more overview.
+TODO: more overview. mention that 1010101 can mean 85, -43, U, and so on.
 
 ### Bits
 
@@ -258,7 +258,7 @@ and so on. The only issue is that calculating the tens complement is not much ea
 99 - 7 = 92
 ```
 
-If a given number fits the number of supported digits, the diminished radix complement of that number can be calculated digit by digit. Here, it is:
+If a given number fits the number of supported digits, the diminished radix complement of that number can be calculated digit by digit. Here, it is for, well, `99 - 07 = 92`:
 
 ```
 9 - 0 = 9
@@ -304,7 +304,7 @@ We choose to support seven bits, that is, the twos complement is inserted into t
 -10000000
 ```
 
-Since calculating 10000000 - 111 is still difficult, we replace the twos complement with the ones complement and an increment by 1:
+Since calculating `10000000 - 111` is still difficult, we replace the twos complement with the ones complement and an increment by 1:
 
 ```
   1010101 = 85
@@ -315,7 +315,7 @@ Since calculating 10000000 - 111 is still difficult, we replace the twos complem
 -10000000
 ```
 
-Calculating the ones complement 1111111 - 111 is easy:
+Calculating the ones complement `1111111 - 111` is easy:
 
 ```
   1010101 = 85
@@ -358,13 +358,17 @@ Try to practice this with different numbers!
 
 Before going just a bit further into the details, there is one more interesting notation, in addition to unary, binary, octal, decimal, and hexadecimal, that we would like to mention first. It is *ternary* notation with base 3. A digit in a ternary number is called a *trit* which can either be denoted by 0, 1, and 2 but also by -1, 0, and +1. There were in fact attempts to build ternary computers a long time ago. The reason is that positive as well as negative numbers can be encoded naturally in ternary notation, and that ternary arithmetics may in theory be faster than binary arithmetics. However, distinguishing three rather than two states in electronic circuits adds complexity to the design making it hard for ternary computers to compete. So, for now we are stuck with binary.
 
-### Overflows
+### Integers
 
-You may have noticed that depending on the involved numbers subtraction using radix complement appears to produce incorrect or at least strange results, independently of the base. Take, 85 - 86, for example, in binary using seven bits:
+You may have noticed that depending on the involved numbers subtraction using radix complement appears to produce incorrect or at least strange results, independently of the base. Take, `85 - 86`, for example, in binary using seven bits:
 
 ```
   1010101 = 85
 - 1010110 = 86
+——————————————
+  1010101 = 85
++ 0101001 = ones complement of 86
++       1
 ——————————————
   1010101 = 85
 + 0101010 = twos complement of 86
@@ -375,19 +379,69 @@ You may have noticed that depending on the involved numbers subtraction using ra
  -0000001 = -1
 ```
 
-The result appears to be correct but either requires the sign symbol to represent it or skip the last step and simply interpret 1111111 as -1. Well, the latter is what is done. After all, the twos complement of 1111111 (with seven bits) is 1. However, we need to be clear about the consequences. Using radix complement to encode negative numbers effectively cuts the number of values that a given number of digits can distinguish in half.
+The result appears to be correct but either requires the sign symbol to represent it or skip the last step and simply assume that 1111111 represents -1. Well, the latter is what is done. After all, the twos complement of 1111111 (with seven bits) is 1. However, we need to be clear about the consequences. Using radix complement to encode negative numbers effectively cuts the number of *absolute* values that a given number of digits can distinguish in half.
 
-Seven bits, for example, can distinguish 128 different values. Thus binary encoding in seven bits but without twos complement supports representing 0 through 127. With twos complement it is the same number of different values but -64 through 63 including 0. Adding more bits, fortunately, still doubles the number of different values that can be represented, no matter if we use twos complement or not.
+Seven bits, for example, can distinguish 128 different values. Thus binary encoding in seven bits but without twos complement supports representing 0 through 127. With twos complement it is the same number of different values but shifted by 64, that is, it supports representing -64 through 63 including 0. Adding more bits, fortunately, still doubles the number of different values that can be represented, no matter if we use twos complement or not.
 
-TODO: explain above discrepancy with 85 > 63.
+But why does the above example work if seven bits only fit -64 through 63? Both, 85 and 86 are clearly outside that range. It works but only for the actual subtraction operation. In other words, the encoding of 85 and 86 in seven bits is correct but only if we *interpret* their binary encoding as *unsigned* from 0 to 127. If, on the other hand, we interpret them as *signed* from -64 to 63 using twos complement for negative numbers, their encoding in seven bits is incorrect since:
+
+```
+1010101 = 85 in unsigned interpretation
+```
+
+but:
+
+```
+1010101 = -43 in signed interpretation
+```
+
+because:
+
+```
+ 1010101
+—————————————
+ 0101010 = ones complement
++      1
+—————————————
+ 0101011 = twos complement
+—————————————
+ 0101011 = 43
+```
+
+Similarly, 86 encoded in seven bits is -42 in signed interpretation. However, `-43 - -42` is of course still -1 which explains why the above subtraction actually works.
+
+How do we recognize binary numbers to represent positive or negative numbers? Well, the key lesson to be learned here is that we cannot! They are just bits. But, we can still interpret them, as unsigned or signed, for example, and there is a simple rule here. Assuming we use twos complement to encode negative numbers and have agreed to a given number of bits, say, seven bits, their MSB indicates right away if they encode a positive or a negative number. In signed interpretation, if the MSB is 1, the number is negative and otherwise positive. Just check again the above signed interpretation of 1010101.
+
+To make the above example of `85 - 86` work in signed interpretation even for the individual binary encoding of 85 and 86, we simply use one more bit extending the supported range from -64 through 63 to -128 through 127. Notice that the actual computation does not change a bit, literally, except that the signed interpretation of the involved numbers is now as intended:
+
+```
+  01010101 = 85
+- 01010110 = 86
+———————————————
+  01010101 = 85
++ 10101001 = ones complement of 86
++        1
+———————————————
+  01010101 = 85
++ 10101010 = twos complement of 86
+———————————————
+  11111111 = 85 + two’s complement of 86
+-100000000
+———————————————
+ -00000001 = -1
+```
+
+TODO: introduce integers
+
+### Overflows
 
 It may be possible, for example, that a large number suddenly becomes 0 if we ignore any bits beyond seven:
 
 ```
-  1111111 = 127
-+       1 =   1
----------
-  0000000 =   0
+ 1111111 = 127
++      1 =   1
+——————————————
+ 0000000 =   0
 ```
 
 Unintended overflows are a major source of errors in software. Essentially, they are encoding errors where the programmer did not reserve enough bits to represent the involved information.
