@@ -38,7 +38,7 @@ Computer science is about the automation of everything. Think of something you w
 
 Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. In fact, we say we encode them as *binary* number. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their binary form. Finally, the result will be a number but of course encoded in binary. We therefore need to take those bits and decode them back to a more human-readable form which is hopefully 92. The cool thing is that you already know how to do all that, if you know decimal numbers. You are just not aware of that!
 
-Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information, images, video, audio, even code. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then natural numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool.
+Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information, images, video, audio, even code. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then binary numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool.
 
 TODO: more overview. mention that 1010101 can mean 85, -43, U, and so on.
 
@@ -234,13 +234,13 @@ Next, we show you how negative numbers are handled, that is, how binary subtract
 
 ### Negative Numbers
 
-Why are negative numbers and binary subtraction so important to know about? There is a pedagogical and a technical reason. Seeing how negative numbers are encoded in bits is surprisingly simple as well as educational since it can be done in such a way that binary addition, subtraction, and even multiplication works without any modifications. Only division requires attention because it works differently depending on whether the involved bits are supposed to encode positive or negative numbers. Also, subtraction allows us to find out if two numbers are equal or not, simply by subtracting one from the other and comparing the result with 0.
+Why are negative numbers and binary subtraction so important to know about? There is a pedagogical and a technical reason. Seeing how negative numbers are encoded in bits is surprisingly simple as well as educational since it can be done in such a way that binary addition, subtraction, and even multiplication works without any modifications. Only division requires attention because it works differently depending on whether the involved bits are supposed to encode positive or negative numbers. Also, subtraction allows us to find out if two numbers are equal or not, simply by subtracting one from the other and comparing the result with zero.
 
-In fact, what may be surprising about subtraction is that a hypothetical computer that can only subtract numbers, compare the result with 0, and depending on the outcome can choose to perform different subtractions and comparisons subsequently and so on, can do anything any other computer in the world can do. Such a machine is called a *one instruction set computer* (OISC). It may be slower than other machines but it can still mimic everything any other machine can do, in particular addition, multiplication, division, and whatever else computers can do.
+In fact, what may be surprising about subtraction is that a hypothetical computer that can only subtract numbers, compare the result with zero, and depending on the outcome can choose to perform different subtractions and comparisons subsequently and so on, can do anything any other computer in the world can do. Such a machine is called a *one instruction set computer* (OISC). It may be slower than other machines but it can still mimic everything any other machine can do, in particular addition, multiplication, division, and whatever else computers can do.
 
-So, subtraction is special. Suppose we would like to subtract 7 from 85. To do that we first convert the subtrahend 7 into its negative *complement* (without using the sign symbol) and then add that complement to the minuend 85. In other words, we mimic subtraction by using addition on the minuend and the complement of the subtrahend. We first show how to do that with decimal numbers and then move on to do the same with binary numbers which explains, at least in principle, how a computer does subtraction.
+So, subtraction is special. Suppose we would like to subtract 7 from 85. To do that we first convert the subtrahend 7 into its negative *complement* (without using the sign symbol) and then add that complement to the minuend 85. In other words, we mimic subtraction by using addition on the minuend and the negative complement of the subtrahend. We first show how to do that with decimal numbers and then move on to do the same with binary numbers which explains, at least in principle, how a computer does subtraction.
 
-The negative complement or *radix complement* of a number depends on the radix or base of the notation in which the number is written down. The radix complement of a decimal number is thus the *tens complement* of that number. To calculate the tens complement we first need to decide the maximum number of digits we support in any of the involved numbers. For the example here, we need at least 2 digits (because of 85). The tens complement of 7 (with a maximum of 2 digits) is:
+The negative complement or *radix complement* of a number depends on the *radix* or base of the notation in which the number is written down. The radix complement of a decimal number is thus the *tens complement* of that number. To calculate the tens complement we first need to decide the maximum number of digits we support in any of the involved numbers. For the example here, we need at least 2 digits (because of 85). The tens complement of 7 (with a maximum of 2 digits) is:
 
 ```
 100 - 7 = 93
@@ -252,13 +252,13 @@ So, 93 represents -7 here. If we were to support 3 digits the tens complement of
 1000 - 7 = 993
 ```
 
-and so on. The only issue is that calculating the tens complement is not much easier than subtraction itself. But, calculating the *diminished radix complement* is! The diminished tens complement or nines complement of 7 is:
+and so on. The only issue is that calculating the tens complement is not much easier than subtraction itself. But, calculating the *diminished radix complement* is! The diminished tens complement or *nines complement* of 7 is:
 
 ```
 99 - 7 = 92
 ```
 
-If a given number fits the number of supported digits, the diminished radix complement of that number can be calculated digit by digit. Here, it is for, well, `99 - 07 = 92`:
+If a given number fits the number of supported digits, the diminished radix complement of that number can easily be calculated digit by digit! Here, it is for, well, `99 - 07 = 92`:
 
 ```
 9 - 0 = 9
@@ -276,7 +276,7 @@ However, we need the radix complement, not the diminished radix complement. The 
 99 - 7 + 1 = 92 + 1 = 93
 ```
 
-The full story is as follows:
+The full story is now as follows:
 
 ```
 85 - 7 = 85 + (100 - 7) - 100 = 85 + (100 - 1 - 7 + 1) - 100 = 85 + (99 - 7 + 1) - 100
@@ -288,14 +288,14 @@ The two subtractions, 99 - 7 and 85 + () - 100 are both trivial to do:
 85 + (99 - 7 + 1) - 100 = 85 + (92 + 1) - 100 = 85 + 93 - 100 = 178 - 100 = 78
 ```
 
-We are now ready to do the exact same thing with binary numbers and their ones and twos complement:
+Who would have thought that subtraction is so easy to do? Now, we are even ready to do the exact same thing with binary numbers and their *twos* and *ones complement*. In binary, `85 - 7` is:
 
 ```
-  1010101 = 85
--     111 =  7
+ 1010101 = 85
+-    111 =  7
 ```
 
-We choose to support seven bits, that is, the twos complement is inserted into the calculation as follows:
+Let us say we support seven bits. Just like the above calculation in decimal, we proceed by inserting the twos rather than the tens complement into the calculation as follows:
 
 ```
   1010101 = 85
@@ -304,7 +304,7 @@ We choose to support seven bits, that is, the twos complement is inserted into t
 -10000000
 ```
 
-Since calculating `10000000 - 111` is still difficult, we replace the twos complement with the ones complement and an increment by 1:
+Since calculating `10000000 - 111` is again still difficult, we replace the twos complement with the ones complement and an increment by 1:
 
 ```
   1010101 = 85
@@ -383,7 +383,7 @@ The result appears to be correct but either requires the sign symbol to represen
 
 Seven bits, for example, can distinguish 128 different values. Thus binary encoding in seven bits but without twos complement supports representing 0 through 127. With twos complement it is the same number of different values but shifted by 64, that is, it supports representing -64 through 63 including 0. Adding more bits, fortunately, still doubles the number of different values that can be represented, no matter if we use twos complement or not.
 
-But why does the above example work if seven bits only fit -64 through 63? Both, 85 and 86 are clearly outside that range. It works but only for the actual subtraction operation. In other words, the encoding of 85 and 86 in seven bits is correct but only if we *interpret* their binary encoding as *unsigned* from 0 to 127. If, on the other hand, we interpret them as *signed* from -64 to 63 using twos complement for negative numbers, their encoding in seven bits is incorrect since:
+But why does the above example work if seven bits only fit -64 through 63? Both, 85 and 86 are clearly outside that range. It works but only for the actual subtraction operation. In other words, the encoding of 85 and 86 in seven bits is correct but only if we *interpret* their binary encoding as *unsigned* from 0 to 127. If, on the other hand, we interpret it as *signed* from -64 to 63 using twos complement for negative numbers, their encoding in seven bits is incorrect since:
 
 ```
 1010101 = 85 in unsigned interpretation
@@ -410,7 +410,7 @@ because:
 
 Similarly, 86 encoded in seven bits is -42 in signed interpretation. However, `-43 - -42` is of course still -1 which explains why the above subtraction actually works.
 
-How do we recognize binary numbers to represent positive or negative numbers? Well, the key lesson to be learned here is that we cannot! They are just bits. But, we can still interpret them, as unsigned or signed, for example, and there is a simple rule here. Assuming we use twos complement to encode negative numbers and have agreed to a given number of bits, say, seven bits, their MSB indicates right away if they encode a positive or a negative number. In signed interpretation, if the MSB is 1, the number is negative and otherwise positive. Just check again the above signed interpretation of 1010101.
+How do we recognize binary numbers to represent positive or negative numbers? Well, the key lesson to be learned here is that we cannot! They are just bits. But, we can still interpret them, as unsigned or signed, for example, and there is a simple rule here. Assuming we use twos complement to encode negative numbers and have agreed to support a given number of bits, say, seven bits, their MSB indicates right away if they encode a positive or a negative number. In signed interpretation, if the MSB is 1, the number is negative and otherwise positive. Just check again the above signed interpretation of **1**010101 which is obviously negative.
 
 To make the above example of `85 - 86` work in signed interpretation even for the individual binary encoding of 85 and 86, we simply use one more bit extending the supported range from -64 through 63 to -128 through 127. Notice that the actual computation does not change a bit, literally, except that the signed interpretation of the involved numbers is now as intended:
 
@@ -431,7 +431,15 @@ To make the above example of `85 - 86` work in signed interpretation even for th
  -00000001 = -1
 ```
 
-TODO: introduce integers
+Let us take a step back here and reflect on what we have seen. Numbers for most of us are a concept we first heard about in school in the context of elementary mathematics. Back then we learned how to add, subtract, multiply, and divide numbers, not just to know how to do that but also to develop an intuition on what numbers are and what properties they have. However, one thing that probably never occurred to us was that the amount of numbers available to us could be limited and that there would be a cost involved in working with them. In short, we believed there are infinitely many and arithmetic is free for all. In computer science, this is different!
+
+Everything on a computer is finite simply because there are only finitely many bits the machine can store. There may be an awful lot of bits but still. Also, flipping bits costs time and energy. It is not free. All this means that everything a computer does costs time and energy and is still always finite including numbers encoded in bits. Things may get very, very large but still.
+
+In short, computer scientists worry about time, space, and energy. How long does it take to add two numbers? How many bits do I need to encode the involved numbers? How much power does it take, that is, when does my battery run out of power or when do I need a stronger power plant? When we are talking about billions and billions of additions and billions and billions of bits this all becomes highly relevant fast.
+
+What is important for us here is to understand that kind of mindset. Computer science is not mathematics. Let us take the example of numbers, in fact, *whole numbers*. We have seen how to encode positive and even negative numbers in bits. But no matter how many bits we use, those encodings can in the end only represent finitely many numbers. Also, addition on anything but unary takes as many steps as the number of digits we decided to use. Yet anything but unary saves exponentially many digits that we need to encode a given number. This is called the *time-space trade-off* in computer science which occurs in a lot of other circumstances as well. It refers to the phenomenon that minimizing the number of bits to encode something often leads to more steps a computer needs to take to do something useful with the encoding, and vice versa.
+
+When it comes to numbers, most computer scientists have agreed to distinguish the terms *whole numbers* and *integers*. Whole numbers refer to the concept of whole numbers in the mathematical sense. Integers refer to the finite representation of whole numbers on a computer. Whole numbers is math, integers is computer science. Furthermore, most computer scientists have agreed to use *unsigned integers* to represent whole numbers from 0 through 2^n-1 using binary encoding where n is the number of bits in the encoding. For example, 2^7-1 is 127. There is also agreement to use *signed integers* to represent whole numbers from -2^n-1^ through 2^n-1^-1 in binary encoding with twos complement for negative numbers. For example, -2^7-1^ is -64 and 2^7-1^-1 is 63. Unsigned and signed integers is all we need to understand the rest of the book!
 
 ### Overflows
 
