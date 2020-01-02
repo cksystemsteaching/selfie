@@ -174,7 +174,7 @@ This means we are adding 1 and 1 plus the carry bit 1. The result is of course 1
 
 ```
  1010101 = 85
-+    111 =  7
++0000111 =  7
 —————————————
  1011100 = 92
 ```
@@ -298,7 +298,7 @@ Who would have thought that subtraction is so easy to do? Now, we are even ready
 
 ```
  1010101 = 85
--    111 =  7
+-0000111 =  7
 ```
 
 Let us say we support seven bits. Just like the above calculation in decimal, we proceed by inserting the twos rather than the tens complement into the calculation as follows:
@@ -306,37 +306,37 @@ Let us say we support seven bits. Just like the above calculation in decimal, we
 ```
   1010101 = 85
 +10000000
--     111 =  7
+- 0000111 =  7
 -10000000
 ```
 
-Since calculating `10000000 - 111` is again still difficult, we replace the twos complement with the ones complement and an increment by 1:
+Since calculating `10000000 - 0000111` is again still difficult, we replace the twos complement with the ones complement and an increment by 1:
 
 ```
   1010101 = 85
 +10000000
--       1
--     111 =  7
-+       1
+- 0000001 =  1
+- 0000111 =  7
++ 0000001 =  1
 -10000000
 ```
 
-Calculating the ones complement `1111111 - 111` is easy:
+Calculating the ones complement `1111111 - 0000111` is easy:
 
 ```
   1010101 = 85
 + 1111111
--     111 =  7
-+       1
+- 0000111 =  7
++ 0000001 =  1
 -10000000
 ```
 
-Just flip the seven bits of the subtrahend 111:
+Just flip the seven bits of the subtrahend `0000111`:
 
 ```
   1010101 = 85
 + 1111000 = ones complement of 7
-+       1
++ 0000001 =  1
 -10000000
 ```
 
@@ -374,7 +374,7 @@ You may have noticed that depending on the involved numbers subtraction using ra
 ——————————————
   1010101 = 85
 + 0101001 = ones complement of 86
-+       1
++ 0000001 =  1
 ——————————————
   1010101 = 85
 + 0101010 = twos complement of 86
@@ -385,7 +385,7 @@ You may have noticed that depending on the involved numbers subtraction using ra
  -0000001 = -1
 ```
 
-The result appears to be correct but either requires the sign symbol to represent it or skip the last step and simply assume that 1111111 represents -1. Well, the latter is what is done. After all, the twos complement of 1111111 (with seven bits) is 1. However, we need to be clear about the consequences. Using radix complement to encode negative numbers effectively cuts the number of *absolute* values that a given number of digits can distinguish in half.
+The result appears to be correct but either requires the sign symbol to represent it or skip the last step and simply assume that `1111111` represents -1. Well, the latter is what is done. After all, the twos complement of `1111111` (with seven bits) is 1. However, we need to be clear about the consequences. Using radix complement to encode negative numbers effectively cuts the number of *absolute* values that a given number of digits can distinguish in half.
 
 Seven bits, for example, can distinguish 128 different values. Thus binary encoding in seven bits but without twos complement supports representing 0 through 127. With twos complement it is the same number of different values but shifted by 64, that is, it supports representing -64 through 63 including 0. Adding more bits, fortunately, still doubles the number of different values that can be represented, no matter if we use twos complement or not.
 
@@ -407,7 +407,7 @@ because:
  1010101
 —————————————
  0101010 = ones complement
-+      1
++0000001 =  1
 —————————————
  0101011 = twos complement
 —————————————
@@ -457,18 +457,95 @@ The thing that matters most is that, when it comes to numbers, unsigned and sign
 
 ### Overflows
 
-TODO: write up properly.
-
-It may be possible, for example, that a large number suddenly becomes 0 if we ignore any bits beyond seven:
+Unsigned and signed integers are all we need but there is something about them that we need to be very careful with. They *overflow*! It may be possible, for example, that a large number in an addition suddenly becomes 0 if we stick to a given number of bits to encode them, say, seven bits:
 
 ```
- 1111111 = 127
-+      1 =   1
+ 1111111 = 127 in unsigned interpretation
++0000001 =   1
 ——————————————
  0000000 =   0
 ```
 
-Unintended overflows are a major source of errors in software. Essentially, they are encoding errors where the programmer did not reserve enough bits to represent the involved information.
+So, with unsigned integers encoded in seven bits, 127 + 1 is not 128 but 0! This is because 128 in binary is 10000000 which requires eight bits. Since we decided to use just seven bits, the carry bit into the eighth bit is dropped, always, no matter if the carry bit is 0 or 1. If it is 0, the result is as expected. But if it is 1, the result *wrapped-around* UINT_MAX to fit into the supported range of seven bits. This is true even in the most extreme case:
+
+```
+ 1111111 = 127 in unsigned interpretation
++1111111 = 127 in unsigned interpretation
+——————————————
+ 1111110 = 126 in unsigned interpretation
+```
+
+which makes sense if we consider that with seven bits:
+
+```
+127+127 = 127+(1+126) = (127+1)+126 = 0+126 = 126
+```
+
+To even more surprise, the same situation looks perfectly fine with signed integers:
+
+```
+ 1111111 = -1 in signed interpretation
++0000001 =  1
+—————————————
+ 0000000 =  0
+```
+
+and:
+
+```
+ 1111111 = -1 in signed interpretation
++1111111 = -1 in signed interpretation
+—————————————
+ 1111110 = -2 in signed interpretation
+```
+
+However, there are overflows with signed integers as well, which wrap-around INT_MAX, for example, even without a carry bit of 1 into the eighth bit:
+
+```
+ 0111111 =  63
++0000001 =   1
+——————————————
+ 1000000 = -64 in signed interpretation
+```
+
+and:
+
+```
+ 0111111 =  63
++0111111 =  63
+——————————————
+ 1111110 =  -2 in signed interpretation
+```
+
+This kind of makes sense because with seven bits:
+
+```
+63+63=63+(1+62)=(63+1)+62=-64+62=-2
+```
+
+But there are also overflows which wrap-around INT_MIN with a carry bit of 1 into the eighth bit:
+
+```
+ 1000000 = -64 in signed interpretation
++1111111 =  -1 in signed interpretation
+——————————————
+ 0111111 =  63
+```
+
+and:
+
+```
+ 1000000 = -64 in signed interpretation
++1000000 = -64 in signed interpretation
+——————————————
+ 0000000 =   0
+```
+
+Both again make kind of sense given that with seven bits we have that `-64 = 63 + 1`.
+
+Unintended integer overflows are a major source of errors in software. There are real world examples where integer overflows have caused even enormous amounts of damage, financially but also in loss of life. Essentially, they are encoding errors where the programmer either did not reserve enough bits to represent the involved information or misunderstood unsigned and signed integer arithmetic altogether. Unsigned and signed integers on a computer are not whole numbers! They are just an attempt to encode some of them, sometimes many of them, but never all.
+
+For us the important lesson to learn here is that everything on a computer is always just an approximation of the real world. The approximation may be arbitrarily close since we can always throw in more bits but it nevertheless remains an approximation, no matter what.
 
 ### Characters
 
