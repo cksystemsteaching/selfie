@@ -104,9 +104,15 @@ The binary number 1010101 represents 85 because:
 
 (((((**1**\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = 85.
 
-Take a piece of paper and a pen (not a computer!) and convert a few other binary numbers for yourself!
+Take a piece of paper and a pen (not a computer!) and convert a few other binary numbers to decimal for yourself!
 
-Also, counting in binary is just as easy as in decimal. Remember the sequence of 3-bit states from above:
+The other direction is also easy, just do the exact opposite. Take 85, for example, divide it by 2 and write down the quotient 42 and the remainder 1 which corresponds to the rightmost digit (bit) in 101010**1**. Continue the process until the quotient becomes 0:
+
+85 = 42\*2+**1** = (21\*2+**0**)\*2+**1** = ((10\*2+**1**)\*2+**0**)\*2+**1** = (((5\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = ((((2\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = (((((1\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = ((((((0\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**
+
+Again, try to convert a few other decimal numbers to binary!
+
+The other thing about binary is that counting is just as easy as in decimal. Remember the sequence of 3-bit states from above:
 
 000, 001, 010, 011, 100, 101, 110, and 111?
 
