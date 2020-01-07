@@ -551,6 +551,12 @@ Essentially, unintended integer overflows are encoding errors where the programm
 
 ### Characters
 
+Let us change subject to something as important as the encoding of numbers. How is text like the one you are reading right now encoded in bits? To understand that we need to break the problem into two smaller problems? Firstly, we need to figure out how individual characters are encoded in bits. After that, we look into how text, that is, sequences of characters are put together as bits, which requires some background in how computers organize and store bits. But first characters!
+
+We mentioned before that the seven bits 1010101 may not only encode the decimal numbers 85 and -43 but also the uppercase letter U. How so? The answer is incredibly simple. People in the 1960s sat down and simply agreed to using 1010101 as the encoding of U. They also agreed how to map all other seven-bit sequences to the rest of the Latin alphabet, decimal digits, and quite a few other characters as well. That agreement is known as the American Standard Code for Information Interchange, also called ASCII. The standard maps each of the 128 seven-bit sequences to a unique character in a table known as the ASCII table.
+
+Why is ASCII so important?
+
 TODO: mention .exe and .doc differences
 
 ### Bytes
