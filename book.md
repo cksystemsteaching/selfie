@@ -561,7 +561,9 @@ There is an important observation to make here. Whatever characters you see on t
 
 This brings us to an idea about ASCII that is worth mentioning here. ASCII distinguishes printable characters from so-called control characters. The binary numbers `0000000` through `0011111` encode most of these control characters. Decimal digits and some other characters are encoded from `0100000` to `0111111`, uppercase letters including U and some more characters are encoded from `1000000` to `1011111`, and lowercase characters and again some more characters are encoded from `1100000` to `1111111`. Look up ASCII tables on the web to see the details!
 
-Control characters...
+Let us pick an ASCII control character that you are familiar with but probably not aware of in this form. It is called linefeed or LF which is encoded by `0001010`. When printing characters on the screen, your phone usually does that from left to right. However, whenever it detects `0001010`, instead of printing anything, it simply moves on to the next ASCII code and continues printing characters, again from left to right but from now on beginning at the left edge of the screen right below the characters it printed before it detected `0001010`. In other words, it performs a linefeed. So, whatever you see on the screen, printable characters but also simple formatting such as linefeeds, is internally still just a sequence of ASCII codes, that is, just bits.
+
+There is one more, particularly interesting control character called NUL which is, unsurprisingly, encoded by `0000000`. NUL does something very important. It marks the end of a sequence of characters. In the section below on how text is encoded we see NUL again.
 
 UTF-8...
 
