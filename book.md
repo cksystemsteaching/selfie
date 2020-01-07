@@ -553,11 +553,17 @@ Essentially, unintended integer overflows are encoding errors where the programm
 
 Let us change subject to something as important as the encoding of numbers. How is text like the one you are reading right now encoded in bits? To understand that we need to break the problem into two smaller problems? Firstly, we need to figure out how individual characters are encoded in bits. After that, we look into how text, that is, sequences of characters are put together as bits, which requires some background in how computers organize and store bits. But first characters!
 
-We mentioned before that the seven bits 1010101 may not only encode the decimal numbers 85 and -43 but also the uppercase letter U. How so? The answer is incredibly simple. People in the 1960s sat down and simply agreed to using 1010101 as the encoding of U. They also agreed how to map all other seven-bit sequences to the rest of the Latin alphabet, decimal digits, and quite a few other characters as well. That agreement is known as the American Standard Code for Information Interchange, also called ASCII. The standard maps each of the 128 seven-bit sequences to a unique character in a table known as the ASCII table.
+We mentioned before that the seven bits 1010101 may not only encode the decimal numbers 85 and -43 but also the uppercase letter U. How so? The answer is incredibly simple. People in the 1960s sat down and simply agreed to using 1010101 as the encoding of U. They also agreed how to map all other seven-bit sequences to the rest of the English alphabet, decimal digits, and quite a few other characters as well. That agreement is known as the American Standard Code for Information Interchange, also called ASCII. The standard maps each of the 128 seven-bit sequences to a unique character in a table known as the ASCII table.
 
-Why is ASCII so important?
+Why is ASCII so important? ASCII facilitates bit-encoded communication among people around the world. All information sent across the Internet is encoded in bits, just like all information stored on any digital device. Out of all that information, more than 90\% of all web pages, for example, that are being served today are encoded in ASCII. If a person presses a key on the keyboard of a phone, a tablet, or a computer the character of that key is encoded into its corresponding seven-bit ASCII code and then stored as such. Eventually, that character may be delivered as ASCII code to another person somewhere across the world and then eventually decoded into its symbolic representation for that person to see on a screen. As long as both, sender and receiver, use the same encoding, such as ASCII, bit-encoded communication is possible.
 
-TODO: mention .exe and .doc differences
+There is an important observation to make here. Whatever characters you see on the keyboard and the screen of your phone, for example, they are all just drawn for your convenience in human-readable form. For the machine, they are, in most cases, just ASCII codes. This means there is software on your phone and in fact any digital device that, given an ASCII code, makes the machine draw the corresponding human-readable form on the screen. The machine would still function perfectly without a keyboard and a screen, of course. It is only us who need keyboards to type and screens to see ASCII.
+
+This brings us to an idea about ASCII that is worth mentioning here. ASCII distinguishes printable characters from so-called control characters. The binary numbers `0000000` through `0011111` encode most of these control characters. Decimal digits and some other characters are encoded from `0100000` to `0111111`, uppercase letters including U and some more characters are encoded from `1000000` to `1011111`, and lowercase characters and again some more characters are encoded from `1100000` to `1111111`. Look up ASCII tables on the web to see the details!
+
+Control characters...
+
+UTF-8...
 
 ### Bytes
 
@@ -567,6 +573,10 @@ TODO: addition and subtraction necessary for data flow (address computation)
 
 ### Text
 
+### Files
+
+TODO: mention files in overview and also mention .doc files
+
 ### Images
 
 ### Video
@@ -574,6 +584,8 @@ TODO: addition and subtraction necessary for data flow (address computation)
 ### Audio
 
 ### Code
+
+TODO: mention .exe files
 
 ## The Machine
 
