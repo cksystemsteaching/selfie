@@ -44,7 +44,7 @@ The key lesson to be learned here is that 1010101 or any other bit sequence may 
 
 ### Bits
 
-A *binary digit* or *bit* is a unit of information that can distinguish exactly two different things. In fact, we say that a bit can be in exactly one out of two different *states*. It can be either 0 or 1, on or off, true or false, or whatever we want to call it. The only thing that is relevant about a bit is that it is always in exactly one out of two states. And the only thing a computer can do is storing bits and changing bits from one state to the other and back, that is, from, say, 0 to 1 and from 1 to 0.
+A *binary digit* or *bit* is a unit of information, abbreviated by the lower-case letter *b*, that can distinguish exactly two different things. In fact, we say that a bit can be in exactly one out of two different *states*. It can be either 0 or 1, on or off, true or false, or whatever we want to call it. The only thing that is relevant about a bit is that it is always in exactly one out of two states. And the only thing a computer can do is storing bits and changing bits from one state to the other and back, that is, from, say, 0 to 1 and from 1 to 0.
 
 How can then a bit be used to do anything useful beyond that? Well, by taking more than one bit, of course. Let us take two bits. Now, we can suddenly be in *four* different states denoted by, say:
 
@@ -140,7 +140,7 @@ the letters A, B, C, D, E, and F.
 
 The letter A represents the value 10, B 11, C 12, D 13, E 14, and F 15.
 
-Since base 16 is a power of base 2, that is, 2 to the power of 4 actually, each hexadecimal digit encodes exactly four bits which makes it much more convenient to convert between binary and hexadecimal rather than binary and decimal. And, we save four (!) times the number of digits with hexadecimal notation compared to binary notation. Try 85, that is, 1010101 in hexadecimal. It is 55. In fact, to avoid confusion, we say 0x55 where the prefix 0x indicates that the following number is in hexadecimal rather than decimal notation. Let us verify that 0x55 is indeed 85 by calculating:
+Since base 16 is a power of base 2, that is, 2 to the power of 4 actually, each hexadecimal digit encodes exactly four bits which makes it much more convenient to convert between binary and hexadecimal rather than binary and decimal. And, we save four (!) times the number of digits with hexadecimal notation compared to binary notation. Try 85, that is, 1010101 in hexadecimal. It is 55. In fact, to avoid confusion, we say 0x55 where the prefix *0x* indicates that the following number is in hexadecimal rather than decimal notation. Let us verify that 0x55 is indeed 85 by calculating:
 
 **5**\*16+**5** = 85.
 
@@ -154,7 +154,7 @@ The reason why it is popular is because base 8 is also a power of 2, in fact, it
 
 (**1**\*8+**2**)\*8+**5** = 85.
 
-In order to avoid confusion, we may use the prefix 00 with octal numbers, that is, 00125, for example, and the prefix b with binary numbers, that is, b1010101, for example.
+In order to avoid confusion, we may use the prefix *0o* with octal numbers, that is, 0o125, for example, and the prefix *b* with binary numbers, that is, b1010101, for example.
 
 In sum, we have seen unary, binary, octal, decimal, and hexadecimal notation that all work exactly the same, except for unary, just using different bases and thus a different number of symbols per digit. Did you know that before? Probably not. But, if you knew decimal notation already, and you likely did, then you already understood the other notations as well just without being aware of that and without being used to them. Just try to convert a few more numbers now to practice!
 
@@ -573,7 +573,15 @@ The fact that UTF-8 works with multiples of eight bits is not by accident and re
 
 ### Bytes
 
+A *byte* is a unit of information, abbreviated by the upper-case letter *B*, that consists of eight bits and can therefore distinguish exactly 256 different things.
+
 ### Memory
+
+| Unit | Prefix |
+| ---- | ------ |
+| bit (b)  | 1 [kilobit](https://en.wikipedia.org/wiki/Kilobit "Kilobit") (kb) = 1000b = 10^3^b, 1 megabit (mb) = 10^6^b, 1 gigabit (gb) = 10^9^b, 1 terabit (tb) = 10^12^b , ... |
+| byte (B) | 1 [kilobyte](https://en.wikipedia.org/wiki/Kilobyte "Kilobyte") (kB) = 1000B = 10^3^B, 1 megabyte (MB) = 10^6^B, 1 gigabyte (GB) = 10^9^B, 1 terabyte (TB) = 10^12^B, ... |
+| byte (B) | 1 [kibibyte](https://en.wikipedia.org/wiki/Kibibyte "Kibibyte") (KB,KiB) = 1024B = 2^10^B, 1 mebibyte (MB,MiB) = 2^20^B, 1 gibibyte (GB,GiB) = 2^30^B, 1 tebibyte (TiB) = 2^40^B, ... |
 
 TODO: addition and subtraction necessary for data flow (address computation)
 
@@ -602,6 +610,19 @@ TODO: mention .exe files
 ### Input/Output
 
 ### Instructions
+
+| Performance | Unit |
+| ----------- | ---- |
+| latency     | nanoseconds (ns), microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h) |
+| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |
+|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |
+|             | bytes/second, [kB/s](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), MB/s, GB/s, TB/s |
+|             | bits/second, [kbps](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), mbps, gbps, tbps |
+| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |
+| power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
+| efficiency  | operations/joule |
+|             | MIPS/watt |
+|             | FLOPS/watt |
 
 TODO: addition and subtraction necessary for control flow (program counter)
 
