@@ -70,7 +70,7 @@ Let us look a bit closer at how many states a growing number of bits can be in. 
 
 and so on. This is like the tables up to ten (bits) but of a computer scientist! You may have actually seen these numbers before but probably never knew where they came from. Try continuing the series yourself with more bits! 2048, 4096,... You will quickly run out of room.
 
-Imagine, your cell phone can probably store a few billion bits. How many states is that? Far more than there are atoms in the known universe! Just in your pocket! This also means that the bits in your phone can be in so many different states that your phone would have long turned to dust before being able to try out all possible states these bits can be in. Conversely, it is unlikely that the bits in your phone will ever be in a state they have been in before since some bits are usually used to keep track of time and other environmental factors such as battery health which keep changing over time.
+Imagine, your cell phone can probably store a few billion bits. How many states is that? Far more than there are particles in the known universe! Just in your pocket! This also means that the bits in your phone can be in so many different states that your phone would have long turned to dust before being able to try out all possible states these bits can be in. Conversely, it is unlikely that the bits in your phone will ever be in a state they have been in before since some bits are usually used to keep track of time and other environmental factors such as battery health which keep changing over time.
 
 So, what is it that your cell phone or any other computer does? Well, it really just stores an enormous amount of bits that are in a given state, which means each of those bits is either 0 or 1. And then the machine identifies at least one of those bits and then changes it from 0 to 1 if the bit was 0, and from 1 to 0 if the bit was 1. We call that change a *bit flip*. After that flip, the computation is either finished or the machine identifies another bit, or even the same bit as before, and flips that bit, and so on. Such a sequence of bit flips is what we call *computation*.
 
@@ -140,7 +140,7 @@ the letters A, B, C, D, E, and F.
 
 The letter A represents the value 10, B 11, C 12, D 13, E 14, and F 15.
 
-Since base 16 is a power of base 2, that is, 2 to the power of 4 actually, each hexadecimal digit encodes exactly four bits which makes it much more convenient to convert between binary and hexadecimal rather than binary and decimal. And, we save four (!) times the number of digits with hexadecimal notation compared to binary notation. Try 85, that is, 1010101 in hexadecimal. It is 55. In fact, to avoid confusion, we say 0x55 where the prefix *0x* indicates that the following number is in hexadecimal rather than decimal notation. Let us verify that 0x55 is indeed 85 by calculating:
+Since base 16 is a power of base 2, that is, 2 to the power of 4 actually with 16=2\*2\*2\*2, denoted by 2^4, each hexadecimal digit encodes exactly four bits which makes it much more convenient to convert between binary and hexadecimal rather than binary and decimal. And, we save four (!) times the number of digits with hexadecimal notation compared to binary notation. Try 85, that is, 1010101 in hexadecimal. It is 55. In fact, to avoid confusion, we say 0x55 where the prefix *0x* indicates that the following number is in hexadecimal rather than decimal notation. Let us verify that 0x55 is indeed 85 by calculating:
 
 **5**\*16+**5** = 85.
 
@@ -150,7 +150,7 @@ There is one more notation that is popular among computer scientists and we woul
 
 0, 1, 2, 3, 4, 5, 6, and 7.
 
-The reason why it is popular is because base 8 is also a power of 2, in fact, it is 2 to the power of 3. Thus each octal digit encodes exactly three bits. Take 1010101, for example, which is 125 in octal notation because:
+The reason why it is popular is because base 8 is also a power of 2 with 8=2^3. Thus each octal digit encodes exactly three bits. Take 1010101, for example, which is 125 in octal notation because:
 
 (**1**\*8+**2**)\*8+**5** = 85.
 
@@ -222,7 +222,7 @@ This is called a *truth table*, which is a bit more interesting for the above bi
 1 XOR 1 = 0
 ```
 
-There are of course more binary operators possible. How many? In total, there are 16, that is, 2 to the power of 4, different binary operators in Boolean Algebra, simply because their two operands can be in 4 different states requiring 4 results per operator. However, just AND and NOT, for example, can be combined in Boolean *formulae* to mimic all other possible operators such as OR, for example, where X and Y are one bit each:
+There are of course more binary operators possible. How many? In total, there are 16, that is, 2^4, different binary operators in Boolean Algebra, simply because their two operands can be in 4 different states requiring 4 results per operator. However, just AND and NOT, for example, can be combined in Boolean *formulae* to mimic all other possible operators such as OR, for example, where X and Y are one bit each:
 
 ```
 X OR Y = NOT ((NOT X) AND (NOT Y))
@@ -303,7 +303,7 @@ Who would have thought that subtraction is so easy to do? Now, we are even ready
 -0000111 =  7
 ```
 
-Let us say we support seven bits. Just like the above calculation in decimal, we proceed by inserting the twos rather than the tens complement into the calculation as follows:
+Let us say we support seven bits which is why we say `0000111` rather than just `111`. Like the above calculation in decimal, we proceed by inserting the twos rather than the tens complement into the calculation as follows:
 
 ```
   1010101 = 85
@@ -350,12 +350,18 @@ And then increment the ones complement by 1 to obtain the twos complement:
 -10000000
 ```
 
-Now add the minuend and the twos complement of the subtrahend and finally get rid of the MSB to correct for introducing the twos complement:
+Now add the minuend and the twos complement of the subtrahend:
 
 ```
   1010101 = 85
 + 1111001 = twos complement of 7
 ——————————————
+ 11001110 = 85 + two’s complement of 7
+```
+
+And finally get rid of the MSB to correct for introducing the twos complement
+
+```
  11001110 = 85 + two’s complement of 7
 -10000000
 ——————————————
@@ -573,7 +579,13 @@ The fact that UTF-8 works with multiples of eight bits is not by accident and re
 
 ### Bytes
 
-A *byte* is a unit of information, abbreviated by the upper-case letter *B*, that consists of eight bits and can therefore distinguish exactly 256 different things.
+A *byte* is a unit of information, abbreviated by the upper-case letter *B*, that consists of eight bits and can therefore distinguish exactly 256 different things. Why eight bits? This was far from obvious in the early days of computing. Fundamentally, what we need is to package bits into something larger because processing bits individually is just too cumbersome and too slow in particular. So, one idea is to use seven bits since they fit ASCII characters. However, seven is not a power of two but eight is! Eight bits are two times four bits which allows us to use exactly two digits in hexadecimal notation such as 0x55, for example, to denote a byte. In this case, each of the two digits is called a *nibble*.
+
+So, eight bits is what people eventually ended up agreeing on as the definition of a byte. However, these days machines typically process bits and perform integer arithmetics with them at the granularity of multiple bytes, usually four and even eight bytes, that is, 32 and 64 bits, respectively. To do that, computer architects need to run 32 and even 64 wires from one part of a circuit to another! Hard to believe but true. This is a good example of how *parallelism* speeds up computation. Communicating and processing 64 bits at once in parallel is obviously 64 times faster than just 1 bit. However, each individual bit still needs a certain amount of time to travel as low and high voltage from one part of a circuit to another since nothing is faster than the speed of light. You may say we are bean counting but, no, that fact is also relevant and even a limiting facter in today's machines.
+
+The machine model we use in this book is based on a 64-bit machine. This means that our machine can handle 64-bit integer arithmetics, that is, unsigned integer values from 0 to UINT64_MAX, or equivalently signed integer values from INT64_MIN to INT64_MAX. Not bad at all. We see below how that works and puts us into the same space as state-of-the-art machines.
+
+One more thing before moving on. ASCII characters are seven bits, not eight. However, the ASCII subset of UTF-8 uses eight bits per character, so exactly one byte per character with the MSB of each byte set to 0. That is what we do here as well. We use ASCII characters but as the ASCII subset of UTF-8! This is beautiful because everything, integers and characters, fit into the notion of a byte or multiples of a byte. In order to understand how text, that is, sequences of characters, and other types of data larger than integers and characters are encoded we need to have a look at how digital memory works.
 
 ### Memory
 
@@ -589,7 +601,7 @@ TODO: addition and subtraction necessary for data flow (address computation)
 
 ### Files
 
-TODO: mention .doc files
+TODO: mention, directories, hierarchy, indexing, .doc files
 
 ### Images
 
