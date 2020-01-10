@@ -450,17 +450,40 @@ How do we recognize binary numbers to represent positive or negative numbers? We
 To make the above example of `85 - 86` work in signed interpretation even for the individual binary encoding of 85 and 86, we simply use one more bit extending the supported range from -64 through 63 to -128 through 127. Notice that the actual computation does not change a bit, literally, except that the signed interpretation of the involved numbers is now as intended:
 
 ```
-  01010101 = 85
-- 01010110 = 86
-———————————————
+ 01010101 = 85
+-01010110 = 86
+```
+
+becomes:
+
+```
   01010101 = 85
 + 10101001 = ones complement of 86
 +        1
-———————————————
+-100000000
+```
+
+and then:
+
+```
   01010101 = 85
 + 10101010 = twos complement of 86
+-100000000
+```
+
+Then add:
+
+```
+ 01010101 = 85
++10101010 = twos complement of 86
 ———————————————
-  11111111 = 85 + two’s complement of 86
+ 11111111 = 85 + twos complement of 86
+```
+
+and finally correct the result:
+
+```
+  11111111 = 85 + twos complement of 86
 -100000000
 ———————————————
  -00000001 = -1
