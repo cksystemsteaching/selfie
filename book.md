@@ -359,7 +359,7 @@ Now add the minuend and the twos complement of the subtrahend:
  11001110 = 85 + two’s complement of 7
 ```
 
-And finally get rid of the MSB to correct for introducing the twos complement
+And finally get rid of the MSB to correct for introducing the twos complement:
 
 ```
  11001110 = 85 + two’s complement of 7
@@ -377,17 +377,40 @@ Before going just a bit further into the details, there is one more interesting 
 You may have noticed that depending on the involved numbers subtraction using radix complement appears to produce incorrect or at least strange results, independently of the base. Take, `85 - 86`, for example, in binary using seven bits:
 
 ```
-  1010101 = 85
-- 1010110 = 86
-——————————————
+ 1010101 = 85
+-1010110 = 86
+```
+
+As before, calculate the ones complement of the subtrahend 86 first:
+
+```
   1010101 = 85
 + 0101001 = ones complement of 86
 + 0000001 =  1
-——————————————
+-10000000
+```
+
+and then the twos complement:
+
+```
+  1010101 = 85
++ 0101010 = twos complement of 86
+-10000000
+```
+
+Finally, add the minuend and the twos complement of the subtrahend:
+
+```
   1010101 = 85
 + 0101010 = twos complement of 86
 ——————————————
-  1111111 = 85 + two’s complement of 86
+  1111111 = 85 + twos complement of 86
+```
+
+and correct for introducing the twos complement:
+
+```
+  1111111 = 85 + twos complement of 86
 -10000000
 ——————————————
  -0000001 = -1
