@@ -435,15 +435,13 @@ but:
 because:
 
 ```
- 1010101
+ 0101010 = ones complement of 1010101
++0000001 = 1
 —————————————
- 0101010 = ones complement
-+0000001 =  1
-—————————————
- 0101011 = twos complement
-—————————————
- 0101011 = 43
+ 0101011 = twos complement of 1010101
 ```
+
+where `0101011` is binary for 43.
 
 Similarly, 86 encoded in seven bits is -42 in signed interpretation. However, `-43 - -42` is of course still -1 which explains why the above subtraction actually works.
 
