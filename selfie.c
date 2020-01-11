@@ -9877,7 +9877,7 @@ uint64_t monster(uint64_t* to_context) {
         update_begin_of_shared_symbolic_memory(get_merge_partner(from_context));
 
         // delete exited context
-        symbolic_contexts = delete_context(from_context, symbolic_contexts);      
+        symbolic_contexts = delete_context(from_context, symbolic_contexts);
 
         // schedule the context with the highest call stack and the lowest program counter
         to_context = schedule_next_symbolic_context();
