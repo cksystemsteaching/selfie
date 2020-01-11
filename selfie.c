@@ -9033,6 +9033,7 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   // contexts in a linked list, we insert in the front
   set_prev_context(symbolic_contexts, context);
   set_next_context(context, symbolic_contexts);
+  set_prev_context(context, (uint64_t*) 0);
 
   symbolic_contexts = context;
 
