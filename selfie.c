@@ -7931,7 +7931,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   if (get_beq_counter(mergeable_context) < get_beq_counter(active_context))
     set_beq_counter(active_context, get_beq_counter(mergeable_context));
 
-  set_execution_depth(mergeable_context, -1);
+  symbolic_contexts = delete_context(mergeable_context, symbolic_contexts);
 }
 
 void merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context) {
@@ -8294,12 +8294,11 @@ uint64_t* schedule_next_symbolic_context() {
 
   // find the currently highest call stack
   while (context) {
-    if (get_execution_depth(context) != (uint64_t) -1)
-      if (get_call_stack(context) != 0)
-        if (get_depth(get_call_stack(context)) > max_call_stack_size) {
-          max_call_stack_size = get_depth(get_call_stack(context));
-          max_call_stack = get_call_stack(context);
-        }
+    if (get_call_stack(context) != 0)
+      if (get_depth(get_call_stack(context)) > max_call_stack_size) {
+        max_call_stack_size = get_depth(get_call_stack(context));
+        max_call_stack = get_call_stack(context);
+      }
 
     context = get_next_context(context);
   }
@@ -8308,12 +8307,11 @@ uint64_t* schedule_next_symbolic_context() {
 
   // find the context with the lowest program counter and the highest call stack
   while (context) {
-    if (get_execution_depth(context) != (uint64_t) -1)
-      if (get_call_stack(context) == max_call_stack)
-        if (get_pc(context) < min_pc) {
-          min_pc = get_pc(context);
-          next_context = context;
-        }
+    if (get_call_stack(context) == max_call_stack)
+      if (get_pc(context) < min_pc) {
+        min_pc = get_pc(context);
+        next_context = context;
+      }
 
     context = get_next_context(context);
   }
@@ -8324,21 +8322,21 @@ uint64_t* schedule_next_symbolic_context() {
 
 void check_if_mergeable_and_merge_if_possible(uint64_t* context) {
   uint64_t* mergeable_context;
+  uint64_t* next_context;
 
   mergeable_context = symbolic_contexts;
 
   while (mergeable_context) {
-    // only compare with unfinished contexts
-    if (get_execution_depth(mergeable_context) != (uint64_t) -1)
-      // a context cannot be merged with itself
-      if (mergeable_context != context)
-        // mergeable contexts must have the same program counter
-        if (get_pc(context) == get_pc(mergeable_context))
-          // merge contexts must have the same call stack
-          if (get_call_stack(context) == get_call_stack(mergeable_context))
-            merge(context, mergeable_context, get_pc(context));
+    next_context = get_next_context(mergeable_context);
+    // a context cannot be merged with itself
+    if (mergeable_context != context)
+      // mergeable contexts must have the same program counter
+      if (get_pc(context) == get_pc(mergeable_context))
+        // merge contexts must have the same call stack
+        if (get_call_stack(context) == get_call_stack(mergeable_context))
+          merge(context, mergeable_context, get_pc(context));
 
-    mergeable_context = get_next_context(mergeable_context);
+    mergeable_context = next_context;
   }
 }
 
@@ -9033,6 +9031,7 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   }
 
   // contexts in a linked list, we insert in the front
+  set_prev_context(symbolic_contexts, context);
   set_next_context(context, symbolic_contexts);
 
   symbolic_contexts = context;
@@ -9877,8 +9876,8 @@ uint64_t monster(uint64_t* to_context) {
         // we need to update the end of the shared symbolic memory of the corresponding context
         update_begin_of_shared_symbolic_memory(get_merge_partner(from_context));
 
-        // context must not be scheduled again
-        set_execution_depth(from_context, -1);
+        // delete exited context
+        symbolic_contexts = delete_context(from_context, symbolic_contexts);      
 
         // schedule the context with the highest call stack and the lowest program counter
         to_context = schedule_next_symbolic_context();
