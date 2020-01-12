@@ -437,7 +437,7 @@ because:
 ```
  0101010 = ones complement of 1010101
 +0000001 = 1
-—————————————
+————————————
  0101011 = twos complement of 1010101
 ```
 
@@ -474,10 +474,10 @@ and then:
 Then add:
 
 ```
- 01010101 = 85
-+10101010 = twos complement of 86
+  01010101 = 85
++ 10101010 = twos complement of 86
 ———————————————
- 11111111 = 85 + twos complement of 86
+  11111111 = 85 + twos complement of 86
 ```
 
 and finally correct the result:
