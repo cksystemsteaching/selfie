@@ -633,19 +633,27 @@ One more thing before moving on. ASCII characters are seven bits, not eight. How
 
 ### Memory
 
+Digital memory is fascinating because it is an extremely simple concept while being extremely powerful at the same time. Moreover, all digital memory works, at least on the level relevant to us, the exact same way whether it is main memory, an SSD, a USB stick, or even a harddrive. Think of it as a long road with warehouses lined up along the road. Each warehouse provides the same amount of *storage*, not for actual goods, of course, but for information, say, for one byte! Also, each warehouse has a unique *address*, which is in fact an unsigned integer, so that we can easily find each warehouse. The first warehouse on that road has house number 0. The next warehouse has house number 1. The warehouse after that has house number 2 and so on. Since we never skip any numbers, the house number of the last warehouse tells us how much storage capacity our memory has. It is the house number of the last warehouse plus one many bytes since we start counting at 0. Digital memory where each warehouse stores exactly one byte is called *byte-addressed* which is the model we use throughout the book.
+
+Digital memory always provides two things: *storage space* and an *address space*! And it is important to distinguish the two because there can be address spaces without storage space but no storage space without an address space. Also, storage space and address space are measured quite differently. The amount of storage space is obviously measured in number of bytes.
+
+TODO: measure address spaces
+
+Why do we use byte-addressed memory? Well, it took quite some time to come to that agreement in the computer systems community. One reason is that ASCII characters stored in byte-addressed memory have unique addresses since every ASCII character fits into exactly one byte.
+
 | Unit | Prefix |
 | ---- | ------ |
 | bit (b)  | 1 [kilobit](https://en.wikipedia.org/wiki/Kilobit "Kilobit") (kb) = 1000b = 10^3^b, 1 megabit (mb) = 10^6^b, 1 gigabit (gb) = 10^9^b, 1 terabit (tb) = 10^12^b , ... |
 | byte (B) | 1 [kilobyte](https://en.wikipedia.org/wiki/Kilobyte "Kilobyte") (kB) = 1000B = 10^3^B, 1 megabyte (MB) = 10^6^B, 1 gigabyte (GB) = 10^9^B, 1 terabyte (TB) = 10^12^B, ... |
 | byte (B) | 1 [kibibyte](https://en.wikipedia.org/wiki/Kibibyte "Kibibyte") (KB,KiB) = 1024B = 2^10^B, 1 mebibyte (MB,MiB) = 2^20^B, 1 gibibyte (GB,GiB) = 2^30^B, 1 tebibyte (TiB) = 2^40^B, ... |
 
-TODO: addition and subtraction necessary for data flow (address computation)
+TODO: addition and subtraction necessary for data flow (address computation), contiguous memory, access speed
 
 ### Text
 
 ### Files
 
-TODO: mention, directories, hierarchy, indexing, .doc files
+TODO: mention directories, hierarchy, indexing, .doc files
 
 ### Images
 
