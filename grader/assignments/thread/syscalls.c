@@ -8,8 +8,8 @@ uint64_t sumChilds(uint64_t offset, uint64_t pid, uint64_t acc) {
   if (pid) {
     // this is the parent process/thread
     // => accumulate pid from pthread_create call, pid from pthread_join call and exit status code
-    acc = acc + pid + pthread_join(status + offset - 1);
-    acc = acc + *(status + offset - 1);
+    acc = acc + pid + pthread_join(status + offset);
+    acc = acc + *(status + offset);
   }
 
   return acc;
@@ -29,7 +29,7 @@ uint64_t get_unique_offset(uint64_t pid1, uint64_t pid2, uint64_t pid3) {
   if (pid3 != 0)
     offset = offset + 1;
 
-  return 8 - offset;
+  return offset;
 } 
 
 int main(int argc, char** argv) {
