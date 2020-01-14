@@ -16,20 +16,15 @@ uint64_t sumChilds(uint64_t offset, uint64_t pid, uint64_t acc) {
 }
 
 uint64_t get_unique_offset(uint64_t pid1, uint64_t pid2, uint64_t pid3) {
-  uint64_t offset;
+  uint64_t bit0;
+  uint64_t bit1;
+  uint64_t bit2;
 
-  offset = 0;
+  bit0 = pid3 != 0;
+  bit1 = pid2 != 0;
+  bit2 = pid1 != 0;
 
-  if (pid1 != 0)
-    offset = offset + 1;
-  offset = offset * 2;
-  if (pid2 != 0)
-    offset = offset + 1;
-  offset = offset * 2;
-  if (pid3 != 0)
-    offset = offset + 1;
-
-  return offset;
+  return (bit2 * 2 + bit1) * 2 + bit0;
 } 
 
 int main(int argc, char** argv) {
