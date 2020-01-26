@@ -723,6 +723,8 @@ In recent years, video compression has become so effective and efficient that ev
 
 ### Audio
 
+As usual, digital *audio* is yet another sequence of bytes, typically not as many as video of the same length but still enough to worry about. In particular, audio is streaming media, just like video, and requires encoding and decoding in real time.
+
 ### Code
 
 TODO: mention .exe files
