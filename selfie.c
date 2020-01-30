@@ -1,3 +1,5 @@
+#define uint64_t unsigned long long int
+
 /*
 Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
