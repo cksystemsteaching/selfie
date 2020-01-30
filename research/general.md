@@ -8,6 +8,11 @@
 	* [Interrupt Handling](http://osblog.stephenmarz.com/ch4.html)
 
 # Notizen
+
+## Boot-Prozess
+Der BBL wurde ersetzt durch OpenSBI (https://riscv.org/2019/01/risc-v-community-releases-opensbi-to-foster-continued-ecosystem-growth/)
+
+
 ## Interrupt handling
 ### Register
 * `mtvec`-Register (Machine Trap Vector) speichert Pointer auf Funktion
