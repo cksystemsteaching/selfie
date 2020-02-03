@@ -10024,26 +10024,40 @@ char* replace_extension(char* filename, char* extension) {
 
   s = string_alloc(string_length(filename) + 1 + string_length(extension));
 
-  i = 0;
+  // start reading at end of filename
+  i = string_length(filename);
 
   c = load_character(filename, i);
 
-  while (c != 0) {
-    store_character(s, i, c);
+  // ignore extension
+  while (c != '.') {
+    if (c == '/')
+      i = 0;
 
-    if (c == '.') {
-      store_character(s, i, 0);
-
-      c = 0;
-    } else {
-      i = i + 1;
-
+    if (i > 0) {
+      i = i - 1;
       c = load_character(filename, i);
+    } else {
+      c = '.';
     }
   }
 
-  // writing s plus extension into s
-  sprintf2(s, "%s.%s", s, extension);
+  // filename has no extension
+  if (i == 0) {
+    // writing filename plus extension into s
+    sprintf2(s, "%s.%s", filename, extension);
+
+  } else {
+
+    // store filename without extension
+    while (i > 0) {
+      i = i - 1;
+      store_character(s, i, load_character(filename, i));
+    }
+
+    // writing s plus extension into s
+    sprintf2(s, "%s.%s", s, extension);
+  }
 
   return s;
 }
