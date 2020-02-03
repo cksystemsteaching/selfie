@@ -10029,29 +10029,30 @@ char* replace_extension(char* filename, char* extension) {
 
   c = load_character(filename, i);
 
-  // ignore extension
+  // look for extension
   while (c != '.') {
     if (c == '/')
       i = 0;
 
     if (i > 0) {
       i = i - 1;
+
       c = load_character(filename, i);
-    } else {
+    } else
       c = '.';
-    }
   }
 
   // filename has no extension
-  if (i == 0) {
+  if (i == 0)
     // writing filename plus extension into s
     sprintf2(s, "%s.%s", filename, extension);
+  else {
+    // assert: s is zeroed and thus null-terminated
 
-  } else {
-
-    // store filename without extension
+    // copy filename without extension and null-terminator into s
     while (i > 0) {
       i = i - 1;
+
       store_character(s, i, load_character(filename, i));
     }
 
