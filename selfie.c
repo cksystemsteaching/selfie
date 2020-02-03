@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015-2019, the Selfie Project authors. All rights reserved.
+Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
 
@@ -8553,24 +8553,24 @@ uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_conte
   entry_active = get_call_stack(active_context);
   entry_mergeable = get_call_stack(mergeable_context);
 
-  if (debug_merge) 
+  if (debug_merge)
     printf1("; Call stack of active context (%d):\n", (char*) active_context);
 
   while(entry_active) {
 
-    if (debug_merge) 
+    if (debug_merge)
       printf1("; %x\n", (char*) *(entry_active + 1));
 
     active_context_stack_length = active_context_stack_length + 1;
     entry_active = (uint64_t*) *(entry_active + 0);
   }
 
-  if (debug_merge) 
+  if (debug_merge)
     printf1("; Call stack of mergeable context (%d):\n", (char*) mergeable_context);
 
   while(entry_mergeable) {
 
-    if (debug_merge) 
+    if (debug_merge)
       printf1("; %x\n", (char*) *(entry_mergeable + 1));
 
     mergeable_context_stack_length = mergeable_context_stack_length + 1;
