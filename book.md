@@ -747,6 +747,12 @@ So far, we have seen at different levels of detail how integers, characters, str
 
 ### Code
 
+Everything that is done by a computer is encoded in bits including code. We heard that before but we anyway emphasize this here again because it takes repetition and time to realize what that really means. Whatever we want a computer do needs to be broken down into the tiniest steps (code) of bit manipulation (data). Doing that makes people realize how complex even seemingly simple tasks often are.
+
+Code exists in very different forms. Whenever we talk about it we mean actual *machine code*, not *source code*, unless we say so. The difference is that machine code is a sequence of bytes that *instructs* a computer to perform computation with data by manipulating the bits encoding the data whereas source code is just text that still needs to be translated to machine code before it can instruct the machine to do anything. Machine code is for machines, source code is for humans. The machine chapter explains what machine code is and the programming chapter explains what source code is. For now, we focus on machine code and explain how it works intuitively.
+
+Machine code or just code is a sequence of *machine instructions* where each instruction is encoded in four bytes, at least in our case here. There are machines that use different encodings but our choice is quite common and as good as any other for our purpose. Four bytes are 32 bits. This means we could distinguish 2^32^ different instructions, that is, around four billion different instructions. This is way too many! Usually, a computer distinguishes a few dozen or a few hundred and sometimes even a few thousand instructions but not more than that. Here, we only need to distinguish 14 different instructions to be sufficiently representative for how a computer works in principle. Out of the 32 bits encoding an instruction we therefore only use a few bits to encode which instruction we actually mean. The remaining bits encode the *arguments* of an instruction which are typically just integers or addresses of data in memory.
+
 TODO: mention .exe files
 
 ### Apps
