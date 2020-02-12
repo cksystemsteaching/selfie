@@ -11,6 +11,7 @@
 
 ## Boot-Prozess
 Der BBL wurde ersetzt durch OpenSBI (https://riscv.org/2019/01/risc-v-community-releases-opensbi-to-foster-continued-ecosystem-growth/)
+OpenSBI kann eine Payload nachladen über das FW\_PAYLOAD Makefile flag (https://github.com/riscv/opensbi/blob/master/docs/firmware/fw_payload.md)
 
 
 ## Interrupt handling
