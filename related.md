@@ -24,7 +24,7 @@ The book provides, again similar to us, an introduction to computer science for 
 
 An Introduction to Computer Science: A Textbook for Beginners in Informatics by Gilbert Brands
 
-This book provides an introduction to computer science for undergraduate students. The structure of the book is similar to ours except for additional material on networking. The presentation is nevertheless quite different. The book targets students specifically studying computer science rather than broader audiences like us. The content of the book is therefore purely technical without setting the material into context for readers that do not intend to study computer science. The concept of the book is in that sense a classical introduction to computer science similar to many introductory classes in the field.
+This book provides an introduction to computer science for undergraduate students. The structure of the book is similar to ours except for additional material on networking. The presentation is nevertheless also quite different. The book targets students specifically studying computer science rather than broader audiences like us. The content of the book is therefore purely technical without setting the material into context for readers that do not intend to study computer science. The concept of the book is in that sense a classical introduction to computer science similar to many introductory classes in the field.
 
 The Art of Computer Programming by Donald E. Knuth
 
