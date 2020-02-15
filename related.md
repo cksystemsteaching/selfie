@@ -20,7 +20,7 @@ The book provides, again similar to us, an introduction to computer science for 
 
 The Elements of Computing Systems: Building a Modern Computer from First Principles by Noam Nisan and Shimon Schocken
 
-The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students and is therefore closely related to ours. The structure of the book is also somewhat similar to ours. The presentation and concept of the book are nevertheless quite different. The idea is to show how a computer is essentially built from scratch including the software stack running on top of the machine. This is again quite different from our focus on explaining the basic principles of computer science in general.
+The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students and is therefore closely related to ours. The structure of the book is also somewhat similar to ours. The presentation and concept of the book are nevertheless also quite different. The idea is to show how a computer is essentially built from scratch including the software stack running on top of the machine. This is also quite different from our focus on explaining the basic principles of computer science in general.
 
 An Introduction to Computer Science: A Textbook for Beginners in Informatics by Gilbert Brands
 
