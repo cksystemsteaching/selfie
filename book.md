@@ -773,6 +773,14 @@ There are keyboards that encode the keys you type into bits that represent ASCII
 
 We now dive into the world of the machine and its code. You will be surprised how simple it is. Well, it has to be. Otherwise, it would not work as well as it does!
 
+----
+
+We plan to include figures, above and below, to illustrate key concepts. Those are work in progress.
+
+Everything below is work in progress. So far, there is only a preliminary outline of the structure.
+
+----
+
 ## Machine
 
 ### Processor
