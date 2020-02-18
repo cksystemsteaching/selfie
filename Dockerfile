@@ -1,7 +1,7 @@
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
-FROM ubuntu:18.10 AS pkbuilder
+FROM ubuntu:rolling AS pkbuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -41,7 +41,7 @@ RUN mkdir -p $RISCV \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:18.04 AS spikebuilder
+FROM ubuntu:rolling AS spikebuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -76,7 +76,7 @@ RUN mkdir -p $RISCV \
 ######################
 # QEMU builder image #
 ######################
-FROM ubuntu:18.10 AS qemubuilder
+FROM ubuntu:rolling AS qemubuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -95,7 +95,7 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:18.04 AS boolectorbuilder
+FROM ubuntu:rolling AS boolectorbuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -134,7 +134,7 @@ RUN mkdir -p $RISCV \
 ##################################
 # Selfie interactive final image #
 ##################################
-FROM ubuntu:18.04
+FROM ubuntu:rolling
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
