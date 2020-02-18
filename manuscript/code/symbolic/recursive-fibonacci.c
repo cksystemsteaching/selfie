@@ -8,11 +8,11 @@ performs division by zero or invalid/unsafe memory accesses.
 Input == #b00110001 (== 49 == '1')
 */
 
-uint64_t factorial(uint64_t n) {
+uint64_t fibonacci(uint64_t n) {
   if (n <= 1)
     return n;
   else
-    return n * factorial(n - 1);
+    return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
 uint64_t main() {
@@ -23,11 +23,11 @@ uint64_t main() {
 
   read(1, x, 1);
 
-  *x = *x - 39;
+  *x = *x - 46;
 
-  a = factorial(*x);
+  a = fibonacci(*x);
 
-  if (a == 3628800)
+  if (a == 2)
     return 1;
   else
     return 0;
