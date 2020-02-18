@@ -2,7 +2,9 @@ import os
 import sys
 import time
 import threading
+from typing import List
 
+from lib.model import Assignment
 
 def println(line='', end='\n', loud=False):
     if loud:
@@ -21,7 +23,7 @@ def print_loud(msg, end='\n'):
     sys.stdout = quiet_writer
 
 
-def print_usage(options, assignments):
+def print_usage(options, assignments: List[Assignment]):
     println('Usage: python3 grader/self.py { option } <test>\n')
 
     println('Options:')
@@ -35,17 +37,17 @@ def print_usage(options, assignments):
 
     println()
 
-    def print_assignment_category(category):
-        println(category + ' Assignments:')
+    def print_assignment_of_lecture(lecture):
+        println(lecture + ' Assignments:')
 
-        for assignment in filter(lambda x: x[1] is category, assignments):
-            println('  {}'.format(assignment[0]))
+        for assignment in filter(lambda x: x.lecture is lecture, assignments):
+            println('  {}'.format(assignment.name))
 
         println()
 
-    print_assignment_category('General')
-    print_assignment_category('Compiler')
-    print_assignment_category('OS')
+    print_assignment_of_lecture('General')
+    print_assignment_of_lecture('Compiler')
+    print_assignment_of_lecture('OS')
 
 
 def print_grade(grade):

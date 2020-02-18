@@ -7,7 +7,6 @@ from os.path import isfile, join
 from unittest.mock import patch
 
 import self as grader
-from self import name
 
 
 def list_files(path, extension=''):
@@ -109,7 +108,7 @@ not_compilable = [
 ]
 
 compilable_assignments = [
-    a for a in grader.assignments if grader.name(a) not in not_compilable]
+    a for a in grader.assignments if a.name not in not_compilable]
 
 
 def run_compilable_assignments(prev=None, after=None):
@@ -118,7 +117,7 @@ def run_compilable_assignments(prev=None, after=None):
             prev(assignment)
 
         with CaptureOutput() as capture:
-            grader.main([sys.argv[0], name(assignment)])
+            grader.main([sys.argv[0], assignment.name])
 
             output = capture.get_output()
 

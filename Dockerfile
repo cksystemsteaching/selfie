@@ -151,8 +151,8 @@ RUN apt-get update \
        make \
        device-tree-compiler \
        git \
-       python3.6 \
-  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 1 \
+       python3.7 \
+  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 \
   && rm -rf /var/lib/apt/lists/*
 
 # copy spike, pk, qemu and boolector from builder images

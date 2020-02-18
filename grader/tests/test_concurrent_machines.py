@@ -3,8 +3,8 @@ from unittest.mock import patch
 import sys
 import os
 
-from self import main, assignments, name, test, directory
-from lib.runner import insert_assignment_path
+from self import main, assignments
+from lib.checks import insert_assignment_path
 from tests.utils import CaptureOutput, compile_with_gcc, run_compilable_assignments
 
 
@@ -22,7 +22,7 @@ class TestConcurrentMachines(unittest.TestCase):
             .replace(' -z ', ' -m ') \
             .replace('assignments/', 'grader/tests/assignment_stubs/')
 
-    @patch('lib.runner.insert_assignment_path')
+    @patch('lib.checks.insert_assignment_path')
     def test_concurrent_machines(self, mock):
         mock.side_effect = self.insert_assignment_stub
 

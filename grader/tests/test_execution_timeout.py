@@ -6,8 +6,8 @@ from time import time
 from pathlib import Path
 from unittest.mock import patch
 
-from self import test_self_compilation
-from lib.runner import execute, TimeoutException, set_home_path
+from self import check_self_compilation
+from lib.checks import execute, TimeoutException, set_home_path
 from tests.utils import CaptureOutput, for_all_test_results
 
 class TestExecutionTimeout(unittest.TestCase):
@@ -36,14 +36,14 @@ class TestExecutionTimeout(unittest.TestCase):
     def check_output(self, result, msg):
         self.assertFalse(result)
 
-    @patch('lib.runner.execute')
+    @patch('lib.checks.execute')
     def test_result_of_timed_out_test(self, mock):
         mock.side_effect = self.execute_mock
 
         set_home_path(Path('..'))
 
         with CaptureOutput() as capture:
-            test_self_compilation()
+            check_self_compilation()
 
             output = capture.get_output()
 
