@@ -775,8 +775,6 @@ We now dive into the world of the machine and its code. You will be surprised ho
 
 ----
 
-We plan to include figures, above and below, to illustrate key concepts. Those are work in progress.
-
 Everything below is work in progress. So far, there is only a preliminary outline of the structure.
 
 ----
@@ -791,24 +789,24 @@ Everything below is work in progress. So far, there is only a preliminary outlin
 
 ### Instructions
 
-| Performance | Unit |
-| ----------- | ---- |
-| latency     | nanoseconds (ns), microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h) |
-| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |
-|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |
-|             | bytes/second, [kB/s](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), MB/s, GB/s, TB/s |
-|             | bits/second, [kbps](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), mbps, gbps, tbps |
-| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |
-| power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |
-| efficiency  | operations/joule |
-|             | MIPS/watt |
-|             | FLOPS/watt |
+[//]: # (| Performance | Unit |)
+[//]: # (| ----------- | ---- |)
+[//]: # (| latency     | nanoseconds (ns), microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h) |)
+[//]: # (| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |)
+[//]: # (|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |)
+[//]: # (|             | bytes/second, [kB/s](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), MB/s, GB/s, TB/s |)
+[//]: # (|             | bits/second, [kbps](https://en.wikipedia.org/wiki/Data_rate_units "Data Rate Units"), mbps, gbps, tbps |)
+[//]: # (| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |)
+[//]: # (| power       | joule/second ([watt](https://en.wikipedia.org/wiki/Watt "Watt")) |)
+[//]: # (| efficiency  | operations/joule |)
+[//]: # (|             | MIPS/watt |)
+[//]: # (|             | FLOPS/watt |)
 
-TODO: addition necessary for data flow (address computation)
+[//]: # (TODO: addition necessary for data flow, address computation)
 
-TODO: addition and subtraction necessary for control flow (program counter)
+[//]: # (TODO: addition and subtraction necessary for control flow, program counter)
 
-### Algorithm
+### Algorithms
 
 ## Programming
 
@@ -824,7 +822,7 @@ TODO: addition and subtraction necessary for control flow (program counter)
 
 ### Procedure
 
-### Algorithm
+### Algorithms
 
 ### Memory
 
@@ -834,7 +832,11 @@ TODO: addition and subtraction necessary for control flow (program counter)
 
 ## Tools
 
-### Translation
+### Scanning
+
+### Parsing
+
+### Code Generation
 
 ### Interpretation
 
@@ -842,6 +844,12 @@ TODO: addition and subtraction necessary for control flow (program counter)
 
 ### Emulation
 
-### Virtualization
+### Virtual Memory
+
+### Virtual Processor
+
+### Computing as Utility
+
+### Cloud Computing
 
 ## Glossary
