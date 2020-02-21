@@ -25,7 +25,15 @@ A common theme of our book is an important concept in computer science called se
 
 Selfie is open source and available online at [selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
+For an introduction to selfie and a work-in-progress attempt of the author to develop a curriculum of elementary computer science see the paper "[Selfie and the Basics](https://dl.acm.org/doi/10.1145/3133850.3133857)" by the author which appeared in the proceedings of the ACM SIGPLAN International Symposium on New Ideas, New Paradigms, and Reflections on Programming and Software (Onward!) in 2017.
+
 #### Outstanding Features
+
+The *focus* of the book is on elementary computer science as a whole, not just computers or programming or problem solving and so on, targeting readers with diverse backgrounds other than computer science but in need of gaining an intuitive understanding of computer science in general. We present basic principles that are simple individually and then show how to combine them towards the full capabilities of modern computing.
+
+The *theme* of the book is the integration of basic principles of computer science through self-referentiality in its various forms. Rather than avoiding an admittedly challenging concept, we developed with the selfie system a solid foundation for resolving the inherent self-referentiality in computing and leverage that to explain how meaning is created on a mindless machine.
+
+The *language* of the book is casual with a focus on intuition rather than formalism, even using humor, which is unusual in a technical field such as computer science and an attempt to create an emotional bond between author and reader. In the experience of the author, teaching students majoring in fields other than computer science, emotion is particularly important to reduce the infamous pain in learning about computer science. The language of the book is in fact a personal statement of the author and deliberately kept that way to transport the author's passion about computer science.
 
 #### The Author
 
