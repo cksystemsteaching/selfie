@@ -31,11 +31,37 @@ Selfie is open source and available online at [selfie.cs.uni-salzburg.at](http:/
 
 #### Related Titles
 
+We relate our book to five others of which the first four are closely related while the last book (The Art of Computer Programming by Donald E. Knuth) is mentioned because of its importance in the field. It can probably be found on virtually any computer scientist's book shelf.
+
+The first three books essentially share with our book the broad target audience beyond computer science students while the fourth book (An Introduction to Computer Science: A Textbook for Beginners in Informatics by Gilbert Brands) targets, unlike us, undergraduate computer students specifically.
+
+An interesting observation is that the titles of the first four books are perfect summaries of how our book is different. The first book (Code: The Hidden Language of Computer Hardware and Software by Charles Petzold) has a strong focus on code. The second book (But How Do It Know? - The Basic Principles of Computers for Everyone by J. Clark Scott) explains how computers work while the third book (The Elements of Computing Systems: Building a Modern Computer from First Principles by Noam Nisan and Shimon Schocken) explains how to build one. The fourth book (An Introduction to Computer Science: A Textbook for Beginners in Informatics by Gilbert Brands) is a traditional textbook for computer science students.
+
+Code: The Hidden Language of Computer Hardware and Software by Charles Petzold
+
+The book provides, similar to us, an introduction to computer science for broader audiences beyond computer science students and is therefore closely related to ours. The structure of the book is also somewhat similar to ours. The presentation and concept of the book are nevertheless quite different. There is a strong focus on what code is in many different forms in the first half of the book followed by a machine model and higher level concepts such as programs and operating systems in the second half of the book. This is quite different from our focus on the basic principles of computer science in general and our approach of integration through the selfie system in particular.
+
+But How Do It Know? - The Basic Principles of Computers for Everyone by J. Clark Scott
+
+The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students and is therefore closely related to ours. The structure of the book is also somewhat similar to ours. The presentation and concept of the book are nevertheless again quite different. There is a strong focus on how a computer works in the first three quarters of the book followed by a much shorter treatment of higher level concepts such as programs and operating systems in the last quarter of the book. This is again quite different from our focus on elementary computer science with our use of self-referentiality as integrating concept.
+
+The Elements of Computing Systems: Building a Modern Computer from First Principles by Noam Nisan and Shimon Schocken
+
+The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students and is therefore also closely related to ours. The structure of the book is also somewhat similar to ours. The presentation and concept of the book are nevertheless also quite different. The idea is to show how a computer is essentially built from scratch including the software stack running on top of the machine. This is obviously again quite different from our focus on elementary computer science with our use of self-referentiality as integrating concept.
+
+An Introduction to Computer Science: A Textbook for Beginners in Informatics by Gilbert Brands
+
+This book provides an introduction to computer science for undergraduate students. The structure of the book is similar to ours except for additional material on networking. The presentation is nevertheless also quite different. The book targets students specifically studying computer science rather than broader audiences like us. The content of the book is therefore purely technical without setting the material into context for readers that do not intend to study computer science. The concept of the book is in that sense a classical introduction to computer science similar to many introductory classes in the field.
+
+The Art of Computer Programming by Donald E. Knuth
+
+This book is seminal work in multiple volumes that provides comprehensive coverage of many aspects of computer science. Structure, presentation, content, and target audience of the book are very different from ours. The book is the de-facto standard encyclopedia of computer science for readers that already have formal training in computer science.
+
 #### Audience
 
 Readers should have a background at the level of upper secondary school or above. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, equations). The prerequisites are anyway revisited in the book.
 
-I understand that there is a difference in intellectual development between readers 14 to 18 years old and adults, and that it is difficult to target both. I nevertheless believe the material is still accessible to some teenagers with at least some casual interest in computer science, and it would be a shame to exclude them. I specifically use more casual language, and try to avoid academic lingua as much as possible, to keep the younger portion of the target audience motivated when going through some more technical material and, simultaneously, make it more fun for everyone else. However, I only have experience teaching students around 18 to 19 years old and above, and I am glad to consider any feedback on this issue from people with more experience teaching teenagers.
+On a more personal note, I understand that there is a difference in intellectual development between readers 14 to 18 years old and adults, and that it is difficult to target both. I nevertheless believe the material is still accessible to some teenagers with at least some casual interest in computer science, and it would be ill-advised to exclude them. After all the book is also an attempt to establish computer science as an elementary subject for all. I specifically use more casual language, and try to avoid academic lingua as much as possible, to keep the younger portion of the target audience motivated when going through some more technical material and, simultaneously, make it more fun for everyone else. However, I only have experience teaching students around 18 to 19 years old and above, and I am glad to consider any feedback on this issue from people with more experience teaching teenagers.
 
 #### Status of the Book
 
