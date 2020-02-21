@@ -75,6 +75,14 @@ On a more personal note, I understand that there is a difference in intellectual
 
 #### Status of the Book
 
+The introduction and the first chapter on encoding information in bits are complete. There is a preliminary outline of the remaining four chapters.
+
+We expect to finish the manuscript within around one year by Spring 2021. The author is on sabbatical from July 2020 until February 2021 which should make that timeline feasible.
+
+The current word count is at around 18,000 words. We plan the length of the book to be around 100,000 words.
+
+On average there will be one figure, table, or non-textual example per section. For example, there are 16 sections in the first chapter on information with 9 figures, 1 table, and 6 non-textual examples.
+
 #### Reviewers
 
 This is a list of potential reviewers. All candidates on this list have played important roles in my academic career over the years and written recommendation letters for me. They are familiar with my scientific work but not with the book project on elementary computer science.
@@ -92,3 +100,7 @@ This is a list of potential reviewers. All candidates on this list have played i
 * Lothar Thiele, Professor, ETH Zurich, Switzerland, [thiele@ethz.ch](mailto:thiele@ethz.ch)
 
 * Marilyn Wolf, Professor, Georgia Institute of Technology, USA, [wolf@ece.gatech.edu](mailto:wolf@ece.gatech.edu)
+
+#### Outline and Chapter Sketches
+
+There is an introduction followed by five chapters called Information, Machine, Programming, Tools, and Computing. Please refer to the introduction which provides an overview of the book as well as each individual chapter.
