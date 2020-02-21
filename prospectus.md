@@ -33,6 +33,10 @@ Selfie is open source and available online at [selfie.cs.uni-salzburg.at](http:/
 
 #### Audience
 
+Readers should have a background at the level of upper secondary school or above. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, equations). The prerequisites are anyway revisited in the book.
+
+I understand that there is a difference in intellectual development between readers 14 to 18 years old and adults, and that it is difficult to target both. I nevertheless believe the material is still accessible to some teenagers with at least some casual interest in computer science, and it would be a shame to exclude them. I specifically use more casual language, and try to avoid academic lingua as much as possible, to keep the younger portion of the target audience motivated when going through some more technical material and, simultaneously, make it more fun for everyone else. However, I only have experience teaching students around 18 to 19 years old and above, and I am glad to consider any feedback on this issue from people with more experience teaching teenagers.
+
 #### Status of the Book
 
 #### Reviewers
