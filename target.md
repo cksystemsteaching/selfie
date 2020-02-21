@@ -1,3 +1,0 @@
-Target Audience:
-
-Readers should have a background at the level of upper secondary school or above. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, equations). The prerequisites are anyway revisited in the book.
