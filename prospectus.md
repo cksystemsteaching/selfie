@@ -21,6 +21,34 @@ This is a proposal for a book on *elementary computer science* for broad audienc
 
 Similar to elementary arithmetic with its five categories (numbers, measurement, geometry, algebra, and probabilities), we present five categories of elementary computer science in five chapters called information, machine, programming, tools, and computing. Information is on encoding and decoding information in bits. Machine is on a simple yet representative and still realistic machine model. Programming is on fundamental programming language concepts and basic algorithms. Tools is on translation and interpretation of programs with a focus on the semantics of programs. Computing is on virtualizing computation for enabling computing as utility and cloud computing. However, unlike traditional textbooks on elementary arithmetic, we use simple examples rather than formulae whenever possible.
 
-A common theme of our book is an important concept in computer science called self-referentiality which has immediate counterparts in the real world. Think of an English dictionary written in English. The same can be done with software that defines its own meaning or constructs a virtual machine for running software everywhere including itself. Seeing what self-referentiality is and how it is resolved is key to gaining an integrated understanding of elementary computer science. Teaching self-referentiality in its various forms is inspired by a software system called selfie that we developed over many years teaching undergraduate computer science students. Selfie is the source of many examples we use in the book and enables us to integrate our five categories of elementary computer science in one system. Due to its technical nature we nevertheless do not explain selfie in detail.
+A common theme of our book is an important concept in computer science called self-referentiality which has immediate counterparts in the real world. Think of an English dictionary written in English. The same can be done with software that defines its own meaning or constructs a virtual machine for running software everywhere including itself. Seeing what self-referentiality is and how it is resolved is key to gaining an integrated understanding of elementary computer science. Teaching self-referentiality in its various forms is inspired by a software system called selfie that we developed over many years teaching undergraduate computer science students. Selfie is the source of most examples we use in the book and enables us to integrate our five categories of elementary computer science in one system. Due to its technical nature we nevertheless do not explain selfie in detail.
 
 Selfie is open source and available online at [selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
+
+#### Outstanding Features
+
+#### The Author
+
+#### Related Titles
+
+#### Audience
+
+#### Status of the Book
+
+#### Reviewers
+
+This is a list of potential reviewers. All candidates on this list have played important roles in my academic career over the years and written recommendation letters for me. They are familiar with my scientific work but not with the book project on elementary computer science.
+
+* Rajeev Alur, Professor, University of Pennsylvania, USA, [alur@cis.upenn.edu](mailto:alur@cis.upenn.edu)
+
+* Thomas A. Henzinger, Professor, Institute of Science and Technology Austria, [tah@ist.ac.at](mailto:tah@ist.ac.at)
+
+* Edward A. Lee, Professor Emeritus, University of California at Berkeley, USA, [eal@eecs.berkeley.edu](mailto:eal@eecs.berkeley.edu)
+
+* Martin Rinard, Professor, Massachusetts Institute of Technology, USA, [rinard@lcs.mit.edu](mailto:rinard@lcs.mit.edu)
+
+* Joseph Sifakis, Professor, Verimag, Grenoble, France, [joseph.sifakis@imag.fr](mailto:joseph.sifakis@imag.fr)
+
+* Lothar Thiele, Professor, ETH Zurich, Switzerland, [thiele@ethz.ch](mailto:thiele@ethz.ch)
+
+* Marilyn Wolf, Professor, Georgia Institute of Technology, USA, [wolf@ece.gatech.edu](mailto:wolf@ece.gatech.edu)
