@@ -29,6 +29,8 @@ Selfie is open source and available online at [selfie.cs.uni-salzburg.at](http:/
 
 #### The Author
 
+Christoph Kirsch is Professor at the Department of Computer Sciences of the University of Salzburg, Austria. He received his Dr.Ing. degree from Saarland University in 1999 while at the Max Planck Institute for Computer Science in Saarbr&uuml;cken, Germany. From 1999 to 2004 he worked as Postdoctoral Researcher at the Department of Electrical Engineering and Computer Sciences of the University of California, Berkeley. He later returned to Berkeley as Visiting Scholar (2008-2013) and Visiting Professor (2014) at the Department of Civil and Environmental Engineering. His research interests are in concurrent programming, memory management, virtualization, and formal verification. Dr. Kirsch co-invented embedded programming languages and systems such as Giotto, HTL, and the Embedded Machine, and more recently co-designed high-performance, multicore-scalable concurrent data structures and memory management systems. He co-founded the International Conference on Embedded Software (EMSOFT) in 2001 and served as ACM SIGBED chair from 2011 until 2013. He has been IEEE TCAD and ACM TODAES associate editor, and is ACM Distinguished Speaker since 2017.
+
 #### Related Titles
 
 We relate our book to five others of which the first four are closely related while the last book (The Art of Computer Programming by Donald E. Knuth) is mentioned because of its importance in the field. It can probably be found on virtually any computer scientist's book shelf.
