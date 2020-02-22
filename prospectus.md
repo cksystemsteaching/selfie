@@ -81,7 +81,7 @@ We expect to finish the manuscript within around one year by Spring 2021. The au
 
 The current word count is at around 18,000 words. We plan the length of the book to be around 100,000 words.
 
-On average there will be one figure, table, or non-textual example per section. For example, there are 16 sections in the first chapter on information with 9 figures, 1 table, and 6 non-textual examples.
+On average there will be one figure, table, or non-textual example per section. For example, there are 16 sections in the first chapter on information with 9 figures, 2 tables, and 6 non-textual examples.
 
 #### Reviewers
 
