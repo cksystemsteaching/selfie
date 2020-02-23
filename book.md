@@ -56,7 +56,7 @@ which could be used to encode the decimal numbers:
 
 0, 1, 2, and 3,
 
-but not more. What if we take three bits? It is then *eight* different states, that is:
+but not more. By the way, computer scientists always start counting with zero, not one, to avoid wasting the state in which all bits are zero. What if we take three bits? It is then *eight* different states, that is:
 
 000, 001, 010, 011, 100, 101, 110, and 111,
 
