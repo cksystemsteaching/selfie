@@ -835,7 +835,7 @@ We now dive into the world of the machine and its code. You will be surprised ho
 
 ----
 
-Everything below is work in progress. So far, there is only a preliminary outline of the structure.
+Everything below is work in progress. So far, there is only a preliminary outline of the structure and a preliminary glossary of the terms introduced above.
 
 ----
 
@@ -913,3 +913,371 @@ Everything below is work in progress. So far, there is only a preliminary outlin
 ### Cloud Computing
 
 ## Glossary
+
+* absolute value
+
+* abstraction
+
+* addend
+
+* addition
+
+* address
+
+* address space
+
+* American Standard Code for Information Interchange
+
+* AND
+
+* app
+
+* application
+
+* argument
+
+* ASCII
+
+* audio
+
+* backwards-compatible
+
+* bandwidth
+
+* base
+
+* big-endian
+
+* binary number
+
+* bit
+
+* bit depth
+
+* bit flip
+
+* bitmap
+
+* bit rate
+
+* branch
+
+* broadband
+
+* byte
+
+* byte-addressed memory
+
+* carry bit
+
+* central processing unit
+
+* character
+
+* code
+
+* color depth
+
+* column-major
+
+* complement
+
+* compression
+
+* computing
+
+* computation
+
+* contiguous memory block
+
+* control character
+
+* control flow
+
+* CPU
+
+* data
+
+* decode
+
+* digital
+
+* diminished radix complement
+
+* directory
+
+* discrete
+
+* effective
+
+* efficient
+
+* 8-bit Unicode Transformation Format
+
+* email
+
+* encode
+
+* EXCLUSIVE-OR
+
+* execute
+
+* executable
+
+* exponential growth
+
+* factor
+
+* fetch
+
+* file
+
+* file extension
+
+* filename
+
+* filesystem
+
+* folder
+
+* format
+
+* formula
+
+* fragmentation
+
+* frame
+
+* frame rate
+
+* full adder
+
+* half adder
+
+* hexadecimal
+
+* Hertz
+
+* hindu-arabic
+
+* image
+
+* implementation
+
+* index
+
+* indexing
+
+* information
+
+* instruction
+
+* integer
+
+* interpretation
+
+* INT_MAX
+
+* INT_MIN
+
+* least-significant bit
+
+* leaf
+
+* LF
+
+* linefeed
+
+* link
+
+* little-endian
+
+* logic gate
+
+* lossless compression
+
+* lossy compression
+
+* lower bound
+
+* LSB
+
+* machine
+
+* machine code
+
+* machine instruction
+
+* memory
+
+* MIME
+
+* minuend
+
+* most-significant bit
+
+* MSB
+
+* multiplication
+
+* Multipurpose Internet Mail Extensions
+
+* name
+
+* namespace
+
+* natural number
+
+* NEGATION
+
+* nibble
+
+* nines complement
+
+* non-contiguous memory block
+
+* non-volatile memory
+
+* NOT
+
+* NULL
+
+* NULL character
+
+* NULL-terminated
+
+* Nyquist-Shannon sampling theorem
+
+* octal
+
+* one instruction set computer
+
+* ones complement
+
+* OISC
+
+* OR
+
+* order of magnitude
+
+* overflow
+
+* parallelism
+
+* parameter
+
+* path
+
+* pathname
+
+* picture
+
+* pixel
+
+* pointer
+
+* portable
+
+* prefix
+
+* printable character
+
+* programming
+
+* programming language
+
+* radix complement
+
+* raw format
+
+* real time
+
+* redundant
+
+* relevant
+
+* root
+
+* row-major
+
+* run
+
+* sample
+
+* sampling rate
+
+* semantics
+
+* signed integer
+
+* size
+
+* soft real time
+
+* software
+
+* software tool
+
+* source code
+
+* state
+
+* still image
+
+* storage
+
+* streaming media
+
+* string
+
+* subfolder
+
+* subtraction
+
+* subtrahend
+
+* sum
+
+* tag
+
+* tens complement
+
+* ternary
+
+* text
+
+* time-space tradeoff
+
+* tool
+
+* tree
+
+* trit
+
+* twos complement
+
+* truth table
+
+* UINT_MAX
+
+* unary
+
+* unsigned integer
+
+* upper bound
+
+* UTF-8
+
+* value
+
+* video
+
+* virtualization
+
+* volatile memory
+
+* whole number
+
+* wrap-around
+
+* XOR
