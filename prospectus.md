@@ -75,13 +75,13 @@ On a more personal note, I understand that there is a difference in intellectual
 
 #### Status of the Book
 
-The introduction and the first chapter on encoding information in bits are complete. There is a preliminary outline of the remaining four chapters.
+The introduction and the first chapter on encoding information in bits are complete. There is a preliminary outline of the remaining four chapters. There is also a preliminary glossary of the terms introduced so far.
 
 We expect to finish the manuscript within around one year by Spring 2021. The author is on sabbatical from July 2020 until February 2021 which should make that timeline feasible.
 
 The current word count is at around 18,000 words. We plan the length of the book to be around 100,000 words.
 
-On average there will be one figure, table, or non-textual example per section. For example, there are 16 sections in the first chapter on information with 9 figures, 2 tables, and 6 non-textual examples.
+On average there will be at least one figure, table, or non-textual example per section. For example, there are 16 sections in the first chapter on information with 12 figures, 2 tables, and 6 non-textual examples.
 
 #### Reviewers
 
