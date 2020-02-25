@@ -10249,8 +10249,8 @@ uint64_t selfie_run(uint64_t machine) {
 
     // checking for the (optional) beq limit argument
     if (number_of_remaining_arguments() > 0)
-      if (!string_compare(peek_argument(0), "--merge-enabled"))
-        if (!string_compare(peek_argument(0), "--debug-merge"))
+      if (string_compare(peek_argument(0), "--merge-enabled") == 0)
+        if (string_compare(peek_argument(0), "--debug-merge") == 0)
           // assert: argument is an integer representing the beq limit
           beq_limit = atoi(get_argument());
 
