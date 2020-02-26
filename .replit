@@ -1,0 +1,3 @@
+language = "c"
+  run = "cc -Wall -Wextra -O3 -m64 -Duint64_t='unsigned long long' selfie.c -o selfie && ./selfie"
+  
