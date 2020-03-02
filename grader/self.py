@@ -35,7 +35,7 @@ def check_self_compilation(mandatory=False) -> List[Check]:
             'selfie.c', 'self-compilation does not lead to warnings or syntax errors', mandatory=mandatory)
 
 
-def check_print_name() -> List[Check]:
+def check_print_your_name() -> List[Check]:
     return check_execution('./selfie -c selfie.c -m 128',
                            'selfie prints first and second name',
                            success_criteria=lambda code, out: contains_name(out))
@@ -208,11 +208,11 @@ def check_self_assemblation() -> List[Check]:
                         'both assembly files are exactly the same')
 
 
-def check_concurrent_machines() -> List[Check]:
+def check_processes() -> List[Check]:
     return check_interleaved_output('./selfie -c <assignment>hello-world.c -x 10', 'Hello World!    ', 10,
-                                    '10 Mipster machines are running concurrently') + \
+                                    '10 Mipster processes are running concurrently') + \
         check_interleaved_output('./selfie -c selfie.c -m 128 -c <assignment>hello-world.c -z 10', 'Hello World!    ', 10,
-                                 '10 Hypster machines are running concurrently')
+                                 '10 Hypster processes are running concurrently')
 
 
 def check_fork_and_wait() -> List[Check]:
@@ -250,7 +250,7 @@ def check_lock() -> List[Check]:
                         success_criteria='Hello World!    ' * 8)
 
 
-def check_thread() -> List[Check]:
+def check_threads() -> List[Check]:
     return check_execution('./selfie -c <assignment>syscalls.c -m 128',
                            'creates a thread, where the parent can join the thread with MIPSTER', success_criteria=70) + \
         check_execution('./selfie -c selfie.c -m 128 -c <assignment>syscalls.c -y 64',
@@ -281,7 +281,7 @@ baseline_assignment = Assignment(
 
 assignments: Set[Assignment] = {
     baseline_assignment,
-    Assignment('print-name', 'General', '', check_print_name),
+    Assignment('print-your-name', 'General', '', check_print_your_name),
     Assignment('hex-literal', 'Compiler', 'hex-literal', check_hex_literal),
     Assignment('bitwise-shift-compilation', 'Compiler',
                'bitwise-shift', check_bitwise_shift_compilation),
@@ -300,13 +300,13 @@ assignments: Set[Assignment] = {
     Assignment('assembler-parser', 'OS', 'assembler',
                check_assembler_parser),
     Assignment('self-assembler', 'OS', 'assembler', check_self_assemblation),
-    Assignment('concurrent-machines', 'OS',
-               'concurrent-machines', check_concurrent_machines),
+    Assignment('processes', 'OS',
+               'processes', check_processes),
     Assignment('fork-wait', 'OS', 'fork-wait', check_fork_and_wait),
-    Assignment('fork-wait-with-status', 'OS',
+    Assignment('fork-wait-exit', 'OS',
                'fork-wait', check_fork_wait_exit),
     Assignment('lock', 'OS', 'lock', check_lock),
-    Assignment('thread', 'OS', 'thread', check_thread),
+    Assignment('threads', 'OS', 'threads', check_threads),
     Assignment('treiber-stack', 'OS', 'treiber-stack', check_treiber_stack)
 }
 

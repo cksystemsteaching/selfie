@@ -68,7 +68,7 @@ class Console():
 
 def assemble_for_selfie(file):
     system('riscv64-linux-gnu-as tests/' + file + ' -o .instruction.o')
-    system('riscv64-linux-gnu-ld .instruction.o -o .instruction.bin --oformat=binary >/dev/null 2>&1')
+    system('riscv64-linux-gnu-ld .instruction.o -o .instruction.bin >/dev/null 2>&1')
     system('cat tests/elf-header.m .instruction.bin > .tmp.bin')
     system('rm .instruction.o .instruction.bin')
 
@@ -101,9 +101,9 @@ def compile_with_gcc_and_run(file):
 not_compilable = [
     'assembler-parser',
     'self-assembler',
-    'concurrent-machines',
+    'processes',
     'lock',
-    'thread',
+    'threads',
     'treiber-stack'
 ]
 
