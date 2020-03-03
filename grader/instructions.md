@@ -1,31 +1,31 @@
-# Instructions for students
+# Setting up a private repository
 
-## Setting up your environment
-
-In order to implement and hand in assignments, each student needs to create a private fork of selfie and enroll into the course on repl.it
+In order to implement and hand in assignments, each student needs to create and fork a recent version of Selfie into a private GitHub repository. GitHub does not support creating a private fork of public repositories, thus requiring some manual set-up.
 
 > :warning: **Warning:**
 >
 > Ensure that both the repl.it project as well as your GitHub repository are set to private. Failing to do so results in your code being publicly accessible and thus prone for being copy-pasted.
 
-0. Set up a private GitHub repository:
-   1. Create a new repository on GitHub by clicking onto the plus icon in the title bar and selecting `New repository`. Enter a name and make sure to select `Private`.
-   2. Go to Settings -> Collaborators and add `ckirsch` as a collaborator
-1. Enroll into the repl.it class using the following link: https://repl.it/classroom/invite/mW8BOP4
-2. In the classroom dashboard, select Projects -> Selfie. This is a public copy (for now) on your account.
-3. In the console on the right side, set up your private git repo as `origin`:
+## Forking the repository and initial setup
+
+To follow these steps, you are expected to have cloned Selfie to your working space. In repl.it, Selfie is automatically cloned. Locally, you need to `git clone` the Selfie repository.
+
+0. Open a terminal and change directory to the cloned Selfie directory
+1. Set up your private git repo as `origin`:
    1. Change selfie's remote name to `upstream`: `git remote rename origin upstream`
    2. Add your own repository as `origin`: `git remote add origin https://github.com/<your_username>/<your_repo>.git`
    3. Update your repository from `upstream`: `git fetch --unshallow upstream`
    4. Mirror the repository to your private repository: `git push --mirror origin`
    5. Setup the master branch to push to your repository: `git branch --set-upstream-to=origin/master master`
-4. Set your repl.it project to private:
-   1. In the top-left corner: Go to Menu -> My Repls
-   2. Click onto the three-dot menu of your Selfie repl and click onto the `public` toggle to set your to private
-   3. Make sure that there is a lock icon after the repl's name to ensure it is set to private.
-5. Your repl.it copy as well as your GitHub repository were successfully set up and you are ready to start your assignment
+3. Your GitHub repository was successfully set up and you are ready to start your assignment
 
+## Checking out your repository (with Selfie as upstream)
 
+If you obtain a fresh clone of your private repository, you need to add Selfie's repository as upstream to be able to update your repository.
+
+0. Open a terminal and change directory to the directory where you cloned your repository to.
+1. Add selfie's repository as `upstream`: `git remote add upstream https://github.com/cksystemsteaching/selfie.git`
+2. You are now able to update your private repository
 
 ## Keeping your repository up-to-date with selfie's master
 
