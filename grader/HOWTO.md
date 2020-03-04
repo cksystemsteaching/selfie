@@ -1,6 +1,6 @@
 # The Selfie Autograder How-to
 
-[Selfie](http://selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features compiler and operating systems [assignments](). The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
+[Selfie](http://selfie.cs.uni-salzburg.at) comes with an [autograder](self.py) implemented in Python that features compiler and operating systems [assignments](assignments). The autograder is publicly available and meant to be used by students for self-grading before submitting solutions of assignments.
 
 In order to use the autograder [install](../README.md) selfie first.
 
@@ -24,7 +24,7 @@ First [install](../README.md) selfie either in the cloud or locally on your mach
 
 Then, on the web:
 
-1. Create an account on [github.com]() unless you already have one.
+1. Create an account on [github.com](https://github.com) unless you already have one.
 2. Create a [new](https://github.com/new), empty repository, name it `myselfie`, and set it to private.
 3. Invite your teacher, for example, the GitHub user [ckirsch](https://github.com/ckirsch), to the repository as your only collaborator.
 
