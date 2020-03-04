@@ -83,6 +83,8 @@ With your solution committed into the master branch of your `myselfie` repositor
 
 1. Go to your `myselfie` repository on GitHub in a browser and click on the `Latest commit` link.
 2. Copy the link and make sure that the link is in the form `https://github.com/<yourusername>/myselfie/commit/<commithash>`.
-3. Submit the link along with your self-grade to your teacher as discussed in class.
+3. Submit the link along with the grade reported by the autograder to your teacher as discussed in class.
+
+If the autograder reports grade 2, you may submit grade 1 provided, in a code review, you are able to demonstrate that your code matches the code quality and conventions of selfie.
 
 Solutions of assignments must be submitted before the deadline stated in class or online. Late submissions will be failed.
