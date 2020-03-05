@@ -20,7 +20,7 @@ Solutions of assignments must be submitted as git commit links to a private clon
 
 ### Creating a private clone of selfie
 
-First [install](../README.md) selfie either in the cloud or locally on your machine unless you have already done that.
+First [install](../README.md) selfie either in the cloud or locally on your machine.
 
 Then, on the web:
 
