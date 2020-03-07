@@ -841,9 +841,17 @@ Everything below is work in progress. So far, there is only a preliminary outlin
 
 ## Machine
 
-### Processor
+The machine and its code is a mystery to many even though the basic principles governing its design are surprisingly simple and accessible to everyone. But simplicity is not the only reason why we dedicate a whole chapter to the topic. Knowing how a computer does its magic through mere yet extremely fast manipulation of enormous amounts of bits is the key to understanding virtually everything else in computer science, in particular the motivation of why things are done in certain ways and not others.
 
-### Memory
+Digital devices that contain a CPU, and these are essentially all devices from a simple microcontroller in a washing machine to a large server in a data center, are instances of a so-called *von Neumann machine* named after *John von Neumann* who invented the model in the fifties of the last century. The idea is to store all information, code and data, encoded in bits in the same memory, next to each other, and then connect a CPU to that memory with a *memory bus* that transports the bits, usually more than one at a time, between CPU and memory.
+
+The alternative model to a von Neumann machine is the *Harvard architecture* which features separate memories for code and for data connected to the CPU via separate memory buses.
+
+TODO: relate both models, provide an overview of the following sections.
+
+### Model
+
+The *machine model* we use here is a von Neumann machine named after John von Neumann who
 
 ### Input/Output
 
