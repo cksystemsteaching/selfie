@@ -853,7 +853,11 @@ TODO: provide an overview of the following sections.
 
 ### Model
 
-The *machine model* we use here is a von Neumann machine named after John von Neumann who
+The *machine model* we use here is an instance of a 64-bit *RISC-V* machine which is fundamentally a von Neumann machine. 64-bit means that CPU and memory bus operate in chunks of 64 bits called a *machine word*. RISC-V stands for the fifth generation of a *reduced instruction set computer* or *RISC*, in contrast to a *complex instruction set computer* or *CISC* of which the most commonly used instance is the family of *x86* processors introduced by Intel in 1978. The key difference between RISC and CISC is their *instruction set architecture* or *ISA*.
+
+RISC machines typically feature a few dozen instructions whereas CISC machines may implement hundreds and even thousands of instructions. But RISC instructions are also different from CISC instructions. They are usually simpler and more general. A RISC instruction typically involves one, maybe two machine words, in contrast to most CISC instructions that are often more complex and specialized. Therefore, it usually takes multiple RISC instructions to do what a single CISC instruction does but executing a RISC instruction is typically faster than executing a CISC instruction.
+
+RISC was introduced in the 1980s as an alternative to CISC. By now, virtually all smart phones and tablets, and most computers embedded in devices other than computers such as washing machines and cars, are RISC machines while laptops, desktops, and servers are mostly CISC machines. There are pros and cons to both, RISC and CISC, but we avoid that discussion here. For us, the simplicity of RISC and the fact that RISC represents, in numbers of CPUs, by far the largest market are the reasons for choosing RISC.
 
 ### Input/Output
 
