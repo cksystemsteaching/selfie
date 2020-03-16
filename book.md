@@ -883,9 +883,15 @@ Let us count how many bits a RISC-U machine can store. There are the 2112 bits o
 
 We nevertheless do not intend to just impress you with large numbers but rather would like to emphasize that a computer such as a RISC-U machine is fully *deterministic*. Whenever we take such a machine, freeze its current state, write down all its bits, and then copy all of the bits to another machine of the same kind that machine will be indistinguishable from the original machine. Freezing and writing down the state of a machine is called *snapshotting* and copying the state to another machine is called *migration* which are both very powerful concepts explained in the computing chapter.
 
-The state space of a RISC-U machine or any other modern computer is so large that it will never be able to explore all states and it is unlikely that the machine will ever be in the same state twice. The latter is true because some of the bits in memory may in fact be flipped from outside of the machine to facilitate input to the machine which is our next topic.
+The state space of a RISC-U machine or any other modern computer is so large that it will never be able to explore all states and it is unlikely that the machine will ever be in the same state twice. The latter is true because some of the bits in memory may in fact be flipped regularly from outside of the machine to facilitate input to the machine such as day and time which is our next topic.
 
 ### Input/Output
+
+So far, the model of our RISC-U ISA is *closed* in the sense that there is no mechanism to input information from and output information to the *environment* of the machine. There are all these bits stored in the machine but we cannot change them and cannot see them either. No *input/output* abbreviated *IO* puts us in a catch-22 situation. How can a machine run whatever code we like if there is no code in the machine, in particular no code that can instruct the machine to get the code we like into the machine?
+
+There are actually two problems here. Firstly, whenever a computer is turned on all its registers, program counter, and memory are usually *zeroed*, that is, all its bits are 0. In particular, there is no code in memory, and no data as well, nothing. Secondly, even if there was code in memory, we could only have the machine run that code and nothing else as long as their is no way to get other code into the machine.
+
+The first problem is a *bootstrapping* problem, the second is just lack of IO. The bootstrapping problem is solved as follows...
 
 ### Instructions
 
