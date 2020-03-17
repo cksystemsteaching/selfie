@@ -40,12 +40,12 @@ _start:
 	REG_S	a1, 0(a3)
 
 	/* Zero-out BSS */
-/*	la	a4, _bss_start
+	la	a4, _bss_start
 	la	a5, _bss_end
 _bss_zero:
 	REG_S	zero, (a4)
 	add	a4, a4, __SIZEOF_POINTER__
-	blt	a4, a5, _bss_zero*/
+	blt	a4, a5, _bss_zero
 
 _start_warm:
 	/* Disable and clear all interrupts */
@@ -57,9 +57,7 @@ _start_warm:
 	csrw	CSR_STVEC, a3
 
 	/* Setup stack */
-	//la	a3, _payload_end
-    li  a3, 0x80004000  // let's hope nothing's here
-	li	a4, 0x2000
+	la	a3, _payload_end
 	add	sp, a3, a4
 
 	/* Jump to C main */
