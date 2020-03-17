@@ -5,3 +5,8 @@ In its test payload, it uses a _more or less_ linker script `../../wrapper/opens
 Using the C preprocessor as a way to distinguish between RV32 and RV64 seems like a hack. As the preprocessor does only care about hash \# directives, it seems to work out fine.
 
 As we are only supporting RV64, it should work fine without preprocessing and just using RV64
+
+
+
+# Memory models
+The memory models `medlow` and `medany` are explained in [this `riscv-gcc` commit](https://github.com/riscv/riscv-gcc/commit/95d1d5e9aa8fbc019680ba9e5818084c35e5841d).
