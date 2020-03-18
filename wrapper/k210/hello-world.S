@@ -58,6 +58,7 @@ _start_warm:
 
 	/* Setup stack */
 	la	a3, _payload_end
+	li	a4, 0x2000
 	add	sp, a3, a4
 
 	/* Jump to C main */
