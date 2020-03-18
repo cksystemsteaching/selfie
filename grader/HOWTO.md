@@ -13,7 +13,7 @@ The autograder is invoked as follows:
 1. Change directory to the root directory of your selfie installation.
 2. Invoke the autograder without any command line options: `./grader/self.py`
 
-The autograder responds with its command line options and the list of supported assignments. If it does not respond, your version of python is probably outdated. Make sure you have at least Python 3.
+The autograder responds with its command line options and the list of supported assignments. If it does not respond, your version of Python is probably outdated. Make sure you have at least Python 3.
 
 ### For Students
 
