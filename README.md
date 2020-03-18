@@ -17,11 +17,12 @@ Selfie is implemented in a single (!) file and kept minimal for simplicity. Ther
 
 ## Support
 
-1. Slack Channel: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
+1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
 2. Slides: There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
 3. Book: There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) reaching out to everyone with an interest in learning about computer science.
 4. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
-5. Web: The selfie homepage is at [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
+5. Twitter: Follow us at [twitter.com/christophkirsch](https://twitter.com/christophkirsch)
+6. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
 ## Installing Selfie
 
