@@ -8,11 +8,34 @@ In order to use the autograder [install](../README.md) selfie first.
 
 The autograder reports grades in the range from 2 to 5 where 2 is the best and 4 is the worst passing grade, and 5 is failed. Grade 1 is reserved for submitting solutions that autograde to 2 but also match the code quality and conventions of selfie as detailed below.
 
-TODO: instructions on how to use the autograder
+The autograder is invoked as follows:
+
+1. Change directory to the root directory of your selfie installation.
+2. Invoke the autograder without any command line options: `./grader/self.py`
+3. The autograder responds with its command line options and the list of supported assignments.
+
+If the autograder does not respond, your version of python is probably outdated. Make sure you have at least version 3 of python.
 
 ### For Students
 
+Whenever you changed selfie code you can check if selfie still self-compiles:
+
+1. Invoke the autograder with the `self-compile` assignment: `./grader/self.py self-compile`
+2. Selfie still self-compiles if the autograder responds with grade 2.
+
+In order to find out about all other assignments supported by the autograder browse the [assignments](assignments).
+
 ### For Teachers
+
+The autograder supports bulk grading of an `<assignment>` as follows:
+
+1. Prepare a text file `commit-links.txt` that contains GitHub commit links to which you have read access, one per line and student.
+2. Create an empty directory `student-repos`.
+3. Invoke the autograder in bulk mode: `./grader/self.py -b commit-links.txt -d student-repos <assignment>`
+
+The autograder clones, for each commit link in `commit-links.txt`, the corresponding repository from GitHub into `student-repos`, grades it for the given `<assignment>`, and reports the grade as well as details on which part of the assignment passes and which does not for each commit link. To suppress the details and just see the grades use `option -q`.
+
+If you subsequently invoke the autograder in bulk mode on `student-repos` again, it only clones repositories for commit links in `commit-links.txt` that are not yet in `student-repos`. Repositories that are already in `student-repos` are just updated from GitHub.
 
 ## Submitting Solutions for Grading
 
