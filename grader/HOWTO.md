@@ -12,26 +12,26 @@ The autograder is invoked as follows:
 
 1. Change directory to the root directory of your selfie installation.
 2. Invoke the autograder without any command line options: `./grader/self.py`
-3. The autograder responds with its command line options and the list of supported assignments.
 
-If the autograder does not respond, your version of python is probably outdated. Make sure you have at least version 3 of python.
+The autograder responds with its command line options and the list of supported assignments. If it does not respond, your version of python is probably outdated. Make sure you have at least Python 3.
 
 ### For Students
 
 Whenever you changed selfie code you can check if selfie still self-compiles:
 
-1. Invoke the autograder with the `self-compile` assignment: `./grader/self.py self-compile`
-2. Selfie still self-compiles if the autograder responds with grade 2.
+1. Change directory to the root directory of your selfie installation.
+2. Invoke the autograder with the `self-compile` assignment: `./grader/self.py self-compile`
 
-In order to find out about all other assignments supported by the autograder browse the [assignments](assignments).
+Selfie still self-compiles if the autograder responds with grade 2. In order to find out about all other assignments supported by the autograder browse the [assignments](assignments).
 
 ### For Teachers
 
 The autograder supports bulk grading of an `<assignment>` as follows:
 
-1. Prepare a text file `commit-links.txt` that contains GitHub commit links to which you have read access, one per line and student.
-2. Create an empty directory `student-repos`.
-3. Invoke the autograder in bulk mode: `./grader/self.py -b commit-links.txt -d student-repos <assignment>`
+1. Change directory to the root directory of your selfie installation.
+2. Create a text file `commit-links.txt` that contains GitHub commit links to which you have read access, one per line and student.
+3. Create an empty directory `student-repos`.
+4. Invoke the autograder in bulk mode: `./grader/self.py -b commit-links.txt -d student-repos <assignment>`
 
 The autograder clones, for each commit link in `commit-links.txt`, the corresponding repository from GitHub into `student-repos`, grades it for the given `<assignment>`, and reports the grade as well as details on which part of the assignment passes and which does not for each commit link. To suppress the details and just see the grades use `option -q`.
 
@@ -82,21 +82,23 @@ Note that whenever you need to update your selfie installation but your working 
 
 Create a development branch in your selfie installation and work on your solution of an assignment (regularly committing, pushing, updating, merging):
 
-1. Make sure the master branch in your selfie installation is checked out: `git checkout master`
-2. Create the development branch off the master branch and check it out: `git checkout -b <developmentbranch>`
-3. Work on your solution and use the autograder for feedback. Do not change the autograder in any way! If you discover a bug, please report it to your teacher.
-4. Commit your changes regularly using `git add` and `git commit`.
-5. Push your changes to your `myselfie` repository on GitHub for backup: `git push -u origin`
-6. Update your selfie installation to the latest version of the official selfie repository regularly using the above instructions.
-7. If you fetched and merged updates go back to the `<developmentbranch>`: `git checkout <developmentbranch>`
-8. Merge the updates into your `<developmentbranch>`: `git merge master`
+1. Change directory to the root directory of your selfie installation.
+2. Make sure the master branch in your selfie installation is checked out: `git checkout master`
+3. Create the development branch off the master branch and check it out: `git checkout -b <developmentbranch>`
+4. Work on your solution and use the autograder for feedback. Do not change the autograder in any way! If you discover a bug, please report it to your teacher.
+5. Commit your changes regularly using `git add` and `git commit`.
+6. Push your changes to your `myselfie` repository on GitHub for backup: `git push -u origin`
+7. Update your selfie installation to the latest version of the official selfie repository regularly using the above instructions.
+8. If you fetched and merged updates go back to the `<developmentbranch>`: `git checkout <developmentbranch>`
+9. Merge the updates into your `<developmentbranch>`: `git merge master`
 
 ### Submitting your solution
 
 In a terminal where your selfie installation is:
 
-1. Make sure the master branch of your selfie installation is checked out: `git checkout master`
-2. Merge the `<developmentbranch>` with your solution into the master branch of your selfie installation: `git merge --squash <developmentbranch>`
+1. Change directory to the root directory of your selfie installation.
+2. Make sure the master branch of your selfie installation is checked out: `git checkout master`
+3. Merge the `<developmentbranch>` with your solution into the master branch of your selfie installation: `git merge --squash <developmentbranch>`
 
 Note that the option `--squash` is important. It makes sure that all commits on the `<developmentbranch>` are squashed into one commit which improves readability of your solution.
 
