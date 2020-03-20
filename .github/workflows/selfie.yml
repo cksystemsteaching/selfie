@@ -1,12 +1,14 @@
 name: selfie
 
 on:
-  paths:
-  - '**.c'
   push:
     branches: [ master ]
+    paths:
+    - '**.c'
   pull_request:
     branches: [ master ]
+    paths:
+    - '**.c'
 
 jobs:
   build:
