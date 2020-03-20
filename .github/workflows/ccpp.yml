@@ -13,7 +13,5 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
-    - name: configure
-      run: ./configure
     - name: make all
       run: make all
