@@ -18,8 +18,8 @@ on:
     - 'Makefile'
     - '.github/workflows/selfie.yml'
   schedule:
-    # trigger fridays
-    - cron:  '* * * * 5'
+    # trigger fridays at 12am
+    - cron:  '0 0 * * 5'
 
 jobs:
   build:
