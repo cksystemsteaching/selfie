@@ -5,12 +5,18 @@ on:
     branches: [ master ]
     paths:
     - '**.c'
+    - '**.py'
+    - 'Dockerfile'
     - 'Makefile'
+    - '.github/workflows/selfie.yml'
   pull_request:
     branches: [ master ]
     paths:
     - '**.c'
+    - '**.py'
+    - 'Dockerfile'
     - 'Makefile'
+    - '.github/workflows/selfie.yml'
 
 jobs:
   build:
