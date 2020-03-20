@@ -17,6 +17,9 @@ on:
     - 'Dockerfile'
     - 'Makefile'
     - '.github/workflows/selfie.yml'
+  schedule:
+    # trigger fridays at midnight
+    - cron:  '* * * * 5'
 
 jobs:
   build:
