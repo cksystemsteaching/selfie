@@ -5,10 +5,12 @@ on:
     branches: [ master ]
     paths:
     - '**.c'
+    - 'Makefile'
   pull_request:
     branches: [ master ]
     paths:
     - '**.c'
+    - 'Makefile'
 
 jobs:
   build:
@@ -17,4 +19,5 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - run: make all
+    - name: make all
+      run: make all
