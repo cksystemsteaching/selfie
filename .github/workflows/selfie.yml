@@ -1,4 +1,4 @@
-name: selfie
+name: Github Workflow for Selfie
 
 on:
   push:
