@@ -9,10 +9,10 @@ void sbi_ecall_console_putc(char c) {
     asm volatile(
         "li a7, 1;"
         "li a6, 0;"
-        "li a0, 97;" // just a test to see if it prints 'a'
+        "mv a0, %[character];" // just a test to see if it prints 'a'
         "ecall;"
         :
-        :
+        : [character] "r" (c)
         : "a0", "a6", "a7"
     );
 }
@@ -30,6 +30,12 @@ static inline void write(uint64_t std_x, char* str, uint64_t no_chars) {
 uint64_t* main() {
   // point to the "Hello World!    " string
   foo = "Hello World!    ";
+
+  sbi_ecall_console_putc('H');
+  sbi_ecall_console_putc('e');
+  sbi_ecall_console_putc('l');
+  sbi_ecall_console_putc('l');
+  sbi_ecall_console_putc('o');
 
   // strings are actually stored in chunks of 8 characters in memory,
   // that is, here as "Hello Wo", and "rld!    " which allows us to
