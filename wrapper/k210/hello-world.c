@@ -17,12 +17,35 @@ void sbi_ecall_console_putc(char c) {
     );
 }
 
+void print_hex_internal(uint64_t val, uint64_t pos, uint64_t maxLen) {
+    if (pos >= maxLen)
+        return;
+
+    uint64_t rest = val % 16;
+    val = val / 16;
+
+    print_hex_internal(val, pos+1, maxLen);
+    if (rest >= 0 && rest < 10) {
+        sbi_ecall_console_putc('0'+rest);
+    } else {
+        sbi_ecall_console_putc('A'+(rest-10));
+    }
+}
+
+void print_hex(uint64_t val) {
+    sbi_ecall_console_putc('0');
+    sbi_ecall_console_putc('x');
+
+    print_hex_internal(val, 0, 8);
+}
+
 static inline void write(uint64_t std_x, char* str, uint64_t no_chars) {
     (void) std_x;
 
-    while (no_chars && str) {
-        sbi_ecall_console_putc(*str++);
+    while (no_chars) {
+        sbi_ecall_console_putc(*str);
         --no_chars;
+        str++;
     }
 }
 
@@ -35,11 +58,9 @@ uint64_t* main() {
   for (uint64_t i = 0; i <= (uint64_t) 99999999; i++)
       ;
 
-  sbi_ecall_console_putc('H');
-  sbi_ecall_console_putc('e');
-  sbi_ecall_console_putc('l');
-  sbi_ecall_console_putc('l');
-  sbi_ecall_console_putc('o');
+  sbi_ecall_console_putc('>');
+  print_hex(foo);
+  sbi_ecall_console_putc('<');
 
   // strings are actually stored in chunks of 8 characters in memory,
   // that is, here as "Hello Wo", and "rld!    " which allows us to
