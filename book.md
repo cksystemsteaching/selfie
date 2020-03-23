@@ -908,7 +908,9 @@ Why is all this called bootstrapping or booting? Well, many boots have bootstrap
 
 Let us now look at how IO is done, in particular how code and data gets into main memory but also how data gets out. There are essentially two techniques which are both part of the ISA of a machine. The first technique is *memory-mapped* IO and the second is *port-mapped* IO through special *IO instructions*. We discuss both here but emphasize that we deliberately chose not to include them in the RISC-U ISA. Instead we use a standard abstraction that simplifies IO in our model and explain that in the next section.
 
-Nevertheless, it is easy and useful to understand how a machine does IO in principle, so here we go. First of all, what is the challenge? Think about two people talking to each other.
+Nevertheless, it is quite educational to understand how a machine does IO in principle, so here we go. First of all, what is the challenge? Think about two people talking to each other. In fact, let us do what computer scientists like to do in a situation like this. We imagine Alice from the 1865 novel Alice in Wonderland by Lewis Carroll talking to the White Rabbit which is one of the animal characters in the novel.
+
+So, suppose Alice says something to the White Rabbit. Until the moment in time when the sound of her voice reaches the rabbit‘s ears, the White Rabbit does not know that she says anything, given that he cannot see her speaking, of course. If he could see her, we could anyway tell the same story just using vision rather than hearing. Now, when the sound hits the rabbit‘s ears, it does so at a certain bit rate at which the bits need to be stored and processed. Remember the information chapter, in particular how audio is encoded? Yes, of course, you do. Ok, but there is a difference between hearing and actually listening as we all know. Alice needs to get the rabbit‘s attention which takes time since he does not know that she started saying something. In the world of machines the duration of that time is called *latency*.
 
 | Unit       | Prefix |
 | ---------- | ------ |
