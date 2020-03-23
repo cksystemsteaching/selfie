@@ -56,6 +56,28 @@ static inline void write(uint64_t std_x, char* str, uint64_t no_chars) {
     }
 }
 
+
+void print_memory_range(char* from, char* to) {
+    int break_counter = 16;
+
+    while (from < to) {
+        if (break_counter == 16) {
+            break_counter = 0;
+
+            sbi_ecall_console_putc('\n');
+            print_hex(from);
+            sbi_ecall_console_putc(':');
+            sbi_ecall_console_putc(' ');
+        }
+
+        print_hex_internal(*from, 0, 2);
+        sbi_ecall_console_putc(' ');
+
+        from++;
+        break_counter++;
+    }
+}
+
 // main procedure for printing "Hello World!    " on the console
 uint64_t* main() {
   uint64_t pc;
@@ -73,6 +95,9 @@ uint64_t* main() {
   sbi_ecall_console_putc(' ');
   GET_PC(pc);
   print_hex(pc);
+
+  sbi_ecall_console_putc('\n');
+  print_memory_range(0x80000000, 0x80001000);
 
   // strings are actually stored in chunks of 8 characters in memory,
   // that is, here as "Hello Wo", and "rld!    " which allows us to
