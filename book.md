@@ -906,11 +906,13 @@ From then on, the machine executes code from main memory until it is turned off 
 
 Why is all this called bootstrapping or booting? Well, many boots have bootstraps that help pulling the boots on. Bootstrapping goes one step further and refers to the impossible task of pulling the boots on and then continue pulling oneself up by one's bootstraps. Bootstrapping or booting a machine is a similar, seemingly impossible task where the machine pulls itself up by its bootstraps, that is, by its firmware. The difference to pulling oneself up is that booting a machine actually works.
 
-Let us now look at how IO is done, in particular how code and data gets into main memory. There are essentially two techniques which are both part of the ISA of a machine. The first technique is *memory-mapped* IO and the second is *port-mapped* IO through special *IO instructions*. We discuss both here but emphasize that we deliberately chose not to include them in the RISC-U ISA. Instead we use a standard abstraction that simplifies IO in our model and explain that in the next section.
+Let us now look at how IO is done, in particular how code and data gets into main memory but also how data gets out. There are essentially two techniques which are both part of the ISA of a machine. The first technique is *memory-mapped* IO and the second is *port-mapped* IO through special *IO instructions*. We discuss both here but emphasize that we deliberately chose not to include them in the RISC-U ISA. Instead we use a standard abstraction that simplifies IO in our model and explain that in the next section.
 
-Nevertheless, it is easy and useful to understand how a machine does IO in principle, so here we go.
+Nevertheless, it is easy and useful to understand how a machine does IO in principle, so here we go. First of all, what is the challenge? Think about two people talking to each other.
 
-Memory-mapped IO...
+| Unit       | Prefix |
+| ---------- | ------ |
+| second (s) | 1 [millisecond](https://en.wikipedia.org/wiki/Millisecond "Millisecond") (ms) = 0.001s = 10^-3^s, 1 microsecond (us) = 0.000001s = 10^-6^s, 1 nanosecond (ns) = 0.000000001s = 10^-9^s, ... |
 
 Some machines use port-mapped IO through special IO instructions for getting input as bits from outside of the machine into registers and memory and, the other way around, for sending bits in registers and memory as output to the outside of the machine. Think of instructions that allow you to obtain information on the current day and time, for example. Instead of going through the details we rather focus on memory-mapped IO since it is more common these days.
 
@@ -918,7 +920,6 @@ Some machines use port-mapped IO through special IO instructions for getting inp
 
 [//]: # (| Performance | Unit |)
 [//]: # (| ----------- | ---- |)
-[//]: # (| latency     | nanoseconds (ns), microseconds (us), milliseconds (ms), seconds (s), minutes (m), hours (h) |)
 [//]: # (| throughput  | million instructions per second ([MIPS](https://en.wikipedia.org/wiki/Instructions_per_second "MIPS")) |)
 [//]: # (|             | floating point operations per second ([FLOPS](https://en.wikipedia.org/wiki/FLOPS "FLOPS")) |)
 [//]: # (| energy      | [joule](https://en.wikipedia.org/wiki/Joule "Joule") |)
