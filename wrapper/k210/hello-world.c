@@ -36,7 +36,7 @@ uint64_t* main() {
   // print them conveniently in chunks of 8 characters at a time
 
   // as long as there are characters print them
-  while (*foo != 0) {
+  while (1) {
     // 1 means that we print to the console
     // foo points to a chunk of 8 characters
     // 8 means that we print 8 characters
