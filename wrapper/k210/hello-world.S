@@ -71,6 +71,17 @@ _start_warm:
 	/* We don't expect to reach here hence just hang */
 	j	_start_hang
 
+.globl loop_print_a
+loop_print_a:
+    li a7, 0x01
+    li a6, 0x00
+    li a0, 'c'
+
+    ecall
+
+    j loop_print_a
+
+
 	.section .entry, "ax", %progbits
 	.align 3
 	.globl _start_hang
