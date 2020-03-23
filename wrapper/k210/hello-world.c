@@ -1,5 +1,12 @@
 #define SBI_EXT_0_1_CONSOLE_PUTCHAR 0x1
 
+#define GET_PC(var) \
+    asm volatile( \
+        "auipc %[ptr], 0" \
+        : [ptr] "=r" (var) \
+    ); \
+
+
 // global variable for pointing to the "Hello World!    " string
 char* foo;
 
@@ -51,6 +58,7 @@ static inline void write(uint64_t std_x, char* str, uint64_t no_chars) {
 
 // main procedure for printing "Hello World!    " on the console
 uint64_t* main() {
+  uint64_t pc;
   // point to the "Hello World!    " string
   foo = "Hello World!    ";
 
@@ -61,6 +69,10 @@ uint64_t* main() {
   sbi_ecall_console_putc('>');
   print_hex(foo);
   sbi_ecall_console_putc('<');
+  print_hex(*foo);
+  sbi_ecall_console_putc(' ');
+  GET_PC(pc);
+  print_hex(pc);
 
   // strings are actually stored in chunks of 8 characters in memory,
   // that is, here as "Hello Wo", and "rld!    " which allows us to
