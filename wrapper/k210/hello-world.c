@@ -31,6 +31,10 @@ uint64_t* main() {
   // point to the "Hello World!    " string
   foo = "Hello World!    ";
 
+  // busy loop for slow connections to the board
+  for (uint64_t i = 0; i <= (uint64_t) 99999999; i++)
+      ;
+
   sbi_ecall_console_putc('H');
   sbi_ecall_console_putc('e');
   sbi_ecall_console_putc('l');
