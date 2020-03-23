@@ -922,9 +922,9 @@ Given the rates at which bits arrive and are processed and the latency until pro
 | ---------- | ------ |
 | second (s) | 1 [millisecond](https://en.wikipedia.org/wiki/Millisecond "Millisecond") (ms) = 0.001s = 10^-3^s, 1 microsecond (us) = 0.000001s = 10^-6^s, 1 nanosecond (ns) = 0.000000001s = 10^-9^s, ... |
 
-On a more abstract level, the IO challenge is that Alice and the White Rabbit are two separate entities, just like you and your computer, that would like to communicate but are on their own, independent timelines, that is, operate at their own, individual speed (bit rates) and have no way of anticipating communication (latency).
+On a more abstract level, the IO challenge is that Alice and the White Rabbit are two separate entities, just like you and your computer, that would like to communicate but are on their own, independent timelines, that is, operate at their own, individual speed (bit rates) and have no way of anticipating communication (latency). Even if you have both agree on a time when to communicate and use the same clock, and there are systems that do that, the problem remains, just on a smaller timescale, because of clock drift. It is a fundamental issue that is yet another fascinating research topic in computer science but clearly beyond what we intend to do here.
 
-...
+So, how does IO work now? Memory-mapped IO...
 
 Some machines use port-mapped IO through special IO instructions for getting input as bits from outside of the machine into registers and memory and, the other way around, for sending bits in registers and memory as output to the outside of the machine. Think of instructions that allow you to obtain information on the current day and time, for example. Instead of going through the details we rather focus on memory-mapped IO since it is more common these days.
 
