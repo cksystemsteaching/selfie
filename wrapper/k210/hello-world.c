@@ -3,12 +3,17 @@
 // global variable for pointing to the "Hello World!    " string
 char* foo;
 
+extern void loop_print_a();
+
 void sbi_ecall_console_putc(char c) {
     asm volatile(
         "li a7, 1;"
         "li a6, 0;"
         "li a0, 97;" // just a test to see if it prints 'a'
         "ecall;"
+        :
+        :
+        : "a0", "a6", "a7"
     );
 }
 
