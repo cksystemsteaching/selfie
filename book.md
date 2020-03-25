@@ -928,9 +928,15 @@ So, how does IO on a machine work now? Digital devices usually have quite a few 
 
 Either way, each IO device is assigned to a range of addresses in main memory or a range of ports where communication happens, as specified in the ISA of a machine. For example, a memory-mapped audio device connected to a microphone stores the bits that encode the audio signal from the microphone in main memory at the specified addresses from which the CPU can then retrieve the bits. This means that memory at such addresses cannot be used for storage which used to be an issue in the old days of computing when main memory was scarce. Port-mapped IO avoids that problem. However, port-mapped IO requires special IO instructions that are able to address ports rather than addresses in main memory.
 
-How does the audio device get the attention of the CPU which is generally distracted by executing code that has nothing to do with audio? After all, the bits stored by the audio device will soon be overwritten by the device and thus lost forever, unless the CPU retrieves them before they are overwritten and then stores and processes them somewhere else. There are essentially two ways...
+How does the audio device get the attention of the CPU which is generally distracted by executing code that has nothing to do with audio? After all, the bits stored by the audio device will soon be overwritten by the device and thus lost forever, unless the CPU retrieves them before they are overwritten and then stores and processes them somewhere else. There are essentially two ways to do this.
+
+First, there is *polling*, that is, the CPU asking the audio device, rather than the other way around, if there is new information by executing instructions at regular time intervals that inspect the memory addresses or ports shared with the audio device. For this purpose, there is usually a specific memory address or port among the shared memory addresses or ports at which the audio device sets a bit called a *control line* when there is new data available at the remaining shared memory addresses or ports which are called *data lines*. Thus the CPU regularly *polls* the control line and, if there is new data, retrieves it from the data lines. With polling, the length of the time interval determines the *worst-case* latency since it may take at most one time interval for the CPU to find out that there is new data. The disadvantage of polling is that the CPU may poll many times before there is any new data rather than doing other more useful work. It is the White Rabbit asking again and again: Did Alice say anything? Did Alice say anything? Did Alice say anything? Sounds impractical but polling is not so bad for high-latency IO.
+
+Second, there are *interrupts*, ...
 
 TODO: not true: If the audio device is *bidirectional*, meaning it can also decode bits back into an audio signal that goes to, say, a speaker, there is another range of memory addresses or ports different from the range assigned to the microphone where the CPU can store bits that are then retrieved by the audio device. So, each memory address or port can only be assigned to a single IO device and may either be read-only or write-only
+
+TODO: device drivers
 
 ### Instructions
 
