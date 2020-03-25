@@ -10,18 +10,18 @@ C\* is a tiny subset of the programming language C. C\* features global variable
 
 C\* Keywords: `uint64_t`, `void`, `if`, `else`, `while`, `return`
 
-C\* Symbols: `integer`, `character`, `string`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`
+C\* Symbols: `integer_literal`, `character_literal`, `string_literal`, `identifier`, `,`, `;`, `(`, `)`, `{`, `}`, `+`, `-`, `*`, `/`, `%`, `=`, `==`, `!=`, `<`, `<=`, `>`, `>=`
 
 with:
 
 ```
-integer    = digit { digit } .
+integer_literal   = digit { digit } .
 
-character  = "'" printable_character "'" .
+character_literal = "'" printable_character "'" .
 
-string     = """ { printable_character } """ .
+string_literal    = """ { printable_character } """ .
 
-identifier = letter { letter | digit | "_" } .
+identifier        = letter { letter | digit | "_" } .
 ```
 
 and:
@@ -35,23 +35,21 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 C\* Grammar:
 
 ```
-cstar            = { type identifier [ "=" [ cast ] [ "-" ] literal ] ";" |
+cstar            = { type identifier
+                     [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
                    ( "void" | type ) identifier procedure } .
 
 type             = "uint64_t" [ "*" ] .
 
 cast             = "(" type ")" .
 
-literal          = integer | character .
-
 procedure        = "(" [ variable { "," variable } ] ")"
-                    ( ";" | "{" { variable ";" } { statement } "}" ) .
+                   ( ";" | "{" { variable ";" } { statement } "}" ) .
 
 variable         = type identifier .
 
-statement        = call ";" | while | if | return ";" |
-                   ( [ "*" ] identifier | "*" "(" expression ")" )
-                     "=" expression ";" .
+statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression ";" |
+                   call ";" | while | if | return ";" .
 
 call             = identifier "(" [ expression { "," expression } ] ")" .
 
@@ -62,18 +60,16 @@ simpleExpression = term { ( "+" | "-" ) term } .
 term             = factor { ( "*" | "/" | "%" ) factor } .
 
 factor           = [ cast ] [ "-" ] [ "*" ]
-                    ( identifier | call | literal | string | "(" expression ")" ) .
+                   ( integer_literal | character_literal | string_literal |
+                     identifier | call | "(" expression ")" ) .
 
 while            = "while" "(" expression ")"
-                             ( statement |
-                               "{" { statement } "}" ) .
+                     ( statement | "{" { statement } "}" ) .
 
 if               = "if" "(" expression ")"
-                             ( statement |
-                               "{" { statement } "}" )
-                         [ "else"
-                             ( statement |
-                               "{" { statement } "}" ) ] .
+                     ( statement | "{" { statement } "}" )
+                   [ "else"
+                     ( statement | "{" { statement } "}" ) ] .
 
 return           = "return" [ expression ] .
 ```
