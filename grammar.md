@@ -35,41 +35,42 @@ letter = "a" | ... | "z" | "A" | ... | "Z" .
 C\* Grammar:
 
 ```
-cstar            = { type identifier
-                     [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
-                   ( "void" | type ) identifier procedure } .
+cstar             = { type identifier
+                      [ "=" [ cast ] [ "-" ] ( integer_literal | character_literal ) ] ";" |
+                    ( "void" | type ) identifier procedure } .
 
-type             = "uint64_t" [ "*" ] .
+type              = "uint64_t" [ "*" ] .
 
-cast             = "(" type ")" .
+cast              = "(" type ")" .
 
-procedure        = "(" [ variable { "," variable } ] ")"
-                   ( ";" | "{" { variable ";" } { statement } "}" ) .
+procedure         = "(" [ variable { "," variable } ] ")" ( ";" |
+                    "{" { variable ";" } { statement } "}" ) .
 
-variable         = type identifier .
+variable          = type identifier .
 
-statement        = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression ";" |
-                   call ";" | while | if | return ";" .
+statement         = ( [ "*" ] identifier | "*" "(" expression ")" ) "=" expression ";" |
+                    call ";" | while | if | return ";" .
 
-call             = identifier "(" [ expression { "," expression } ] ")" .
+call              = identifier "(" [ expression { "," expression } ] ")" .
 
-expression       = simpleExpression [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simpleExpression ] .
+expression        = simple_expression
+                    [ ( "==" | "!=" | "<" | ">" | "<=" | ">=" ) simple_expression ] .
 
-simpleExpression = term { ( "+" | "-" ) term } .
+simple_expression = term { ( "+" | "-" ) term } .
 
-term             = factor { ( "*" | "/" | "%" ) factor } .
+term              = factor { ( "*" | "/" | "%" ) factor } .
 
-factor           = [ cast ] [ "-" ] [ "*" ]
-                   ( integer_literal | character_literal | string_literal |
-                     identifier | call | "(" expression ")" ) .
+factor            = [ cast ] [ "-" ] [ "*" ]
+                    ( integer_literal | character_literal | string_literal |
+                      identifier | call | "(" expression ")" ) .
 
-while            = "while" "(" expression ")"
-                     ( statement | "{" { statement } "}" ) .
+while             = "while" "(" expression ")"
+                      ( statement | "{" { statement } "}" ) .
 
-if               = "if" "(" expression ")"
-                     ( statement | "{" { statement } "}" )
-                   [ "else"
-                     ( statement | "{" { statement } "}" ) ] .
+if                = "if" "(" expression ")"
+                      ( statement | "{" { statement } "}" )
+                    [ "else"
+                      ( statement | "{" { statement } "}" ) ] .
 
-return           = "return" [ expression ] .
+return            = "return" [ expression ] .
 ```
