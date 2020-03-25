@@ -1,39 +1,33 @@
-# Selfie [![Build Status](https://travis-ci.org/cksystemsteaching/selfie.svg?branch=master)](https://travis-ci.org/cksystemsteaching/selfie) [![Run on Repl.it](https://repl.it/badge/github/cksystemsteaching/selfie)](https://repl.it/github/cksystemsteaching/selfie)
+# Selfie ![selfie](https://github.com/cksystemsteaching/selfie/workflows/selfie/badge.svg) [![Build Status](https://travis-ci.org/cksystemsteaching/selfie.svg?branch=master)](https://travis-ci.org/cksystemsteaching/selfie) [![Run on Repl.it](https://repl.it/badge/github/cksystemsteaching/selfie)](https://repl.it/github/cksystemsteaching/selfie)
 
 Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and even virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
-There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie. There is also a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
-
 Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
 
-1. a self-compiling compiler called starc that compiles
-   a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to
-   a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
-2. a self-executing emulator called mipster that executes
-   RISC-U code including itself when compiled with starc,
-3. a self-hosting hypervisor called hypster that provides
-   RISC-U virtual machines that can host all of selfie,
-   that is, starc, mipster, and hypster itself,
-4. a self-translating modeling engine called monster that
-   translates RISC-U code including itself to SMT-LIB and
-   BTOR2 formulae that are satisfiable if and only if
-   there is input to the code such that the code exits
-   with non-zero exit codes, performs division by zero,
-   or accesses memory outside of allocated memory blocks,
+1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
+2. a self-executing emulator called mipster that executes RISC-U code including itself when compiled with starc,
+3. a self-hosting hypervisor called hypster that provides RISC-U virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself,
+4. a self-translating modeling engine called monster that translates RISC-U code including itself to SMT-LIB and BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks,
 5. a simple SAT solver that reads CNF DIMACS files, and
 6. a tiny C* library called libcstar utilized by selfie.
 
 Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support built into the emulator. Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sifive.com/boards) as well as on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
 
-For further information and support please refer to [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
+## Support
 
-## Supported Platforms
-
-Selfie runs in the cloud and natively on Mac, Linux, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
+1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
+2. Slides: There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
+3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/master/grader/HOWTO.md) with compiler and operating systems assignments.
+4. Book: There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) reaching out to everyone with an interest in learning about computer science.
+5. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
+6. Twitter: Follow us at [twitter.com/christophkirsch](https://twitter.com/christophkirsch)
+7. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
 ## Installing Selfie
+
+Selfie runs in the cloud and natively on Mac, Linux, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
 
 There are at least three ways to install and run selfie, from real simple to a bit more difficult:
 

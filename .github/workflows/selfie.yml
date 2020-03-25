@@ -1,0 +1,34 @@
+name: Github Workflow for Selfie
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+    - '**.c'
+    - '**.py'
+    - 'Dockerfile'
+    - 'Makefile'
+    - '.github/workflows/selfie.yml'
+  pull_request:
+    branches: [ master ]
+    paths:
+    - '**.c'
+    - '**.py'
+    - 'Dockerfile'
+    - 'Makefile'
+    - '.github/workflows/selfie.yml'
+  schedule:
+    # trigger fridays at 12am
+    - cron:  '0 0 * * 5'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: make all
+      run: make all
