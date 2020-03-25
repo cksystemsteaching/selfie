@@ -78,9 +78,23 @@ void print_memory_range(char* from, char* to) {
     }
 }
 
+void search_for_bytes_in_memory(char* from, char* to, char bytes[], uint64_t no_of_bytes) {
+    for (char* i = from; i < to; ++i)
+        for (uint64_t j = 0; j < no_of_bytes && (uint64_t) i + j < (uint64_t) to && *(i + j) == bytes[j]; ++j)
+            if (j == no_of_bytes - 1)
+                print_memory_range(i, i + ((no_of_bytes / 16) + 1) * 16);
+}
+
+void search_for_word_in_memory(int* from, int* to, int word) {
+    for (int* i = from; i < to; ++i)
+        if (*i == word)
+            print_memory_range(i, i + 16);
+}
+
 // main procedure for printing "Hello World!    " on the console
 uint64_t* main() {
   uint64_t pc;
+  char hello[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', /*'o', 'r', 'l', 'd', '!'*/};
   // point to the "Hello World!    " string
   foo = "Hello World!    ";
 
@@ -97,7 +111,8 @@ uint64_t* main() {
   print_hex(pc);
 
   sbi_ecall_console_putc('\n');
-  print_memory_range(0x80000000, 0x80001000);
+  //print_memory_range(0x805FF600, 0x805FF6B0);
+  search_for_bytes_in_memory((char*) 0x80000000, (char*) 0x805fffff, hello, 7);
 
   // strings are actually stored in chunks of 8 characters in memory,
   // that is, here as "Hello Wo", and "rld!    " which allows us to
