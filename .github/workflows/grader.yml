@@ -1,0 +1,29 @@
+name: Auto-Grader for Selfie
+
+# trigger on push to master branch
+on:
+    push:
+        branches:
+            - master
+jobs:
+    grading:
+        name: Running Auto-Grader
+        runs-on: ubuntu-latest
+        env:
+            COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+        steps:
+            - uses: actions/checkout@v2
+            - name: Use Python 3.7.x
+              uses: actions/setup-python@v1
+              with:
+                  python-version: "3.7.x"
+            # extract tests from Commit message - [...]
+            - name: 'Parse Commit Message'
+              run: |
+                echo ::set-env name=TEST_TO_RUN::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
+                echo "Running self-compile and $TEST_TO_RUN test..."
+            - name: Run Self-Compile
+              run: python3 grader/self.py self-compile
+            - name: Run Test
+              run: python3 grader/self.py $TEST_TO_RUN
