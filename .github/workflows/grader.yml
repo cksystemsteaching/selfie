@@ -7,10 +7,10 @@ on:
     - '.github/workflows/grader.yml'
 jobs:
   auto-grade-selfie-assignment:
-  name: Run autograder
-  runs-on: ubuntu-latest
-  env:
-    COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    name: Run autograder
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
   steps:
     - uses: actions/checkout@v2
