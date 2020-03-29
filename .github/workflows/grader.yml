@@ -13,14 +13,15 @@ jobs:
       COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
   steps:
-    - uses: actions/checkout@v2
-    - name: Use Python 3.7.x
-      uses: actions/setup-python@v1
-      with:
-        python-version: "3.7.x"
-    # extract assignments from commit message - [...]
-    - name: Parse commit message
-      run: |
-        echo ::set-env name=ASSIGNMENT::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
-    - name: Autograde assignment
-      run: ./grader/self.py $ASSIGNMENT
+  - name: Checkout selfie
+    uses: actions/checkout@v2
+  - name: Use Python 3.7.x
+    uses: actions/setup-python@v1
+    with:
+      python-version: "3.7.x"
+  # extract assignments from commit message - [...]
+  - name: Parse commit message
+    run: |
+      echo ::set-env name=ASSIGNMENT::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
+  - name: Autograde assignment
+    run: ./grader/self.py $ASSIGNMENT
