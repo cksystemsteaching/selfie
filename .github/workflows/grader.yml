@@ -19,9 +19,8 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: "3.7.x"
-    # extract assignments from commit message - [...]
+    # extract assignment from "commit message [assignment]"
     - name: Parse commit message
-      run: |
-        echo ::set-env name=ASSIGNMENT::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
+      run: echo ::set-env name=ASSIGNMENT::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
     - name: Autograde assignment
       run: ./grader/self.py $ASSIGNMENT
