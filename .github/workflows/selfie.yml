@@ -22,13 +22,20 @@ on:
     - cron:  '0 0 * * 5'
 
 jobs:
-  build:
+  make-all:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: make all
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make all
       run: make all
+    - name: Use Python 3.7.x
+      uses: actions/setup-python@v1
+        with:
+          python-version: "3.7.x"
+    - name: Run autograder baseline
+      run: ./grader/self.py self-compile
