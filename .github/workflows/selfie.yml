@@ -19,10 +19,11 @@ on:
     - '.github/workflows/selfie.yml'
   schedule:
     # trigger fridays at 12am
-    - cron:  '0 0 * * 5'
+    - cron: '0 0 * * 5'
 
 jobs:
-  make-all:
+  make-all-of-selfie:
+    name: Make all of selfie and run autograder baseline
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
