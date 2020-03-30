@@ -41,14 +41,14 @@ int open(const char* pathname, int flags) {
 }
 
 
-static void* heap_head = (void*)0x80100000;
+static void* heap_head = (void*)0x80300000;
 void* malloc(unsigned long long size) {
     void* return_ptr;
 
     return_ptr = heap_head;
     heap_head += size;
 
-    return heap_head;
+    return return_ptr;
 }
 
 uint64_t strlen(const char* str) {
@@ -78,8 +78,12 @@ void bootstrap() {
         sbi_ecall_console_putc('\n');
         i++;
     }
-    write(1, "    <END>\n", 11);
+    write(1, "    <END>\n", 10);
     sbi_ecall_console_putc('\n');
 
-    main(1, args);
+    int exit = main(1, args);
+
+
+    write(1, "\n\nFunction main terminated with exit code ", 42);
+    sbi_ecall_console_putc('0' + exit);
 }
