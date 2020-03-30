@@ -111,7 +111,8 @@ void bootstrap() {
     write(1, "    <END>\n", 10);
     sbi_ecall_console_putc('\n');
 
-    int exit = main(5, args);
+    // i contains the count of command line arguments
+    int exit = main(i, args);
 
 
     write(1, "\n\nFunction main terminated with exit code ", 42);
