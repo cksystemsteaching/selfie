@@ -66,7 +66,7 @@ _start_warm:
 	REG_L	a0, 0(a3)
 	la	a3, _boot_a1
 	REG_L	a1, 0(a3)
-	call	main
+	call	bootstrap
 
 	/* We don't expect to reach here hence just hang */
 	j	_start_hang

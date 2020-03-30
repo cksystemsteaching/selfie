@@ -92,7 +92,7 @@ void search_for_word_in_memory(int* from, int* to, int word) {
 }
 
 // main procedure for printing "Hello World!    " on the console
-uint64_t* main() {
+uint64_t* bootstrap() {
   uint64_t pc;
   char hello[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', /*'o', 'r', 'l', 'd', '!'*/};
   // point to the "Hello World!    " string
