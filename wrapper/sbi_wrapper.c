@@ -2,14 +2,6 @@
 
 #include <stdint.h>
 
-int main(int argc, char** argv);
-
-
-void _start() {
-    main(0, (char**)0);
-}
-
-
 ssize_t read(int fd, void* buf, size_t count) {
     return 0;
 }
@@ -33,7 +25,8 @@ int open(const char* pathname, int flags) {
     return -1;
 }
 
-static void* heap_head = (void*)0x80000000;
+
+static void* heap_head = (void*)0x80100000;
 void* malloc(unsigned long long size) {
     void* return_ptr;
 
