@@ -1,12 +1,14 @@
 language:
-- c
+  - c
 os:
-- osx
-- linux
+  - osx
+  - linux
 compiler:
-- clang
-- gcc
+  - clang
+  - gcc
+
 script: travis_wait 60 make all
+
 stages:
   - test
   - docker
@@ -14,6 +16,7 @@ stages:
     if: branch = master AND type = push AND fork = false
   - name: run
     if: branch = master AND type = push AND fork = false
+
 jobs:
   include:
     - stage: docker
@@ -47,6 +50,7 @@ jobs:
         - docker run cksystemsteaching/selfie make boolector
         - docker run cksystemsteaching/selfie make btormc
         - docker run cksystemsteaching/selfie make grader
+
 notifications:
   email: false
   slack:
