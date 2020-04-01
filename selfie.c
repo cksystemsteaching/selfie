@@ -3385,7 +3385,7 @@ uint64_t is_int_or_char_literal() {
     return 0;
 }
 
-uint64_t is_mult_or_div_rem() {
+uint64_t is_mult_or_div_or_rem() {
   if (symbol == SYM_ASTERISK)
     return 1;
   else if (symbol == SYM_DIVISION)
