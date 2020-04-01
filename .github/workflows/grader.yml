@@ -23,5 +23,8 @@ jobs:
     - name: Parse commit message
       run: echo ::set-env name=ASSIGNMENT::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
     - name: Autograde assignment
-      if: $ASSIGNMENT != 'skip ci'
-      run: ./grader/self.py $ASSIGNMENT
+      run: |
+        if [ $ASSIGNMENT != 'skip ci' ]
+        then
+          ./grader/self.py $ASSIGNMENT
+        fi
