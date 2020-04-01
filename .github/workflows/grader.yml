@@ -5,6 +5,7 @@ on:
     paths:
     - '**.c'
     - '.github/workflows/grader.yml'
+
 jobs:
   auto-grade-selfie-assignment:
     name: Run autograder
@@ -23,8 +24,4 @@ jobs:
     - name: Parse commit message
       run: echo ::set-env name=ASSIGNMENT::$(echo $COMMIT_MESSAGE | awk -F '[][]' '{print $2}')
     - name: Autograde assignment
-      run: |
-        if [ $ASSIGNMENT != 'skip ci' ]
-        then
-          ./grader/self.py $ASSIGNMENT
-        fi
+      run: if [ $ASSIGNMENT != 'skip ci' ]; then ./grader/self.py $ASSIGNMENT; fi
