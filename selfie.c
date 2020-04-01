@@ -384,8 +384,8 @@ uint64_t SYM_RBRACE       = 15; // }
 uint64_t SYM_PLUS         = 16; // +
 uint64_t SYM_MINUS        = 17; // -
 uint64_t SYM_ASTERISK     = 18; // *
-uint64_t SYM_DIV          = 19; // /
-uint64_t SYM_MOD          = 20; // %
+uint64_t SYM_DIVISION     = 19; // /
+uint64_t SYM_REMAINDER    = 20; // %
 uint64_t SYM_ASSIGN       = 21; // =
 uint64_t SYM_EQUALITY     = 22; // ==
 uint64_t SYM_NOTEQ        = 23; // !=
@@ -455,8 +455,8 @@ void init_scanner () {
   *(SYMBOLS + SYM_PLUS)         = (uint64_t) "+";
   *(SYMBOLS + SYM_MINUS)        = (uint64_t) "-";
   *(SYMBOLS + SYM_ASTERISK)     = (uint64_t) "*";
-  *(SYMBOLS + SYM_DIV)          = (uint64_t) "/";
-  *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
+  *(SYMBOLS + SYM_DIVISION)     = (uint64_t) "/";
+  *(SYMBOLS + SYM_REMAINDER)    = (uint64_t) "%";
   *(SYMBOLS + SYM_ASSIGN)       = (uint64_t) "=";
   *(SYMBOLS + SYM_EQUALITY)     = (uint64_t) "==";
   *(SYMBOLS + SYM_NOTEQ)        = (uint64_t) "!=";
@@ -594,8 +594,8 @@ void reset_parser();
 
 uint64_t is_not_rbrace_or_eof();
 uint64_t is_expression();
-uint64_t is_literal();
-uint64_t is_star_or_div_or_modulo();
+uint64_t is_int_or_char_literal();
+uint64_t is_mult_or_div_or_rem();
 uint64_t is_plus_or_minus();
 uint64_t is_comparison();
 
@@ -2850,7 +2850,7 @@ uint64_t find_next_character() {
         number_of_comments = number_of_comments + 1;
       } else {
         // while looking for "//" and "/*" we actually found '/'
-        symbol = SYM_DIV;
+        symbol = SYM_DIVISION;
 
         return character;
       }
@@ -2947,7 +2947,7 @@ void get_symbol() {
   symbol = SYM_EOF;
 
   if (find_next_character() != CHAR_EOF) {
-    if (symbol != SYM_DIV) {
+    if (symbol != SYM_DIVISION) {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
       if (is_character_letter()) {
@@ -3122,7 +3122,7 @@ void get_symbol() {
       } else if (character == CHAR_PERCENTAGE) {
         get_character();
 
-        symbol = SYM_MOD;
+        symbol = SYM_REMAINDER;
 
       } else if (character == CHAR_EQUAL) {
         get_character();
@@ -3376,7 +3376,7 @@ uint64_t is_expression() {
     return 0;
 }
 
-uint64_t is_literal() {
+uint64_t is_int_or_char_literal() {
   if (symbol == SYM_INTEGER)
     return 1;
   else if (symbol == SYM_CHARACTER)
@@ -3385,12 +3385,12 @@ uint64_t is_literal() {
     return 0;
 }
 
-uint64_t is_star_or_div_or_modulo() {
+uint64_t is_mult_or_div_rem() {
   if (symbol == SYM_ASTERISK)
     return 1;
-  else if (symbol == SYM_DIV)
+  else if (symbol == SYM_DIVISION)
     return 1;
-  else if (symbol == SYM_MOD)
+  else if (symbol == SYM_REMAINDER)
     return 1;
   else
     return 0;
@@ -3950,7 +3950,7 @@ uint64_t compile_factor() {
   } else
     dereference = 0;
 
-  // identifier or call?
+  // variable or call?
   if (symbol == SYM_IDENTIFIER) {
     variable_or_procedure_name = identifier;
 
@@ -3974,7 +3974,7 @@ uint64_t compile_factor() {
       // variable access: identifier
       type = load_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
-  // integer?
+  // integer literal?
   } else if (symbol == SYM_INTEGER) {
     load_integer(literal);
 
@@ -3982,7 +3982,7 @@ uint64_t compile_factor() {
 
     type = UINT64_T;
 
-  // character?
+  // character literal?
   } else if (symbol == SYM_CHARACTER) {
     talloc();
 
@@ -3992,7 +3992,7 @@ uint64_t compile_factor() {
 
     type = UINT64_T;
 
-  // string?
+  // string literal?
   } else if (symbol == SYM_STRING) {
     load_string(string);
 
@@ -4056,7 +4056,7 @@ uint64_t compile_term() {
   // assert: allocated_temporaries == n + 1
 
   // * / or % ?
-  while (is_star_or_div_or_modulo()) {
+  while (is_mult_or_div_or_rem()) {
     operator_symbol = symbol;
 
     get_symbol();
@@ -4070,9 +4070,9 @@ uint64_t compile_term() {
 
     if (operator_symbol == SYM_ASTERISK)
       emit_mul(previous_temporary(), previous_temporary(), current_temporary());
-    else if (operator_symbol == SYM_DIV)
+    else if (operator_symbol == SYM_DIVISION)
       emit_divu(previous_temporary(), previous_temporary(), current_temporary());
-    else if (operator_symbol == SYM_MOD)
+    else if (operator_symbol == SYM_REMAINDER)
       emit_remu(previous_temporary(), previous_temporary(), current_temporary());
 
     tfree(1);
@@ -4450,7 +4450,7 @@ void compile_statement() {
   if (symbol == SYM_ASTERISK) {
     get_symbol();
 
-    // "*" identifier
+    // "*" variable
     if (symbol == SYM_IDENTIFIER) {
       ltype = load_variable_or_big_int(identifier, VARIABLE);
 
@@ -4459,7 +4459,7 @@ void compile_statement() {
 
       get_symbol();
 
-      // "*" identifier "="
+      // "*" variable "="
       if (symbol == SYM_ASSIGN) {
         get_symbol();
 
@@ -4525,7 +4525,7 @@ void compile_statement() {
     } else
       syntax_error_symbol(SYM_LPARENTHESIS);
   }
-  // identifier "=" expression | call
+  // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
     variable_or_procedure_name = identifier;
 
@@ -4546,7 +4546,7 @@ void compile_statement() {
       else
         syntax_error_symbol(SYM_SEMICOLON);
 
-    // identifier = expression
+    // variable = expression
     } else if (symbol == SYM_ASSIGN) {
       entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
@@ -4676,7 +4676,7 @@ uint64_t compile_initialization(uint64_t type) {
     } else
       initial_value = literal;
 
-    if (is_literal())
+    if (is_int_or_char_literal())
       get_symbol();
     else
       syntax_error_unexpected();
