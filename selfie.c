@@ -11758,16 +11758,10 @@ void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_
   current_nid = current_nid + 3;
 }
 
-/*
-translates a given RISC-U binary to a btor2 model
-time complexity : linear in the number of instructions
-                    there are three iterations needed for modeling:
-                      1) the states representing the program counter
-                      2) the data flow
-                      3) the control flow
-
-space complexity: linear in the number of instructions
-*/
+/* Translates a given RISC-U binary to a BTOR2 model
+in time and space linear in the number of instructions
+in three iterations over all instructions for encoding
+the program counter, the data flow, and the control flow. */
 uint64_t selfie_model_generate() {
   uint64_t i;
 
