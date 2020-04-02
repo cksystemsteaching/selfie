@@ -26,7 +26,8 @@ jobs:
     - stage: autograder
       os: linux
       dist: bionic
-      python: - "3.7"
+      python:
+        - "3.7"
       script: make grade
     - stage: docker
       services: docker
