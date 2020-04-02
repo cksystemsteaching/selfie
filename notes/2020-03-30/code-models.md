@@ -4,8 +4,6 @@
 /media/Shared/Martin/Documents/Uni/20SS/PR_Bachelor_Projekt/Software/selfie_bare_metal/wrapper/k210/hello-world.c:89:(.text+0x300): relocation truncated to fit: R_RISCV_HI20 against symbol `foo' defined in COMMON section in test.o```
 * it turns out that this is fixed by the compile flag `-mcmodel=medany`
 
-
-
 # The code models
 * 32-bit signed offsets for symbol references
 * determins how code is generated **within** a function
@@ -30,6 +28,7 @@
 # Sources
 * https://www.sifive.com/blog/all-aboard-part-4-risc-v-code-models
 * https://github.com/riscv/riscv-gcc/commit/95d1d5e9aa8fbc019680ba9e5818084c35e5841d
+* https://sifive.cdn.prismic.io/sifive%2F15d1d90e-f60e-42a2-b6bf-c805c6c73b0d_riscv-large-code-model-workaround.pdf
 
 **See also:**
 * https://github.com/riscv/riscv-elf-psabi-doc/blob/master/riscv-elf.md#relocations
