@@ -5,17 +5,19 @@ on:
     branches: [ master ]
     paths:
     - '**.c'
+    - 'Makefile'
     - '**.py'
     - 'Dockerfile'
-    - 'Makefile'
+    - '.dockerignore'
     - '.github/workflows/selfie.yml'
   pull_request:
     branches: [ master ]
     paths:
     - '**.c'
+    - 'Makefile'
     - '**.py'
     - 'Dockerfile'
-    - 'Makefile'
+    - '.dockerignore'
     - '.github/workflows/selfie.yml'
   schedule:
     # trigger fridays at 12am
