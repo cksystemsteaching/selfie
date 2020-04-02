@@ -1,8 +1,10 @@
 language:
   - c
 os:
-  - osx
   - linux
+  - osx
+dist:
+  - bionic
 compiler:
   - clang
   - gcc
