@@ -24,10 +24,9 @@ stages:
 jobs:
   include:
     - stage: autograder
-      language: c
       os: linux
       dist: bionic
-      compiler: clang
+      python: - "3.7"
       script: ./grader/self.py self-compile
     - stage: docker
       services: docker
