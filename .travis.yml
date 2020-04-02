@@ -24,11 +24,12 @@ stages:
 jobs:
   include:
     - stage: autograder
-      os: linux
-      dist: bionic
+      language: python
       python:
         - "3.7"
-      script: python3 grader/self.py self-compile
+      os: linux
+      dist: bionic
+      script: make grade
     - stage: docker
       services: docker
       os: linux
