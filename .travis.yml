@@ -9,7 +9,7 @@ compiler:
   - clang
   - gcc
 
-script: travis_wait 60 make all
+script: travis_wait 60 make all && ./grader/self.py self-compile
 
 stages:
   - test
