@@ -10,15 +10,16 @@
 ## `medlow` (medium-low code model)
 * default code model
 * uses `lui`/`ld` pairs to refer to global symbols
-    * code is linked around address 0
+    * intended for 32 bit architecture
+    * code must reside within the first +/- 2 GiB of memory, thus covering the whole address space in 32 Bit (wrap-around). This is due to lui/ld being able to cover only a range of absolute addresses of -2^(31)..2^(31)-1
     * assembler emits `R_RISCV_HI20`/`R_RISCV_LO12_I` sequences
-* program and statically defined symbols both mus lie within a single 2GiB address range and must lie between absolute addresses -2GiB and +2GiB
+* program and statically defined symbols both must lie within a single 2GiB address range and must lie between absolute addresses -2GiB and +2GiB
 * programs can be statically or dynamically linked
 
 
 ## `medany` (medium-any code model)
 * uses `auipc`/`ld` pairs to refer to global symbols
-    * code can be linked at any address
+    * code can be linked at any address, as auipc is used to calculate the symbol's address relative to the PC
     * assembler emits `R_RISCV_PCREL_HI20`/`R_RISCV_PCREL_LO12_I` sequences
 * program and statically defined symbols must be within any single 2GiB address range
 * programs can be statically or dynamically linked
