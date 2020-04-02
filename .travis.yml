@@ -1,10 +1,11 @@
-language:
-  - c
+language: c
+
 os:
   - linux
   - osx
-dist:
-  - bionic
+
+dist: bionic
+
 compiler:
   - clang
   - gcc
@@ -23,10 +24,11 @@ stages:
 jobs:
   include:
     - stage: autograder
+      language: c
       os: linux
       dist: bionic
-      script:
-        - ./grader/self.py self-compile
+      compiler: clang
+      script: ./grader/self.py self-compile
     - stage: docker
       services: docker
       os: linux
