@@ -42,11 +42,11 @@ jobs:
         python-version: "3.7.x"
     - name: Run autograder baseline
       run: ./grader/self.py self-compile
-      
+
   run-selfie-on-docker:
     name: Run selfie on docker
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout selfie
       uses: actions/checkout@v2
