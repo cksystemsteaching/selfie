@@ -41,7 +41,7 @@ jobs:
       with:
         python-version: "3.7.x"
     - name: Run autograder baseline
-      run: ./grader/self.py self-compile
+      run: make grade
 
   run-selfie-on-docker:
     name: Run selfie on docker
@@ -54,9 +54,11 @@ jobs:
       run: docker build -t cksystemsteaching/selfie .
     - name: Run selfie on docker
       run: |
+        docker run cksystemsteaching/selfie make all
+        docker run cksystemsteaching/selfie make grader
+        docker run cksystemsteaching/selfie make grade
         docker run cksystemsteaching/selfie make assemble
         docker run cksystemsteaching/selfie make spike
         docker run cksystemsteaching/selfie make qemu
         docker run cksystemsteaching/selfie make boolector
         docker run cksystemsteaching/selfie make btormc
-        docker run cksystemsteaching/selfie make grader

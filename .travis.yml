@@ -27,18 +27,20 @@ jobs:
       os: linux
       dist: bionic
       python: - "3.7"
-      script: ./grader/self.py self-compile
+      script: make grade
     - stage: docker
       services: docker
       os: linux
       script:
         - docker build -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make all
+        - docker run cksystemsteaching/selfie make grader
+        - docker run cksystemsteaching/selfie make grade
         - docker run cksystemsteaching/selfie make assemble
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
         - docker run cksystemsteaching/selfie make btormc
-        - docker run cksystemsteaching/selfie make grader
     - stage: deploy
       services: docker
       os: linux
@@ -50,12 +52,14 @@ jobs:
       services: docker
       os: linux
       script:
+        - docker run cksystemsteaching/selfie make all
+        - docker run cksystemsteaching/selfie make grader
+        - docker run cksystemsteaching/selfie make grade
         - docker run cksystemsteaching/selfie make assemble
         - docker run cksystemsteaching/selfie make spike
         - docker run cksystemsteaching/selfie make qemu
         - docker run cksystemsteaching/selfie make boolector
         - docker run cksystemsteaching/selfie make btormc
-        - docker run cksystemsteaching/selfie make grader
 
 notifications:
   email: false

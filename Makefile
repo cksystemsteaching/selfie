@@ -10,7 +10,7 @@ selfie.m selfie.s: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt mc sat assemble spike qemu boolector btormc grader all clean
+.PHONY : compile quine escape debug replay os vm min mob smt mc sat all grader grade assemble spike qemu boolector btormc clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -83,7 +83,18 @@ sat: selfie.m
 	./selfie -sat manuscript/cnfs/rivest.cnf
 	./selfie -l selfie.m -m 1 -sat manuscript/cnfs/rivest.cnf
 
-# Assemble RISC-U with GNU toolchain
+# Run everything that does not require non-standard tools
+all: compile quine debug replay os vm min mob smt mc sat
+
+# Test autograder
+grader:
+	cd grader && python3 -m unittest discover -v
+
+# Run autograder
+grade:
+	./grader/self.py self-compile
+
+# Assemble RISC-U with GNU toolchain for RISC-V
 assemble: selfie.m selfie.s
 	riscv64-linux-gnu-as selfie.s -o a.out
 	rm -rf a.out
@@ -141,13 +152,6 @@ boolector: smt
 # Test btormc bounded model checker
 btormc: mc
 	btormc manuscript/code/symbolic/simple-assignment.btor2
-
-# Test grader
-grader:
-	cd grader && python3 -m unittest discover -v
-
-# Run everything
-all: compile quine debug replay os vm min mob smt mc sat
 
 # Clean up
 clean:
