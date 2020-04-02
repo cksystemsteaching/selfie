@@ -9,10 +9,11 @@ compiler:
   - clang
   - gcc
 
-script: travis_wait 60 make all && ./grader/self.py self-compile
+script: travis_wait 60 make all
 
 stages:
-  - test
+  - make-all
+  - autograder
   - docker
   - name: deploy
     if: branch = master AND type = push AND fork = false
@@ -21,6 +22,10 @@ stages:
 
 jobs:
   include:
+    - stage: autograder
+      os: linux
+      script:
+        - ./grader/self.py self-compile
     - stage: docker
       services: docker
       os: linux
