@@ -28,7 +28,7 @@ jobs:
       dist: bionic
       python:
         - "3.7"
-      script: make grade
+      script: python3 grader/self.py self-compile
     - stage: docker
       services: docker
       os: linux
