@@ -12,7 +12,7 @@ compiler:
 script: travis_wait 60 make all
 
 stages:
-  - make-all
+  - test
   - autograder
   - docker
   - name: deploy
@@ -24,6 +24,7 @@ jobs:
   include:
     - stage: autograder
       os: linux
+      dist: bionic
       script:
         - ./grader/self.py self-compile
     - stage: docker
