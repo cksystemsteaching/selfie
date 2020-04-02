@@ -20,7 +20,6 @@ stages:
 jobs:
   include:
     - stage: docker
-      sudo: required
       services: docker
       os: linux
       script:
@@ -32,7 +31,6 @@ jobs:
         - docker run cksystemsteaching/selfie make btormc
         - docker run cksystemsteaching/selfie make grader
     - stage: deploy
-      sudo: required
       services: docker
       os: linux
       script:
@@ -40,7 +38,6 @@ jobs:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
         - docker push cksystemsteaching/selfie
     - stage: run
-      sudo: required
       services: docker
       os: linux
       script:
