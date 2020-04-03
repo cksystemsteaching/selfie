@@ -19,7 +19,11 @@ jobs:
     steps:
     - name: Checkout selfie
       uses: actions/checkout@v2
+    - name: Build docker image
+      run: docker build -f Dockerselfie -t cksystemsteaching/selfie .
+    - name: Test selfie in docker image
+      run: docker run cksystemsteaching/selfie make everything
     - name: Deploy docker image
       run: |
-        - echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-        - docker push cksystemsteaching/selfie
+        echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+        docker push cksystemsteaching/selfie
