@@ -17,9 +17,11 @@ stages:
   - autograder
   - docker
   - name: deploy
-    if: branch = master AND type = push AND fork = false
+    # disabling deploy, see github docker workflow
+    if: false AND branch = master AND type = push AND fork = false
   - name: run
-    if: branch = master AND type = push AND fork = false
+    # disabling deploy, see github docker workflow
+    if: false AND branch = master AND type = push AND fork = false
 
 jobs:
   include:
@@ -34,13 +36,13 @@ jobs:
       services: docker
       os: linux
       script:
-        - docker build -t cksystemsteaching/selfie .
+        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
         - docker run cksystemsteaching/selfie make everything
     - stage: deploy
       services: docker
       os: linux
       script:
-        - docker build -t cksystemsteaching/selfie .
+        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
         - docker push cksystemsteaching/selfie
     - stage: run

@@ -1,0 +1,29 @@
+name: Selfie on Docker
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+  schedule:
+    # trigger fridays at 12am
+    - cron: '0 0 * * 5'
+
+jobs:
+  selfie-on-docker:
+    name: Build, test, and deploy selfie on docker
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Build docker image
+      run: docker build -f Dockerselfie -t cksystemsteaching/selfie .
+    - name: Test selfie in docker image
+      run: docker run cksystemsteaching/selfie make everything
+    - name: Deploy docker image
+      run: |
+        - echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        - docker push cksystemsteaching/selfie

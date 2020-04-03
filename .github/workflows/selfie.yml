@@ -3,22 +3,20 @@ name: Make All of Selfie
 on:
   push:
     branches: [ master ]
-    paths:
-    - '**.c'
-    - 'Makefile'
-    - '**.py'
-    - 'Dockerfile'
-    - '.dockerignore'
-    - '.github/workflows/selfie.yml'
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
   pull_request:
     branches: [ master ]
-    paths:
-    - '**.c'
-    - 'Makefile'
-    - '**.py'
-    - 'Dockerfile'
-    - '.dockerignore'
-    - '.github/workflows/selfie.yml'
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
   schedule:
     # trigger fridays at 12am
     - cron: '0 0 * * 5'
@@ -51,6 +49,4 @@ jobs:
     - name: Checkout selfie
       uses: actions/checkout@v2
     - name: Run selfie on docker
-      run: |
-        - docker run cksystemsteaching/selfie git pull
-        - docker run cksystemsteaching/selfie make everything
+      uses: cksystemsteaching/selfie@master
