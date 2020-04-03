@@ -53,12 +53,4 @@ jobs:
     - name: Build docker image
       run: docker build -t cksystemsteaching/selfie .
     - name: Run selfie on docker
-      run: |
-        docker run cksystemsteaching/selfie make all
-        docker run cksystemsteaching/selfie make grader
-        docker run cksystemsteaching/selfie make grade
-        docker run cksystemsteaching/selfie make assemble
-        docker run cksystemsteaching/selfie make spike
-        docker run cksystemsteaching/selfie make qemu
-        docker run cksystemsteaching/selfie make boolector
-        docker run cksystemsteaching/selfie make btormc
+      run: docker run cksystemsteaching/selfie make everything

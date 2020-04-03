@@ -10,7 +10,7 @@ selfie.m selfie.s: selfie
 	./selfie -c selfie.c -o selfie.m -s selfie.s
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt mc sat all grader grade assemble spike qemu boolector btormc clean
+.PHONY : compile quine escape debug replay os vm min mob smt mc sat all grader grade assemble spike qemu boolector btormc everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -152,6 +152,9 @@ boolector: smt
 # Test btormc bounded model checker
 btormc: mc
 	btormc manuscript/code/symbolic/simple-assignment.btor2
+
+# Run everything
+everything: all grader grade assemble spike qemu boolector btormc
 
 # Clean up
 clean:
