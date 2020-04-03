@@ -50,7 +50,7 @@ jobs:
     steps:
     - name: Checkout selfie
       uses: actions/checkout@v2
-    - name: Build docker image
-      run: docker build -t cksystemsteaching/selfie .
     - name: Run selfie on docker
-      run: docker run cksystemsteaching/selfie make everything
+      run: |
+        - docker run cksystemsteaching/selfie git pull
+        - docker run cksystemsteaching/selfie make everything
