@@ -1,4 +1,4 @@
-name: Make All of Selfie
+name: Make Everything of Selfie
 
 on:
   push:
@@ -41,12 +41,12 @@ jobs:
     - name: Run autograder baseline
       run: make grade
 
-  run-selfie-on-docker:
-    name: Run selfie on docker
+  make-everything-of-selfie-on-docker:
+    name: Make everything on docker
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout selfie
       uses: actions/checkout@v2
-    - name: Run selfie on docker
+    - name: Make everything
       uses: cksystemsteaching/selfie@master
