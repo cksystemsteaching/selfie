@@ -23,6 +23,7 @@ jobs:
       run: docker build -f Dockerselfie -t cksystemsteaching/selfie .
     - name: Test selfie in docker image
       run: docker run cksystemsteaching/selfie make everything
+    # requires secrets named DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD in the github repository's Settings -> Secrets
     - name: Deploy docker image
       run: |
         echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
