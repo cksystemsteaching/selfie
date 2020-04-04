@@ -944,15 +944,9 @@ The lesson learned here is important. The fact that our machine can only execute
 
 ### Instructions
 
-A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers (`zero`, `ra`, `sp`, `gp`, `tp`, `t0-t2`, `s0-s1`, `a0-a7`, `s2-s11`, `t3-t6`), and 4GB of byte-addressed memory.
+Before we go through the 14 RISC-U instructions let us take a look at the exact state of a RISC-U machine again but now using a bit more terminology. A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers (`zero`, `ra`, `sp`, `gp`, `tp`, `t0-t2`, `s0-s1`, `a0-a7`, `s2-s11`, `t3-t6`), and 4GB of byte-addressed memory. Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored.
 
-Register `zero` always contains the value `0`. Any attempts to update the value in `zero` are ignored.
-
-RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity.
-
-The parameters `rd`, `rs1`, and `rs2` used in RISC-U instructions may denote any of the 32 general-purpose registers.
-
-The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
+RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in RISC-U instructions may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
 #### Initialization
 
@@ -993,6 +987,8 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 #### System
 
 `ecall`: system call number is in `a7`, parameters are in `a0-a2`, return value is in `a0`.
+
+### Performance
 
 [//]: # (| Performance | Unit |)
 [//]: # (| ----------- | ---- |)
