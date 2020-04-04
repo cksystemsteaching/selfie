@@ -1,34 +1,52 @@
-name: Github Workflow for Selfie
+name: Make Everything Selfie
 
 on:
   push:
     branches: [ master ]
-    paths:
-    - '**.c'
-    - '**.py'
-    - 'Dockerfile'
-    - 'Makefile'
-    - '.github/workflows/selfie.yml'
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
   pull_request:
     branches: [ master ]
-    paths:
-    - '**.c'
-    - '**.py'
-    - 'Dockerfile'
-    - 'Makefile'
-    - '.github/workflows/selfie.yml'
+    paths-ignore:
+    - '**.md'
+    - '**.txt'
+    - 'docs'
+    - 'AUTHORS'
+    - 'LICENSE'
   schedule:
     # trigger fridays at 12am
-    - cron:  '0 0 * * 5'
+    - cron: '0 0 * * 5'
 
 jobs:
-  build:
+  make-all-of-selfie:
+    name: Make all of selfie and run autograder baseline
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: make all
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make all
       run: make all
+    - name: Use Python 3.7.x
+      uses: actions/setup-python@v1
+      with:
+        python-version: "3.7.x"
+    - name: Run autograder baseline
+      run: make grade
+
+  make-everything-of-selfie-on-docker:
+    name: Make everything on docker
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make everything
+      uses: cksystemsteaching/selfie@master
