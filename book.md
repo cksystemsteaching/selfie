@@ -950,7 +950,7 @@ RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can
 
 #### Initialization
 
-Our first two instructions are the `lui` and `addi` instructions which are meant to initialize the registers of the CPU with signed integer values other than just 0. We begin with the `lui` instruction where `lui` stands for load upper immediate. The `lui` instruction is arguably the simplest RISC-U instruction:
+Our first two instructions are the `lui` and `addi` instructions which are meant to initialize the registers of the CPU with signed integer values other than just 0. We begin with the `lui` instruction where `lui` stands for load upper immediate. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value `imm`, into the *upper* part of a 64-bit register `rd` and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits even from right to left. The specification of the instruction looks like this:
 
 `lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19`
 
