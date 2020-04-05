@@ -950,29 +950,41 @@ RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can
 
 #### Initialization
 
-Our first two instructions are the `lui` and `addi` instructions which are meant to initialize the registers of the CPU with signed integer values other than just 0. We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in that register or in fact any other register. Here is an example:
+Our first two instructions are the `lui` and `addi` instructions which are, among some other use cases, meant to initialize the registers of the CPU with signed integer values other than just 0. We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in that register or in fact any other register. Here is an example:
 
 `addi t1,t0,42`
 
-This instruction makes the CPU add the decimal value 42 encoded in binary to the binary value stored in register `t0` and then store the result in register `t1`. We denote that behavior by `t1 = t0 + 42` where `=` is not equality in a mathematical sense, as you might expect. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t1` to the value to which the *expression* `t0 + 42` evaluates. Thus, with `t1 = t0 + 42`, we do not state equality between `t1` and `t0 + 42` but rather the process of assigning a value to a register.
+This instruction makes the CPU add the decimal value 42 encoded in binary to the binary value stored in register `t0` and then store the result in register `t1`. We denote that behavior by `t1 = t0 + 42` where `=` is not equality in a mathematical sense, as you might expect. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t1` to the value to which the *expression* `t0 + 42` evaluates. Thus, with `t1 = t0 + 42`, we do not assert equality between `t1` and `t0 + 42` but rather denote the process of assigning a value to a register.
 
-Sure, after the assignment is done, the value in `t1` is equal to the value to which `t0 + 42` evaluates but that is still a different statement. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignment in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to denote equality from now on.
+Sure, after the assignment is done, the value in `t1` is equal to the value to which `t0 + 42` evaluates but that is still a different statement. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to denote equality from now on.
 
 You might ask yourself how `addi t1,t0,42` is initialization of a register. Well, it is not since `t0` may contain any value. But there is a trick we can use:
 
 `addi t0,zero,42`
 
-Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 42`. In fact, we only use `addi` in this way throughout the book. How about initializing registers with negative numbers? That is possible too:
+Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 42`. How about initializing registers with negative numbers? That is possible too:
 
 `addi t0,zero,-42`
 
-In this case, `-42` is encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, `imm` can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the information chapter and two's complement in particular.
+In this case, `-42` is encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, `imm` can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the information chapter and two's complement in particular. In any case, we show below how `addi` can be combined with the `lui` instruction to get larger integers into registers.
 
-There is one important detail that we should mention. How does the CPU add a signed 12-bit integer to a 64-bit integer in a register, even if that register just contains 0? Prior to addition, the CPU *sign-extends* `imm` from 12 to 64 bits. If the sign bit, that is, bit 11 of `imm` is 0, then all bits from 12 to 63 are *reset*, that is, set to 0. If the sign bit is 1, then all bits from 12 to 63 are *set*, that is, set to 1. Thus the sign-extended version of `imm` is a signed 64-bit integer that encodes exactly the same value as `imm` encodes in 12 bits. That's it!
+There is one important detail that we should mention here. How does the CPU add a signed 12-bit integer to a 64-bit integer in a register, even if that register just contains 0? Prior to addition, the CPU *sign-extends* `imm` from 12 to 64 bits. If the sign bit, that is, bit 11 of `imm` is 0, then all bits from 12 to 63 are *reset*, that is, set to 0. If the sign bit is 1, then all bits from 12 to 63 are *set*, that is, set to 1. Thus the sign-extended version of `imm` is a signed 64-bit integer that encodes exactly the same value as `imm` encodes in 12 bits. That's it!
 
-The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then straightforward exactly like we described in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` as in `t0 + 42` in the previous example denotes 64-bit integer addition with *wrap-around semantics*. For example, if `t0` contains UINT64_MAX, then `t0 + 42` evaluates to 41 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with software including costly bugs and is therefore important to keep in mind.
+The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `t0 + 42` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `t0` contains UINT64_MAX, then `t0 + 42` evaluates to 41 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
 
-Ok, but why is the `imm` value called immediate anyway?
+Let us explore an important use case of `addi` other than initializing registers before moving on:
+
+`addi t0,t0,1` and `addi t0,t0,-1`
+
+which obviously make the CPU *increment* and *decrement*, respectively, register `t0`. Incrementing and decrementing registers is often needed and done this way but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
+
+Here is the general specification of the `addi` instruction:
+
+`addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
+
+Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with.
+
+Ok, but why is the `imm` value called immediate anyway? 
 
 TODO: complete `addi` story and then move on to `lui`.
 
@@ -981,10 +993,6 @@ We begin with the `lui` instruction where `lui` stands for load upper immediate.
 The specification of the instruction looks like this:
 
 `lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19`
-
-Let us go through that line step by step. First of all, `lui` is a *mnemonic* (the first "m" is not pronounced) which helps us recognize which instruction we are dealing with.
-
-`addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
 #### Memory
 
