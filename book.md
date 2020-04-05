@@ -966,7 +966,11 @@ Since `zero == 0` is always true, the instruction effectively makes the CPU perf
 
 `addi t0,zero,-42`
 
-In this case, `-42` is encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. Why are these values called immediate anyway?
+In this case, `-42` is encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, `imm` can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the information chapter and two's complement in particular.
+
+There is one important detail that we should mention. How does the CPU add a signed 12-bit integer to a 64-bit integer in a register, even if that register just contains 0? Prior to addition, the CPU *sign-extends* `imm` from 12 to 64 bits. If the sign bit, that is, bit 11 of `imm` is 0, then all bits from 12 to 63 are *reset*, that is, set to 0. If the sign bit is 1, then all bits from 12 to 63 are *set*, that is, set to 1. Thus the sign-extended version of `imm` is a signed 64-bit integer that encodes exactly the same value as `imm` encodes in 12 bits. That's it!
+
+Ok, but why is the `imm` value called immediate anyway?
 
 TODO: complete `addi` story and then move on to `lui`.
 
