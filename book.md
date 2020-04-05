@@ -447,7 +447,7 @@ where `0101011` is binary for 43.
 
 Similarly, 86 encoded in seven bits is -42 in signed interpretation. However, `-43 - -42` is of course still -1 which explains why the above subtraction actually works.
 
-How do we recognize binary numbers to represent positive or negative numbers? Well, the key lesson to be learned here is that we cannot! They are just bits. But, we can still interpret them, as unsigned or signed, for example, and there is a simple rule here. Assuming we use twos complement to encode negative numbers and have agreed to support a given number of bits, say, seven bits, their MSB indicates right away if they encode a positive or a negative number. In signed interpretation, if the MSB is 1, the number is negative and otherwise positive. Just check again the above signed interpretation of **1**010101 which is obviously negative.
+How do we recognize binary numbers to represent positive or negative numbers? Well, the key lesson to be learned here is that we cannot! They are just bits. But, we can still interpret them, as unsigned or signed, for example, and there is a simple rule here. Assuming we use twos complement to encode negative numbers and have agreed to support a given number of bits, say, seven bits, their MSB indicates right away if they encode a positive or a negative number. If the MSB is 1, the number is negative and otherwise positive. Just check again the above signed interpretation of **1**010101 which is obviously negative. In signed interpretation, the MSB is also called *sign bit*.
 
 To make the above example of `85 - 86` work in signed interpretation even for the individual binary encoding of 85 and 86, we simply use one more bit extending the supported range from -64 through 63 to -128 through 127. Notice that the actual computation does not change a bit, literally, except that the signed interpretation of the involved numbers is now as intended:
 
@@ -950,7 +950,29 @@ RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can
 
 #### Initialization
 
-Our first two instructions are the `lui` and `addi` instructions which are meant to initialize the registers of the CPU with signed integer values other than just 0. We begin with the `lui` instruction where `lui` stands for load upper immediate. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value `imm`, into the *upper* part of a 64-bit register `rd` and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits even from right to left. The specification of the instruction looks like this:
+Our first two instructions are the `lui` and `addi` instructions which are meant to initialize the registers of the CPU with signed integer values other than just 0. We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in that register or in fact any other register. Here is an example:
+
+`addi t1,t0,42`
+
+This instruction makes the CPU add the decimal value 42 encoded in binary to the binary value stored in register `t0` and then store the result in register `t1`. We denote that behavior by `t1 = t0 + 42` where `=` is not equality in a mathematical sense, as you might expect. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t1` to the value to which the *expression* `t0 + 42` evaluates. Thus, with `t1 = t0 + 42`, we do not state equality between `t1` and `t0 + 42` but rather the process of assigning a value to a register.
+
+Sure, after the assignment is done, the value in `t1` is equal to the value to which `t0 + 42` evaluates but that is still a different statement. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignment in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to denote equality from now on.
+
+You might ask yourself how `addi t1,t0,42` is initialization of a register. Well, it is not since `t0` may contain any value. But there is a trick we can use:
+
+`addi t0,zero,42`
+
+Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 42`. In fact, we only use `addi` in this way throughout the book. How about initializing registers with negative numbers? That is possible too:
+
+`addi t0,zero,-42`
+
+In this case, `-42` is encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. Why are these values called immediate anyway?
+
+TODO: complete `addi` story and then move on to `lui`.
+
+We begin with the `lui` instruction where `lui` stands for load upper immediate. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value `imm`, into the *upper* part of a 64-bit register `rd` and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits even from right to left.
+
+The specification of the instruction looks like this:
 
 `lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19`
 
@@ -1349,6 +1371,8 @@ Let us go through that line step by step. First of all, `lui` is a *mnemonic* (t
 * sampling rate
 
 * semantics
+
+* sign bit
 
 * signed integer
 
