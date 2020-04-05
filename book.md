@@ -970,6 +970,8 @@ In this case, `-42` is encoded in two's complement. So, where is the catch? Well
 
 There is one important detail that we should mention. How does the CPU add a signed 12-bit integer to a 64-bit integer in a register, even if that register just contains 0? Prior to addition, the CPU *sign-extends* `imm` from 12 to 64 bits. If the sign bit, that is, bit 11 of `imm` is 0, then all bits from 12 to 63 are *reset*, that is, set to 0. If the sign bit is 1, then all bits from 12 to 63 are *set*, that is, set to 1. Thus the sign-extended version of `imm` is a signed 64-bit integer that encodes exactly the same value as `imm` encodes in 12 bits. That's it!
 
+The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then straightforward exactly like we described in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` as in `t0 + 42` in the previous example denotes 64-bit integer addition with *wrap-around semantics*. For example, if `t0` contains UINT64_MAX, then `t0 + 42` evaluates to 41 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with software including costly bugs and is therefore important to keep in mind.
+
 Ok, but why is the `imm` value called immediate anyway?
 
 TODO: complete `addi` story and then move on to `lui`.
