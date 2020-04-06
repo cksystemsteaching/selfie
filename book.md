@@ -944,41 +944,61 @@ The lesson learned here is important. The fact that our machine can only execute
 
 ### Instructions
 
-Before we go through the 14 RISC-U instructions let us take a look at the exact state of a RISC-U machine again but now using a bit more terminology. A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers (`zero`, `ra`, `sp`, `gp`, `tp`, `t0-t2`, `s0-s1`, `a0-a7`, `s2-s11`, `t3-t6`), and 4GB of byte-addressed memory. Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored.
+Before we go through the 14 RISC-U instructions let us take a look at the exact state of a RISC-U machine again but now using a bit more terminology. A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers denoted `zero`, `ra`, `sp`, `gp`, `tp`, `t0`-`t2`, `s0`-`s1`, `a0`-`a7`, `s2`-`s11`, `t3`-`t6`, and 4GB of byte-addressed memory. Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored.
 
 RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in RISC-U instructions may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
 #### Initialization
 
-Our first two instructions are the `lui` and `addi` instructions which are, among some other use cases, meant to initialize the registers of the CPU with signed integer values other than just 0. We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in that register or in fact any other register. Here is an example:
+The first two instructions are the `lui` and `addi` instructions which allow us to initialize CPU registers with signed integer values. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
 
-`addi t1,t0,42`
+We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in that register or in fact any other register. Here is an example:
 
-This instruction makes the CPU add the decimal value 42 encoded in binary to the binary value stored in register `t0` and then store the result in register `t1`. We denote that behavior by `t1 = t0 + 42` where `=` is not equality in a mathematical sense. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t1` to the value to which the *expression* `t0 + 42` evaluates. Thus, with `t1 = t0 + 42` we do not assert equality between `t1` and `t0 + 42` but rather denote the process of assigning a value to a register.
+`0x38: 0x00810293: addi t0,sp,8`
 
-Sure, after the assignment is done, the value in `t1` is equal to the value to which `t0 + 42` evaluates but that is still a different statement. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to denote equality from now on.
+where `0x38` is the address of the instruction in memory, `0x00810293` is the 32-bit *binary code* of the instruction in memory, and `addi t0,sp,8` is the human-readable version of the instruction in *assembly code*. In other words, `0x00810293` and `addi t0,sp,8` mean exactly the same thing, just encoded differently. For the machine, `0x00810293` is all it needs while for us `addi t0,sp,8` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
 
-You might ask yourself how `addi t1,t0,42` is initialization of a register. Well, it is not since `t0` may contain any value. But there is a trick we can use:
+The instruction `addi t0,sp,8` makes the CPU add the *immediate* value 8 to the value stored in register `sp` and then store the result in register `t0`. We denote that behavior by `t0 = sp + 8` where `=` is not equality in a mathematical sense. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t0` to the value to which the *expression* `sp + 8` evaluates. Thus, with `t0 = sp + 8` we do not assert equality between `t0` and `sp + 8` but rather denote the process of assigning a value to a register.
 
-`addi t0,zero,42`
+Sure, after the assignment is done, the value in `t0` is equal to the value to which `sp + 8` evaluates but that is still a different statement. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to denote equality from now on.
 
-Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 42`. How about initializing registers with negative numbers? That is possible too:
+Alright, but why is the value `8` called immediate value? This is because the value is encoded in the binary code of the instruction itself. You can spot the `8` right there in `0x00810293`. In fact, the `0x008` in `0x00810293` is the signed 12-bit integer value mentioned above. Can we spot `t0` and `sp` as well? Sure, but they are just a bit more hidden. Register `sp` is register number `2` and register `t0` is register number `5` among the 32 general-purpose registers of the CPU. Then, take a look at the binary code, not just in hexadecimal but, well, in binary:
 
-`addi t0,zero,-42`
+```
+0x    0    0    8    1    0    2    9    3
+ b 0000 0000 1000 0001 0000 0010 1001 0011
+```
 
-In this case, `-42` is encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, `imm` can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the information chapter and two's complement in particular. In any case, we show below how `addi` can be combined with the `lui` instruction to get larger integers into registers.
+After regrouping the bits you can spot both the register numbers `2` and `5`:
+
+```
+              8     2         5      19
+ b 000000001000 00010 000 00101 0010011
+```
+
+as well as the *opcode* `19` of the `addi` instruction encoded in the 7 bits `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters in the remaining bits. An immediate value such as `8` is data encoded in code whereas register numbers `2` and `5` are addresses or names of registers.
+
+You might ask yourself how `addi t0,sp,8` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction:
+
+`0x1C: 0x00800293: addi t0,zero,8`
+
+Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 8`. How about initializing registers with negative numbers? That is possible too, for example, using `addi t0,zero,-8`. Negative numbers such as `-8` are encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, `imm` can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the information chapter and two's complement in particular. In any case, we show below how `addi` can be combined with the `lui` instruction to get larger integers into registers.
 
 There is one important detail that we should mention here. How does the CPU add a signed 12-bit integer to a 64-bit integer in a register, even if that register just contains 0? Prior to addition, the CPU *sign-extends* `imm` from 12 to 64 bits. If the sign bit, that is, bit 11 of `imm` is 0, then all bits from 12 to 63 are *reset*, that is, set to 0. If the sign bit is 1, then all bits from 12 to 63 are *set*, that is, set to 1. Thus the sign-extended version of `imm` is a signed 64-bit integer that encodes exactly the same value as `imm` encodes in 12 bits. That's it!
 
-The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `t0 + 42` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `t0` contains UINT64_MAX, then `t0 + 42` evaluates to 41 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
+The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 8` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 8` evaluates to 7 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
 
-Let us explore an important use case of `addi` other than initializing registers before moving on:
+Let us explore two more important use cases of `addi` other than initializing registers before moving on:
 
-`addi t0,t0,1` and `addi t0,t0,-1`
+`0x08: 0x00028193: addi gp,t0,0`
 
-which obviously make the CPU *increment* and *decrement*, respectively, register `t0`. Incrementing and decrementing registers is often needed and done this way but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
+obviously makes the CPU *copy* the value in register `t0` to register `gp` while:
 
-Here is the general specification of the `addi` instruction:
+`0x3C: 0xFF810113: addi sp,sp,-8`
+
+makes the CPU *decrement* register `sp` by 8. Making the CPU *increment* a register is of course also possible using positive immediate values. Copying, incrementing, and decrementing registers is often needed and done using `addi` but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
+
+Here is the general specification of the `addi` instruction in assembly:
 
 `addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
@@ -986,13 +1006,11 @@ Let us go through that line step by step. First of all, the string "addi" is act
 
 Most importantly, everything to the left of the colon ":" is *syntax*, that is, just notation while everything to the right of the colon ":" is *semantics*, that is, the actual meaning of the instruction. As we already saw in the above examples, the CPU performs the assignment `rd = rs1 + imm` with two registers `rd` and `rs1` and an immediate value `imm` between -2^11^ and 2^11^-1. After that, as indicated by the semicolon ";" the CPU increments the program counter `pc` by 4 (bytes) to prepare executing the instruction stored in memory at address `pc + 4` right after the current instruction stored in memory at address `pc`. The `pc` is incremented by 4 because each instruction is encoded in 32 bits and thus occupies exactly 4 bytes in memory.
 
+Immediate addressing and register addressing.
+
 Data flow and control flow.
 
 State transition.
-
-Assembly code versus binary code.
-
-Ok, but why is the `imm` value called immediate anyway? 
 
 TODO: complete `addi` story and then move on to `lui`.
 
