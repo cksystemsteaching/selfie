@@ -954,7 +954,7 @@ Our first two instructions are the `lui` and `addi` instructions which are, amon
 
 `addi t1,t0,42`
 
-This instruction makes the CPU add the decimal value 42 encoded in binary to the binary value stored in register `t0` and then store the result in register `t1`. We denote that behavior by `t1 = t0 + 42` where `=` is not equality in a mathematical sense, as you might expect. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t1` to the value to which the *expression* `t0 + 42` evaluates. Thus, with `t1 = t0 + 42`, we do not assert equality between `t1` and `t0 + 42` but rather denote the process of assigning a value to a register.
+This instruction makes the CPU add the decimal value 42 encoded in binary to the binary value stored in register `t0` and then store the result in register `t1`. We denote that behavior by `t1 = t0 + 42` where `=` is not equality in a mathematical sense. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t1` to the value to which the *expression* `t0 + 42` evaluates. Thus, with `t1 = t0 + 42` we do not assert equality between `t1` and `t0 + 42` but rather denote the process of assigning a value to a register.
 
 Sure, after the assignment is done, the value in `t1` is equal to the value to which `t0 + 42` evaluates but that is still a different statement. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to denote equality from now on.
 
@@ -982,7 +982,15 @@ Here is the general specification of the `addi` instruction:
 
 `addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
-Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with.
+Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with. Next to the `addi` mnemonic are the parameters of the instruction. The first two parameters, `rd` and `rs1`, are placeholders for any of the 32 general-purpose registers of the CPU such as `zero`, `t0`, and `t1` in the above examples. The third parameter `imm` is obviously the immediate value.
+
+Most importantly, everything to the left of the colon ":" is *syntax*, that is, just notation while everything to the right of the colon ":" is *semantics*, that is, the actual meaning of the instruction. As we already saw in the above examples, the CPU performs the assignment `rd = rs1 + imm` with two registers `rd` and `rs1` and an immediate value `imm` between -2^11^ and 2^11^-1. After that, as indicated by the semicolon ";" the CPU increments the program counter `pc` by 4 (bytes) to prepare executing the instruction stored in memory at address `pc + 4` right after the current instruction stored in memory at address `pc`. The `pc` is incremented by 4 because each instruction is encoded in 32 bits and thus occupies exactly 4 bytes in memory.
+
+Data flow and control flow.
+
+State transition.
+
+Assembly code versus binary code.
 
 Ok, but why is the `imm` value called immediate anyway? 
 
