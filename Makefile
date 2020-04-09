@@ -20,8 +20,7 @@ compile: selfie
 
 # Compile and run quine and compare its output to itself
 quine: selfie
-	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' > quine.c
-	diff manuscript/code/quine.c quine.c
+	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/selfie/d' | diff manuscript/code/quine.c -
 
 # Demonstrate available escape sequences
 escape: selfie
@@ -166,6 +165,5 @@ clean:
 	rm -f *.sat
 	rm -f selfie
 	rm -f selfie.exe
-	rm -f quine.c
 	rm -f manuscript/code/symbolic/*.smt
 	rm -f manuscript/code/symbolic/*.btor2
