@@ -63,6 +63,7 @@ SECTIONS
 		*(.data.*)
 		*(.readmostly.data)
 		*(*.data)
+        *(.sdata)
 		. = ALIGN(8);
 
 		PROVIDE(_data_end = .);
@@ -75,6 +76,7 @@ SECTIONS
 		PROVIDE(_bss_start = .);
 		*(.bss)
 		*(.bss.*)
+        *(.sbss)
 		. = ALIGN(8);
 		PROVIDE(_bss_end = .);
 	}
