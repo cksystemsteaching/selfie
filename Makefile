@@ -20,7 +20,11 @@ compile: selfie
 
 # Compile and run quine and compare its output to itself
 quine: selfie
-	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/selfie/d' | diff -q manuscript/code/quine.c -
+	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/selfie/d' > quine.c
+	hexdump -C manuscript/code/quine.c
+	hexdump -C quine.c
+
+#diff manuscript/code/quine.c -
 
 # Demonstrate available escape sequences
 escape: selfie
