@@ -33,6 +33,8 @@ jobs:
     - name: Checkout selfie
       uses: actions/checkout@v2
     - name: Make all
+      env:
+        CC: clang
       run: make all
     - name: Use Python 3.7.x
       uses: actions/setup-python@v1
