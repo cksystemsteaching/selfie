@@ -23,7 +23,7 @@ on:
 
 jobs:
   make-all-of-selfie-on-linux-and-macos:
-    name: Make all of selfie and run autograder baseline
+    name: Make all of selfie
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -42,7 +42,7 @@ jobs:
       run: make grade
 
   make-all-of-selfie-on-windows:
-    name: Make all of selfie
+    name: Make all of selfie on windows
     runs-on: windows-latest
 
     steps:
