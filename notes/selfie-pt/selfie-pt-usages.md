@@ -108,3 +108,10 @@
 ## where changes are needed
 * `get_frame_for_page`
     * check if page is in lo or hi page table and return 0 if not
+
+# kernel functions for page frame management
+* `pavailable()`
+* `pexcess()`
+* `pused()`
+* `palloc()`
+* `pfree()`
