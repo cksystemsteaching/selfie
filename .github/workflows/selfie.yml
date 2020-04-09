@@ -27,14 +27,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout selfie
       uses: actions/checkout@v2
     - name: Make all
-      env:
-        CC: gcc
       run: make all
     - name: Use Python 3.7.x
       uses: actions/setup-python@v1
@@ -43,7 +41,20 @@ jobs:
     - name: Run autograder baseline
       run: make grade
 
-  make-everything-of-selfie-on-docker:
+  make-all-of-selfie:
+    name: Make all of selfie
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout selfie
+      uses: actions/checkout@v2
+    - name: Make all
+      env:
+        CC: gcc
+      run: make all
+    # python3 does not work
+
+  make-everything-of-selfie:
     name: Make everything on docker
     runs-on: ubuntu-latest
 

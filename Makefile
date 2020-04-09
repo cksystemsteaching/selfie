@@ -99,9 +99,9 @@ grade:
 	./grader/self.py self-compile
 
 # Assemble RISC-U with GNU toolchain for RISC-V
-assemble: selfie.m selfie.s
+assemble: selfie.s
 	riscv64-linux-gnu-as selfie.s -o a.out
-	rm -rf a.out
+	rm -f a.out
 
 # Run selfie on spike
 spike: selfie.m selfie.s
