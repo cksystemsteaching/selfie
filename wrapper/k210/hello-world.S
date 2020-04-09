@@ -27,6 +27,14 @@
 	.align 3
 	.globl _start
 _start:
+    /* Set up the Global Pointer */
+    .option push
+    .option norelax
+
+    la gp, __SDATA_BEGIN__
+
+    .option pop
+
 	/* Pick one hart to run the main boot sequence */
 	la	a3, _hart_lottery
 	li	a2, 1

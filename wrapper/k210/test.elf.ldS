@@ -51,35 +51,52 @@ SECTIONS
 
   /* End of the read-only data sections */
 
+
   /* Beginning of the read-write data sections */
 
   . = ALIGN(0x1000); /* Ensure next section is page aligned */
 
+  PROVIDE(_data_start = .);
   .data :
   {
-    PROVIDE(_data_start = .);
-
     *(.data)
     *(.data.*)
     *(.readmostly.data)
     *(*.data)
-    *(.sdata)
     . = ALIGN(8);
+  }
 
-    PROVIDE(_data_end = .);
+  /* We want the small data sections together, so single-instruction offsets
+     can access them all, and initialized data all before uninitialized, so
+     we can shorten the on-disk segment size.
+   */
+  .sdata          :
+  {
+    __global_pointer$ = . + 0x800;
+    __SDATA_BEGIN__ = . + 0x800;
+    *(.srodata.cst16) *(.srodata.cst8) *(.srodata.cst4) *(.srodata.cst2) *(.srodata .srodata.*)
+    *(.sdata .sdata.* .gnu.linkonce.s.*)
+  }
+  PROVIDE(_data_end = .);
+
+  . = .;
+  PROVIDE(_bss_start = .);
+  .sbss           :
+  {
+    *(.dynsbss)
+    *(.sbss .sbss.* .gnu.linkonce.sb.*)
+    *(.scommon)
   }
 
   . = ALIGN(0x1000); /* Ensure next section is page aligned */
 
   .bss :
   {
-    PROVIDE(_bss_start = .);
     *(.bss)
     *(.bss.*)
-    *(.sbss)
     . = ALIGN(8);
-    PROVIDE(_bss_end = .);
   }
+  PROVIDE(_bss_end = .);
 
   /* End of the read-write data sections */
 
