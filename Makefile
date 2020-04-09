@@ -5,9 +5,13 @@ CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
-# Self-compile selfie.c into RISC-U selfie.m executable and RISC-U selfie.s assembly
-selfie.m selfie.s: selfie
-	./selfie -c selfie.c -o selfie.m -s selfie.s
+# Self-compile selfie.c into RISC-U selfie.m executable
+selfie.m: selfie
+	./selfie -c selfie.c -o selfie.m
+
+# Self-compile selfie.c into RISC-U selfie.s assembly
+selfie.s: selfie
+	./selfie -c selfie.c -s selfie.s
 
 # Consider these targets as targets, not files
 .PHONY : compile quine escape debug replay os vm min mob smt mc sat all assemble spike qemu boolector btormc grader grade everything clean
