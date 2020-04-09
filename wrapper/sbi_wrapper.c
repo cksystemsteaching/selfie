@@ -33317,11 +33317,11 @@ void bootstrap() {
         "-c",
         "hello-world.c",
         "-m",
-        "8",
+        "32",
         "-c",
         "hello-world.c",
-        "-m",
-        "4",
+        "-y",
+        "16",
         (char*)0,
     };
     int i = 0;
