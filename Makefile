@@ -20,7 +20,8 @@ compile: selfie
 
 # Compile and run quine and compare its output to itself
 quine: selfie
-	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' | diff -q manuscript/code/quine.c -
+	./selfie -c manuscript/code/quine.c selfie.c -m 1 | sed '/^.\/selfie/d' > quine.c
+	diff -q manuscript/code/quine.c quine.c
 
 # Demonstrate available escape sequences
 escape: selfie
@@ -158,12 +159,13 @@ everything: all assemble spike qemu boolector btormc grader grade
 
 # Clean up
 clean:
-	rm -rf *.m
-	rm -rf *.s
-	rm -rf *.smt
-	rm -rf *.btor2
-	rm -rf *.sat
-	rm -rf selfie
-	rm -rf selfie.exe
-	rm -rf manuscript/code/symbolic/*.smt
-	rm -rf manuscript/code/symbolic/*.btor2
+	rm -f *.m
+	rm -f *.s
+	rm -f *.smt
+	rm -f *.btor2
+	rm -f *.sat
+	rm -f selfie
+	rm -f selfie.exe
+	rm -f quine.c
+	rm -f manuscript/code/symbolic/*.smt
+	rm -f manuscript/code/symbolic/*.btor2
