@@ -13,77 +13,77 @@ ENTRY(_start)
 SECTIONS
 {
 #ifdef FW_PAYLOAD_OFFSET
-	. = FW_TEXT_START + FW_PAYLOAD_OFFSET;
+  . = FW_TEXT_START + FW_PAYLOAD_OFFSET;
 #else
-	. = ALIGN(FW_PAYLOAD_ALIGN);
+  . = ALIGN(FW_PAYLOAD_ALIGN);
 #endif
 
-	PROVIDE(_payload_start = .);
+  PROVIDE(_payload_start = .);
 
-	. = ALIGN(0x1000); /* Need this to create proper sections */
+  . = ALIGN(0x1000); /* Need this to create proper sections */
 
-	/* Beginning of the code section */
+  /* Beginning of the code section */
 
-	.text :
-	{
-		PROVIDE(_text_start = .);
-		*(.entry)
-		*(.text)
-		. = ALIGN(8);
-		PROVIDE(_text_end = .);
-	}
+  .text :
+  {
+    PROVIDE(_text_start = .);
+    *(.entry)
+    *(.text)
+    . = ALIGN(8);
+    PROVIDE(_text_end = .);
+  }
 
-	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+  . = ALIGN(0x1000); /* Ensure next section is page aligned */
 
-	/* End of the code sections */
+  /* End of the code sections */
 
-	/* Beginning of the read-only data sections */
+  /* Beginning of the read-only data sections */
 
-	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+  . = ALIGN(0x1000); /* Ensure next section is page aligned */
 
-	.rodata :
-	{
-		PROVIDE(_rodata_start = .);
-		*(.rodata .rodata.*)
-		. = ALIGN(8);
-		PROVIDE(_rodata_end = .);
-	}
+  .rodata :
+  {
+    PROVIDE(_rodata_start = .);
+    *(.rodata .rodata.*)
+    . = ALIGN(8);
+    PROVIDE(_rodata_end = .);
+  }
 
-	/* End of the read-only data sections */
+  /* End of the read-only data sections */
 
-	/* Beginning of the read-write data sections */
+  /* Beginning of the read-write data sections */
 
-	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+  . = ALIGN(0x1000); /* Ensure next section is page aligned */
 
-	.data :
-	{
-		PROVIDE(_data_start = .);
+  .data :
+  {
+    PROVIDE(_data_start = .);
 
-		*(.data)
-		*(.data.*)
-		*(.readmostly.data)
-		*(*.data)
-        *(.sdata)
-		. = ALIGN(8);
+    *(.data)
+    *(.data.*)
+    *(.readmostly.data)
+    *(*.data)
+    *(.sdata)
+    . = ALIGN(8);
 
-		PROVIDE(_data_end = .);
-	}
+    PROVIDE(_data_end = .);
+  }
 
-	. = ALIGN(0x1000); /* Ensure next section is page aligned */
+  . = ALIGN(0x1000); /* Ensure next section is page aligned */
 
-	.bss :
-	{
-		PROVIDE(_bss_start = .);
-		*(.bss)
-		*(.bss.*)
-        *(.sbss)
-		. = ALIGN(8);
-		PROVIDE(_bss_end = .);
-	}
+  .bss :
+  {
+    PROVIDE(_bss_start = .);
+    *(.bss)
+    *(.bss.*)
+    *(.sbss)
+    . = ALIGN(8);
+    PROVIDE(_bss_end = .);
+  }
 
-	/* End of the read-write data sections */
+  /* End of the read-write data sections */
 
-	. = ALIGN(0x1000); /* Need this to create proper sections */
+  . = ALIGN(0x1000); /* Need this to create proper sections */
 
-	PROVIDE(_payload_end = .);
+  PROVIDE(_payload_end = .);
 }
