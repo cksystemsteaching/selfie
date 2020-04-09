@@ -950,13 +950,13 @@ RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can
 
 #### Initialization
 
-The first two instructions are the `lui` and `addi` instructions which allow us to initialize CPU registers with signed integer values. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
+The first two RISC-U instructions we introduce are the `lui` and `addi` instructions which allow us to initialize CPU registers with signed integer values. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
 
-We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same). Here is an example:
+We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an example:
 
 `0x38: 0x00810293: addi t0,sp,8`
 
-where `0x38` is the address of the instruction in memory, `0x00810293` is the 32-bit *binary code* of the instruction in memory, and `addi t0,sp,8` is the human-readable version of the instruction in *assembly code*. In other words, `0x00810293` and `addi t0,sp,8` mean exactly the same thing, just encoded differently. For the machine, `0x00810293` is all it needs while for us `addi t0,sp,8` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
+where `0x38` is the address of the instruction, `0x00810293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,8` is the human-readable version of the instruction in *assembly code*. In other words, `0x00810293` and `addi t0,sp,8` mean exactly the same thing, just encoded differently. For the machine, `0x00810293` is all it needs while for us `addi t0,sp,8` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
 
 The instruction `addi t0,sp,8` makes the CPU add the *immediate* value 8 to the value stored in register `sp` and then store the result in register `t0`. We denote that behavior by `t0 = sp + 8` where `=` is not equality in a mathematical sense. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t0` to the value to which the *expression* `sp + 8` evaluates. Thus, with `t0 = sp + 8` we do not assert equality between `t0` and `sp + 8` but rather denote the process of assigning a value to a register.
 
@@ -976,7 +976,7 @@ After regrouping the bits you can spot both register numbers `2` and `5`:
  b 000000001000 00010 000 00101 0010011
 ```
 
-as well as the *opcode* `19` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. An immediate value such as `8` is data encoded in code whereas register numbers `2` and `5` are names or addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is sometimes referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other machine instructions which we introduce below.
+as well as the *opcode* `19` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. An immediate value such as `8` is data encoded in code whereas register numbers `2` and `5` are addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is sometimes referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other machine instructions which we introduce below.
 
 Let us go back to the example. You might ask yourself how `addi t0,sp,8` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction:
 
@@ -988,7 +988,7 @@ There is one important detail that we should mention here. How does the CPU add 
 
 The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 8` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 8` evaluates to 7 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
 
-Let us explore two more important use cases of `addi` other than initializing registers before moving on:
+Let us explore two more important use cases of `addi` other than initializing registers:
 
 `0x08: 0x00028193: addi gp,t0,0`
 
@@ -1002,11 +1002,17 @@ Here is the general specification of the `addi` instruction:
 
 `addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
-Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with. Next to the `addi` mnemonic are the parameters of the instruction. The first two parameters, `rd` and `rs1`, are placeholders for any of the 32 general-purpose registers of the CPU such as `zero`, `sp`, `gp`, and `t0` in the above examples. The third parameter `imm` is obviously the immediate value.
+Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with. It corresponds to the opcode in the binary encoding of the instruction. Next to the `addi` mnemonic are the parameters of the instruction. The first two parameters, `rd` and `rs1`, are placeholders for any of the 32 general-purpose registers of the CPU such as `zero`, `sp`, `gp`, and `t0` in the above examples. The third parameter `imm` is obviously the immediate value.
 
-Most importantly, everything to the left of the colon ":" is *syntax*, that is, just notation while everything to the right of the colon ":" is *semantics*, that is, the actual meaning of the instruction. As we already saw in the above examples, the CPU performs the assignment `rd = rs1 + imm` with two registers `rd` and `rs1` and an immediate value `imm` between -2^11^ and 2^11^-1. After that, as indicated by the semicolon ";" the CPU increments the program counter `pc` by 4 (bytes) to prepare executing the instruction stored in memory at address `pc + 4` right after the current instruction at address `pc`. The `pc` is incremented by 4 because each instruction is encoded in 32 bits and thus occupies exactly 4 bytes in memory.
+Most importantly, everything to the left of the colon ":" is *syntax*, that is, just notation while everything to the right of the colon ":" is *semantics*, that is, the actual meaning of the instruction. As we already saw in the above examples, the CPU performs the assignment `rd = rs1 + imm` with two registers `rd` and `rs1` and an immediate value `imm` between -2^11^ and 2^11^-1. After that, as indicated by the semicolon ";" the CPU increments the program counter `pc` by 4 (bytes) to prepare executing the next instruction at address `pc + 4` right after the current instruction which is at address `pc`. The `pc` is incremented by 4 (bytes) because the `pc` refers to byte-addressed memory and each instruction is encoded in 32 bits, that is, 4 bytes.
 
-State transition.
+Let us go back to the copying example:
+
+`0x08: 0x00028193: addi gp,t0,0`
+
+`pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`
+
+State transition. Data flow, control flow.
 
 TODO: complete `addi` story and then move on to `lui`.
 
