@@ -22,7 +22,7 @@ on:
     - cron: '0 0 * * 5'
 
 jobs:
-  make-all-of-selfie:
+  make-all-of-selfie-on-linux-and-macos:
     name: Make all of selfie and run autograder baseline
     runs-on: ${{ matrix.os }}
     strategy:
@@ -41,7 +41,7 @@ jobs:
     - name: Run autograder baseline
       run: make grade
 
-  make-all-of-selfie:
+  make-all-of-selfie-on-windows:
     name: Make all of selfie
     runs-on: windows-latest
 
@@ -54,7 +54,7 @@ jobs:
       run: make all
     # python3 does not work
 
-  make-everything-of-selfie:
+  make-everything-of-selfie-on-docker:
     name: Make everything on docker
     runs-on: ubuntu-latest
 
