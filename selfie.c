@@ -1038,6 +1038,9 @@ void init_memory(uint64_t megabytes);
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
+uint64_t get_first_level_index_for_page(uint64_t page);
+uint64_t get_second_level_index_for_page(uint64_t page);
+
 uint64_t frame_for_page(uint64_t* table, uint64_t page);
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page);
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
@@ -1064,6 +1067,8 @@ uint64_t WORDSIZEINBITS = 32;
 
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
 uint64_t REGISTERSIZE    = 8; // must be twice of WORDSIZE
+
+uint64_t PAGETABLE_NODE_ENTRIES = 512; // i.e. one node has the size PAGESIZE
 
 uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
@@ -6749,12 +6754,53 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
   *paddr = data;
 }
 
+uint64_t get_first_level_index_for_page(uint64_t page) {
+  // The 9 least significant bits contain the second level index.
+  // The first level index comes afterwards.
+  return right_shift(page, 9);
+}
+
+uint64_t get_second_level_index_for_page(uint64_t page) {
+  // retrieve lowest 9 bits
+  return right_shift(left_shift(page, 55), 55);
+}
+
 uint64_t frame_for_page(uint64_t* table, uint64_t page) {
-  return (uint64_t) (table + page);
+  uint64_t* pt_node;
+  uint64_t  first_level_index;
+  uint64_t  second_level_index;
+
+  first_level_index = get_first_level_index_for_page(page);
+
+  second_level_index = get_second_level_index_for_page(page);
+
+  pt_node = (uint64_t*) *(table + first_level_index);
+
+  if (pt_node == (uint64_t*) 0) {
+    pt_node = palloc();
+
+    *(table + first_level_index) = (uint64_t) pt_node;
+  }
+
+  return (uint64_t) (pt_node + second_level_index);
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
-  return *(table + page);
+  uint64_t* pt_node;
+  uint64_t  first_level_index;
+  uint64_t  second_level_index;
+
+  first_level_index = get_first_level_index_for_page(page);
+
+  second_level_index = get_second_level_index_for_page(page);
+
+  pt_node = (uint64_t*) *(table + first_level_index);
+
+  if (pt_node == (uint64_t*) 0)
+    // page isn't mapped if the corresponding internal node isn't mapped
+    return 0;
+  else
+    return *(pt_node + second_level_index);
 }
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
@@ -9119,7 +9165,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / PAGETABLE_NODE_ENTRIES * REGISTERSIZE));
 
   // determine range of recently mapped pages
   set_lowest_lo_page(context, 0);
@@ -9365,13 +9411,28 @@ void save_context(uint64_t* context) {
 }
 
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
-  uint64_t* table;
+  uint64_t* table_root;
+  uint64_t* pt_node;
+  uint64_t  first_level_index;
+  uint64_t  second_level_index;
 
-  table = get_pt(context);
+  table_root = get_pt(context);
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-  *(table + page) = frame;
+  first_level_index = get_first_level_index_for_page(page);
+
+  second_level_index = get_second_level_index_for_page(page);
+
+  pt_node = (uint64_t*) *(table_root + first_level_index);
+
+  if (pt_node == (uint64_t*) 0) {
+    pt_node = palloc();
+
+    *(table_root + first_level_index) = (uint64_t) pt_node;
+  }
+
+  *(pt_node + second_level_index) = frame;
 
   // exploit spatial locality in page table caching
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
