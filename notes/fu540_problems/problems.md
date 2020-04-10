@@ -18,3 +18,4 @@ Der Global Pointer muss beim Start der Anwendung aufgesetzt werden. Hierbei ist 
 - https://content.riscv.org/wp-content/uploads/2019/03/11.15-Shiva-Chen-Compiler-Support-For-Linker-Relaxation-in-RISC-V-2019-03-13.pdf
 - https://groups.google.com/a/groups.riscv.org/forum/#!topic/sw-dev/60IdaZj27dY
 - https://gnu-mcu-eclipse.github.io/arch/riscv/programmer/#the-gp-global-pointer-register
+- https://github.com/riscv/riscv-elf-psabi-doc/blob/master/riscv-elf.md#absolute-addresses
