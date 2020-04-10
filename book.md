@@ -1004,17 +1004,25 @@ Here is the general specification of the `addi` instruction:
 
 Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with. It corresponds to the opcode in the binary encoding of the instruction. Next to the `addi` mnemonic are the parameters of the instruction. The first two parameters, `rd` and `rs1`, are placeholders for any of the 32 general-purpose registers of the CPU such as `zero`, `sp`, `gp`, and `t0` in the above examples. The third parameter `imm` is obviously the immediate value.
 
-Most importantly, everything to the left of the colon ":" is *syntax*, that is, just notation while everything to the right of the colon ":" is *semantics*, that is, the actual meaning of the instruction. As we already saw in the above examples, the CPU performs the assignment `rd = rs1 + imm` with two registers `rd` and `rs1` and an immediate value `imm` between -2^11^ and 2^11^-1. After that, as indicated by the semicolon ";" the CPU increments the program counter `pc` by 4 (bytes) to prepare executing the next instruction at address `pc + 4` right after the current instruction which is at address `pc`. The `pc` is incremented by 4 (bytes) because the `pc` refers to byte-addressed memory and each instruction is encoded in 32 bits, that is, 4 bytes.
+Most importantly, everything to the left of the colon is *syntax*, that is, just notation while everything to the right of the colon is *semantics*, that is, the actual meaning of the instruction. As we already saw in the above examples, the CPU performs the assignment `rd = rs1 + imm` with two registers `rd` and `rs1` and an immediate value `imm` between -2^11^ and 2^11^-1. After that, as indicated by the semicolon, the CPU increments the program counter `pc` by 4 (bytes) to prepare executing the next instruction at address `pc + 4` right after the current instruction which is at address `pc`. The `pc` is incremented by 4 (bytes) because it refers to byte-addressed memory and each instruction is encoded in 32 bits, that is, 4 bytes.
 
-Let us go back to the copying example:
+The execution of an instruction such as `addi` changes the state of the machine to a new state. Let us go back to the copying example to see how:
 
 `0x08: 0x00028193: addi gp,t0,0`
 
+When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`, as reported by the selfie system:
+
 `pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`
 
-State transition. Data flow, control flow.
+Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in memory, not at `0x08`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into memory starting at address `0x10000`, not at `0x0`.
 
-TODO: complete `addi` story and then move on to `lui`.
+Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which is `296176(0x484F0)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which is `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x484F0`, the value in `t0` has obviously been copied to `gp`.
+
+Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in our example, is called *control flow*.
+
+All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in memory. That's all!
+
+TODO: move on to `lui`.
 
 We begin with the `lui` instruction where `lui` stands for load upper immediate. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value `imm`, into the *upper* part of a 64-bit register `rd` and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits even from right to left.
 
