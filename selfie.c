@@ -9411,12 +9411,12 @@ void save_context(uint64_t* context) {
 }
 
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
-  uint64_t* table_root;
+  uint64_t* table;
   uint64_t* pt_node;
   uint64_t  first_level_index;
   uint64_t  second_level_index;
 
-  table_root = get_pt(context);
+  table = get_pt(context);
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
@@ -9424,12 +9424,12 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   second_level_index = get_second_level_index_for_page(page);
 
-  pt_node = (uint64_t*) *(table_root + first_level_index);
+  pt_node = (uint64_t*) *(table + first_level_index);
 
   if (pt_node == (uint64_t*) 0) {
     pt_node = palloc();
 
-    *(table_root + first_level_index) = (uint64_t) pt_node;
+    *(table + first_level_index) = (uint64_t) pt_node;
   }
 
   *(pt_node + second_level_index) = frame;
