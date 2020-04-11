@@ -1022,17 +1022,25 @@ Let us reflect on what is going on here. When the CPU executes an instruction, a
 
 All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in memory. That's all!
 
-In order to see how immediate values that do not fit into 12 bits can be used to initialize a register, we introduce the `lui` instruction where `lui` stands for *load upper immediate*. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value `imm`, into the *upper* part of a 64-bit register `rd` and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits from right to left. The RISC-V ISA specification of the `lui` instruction looks like this:
+In order to see how immediate values that do not fit into 12 bits can be used to initialize a register, we introduce the `lui` instruction where `lui` stands for *load upper immediate*. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value, into the *upper* part of a 64-bit register and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits, like decimal digits, from right to left. Since we are now able to read RISC-V ISA specifications of instructions, here is what the specification of the `lui` instruction looks like:
 
 `lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19`
 
 Similar to the `addi` instruction, the immediate value `imm` is sign-extended to 64 bits before doing anything else. Then, the CPU performs `rd = imm * 2^12`. The multiplication operation by 2^12^ effectively *shifts* the bits of the sign-extended immediate value by 12 bits to the left, that is, from bit 0 to bit 12, to make room for the signed 12-bit immediate value of a subsequent `addi` instruction. We see that in just a moment.
 
-In computer science *bitwise shifting* is a standard operation. Left-shifting adds 0s at the right end of a number, also called *logical left shift*. With right-shifting, there is the choice of adding 0s or 1s at the left end. Just adding 0s at the left end is called *logical right shift*. Adding 1s, if the MSB, that is, the sign bit is 1, and otherwise 0s, is called *arithmetic right shift* because it preserves the sign of the shifted number.
+In computer science *bitwise shifting* is a standard operation. Left-shifting adds 0s at the right end of a binary number, also called *logical left shift*. With right-shifting, there is the choice of adding 0s or 1s at the left end. Just adding 0s at the left end is called *logical right shift*. Adding 1s, if the MSB, that is, the sign bit is 1, and otherwise adding 0s, is called *arithmetic right shift* because it preserves the sign of the shifted binary number. In any case, we only need logical left and logical right shift but not arithmetic right shift.
 
-In any case, we only need logical left and logical right shift...
+Interestingly, multiplying and dividing binary numbers with powers of base 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of base 10 rather than base 2, of course. In order to keep our notation as simple as possible, we avoid using dedicated bitwise shifting instructions and operators even though they exist. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
 
+TODO: explain example:
 
+0x00(~1): 0x000482B7: lui t0,0x48
+0x04(~1): 0x4F028293: addi t0,t0,1264
+0x08(~1): 0x00028193: addi gp,t0,0
+
+pc=0x10000: lui t0,0x48: |- t0=0x0 -> t0=0x48000
+pc=0x10004: addi t0,t0,1264: t0=294912(0x48000) |- t0=294912(0x48000) -> t0=296176(0x484F0)
+pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0
 
 #### Memory
 
