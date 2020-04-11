@@ -1030,17 +1030,21 @@ Similar to the `addi` instruction, the immediate value `imm` is sign-extended to
 
 In computer science *bitwise shifting* is a standard operation. Left-shifting adds 0s at the right end of a binary number, also called *logical left shift*. With right-shifting, there is the choice of adding 0s or 1s at the left end. Just adding 0s at the left end is called *logical right shift*. Adding 1s, if the MSB, that is, the sign bit is 1, and otherwise adding 0s, is called *arithmetic right shift* because it preserves the sign of the shifted binary number. In any case, we only need logical left and logical right shift but not arithmetic right shift.
 
-Interestingly, multiplying and dividing binary numbers with powers of base 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of base 10 rather than base 2, of course. In order to keep our notation as simple as possible, we avoid using dedicated bitwise shifting instructions and operators even though they exist. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
+Interestingly, multiplying and dividing binary numbers with powers of base 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of base 10 rather than base 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
 
-TODO: explain example:
+Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `t0` with the hexadecimal value `0x484F0` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x484F0` into the 8 MSBs `0x48` and the 12 LSBs `0x4F0` (which is 1264 in decimal) and then do this:
 
-0x00(~1): 0x000482B7: lui t0,0x48
-0x04(~1): 0x4F028293: addi t0,t0,1264
-0x08(~1): 0x00028193: addi gp,t0,0
+0x00: 0x000482B7: lui t0,0x48
+0x04: 0x4F028293: addi t0,t0,1264
+
+Observe that `0x48` is encoded in 20 bits as immediate value `0x00048` in the binary code `0x000482B7` of the `lui t0,0x48` instruction. Also, `0x4F0` is encoded as immediate value in the binary code `0x4F028293` of the `addi t0,t0,1264` instruction. Executing the code results in the following two state transitions:
 
 pc=0x10000: lui t0,0x48: |- t0=0x0 -> t0=0x48000
 pc=0x10004: addi t0,t0,1264: t0=294912(0x48000) |- t0=294912(0x48000) -> t0=296176(0x484F0)
-pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0
+
+Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x48000` which is the immediate value `0x48` shifted to the left by 12 bits. The following `addi` instruction inserts its immediate value `0x4F0` right into these 12 bits so that `t0` contains `0x484F0` when the `addi` is done, as desired.
+
+What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the `add` and `mul` instructions introduced below. We nevertheless do not show how here but encourage you to try once you know how `add` and `mul` work. It is a nice exercise in machine programming.
 
 #### Memory
 
