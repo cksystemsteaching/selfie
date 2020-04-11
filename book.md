@@ -998,7 +998,7 @@ obviously makes the CPU *copy* the value in register `t0` to register `gp` while
 
 makes the CPU *decrement* register `sp` by 8. Making the CPU *increment* a register is of course also possible using positive immediate values. Copying, incrementing, and decrementing registers is often needed and done using `addi` but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
 
-Here is the general specification of the `addi` instruction:
+Here is the specification of the `addi` instruction taken from the official RISC-V ISA:
 
 `addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
@@ -1010,25 +1010,29 @@ The execution of an instruction such as `addi` changes the state of the machine 
 
 `0x08: 0x00028193: addi gp,t0,0`
 
-When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`, as reported by the selfie system:
+When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`. The selfie system reports that as follows:
 
 `pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`
 
 Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in memory, not at `0x08`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into memory starting at address `0x10000`, not at `0x0`.
 
-Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which is `296176(0x484F0)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which is `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x484F0`, the value in `t0` has obviously been copied to `gp`.
+Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `296176(0x484F0)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x484F0`, the value in `t0` has obviously been copied to `gp`.
 
 Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in our example, is called *control flow*.
 
 All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in memory. That's all!
 
-TODO: move on to `lui`.
-
-We begin with the `lui` instruction where `lui` stands for load upper immediate. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value `imm`, into the *upper* part of a 64-bit register `rd` and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits even from right to left.
-
-The specification of the instruction looks like this:
+In order to see how immediate values that do not fit into 12 bits can be used to initialize a register, we introduce the `lui` instruction where `lui` stands for *load upper immediate*. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value `imm`, into the *upper* part of a 64-bit register `rd` and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits from right to left. The RISC-V ISA specification of the `lui` instruction looks like this:
 
 `lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19`
+
+Similar to the `addi` instruction, the immediate value `imm` is sign-extended to 64 bits before doing anything else. Then, the CPU performs `rd = imm * 2^12`. The multiplication operation by 2^12^ effectively *shifts* the bits of the sign-extended immediate value by 12 bits to the left, that is, from bit 0 to bit 12, to make room for the signed 12-bit immediate value of a subsequent `addi` instruction. We see that in just a moment.
+
+In computer science *bitwise shifting* is a standard operation. Left-shifting adds 0s at the right end of a number, also called *logical left shift*. With right-shifting, there is the choice of adding 0s or 1s at the left end. Just adding 0s at the left end is called *logical right shift*. Adding 1s, if the MSB, that is, the sign bit is 1, and otherwise 0s, is called *arithmetic right shift* because it preserves the sign of the shifted number.
+
+In any case, we only need logical left and logical right shift...
+
+
 
 #### Memory
 
