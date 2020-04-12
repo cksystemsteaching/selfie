@@ -962,21 +962,23 @@ The instruction `addi t0,sp,8` makes the CPU add the *immediate* value 8 to the 
 
 Sure, after the assignment is done, the value in `t0` is equal to the value to which `sp + 8` evaluates but that is still a different statement. The difference is sometimes emphasized by using `:=` to denote an assignment instead of just `=`. Unfortunately, however, `=` is standard notation for assignments in many programming languages which is why we stick to using `=`. Equality, on the other hand, is denoted by `==` in many programming languages, so we use `==` to denote equality from now on.
 
-Alright, but why is the value `8` called immediate value? This is because the value is encoded in the binary code of the instruction itself. You can spot the `8` right there in `0x00810293`. In fact, the `0x008` portion of `0x00810293` is the immediate value encoded as signed 12-bit integer. Can we spot `t0` and `sp` as well? Sure, they are just a bit more difficult to find. Register `sp` is register number `2` and register `t0` is register number `5` among the 32 general-purpose registers of the CPU. Then, take a look at the binary code, not just in hexadecimal but, well, in binary:
+Alright, but why is the value `8` called immediate value? This is because the value is encoded in the binary code of the instruction itself. You can spot the `8` right there in `0x00810293`. In fact, the `0x008` portion of `0x00810293` is the immediate value encoded as signed 12-bit integer. Can we spot `t0` and `sp` as well? Sure, they are just a bit more difficult to find. Register `sp` is register number `2` and register `t0` is register number `5` among the 32 general-purpose registers of the CPU. Then, take a look at the binary code, not just in hexadecimal but, well, in binary notation:
 
 ```
 0x    0    0    8    1    0    2    9    3
  b 0000 0000 1000 0001 0000 0010 1001 0011
 ```
 
-After regrouping the bits you can spot both register numbers `2` and `5`:
+After regrouping the bits (and the hexadecimal digits) you can spot both register numbers `2` and `5` which are encoded in 5 bits each because 5 bits are enough to address all 32, that is, 2^5^ general-purpose registers:
 
 ```
-              8     2         5      19
+              8     2         5    0x13
  b 000000001000 00010 000 00101 0010011
 ```
 
-as well as the *opcode* `19` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. An immediate value such as `8` is data encoded in code whereas register numbers `2` and `5` are addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is sometimes referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other machine instructions which we introduce below.
+There is also the *opcode* `0x13` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. Which bits encode what exactly depends on the instruction and is determined by its *format*. The `addi` instruction is encoded according to the so-called *I-Format*.
+
+Notice that an immediate value such as `8` is data encoded in code whereas register numbers `2` and `5` are addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other instructions which we introduce below.
 
 Let us go back to the example. You might ask yourself how `addi t0,sp,8` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction:
 
@@ -1037,14 +1039,30 @@ Before moving on to other instructions, here is an example of how `lui` and `add
 0x00: 0x000482B7: lui t0,0x48
 0x04: 0x4F028293: addi t0,t0,1264
 
-Observe that `0x48` is encoded in 20 bits as immediate value `0x00048` in the binary code `0x000482B7` of the `lui t0,0x48` instruction. Also, `0x4F0` is encoded as immediate value in the binary code `0x4F028293` of the `addi t0,t0,1264` instruction. Executing the code results in the following two state transitions:
+Observe that `0x48` is encoded in 20 bits as immediate value `0x00048` in the binary code `0x000482B7` of the `lui t0,0x48` instruction. Also, `0x4F0` is encoded as immediate value in the binary code `0x4F028293` of the `addi t0,t0,1264` instruction. But back to the binary code of the `lui` instruction:
+
+```
+0x    0    0    0    4    8    2    B    7
+ b 0000 0000 0000 0100 1000 0010 1011 0111
+```
+
+After regrouping the bits (and the hexadecimal digits) you can spot register `t0`, that is, register number `5`:
+
+```
+                   0x48     5    0x37
+ b 00000000000001001000 00101 0110111
+```
+
+as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `0110111`. The `lui` instruction is encoded according to the so-called *U-Format* which is obviously different than the I-Format of the `addi` instruction. The U-Format encodes two parameters, a 20-bit immediate value and one register whereas the I-Format encodes three parameters, a 12-bit immediate value and two registers. What we find fascinating is how each RISC-V instruction is squeezed into 32 bits. There went a lot of thought into how to do that so that hardware can decode and execute binary code fast!
+
+Alright, back to executing the `lui` followed by the `addi` instruction which results in the following two state transitions:
 
 pc=0x10000: lui t0,0x48: |- t0=0x0 -> t0=0x48000
 pc=0x10004: addi t0,t0,1264: t0=294912(0x48000) |- t0=294912(0x48000) -> t0=296176(0x484F0)
 
-Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x48000` which is the immediate value `0x48` shifted to the left by 12 bits. The following `addi` instruction inserts its immediate value `0x4F0` right into these 12 bits so that `t0` contains `0x484F0` when the `addi` is done, as desired.
+Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x48000` which is the immediate value `0x48` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x4F0` right into these 12 bits so that `t0` contains `0x484F0` when `addi` is done, just as desired.
 
-What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the `add` and `mul` instructions introduced below. We nevertheless do not show how here but encourage you to try once you know how `add` and `mul` work. It is a nice exercise in machine programming.
+What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how `add` and `mul` work. It is a nice exercise in machine programming.
 
 #### Memory
 
