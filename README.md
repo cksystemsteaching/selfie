@@ -19,7 +19,7 @@ Selfie is implemented in a single (!) file and kept minimal for simplicity. Ther
 
 1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
 2. Slides: There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
-3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/master/grader/HOWTO.md) with compiler and operating systems assignments.
+3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/master/grader/README.md) with compiler and operating systems assignments.
 4. Book: There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) reaching out to everyone with an interest in learning about computer science.
 5. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
 6. Twitter: Follow us at [twitter.com/christophkirsch](https://twitter.com/christophkirsch)
