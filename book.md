@@ -944,13 +944,15 @@ The lesson learned here is important. The fact that our machine can only execute
 
 ### Instructions
 
-Before we go through the 14 RISC-U instructions let us take a look at the exact state of a RISC-U machine again but now using a bit more terminology. A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers numbered `0` to `31` and denoted `zero`, `ra`, `sp`, `gp`, `tp`, `t0`-`t2`, `s0`-`s1`, `a0`-`a7`, `s2`-`s11`, `t3`-`t6`, and 4GB of byte-addressed memory. Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored.
+Let us take a look at the exact state of a RISC-U machine again but now using a bit more terminology. A RISC-U machine has a 64-bit program counter denoted `pc`, 32 general-purpose 64-bit registers numbered `0` to `31` and denoted `zero`, `ra`, `sp`, `gp`, `tp`, `t0`-`t2`, `s0`-`s1`, `a0`-`a7`, `s2`-`s11`, `t3`-`t6`, and 4GB of byte-addressed memory. Register `zero` always contains the value 0. Any attempts to update the value in `zero` are ignored.
 
-RISC-U instructions are 32-bit, two per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in RISC-U instructions may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
+The RISC-U ISA features 14 instructions: `lui` and `addi` for initializing registers, `ld` and `sd` for accessing memory, `add`, `sub`, `mul`, `divu`, and `remu` for arithmetic operations, `sltu` for comparing integers, `beq`, `jal`, and `jalr` for controlling the `pc`, and `ecall` for input/output.
+
+Each RISC-U instruction is encoded in 32 bits and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
 #### Initialization
 
-The first two RISC-U instructions we introduce are the `lui` and `addi` instructions which allow us to initialize CPU registers with signed integer values. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
+The first two RISC-U instructions we introduce are the `lui` and `addi` instructions which allow us to initialize CPU registers. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
 
 We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an example:
 
@@ -1016,13 +1018,13 @@ When executed, the instruction makes the CPU copy the value in register `t0` to 
 
 `pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`
 
-Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in memory, not at `0x08`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into memory starting at address `0x10000`, not at `0x0`.
+Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in main memory, not at `0x08`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into main memory starting at address `0x10000`, not at `0x0`.
 
 Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `296176(0x484F0)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x484F0`, the value in `t0` has obviously been copied to `gp`.
 
 Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in our example, is called *control flow*.
 
-All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in memory. That's all!
+All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in main memory. That's all!
 
 In order to see how immediate values that do not fit into 12 bits can be used to initialize a register, we introduce the `lui` instruction where `lui` stands for *load upper immediate*. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value, into the *upper* part of a 64-bit register and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits, like decimal digits, from right to left. Since we are now able to read RISC-V ISA specifications of instructions, here is what the specification of the `lui` instruction looks like:
 
@@ -1068,11 +1070,11 @@ Notice that the `lui` instruction does not depend on the state of the machine. T
 
 What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the arithmetic `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how arithmetic instructions work. It is a nice exercise in machine programming.
 
-However, before introducing arithmetic instructions we expand our initialization story from registers to memory. Since we are now able to initialize registers to any value we like, the next question is how to do the same with memory.
+However, before introducing arithmetic instructions we expand our initialization story from registers to main memory. Since we are now able to initialize registers to any value we like, the next question is how to do the same with main memory.
 
 #### Memory
 
-TODO: introduce sd
+The next two RISC-U instructions we introduce are the `ld` and `sd` instructions which allow us to access main memory. Again, all examples are real, executable code of the selfie system.
 
 `0x30: 0xFEA1BC23: sd a0,-8(gp)`
 
@@ -1100,7 +1102,7 @@ TODO: introduce sd
 
 #### Control
 
-`beq rs1,rs2,imm`: `if (rs1 == rs2) pc = pc + imm else pc = pc + 4` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
+`beq rs1,rs2,imm`: `if (rs1 == rs2) { pc = pc + imm } else { pc = pc + 4 }` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
 
