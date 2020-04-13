@@ -50,7 +50,7 @@ The parameter `imm` denotes a signed integer value represented by a fixed number
 
 #### Control
 
-`beq rs1,rs2,imm`: `if (rs1 == rs2) pc = pc + imm else pc = pc + 4` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
+`beq rs1,rs2,imm`: `if (rs1 == rs2) { pc = pc + imm } else { pc = pc + 4 }` with `-2^12 <= imm < 2^12` and `imm % 2 == 0`
 
 `jal rd,imm`: `rd = pc + 4; pc = pc + imm` with `-2^20 <= imm < 2^20` and `imm % 2 == 0`
 
