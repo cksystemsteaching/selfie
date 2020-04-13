@@ -948,7 +948,7 @@ Let us take a look at the exact state of a RISC-U machine again but now using a 
 
 The RISC-U ISA features 14 instructions: `lui` and `addi` for initializing registers, `ld` and `sd` for accessing memory, `add`, `sub`, `mul`, `divu`, and `remu` for arithmetic operations, `sltu` for comparing integers, `beq`, `jal`, and `jalr` for controlling the `pc`, and `ecall` for input/output.
 
-Each RISC-U instruction is encoded in 32 bits and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
+RISC-U instruction are encoded in 32 bits (4 bytes) each and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
 #### Initialization
 
