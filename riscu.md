@@ -14,9 +14,9 @@ Register `zero` always contains the value 0. Any attempts to update the value in
 
 ## Instructions
 
-RISC-U instructions are encoded in 32 bits (4 bytes) each and stored two per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity.
+RISC-U instructions are encoded in 32 bits (4 bytes) each and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity.
 
-The parameters `rd`, `rs1`, and `rs2` used in RISC-U instructions may denote any of the 32 general-purpose registers.
+The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers.
 
 The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
