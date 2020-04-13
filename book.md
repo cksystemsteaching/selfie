@@ -1036,9 +1036,11 @@ Interestingly, multiplying and dividing binary numbers with powers of base 2, su
 
 Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x484F0` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x484F0` into the 8 MSBs `0x48` and the 12 LSBs `0x4F0` (which is 1264 in decimal) and then do this:
 
+```
 0x00: 0x000482B7: lui t0,0x48
 0x04: 0x4F028293: addi t0,t0,1264
 0x08: 0x00028193: addi gp,t0,0
+```
 
 Observe that `0x48` is encoded in 20 bits as immediate value `0x00048` in the binary code `0x000482B7` of the `lui t0,0x48` instruction. Also, `0x4F0` is encoded as immediate value in the binary code `0x4F028293` of the `addi t0,t0,1264` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
 
@@ -1071,6 +1073,10 @@ However, before introducing arithmetic instructions we expand our initialization
 #### Memory
 
 TODO: introduce sd
+
+`0x30: 0xFEA1BC23: sd a0,-8(gp)`
+
+`pc=0x10030: sd a0,-8(gp): gp=0x484F0,a0=296176(0x484F0) |- mem[0x484E8]=0 -> mem[0x484E8]=a0=296176(0x484F0)`
 
 `sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
