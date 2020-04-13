@@ -1062,13 +1062,17 @@ pc=0x10004: addi t0,t0,1264: t0=294912(0x48000) |- t0=294912(0x48000) -> t0=2961
 
 Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x48000` which is the immediate value `0x48` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x4F0` right into these 12 bits so that `t0` contains `0x484F0` when `addi` is done, just as desired.
 
-What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how `add` and `mul` work. It is a nice exercise in machine programming.
+What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the arithmetic `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how arithmetic instructions work. It is a nice exercise in machine programming.
+
+However, before introducing arithmetic instructions we expand our initialization story from registers to memory. Since we are now able to initialize registers to any value we like, the next question is how to do the same with memory.
 
 #### Memory
 
-`ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
+TODO: introduce sd
 
 `sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
+
+`ld rd,imm(rs1)`: `rd = memory[rs1 + imm]; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
 #### Arithmetic
 
