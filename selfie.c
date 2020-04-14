@@ -6762,12 +6762,16 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
 uint64_t get_first_level_index_for_page(uint64_t page) {
   // The 9 least significant bits contain the second level index.
   // The first level index comes afterwards.
-  return right_shift(page, 9);
+  // The shift functions aren't used since they are too slow for
+  // this frequently called function.
+  return (page / 512);
 }
 
 uint64_t get_second_level_index_for_page(uint64_t page) {
-  // retrieve lowest 9 bits
-  return right_shift(left_shift(page, 55), 55);
+  // retrieve lowest 9 bits (left shift by 55 and right shift by 55)
+  // The shift functions aren't used since they are too slow for
+  // this frequently called function.
+  return ((page * 36028797018963970) / 36028797018963970);
 }
 
 uint64_t frame_for_page(uint64_t* table, uint64_t page) {
