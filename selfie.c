@@ -1501,26 +1501,27 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 13 | exit code       | exit code
 // | 14 | parent          | context that created this context
 // | 15 | virtual context | virtual context address
-// | 16 | name            | binary name loaded into context
+// | 16 | vctxt cached pt | dereferenced page table root note of the virtual context
+// | 17 | name            | binary name loaded into context
 // +----+-----------------+
 // symbolic extension:
 // +----+-----------------+
-// | 17 | execution depth | number of executed instructions
-// | 18 | path condition  | pointer to path condition
-// | 19 | symbolic memory | pointer to symbolic memory
-// | 20 | symbolic regs   | pointer to symbolic registers
-// | 21 | beq counter     | number of executed symbolic beq instructions
-// | 22 | merge location  | program location at which the context can possibly be merged (later)
-// | 23 | merge partner   | pointer to the context from which this context was created
-// | 24 | call stack      | pointer to a list containing the addresses of the procedures on the call stack
+// | 18 | execution depth | number of executed instructions
+// | 19 | path condition  | pointer to path condition
+// | 20 | symbolic memory | pointer to symbolic memory
+// | 21 | symbolic regs   | pointer to symbolic registers
+// | 22 | beq counter     | number of executed symbolic beq instructions
+// | 23 | merge location  | program location at which the context can possibly be merged (later)
+// | 24 | merge partner   | pointer to the context from which this context was created
+// | 25 | call stack      | pointer to a list containing the addresses of the procedures on the call stack
 // +----+-----------------+
 
 uint64_t* allocate_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
+  return smalloc(8 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
 }
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return smalloc(8 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1539,7 +1540,8 @@ uint64_t faulting_page(uint64_t* context)   { return (uint64_t) (context + 12); 
 uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 13); }
 uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 14); }
 uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 15); }
-uint64_t name(uint64_t* context)            { return (uint64_t) (context + 16); }
+uint64_t vctxt_cached_pt(uint64_t* context) { return (uint64_t) (context + 16); }
+uint64_t name(uint64_t* context)            { return (uint64_t) (context + 17); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1557,16 +1559,17 @@ uint64_t  get_faulting_page(uint64_t* context)   { return             *(context 
 uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 13); }
 uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 14); }
 uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 15); }
-char*     get_name(uint64_t* context)            { return (char*)     *(context + 16); }
+uint64_t* get_vctxt_cached_pt(uint64_t* context) { return (uint64_t*) *(context + 16); }
+char*     get_name(uint64_t* context)            { return (char*)     *(context + 17); }
 
-uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 17); }
-char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 18); }
-uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 19); }
-uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 20); }
-uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 21); }
-uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 22); }
-uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 23); }
-uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 24); }
+uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 18); }
+char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 19); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 20); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 21); }
+uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 22); }
+uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 23); }
+uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 24); }
+uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 25); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1584,16 +1587,17 @@ void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 12) 
 void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 13) = code; }
 void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 14) = (uint64_t) parent; }
 void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 15) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, char* name)                  { *(context + 16) = (uint64_t) name; }
+void set_vctxt_cached_pt(uint64_t* context, uint64_t* vctxt)  { *(context + 16) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, char* name)                  { *(context + 17) = (uint64_t) name; }
 
-void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 17) =            depth; }
-void set_path_condition(uint64_t* context, char* path)         { *(context + 18) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 19) = (uint64_t) memory; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 20) = (uint64_t) regs; }
-void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 21) =            counter; }
-void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 22) =            location; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 23) = (uint64_t) partner; }
-void set_call_stack(uint64_t* context, uint64_t* stack)        { *(context + 24) = (uint64_t) stack; }
+void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 18) =            depth; }
+void set_path_condition(uint64_t* context, char* path)         { *(context + 19) = (uint64_t) path; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 20) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 21) = (uint64_t) regs; }
+void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 22) =            counter; }
+void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 23) =            location; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 24) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)        { *(context + 25) = (uint64_t) stack; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1604,11 +1608,11 @@ void reset_microkernel();
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);
 uint64_t* cache_context(uint64_t* vctxt);
 
-void      save_context(uint64_t* context);
-void      map_page(uint64_t* context, uint64_t page, uint64_t frame);
-uint64_t* dereference_root_table(uint64_t* parent_table, uint64_t* table);
-void      restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
-void      restore_context(uint64_t* context);
+void save_context(uint64_t* context);
+void map_page(uint64_t* context, uint64_t page, uint64_t frame);
+void dereference_root_table(uint64_t* parent_table, uint64_t* table, uint64_t* cached_root);
+void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
+void restore_context(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1622,8 +1626,6 @@ uint64_t* current_context = (uint64_t*) 0; // context currently running
 uint64_t* used_contexts = (uint64_t*) 0; // doubly-linked list of used contexts
 uint64_t* free_contexts = (uint64_t*) 0; // singly-linked list of free contexts
 
-uint64_t* translated_table = (uint64_t*) 0; // root page table translated from vaddr to paddr in hypster
-
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_microkernel() {
@@ -1631,8 +1633,6 @@ void reset_microkernel() {
 
   while (used_contexts != (uint64_t*) 0)
     used_contexts = delete_context(used_contexts, used_contexts);
-
-  translated_table = zalloc(VIRTUALMEMORYSIZE / PAGESIZE / PAGETABLE_NODE_ENTRIES * REGISTERSIZE);
 }
 
 // -----------------------------------------------------------------
@@ -9187,6 +9187,10 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   set_parent(context, parent);
   set_virtual_context(context, vctxt);
 
+  // allocate zeroed memory for the cached virtual context root node
+  // TODO: reuse memory
+  set_vctxt_cached_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / PAGETABLE_NODE_ENTRIES * REGISTERSIZE));
+
   set_name(context, 0);
 
   if (symbolic) {
@@ -9260,6 +9264,7 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   set_exit_code(context, get_exit_code(original));
   set_parent(context, get_parent(original));
   set_virtual_context(context, get_virtual_context(original));
+  set_vctxt_cached_pt(context, get_vctxt_cached_pt(original));
   set_name(context, get_name(original));
 
   set_execution_depth(context, get_execution_depth(original));
@@ -9460,7 +9465,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 }
 
-uint64_t* dereference_root_table(uint64_t* parent_table, uint64_t* table) {
+void dereference_root_table(uint64_t* parent_table, uint64_t* table, uint64_t* cached_root) {
   uint64_t i;
 
   i = 0;
@@ -9470,21 +9475,25 @@ uint64_t* dereference_root_table(uint64_t* parent_table, uint64_t* table) {
     // The root table node is allocated using zalloc and may span over multiple pages
     // that might not be mapped due to lazy mapping.
     if (is_virtual_address_mapped(parent_table, (uint64_t) (table + i)))
-      *(translated_table + i) = (uint64_t) tlb(parent_table, load_virtual_memory(parent_table, (uint64_t) (table + i)));
+      *(cached_root + i) = (uint64_t) tlb(parent_table, load_virtual_memory(parent_table, (uint64_t) (table + i)));
     else
-      *(translated_table + i) = 0;
+      *(cached_root + i) = 0;
 
     i = i + 1;
   }
-
-  return translated_table;
 }
 
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
   uint64_t frame;
   uint64_t* deref_table;
 
-  deref_table = dereference_root_table(parent_table, table);
+  deref_table = get_vctxt_cached_pt(context);
+
+  // Only dereference pointers to leaf nodes if new pages have been mapped in the vctxt.
+  if (is_page_mapped(get_pt(context), hi) == 0)
+    dereference_root_table(parent_table, table, deref_table);
+  else if (is_page_mapped(get_pt(context), lo) == 0)
+    dereference_root_table(parent_table, table, deref_table);
 
   while (lo <= hi) {
     frame = load_physical_memory((uint64_t*) frame_for_page(deref_table, lo));
