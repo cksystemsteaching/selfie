@@ -1,10 +1,12 @@
 *__pycache__*
 /*.m
 /*.s
+/*.sat
 /*.smt
 /*.btor2
-/*.sat
 selfie
 selfie.exe
-manuscript/code/symbolic/*.smt
-manuscript/code/symbolic/*.btor2
+examples/*.m
+examples/*.s
+symbolic/*.smt
+symbolic/*.btor2
