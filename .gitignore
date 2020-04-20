@@ -1,12 +1,7 @@
 *__pycache__*
-/*.m
-/*.s
-/*.sat
-/*.smt
-/*.btor2
+*.m
+*.s
+*.smt
+*.btor2
 selfie
 selfie.exe
-examples/*.m
-examples/*.s
-symbolic/*.smt
-symbolic/*.btor2

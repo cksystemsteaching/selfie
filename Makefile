@@ -1,93 +1,95 @@
 # Compiler flags
 CFLAGS := -Wall -Wextra -O3 -m64 -D'uint64_t=unsigned long long'
 
+# Setting path
+PATH  := $(PATH):.
+SHELL := env PATH=$(PATH) $(SHELL)
+
 # Bootstrap selfie.c into selfie executable
 selfie: selfie.c
 	$(CC) $(CFLAGS) $< -o $@
 
-# Self-compile selfie.c into RISC-U selfie.m executable
-selfie.m: selfie
-	./selfie -c selfie.c -o selfie.m
+# Compile *.c including selfie.c into RISC-U *.m executable
+%.m: %.c selfie
+	selfie -c $< -o $@
 
-# Self-compile selfie.c into RISC-U selfie.s assembly
-selfie.s: selfie
-	./selfie -c selfie.c -s selfie.s
+# Compile *.c including selfie.c into RISC-U *.s assembly
+%.s: %.c selfie
+	selfie -c $< -s $@
+
+# Translate *.c including selfie.c into SMT-LIB model
+%-35.smt: %-35.c selfie
+	selfie -c $< -se 0 35 --merge-enabled
+%-10.smt: %-10.c selfie
+	selfie -c $< -se 0 10 --merge-enabled
+
+# Translate *.c including selfie.c into BTOR2 model
+%.btor2: %.c selfie
+	selfie -c $< -mc 0
 
 # Consider these targets as targets, not files
 .PHONY : compile quine escape debug replay os vm min mob smt mc sat all assemble spike qemu boolector btormc grader grade everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
-	./selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
+	selfie -c selfie.c -o selfie1.m -s selfie1.s -m 2 -c selfie.c -o selfie2.m -s selfie2.s
 	diff -q selfie1.m selfie2.m
 	diff -q selfie1.s selfie2.s
 
 # Compile and run quine and compare its output to itself
 quine: selfie
-	./selfie -c examples/quine.c selfie.c -m 1 | sed '/selfie/d' | diff --strip-trailing-cr examples/quine.c -
+	selfie -c examples/quine.c selfie.c -m 1 | sed '/selfie/d' | diff --strip-trailing-cr examples/quine.c -
 
 # Demonstrate available escape sequences
 escape: selfie
-	./selfie -c examples/escape.c -m 1
+	selfie -c examples/escape.c -m 1
 
 # Run debugger
 debug: selfie
-	./selfie -c examples/pointer.c -d 1
+	selfie -c examples/pointer.c -d 1
 
 # Run replay engine
 replay: selfie
-	./selfie -c examples/division-by-zero.c -r 1
+	selfie -c examples/division-by-zero.c -r 1
 
 # Run emulator on emulator
 os: selfie.m
-	./selfie -l selfie.m -m 2 -l selfie.m -m 1
+	selfie -l selfie.m -m 2 -l selfie.m -m 1
 
 # Self-compile on two virtual machines
 vm: selfie.m selfie.s
-	./selfie -l selfie.m -m 3 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie3.m -s selfie3.s
+	selfie -l selfie.m -m 3 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie3.m -s selfie3.s
 	diff -q selfie.m selfie3.m
 	diff -q selfie.s selfie3.s
 
 # Self-compile on two virtual machines on fully mapped virtual memory
 min: selfie.m selfie.s
-	./selfie -l selfie.m -min 15 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie4.m -s selfie4.s
+	selfie -l selfie.m -min 15 -l selfie.m -y 3 -l selfie.m -y 2 -c selfie.c -o selfie4.m -s selfie4.s
 	diff -q selfie.m selfie4.m
 	diff -q selfie.s selfie4.s
 
 # Run mobster, the emulator without pager
 mob: selfie
-	./selfie -c -mob 1
+	selfie -c -mob 1
+
+# Gather symbolic execution example files as .smt files
+smts := $(patsubst %.c,%.smt,$(wildcard symbolic/*.c))
 
 # Run monster as symbolic execution engine
-smt: selfie
-	./selfie -c symbolic/division-by-zero.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/invalid-memory-access.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/memory-access.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/nested-if-else.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/nested-if-else-reverse.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/nested-recursion.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/recursive-ackermann.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/recursive-factorial.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/recursive-fibonacci.c -se 0 10 --merge-enabled
-	./selfie -c symbolic/simple-assignment.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/simple-decreasing-loop.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/simple-if-else.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/simple-if-else-reverse.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/simple-if-without-else.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/simple-increasing-loop.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/three-level-nested-loop.c -se 0 35 --merge-enabled
-	./selfie -c symbolic/two-level-nested-loop.c -se 0 35 --merge-enabled
+smt: $(smts)
+
+# Gather symbolic execution example files as .btor2 files
+btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
 
 # Run monster as symbolic model generator
-mc: selfie
-	./selfie -c symbolic/simple-assignment.c -mc 0
+mc: $(btor2s) selfie.btor2
 
 # Run SAT solver
 sat: selfie.m
-	./selfie -sat examples/rivest.cnf
-	./selfie -l selfie.m -m 1 -sat examples/rivest.cnf
+	selfie -sat examples/rivest.cnf
+	selfie -l selfie.m -m 1 -sat examples/rivest.cnf
 
-# Run everything that does not require non-standard tools
+# Run everything that only requires standard tools
 all: compile quine debug replay os vm min mob smt mc sat
 
 # Test autograder
@@ -96,7 +98,7 @@ grader:
 
 # Run autograder
 grade:
-	./grader/self.py self-compile
+	grader/self.py self-compile
 
 # Assemble RISC-U with GNU toolchain for RISC-V
 assemble: selfie.s
@@ -118,44 +120,13 @@ qemu: selfie.m selfie.s
 
 # Test boolector SMT solver
 boolector: smt
-	boolector symbolic/division-by-zero.smt -e 0 > division-by-zero.sat
-	[ $$(grep ^sat$$ division-by-zero.sat | wc -l) -eq 3 ]
-	boolector symbolic/invalid-memory-access.smt -e 0 > invalid-memory-access.sat
-	[ $$(grep ^sat$$ invalid-memory-access.sat | wc -l) -eq 2 ]
-	boolector symbolic/memory-access.smt -e 0 > memory-access.sat
-	[ $$(grep ^sat$$ memory-access.sat | wc -l) -eq 1 ]
-	boolector symbolic/nested-if-else.smt -e 0 > nested-if-else.sat
-	[ $$(grep ^sat$$ nested-if-else.sat | wc -l) -eq 1 ]
-	boolector symbolic/nested-if-else-reverse.smt -e 0 > nested-if-else-reverse.sat
-	[ $$(grep ^sat$$ nested-if-else-reverse.sat | wc -l) -eq 1 ]
-	boolector symbolic/nested-recursion.smt -e 0 > nested-recursion.sat
-	[ $$(grep ^sat$$ nested-recursion.sat | wc -l) -eq 1 ]
-	boolector symbolic/recursive-ackermann.smt -e 0 > recursive-ackermann.sat
-	[ $$(grep ^sat$$ recursive-ackermann.sat | wc -l) -eq 1 ]
-	boolector symbolic/recursive-factorial.smt -e 0 > recursive-factorial.sat
-	[ $$(grep ^sat$$ recursive-factorial.sat | wc -l) -eq 1 ]
-	boolector symbolic/recursive-fibonacci.smt -e 0 > recursive-fibonacci.sat
-	[ $$(grep ^sat$$ recursive-fibonacci.sat | wc -l) -eq 1 ]
-	boolector symbolic/simple-assignment.smt -e 0 > simple-assignment.sat
-	[ $$(grep ^sat$$ simple-assignment.sat | wc -l) -eq 1 ]
-	boolector symbolic/simple-decreasing-loop.smt -e 0 > simple-decreasing-loop.sat
-	[ $$(grep ^sat$$ simple-decreasing-loop.sat | wc -l) -eq 1 ]
-	boolector symbolic/simple-if-else.smt -e 0 > simple-if-else.sat
-	[ $$(grep ^sat$$ simple-if-else.sat | wc -l) -eq 1 ]
-	boolector symbolic/simple-if-else-reverse.smt -e 0 > simple-if-else-reverse.sat
-	[ $$(grep ^sat$$ simple-if-else-reverse.sat | wc -l) -eq 1 ]
-	boolector symbolic/simple-if-without-else.smt -e 0 > simple-if-without-else.sat
-	[ $$(grep ^sat$$ simple-if-without-else.sat | wc -l) -eq 1 ]
-	boolector symbolic/simple-increasing-loop.smt -e 0 > simple-increasing-loop.sat
-	[ $$(grep ^sat$$ simple-increasing-loop.sat | wc -l) -eq 1 ]
-	boolector symbolic/three-level-nested-loop.smt -e 0 > three-level-nested-loop.sat
-	[ $$(grep ^sat$$ three-level-nested-loop.sat | wc -l) -eq 1 ]
-	boolector symbolic/two-level-nested-loop.smt -e 0 > two-level-nested-loop.sat
-	[ $$(grep ^sat$$ two-level-nested-loop.sat | wc -l) -eq 1 ]
+	$(foreach file, $(wildcard symbolic/*-3-*.smt), [ $$(boolector $(file) -e 0 | grep -c ^sat$$) -eq 3 ];)
+	$(foreach file, $(wildcard symbolic/*-2-*.smt), [ $$(boolector $(file) -e 0 | grep -c ^sat$$) -eq 2 ];)
+	$(foreach file, $(wildcard symbolic/*-1-*.smt), [ $$(boolector $(file) -e 0 | grep -c ^sat$$) -eq 1 ];)
 
 # Test btormc bounded model checker
 btormc: mc
-	btormc symbolic/simple-assignment.btor2
+	$(foreach file, $(btor2s), btormc $(file);)
 
 # Run everything
 everything: all assemble spike qemu boolector btormc grader grade
@@ -164,7 +135,6 @@ everything: all assemble spike qemu boolector btormc grader grade
 clean:
 	rm -f *.m
 	rm -f *.s
-	rm -f *.sat
 	rm -f *.smt
 	rm -f *.btor2
 	rm -f selfie
