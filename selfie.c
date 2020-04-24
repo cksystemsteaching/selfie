@@ -6770,7 +6770,7 @@ uint64_t get_second_level_index_for_page(uint64_t page) {
 }
 
 uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t page) {
-  uint64_t* pt_node;
+  uint64_t* leaf_pt;
   uint64_t  first_level_index;
   uint64_t  second_level_index;
 
@@ -6779,19 +6779,19 @@ uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t pa
   second_level_index = get_second_level_index_for_page(page);
 
   if (hypervisor_table != (uint64_t*) 0)
-    pt_node = (uint64_t*) load_virtual_memory(hypervisor_table, (uint64_t) (table + first_level_index));
+    leaf_pt = (uint64_t*) load_virtual_memory(hypervisor_table, (uint64_t) (table + first_level_index));
   else
-    pt_node = (uint64_t*) *(table + first_level_index);
+    leaf_pt = (uint64_t*) *(table + first_level_index);
 
 
-  if (pt_node == (uint64_t*) 0)
+  if (leaf_pt == (uint64_t*) 0)
     return 0;
   else
-    return (uint64_t) (pt_node + second_level_index);
+    return (uint64_t) (leaf_pt + second_level_index);
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
-  uint64_t* pt_node;
+  uint64_t* leaf_pt;
   uint64_t  first_level_index;
   uint64_t  second_level_index;
 
@@ -6799,13 +6799,13 @@ uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
 
   second_level_index = get_second_level_index_for_page(page);
 
-  pt_node = (uint64_t*) *(table + first_level_index);
+  leaf_pt = (uint64_t*) *(table + first_level_index);
 
-  if (pt_node == (uint64_t*) 0)
+  if (leaf_pt == (uint64_t*) 0)
     // page isn't mapped if the corresponding internal node isn't mapped
     return 0;
   else
-    return *(pt_node + second_level_index);
+    return *(leaf_pt + second_level_index);
 }
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
@@ -9417,7 +9417,7 @@ void save_context(uint64_t* context) {
 
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
-  uint64_t* pt_node;
+  uint64_t* leaf_pt;
   uint64_t  first_level_index;
   uint64_t  second_level_index;
 
@@ -9429,15 +9429,15 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   second_level_index = get_second_level_index_for_page(page);
 
-  pt_node = (uint64_t*) *(table + first_level_index);
+  leaf_pt = (uint64_t*) *(table + first_level_index);
 
-  if (pt_node == (uint64_t*) 0) {
-    pt_node = palloc();
+  if (leaf_pt == (uint64_t*) 0) {
+    leaf_pt = palloc();
 
-    *(table + first_level_index) = (uint64_t) pt_node;
+    *(table + first_level_index) = (uint64_t) leaf_pt;
   }
 
-  *(pt_node + second_level_index) = frame;
+  *(leaf_pt + second_level_index) = frame;
 
   // exploit spatial locality in page table caching
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
