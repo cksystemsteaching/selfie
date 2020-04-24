@@ -1041,7 +1041,7 @@ void     store_physical_memory(uint64_t* paddr, uint64_t data);
 uint64_t get_first_level_index_for_page(uint64_t page);
 uint64_t get_second_level_index_for_page(uint64_t page);
 
-uint64_t frame_for_page(uint64_t* table, uint64_t page);
+uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t page);
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page);
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
@@ -6769,7 +6769,7 @@ uint64_t get_second_level_index_for_page(uint64_t page) {
   return ((page * 36028797018963970) / 36028797018963970);
 }
 
-uint64_t frame_for_page(uint64_t* table, uint64_t page) {
+uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t page) {
   uint64_t* pt_node;
   uint64_t  first_level_index;
   uint64_t  second_level_index;
@@ -6778,7 +6778,11 @@ uint64_t frame_for_page(uint64_t* table, uint64_t page) {
 
   second_level_index = get_second_level_index_for_page(page);
 
-  pt_node = (uint64_t*) *(table + first_level_index);
+  if (hypervisor_table != (uint64_t*) 0)
+    pt_node = (uint64_t*) load_virtual_memory(hypervisor_table, (uint64_t) (table + first_level_index));
+  else
+    pt_node = (uint64_t*) *(table + first_level_index);
+
 
   if (pt_node == (uint64_t*) 0)
     return 0;
@@ -9459,8 +9463,8 @@ void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, 
   uint64_t frame;
 
   while (lo <= hi) {
-    if (is_virtual_address_mapped(parent_table, frame_for_page(table, lo))) {
-      frame = load_virtual_memory(parent_table, frame_for_page(table, lo));
+    if (is_virtual_address_mapped(parent_table, frame_for_page(table, parent_table, lo))) {
+      frame = load_virtual_memory(parent_table, frame_for_page(table, parent_table, lo));
 
       map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
     }
