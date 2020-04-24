@@ -6780,13 +6780,10 @@ uint64_t frame_for_page(uint64_t* table, uint64_t page) {
 
   pt_node = (uint64_t*) *(table + first_level_index);
 
-  if (pt_node == (uint64_t*) 0) {
-    pt_node = palloc();
-
-    *(table + first_level_index) = (uint64_t) pt_node;
-  }
-
-  return (uint64_t) (pt_node + second_level_index);
+  if (pt_node == (uint64_t*) 0)
+    return 0;
+  else
+    return (uint64_t) (pt_node + second_level_index);
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
