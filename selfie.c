@@ -1038,8 +1038,8 @@ void init_memory(uint64_t megabytes);
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
-uint64_t get_first_level_index_for_page(uint64_t page);
-uint64_t get_second_level_index_for_page(uint64_t page);
+uint64_t root_page_table_index_for_page(uint64_t page);
+uint64_t leaf_page_table_index_for_page(uint64_t page);
 
 uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t page);
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page);
@@ -6754,7 +6754,7 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
   *paddr = data;
 }
 
-uint64_t get_first_level_index_for_page(uint64_t page) {
+uint64_t root_page_table_index_for_page(uint64_t page) {
   // The 9 least significant bits contain the second level index.
   // The first level index comes afterwards.
   // The shift functions aren't used since they are too slow for
@@ -6762,7 +6762,7 @@ uint64_t get_first_level_index_for_page(uint64_t page) {
   return (page / 512);
 }
 
-uint64_t get_second_level_index_for_page(uint64_t page) {
+uint64_t leaf_page_table_index_for_page(uint64_t page) {
   // retrieve lowest 9 bits (left shift by 55 and right shift by 55)
   // The shift functions aren't used since they are too slow for
   // this frequently called function.
@@ -6771,38 +6771,25 @@ uint64_t get_second_level_index_for_page(uint64_t page) {
 
 uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t page) {
   uint64_t* leaf_pt;
-  uint64_t  first_level_index;
-  uint64_t  second_level_index;
 
-  first_level_index = get_first_level_index_for_page(page);
-
-  second_level_index = get_second_level_index_for_page(page);
-
-  leaf_pt = (uint64_t*) load_virtual_memory(hypervisor_table, (uint64_t) (table + first_level_index));
-
+  leaf_pt = (uint64_t*) load_virtual_memory(hypervisor_table, (uint64_t) (table + root_page_table_index_for_page(page)));
 
   if (leaf_pt == (uint64_t*) 0)
     return 0;
   else
-    return (uint64_t) (leaf_pt + second_level_index);
+    return (uint64_t) (leaf_pt + leaf_page_table_index_for_page(page));
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
   uint64_t* leaf_pt;
-  uint64_t  first_level_index;
-  uint64_t  second_level_index;
 
-  first_level_index = get_first_level_index_for_page(page);
-
-  second_level_index = get_second_level_index_for_page(page);
-
-  leaf_pt = (uint64_t*) *(table + first_level_index);
+  leaf_pt = (uint64_t*) *(table + root_page_table_index_for_page(page));
 
   if (leaf_pt == (uint64_t*) 0)
     // page isn't mapped if the corresponding internal node isn't mapped
     return 0;
   else
-    return *(leaf_pt + second_level_index);
+    return *(leaf_pt + leaf_page_table_index_for_page(page));
 }
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
@@ -9415,26 +9402,23 @@ void save_context(uint64_t* context) {
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
   uint64_t* leaf_pt;
-  uint64_t  first_level_index;
-  uint64_t  second_level_index;
+  uint64_t  root_pt_index;
 
   table = get_pt(context);
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-  first_level_index = get_first_level_index_for_page(page);
+  root_pt_index = root_page_table_index_for_page(page);
 
-  second_level_index = get_second_level_index_for_page(page);
-
-  leaf_pt = (uint64_t*) *(table + first_level_index);
+  leaf_pt = (uint64_t*) *(table + root_pt_index);
 
   if (leaf_pt == (uint64_t*) 0) {
     leaf_pt = palloc();
 
-    *(table + first_level_index) = (uint64_t) leaf_pt;
+    *(table + root_pt_index) = (uint64_t) leaf_pt;
   }
 
-  *(leaf_pt + second_level_index) = frame;
+  *(leaf_pt + leaf_page_table_index_for_page(page)) = frame;
 
   // exploit spatial locality in page table caching
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
