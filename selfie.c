@@ -1604,11 +1604,10 @@ void reset_microkernel();
 uint64_t* create_context(uint64_t* parent, uint64_t* vctxt);
 uint64_t* cache_context(uint64_t* vctxt);
 
-void      save_context(uint64_t* context);
-void      map_page(uint64_t* context, uint64_t page, uint64_t frame);
-uint64_t* dereference_root_table(uint64_t* parent_table, uint64_t* table);
-void      restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
-void      restore_context(uint64_t* context);
+void save_context(uint64_t* context);
+void map_page(uint64_t* context, uint64_t page, uint64_t frame);
+void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
+void restore_context(uint64_t* context);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1622,8 +1621,6 @@ uint64_t* current_context = (uint64_t*) 0; // context currently running
 uint64_t* used_contexts = (uint64_t*) 0; // doubly-linked list of used contexts
 uint64_t* free_contexts = (uint64_t*) 0; // singly-linked list of free contexts
 
-uint64_t* translated_table = (uint64_t*) 0; // root page table translated from vaddr to paddr in hypster
-
 // ------------------------- INITIALIZATION ------------------------
 
 void reset_microkernel() {
@@ -1631,8 +1628,6 @@ void reset_microkernel() {
 
   while (used_contexts != (uint64_t*) 0)
     used_contexts = delete_context(used_contexts, used_contexts);
-
-  translated_table = zalloc(VIRTUALMEMORYSIZE / PAGESIZE / PAGETABLE_NODE_ENTRIES * REGISTERSIZE);
 }
 
 // -----------------------------------------------------------------
@@ -6785,10 +6780,13 @@ uint64_t frame_for_page(uint64_t* table, uint64_t page) {
 
   pt_node = (uint64_t*) *(table + first_level_index);
 
-  if (pt_node == (uint64_t*) 0)
-    return 0;
-  else
-    return (uint64_t) (pt_node + second_level_index);
+  if (pt_node == (uint64_t*) 0) {
+    pt_node = palloc();
+
+    *(table + first_level_index) = (uint64_t) pt_node;
+  }
+
+  return (uint64_t) (pt_node + second_level_index);
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
@@ -9460,36 +9458,15 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   }
 }
 
-uint64_t* dereference_root_table(uint64_t* parent_table, uint64_t* table) {
-  uint64_t i;
-
-  i = 0;
-
-  while (i < VIRTUALMEMORYSIZE / PAGESIZE / PAGETABLE_NODE_ENTRIES) {
-    // Check whether the root table entry is mapped.
-    // The root table node is allocated using zalloc and may span over multiple pages
-    // that might not be mapped due to lazy mapping.
-    if (is_virtual_address_mapped(parent_table, (uint64_t) (table + i)))
-      *(translated_table + i) = (uint64_t) tlb(parent_table, load_virtual_memory(parent_table, (uint64_t) (table + i)));
-    else
-      *(translated_table + i) = 0;
-
-    i = i + 1;
-  }
-
-  return translated_table;
-}
-
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi) {
   uint64_t frame;
-  uint64_t* deref_table;
-
-  deref_table = dereference_root_table(parent_table, table);
 
   while (lo <= hi) {
-    frame = load_physical_memory((uint64_t*) frame_for_page(deref_table, lo));
+    if (is_virtual_address_mapped(parent_table, frame_for_page(table, lo))) {
+      frame = load_virtual_memory(parent_table, frame_for_page(table, lo));
 
-    map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
+      map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
+    }
 
     lo = lo + 1;
   }
