@@ -6778,10 +6778,7 @@ uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t pa
 
   second_level_index = get_second_level_index_for_page(page);
 
-  if (hypervisor_table != (uint64_t*) 0)
-    leaf_pt = (uint64_t*) load_virtual_memory(hypervisor_table, (uint64_t) (table + first_level_index));
-  else
-    leaf_pt = (uint64_t*) *(table + first_level_index);
+  leaf_pt = (uint64_t*) load_virtual_memory(hypervisor_table, (uint64_t) (table + first_level_index));
 
 
   if (leaf_pt == (uint64_t*) 0)
