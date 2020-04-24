@@ -1068,7 +1068,7 @@ uint64_t WORDSIZEINBITS = 32;
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
 uint64_t REGISTERSIZE    = 8; // must be twice of WORDSIZE
 
-uint64_t PAGETABLE_NODE_ENTRIES = 512; // i.e. one node has the size PAGESIZE
+uint64_t LEAF_PAGE_TABLE_ENTRIES = 512; // i.e. one leaf page table has the size PAGESIZE
 
 uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
@@ -6755,18 +6755,11 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
 }
 
 uint64_t root_page_table_index_for_page(uint64_t page) {
-  // The 9 least significant bits contain the second level index.
-  // The first level index comes afterwards.
-  // The shift functions aren't used since they are too slow for
-  // this frequently called function.
-  return (page / 512);
+  return (page / LEAF_PAGE_TABLE_ENTRIES);
 }
 
 uint64_t leaf_page_table_index_for_page(uint64_t page) {
-  // retrieve lowest 9 bits (left shift by 55 and right shift by 55)
-  // The shift functions aren't used since they are too slow for
-  // this frequently called function.
-  return ((page * 36028797018963970) / 36028797018963970);
+  return (page - root_page_table_index_for_page(page) * LEAF_PAGE_TABLE_ENTRIES);
 }
 
 uint64_t frame_for_page(uint64_t* table, uint64_t* hypervisor_table, uint64_t page) {
@@ -9154,7 +9147,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / PAGETABLE_NODE_ENTRIES * REGISTERSIZE));
+  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / LEAF_PAGE_TABLE_ENTRIES * REGISTERSIZE));
 
   // determine range of recently mapped pages
   set_lowest_lo_page(context, 0);
