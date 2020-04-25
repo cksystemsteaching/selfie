@@ -23,6 +23,14 @@ selfie: selfie.c
 %.btor2: %.c selfie
 	./selfie -c $< -mc 0
 
+# Generate selfie library as selfie.h
+selfie.h:
+	sed 's/main(/selfie_main(/' selfie.c > selfie.h
+
+# Compile *.c with selfie.h as library into *.selfie executable
+%.selfie: %.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
 # Consider these targets as targets, not files
 .PHONY : compile quine escape debug replay os vm min mob smt mc sat all assemble spike qemu boolector btormc grader grade everything clean
 
@@ -80,10 +88,10 @@ btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
 # Run monster as symbolic model generator
 mc: $(btor2s) selfie.btor2
 
-# Run SAT solver
-sat: selfie.m
-	./selfie -sat examples/rivest.cnf
-	./selfie -l selfie.m -m 1 -sat examples/rivest.cnf
+# Run SAT solver natively and as RISC-U executable
+sat: tools/babysat.selfie selfie selfie.h
+	./tools/babysat.selfie examples/rivest.cnf
+	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
 
 # Run everything that only requires standard tools
 all: compile quine debug replay os vm min mob smt mc sat
@@ -133,9 +141,12 @@ clean:
 	rm -f *.s
 	rm -f *.smt
 	rm -f *.btor2
+	rm -f *.selfie
 	rm -f selfie
+	rm -f selfie.h
 	rm -f selfie.exe
 	rm -f examples/*.m
 	rm -f examples/*.s
 	rm -f symbolic/*.smt
 	rm -f symbolic/*.btor2
+	rm -f tools/*.selfie
