@@ -9,9 +9,8 @@ Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
 1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
 2. a self-executing emulator called mipster that executes RISC-U code including itself when compiled with starc,
 3. a self-hosting hypervisor called hypster that provides RISC-U virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself,
-4. a self-translating modeling engine called monster that translates RISC-U code including itself to SMT-LIB and BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks,
-5. a simple SAT solver that reads CNF DIMACS files, and
-6. a tiny C* library called libcstar utilized by selfie.
+4. a self-translating modeling engine called monster that translates RISC-U code including itself to SMT-LIB and BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks, and
+5. a tiny C* library called libcstar utilized by selfie.
 
 Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support built into the emulator. Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sifive.com/boards) as well as on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
 
@@ -53,7 +52,7 @@ Once you have successfully compiled `selfie.c` you may invoke `selfie` without a
 
 ```bash
 $ ./selfie
-./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ]
+./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ]
 ```
 
 In this case, `selfie` responds with its usage pattern.
@@ -109,8 +108,6 @@ which is again semantically equivalent to executing `selfie` without any argumen
 The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code. See below for an example.
 
 The `-se` and `-mc` options invoke the monster model generator. With option `-se`, monster generates an SMT-LIB file named after the given binary but with extension `.smt`. The `0-4096` value is interpreted as bound on the length of any symbolically executed code branch in number of instructions. Value `0` means that the code is executed symbolically without a bound. With option `-mc`, monster generates a BTOR2 file named after the executed binary but with extension `.btor2`. The `0-4096` value is interpreted as exit code. Value `0` means that any code execution that terminates with a non-zero exit code is seen as erroneous whereas a non-zero value means that any code execution that terminates with a different exit code is seen as erroneous.
-
-The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The implementation is naive and only works on small instances.
 
 ### Self-compilation
 
