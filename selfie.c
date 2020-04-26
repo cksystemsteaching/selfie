@@ -74,18 +74,17 @@ as part of the emulator and a hypervisor that can run as part of the
 emulator as well as on top of it, all with the same code.
 
 The modeling engine implements a simple yet sound and complete
-translation of RISC-U code to SMT-LIB and BTOR2 formulae. The SAT
-solver implements a naive brute-force enumeration of all possible
-variable assignments. Both engine and solver facilitate teaching
-the absolute basics of SAT and SMT solving applied to real code.
+translation of RISC-U code to SMT-LIB and BTOR2 formulae, and
+facilitates teaching the absolute basics of SAT and SMT solving
+applied to real code.
 
 Selfie is the result of many years of teaching systems engineering.
 The design of the compiler is inspired by the Oberon compiler of
 Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
 RISC-V community around Professor David Patterson from UC Berkeley.
 The design of the hypervisor is inspired by microkernels of Professor
-Jochen Liedtke from University of Karlsruhe. The modeling engine and
-the SAT solver are inspired by Professor Armin Biere from JKU Linz.
+Jochen Liedtke from University of Karlsruhe. The modeling engine is
+inspired by Professor Armin Biere from JKU Linz.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1847,7 +1846,7 @@ uint64_t up_flow_end_nid = 50; // nid of most recent update of current upper bou
 uint64_t ecall_flow_nid = 10;
 
 // -----------------------------------------------------------------
-// ----------------------------- MAIN ------------------------------
+// ------------------- CONSOLE ARGUMENT SCANNER --------------------
 // -----------------------------------------------------------------
 
 void init_selfie(uint64_t argc, uint64_t* argv);
@@ -12328,7 +12327,7 @@ uint64_t selfie_model_generate() {
 }
 
 // -----------------------------------------------------------------
-// ----------------------------- MAIN ------------------------------
+// ------------------- CONSOLE ARGUMENT SCANNER --------------------
 // -----------------------------------------------------------------
 
 uint64_t number_of_remaining_arguments() {
@@ -12423,6 +12422,10 @@ uint64_t selfie() {
 
   return EXITCODE_NOERROR;
 }
+
+// -----------------------------------------------------------------
+// ----------------------------- MAIN ------------------------------
+// -----------------------------------------------------------------
 
 // selfie bootstraps int and char** to uint64_t and uint64_t*, respectively!
 int main(int argc, char** argv) {
