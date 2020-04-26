@@ -8,6 +8,14 @@ Department of Computer Sciences of the University of Salzburg
 in Austria. For further information and code please refer to:
 
 http://selfie.cs.uni-salzburg.at
+
+Babysat is a naive implementation of a SAT solver for educational
+purposes. Babysat enumerates all possible variable assignments and
+checks satisfiability for each without any optimizations whatsoever.
+Babysat can therefore also be seen as an executable specification of
+a SAT solver. Babysat comes with a DIMACS CNF parser, is written in C*,
+and uses code from the selfie system. See the Makefile for details on
+how to build babysat.
 */
 
 // -----------------------------------------------------------------
