@@ -1115,10 +1115,8 @@ void selfie_translate() {
   if (code_length == 0) {
     printf2("%s: nothing to translate to output file %s\n", selfie_name, binary_name);
 
-    return EXITCODE_BADARGUMENTS;
+    exit(EXITCODE_BADARGUMENTS);
   }
-
-  // assert: x86_binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   reset_library();
   reset_interpreter();
@@ -1130,6 +1128,7 @@ void selfie_translate() {
 
   run = 0;
 
+  debug    = 0;
   symbolic = 0;
 
   do_switch(current_context, current_context, TIMEROFF);
@@ -1303,6 +1302,8 @@ int main(int argc, char** argv) {
   selfie_load();
 
   //selfie_translate();
+
+  // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
   selfie_output(binary_name);
 
