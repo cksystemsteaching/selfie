@@ -1304,7 +1304,7 @@ int main(int argc, char** argv) {
 
   //selfie_translate();
 
-  selfie_output();
+  selfie_output(binary_name);
 
   return EXITCODE_NOERROR;
 }

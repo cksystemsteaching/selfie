@@ -917,7 +917,7 @@ uint64_t  validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(char* name);
 
-void selfie_output();
+void selfie_output(char* filename);
 
 uint64_t* touch(uint64_t* memory, uint64_t length);
 
@@ -5901,10 +5901,10 @@ uint64_t open_write_only(char* name) {
   return fd;
 }
 
-void selfie_output() {
+void selfie_output(char* filename) {
   uint64_t fd;
 
-  binary_name = get_argument();
+  binary_name = filename;
 
   if (binary_length == 0) {
     printf2("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
@@ -12389,7 +12389,7 @@ uint64_t selfie() {
 
         return EXITCODE_BADARGUMENTS;
       } else if (string_compare(option, "-o"))
-        selfie_output();
+        selfie_output(get_argument());
       else if (string_compare(option, "-s"))
         selfie_disassemble(0);
       else if (string_compare(option, "-S"))
