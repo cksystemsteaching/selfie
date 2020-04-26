@@ -24,7 +24,7 @@ selfie: selfie.c
 	./selfie -c $< -mc 0
 
 # Generate selfie library as selfie.h
-selfie.h:
+selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
 # Compile *.c with selfie.h as library into *.selfie executable
