@@ -356,7 +356,7 @@ uint64_t x86GetRegister(uint64_t reg) {
   if(reg == REG_A7) return REG_RAX;
 
   if(reg == REG_ZR) {
-    print("Register $zero encounterd in x86GetRegister(). This should not happen! "); //FIXME: more information
+    print("Register $zero encountered in x86GetRegister(). This should not happen! "); //FIXME: more information
     println();
   }
 
@@ -1105,48 +1105,52 @@ void translate_to_x86_binary() {
 }
 
 void selfie_translate() {
-
-  if (code_length == 0) {
-    printf1("%s: nothing to translate\n", selfie_name);
-
-    return;
-  }
-
-  translate = 1;
-
-  x86Translate();
-
-  selfie_output();
-
-  translate = 0;
-}
-
-void x86Translate() {
   uint64_t size;
   uint64_t x86binaryLength;
   uint64_t i;
 
-  printf1("%s: selfie translating RISC-V binary to x86-64\n", selfie_name);
+  // use extension ".x86" in name of x86-64 binary file
+  binary_name = replace_extension(binary_name, "x86");
 
-  size = 30;
-  instr_bytes = malloc(size * SIZEOFUINT64);
+  if (code_length == 0) {
+    printf2("%s: nothing to translate to output file %s\n", selfie_name, binary_name);
 
-  init_memory(2);
+    return EXITCODE_BADARGUMENTS;
+  }
+
+  // assert: x86_binary_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  reset_library();
   reset_interpreter();
   reset_microkernel();
-  current_context = create_context(MY_CONTEXT, 0);
-  up_load_binary(current_context);
-  do_switch(current_context, current_context, TIMEROFF);
 
+  init_memory(1);
+
+  boot_loader();
+
+  run = 0;
+
+  symbolic = 0;
+
+  do_switch(current_context, current_context, TIMEROFF);
+ 
   x86DataLength = binary_length - code_length;
   binary_length = 0;
 
+  // reuse binary
+
   i = 0;
-  while (i < MAX_BINARY_LENGTH / SIZEOFUINT64STAR) {  //reuse binary
+  
+  while (i < MAX_BINARY_LENGTH / SIZEOFUINT64) {
     *(binary + i) = 0;
 
      i = i + 1;
   }
+
+  printf1("%s: translating RISC-V binary to x86-64\n", selfie_name);
+
+  size = 30;
+  instr_bytes = malloc(size * SIZEOFUINT64);
 
   while(pc < code_length + ELF_ENTRY_POINT) {
     fetch();
@@ -1221,7 +1225,7 @@ void x86Translate() {
   *(ELF_header + 41) = 0;
 }
 
-void selfie_translate(uint64_t verbose) {
+void selfie_original_translate(uint64_t verbose) {
   uint64_t data;
 
   assembly_name = get_argument();
@@ -1293,8 +1297,14 @@ int main(int argc, char** argv) {
   init_library();
 
   init_scanner();
+  init_register();
+  init_interpreter();
+  
+  selfie_load();
 
-  selfie_translate();
+  //selfie_translate();
+
+  selfie_output();
 
   return EXITCODE_NOERROR;
 }
