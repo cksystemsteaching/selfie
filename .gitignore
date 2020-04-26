@@ -3,5 +3,6 @@
 *.s
 *.smt
 *.btor2
+*.selfie
 selfie
 selfie.exe
