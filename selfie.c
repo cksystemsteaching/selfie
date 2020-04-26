@@ -6023,7 +6023,7 @@ void selfie_load() {
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
             printf5("%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
               selfie_name,
-              (char*) ELF_HEADER_LEN,
+              (char*) (ELF_HEADER_LEN + binary_length),
               (char*) (code_length / INSTRUCTIONSIZE),
               (char*) (binary_length - code_length),
               binary_name);
