@@ -1133,14 +1133,14 @@ void selfie_translate() {
   symbolic = 0;
 
   do_switch(current_context, current_context, TIMEROFF);
- 
+
   x86DataLength = binary_length - code_length;
   binary_length = 0;
 
   // reuse binary
 
   i = 0;
-  
+
   while (i < MAX_BINARY_LENGTH / SIZEOFUINT64) {
     *(binary + i) = 0;
 
@@ -1299,7 +1299,7 @@ int main(int argc, char** argv) {
   init_scanner();
   init_register();
   init_interpreter();
-  
+
   selfie_load();
 
   //selfie_translate();
