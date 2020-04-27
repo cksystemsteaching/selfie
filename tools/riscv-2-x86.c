@@ -1122,7 +1122,7 @@ void selfie_translate() {
   reset_interpreter();
   reset_microkernel();
 
-  init_memory(1);
+  init_memory(2);
 
   boot_loader();
 
@@ -1224,68 +1224,6 @@ void selfie_translate() {
   *(ELF_header + 41) = 0;
 }
 
-void selfie_original_translate(uint64_t verbose) {
-  uint64_t data;
-
-  assembly_name = get_argument();
-
-  if (code_length == 0) {
-    printf2("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
-
-    return;
-  }
-
-  // assert: assembly_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  assembly_fd = open_write_only(assembly_name);
-
-  if (signed_less_than(assembly_fd, 0)) {
-    printf2("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
-  output_name = assembly_name;
-  output_fd   = assembly_fd;
-
-  reset_library();
-  reset_interpreter();
-
-  run = 0;
-
-  disassemble_verbose = verbose;
-
-  while (pc < code_length) {
-    ir = load_instruction(pc);
-
-    decode();
-    translate_to_assembler();
-    println();
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
-
-  while (pc < binary_length) {
-    data = load_data(pc);
-
-    print_data(data);
-    println();
-
-    pc = pc + REGISTERSIZE;
-  }
-
-  disassemble_verbose = 0;
-
-  output_name = (char*) 0;
-  output_fd   = 1;
-
-  printf5("%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
-    (char*) number_of_written_characters,
-    (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) (binary_length - code_length),
-    assembly_name);
-}
-
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
@@ -1301,7 +1239,7 @@ int main(int argc, char** argv) {
 
   selfie_load();
 
-  //selfie_translate();
+  selfie_translate();
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
