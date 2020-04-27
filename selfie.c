@@ -1072,6 +1072,11 @@ uint64_t NUMBER_OF_LEAF_PTES = 512; // == PAGESIZE / REGISTERSIZE
 
 uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
+uint64_t PAGE_TABLE_LINEAR = 0; // use a linear page table
+uint64_t PAGE_TABLE_TREE   = 1; // use a two-level tree page table
+
+uint64_t PAGE_TABLE_STRUCTURE = 0; // we use the linear page table
+
 // ------------------------ GLOBAL VARIABLES -----------------------
 
 uint64_t page_frame_memory = 0; // size of memory for frames
@@ -6765,24 +6770,32 @@ uint64_t leaf_PTE(uint64_t page) {
 uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
   uint64_t* leaf_pte;
 
-  leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
+  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+    return (uint64_t) (table + page);
+  else {
+    leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
 
-  if (leaf_pte == (uint64_t*) 0)
-    return 0;
-  else
-    return (uint64_t) (leaf_pte + leaf_PTE(page));
+    if (leaf_pte == (uint64_t*) 0)
+      return 0;
+    else
+      return (uint64_t) (leaf_pte + leaf_PTE(page));
+  }
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
   uint64_t* leaf_pte;
 
-  leaf_pte = (uint64_t*) *(table + root_PTE(page));
+  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+    return *(table + page);
+  else {
+    leaf_pte = (uint64_t*) *(table + root_PTE(page));
 
-  if (leaf_pte == (uint64_t*) 0)
-    // page is unmapped if leaf PTE is unmapped
-    return 0;
-  else
-    return *(leaf_pte + leaf_PTE(page));
+    if (leaf_pte == (uint64_t*) 0)
+      // page is unmapped if leaf PTE is unmapped
+      return 0;
+    else
+      return *(leaf_pte + leaf_PTE(page));
+  }
 }
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
@@ -9147,7 +9160,11 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
+  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+  else
+    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
+
 
   // determine range of recently mapped pages
   set_lowest_lo_page(context, 0);
@@ -9401,17 +9418,21 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-  root_pte = root_PTE(page);
+  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+    *(table + page) = frame;
+  else {
+    root_pte = root_PTE(page);
 
-  leaf_pte = (uint64_t*) *(table + root_pte);
+    leaf_pte = (uint64_t*) *(table + root_pte);
 
-  if (leaf_pte == (uint64_t*) 0) {
-    leaf_pte = palloc();
+    if (leaf_pte == (uint64_t*) 0) {
+      leaf_pte = palloc();
 
-    *(table + root_pte) = (uint64_t) leaf_pte;
+      *(table + root_pte) = (uint64_t) leaf_pte;
+    }
+
+    *(leaf_pte + leaf_PTE(page)) = frame;
   }
-
-  *(leaf_pte + leaf_PTE(page)) = frame;
 
   // exploit spatial locality in page table caching
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
