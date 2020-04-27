@@ -1072,10 +1072,7 @@ uint64_t NUMBER_OF_LEAF_PTES = 512; // == PAGESIZE / REGISTERSIZE
 
 uint64_t PAGESIZE = 4096; // we use standard 4KB pages
 
-uint64_t PAGE_TABLE_LINEAR = 0; // use a linear page table
 uint64_t PAGE_TABLE_TREE   = 1; // use a two-level tree page table
-
-uint64_t PAGE_TABLE_STRUCTURE = 0; // we use the linear page table
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -6770,7 +6767,7 @@ uint64_t leaf_PTE(uint64_t page) {
 uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
   uint64_t* leaf_pte;
 
-  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+  if (PAGE_TABLE_TREE == 0)
     return (uint64_t) (table + page);
   else {
     leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
@@ -6785,7 +6782,7 @@ uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
   uint64_t* leaf_pte;
 
-  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+  if (PAGE_TABLE_TREE == 0)
     return *(table + page);
   else {
     leaf_pte = (uint64_t*) *(table + root_PTE(page));
@@ -9160,7 +9157,7 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+  if (PAGE_TABLE_TREE == 0)
     set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
   else
     set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
@@ -9418,7 +9415,7 @@ void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-  if (PAGE_TABLE_STRUCTURE == PAGE_TABLE_LINEAR)
+  if (PAGE_TABLE_TREE == 0)
     *(table + page) = frame;
   else {
     root_pte = root_PTE(page);
