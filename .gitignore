@@ -3,6 +3,7 @@
 *.s
 *.smt
 *.btor2
+*.h
 *.selfie
 *.x86
 selfie
