@@ -4,5 +4,6 @@
 *.smt
 *.btor2
 *.selfie
+*.x86
 selfie
 selfie.exe

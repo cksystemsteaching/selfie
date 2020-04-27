@@ -32,7 +32,7 @@ selfie.h: selfie.c
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt mc sat all assemble spike qemu boolector btormc grader grade everything clean
+.PHONY : compile quine escape debug replay os vm min mob smt mc sat x86 all assemble spike qemu boolector btormc grader grade everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -93,8 +93,14 @@ sat: tools/babysat.selfie selfie selfie.h
 	./tools/babysat.selfie examples/rivest.cnf
 	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
 
+# Run RISC-V-to-x86 translator natively and as RISC-U executable
+# TODO: check self-compilation
+x86: tools/riscv-2-x86.selfie selfie.m selfie selfie.h
+	./tools/riscv-2-x86.selfie selfie.m
+	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 selfie.m
+
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob smt mc sat
+all: compile quine debug replay os vm min mob smt mc sat x86
 
 # Test autograder
 grader:
@@ -142,6 +148,7 @@ clean:
 	rm -f *.smt
 	rm -f *.btor2
 	rm -f *.selfie
+	rm -f *.x86
 	rm -f selfie
 	rm -f selfie.h
 	rm -f selfie.exe
