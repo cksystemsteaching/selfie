@@ -1,3 +1,10 @@
+#############################
+#    Selfie Docker Image    #
+# selfie.cs.uni-salzburg.at #
+#############################
+
+ENV TZ=Europe/Vienna
+
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
