@@ -4942,6 +4942,9 @@ void emit_bootstrapping() {
   uint64_t padding;
   uint64_t* entry;
 
+  // TODO: clarify: this is needed for the binary translator
+  // emit_nop();
+
   // calculate the global pointer value
   gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
 
