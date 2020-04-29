@@ -3,12 +3,10 @@
 # selfie.cs.uni-salzburg.at #
 #############################
 
-ENV TZ=Europe/Vienna
-
 ###################################
 # PK (Proxy kernel) builder image #
 ###################################
-FROM ubuntu:rolling AS pkbuilder
+FROM ubuntu:latest AS pkbuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -16,7 +14,7 @@ WORKDIR $TOP
 
 # install tools to build pk
 RUN apt-get update \
-  && apt-get install --no-install-recommends -y \
+  && apt-get install -y --no-install-recommends \
        ca-certificates \
        gcc-riscv64-linux-gnu \
        git \
@@ -48,7 +46,7 @@ RUN mkdir -p $RISCV \
 #######################################
 # Spike (ISA simulator) builder image #
 #######################################
-FROM ubuntu:rolling AS spikebuilder
+FROM ubuntu:latest AS spikebuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -83,7 +81,7 @@ RUN mkdir -p $RISCV \
 ######################
 # QEMU builder image #
 ######################
-FROM ubuntu:rolling AS qemubuilder
+FROM ubuntu:latest AS qemubuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
@@ -102,11 +100,13 @@ RUN mkdir -p $RISCV/bin \
 ########################################
 # Boolector (SMT solver) builder image #
 ########################################
-FROM ubuntu:rolling AS boolectorbuilder
+FROM ubuntu:latest AS boolectorbuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 WORKDIR $TOP
+
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # install tools to build boolector
 RUN apt-get update \
@@ -141,11 +141,13 @@ RUN mkdir -p $RISCV \
 ##################################
 # Selfie interactive final image #
 ##################################
-FROM ubuntu:rolling
+FROM ubuntu:latest AS selfiebuilder
 
 # specify work directory and RISC-V install directory
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 WORKDIR $TOP
+
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # install git and basic build tools (gcc, make) for working with selfie,
 # and device-tree-compiler which is required for spike
@@ -159,7 +161,7 @@ RUN apt-get update \
        device-tree-compiler \
        git \
        python3.7 \
-  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 \
+##  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 \
   && rm -rf /var/lib/apt/lists/*
 
 # copy spike, pk, qemu and boolector from builder images
