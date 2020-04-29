@@ -103,7 +103,7 @@ x86: tools/riscv-2-x86.selfie selfie.m selfie selfie.h
 all: compile quine debug replay os vm min mob smt mc sat x86
 
 # Test autograder
-grader:
+grader: selfie
 	cd grader && python3 -m unittest discover -v
 
 # Run autograder

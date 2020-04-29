@@ -106,6 +106,7 @@ FROM ubuntu:latest AS boolectorbuilder
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 WORKDIR $TOP
 
+# Setting non-interactive mode
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # install tools to build boolector
@@ -147,6 +148,7 @@ FROM ubuntu:latest AS selfiebuilder
 ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
 WORKDIR $TOP
 
+# Setting non-interactive mode
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # install git and basic build tools (gcc, make) for working with selfie,
@@ -160,8 +162,8 @@ RUN apt-get update \
        make \
        device-tree-compiler \
        git \
-       python3.7 \
-##  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 \
+       python3.8 \
+  && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 \
   && rm -rf /var/lib/apt/lists/*
 
 # copy spike, pk, qemu and boolector from builder images
