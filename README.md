@@ -1,47 +1,40 @@
-# Selfie [![Build Status](https://travis-ci.org/cksystemsteaching/selfie.svg?branch=master)](https://travis-ci.org/cksystemsteaching/selfie)
+# Selfie [![selfie](https://github.com/cksystemsteaching/selfie/workflows/selfie/badge.svg)](https://github.com/cksystemsteaching/selfie/actions) [![Build Status](https://travis-ci.org/cksystemsteaching/selfie.svg?branch=master)](https://travis-ci.org/cksystemsteaching/selfie) [![Run on Repl.it](https://repl.it/badge/github/cksystemsteaching/selfie)](https://repl.it/github/cksystemsteaching/selfie)
 
 Selfie is a project of the [Computational Systems Group](http://www.cs.uni-salzburg.at/~ck) at the Department of Computer Sciences of the University of Salzburg in Austria.
 
 The Selfie Project provides an educational platform for teaching undergraduate and graduate students the design and implementation of programming languages and runtime systems. The focus is on the construction of compilers, libraries, operating systems, and even virtual machine monitors. The common theme is to identify and resolve self-reference in systems code which is seen as the key challenge when teaching systems engineering, hence the name.
 
-There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie. There is also a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) using selfie even more ambitiously reaching out to everyone with an interest in learning about computer science.
-
 Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
 
-1. a self-compiling compiler called starc that compiles
-   a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to
-   a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
-2. a self-executing emulator called mipster that executes
-   RISC-U code including itself when compiled with starc,
-3. a self-hosting hypervisor called hypster that provides
-   RISC-U virtual machines that can host all of selfie,
-   that is, starc, mipster, and hypster itself,
-4. a self-translating modeling engine called monster that
-   translates RISC-U code including itself to SMT-LIB and
-   BTOR2 formulae that are satisfiable if and only if
-   there is input to the code such that the code exits
-   with non-zero exit codes, performs division by zero,
-   or accesses memory outside of allocated memory blocks,
-5. a simple SAT solver that reads CNF DIMACS files, and
-6. a tiny C* library called libcstar utilized by selfie.
+1. a self-compiling compiler called starc that compiles a tiny but still fast [subset of C](https://github.com/cksystemsteaching/selfie/blob/master/semantics.md) called C Star ([C*](https://github.com/cksystemsteaching/selfie/blob/master/grammar.md)) to a tiny and easy-to-teach subset of RISC-V called [RISC-U](https://github.com/cksystemsteaching/selfie/blob/master/riscu.md),
+2. a self-executing emulator called mipster that executes RISC-U code including itself when compiled with starc,
+3. a self-hosting hypervisor called hypster that provides RISC-U virtual machines that can host all of selfie, that is, starc, mipster, and hypster itself,
+4. a self-translating modeling engine called monster that translates RISC-U code including itself to SMT-LIB and BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks, and
+5. a tiny C* library called libcstar utilized by selfie.
 
-Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support built into the emulator. Selfie generates ELF binaries that run on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
+Selfie is implemented in a single (!) file and kept minimal for simplicity. There is also a simple in-memory linker, a RISC-U disassembler, a profiler, and a debugger with replay as well as minimal operating system support built into the emulator. Selfie generates ELF binaries that run on real [RISC-V hardware](https://www.sifive.com/boards) as well as on [QEMU](https://www.qemu.org) and are compatible with the official [RISC-V](https://riscv.org) toolchain, in particular the [spike emulator](https://github.com/riscv/riscv-isa-sim) and the [pk kernel](https://github.com/riscv/riscv-pk).
 
-For further information and support please refer to [http://selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
+## Support
 
-## Supported Platforms
-
-Selfie runs on Mac, Linux, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
+1. Slack: Join the conversation in the #selfie channel at [cksystemsteaching.slack.com](https://join.slack.com/t/cksystemsteaching/shared_invite/zt-cp3kb9uq-ACUnAuI8DBdmULQXIjW15A)
+2. Slides: There are classroom [slides](http://selfie.cs.uni-salzburg.at/slides) that provide a comprehensive introduction to the design and implementation of selfie.
+3. Autograder: There is an [autograder](https://github.com/cksystemsteaching/selfie/blob/master/grader/README.md) with compiler and operating systems assignments.
+4. Book: There is a free book in early draft form called [Selfie: Computer Science for Everyone](http://leanpub.com/selfie) reaching out to everyone with an interest in learning about computer science.
+5. Code: The selfie code is open source and available at [github.com/cksystemsteaching/selfie](https://github.com/cksystemsteaching/selfie)
+6. Twitter: Follow us at [twitter.com/christophkirsch](https://twitter.com/christophkirsch)
+7. Web: The selfie homepage is at [selfie.cs.uni-salzburg.at](http://selfie.cs.uni-salzburg.at)
 
 ## Installing Selfie
 
+Selfie runs in the cloud and natively on Mac, Linux, and Windows machines and possibly other systems that have a terminal and a C compiler installed. However, even if there is no C compiler installed on your machine or you only have access to a web browser you can still run selfie.
+
 There are at least three ways to install and run selfie, from real simple to a bit more difficult:
 
-1. If you have access to a Mac, Linux, or Windows machine download and install [docker](https://docker.com). Then, open a terminal window and type `docker run -it cksystemsteaching/selfie`. Besides simplicity, the key advantage of using docker is that you can run selfie out of the box natively on your machine but also on QEMU as well as on spike. Both emulators and the SMT solver boolector are pre-installed in the [selfie docker image](https://hub.docker.com/r/cksystemsteaching/selfie).
+1. In the cloud: if you only have access to a web browser, just click [here](https://repl.it/github/cksystemsteaching/selfie). Alternatively, create a [github](https://github.com) account, unless you already have one, and fork [selfie](https://github.com/cksystemsteaching/selfie) into your github account. Then, create a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
 
-2. Instead of using docker, you may also just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip), and then open a terminal window to run selfie on your machine. However, for this to work you need to have a C compiler installed on your machine. We recommend using [clang](https://clang.llvm.org) or [gcc](https://gcc.gnu.org).
+2. In docker on your machine: if you have access to a Mac, Linux, or Windows machine download and install [docker](https://docker.com). Then, open a terminal window and type `docker run -it cksystemsteaching/selfie`. Besides simplicity, the key advantage of using docker is that you can run selfie out of the box on your machine but also on QEMU as well as on spike. Both emulators and the SMT solver boolector are pre-installed in the [selfie docker image](https://hub.docker.com/r/cksystemsteaching/selfie).
 
-3. If you only have access to a web browser, create a [github](https://github.com) account, unless you already have one, and fork [selfie](https://github.com/cksystemsteaching/selfie) into your github account. Then, create a [cloud9](https://c9.io) student account, connect it to your github account, verify your email address and set a password (important!), and finally clone your fork of selfie into a new cloud9 workspace.
+3. Natively on your machine: instead of using docker, you may also just download and unzip [selfie](https://github.com/cksystemsteaching/selfie/archive/master.zip), and then open a terminal window to run selfie natively on your machine. However, for this to work you need to have a C compiler installed on your machine. We recommend using [clang](https://clang.llvm.org) or [gcc](https://gcc.gnu.org).
 
 At this point we assume that you have a system that supports running selfie. Below we use the `make` command assuming it is installed on your system which is usually the case. However, we also show the command invoked by `make` so that you can always invoke that command manually if your system does not have `make` installed.
 
@@ -59,7 +52,7 @@ Once you have successfully compiled `selfie.c` you may invoke `selfie` without a
 
 ```bash
 $ ./selfie
-./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs } [ ( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ]
+./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ]
 ```
 
 In this case, `selfie` responds with its usage pattern.
@@ -115,8 +108,6 @@ which is again semantically equivalent to executing `selfie` without any argumen
 The `-y` option invokes the hypster hypervisor to execute RISC-U code similar to the mipster emulator. The difference to mipster is that hypster creates RISC-U virtual machines rather than a RISC-U emulator to execute the code. See below for an example.
 
 The `-se` and `-mc` options invoke the monster model generator. With option `-se`, monster generates an SMT-LIB file named after the given binary but with extension `.smt`. The `0-4096` value is interpreted as bound on the length of any symbolically executed code branch in number of instructions. Value `0` means that the code is executed symbolically without a bound. With option `-mc`, monster generates a BTOR2 file named after the executed binary but with extension `.btor2`. The `0-4096` value is interpreted as exit code. Value `0` means that any code execution that terminates with a non-zero exit code is seen as erroneous whereas a non-zero value means that any code execution that terminates with a different exit code is seen as erroneous.
-
-The `-sat` option invokes the SAT solver on the SAT instance loaded from the `dimacs` file. The implementation is naive and only works on small instances.
 
 ### Self-compilation
 

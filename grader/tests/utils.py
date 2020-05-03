@@ -7,7 +7,6 @@ from os.path import isfile, join
 from unittest.mock import patch
 
 import self as grader
-from self import name
 
 
 def list_files(path, extension=''):
@@ -69,7 +68,7 @@ class Console():
 
 def assemble_for_selfie(file):
     system('riscv64-linux-gnu-as tests/' + file + ' -o .instruction.o')
-    system('riscv64-linux-gnu-ld .instruction.o -o .instruction.bin --oformat=binary >/dev/null 2>&1')
+    system('riscv64-linux-gnu-ld .instruction.o -o .instruction.bin >/dev/null 2>&1')
     system('cat tests/elf-header.m .instruction.bin > .tmp.bin')
     system('rm .instruction.o .instruction.bin')
 
@@ -102,14 +101,14 @@ def compile_with_gcc_and_run(file):
 not_compilable = [
     'assembler-parser',
     'self-assembler',
-    'concurrent-machines',
+    'processes',
     'lock',
-    'thread',
+    'threads',
     'treiber-stack'
 ]
 
 compilable_assignments = [
-    a for a in grader.assignments if grader.name(a) not in not_compilable]
+    a for a in grader.assignments if a.name not in not_compilable]
 
 
 def run_compilable_assignments(prev=None, after=None):
@@ -118,7 +117,7 @@ def run_compilable_assignments(prev=None, after=None):
             prev(assignment)
 
         with CaptureOutput() as capture:
-            grader.main([sys.argv[0], name(assignment)])
+            grader.main([sys.argv[0], assignment.name])
 
             output = capture.get_output()
 

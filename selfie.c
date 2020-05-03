@@ -31,10 +31,9 @@ Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
    translates RISC-U code including itself to SMT-LIB and
    BTOR2 formulae that are satisfiable if and only if
    there is input to the code such that the code exits
-   with non-zero exit codes, performs division by zero,
-   or accesses memory outside of allocated memory blocks,
-5. a simple SAT solver that reads CNF DIMACS files, and
-6. a tiny C* library called libcstar utilized by selfie.
+   with non-zero exit codes, performs division by zero, or
+   accesses memory outside of allocated memory blocks, and
+5. a tiny C* library called libcstar utilized by selfie.
 
 Selfie is implemented in a single (!) file and kept minimal for simplicity.
 There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
@@ -75,18 +74,17 @@ as part of the emulator and a hypervisor that can run as part of the
 emulator as well as on top of it, all with the same code.
 
 The modeling engine implements a simple yet sound and complete
-translation of RISC-U code to SMT-LIB and BTOR2 formulae. The SAT
-solver implements a naive brute-force enumeration of all possible
-variable assignments. Both engine and solver facilitate teaching
-the absolute basics of SAT and SMT solving applied to real code.
+translation of RISC-U code to SMT-LIB and BTOR2 formulae, and
+facilitates teaching the absolute basics of SAT and SMT solving
+applied to real code.
 
 Selfie is the result of many years of teaching systems engineering.
 The design of the compiler is inspired by the Oberon compiler of
 Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
 RISC-V community around Professor David Patterson from UC Berkeley.
 The design of the hypervisor is inspired by microkernels of Professor
-Jochen Liedtke from University of Karlsruhe. The modeling engine and
-the SAT solver are inspired by Professor Armin Biere from JKU Linz.
+Jochen Liedtke from University of Karlsruhe. The modeling engine is
+inspired by Professor Armin Biere from JKU Linz.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -384,8 +382,8 @@ uint64_t SYM_RBRACE       = 15; // }
 uint64_t SYM_PLUS         = 16; // +
 uint64_t SYM_MINUS        = 17; // -
 uint64_t SYM_ASTERISK     = 18; // *
-uint64_t SYM_DIV          = 19; // /
-uint64_t SYM_MOD          = 20; // %
+uint64_t SYM_DIVISION     = 19; // /
+uint64_t SYM_REMAINDER    = 20; // %
 uint64_t SYM_ASSIGN       = 21; // =
 uint64_t SYM_EQUALITY     = 22; // ==
 uint64_t SYM_NOTEQ        = 23; // !=
@@ -455,8 +453,8 @@ void init_scanner () {
   *(SYMBOLS + SYM_PLUS)         = (uint64_t) "+";
   *(SYMBOLS + SYM_MINUS)        = (uint64_t) "-";
   *(SYMBOLS + SYM_ASTERISK)     = (uint64_t) "*";
-  *(SYMBOLS + SYM_DIV)          = (uint64_t) "/";
-  *(SYMBOLS + SYM_MOD)          = (uint64_t) "%";
+  *(SYMBOLS + SYM_DIVISION)     = (uint64_t) "/";
+  *(SYMBOLS + SYM_REMAINDER)    = (uint64_t) "%";
   *(SYMBOLS + SYM_ASSIGN)       = (uint64_t) "=";
   *(SYMBOLS + SYM_EQUALITY)     = (uint64_t) "==";
   *(SYMBOLS + SYM_NOTEQ)        = (uint64_t) "!=";
@@ -594,8 +592,8 @@ void reset_parser();
 
 uint64_t is_not_rbrace_or_eof();
 uint64_t is_expression();
-uint64_t is_literal();
-uint64_t is_star_or_div_or_modulo();
+uint64_t is_int_or_char_literal();
+uint64_t is_mult_or_div_or_rem();
 uint64_t is_plus_or_minus();
 uint64_t is_comparison();
 
@@ -919,7 +917,7 @@ uint64_t  validate_elf_header(uint64_t* header);
 
 uint64_t open_write_only(char* name);
 
-void selfie_output();
+void selfie_output(char* filename);
 
 uint64_t* touch(uint64_t* memory, uint64_t length);
 
@@ -927,9 +925,9 @@ void selfie_load();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t MAX_BINARY_LENGTH = 262144; // 256KB = MAX_CODE_LENGTH + MAX_DATA_LENGTH
+uint64_t MAX_BINARY_LENGTH = 524288; // 512KB = MAX_CODE_LENGTH + MAX_DATA_LENGTH
 
-uint64_t MAX_CODE_LENGTH = 229376; // 224KB
+uint64_t MAX_CODE_LENGTH = 491520; // 480KB
 uint64_t MAX_DATA_LENGTH = 32768; // 32KB
 
 // page-aligned ELF header for storing file header (64 bytes),
@@ -1040,7 +1038,10 @@ void init_memory(uint64_t megabytes);
 uint64_t load_physical_memory(uint64_t* paddr);
 void     store_physical_memory(uint64_t* paddr, uint64_t data);
 
-uint64_t frame_for_page(uint64_t* table, uint64_t page);
+uint64_t root_PTE(uint64_t page);
+uint64_t leaf_PTE(uint64_t page);
+
+uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page);
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page);
 uint64_t is_page_mapped(uint64_t* table, uint64_t page);
 
@@ -1067,7 +1068,11 @@ uint64_t WORDSIZEINBITS = 32;
 uint64_t INSTRUCTIONSIZE = 4; // must be the same as WORDSIZE
 uint64_t REGISTERSIZE    = 8; // must be twice of WORDSIZE
 
+uint64_t NUMBER_OF_LEAF_PTES = 512; // == PAGESIZE / REGISTERSIZE
+
 uint64_t PAGESIZE = 4096; // we use standard 4KB pages
+
+uint64_t PAGE_TABLE_TREE   = 1; // use a two-level tree page table
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1293,7 +1298,7 @@ uint64_t DELETED                         = -1; // indicates that a symbolic memo
 uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
 uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the beginning of the shared symbolic memory space
 
-uint64_t beq_limit; // limit of symbolic beq instructions on each part of the path between two merge locations
+uint64_t beq_limit = 35; // limit of symbolic beq instructions on each part of the path between two merge locations
 
 // -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
@@ -1848,55 +1853,7 @@ uint64_t up_flow_end_nid = 50; // nid of most recent update of current upper bou
 uint64_t ecall_flow_nid = 10;
 
 // -----------------------------------------------------------------
-// -------------------------- SAT Solver ---------------------------
-// -----------------------------------------------------------------
-
-uint64_t clause_may_be_true(uint64_t* clause_address, uint64_t depth);
-uint64_t instance_may_be_true(uint64_t depth);
-
-uint64_t babysat(uint64_t depth);
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t FALSE = 0;
-uint64_t TRUE  = 1;
-
-uint64_t UNSAT = 0;
-uint64_t SAT   = 1;
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-char* dimacs_name = (char*) 0;
-
-uint64_t number_of_sat_variables = 0;
-
-// number_of_sat_variables
-uint64_t* sat_assignment = (uint64_t*) 0;
-
-uint64_t number_of_sat_clauses = 0;
-
-// number_of_sat_clauses * 2 * number_of_sat_variables
-uint64_t* sat_instance = (uint64_t*) 0;
-
-// -----------------------------------------------------------------
-// ----------------------- DIMACS CNF PARSER -----------------------
-// -----------------------------------------------------------------
-
-void selfie_print_dimacs();
-
-void     dimacs_find_next_character(uint64_t new_line);
-void     dimacs_get_symbol();
-void     dimacs_word(char* word);
-uint64_t dimacs_number();
-void     dimacs_get_clause(uint64_t clause);
-void     dimacs_get_instance();
-
-void selfie_load_dimacs();
-
-void selfie_sat();
-
-// -----------------------------------------------------------------
-// ----------------------------- MAIN ------------------------------
+// ------------------- CONSOLE ARGUMENT SCANNER --------------------
 // -----------------------------------------------------------------
 
 void init_selfie(uint64_t argc, uint64_t* argv);
@@ -2850,7 +2807,7 @@ uint64_t find_next_character() {
         number_of_comments = number_of_comments + 1;
       } else {
         // while looking for "//" and "/*" we actually found '/'
-        symbol = SYM_DIV;
+        symbol = SYM_DIVISION;
 
         return character;
       }
@@ -2947,7 +2904,7 @@ void get_symbol() {
   symbol = SYM_EOF;
 
   if (find_next_character() != CHAR_EOF) {
-    if (symbol != SYM_DIV) {
+    if (symbol != SYM_DIVISION) {
       // '/' may have already been recognized
       // while looking for whitespace and "//"
       if (is_character_letter()) {
@@ -3122,7 +3079,7 @@ void get_symbol() {
       } else if (character == CHAR_PERCENTAGE) {
         get_character();
 
-        symbol = SYM_MOD;
+        symbol = SYM_REMAINDER;
 
       } else if (character == CHAR_EQUAL) {
         get_character();
@@ -3376,7 +3333,7 @@ uint64_t is_expression() {
     return 0;
 }
 
-uint64_t is_literal() {
+uint64_t is_int_or_char_literal() {
   if (symbol == SYM_INTEGER)
     return 1;
   else if (symbol == SYM_CHARACTER)
@@ -3385,12 +3342,12 @@ uint64_t is_literal() {
     return 0;
 }
 
-uint64_t is_star_or_div_or_modulo() {
+uint64_t is_mult_or_div_or_rem() {
   if (symbol == SYM_ASTERISK)
     return 1;
-  else if (symbol == SYM_DIV)
+  else if (symbol == SYM_DIVISION)
     return 1;
-  else if (symbol == SYM_MOD)
+  else if (symbol == SYM_REMAINDER)
     return 1;
   else
     return 0;
@@ -3950,7 +3907,7 @@ uint64_t compile_factor() {
   } else
     dereference = 0;
 
-  // identifier or call?
+  // variable or call?
   if (symbol == SYM_IDENTIFIER) {
     variable_or_procedure_name = identifier;
 
@@ -3974,7 +3931,7 @@ uint64_t compile_factor() {
       // variable access: identifier
       type = load_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
-  // integer?
+  // integer literal?
   } else if (symbol == SYM_INTEGER) {
     load_integer(literal);
 
@@ -3982,7 +3939,7 @@ uint64_t compile_factor() {
 
     type = UINT64_T;
 
-  // character?
+  // character literal?
   } else if (symbol == SYM_CHARACTER) {
     talloc();
 
@@ -3992,7 +3949,7 @@ uint64_t compile_factor() {
 
     type = UINT64_T;
 
-  // string?
+  // string literal?
   } else if (symbol == SYM_STRING) {
     load_string(string);
 
@@ -4056,7 +4013,7 @@ uint64_t compile_term() {
   // assert: allocated_temporaries == n + 1
 
   // * / or % ?
-  while (is_star_or_div_or_modulo()) {
+  while (is_mult_or_div_or_rem()) {
     operator_symbol = symbol;
 
     get_symbol();
@@ -4070,9 +4027,9 @@ uint64_t compile_term() {
 
     if (operator_symbol == SYM_ASTERISK)
       emit_mul(previous_temporary(), previous_temporary(), current_temporary());
-    else if (operator_symbol == SYM_DIV)
+    else if (operator_symbol == SYM_DIVISION)
       emit_divu(previous_temporary(), previous_temporary(), current_temporary());
-    else if (operator_symbol == SYM_MOD)
+    else if (operator_symbol == SYM_REMAINDER)
       emit_remu(previous_temporary(), previous_temporary(), current_temporary());
 
     tfree(1);
@@ -4450,7 +4407,7 @@ void compile_statement() {
   if (symbol == SYM_ASTERISK) {
     get_symbol();
 
-    // "*" identifier
+    // "*" variable
     if (symbol == SYM_IDENTIFIER) {
       ltype = load_variable_or_big_int(identifier, VARIABLE);
 
@@ -4459,7 +4416,7 @@ void compile_statement() {
 
       get_symbol();
 
-      // "*" identifier "="
+      // "*" variable "="
       if (symbol == SYM_ASSIGN) {
         get_symbol();
 
@@ -4525,7 +4482,7 @@ void compile_statement() {
     } else
       syntax_error_symbol(SYM_LPARENTHESIS);
   }
-  // identifier "=" expression | call
+  // variable "=" expression | call
   else if (symbol == SYM_IDENTIFIER) {
     variable_or_procedure_name = identifier;
 
@@ -4546,7 +4503,7 @@ void compile_statement() {
       else
         syntax_error_symbol(SYM_SEMICOLON);
 
-    // identifier = expression
+    // variable = expression
     } else if (symbol == SYM_ASSIGN) {
       entry = get_variable_or_big_int(variable_or_procedure_name, VARIABLE);
 
@@ -4676,7 +4633,7 @@ uint64_t compile_initialization(uint64_t type) {
     } else
       initial_value = literal;
 
-    if (is_literal())
+    if (is_int_or_char_literal())
       get_symbol();
     else
       syntax_error_unexpected();
@@ -4984,6 +4941,9 @@ void emit_bootstrapping() {
   uint64_t gp;
   uint64_t padding;
   uint64_t* entry;
+
+  // TODO: clarify: this is needed for the binary translator
+  // emit_nop();
 
   // calculate the global pointer value
   gp = ELF_ENTRY_POINT + binary_length + allocated_memory;
@@ -5951,10 +5911,10 @@ uint64_t open_write_only(char* name) {
   return fd;
 }
 
-void selfie_output() {
+void selfie_output(char* filename) {
   uint64_t fd;
 
-  binary_name = get_argument();
+  binary_name = filename;
 
   if (binary_length == 0) {
     printf2("%s: nothing to emit to output file %s\n", selfie_name, binary_name);
@@ -6073,7 +6033,7 @@ void selfie_load() {
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
             printf5("%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
               selfie_name,
-              (char*) ELF_HEADER_LEN,
+              (char*) (ELF_HEADER_LEN + binary_length),
               (char*) (code_length / INSTRUCTIONSIZE),
               (char*) (binary_length - code_length),
               binary_name);
@@ -6799,12 +6759,43 @@ void store_physical_memory(uint64_t* paddr, uint64_t data) {
   *paddr = data;
 }
 
-uint64_t frame_for_page(uint64_t* table, uint64_t page) {
-  return (uint64_t) (table + page);
+uint64_t root_PTE(uint64_t page) {
+  return (page / NUMBER_OF_LEAF_PTES);
+}
+
+uint64_t leaf_PTE(uint64_t page) {
+  return (page - root_PTE(page) * NUMBER_OF_LEAF_PTES);
+}
+
+uint64_t frame_for_page(uint64_t* parent_table, uint64_t* table, uint64_t page) {
+  uint64_t* leaf_pte;
+
+  if (PAGE_TABLE_TREE == 0)
+    return (uint64_t) (table + page);
+  else {
+    leaf_pte = (uint64_t*) load_virtual_memory(parent_table, (uint64_t) (table + root_PTE(page)));
+
+    if (leaf_pte == (uint64_t*) 0)
+      return 0;
+    else
+      return (uint64_t) (leaf_pte + leaf_PTE(page));
+  }
 }
 
 uint64_t get_frame_for_page(uint64_t* table, uint64_t page) {
-  return *(table + page);
+  uint64_t* leaf_pte;
+
+  if (PAGE_TABLE_TREE == 0)
+    return *(table + page);
+  else {
+    leaf_pte = (uint64_t*) *(table + root_PTE(page));
+
+    if (leaf_pte == (uint64_t*) 0)
+      // page is unmapped if leaf PTE is unmapped
+      return 0;
+    else
+      return *(leaf_pte + leaf_PTE(page));
+  }
 }
 
 uint64_t is_page_mapped(uint64_t* table, uint64_t page) {
@@ -9169,7 +9160,11 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
 
   // allocate zeroed memory for page table
   // TODO: save and reuse memory for page table
-  set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+  if (PAGE_TABLE_TREE == 0)
+    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE * REGISTERSIZE));
+  else
+    set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
+
 
   // determine range of recently mapped pages
   set_lowest_lo_page(context, 0);
@@ -9416,12 +9411,28 @@ void save_context(uint64_t* context) {
 
 void map_page(uint64_t* context, uint64_t page, uint64_t frame) {
   uint64_t* table;
+  uint64_t* leaf_pte;
+  uint64_t  root_pte;
 
   table = get_pt(context);
 
   // assert: 0 <= page < VIRTUALMEMORYSIZE / PAGESIZE
 
-  *(table + page) = frame;
+  if (PAGE_TABLE_TREE == 0)
+    *(table + page) = frame;
+  else {
+    root_pte = root_PTE(page);
+
+    leaf_pte = (uint64_t*) *(table + root_pte);
+
+    if (leaf_pte == (uint64_t*) 0) {
+      leaf_pte = palloc();
+
+      *(table + root_pte) = (uint64_t) leaf_pte;
+    }
+
+    *(leaf_pte + leaf_PTE(page)) = frame;
+  }
 
   // exploit spatial locality in page table caching
   if (page <= get_page_of_virtual_address(get_program_break(context) - REGISTERSIZE)) {
@@ -9447,8 +9458,8 @@ void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, 
   uint64_t frame;
 
   while (lo <= hi) {
-    if (is_virtual_address_mapped(parent_table, frame_for_page(table, lo))) {
-      frame = load_virtual_memory(parent_table, frame_for_page(table, lo));
+    if (is_virtual_address_mapped(parent_table, frame_for_page(parent_table, table, lo))) {
+      frame = load_virtual_memory(parent_table, frame_for_page(parent_table, table, lo));
 
       map_page(context, lo, get_frame_for_page(parent_table, get_page_of_virtual_address(frame)));
     }
@@ -10029,29 +10040,30 @@ char* replace_extension(char* filename, char* extension) {
 
   c = load_character(filename, i);
 
-  // ignore extension
+  // look for extension
   while (c != '.') {
     if (c == '/')
       i = 0;
 
     if (i > 0) {
       i = i - 1;
+
       c = load_character(filename, i);
-    } else {
+    } else
       c = '.';
-    }
   }
 
   // filename has no extension
-  if (i == 0) {
+  if (i == 0)
     // writing filename plus extension into s
     sprintf2(s, "%s.%s", filename, extension);
+  else {
+    // assert: s is zeroed and thus null-terminated
 
-  } else {
-
-    // store filename without extension
+    // copy filename without extension and null-terminator into s
     while (i > 0) {
       i = i - 1;
+
       store_character(s, i, load_character(filename, i));
     }
 
@@ -10087,21 +10099,6 @@ uint64_t monster(uint64_t* to_context) {
 
   output_name = smt_name;
   output_fd   = smt_fd;
-
-  if (number_of_remaining_arguments() > 1)
-    if (string_compare(peek_argument(1), "--merge-enabled")) {
-      merge_enabled = 1;
-
-      get_argument();
-    }
-
-  if (number_of_remaining_arguments() > 1)
-    if (string_compare(peek_argument(1), "--debug-merge")) {
-      debug_merge = 1;
-      merge_enabled = 1;
-
-      get_argument();
-    }
 
   printf1("; %s\n\n", SELFIE_URL);
 
@@ -10261,13 +10258,26 @@ uint64_t selfie_run(uint64_t machine) {
 
     max_execution_depth = atoi(get_argument());
 
-    if (number_of_remaining_arguments() == 0) {
-      print_usage();
+    // checking for the (optional) beq limit argument
+    if (number_of_remaining_arguments() > 0)
+      if (string_compare(peek_argument(0), "--merge-enabled") == 0)
+        if (string_compare(peek_argument(0), "--debug-merge") == 0)
+          // assert: argument is an integer representing the beq limit
+          beq_limit = atoi(get_argument());
 
-      return EXITCODE_BADARGUMENTS;
+    // checking for the (optional) argument whether to enable merging (in debug mode) or not
+    if (number_of_remaining_arguments() > 0) {
+      if (string_compare(peek_argument(0), "--merge-enabled")) {
+        merge_enabled = 1;
+
+        get_argument();
+      } else if (string_compare(peek_argument(0), "--debug-merge")) {
+        debug_merge = 1;
+        merge_enabled = 1;
+
+        get_argument();
+      }
     }
-
-    beq_limit = atoi(peek_argument(0));
   }
 
   boot_loader();
@@ -11759,6 +11769,10 @@ void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_
   current_nid = current_nid + 3;
 }
 
+/* Translates a given RISC-U binary to a BTOR2 model
+in time and space linear in the number of instructions
+in three iterations over all instructions for encoding
+the program counter, the data flow, and the control flow. */
 uint64_t selfie_model_generate() {
   uint64_t i;
 
@@ -11823,6 +11837,8 @@ uint64_t selfie_model_generate() {
 
   model_check = 1;
 
+  do_switch(current_context, current_context, TIMEROFF);
+
   printf1("; %s\n\n", SELFIE_URL);
 
   printf2("; BTOR2 %s generated by %s for\n", model_name, selfie_name);
@@ -11856,8 +11872,8 @@ uint64_t selfie_model_generate() {
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
-  // $sp register value from boot loader
-  printf2("40 constd 2 %d ; %x\n\n", (char*) *(get_regs(current_context) + REG_SP), (char*) *(get_regs(current_context) + REG_SP));
+  // value in register $sp from boot loader
+  printf2("40 constd 2 %d ; %x\n\n", (char*) *(registers + REG_SP), (char*) *(registers + REG_SP));
 
   print("; 4GB of memory\n\n");
 
@@ -11963,6 +11979,7 @@ uint64_t selfie_model_generate() {
         (char*) (reg_nids + i),     // nid of $sp register
         get_register_name(i));      // register name as comment
     else
+      // ignoring non-zero value in register $a6 from initial context switch
       printf3("%d init 2 %d 20 %s ; initial value is 0\n",
         (char*) (reg_nids * 2 + i), // nid of this line
         (char*) (reg_nids + i),     // nid of to-be-initialized register
@@ -11996,10 +12013,7 @@ uint64_t selfie_model_generate() {
   // 100*8 lines per 64-bit machine word in data segment
   pcs_nid = ten_to_the_power_of(
     log_ten(entry_point + binary_length +
-      (VIRTUALMEMORYSIZE - *(get_regs(current_context) + REG_SP))) + 3);
-
-  pc = get_pc(current_context);
-  pt = get_pt(current_context);
+      (VIRTUALMEMORYSIZE - *(registers + REG_SP))) + 3);
 
   while (pc < entry_point + code_length) {
     current_nid = pc_nid(pcs_nid, pc);
@@ -12036,7 +12050,7 @@ uint64_t selfie_model_generate() {
   while (pc < VIRTUALMEMORYSIZE) {
     if (pc == get_original_break(current_context)) {
       // assert: stack pointer < VIRTUALMEMORYSIZE
-      pc = *(get_regs(current_context) + REG_SP);
+      pc = *(registers + REG_SP);
 
       print("\n; stack\n\n");
     }
@@ -12374,325 +12388,7 @@ uint64_t selfie_model_generate() {
 }
 
 // -----------------------------------------------------------------
-// -------------------------- SAT Solver ---------------------------
-// -----------------------------------------------------------------
-
-uint64_t clause_may_be_true(uint64_t* clause_address, uint64_t depth) {
-  uint64_t variable;
-
-  variable = 0;
-
-  while (variable <= depth) {
-    if (*(sat_assignment + variable) == TRUE) {
-      if (*(clause_address + 2 * variable))
-        return TRUE;
-    } else if (*(clause_address + 2 * variable + 1))
-      // variable must be FALSE because variable <= depth
-      return TRUE;
-
-    variable = variable + 1;
-  }
-
-  while (variable < number_of_sat_variables) {
-    // variable must be unassigned because variable > depth
-    if (*(clause_address + 2 * variable))
-      return TRUE;
-    else if (*(clause_address + 2 * variable + 1))
-      return TRUE;
-
-    variable = variable + 1;
-  }
-
-  return FALSE;
-}
-
-uint64_t instance_may_be_true(uint64_t depth) {
-  uint64_t clause;
-
-  clause = 0;
-
-  while (clause < number_of_sat_clauses) {
-    if (clause_may_be_true(sat_instance + clause * 2 * number_of_sat_variables, depth))
-      clause = clause + 1;
-    else
-      // clause is FALSE under current assignment
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
-uint64_t babysat(uint64_t depth) {
-  if (depth == number_of_sat_variables)
-    return SAT;
-
-  *(sat_assignment + depth) = TRUE;
-
-  if (instance_may_be_true(depth)) if (babysat(depth + 1) == SAT)
-    return SAT;
-
-  *(sat_assignment + depth) = FALSE;
-
-  if (instance_may_be_true(depth)) if (babysat(depth + 1) == SAT)
-    return SAT;
-
-  return UNSAT;
-}
-
-// -----------------------------------------------------------------
-// ----------------------- DIMACS CNF PARSER -----------------------
-// -----------------------------------------------------------------
-
-void selfie_print_dimacs() {
-  uint64_t clause;
-  uint64_t variable;
-
-  printf2("p cnf %d %d\n", (char*) number_of_sat_variables, (char*) number_of_sat_clauses);
-
-  clause = 0;
-
-  while (clause < number_of_sat_clauses) {
-    variable = 0;
-
-    while (variable < number_of_sat_variables) {
-      if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable) == TRUE) {
-        print_integer(variable + 1);
-        print(" ");
-      } else if (*(sat_instance + clause * 2 * number_of_sat_variables + 2 * variable + 1) == TRUE) {
-        print_integer(-(variable + 1));
-        print(" ");
-      }
-
-      variable = variable + 1;
-    }
-
-    print("0\n");
-
-    clause = clause + 1;
-  }
-}
-
-void dimacs_find_next_character(uint64_t new_line) {
-  uint64_t in_comment;
-
-  // assuming we are not in a comment
-  in_comment = 0;
-
-  // read and discard all whitespace and comments until a character is found
-  // that is not whitespace and does not occur in a comment, or the file ends
-  while (1) {
-    if (in_comment) {
-      get_character();
-
-      if (is_character_new_line())
-        // comments end with new line
-        in_comment = 0;
-      else if (character == CHAR_EOF)
-        return;
-      else
-        // count the characters in comments as ignored characters
-        // line feed and carriage return are counted below
-        number_of_ignored_characters = number_of_ignored_characters + 1;
-    } else if (new_line) {
-      new_line = 0;
-
-      if (character == 'c') {
-        // 'c' at beginning of a line begins a comment
-        in_comment = 1;
-
-        // count the number of comments
-        number_of_comments = number_of_comments + 1;
-      }
-    } else if (is_character_whitespace()) {
-      if (is_character_new_line())
-        new_line = 1;
-      else
-        new_line = 0;
-
-      // count whitespace as ignored characters
-      number_of_ignored_characters = number_of_ignored_characters + 1;
-
-      get_character();
-    } else
-      // character found that is not whitespace and not occurring in a comment
-      return;
-  }
-}
-
-void dimacs_get_symbol() {
-  dimacs_find_next_character(0);
-
-  get_symbol();
-}
-
-void dimacs_word(char* word) {
-  if (symbol == SYM_IDENTIFIER) {
-    if (string_compare(identifier, word)) {
-      dimacs_get_symbol();
-
-      return;
-    } else
-      syntax_error_identifier(word);
-  } else
-    syntax_error_symbol(SYM_IDENTIFIER);
-
-  exit(EXITCODE_PARSERERROR);
-}
-
-uint64_t dimacs_number() {
-  uint64_t number;
-
-  if (symbol == SYM_INTEGER) {
-    number = literal;
-
-    dimacs_get_symbol();
-
-    return number;
-  } else
-    syntax_error_symbol(SYM_INTEGER);
-
-  exit(EXITCODE_PARSERERROR);
-}
-
-void dimacs_get_clause(uint64_t clause) {
-  uint64_t not;
-
-  while (1) {
-    not = 0;
-
-    if (symbol == SYM_MINUS) {
-      not = 1;
-
-      dimacs_get_symbol();
-    }
-
-    if (symbol == SYM_INTEGER) {
-      if (literal == 0) {
-        dimacs_get_symbol();
-
-        return;
-      } else if (literal > number_of_sat_variables) {
-        syntax_error_message("clause exceeds declared number of variables");
-
-        exit(EXITCODE_PARSERERROR);
-      }
-
-      // literal encoding starts at 0
-      literal = literal - 1;
-
-      if (not)
-        *(sat_instance + clause * 2 * number_of_sat_variables + 2 * literal + 1) = TRUE;
-      else
-        *(sat_instance + clause * 2 * number_of_sat_variables + 2 * literal) = TRUE;
-    } else if (symbol == SYM_EOF)
-      return;
-    else
-      syntax_error_symbol(SYM_INTEGER);
-
-    dimacs_get_symbol();
-  }
-}
-
-void dimacs_get_instance() {
-  uint64_t clauses;
-
-  clauses = 0;
-
-  while (clauses < number_of_sat_clauses)
-    if (symbol != SYM_EOF) {
-      dimacs_get_clause(clauses);
-
-      clauses = clauses + 1;
-    } else {
-      syntax_error_message("instance has fewer clauses than declared");
-
-      exit(EXITCODE_PARSERERROR);
-    }
-
-  if (symbol != SYM_EOF) {
-    syntax_error_message("instance has more clauses than declared");
-
-    exit(EXITCODE_PARSERERROR);
-  }
-}
-
-void selfie_load_dimacs() {
-  source_name = get_argument();
-
-  printf2("%s: selfie loading SAT instance %s\n", selfie_name, source_name);
-
-  // assert: source_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  source_fd = sign_extend(open(source_name, O_RDONLY, 0), SYSCALL_BITWIDTH);
-
-  if (signed_less_than(source_fd, 0)) {
-    printf2("%s: could not open input file %s\n", selfie_name, source_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
-  reset_scanner();
-
-  // ignore all comments before problem
-  dimacs_find_next_character(1);
-
-  dimacs_get_symbol();
-
-  dimacs_word("p");
-  dimacs_word("cnf");
-
-  number_of_sat_variables = dimacs_number();
-
-  sat_assignment = (uint64_t*) zalloc(number_of_sat_variables * SIZEOFUINT64);
-
-  number_of_sat_clauses = dimacs_number();
-
-  sat_instance = (uint64_t*) zalloc(number_of_sat_clauses * 2 * number_of_sat_variables * SIZEOFUINT64);
-
-  dimacs_get_instance();
-
-  printf4("%s: %d clauses with %d declared variables loaded from %s\n", selfie_name,
-    (char*) number_of_sat_clauses,
-    (char*) number_of_sat_variables,
-    source_name);
-
-  dimacs_name = source_name;
-}
-
-void selfie_sat() {
-  uint64_t variable;
-
-  selfie_load_dimacs();
-
-  if (dimacs_name == (char*) 0) {
-    printf1("%s: nothing to SAT solve\n", selfie_name);
-
-    return;
-  }
-
-  selfie_print_dimacs();
-
-  if (babysat(0) == SAT) {
-    printf2("%s: %s is satisfiable with ", selfie_name, dimacs_name);
-
-    variable = 0;
-
-    while (variable < number_of_sat_variables) {
-      if (*(sat_assignment + variable) == FALSE)
-        printf1("-%d ", (char*) (variable + 1));
-      else
-        printf1("%d ", (char*) (variable + 1));
-
-      variable = variable + 1;
-    }
-  } else
-    printf2("%s: %s is unsatisfiable", selfie_name, dimacs_name);
-
-  println();
-}
-
-// -----------------------------------------------------------------
-// ----------------------------- MAIN ------------------------------
+// ------------------- CONSOLE ARGUMENT SCANNER --------------------
 // -----------------------------------------------------------------
 
 uint64_t number_of_remaining_arguments() {
@@ -12729,7 +12425,7 @@ void set_argument(char* argv) {
 
 void print_usage() {
   printf3("%s: usage: selfie { %s } [ %s ]\n", selfie_name,
-    "-c { source } | -o binary | [ -s | -S ] assembly | -l binary | -sat dimacs",
+    "-c { source } | -o binary | [ -s | -S ] assembly | -l binary",
     "( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ");
 }
 
@@ -12754,15 +12450,13 @@ uint64_t selfie() {
 
         return EXITCODE_BADARGUMENTS;
       } else if (string_compare(option, "-o"))
-        selfie_output();
+        selfie_output(get_argument());
       else if (string_compare(option, "-s"))
         selfie_disassemble(0);
       else if (string_compare(option, "-S"))
         selfie_disassemble(1);
       else if (string_compare(option, "-l"))
         selfie_load();
-      else if (string_compare(option, "-sat"))
-        selfie_sat();
       else if (string_compare(option, "-m"))
         return selfie_run(MIPSTER);
       else if (string_compare(option, "-d"))
@@ -12789,6 +12483,10 @@ uint64_t selfie() {
 
   return EXITCODE_NOERROR;
 }
+
+// -----------------------------------------------------------------
+// ----------------------------- MAIN ------------------------------
+// -----------------------------------------------------------------
 
 // selfie bootstraps int and char** to uint64_t and uint64_t*, respectively!
 int main(int argc, char** argv) {
