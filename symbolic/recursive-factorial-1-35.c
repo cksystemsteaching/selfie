@@ -21,7 +21,7 @@ uint64_t main() {
 
   x = malloc(8);
 
-  read(1, x, 1);
+  read(0, x, 1);
 
   *x = *x - 39;
 
