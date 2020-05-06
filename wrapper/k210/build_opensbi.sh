@@ -1,6 +1,9 @@
 #!/usr/bin/bash
 
-export CROSS_COMPILE=riscv64-elf-
+if [ "x${CROSS_COMPILE}" == "x" ]
+then
+    export CROSS_COMPILE=riscv64-elf-
+fi
 
 if [ ! -d "../opensbi" ]; then
     git clone git@github.com:riscv/opensbi.git
