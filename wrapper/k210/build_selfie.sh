@@ -28,8 +28,8 @@ riscv64-elf-cpp  -DFW_TEXT_START=0x80000000 -DFW_PAYLOAD_OFFSET=0x1A000 -DFW_PAY
 riscv64-elf-cpp  -DFW_TEXT_START=0x80000000 -DFW_PAYLOAD_OFFSET=0x200000 -DFW_PAYLOAD_ALIGN=0x1000 -x c test.elf.ldS | grep -v '#' > test.elf.qemu.ld
 
 # LINKING
-${CC} -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Wl,--build-id=none test.o -L../opensbi/build/lib -o own-payload.elf -T ./test.elf.kendryte.ld
-${CC} -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Wl,--build-id=none test.o -L../opensbi/build/lib -o qemu-payload.elf -T ./test.elf.qemu.ld
+${CC} -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Wl,--build-id=none -static-libgcc -lgcc test.o -L../opensbi/build/lib -o own-payload.elf -T ./test.elf.kendryte.ld
+${CC} -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Wl,--build-id=none -static-libgcc -lgcc test.o -L../opensbi/build/lib -o qemu-payload.elf -T ./test.elf.qemu.ld
 
 ${PREFIX}objcopy -S -O binary own-payload.elf own-payload.bin
 ${PREFIX}objcopy -S -O binary qemu-payload.elf qemu-payload.bin
