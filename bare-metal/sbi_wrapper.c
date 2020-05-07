@@ -1,6 +1,6 @@
-#include "sbi/sbi_console.h"
-
 #include <stdint.h>
+typedef unsigned long long int size_t;
+typedef long long int ssize_t;
 
 #include "sbi_files.h"
 

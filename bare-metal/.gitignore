@@ -1,2 +1,3 @@
 opensbi.tar.gz
 opensbi
+*.o
