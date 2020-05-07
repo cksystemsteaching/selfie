@@ -22,9 +22,9 @@ clean:
 
 # OpenSBI fetch target
 opensbi:
-	curl -L "$(OPENSBI_SOURCE_URL)" -o opensbi.tar.gz
-	tar xf opensbi.tar.gz
+	@curl -L "$(OPENSBI_SOURCE_URL)" -o opensbi.tar.gz
+	@tar xf opensbi.tar.gz
 
-	# Get the directory name from the tar listing and rename it to plain 'opensbi'
-	SBI_DIR=`tar tf opensbi.tar.gz | sed -rn 's/^(opensbi-[^\/]+)\/$$/\1/p'` && mv $$SBI_DIR opensbi
-	rm opensbi.tar.gz
+	@# Get the directory name from the tar listing and rename it to plain 'opensbi'
+	@SBI_DIR=`tar tf opensbi.tar.gz | sed -rn 's/^(opensbi-[^\/]+)\/$$/\1/p'` && mv $$SBI_DIR opensbi
+	@rm opensbi.tar.gz
