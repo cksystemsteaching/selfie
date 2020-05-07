@@ -14,6 +14,11 @@ selfie-k210: opensbi
 	echo "Test"
 
 
+# Clean-up
+.PHONY: clean
+clean:
+	rm -rf opensbi
+
 
 # OpenSBI fetch target
 opensbi:
