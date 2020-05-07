@@ -72,6 +72,8 @@ $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
 clean:
 	rm -rf opensbi
 	rm -f *.o
+	rm -f *.elf
+	rm -f *.bin
 
 
 # OpenSBI fetch target
