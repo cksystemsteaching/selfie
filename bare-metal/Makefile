@@ -21,20 +21,21 @@ include defines.mk
 
 all: selfie-qemu selfie-fu540 selfie-k210
 
-selfie-qemu: payload-qemu.elf
-	echo "Test"
+.PHONY: selfie-qemu selfie-fu540 selfie-k210
+selfie-qemu: selfie-qemu.elf
+selfie-fu540: selfie-fu540.elf
+selfie-k210: selfie-k210.bin
+	$(OBJCOPY) -S -O binary --file-alignment 4096 --gap-fill 0xFF $< tmp.bin
+	mv tmp.bin $<
 
-selfie-fu540: payload-fu540.elf
-	$(call generate_payload_ldscript,payload-fu540.ld,0x80000000,0x200000)
-	echo "Test"
 
-selfie-k210: payload-k210.bin
-	$(call generate_payload_ldscript,payload-k210.ld,0x80000000,0x1A000)
-	echo "Test"
+$(eval $(call generate_payload_rules,qemu,0x80000000,0x200000))
+$(eval $(call generate_payload_rules,fu540,0x80000000,0x200000))
+$(eval $(call generate_payload_rules,k210,0x80000000,0x1A000))
 
-$(eval $(call generate_payload_rules,qemu,0x8000000,0x200000))
-$(eval $(call generate_payload_rules,fu540,0x8000000,0x200000))
-$(eval $(call generate_payload_rules,k210,0x8000000,0x1A000))
+$(eval $(call generate_selfie_sbi_rules,qemu,qemu/virt,0x80000000,0x200000))
+$(eval $(call generate_selfie_sbi_rules,fu540,sifive/fu540,0x80000000,0x200000))
+$(eval $(call generate_selfie_sbi_rules,k210,kendryte/k210,0x80000000,0x1A000))
 
 sbi_wrapper.o: sbi_files.h
 crt.o: opensbi
