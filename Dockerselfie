@@ -139,6 +139,31 @@ RUN mkdir -p $RISCV \
   && make \
   && make install
 
+############################
+# Bare metal builder image #
+############################
+FROM ubuntu:latest AS baremetalbuilder
+
+ENV TOP=/opt RISCV=/opt/riscv PATH=$PATH:/opt/riscv/bin
+WORKDIR $TOP
+
+# install tools to build openSBI
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       gcc-riscv64-linux-gnu \
+       make \
+       device-tree-compiler \ # TODO remove this if we don't build a K210 image here
+       curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# use multiple cores to speed up compilation
+ENV MAKEFLAGS=-j4
+
+###
+### TODO download openSBI etc.
+###
+
 ##################################
 # Selfie interactive final image #
 ##################################
@@ -171,6 +196,7 @@ COPY --from=pkbuilder $RISCV/ $RISCV/
 COPY --from=spikebuilder $RISCV/ $RISCV/
 COPY --from=qemubuilder $RISCV/ $RISCV/
 COPY --from=boolectorbuilder $RISCV/ $RISCV/
+COPY --from=baremetalbuilder $RISCV/ $RISCV/
 
 # add selfie sources to the image
 COPY . /opt/selfie/
