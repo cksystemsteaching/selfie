@@ -2,6 +2,7 @@ PREFIX=riscv64-linux-gnu-
 CC=$(PREFIX)gcc
 LD=$(PREFIX)ld
 
+# Our ABI, architecture and memory model must match with OpenSBI
 CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iopensbi/include
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
@@ -13,34 +14,23 @@ OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
 SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o crt.o selfie.o
-
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/selfie.m
+
+include defines.mk
 
 all: selfie-qemu selfie-fu540 selfie-k210
 
-
-
 selfie-qemu: opensbi
-	$(call generate_ldscript,payload-qemu.ld,0x80000000,0x200000)
+	$(call generate_payload_ldscript,payload-qemu.ld,0x80000000,0x200000)
 	echo "Test"
 
 selfie-fu540: opensbi
-	$(call generate_ldscript,payload-fu540.ld,0x80000000,0x200000)
+	$(call generate_payload_ldscript,payload-fu540.ld,0x80000000,0x200000)
 	echo "Test"
 
 selfie-k210: opensbi
-	$(call generate_ldscript,payload-k210.ld,0x80000000,0x1A000)
+	$(call generate_payload_ldscript,payload-k210.ld,0x80000000,0x1A000)
 	echo "Test"
-
-# $(call generate_ldscript,path,sbi_start,payload_offset)
-# Generates a rule for a given target that
-# requires the following parameters:
-# - path          : The path where the linker script shall be emitted
-# - sbi_start     : The position where the PC jumps, i.e. where the supervisor binary will be loaded to.
-# - payload_offset: The offset of the payload in the OpenSBI binary
-define generate_ldscript
-	SBI_START=$(2) PAYLOAD_OFFSET=$(3) envsubst '$$SBI_START$$PAYLOAD_OFFSET' <payload_template.ld >$(1)
-endef
 
 sbi_wrapper.o: sbi_files.h
 crt.o: opensbi
