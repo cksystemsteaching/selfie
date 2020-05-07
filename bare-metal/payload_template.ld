@@ -12,11 +12,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-#ifdef FW_PAYLOAD_OFFSET
-  . = FW_TEXT_START + FW_PAYLOAD_OFFSET;
-#else
-  . = ALIGN(FW_PAYLOAD_ALIGN);
-#endif
+  . = $SBI_START + $PAYLOAD_OFFSET;
 
   PROVIDE(_payload_start = .);
 

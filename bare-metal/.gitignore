@@ -1,3 +1,9 @@
 opensbi.tar.gz
 opensbi
+
+# Build artefacts
 *.o
+
+# Generated linker scripts (except for template script)
+*.ld
+!payload_template.ld

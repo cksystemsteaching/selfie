@@ -18,15 +18,29 @@ SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/selfie.m
 
 all: selfie-qemu selfie-fu540 selfie-k210
 
+
+
 selfie-qemu: opensbi
+	$(call generate_ldscript,payload-qemu.ld,0x80000000,0x200000)
 	echo "Test"
 
 selfie-fu540: opensbi
+	$(call generate_ldscript,payload-fu540.ld,0x80000000,0x200000)
 	echo "Test"
 
 selfie-k210: opensbi
+	$(call generate_ldscript,payload-k210.ld,0x80000000,0x1A000)
 	echo "Test"
 
+# $(call generate_ldscript,path,sbi_start,payload_offset)
+# Generates a rule for a given target that
+# requires the following parameters:
+# - path          : The path where the linker script shall be emitted
+# - sbi_start     : The position where the PC jumps, i.e. where the supervisor binary will be loaded to.
+# - payload_offset: The offset of the payload in the OpenSBI binary
+define generate_ldscript
+	SBI_START=$(2) PAYLOAD_OFFSET=$(3) envsubst '$$SBI_START$$PAYLOAD_OFFSET' <payload_template.ld >$(1)
+endef
 
 sbi_wrapper.o: sbi_files.h
 crt.o: opensbi
