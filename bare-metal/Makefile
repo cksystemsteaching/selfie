@@ -25,17 +25,18 @@ all: selfie-qemu selfie-fu540 selfie-k210
 selfie-qemu: selfie-qemu.elf
 selfie-fu540: selfie-fu540.elf
 selfie-k210: selfie-k210.bin
-	$(OBJCOPY) -S -O binary --file-alignment 4096 --gap-fill 0xFF $< tmp.bin
-	mv tmp.bin $<
+
+selfie-k210.bin: selfie-k210.elf
+	$(OBJCOPY) -S -O binary --file-alignment 4096 --gap-fill 0xFF $^ $@
 
 
 $(eval $(call generate_payload_rules,qemu,0x80000000,0x200000))
 $(eval $(call generate_payload_rules,fu540,0x80000000,0x200000))
 $(eval $(call generate_payload_rules,k210,0x80000000,0x1A000))
 
-$(eval $(call generate_selfie_sbi_rules,qemu,qemu/virt,0x80000000,0x200000))
-$(eval $(call generate_selfie_sbi_rules,fu540,sifive/fu540,0x80000000,0x200000))
-$(eval $(call generate_selfie_sbi_rules,k210,kendryte/k210,0x80000000,0x1A000))
+$(eval $(call generate_selfie_sbi_rule,qemu,qemu/virt,0x80000000,0x200000))
+$(eval $(call generate_selfie_sbi_rule,fu540,sifive/fu540,0x80000000,0x200000))
+$(eval $(call generate_selfie_sbi_rule,k210,kendryte/k210,0x80000000,0x1A000))
 
 sbi_wrapper.o: sbi_files.h
 crt.o: opensbi
