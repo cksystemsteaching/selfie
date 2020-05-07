@@ -174,10 +174,6 @@ RUN mkdir -p $RISCV \
   && make \
   && make install
 
-###
-### TODO download openSBI etc.
-###
-
 ##################################
 # Selfie interactive final image #
 ##################################
