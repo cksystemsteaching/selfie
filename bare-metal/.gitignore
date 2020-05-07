@@ -1,8 +1,10 @@
 opensbi.tar.gz
 opensbi
 
-# Build artefacts
+# Build artifacts
 *.o
+*.bin
+*.elf
 
 # Generated linker scripts (except for template script)
 *.ld

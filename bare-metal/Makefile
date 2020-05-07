@@ -1,9 +1,10 @@
 PREFIX=riscv64-linux-gnu-
 CC=$(PREFIX)gcc
 LD=$(PREFIX)ld
+OBJCOPY=$(PREFIX)objcopy
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iopensbi/include
+CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iopensbi/include -Wl,--build-id=none
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
 
@@ -20,17 +21,20 @@ include defines.mk
 
 all: selfie-qemu selfie-fu540 selfie-k210
 
-selfie-qemu: opensbi
-	$(call generate_payload_ldscript,payload-qemu.ld,0x80000000,0x200000)
+selfie-qemu: payload-qemu.elf
 	echo "Test"
 
-selfie-fu540: opensbi
+selfie-fu540: payload-fu540.elf
 	$(call generate_payload_ldscript,payload-fu540.ld,0x80000000,0x200000)
 	echo "Test"
 
-selfie-k210: opensbi
+selfie-k210: payload-k210.bin
 	$(call generate_payload_ldscript,payload-k210.ld,0x80000000,0x1A000)
 	echo "Test"
+
+$(eval $(call generate_payload_rules,qemu,0x8000000,0x200000))
+$(eval $(call generate_payload_rules,fu540,0x8000000,0x200000))
+$(eval $(call generate_payload_rules,k210,0x8000000,0x1A000))
 
 sbi_wrapper.o: sbi_files.h
 crt.o: opensbi
