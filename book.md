@@ -40,7 +40,7 @@ Why is computer science a topic that polarizes so many people? There are the few
 
 Computer science, just like mathematics, relies on *formal* languages. There is always this secret language that only the wizards speak, and there is this Kafkaesque gatekeeper that never lets you in. Probably the worst is that the wizards keep telling you that it is actually very easy to understand the secret language, and that once you do, the gatekeeper will let you in but never really does. Well, this is exactly what we do now, with one little difference, of course. We tell you how to make the gatekeeper fall asleep and leave the gate open for you to sneak in.
 
-The trick is to slow yourself down! So much so that it is almost painful taking such tiny steps when learning something so big. The key issue why computer science, and in fact even elementary mathematics, is elusive to so many is that formal languages such as computer code or mathematical formulae are fundamentally different from other, less rigorous forms of expression such as *natural* languages like English or German. Formal languages have *formal* syntax and in particular a *formal* semantics. There is no such thing as *casual* code or formulae. In short, they are engineered or designed where everything matters, even the tiniest detail!
+The trick is to slow yourself down! So much so that it is almost painful taking such tiny steps when learning something so big. The key issue why computer science, and in fact even elementary mathematics, is elusive to so many is that formal languages such as computer code or mathematical formulae are fundamentally different from other, less rigorous forms of expression such as *natural* languages like English or German. Formal languages have *formal* syntax and in particular a *formal* semantics. There is no such thing as *casual* code or formulae. In short, they are designed and engineered where, as consequence, everything matters, even the tiniest detail!
 
 The key advantage of a formal language is that its syntax or *notation* and in particular its semantics or *meaning* can be constructed systematically, like a house or even a skyscraper, and then serve as reliable and undisputed but also unforgiving communication tool between people, and between people and machines. The disadvantage is that understanding a formal language not only requires understanding its meaning but actually understanding how its meaning is constructed. This is the reason why learning how to code is not enough to understand computer science. Similarly, learning how to calculate is not enough to understand mathematics.
 
@@ -52,11 +52,11 @@ The challenge is to keep students motivated and not fall asleep before the gatek
 
 Teaching computer science has similar issues with one important difference. It is by far a much younger field than mathematics while being subject to a much higher demand for wizardry. Nobody really knows what the absolute basics of computer science even are and what the best way of putting them together actually is. What we do here is presenting the basics we believe are essential in a bottom-up approach with a strong systems focus. This means that we first explain what bits and bytes are and then move on to show how increasingly complex systems can be constructed from just that all the way to mobile computing on smartphones and even servers in the cloud.
 
-For this purpose we have developed software called selfie that integrates the absolute basics into a minimalistic yet still realistic and representative system for demonstrating how software and its meaning is constructed on a mindless machine. We use selfie in at least three different ways:
+For this purpose we have developed software called selfie that integrates the absolute basics into a minimalistic yet still realistic and representative system for demonstrating how software and its meaning is constructed on a mindless machine. In this book, we use selfie in at least three different ways:
 
-1. 
-2.
-3.
+1. For you to measure your level of understanding. If you understand the design and implementation of selfie you understand everything necessary to understand the absolute basics of computer science.
+2. For you to improve your level of understanding. By reading this book you start asking questions whose answers you can confirm by interacting with selfie on your computer.
+3. For us to make sure there is nothing important missing. Selfie is self-referential on multiple levels which means that if there was something important missing, selfie would not work as intended.
 
 ```
 https://github.com/cksystemsteaching/selfie
