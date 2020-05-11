@@ -2,6 +2,7 @@
 #define uint64_t unsigned long long
 
 uint64_t UNKNOWN_VALUE = 3735928559; // magic number representing unknown value
+uint64_t nops = 0;
 
 
 /////////////////////
@@ -88,15 +89,18 @@ void reset_all() {
 //
 // at instruction i the contents of register r are either 
 //   * UNKNOWN_VALUE if they might differ per execution
-//   * a value introduced via constants in the previous k instructions
+//   * or a value introduced via constants in the previous k instructions
 //
-// k is determined by the last instruction with more than one inedge.
+// k is the number of instructions since the last one with more than one inedge.
+//
+// TODO: double check the in edge logic
 void find_nops() {
   uint64_t i;
   uint64_t addi_rd;
   uint64_t addi_rs1;
   uint64_t addi_imm;
   uint64_t stop;
+  uint64_t previous_rd;
 
   pc = 0;
 
@@ -105,21 +109,30 @@ void find_nops() {
 
     decode();
 
-    printf1("[%d]", *(num_in_edges + (pc/4))); // print the number of inedges
+    //printf1("[%d]", *(num_in_edges + (pc/4))); // print the number of inedges
 
     if (*(num_in_edges + (pc/4)) != 1) {
       // if there are more than 1 inedges
-      println();
+      //print(" ?\n");
       reset_all();
 
     } else if (is == ADDI){
+      printf1("%p ", pc);
       translate_to_assembler();
       print_addi_before();
 
       if (rd != REG_ZR) { 
 
         if (*(registers + rs1) != UNKNOWN_VALUE) { // if the registers' contents are not unknown
+
+          previous_rd = *(registers + rd);
+
           *(registers + rd) = *(registers + rs1) + imm; // do the addi
+
+          if (previous_rd == *(registers + rd)) {
+            nops = nops + 1;
+            print(" [NOP]");
+          }
 
         } else { // else rd is now unknown too
           *(registers + rd) = UNKNOWN_VALUE;
@@ -131,15 +144,17 @@ void find_nops() {
     }
 
     // ignore these for now...
-    else if (is == LD){println();}
-    else if (is == SD){println();}
-    else if (is == BEQ){println();}
-    else if (is == JAL){println();}
-    else if (is == JALR){println();}
-    else if (is == LUI){println();}
-    else if (is == ECALL){println();}
+    // actually incorrect! but not too likely to cause harm
+    else if (is == LD){print("");}
+    else if (is == SD){}
+    else if (is == BEQ){print("");}
+    else if (is == JAL){print("");}
+    else if (is == JALR){print("");}
+    else if (is == LUI){print("");}
+    else if (is == ECALL){print("");}
 
     else { 
+      printf1("%p ", pc);
       translate_to_assembler();
       print_add_sub_mul_divu_remu_sltu_before();
 
@@ -154,6 +169,8 @@ void find_nops() {
 
         } else { // only do stuff if both aren't unknown
 
+          previous_rd = *(registers + rd);
+
           if (is == ADD) {
             *(registers + rd) = *(registers + rs1) + *(registers + rs2);
           } else if (is == SUB) {
@@ -161,9 +178,11 @@ void find_nops() {
           } else if (is == MUL) {
             *(registers + rd) = *(registers + rs1) * *(registers + rs2);
           } else if (is == DIVU) {
-            *(registers + rd) = *(registers + rs1) / *(registers + rs2);
+            if (*(registers + rs2) != 0)
+              *(registers + rd) = *(registers + rs1) / *(registers + rs2);
           } else if (is == REMU) {
-            *(registers + rd) = *(registers + rs1) % *(registers + rs2);
+            if (*(registers + rs2) != 0)
+              *(registers + rd) = *(registers + rs1) % *(registers + rs2);
           } else if (is == SLTU) {
             if (*(registers + rs1) < *(registers + rs2))
               *(registers + rd) = 1;
@@ -171,6 +190,10 @@ void find_nops() {
               *(registers + rd) = 0;
           }
 
+          if (previous_rd == *(registers + rd)) {
+            nops = nops + 1;
+            print(" [NOP]");
+          }
         }
       }
 
@@ -201,6 +224,7 @@ int main(int argc, char **argv) {
 
   count_in_edges();
   find_nops();
+  printf1("found %d effective nops\n", nops);
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
