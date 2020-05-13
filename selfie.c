@@ -5897,7 +5897,8 @@ uint64_t open_write_only(char* name) {
   uint64_t fd;
 
   // try Mac flags
-  fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+  // add Windows _O_BINARY flag (32768 = 0x8000) as a hack to make sure existing files are opened properly on Windows
+  fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY + 32768, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
   if (signed_less_than(fd, 0)) {
     // try Linux flags
