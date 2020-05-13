@@ -2,8 +2,24 @@
 #define uint64_t unsigned long long
 
 uint64_t UNKNOWN_VALUE = 3735928559; // magic number representing unknown value
+uint64_t* unknown_regs = (uint64_t*) 0;
 uint64_t nops = 0;
 
+// helper functions
+
+uint64_t is_reg_unknown(uint64_t reg) {
+  return *(unknown_regs + reg);
+}
+
+void set_reg_unknown(uint64_t reg) {
+  *(unknown_regs + reg) = 1;
+  *(registers + reg) = UNKNOWN_VALUE;
+}
+
+uint64_t set_reg(uint64_t reg, uint64_t value) {
+  *(registers + reg) = value;
+  *(unknown_regs + reg) = 0;
+}
 
 /////////////////////
 // IN EDGE COUNTER //
@@ -76,15 +92,23 @@ void reset_all() {
 
   i=0;
   while(i < NUMBEROFREGISTERS) {
-    *(registers+i) = UNKNOWN_VALUE;
+    set_reg_unknown(i);
     i = i + 1;
   }
 
   // reset GP and ZR as they are never touched
-  *(registers + REG_ZR) = 0;
-  *(registers + REG_GP) = gp_cache;
+  set_reg(REG_ZR, 0);
+  set_reg(REG_GP, gp_cache);
 }
 
+void insert_nop() {
+  uint64_t real_binary_length;
+
+  real_binary_length = binary_length;
+  binary_length = pc;
+  emit_addi(REG_ZR, REG_ZR, 0);
+  binary_length = real_binary_length;
+}
 // iterates over entire code segment while keeping track of the current state of registers
 //
 // at instruction i the contents of register r are either 
@@ -121,21 +145,23 @@ void find_nops() {
       translate_to_assembler();
       print_addi_before();
 
-      if (rd != REG_ZR) { 
+      if (rd != REG_ZR) {
 
-        if (*(registers + rs1) != UNKNOWN_VALUE) { // if the registers' contents are not unknown
+        if (!is_reg_unknown(rs1)) { // if the registers' contents are not unknown
 
           previous_rd = *(registers + rd);
 
-          *(registers + rd) = *(registers + rs1) + imm; // do the addi
+          set_reg(rd, *(registers + rs1) + imm); // do the addi
 
-          if (previous_rd == *(registers + rd)) {
-            nops = nops + 1;
-            print(" [NOP]");
-          }
+          if (!is_reg_unknown(rd))
+            if (previous_rd == *(registers + rd)) {
+              nops = nops + 1;
+              insert_nop();
+              print(" [NOP]");
+            }
 
         } else { // else rd is now unknown too
-          *(registers + rd) = UNKNOWN_VALUE;
+          set_reg_unknown(rd);
         }
       }
 
@@ -143,17 +169,30 @@ void find_nops() {
       println();
     }
 
-    // ignore these for now...
-    // actually incorrect! but not too likely to cause harm
-    else if (is == LD){print("");}
+    // handle "weird" instructions
+    else if (is == LD){
+      set_reg_unknown(rd);
+    }
     else if (is == SD){}
-    else if (is == BEQ){print("");}
-    else if (is == JAL){print("");}
-    else if (is == JALR){print("");}
-    else if (is == LUI){print("");}
-    else if (is == ECALL){print("");}
+    else if (is == BEQ){
+      reset_all();
+    }
+    else if (is == JAL){
+      reset_all();
+    }
+    else if (is == JALR){
+      reset_all();
+    }
+    else if (is == LUI){
+      if (rd != REG_ZR) {
+        set_reg(rd, left_shift(imm, 12));
+      }
+    }
+    else if (is == ECALL){
+      set_reg_unknown(REG_A0);
+    }
 
-    else { 
+    else {
       printf1("%p ", pc);
       translate_to_assembler();
       print_add_sub_mul_divu_remu_sltu_before();
@@ -161,37 +200,38 @@ void find_nops() {
       // analogous to ADDI but with two potentially unknown registers
       if (rd != REG_ZR) {
 
-        if (*(registers + rs1) == UNKNOWN_VALUE) {
-          *(registers + rd) = UNKNOWN_VALUE;
+        if (is_reg_unknown(rs1)) {
+          set_reg_unknown(rd);
 
-        } else if (*(registers + rs2) == UNKNOWN_VALUE) {
-          *(registers + rd) = UNKNOWN_VALUE;
+        } else if (is_reg_unknown(rs2)) {
+          set_reg_unknown(rd);
 
         } else { // only do stuff if both aren't unknown
 
           previous_rd = *(registers + rd);
 
           if (is == ADD) {
-            *(registers + rd) = *(registers + rs1) + *(registers + rs2);
+            set_reg(rd, *(registers + rs1) + *(registers + rs2));
           } else if (is == SUB) {
-            *(registers + rd) = *(registers + rs1) - *(registers + rs2);
+            set_reg(rd, *(registers + rs1) - *(registers + rs2));
           } else if (is == MUL) {
-            *(registers + rd) = *(registers + rs1) * *(registers + rs2);
+            set_reg(rd, *(registers + rs1) * *(registers + rs2));
           } else if (is == DIVU) {
             if (*(registers + rs2) != 0)
-              *(registers + rd) = *(registers + rs1) / *(registers + rs2);
+              set_reg(rd, *(registers + rs1) / *(registers + rs2));
           } else if (is == REMU) {
             if (*(registers + rs2) != 0)
-              *(registers + rd) = *(registers + rs1) % *(registers + rs2);
+              set_reg(rd, *(registers + rs1) % *(registers + rs2));
           } else if (is == SLTU) {
             if (*(registers + rs1) < *(registers + rs2))
-              *(registers + rd) = 1;
+              set_reg(rd, 1);
             else
-              *(registers + rd) = 0;
+              set_reg(rd, 0);
           }
 
           if (previous_rd == *(registers + rd)) {
             nops = nops + 1;
+            insert_nop();
             print(" [NOP]");
           }
         }
@@ -222,13 +262,16 @@ int main(int argc, char **argv) {
 
   selfie_load();
 
+  registers = malloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  unknown_regs = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  reset_all();
+
   count_in_edges();
   find_nops();
-  printf1("found %d effective nops\n", nops);
-
-  // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  // selfie_output(binary_name);
+  printf1("found and patched %d effective nops\n", nops);
+  binary_name = replace_extension(binary_name, "nop2");
+  selfie_output(binary_name);
 
   return EXITCODE_NOERROR;
 }
