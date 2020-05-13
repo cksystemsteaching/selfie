@@ -3690,7 +3690,7 @@ uint64_t help_call_codegen(uint64_t* entry, char* procedure) {
   if (entry == (uint64_t*) 0) {
     // procedure never called nor declared nor defined
 
-    // default return type is "int"
+    // default return type is "uint64_t"
     type = UINT64_T;
 
     create_symbol_table_entry(GLOBAL_TABLE, procedure, line_number, PROCEDURE, type, 0, binary_length);
