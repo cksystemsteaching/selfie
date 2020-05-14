@@ -1,7 +1,0 @@
-opensbi
-
-*.o
-*.elf
-*.bin
-
-test.elf.preprocessed.ld

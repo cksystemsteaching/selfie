@@ -1,3 +1,0 @@
-target extended-remote :3333
-file ../opensbi/build/platform/sifive/fu540/firmware/fw_payload.elf
-add-symbol-file ./qemu-payload.elf
