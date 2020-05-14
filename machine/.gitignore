@@ -9,3 +9,7 @@ opensbi
 # Generated linker scripts (except for template script)
 *.ld
 !payload_template.ld
+
+
+# Allow tinycstd.h
+!tinycstd.h
