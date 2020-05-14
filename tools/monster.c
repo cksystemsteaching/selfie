@@ -1,4 +1,24 @@
 /*
+
+TODO: Merge this with the comment below:
+
+The `-se` and `-mc` options invoke the monster model generator.
+With option `-se`, monster generates an SMT-LIB file named after
+the given binary but with extension `.smt`. The `0-4096` value
+is interpreted as bound on the length of any symbolically
+executed code branch in number of instructions. Value `0` means
+that the code is executed symbolically without a bound.
+With option `-mc`, monster generates a BTOR2 file named after
+the executed binary but with extension `.btor2`. The `0-4096`
+value is interpreted as exit code. Value `0` means that
+any code execution that terminates with a non-zero exit code
+is seen as erroneous whereas a non-zero value means that
+any code execution that terminates with a different exit code
+is seen as erroneous.
+
+*/
+
+/*
 Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
