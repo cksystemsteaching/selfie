@@ -15,7 +15,7 @@ OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
 SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o crt.o selfie.o
-SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/selfie.m
+SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c
 
 include defines.mk
 
@@ -50,18 +50,34 @@ sbi_files.h: $(SBI_WRAPPER_FILES_PACKAGE)
 	@echo   "#ifndef SBI_FILES"  		 >$@
 	@printf "#define SBI_FILES\n\n"		>>$@
 
+	@printf "#include \"sbi_files_base.h\"\n\n" >>$@
+
+	@# Package all files as a byte array using xxd
 	@for file in $^ ;\
 	do \
-		xxd -i "$$file" 				>>$@; \
+		BASENAME=`basename $$file` ;\
+		VARIABLENAME=`echo $$BASENAME | sed 's/\W/_/g'`; \
+		echo "static const char $${VARIABLENAME}[] = {" >> $@; \
+		cat "$$file" | xxd -i >>$@; \
+		echo "};" >>$@; \
 		printf "\n\n"					>>$@; \
 	done;
 
+	@# Create a mapping to all packaged files
+	@echo "static const FILE files[] = {" >>$@;
+	@for file in $^;\
+	do \
+		BASENAME=`basename $$file` ;\
+		VARIABLENAME=`echo $$BASENAME | sed 's/\W/_/g'`; \
+		FILESIZE=`wc -c "$$file" | awk '{print $$1}'`; \
+		echo "  {\"$$BASENAME\", $$VARIABLENAME, $$FILESIZE}," >>$@; \
+	done;
+	@echo "};" >>$@;
+
+
+
 	@echo "#endif /* SBI_FILES */ " 		>>$@
 
-	@# Patch XXD output to remove trailing underscores
-	@sed -i -re 's/unsigned char _*/static const char /g' $@
-	@# Also, change size variables to compile-time defines
-	@sed -i -re 's/unsigned int _*(\w+) = ([0-9]+);/\#define \1 \2/g' $@
 
 $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
 	$(MAKE) -C$(SELFIE_PATH) selfie.m
@@ -74,6 +90,7 @@ clean:
 	rm -f *.o
 	rm -f *.elf
 	rm -f *.bin
+	rm -f sbi_files.h
 
 
 # OpenSBI fetch target

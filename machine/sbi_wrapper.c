@@ -5,17 +5,6 @@
 
 int main(int argc, char** argv);
 
-
-
-// Choose between selfie_c and selfie_m, defined in sbi_files.h
-static const char* files[NUM_FILES] = {
-    selfie_m
-};
-
-static const uint64_t file_len[NUM_FILES] = {
-    selfie_m_len
-};
-
 static uint64_t file_pos[NUM_FILES] = {
     0
 };
@@ -61,10 +50,10 @@ ssize_t read(int fd, char* buf, size_t count) {
         uint64_t num_read = 0;
         while (count) {
             uint64_t pos = file_pos[fd-1];
-            if (file_pos[fd-1] >= file_len[fd-1])
+            if (file_pos[fd-1] >= files[fd-1].length)
                 break;
 
-            *(buf++) = files[fd-1][pos];
+            *(buf++) = files[fd-1].data[pos];
 
             --count;
             num_read++;

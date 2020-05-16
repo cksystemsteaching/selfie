@@ -13,3 +13,4 @@ opensbi
 
 # Allow tinycstd.h
 !tinycstd.h
+!sbi_files_base.h
