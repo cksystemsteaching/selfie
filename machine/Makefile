@@ -61,7 +61,7 @@ sbi_files.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	done;
 
 	@# Create a mapping to all packaged files
-	@echo "const FILE file_defs[] = {" >>$@;
+	@echo "static const FILE file_defs[] = {" >>$@;
 	@for file in $^;\
 	do \
 		BASENAME=`basename $$file` ;\
@@ -71,7 +71,7 @@ sbi_files.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	done;
 	@echo "  {\"\", (const char*)NULL, 0}," >>$@;
 	@echo "};" >>$@;
-	@echo "extern const FILE* files = file_defs;" >>$@;
+	@echo "const FILE* files = file_defs;" >>$@;
 
 $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
 	$(MAKE) -C$(SELFIE_PATH) selfie.m
