@@ -14,7 +14,7 @@ OPENSBI_SOURCE_URL=https://github.com/riscv/opensbi/archive/$(OPENSBI_RELEASE).t
 OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
-SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o crt.o selfie.o
+SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o crt.o selfie.o sbi_files.o
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c
 
 include defines.mk
@@ -46,11 +46,8 @@ selfie.o: $(SELFIE_PATH)/selfie.c
 selfie_bare_metal.o: $(SBI_WRAPPER_OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-sbi_files.h: $(SBI_WRAPPER_FILES_PACKAGE)
-	@echo   "#ifndef SBI_FILES"  		 >$@
-	@printf "#define SBI_FILES\n\n"		>>$@
-
-	@printf "#include \"sbi_files_base.h\"\n\n" >>$@
+sbi_files.c: $(SBI_WRAPPER_FILES_PACKAGE)
+	@printf "#include \"sbi_files.h\"\n\n" >>$@
 
 	@# Package all files as a byte array using xxd
 	@for file in $^ ;\
@@ -64,7 +61,7 @@ sbi_files.h: $(SBI_WRAPPER_FILES_PACKAGE)
 	done;
 
 	@# Create a mapping to all packaged files
-	@echo "static const FILE files[] = {" >>$@;
+	@echo "const FILE file_defs[] = {" >>$@;
 	@for file in $^;\
 	do \
 		BASENAME=`basename $$file` ;\
@@ -72,12 +69,9 @@ sbi_files.h: $(SBI_WRAPPER_FILES_PACKAGE)
 		FILESIZE=`wc -c "$$file" | awk '{print $$1}'`; \
 		echo "  {\"$$BASENAME\", $$VARIABLENAME, $$FILESIZE}," >>$@; \
 	done;
+	@echo "  {\"\", (const char*)NULL, 0}," >>$@;
 	@echo "};" >>$@;
-
-
-
-	@echo "#endif /* SBI_FILES */ " 		>>$@
-
+	@echo "extern const FILE* files = file_defs;" >>$@;
 
 $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
 	$(MAKE) -C$(SELFIE_PATH) selfie.m
@@ -90,7 +84,7 @@ clean:
 	rm -f *.o
 	rm -f *.elf
 	rm -f *.bin
-	rm -f sbi_files.h
+	rm -f sbi_files.c
 
 
 # OpenSBI fetch target

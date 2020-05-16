@@ -9,4 +9,6 @@ typedef struct FILE {
     size_t length;
 } FILE;
 
+const FILE* files;
+
 #endif /* SBI_FILES_BASE */

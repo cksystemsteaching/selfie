@@ -5,12 +5,13 @@ opensbi
 *.o
 *.bin
 *.elf
+sbi_files.c
 
 # Generated linker scripts (except for template script)
 *.ld
 !payload_template.ld
 
 
-# Allow tinycstd.h
+# Allow tinycstd.h and sbi_files.h
 !tinycstd.h
-!sbi_files_base.h
+!sbi_files.h
