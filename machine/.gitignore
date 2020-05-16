@@ -12,6 +12,5 @@ sbi_files.c
 !payload_template.ld
 
 
-# Allow tinycstd.h and sbi_files.h
-!tinycstd.h
-!sbi_files.h
+# Allow machine specific .h-files
+!*.h
