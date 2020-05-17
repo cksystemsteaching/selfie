@@ -50,3 +50,14 @@ uint64_t strlen(const char* str) {
 
     return len;
 }
+ssize_t strncmp(const char* first, const char* second, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (first[i] < second[i])
+            return -1;
+        else if(first[i] > second[i])
+            return 1;
+        else if (first[i] == '\0') // implies second[i] == '\0'
+            break;
+    }
+    return 0;
+}

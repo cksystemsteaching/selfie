@@ -1,13 +1,11 @@
 #include "tinycstd.h"
 #include "sbi_files.h"
 
-#define NUM_FILES 1
+#define NUM_FDS 32
 
 int main(int argc, char** argv);
 
-static uint64_t file_pos[NUM_FILES] = {
-    0
-};
+static FILEDESC open_files[NUM_FDS];
 
 
 void sbi_ecall_console_putc(char c) {
@@ -44,26 +42,32 @@ void print_hex(uint64_t val) {
 }
 
 ssize_t read(int fd, char* buf, size_t count) {
-    if (fd >= NUM_FILES+1) {
+    if (fd >= NUM_FDS+1) {
         return -1;
     } else {
+        FILEDESC* desc = (open_files+fd);
+
         uint64_t num_read = 0;
         while (count) {
-            uint64_t pos = file_pos[fd-1];
-            if (file_pos[fd-1] >= files[fd-1].length)
+            if (desc->pos >= desc->file->length)
                 break;
 
-            *(buf++) = files[fd-1].data[pos];
+            *(buf++) = desc->file->data[desc->pos];
 
             --count;
             num_read++;
-            file_pos[fd-1]++;
+            desc->pos++;
         }
         return num_read;
     }
 }
 
 ssize_t write(int fd, const char* buf, size_t count) {
+    // No file descriptor support yet for write - write to console instead
+
+    if (fd != 1)
+        return -1;
+
     size_t i = 0;
     const char* charBuf = (const char*) buf;
 
@@ -81,9 +85,35 @@ void exit(int status) {
         ;
 }
 
-int open(const char* pathname, int flags) {
-    file_pos[0] = 0;
-    return 1;
+int open(const char* filename, int flags) {
+    const FILE* file = files;
+
+    while (file->data != NULL) {
+        if (strncmp(filename, file->name, 511) == 0)
+            break;
+
+        file++;
+    }
+    if (file->data == NULL)
+        return -1;
+
+    // Assume 0 and 1 are used for stdin and stdout
+    // Use 2 even though it is usually used for stderr
+    // TODO: Introduce a next_fd variable for a high probability O(1) fd slot allocation.
+    int fd_slot = 2;
+    while (fd_slot < NUM_FDS) {
+        if (open_files[fd_slot].file == NULL)
+            break;
+        fd_slot++;
+    }
+
+    if (fd_slot == NUM_FDS)
+        return -1;
+
+    open_files[fd_slot].pos = 0;
+    open_files[fd_slot].file = file;
+
+    return fd_slot;
 }
 
 
@@ -110,14 +140,16 @@ void bootstrap() {
 
     char* args[] = {
         "./selfie",
-        "-l",
-        "hello-world.c",
+        "-c",
+        "selfie.c",
         "-m",
         "32",
         "-l",
-        "hello-world.c",
+        "selfie.m",
         "-y",
         "16",
+        "-c",
+        "hello-world.c",
         (char*)0,
     };
     int i = 0;
