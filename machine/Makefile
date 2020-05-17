@@ -47,7 +47,7 @@ selfie_bare_metal.o: $(SBI_WRAPPER_OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
 sbi_files.c: $(SBI_WRAPPER_FILES_PACKAGE)
-	@printf "#include \"sbi_files.h\"\n\n" >>$@
+	@printf "#include \"sbi_files.h\"\n\n" >$@
 
 	@# Package all files as a byte array using xxd
 	@for file in $^ ;\
