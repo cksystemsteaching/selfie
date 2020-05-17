@@ -64,7 +64,7 @@ In order to interact with selfie effectively and, more importantly, with joy, we
 https://github.com/cksystemsteaching/selfie
 ```
 
-Once you have a terminal with selfie up and running, type:
+Once you have a terminal with selfie up and running, type in the terminal:
 
 ```
 ./selfie
@@ -83,15 +83,15 @@ The synopis may look quite cryptic already but there is nothing to worry about. 
 ./selfie -c selfie.c
 ```
 
-Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated itself and thereby constructed its own meaning. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original. We can take that even one step further. Try:
+Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated itself and thereby constructed its own meaning. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what selfie just did. Try:
 
 ```
-./selfie -c selfie.c -m 3 -c selfie.c
+./selfie -c selfie.c -m 1 -c selfie.c
 ```
 
-This takes a few minutes to complete but just wait for it. Now, selfie translated itself and then used the result to translate itself again. In other words, the Lego brick factory now built another Lego brick factory that looks like the original and then uses that factory to build yet another Lego brick factory that again looks like the original.
+This takes a few minutes to complete but just wait for it. Now, selfie translated itself and then used the result to translate itself again. In other words, the Lego brick factory now built another Lego brick factory that looks like the original and then used that factory to build yet another Lego brick factory that again looks like the original.
 
-Why is this more than just a strange game played by computer science wizards?
+Why is this more than just a nerdy game played by computer science wizards?
 
 ## Information
 
