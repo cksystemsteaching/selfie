@@ -254,11 +254,10 @@ void print_profile();
 
 // exceptions
 
-uint64_t EXCEPTION_MERGE              = 7;
-uint64_t EXCEPTION_RECURSION          = 8;
+uint64_t EXCEPTION_MERGE     = 7;
+uint64_t EXCEPTION_RECURSION = 8;
 
-uint64_t model_check         = 0; // flag for model checking code
-uint64_t check_block_access  = 0; // flag for checking memory access validity on malloced block level
+uint64_t check_block_access = 0; // flag for checking memory access validity on malloced block level
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -331,7 +330,6 @@ uint64_t MERGE     = 2;
 uint64_t RECURSION = 3;
 
 uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 12;
-uint64_t EXITCODE_MODELCHECKINGERROR     = 13;
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -1039,28 +1037,6 @@ uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout) {
 // -----------------------------------------------------------------
 // ------------------------- INSTRUCTIONS --------------------------
 // -----------------------------------------------------------------
-
-void print_code_context_for_instruction(uint64_t address) {
-  if (run) {
-    printf2("%s: pc=%x", binary_name, (char*) address);
-    print_code_line_number_for_instruction(address, entry_point);
-    if (symbolic)
-      // skip further output
-      return;
-    else
-      print(": ");
-  } else {
-    if (model_check) {
-      printf1("%x", (char*) address);
-      print_code_line_number_for_instruction(address, entry_point);
-      print(": ");
-    } else if (disassemble_verbose) {
-      printf1("%x", (char*) address);
-      print_code_line_number_for_instruction(address, 0);
-      printf1(": %p: ", (char*) ir);
-    }
-  }
-}
 
 void constrain_lui() {
   if (rd != REG_ZR)

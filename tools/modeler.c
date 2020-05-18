@@ -157,6 +157,8 @@ uint64_t selfie_model_generate();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
+uint64_t EXITCODE_MODELCHECKINGERROR = 30;
+
 uint64_t LO_FLOW = 32; // offset of nids of lower bounds on addresses in registers
 uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registers
 
@@ -221,6 +223,28 @@ uint64_t ecall_flow_nid = 10;
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
+
+void print_code_context_for_instruction(uint64_t address) {
+  if (run) {
+    printf2("%s: pc=%x", binary_name, (char*) address);
+    print_code_line_number_for_instruction(address, entry_point);
+    if (symbolic)
+      // skip further output
+      return;
+    else
+      print(": ");
+  } else {
+    if (model_check) {
+      printf1("%x", (char*) address);
+      print_code_line_number_for_instruction(address, entry_point);
+      print(": ");
+    } else if (disassemble_verbose) {
+      printf1("%x", (char*) address);
+      print_code_line_number_for_instruction(address, 0);
+      printf1(": %p: ", (char*) ir);
+    }
+  }
+}
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
