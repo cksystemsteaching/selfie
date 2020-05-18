@@ -109,6 +109,7 @@ void insert_nop() {
   emit_addi(REG_ZR, REG_ZR, 0);
   binary_length = real_binary_length;
 }
+
 // iterates over entire code segment while keeping track of the current state of registers
 //
 // at instruction i the contents of register r are either 

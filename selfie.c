@@ -209,6 +209,7 @@ uint64_t CHAR_PLUS         = '+';
 uint64_t CHAR_DASH         = '-';
 uint64_t CHAR_ASTERISK     = '*';
 uint64_t CHAR_SLASH        = '/';
+uint64_t CHAR_POUND        = '#';
 uint64_t CHAR_PERCENTAGE   = '%';
 uint64_t CHAR_EQUAL        = '=';
 uint64_t CHAR_EXCLAMATION  = '!';
@@ -2811,6 +2812,15 @@ uint64_t find_next_character() {
 
         return character;
       }
+
+    } else if (character == CHAR_POUND) {
+      // "#" begins a comment
+      in_single_line_comment = 1;
+
+      // count pound as ignored character
+      number_of_ignored_characters = number_of_ignored_characters + 1;
+
+      number_of_comments = number_of_comments + 1;
 
     } else
       // character found that is not whitespace and not occurring in a comment
