@@ -57,7 +57,7 @@ Once you have successfully compiled `selfie.c` you may invoke `selfie` without a
 
 ```bash
 $ ./selfie
-./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y | -min | -mob ) 0-4096 ... ]
+./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ... ]
 ```
 
 In this case, `selfie` responds with its usage pattern.
@@ -100,7 +100,7 @@ This is in fact semantically equivalent to executing `selfie` without any argume
 $ ./selfie
 ```
 
-The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state. Alternatively, the `-r` option limits the amount of output created with the `-d` option by having mipster merely replay code execution when runtime errors such as division by zero occur. In this case, mipster outputs only the instructions that were executed right before the error occurred. The `-min` and `-mob` options invoke special versions of the mipster emulator used for teaching.
+The `-d` option is similar to the `-m` option except that mipster outputs each executed instruction, its approximate source line number, if available, and the relevant machine state. Alternatively, the `-r` option limits the amount of output created with the `-d` option by having mipster merely replay code execution when runtime errors such as division by zero occur. In this case, mipster outputs only the instructions that were executed right before the error occurred.
 
 If you are using docker you can also execute `selfie.m` directly on spike and pk as follows:
 

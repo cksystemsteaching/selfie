@@ -1571,7 +1571,7 @@ char* peek_argument(uint64_t lookahead);
 char* get_argument();
 void  set_argument(char* argv);
 
-void print_usage();
+void print_synopsis();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -8576,18 +8576,14 @@ void set_argument(char* argv) {
   *selfie_argv = (uint64_t) argv;
 }
 
-void print_usage() {
-  printf3("%s: usage: selfie { %s } [ %s ]\n", selfie_name,
-    "-c { source } | -o binary | [ -s | -S ] assembly | -l binary",
-    "( -m | -d | -r | -y | -min | -mob ) 0-4096 ... ");
+void print_synopsis() {
+  printf1("usage: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } [ ( -m | -d | -r | -y ) 0-4096 ...  ]\n", selfie_name);
 }
 
 uint64_t selfie() {
   char* option;
 
-  if (number_of_remaining_arguments() == 0)
-    print_usage();
-  else {
+  if (number_of_remaining_arguments() > 0) {
     init_scanner();
     init_register();
     init_interpreter();
@@ -8597,12 +8593,10 @@ uint64_t selfie() {
 
       if (string_compare(option, "-c"))
         selfie_compile();
-      else if (number_of_remaining_arguments() == 0) {
+      else if (number_of_remaining_arguments() == 0)
         // remaining options have at least one argument
-        print_usage();
-
         return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(option, "-o"))
+      else if (string_compare(option, "-o"))
         selfie_output(get_argument());
       else if (string_compare(option, "-s"))
         selfie_disassemble(0);
@@ -8622,15 +8616,14 @@ uint64_t selfie() {
         return selfie_run(MINSTER);
       else if (string_compare(option, "-mob"))
         return selfie_run(MOBSTER);
-      else {
-        print_usage();
-
+      else
         return EXITCODE_BADARGUMENTS;
-      }
     }
+
+    return EXITCODE_NOERROR;
   }
 
-  return EXITCODE_NOERROR;
+  return EXITCODE_BADARGUMENTS;
 }
 
 // -----------------------------------------------------------------
@@ -8639,9 +8632,16 @@ uint64_t selfie() {
 
 // selfie bootstraps int and char** to uint64_t and uint64_t*, respectively!
 int main(int argc, char** argv) {
+  uint64_t exit_code;
+
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
 
-  return selfie();
+  exit_code = selfie();
+
+  if (exit_code != EXITCODE_NOERROR)
+    print_synopsis();
+
+  return exit_code;
 }
