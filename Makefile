@@ -20,8 +20,8 @@ selfie: selfie.c
 	./selfie -c $< -se 0 10 --merge-enabled
 
 # Translate *.c including selfie.c into BTOR2 model
-%.btor2: %.c selfie
-	./selfie -c $< -mc 0
+%.btor2: %.c mod
+	./tools/modeler.selfie -c $< 0
 
 # Generate selfie library as selfie.h
 selfie.h: selfie.c
@@ -32,7 +32,7 @@ selfie.h: selfie.c
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt mc sat x86 all assemble spike qemu boolector btormc grader grade everything clean
+.PHONY : compile quine escape debug replay os vm min mob smt mc sat mod x86 all assemble spike qemu boolector btormc grader grade everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -93,6 +93,11 @@ sat: tools/babysat.selfie selfie selfie.h
 	./tools/babysat.selfie examples/rivest.cnf
 	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
 
+# Run model generator natively and as RISC-U executable
+mod: tools/modeler.selfie selfie selfie.h
+	./tools/modeler.selfie -c selfie.c --btor2 0
+	./selfie -c selfie.h tools/modeler.c -m 1
+
 # Run RISC-V-to-x86 translator natively and as RISC-U executable
 # TODO: check self-compilation
 x86: tools/riscv-2-x86.selfie selfie.m selfie selfie.h
@@ -100,7 +105,7 @@ x86: tools/riscv-2-x86.selfie selfie.m selfie selfie.h
 	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 selfie.m
 
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob smt mc sat x86
+all: compile quine debug replay os vm min mob smt mc sat mod x86
 
 # Test autograder
 grader: selfie

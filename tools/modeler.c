@@ -157,7 +157,7 @@ uint64_t selfie_model_generate();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t EXITCODE_MODELCHECKINGERROR = 30;
+uint64_t EXITCODE_MODELINGERROR = 30;
 
 uint64_t LO_FLOW = 32; // offset of nids of lower bounds on addresses in registers
 uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registers
@@ -167,7 +167,9 @@ uint64_t UP_FLOW = 64; // offset of nids of upper bounds on addresses in registe
 char*    model_name = (char*) 0; // name of model file
 uint64_t model_fd   = 0;         // file descriptor of open model file
 
-uint64_t bad_exit_code = 0; // model check for this exit code
+uint64_t check_block_access = 0; // flag for checking memory access validity on malloced block level
+
+uint64_t bad_exit_code = 0; // model for this exit code
 
 uint64_t current_nid = 0; // nid of current line
 
@@ -223,28 +225,6 @@ uint64_t ecall_flow_nid = 10;
 // -----------------------------------------------------------------
 // ------------------------ MODEL GENERATOR ------------------------
 // -----------------------------------------------------------------
-
-void print_code_context_for_instruction(uint64_t address) {
-  if (run) {
-    printf2("%s: pc=%x", binary_name, (char*) address);
-    print_code_line_number_for_instruction(address, entry_point);
-    if (symbolic)
-      // skip further output
-      return;
-    else
-      print(": ");
-  } else {
-    if (model_check) {
-      printf1("%x", (char*) address);
-      print_code_line_number_for_instruction(address, entry_point);
-      print(": ");
-    } else if (disassemble_verbose) {
-      printf1("%x", (char*) address);
-      print_code_line_number_for_instruction(address, 0);
-      printf1(": %p: ", (char*) ir);
-    }
-  }
-}
 
 uint64_t pc_nid(uint64_t nid, uint64_t pc) {
   return nid + pc * 100;
@@ -302,7 +282,7 @@ void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t f
 
   printf2("%s: invalid instruction address %x detected\n", selfie_name, (char*) to_address);
 
-  exit(EXITCODE_MODELCHECKINGERROR);
+  exit(EXITCODE_MODELINGERROR);
 }
 
 void reset_bounds() {
@@ -950,7 +930,7 @@ void model_jalr() {
 
   printf3("%s: unsupported jalr at address %x with estimated address %x detected\n", selfie_name, (char*) pc, (char*) estimated_return);
 
-  exit(EXITCODE_MODELCHECKINGERROR);
+  exit(EXITCODE_MODELINGERROR);
 }
 
 void model_ecall() {
@@ -1631,22 +1611,11 @@ uint64_t selfie_model_generate() {
 
   init_memory(1);
 
-  bad_exit_code = atoi(peek_argument(0));
-
-  check_block_access = 0;
-
-  if (number_of_remaining_arguments() > 1)
-    if (string_compare(peek_argument(1), "--check-block-access")) {
-      check_block_access = 1;
-
-      get_argument();
-    }
-
   boot_loader();
 
   run = 0;
 
-  model_check = 1;
+  model = 1;
 
   do_switch(current_context, current_context, TIMEROFF);
 
@@ -2099,7 +2068,7 @@ uint64_t selfie_model_generate() {
 
       printf2("%s: too many in-edges at instruction address %x detected\n", selfie_name, (char*) pc);
 
-      return EXITCODE_MODELCHECKINGERROR;
+      return EXITCODE_MODELINGERROR;
     }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -2186,7 +2155,7 @@ uint64_t selfie_model_generate() {
 
   printf1("; end of BTOR2 %s\n", model_name);
 
-  model_check = 0;
+  model = 0;
 
   output_name = (char*) 0;
   output_fd   = 1;
@@ -2198,78 +2167,42 @@ uint64_t selfie_model_generate() {
   return EXITCODE_NOERROR;
 }
 
-void print_usage() {
-  printf3("%s: usage: selfie { %s } [ %s ]\n", selfie_name,
-    "-c { source } | -o binary | [ -s | -S ] assembly | -l binary",
-    "( -m | -d | -r | -y | -min | -mob | -se | -mc ) 0-4096 ... ");
-}
-
-uint64_t selfie() {
-  char* option;
-
-  if (number_of_remaining_arguments() == 0)
-    print_usage();
-  else {
-    init_scanner();
-    init_register();
-    init_interpreter();
-
-    while (number_of_remaining_arguments() > 0) {
-      option = get_argument();
-
-      if (string_compare(option, "-c"))
-        selfie_compile();
-      else if (number_of_remaining_arguments() == 0) {
-        // remaining options have at least one argument
-        print_usage();
-
-        return EXITCODE_BADARGUMENTS;
-      } else if (string_compare(option, "-o"))
-        selfie_output(get_argument());
-      else if (string_compare(option, "-s"))
-        selfie_disassemble(0);
-      else if (string_compare(option, "-S"))
-        selfie_disassemble(1);
-      else if (string_compare(option, "-l"))
-        selfie_load();
-      else if (string_compare(option, "-m"))
-        return selfie_run(MIPSTER);
-      else if (string_compare(option, "-d"))
-        return selfie_run(DIPSTER);
-      else if (string_compare(option, "-r"))
-        return selfie_run(RIPSTER);
-      else if (string_compare(option, "-y"))
-        return selfie_run(HYPSTER);
-      else if (string_compare(option, "-min"))
-        return selfie_run(MINSTER);
-      else if (string_compare(option, "-mob"))
-        return selfie_run(MOBSTER);
-      else if (string_compare(option, "-se"))
-        return selfie_run(MONSTER);
-      else if (string_compare(option, "-mc"))
-        return selfie_model_generate();
-      else {
-        print_usage();
-
-        return EXITCODE_BADARGUMENTS;
-      }
-    }
-  }
-
-  return EXITCODE_NOERROR;
-}
-
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  uint64_t exit_code;
+
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-  init_scanner();
 
-  selfie_model_generate();
+  exit_code = selfie();
 
-  return EXITCODE_NOERROR;
+  if (string_compare(argument, "--btor2")) {
+    if (number_of_remaining_arguments() > 0) {
+      bad_exit_code = atoi(peek_argument(0));
+
+      check_block_access = 0;
+
+      if (number_of_remaining_arguments() > 1)
+        if (string_compare(peek_argument(1), "--check-block-access")) {
+          check_block_access = 1;
+
+          get_argument();
+        }
+
+      selfie_model_generate();
+
+      exit_code = EXITCODE_NOERROR;
+    } else
+      exit_code = EXITCODE_BADARGUMENTS;
+  } else
+    exit_code = EXITCODE_BADARGUMENTS;
+
+  if (exit_code != EXITCODE_NOERROR)
+    print_synopsis("--btor2 0-255 [ --check_block_access ] ");
+
+  return exit_code;
 }
