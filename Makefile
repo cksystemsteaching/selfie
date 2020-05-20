@@ -95,7 +95,7 @@ sat: tools/babysat.selfie selfie selfie.h
 
 # Run model generator natively and as RISC-U executable
 mod: tools/modeler.selfie selfie selfie.h
-	./tools/modeler.selfie -c selfie.c --btor2 0
+	./tools/modeler.selfie -c selfie.c - 0
 	./selfie -c selfie.h tools/modeler.c -m 1
 
 # Run RISC-V-to-x86 translator natively and as RISC-U executable

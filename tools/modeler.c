@@ -153,7 +153,9 @@ void check_division_by_zero(uint64_t division, uint64_t flow_nid);
 
 void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid);
 
-uint64_t selfie_model_generate();
+uint64_t modeler();
+
+uint64_t selfie_model();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1564,7 +1566,7 @@ void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_
 in time and space linear in the number of instructions
 in three iterations over all instructions for encoding
 the program counter, the data flow, and the control flow. */
-uint64_t selfie_model_generate() {
+uint64_t modeler() {
   uint64_t i;
 
   uint64_t machine_word;
@@ -2167,6 +2169,29 @@ uint64_t selfie_model_generate() {
   return EXITCODE_NOERROR;
 }
 
+uint64_t selfie_model() {
+  if (string_compare(argument, "-")) {
+    if (number_of_remaining_arguments() > 0) {
+      bad_exit_code = atoi(peek_argument(0));
+
+      check_block_access = 0;
+
+      if (number_of_remaining_arguments() > 1)
+        if (string_compare(peek_argument(1), "--check-block-access")) {
+          check_block_access = 1;
+
+          get_argument();
+        }
+
+      modeler();
+
+      return EXITCODE_NOERROR;
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else
+    return EXITCODE_BADARGUMENTS;
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
@@ -2180,29 +2205,14 @@ int main(int argc, char** argv) {
 
   exit_code = selfie();
 
-  if (string_compare(argument, "--btor2")) {
-    if (number_of_remaining_arguments() > 0) {
-      bad_exit_code = atoi(peek_argument(0));
-
-      check_block_access = 0;
-
-      if (number_of_remaining_arguments() > 1)
-        if (string_compare(peek_argument(1), "--check-block-access")) {
-          check_block_access = 1;
-
-          get_argument();
-        }
-
-      selfie_model_generate();
-
-      exit_code = EXITCODE_NOERROR;
-    } else
-      exit_code = EXITCODE_BADARGUMENTS;
-  } else
-    exit_code = EXITCODE_BADARGUMENTS;
+  if (exit_code != EXITCODE_NOARGUMENTS)
+    exit_code = selfie_model();
 
   if (exit_code != EXITCODE_NOERROR)
-    print_synopsis("--btor2 0-255 [ --check_block_access ] ");
+    print_synopsis(" - 0-255 [ --check-block-access ] ...");
+
+  if (exit_code == EXITCODE_NOARGUMENTS)
+    exit_code = EXITCODE_NOERROR;
 
   return exit_code;
 }

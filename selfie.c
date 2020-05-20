@@ -1510,18 +1510,19 @@ uint64_t DONOTEXIT = 0;
 uint64_t EXIT      = 1;
 
 uint64_t EXITCODE_NOERROR                = 0;
-uint64_t EXITCODE_BADARGUMENTS           = 1;
-uint64_t EXITCODE_IOERROR                = 2;
-uint64_t EXITCODE_SCANNERERROR           = 3;
-uint64_t EXITCODE_PARSERERROR            = 4;
-uint64_t EXITCODE_COMPILERERROR          = 5;
-uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 6;
-uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 7;
-uint64_t EXITCODE_DIVISIONBYZERO         = 8;
-uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 9;
-uint64_t EXITCODE_UNKNOWNSYSCALL         = 10;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 11;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 12;
+uint64_t EXITCODE_NOARGUMENTS            = 1;
+uint64_t EXITCODE_BADARGUMENTS           = 2;
+uint64_t EXITCODE_IOERROR                = 3;
+uint64_t EXITCODE_SCANNERERROR           = 4;
+uint64_t EXITCODE_PARSERERROR            = 5;
+uint64_t EXITCODE_COMPILERERROR          = 6;
+uint64_t EXITCODE_OUTOFVIRTUALMEMORY     = 7;
+uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 8;
+uint64_t EXITCODE_DIVISIONBYZERO         = 9;
+uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 10;
+uint64_t EXITCODE_UNKNOWNSYSCALL         = 11;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 12;
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 13;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1574,7 +1575,7 @@ char* peek_argument(uint64_t lookahead);
 char* get_argument();
 void  set_argument(char* argv);
 
-void print_synopsis(char* tool);
+void print_synopsis(char* extras);
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -8589,45 +8590,45 @@ void set_argument(char* argv) {
   *selfie_argv = (uint64_t) argv;
 }
 
-void print_synopsis(char* tool) {
-  printf2("usage: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary } %s[ ( -m | -d | -r | -y ) 0-4096 ... ]\n", selfie_name, tool);
+void print_synopsis(char* extras) {
+  printf2("usage: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
 }
 
 uint64_t selfie() {
-  char* option;
-
-  if (number_of_remaining_arguments() > 0) {
+  if (number_of_remaining_arguments() == 0)
+    return EXITCODE_NOARGUMENTS;
+  else {
     init_scanner();
     init_register();
     init_interpreter();
 
     while (number_of_remaining_arguments() > 0) {
-      option = get_argument();
+      get_argument();
 
-      if (string_compare(option, "-c"))
+      if (string_compare(argument, "-c"))
         selfie_compile();
       else if (number_of_remaining_arguments() == 0)
         // remaining options have at least one argument
         return EXITCODE_BADARGUMENTS;
-      else if (string_compare(option, "-o"))
+      else if (string_compare(argument, "-o"))
         selfie_output(get_argument());
-      else if (string_compare(option, "-s"))
+      else if (string_compare(argument, "-s"))
         selfie_disassemble(0);
-      else if (string_compare(option, "-S"))
+      else if (string_compare(argument, "-S"))
         selfie_disassemble(1);
-      else if (string_compare(option, "-l"))
+      else if (string_compare(argument, "-l"))
         selfie_load();
-      else if (string_compare(option, "-m"))
+      else if (string_compare(argument, "-m"))
         return selfie_run(MIPSTER);
-      else if (string_compare(option, "-d"))
+      else if (string_compare(argument, "-d"))
         return selfie_run(DIPSTER);
-      else if (string_compare(option, "-r"))
+      else if (string_compare(argument, "-r"))
         return selfie_run(RIPSTER);
-      else if (string_compare(option, "-y"))
+      else if (string_compare(argument, "-y"))
         return selfie_run(HYPSTER);
-      else if (string_compare(option, "-min"))
+      else if (string_compare(argument, "-min"))
         return selfie_run(MINSTER);
-      else if (string_compare(option, "-mob"))
+      else if (string_compare(argument, "-mob"))
         return selfie_run(MOBSTER);
       else
         return EXITCODE_BADARGUMENTS;
@@ -8635,8 +8636,6 @@ uint64_t selfie() {
 
     return EXITCODE_NOERROR;
   }
-
-  return EXITCODE_BADARGUMENTS;
 }
 
 // -----------------------------------------------------------------
@@ -8654,7 +8653,10 @@ int main(int argc, char** argv) {
   exit_code = selfie();
 
   if (exit_code != EXITCODE_NOERROR)
-    print_synopsis("");
+    print_synopsis(" [ ( -m | -d | -r | -y ) 0-4096 ... ]");
+
+  if (exit_code == EXITCODE_NOARGUMENTS)
+    exit_code = EXITCODE_NOERROR;
 
   return exit_code;
 }
