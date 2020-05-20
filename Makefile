@@ -13,16 +13,6 @@ selfie: selfie.c
 %.s: %.c selfie
 	./selfie -c $< -s $@
 
-# Translate *.c including selfie.c into SMT-LIB model
-%-35.smt: %-35.c selfie
-	./selfie -c $< -se 0 35 --merge-enabled
-%-10.smt: %-10.c selfie
-	./selfie -c $< -se 0 10 --merge-enabled
-
-# Translate *.c including selfie.c into BTOR2 model
-%.btor2: %.c mod
-	./tools/modeler.selfie -c $< 0
-
 # Generate selfie library as selfie.h
 selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
@@ -31,8 +21,18 @@ selfie.h: selfie.c
 %.selfie: %.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
+# Translate *.c including selfie.c into SMT-LIB model
+%-35.smt: %-35.c selfie
+	./selfie -c $< -se 0 35 --merge-enabled
+%-10.smt: %-10.c selfie
+	./selfie -c $< -se 0 10 --merge-enabled
+
+# Translate *.c including selfie.c into BTOR2 model
+%.btor2: %.c tools/modeler.selfie
+	./tools/modeler.selfie -c $< - 0 --check-block-access
+
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob smt mc sat mod x86 all assemble spike qemu boolector btormc grader grade everything clean
+.PHONY : compile quine escape debug replay os vm min mob sat smt btor2 mod x86 all assemble spike qemu boolector btormc grader grade everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -76,26 +76,25 @@ min: selfie.m selfie.s
 mob: selfie
 	./selfie -c -mob 1
 
-# Gather symbolic execution example files as .smt files
-smts := $(patsubst %.c,%.smt,$(wildcard symbolic/*.c))
-
-# Run monster as symbolic execution engine
-smt: $(smts)
-
-# Gather symbolic execution example files as .btor2 files
-btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
-
-# Run monster as symbolic model generator
-mc: $(btor2s) selfie.btor2
-
 # Run SAT solver natively and as RISC-U executable
 sat: tools/babysat.selfie selfie selfie.h
 	./tools/babysat.selfie examples/rivest.cnf
 	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
 
-# Run model generator natively and as RISC-U executable
-mod: tools/modeler.selfie selfie selfie.h
-	./tools/modeler.selfie -c selfie.c - 0
+# Gather symbolic execution example files as .smt files
+smts := $(patsubst %.c,%.smt,$(wildcard symbolic/*.c))
+
+# Run monster, the symbolic execution engine
+smt: $(smts)
+
+# Gather symbolic execution example files as .btor2 files
+btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
+
+# Run modeler, the symbolic model generator
+btor2: $(btor2s) selfie.btor2
+
+# Run modeler as RISC-U executable
+mod: selfie selfie.h
 	./selfie -c selfie.h tools/modeler.c -m 1
 
 # Run RISC-V-to-x86 translator natively and as RISC-U executable
@@ -105,7 +104,7 @@ x86: tools/riscv-2-x86.selfie selfie.m selfie selfie.h
 	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 selfie.m
 
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob smt mc sat mod x86
+all: compile quine debug replay os vm min mob sat btor2 mod x86
 
 # Test autograder
 grader: selfie
