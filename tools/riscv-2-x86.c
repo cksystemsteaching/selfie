@@ -1128,8 +1128,8 @@ void selfie_translate() {
 
   run = 0;
 
-  debug    = 0;
-  symbolic = 0;
+  debug                = 0;
+  execute_symbolically = 0;
 
   do_switch(current_context, current_context, TIMEROFF);
 

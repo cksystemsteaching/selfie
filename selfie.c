@@ -609,9 +609,9 @@ uint64_t  load_variable_or_big_int(char* variable, uint64_t class);
 void      load_integer(uint64_t value);
 void      load_string(char* string);
 
-uint64_t help_call_codegen(uint64_t* entry, char* procedure);
-void     help_procedure_prologue(uint64_t number_of_local_variable_bytes);
-void     help_procedure_epilogue(uint64_t number_of_parameter_bytes);
+uint64_t procedure_call(uint64_t* entry, char* procedure);
+void     procedure_prologue(uint64_t number_of_local_variable_bytes);
+void     procedure_epilogue(uint64_t number_of_parameter_bytes);
 
 uint64_t compile_call(char* procedure);
 uint64_t compile_factor();
@@ -996,13 +996,14 @@ uint64_t SYSCALL_BRK    = 214;
 uint64_t DIRFD_AT_FDCWD = -100;
 
 // -----------------------------------------------------------------
-// ----------------------- HYPSTER SYSCALLS ------------------------
+// ------------------------ HYPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
 
 void      emit_switch();
 uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout);
 void      implement_switch();
 uint64_t* mipster_switch(uint64_t* to_context, uint64_t timeout);
+uint64_t* hypster_switch(uint64_t* to_context, uint64_t timeout);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -1485,6 +1486,7 @@ void     up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv);
 uint64_t handle_system_call(uint64_t* context);
 uint64_t handle_page_fault(uint64_t* context);
 uint64_t handle_division_by_zero(uint64_t* context);
+uint64_t handle_timer(uint64_t* context);
 uint64_t handle_exception(uint64_t* context);
 
 uint64_t mipster(uint64_t* to_context);
@@ -1496,6 +1498,8 @@ uint64_t minmob(uint64_t* to_context);
 void     map_unmapped_pages(uint64_t* context);
 uint64_t minster(uint64_t* to_context);
 uint64_t mobster(uint64_t* to_context);
+
+char* replace_extension(char* filename, char* extension);
 
 uint64_t is_boot_level_zero();
 void     boot_loader();
@@ -3395,7 +3399,7 @@ void load_string(char* string) {
   // assert: allocated_temporaries == n + 1
 }
 
-uint64_t help_call_codegen(uint64_t* entry, char* procedure) {
+uint64_t procedure_call(uint64_t* entry, char* procedure) {
   uint64_t type;
 
   if (entry == (uint64_t*) 0) {
@@ -3430,7 +3434,7 @@ uint64_t help_call_codegen(uint64_t* entry, char* procedure) {
   return type;
 }
 
-void help_procedure_prologue(uint64_t number_of_local_variable_bytes) {
+void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   // allocate memory for return address
   emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
 
@@ -3460,7 +3464,7 @@ void help_procedure_prologue(uint64_t number_of_local_variable_bytes) {
   }
 }
 
-void help_procedure_epilogue(uint64_t number_of_parameter_bytes) {
+void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   // deallocate memory for callee's frame pointer and local variables
   emit_addi(REG_SP, REG_FP, 0);
 
@@ -3521,7 +3525,7 @@ uint64_t compile_call(char* procedure) {
     if (symbol == SYM_RPARENTHESIS) {
       get_symbol();
 
-      type = help_call_codegen(entry, procedure);
+      type = procedure_call(entry, procedure);
     } else {
       syntax_error_symbol(SYM_RPARENTHESIS);
 
@@ -3530,7 +3534,7 @@ uint64_t compile_call(char* procedure) {
   } else if (symbol == SYM_RPARENTHESIS) {
     get_symbol();
 
-    type = help_call_codegen(entry, procedure);
+    type = procedure_call(entry, procedure);
   } else {
     syntax_error_symbol(SYM_RPARENTHESIS);
 
@@ -4487,7 +4491,7 @@ void compile_procedure(char* procedure, uint64_t type) {
         syntax_error_symbol(SYM_SEMICOLON);
     }
 
-    help_procedure_prologue(number_of_local_variable_bytes);
+    procedure_prologue(number_of_local_variable_bytes);
 
     // create a fixup chain for return statements
     return_branches = 0;
@@ -4511,7 +4515,7 @@ void compile_procedure(char* procedure, uint64_t type) {
 
     return_branches = 0;
 
-    help_procedure_epilogue(number_of_parameters * REGISTERSIZE);
+    procedure_epilogue(number_of_parameters * REGISTERSIZE);
 
   } else
     syntax_error_unexpected();
@@ -4748,7 +4752,7 @@ void emit_bootstrapping() {
     // copy "main" string into zeroed double word to obtain unique hash
     entry = get_scoped_symbol_table_entry(string_copy("main"), PROCEDURE);
 
-    help_call_codegen(entry, "main");
+    procedure_call(entry, "main");
   }
 
   // we exit with exit code in return register pushed onto the stack
