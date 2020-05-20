@@ -139,11 +139,11 @@ boolector: smt
 	$(foreach file, $(wildcard symbolic/*-1-*.smt), [ $$(boolector $(file) -e 0 | grep -c ^sat$$) -eq 1 ];)
 
 # Test btormc bounded model checker
-btormc: mc
+btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file);)
 
 # Run everything
-everything: all assemble spike qemu boolector btormc grader grade
+everything: all assemble spike qemu btormc grader grade
 
 # Clean up
 clean:
