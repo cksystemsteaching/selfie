@@ -216,6 +216,11 @@ uint64_t find_snippet(uint64_t* itype, uint64_t from) {
 ///////////////////////////////////
 
 // Create linked list of instruction type structs matching selfie's pointer dereferencing
+// This catches stuff like
+//   addi t1,zero,1
+//   addi t2,zero,8
+//   mul t1,t1,t2
+//   add t0,t0,t1
 uint64_t* create_pdr_itypes(){
   uint64_t* itype;
   uint64_t* first;
@@ -263,6 +268,7 @@ uint64_t* create_pdr_itypes(){
   return first;
 }
 
+// TODO fix
 uint64_t replacePtrDeref(uint64_t at, uint64_t imm) {
   uint64_t i;
 
@@ -299,10 +305,14 @@ int main(int argc, char **argv) {
   //count_in_edges();
 
   pc = 0;
+
   while (pc != -1) {
     pc = find_snippet(patternlib, pc);
-    printf1("match at %d\n", (char*) (pc/4));
-    pc = pc + 4;
+
+    if (pc != -1) {
+      printf1("match at %d\n", (char*) (pc/4));
+      pc = pc + 4;
+    }
   }
   
   binary_name = replace_extension(binary_name, "nop2");
