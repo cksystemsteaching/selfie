@@ -84,10 +84,10 @@ void count_in_edges() {
 //     PATTERN MATCHER      //
 //////////////////////////////
 
-uint64_t UNSET = 50159747054; // = 0xBADC0FFEE
+uint64_t ANY = 50159747054; // = 0xBADC0FFEE
 
 // instructon type struct:
-// any information may be UNSET
+// any information may be ANY
 // +---+--------+
 // | 0 | next   | pointer to next instruction prototype
 // | 1 | opcode | 
@@ -103,23 +103,23 @@ uint64_t* allocate_itype() {
   return smalloc(1 * SIZEOFUINT64STAR + 7 * SIZEOFUINT64);
 }
 
-uint64_t* get_next_itype (uint64_t* itype) { return (uint64_t*) *(itype + 0); }
-uint64_t  get_it_opcode  (uint64_t* itype) { return             *(itype + 1); }
-uint64_t  get_it_funct3  (uint64_t* itype) { return             *(itype + 2); }
-uint64_t  get_it_funct7  (uint64_t* itype) { return             *(itype + 3); }
-uint64_t  get_it_rs1     (uint64_t* itype) { return             *(itype + 4); }
-uint64_t  get_it_rs2     (uint64_t* itype) { return             *(itype + 5); }
-uint64_t  get_it_rd      (uint64_t* itype) { return             *(itype + 6); }
-uint64_t  get_it_imm     (uint64_t* itype) { return             *(itype + 7); }
+uint64_t* get_it_next   (uint64_t* itype) { return (uint64_t*) *(itype + 0); }
+uint64_t  get_it_opcode (uint64_t* itype) { return             *(itype + 1); }
+uint64_t  get_it_funct3 (uint64_t* itype) { return             *(itype + 2); }
+uint64_t  get_it_funct7 (uint64_t* itype) { return             *(itype + 3); }
+uint64_t  get_it_rs1    (uint64_t* itype) { return             *(itype + 4); }
+uint64_t  get_it_rs2    (uint64_t* itype) { return             *(itype + 5); }
+uint64_t  get_it_rd     (uint64_t* itype) { return             *(itype + 6); }
+uint64_t  get_it_imm    (uint64_t* itype) { return             *(itype + 7); }
 
-void set_next_itype (uint64_t* itype, uint64_t* val) { *(itype + 0) = (uint64_t) val; }
-void set_it_opcode  (uint64_t* itype, uint64_t  val) { *(itype + 1) =            val; }
-void set_it_funct3  (uint64_t* itype, uint64_t  val) { *(itype + 2) =            val; }
-void set_it_funct7  (uint64_t* itype, uint64_t  val) { *(itype + 3) =            val; }
-void set_it_rs1     (uint64_t* itype, uint64_t  val) { *(itype + 4) =            val; }
-void set_it_rs2     (uint64_t* itype, uint64_t  val) { *(itype + 5) =            val; }
-void set_it_rd      (uint64_t* itype, uint64_t  val) { *(itype + 6) =            val; }
-void set_it_imm     (uint64_t* itype, uint64_t  val) { *(itype + 7) =            val; }
+void set_it_next   (uint64_t* itype, uint64_t* val) { *(itype + 0) = (uint64_t) val; }
+void set_it_opcode (uint64_t* itype, uint64_t  val) { *(itype + 1) =            val; }
+void set_it_funct3 (uint64_t* itype, uint64_t  val) { *(itype + 2) =            val; }
+void set_it_funct7 (uint64_t* itype, uint64_t  val) { *(itype + 3) =            val; }
+void set_it_rs1    (uint64_t* itype, uint64_t  val) { *(itype + 4) =            val; }
+void set_it_rs2    (uint64_t* itype, uint64_t  val) { *(itype + 5) =            val; }
+void set_it_rd     (uint64_t* itype, uint64_t  val) { *(itype + 6) =            val; }
+void set_it_imm    (uint64_t* itype, uint64_t  val) { *(itype + 7) =            val; }
 
 
 // return 1 if instruction at $at matches $itype
@@ -135,31 +135,31 @@ uint64_t match_instruction(uint64_t* itype, uint64_t at) {
   ir = load_instruction(pc);
   decode();
 
-  if (get_it_opcode(itype) != UNSET)
+  if (get_it_opcode(itype) != ANY)
     if (get_it_opcode(itype) != opcode)
       matches = 0;
 
-  if (get_it_funct3(itype) != UNSET)
+  if (get_it_funct3(itype) != ANY)
     if (get_it_funct3(itype) != funct3)
       matches = 0;
 
-  if (get_it_funct7(itype) != UNSET)
+  if (get_it_funct7(itype) != ANY)
     if (get_it_funct7(itype) != funct7)
       matches = 0;
 
-  if (get_it_rs1(itype) != UNSET)
+  if (get_it_rs1(itype) != ANY)
     if (get_it_rs1(itype) != rs1)
       matches = 0;
 
-  if (get_it_rs2(itype) != UNSET)
+  if (get_it_rs2(itype) != ANY)
     if (get_it_rs2(itype) != rs2)
       matches = 0;
 
-  if (get_it_rd(itype) != UNSET)
+  if (get_it_rd(itype) != ANY)
     if (get_it_rd(itype) != rd)
       matches = 0;
 
-  if (get_it_imm(itype) != UNSET)
+  if (get_it_imm(itype) != ANY)
     if (get_it_imm(itype) != imm)
       matches = 0;
 
@@ -178,11 +178,11 @@ uint64_t match_instructions(uint64_t* itype, uint64_t at) {
   current_itype = itype;
 
   while (current_itype) {
-    if (position > code_length)
+    if (position >= code_length)
       return 0;
 
     else if (match_instruction(current_itype, position)) {
-      current_itype = get_next_itype(current_itype);
+      current_itype = get_it_next(current_itype);
       position = position + 4;
     }
 
@@ -203,29 +203,64 @@ uint64_t find_snippet(uint64_t* itype, uint64_t from) {
     position = position + 4;
 
     if (position > code_length)
-      return UNSET;
+      return -1;
   }
 
   return position;
 }
 
+
+
 ///////////////////////////////////
 // POINTER DEREF PATTERN MATCHER //
 ///////////////////////////////////
 
+// Create linked list of instruction type structs matching selfie's pointer dereferencing
 uint64_t* create_pdr_itypes(){
   uint64_t* itype;
+  uint64_t* first;
 
   itype = allocate_itype();
+  first = itype;
 
   set_it_opcode(itype, OP_IMM);
   set_it_funct3(itype, F3_ADDI);
   set_it_funct7(itype, 0);
   set_it_rs1(itype, REG_ZR);
   set_it_rd(itype, REG_T1);
-  set_it_imm(itype, UNSET);
+  set_it_imm(itype, ANY);
 
-  return itype;
+  set_it_next(itype, allocate_itype());
+  itype = get_it_next(itype);
+
+  set_it_opcode(itype, OP_IMM);
+  set_it_funct3(itype, F3_ADDI);
+  set_it_funct7(itype, 0);
+  set_it_rs1(itype, REG_ZR);
+  set_it_rd(itype, REG_T2);
+  set_it_imm(itype, 8);
+
+  set_it_next(itype, allocate_itype());
+  itype = get_it_next(itype);
+
+  set_it_opcode(itype, OP_OP);
+  set_it_funct3(itype, F3_MUL);
+  set_it_funct7(itype, F7_MUL);
+  set_it_rs1(itype, REG_T1);
+  set_it_rs2(itype, REG_T2);
+  set_it_rd(itype, REG_T1);
+
+  set_it_next(itype, allocate_itype());
+  itype = get_it_next(itype);
+
+  set_it_opcode(itype, OP_OP);
+  set_it_funct3(itype, F3_ADD);
+  set_it_funct7(itype, F7_ADD);
+  set_it_rs1(itype, REG_T0);
+  set_it_rs2(itype, REG_T1);
+  set_it_rd(itype, REG_T0);
+
+  return first;
 }
 
 uint64_t replacePtrDeref(uint64_t at, uint64_t imm) {
@@ -247,6 +282,7 @@ uint64_t replacePtrDeref(uint64_t at, uint64_t imm) {
 
 int main(int argc, char **argv) {
   uint64_t* patternlib;
+  uint64_t pos;
 
   patternlib = create_pdr_itypes();
 
@@ -260,15 +296,12 @@ int main(int argc, char **argv) {
 
   selfie_load();
 
-  registers = malloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  unknown_regs = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-
   //count_in_edges();
 
   pc = 0;
-  while (pc < code_length) {
-    if(match_instruction(patternlib, pc))
-      printf1("match at %d\n", pc/4);
+  while (pc != -1) {
+    pc = find_snippet(patternlib, pc);
+    printf1("match at %d\n", (char*) (pc/4));
     pc = pc + 4;
   }
   
