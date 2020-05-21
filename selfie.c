@@ -1376,6 +1376,8 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 16 | name            | binary name loaded into context
 // +----+-----------------+
 
+// CAUTION: contexts are extended in the symbolic execution engine!
+
 uint64_t* allocate_context() {
   return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
 }
@@ -5875,25 +5877,15 @@ void implement_read(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
-    if (is_valid_virtual_address(vbuffer)) {
-      if (size < bytes_to_read)
-        bytes_to_read = size;
+    if (size < bytes_to_read)
+      bytes_to_read = size;
 
+    if (is_valid_virtual_address(vbuffer)) {
       if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         buffer = tlb(get_pt(context), vbuffer);
 
         actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
-      } else {
-        failed = 1;
 
-        size = 0;
-
-        if (debug_read)
-          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vbuffer);
-      }
-
-      if (failed == 0) {
         if (actually_read == bytes_to_read) {
           read_total = read_total + actually_read;
 
@@ -5907,6 +5899,14 @@ void implement_read(uint64_t* context) {
 
           size = 0;
         }
+      } else {
+        failed = 1;
+
+        size = 0;
+
+        if (debug_read)
+          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name,
+            (char*) vbuffer);
       }
     } else {
       failed = 1;
@@ -5998,12 +5998,12 @@ void implement_write(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
+    if (size < bytes_to_write)
+      bytes_to_write = size;
+
     if (is_valid_virtual_address(vbuffer)) {
       if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         buffer = tlb(get_pt(context), vbuffer);
-
-        if (size < bytes_to_write)
-          bytes_to_write = size;
 
         actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
