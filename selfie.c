@@ -1253,8 +1253,8 @@ uint64_t redo   = 0; // flag for redoing code execution
 
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
 
-uint64_t execute_symbolically = 0; // flag for symbolically executing code
-uint64_t model                = 0; // flag for modeling code
+uint64_t symbolic = 0; // flag for symbolically executing code
+uint64_t model    = 0; // flag for modeling code
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
@@ -6538,7 +6538,7 @@ void print_code_context_for_instruction(uint64_t address) {
   if (run) {
     printf2("%s: pc=%x", binary_name, (char*) address);
     print_code_line_number_for_instruction(address, entry_point);
-    if (execute_symbolically)
+    if (symbolic)
       // skip further output
       return;
     else

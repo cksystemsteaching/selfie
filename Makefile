@@ -22,17 +22,17 @@ selfie.h: selfie.c
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
 # Translate *.c including selfie.c into SMT-LIB model
-%-35.smt: %-35.c selfie
-	./selfie -c $< -se 0 35 --merge-enabled
-%-10.smt: %-10.c selfie
-	./selfie -c $< -se 0 10 --merge-enabled
+%-35.smt: %-35.c tools/monster.selfie
+	./tools/monster.selfie -c $< - 0 35 --merge-enabled
+%-10.smt: %-10.c tools/monster.selfie
+	./tools/monster.selfie -c $< - 0 10 --merge-enabled
 
 # Translate *.c including selfie.c into BTOR2 model
 %.btor2: %.c tools/modeler.selfie
 	./tools/modeler.selfie -c $< - 0 --check-block-access
 
 # Consider these targets as targets, not files
-.PHONY : compile quine escape debug replay os vm min mob sat smt btor2 mod x86 all assemble spike qemu boolector btormc grader grade everything clean
+.PHONY : compile quine escape debug replay os vm min mob sat smt mon btor2 mod x86 all assemble spike qemu boolector btormc grader grade everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -87,6 +87,10 @@ smts := $(patsubst %.c,%.smt,$(wildcard symbolic/*.c))
 # Run monster, the symbolic execution engine
 smt: $(smts)
 
+# Run monster as RISC-U executable
+mon: selfie selfie.h
+	./selfie -c selfie.h tools/monster.c -m 1
+
 # Gather symbolic execution example files as .btor2 files
 btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
 
@@ -104,7 +108,7 @@ x86: tools/riscv-2-x86.selfie selfie.m selfie selfie.h
 	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 selfie.m
 
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob sat btor2 mod x86
+all: compile quine debug replay os vm min mob sat mon btor2 mod x86
 
 # Test autograder
 grader: selfie

@@ -294,9 +294,9 @@ void      push_onto_call_stack(uint64_t* context, uint64_t address);
 uint64_t  pop_off_call_stack(uint64_t* context);
 uint64_t  compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context);
 
-uint64_t monster(uint64_t* to_context);
+void monster(uint64_t* to_context);
 
-uint64_t selfie_run_symbolically(uint64_t machine);
+uint64_t selfie_run_symbolically();
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
@@ -1023,7 +1023,7 @@ void interrupt_symbolically() {
     if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
       // only throw exception if no other is pending
       // TODO: handle multiple pending exceptions
-      throw_exception(EXCEPTION_MERGE, 0);
+      throw_exception(EXCEPTION_SYMBOLICMERGE, 0);
 }
 
 void run_symbolically_until_exception() {
@@ -1246,9 +1246,9 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     return handle_symbolic_division_by_zero(context);
   else if (exception == EXCEPTION_TIMER)
     return handle_symbolic_timer(context);
-  else if (exception == EXCEPTION_MERGE)
+  else if (exception == EXCEPTION_SYMBOLICMERGE)
     return handle_symbolic_merge(context);
-  else if (exception == EXCEPTION_RECURSION)
+  else if (exception == EXCEPTION_SYMBOLICRECURSION)
     return handle_symbolic_recursion(context);
   else {
     if (exception == EXCEPTION_INVALIDADDRESS) {
@@ -1481,7 +1481,7 @@ void merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t locat
   callstack_comparison = compare_call_stacks(active_context, mergeable_context);
 
   if (callstack_comparison == 2) { // mergeable context has longer call stack
-    throw_exception(EXCEPTION_RECURSION, 0);
+    throw_exception(EXCEPTION_SYMBOLICRECURSION, 0);
     return;
   } else if (callstack_comparison != 0) { // call stacks are not equal
     if (current_mergeable_context != (uint64_t*) 0) {
@@ -1920,7 +1920,7 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
               pauseable = 0;
               mergeable = 1;
             } else if (compare_call_stacks(context, current_mergeable_context) == 2)
-              throw_exception(EXCEPTION_RECURSION, 0);
+              throw_exception(EXCEPTION_SYMBOLICRECURSION, 0);
           }
           else {
             add_mergeable_context(current_mergeable_context);
@@ -1943,7 +1943,7 @@ uint64_t* merge_if_possible_and_get_next_context(uint64_t* context) {
             if (compare_call_stacks(context, current_mergeable_context) == 0)
               mergeable = 1;
             else if (compare_call_stacks(context, current_mergeable_context) == 2)
-              throw_exception(EXCEPTION_RECURSION, 0);
+              throw_exception(EXCEPTION_SYMBOLICRECURSION, 0);
           }
 
         pauseable = 0;
@@ -2079,31 +2079,13 @@ uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_conte
   }
 }
 
-uint64_t monster(uint64_t* to_context) {
+void monster(uint64_t* to_context) {
   uint64_t  timeout;
   uint64_t* from_context;
   uint64_t  exception;
 
   if (debug_merge)
     from_context = (uint64_t*) 0;
-
-  print("monster\n");
-
-  // use extension ".smt" in name of SMT-LIB file
-  smt_name = replace_extension(binary_name, "smt");
-
-  // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  smt_fd = open_write_only(smt_name);
-
-  if (signed_less_than(smt_fd, 0)) {
-    printf2("%s: could not create SMT-LIB output file %s\n", selfie_name, smt_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
-  output_name = smt_name;
-  output_fd   = smt_fd;
 
   printf1("; %s\n\n", SELFIE_URL);
 
@@ -2168,14 +2150,7 @@ uint64_t monster(uint64_t* to_context) {
         else {
           print("\n(exit)");
 
-          output_name = (char*) 0;
-          output_fd   = 1;
-
-          printf3("%s: %d characters of SMT-LIB formulae written into %s\n", selfie_name,
-            (char*) number_of_written_characters,
-            smt_name);
-
-          return EXITCODE_NOERROR;
+          return;
         }
       } else if (exception == MERGE) {
         to_context = merge_if_possible_and_get_next_context(get_waiting_context());
@@ -2200,106 +2175,92 @@ uint64_t monster(uint64_t* to_context) {
   }
 }
 
-uint64_t selfie_run_symbolically(uint64_t machine) {
-  uint64_t exit_code;
-
-  if (binary_length == 0) {
-    printf1("%s: nothing to run, debug, or host\n", selfie_name);
-
-    return EXITCODE_BADARGUMENTS;
-  }
-
-  reset_interpreter();
-  reset_profiler();
-  reset_microkernel();
-
-  if (machine == DIPSTER) {
-    debug          = 1;
-    debug_syscalls = 1;
-  } else if (machine == RIPSTER) {
-    debug  = 1;
-    record = 1;
-
-    init_replay_engine();
-  } else if (machine == MONSTER) {
-    debug    = 1;
-    symbolic = 1;
-  }
-
-  if (machine != MONSTER)
-    init_memory(atoi(peek_argument(0)));
-  else {
-    init_memory(1);
-
-    max_execution_depth = atoi(get_argument());
-
-    // checking for the (optional) beq limit argument
-    if (number_of_remaining_arguments() > 0)
-      if (string_compare(peek_argument(0), "--merge-enabled") == 0)
-        if (string_compare(peek_argument(0), "--debug-merge") == 0)
-          // assert: argument is an integer representing the beq limit
-          beq_limit = atoi(get_argument());
-
-    // checking for the (optional) argument whether to enable merging (in debug mode) or not
+uint64_t selfie_run_symbolically() {
+  if (string_compare(argument, "-")) {
     if (number_of_remaining_arguments() > 0) {
-      if (string_compare(peek_argument(0), "--merge-enabled")) {
-        merge_enabled = 1;
+      max_execution_depth = atoi(peek_argument(0));
 
-        get_argument();
-      } else if (string_compare(peek_argument(0), "--debug-merge")) {
-        debug_merge = 1;
-        merge_enabled = 1;
+      // checking for the (optional) beq limit argument
+      if (number_of_remaining_arguments() > 1)
+        if (string_compare(peek_argument(1), "--merge-enabled") == 0)
+          if (string_compare(peek_argument(1), "--debug-merge") == 0)
+            // assert: argument is an integer representing the beq limit
+            beq_limit = atoi(get_argument());
 
-        get_argument();
+      // checking for the (optional) argument whether to enable merging (in debug mode) or not
+      if (number_of_remaining_arguments() > 1) {
+        if (string_compare(peek_argument(1), "--merge-enabled")) {
+          merge_enabled = 1;
+
+          get_argument();
+        } else if (string_compare(peek_argument(1), "--debug-merge")) {
+          debug_merge = 1;
+          merge_enabled = 1;
+
+          get_argument();
+        }
       }
-    }
-  }
 
-  boot_loader();
+      // assert: number_of_remaining_arguments() > 0
 
-  printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
-    binary_name,
-    (char*) (page_frame_memory / MEGABYTE));
+      if (binary_length == 0) {
+        printf1("%s: nothing to run symbolically\n", selfie_name);
 
-  run = 1;
+        return EXITCODE_BADARGUMENTS;
+      }
 
-  if (machine == MIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == DIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == RIPSTER)
-    exit_code = mipster(current_context);
-  else if (machine == MONSTER)
-    exit_code = monster(current_context);
-  else if (machine == MINSTER)
-    exit_code = minster(current_context);
-  else if (machine == MOBSTER)
-    exit_code = mobster(current_context);
-  else if (machine == HYPSTER)
-    if (is_boot_level_zero())
-      // no hypster on boot level zero
-      exit_code = mipster(current_context);
-    else
-      exit_code = hypster(current_context);
-  else
-    // change 0 to anywhere between 0% to 100% mipster
-    exit_code = mixter(current_context, 0);
+      // use extension ".smt" in name of SMT-LIB file
+      smt_name = replace_extension(binary_name, "smt");
 
-  run = 0;
+      // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
-    get_name(current_context),
-    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
+      smt_fd = open_write_only(smt_name);
 
-  print_profile();
+      if (signed_less_than(smt_fd, 0)) {
+        printf2("%s: could not create SMT-LIB output file %s\n", selfie_name, smt_name);
 
-  symbolic = 0;
-  record   = 0;
+        exit(EXITCODE_IOERROR);
+      }
 
-  debug_syscalls = 0;
-  debug          = 0;
+      reset_interpreter();
+      reset_profiler();
+      reset_microkernel();
 
-  return exit_code;
+      init_memory(1);
+
+      boot_loader();
+
+      printf3("%s: monster symbolically executing %s with %dMB physical memory on ", selfie_name,
+        binary_name,
+        (char*) (page_frame_memory / MEGABYTE));
+
+      output_name = smt_name;
+      output_fd   = smt_fd;
+
+      run      = 1;
+      symbolic = 1;
+
+      monster(current_context);
+
+      symbolic = 0;
+      run      = 0;
+
+      output_name = (char*) 0;
+      output_fd   = 1;
+
+      printf2("%s: monster terminating %s\n", selfie_name, get_name(current_context));
+
+      print_profile();
+
+      printf3("%s: %d characters of SMT-LIB formulae written into %s\n", selfie_name,
+        (char*) number_of_written_characters,
+        smt_name);
+
+      return EXITCODE_NOERROR;
+    } else
+      return EXITCODE_BADARGUMENTS;
+  } else
+    return EXITCODE_BADARGUMENTS;
 }
 
 // -----------------------------------------------------------------
@@ -2307,12 +2268,22 @@ uint64_t selfie_run_symbolically(uint64_t machine) {
 // -----------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  uint64_t exit_code;
+
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-  init_scanner();
 
-  selfie_sat();
+  exit_code = selfie();
 
-  return EXITCODE_NOERROR;
+  if (exit_code != EXITCODE_NOARGUMENTS)
+    exit_code = selfie_run_symbolically();
+
+  if (exit_code != EXITCODE_NOERROR)
+    print_synopsis(" - max-execution-depth [ beq-limit ] [ --merge-enabled | --debug-merge ] ...");
+
+  if (exit_code == EXITCODE_NOARGUMENTS)
+    exit_code = EXITCODE_NOERROR;
+
+  return exit_code;
 }
