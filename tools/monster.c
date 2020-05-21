@@ -121,7 +121,7 @@ void implement_symbolic_exit(uint64_t* context);
 void implement_symbolic_read(uint64_t* context);
 void implement_symbolic_write(uint64_t* context);
 
-uint64_t down_load_symbolic_string(uint64_t* table, uint64_t vstring, char* s);
+uint64_t down_load_concrete_string(uint64_t* table, uint64_t vstring, char* s);
 void     implement_symbolic_openat(uint64_t* context);
 
 // -----------------------------------------------------------------
@@ -346,41 +346,26 @@ void implement_symbolic_exit(uint64_t* context) {
   // parameter;
   uint64_t signed_int_exit_code;
 
-  if (debug_syscalls) {
-    print("(exit): ");
-    print_register_hexadecimal(REG_A0);
-    print(" |- ->\n");
-  }
-
   signed_int_exit_code = *(get_regs(context) + REG_A0);
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  if (symbolic) {
-    print("\n(push 1)\n");
+  print("\n(push 1)\n");
 
-    printf2("(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
-      path_condition,
-      smt_value(*(registers + REG_A0), (char*) *(reg_sym + REG_A0)));
-    print_code_context_for_instruction(pc);
+  printf2("(assert (and %s (not (= %s (_ bv0 64))))); exit in ",
+    path_condition,
+    smt_value(*(registers + REG_A0), (char*) *(reg_sym + REG_A0)));
+  print_code_context_for_instruction(pc);
 
-    if (debug_merge)
-      printf1(" -> exiting context: %d", (char*) context);
+  if (debug_merge)
+    printf1(" -> exiting context: %d", (char*) context);
 
-    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
-
-    return;
-  }
-
-  printf4("%s: %s exiting with exit code %d and %.2dMB mallocated memory\n", selfie_name,
-    get_name(context),
-    (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
-    (char*) fixed_point_ratio(get_program_break(context) - get_original_break(context), MEGABYTE, 2));
+  print("\n(check-sat)\n(get-model)\n(pop 1)\n");
 }
 
 void implement_symbolic_read(uint64_t* context) {
   // parameters
-  uint64_t fd;
+  // fd not needed
   uint64_t vbuffer;
   uint64_t size;
 
@@ -388,29 +373,9 @@ void implement_symbolic_read(uint64_t* context) {
   uint64_t read_total;
   uint64_t bytes_to_read;
   uint64_t failed;
-  uint64_t* buffer;
-  uint64_t actually_read;
 
-  if (debug_syscalls) {
-    print("(read): ");
-    print_register_value(REG_A0);
-    print(",");
-    print_register_hexadecimal(REG_A1);
-    print(",");
-    print_register_value(REG_A2);
-    print(" |- ");
-    print_register_value(REG_A0);
-  }
-
-  fd      = *(get_regs(context) + REG_A0);
   vbuffer = *(get_regs(context) + REG_A1);
   size    = *(get_regs(context) + REG_A2);
-
-  if (debug_read)
-    printf4("%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfie_name,
-      (char*) size,
-      (char*) fd,
-      (char*) vbuffer);
 
   read_total = 0;
 
@@ -419,25 +384,22 @@ void implement_symbolic_read(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
-    if (is_valid_virtual_address(vbuffer)) {
-      if (size < bytes_to_read)
-        bytes_to_read = size;
+    if (size < bytes_to_read)
+      bytes_to_read = size;
 
-      if (symbolic) {
-        store_symbolic_memory(vbuffer,
-          0,
-          0,
-          smt_variable("i", bytes_to_read * 8),
-          bytes_to_read * 8);
+    if (is_valid_virtual_address(vbuffer)) {
+      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+        store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
 
         // save symbolic memory here since context switching has already happened
         set_symbolic_memory(context, symbolic_memory);
 
-        actually_read = bytes_to_read;
-      } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        buffer = tlb(get_pt(context), vbuffer);
+        read_total = read_total + bytes_to_read;
 
-        actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
+        size = size - bytes_to_read;
+
+        if (size > 0)
+          vbuffer = vbuffer + SIZEOFUINT64;
       } else {
         failed = 1;
 
@@ -446,22 +408,6 @@ void implement_symbolic_read(uint64_t* context) {
         if (debug_read)
           printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name,
             (char*) vbuffer);
-      }
-
-      if (failed == 0) {
-        if (actually_read == bytes_to_read) {
-          read_total = read_total + actually_read;
-
-          size = size - actually_read;
-
-          if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
-        } else {
-          if (signed_less_than(0, actually_read))
-            read_total = read_total + actually_read;
-
-          size = 0;
-        }
       }
     } else {
       failed = 1;
@@ -480,22 +426,11 @@ void implement_symbolic_read(uint64_t* context) {
     *(get_regs(context) + REG_A0) = read_total;
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-
-  if (debug_read)
-    printf3("%s: actually read %d bytes from file with descriptor %d\n", selfie_name,
-      (char*) read_total,
-      (char*) fd);
-
-  if (debug_syscalls) {
-    print(" -> ");
-    print_register_value(REG_A0);
-    println();
-  }
 }
 
 void implement_symbolic_write(uint64_t* context) {
   // parameters
-  uint64_t fd;
+  // fd not needed
   uint64_t vbuffer;
   uint64_t size;
 
@@ -503,29 +438,9 @@ void implement_symbolic_write(uint64_t* context) {
   uint64_t written_total;
   uint64_t bytes_to_write;
   uint64_t failed;
-  uint64_t* buffer;
-  uint64_t actually_written;
 
-  if (debug_syscalls) {
-    print("(write): ");
-    print_register_value(REG_A0);
-    print(",");
-    print_register_hexadecimal(REG_A1);
-    print(",");
-    print_register_value(REG_A2);
-    print(" |- ");
-    print_register_value(REG_A0);
-  }
-
-  fd      = *(get_regs(context) + REG_A0);
   vbuffer = *(get_regs(context) + REG_A1);
   size    = *(get_regs(context) + REG_A2);
-
-  if (debug_write)
-    printf4("%s: trying to write %d bytes from buffer at virtual address %p into file with descriptor %d\n", selfie_name,
-      (char*) size,
-      (char*) vbuffer,
-      (char*) fd);
 
   written_total = 0;
 
@@ -534,33 +449,19 @@ void implement_symbolic_write(uint64_t* context) {
   failed = 0;
 
   while (size > 0) {
+    if (size < bytes_to_write)
+      bytes_to_write = size;
+
     if (is_valid_virtual_address(vbuffer)) {
-      if (symbolic) {
+      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
         // TODO: What should symbolically executed code actually output?
-        written_total = size;
 
-        size = 0;
-      } else if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        buffer = tlb(get_pt(context), vbuffer);
+        written_total = written_total + bytes_to_write;
 
-        if (size < bytes_to_write)
-          bytes_to_write = size;
+        size = size - bytes_to_write;
 
-        actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
-
-        if (actually_written == bytes_to_write) {
-          written_total = written_total + actually_written;
-
-          size = size - actually_written;
-
-          if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
-        } else {
-          if (signed_less_than(0, actually_written))
-            written_total = written_total + actually_written;
-
-          size = 0;
-        }
+        if (size > 0)
+          vbuffer = vbuffer + SIZEOFUINT64;
       } else {
         failed = 1;
 
@@ -587,20 +488,9 @@ void implement_symbolic_write(uint64_t* context) {
     *(get_regs(context) + REG_A0) = written_total;
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-
-  if (debug_write)
-    printf3("%s: actually wrote %d bytes into file with descriptor %d\n", selfie_name,
-      (char*) written_total,
-      (char*) fd);
-
-  if (debug_syscalls) {
-    print(" -> ");
-    print_register_value(REG_A0);
-    println();
-  }
 }
 
-uint64_t down_load_symbolic_string(uint64_t* table, uint64_t vaddr, char* s) {
+uint64_t down_load_concrete_string(uint64_t* table, uint64_t vaddr, char* s) {
   uint64_t i;
   uint64_t* sword;
   uint64_t j;
@@ -609,7 +499,7 @@ uint64_t down_load_symbolic_string(uint64_t* table, uint64_t vaddr, char* s) {
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
     if (is_valid_virtual_address(vaddr)) {
-      if (symbolic) {
+      if (is_virtual_address_mapped(table, vaddr)) {
         sword = load_symbolic_memory(vaddr);
 
         if (sword) {
@@ -626,9 +516,7 @@ uint64_t down_load_symbolic_string(uint64_t* table, uint64_t vaddr, char* s) {
         } else
           // assert: vaddr is mapped
           *((uint64_t*) s + i) = load_virtual_memory(table, vaddr);
-      } else if (is_virtual_address_mapped(table, vaddr))
-        *((uint64_t*) s + i) = load_virtual_memory(table, vaddr);
-      else {
+      } else {
         if (debug_open)
           printf2("%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name,
             (char*) vaddr);
@@ -666,69 +554,22 @@ uint64_t down_load_symbolic_string(uint64_t* table, uint64_t vaddr, char* s) {
 void implement_symbolic_openat(uint64_t* context) {
   // parameters
   uint64_t vfilename;
-  uint64_t flags;
-  uint64_t mode;
-
-  // return value
-  uint64_t fd;
-
-  if (debug_syscalls) {
-    print("(openat): ");
-    print_register_hexadecimal(REG_A0);
-    print(",");
-    print_register_hexadecimal(REG_A1);
-    print(",");
-    print_register_hexadecimal(REG_A2);
-    print(",");
-    print_register_octal(REG_A3);
-    print(" |- ");
-    print_register_value(REG_A1);
-  }
-
-  /* We actually emulate the part of the openat system call here that is
-     implemented by the open system call which is deprecated in Linux.
-     In particular, the first parameter (REG_A0) is ignored here while
-     set to DIRFD_AT_FDCWD in the wrapper for the open library call to
-     make sure openat behaves like open when bootstrapping selfie. */
+  // flags not needed
+  // mode not needed
 
   vfilename = *(get_regs(context) + REG_A1);
-  flags     = *(get_regs(context) + REG_A2);
-  mode      = *(get_regs(context) + REG_A3);
 
-  if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
-    if (symbolic)
-      // TODO: check if opening vfilename has been attempted before
-      fd = 0;
-    else
-      fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
-
-    *(get_regs(context) + REG_A0) = fd;
-
-    if (debug_open)
-      printf5("%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfie_name,
-        filename_buffer,
-        (char*) flags,
-        (char*) mode,
-        (char*) fd);
-  } else {
+  if (down_load_concrete_string(get_pt(context), vfilename, filename_buffer))
+    // TODO: check if opening vfilename has been attempted before
+    *(get_regs(context) + REG_A0) = 0; // file descriptor 0
+  else
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
 
-    if (debug_open)
-      printf2("%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name,
-        (char*) vfilename);
-  }
-
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
-
-  if (debug_syscalls) {
-    print(" -> ");
-    print_register_value(REG_A0);
-    println();
-  }
 }
 
 // -----------------------------------------------------------------
-// ----------------------- HYPSTER SYSCALLS ------------------------
+// ------------------------ HYPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
 
 uint64_t* do_symbolic_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout) {
@@ -2281,10 +2122,11 @@ uint64_t monster(uint64_t* to_context) {
   timeout = max_execution_depth - get_execution_depth(to_context);
 
   while (1) {
-
     if (debug_merge)
       if (from_context != (uint64_t*) 0)
-        printf4("; switching from context %d to context %d (merge locations: %x, %x)\n", (char*) from_context, (char*) to_context, (char*) get_merge_location(from_context), (char*) get_merge_location(to_context));
+        printf4("; switching from context %d to context %d (merge locations: %x, %x)\n",
+          (char*) from_context, (char*) to_context,
+          (char*) get_merge_location(from_context), (char*) get_merge_location(to_context));
 
     from_context = mipster_symbolic_switch(to_context, timeout);
 
