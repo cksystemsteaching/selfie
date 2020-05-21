@@ -82,7 +82,7 @@ void check_division_by_zero(uint64_t division, uint64_t flow_nid);
 
 void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_nid, uint64_t up_flow_nid);
 
-uint64_t modeler();
+void modeler();
 
 uint64_t selfie_model();
 
@@ -1489,7 +1489,7 @@ void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_
   current_nid = current_nid + 3;
 }
 
-uint64_t modeler() {
+void modeler() {
   uint64_t i;
 
   uint64_t machine_word;
@@ -1507,42 +1507,6 @@ uint64_t modeler() {
   uint64_t from_instruction;
   uint64_t from_address;
   uint64_t jalr_address;
-
-  // use extension ".btor2" in name of SMT-LIB file
-  model_name = replace_extension(binary_name, "btor2");
-
-  if (code_length == 0) {
-    printf2("%s: nothing to disassemble to output file %s\n", selfie_name, model_name);
-
-    return EXITCODE_BADARGUMENTS;
-  }
-
-  // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  model_fd = open_write_only(model_name);
-
-  if (signed_less_than(model_fd, 0)) {
-    printf2("%s: could not create model output file %s\n", selfie_name, model_name);
-
-    return EXITCODE_IOERROR;
-  }
-
-  output_name = model_name;
-  output_fd   = model_fd;
-
-  reset_library();
-  reset_interpreter();
-  reset_microkernel();
-
-  init_memory(1);
-
-  boot_loader();
-
-  run = 0;
-
-  model = 1;
-
-  do_switch(current_context, current_context, TIMEROFF);
 
   printf1("; %s\n\n", SELFIE_URL);
 
@@ -1993,7 +1957,7 @@ uint64_t modeler() {
 
       printf2("%s: too many in-edges at instruction address %x detected\n", selfie_name, (char*) pc);
 
-      return EXITCODE_MODELINGERROR;
+      exit(EXITCODE_MODELINGERROR);
     }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -2079,17 +2043,6 @@ uint64_t modeler() {
   // TODO: check validity of return addresses in jalr
 
   printf1("; end of BTOR2 %s\n", model_name);
-
-  model = 0;
-
-  output_name = (char*) 0;
-  output_fd   = 1;
-
-  printf3("%s: %d characters of model formulae written into %s\n", selfie_name,
-    (char*) number_of_written_characters,
-    model_name);
-
-  return EXITCODE_NOERROR;
 }
 
 uint64_t selfie_model() {
@@ -2106,7 +2059,52 @@ uint64_t selfie_model() {
           get_argument();
         }
 
+      if (binary_length == 0) {
+        printf1("%s: nothing to model\n", selfie_name);
+
+        return EXITCODE_BADARGUMENTS;
+      }
+
+      // use extension ".btor2" in name of SMT-LIB file
+      model_name = replace_extension(binary_name, "btor2");
+
+      // assert: model_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+      model_fd = open_write_only(model_name);
+
+      if (signed_less_than(model_fd, 0)) {
+        printf2("%s: could not create model file %s\n", selfie_name, model_name);
+
+        return EXITCODE_IOERROR;
+      }
+
+      reset_library();
+      reset_interpreter();
+      reset_microkernel();
+
+      init_memory(1);
+
+      boot_loader();
+
+      do_switch(current_context, current_context, TIMEROFF);
+
+      output_name = model_name;
+      output_fd   = model_fd;
+
+      run = 0;
+
+      model = 1;
+
       modeler();
+
+      model = 0;
+
+      output_name = (char*) 0;
+      output_fd   = 1;
+
+      printf3("%s: %d characters of model formulae written into %s\n", selfie_name,
+        (char*) number_of_written_characters,
+        model_name);
 
       return EXITCODE_NOERROR;
     } else
