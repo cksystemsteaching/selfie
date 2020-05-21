@@ -193,78 +193,10 @@ void constrain_beq();
 void constrain_jalr();
 
 // -----------------------------------------------------------------
-// ------------------- SYMBOLIC EXECUTION ENGINE -------------------
-// -----------------------------------------------------------------
-
-char* bv_constant(uint64_t value);
-char* bv_variable(uint64_t bits);
-char* bv_zero_extension(uint64_t bits);
-
-char* smt_value(uint64_t val, char* sym);
-char* smt_variable(char* prefix, uint64_t bits);
-
-char* smt_unary(char* opt, char* op);
-char* smt_binary(char* opt, char* op1, char* op2);
-char* smt_ternary(char* opt, char* op1, char* op2, char* op3);
-
-uint64_t  find_merge_location(uint64_t beq_imm);
-
-void      add_mergeable_context(uint64_t* context);
-uint64_t* get_mergeable_context();
-
-void      add_waiting_context(uint64_t* context);
-uint64_t* get_waiting_context();
-
-void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
-void      merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
-void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
-uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
-
-void      push_onto_call_stack(uint64_t* context, uint64_t address);
-uint64_t  pop_off_call_stack(uint64_t* context);
-uint64_t  compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context);
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
-
-uint64_t variable_version = 0; // generates unique SMT-LIB variable names
-
-uint64_t* symbolic_contexts = (uint64_t*) 0;
-
-char* path_condition = (char*) 0;
-
-uint64_t* symbolic_memory = (uint64_t*) 0;
-
-uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in SMT-LIB format
-
-char*    smt_name = (char*) 0; // name of SMT-LIB file
-uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
-
-uint64_t merge_enabled  = 0; // enable or disable the merging of paths
-uint64_t debug_merge    = 0; // enable or disable the debugging of merging in monster
-
-uint64_t* mergeable_contexts                          = (uint64_t*) 0; // contexts that have reached their merge location
-uint64_t* waiting_contexts                            = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
-
-uint64_t* current_mergeable_context                   = (uint64_t*) 0; // current context with which the active context can possibly be merged
-
-// ------------------------ GLOBAL CONSTANTS -----------------------
-
-uint64_t DELETED                         = -1; // indicates that a symbolic memory word has been deleted
-uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
-uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the beginning of the shared symbolic memory space
-
-uint64_t beq_limit = 35; // limit of symbolic beq instructions on each part of the path between two merge locations
-
-// -----------------------------------------------------------------
 // -------------------------- INTERPRETER --------------------------
 // -----------------------------------------------------------------
 
 void execute_symbolically();
-
 void interrupt_symbolically();
 
 void run_symbolically_until_exception();
@@ -307,14 +239,14 @@ uint64_t  get_merge_location(uint64_t* context)  { return             *(context 
 uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 23); }
 uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 24); }
 
-void set_execution_depth(uint64_t* context, uint64_t depth)    { *(context + 17) =            depth; }
-void set_path_condition(uint64_t* context, char* path)         { *(context + 18) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory)  { *(context + 19) = (uint64_t) memory; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)      { *(context + 20) = (uint64_t) regs; }
-void set_beq_counter(uint64_t* context, uint64_t counter)      { *(context + 21) =            counter; }
-void set_merge_location(uint64_t* context, uint64_t location)  { *(context + 22) =            location; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)   { *(context + 23) = (uint64_t) partner; }
-void set_call_stack(uint64_t* context, uint64_t* stack)        { *(context + 24) = (uint64_t) stack; }
+void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 17) =            depth; }
+void set_path_condition(uint64_t* context, char* path)        { *(context + 18) = (uint64_t) path; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 19) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 20) = (uint64_t) regs; }
+void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 21) =            counter; }
+void set_merge_location(uint64_t* context, uint64_t location) { *(context + 22) =            location; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 23) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 24) = (uint64_t) stack; }
 
 // -----------------------------------------------------------------
 // ---------------------------- KERNEL -----------------------------
@@ -328,9 +260,76 @@ uint64_t handle_symbolic_recursion(uint64_t* context);
 
 uint64_t handle_symbolic_exception(uint64_t* context);
 
+// -----------------------------------------------------------------
+// ------------------- SYMBOLIC EXECUTION ENGINE -------------------
+// -----------------------------------------------------------------
+
+char* bv_constant(uint64_t value);
+char* bv_variable(uint64_t bits);
+char* bv_zero_extension(uint64_t bits);
+
+char* smt_value(uint64_t val, char* sym);
+char* smt_variable(char* prefix, uint64_t bits);
+
+char* smt_unary(char* opt, char* op);
+char* smt_binary(char* opt, char* op1, char* op2);
+char* smt_ternary(char* opt, char* op1, char* op2, char* op3);
+
+uint64_t  find_merge_location(uint64_t beq_imm);
+
+void      add_mergeable_context(uint64_t* context);
+uint64_t* get_mergeable_context();
+
+void      add_waiting_context(uint64_t* context);
+uint64_t* get_waiting_context();
+
+void      merge(uint64_t* active_context, uint64_t* mergeable_context, uint64_t location);
+void      merge_symbolic_memory_and_registers(uint64_t* active_context, uint64_t* mergeable_context);
+void      merge_symbolic_memory_of_active_context(uint64_t* active_context, uint64_t* mergeable_context);
+void      merge_symbolic_memory_of_mergeable_context(uint64_t* active_context, uint64_t* mergeable_context);
+void      merge_registers(uint64_t* active_context, uint64_t* mergeable_context);
+uint64_t* merge_if_possible_and_get_next_context(uint64_t* context);
+
+void      push_onto_call_stack(uint64_t* context, uint64_t address);
+uint64_t  pop_off_call_stack(uint64_t* context);
+uint64_t  compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context);
+
 uint64_t monster(uint64_t* to_context);
 
 uint64_t selfie_run_symbolically(uint64_t machine);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+uint64_t max_execution_depth = 1; // in number of instructions, unbounded with 0
+
+uint64_t variable_version = 0; // generates unique SMT-LIB variable names
+
+uint64_t* symbolic_contexts = (uint64_t*) 0;
+
+char* path_condition = (char*) 0;
+
+uint64_t* symbolic_memory = (uint64_t*) 0;
+
+uint64_t* reg_sym = (uint64_t*) 0; // symbolic values in registers as strings in SMT-LIB format
+
+char*    smt_name = (char*) 0; // name of SMT-LIB file
+uint64_t smt_fd   = 0;         // file descriptor of open SMT-LIB file
+
+uint64_t merge_enabled  = 0; // enable or disable the merging of paths
+uint64_t debug_merge    = 0; // enable or disable the debugging of merging in monster
+
+uint64_t* mergeable_contexts = (uint64_t*) 0; // contexts that have reached their merge location
+uint64_t* waiting_contexts   = (uint64_t*) 0; // contexts that were created at a symbolic beq instruction and are waiting to be executed
+
+uint64_t* current_mergeable_context = (uint64_t*) 0; // current context with which the active context can possibly be merged
+
+// ------------------------ GLOBAL CONSTANTS -----------------------
+
+uint64_t DELETED                         = -1; // indicates that a symbolic memory word has been deleted
+uint64_t MERGED                          = -2; // indicates that a symbolic memory word has been merged
+uint64_t BEGIN_OF_SHARED_SYMBOLIC_MEMORY = -3; // indicates the beginning of the shared symbolic memory space
+
+uint64_t beq_limit = 35; // limit of symbolic beq instructions on each part of the path between two merge locations
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
 // -----------------------------------------------------------------
@@ -938,6 +937,341 @@ void constrain_jalr() {
     println();
 
     exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+  }
+}
+
+// -----------------------------------------------------------------
+// -------------------------- INTERPRETER --------------------------
+// -----------------------------------------------------------------
+
+void execute_symbolically() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI) {
+    constrain_addi();
+    do_addi();
+  } else if (is == LD)
+    constrain_ld();
+  else if (is == SD)
+    constrain_sd();
+  else if (is == ADD) {
+    constrain_add_sub_mul_divu_remu_sltu("bvadd");
+    do_add();
+  } else if (is == SUB) {
+    constrain_add_sub_mul_divu_remu_sltu("bvsub");
+    do_sub();
+  } else if (is == MUL) {
+    constrain_add_sub_mul_divu_remu_sltu("bvmul");
+    do_mul();
+  } else if (is == DIVU) {
+    constrain_add_sub_mul_divu_remu_sltu("bvudiv");
+    do_divu();
+  } else if (is == REMU) {
+    constrain_add_sub_mul_divu_remu_sltu("bvurem");
+    do_remu();
+  } else if (is == SLTU) {
+    constrain_add_sub_mul_divu_remu_sltu("bvult");
+    zero_extend_sltu();
+    do_sltu();
+  } else if (is == BEQ)
+    constrain_beq();
+  else if (is == JAL) {
+    // the JAL instruction is a procedure call, if rd is REG_RA
+    if (rd == REG_RA)
+      // push the procedure at pc + imm onto the callstack of the current context
+      push_onto_call_stack(current_context, pc + imm);
+    do_jal();
+  } else if (is == JALR) {
+    // pop off call stack, when we return from a procedure
+    if (rd == REG_ZR)
+      if (rs1 == REG_RA)
+        if (imm == 0)
+          pop_off_call_stack(current_context);
+    constrain_jalr();
+    do_jalr();
+  } else if (is == LUI) {
+    constrain_lui();
+    do_lui();
+  } else if (is == ECALL)
+    do_ecall();
+}
+
+void interrupt_symbolically() {
+  if (timer != TIMEROFF) {
+    timer = timer - 1;
+
+    set_execution_depth(current_context, get_execution_depth(current_context) + 1);
+
+    if (timer == 0) {
+      if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
+        // only throw exception if no other is pending
+        // TODO: handle multiple pending exceptions
+        throw_exception(EXCEPTION_TIMER, 0);
+      else
+        // trigger timer in the next interrupt cycle
+        timer = 1;
+    }
+  }
+
+  if (current_mergeable_context != (uint64_t*) 0)
+    // if both contexts are at the same program location, they can be merged
+    if (pc == get_pc(current_mergeable_context))
+      if (compare_call_stacks(current_context, current_mergeable_context) != 1)
+        merge(current_context, current_mergeable_context, pc);
+
+  // check if the current context has reached a merge location
+  if (pc == get_merge_location(current_context))
+    if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
+      // only throw exception if no other is pending
+      // TODO: handle multiple pending exceptions
+      throw_exception(EXCEPTION_MERGE, 0);
+}
+
+void run_symbolically_until_exception() {
+  trap = 0;
+
+  while (trap == 0) {
+    fetch();
+    decode();
+    execute_symbolically();
+
+    interrupt_symbolically();
+  }
+
+  trap = 0;
+}
+
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+// -----------------------------------------------------------------
+// ----------------------    R U N T I M E    ----------------------
+// -----------------------------------------------------------------
+// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
+
+// -----------------------------------------------------------------
+// ---------------------------- CONTEXTS ---------------------------
+// -----------------------------------------------------------------
+
+void copy_call_stack(uint64_t* from_context, uint64_t* to_context) {
+  uint64_t* entry;
+  uint64_t* entry_copy;
+  uint64_t* call_stack_copy;
+  uint64_t* previous_entry;
+
+  entry = get_call_stack(from_context);
+
+  entry_copy           = (uint64_t*) 0;
+  call_stack_copy      = (uint64_t*) 0;
+  previous_entry       = (uint64_t*) 0;
+
+  while (entry) {
+    entry_copy = zalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
+
+    *(entry_copy + 1) = *(entry + 1);
+
+    if (previous_entry != (uint64_t*) 0)
+      *(previous_entry + 0) = (uint64_t) entry_copy;
+
+    if (call_stack_copy == (uint64_t*) 0)
+      call_stack_copy = entry_copy;
+
+    previous_entry = entry_copy;
+    entry = (uint64_t*) *(entry + 0);
+  }
+
+  set_call_stack(to_context, call_stack_copy);
+}
+
+uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
+  uint64_t* context;
+  uint64_t* begin_of_shared_symbolic_memory;
+  uint64_t r;
+
+  context = new_context();
+
+  set_pc(context, location);
+
+  set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_regs(context) + r) = *(get_regs(original) + r);
+
+    r = r + 1;
+  }
+
+  set_pt(context, pt);
+
+  set_lowest_lo_page(context, get_lowest_lo_page(original));
+  set_highest_lo_page(context, get_highest_lo_page(original));
+  set_lowest_hi_page(context, get_lowest_hi_page(original));
+  set_highest_hi_page(context, get_highest_hi_page(original));
+  set_exception(context, get_exception(original));
+  set_faulting_page(context, get_faulting_page(original));
+  set_exit_code(context, get_exit_code(original));
+  set_parent(context, get_parent(original));
+  set_virtual_context(context, get_virtual_context(original));
+  set_name(context, get_name(original));
+
+  set_execution_depth(context, get_execution_depth(original));
+  set_path_condition(context, condition);
+  set_beq_counter(context, get_beq_counter(original));
+  set_merge_location(context, get_merge_location(original));
+
+  begin_of_shared_symbolic_memory = allocate_symbolic_memory_word();
+
+  // mark begin of shared symbolic memory space in the copied context
+  set_next_word(begin_of_shared_symbolic_memory, get_symbolic_memory(original));
+  set_word_address(begin_of_shared_symbolic_memory, BEGIN_OF_SHARED_SYMBOLIC_MEMORY);
+
+  // begin of the unshared symbolic memory space of the copied context
+  set_symbolic_memory(context, begin_of_shared_symbolic_memory);
+
+  begin_of_shared_symbolic_memory = allocate_symbolic_memory_word();
+
+  // mark begin of shared symbolic memory space in the original context
+  set_next_word(begin_of_shared_symbolic_memory, get_symbolic_memory(original));
+  set_word_address(begin_of_shared_symbolic_memory, BEGIN_OF_SHARED_SYMBOLIC_MEMORY);
+
+  // begin of the unshared symbolic memory space of the original context
+  set_symbolic_memory(original, begin_of_shared_symbolic_memory);
+
+  symbolic_memory = get_symbolic_memory(original);
+
+  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+
+  set_merge_partner(context, original);
+
+  copy_call_stack(original, context);
+
+  r = 0;
+
+  while (r < NUMBEROFREGISTERS) {
+    *(get_symbolic_regs(context) + r) = *(get_symbolic_regs(original) + r);
+
+    r = r + 1;
+  }
+
+  symbolic_contexts = context;
+
+  return context;
+}
+
+// -----------------------------------------------------------------
+// ---------------------------- KERNEL -----------------------------
+// -----------------------------------------------------------------
+
+uint64_t handle_symbolic_system_call(uint64_t* context) {
+  uint64_t a7;
+
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  a7 = *(get_regs(context) + REG_A7);
+
+  if (a7 == SYSCALL_BRK)
+    implement_brk(context);
+  else if (a7 == SYSCALL_READ)
+    implement_symbolic_read(context);
+  else if (a7 == SYSCALL_WRITE)
+    implement_symbolic_write(context);
+  else if (a7 == SYSCALL_OPENAT)
+    implement_symbolic_openat(context);
+  else if (a7 == SYSCALL_EXIT) {
+    implement_symbolic_exit(context);
+
+    // TODO: exit only if all contexts have exited
+    return EXIT;
+  } else {
+    printf2("%s: unknown system call %d\n", selfie_name, (char*) a7);
+
+    set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
+
+    return EXIT;
+  }
+
+  return DONOTEXIT;
+}
+
+uint64_t handle_symbolic_division_by_zero(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  // check if this division by zero is reachable
+  print("(push 1)\n");
+  printf1("(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
+  print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+  // we terminate the execution of the context, because if the location is not reachable,
+  // the rest of the path is not reachable either, and otherwise
+  // the execution would be terminated by this error anyway
+  set_exit_code(context, EXITCODE_DIVISIONBYZERO);
+
+  return EXIT;
+}
+
+uint64_t handle_symbolic_timer(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  printf1("; timeout in ", path_condition);
+  print_code_context_for_instruction(pc);
+  if (debug_merge)
+    printf1(" -> timed out context: %d", (char*) context);
+  println();
+
+  return EXIT;
+}
+
+uint64_t handle_symbolic_merge(uint64_t* context) {
+  add_mergeable_context(current_context);
+
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  return MERGE;
+}
+
+uint64_t handle_symbolic_recursion(uint64_t* context) {
+  set_exception(context, EXCEPTION_NOEXCEPTION);
+
+  return RECURSION;
+}
+
+uint64_t handle_symbolic_exception(uint64_t* context) {
+  uint64_t exception;
+
+  exception = get_exception(context);
+
+  if (exception == EXCEPTION_SYSCALL)
+    return handle_symbolic_system_call(context);
+  else if (exception == EXCEPTION_PAGEFAULT)
+    return handle_page_fault(context);
+  else if (exception == EXCEPTION_DIVISIONBYZERO)
+    return handle_symbolic_division_by_zero(context);
+  else if (exception == EXCEPTION_TIMER)
+    return handle_symbolic_timer(context);
+  else if (exception == EXCEPTION_MERGE)
+    return handle_symbolic_merge(context);
+  else if (exception == EXCEPTION_RECURSION)
+    return handle_symbolic_recursion(context);
+  else {
+    if (exception == EXCEPTION_INVALIDADDRESS) {
+      // check if this invalid memory access is reachable
+      print("(push 1)\n");
+      printf1("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
+      print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+
+      set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
+
+      // we terminate the execution of the context, because if the location is not reachable,
+      // the rest of the path is not reachable either, and otherwise
+      // the execution would be terminated by this error anyway
+      return EXIT;
+    }
+
+    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
+    print_exception(exception, get_faulting_page(context));
+    println();
+
+    set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
+
+    return EXIT;
   }
 }
 
@@ -1742,341 +2076,6 @@ uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_conte
     if (debug_merge)
         print("; Result of call stack comparison -> 2 (mergeable_context has longer call stack)\n");
     return 2; // active context has no more entries on the stack, but mergeable context still does
-  }
-}
-
-// -----------------------------------------------------------------
-// -------------------------- INTERPRETER --------------------------
-// -----------------------------------------------------------------
-
-void execute_symbolically() {
-  // assert: 1 <= is <= number of RISC-U instructions
-  if (is == ADDI) {
-    constrain_addi();
-    do_addi();
-  } else if (is == LD)
-    constrain_ld();
-  else if (is == SD)
-    constrain_sd();
-  else if (is == ADD) {
-    constrain_add_sub_mul_divu_remu_sltu("bvadd");
-    do_add();
-  } else if (is == SUB) {
-    constrain_add_sub_mul_divu_remu_sltu("bvsub");
-    do_sub();
-  } else if (is == MUL) {
-    constrain_add_sub_mul_divu_remu_sltu("bvmul");
-    do_mul();
-  } else if (is == DIVU) {
-    constrain_add_sub_mul_divu_remu_sltu("bvudiv");
-    do_divu();
-  } else if (is == REMU) {
-    constrain_add_sub_mul_divu_remu_sltu("bvurem");
-    do_remu();
-  } else if (is == SLTU) {
-    constrain_add_sub_mul_divu_remu_sltu("bvult");
-    zero_extend_sltu();
-    do_sltu();
-  } else if (is == BEQ)
-    constrain_beq();
-  else if (is == JAL) {
-    // the JAL instruction is a procedure call, if rd is REG_RA
-    if (rd == REG_RA)
-      // push the procedure at pc + imm onto the callstack of the current context
-      push_onto_call_stack(current_context, pc + imm);
-    do_jal();
-  } else if (is == JALR) {
-    // pop off call stack, when we return from a procedure
-    if (rd == REG_ZR)
-      if (rs1 == REG_RA)
-        if (imm == 0)
-          pop_off_call_stack(current_context);
-    constrain_jalr();
-    do_jalr();
-  } else if (is == LUI) {
-    constrain_lui();
-    do_lui();
-  } else if (is == ECALL)
-    do_ecall();
-}
-
-void interrupt_symbolically() {
-  if (timer != TIMEROFF) {
-    timer = timer - 1;
-
-    set_execution_depth(current_context, get_execution_depth(current_context) + 1);
-
-    if (timer == 0) {
-      if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
-        // only throw exception if no other is pending
-        // TODO: handle multiple pending exceptions
-        throw_exception(EXCEPTION_TIMER, 0);
-      else
-        // trigger timer in the next interrupt cycle
-        timer = 1;
-    }
-  }
-
-  if (current_mergeable_context != (uint64_t*) 0)
-    // if both contexts are at the same program location, they can be merged
-    if (pc == get_pc(current_mergeable_context))
-      if (compare_call_stacks(current_context, current_mergeable_context) != 1)
-        merge(current_context, current_mergeable_context, pc);
-
-  // check if the current context has reached a merge location
-  if (pc == get_merge_location(current_context))
-    if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
-      // only throw exception if no other is pending
-      // TODO: handle multiple pending exceptions
-      throw_exception(EXCEPTION_MERGE, 0);
-}
-
-void run_symbolically_until_exception() {
-  trap = 0;
-
-  while (trap == 0) {
-    fetch();
-    decode();
-    execute_symbolically();
-
-    interrupt_symbolically();
-  }
-
-  trap = 0;
-}
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// ----------------------    R U N T I M E    ----------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// ---------------------------- CONTEXTS ---------------------------
-// -----------------------------------------------------------------
-
-void copy_call_stack(uint64_t* from_context, uint64_t* to_context) {
-  uint64_t* entry;
-  uint64_t* entry_copy;
-  uint64_t* call_stack_copy;
-  uint64_t* previous_entry;
-
-  entry = get_call_stack(from_context);
-
-  entry_copy           = (uint64_t*) 0;
-  call_stack_copy      = (uint64_t*) 0;
-  previous_entry       = (uint64_t*) 0;
-
-  while (entry) {
-    entry_copy = zalloc(SIZEOFUINT64STAR + SIZEOFUINT64);
-
-    *(entry_copy + 1) = *(entry + 1);
-
-    if (previous_entry != (uint64_t*) 0)
-      *(previous_entry + 0) = (uint64_t) entry_copy;
-
-    if (call_stack_copy == (uint64_t*) 0)
-      call_stack_copy = entry_copy;
-
-    previous_entry = entry_copy;
-    entry = (uint64_t*) *(entry + 0);
-  }
-
-  set_call_stack(to_context, call_stack_copy);
-}
-
-uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
-  uint64_t* context;
-  uint64_t* begin_of_shared_symbolic_memory;
-  uint64_t r;
-
-  context = new_context();
-
-  set_pc(context, location);
-
-  set_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
-
-  r = 0;
-
-  while (r < NUMBEROFREGISTERS) {
-    *(get_regs(context) + r) = *(get_regs(original) + r);
-
-    r = r + 1;
-  }
-
-  set_pt(context, pt);
-
-  set_lowest_lo_page(context, get_lowest_lo_page(original));
-  set_highest_lo_page(context, get_highest_lo_page(original));
-  set_lowest_hi_page(context, get_lowest_hi_page(original));
-  set_highest_hi_page(context, get_highest_hi_page(original));
-  set_exception(context, get_exception(original));
-  set_faulting_page(context, get_faulting_page(original));
-  set_exit_code(context, get_exit_code(original));
-  set_parent(context, get_parent(original));
-  set_virtual_context(context, get_virtual_context(original));
-  set_name(context, get_name(original));
-
-  set_execution_depth(context, get_execution_depth(original));
-  set_path_condition(context, condition);
-  set_beq_counter(context, get_beq_counter(original));
-  set_merge_location(context, get_merge_location(original));
-
-  begin_of_shared_symbolic_memory = allocate_symbolic_memory_word();
-
-  // mark begin of shared symbolic memory space in the copied context
-  set_next_word(begin_of_shared_symbolic_memory, get_symbolic_memory(original));
-  set_word_address(begin_of_shared_symbolic_memory, BEGIN_OF_SHARED_SYMBOLIC_MEMORY);
-
-  // begin of the unshared symbolic memory space of the copied context
-  set_symbolic_memory(context, begin_of_shared_symbolic_memory);
-
-  begin_of_shared_symbolic_memory = allocate_symbolic_memory_word();
-
-  // mark begin of shared symbolic memory space in the original context
-  set_next_word(begin_of_shared_symbolic_memory, get_symbolic_memory(original));
-  set_word_address(begin_of_shared_symbolic_memory, BEGIN_OF_SHARED_SYMBOLIC_MEMORY);
-
-  // begin of the unshared symbolic memory space of the original context
-  set_symbolic_memory(original, begin_of_shared_symbolic_memory);
-
-  symbolic_memory = get_symbolic_memory(original);
-
-  set_symbolic_regs(context, smalloc(NUMBEROFREGISTERS * REGISTERSIZE));
-
-  set_merge_partner(context, original);
-
-  copy_call_stack(original, context);
-
-  r = 0;
-
-  while (r < NUMBEROFREGISTERS) {
-    *(get_symbolic_regs(context) + r) = *(get_symbolic_regs(original) + r);
-
-    r = r + 1;
-  }
-
-  symbolic_contexts = context;
-
-  return context;
-}
-
-// -----------------------------------------------------------------
-// ---------------------------- KERNEL -----------------------------
-// -----------------------------------------------------------------
-
-uint64_t handle_symbolic_system_call(uint64_t* context) {
-  uint64_t a7;
-
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  a7 = *(get_regs(context) + REG_A7);
-
-  if (a7 == SYSCALL_BRK)
-    implement_brk(context);
-  else if (a7 == SYSCALL_READ)
-    implement_symbolic_read(context);
-  else if (a7 == SYSCALL_WRITE)
-    implement_symbolic_write(context);
-  else if (a7 == SYSCALL_OPENAT)
-    implement_symbolic_openat(context);
-  else if (a7 == SYSCALL_EXIT) {
-    implement_symbolic_exit(context);
-
-    // TODO: exit only if all contexts have exited
-    return EXIT;
-  } else {
-    printf2("%s: unknown system call %d\n", selfie_name, (char*) a7);
-
-    set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
-
-    return EXIT;
-  }
-
-  return DONOTEXIT;
-}
-
-uint64_t handle_symbolic_division_by_zero(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  // check if this division by zero is reachable
-  print("(push 1)\n");
-  printf1("(assert %s); division by zero detected; check if this division by zero is reachable", path_condition);
-  print("\n(check-sat)\n(get-model)\n(pop 1)\n");
-
-  // we terminate the execution of the context, because if the location is not reachable,
-  // the rest of the path is not reachable either, and otherwise
-  // the execution would be terminated by this error anyway
-  set_exit_code(context, EXITCODE_DIVISIONBYZERO);
-
-  return EXIT;
-}
-
-uint64_t handle_symbolic_timer(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  printf1("; timeout in ", path_condition);
-  print_code_context_for_instruction(pc);
-  if (debug_merge)
-    printf1(" -> timed out context: %d", (char*) context);
-  println();
-
-  return EXIT;
-}
-
-uint64_t handle_symbolic_merge(uint64_t* context) {
-  add_mergeable_context(current_context);
-
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  return MERGE;
-}
-
-uint64_t handle_symbolic_recursion(uint64_t* context) {
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-
-  return RECURSION;
-}
-
-uint64_t handle_symbolic_exception(uint64_t* context) {
-  uint64_t exception;
-
-  exception = get_exception(context);
-
-  if (exception == EXCEPTION_SYSCALL)
-    return handle_symbolic_system_call(context);
-  else if (exception == EXCEPTION_PAGEFAULT)
-    return handle_page_fault(context);
-  else if (exception == EXCEPTION_DIVISIONBYZERO)
-    return handle_symbolic_division_by_zero(context);
-  else if (exception == EXCEPTION_TIMER)
-    return handle_symbolic_timer(context);
-  else if (exception == EXCEPTION_MERGE)
-    return handle_symbolic_merge(context);
-  else if (exception == EXCEPTION_RECURSION)
-    return handle_symbolic_recursion(context);
-  else {
-    if (exception == EXCEPTION_INVALIDADDRESS) {
-      // check if this invalid memory access is reachable
-      print("(push 1)\n");
-      printf1("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
-      print("\n(check-sat)\n(get-model)\n(pop 1)\n");
-
-      set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
-
-      // we terminate the execution of the context, because if the location is not reachable,
-      // the rest of the path is not reachable either, and otherwise
-      // the execution would be terminated by this error anyway
-      return EXIT;
-    }
-
-    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
-    print_exception(exception, get_faulting_page(context));
-    println();
-
-    set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
-
-    return EXIT;
   }
 }
 
