@@ -1235,6 +1235,8 @@ uint64_t EXCEPTION_TIMER              = 3;
 uint64_t EXCEPTION_INVALIDADDRESS     = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
 uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
+uint64_t EXCEPTION_SYMBOLICMERGE      = 7; // for symbolic execution
+uint64_t EXCEPTION_SYMBOLICRECURSION  = 8; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1294,7 +1296,7 @@ uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores p
 // ------------------------- INITIALIZATION ------------------------
 
 void init_interpreter() {
-  EXCEPTIONS = smalloc((EXCEPTION_UNKNOWNINSTRUCTION + 1) * SIZEOFUINT64STAR);
+  EXCEPTIONS = smalloc((EXCEPTION_SYMBOLICRECURSION + 1) * SIZEOFUINT64STAR);
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
@@ -1303,6 +1305,8 @@ void init_interpreter() {
   *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)      = (uint64_t) "symbolic merge";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICRECURSION)  = (uint64_t) "symbolic recursion";
 }
 
 void reset_interpreter() {
@@ -1512,6 +1516,8 @@ uint64_t* MY_CONTEXT = (uint64_t*) 0;
 
 uint64_t DONOTEXIT = 0;
 uint64_t EXIT      = 1;
+uint64_t MERGE     = 2; // for symbolic execution
+uint64_t RECURSION = 3; // for symbolic execution
 
 uint64_t EXITCODE_NOERROR                = 0;
 uint64_t EXITCODE_NOARGUMENTS            = 1;
@@ -1526,7 +1532,9 @@ uint64_t EXITCODE_DIVISIONBYZERO         = 9;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 10;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 11;
 uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 12;
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 13;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 13; // for symbolic execution
+uint64_t EXITCODE_MODELINGERROR          = 14; // for model generation
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 15;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
