@@ -1,24 +1,4 @@
 /*
-
-TODO: Merge this with the comment below:
-
-The `-se` and `-mc` options invoke the monster model generator.
-With option `-se`, monster generates an SMT-LIB file named after
-the given binary but with extension `.smt`. The `0-4096` value
-is interpreted as bound on the length of any symbolically
-executed code branch in number of instructions. Value `0` means
-that the code is executed symbolically without a bound.
-With option `-mc`, monster generates a BTOR2 file named after
-the executed binary but with extension `.btor2`. The `0-4096`
-value is interpreted as exit code. Value `0` means that
-any code execution that terminates with a non-zero exit code
-is seen as erroneous whereas a non-zero value means that
-any code execution that terminates with a different exit code
-is seen as erroneous.
-
-*/
-
-/*
 Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
@@ -29,82 +9,31 @@ in Austria. For further information and code please refer to:
 
 http://selfie.cs.uni-salzburg.at
 
-The Selfie Project provides an educational platform for teaching
-undergraduate and graduate students the design and implementation
-of programming languages and runtime systems. The focus is on the
-construction of compilers, libraries, operating systems, and even
-virtual machine monitors. The common theme is to identify and
-resolve self-reference in systems code which is seen as the key
-challenge when teaching systems engineering, hence the name.
+Modeler implements a simple yet sound and complete translation of
+RISC-U code to BTOR2 formulae. Modeler serves as research platform
+and facilitates teaching the absolute basics of bit-precise reasoning
+on real code.
 
-Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
+Given a RISC-U binary (or C* source code compiled to RISC-U, including
+all of selfie and modeler itself), modeler generates a BTOR2 file that
+models the bit-precise behavior of the binary on a 64-bit machine with
+4GB of memory. The translation runs in time and space linear in the
+number of instructions in three iterations over all instructions for
+encoding the program counter, the data flow, and the control flow.
 
-1. a self-compiling compiler called starc that compiles
-   a tiny but still fast subset of C called C Star (C*) to
-   a tiny and easy-to-teach subset of RISC-V called RISC-U,
-2. a self-executing emulator called mipster that executes
-   RISC-U code including itself when compiled with starc,
-3. a self-hosting hypervisor called hypster that provides
-   RISC-U virtual machines that can host all of selfie,
-   that is, starc, mipster, and hypster itself,
-4. a self-translating modeling engine called monster that
-   translates RISC-U code including itself to SMT-LIB and
-   BTOR2 formulae that are satisfiable if and only if
-   there is input to the code such that the code exits
-   with non-zero exit codes, performs division by zero, or
-   accesses memory outside of allocated memory blocks, and
-5. a tiny C* library called libcstar utilized by selfie.
+The console argument 0-255 is interpreted as exit code. Value zero
+means that any code execution that terminates with a non-zero exit
+code is modeled as erroneous whereas a non-zero value means that
+any code execution that terminates with a different exit code is
+modeled as erroneous. Division by zero as well as memory access to
+the code segment and above the 4GB memory of the machine is also
+modeled as erroneous.
 
-Selfie is implemented in a single (!) file and kept minimal for simplicity.
-There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
-and a debugger with replay as well as minimal operating system support in
-the form of RISC-V system calls built into the emulator and hypervisor.
+The optional console argument --check-block-access instructs modeler
+to generate additional checks for identifying unsafe memory access
+outside of malloced memory blocks.
 
-C* is a tiny Turing-complete subset of C that includes dereferencing
-(the * operator) but excludes composite data types, bitwise and Boolean
-operators, and many other features. There are only unsigned 64-bit
-integers and 64-bit pointers as well as character and string literals.
-This choice turns out to be helpful for students to understand the
-true role of composite data types such as arrays and records.
-Bitwise operations are implemented in libcstar using unsigned integer
-arithmetics helping students better understand arithmetic operators.
-C* is supposed to be close to the minimum necessary for implementing
-a self-compiling, single-pass, recursive-descent compiler. C* can be
-taught in one to two weeks of classes depending on student background.
-
-The compiler can readily be extended to compile features missing in C*
-and to improve performance of the generated code. The compiler generates
-RISC-U executables in ELF format that are compatible with the official
-RISC-V toolchain. The mipster emulator can execute RISC-U executables
-loaded from file but also from memory immediately after code generation
-without going through the file system.
-
-RISC-U is a tiny Turing-complete subset of the RISC-V instruction set.
-It only features unsigned 64-bit integer arithmetic, double-word memory,
-and simple control-flow instructions but neither bitwise nor byte- and
-word-level instructions. RISC-U can be taught in one week of classes.
-
-The emulator implements minimal operating system support that is meant
-to be extended by students, first as part of the emulator, and then
-ported to run on top of it, similar to an actual operating system or
-virtual machine monitor. The fact that the emulator can execute itself
-helps exposing the self-referential nature of that challenge. In fact,
-selfie goes one step further by implementing microkernel functionality
-as part of the emulator and a hypervisor that can run as part of the
-emulator as well as on top of it, all with the same code.
-
-The modeling engine implements a simple yet sound and complete
-translation of RISC-U code to SMT-LIB and BTOR2 formulae, and
-facilitates teaching the absolute basics of SAT and SMT solving
-applied to real code.
-
-Selfie is the result of many years of teaching systems engineering.
-The design of the compiler is inspired by the Oberon compiler of
-Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
-RISC-V community around Professor David Patterson from UC Berkeley.
-The design of the hypervisor is inspired by microkernels of Professor
-Jochen Liedtke from University of Karlsruhe. The modeling engine is
-inspired by Professor Armin Biere from JKU Linz.
+Modeler is inspired by Professor Armin Biere from JKU Linz.
 */
 
 // -----------------------------------------------------------------
@@ -1562,10 +1491,6 @@ void check_address_validity(uint64_t start, uint64_t flow_nid, uint64_t lo_flow_
   current_nid = current_nid + 3;
 }
 
-/* Translates a given RISC-U binary to a BTOR2 model
-in time and space linear in the number of instructions
-in three iterations over all instructions for encoding
-the program counter, the data flow, and the control flow. */
 uint64_t modeler() {
   uint64_t i;
 
