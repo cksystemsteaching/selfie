@@ -1244,18 +1244,17 @@ uint64_t debug_exception = 0;
 
 uint64_t run = 0; // flag for running code
 
-// enables recording, debugging, and symbolically executing code
-uint64_t debug = 0;
+uint64_t debug = 0; // // flag for recording and debugging code
 
 uint64_t debug_syscalls = 0; // flag for debugging syscalls
 
 uint64_t record = 0; // flag for recording code execution
 uint64_t redo   = 0; // flag for redoing code execution
 
-uint64_t execute_symbolically = 0; // flag for symbolically executing code
-
 uint64_t disassemble_verbose = 0; // flag for disassembling code in more detail
-uint64_t model               = 0; // flag for modeling code
+
+uint64_t execute_symbolically = 0; // flag for symbolically executing code
+uint64_t model                = 0; // flag for modeling code
 
 // number of instructions from context switch to timer interrupt
 // CAUTION: avoid interrupting any kernel activities, keep TIMESLICE large
