@@ -5,6 +5,8 @@ uint64_t UNKNOWN_VALUE = 3735928559; // magic number representing unknown value
 uint64_t* unknown_regs = (uint64_t*) 0;
 uint64_t nops = 0;
 
+uint64_t* jump_source_addrs = (uint64_t*) 0;
+
 // helper functions
 
 uint64_t is_reg_unknown(uint64_t reg) {
@@ -53,7 +55,6 @@ uint64_t is_return() {
 
 void count_in_edges() {
   uint64_t i;
-  uint64_t useless;
 
   num_in_edges = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
   *num_in_edges = 1;
@@ -63,10 +64,11 @@ void count_in_edges() {
   while (i < code_length / INSTRUCTIONSIZE ) {
     ir = load_instruction((i - 1) * INSTRUCTIONSIZE);
     decode();
-    if (is_return())useless=1;else {
+    if (!is_return()) {
       *(num_in_edges + i) = *(num_in_edges + i) + 1;
       if (is_jump_or_branch()) {
         *(num_in_edges + i-1 + imm/INSTRUCTIONSIZE) = *(num_in_edges + i-1 + imm/INSTRUCTIONSIZE) + 1;
+        *(jump_source_addrs + i-1 + imm/INSTRUCTIONSIZE) = (i - 1) * INSTRUCTIONSIZE;
       }
     }
     i = i + 1;
@@ -87,8 +89,8 @@ void count_in_edges() {
 // Reset all registers' states to unknown
 void reset_all() {
   uint64_t i;
-  uint64_t gp_cache;
-  gp_cache = *(registers + REG_GP);
+  // uint64_t gp_cache;
+  // gp_cache = *(registers + REG_GP);
 
   i=0;
   while(i < NUMBEROFREGISTERS) {
@@ -98,7 +100,9 @@ void reset_all() {
 
   // reset GP and ZR as they are never touched
   set_reg(REG_ZR, 0);
-  set_reg(REG_GP, gp_cache);
+  // temporarily disabled
+  // set_reg(REG_GP, gp_cache);
+  set_reg_unknown(REG_GP);
 }
 
 void insert_nop() {
@@ -120,16 +124,43 @@ void insert_nop() {
 //
 // TODO: double check the in edge logic
 void find_nops() {
-  uint64_t i;
-  uint64_t addi_rd;
-  uint64_t addi_rs1;
-  uint64_t addi_imm;
-  uint64_t stop;
   uint64_t previous_rd;
+  uint64_t backtracked;
+  uint64_t saved_pc;
 
   pc = 0;
 
+  backtracked = 0;
+  saved_pc = 0;
+
   while (pc < code_length) {
+    if (backtracked == 2)
+      backtracked = 0;
+    else
+      if (*(num_in_edges + (pc/4)) == 1)
+        if (*(jump_source_addrs + (pc/4)) != 0) {
+          reset_all();
+          saved_pc = pc;
+
+          pc = *(jump_source_addrs + (pc/4));
+          ir = load_instruction(pc);
+          decode();
+
+          while (!backtracked) {
+            pc = pc - 4;
+            ir = load_instruction(pc);
+            decode();
+            if (pc == 0) {
+              backtracked = 1;
+              pc = pc - 4;
+            }
+            if (is_jump_or_branch())
+              backtracked = 1;
+            if (*(num_in_edges + (pc/4)) != 1)
+              backtracked = 1;
+          }
+          pc = pc + 4;
+        }
     ir = load_instruction(pc);
 
     decode();
@@ -142,9 +173,11 @@ void find_nops() {
       reset_all();
 
     } else if (is == ADDI){
-      printf1("%p ", pc);
-      translate_to_assembler();
-      print_addi_before();
+      if (debug) {
+        printf1("%p ", pc);
+        translate_to_assembler();
+        print_addi_before();
+      }
 
       if (rd != REG_ZR) {
 
@@ -158,7 +191,8 @@ void find_nops() {
             if (previous_rd == *(registers + rd)) {
               nops = nops + 1;
               insert_nop();
-              print(" [NOP]");
+              if (debug)
+                print(" [NOP]");
             }
 
         } else { // else rd is now unknown too
@@ -166,8 +200,10 @@ void find_nops() {
         }
       }
 
-      print_addi_add_sub_mul_divu_remu_sltu_after();
-      println();
+      if (debug) {
+        print_addi_add_sub_mul_divu_remu_sltu_after();
+        println();
+      }
     }
 
     // handle "weird" instructions
@@ -176,13 +212,28 @@ void find_nops() {
     }
     else if (is == SD){}
     else if (is == BEQ){
-      reset_all();
+      if (backtracked) {
+        pc = saved_pc - 4;
+        backtracked = 2;
+      }
+      else
+        reset_all();
     }
     else if (is == JAL){
-      reset_all();
+      if (backtracked) {
+        pc = saved_pc - 4;
+        backtracked = 2;
+      }
+      else
+        reset_all();
     }
     else if (is == JALR){
-      reset_all();
+      if (backtracked) {
+        pc = saved_pc - 4;
+        backtracked = 2;
+      }
+      else
+        reset_all();
     }
     else if (is == LUI){
       if (rd != REG_ZR) {
@@ -194,9 +245,11 @@ void find_nops() {
     }
 
     else {
-      printf1("%p ", pc);
-      translate_to_assembler();
-      print_add_sub_mul_divu_remu_sltu_before();
+      if (debug) {
+        printf1("%p ", pc);
+        translate_to_assembler();
+        print_add_sub_mul_divu_remu_sltu_before();
+      }
 
       // analogous to ADDI but with two potentially unknown registers
       if (rd != REG_ZR) {
@@ -233,14 +286,16 @@ void find_nops() {
           if (previous_rd == *(registers + rd)) {
             nops = nops + 1;
             insert_nop();
-            print(" [NOP]");
+            if (debug)
+              print(" [NOP]");
           }
         }
       }
 
-      print_addi_add_sub_mul_divu_remu_sltu_after();
-      println();
-
+      if (debug) {
+        print_addi_add_sub_mul_divu_remu_sltu_after();
+        println();
+      }
     }
 
     pc = pc + INSTRUCTIONSIZE;
@@ -265,10 +320,13 @@ int main(int argc, char **argv) {
 
   registers = malloc(NUMBEROFREGISTERS * REGISTERSIZE);
   unknown_regs = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  jump_source_addrs = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
   reset_all();
 
   count_in_edges();
+
+  debug = 0;
   find_nops();
   printf1("found and patched %d effective nops\n", nops);
   binary_name = replace_extension(binary_name, "nop2");
