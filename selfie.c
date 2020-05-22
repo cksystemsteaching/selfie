@@ -7044,6 +7044,9 @@ void do_ecall() {
     // TODO: redo all side effects
     *(registers + REG_A0) = *(values + (tc % MAX_REPLAY_LENGTH));
 
+    // TODO: print ecall details
+    println();
+
     pc = pc + INSTRUCTIONSIZE;
   } else if (*(registers + REG_A7) == SYSCALL_SWITCH)
     if (record) {
@@ -7138,8 +7141,6 @@ void replay_trace() {
 
   redo = 1;
 
-  debug_syscalls = 1;
-
   tl = trace_length;
 
   // redo trace_length number of instructions
@@ -7153,8 +7154,6 @@ void replay_trace() {
     tc = tc + 1;
     tl = tl - 1;
   }
-
-  debug_syscalls = 0;
 
   redo   = 0;
   record = 1;
