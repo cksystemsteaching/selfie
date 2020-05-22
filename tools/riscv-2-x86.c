@@ -1124,7 +1124,9 @@ void selfie_translate() {
 
   init_memory(2);
 
-  boot_loader();
+  current_context = create_context(MY_CONTEXT, 0);
+
+  boot_loader(current_context);
 
   run = 0;
 

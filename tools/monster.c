@@ -128,7 +128,6 @@ void     implement_symbolic_openat(uint64_t* context);
 // ------------------------ HYPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
 
-uint64_t* do_symbolic_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout);
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout);
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -197,7 +196,6 @@ void constrain_jalr();
 // -----------------------------------------------------------------
 
 void execute_symbolically();
-void interrupt_symbolically();
 
 void run_symbolically_until_exception();
 
@@ -212,7 +210,7 @@ void run_symbolically_until_exception();
 // -----------------------------------------------------------------
 
 void      copy_call_stack(uint64_t* from_context, uint64_t* to_context);
-uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition);
+uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* condition);
 
 // symbolic context extension:
 // +----+-----------------+
@@ -247,6 +245,12 @@ void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 21) 
 void set_merge_location(uint64_t* context, uint64_t location) { *(context + 22) =            location; }
 void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 23) = (uint64_t) partner; }
 void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 24) = (uint64_t) stack; }
+
+// -----------------------------------------------------------------
+// -------------------------- MICROKERNEL --------------------------
+// -----------------------------------------------------------------
+
+uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt);
 
 // -----------------------------------------------------------------
 // ---------------------------- KERNEL -----------------------------
@@ -571,45 +575,19 @@ void implement_symbolic_openat(uint64_t* context) {
 // ------------------------ HYPSTER SYSCALL ------------------------
 // -----------------------------------------------------------------
 
-uint64_t* do_symbolic_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeout) {
-  restore_context(to_context);
-
-  // restore machine state
-  pc        = get_pc(to_context);
-  registers = get_regs(to_context);
-  pt        = get_pt(to_context);
-
-  path_condition  = get_path_condition(to_context);
-  symbolic_memory = get_symbolic_memory(to_context);
-  reg_sym         = get_symbolic_regs(to_context);
-
-  // use REG_A6 instead of REG_A0 for returning from_context
-  // to avoid overwriting REG_A0 in to_context
-  if (get_parent(from_context) != MY_CONTEXT)
-    *(registers + REG_A6) = (uint64_t) get_virtual_context(from_context);
-  else
-    *(registers + REG_A6) = (uint64_t) from_context;
-
-  timer = timeout;
-
-  if (debug_switch) {
-    printf3("%s: switched from context %p to context %p", selfie_name,
-      (char*) from_context,
-      (char*) to_context);
-    if (timer != TIMEROFF)
-      printf1(" to execute %d instructions", (char*) timer);
-    println();
-  }
-
-  return to_context;
-}
-
 uint64_t* mipster_symbolic_switch(uint64_t* to_context, uint64_t timeout) {
-  current_context = do_symbolic_switch(current_context, to_context, timeout);
+  path_condition  = get_path_condition(to_context);
+  reg_sym         = get_symbolic_regs(to_context);
+  symbolic_memory = get_symbolic_memory(to_context);
+
+  current_context = do_switch(current_context, to_context, timeout);
 
   run_symbolically_until_exception();
 
   save_context(current_context);
+
+  set_path_condition(current_context, path_condition);
+  set_symbolic_memory(current_context, symbolic_memory);
 
   return current_context;
 }
@@ -899,7 +877,7 @@ void constrain_beq() {
     // save symbolic memory so that it is copied correctly afterwards
     set_symbolic_memory(current_context, symbolic_memory);
 
-    waiting_context = copy_context(current_context, pc + imm, smt_binary("and", pvar, bvar));
+    waiting_context = copy_symbolic_context(current_context, pc + imm, smt_binary("and", pvar, bvar));
 
     // the copied context is executed later and takes the other path
     add_waiting_context(waiting_context);
@@ -995,37 +973,6 @@ void execute_symbolically() {
     do_ecall();
 }
 
-void interrupt_symbolically() {
-  if (timer != TIMEROFF) {
-    timer = timer - 1;
-
-    set_execution_depth(current_context, get_execution_depth(current_context) + 1);
-
-    if (timer == 0) {
-      if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
-        // only throw exception if no other is pending
-        // TODO: handle multiple pending exceptions
-        throw_exception(EXCEPTION_TIMER, 0);
-      else
-        // trigger timer in the next interrupt cycle
-        timer = 1;
-    }
-  }
-
-  if (current_mergeable_context != (uint64_t*) 0)
-    // if both contexts are at the same program location, they can be merged
-    if (pc == get_pc(current_mergeable_context))
-      if (compare_call_stacks(current_context, current_mergeable_context) != 1)
-        merge(current_context, current_mergeable_context, pc);
-
-  // check if the current context has reached a merge location
-  if (pc == get_merge_location(current_context))
-    if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
-      // only throw exception if no other is pending
-      // TODO: handle multiple pending exceptions
-      throw_exception(EXCEPTION_SYMBOLICMERGE, 0);
-}
-
 void run_symbolically_until_exception() {
   trap = 0;
 
@@ -1034,7 +981,23 @@ void run_symbolically_until_exception() {
     decode();
     execute_symbolically();
 
-    interrupt_symbolically();
+    if (timer != TIMEROFF)
+      set_execution_depth(current_context, get_execution_depth(current_context) + 1);
+
+    interrupt();
+
+    if (current_mergeable_context != (uint64_t*) 0)
+      // if both contexts are at the same program location, they can be merged
+      if (pc == get_pc(current_mergeable_context))
+        if (compare_call_stacks(current_context, current_mergeable_context) != 1)
+          merge(current_context, current_mergeable_context, pc);
+
+    // check if the current context has reached a merge location
+    if (pc == get_merge_location(current_context))
+      if (get_exception(current_context) == EXCEPTION_NOEXCEPTION)
+        // only throw exception if no other is pending
+        // TODO: handle multiple pending exceptions
+        throw_exception(EXCEPTION_SYMBOLICMERGE, 0);
   }
 
   trap = 0;
@@ -1080,7 +1043,7 @@ void copy_call_stack(uint64_t* from_context, uint64_t* to_context) {
   set_call_stack(to_context, call_stack_copy);
 }
 
-uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
+uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* condition) {
   uint64_t* context;
   uint64_t* begin_of_shared_symbolic_memory;
   uint64_t r;
@@ -1152,6 +1115,35 @@ uint64_t* copy_context(uint64_t* original, uint64_t location, char* condition) {
   }
 
   symbolic_contexts = context;
+
+  return context;
+}
+
+// -----------------------------------------------------------------
+// -------------------------- MICROKERNEL --------------------------
+// -----------------------------------------------------------------
+
+uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
+  uint64_t* context;
+
+  free_context(allocate_symbolic_context());
+
+  context = new_context();
+
+  init_context(context, parent, vctxt);
+
+  set_execution_depth(context, 0);
+  set_path_condition(context, "true");
+  set_symbolic_memory(context, (uint64_t*) 0);
+  set_symbolic_regs(context, zalloc(NUMBEROFREGISTERS * REGISTERSIZE));
+  set_beq_counter(context, 0);
+  set_merge_location(context, -1);
+  set_merge_partner(context, (uint64_t*) 0);
+
+  if (debug_create)
+    printf3("%s: parent context %p created child context %p\n", selfie_name,
+      (char*) parent,
+      (char*) used_contexts);
 
   return context;
 }
@@ -2089,12 +2081,10 @@ void monster(uint64_t* to_context) {
 
   printf1("; %s\n\n", SELFIE_URL);
 
-  printf1("; SMT-LIB formulae generated by %s for\n", selfie_name);
-  printf1("; RISC-V code obtained from %s with ", binary_name);
-  if (max_execution_depth)
-    printf1("%d execution depth\n\n", (char*) max_execution_depth);
-  else
-    print("unbounded execution depth\n\n");
+  printf2("; SMT-LIB formulae generated by %s for RISC-V code obtained from %s with\n", selfie_name, binary_name);
+  if (max_execution_depth) printf1("; %d", (char*) max_execution_depth); else print("; unbounded");
+  printf1(" execution depth, branch limit of %d, and merging", (char*) beq_limit);
+  if (merge_enabled) print(" enabled\n\n"); else print(" disabled\n\n");
 
   print("(set-option :produce-models true)\n");
   print("(set-option :incremental true)\n");
@@ -2183,9 +2173,12 @@ uint64_t selfie_run_symbolically() {
       // checking for the (optional) beq limit argument
       if (number_of_remaining_arguments() > 1)
         if (string_compare(peek_argument(1), "--merge-enabled") == 0)
-          if (string_compare(peek_argument(1), "--debug-merge") == 0)
+          if (string_compare(peek_argument(1), "--debug-merge") == 0) {
             // assert: argument is an integer representing the beq limit
-            beq_limit = atoi(get_argument());
+            beq_limit = atoi(peek_argument(1));
+
+            get_argument();
+          }
 
       // checking for the (optional) argument whether to enable merging (in debug mode) or not
       if (number_of_remaining_arguments() > 1) {
@@ -2228,9 +2221,11 @@ uint64_t selfie_run_symbolically() {
 
       init_memory(1);
 
-      boot_loader();
+      current_context = create_symbolic_context(MY_CONTEXT, 0);
 
-      printf3("%s: monster symbolically executing %s with %dMB physical memory on ", selfie_name,
+      boot_loader(current_context);
+
+      printf3("%s: monster symbolically executing %s with %dMB physical memory\n", selfie_name,
         binary_name,
         (char*) (page_frame_memory / MEGABYTE));
 

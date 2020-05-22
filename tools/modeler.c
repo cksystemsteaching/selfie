@@ -2134,7 +2134,9 @@ uint64_t selfie_model() {
 
       init_memory(1);
 
-      boot_loader();
+      current_context = create_context(MY_CONTEXT, 0);
+
+      boot_loader(current_context);
 
       do_switch(current_context, current_context, TIMEROFF);
 

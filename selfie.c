@@ -1507,7 +1507,7 @@ uint64_t mobster(uint64_t* to_context);
 char* replace_extension(char* filename, char* extension);
 
 uint64_t is_boot_level_zero();
-void     boot_loader();
+void     boot_loader(uint64_t* context);
 
 uint64_t selfie_run(uint64_t machine);
 
@@ -7050,6 +7050,10 @@ void do_ecall() {
       printf1("%s: context switching during recording is unsupported\n", selfie_name);
 
       exit(EXITCODE_BADARGUMENTS);
+    } else if (symbolic) {
+      printf1("%s: context switching during symbolic execution is unsupported\n", selfie_name);
+
+      exit(EXITCODE_BADARGUMENTS);
     } else {
       pc = pc + INSTRUCTIONSIZE;
 
@@ -8383,15 +8387,13 @@ uint64_t is_boot_level_zero() {
   return 0;
 }
 
-void boot_loader() {
-  current_context = create_context(MY_CONTEXT, 0);
-
-  up_load_binary(current_context);
+void boot_loader(uint64_t* context) {
+  up_load_binary(context);
 
   // pass binary name as first argument by replacing current argument
   set_argument(binary_name);
 
-  up_load_arguments(current_context, number_of_remaining_arguments(), remaining_arguments());
+  up_load_arguments(context, number_of_remaining_arguments(), remaining_arguments());
 }
 
 uint64_t selfie_run(uint64_t machine) {
@@ -8419,7 +8421,9 @@ uint64_t selfie_run(uint64_t machine) {
 
   init_memory(atoi(peek_argument(0)));
 
-  boot_loader();
+  current_context = create_context(MY_CONTEXT, 0);
+
+  boot_loader(current_context);
 
   printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
     binary_name,
