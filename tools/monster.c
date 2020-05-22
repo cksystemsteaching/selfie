@@ -209,6 +209,8 @@ void run_symbolically_until_exception();
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
+uint64_t* new_symbolic_context();
+
 void      copy_call_stack(uint64_t* from_context, uint64_t* to_context);
 uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* condition);
 
@@ -1013,6 +1015,14 @@ void run_symbolically_until_exception() {
 // ---------------------------- CONTEXTS ---------------------------
 // -----------------------------------------------------------------
 
+uint64_t* new_symbolic_context() {
+  // insert new symbolic context at top of free-list of contexts
+  free_context(allocate_symbolic_context());
+
+  // new symbolic context is taken from top of free-list of contexts
+  return new_context();
+}
+
 void copy_call_stack(uint64_t* from_context, uint64_t* to_context) {
   uint64_t* entry;
   uint64_t* entry_copy;
@@ -1048,7 +1058,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   uint64_t* begin_of_shared_symbolic_memory;
   uint64_t r;
 
-  context = new_context();
+  context = new_symbolic_context();
 
   set_pc(context, location);
 
@@ -1126,9 +1136,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
   uint64_t* context;
 
-  free_context(allocate_symbolic_context());
-
-  context = new_context();
+  context = new_symbolic_context();
 
   init_context(context, parent, vctxt);
 
@@ -1242,21 +1250,19 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     return handle_symbolic_merge(context);
   else if (exception == EXCEPTION_SYMBOLICRECURSION)
     return handle_symbolic_recursion(context);
-  else {
-    if (exception == EXCEPTION_INVALIDADDRESS) {
-      // check if this invalid memory access is reachable
-      print("(push 1)\n");
-      printf1("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
-      print("\n(check-sat)\n(get-model)\n(pop 1)\n");
+  else if (exception == EXCEPTION_INVALIDADDRESS) {
+    // check if this invalid memory access is reachable
+    print("(push 1)\n");
+    printf1("(assert %s); invalid memory access detected; check if this invalid memory access is reachable", path_condition);
+    print("\n(check-sat)\n(get-model)\n(pop 1)\n");
 
-      set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
+    set_exit_code(context, EXITCODE_SYMBOLICEXECUTIONERROR);
 
-      // we terminate the execution of the context, because if the location is not reachable,
-      // the rest of the path is not reachable either, and otherwise
-      // the execution would be terminated by this error anyway
-      return EXIT;
-    }
-
+    // we terminate the execution of the context, because if the location is not reachable,
+    // the rest of the path is not reachable either, and otherwise
+    // the execution would be terminated by this error anyway
+    return EXIT;
+  } else {
     printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
     print_exception(exception, get_faulting_page(context));
     println();
