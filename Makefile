@@ -108,7 +108,7 @@ x86: tools/riscv-2-x86.selfie selfie.m selfie selfie.h
 	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 selfie.m
 
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob sat mon btor2 mod x86
+all: compile quine debug replay os vm min mob sat smt mon btor2 mod x86
 
 # Test autograder
 grader: selfie
@@ -147,7 +147,7 @@ btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file);)
 
 # Run everything
-everything: all assemble spike qemu btormc grader grade
+everything: all assemble spike qemu boolector btormc grader grade
 
 # Clean up
 clean:
