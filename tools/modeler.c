@@ -2107,8 +2107,6 @@ uint64_t selfie_model() {
           get_argument();
         }
 
-      // assert: number_of_remaining_arguments() > 0
-
       if (binary_length == 0) {
         printf1("%s: nothing to model\n", selfie_name);
 
@@ -2135,6 +2133,8 @@ uint64_t selfie_model() {
       init_memory(1);
 
       current_context = create_context(MY_CONTEXT, 0);
+
+      // assert: number_of_remaining_arguments() > 0
 
       boot_loader(current_context);
 

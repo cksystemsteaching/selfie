@@ -2201,8 +2201,6 @@ uint64_t selfie_run_symbolically() {
         }
       }
 
-      // assert: number_of_remaining_arguments() > 0
-
       if (binary_length == 0) {
         printf1("%s: nothing to run symbolically\n", selfie_name);
 
@@ -2229,6 +2227,8 @@ uint64_t selfie_run_symbolically() {
       init_memory(1);
 
       current_context = create_symbolic_context(MY_CONTEXT, 0);
+
+      // assert: number_of_remaining_arguments() > 0
 
       boot_loader(current_context);
 

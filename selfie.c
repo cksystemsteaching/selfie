@@ -8389,7 +8389,7 @@ uint64_t is_boot_level_zero() {
 void boot_loader(uint64_t* context) {
   up_load_binary(context);
 
-  // pass binary name as first argument by replacing current argument
+  // pass binary name as first argument by replacing next argument
   set_argument(binary_name);
 
   up_load_arguments(context, number_of_remaining_arguments(), remaining_arguments());
@@ -8421,6 +8421,8 @@ uint64_t selfie_run(uint64_t machine) {
   init_memory(atoi(peek_argument(0)));
 
   current_context = create_context(MY_CONTEXT, 0);
+
+  // assert: number_of_remaining_arguments() > 0
 
   boot_loader(current_context);
 
