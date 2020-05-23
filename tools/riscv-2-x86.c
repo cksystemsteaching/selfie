@@ -1109,14 +1109,14 @@ void selfie_translate() {
   uint64_t x86binaryLength;
   uint64_t i;
 
-  // use extension ".x86" in name of x86-64 binary file
-  binary_name = replace_extension(binary_name, "x86");
-
-  if (code_length == 0) {
-    printf2("%s: nothing to translate to output file %s\n", selfie_name, binary_name);
+  if (binary_length == 0) {
+    printf1("%s: nothing to translate\n", selfie_name);
 
     exit(EXITCODE_BADARGUMENTS);
   }
+
+  // use extension ".x86" in name of x86-64 binary file
+  binary_name = replace_extension(binary_name, "x86");
 
   reset_library();
   reset_interpreter();
@@ -1125,6 +1125,8 @@ void selfie_translate() {
   init_memory(2);
 
   current_context = create_context(MY_CONTEXT, 0);
+
+  // assert: number_of_remaining_arguments() > 0
 
   boot_loader(current_context);
 
@@ -1231,21 +1233,27 @@ void selfie_translate() {
 // -----------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  uint64_t exit_code;
+
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
 
-  init_scanner();
-  init_register();
-  init_interpreter();
+  exit_code = selfie();
 
-  selfie_load();
+  if (exit_code != EXITCODE_NOARGUMENTS) {
+    selfie_translate();
 
-  selfie_translate();
+    // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
+    selfie_output(binary_name);
+  }
 
-  selfie_output(binary_name);
+  if (exit_code != EXITCODE_NOERROR)
+    print_synopsis("");
 
-  return EXITCODE_NOERROR;
+  if (exit_code == EXITCODE_NOARGUMENTS)
+    exit_code = EXITCODE_NOERROR;
+
+  return exit_code;
 }
