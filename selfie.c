@@ -1146,6 +1146,19 @@ void print_data_context(uint64_t data);
 void print_data(uint64_t data);
 
 // -----------------------------------------------------------------
+// -------------------------- DISASSEMBLER -------------------------
+// -----------------------------------------------------------------
+
+void translate_to_assembler();
+
+void selfie_disassemble(uint64_t verbose);
+
+// ------------------------ GLOBAL VARIABLES -----------------------
+
+char*    assembly_name = (char*) 0; // name of assembly file
+uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
+
+// -----------------------------------------------------------------
 // -------------------------- REPLAY ENGINE ------------------------
 // -----------------------------------------------------------------
 
@@ -1554,25 +1567,6 @@ uint64_t next_page_frame = 0;
 
 uint64_t allocated_page_frame_memory = 0;
 uint64_t free_page_frame_memory      = 0;
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// -------------------   C O R R E C T N E S S    ------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// -------------------------- DISASSEMBLER -------------------------
-// -----------------------------------------------------------------
-
-void translate_to_assembler();
-
-void selfie_disassemble(uint64_t verbose);
-
-// ------------------------ GLOBAL VARIABLES -----------------------
-
-char*    assembly_name = (char*) 0; // name of assembly file
-uint64_t assembly_fd   = 0;         // file descriptor of open assembly file
 
 // -----------------------------------------------------------------
 // ------------------- CONSOLE ARGUMENT SCANNER --------------------
@@ -7103,6 +7097,104 @@ void print_data(uint64_t data) {
 }
 
 // -----------------------------------------------------------------
+// -------------------------- DISASSEMBLER -------------------------
+// -----------------------------------------------------------------
+
+void translate_to_assembler() {
+  // assert: 1 <= is <= number of RISC-U instructions
+  if (is == ADDI)
+    print_addi();
+  else if (is == LD)
+    print_ld();
+  else if (is == SD)
+    print_sd();
+  else if (is == ADD)
+    print_add_sub_mul_divu_remu_sltu("add");
+  else if (is == SUB)
+    print_add_sub_mul_divu_remu_sltu("sub");
+  else if (is == MUL)
+    print_add_sub_mul_divu_remu_sltu("mul");
+  else if (is == DIVU)
+    print_add_sub_mul_divu_remu_sltu("divu");
+  else if (is == REMU)
+    print_add_sub_mul_divu_remu_sltu("remu");
+  else if (is == SLTU)
+    print_add_sub_mul_divu_remu_sltu("sltu");
+  else if (is == BEQ)
+    print_beq();
+  else if (is == JAL)
+    print_jal();
+  else if (is == JALR)
+    print_jalr();
+  else if (is == LUI)
+    print_lui();
+  else if (is == ECALL)
+    print_ecall();
+}
+
+void selfie_disassemble(uint64_t verbose) {
+  uint64_t data;
+
+  assembly_name = get_argument();
+
+  if (code_length == 0) {
+    printf2("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
+
+    return;
+  }
+
+  // assert: assembly_name is mapped and not longer than MAX_FILENAME_LENGTH
+
+  assembly_fd = open_write_only(assembly_name);
+
+  if (signed_less_than(assembly_fd, 0)) {
+    printf2("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
+
+    exit(EXITCODE_IOERROR);
+  }
+
+  output_name = assembly_name;
+  output_fd   = assembly_fd;
+
+  reset_library();
+  reset_interpreter();
+
+  run = 0;
+
+  disassemble_verbose = verbose;
+
+  while (pc < code_length) {
+    ir = load_instruction(pc);
+
+    decode();
+    translate_to_assembler();
+    println();
+
+    pc = pc + INSTRUCTIONSIZE;
+  }
+
+  while (pc < binary_length) {
+    data = load_data(pc);
+
+    print_data(data);
+    println();
+
+    pc = pc + REGISTERSIZE;
+  }
+
+  disassemble_verbose = 0;
+
+  output_name = (char*) 0;
+  output_fd   = 1;
+
+  printf5("%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
+    (char*) number_of_written_characters,
+    (char*) (code_length / INSTRUCTIONSIZE),
+    (char*) (binary_length - code_length),
+    assembly_name);
+}
+
+// -----------------------------------------------------------------
 // -------------------------- REPLAY ENGINE ------------------------
 // -----------------------------------------------------------------
 
@@ -8466,110 +8558,6 @@ uint64_t selfie_run(uint64_t machine) {
   debug          = 0;
 
   return exit_code;
-}
-
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-// -----------------------------------------------------------------
-// -------------------   C O R R E C T N E S S    ------------------
-// -----------------------------------------------------------------
-// *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
-
-// -----------------------------------------------------------------
-// -------------------------- DISASSEMBLER -------------------------
-// -----------------------------------------------------------------
-
-void translate_to_assembler() {
-  // assert: 1 <= is <= number of RISC-U instructions
-  if (is == ADDI)
-    print_addi();
-  else if (is == LD)
-    print_ld();
-  else if (is == SD)
-    print_sd();
-  else if (is == ADD)
-    print_add_sub_mul_divu_remu_sltu("add");
-  else if (is == SUB)
-    print_add_sub_mul_divu_remu_sltu("sub");
-  else if (is == MUL)
-    print_add_sub_mul_divu_remu_sltu("mul");
-  else if (is == DIVU)
-    print_add_sub_mul_divu_remu_sltu("divu");
-  else if (is == REMU)
-    print_add_sub_mul_divu_remu_sltu("remu");
-  else if (is == SLTU)
-    print_add_sub_mul_divu_remu_sltu("sltu");
-  else if (is == BEQ)
-    print_beq();
-  else if (is == JAL)
-    print_jal();
-  else if (is == JALR)
-    print_jalr();
-  else if (is == LUI)
-    print_lui();
-  else if (is == ECALL)
-    print_ecall();
-}
-
-void selfie_disassemble(uint64_t verbose) {
-  uint64_t data;
-
-  assembly_name = get_argument();
-
-  if (code_length == 0) {
-    printf2("%s: nothing to disassemble to output file %s\n", selfie_name, assembly_name);
-
-    return;
-  }
-
-  // assert: assembly_name is mapped and not longer than MAX_FILENAME_LENGTH
-
-  assembly_fd = open_write_only(assembly_name);
-
-  if (signed_less_than(assembly_fd, 0)) {
-    printf2("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
-
-    exit(EXITCODE_IOERROR);
-  }
-
-  output_name = assembly_name;
-  output_fd   = assembly_fd;
-
-  reset_library();
-  reset_interpreter();
-
-  run = 0;
-
-  disassemble_verbose = verbose;
-
-  while (pc < code_length) {
-    ir = load_instruction(pc);
-
-    decode();
-    translate_to_assembler();
-    println();
-
-    pc = pc + INSTRUCTIONSIZE;
-  }
-
-  while (pc < binary_length) {
-    data = load_data(pc);
-
-    print_data(data);
-    println();
-
-    pc = pc + REGISTERSIZE;
-  }
-
-  disassemble_verbose = 0;
-
-  output_name = (char*) 0;
-  output_fd   = 1;
-
-  printf5("%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
-    (char*) number_of_written_characters,
-    (char*) (code_length / INSTRUCTIONSIZE),
-    (char*) (binary_length - code_length),
-    assembly_name);
 }
 
 // -----------------------------------------------------------------
