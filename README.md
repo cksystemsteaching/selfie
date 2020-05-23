@@ -25,9 +25,10 @@ Selfie is implemented in a single (!) file and kept minimal for simplicity. Ther
 
 ## Extras
 
-1. Symbolic execution: There is a self-translating modeling engine called [monster](https://github.com/cksystemsteaching/selfie/blob/master/tools/monster.c) based on selfie that translates RISC-U code including all of selfie and itself to SMT-LIB and BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
-2. Binary translation: There is a self-translating [binary translator](https://github.com/cksystemsteaching/selfie/blob/master/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
-3. SAT solving: There is a naive SAT solver called [babysat](https://github.com/cksystemsteaching/selfie/blob/master/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.
+1. Symbolic execution: There is a self-executing symbolic execution engine called [monster](https://github.com/cksystemsteaching/selfie/blob/master/tools/monster.c) based on selfie that translates RISC-U code including all of selfie and itself to SMT-LIB formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes or performs division by zero within a given number of machine instructions.
+2. Bounded model checking: There is a self-translating modeling engine called [modeler](https://github.com/cksystemsteaching/selfie/blob/master/tools/modeler.c) based on selfie that translates RISC-U code including all of selfie and itself to BTOR2 formulae that are satisfiable if and only if there is input to the code such that the code exits with non-zero exit codes, performs division by zero, or accesses memory outside of allocated memory blocks.
+3. Binary translation: There is a self-translating [binary translator](https://github.com/cksystemsteaching/selfie/blob/master/tools/riscv-2-x86.c) based on selfie that translates RISC-U code including all of selfie and itself to x86 binary code.
+4. SAT solving: There is a naive SAT solver called [babysat](https://github.com/cksystemsteaching/selfie/blob/master/tools/babysat.c) based on selfie that computes satisfiability of SAT formulae in DIMACS CNF.
 
 ## Installing Selfie
 
