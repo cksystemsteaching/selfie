@@ -9,10 +9,10 @@ in Austria. For further information and code please refer to:
 
 http://selfie.cs.uni-salzburg.at
 
-Modeler implements a simple yet sound and complete translation of
-RISC-U code to BTOR2 formulae. Modeler serves as research platform
-and facilitates teaching the absolute basics of bit-precise reasoning
-on real code.
+Modeler is a binary translator for bounded model checking that
+implements a sound and complete translation of RISC-U code to BTOR2
+formulae. Modeler serves as research platform and facilitates teaching
+the absolute basics of bit-precise reasoning on real code.
 
 Given a RISC-U binary (or C* source code compiled to RISC-U, including
 all of selfie and modeler itself), modeler generates a BTOR2 file that
@@ -32,6 +32,9 @@ modeled as erroneous.
 The optional console argument --check-block-access instructs modeler
 to generate additional checks for identifying unsafe memory access
 outside of malloced memory blocks.
+
+Any remaining console arguments are uninterpreted and passed on as
+console arguments to the modeled RISC-U binary.
 
 Modeler is inspired by Professor Armin Biere from JKU Linz.
 */
