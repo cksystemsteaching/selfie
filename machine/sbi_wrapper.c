@@ -1,5 +1,6 @@
 #include "tinycstd.h"
 #include "sbi_files.h"
+#include "trap.h"
 
 #define NUM_FDS 32
 
