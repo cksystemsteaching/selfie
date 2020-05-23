@@ -1,24 +1,4 @@
 /*
-
-TODO: Merge this with the comment below:
-
-The `-se` and `-mc` options invoke the monster model generator.
-With option `-se`, monster generates an SMT-LIB file named after
-the given binary but with extension `.smt`. The `0-4096` value
-is interpreted as bound on the length of any symbolically
-executed code branch in number of instructions. Value `0` means
-that the code is executed symbolically without a bound.
-With option `-mc`, monster generates a BTOR2 file named after
-the executed binary but with extension `.btor2`. The `0-4096`
-value is interpreted as exit code. Value `0` means that
-any code execution that terminates with a non-zero exit code
-is seen as erroneous whereas a non-zero value means that
-any code execution that terminates with a different exit code
-is seen as erroneous.
-
-*/
-
-/*
 Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
 governed by a BSD license that can be found in the LICENSE file.
@@ -29,82 +9,37 @@ in Austria. For further information and code please refer to:
 
 http://selfie.cs.uni-salzburg.at
 
-The Selfie Project provides an educational platform for teaching
-undergraduate and graduate students the design and implementation
-of programming languages and runtime systems. The focus is on the
-construction of compilers, libraries, operating systems, and even
-virtual machine monitors. The common theme is to identify and
-resolve self-reference in systems code which is seen as the key
-challenge when teaching systems engineering, hence the name.
+Monster is a hybrid symbolic execution and bounded model checking
+engine that implements a sound and (up to a given bound) complete
+translation of RISC-U code to SMT-LIB formulae. Monster serves as
+research platform and facilitates teaching the absolute basics of
+bit-precise reasoning on real code.
 
-Selfie is a self-contained 64-bit, 12-KLOC C implementation of:
+Given a RISC-U binary (or C* source code compiled to RISC-U, including
+all of selfie and monster itself) and bounds on the number of machine
+instructions (maximum execution depth) and the number of conditional
+branch instructions (branching limit) to be executed on any code path,
+monster generates an SMT-LIB file that models the bit-precise behavior
+of the binary up to the maximum execution depth and branching limit on
+a 64-bit machine with 4GB of memory. The SMT formulae of the model are
+satisfiable if and only if there is input to the code such that the
+code exits with non-zero exit codes or performs division by zero when
+executing no more instructions than the maximum execution depth and no
+more conditional branch instructions than the branching limit.
 
-1. a self-compiling compiler called starc that compiles
-   a tiny but still fast subset of C called C Star (C*) to
-   a tiny and easy-to-teach subset of RISC-V called RISC-U,
-2. a self-executing emulator called mipster that executes
-   RISC-U code including itself when compiled with starc,
-3. a self-hosting hypervisor called hypster that provides
-   RISC-U virtual machines that can host all of selfie,
-   that is, starc, mipster, and hypster itself,
-4. a self-translating modeling engine called monster that
-   translates RISC-U code including itself to SMT-LIB and
-   BTOR2 formulae that are satisfiable if and only if
-   there is input to the code such that the code exits
-   with non-zero exit codes, performs division by zero, or
-   accesses memory outside of allocated memory blocks, and
-5. a tiny C* library called libcstar utilized by selfie.
+The first console argument is interpreted as maximum execution depth
+where value zero means that the depth is unbounded. The following
+optional console argument is interpreted as non-default branching
+limit where value zero means that any conditional branch instruction
+makes the engine backtrack. The following optional console argument
+--merge-enabled instructs monster to generate a single SMT-LIB
+formula for bounded model checking by merging all code paths (rather
+than one SMT-LIB formula for each code path as in symbolic execution).
 
-Selfie is implemented in a single (!) file and kept minimal for simplicity.
-There is also a simple in-memory linker, a RISC-U disassembler, a profiler,
-and a debugger with replay as well as minimal operating system support in
-the form of RISC-V system calls built into the emulator and hypervisor.
+Any remaining console arguments are uninterpreted and passed on as
+console arguments to the modeled RISC-U binary.
 
-C* is a tiny Turing-complete subset of C that includes dereferencing
-(the * operator) but excludes composite data types, bitwise and Boolean
-operators, and many other features. There are only unsigned 64-bit
-integers and 64-bit pointers as well as character and string literals.
-This choice turns out to be helpful for students to understand the
-true role of composite data types such as arrays and records.
-Bitwise operations are implemented in libcstar using unsigned integer
-arithmetics helping students better understand arithmetic operators.
-C* is supposed to be close to the minimum necessary for implementing
-a self-compiling, single-pass, recursive-descent compiler. C* can be
-taught in one to two weeks of classes depending on student background.
-
-The compiler can readily be extended to compile features missing in C*
-and to improve performance of the generated code. The compiler generates
-RISC-U executables in ELF format that are compatible with the official
-RISC-V toolchain. The mipster emulator can execute RISC-U executables
-loaded from file but also from memory immediately after code generation
-without going through the file system.
-
-RISC-U is a tiny Turing-complete subset of the RISC-V instruction set.
-It only features unsigned 64-bit integer arithmetic, double-word memory,
-and simple control-flow instructions but neither bitwise nor byte- and
-word-level instructions. RISC-U can be taught in one week of classes.
-
-The emulator implements minimal operating system support that is meant
-to be extended by students, first as part of the emulator, and then
-ported to run on top of it, similar to an actual operating system or
-virtual machine monitor. The fact that the emulator can execute itself
-helps exposing the self-referential nature of that challenge. In fact,
-selfie goes one step further by implementing microkernel functionality
-as part of the emulator and a hypervisor that can run as part of the
-emulator as well as on top of it, all with the same code.
-
-The modeling engine implements a simple yet sound and complete
-translation of RISC-U code to SMT-LIB and BTOR2 formulae, and
-facilitates teaching the absolute basics of SAT and SMT solving
-applied to real code.
-
-Selfie is the result of many years of teaching systems engineering.
-The design of the compiler is inspired by the Oberon compiler of
-Professor Niklaus Wirth from ETH Zurich. RISC-U is inspired by the
-RISC-V community around Professor David Patterson from UC Berkeley.
-The design of the hypervisor is inspired by microkernels of Professor
-Jochen Liedtke from University of Karlsruhe. The modeling engine is
-inspired by Professor Armin Biere from JKU Linz.
+Monster is inspired by Professor Armin Biere from JKU Linz.
 */
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -2090,7 +2025,7 @@ void monster(uint64_t* to_context) {
   printf1("; SMT-LIB formulae generated by %s for\n", selfie_name);
   printf1("; RISC-V code obtained from %s with\n", binary_name);
   if (max_execution_depth) printf1("; %d", (char*) max_execution_depth); else print("; unbounded");
-  printf1(" execution depth, branch limit of %d, and merging", (char*) beq_limit);
+  printf1(" execution depth, branching limit of %d, and merging", (char*) beq_limit);
   if (merge_enabled) print(" enabled\n\n"); else print(" disabled\n\n");
 
   print("(set-option :produce-models true)\n");
@@ -2177,11 +2112,11 @@ uint64_t selfie_run_symbolically() {
     if (number_of_remaining_arguments() > 0) {
       max_execution_depth = atoi(peek_argument(0));
 
-      // checking for the (optional) beq limit argument
+      // checking for the (optional) branching limit argument
       if (number_of_remaining_arguments() > 1)
         if (string_compare(peek_argument(1), "--merge-enabled") == 0)
           if (string_compare(peek_argument(1), "--debug-merge") == 0) {
-            // assert: argument is an integer representing the beq limit
+            // assert: argument is an integer representing the branching limit
             beq_limit = atoi(peek_argument(1));
 
             get_argument();
@@ -2282,7 +2217,7 @@ int main(int argc, char** argv) {
     exit_code = selfie_run_symbolically();
 
   if (exit_code != EXITCODE_NOERROR)
-    print_synopsis(" - max-execution-depth [ beq-limit ] [ --merge-enabled | --debug-merge ] ...");
+    print_synopsis(" - maximum-execution-depth [ branching-limit ] [ --merge-enabled | --debug-merge ] ...");
 
   if (exit_code == EXITCODE_NOARGUMENTS)
     exit_code = EXITCODE_NOERROR;
