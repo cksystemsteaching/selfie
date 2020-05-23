@@ -358,6 +358,8 @@ void selfie_load_dimacs() {
 void selfie_sat() {
   uint64_t variable;
 
+  init_scanner();
+
   selfie_load_dimacs();
 
   if (dimacs_name == (char*) 0) {
@@ -395,7 +397,6 @@ int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-  init_scanner();
 
   selfie_sat();
 
