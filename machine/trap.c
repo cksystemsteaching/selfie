@@ -2,7 +2,7 @@
 #include "syscall.h"
 
 #define SCAUSE_INTERRUPT_BIT_MASK 0x8000000000000000
-#define SCAUSE_EXCEPTION_CODE_MASK 0x7000000000000000
+#define SCAUSE_EXCEPTION_CODE_MASK 0x7FFFFFFFFFFFFFFF
 
 void disable_smode_interrupts() {
     uint64_t bitmask = (1 << CSR_STATUS_SIE);
