@@ -14,7 +14,7 @@ OPENSBI_SOURCE_URL=https://github.com/riscv/opensbi/archive/$(OPENSBI_RELEASE).t
 OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
-SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o crt.o selfie.o sbi_files.o trap.o
+SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o selfie.o sbi_files.o trap.o asm/crt.o asm/trap.o
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c
 
 include defines.mk
@@ -39,7 +39,7 @@ $(eval $(call generate_selfie_sbi_rule,fu540,sifive/fu540,0x80000000,0x200000))
 $(eval $(call generate_selfie_sbi_rule,k210,kendryte/k210,0x80000000,0x1A000))
 
 sbi_wrapper.o: sbi_files.h
-crt.o: opensbi
+asm/crt.o: opensbi
 selfie.o: $(SELFIE_PATH)/selfie.c
 	$(CC) $(CFLAGS) -D'uint64_t = unsigned long long int' -c $^ -o $@
 
