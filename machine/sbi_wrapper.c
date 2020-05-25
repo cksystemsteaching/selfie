@@ -8,7 +8,6 @@ int main(int argc, char** argv);
 
 static FILEDESC open_files[NUM_FDS];
 
-
 void sbi_ecall_console_putc(char c) {
     asm volatile(
         "li a7, 1;"
@@ -139,6 +138,13 @@ void* malloc(unsigned long long size) {
 void bootstrap() {
     uint64_t val = 0xF00DBEEF;
 
+    write(1, "Setting up trap handlers...", 27);
+    setup_smode_trap_handler(bootstrap);
+    enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
+                                 (1 << CSR_SIE_SOFTWARE_INTS) |
+                                 (1 << CSR_UIE_SOFTWARE_INTS));
+    write(1, "done!\n", 6);
+
     char* args[] = {
         "./selfie",
         "-c",
@@ -171,6 +177,6 @@ void bootstrap() {
     int exit = main(i, args);
 
 
-    write(1, "\n\nFunction main terminated with exit code ", 42);
-    sbi_ecall_console_putc('0' + exit);
+    write(1, "\n\nFunction main terminated with exit code 0x", 44);
+    print_hex(exit);
 }
