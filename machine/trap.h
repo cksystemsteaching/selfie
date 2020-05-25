@@ -16,8 +16,6 @@
 #define CSR_SIE_SOFTWARE_INTS   1
 #define CSR_UIE_SOFTWARE_INTS   0
 
-typedef void (*trap_handler_t)(/* TODO: Context struct */);
-
 struct __attribute__((packed)) trap_saved_regs {
   uint64_t ra;
   uint64_t sp;
@@ -52,13 +50,15 @@ struct __attribute__((packed)) trap_saved_regs {
   uint64_t t6;
 };
 
+typedef void (*trap_handler_t)(/* TODO: Context struct */);
+
 void disable_smode_interrupts();
 void enable_smode_interrupts();
 
 void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);
 
-extern trap_handler_t trap_handler_wrapper();
+extern void trap_handler_wrapper();
 void trap_handler();
 
 void setup_smode_trap_handler(trap_handler_t handler);
