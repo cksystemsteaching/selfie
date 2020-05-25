@@ -1,0 +1,12 @@
+echo "Connecting to QEMU on localhost:9000..."
+target remote :9000
+
+echo "Loading symbol files..."
+file selfie-qemu.elf
+add-symbol-file payload-qemu.elf
+
+echo "Enable TUI..."
+tui enable
+
+echo "Resetting emulation..."
+monitor system_reset
