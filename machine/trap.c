@@ -1,6 +1,8 @@
 #include "trap.h"
-
 #include "syscall.h"
+
+#define SCAUSE_INTERRUPT_BIT_MASK 0x8000000000000000
+#define SCAUSE_EXCEPTION_CODE_MASK 0x7000000000000000
 
 void disable_smode_interrupts() {
     uint64_t bitmask = (1 << CSR_STATUS_SIE);
@@ -28,7 +30,20 @@ void disable_smode_interrupt_types(uint64_t bitmask) {
 
 }
 
-void setup_smode_trap_handler(trap_handler handler) {
+void trap_handler() {
+  uint64_t scause;
+  uint64_t syscall_number;
+
+  asm volatile(
+    "csrr %0, scause;"
+    "mv %0, a7;"
+    : "=r" (scause), "=r" (syscall_number)
+  );
+
+  write(1, "trap handler has been executed\n", 31);
+}
+
+void setup_smode_trap_handler(trap_handler_t handler) {
     disable_smode_interrupts();
 
     // 4.1.4 stvec - handler functions must be aligned on a 4 byte boundary
