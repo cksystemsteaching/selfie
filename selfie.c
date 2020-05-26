@@ -1545,10 +1545,11 @@ uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 8;
 uint64_t EXITCODE_DIVISIONBYZERO         = 9;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 10;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 11;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 12;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 13; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 14; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 15;
+uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 12;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 13;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 14; // for symbolic execution
+uint64_t EXITCODE_MODELINGERROR          = 15; // for model generation
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 16;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -7046,11 +7047,11 @@ void do_ecall() {
     if (record) {
       printf1("%s: context switching during recording is unsupported\n", selfie_name);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_UNSUPPORTEDSYSCALL);
     } else if (symbolic) {
       printf1("%s: context switching during symbolic execution is unsupported\n", selfie_name);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_UNSUPPORTEDSYSCALL);
     } else {
       pc = pc + INSTRUCTIONSIZE;
 
@@ -8595,7 +8596,7 @@ void set_argument(char* argv) {
 }
 
 void print_synopsis(char* extras) {
-  printf2("usage: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
+  printf2("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
 }
 
 uint64_t selfie() {
@@ -8623,17 +8624,17 @@ uint64_t selfie() {
       else if (string_compare(argument, "-l"))
         selfie_load();
       else if (string_compare(argument, "-m"))
-        return selfie_run(MIPSTER);
+        exit(selfie_run(MIPSTER));
       else if (string_compare(argument, "-d"))
-        return selfie_run(DIPSTER);
+        exit(selfie_run(DIPSTER));
       else if (string_compare(argument, "-r"))
-        return selfie_run(RIPSTER);
+        exit(selfie_run(RIPSTER));
       else if (string_compare(argument, "-y"))
-        return selfie_run(HYPSTER);
+        exit(selfie_run(HYPSTER));
       else if (string_compare(argument, "-min"))
-        return selfie_run(MINSTER);
+        exit(selfie_run(MINSTER));
       else if (string_compare(argument, "-mob"))
-        return selfie_run(MOBSTER);
+        exit(selfie_run(MOBSTER));
       else
         return EXITCODE_BADARGUMENTS;
     }
