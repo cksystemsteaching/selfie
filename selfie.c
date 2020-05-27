@@ -945,9 +945,10 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
-// redundant instruction counters
+// effective nop counters
 
 uint64_t previous_rd_value;
+
 uint64_t nopc_lui   = 0;
 uint64_t nopc_addi  = 0;
 uint64_t nopc_add   = 0;
@@ -5242,14 +5243,14 @@ void reset_instruction_counters() {
   ic_jalr  = 0;
   ic_ecall = 0;
 
-  nopc_lui   = 0;
-  nopc_addi  = 0;
-  nopc_add   = 0;
-  nopc_sub   = 0;
-  nopc_mul   = 0;
-  nopc_divu  = 0;
-  nopc_remu  = 0;
-  nopc_sltu  = 0;
+  nopc_lui  = 0;
+  nopc_addi = 0;
+  nopc_add  = 0;
+  nopc_sub  = 0;
+  nopc_mul  = 0;
+  nopc_divu = 0;
+  nopc_remu = 0;
+  nopc_sltu = 0;
 }
 
 uint64_t get_total_number_of_instructions() {
@@ -5257,9 +5258,8 @@ uint64_t get_total_number_of_instructions() {
 }
 
 uint64_t get_total_percentage_of_nops() {
-  uint64_t nops;
-  nops = nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu;
-  return fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(), nops, 4), 4);
+  return fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(),
+    nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu, 4), 4);
 }
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
@@ -5270,16 +5270,10 @@ void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics
 }
 
 void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics) {
-  // don't print nops if nothing was executed
-  if (run == 0)
-    print_instruction_counter(total, counter, mnemonics);
+  print_instruction_counter(total, counter, mnemonics);
 
-  else
-    printf4("%s: %d(%.2d%%, %.2d%% nops)",
-      mnemonics,
-      (char*) counter,
-      (char*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4),
-      (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
+  if (run)
+    printf1("[%.2d%% nops]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
 }
 
 void print_instruction_counters() {
@@ -6622,6 +6616,7 @@ void do_lui() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_lui = ic_lui + 1;
+
   if (*(registers + rd) == previous_rd_value)
     nopc_lui = nopc_lui + 1;
 }
@@ -6666,6 +6661,7 @@ void do_addi() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_addi = ic_addi + 1;
+
   if (*(registers + rd) == previous_rd_value)
     nopc_addi = nopc_addi + 1;
 }
@@ -6692,6 +6688,7 @@ void do_add() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_add = ic_add + 1;
+
   if (*(registers + rd) == previous_rd_value)
     nopc_add = nopc_add + 1;
 }
@@ -6704,6 +6701,7 @@ void do_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
+
   if (*(registers + rd) == previous_rd_value)
     nopc_sub = nopc_sub + 1;
 }
@@ -6718,6 +6716,7 @@ void do_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
+
   if (*(registers + rd) == previous_rd_value)
     nopc_mul = nopc_mul + 1;
 }
@@ -6738,8 +6737,9 @@ void do_divu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_divu = ic_divu + 1;
+
     if (*(registers + rd) == previous_rd_value)
-      nopc_sub = nopc_sub + 1;
+      nopc_divu = nopc_divu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
@@ -6755,6 +6755,7 @@ void do_remu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_remu = ic_remu + 1;
+
     if (*(registers + rd) == previous_rd_value)
       nopc_remu = nopc_remu + 1;
   } else
@@ -6775,6 +6776,7 @@ void do_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
+
   if (*(registers + rd) == previous_rd_value)
     nopc_sltu = nopc_sltu + 1;
 }
@@ -7720,7 +7722,7 @@ void print_per_instruction_profile(char* message, uint64_t total, uint64_t* coun
 }
 
 void print_profile() {
-  printf5("%s: summary: %d executed instructions (%.2d%% nops) and %.2dMB(%.2d%%) mapped memory\n", selfie_name,
+  printf5("%s: summary: %d executed instructions [%.2d%% nops] and %.2dMB(%.2d%%) mapped memory\n", selfie_name,
     (char*) get_total_number_of_instructions(),
     (char*) get_total_percentage_of_nops(),
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
