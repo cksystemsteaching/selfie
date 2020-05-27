@@ -856,6 +856,7 @@ uint64_t funct7 = 0;
 void reset_instruction_counters();
 
 uint64_t get_total_number_of_instructions();
+uint64_t get_total_percentage_of_nops();
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics);
 void print_instruction_counters();
@@ -943,6 +944,19 @@ uint64_t ic_beq   = 0;
 uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
+
+// redundant instruction counters
+
+uint64_t previous_rd_value;
+uint64_t nopc_lui   = 0;
+uint64_t nopc_addi  = 0;
+uint64_t nopc_add   = 0;
+uint64_t nopc_sub   = 0;
+uint64_t nopc_mul   = 0;
+uint64_t nopc_divu  = 0;
+uint64_t nopc_remu  = 0;
+uint64_t nopc_sltu  = 0;
+
 
 uint64_t* binary        = (uint64_t*) 0; // binary of code and data segments
 uint64_t  binary_length = 0;             // length of binary in bytes including data segment
@@ -5227,10 +5241,25 @@ void reset_instruction_counters() {
   ic_jal   = 0;
   ic_jalr  = 0;
   ic_ecall = 0;
+
+  nopc_lui   = 0;
+  nopc_addi  = 0;
+  nopc_add   = 0;
+  nopc_sub   = 0;
+  nopc_mul   = 0;
+  nopc_divu  = 0;
+  nopc_remu  = 0;
+  nopc_sltu  = 0;
 }
 
 uint64_t get_total_number_of_instructions() {
   return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
+}
+
+uint64_t get_total_percentage_of_nops() {
+  uint64_t nops;
+  nops = nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu;
+  return fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(), nops, 4), 4);
 }
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
@@ -5240,15 +5269,28 @@ void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics
     (char*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
 }
 
+void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics) {
+  // don't print nops if nothing was executed
+  if (run == 0)
+    print_instruction_counter(total, counter, mnemonics);
+
+  else
+    printf4("%s: %d(%.2d%%, %.2d%% nops)",
+      mnemonics,
+      (char*) counter,
+      (char*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4),
+      (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
+}
+
 void print_instruction_counters() {
   uint64_t ic;
 
   ic = get_total_number_of_instructions();
 
   printf1("%s: init:    ", selfie_name);
-  print_instruction_counter(ic, ic_lui, "lui");
+  print_instruction_counter_with_nops(ic, ic_lui, nopc_lui, "lui");
   print(", ");
-  print_instruction_counter(ic, ic_addi, "addi");
+  print_instruction_counter_with_nops(ic, ic_addi, nopc_addi, "addi");
   println();
 
   printf1("%s: memory:  ", selfie_name);
@@ -5258,19 +5300,19 @@ void print_instruction_counters() {
   println();
 
   printf1("%s: compute: ", selfie_name);
-  print_instruction_counter(ic, ic_add, "add");
+  print_instruction_counter_with_nops(ic, ic_add, nopc_add, "add");
   print(", ");
-  print_instruction_counter(ic, ic_sub, "sub");
+  print_instruction_counter_with_nops(ic, ic_sub, nopc_sub, "sub");
   print(", ");
-  print_instruction_counter(ic, ic_mul, "mul");
+  print_instruction_counter_with_nops(ic, ic_mul, nopc_mul, "mul");
   print(", ");
-  print_instruction_counter(ic, ic_divu, "divu");
+  print_instruction_counter_with_nops(ic, ic_divu, nopc_divu, "divu");
   print(", ");
-  print_instruction_counter(ic, ic_remu, "remu");
+  print_instruction_counter_with_nops(ic, ic_remu, nopc_remu, "remu");
   println();
 
   printf1("%s: compare: ", selfie_name);
-  print_instruction_counter(ic, ic_sltu, "sltu");
+  print_instruction_counter_with_nops(ic, ic_sltu, nopc_sltu, "sltu");
   println();
 
   printf1("%s: control: ", selfie_name);
@@ -6580,6 +6622,8 @@ void do_lui() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_lui = ic_lui + 1;
+  if (*(registers + rd) == previous_rd_value)
+    nopc_lui = nopc_lui + 1;
 }
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
@@ -6622,6 +6666,8 @@ void do_addi() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_addi = ic_addi + 1;
+  if (*(registers + rd) == previous_rd_value)
+    nopc_addi = nopc_addi + 1;
 }
 
 void print_add_sub_mul_divu_remu_sltu(char *mnemonics) {
@@ -6646,6 +6692,8 @@ void do_add() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_add = ic_add + 1;
+  if (*(registers + rd) == previous_rd_value)
+    nopc_add = nopc_add + 1;
 }
 
 void do_sub() {
@@ -6656,6 +6704,8 @@ void do_sub() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
+  if (*(registers + rd) == previous_rd_value)
+    nopc_sub = nopc_sub + 1;
 }
 
 void do_mul() {
@@ -6668,6 +6718,8 @@ void do_mul() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
+  if (*(registers + rd) == previous_rd_value)
+    nopc_mul = nopc_mul + 1;
 }
 
 void record_divu_remu() {
@@ -6686,6 +6738,8 @@ void do_divu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_divu = ic_divu + 1;
+    if (*(registers + rd) == previous_rd_value)
+      nopc_sub = nopc_sub + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
@@ -6701,6 +6755,8 @@ void do_remu() {
     pc = pc + INSTRUCTIONSIZE;
 
     ic_remu = ic_remu + 1;
+    if (*(registers + rd) == previous_rd_value)
+      nopc_remu = nopc_remu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
@@ -6719,6 +6775,8 @@ void do_sltu() {
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
+  if (*(registers + rd) == previous_rd_value)
+    nopc_sltu = nopc_sltu + 1;
 }
 
 void print_ld() {
@@ -7405,6 +7463,9 @@ void decode() {
 }
 
 void execute() {
+  // for checking whether instruction effectively did nothing
+  previous_rd_value = *(registers + rd);
+
   if (debug) {
     if (record)
       execute_record();
@@ -7659,8 +7720,9 @@ void print_per_instruction_profile(char* message, uint64_t total, uint64_t* coun
 }
 
 void print_profile() {
-  printf4("%s: summary: %d executed instructions and %.2dMB(%.2d%%) mapped memory\n", selfie_name,
+  printf5("%s: summary: %d executed instructions (%.2d%% nops) and %.2dMB(%.2d%%) mapped memory\n", selfie_name,
     (char*) get_total_number_of_instructions(),
+    (char*) get_total_percentage_of_nops(),
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, pused(), 4), 4));
 
@@ -8545,13 +8607,13 @@ uint64_t selfie_run(uint64_t machine) {
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
 
-  run = 0;
-
   printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
     get_name(current_context),
     (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
 
   print_profile();
+
+  run = 0;
 
   record = 0;
 
