@@ -945,20 +945,6 @@ uint64_t ic_jal   = 0;
 uint64_t ic_jalr  = 0;
 uint64_t ic_ecall = 0;
 
-// effective nop counters
-
-uint64_t previous_rd_value;
-
-uint64_t nopc_lui   = 0;
-uint64_t nopc_addi  = 0;
-uint64_t nopc_add   = 0;
-uint64_t nopc_sub   = 0;
-uint64_t nopc_mul   = 0;
-uint64_t nopc_divu  = 0;
-uint64_t nopc_remu  = 0;
-uint64_t nopc_sltu  = 0;
-
-
 uint64_t* binary        = (uint64_t*) 0; // binary of code and data segments
 uint64_t  binary_length = 0;             // length of binary in bytes including data segment
 char*     binary_name   = (char*) 0;     // file name of binary
@@ -1101,7 +1087,7 @@ void print_code_context_for_instruction(uint64_t address);
 void print_lui();
 void print_lui_before();
 void print_lui_after();
-void record_lui_addi_add_sub_mul_sltu_jal_jalr();
+void record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 
@@ -1116,8 +1102,6 @@ void print_add_sub_mul_divu_remu_sltu_before();
 void do_add();
 void do_sub();
 void do_mul();
-
-void record_divu_remu();
 void do_divu();
 void do_remu();
 
@@ -1207,6 +1191,8 @@ void init_replay_engine() {
 
 void init_interpreter();
 void reset_interpreter();
+
+void reset_nop_counters();
 void reset_profiler();
 
 void     print_register_hexadecimal(uint64_t reg);
@@ -1309,7 +1295,18 @@ uint64_t* pt = (uint64_t*) 0; // page table
 uint64_t timer = 0; // counter for timer interrupt
 uint64_t trap  = 0; // flag for creating a trap
 
-// profile
+// effective nop counters
+
+uint64_t nopc_lui  = 0;
+uint64_t nopc_addi = 0;
+uint64_t nopc_add  = 0;
+uint64_t nopc_sub  = 0;
+uint64_t nopc_mul  = 0;
+uint64_t nopc_divu = 0;
+uint64_t nopc_remu = 0;
+uint64_t nopc_sltu = 0;
+
+// source profile
 
 uint64_t  calls               = 0;             // total number of executed procedure calls
 uint64_t* calls_per_procedure = (uint64_t*) 0; // number of executed calls of each procedure
@@ -1350,8 +1347,20 @@ void reset_interpreter() {
   timer = TIMEROFF;
 }
 
+void reset_nop_counters() {
+  nopc_lui  = 0;
+  nopc_addi = 0;
+  nopc_add  = 0;
+  nopc_sub  = 0;
+  nopc_mul  = 0;
+  nopc_divu = 0;
+  nopc_remu = 0;
+  nopc_sltu = 0;
+}
+
 void reset_profiler() {
   reset_instruction_counters();
+  reset_nop_counters();
 
   calls               = 0;
   calls_per_procedure = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
@@ -5242,15 +5251,6 @@ void reset_instruction_counters() {
   ic_jal   = 0;
   ic_jalr  = 0;
   ic_ecall = 0;
-
-  nopc_lui  = 0;
-  nopc_addi = 0;
-  nopc_add  = 0;
-  nopc_sub  = 0;
-  nopc_mul  = 0;
-  nopc_divu = 0;
-  nopc_remu = 0;
-  nopc_sltu = 0;
 }
 
 uint64_t get_total_number_of_instructions() {
@@ -5273,7 +5273,7 @@ void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint6
   print_instruction_counter(total, counter, mnemonics);
 
   if (run)
-    printf1("[%.2d%% nops]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
+    printf1("[%.2d%%]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
 }
 
 void print_instruction_counters() {
@@ -5299,7 +5299,9 @@ void print_instruction_counters() {
   print_instruction_counter_with_nops(ic, ic_sub, nopc_sub, "sub");
   print(", ");
   print_instruction_counter_with_nops(ic, ic_mul, nopc_mul, "mul");
-  print(", ");
+  println();
+
+  printf1("%s: compute: ", selfie_name);
   print_instruction_counter_with_nops(ic, ic_divu, nopc_divu, "divu");
   print(", ");
   print_instruction_counter_with_nops(ic, ic_remu, nopc_remu, "remu");
@@ -6602,23 +6604,28 @@ void print_lui_after() {
   print_register_hexadecimal(rd);
 }
 
-void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
+void record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr() {
   record_state(*(registers + rd));
 }
 
 void do_lui() {
   // load upper immediate
 
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of lui
-    *(registers + rd) = left_shift(imm, 12);
+    next_rd_value = left_shift(imm, 12);
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_lui = nopc_lui + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_lui = ic_lui + 1;
-
-  if (*(registers + rd) == previous_rd_value)
-    nopc_lui = nopc_lui + 1;
 }
 
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr() {
@@ -6654,16 +6661,21 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
 void do_addi() {
   // add immediate
 
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of addi
-    *(registers + rd) = *(registers + rs1) + imm;
+    next_rd_value = *(registers + rs1) + imm;
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_addi = nopc_addi + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_addi = ic_addi + 1;
-
-  if (*(registers + rd) == previous_rd_value)
-    nopc_addi = nopc_addi + 1;
 }
 
 void print_add_sub_mul_divu_remu_sltu(char *mnemonics) {
@@ -6681,65 +6693,80 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void do_add() {
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of add
-    *(registers + rd) = *(registers + rs1) + *(registers + rs2);
+    next_rd_value = *(registers + rs1) + *(registers + rs2);
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_add = nopc_add + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_add = ic_add + 1;
-
-  if (*(registers + rd) == previous_rd_value)
-    nopc_add = nopc_add + 1;
 }
 
 void do_sub() {
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of sub
-    *(registers + rd) = *(registers + rs1) - *(registers + rs2);
+    next_rd_value = *(registers + rs1) - *(registers + rs2);
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_sub = nopc_sub + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sub = ic_sub + 1;
-
-  if (*(registers + rd) == previous_rd_value)
-    nopc_sub = nopc_sub + 1;
 }
 
 void do_mul() {
-  if (rd != REG_ZR)
-    // semantics of mul
-    *(registers + rd) = *(registers + rs1) * *(registers + rs2);
+  uint64_t next_rd_value;
 
-  // TODO: 128-bit resolution currently not supported
+  if (rd != REG_ZR) {
+    // semantics of mul
+    next_rd_value = *(registers + rs1) * *(registers + rs2);
+
+    // TODO: support of 128-bit resolution
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_mul = nopc_mul + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
-
-  if (*(registers + rd) == previous_rd_value)
-    nopc_mul = nopc_mul + 1;
-}
-
-void record_divu_remu() {
-  // record even for division by zero
-  record_state(*(registers + rd));
 }
 
 void do_divu() {
   // division unsigned
 
+  uint64_t next_rd_value;
+
   if (*(registers + rs2) != 0) {
-    if (rd != REG_ZR)
+    if (rd != REG_ZR) {
       // semantics of divu
-      *(registers + rd) = *(registers + rs1) / *(registers + rs2);
+      next_rd_value = *(registers + rs1) / *(registers + rs2);
+
+      if (*(registers + rd) != next_rd_value)
+        *(registers + rd) = next_rd_value;
+      else
+        nopc_divu = nopc_divu + 1;
+    }
 
     pc = pc + INSTRUCTIONSIZE;
 
     ic_divu = ic_divu + 1;
-
-    if (*(registers + rd) == previous_rd_value)
-      nopc_divu = nopc_divu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
@@ -6747,17 +6774,22 @@ void do_divu() {
 void do_remu() {
   // remainder unsigned
 
+  uint64_t next_rd_value;
+
   if (*(registers + rs2) != 0) {
-    if (rd != REG_ZR)
+    if (rd != REG_ZR) {
       // semantics of remu
-      *(registers + rd) = *(registers + rs1) % *(registers + rs2);
+      next_rd_value = *(registers + rs1) % *(registers + rs2);
+
+      if (*(registers + rd) != next_rd_value)
+        *(registers + rd) = next_rd_value;
+      else
+        nopc_remu = nopc_remu + 1;
+    }
 
     pc = pc + INSTRUCTIONSIZE;
 
     ic_remu = ic_remu + 1;
-
-    if (*(registers + rd) == previous_rd_value)
-      nopc_remu = nopc_remu + 1;
   } else
     throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
 }
@@ -6765,20 +6797,24 @@ void do_remu() {
 void do_sltu() {
   // set on less than unsigned
 
+  uint64_t next_rd_value;
+
   if (rd != REG_ZR) {
     // semantics of sltu
     if (*(registers + rs1) < *(registers + rs2))
-      *(registers + rd) = 1;
+      next_rd_value = 1;
     else
-      *(registers + rd) = 0;
+      next_rd_value = 0;
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_sltu = nopc_sltu + 1;
   }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_sltu = ic_sltu + 1;
-
-  if (*(registers + rd) == previous_rd_value)
-    nopc_sltu = nopc_sltu + 1;
 }
 
 void print_ld() {
@@ -7465,9 +7501,6 @@ void decode() {
 }
 
 void execute() {
-  // for checking whether instruction effectively did nothing
-  previous_rd_value = *(registers + rd);
-
   if (debug) {
     if (record)
       execute_record();
@@ -7511,7 +7544,7 @@ void execute() {
 void execute_record() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_addi();
   } else if (is == LD) {
     record_ld();
@@ -7520,34 +7553,34 @@ void execute_record() {
     record_sd();
     do_sd();
   } else if (is == ADD) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_add();
   } else if (is == SUB) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sub();
   } else if (is == MUL) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_mul();
   } else if (is == DIVU) {
-    record_divu_remu();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_divu();
   } else if (is == REMU) {
-    record_divu_remu();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_remu();
   } else if (is == SLTU) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sltu();
   } else if (is == BEQ) {
     record_beq();
     do_beq();
   } else if (is == JAL) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_jal();
   } else if (is == JALR) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_jalr();
   } else if (is == LUI) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_lui();
   } else if (is == ECALL) {
     record_ecall();
