@@ -1305,6 +1305,8 @@ uint64_t nopc_mul  = 0;
 uint64_t nopc_divu = 0;
 uint64_t nopc_remu = 0;
 uint64_t nopc_sltu = 0;
+uint64_t nopc_ld   = 0;
+uint64_t nopc_sd   = 0;
 
 // source profile
 
@@ -1356,6 +1358,8 @@ void reset_nop_counters() {
   nopc_divu = 0;
   nopc_remu = 0;
   nopc_sltu = 0;
+  nopc_ld   = 0;
+  nopc_sd   = 0;
 }
 
 void reset_profiler() {
@@ -5259,7 +5263,7 @@ uint64_t get_total_number_of_instructions() {
 
 uint64_t get_total_percentage_of_nops() {
   return fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(),
-    nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu, 4), 4);
+    nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd, 4), 4);
 }
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
@@ -5288,9 +5292,9 @@ void print_instruction_counters() {
   println();
 
   printf1("%s: memory:  ", selfie_name);
-  print_instruction_counter(ic, ic_ld, "ld");
+  print_instruction_counter_with_nops(ic, ic_ld, nopc_ld, "ld");
   print(", ");
-  print_instruction_counter(ic, ic_sd, "sd");
+  print_instruction_counter_with_nops(ic, ic_sd, nopc_sd, "sd");
   println();
 
   printf1("%s: compute: ", selfie_name);
@@ -6865,6 +6869,7 @@ void record_ld() {
 
 uint64_t do_ld() {
   uint64_t vaddr;
+  uint64_t next_rd_value;
   uint64_t a;
 
   // load double word
@@ -6873,9 +6878,15 @@ uint64_t do_ld() {
 
   if (is_valid_virtual_address(vaddr)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
-      if (rd != REG_ZR)
+      if (rd != REG_ZR) {
         // semantics of ld
-        *(registers + rd) = load_virtual_memory(pt, vaddr);
+        next_rd_value = load_virtual_memory(pt, vaddr);
+
+        if (*(registers + rd) != next_rd_value)
+          *(registers + rd) = next_rd_value;
+        else
+          nopc_ld = nopc_ld + 1;
+      }
 
       // keep track of instruction address for profiling loads
       a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -6952,7 +6963,10 @@ uint64_t do_sd() {
   if (is_valid_virtual_address(vaddr)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
       // semantics of sd
-      store_virtual_memory(pt, vaddr, *(registers + rs2));
+      if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
+        store_virtual_memory(pt, vaddr, *(registers + rs2));
+      else
+        nopc_sd = nopc_sd + 1;
 
       // keep track of instruction address for profiling stores
       a = (pc - entry_point) / INSTRUCTIONSIZE;
