@@ -1,4 +1,4 @@
-#define TRAP_SAVED_REGS_SIZE 248
+#define TRAP_SAVED_REGS_SIZE 256
 
 #define TRAP_SAVED_REGS_STRUCT_OFFSET_RA  0
 #define TRAP_SAVED_REGS_STRUCT_OFFSET_SP  8
@@ -31,8 +31,9 @@
 #define TRAP_SAVED_REGS_STRUCT_OFFSET_T4  224
 #define TRAP_SAVED_REGS_STRUCT_OFFSET_T5  232
 #define TRAP_SAVED_REGS_STRUCT_OFFSET_T6  240
+#define TRAP_SAVED_REGS_STRUCT_OFFSET_PC  248
 
-#define TRAP_SAVED_REGS_STRUCT_PRE_ALLOC_OFFSET_SP -240
+#define TRAP_SAVED_REGS_STRUCT_PRE_ALLOC_OFFSET_SP -248
 
 .text
   .global trap_handler_wrapper
@@ -78,10 +79,18 @@ save_regs:
   sd t5,  TRAP_SAVED_REGS_STRUCT_OFFSET_T5(sp)
   sd t6,  TRAP_SAVED_REGS_STRUCT_OFFSET_T6(sp)
 
+  // save u-mode pc
+  csrr t0, sepc
+  sd t0, TRAP_SAVED_REGS_STRUCT_OFFSET_PC(sp)
+
 call_trap_handler:
   call trap_handler
 
 restore_regs:
+  // restore u-mode pc
+  ld t0, TRAP_SAVED_REGS_STRUCT_OFFSET_PC(sp)
+  csrw sepc, t0
+
   ld ra,  TRAP_SAVED_REGS_STRUCT_OFFSET_RA(sp)
   ld gp,  TRAP_SAVED_REGS_STRUCT_OFFSET_GP(sp)
   ld tp,  TRAP_SAVED_REGS_STRUCT_OFFSET_TP(sp)
@@ -117,4 +126,4 @@ restore_stack:
   ld sp, TRAP_SAVED_REGS_STRUCT_OFFSET_SP(sp)
 
 return_to_umode:
-  uret
+  sret

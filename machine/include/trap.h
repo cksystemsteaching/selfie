@@ -48,6 +48,8 @@ struct __attribute__((packed)) trap_saved_regs {
   uint64_t t4;
   uint64_t t5;
   uint64_t t6;
+
+  uint64_t pc;
 };
 
 typedef void (*trap_handler_t)(/* TODO: Context struct */);
