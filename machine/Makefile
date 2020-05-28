@@ -96,3 +96,8 @@ opensbi:
 	@rm opensbi.tar.gz
 
 	@printf $(OPENSBI_RELEASE) > $(OPENSBI_VERSION_FILE)
+
+.PHONY: debug
+debug:
+	$(eval CFLAGS += -DDEBUG)
+	@echo "Enabled debug macro"
