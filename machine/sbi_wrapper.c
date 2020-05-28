@@ -64,6 +64,7 @@ void bootstrap() {
 void usermode_test() {
     while (1) {
         asm volatile(
+            "li a7, 0x101;"
             "ecall"
         );
     }
