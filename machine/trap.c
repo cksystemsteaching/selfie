@@ -1,8 +1,16 @@
 #include "trap.h"
 #include "syscall.h"
+#include "tinycstd.h"
 
 #define SCAUSE_INTERRUPT_BIT_MASK 0x8000000000000000
 #define SCAUSE_EXCEPTION_CODE_MASK 0x7FFFFFFFFFFFFFFF
+#define SCAUSE_ECALL 8
+
+#define SYSCALL_EXIT   93
+#define SYSCALL_READ   63
+#define SYSCALL_WRITE  64
+#define SYSCALL_OPENAT 56
+#define SYSCALL_BRK    214
 
 void disable_smode_interrupts() {
     uint64_t bitmask = (1 << CSR_STATUS_SIE);
@@ -30,6 +38,26 @@ void disable_smode_interrupt_types(uint64_t bitmask) {
 
 }
 
+void implement_syscall_exit(struct context* context) {
+  // TODO
+}
+
+void implement_syscall_read(struct context* context) {
+  // TODO
+}
+
+void implement_syscall_write(struct context* context) {
+  // TODO
+}
+
+void implement_syscall_openat(struct context* context) {
+  // TODO
+}
+
+void implement_syscall_brk(struct context* context) {
+  // TODO
+}
+
 void trap_handler() {
   uint64_t scause;
   uint64_t syscall_number;
@@ -40,7 +68,28 @@ void trap_handler() {
     : [scause] "=r" (scause), [syscall_number] "=r" (syscall_number)
   );
 
-  write(1, "trap handler has been executed\n", 31);
+  if (scause == SCAUSE_ECALL) {
+    switch (syscall_number) {
+      case SYSCALL_EXIT:
+
+      case SYSCALL_READ:
+
+      case SYSCALL_WRITE:
+
+      case SYSCALL_OPENAT:
+
+      case SYSCALL_BRK:
+
+      default:
+        printf("received unknown syscall '0x%x'\n", syscall_number);
+    }
+  }
+
+#ifdef DEBUG
+  printf("trap handler has been executed\n");
+  printf("  scause:         0x%x\n", scause);
+  printf("  syscall number: 0x%x\n", syscall_number);
+#endif /* DEBUG */
 }
 
 void setup_smode_trap_handler(trap_handler_t handler) {

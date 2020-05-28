@@ -65,6 +65,12 @@ void enable_smode_interrupts();
 void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);
 
+void implement_syscall_exit(struct context* context);
+void implement_syscall_read(struct context* context);
+void implement_syscall_write(struct context* context);
+void implement_syscall_openat(struct context* context);
+void implement_syscall_brk(struct context* context);
+
 extern void trap_handler_wrapper();
 void trap_handler();
 
