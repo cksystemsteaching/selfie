@@ -114,3 +114,6 @@ restore_regs:
 
 restore_stack:
   ld sp, TRAP_SAVED_REGS_STRUCT_OFFSET_SP(sp)
+
+return_to_umode:
+  uret
