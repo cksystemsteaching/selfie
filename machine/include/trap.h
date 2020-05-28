@@ -16,6 +16,11 @@
 #define CSR_SIE_SOFTWARE_INTS   1
 #define CSR_UIE_SOFTWARE_INTS   0
 
+struct __attribute__((packed)) context {
+  struct trap_saved_regs* saved_regs;
+  // TODO: all the other stuff like pt etc.
+};
+
 struct __attribute__((packed)) trap_saved_regs {
   uint64_t ra;
   uint64_t sp;
