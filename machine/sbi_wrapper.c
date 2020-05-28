@@ -1,3 +1,4 @@
+#include "console.h"
 #include "tinycstd.h"
 #include "trap.h"
 
@@ -8,6 +9,8 @@ void usermode_test();
 
 void bootstrap() {
     uint64_t val = 0xF00DBEEF;
+
+    console_init();
 
     write(1, "Setting up trap handlers...", 27);
     setup_smode_trap_handler(trap_handler_wrapper);
@@ -33,16 +36,16 @@ void bootstrap() {
     int i = 0;
 
     write(1, "Booting selfie with args: ", 26);
-    sbi_ecall_console_putc('\n');
+    console_putc('\n');
 
     while (args[i] != (char*)0) {
         write(1, "    ", 4);
         write(1, args[i], strlen(args[i]));
-        sbi_ecall_console_putc('\n');
+        console_putc('\n');
         i++;
     }
     write(1, "    <END>\n", 10);
-    sbi_ecall_console_putc('\n');
+    console_putc('\n');
 
     asm volatile (
         "csrw sepc, %[umode];\n"

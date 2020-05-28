@@ -1,21 +1,10 @@
 #include "syscall.h"
+#include "console.h"
 #include "sbi_files.h"
 
 #define NUM_FDS 32
 
 static FILEDESC open_files[NUM_FDS];
-
-void sbi_ecall_console_putc(char c) {
-    asm volatile(
-        "li a7, 1;"
-        "li a6, 0;"
-        "mv a0, %[character];"
-        "ecall;"
-        :
-        : [character] "r" (c)
-        : "a0", "a6", "a7"
-    );
-}
 
 ssize_t read(int fd, char* buf, size_t count) {
     if (fd >= NUM_FDS+1) {
@@ -48,7 +37,7 @@ ssize_t write(int fd, const char* buf, size_t count) {
     const char* charBuf = (const char*) buf;
 
     while (i < count) {
-        sbi_ecall_console_putc(charBuf[i]);
+        console_putc(charBuf[i]);
         i++;
     }
 
