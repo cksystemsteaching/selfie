@@ -20,27 +20,6 @@ void sbi_ecall_console_putc(char c) {
         : "a0", "a6", "a7"
     );
 }
-void print_hex_internal(uint64_t val, uint64_t pos, uint64_t maxLen) {
-    if (pos >= maxLen)
-        return;
-
-    uint64_t rest = val % 16;
-    val = val / 16;
-
-    print_hex_internal(val, pos+1, maxLen);
-    if (rest >= 0 && rest < 10) {
-        sbi_ecall_console_putc('0'+rest);
-    } else {
-        sbi_ecall_console_putc('A'+(rest-10));
-    }
-}
-
-void print_hex(uint64_t val) {
-    sbi_ecall_console_putc('0');
-    sbi_ecall_console_putc('x');
-
-    print_hex_internal(val, 0, 8);
-}
 
 ssize_t read(int fd, char* buf, size_t count) {
     if (fd >= NUM_FDS+1) {
@@ -125,13 +104,7 @@ void* malloc(unsigned long long size) {
     return_ptr = heap_head;
     heap_head += size;
 
-    write(1, "-- malloc: allocated ", 21);
-    print_hex(size);
-    write(1, " bytes at addr ", 15);
-    print_hex(return_ptr);
-    sbi_ecall_console_putc('-');
-    print_hex(heap_head);
-    sbi_ecall_console_putc('\n');
+    printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, heap_head);
 
     return return_ptr;
 }
@@ -185,8 +158,7 @@ void bootstrap() {
     int exit = main(i, args);
 
 
-    write(1, "\n\nFunction main terminated with exit code 0x", 44);
-    print_hex(exit);
+    printf("\n\nFunction main terminated with exit code 0x%x", exit);
 }
 
 void usermode_test() {
