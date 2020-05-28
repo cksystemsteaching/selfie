@@ -5,6 +5,7 @@
 #define NUM_FDS 32
 
 int main(int argc, char** argv);
+void usermode_test();
 
 static FILEDESC open_files[NUM_FDS];
 
@@ -139,7 +140,7 @@ void bootstrap() {
     uint64_t val = 0xF00DBEEF;
 
     write(1, "Setting up trap handlers...", 27);
-    setup_smode_trap_handler(bootstrap);
+    setup_smode_trap_handler(trap_handler_wrapper);
     enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
                                  (1 << CSR_SIE_SOFTWARE_INTS) |
                                  (1 << CSR_UIE_SOFTWARE_INTS));
@@ -173,10 +174,25 @@ void bootstrap() {
     write(1, "    <END>\n", 10);
     sbi_ecall_console_putc('\n');
 
+    asm volatile (
+        "csrw sepc, %[umode];\n"
+        "sret"
+        :
+        : [umode] "r" (usermode_test)
+    );
+
     // i contains the count of command line arguments
     int exit = main(i, args);
 
 
     write(1, "\n\nFunction main terminated with exit code 0x", 44);
     print_hex(exit);
+}
+
+void usermode_test() {
+    while (1) {
+        asm volatile(
+            "ecall"
+        );
+    }
 }
