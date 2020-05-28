@@ -4,7 +4,7 @@ LD=$(PREFIX)ld
 OBJCOPY=$(PREFIX)objcopy
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iopensbi/include -Wl,--build-id=none
+CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
 
@@ -38,7 +38,6 @@ $(eval $(call generate_selfie_sbi_rule,qemu,qemu/virt,0x80000000,0x200000))
 $(eval $(call generate_selfie_sbi_rule,fu540,sifive/fu540,0x80000000,0x200000))
 $(eval $(call generate_selfie_sbi_rule,k210,kendryte/k210,0x80000000,0x1A000))
 
-sbi_wrapper.o: sbi_files.h
 asm/crt.o: opensbi
 selfie.o: $(SELFIE_PATH)/selfie.c
 	$(CC) $(CFLAGS) -D'uint64_t = unsigned long long int' -c $^ -o $@
