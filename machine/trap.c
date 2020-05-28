@@ -35,9 +35,9 @@ void trap_handler() {
   uint64_t syscall_number;
 
   asm volatile(
-    "csrr %0, scause;"
-    "mv %0, a7;"
-    : "=r" (scause), "=r" (syscall_number)
+    "csrr %[scause], scause;"
+    "mv %[syscall_number], a7;"
+    : [scause] "=r" (scause), [syscall_number] "=r" (syscall_number)
   );
 
   write(1, "trap handler has been executed\n", 31);
