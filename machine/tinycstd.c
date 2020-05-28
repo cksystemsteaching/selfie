@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include "console.h"
 #include "syscall.h"
 
 // Function required by libgcc for a freestanding environment
@@ -96,7 +97,7 @@ int printf(const char* format, ...) {
             return written + strlen(format);
         } else {
             // Found format specifier - print everything before it and handle specifier
-            write(1, format, fmtPos - format);
+            console_puts(format, fmtPos - format);
             written += (fmtPos - format);
             format = fmtPos+1;
             switch (*format) {
@@ -169,10 +170,10 @@ int printf(const char* format, ...) {
     }
 }
 void puts(const char* s) {
-    write(1, s, strlen(s));
+    console_puts(s, strlen(s));
 }
 void putc(char c) {
-    write(1, &c, 1);
+    console_putc(c);
 }
 
 

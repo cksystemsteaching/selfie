@@ -27,7 +27,7 @@ ssize_t read(int fd, char* buf, size_t count) {
     }
 }
 
-ssize_t write(int fd, const char* buf, size_t count) {
+intmax_t write(int fd, const char* buf, size_t count) {
     // No file descriptor support yet for write - write to console instead
 
     if (fd != 1)
@@ -36,12 +36,7 @@ ssize_t write(int fd, const char* buf, size_t count) {
     size_t i = 0;
     const char* charBuf = (const char*) buf;
 
-    while (i < count) {
-        console_putc(charBuf[i]);
-        i++;
-    }
-
-    return i;
+    return console_puts(buf, count);
 }
 
 void exit(int status) {

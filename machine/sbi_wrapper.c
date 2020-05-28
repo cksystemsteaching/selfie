@@ -12,12 +12,12 @@ void bootstrap() {
 
     console_init();
 
-    write(1, "Setting up trap handlers...", 27);
+    puts("Setting up trap handlers...");
     setup_smode_trap_handler(trap_handler_wrapper);
     enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
                                  (1 << CSR_SIE_SOFTWARE_INTS) |
                                  (1 << CSR_UIE_SOFTWARE_INTS));
-    write(1, "done!\n", 6);
+    puts("done!\n");
 
     char* args[] = {
         "./selfie",
@@ -35,17 +35,13 @@ void bootstrap() {
     };
     int i = 0;
 
-    write(1, "Booting selfie with args: ", 26);
-    console_putc('\n');
+    puts("Booting selfie with args: \n");
 
     while (args[i] != (char*)0) {
-        write(1, "    ", 4);
-        write(1, args[i], strlen(args[i]));
-        console_putc('\n');
+        printf("    %s\n", args[i]);
         i++;
     }
-    write(1, "    <END>\n", 10);
-    console_putc('\n');
+    printf("    <END>\n\n");
 
     asm volatile (
         "csrw sepc, %[umode];\n"

@@ -1,4 +1,5 @@
 #include "console.h"
+#include <stdint.h>
 
 int console_init() {
     return 0;
@@ -13,4 +14,15 @@ void console_putc(int chr) {
         : [character] "r" (chr)
         : "a0", "a6", "a7"
     );
+}
+intmax_t console_puts(const char* str, size_t len) {
+    size_t i = 0;
+
+    while (i < len) {
+        console_putc(*str);
+        str = str + 1;
+        i++;
+    }
+
+    return i;
 }
