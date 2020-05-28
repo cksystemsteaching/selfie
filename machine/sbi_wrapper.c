@@ -13,7 +13,7 @@ void sbi_ecall_console_putc(char c) {
     asm volatile(
         "li a7, 1;"
         "li a6, 0;"
-        "mv a0, %[character];" // just a test to see if it prints 'a'
+        "mv a0, %[character];"
         "ecall;"
         :
         : [character] "r" (c)
