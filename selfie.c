@@ -859,6 +859,8 @@ uint64_t get_total_number_of_instructions();
 uint64_t get_total_percentage_of_nops();
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics);
+void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics);
+
 void print_instruction_counters();
 
 uint64_t load_instruction(uint64_t baddr);
@@ -1307,6 +1309,9 @@ uint64_t nopc_remu = 0;
 uint64_t nopc_sltu = 0;
 uint64_t nopc_ld   = 0;
 uint64_t nopc_sd   = 0;
+uint64_t nopc_beq  = 0;
+uint64_t nopc_jal  = 0;
+uint64_t nopc_jalr = 0;
 
 // source profile
 
@@ -1360,6 +1365,9 @@ void reset_nop_counters() {
   nopc_sltu = 0;
   nopc_ld   = 0;
   nopc_sd   = 0;
+  nopc_beq  = 0;
+  nopc_jal  = 0;
+  nopc_jalr = 0;
 }
 
 void reset_profiler() {
@@ -5263,7 +5271,7 @@ uint64_t get_total_number_of_instructions() {
 
 uint64_t get_total_percentage_of_nops() {
   return fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(),
-    nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd, 4), 4);
+    nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd + nopc_beq + nopc_jal + nopc_jalr, 4), 4);
 }
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
@@ -5316,11 +5324,11 @@ void print_instruction_counters() {
   println();
 
   printf1("%s: control: ", selfie_name);
-  print_instruction_counter(ic, ic_beq, "beq");
+  print_instruction_counter_with_nops(ic, ic_beq, nopc_beq, "beq");
   print(", ");
-  print_instruction_counter(ic, ic_jal, "jal");
+  print_instruction_counter_with_nops(ic, ic_jal, nopc_jal, "jal");
   print(", ");
-  print_instruction_counter(ic, ic_jalr, "jalr");
+  print_instruction_counter_with_nops(ic, ic_jalr, nopc_jalr, "jalr");
   println();
 
   printf1("%s: system:  ", selfie_name);
@@ -7023,8 +7031,11 @@ void do_beq() {
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
     pc = pc + imm;
-  else
+  else {
     pc = pc + INSTRUCTIONSIZE;
+
+    nopc_beq = nopc_beq + 1;
+  }
 
   ic_beq = ic_beq + 1;
 }
@@ -7085,9 +7096,12 @@ void do_jal() {
 
     // and individually
     *(iterations_per_loop + a) = *(iterations_per_loop + a) + 1;
-  } else
+  } else {
     // just jump forward
     pc = pc + imm;
+
+    nopc_jal = nopc_jal + 1;
+  }
 
   ic_jal = ic_jal + 1;
 }
@@ -7113,16 +7127,19 @@ void do_jalr() {
 
   // jump and link register
 
-  if (rd == REG_ZR)
-    // fast path: just return by jumping rs1-relative with LSB reset
-    pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
-  else {
-    // slow path: first prepare jump, then link, just in case rd == rs1
+  // prepare jump rs1-relative with LSB reset
+  next_pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
 
-    // prepare jump with LSB reset
-    next_pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
+  if (rd == REG_ZR) {
+    // just jump
+    if (next_pc == pc + INSTRUCTIONSIZE)
+      nopc_jalr = nopc_jalr + 1;
 
-    // link to next instruction
+    pc = next_pc;
+  } else {
+    // first link, then jump
+
+    // link to next instruction (works even if rd == rs1)
     *(registers + rd) = pc + INSTRUCTIONSIZE;
 
     // jump
