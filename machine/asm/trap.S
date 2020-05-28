@@ -37,6 +37,7 @@
 .text
   .global trap_handler_wrapper
 
+.align 4
 trap_handler_wrapper:
 setup_stack:
   // save sp in the not yet allocated trap_saved_regs struct
