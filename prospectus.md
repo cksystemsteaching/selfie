@@ -103,4 +103,4 @@ This is a list of potential reviewers. All candidates on this list have played i
 
 #### Outline and Chapter Sketches
 
-There is an introduction followed by five chapters called Information, Machine, Programming, Tools, and Computing. Please refer to the introduction which provides an overview of the book as well as each individual chapter.
+There is an introduction followed by six chapters called Selfie, Information, Machine, Programming, Tools, and Computing. Please refer to the introduction which provides an overview of the book as well as each individual chapter.

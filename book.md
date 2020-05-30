@@ -32,7 +32,15 @@ Even the most convenient high-level programming languages are by far not enough 
 
 One of the key breakthroughs of recent years is that computation has become a utility just like electricity and water. Cloud computing and, in the near future, edge computing creates enormous potential, just like the reliable availability of power and water. There is no need anymore to operate your own machines other than client machines such as your smartphone. As long as you have a network connection, any form of computational platform is available to you. The key enabling technology is *virtualization* which is a concept whose understanding is elusive even to many computer science students. However, we developed a way to teach virtualization in simple terms accessible to anyone based on a combination of our machine model, programming language, and tool set. The idea is to demonstrate how software can create any computational platform, including the one it runs on, very efficiently. This is another form of self-referentialy that is fundamental in computer science. Seeing that enables you to grasp the full extent of the universality of computing.
 
-This book is intended for upper-secondary school and first-year college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
+This book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
+
+This book targets three groups of readers:
+
+1. Professional user: you do not plan to become a software engineer or computer scientist but you still would like to understand the machine that you are working with every day, at least in your professional life, to an extent that enables you to use computers efficiently and effectively and, most importantly, with joy!
+
+2. Software engineer: you would like to develop software professionally and are interested in more than just learning how to code. In particular, you are looking for a background in computer science that is going to serve as foundation for understanding not just the state of the art in software engineering now but also any future development technology whatever it may be.
+
+3. Computer scientist: you plan to become a computer scientist, or are already one, and would like to either gain a solid understanding or revisit your understanding of the absolute basics of computer science. Even if your focus area is not covered by this book, the material presented here may still have a profound effect on how you see and approach your own field.
 
 ## Selfie
 
@@ -55,7 +63,9 @@ Teaching computer science has similar issues with one important difference. It i
 For this purpose we have developed a software system called selfie that integrates the absolute basics into a minimalistic yet still realistic and representative package for demonstrating how software and its meaning is constructed on a mindless machine. In this book, we use selfie in at least three different ways:
 
 1. For you to measure your level of understanding. If you understand the design and implementation of selfie you understand everything we believe is necessary to understand the absolute basics of computer science.
+
 2. For you to improve your level of understanding. By reading this book you start asking questions whose answers you can confirm by interacting with selfie on your computer.
+
 3. For us to make sure there is nothing important missing. Selfie is self-referential on multiple levels which means that if there was something important missing, selfie would probably not work as intended.
 
 In order to interact with selfie effectively and, more importantly, with joy, we ask you to do something that is already quite scary for many students, even though it is similar to using a chat app, just not for chatting with people but with a machine. In short, you need to learn how to use a terminal app. Most laptops have a terminal app pre-installed already but even if yours does not, you do not have to install one but just use a terminal in your web browser, which is in fact the easiest way to get access. The homepage of selfie tells you all about how to get started:
@@ -83,19 +93,19 @@ synopis: ./selfie { -c { source } | -o binary | [ -s | -S ] assembly | -l binary
 
 ```
 
-The synopis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Here is an example. Try:
+The synopis may look quite cryptic already but there is nothing to worry about. As the wizards say, it is surprisingly easy to make sense of it. Important for us is that invoking selfie in a terminal not only allows us to fully control the system but also to do that slowly, not to annoy you, but to be able to eventually understand everything it does. Try:
 
 ```
 ./selfie -c selfie.c
 ```
 
-Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated the source code in which selfie is written to machine code and thereby constructed the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did. Try:
+Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated the source code `selfie.c` in which selfie is written to machine code and thereby constructed the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did. Try:
 
 ```
 ./selfie -c selfie.c -m 1 -c selfie.c
 ```
 
-This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now, selfie translated itself and then ran the resulting machine code to translate itself again. In other words, the Lego brick factory now built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. To familiarize yourself with the system further, take a few more selfies, I mean try the other examples mentioned on selfie's homepage as well.
+This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie translated itself and then ran the resulting machine code to translate itself again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. To familiarize yourself with the system further, take a few more selfies, I mean try the other examples mentioned on selfie's homepage as well.
 
 Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which selfie's source code is written is *universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
 
@@ -591,7 +601,7 @@ and finally correct the result:
  -00000001 = -1
 ```
 
-Let us take a step back here and reflect on what we have seen. Numbers for most of us are a concept we first heard about in primary and lower secondary school in the context of elementary arithmetics. Back then we learned how to add, subtract, multiply, divide, and compare numbers, not just to know how to do that but also to develop an intuition on what numbers are and what properties they have. However, one thing that probably never occurred to us was that the amount of numbers available to us could be limited and that there would be a cost involved in working with them. In short, we believed there are infinitely many and arithmetic is free for all. In computer science, this is different!
+Let us take a step back here and reflect on what we have seen. Numbers for most of us are a concept we first heard about in primary school in the context of elementary arithmetics. Back then we learned how to add, subtract, multiply, divide, and compare numbers, not just to know how to do that but also to develop an intuition on what numbers are and what properties they have. However, one thing that probably never occurred to us was that the amount of numbers available to us could be limited and that there would be a cost involved in working with them. In short, we believed there are infinitely many and arithmetic is free for all. In computer science, this is different!
 
 Everything on a computer is finite simply because there are only finitely many bits the machine can store. There may be an awful lot of bits but still. Also, flipping bits costs time and energy. It is not free. All this means that everything a computer does costs time and energy and is still always finite including numbers encoded in bits. Things may get very, very large but still.
 
