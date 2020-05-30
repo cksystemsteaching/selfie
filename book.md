@@ -99,7 +99,7 @@ The synopis may look quite cryptic already but there is nothing to worry about. 
 ./selfie -c selfie.c
 ```
 
-Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated the source code `selfie.c` in which selfie is written to machine code and thereby constructed the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did. Try:
+Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated the *source code* `selfie.c` in which selfie is written to *machine code* and thereby constructed the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did. Try:
 
 ```
 ./selfie -c selfie.c -m 1 -c selfie.c
@@ -204,7 +204,7 @@ The binary number 1010101 represents 85 because:
 
 Take a piece of paper and a pen (not a computer!) and convert a few other binary numbers to decimal for yourself!
 
-The other direction is also easy, just do the exact opposite. Take 85, for example, divide it by 2 and write down the quotient 42 and the remainder 1 which becomes the rightmost digit (bit) in 101010**1**. Continue the process until the quotient becomes 0:
+The other direction is also easy, just do the exact opposite. Take 85, for example, divide it by 2 and write down the *quotient* 42 and the *remainder* 1 which becomes the rightmost digit (bit) in 101010**1**. Continue the process until the quotient becomes 0:
 
 85 = 42\*2+**1** = (21\*2+**0**)\*2+**1** = ((10\*2+**1**)\*2+**0**)\*2+**1** = (((5\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = ((((2\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = (((((1\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = ((((((0\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**
 
@@ -1560,6 +1560,8 @@ The next two RISC-U instructions we introduce are the `ld` and `sd` instructions
 
 * programming language
 
+* quotient
+
 * radix complement
 
 * raw format
@@ -1568,7 +1570,11 @@ The next two RISC-U instructions we introduce are the `ld` and `sd` instructions
 
 * redundant
 
+* regular expression
+
 * relevant
+
+* remainder
 
 * root
 
@@ -1614,6 +1620,8 @@ The next two RISC-U instructions we introduce are the `ld` and `sd` instructions
 
 * sum
 
+* synopis
+
 * tag
 
 * tens complement
@@ -1637,6 +1645,8 @@ The next two RISC-U instructions we introduce are the `ld` and `sd` instructions
 * UINT_MAX
 
 * unary
+
+* universal
 
 * unsigned integer
 
