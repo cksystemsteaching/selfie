@@ -22,7 +22,7 @@ Selfie is software that translates software including *itself* to code that can 
 
 Why is the *self* so important? Because it shows how meaning is created systematically on a machine. Selfie is software written in some programming language. However, selfie also defines the meaning of that language which implies that selfie defines its own meaning. This is very similar to an English dictionary written in English. The only difference is that selfie defines meaning formally in such a way that a machine can run selfie and thus any software written in the language in which selfie is written. Understanding that will completely change what you think of computer science and possibly many other things in life.
 
-The book begins with a bit of groundwork emphasizing the fact that everything happening on a computer, phone, or tablet is encoded in bits, and nothing else. The only reason why these machines are so powerful and in fact computationally universal is the enormous amount of bits they can store and the speed and energy efficiency at which they can manipulate these bits. This insight is key to understanding information technology and therefore emphasized throughout the book. We begin with examples of how every day *information* such as numbers, characters, text, files, images, video, audio, and even code and apps are all encoded in just bits. We also show how those bits are later decoded back to their original form making them accessible to humans again.
+After introducing selfie, the book starts with a bit of groundwork emphasizing the fact that everything happening on a computer, phone, or tablet is encoded in bits, and nothing else. The only reason why these machines are so powerful and in fact computationally universal is the enormous amount of bits they can store and the speed and energy efficiency at which they can manipulate these bits. This insight is key to understanding information technology and therefore emphasized throughout the book. We begin with examples of how every day *information* such as numbers, characters, text, files, images, video, audio, and even code and apps are all encoded in just bits. We also show how those bits are later decoded back to their original form making them accessible to humans again.
 
 The next topic is a simple yet representative *machine model* of virtually any computing device available today. The model is in fact a subset of an existing, fully realistic machine that we developed during the course of teaching undergraduate students for two decades. The goal is to enable you to develop an intuition of how computers work on the level of bits, which is surprisingly simple to do. Most of the complexity of modern computing devices is due to performance optimizations which we deliberately leave out to keep things accessible. Instead we focus on developing an early intuition on what code and data is, what the difference is, and the fact that both are anyway encoded in just bits. This chapter also includes a simple model of machine memory and exposes you to fundamental properties that have direct counterparts in the real world, as it is often the case with computer science, such as the decision of whether to throw away something (forget) or to keep it (memorize).
 
@@ -108,6 +108,23 @@ Computer science is about the automation of everything. Think of something you w
 Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. In fact, we say we encode them as *binary numbers*. How do they look like? Well, 85 is 1010101 in binary, and 7 is 111. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their binary form 1010101 and 111. Finally, the result will be a number but of course encoded in binary. We therefore need to take those bits and decode them back to a more human-readable form which is hopefully 92. The cool thing is that you already know how to do all that, if you know decimal numbers. You are just not aware of that!
 
 Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information: text, files, images, video, audio, even code and apps. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then binary numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool. In fact, it turns out that it is just up to our interpretation of what a binary number such as 1010101 actually means. It may of course encode the positive number 85, if we interpret the bits as something called an unsigned integer, but it may also encode the negative number -43, if we interpret the bits as signed integer. We continue exploring that line of thought by showing how characters are encoded in bits. Here, it turns out that 1010101 may in fact also encode the uppercase letter U. Based on what we know about binary encodings of numbers and characters, we then show how those can be composed to encode larger structures such as text, files, images, video, audio, and even code and apps.
+
+Try the following on your machine to see what selfie has to say about what 85 and thus 1010101 may actually be:
+
+```
+./selfie -c examples/integer.c selfie. c -m 1
+```
+
+The output of selfie shows that 85 is in fact 1010101 in binary which in turn may also stand for the uppercase letter U and even other things we learn about below:
+
+```
+85 in decimal:     85
+'U' in ASCII:      85
+"85" string:       85
+85 in hexadecimal: 0x55
+85 in octal:       00125
+85 in binary:      1010101
+```
 
 The key lesson to be learned here is that 1010101 or any other bit sequence may encode whatever we want it to encode. However, some encodings are better than others for very good reasons. After all, the machine needs to work with these bits and eventually convert them back to human-readable form. We learn about all that as well.
 
@@ -315,7 +332,7 @@ Why are negative numbers and binary subtraction so important to know about? Ther
 
 In fact, what may be surprising about subtraction is that a hypothetical computer that can only subtract numbers, compare the result with zero, and depending on the outcome can choose to perform different subtractions and comparisons subsequently and so on, can do anything any other computer in the world can do. Such a machine is called a *one instruction set computer* (OISC). It may be slower than other machines but it can still mimic everything any other machine can do, in particular addition, multiplication, division, and whatever else computers can do.
 
-So, subtraction is special. Suppose we would like to subtract 7 from 85. To do that we first convert the subtrahend 7 into its negative *complement* (without using the sign symbol) and then add that complement to the minuend 85. In other words, we mimic subtraction by using addition on the minuend and the negative complement of the subtrahend. We first show how to do that with decimal numbers and then move on to do the same with binary numbers which explains, at least in principle, how a computer does subtraction.
+So, subtraction is special. Suppose we would like to subtract 7 from 85. To do that we first convert the *subtrahend* 7 into its negative *complement* (without using the sign symbol) and then add that complement to the *minuend* 85. In other words, we mimic subtraction by using addition on the minuend (85) and the negative complement of the subtrahend (7). We first show how to do that with decimal numbers and then move on to do the same with binary numbers which explains, at least in principle, how a computer does subtraction.
 
 The negative complement or *radix complement* of a number depends on the *radix* or base of the notation in which the number is written down. The radix complement of a decimal number is thus the *tens complement* of that number. To calculate the tens complement we first need to decide the maximum number of digits we support in any of the involved numbers. For the example here, we need at least 2 digits (because of 85). The tens complement of 7 (with a maximum of 2 digits) is:
 
@@ -335,7 +352,7 @@ and so on. The only issue is that calculating the tens complement is not much ea
 99 - 7 = 92
 ```
 
-If a given number fits the number of supported digits, the diminished radix complement of that number can easily be calculated digit by digit! Here, it is for, well, `99 - 07 = 92`:
+If a given number fits the number of supported digits, the diminished radix complement of that number can easily be calculated by subtracting *digit by digit*! Here, it is for, well, `99 - 07 = 92`:
 
 ```
 9 - 0 = 9
@@ -350,7 +367,7 @@ and
 However, we need the radix complement, not the diminished radix complement. The difference though is only an increment by 1. So, calculating the radix complement is done by first calculating the diminished radix complement and then increment the result by 1.
 
 ```
-99 - 7 + 1 = 92 + 1 = 93
+99 - 07 + 1 = 92 + 1 = 93
 ```
 
 The full story is now as follows:
@@ -359,13 +376,29 @@ The full story is now as follows:
 85 - 7 = 85 + (100 - 7) - 100 = 85 + (100 - 1 - 7 + 1) - 100 = 85 + (99 - 7 + 1) - 100
 ```
 
-The two subtractions, 99 - 7 and 85 + (...) - 100 are both trivial to do:
+The two subtractions, 99 - 7, that is, 99 - 07 as well as 85 + (...) - 100 are both easy to do, just subtract digit by digit:
 
 ```
-85 + (99 - 7 + 1) - 100 = 85 + (92 + 1) - 100 = 85 + 93 - 100 = 178 - 100 = 78
+85 + (99 - 07 + 1) - 100 = 85 + (92 + 1) - 100 = 85 + 93 - 100 = 178 - 100 = 78
 ```
 
-Who would have thought that subtraction is so easy to do? Now, we are even ready to do the exact same thing with binary numbers and their *twos* and *ones complement*. In binary, `85 - 7` is:
+Who would have thought that subtraction can in fact be reduced to digit-by-digit subtraction and addition? Try that with bigger numbers such as:
+
+```
+2345 - 432
+```
+
+Here we need 4 digits to calculate the result:
+
+```
+2345 + (10000 - 432) - 10000 = 2345 + (10000 - 1 - 432 + 1) - 10000 = 2345 + (9999 - 432 + 1) - 10000
+```
+
+Again, the two subtractions, 9999 - 432, that is, 9999 - 0432 as well as 2345 + (...) - 10000 are both easy to do digit by digit:
+
+2345 + (9999 - 0432 + 1) - 10000 = 2345 + (9567 + 1) - 10000 = 2345 + 9568 - 10000 = 11913 - 10000 = 1913
+
+Let us go back to the previous example. Now, we are even ready to do the exact same thing with binary numbers and their *twos* and *ones complement*. In binary, `85 - 7` is:
 
 ```
  1010101 = 85
@@ -402,7 +435,7 @@ Calculating the ones complement `1111111 - 0000111` is easy:
 -10000000
 ```
 
-Just flip the seven bits of the subtrahend `0000111`:
+Just flip the seven bits of the subtrahend `0000111` *bit by bit*:
 
 ```
   1010101 = 85
@@ -411,7 +444,7 @@ Just flip the seven bits of the subtrahend `0000111`:
 -10000000
 ```
 
-And then increment the ones complement by 1 to obtain the twos complement:
+And then increment the ones complement `1111000` by 1 to obtain the twos complement `1111001`:
 
 ```
   1010101 = 85
@@ -419,7 +452,7 @@ And then increment the ones complement by 1 to obtain the twos complement:
 -10000000
 ```
 
-Now add the minuend and the twos complement of the subtrahend:
+Now add the minuend `1010101` and the twos complement of the subtrahend `1111001`:
 
 ```
   1010101 = 85
@@ -437,7 +470,7 @@ And finally get rid of the MSB to correct for introducing the twos complement:
   1001110 = 78
 ```
 
-Try to practice this with different numbers!
+Practice this with different numbers as well!
 
 Before going just a bit further into the details, there is one more interesting notation, in addition to unary, binary, octal, decimal, and hexadecimal, that we would like to mention first. It is *ternary* notation with base 3. A digit in a ternary number is called a *trit* which can either be denoted by 0, 1, and 2 but also by -1, 0, and +1. There were in fact attempts to build ternary computers a long time ago. The reason is that positive as well as negative numbers can be encoded naturally in ternary notation, and that ternary arithmetics may in theory be faster than binary arithmetics. However, distinguishing three rather than two states in electronic circuits adds complexity to the design making it hard for ternary computers to compete. So, for now we are stuck with binary.
 
@@ -467,7 +500,7 @@ and then the twos complement:
 -10000000
 ```
 
-Finally, add the minuend and the twos complement of the subtrahend:
+Finally, add the minuend `1010101` and the twos complement of the subtrahend `0101010`:
 
 ```
   1010101 = 85
@@ -558,7 +591,7 @@ and finally correct the result:
  -00000001 = -1
 ```
 
-Let us take a step back here and reflect on what we have seen. Numbers for most of us are a concept we first heard about in school in the context of elementary arithmetics. Back then we learned how to add, subtract, multiply, divide, and compare numbers, not just to know how to do that but also to develop an intuition on what numbers are and what properties they have. However, one thing that probably never occurred to us was that the amount of numbers available to us could be limited and that there would be a cost involved in working with them. In short, we believed there are infinitely many and arithmetic is free for all. In computer science, this is different!
+Let us take a step back here and reflect on what we have seen. Numbers for most of us are a concept we first heard about in primary and lower secondary school in the context of elementary arithmetics. Back then we learned how to add, subtract, multiply, divide, and compare numbers, not just to know how to do that but also to develop an intuition on what numbers are and what properties they have. However, one thing that probably never occurred to us was that the amount of numbers available to us could be limited and that there would be a cost involved in working with them. In short, we believed there are infinitely many and arithmetic is free for all. In computer science, this is different!
 
 Everything on a computer is finite simply because there are only finitely many bits the machine can store. There may be an awful lot of bits but still. Also, flipping bits costs time and energy. It is not free. All this means that everything a computer does costs time and energy and is still always finite including numbers encoded in bits. Things may get very, very large but still.
 
