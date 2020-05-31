@@ -99,15 +99,23 @@ The synopis may look quite cryptic already but there is nothing to worry about. 
 ./selfie -c selfie.c
 ```
 
-Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated the *source code* `selfie.c` in which selfie is written to *machine code* and thereby constructed the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did. Try:
+Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated the *source code* `selfie.c` in which selfie is written to *machine code* and thereby constructed the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did.
+
+An important feature of selfie is that you actually have a chance to understand all of it, unlike most modern software systems that are based on the same basic principles but drown you in seemingly prohibitive complexity. Sure, even selfie may appear complex and you can verify that by taking a look at `selfie.c` on selfie's homepage or in your terminal by typing:
+
+```
+more selfie.c
+```
+
+Hit the spacebar to scroll down. Hitting q for quit gets you out. Hard to believe, but all you see there will become clear by reading this book, and, most importantly, that is all there is you need to worry about. Selfie is *self-contained*. There is no need to look at any other code to understand it. Now, let us try something really cool:
 
 ```
 ./selfie -c selfie.c -m 1 -c selfie.c
 ```
 
-This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie translated itself and then ran the resulting machine code to translate itself again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. To familiarize yourself with the system further, take a few more selfies, I mean try the other examples mentioned on selfie's homepage as well.
+This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie translated itself and then ran the resulting machine code to translate itself again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. To familiarize yourself with the system further, take a few more selfies, I mean try the other examples mentioned in the README on selfie's homepage as well.
 
-Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which selfie's source code is written is *universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
+Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which selfie's source code is written is *Turing-complete*, that is, it is *universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
 
 The machine and its code is universal just like organic life and its DNA. This is also the reason why understanding computer science, just like life science, takes effort. You are about to learn something that is here to stay forever. What are a few months reading and understanding this book compared to that? Here is something that may help you in the process. Students who finally understood selfie often tell me how happy they were when they finally saw how everything fits together. For some it was a life changing experience that made them even change their major to computer science!
 
@@ -1641,6 +1649,8 @@ The next two RISC-U instructions we introduce are the `ld` and `sd` instructions
 * twos complement
 
 * truth table
+
+* Turing-complete
 
 * UINT_MAX
 
