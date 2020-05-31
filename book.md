@@ -107,7 +107,7 @@ An important feature of selfie is that you actually have a chance to understand 
 more selfie.c
 ```
 
-Hit the spacebar to scroll down. Hitting q for quit gets you out. Hard to believe, but all you see there will become clear by reading this book, and, most importantly, that is all there is you need to worry about. Selfie is *self-contained*. There is no need to look at any other code to understand it. Now, let us try something really cool:
+Hit the spacebar to scroll down. Hitting q for quit gets you out. Hard to believe, but all you see there will become clear by reading this book, and, most importantly, that is all there is you need to worry about. Selfie is *self-contained*. There is no need to look at any other code to understand it. By the way, the best way to read, and eventually write code is to use an advanced text editor. We recommend to use the *Atom* text editor, which is free, or the *Sublime Text* editor, which is not free. Selfie and this book was written on Sublime Text. Now, let us try something really cool:
 
 ```
 ./selfie -c selfie.c -m 1 -c selfie.c
@@ -127,10 +127,12 @@ Let us take a look at an example. Suppose we would like a machine add two decima
 
 Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information: text, files, images, video, audio, even code and apps. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then binary numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool. In fact, it turns out that it is just up to our interpretation of what a binary number such as 1010101 actually means. It may of course encode the positive number 85, if we interpret the bits as something called an unsigned integer, but it may also encode the negative number -43, if we interpret the bits as signed integer. We continue exploring that line of thought by showing how characters are encoded in bits. Here, it turns out that 1010101 may in fact also encode the uppercase letter U. Based on what we know about binary encodings of numbers and characters, we then show how those can be composed to encode larger structures such as text, files, images, video, audio, and even code and apps.
 
-Try the following on your machine to see what selfie has to say about what 85 and thus 1010101 may actually be:
+The key lesson to be learned here is that 1010101 or any other bit sequence may encode whatever we want it to encode. However, some encodings are better than others for very good reasons. After all, the machine needs to work with these bits and eventually convert them back to human-readable form. We learn about all that as well.
+
+Before we go into the details, try the following on your machine to see what selfie has to say about what 85 and thus 1010101 may actually be:
 
 ```
-./selfie -c examples/integer.c selfie. c -m 1
+./selfie -c examples/integer.c selfie.c -m 1
 ```
 
 The output of selfie shows that 85 is in fact 1010101 in binary which in turn may also stand for the uppercase letter U and even other things we learn about below:
@@ -144,11 +146,17 @@ The output of selfie shows that 85 is in fact 1010101 in binary which in turn ma
 85 in binary:      1010101
 ```
 
-The key lesson to be learned here is that 1010101 or any other bit sequence may encode whatever we want it to encode. However, some encodings are better than others for very good reasons. After all, the machine needs to work with these bits and eventually convert them back to human-readable form. We learn about all that as well.
+You may also want to take a look at the program `examples/integer.c` that made selfie produce this output either on selfie's homepage, in your text editor, or in your terminal by typing:
+
+```
+more examples/integer.c
+```
+
+The examples code is written in such a way that everyone should readily have a chance to understand it, at least at a high level. Lines that begin with `//` are comments ignored by the machine but still there to help you. Alright, let us go for it!
 
 ### Bits
 
-A *binary digit* or *bit* is a unit of information, abbreviated by the lower-case letter *b*, that can distinguish exactly two different things. In fact, we say that a bit can be in exactly one out of two different *states*. It can be either 0 or 1, on or off, true or false, or whatever we want to call it. The only thing that is relevant about a bit is that it is always in exactly one out of two states. And the only thing a computer can do is storing bits and changing bits from one state to the other and back, that is, from, say, 0 to 1 and from 1 to 0.
+A *binary digit* or *bit* is a unit of information, abbreviated by the lower-case letter *b*, that can distinguish exactly two different things. In fact, we say that a bit can be in exactly one out of two different *states*. It can be either 0 or 1, on or off, true or false, or whatever we want to call it. The only thing that is relevant about a bit is that it is always in exactly one out of two states. And the only thing a computer can do is storing bits and changing bits from one state to the other and back, that is, from 0 to 1 and from 1 to 0.
 
 How can then a bit be used to do anything useful beyond that? Well, by taking more than one bit, of course. Let us take two bits. Now, we can suddenly be in *four* different states denoted by, say:
 
@@ -172,7 +180,7 @@ Let us look a bit closer at how many states a growing number of bits can be in. 
 
 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 states,
 
-and so on. This is like the tables up to ten (bits) but of a computer scientist! You may have actually seen these numbers before but probably never knew where they came from. Try continuing the series yourself with more bits! 2048, 4096,... You will quickly run out of room.
+and so on. This is like the tables up to ten (bits) but of a computer scientist! You may have actually seen these numbers before but maybe never knew where they came from. Try continuing the series yourself with more bits! 2048, 4096,... You will quickly run out of room.
 
 Imagine, your cell phone can probably store a few billion bits. How many states is that? Far more than there are particles in the known universe! Just in your pocket! This also means that the bits in your phone can be in so many different states that your phone would have long turned to dust before being able to try out all possible states these bits can be in. Conversely, it is unlikely that the bits in your phone will ever be in a state they have been in before since some bits are usually used to keep track of time and other environmental factors such as battery health which keep changing over time.
 
