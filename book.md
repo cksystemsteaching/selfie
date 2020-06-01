@@ -125,7 +125,7 @@ Computer science is about the automation of everything. Think of something you w
 
 Let us take a look at an example. Suppose we would like a machine add two decimal numbers, say, 85 and 7. However, a computer cannot even handle 85 and 7. It can only handle *bits*, 0s and 1s. So, the first step is to encode 85 and 7 in bits. In fact, we say we encode them as *binary numbers*. How do they look like? Well, 85 is 1010101 in binary, and 7 is 111. Then we need to tell the machine how to add the two numbers, but not as 85 and 7, but rather in their binary form 1010101 and 111. Finally, the result will be a number but of course encoded in binary. We therefore need to take those bits and decode them back to a more human-readable form which is hopefully 92. The cool thing is that you already know how to do all that, if you know decimal numbers. You are just not aware of that!
 
-Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information: text, files, images, video, audio, even code and apps. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then binary numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool. In fact, it turns out that it is just up to our interpretation of what a binary number such as 1010101 actually means. It may of course encode the positive number 85, if we interpret the bits as something called an unsigned integer, but it may also encode the negative number -43, if we interpret the bits as signed integer. We continue exploring that line of thought by showing how characters are encoded in bits. Here, it turns out that 1010101 may in fact also encode the uppercase letter U. Based on what we know about binary encodings of numbers and characters, we then show how those can be composed to encode larger structures such as text, files, images, video, audio, and even code and apps.
+Why is it important to know how binary numbers work? Because binary numbers are used to represent virtually all other types of information: text, files, images, video, audio, even code and apps. Everything a computer does is essentially adding, subtracting, multiplying, dividing, and comparing binary numbers. To do that the machine uses Boolean Algebra, that is, Boolean Logic on bits, which may sound scary but is incredibly simple and easy to understand. So, we begin with bits, then binary numbers, and then Boolean Algebra. After that we focus on negative numbers which are a bit tricky but fun to explore and necessary for running code. The way they are handled is very cool. In fact, it turns out that it is just up to our interpretation of what a binary number such as 1010101 actually means. It may of course encode the positive number 85, if we interpret the bits as something called an unsigned integer, but it may also encode the negative number -43, if we interpret the bits as signed integer. We continue exploring that line of thought by showing how characters are encoded in bits. Here, it turns out that 1010101 may in fact also encode the uppercase letter 'U'. Based on what we know about binary encodings of numbers and characters, we then show how those can be composed to encode larger structures such as text, files, images, video, audio, and even code and apps.
 
 The key lesson to be learned here is that 1010101 or any other bit sequence may encode whatever we want it to encode. However, some encodings are better than others for very good reasons. After all, the machine needs to work with these bits and eventually convert them back to human-readable form. We learn about all that as well.
 
@@ -141,12 +141,11 @@ and then:
 ./selfie -c selfie.h examples/encoding.c -m 1
 ```
 
-The output of selfie shows that 85 is in fact 1010101 in binary which in turn may also stand for the uppercase letter U and even other things we learn about below:
+The output of selfie shows that 85 is in fact 1010101 in binary which in turn may also stand for the uppercase letter 'U' and even other things we learn about below:
 
 ```
 85 in decimal:     85
-'U' in ASCII:      85
-"85" string:       85
+85 in ASCII:       'U'
 85 in hexadecimal: 0x55
 85 in octal:       0o125
 85 in binary:      1010101
@@ -542,13 +541,14 @@ There is also a program for printing negative numbers with selfie, try:
 The relevant output is:
 
 ```
--7 in decimal with sign:  -7
--7 in 64-bit hexadecimal: 0xFFFFFFFFFFFFFFF9
--7 in 64-bit octal:       0o1777777777777777777771
--7 in 64-bit binary:      1111111111111111111111111111111111111111111111111111111111111001
+-7 in decimal:     -7 (as signed 64-bit integer)
+-7 in decimal:     18446744073709551609 (as unsigned integer)
+-7 in hexadecimal: 0xFFFFFFFFFFFFFFF9
+-7 in octal:       0o1777777777777777777771
+-7 in binary:      1111111111111111111111111111111111111111111111111111111111111001
 ```
 
-The only difference to the above presentation is that, instead of 7 bits, selfie uses 64 bits to encode negative numbers. Try modifying `examples/negative.c` and running it again to see the encoding of different numbers!
+The only difference to the above representation is that, instead of 7 bits, selfie uses 64 bits to encode positive and negative numbers. Thus -7 encoded in 64 rather than 7 bits is just like `1111001` but with 57 additional more-significant bits set to 1. Why -7 in decimal is such a huge number as unsigned integer is explained next. Before that, modify `examples/negative.c` and then run it again to see the encoding of different numbers!
 
 Before going just a bit further into the details, there is one more interesting notation, in addition to unary, binary, octal, decimal, and hexadecimal, that we would like to mention first. It is *ternary* notation with base 3. A digit in a ternary number is called a *trit* which can either be denoted by 0, 1, and 2 but also by -1, 0, and +1. There were in fact attempts to build ternary computers a long time ago. The reason is that positive as well as negative numbers can be encoded naturally in ternary notation, and that ternary arithmetics may in theory be faster than binary arithmetics. However, distinguishing three rather than two states in electronic circuits adds complexity to the design making it hard for ternary computers to compete. So, for now we are stuck with binary.
 
@@ -686,27 +686,33 @@ There is also agreement to use *signed integers* to represent whole numbers from
 You may also use selfie to see what it has to say about those bounds, try:
 
 ```
-./selfie -c selfie.h examples/int-max-min.c -m 1
+./selfie -c selfie.h examples/bounds.c -m 1
 ```
 
 The relevant output is:
 
 ```
 UINT64_MAX in decimal:     18446744073709551615
+UINT64_MAX in decimal:     -1 (as signed 64-bit integer)
 UINT64_MAX in hexadecimal: 0xFFFFFFFFFFFFFFFF
 UINT64_MAX in octal:       0o1777777777777777777777
 UINT64_MAX in binary:      1111111111111111111111111111111111111111111111111111111111111111
- INT64_MAX in decimal:     9223372036854775807
- INT64_MAX in hexadecimal: 0x7FFFFFFFFFFFFFFF
- INT64_MAX in octal:       0o777777777777777777777
- INT64_MAX in binary:      0111111111111111111111111111111111111111111111111111111111111111
- INT64_MIN in decimal:     -9223372036854775808
- INT64_MIN in hexadecimal: 0x8000000000000000
- INT64_MIN in octal:       0o1000000000000000000000
- INT64_MIN in binary:      1000000000000000000000000000000000000000000000000000000000000000
+0 in decimal:              0
+0 in hexadecimal:          0x0
+0 in octal:                0o0
+0 in binary:               0000000000000000000000000000000000000000000000000000000000000000
+INT64_MAX in decimal:      9223372036854775807
+INT64_MAX in hexadecimal:  0x7FFFFFFFFFFFFFFF
+INT64_MAX in octal:        0o777777777777777777777
+INT64_MAX in binary:       0111111111111111111111111111111111111111111111111111111111111111
+INT64_MIN in decimal:      -9223372036854775808
+INT64_MIN in decimal:      9223372036854775808 (as unsigned integer)
+INT64_MIN in hexadecimal:  0x8000000000000000
+INT64_MIN in octal:        0o1000000000000000000000
+INT64_MIN in binary:       1000000000000000000000000000000000000000000000000000000000000000
 ```
 
-There is one more thing before we move on. Notice that the same binary numbers may sometimes be greater than others and sometimes less! Take our favorite binary numbers 1010101 and 111, for example. 1010101 is clearly greater than 111, right? Well, it depends on our interpretation of 1010101 and 111. If 1010101 and 111 are interpreted as unsigned integers, the answer is yes. But if they are interpreted as signed integers with seven bits, the answer is no! In that case, 1010101 stands for -43 while 111 still stands for 7. This means there is unsigned and signed comparison of binary numbers. Addition, subtraction, and even multiplication, however, work the same way independently of unsigned and signed interpretation. Only division is, similar to comparison, dependent on interpretation but the details are not important here.
+There is one more thing before we move on. Notice that the same binary numbers may sometimes be seen as greater than others and sometimes less! Take our favorite binary numbers 1010101 and 111, for example. 1010101 is clearly greater than 111, right? Well, it depends on our interpretation of 1010101 and 111. If 1010101 and 111 are interpreted as unsigned integers, the answer is yes. But if they are interpreted as signed 7-bit integers, the answer is no! In that case, 1010101 stands for -43 while 111 still stands for 7. This means there is unsigned and signed comparison of binary numbers. Addition, subtraction, and even multiplication, however, work the same way independently of unsigned and signed interpretation. Only division is, similar to comparison, dependent on interpretation but the details are not important here.
 
 The thing that matters most is that, when it comes to numbers, unsigned and signed integers are all we need to know about to understand the rest of the book! There are plenty of applications of unsigned and signed integers in encoding, storing, processing, and decoding information such as images, video, and audio, just to the name the most popular, which we discuss below.
 
@@ -797,6 +803,36 @@ and:
 ```
 
 Both again make kind of sense given that with seven bits we have that `-64 = 63 + 1`.
+
+Selfie also has to say something about overflows, of course, just for 64-bit integers:
+
+```
+./selfie -c selfie.h examples/overflows.c -m 1
+```
+
+The relevant output is:
+
+```
+UINT64_MAX+1 in decimal:     0
+UINT64_MAX+1 in hexadecimal: 0x0
+UINT64_MAX+1 in octal:       0o0
+UINT64_MAX+1 in binary:      0000000000000000000000000000000000000000000000000000000000000000
+0-1 in decimal:              -1 (as signed 64-bit integer)
+0-1 in decimal:              18446744073709551615 (as unsigned integer)
+0-1 in hexadecimal:          0xFFFFFFFFFFFFFFFF
+0-1 in octal:                0o1777777777777777777777
+0-1 in binary:               1111111111111111111111111111111111111111111111111111111111111111
+INT64_MAX+1 in decimal:      -9223372036854775808 (as signed 64-bit integer)
+INT64_MAX+1 in decimal:      9223372036854775808 (as unsigned integer)
+INT64_MAX+1 in hexadecimal:  0x8000000000000000
+INT64_MAX+1 in octal:        0o1000000000000000000000
+INT64_MAX+1 in binary:       1000000000000000000000000000000000000000000000000000000000000000
+INT64_MIN-1 in decimal:      9223372036854775807 (as signed 64-bit integer)
+INT64_MIN-1 in decimal:      9223372036854775807 (as unsigned integer)
+INT64_MIN-1 in hexadecimal:  0x7FFFFFFFFFFFFFFF
+INT64_MIN-1 in octal:        0o777777777777777777777
+INT64_MIN-1 in binary:       0111111111111111111111111111111111111111111111111111111111111111
+```
 
 Unintended integer overflows are a major source of errors in software. Think of the Millennium Bug which is probably the most talked about integer overflow bug in the history of computing! And even worse, that bug will in fact repeat itself in 2038! There are real world examples where integer overflows have caused enormous amounts of damage, financially but also in potential threats to life, if not loss of life.
 
