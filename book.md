@@ -132,7 +132,7 @@ The key lesson to be learned here is that 1010101 or any other bit sequence may 
 Before we go into the details, try the following on your machine to see what selfie has to say about what 85 and thus 1010101 may actually be:
 
 ```
-./selfie -c examples/integer.c selfie.c -m 1
+./selfie -c examples/encoding.c selfie.c -m 1
 ```
 
 The output of selfie shows that 85 is in fact 1010101 in binary which in turn may also stand for the uppercase letter U and even other things we learn about below:
@@ -142,14 +142,14 @@ The output of selfie shows that 85 is in fact 1010101 in binary which in turn ma
 'U' in ASCII:      85
 "85" string:       85
 85 in hexadecimal: 0x55
-85 in octal:       00125
+85 in octal:       0o125
 85 in binary:      1010101
 ```
 
-You may also want to take a look at the program `examples/integer.c` that made selfie produce this output either on selfie's homepage, in your text editor, or in your terminal by typing:
+You may also want to take a look at the program `examples/encoding.c` that made selfie produce this output either on selfie's homepage, in your text editor, or in your terminal by typing:
 
 ```
-more examples/integer.c
+more examples/encoding.c
 ```
 
 The examples code is written in such a way that everyone should readily have a chance to understand it, at least at a high level. Lines that begin with `//` are comments ignored by the machine but still there to help you. Alright, let us go for it!
@@ -220,9 +220,20 @@ The binary number 1010101 represents 85 because:
 
 Take a piece of paper and a pen (not a computer!) and convert a few other binary numbers to decimal for yourself!
 
-The other direction is also easy, just do the exact opposite. Take 85, for example, divide it by 2 and write down the *quotient* 42 and the *remainder* 1 which becomes the rightmost digit (bit) in 101010**1**. Continue the process until the quotient becomes 0:
+The other direction is also easy, just do the exact opposite. Take 85, for example, divide it by 2 and write down the *quotient* 42 and the *remainder* 1 which becomes the rightmost digit (bit) in 101010**1**. Continue the process until the quotient becomes _0_:
 
-85 = 42\*2+**1** = (21\*2+**0**)\*2+**1** = ((10\*2+**1**)\*2+**0**)\*2+**1** = (((5\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = ((((2\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = (((((1\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = ((((((0\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**
+85 =
+42\*2+**1** =
+(21\*2+**0**)\*2+**1** =
+((10\*2+**1**)\*2+**0**)\*2+**1** =
+(((5\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** =
+((((2\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** =
+(((((1\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** =
+((((((_0_\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**
+
+The last line shows when the quotient becomes _0_ while the line before the last line corresponds exactly to the line above:
+
+(((((**1**\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1**)\*2+**0**)\*2+**1** = 85.
 
 Again, try to convert a few other decimal numbers to binary!
 
@@ -297,7 +308,7 @@ Ok, but why do we make you go through all this? It is not just because binary ad
 
 ### Boolean Algebra
 
-Let us take an even closer look at how binary addition works. Adding two bits requires another two bits for storing the result. One bit for the sum, which is the LSB of the result, and one bit for the carry bit, which is the MSB of the result. Here is an overview of all possible combinations:
+Let us take an even closer look at how binary addition works. Adding two bits requires another two bits for storing the result: one bit for the sum, which is the LSB of the result, and one bit for the carry bit, which is the MSB of the result. Here is an overview of all possible combinations:
 
 ```
 0+0 = b00 = 0
@@ -306,7 +317,7 @@ Let us take an even closer look at how binary addition works. Adding two bits re
 1+1 = b10 = 2
 ```
 
-There are at least two interesting observations we can make here. Firstly, the carry bit is only 1 if both addends are 1. This corresponds to a logical *AND* operator! Secondly, the sum bit is only 1 if either the first addend is 1, or else the second addend is 1. This is logical *EXCLUSIVE-OR* or *XOR*! There is also logical *OR* but that is 1 if either or both of the two addends or *operands* are 1. So, not the right choice here but still important for other things as we see below.
+There are at least two interesting observations we can make here. Firstly, the carry bit is only 1 for 1+1, that is, if both addends are 1. This corresponds to a logical *AND* operator! Secondly, the sum bit is only 1 for either 0+1 or else 1+0, that is, if either the first addend is 1, or else the second addend is 1. This is logical *EXCLUSIVE-OR* or *XOR*! There is also logical *OR* but that is 1 if either or both of the two addends or *operands* are 1. So, not the right choice here but still important for other things as we see below.
 
 Boolean Algebra can only talk about 0s and 1s, and is called Boolean Logic if 0 and 1 represent false and true, respectively. In addition to 0 and 1, Boolean Algebra features logical operators such as the above AND, OR, and XOR. They are referred to as binary operators because they have two operands, not because they operate on bits! There is also one unary operator called logical *NEGATION* or *NOT* which obviously just flips the bit of its single operand:
 
@@ -362,7 +373,7 @@ Finally, we can take 7 full adders, one for each bit in the example of the previ
 
 Everything a computer does is essentially based on that connection of Boolean Logic and digital electronics. If you are interested in the topic look for books on computer architecture of which we mention some at the end of the chapter. It is an incredibly exciting, highly active field that is the foundation of the computer revolution.
 
-You may ask yourself why we do not go further into the details of digital electronics here. The reason is because we can, thanks to Boolean Logic, and thereby save a lot of time. Boolean Logic provides an *abstraction* from digital electronics that allows us to ignore physics! This is almost magic.
+You may ask yourself why we do not go further into the details of digital electronics here. The reason is because we can, thanks to Boolean Logic, and thereby save a lot of time and effort. Boolean Logic provides an *abstraction* from digital electronics that allows us to ignore physics! This is almost magic.
 
 Computer scientists love abstractions and this is our first example out of many that follow below. The key to understanding many abstractions in computer science is to keep in mind that everything in a computer is encoded in bits which in turn are handled by electronic circuits. Boolean Logic allows us to focus at least on the bits. However, even that level of detail is often too cumbersome to deal with directly, which is why we go even further and introduce binary arithmetic and so on. So, always ask yourself how we can manage those bits on a level of abstraction that is closer to what we want to do.
 
