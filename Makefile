@@ -113,7 +113,7 @@ mod: selfie selfie.h
 # TODO: check self-compilation
 x86: tools/riscv-2-x86.selfie selfie.m selfie
 	./tools/riscv-2-x86.selfie -c selfie.c
-	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
+	# ./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
 
 # Run everything that only requires standard tools
 all: compile quine debug replay os vm min mob sat smt mon btor2 mod x86
