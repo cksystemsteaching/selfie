@@ -2004,7 +2004,7 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t a) {
     }
 
     if (b == 8) {
-      store_character(s, i, '0'); // octal numbers start with 00
+      store_character(s, i, 'o'); // octal numbers start with 0o
       store_character(s, i + 1, '0');
 
       i = i + 2;
