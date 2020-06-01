@@ -132,6 +132,12 @@ The key lesson to be learned here is that 1010101 or any other bit sequence may 
 Before we go into the details, try the following on your machine to see what selfie has to say about what 85 and thus 1010101 may actually be:
 
 ```
+make selfie.h
+```
+
+and then:
+
+```
 ./selfie -c selfie.h examples/encoding.c -m 1
 ```
 
