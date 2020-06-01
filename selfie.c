@@ -136,7 +136,7 @@ void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
 uint64_t atoi(char* s);
-char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t a);
+char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f);
@@ -148,6 +148,7 @@ void println();
 
 void print_character(uint64_t c);
 void print_string(char* s);
+void print_unsigned_integer(uint64_t n);
 void print_integer(uint64_t n);
 void unprint_integer(uint64_t n);
 void print_hexadecimal(uint64_t n, uint64_t a);
@@ -1941,14 +1942,14 @@ uint64_t atoi(char* s) {
   return n;
 }
 
-char* itoa(uint64_t n, char* s, uint64_t b, uint64_t a) {
+char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
   // assert: b in {2,4,8,10,16}
 
   uint64_t i;
   uint64_t sign;
 
-  // the conversion of the integer n to an ASCII string in s with
-  // base b and alignment a begins with the leftmost digit in s
+  // conversion of the integer n to an ASCII string in s with base b,
+  // sign d, and alignment a begins with the leftmost digit in s
   i = 0;
 
   // for now assuming n is positive
@@ -1958,15 +1959,15 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t a) {
     store_character(s, 0, '0');
 
     i = 1;
-  } else if (signed_less_than(n, 0)) {
-    if (b == 10) {
-      // n is represented as two's complement
-      // convert n to a positive number but remember the sign
-      n = -n;
+  } else if (d)
+    if (signed_less_than(n, 0))
+      if (b == 10) {
+        // n is represented as two's complement
+        // convert n to a positive number but remember the sign
+        n = -n;
 
-      sign = 1;
-    }
-  }
+        sign = 1;
+      }
 
   while (n != 0) {
     if (n % b > 9)
@@ -2132,12 +2133,16 @@ void print_string(char* s) {
   put_character(CHAR_DOUBLEQUOTE);
 }
 
+void print_unsigned_integer(uint64_t n) {
+  print(itoa(n, integer_buffer, 10, 0, 0));
+}
+
 void print_integer(uint64_t n) {
-  print(itoa(n, integer_buffer, 10, 0));
+  print(itoa(n, integer_buffer, 10, 1, 0));
 }
 
 void unprint_integer(uint64_t n) {
-  n = string_length(itoa(n, integer_buffer, 10, 0));
+  n = string_length(itoa(n, integer_buffer, 10, 1, 0));
 
   while (n > 0) {
     put_character(CHAR_BACKSPACE);
@@ -2147,15 +2152,15 @@ void unprint_integer(uint64_t n) {
 }
 
 void print_hexadecimal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 16, a));
+  print(itoa(n, integer_buffer, 16, 0, a));
 }
 
 void print_octal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 8, a));
+  print(itoa(n, integer_buffer, 8, 0, a));
 }
 
 void print_binary(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 2, a));
+  print(itoa(n, integer_buffer, 2, 0, a));
 }
 
 uint64_t print_format0(char* s, uint64_t i) {
@@ -2207,6 +2212,10 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
         put_character((uint64_t) a);
 
         return i + 2;
+      } else if (load_character(s, i + 1) == 'u') {
+        print_unsigned_integer((uint64_t) a);
+
+        return i + 2;
       } else if (load_character(s, i + 1) == 'd') {
         print_integer((uint64_t) a);
 
@@ -2217,11 +2226,17 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 
         if (p < 10) {
           // the character at i + 2 is in fact a digit
-          print_integer((uint64_t) a / ten_to_the_power_of(p));
+          if (load_character(s, i + 3) == 'u')
+            print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
+          else if (load_character(s, i + 3) == 'd')
+            print_integer((uint64_t) a / ten_to_the_power_of(p));
+          else
+            // precision only supported for %u and %d
+            return i + 4;
 
           if (p > 0) {
             // using integer_buffer here is ok since we are not using print_integer
-            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0);
+            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
             p = p - string_length(integer_buffer);
 
             put_character('.');
@@ -2409,7 +2424,7 @@ void print_symbol(uint64_t symbol) {
 }
 
 void print_line_number(char* message, uint64_t line) {
-  printf4("%s: %s in %s in line %d: ", selfie_name, message, source_name, (char*) line);
+  printf4("%s: %s in %s in line %u: ", selfie_name, message, source_name, (char*) line);
 }
 
 void syntax_error_message(char* message) {
@@ -4881,22 +4896,22 @@ void selfie_compile() {
 
       compile_cstar();
 
-      printf4("%s: %d characters read in %d lines and %d comments\n", selfie_name,
+      printf4("%s: %u characters read in %u lines and %u comments\n", selfie_name,
         (char*) number_of_read_characters,
         (char*) line_number,
         (char*) number_of_comments);
 
-      printf4("%s: with %d(%.2d%%) characters in %d actual symbols\n", selfie_name,
+      printf4("%s: with %u(%.2u%%) characters in %u actual symbols\n", selfie_name,
         (char*) (number_of_read_characters - number_of_ignored_characters),
         (char*) fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
         (char*) number_of_scanned_symbols);
 
-      printf4("%s: %d global variables, %d procedures, %d string literals\n", selfie_name,
+      printf4("%s: %u global variables, %u procedures, %u string literals\n", selfie_name,
         (char*) number_of_global_variables,
         (char*) number_of_procedures,
         (char*) number_of_strings);
 
-      printf6("%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfie_name,
+      printf6("%s: %u calls, %u assignments, %u while, %u if, %u return\n", selfie_name,
         (char*) number_of_calls,
         (char*) number_of_assignments,
         (char*) number_of_while,
@@ -4916,11 +4931,11 @@ void selfie_compile() {
 
   entry_point = ELF_ENTRY_POINT;
 
-  printf3("%s: symbol table search time was %d iterations on average and %d in total\n", selfie_name,
+  printf3("%s: symbol table search time was %u iterations on average and %u in total\n", selfie_name,
     (char*) (total_search_time / number_of_searches),
     (char*) total_search_time);
 
-  printf4("%s: %d bytes generated with %d instructions and %d bytes of data\n", selfie_name,
+  printf4("%s: %u bytes generated with %u instructions and %u bytes of data\n", selfie_name,
     (char*) binary_length,
     (char*) (code_length / INSTRUCTIONSIZE),
     (char*) (binary_length - code_length));
@@ -5275,7 +5290,7 @@ uint64_t get_total_percentage_of_nops() {
 }
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
-  printf3("%s: %d(%.2d%%)",
+  printf3("%s: %u(%.2u%%)",
     mnemonics,
     (char*) counter,
     (char*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
@@ -5285,7 +5300,7 @@ void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint6
   print_instruction_counter(total, counter, mnemonics);
 
   if (run)
-    printf1("[%.2d%%]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
+    printf1("[%.2u%%]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
 }
 
 void print_instruction_counters() {
@@ -5719,7 +5734,7 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
-  printf5("%s: %d bytes with %d instructions and %d bytes of data written into %s\n", selfie_name,
+  printf5("%s: %u bytes with %u instructions and %u bytes of data written into %s\n", selfie_name,
     (char*) (ELF_HEADER_LEN + binary_length),
     (char*) (code_length / INSTRUCTIONSIZE),
     (char*) (binary_length - code_length),
@@ -5800,7 +5815,7 @@ void selfie_load() {
         if (signed_less_than(0, number_of_read_bytes)) {
           // check if we are really at EOF
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-            printf5("%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
+            printf5("%s: %u bytes with %u instructions and %u bytes of data loaded from %s\n",
               selfie_name,
               (char*) (ELF_HEADER_LEN + binary_length),
               (char*) (code_length / INSTRUCTIONSIZE),
@@ -5854,7 +5869,7 @@ void implement_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  printf4("%s: %s exiting with exit code %d and %.2dMB mallocated memory\n", selfie_name,
+  printf4("%s: %s exiting with exit code %d and %.2uMB mallocated memory\n", selfie_name,
     get_name(context),
     (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
     (char*) fixed_point_ratio(get_program_break(context) - get_original_break(context), MEGABYTE, 2));
@@ -5909,7 +5924,7 @@ void implement_read(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_read)
-    printf4("%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfie_name,
+    printf4("%s: trying to read %u bytes from file with descriptor %u into buffer at virtual address %p\n", selfie_name,
       (char*) size,
       (char*) fd,
       (char*) vbuffer);
@@ -5971,7 +5986,7 @@ void implement_read(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    printf3("%s: actually read %d bytes from file with descriptor %d\n", selfie_name,
+    printf3("%s: actually read %u bytes from file with descriptor %u\n", selfie_name,
       (char*) read_total,
       (char*) fd);
 
@@ -6030,7 +6045,7 @@ void implement_write(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_write)
-    printf4("%s: trying to write %d bytes from buffer at virtual address %p into file with descriptor %d\n", selfie_name,
+    printf4("%s: trying to write %u bytes from buffer at virtual address %p into file with descriptor %u\n", selfie_name,
       (char*) size,
       (char*) vbuffer,
       (char*) fd);
@@ -6092,7 +6107,7 @@ void implement_write(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    printf3("%s: actually wrote %d bytes into file with descriptor %d\n", selfie_name,
+    printf3("%s: actually wrote %u bytes into file with descriptor %u\n", selfie_name,
       (char*) written_total,
       (char*) fd);
 
@@ -6208,7 +6223,7 @@ void implement_openat(uint64_t* context) {
     *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
-      printf5("%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfie_name,
+      printf5("%s: opened file %s with flags %x and mode %o returning file descriptor %u\n", selfie_name,
         filename_buffer,
         (char*) flags,
         (char*) mode,
@@ -6395,7 +6410,7 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
       (char*) from_context,
       (char*) to_context);
     if (timer != TIMEROFF)
-      printf1(" to execute %d instructions", (char*) timer);
+      printf1(" to execute %u instructions", (char*) timer);
     println();
   }
 
@@ -6576,7 +6591,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 
 void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
   if (code_line_number != (uint64_t*) 0)
-    printf1("(~%d)", (char*) *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+    printf1("(~%u)", (char*) *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
 }
 
 void print_code_context_for_instruction(uint64_t address) {
@@ -7203,7 +7218,7 @@ void undo_ecall() {
 
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    printf1("(~%d)", (char*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
+    printf1("(~%u)", (char*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
 }
 
 void print_data_context(uint64_t data) {
@@ -7315,7 +7330,7 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = (char*) 0;
   output_fd   = 1;
 
-  printf5("%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
+  printf5("%s: %u characters of assembly with %u instructions and %u bytes of data written into %s\n", selfie_name,
     (char*) number_of_written_characters,
     (char*) (code_length / INSTRUCTIONSIZE),
     (char*) (binary_length - code_length),
@@ -7768,7 +7783,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf3(",%d(%.2d%%)@%x", (char*) c, (char*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (char*) a);
+    printf3(",%u(%.2u%%)@%x", (char*) c, (char*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (char*) a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
@@ -7780,13 +7795,13 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 }
 
 void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
-  printf3("%s%s%d", selfie_name, message, (char*) total);
+  printf3("%s%s%u", selfie_name, message, (char*) total);
   print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, UINT64_MAX)));
   println();
 }
 
 void print_profile() {
-  printf5("%s: summary: %d executed instructions [%.2d%% nops] and %.2dMB(%.2d%%) mapped memory\n", selfie_name,
+  printf5("%s: summary: %u executed instructions [%.2u%% nops] and %.2uMB(%.2u%%) mapped memory\n", selfie_name,
     (char*) get_total_number_of_instructions(),
     (char*) get_total_percentage_of_nops(),
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
@@ -8301,7 +8316,7 @@ uint64_t handle_system_call(uint64_t* context) {
     // TODO: exit only if all contexts have exited
     return EXIT;
   } else {
-    printf2("%s: unknown system call %d\n", selfie_name, (char*) a7);
+    printf2("%s: unknown system call %u\n", selfie_name, (char*) a7);
 
     set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
 
@@ -8417,7 +8432,7 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  printf2("mixter (%d%% mipster/%d%% hypster)\n", (char*) mix, (char*) (100 - mix));
+  printf2("mixter (%u%% mipster/%u%% hypster)\n", (char*) mix, (char*) (100 - mix));
 
   mslice = TIMESLICE;
 
@@ -8647,7 +8662,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   boot_loader(current_context);
 
-  printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
+  printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
     binary_name,
     (char*) (page_frame_memory / MEGABYTE));
 

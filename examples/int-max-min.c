@@ -3,16 +3,12 @@
 // libcstar procedures for printing
 void init_library();
 void print(uint64_t* s);
+void print_unsigned_integer(uint64_t n);
 void print_integer(uint64_t n);
 void print_hexadecimal(uint64_t n, uint64_t a);
 void print_octal(uint64_t n, uint64_t a);
 void print_binary(uint64_t n, uint64_t a);
 void println();
-
-uint64_t UINT64_MAX;
-
-uint64_t INT64_MAX;
-uint64_t INT64_MIN;
 
 uint64_t main() {
   // initialize selfie's libcstar library
@@ -20,7 +16,7 @@ uint64_t main() {
 
   // print UINT64_MAX in decimal
   print("UINT64_MAX in decimal:     ");
-  print_integer(UINT64_MAX);
+  print_unsigned_integer(UINT64_MAX);
   println();
 
   // print UINT64_MAX in hexadecimal
