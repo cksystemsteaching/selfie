@@ -136,7 +136,7 @@ void     string_reverse(char* s);
 uint64_t string_compare(char* s, char* t);
 
 uint64_t atoi(char* s);
-char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t a);
+char*    itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a);
 
 uint64_t fixed_point_ratio(uint64_t a, uint64_t b, uint64_t f);
 uint64_t fixed_point_percentage(uint64_t r, uint64_t f);
@@ -148,6 +148,7 @@ void println();
 
 void print_character(uint64_t c);
 void print_string(char* s);
+void print_unsigned_integer(uint64_t n);
 void print_integer(uint64_t n);
 void unprint_integer(uint64_t n);
 void print_hexadecimal(uint64_t n, uint64_t a);
@@ -856,8 +857,11 @@ uint64_t funct7 = 0;
 void reset_instruction_counters();
 
 uint64_t get_total_number_of_instructions();
+uint64_t get_total_percentage_of_nops();
 
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics);
+void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics);
+
 void print_instruction_counters();
 
 uint64_t load_instruction(uint64_t baddr);
@@ -1086,7 +1090,7 @@ void print_code_context_for_instruction(uint64_t address);
 void print_lui();
 void print_lui_before();
 void print_lui_after();
-void record_lui_addi_add_sub_mul_sltu_jal_jalr();
+void record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
 void do_lui();
 void undo_lui_addi_add_sub_mul_divu_remu_sltu_ld_jal_jalr();
 
@@ -1101,8 +1105,6 @@ void print_add_sub_mul_divu_remu_sltu_before();
 void do_add();
 void do_sub();
 void do_mul();
-
-void record_divu_remu();
 void do_divu();
 void do_remu();
 
@@ -1192,6 +1194,8 @@ void init_replay_engine() {
 
 void init_interpreter();
 void reset_interpreter();
+
+void reset_nop_counters();
 void reset_profiler();
 
 void     print_register_hexadecimal(uint64_t reg);
@@ -1294,7 +1298,23 @@ uint64_t* pt = (uint64_t*) 0; // page table
 uint64_t timer = 0; // counter for timer interrupt
 uint64_t trap  = 0; // flag for creating a trap
 
-// profile
+// effective nop counters
+
+uint64_t nopc_lui  = 0;
+uint64_t nopc_addi = 0;
+uint64_t nopc_add  = 0;
+uint64_t nopc_sub  = 0;
+uint64_t nopc_mul  = 0;
+uint64_t nopc_divu = 0;
+uint64_t nopc_remu = 0;
+uint64_t nopc_sltu = 0;
+uint64_t nopc_ld   = 0;
+uint64_t nopc_sd   = 0;
+uint64_t nopc_beq  = 0;
+uint64_t nopc_jal  = 0;
+uint64_t nopc_jalr = 0;
+
+// source profile
 
 uint64_t  calls               = 0;             // total number of executed procedure calls
 uint64_t* calls_per_procedure = (uint64_t*) 0; // number of executed calls of each procedure
@@ -1335,8 +1355,25 @@ void reset_interpreter() {
   timer = TIMEROFF;
 }
 
+void reset_nop_counters() {
+  nopc_lui  = 0;
+  nopc_addi = 0;
+  nopc_add  = 0;
+  nopc_sub  = 0;
+  nopc_mul  = 0;
+  nopc_divu = 0;
+  nopc_remu = 0;
+  nopc_sltu = 0;
+  nopc_ld   = 0;
+  nopc_sd   = 0;
+  nopc_beq  = 0;
+  nopc_jal  = 0;
+  nopc_jalr = 0;
+}
+
 void reset_profiler() {
   reset_instruction_counters();
+  reset_nop_counters();
 
   calls               = 0;
   calls_per_procedure = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
@@ -1545,10 +1582,11 @@ uint64_t EXITCODE_OUTOFPHYSICALMEMORY    = 8;
 uint64_t EXITCODE_DIVISIONBYZERO         = 9;
 uint64_t EXITCODE_UNKNOWNINSTRUCTION     = 10;
 uint64_t EXITCODE_UNKNOWNSYSCALL         = 11;
-uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 12;
-uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 13; // for symbolic execution
-uint64_t EXITCODE_MODELINGERROR          = 14; // for model generation
-uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 15;
+uint64_t EXITCODE_UNSUPPORTEDSYSCALL     = 12;
+uint64_t EXITCODE_MULTIPLEEXCEPTIONERROR = 13;
+uint64_t EXITCODE_SYMBOLICEXECUTIONERROR = 14; // for symbolic execution
+uint64_t EXITCODE_MODELINGERROR          = 15; // for model generation
+uint64_t EXITCODE_UNCAUGHTEXCEPTION      = 16;
 
 uint64_t SYSCALL_BITWIDTH = 32; // integer bit width for system calls
 
@@ -1904,14 +1942,14 @@ uint64_t atoi(char* s) {
   return n;
 }
 
-char* itoa(uint64_t n, char* s, uint64_t b, uint64_t a) {
+char* itoa(uint64_t n, char* s, uint64_t b, uint64_t d, uint64_t a) {
   // assert: b in {2,4,8,10,16}
 
   uint64_t i;
   uint64_t sign;
 
-  // the conversion of the integer n to an ASCII string in s with
-  // base b and alignment a begins with the leftmost digit in s
+  // conversion of the integer n to an ASCII string in s with base b,
+  // sign d, and alignment a begins with the leftmost digit in s
   i = 0;
 
   // for now assuming n is positive
@@ -1921,15 +1959,15 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t a) {
     store_character(s, 0, '0');
 
     i = 1;
-  } else if (signed_less_than(n, 0)) {
-    if (b == 10) {
-      // n is represented as two's complement
-      // convert n to a positive number but remember the sign
-      n = -n;
+  } else if (d)
+    if (signed_less_than(n, 0))
+      if (b == 10) {
+        // n is represented as two's complement
+        // convert n to a positive number but remember the sign
+        n = -n;
 
-      sign = 1;
-    }
-  }
+        sign = 1;
+      }
 
   while (n != 0) {
     if (n % b > 9)
@@ -1967,7 +2005,7 @@ char* itoa(uint64_t n, char* s, uint64_t b, uint64_t a) {
     }
 
     if (b == 8) {
-      store_character(s, i, '0'); // octal numbers start with 00
+      store_character(s, i, 'o'); // octal numbers start with 0o
       store_character(s, i + 1, '0');
 
       i = i + 2;
@@ -2095,12 +2133,16 @@ void print_string(char* s) {
   put_character(CHAR_DOUBLEQUOTE);
 }
 
+void print_unsigned_integer(uint64_t n) {
+  print(itoa(n, integer_buffer, 10, 0, 0));
+}
+
 void print_integer(uint64_t n) {
-  print(itoa(n, integer_buffer, 10, 0));
+  print(itoa(n, integer_buffer, 10, 1, 0));
 }
 
 void unprint_integer(uint64_t n) {
-  n = string_length(itoa(n, integer_buffer, 10, 0));
+  n = string_length(itoa(n, integer_buffer, 10, 1, 0));
 
   while (n > 0) {
     put_character(CHAR_BACKSPACE);
@@ -2110,15 +2152,15 @@ void unprint_integer(uint64_t n) {
 }
 
 void print_hexadecimal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 16, a));
+  print(itoa(n, integer_buffer, 16, 0, a));
 }
 
 void print_octal(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 8, a));
+  print(itoa(n, integer_buffer, 8, 0, a));
 }
 
 void print_binary(uint64_t n, uint64_t a) {
-  print(itoa(n, integer_buffer, 2, a));
+  print(itoa(n, integer_buffer, 2, 0, a));
 }
 
 uint64_t print_format0(char* s, uint64_t i) {
@@ -2170,6 +2212,10 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
         put_character((uint64_t) a);
 
         return i + 2;
+      } else if (load_character(s, i + 1) == 'u') {
+        print_unsigned_integer((uint64_t) a);
+
+        return i + 2;
       } else if (load_character(s, i + 1) == 'd') {
         print_integer((uint64_t) a);
 
@@ -2180,11 +2226,17 @@ uint64_t print_format1(char* s, uint64_t i, char* a) {
 
         if (p < 10) {
           // the character at i + 2 is in fact a digit
-          print_integer((uint64_t) a / ten_to_the_power_of(p));
+          if (load_character(s, i + 3) == 'u')
+            print_unsigned_integer((uint64_t) a / ten_to_the_power_of(p));
+          else if (load_character(s, i + 3) == 'd')
+            print_integer((uint64_t) a / ten_to_the_power_of(p));
+          else
+            // precision only supported for %u and %d
+            return i + 4;
 
           if (p > 0) {
             // using integer_buffer here is ok since we are not using print_integer
-            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0);
+            itoa((uint64_t) a % ten_to_the_power_of(p), integer_buffer, 10, 0, 0);
             p = p - string_length(integer_buffer);
 
             put_character('.');
@@ -2372,7 +2424,7 @@ void print_symbol(uint64_t symbol) {
 }
 
 void print_line_number(char* message, uint64_t line) {
-  printf4("%s: %s in %s in line %d: ", selfie_name, message, source_name, (char*) line);
+  printf4("%s: %s in %s in line %u: ", selfie_name, message, source_name, (char*) line);
 }
 
 void syntax_error_message(char* message) {
@@ -4844,22 +4896,22 @@ void selfie_compile() {
 
       compile_cstar();
 
-      printf4("%s: %d characters read in %d lines and %d comments\n", selfie_name,
+      printf4("%s: %u characters read in %u lines and %u comments\n", selfie_name,
         (char*) number_of_read_characters,
         (char*) line_number,
         (char*) number_of_comments);
 
-      printf4("%s: with %d(%.2d%%) characters in %d actual symbols\n", selfie_name,
+      printf4("%s: with %u(%.2u%%) characters in %u actual symbols\n", selfie_name,
         (char*) (number_of_read_characters - number_of_ignored_characters),
         (char*) fixed_point_percentage(fixed_point_ratio(number_of_read_characters, number_of_read_characters - number_of_ignored_characters, 4), 4),
         (char*) number_of_scanned_symbols);
 
-      printf4("%s: %d global variables, %d procedures, %d string literals\n", selfie_name,
+      printf4("%s: %u global variables, %u procedures, %u string literals\n", selfie_name,
         (char*) number_of_global_variables,
         (char*) number_of_procedures,
         (char*) number_of_strings);
 
-      printf6("%s: %d calls, %d assignments, %d while, %d if, %d return\n", selfie_name,
+      printf6("%s: %u calls, %u assignments, %u while, %u if, %u return\n", selfie_name,
         (char*) number_of_calls,
         (char*) number_of_assignments,
         (char*) number_of_while,
@@ -4879,11 +4931,11 @@ void selfie_compile() {
 
   entry_point = ELF_ENTRY_POINT;
 
-  printf3("%s: symbol table search time was %d iterations on average and %d in total\n", selfie_name,
+  printf3("%s: symbol table search time was %u iterations on average and %u in total\n", selfie_name,
     (char*) (total_search_time / number_of_searches),
     (char*) total_search_time);
 
-  printf4("%s: %d bytes generated with %d instructions and %d bytes of data\n", selfie_name,
+  printf4("%s: %u bytes generated with %u instructions and %u bytes of data\n", selfie_name,
     (char*) binary_length,
     (char*) (code_length / INSTRUCTIONSIZE),
     (char*) (binary_length - code_length));
@@ -5232,11 +5284,23 @@ uint64_t get_total_number_of_instructions() {
   return ic_lui + ic_addi + ic_add + ic_sub + ic_mul + ic_divu + ic_remu + ic_sltu + ic_ld + ic_sd + ic_beq + ic_jal + ic_jalr + ic_ecall;
 }
 
+uint64_t get_total_percentage_of_nops() {
+  return fixed_point_percentage(fixed_point_ratio(get_total_number_of_instructions(),
+    nopc_lui + nopc_addi + nopc_add + nopc_sub + nopc_mul + nopc_divu + nopc_remu + nopc_sltu + nopc_ld + nopc_sd + nopc_beq + nopc_jal + nopc_jalr, 4), 4);
+}
+
 void print_instruction_counter(uint64_t total, uint64_t counter, char* mnemonics) {
-  printf3("%s: %d(%.2d%%)",
+  printf3("%s: %u(%.2u%%)",
     mnemonics,
     (char*) counter,
     (char*) fixed_point_percentage(fixed_point_ratio(total, counter, 4), 4));
+}
+
+void print_instruction_counter_with_nops(uint64_t total, uint64_t counter, uint64_t nops, char* mnemonics) {
+  print_instruction_counter(total, counter, mnemonics);
+
+  if (run)
+    printf1("[%.2u%%]", (char*) fixed_point_percentage(fixed_point_ratio(counter, nops, 4), 4));
 }
 
 void print_instruction_counters() {
@@ -5245,39 +5309,41 @@ void print_instruction_counters() {
   ic = get_total_number_of_instructions();
 
   printf1("%s: init:    ", selfie_name);
-  print_instruction_counter(ic, ic_lui, "lui");
+  print_instruction_counter_with_nops(ic, ic_lui, nopc_lui, "lui");
   print(", ");
-  print_instruction_counter(ic, ic_addi, "addi");
+  print_instruction_counter_with_nops(ic, ic_addi, nopc_addi, "addi");
   println();
 
   printf1("%s: memory:  ", selfie_name);
-  print_instruction_counter(ic, ic_ld, "ld");
+  print_instruction_counter_with_nops(ic, ic_ld, nopc_ld, "ld");
   print(", ");
-  print_instruction_counter(ic, ic_sd, "sd");
+  print_instruction_counter_with_nops(ic, ic_sd, nopc_sd, "sd");
   println();
 
   printf1("%s: compute: ", selfie_name);
-  print_instruction_counter(ic, ic_add, "add");
+  print_instruction_counter_with_nops(ic, ic_add, nopc_add, "add");
   print(", ");
-  print_instruction_counter(ic, ic_sub, "sub");
+  print_instruction_counter_with_nops(ic, ic_sub, nopc_sub, "sub");
   print(", ");
-  print_instruction_counter(ic, ic_mul, "mul");
+  print_instruction_counter_with_nops(ic, ic_mul, nopc_mul, "mul");
+  println();
+
+  printf1("%s: compute: ", selfie_name);
+  print_instruction_counter_with_nops(ic, ic_divu, nopc_divu, "divu");
   print(", ");
-  print_instruction_counter(ic, ic_divu, "divu");
-  print(", ");
-  print_instruction_counter(ic, ic_remu, "remu");
+  print_instruction_counter_with_nops(ic, ic_remu, nopc_remu, "remu");
   println();
 
   printf1("%s: compare: ", selfie_name);
-  print_instruction_counter(ic, ic_sltu, "sltu");
+  print_instruction_counter_with_nops(ic, ic_sltu, nopc_sltu, "sltu");
   println();
 
   printf1("%s: control: ", selfie_name);
-  print_instruction_counter(ic, ic_beq, "beq");
+  print_instruction_counter_with_nops(ic, ic_beq, nopc_beq, "beq");
   print(", ");
-  print_instruction_counter(ic, ic_jal, "jal");
+  print_instruction_counter_with_nops(ic, ic_jal, nopc_jal, "jal");
   print(", ");
-  print_instruction_counter(ic, ic_jalr, "jalr");
+  print_instruction_counter_with_nops(ic, ic_jalr, nopc_jalr, "jalr");
   println();
 
   printf1("%s: system:  ", selfie_name);
@@ -5668,7 +5734,7 @@ void selfie_output(char* filename) {
     exit(EXITCODE_IOERROR);
   }
 
-  printf5("%s: %d bytes with %d instructions and %d bytes of data written into %s\n", selfie_name,
+  printf5("%s: %u bytes with %u instructions and %u bytes of data written into %s\n", selfie_name,
     (char*) (ELF_HEADER_LEN + binary_length),
     (char*) (code_length / INSTRUCTIONSIZE),
     (char*) (binary_length - code_length),
@@ -5749,7 +5815,7 @@ void selfie_load() {
         if (signed_less_than(0, number_of_read_bytes)) {
           // check if we are really at EOF
           if (read(fd, binary_buffer, SIZEOFUINT64) == 0) {
-            printf5("%s: %d bytes with %d instructions and %d bytes of data loaded from %s\n",
+            printf5("%s: %u bytes with %u instructions and %u bytes of data loaded from %s\n",
               selfie_name,
               (char*) (ELF_HEADER_LEN + binary_length),
               (char*) (code_length / INSTRUCTIONSIZE),
@@ -5803,7 +5869,7 @@ void implement_exit(uint64_t* context) {
 
   set_exit_code(context, sign_shrink(signed_int_exit_code, SYSCALL_BITWIDTH));
 
-  printf4("%s: %s exiting with exit code %d and %.2dMB mallocated memory\n", selfie_name,
+  printf4("%s: %s exiting with exit code %d and %.2uMB mallocated memory\n", selfie_name,
     get_name(context),
     (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
     (char*) fixed_point_ratio(get_program_break(context) - get_original_break(context), MEGABYTE, 2));
@@ -5858,7 +5924,7 @@ void implement_read(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_read)
-    printf4("%s: trying to read %d bytes from file with descriptor %d into buffer at virtual address %p\n", selfie_name,
+    printf4("%s: trying to read %u bytes from file with descriptor %u into buffer at virtual address %p\n", selfie_name,
       (char*) size,
       (char*) fd,
       (char*) vbuffer);
@@ -5920,7 +5986,7 @@ void implement_read(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    printf3("%s: actually read %d bytes from file with descriptor %d\n", selfie_name,
+    printf3("%s: actually read %u bytes from file with descriptor %u\n", selfie_name,
       (char*) read_total,
       (char*) fd);
 
@@ -5979,7 +6045,7 @@ void implement_write(uint64_t* context) {
   size    = *(get_regs(context) + REG_A2);
 
   if (debug_write)
-    printf4("%s: trying to write %d bytes from buffer at virtual address %p into file with descriptor %d\n", selfie_name,
+    printf4("%s: trying to write %u bytes from buffer at virtual address %p into file with descriptor %u\n", selfie_name,
       (char*) size,
       (char*) vbuffer,
       (char*) fd);
@@ -6041,7 +6107,7 @@ void implement_write(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    printf3("%s: actually wrote %d bytes into file with descriptor %d\n", selfie_name,
+    printf3("%s: actually wrote %u bytes into file with descriptor %u\n", selfie_name,
       (char*) written_total,
       (char*) fd);
 
@@ -6157,7 +6223,7 @@ void implement_openat(uint64_t* context) {
     *(get_regs(context) + REG_A0) = fd;
 
     if (debug_open)
-      printf5("%s: opened file %s with flags %x and mode %o returning file descriptor %d\n", selfie_name,
+      printf5("%s: opened file %s with flags %x and mode %o returning file descriptor %u\n", selfie_name,
         filename_buffer,
         (char*) flags,
         (char*) mode,
@@ -6344,7 +6410,7 @@ uint64_t* do_switch(uint64_t* from_context, uint64_t* to_context, uint64_t timeo
       (char*) from_context,
       (char*) to_context);
     if (timer != TIMEROFF)
-      printf1(" to execute %d instructions", (char*) timer);
+      printf1(" to execute %u instructions", (char*) timer);
     println();
   }
 
@@ -6525,7 +6591,7 @@ void store_virtual_memory(uint64_t* table, uint64_t vaddr, uint64_t data) {
 
 void print_code_line_number_for_instruction(uint64_t address, uint64_t offset) {
   if (code_line_number != (uint64_t*) 0)
-    printf1("(~%d)", (char*) *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
+    printf1("(~%u)", (char*) *(code_line_number + (address - offset) / INSTRUCTIONSIZE));
 }
 
 void print_code_context_for_instruction(uint64_t address) {
@@ -6565,16 +6631,24 @@ void print_lui_after() {
   print_register_hexadecimal(rd);
 }
 
-void record_lui_addi_add_sub_mul_sltu_jal_jalr() {
+void record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr() {
   record_state(*(registers + rd));
 }
 
 void do_lui() {
   // load upper immediate
 
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of lui
-    *(registers + rd) = left_shift(imm, 12);
+    next_rd_value = left_shift(imm, 12);
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_lui = nopc_lui + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6614,9 +6688,17 @@ void print_addi_add_sub_mul_divu_remu_sltu_after() {
 void do_addi() {
   // add immediate
 
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of addi
-    *(registers + rd) = *(registers + rs1) + imm;
+    next_rd_value = *(registers + rs1) + imm;
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_addi = nopc_addi + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6638,9 +6720,17 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 }
 
 void do_add() {
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of add
-    *(registers + rd) = *(registers + rs1) + *(registers + rs2);
+    next_rd_value = *(registers + rs1) + *(registers + rs2);
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_add = nopc_add + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6648,9 +6738,17 @@ void do_add() {
 }
 
 void do_sub() {
-  if (rd != REG_ZR)
+  uint64_t next_rd_value;
+
+  if (rd != REG_ZR) {
     // semantics of sub
-    *(registers + rd) = *(registers + rs1) - *(registers + rs2);
+    next_rd_value = *(registers + rs1) - *(registers + rs2);
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_sub = nopc_sub + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6658,29 +6756,40 @@ void do_sub() {
 }
 
 void do_mul() {
-  if (rd != REG_ZR)
-    // semantics of mul
-    *(registers + rd) = *(registers + rs1) * *(registers + rs2);
+  uint64_t next_rd_value;
 
-  // TODO: 128-bit resolution currently not supported
+  if (rd != REG_ZR) {
+    // semantics of mul
+    next_rd_value = *(registers + rs1) * *(registers + rs2);
+
+    // TODO: support of 128-bit resolution
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_mul = nopc_mul + 1;
+  }
 
   pc = pc + INSTRUCTIONSIZE;
 
   ic_mul = ic_mul + 1;
 }
 
-void record_divu_remu() {
-  // record even for division by zero
-  record_state(*(registers + rd));
-}
-
 void do_divu() {
   // division unsigned
 
+  uint64_t next_rd_value;
+
   if (*(registers + rs2) != 0) {
-    if (rd != REG_ZR)
+    if (rd != REG_ZR) {
       // semantics of divu
-      *(registers + rd) = *(registers + rs1) / *(registers + rs2);
+      next_rd_value = *(registers + rs1) / *(registers + rs2);
+
+      if (*(registers + rd) != next_rd_value)
+        *(registers + rd) = next_rd_value;
+      else
+        nopc_divu = nopc_divu + 1;
+    }
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -6692,10 +6801,18 @@ void do_divu() {
 void do_remu() {
   // remainder unsigned
 
+  uint64_t next_rd_value;
+
   if (*(registers + rs2) != 0) {
-    if (rd != REG_ZR)
+    if (rd != REG_ZR) {
       // semantics of remu
-      *(registers + rd) = *(registers + rs1) % *(registers + rs2);
+      next_rd_value = *(registers + rs1) % *(registers + rs2);
+
+      if (*(registers + rd) != next_rd_value)
+        *(registers + rd) = next_rd_value;
+      else
+        nopc_remu = nopc_remu + 1;
+    }
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -6707,12 +6824,19 @@ void do_remu() {
 void do_sltu() {
   // set on less than unsigned
 
+  uint64_t next_rd_value;
+
   if (rd != REG_ZR) {
     // semantics of sltu
     if (*(registers + rs1) < *(registers + rs2))
-      *(registers + rd) = 1;
+      next_rd_value = 1;
     else
-      *(registers + rd) = 0;
+      next_rd_value = 0;
+
+    if (*(registers + rd) != next_rd_value)
+      *(registers + rd) = next_rd_value;
+    else
+      nopc_sltu = nopc_sltu + 1;
   }
 
   pc = pc + INSTRUCTIONSIZE;
@@ -6768,6 +6892,7 @@ void record_ld() {
 
 uint64_t do_ld() {
   uint64_t vaddr;
+  uint64_t next_rd_value;
   uint64_t a;
 
   // load double word
@@ -6776,9 +6901,15 @@ uint64_t do_ld() {
 
   if (is_valid_virtual_address(vaddr)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
-      if (rd != REG_ZR)
+      if (rd != REG_ZR) {
         // semantics of ld
-        *(registers + rd) = load_virtual_memory(pt, vaddr);
+        next_rd_value = load_virtual_memory(pt, vaddr);
+
+        if (*(registers + rd) != next_rd_value)
+          *(registers + rd) = next_rd_value;
+        else
+          nopc_ld = nopc_ld + 1;
+      }
 
       // keep track of instruction address for profiling loads
       a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -6855,7 +6986,10 @@ uint64_t do_sd() {
   if (is_valid_virtual_address(vaddr)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
       // semantics of sd
-      store_virtual_memory(pt, vaddr, *(registers + rs2));
+      if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
+        store_virtual_memory(pt, vaddr, *(registers + rs2));
+      else
+        nopc_sd = nopc_sd + 1;
 
       // keep track of instruction address for profiling stores
       a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -6912,8 +7046,11 @@ void do_beq() {
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
     pc = pc + imm;
-  else
+  else {
     pc = pc + INSTRUCTIONSIZE;
+
+    nopc_beq = nopc_beq + 1;
+  }
 
   ic_beq = ic_beq + 1;
 }
@@ -6974,9 +7111,12 @@ void do_jal() {
 
     // and individually
     *(iterations_per_loop + a) = *(iterations_per_loop + a) + 1;
-  } else
+  } else {
     // just jump forward
     pc = pc + imm;
+
+    nopc_jal = nopc_jal + 1;
+  }
 
   ic_jal = ic_jal + 1;
 }
@@ -7002,16 +7142,19 @@ void do_jalr() {
 
   // jump and link register
 
-  if (rd == REG_ZR)
-    // fast path: just return by jumping rs1-relative with LSB reset
-    pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
-  else {
-    // slow path: first prepare jump, then link, just in case rd == rs1
+  // prepare jump rs1-relative with LSB reset
+  next_pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
 
-    // prepare jump with LSB reset
-    next_pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
+  if (rd == REG_ZR) {
+    // just jump
+    if (next_pc == pc + INSTRUCTIONSIZE)
+      nopc_jalr = nopc_jalr + 1;
 
-    // link to next instruction
+    pc = next_pc;
+  } else {
+    // first link, then jump
+
+    // link to next instruction (works even if rd == rs1)
     *(registers + rd) = pc + INSTRUCTIONSIZE;
 
     // jump
@@ -7046,11 +7189,11 @@ void do_ecall() {
     if (record) {
       printf1("%s: context switching during recording is unsupported\n", selfie_name);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_UNSUPPORTEDSYSCALL);
     } else if (symbolic) {
       printf1("%s: context switching during symbolic execution is unsupported\n", selfie_name);
 
-      exit(EXITCODE_BADARGUMENTS);
+      exit(EXITCODE_UNSUPPORTEDSYSCALL);
     } else {
       pc = pc + INSTRUCTIONSIZE;
 
@@ -7075,7 +7218,7 @@ void undo_ecall() {
 
 void print_data_line_number() {
   if (data_line_number != (uint64_t*) 0)
-    printf1("(~%d)", (char*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
+    printf1("(~%u)", (char*) *(data_line_number + (pc - code_length) / REGISTERSIZE));
 }
 
 void print_data_context(uint64_t data) {
@@ -7187,7 +7330,7 @@ void selfie_disassemble(uint64_t verbose) {
   output_name = (char*) 0;
   output_fd   = 1;
 
-  printf5("%s: %d characters of assembly with %d instructions and %d bytes of data written into %s\n", selfie_name,
+  printf5("%s: %u characters of assembly with %u instructions and %u bytes of data written into %s\n", selfie_name,
     (char*) number_of_written_characters,
     (char*) (code_length / INSTRUCTIONSIZE),
     (char*) (binary_length - code_length),
@@ -7447,7 +7590,7 @@ void execute() {
 void execute_record() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_addi();
   } else if (is == LD) {
     record_ld();
@@ -7456,34 +7599,34 @@ void execute_record() {
     record_sd();
     do_sd();
   } else if (is == ADD) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_add();
   } else if (is == SUB) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sub();
   } else if (is == MUL) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_mul();
   } else if (is == DIVU) {
-    record_divu_remu();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_divu();
   } else if (is == REMU) {
-    record_divu_remu();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_remu();
   } else if (is == SLTU) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_sltu();
   } else if (is == BEQ) {
     record_beq();
     do_beq();
   } else if (is == JAL) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_jal();
   } else if (is == JALR) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_jalr();
   } else if (is == LUI) {
-    record_lui_addi_add_sub_mul_sltu_jal_jalr();
+    record_lui_addi_add_sub_mul_divu_remu_sltu_jal_jalr();
     do_lui();
   } else if (is == ECALL) {
     record_ecall();
@@ -7640,7 +7783,7 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
     // CAUTION: we reset counter to avoid reporting it again
     *(counters + a / INSTRUCTIONSIZE) = 0;
 
-    printf3(",%d(%.2d%%)@%x", (char*) c, (char*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (char*) a);
+    printf3(",%u(%.2u%%)@%x", (char*) c, (char*) fixed_point_percentage(fixed_point_ratio(total, c, 4), 4), (char*) a);
     print_code_line_number_for_instruction(a, 0);
 
     return c;
@@ -7652,14 +7795,15 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 }
 
 void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
-  printf3("%s%s%d", selfie_name, message, (char*) total);
+  printf3("%s%s%u", selfie_name, message, (char*) total);
   print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, UINT64_MAX)));
   println();
 }
 
 void print_profile() {
-  printf4("%s: summary: %d executed instructions and %.2dMB(%.2d%%) mapped memory\n", selfie_name,
+  printf5("%s: summary: %u executed instructions [%.2u%% nops] and %.2uMB(%.2u%%) mapped memory\n", selfie_name,
     (char*) get_total_number_of_instructions(),
+    (char*) get_total_percentage_of_nops(),
     (char*) fixed_point_ratio(pused(), MEGABYTE, 2),
     (char*) fixed_point_percentage(fixed_point_ratio(page_frame_memory, pused(), 4), 4));
 
@@ -8172,7 +8316,7 @@ uint64_t handle_system_call(uint64_t* context) {
     // TODO: exit only if all contexts have exited
     return EXIT;
   } else {
-    printf2("%s: unknown system call %d\n", selfie_name, (char*) a7);
+    printf2("%s: unknown system call %u\n", selfie_name, (char*) a7);
 
     set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
 
@@ -8288,7 +8432,7 @@ uint64_t mixter(uint64_t* to_context, uint64_t mix) {
   uint64_t timeout;
   uint64_t* from_context;
 
-  printf2("mixter (%d%% mipster/%d%% hypster)\n", (char*) mix, (char*) (100 - mix));
+  printf2("mixter (%u%% mipster/%u%% hypster)\n", (char*) mix, (char*) (100 - mix));
 
   mslice = TIMESLICE;
 
@@ -8518,7 +8662,7 @@ uint64_t selfie_run(uint64_t machine) {
 
   boot_loader(current_context);
 
-  printf3("%s: selfie executing %s with %dMB physical memory on ", selfie_name,
+  printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
     binary_name,
     (char*) (page_frame_memory / MEGABYTE));
 
@@ -8544,13 +8688,13 @@ uint64_t selfie_run(uint64_t machine) {
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
 
-  run = 0;
-
   printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
     get_name(current_context),
     (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
 
   print_profile();
+
+  run = 0;
 
   record = 0;
 
@@ -8595,7 +8739,7 @@ void set_argument(char* argv) {
 }
 
 void print_synopsis(char* extras) {
-  printf2("usage: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
+  printf2("synopsis: %s { -c { source } | -o binary | [ -s | -S ] assembly | -l binary }%s\n", selfie_name, extras);
 }
 
 uint64_t selfie() {
@@ -8623,17 +8767,17 @@ uint64_t selfie() {
       else if (string_compare(argument, "-l"))
         selfie_load();
       else if (string_compare(argument, "-m"))
-        return selfie_run(MIPSTER);
+        exit(selfie_run(MIPSTER));
       else if (string_compare(argument, "-d"))
-        return selfie_run(DIPSTER);
+        exit(selfie_run(DIPSTER));
       else if (string_compare(argument, "-r"))
-        return selfie_run(RIPSTER);
+        exit(selfie_run(RIPSTER));
       else if (string_compare(argument, "-y"))
-        return selfie_run(HYPSTER);
+        exit(selfie_run(HYPSTER));
       else if (string_compare(argument, "-min"))
-        return selfie_run(MINSTER);
+        exit(selfie_run(MINSTER));
       else if (string_compare(argument, "-mob"))
-        return selfie_run(MOBSTER);
+        exit(selfie_run(MOBSTER));
       else
         return EXITCODE_BADARGUMENTS;
     }

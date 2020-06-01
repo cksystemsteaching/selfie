@@ -20,16 +20,9 @@ uint64_t main() {
   print_integer(85);
   println();
 
-  // print the ASCII code of 'U' (which is 85)
-  print_character('U');
-  print(" in ASCII:      ");
-  print_integer('U');
-  println();
-
-  // print the string literal "85"
-  print_string("85");
-  print(" string:       ");
-  print("85");
+  // print the ASCII character 85 (which is U)
+  print("85 in ASCII:       ");
+  print_character(85);
   println();
 
   // print the integer literal 85 in hexadecimal

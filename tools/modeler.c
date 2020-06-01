@@ -2157,7 +2157,7 @@ uint64_t selfie_model() {
       output_name = (char*) 0;
       output_fd   = 1;
 
-      printf3("%s: %d characters of model formulae written into %s\n", selfie_name,
+      printf3("%s: %u characters of model formulae written into %s\n", selfie_name,
         (char*) number_of_written_characters,
         model_name);
 
