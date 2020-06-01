@@ -132,7 +132,7 @@ The key lesson to be learned here is that 1010101 or any other bit sequence may 
 Before we go into the details, try the following on your machine to see what selfie has to say about what 85 and thus 1010101 may actually be:
 
 ```
-./selfie -c examples/encoding.c selfie.c -m 1
+./selfie -c selfie.h examples/encoding.c -m 1
 ```
 
 The output of selfie shows that 85 is in fact 1010101 in binary which in turn may also stand for the uppercase letter U and even other things we learn about below:
@@ -530,7 +530,7 @@ Practice this with different numbers as well!
 There is also a program for printing negative numbers with selfie, try:
 
 ```
-./selfie -c examples/negative.c selfie.c -m 1
+./selfie -c selfie.h examples/negative.c -m 1
 ```
 
 The relevant output is:
@@ -676,6 +676,29 @@ When it comes to numbers, most computer scientists have agreed to distinguish th
 Furthermore, most computer scientists have agreed to use *unsigned integers* to represent whole numbers from 0 to 2^n-1 using binary encoding where n is the number of bits in the encoding. The *upper bound* 2^n-1 is so important, it even has an acronym as name. It is called UINT_MAX which stands for unsigned integer maximum. For seven bits, for example, UINT_MAX is 127. What is it for eight bits? Well, it is 255. If you want to be clear about the number of bits, say, eight bits, you may say UINT8_MAX rather than just UINT_MAX. Modern machines work with even larger versions, for example, UINT16_MAX which is 65,535, UINT32_MAX which is 4,294,967,295, and even UINT64_MAX which is a whopping 18,446,744,073,709,551,615.
 
 There is also agreement to use *signed integers* to represent whole numbers from -2^n-1^ to 2^n-1^-1 in binary encoding with twos complement for negative numbers. Here, the upper bound 2^n-1^-1 is called INT_MAX which stands for (signed) integer maximum. The *lower bound* -2^n-1^ is called INT_MIN which obviously stands for (signed) integer minimum. So, again for seven bits, INT_MAX is 63 and INT_MIN is -64. Just to get a feel for it, INT64_MAX, for example, is 9,223,372,036,854,775,807 and INT64_MIN is -9,223,372,036,854,775,808. Try to calculate INT16_MAX, INT16_MIN, INT32_MAX, and INT32_MIN yourself!
+
+You may also use selfie to see what it has to say about those bounds, try:
+
+```
+./selfie -c selfie.h examples/int-max-min.c -m 1
+```
+
+The relevant output is:
+
+```
+UINT64_MAX in decimal:     18446744073709551615
+UINT64_MAX in hexadecimal: 0xFFFFFFFFFFFFFFFF
+UINT64_MAX in octal:       0o1777777777777777777777
+UINT64_MAX in binary:      1111111111111111111111111111111111111111111111111111111111111111
+ INT64_MAX in decimal:     9223372036854775807
+ INT64_MAX in hexadecimal: 0x7FFFFFFFFFFFFFFF
+ INT64_MAX in octal:       0o777777777777777777777
+ INT64_MAX in binary:      0111111111111111111111111111111111111111111111111111111111111111
+ INT64_MIN in decimal:     -9223372036854775808
+ INT64_MIN in hexadecimal: 0x8000000000000000
+ INT64_MIN in octal:       0o1000000000000000000000
+ INT64_MIN in binary:      1000000000000000000000000000000000000000000000000000000000000000
+```
 
 There is one more thing before we move on. Notice that the same binary numbers may sometimes be greater than others and sometimes less! Take our favorite binary numbers 1010101 and 111, for example. 1010101 is clearly greater than 111, right? Well, it depends on our interpretation of 1010101 and 111. If 1010101 and 111 are interpreted as unsigned integers, the answer is yes. But if they are interpreted as signed integers with seven bits, the answer is no! In that case, 1010101 stands for -43 while 111 still stands for 7. This means there is unsigned and signed comparison of binary numbers. Addition, subtraction, and even multiplication, however, work the same way independently of unsigned and signed interpretation. Only division is, similar to comparison, dependent on interpretation but the details are not important here.
 
