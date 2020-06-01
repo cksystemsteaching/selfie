@@ -47,8 +47,8 @@ compile: selfie
 	diff -q selfie1.s selfie2.s
 
 # Compile and run quine and compare its output to itself
-quine: selfie
-	./selfie -c examples/quine.c selfie.c -m 1 | sed '/selfie/d' | diff --strip-trailing-cr examples/quine.c -
+quine: selfie selfie.h
+	./selfie -c selfie.h examples/quine.c -m 1 | sed '/selfie/d' | diff --strip-trailing-cr examples/quine.c -
 
 # Demonstrate available escape sequences
 escape: selfie
