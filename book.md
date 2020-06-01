@@ -152,7 +152,7 @@ You may also want to take a look at the program `examples/encoding.c` that made 
 more examples/encoding.c
 ```
 
-The examples code is written in such a way that everyone should readily have a chance to understand it, at least at a high level. Lines that begin with `//` are comments ignored by the machine but still there to help you. Alright, let us go for it!
+The examples code is written in such a way that everyone should readily have a chance to understand it, at least at a high level. Lines that begin with `//` are comments ignored by the machine but still there to help you. If you feel adventurous go ahead, use your text editor, and change `examples/encoding.c` a bit. For example, replace 85 with different numbers and then run selfie again using the above command.
 
 ### Bits
 
@@ -526,6 +526,23 @@ And finally get rid of the MSB to correct for introducing the twos complement:
 ```
 
 Practice this with different numbers as well!
+
+There is also a program for printing negative numbers with selfie, try:
+
+```
+./selfie -c examples/negative.c selfie.c -m 1
+```
+
+The relevant output is:
+
+```
+-7 in decimal with sign:  -7
+-7 in 64-bit hexadecimal: 0xFFFFFFFFFFFFFFF9
+-7 in 64-bit octal:       0o1777777777777777777771
+-7 in 64-bit binary:      1111111111111111111111111111111111111111111111111111111111111001
+```
+
+The only difference to the above presentation is that, instead of 7 bits, selfie uses 64 bits to encode negative numbers. Try modifying `examples/negative.c` and running it again to see the encoding of different numbers!
 
 Before going just a bit further into the details, there is one more interesting notation, in addition to unary, binary, octal, decimal, and hexadecimal, that we would like to mention first. It is *ternary* notation with base 3. A digit in a ternary number is called a *trit* which can either be denoted by 0, 1, and 2 but also by -1, 0, and +1. There were in fact attempts to build ternary computers a long time ago. The reason is that positive as well as negative numbers can be encoded naturally in ternary notation, and that ternary arithmetics may in theory be faster than binary arithmetics. However, distinguishing three rather than two states in electronic circuits adds complexity to the design making it hard for ternary computers to compete. So, for now we are stuck with binary.
 
