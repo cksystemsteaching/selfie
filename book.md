@@ -836,7 +836,7 @@ INT64_MIN-1 in binary:       011111111111111111111111111111111111111111111111111
 
 Unintended integer overflows are a major source of errors in software. Think of the Millennium Bug which is probably the most talked about integer overflow bug in the history of computing! And even worse, that bug will in fact repeat itself in 2038! There are real world examples where integer overflows have caused enormous amounts of damage, financially but also in potential threats to life, if not loss of life.
 
-Essentially, unintended integer overflows are encoding errors where the programmer did not reserve enough bits to represent the involved information or simply misunderstood unsigned and signed integer arithmetic altogether. Unsigned and signed integers on a computer are not whole numbers! They are just an attempt to encode some of them, sometimes many of them, but never all. For us the important lesson to learn here is that everything on a computer is always just an approximation of the real world. The approximation may be arbitrarily close since we can always throw in more bits but it nevertheless remains an approximation, no matter what.
+Essentially, unintended integer overflows are encoding errors where the programmer either did not reserve enough bits to represent the involved quantities or, dually, the involved quantities exceeded the state space. Unsigned and signed integers on a computer are not whole numbers! They are just an attempt to encode some of them, sometimes many of them, but never all. For us the important lesson to learn here is that everything on a computer is always bounded and thus just an approximation of the real world. The approximation may be arbitrarily close since we can always throw in more bits but it nevertheless remains an approximation, no matter what.
 
 ### Characters
 
@@ -892,9 +892,29 @@ There is one more, particularly interesting control character called the *NULL c
 
 In addition to the encoding of most web pages on the Internet, there is another major application of ASCII that we would like to mention which is *email*. All your email is encoded in ASCII. This was fine before people wanted to email pictures and PDFs as attachments to their email. The solution that people came up with is to encode all content of your email including all attachments, yes, in ASCII! Some email clients allow you to see that by viewing email in *raw* format. You can then see that even your pictures and PDFs are encoded in, unsurprisingly, rather long sequences of ASCII characters. The standard that defines how to encode attachments in ASCII is called *Multipurpose Internet Mail Extensions* abbreviated *MIME*. This is an example of a two-layered encoding of information. MIME encodes attachments in a sequence of ASCII characters which in turn are encoded in a sequence of ASCII codes since everything in the end needs to be just bits.
 
-ASCII is great but what about Greek letters, Chinese letters, and so on, but also accents and, of course, all those Emojis? ASCII only supports a total of 128 different characters because that is what fits into seven bits. You have probably encountered that limitation if you use languages other than English. Well, there is a newer standard for encoding characters called *8-bit Unicode Transformation Format* abbreviated *UTF-8*. One important difference to ASCII is that UTF-8 uses eight rather than seven bits to encode characters. In fact, UTF-8 uses multiples of eight-bit binary numbers for encoding a lot more than just 128 characters. However, UTF-8 is *backwards-compatible* to ASCII by using the eighth most-significant bit, which is unused in ASCII, to distinguish ASCII from encodings that use more than the seven bits of ASCII. These days most text including most ASCII is encoded in UTF-8. If you are interested how this works in detail follow up about UTF-8 on the web!
+ASCII is great but what about Greek letters, Chinese letters, and so on, but also accents and, of course, all those Emojis? ASCII only supports a total of 128 different characters because that is what fits into seven bits. You have probably encountered that limitation if you use languages other than English. Well, there is a newer standard for encoding characters called *8-bit Unicode Transformation Format* abbreviated *UTF-8*. One important difference to ASCII is that UTF-8 uses eight rather than seven bits to encode characters. In fact, UTF-8 uses multiples of eight-bit binary numbers for encoding a lot more than just 128 characters. However, UTF-8 is *backwards-compatible* to ASCII by using the eighth most-significant bit, which is unused in ASCII, to distinguish ASCII from encodings that use more than the seven bits of ASCII. These days most text including most ASCII is encoded in UTF-8, even selfie's source code in `selfie.c`. If you are interested how this works in detail follow up about ASCII and UTF-8 on the web!
 
-The fact that UTF-8 works with multiples of eight bits is not by accident and related to something that has become the de-facto standard for packaging bits in the world of computing. And that is our next topic.
+To see ASCII and UTF-8 at work, you can also try:
+
+```
+hexdump -C selfie.c | more
+```
+
+If `hexdump` is not available on your machine, you can use a so-called *hex editor* instead. Both, the Atom and Sublime Text editors feature plugins for that. The output on your screen should not only show the ASCII characters in `selfie.c` but also, in hexadecimal, the actual bits encoding these characters:
+
+```
+00000000  2f 2a 0a 43 6f 70 79 72  69 67 68 74 20 28 63 29  |/*.Copyright (c)|
+00000010  20 32 30 31 35 2d 32 30  32 30 2c 20 74 68 65 20  | 2015-2020, the |
+00000020  53 65 6c 66 69 65 20 50  72 6f 6a 65 63 74 20 61  |Selfie Project a|
+00000030  75 74 68 6f 72 73 2e 20  41 6c 6c 20 72 69 67 68  |uthors. All righ|
+00000040  74 73 20 72 65 73 65 72  76 65 64 2e 0a 50 6c 65  |ts reserved..Ple|
+00000050  61 73 65 20 73 65 65 20  74 68 65 20 41 55 54 48  |ase see the AUTH|
+00000060  4f 52 53 20 66 69 6c 65  20 66 6f 72 20 64 65 74  |ORS file for det|
+00000070  61 69 6c 73 2e 20 55 73  65 20 6f 66 20 74 68 69  |ails. Use of thi|
+...
+```
+
+Notice, for example, the very first ASCII character '/' in `selfie.c`. That character is UTF-8-encoded by `00101111` in binary, which is here denoted by `2f` in hexadecimal. In other words, `selfie.c` is really just a long sequence of bits (around 2 million) where every eighth bit is 0 (because of ASCII) and the number of bits in that sequence is a multiple of eight (because of UTF-8). The fact that UTF-8 works with multiples of eight bits is not by accident and related to something that has become the de-facto standard for packaging bits in the world of computing. And that is our next topic.
 
 ### Bytes
 
