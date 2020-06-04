@@ -1,3 +1,6 @@
+#ifndef KERN_MMU
+#define KERN_MMU
+
 #include <stdint.h>
 
 struct __attribute__((packed)) pt_entry {
@@ -16,9 +19,17 @@ struct __attribute__((packed)) pt_entry {
 
 extern struct pt_entry root_table[512];
 
-void* kpalloc();
+
+/**
+ * @brief Returns the PPN of the next free page
+ *
+ * @return The physical page number (paddr / 2^12) of the next free page
+ */
+uint64_t kpalloc();
 
 // both table and (pt_at_ppn << 12) have to be valid page-aligned pointers
 uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, char pt_at_ppn_addr, char u_mode_accessible);
 
 void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);
+
+#endif /* KERN_MMU */
