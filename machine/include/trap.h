@@ -17,8 +17,11 @@
 #define CSR_UIE_SOFTWARE_INTS   0
 
 struct __attribute__((packed)) context {
+  uint64_t id;
+  struct pt_entry* pt;
+  uint64_t program_break;
   struct trap_saved_regs* saved_regs;
-  // TODO: all the other stuff like pt etc.
+  // TODO: all the other stuff
 };
 
 struct __attribute__((packed)) trap_saved_regs {
@@ -65,14 +68,21 @@ void enable_smode_interrupts();
 void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);
 
+extern void trap_handler_wrapper();
+void trap_handler();
+
+void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code);
+
+void handle_ecall(struct context* context);
 void implement_syscall_exit(struct context* context);
 void implement_syscall_read(struct context* context);
 void implement_syscall_write(struct context* context);
 void implement_syscall_openat(struct context* context);
 void implement_syscall_brk(struct context* context);
 
-extern void trap_handler_wrapper();
-void trap_handler();
+void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval);
+void handle_load_page_fault(struct context* context, uint64_t stval);
+void handle_store_amo_page_fault(struct context* context, uint64_t stval);
 
 void setup_smode_trap_handler(trap_handler_t handler);
 
