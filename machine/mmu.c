@@ -34,17 +34,17 @@ struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t i
   return (struct pt_entry*) ((table + index)->ppn << 12);
 }
 
-void map_page(uint64_t vaddr, char u_mode_accessible) {
+void map_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
   uint64_t vpn_2 = vaddr & VPN_2_BITMASK;
   uint64_t vpn_1 = vaddr & VPN_1_BITMASK;
   uint64_t vpn_0 = vaddr & VPN_0_BITMASK;
   struct pt_entry* mid_pt;
   struct pt_entry* leaf_pt;
 
-  mid_pt = retrieve_pt_entry_from_table(root_table, vpn_2);
+  mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
   if (!mid_pt->v)
-    mid_pt = (struct pt_entry*) create_pt_entry(root_table, vpn_2, (uint64_t) palloc() >> 12, 1, 0);
+    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, (uint64_t) palloc() >> 12, 1, 0);
   
   leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
