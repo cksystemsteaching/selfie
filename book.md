@@ -99,7 +99,7 @@ The synopis may look quite cryptic already but there is nothing to worry about. 
 ./selfie -c selfie.c
 ```
 
-Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. Selfie just translated the *source code* `selfie.c` in which selfie is written to *machine code* and thereby constructed the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did.
+Selfie responds with even more cryptic information but you may safely ignore that for now. What matters here is to realize what just happened. It is something that is still fascinating to me, even after four decades of working with computers. We just instructed selfie (using the `-c` option) to translate or *self-compile* the *source code* `selfie.c` in which selfie is written to *machine code* and thereby construct the meaning of its *own* source code. It is like that Lego brick factory that just built another Lego brick factory that looks exactly like the original and can do exactly the same including what the original factory just did.
 
 An important feature of selfie is that you actually have a chance to understand all of it, unlike most modern software systems that are based on the same basic principles but drown you in seemingly prohibitive complexity. Sure, even selfie may appear complex and you can verify that by taking a look at `selfie.c` on selfie's homepage or in your terminal by typing:
 
@@ -110,10 +110,10 @@ more selfie.c
 Hit the spacebar to scroll down. Hitting q for quit gets you out. Hard to believe, but all you see there will become clear by reading this book, and, most importantly, that is all there is you need to worry about. Selfie is *self-contained*. There is no need to look at any other code to understand it. By the way, the best way to read, and eventually write code is to use an advanced text editor. We recommend to use the *Atom* text editor, which is free, or the *Sublime Text* editor, which is not free. Selfie and this book was written on Sublime Text. Now, let us try something really cool:
 
 ```
-./selfie -c selfie.c -m 1 -c selfie.c
+./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
-This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie translated itself and then ran the resulting machine code to translate itself again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. To familiarize yourself with the system further, take a few more selfies, I mean try the other examples mentioned in the README on selfie's homepage as well.
+This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m 2` option) to self-compile again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on selfie's homepage that you may want to try out on your machine.
 
 Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which selfie's source code is written is *Turing-complete*, that is, it is *universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
 
@@ -538,7 +538,7 @@ There is also a program for printing negative numbers with selfie, try:
 ./selfie -c selfie.h examples/negative.c -m 1
 ```
 
-The relevant output is:
+The relevant part of the output is:
 
 ```
 -7 in decimal:     -7 (as signed 64-bit integer)
@@ -689,7 +689,7 @@ You may also use selfie to see what it has to say about those bounds, try:
 ./selfie -c selfie.h examples/bounds.c -m 1
 ```
 
-The relevant output is:
+The relevant part of the output is:
 
 ```
 UINT64_MAX in decimal:     18446744073709551615
@@ -810,7 +810,7 @@ Selfie also has to say something about overflows, of course, just for 64-bit int
 ./selfie -c selfie.h examples/overflows.c -m 1
 ```
 
-The relevant output is:
+The relevant part of the output is:
 
 ```
 UINT64_MAX+1 in decimal:     0
@@ -955,6 +955,24 @@ So, by now we know how storage is measured but how about address spaces? Why not
 Suppose we use eight bits, that is, one byte to encode an address in binary. In that case we speak of an 8-bit address space. Since one byte can encode the unsigned integers 0 to 255, an 8-bit address space can address 256 bytes of storage in byte-addressed memory. This is not much but there is still something absolutely awesome about that. Each byte can encode the 8-bit address of any other byte in 256 bytes of memory including its own address. For example, we could store, say, 85 as `01010101` at address 0 and, say, 7 as `00000111` at address 85, and, say, 0 as `00000000` at address 7, encoding a cycle from address 0 via address 85 to address 7 and then back to address 0. In this case, `01010101`, `00000111`, and `00000000` are interpreted as *pointers* which can be used to encode any kind of arbitrarily complex graph structure.
 
 So, in addition to encoding unsigned and signed integers as well as characters in bits, we can encode pointers as memory addresses in unsigned integers. Who would have thought that unsigned integers can not only be used to represent quantities but also structural elements such as pointers, thanks to digital memory? However, properly using pointers and digital memory in general is a major topic in computer science and an important, non-trivial part of any type of coding effort. You might think that 8-bit address spaces are not a big deal, which is true, but today's reality are typically 32-bit and even 64-bit address spaces that feature billions of addresses, even on your smartphone!
+
+Selfie simulates a 32-bit main memory address space and up to 4GB of main memory storage. Try selfie's self-compilation from the selfie chapter:
+
+```
+./selfie -c selfie.c -m 2 -c selfie.c
+```
+
+Here, the relevant part of the output is:
+
+```
+./selfie: selfie executing selfie.c with 2MB physical memory on mipster
+...
+./selfie: selfie.c exiting with exit code 0 and 2.65MB mallocated memory
+...
+./selfie: summary: 251119021 executed instructions [21.13% nops] and 1.75MB(87.69%) mapped memory
+```
+
+We configured selfie (using the `-m 2` option) with 2MB of main memory storage (physical memory) and then self-compiled which took addresses for 2.65MB main memory (mallocated memory), that is, 0.65MB more than the available storage. However, selfie only used, out of the addressed 2.65MB main memory, 1.75MB main memory storage (mapped memory), that is, 87.69% of the 2MB of available storage.
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
