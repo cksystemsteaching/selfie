@@ -26,15 +26,20 @@ uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, c
   return ppn << 12;
 }
 
-void* palloc() {
-  // TODO
+uint64_t ppn_bump;
+void* kpalloc() {
+    void* page = (void*)(ppn_bump << 12);
+
+    ++ppn_bump;
+
+    return page;
 }
 
 struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t index) {
   return (struct pt_entry*) ((table + index)->ppn << 12);
 }
 
-void map_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
+void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
   uint64_t vpn_2 = vaddr & VPN_2_BITMASK;
   uint64_t vpn_1 = vaddr & VPN_1_BITMASK;
   uint64_t vpn_0 = vaddr & VPN_0_BITMASK;
@@ -44,12 +49,12 @@ void map_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
   mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
   if (!mid_pt->v)
-    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, (uint64_t) palloc() >> 12, 1, 0);
+    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, (uint64_t) kpalloc() >> 12, 1, 0);
   
   leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
   if (!leaf_pt->v)
-    leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, (uint64_t) palloc() >> 12, 1, 0);
+    leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, (uint64_t) kpalloc() >> 12, 1, 0);
 
-  create_pt_entry(leaf_pt, vpn_0, (uint64_t) palloc() >> 12, 0, u_mode_accessible);
+  create_pt_entry(leaf_pt, vpn_0, (uint64_t) kpalloc() >> 12, 0, u_mode_accessible);
 }

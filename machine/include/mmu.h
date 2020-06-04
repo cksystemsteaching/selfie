@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 struct __attribute__((packed)) pt_entry {
   uint64_t reserved :10; // reserved for future use
   uint64_t ppn      :44; // physical page number
@@ -14,9 +16,9 @@ struct __attribute__((packed)) pt_entry {
 
 extern struct pt_entry root_table[512];
 
-void* palloc();
+void* kpalloc();
 
 // both table and (pt_at_ppn << 12) have to be valid page-aligned pointers
 uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, char pt_at_ppn_addr, char u_mode_accessible);
 
-void map_page(uint64_t vaddr, char u_mode_accessible);
+void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);

@@ -64,6 +64,12 @@ _start_warm:
 	la	a3, _start_hang
 	csrw	CSR_STVEC, a3
 
+    /* Setup early bump pointer for page allocator */
+    la a3, _payload_end
+    srli a3, a3, 12
+    sd a3, ppn_bump, a4
+
+
 	/* Setup stack */
 	la	a3, _payload_end
 	li	a4, 0x2000
