@@ -45,14 +45,14 @@ void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
   mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
   if (!mid_pt->v)
-    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, (uint64_t) kpalloc() >> 12, 1, 0);
+    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, kpalloc(), 1, 0);
   
   leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
   if (!leaf_pt->v)
-    leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, (uint64_t) kpalloc() >> 12, 1, 0);
+    leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, kpalloc(), 1, 0);
 
-  create_pt_entry(leaf_pt, vpn_0, (uint64_t) kpalloc() >> 12, 0, u_mode_accessible);
+  create_pt_entry(leaf_pt, vpn_0, kpalloc(), 0, u_mode_accessible);
 }
 
 __attribute__((aligned(4096)))
