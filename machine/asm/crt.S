@@ -65,10 +65,11 @@ _start_warm:
 	csrw	CSR_STVEC, a3
 
     /* Setup early bump pointer for page allocator */
+    /* An increment of one is necessary due to the pre-allocated stack page */
     la a3, _payload_end
     srli a3, a3, 12
+    addi a3, a3, 1
     sd a3, ppn_bump, a4
-
 
 	/* Setup stack */
 	la	a3, _payload_end

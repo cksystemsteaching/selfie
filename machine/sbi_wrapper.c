@@ -1,6 +1,8 @@
 #include "console.h"
+#include "heap.h"
 #include "tinycstd.h"
 #include "trap.h"
+#include "mmu.h"
 
 
 int main(int argc, char** argv);
@@ -51,10 +53,8 @@ void bootstrap() {
     );
 
     // i contains the count of command line arguments
-    int exit = main(i, args);
-
-
-    printf("\n\nFunction main terminated with exit code 0x%x", exit);
+    //int exit = main(i, args);
+    //printf("\n\nFunction main terminated with exit code 0x%x", exit);
 }
 
 void usermode_test() {
