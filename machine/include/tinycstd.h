@@ -1,3 +1,6 @@
+#ifndef KERN_TINYCSTD
+#define KERN_TINYCSTD
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -18,3 +21,5 @@ const char* strchr(const char* str, int c);
 int printf(const char* format, ...);
 void puts(const char* s);
 void putc(char c);
+
+#endif /* KERN_TINYCSTD */
