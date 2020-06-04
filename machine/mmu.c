@@ -54,3 +54,6 @@ void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
 
   create_pt_entry(leaf_pt, vpn_0, (uint64_t) kpalloc() >> 12, 0, u_mode_accessible);
 }
+
+__attribute__((aligned(4096)))
+struct pt_entry root_table[512];
