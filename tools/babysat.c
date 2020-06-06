@@ -143,7 +143,7 @@ void selfie_print_dimacs() {
   uint64_t clause;
   uint64_t variable;
 
-  printf2("p cnf %d %d\n", (char*) number_of_sat_variables, (char*) number_of_sat_clauses);
+  printf2("p cnf %u %u\n", (char*) number_of_sat_variables, (char*) number_of_sat_clauses);
 
   clause = 0;
 
@@ -347,7 +347,7 @@ void selfie_load_dimacs() {
 
   dimacs_get_instance();
 
-  printf4("%s: %d clauses with %d declared variables loaded from %s\n", selfie_name,
+  printf4("%s: %u clauses with %u declared variables loaded from %s\n", selfie_name,
     (char*) number_of_sat_clauses,
     (char*) number_of_sat_variables,
     source_name);
@@ -357,6 +357,8 @@ void selfie_load_dimacs() {
 
 void selfie_sat() {
   uint64_t variable;
+
+  init_scanner();
 
   selfie_load_dimacs();
 
@@ -375,9 +377,9 @@ void selfie_sat() {
 
     while (variable < number_of_sat_variables) {
       if (*(sat_assignment + variable) == FALSE)
-        printf1("-%d ", (char*) (variable + 1));
+        printf1("-%u ", (char*) (variable + 1));
       else
-        printf1("%d ", (char*) (variable + 1));
+        printf1("%u ", (char*) (variable + 1));
 
       variable = variable + 1;
     }
@@ -395,7 +397,6 @@ int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-  init_scanner();
 
   selfie_sat();
 
