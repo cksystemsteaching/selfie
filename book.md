@@ -111,7 +111,7 @@ Hit the spacebar to scroll down. Hitting q for quit gets you out. Hard to believ
 ./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
-This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m 2` option) to self-compile again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on selfie's homepage that you may want to try out on your machine.
+This takes a few minutes to complete depending on how fast your machine is but just wait for it. Now selfie self-compiled and then ran the resulting machine code (using the `-m` option) to self-compile again. In other words, the Lego brick factory built another Lego brick factory that looks like the original and then opened that factory to build yet another Lego brick factory that again looks like the original. There are more examples mentioned in the README on selfie's homepage that you may want to try out on your machine.
 
 Why is all this more than just a strange game played by computer science wizards? The reason is that the programming language in which selfie's source code is written is *Turing-complete*, that is, it is *universal* in the sense that any existing computer program but also any program that may ever be written in the future can also be written in that language. It may be cumbersome to do that but in principle this is possible. In other words, if you understand that language and in particular how its meaning is constructed you know what any computer can do now and in the future but also what computers cannot do, no matter how fancy they might become, even though there are always ways to circumvent the impossible by doing something good enough for its purpose.
 
@@ -970,7 +970,7 @@ Here, the relevant part of the output should be similar to this:
 ./selfie: summary: 251119021 executed instructions [21.13% nops] and 1.75MB(87.69%) mapped memory
 ```
 
-We configured selfie (using the `-m 2` option) with 2MB of main memory storage (physical memory) and then self-compiled selfie which took addresses for 2.65MB of main memory (mallocated memory), that is, 0.65MB more than the available storage. However, selfie ended up using only 1.75MB main memory storage (mapped memory), that is, 87.69% of the 2MB of available storage (physical memory).
+We configured selfie (using the `-m` option) with 2MB of main memory storage (physical memory) and then self-compiled selfie which took addresses for 2.65MB of main memory (mallocated memory), that is, 0.65MB more than the available storage. However, selfie ended up using only 1.75MB main memory storage (mapped memory), that is, 87.69% of the 2MB of available storage (physical memory).
 
 Let us take a closer look at how digital memory can in principle be used to store any type of information. The key question is where to do that in memory, in particular with information that does not fit into a single byte. There are essentially two different ways of answering that question which can also be combined. Suppose we need to store, say, eight bytes. We can either store each of the eight bytes somewhere in memory, not necessarily next to each other, that is, *non-contiguously*, or we store the eight bytes somewhere in memory but all next to each other, that is, in a *contiguous* block of memory.
 
@@ -1366,13 +1366,13 @@ As in the information chapter, the output should be similar to this:
 ...
 ```
 
-We use the code shown here as example in the following section, and later take more code as example from other parts in `selfie.s`. After all, there more than 30000 instructions in `selfie.s` to choose from.
+We use the code shown here as running example in the following section, and later take more code as example from other parts in `selfie.s`. After all, there more than 30000 instructions in `selfie.s` to choose from.
 
 #### Initialization
 
 The first two RISC-U instructions we introduce are the `lui` and `addi` instructions which allow us to initialize CPU registers. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
 
-We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an example from the above code:
+We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an `addi` instruction from the running example:
 
 ```
 0x38(~1): 0x00810293: addi t0,sp,8
@@ -1398,11 +1398,22 @@ After regrouping the bits (and the hexadecimal digits) you can spot both registe
  b 000000001000 00010 000 00101 0010011
 ```
 
-There is also the *opcode* `0x13` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. Which bits encode what exactly depends on the instruction and is determined by its *format*. The `addi` instruction is encoded according to the so-called *I-Format*.
+There is also the *opcode* `0x13` of the `addi` instruction encoded in the 7 LSBs `0010011`. The opcode enables the CPU to identify the instruction during decoding and then find the parameters encoded in the remaining bits. Which bits encode what exactly depends on the instruction and is determined by its *format*. The `addi` instruction is encoded according to the so-called *I-Format*. You can find the exact definition of the I-Format and the other formats introduced below in `selfie.c`. Just look for:
+
+```
+// RISC-V I Format
+// ----------------------------------------------------------------
+// |           12           |  5  |  3   |        5        |  7   |
+// +------------------------+-----+------+-----------------+------+
+// |    immediate[11:0]     | rs1 |funct3|       rd        |opcode|
+// +------------------------+-----+------+-----------------+------+
+// |31                    20|19 15|14  12|11              7|6    0|
+// ----------------------------------------------------------------
+```
 
 Notice that an immediate value such as `8` is data encoded in code whereas register numbers `2` and `5` are addresses of registers. The use of immediate values in arithmetic instructions such as `addi` is referred to as *immediate addressing* while the use of registers in arithmetic instructions is referred to as *register addressing*. There are more such *addressing modes* in other instructions which we introduce below.
 
-Let us go back to the example. You might ask yourself how `addi t0,sp,8` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction:
+Let us go back to the example. You might ask yourself how `addi t0,sp,8` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction taken from the running example:
 
 ```
 0x1C(~1): 0x00800293: addi t0,zero,8
@@ -1414,7 +1425,7 @@ There is one important detail that we should mention here. How does the CPU add 
 
 The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 8` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 8` evaluates to 7 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
 
-Let us explore two more important use cases of `addi` other than just initializing registers with immediate values:
+Let us explore two more important use cases of `addi`, other than just initializing registers with immediate values, taken from the running example:
 
 ```
 0x8(~1): 0x00028193: addi gp,t0,0
@@ -1430,9 +1441,7 @@ makes the CPU *decrement* register `sp` by 8. Making the CPU *increment* a regis
 
 Here is the specification of the `addi` instruction taken from the official RISC-V ISA:
 
-```
-addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11
-```
+`addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
 Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with. It corresponds to the opcode in the binary encoding of the instruction. Next to the `addi` mnemonic are the parameters of the instruction. The first two parameters, `rd` and `rs1`, are placeholders for any of the 32 general-purpose registers of the CPU such as `zero`, `sp`, `gp`, and `t0` in the above examples. The third parameter `imm` is obviously the immediate value.
 
@@ -1444,25 +1453,29 @@ The execution of an instruction such as `addi` changes the state of the machine 
 0x8(~1): 0x00028193: addi gp,t0,0
 ```
 
-When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`. The selfie system reports that as follows:
+When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`. To see that in action try:
 
 ```
-pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0
+./selfie -c selfie.c -d 1 | more
+```
+
+Using the `-d` option, selfie executes the self-compiled code, similar to the `-m` option, but additionally outputs every instruction it executes. The 'd' stands for *debugger* which is a software tool for finding bugs in code. Look for the following line at the beginning of the debugger's output:
+
+```
+pc=0x10008(~1): addi gp,t0,0: t0=206680(0x32758) |- gp=0x0 -> gp=0x32758
 ```
 
 Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in main memory, not at `0x8`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into main memory starting at address `0x10000`, not at `0x0`.
 
-Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `296176(0x484F0)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x484F0`, the value in `t0` has obviously been copied to `gp`.
+Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=206680(0x32758) |- gp=0x0 -> gp=0x32758` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `206680(0x32758)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x32758`, the value in `t0` has obviously been copied to `gp`.
 
-Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in our example, is called *control flow*.
+Let us reflect on what is going on here. When the CPU executes an instruction, a *state transition* takes place and information *flows* between registers and possibly memory. In fact, the semantics `rd = rs1 + imm; pc = pc + 4` of the `addi` formalizes that flow of information. The `rd = rs1 + imm` part before the semicolon, that is, the flow of information from `t0` to `gp` in our example and explicitly shown in `t0=206680(0x32758) |- gp=0x0 -> gp=0x32758`, is called *data flow*. The `pc = pc + 4` part after the semicolon, which is implicit in the line printed by selfie's debugger, is called *control flow*.
 
 All instructions obviously entail control flow but not necessarily data flow. Those that do not are called control-flow instructions of which we see examples below. The beauty of RISC-U instructions is that, when executed, they make the CPU change at most two 64-bit machine words: the `pc` and at most one 64-bit register or one 64-bit machine word in main memory. That's all!
 
 In order to see how immediate values that do not fit into 12 bits can be used to initialize a register, we introduce the `lui` instruction where `lui` stands for *load upper immediate*. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value, into the *upper* part of a 64-bit register and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits, like decimal digits, from right to left. Since we are now able to read RISC-V ISA specifications of instructions, here is what the specification of the `lui` instruction looks like:
 
-```
-lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19
-```
+`lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19`
 
 Similar to the `addi` instruction, the immediate value `imm` is sign-extended to 64 bits before doing anything else. Then, the CPU performs `rd = imm * 2^12`. The multiplication operation by 2^12^ effectively *shifts* the bits of the sign-extended immediate value by 12 bits to the left, that is, from bit 0 to bit 12, to make room for the signed 12-bit immediate value of a subsequent `addi` instruction. We see that in just a moment.
 
@@ -1470,39 +1483,39 @@ In computer science *bitwise shifting* is a standard operation. Left-shifting ad
 
 Interestingly, multiplying and dividing binary numbers with powers of base 2, such as the above 2^12^, mimics exactly bitwise left and right shifting, respectively. By the way, left and right shifting also works with decimal numbers, but using powers of base 10 rather than base 2, of course. In order to keep our notation as simple as possible, we nevertheless avoid using dedicated bitwise shifting instructions and operators even though they exist. RISC-V, for example, features `sll` and `srl` instructions for bitwise logical left and right shifting, respectively. Also, most programming languages feature bitwise left and right shifting operators, usually denoted `<<` and `>>`, respectively, just to mention those here.
 
-Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x484F0` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x484F0` into the 8 MSBs `0x48` and the 12 LSBs `0x4F0` (which is 1264 in decimal) and then do this:
+Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x32758` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x32758` into the 8 MSBs `0x32` and the 12 LSBs `0x758` (which is 1880 in decimal) and then do what the first three instructions in the running example do:
 
 ```
-0x0: 0x000482B7: lui t0,0x48
-0x4: 0x4F028293: addi t0,t0,1264
-0x8: 0x00028193: addi gp,t0,0
+0x0(~1): 0x000322B7: lui t0,0x32
+0x4(~1): 0x75828293: addi t0,t0,1880
+0x8(~1): 0x00028193: addi gp,t0,0
 ```
 
-Observe that `0x48` is encoded in 20 bits as immediate value `0x00048` in the binary code `0x000482B7` of the `lui t0,0x48` instruction. Also, `0x4F0` is encoded as immediate value in the binary code `0x4F028293` of the `addi t0,t0,1264` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
+Observe that `0x32` is encoded in 20 bits as immediate value `0x00032` in the binary code `0x000322B7` of the `lui t0,0x32` instruction. Also, `0x758` is encoded as immediate value in the binary code `0x75828293` of the `addi t0,t0,1880` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
 
 ```
-0x    0    0    0    4    8    2    B    7
- b 0000 0000 0000 0100 1000 0010 1011 0111
+0x    0    0    0    3    2    2    B    7
+ b 0000 0000 0000 0011 0010 0010 1011 0111
 ```
 
 After regrouping the bits (and the hexadecimal digits) you can spot register `t0`, that is, register number `5`:
 
 ```
-                   0x48     5    0x37
- b 00000000000001001000 00101 0110111
+                   0x32     5    0x37
+ b 00000000000000110010 00101 0110111
 ```
 
 as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `0110111`. The `lui` instruction is encoded according to the so-called *U-Format* which is obviously different than the I-Format of the `addi` instruction. The U-Format encodes two parameters, a 20-bit immediate value and one register whereas the I-Format encodes three parameters, a 12-bit immediate value and two registers. What we find fascinating is how each RISC-V instruction is squeezed into 32 bits. There went a lot of thought into how to do that so that hardware can decode and execute binary code fast!
 
-Alright, back to executing the `lui` followed by the two `addi` instructions which results in the following three state transitions:
+Alright, back to executing the `lui` followed by the two `addi` instructions which results in the following three state transitions, taken from the debugger's output:
 
 ```
-pc=0x10000: lui t0,0x48: |- t0=0x0 -> t0=0x48000
-pc=0x10004: addi t0,t0,1264: t0=294912(0x48000) |- t0=294912(0x48000) -> t0=296176(0x484F0)
-pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0
+pc=0x10000(~1): lui t0,0x32: |- t0=0x0 -> t0=0x32000
+pc=0x10004(~1): addi t0,t0,1880: t0=204800(0x32000) |- t0=204800(0x32000) -> t0=206680(0x32758)
+pc=0x10008(~1): addi gp,t0,0: t0=206680(0x32758) |- gp=0x0 -> gp=0x32758
 ```
 
-Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x48000` which is the immediate value `0x48` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x4F0` right into these 12 bits so that `t0` contains `0x484F0` when `addi` is done. The second `addi` instruction copies the value in `t0` to `gp`, as desired. We could have done the same with just the `lui` instruction and one `addi` instruction directly on `gp` but that is an optimization we do not want to get into here.
+Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x32000` which is the immediate value `0x32` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x758` right into these 12 bits so that `t0` contains `0x32758` when `addi` is done. The second `addi` instruction copies the value in `t0` to `gp`, as desired. We could have done the same with just the `lui` instruction and one `addi` instruction directly on `gp` but that is an optimization we do not want to get into here.
 
 What if we need to initialize 64-bit registers with values that fit into 64 bits but not 32 bits, that is, the 20 bits `lui` can handle plus the 12 bits `addi` can handle? This is of course also possible, it just takes a few more instructions to do that, in particular the arithmetic `add` and `mul` instructions introduced below. We nevertheless do not show here how but encourage you to try once you know how arithmetic instructions work. It is a nice exercise in machine programming.
 
@@ -1513,11 +1526,11 @@ However, before introducing arithmetic instructions we expand our initialization
 The next two RISC-U instructions we introduce are the `ld` and `sd` instructions which allow us to access main memory. Again, all examples are real, executable code of the selfie system.
 
 ```
-0x30: 0xFEA1BC23: sd a0,-8(gp)
+0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
 ```
 
 ```
-pc=0x10030: sd a0,-8(gp): gp=0x484F0,a0=296176(0x484F0) |- mem[0x484E8]=0 -> mem[0x484E8]=a0=296176(0x484F0)
+pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 -> mem[0x32750]=a0=206680(0x32758)
 ```
 
 `sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
@@ -1703,6 +1716,8 @@ pc=0x10030: sd a0,-8(gp): gp=0x484F0,a0=296176(0x484F0) |- mem[0x484E8]=0 -> mem
 * CPU
 
 * data
+
+* debugger
 
 * decode
 
