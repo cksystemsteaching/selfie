@@ -220,7 +220,13 @@ void find_nops() {
         reset_all();
     }
     else if (is == JAL){
-      if (backtracked) {
+      if (imm == 4) {
+        if (rd == REG_ZR) {
+          insert_nop();
+          nops = nops + 1;
+        }
+      }
+      else if (backtracked) {
         pc = saved_pc - 4;
         backtracked = 2;
       }
@@ -234,11 +240,6 @@ void find_nops() {
       }
       else
         reset_all();
-    }
-    else if (is == LUI){
-      if (rd != REG_ZR) {
-        set_reg(rd, left_shift(imm, 12));
-      }
     }
     else if (is == ECALL){
       set_reg_unknown(REG_A0);
@@ -281,6 +282,10 @@ void find_nops() {
               set_reg(rd, 1);
             else
               set_reg(rd, 0);
+          } else if (is == LUI){
+            if (rd != REG_ZR) {
+              set_reg(rd, left_shift(imm, 12));
+            }
           }
 
           if (previous_rd == *(registers + rd)) {
