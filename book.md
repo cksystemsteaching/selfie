@@ -68,11 +68,9 @@ For this purpose we have developed a software system called selfie that integrat
 
 3. For us to make sure there is nothing important missing. Selfie is self-referential on multiple levels which means that if there was something important missing, selfie would probably not work as intended.
 
-In order to interact with selfie effectively and, more importantly, with joy, we ask you to do something that is already quite scary for many students, even though it is similar to using a chat app, just not for chatting with people but with a machine. In short, you need to learn how to use a terminal app. Most laptops have a terminal app pre-installed already but even if yours does not, you do not have to install one but just use a terminal in your web browser, which is in fact the easiest way to get access. The homepage of selfie tells you all about how to get started:
+In order to interact with selfie effectively and, more importantly, with joy, we ask you to do something that is already quite scary for many students, even though it is similar to using a chat app, just not for chatting with people but with a machine. In short, you need to learn how to use a terminal app. Most laptops have a terminal app pre-installed already but even if yours does not, you do not have to install one but just use a terminal in your web browser, which is in fact the easiest way to get access. The homepage of selfie tells you all about how to get started, just go to:
 
-```
-https://github.com/cksystemsteaching/selfie
-```
+`https://github.com/cksystemsteaching/selfie`
 
 Once you have a terminal with selfie up and running, type in the terminal:
 
@@ -962,7 +960,7 @@ Selfie simulates a 32-bit main memory address space and up to 4GB of main memory
 ./selfie -c selfie.c -m 2 -c selfie.c
 ```
 
-Here, the relevant part of the output is:
+Here, the relevant part of the output should be similar to this:
 
 ```
 ./selfie: selfie executing selfie.c with 2MB physical memory on mipster
@@ -1149,7 +1147,7 @@ and then:
 more selfie.s
 ```
 
-The output should look like this:
+The output should be similar to this:
 
 ```
 0x0(~1): 0x000322B7: lui t0,0x32
@@ -1227,7 +1225,7 @@ TODO: provide an overview of the following sections.
 
 ### Model
 
-The *machine model* we use here and in selfie is a minimalistic 64-bit *RISC-V* machine which is fundamentally a von Neumann machine. 64-bit means that CPU and memory bus operate in chunks of 64 bits called *machine words* or just *words*. Well, a 64-bit machine word is actually a *double word* to distinguish it from a *word* which is usually only 32 bits. We nevertheless just use the term *word* and quantify its size if it is unclear from the context.
+The *machine model* we use in selfie is a minimalistic 64-bit *RISC-V* machine which is fundamentally a von Neumann machine. 64-bit means that CPU and memory bus operate in chunks of 64 bits called *machine words* or just *words*. Well, a 64-bit machine word is actually a *double word* to distinguish it from a *word* which is usually only 32 bits. We nevertheless just use the term *word* and quantify its size if it is unclear from the context.
 
 RISC-V stands for the fifth generation of an *instruction set architecture* or *ISA* of a *reduced instruction set computer* or *RISC*. An ISA provides just the right information needed to program a machine at the level of machine code but not how to build one. It is essentially a list of machine instructions and a description of what they do including how the processor interacts with memory and the outside world at the level of bits. In contrast to RISC, there is also the notion of a *complex instruction set computer* or *CISC* of which the most commonly used ISA is the family of *x86* processors introduced by Intel in 1978.
 
@@ -1239,7 +1237,7 @@ In the end, there are pros and cons to both, RISC and CISC, and there are also h
 
 ### Processor
 
-The ISA we use here is called *RISC-U* where *U* stands for *unsigned*. The RISC-U ISA is a strict and, in fact, tiny subset of the 64-bit RISC-V ISA. This means that machine code that runs on a RISC-U machine also runs on a 64-bit RISC-V machine but not necessarily vice versa. RISC-U features 14 instructions out of the 40 RISC-V base instructions. All instructions are encoded in 32 bits each. The arithmetic RISC-U instructions only provide unsigned integer arithmetic hence the name RISC-U.
+The ISA we use in selfie is called *RISC-U* where *U* stands for *unsigned*. The RISC-U ISA is a strict and, in fact, tiny subset of the 64-bit RISC-V ISA. This means that machine code that runs on a RISC-U machine also runs on a 64-bit RISC-V machine but not necessarily vice versa. RISC-U features 14 instructions out of the 40 RISC-V base instructions. All instructions are encoded in 32 bits each. The arithmetic RISC-U instructions only provide unsigned integer arithmetic hence the name RISC-U.
 
 Before taking a closer look at individual RISC-U instructions, we first need to understand the *register model* of the machine. The RISC-U ISA features 32 64-bit registers and one 64-bit *program counter*, just like the official 64-bit RISC-V ISA. A *register* is CPU-internal storage for exactly one machine word. RISC-U registers are addressed from 0 to 31 which is the *register address space* of the machine. Register 0, also called `zero`, is special. It always contains the 64-bit integer value 0, even after trying to store a non-zero value in that register. The purpose of register `zero` is to initialize other registers. We show how that works below.
 
@@ -1251,7 +1249,7 @@ Before we go there, we should mention what a *multicore* machine is, which is pr
 
 ### Memory
 
-The *memory model* of the RISC-U ISA is based on byte-addressed memory, as introduced in the information chapter. More specifically, a RISC-U machine has 4GB of byte-addressed so-called *main memory* where all memory access is 64-bit *word-aligned* except when instructions are fetched which is done 32-bit *word-aligned*. This means that whenever the CPU accesses memory it can only do so at memory addresses that are multiples of 8 bytes (64 bits) unless the CPU fetches an instruction which is done at memory addresses that are multiples of 4 bytes (32 bits). That makes sense because each instruction occupies exactly 32 bits in memory.
+The *memory model* of the RISC-U ISA in selfie is based on byte-addressed memory, as introduced in the information chapter. More specifically, a RISC-U machine has 4GB of byte-addressed so-called *main memory* where all memory access is 64-bit *word-aligned* except when instructions are fetched which is done 32-bit *word-aligned*. This means that whenever the CPU accesses memory it can only do so at memory addresses that are multiples of 8 bytes (64 bits) unless the CPU fetches an instruction which is done at memory addresses that are multiples of 4 bytes (32 bits). That makes sense because each instruction occupies exactly 32 bits in memory.
 
 Let us count how many bits a RISC-U machine can store. There are the 2112 bits of the registers and program counter plus 4\*2^30^\*8=34,359,738,368 bits of main memory which are 34,359,740,480 bits in total. This means that there are 2^34359740480^ different states in which a RISC-U machine can be which is an absolutely mind-blowing number, especially considering that your smartphone is likely to be quite similar to a RISC-U machine.
 
@@ -1307,7 +1305,7 @@ Before moving on, we would like to mention two more representative examples of I
 
 Our last but not least IO example is that of a clock device which allows a CPU to keep track of time. Very important! Polling time as well as *timer interrupts* are possible. The latter are particularly useful. Suppose we would like to *time-share* the CPU by having it execute some code for a certain amount of time and then execute some other code and so on. This is easy. Most machines have a clock device exactly for this purpose. Before executing some code, we may have the CPU execute code that sets a timer interrupt by instructing the clock device to interrupt the CPU after a given time elapsed. It is like setting an alarm. Then, we also need a timer interrupt handler that makes the CPU set a timer interrupt again before moving on to execute other code. Unsurprisingly, polling other IO devices is usually implemented like that.
 
-The lesson learned here is important. The fact that our machine can only execute one instruction after another puts us in a difficult spot when it comes to dealing with the outside world of the machine. Usually, many things out there happen in *parallel* at the same time while our machine is purely sequential. Even with multiple cores the situation does not change because in the end communication is always between at least two independent parties. At the end of the following section, we nevertheless explain how IO can be done on a more abstract level that avoids most of the above complexity but is still good enough for our purpose.
+The lesson learned here is important. The fact that our machine can only execute one instruction after another puts us in a difficult spot when it comes to dealing with the outside world of the machine. Usually, many things out there happen in *parallel* at the same time while our machine is purely sequential. Even with multiple cores the situation does not change because in the end communication is always between at least two independent parties. At the end of the following section, we nevertheless demonstrate how IO is done in selfie on a more abstract level that avoids most of the above complexity but is still good enough for our purpose.
 
 ### Instructions
 
@@ -1317,15 +1315,70 @@ The RISC-U ISA features 14 instructions: `lui` and `addi` for initializing regis
 
 RISC-U instruction are encoded in 32 bits (4 bytes) each and stored next to each other in memory such that there are two instructions per 64-bit double word. Memory, however, can only be accessed at 64-bit double-word granularity. The parameters `rd`, `rs1`, and `rs2` used in the specification of the RISC-U instructions below may denote any of the 32 general-purpose registers. The parameter `imm` denotes a signed integer value represented by a fixed number of bits depending on the instruction.
 
+Let us take a look at what selfie tells us about those instructions when self-compiling, as we already did in the information chapter. First, try:
+
+```
+./selfie -c selfie.c -S selfie.s
+```
+
+The relevant part of the output should be similar to this:
+
+```
+...
+./selfie: 141144 bytes generated with 32708 instructions and 10312 bytes of data
+./selfie: init:    lui: 1829(5.59%), addi: 11776(36.00%)
+./selfie: memory:  ld: 5468(16.71%), sd: 5091(15.56%)
+./selfie: compute: add: 2525(7.71%), sub: 641(1.95%), mul: 364(1.11%)
+./selfie: compute: divu: 73(0.22%), remu: 29(0.08%)
+./selfie: compare: sltu: 606(1.85%)
+./selfie: control: beq: 782(2.39%), jal: 3094(9.45%), jalr: 422(1.29%)
+./selfie: system:  ecall: 8(0.02%)
+./selfie: 1444400 characters of assembly with 32708 instructions and 10312 bytes of data written into selfie.s
+```
+
+Selfie reports that it generated 32708 instructions as well as 10312 bytes of data that is needed to run the code. Moreover, selfie produces a *profile* of how many instructions of each type it generated. The `addi` instruction is with 36% the most common instruction here. Selfie also generated a more human-readable form of the machine code in assembly in the `selfie.s` file. Have a look by typing:
+
+```
+more selfie.s
+```
+
+As in the information chapter, the output should be similar to this:
+
+```
+0x0(~1): 0x000322B7: lui t0,0x32
+0x4(~1): 0x75828293: addi t0,t0,1880
+0x8(~1): 0x00028193: addi gp,t0,0
+0xC(~1): 0x00000513: addi a0,zero,0
+0x10(~1): 0x0D600893: addi a7,zero,214
+0x14(~1): 0x00000073: ecall
+0x18(~1): 0x00750513: addi a0,a0,7
+0x1C(~1): 0x00800293: addi t0,zero,8
+0x20(~1): 0x025572B3: remu t0,a0,t0
+0x24(~1): 0x40550533: sub a0,a0,t0
+0x28(~1): 0x0D600893: addi a7,zero,214
+0x2C(~1): 0x00000073: ecall
+0x30(~1): 0xFEA1BC23: sd a0,-8(gp)
+0x34(~1): 0x00000513: addi a0,zero,0
+0x38(~1): 0x00810293: addi t0,sp,8
+0x3C(~1): 0xFF810113: addi sp,sp,-8
+0x40(~1): 0x00513023: sd t0,0(sp)
+0x44(~1): 0x5F11F0EF: jal ra,32636[0x1FE34]
+...
+```
+
+We use the code shown here as example in the following section, and later take more code as example from other parts in `selfie.s`. After all, there more than 30000 instructions in `selfie.s` to choose from.
+
 #### Initialization
 
 The first two RISC-U instructions we introduce are the `lui` and `addi` instructions which allow us to initialize CPU registers. There are also use cases other than initialization which we mention below as well. All examples are real, executable code of the selfie system.
 
-We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an example:
+We begin with the `addi` instruction where `addi` stands for *add immediate*. It instructs the CPU to add an *immediate* value, here a signed 12-bit integer value, to the 64-bit value in a register and store the result in another register (or even the same register). Here is an example from the above code:
 
-`0x38: 0x00810293: addi t0,sp,8`
+```
+0x38(~1): 0x00810293: addi t0,sp,8
+```
 
-where `0x38` is the address of the instruction, `0x00810293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,8` is the human-readable version of the instruction in *assembly code*. In other words, `0x00810293` and `addi t0,sp,8` mean exactly the same thing, just encoded differently. For the machine, `0x00810293` is all it needs while for us `addi t0,sp,8` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
+where `0x38` is the address of the instruction (ignore the `(~1)`), `0x00810293` is the 32-bit *binary code* of the instruction, and `addi t0,sp,8` is the human-readable version of the instruction in *assembly code*. In other words, `0x00810293` and `addi t0,sp,8` mean exactly the same thing, just encoded differently. For the machine, `0x00810293` is all it needs while for us `addi t0,sp,8` is a lot more convenient to read. Binary code is for machines, assembly code is for humans.
 
 The instruction `addi t0,sp,8` makes the CPU add the *immediate* value 8 to the value stored in register `sp` and then store the result in register `t0`. We denote that behavior by `t0 = sp + 8` where `=` is not equality in a mathematical sense. Here, and in many other circumstances in computer science, especially code, `=` denotes an *assignment* of register `t0` to the value to which the *expression* `sp + 8` evaluates. Thus, with `t0 = sp + 8` we do not assert equality between `t0` and `sp + 8` but rather denote the process of assigning a value to a register.
 
@@ -1351,7 +1404,9 @@ Notice that an immediate value such as `8` is data encoded in code whereas regis
 
 Let us go back to the example. You might ask yourself how `addi t0,sp,8` is initialization of a register. Well, it is not since `sp` may contain any value. But there is a trick we can use. Take a look at this instruction:
 
-`0x1C: 0x00800293: addi t0,zero,8`
+```
+0x1C(~1): 0x00800293: addi t0,zero,8
+```
 
 Since `zero == 0` is always true, the instruction effectively makes the CPU perform `t0 = 8`. How about initializing registers with negative numbers? That is possible too, for example, using `addi t0,zero,-8`. Negative numbers such as `-8` are encoded in two's complement. So, where is the catch? Well, we can only use immediate values with `addi` that fit into 12 bits including the sign bit. In other words, the immediate value can only be a signed integer value between -2^11^ and 2^11^-1. Now you know why you had to go through the information chapter and two's complement in particular. In any case, we show below how `addi` can be combined with the `lui` instruction to get larger integer values into registers.
 
@@ -1359,19 +1414,25 @@ There is one important detail that we should mention here. How does the CPU add 
 
 The actual addition of the 64-bit integer in a register and the sign-extended version of `imm` is then done exactly like we described it in the information chapter. Overflows beyond the MSB, that is, bit 63 are ignored. So, the `+` in `sp + 8` in the example above denotes 64-bit integer addition with *wrap-around semantics*. For example, if `sp` contains UINT64_MAX, then `sp + 8` evaluates to 7 because `UINT64_MAX + 1` is 0. Strange but true. That phenomenon has lead to many issues with code including costly bugs and is therefore important to keep in mind.
 
-Let us explore two more important use cases of `addi` other than initializing registers:
+Let us explore two more important use cases of `addi` other than just initializing registers with immediate values:
 
-`0x08: 0x00028193: addi gp,t0,0`
+```
+0x8(~1): 0x00028193: addi gp,t0,0
+```
 
 obviously makes the CPU *copy* the value in register `t0` to register `gp` while:
 
-`0x3C: 0xFF810113: addi sp,sp,-8`
+```
+0x3C(~1): 0xFF810113: addi sp,sp,-8
+```
 
 makes the CPU *decrement* register `sp` by 8. Making the CPU *increment* a register is of course also possible using positive immediate values. Copying, incrementing, and decrementing registers is often needed and done using `addi` but it could also be done by other instructions. Initialization, however, requires `addi` and register `zero` which is why `addi` is introduced in the initialization section.
 
 Here is the specification of the `addi` instruction taken from the official RISC-V ISA:
 
-`addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11`
+```
+addi rd,rs1,imm`: `rd = rs1 + imm; pc = pc + 4` with `-2^11 <= imm < 2^11
+```
 
 Let us go through that line step by step. First of all, the string "addi" is actually a *mnemonic* (the first "m" is not pronounced) which obviously helps us recognize which instruction we are dealing with. It corresponds to the opcode in the binary encoding of the instruction. Next to the `addi` mnemonic are the parameters of the instruction. The first two parameters, `rd` and `rs1`, are placeholders for any of the 32 general-purpose registers of the CPU such as `zero`, `sp`, `gp`, and `t0` in the above examples. The third parameter `imm` is obviously the immediate value.
 
@@ -1379,13 +1440,17 @@ Most importantly, everything to the left of the colon is *syntax*, that is, just
 
 The execution of an instruction such as `addi` changes the state of the machine to a new state. Let us go back to the copying example to see how:
 
-`0x08: 0x00028193: addi gp,t0,0`
+```
+0x8(~1): 0x00028193: addi gp,t0,0
+```
 
 When executed, the instruction makes the CPU copy the value in register `t0` to register `gp`. The selfie system reports that as follows:
 
-`pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0`
+```
+pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0
+```
 
-Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in main memory, not at `0x08`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into main memory starting at address `0x10000`, not at `0x0`.
+Again, let us go through that line step by step. First of all, the `pc` is `0x10008` which means that the instruction is actually stored at address `0x10008` in main memory, not at `0x8`. The reason for that is purely technical and can be ignored here. The boot loader simply put the code into main memory starting at address `0x10000`, not at `0x0`.
 
 Then, there is the executed instruction `addi gp,t0,0`. The interesting part, however, is `t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0` where `=` means equality, not assignment. Everything to the left of the `|-` symbol is the part of the state on which the `addi` instruction depends before executing the instruction. Here, it obviously depends on the value of `t0` which happens to be `296176(0x484F0)`. Everything between `|-` and `->` is the part of the state that changes when executing the instruction. This is obviously the value in register `gp` which happens to be `0x0` before executing the instruction. Finally, everything to the right of `->` is again the part of the state that changes but after executing the instruction. With `gp` now equal to `0x484F0`, the value in `t0` has obviously been copied to `gp`.
 
@@ -1395,7 +1460,9 @@ All instructions obviously entail control flow but not necessarily data flow. Th
 
 In order to see how immediate values that do not fit into 12 bits can be used to initialize a register, we introduce the `lui` instruction where `lui` stands for *load upper immediate*. It instructs the CPU to load an *immediate* value, here a signed 20-bit integer value, into the *upper* part of a 64-bit register and reset the *lower* part. Here, the lower part are bits 0 to 11 and the upper part are bits 12 to 63 where bit 0 is the LSB and bit 63 is the MSB. Remember, computer scientists usually count from 0, not 1, and bits, like decimal digits, from right to left. Since we are now able to read RISC-V ISA specifications of instructions, here is what the specification of the `lui` instruction looks like:
 
-`lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19`
+```
+lui rd,imm`: `rd = imm * 2^12; pc = pc + 4` with `-2^19 <= imm < 2^19
+```
 
 Similar to the `addi` instruction, the immediate value `imm` is sign-extended to 64 bits before doing anything else. Then, the CPU performs `rd = imm * 2^12`. The multiplication operation by 2^12^ effectively *shifts* the bits of the sign-extended immediate value by 12 bits to the left, that is, from bit 0 to bit 12, to make room for the signed 12-bit immediate value of a subsequent `addi` instruction. We see that in just a moment.
 
@@ -1406,9 +1473,9 @@ Interestingly, multiplying and dividing binary numbers with powers of base 2, su
 Before moving on to other instructions, here is an example of how `lui` and `addi` instructions work together. In this case, the goal is to initialize register `gp` via register `t0` with the hexadecimal value `0x484F0` which is encoded in 20 bits including a sign bit set to 0, so 8 bits more than `addi` can handle alone. We therefore split `0x484F0` into the 8 MSBs `0x48` and the 12 LSBs `0x4F0` (which is 1264 in decimal) and then do this:
 
 ```
-0x00: 0x000482B7: lui t0,0x48
-0x04: 0x4F028293: addi t0,t0,1264
-0x08: 0x00028193: addi gp,t0,0
+0x0: 0x000482B7: lui t0,0x48
+0x4: 0x4F028293: addi t0,t0,1264
+0x8: 0x00028193: addi gp,t0,0
 ```
 
 Observe that `0x48` is encoded in 20 bits as immediate value `0x00048` in the binary code `0x000482B7` of the `lui t0,0x48` instruction. Also, `0x4F0` is encoded as immediate value in the binary code `0x4F028293` of the `addi t0,t0,1264` instruction. The `addi gp,t0,0` we already saw before. But back to the binary code of the `lui` instruction:
@@ -1429,9 +1496,11 @@ as well as the opcode `0x37` of the `lui` instruction encoded in the 7 LSBs `011
 
 Alright, back to executing the `lui` followed by the two `addi` instructions which results in the following three state transitions:
 
+```
 pc=0x10000: lui t0,0x48: |- t0=0x0 -> t0=0x48000
 pc=0x10004: addi t0,t0,1264: t0=294912(0x48000) |- t0=294912(0x48000) -> t0=296176(0x484F0)
 pc=0x10008: addi gp,t0,0: t0=296176(0x484F0) |- gp=0x0 -> gp=0x484F0
+```
 
 Notice that the `lui` instruction does not depend on the state of the machine. There is nothing printed to the left of the `|-` symbol! After executing the `lui` instruction, register `t0` contains `0x48000` which is the immediate value `0x48` shifted to the left by 12 bits. The following `addi` instruction "inserts" its immediate value `0x4F0` right into these 12 bits so that `t0` contains `0x484F0` when `addi` is done. The second `addi` instruction copies the value in `t0` to `gp`, as desired. We could have done the same with just the `lui` instruction and one `addi` instruction directly on `gp` but that is an optimization we do not want to get into here.
 
@@ -1443,9 +1512,13 @@ However, before introducing arithmetic instructions we expand our initialization
 
 The next two RISC-U instructions we introduce are the `ld` and `sd` instructions which allow us to access main memory. Again, all examples are real, executable code of the selfie system.
 
-`0x30: 0xFEA1BC23: sd a0,-8(gp)`
+```
+0x30: 0xFEA1BC23: sd a0,-8(gp)
+```
 
-`pc=0x10030: sd a0,-8(gp): gp=0x484F0,a0=296176(0x484F0) |- mem[0x484E8]=0 -> mem[0x484E8]=a0=296176(0x484F0)`
+```
+pc=0x10030: sd a0,-8(gp): gp=0x484F0,a0=296176(0x484F0) |- mem[0x484E8]=0 -> mem[0x484E8]=a0=296176(0x484F0)
+```
 
 `sd rs2,imm(rs1)`: `memory[rs1 + imm] = rs2; pc = pc + 4` with `-2^11 <= imm < 2^11`
 
@@ -1816,6 +1889,8 @@ The next two RISC-U instructions we introduce are the `ld` and `sd` instructions
 * prefix
 
 * printable character
+
+* profile
 
 * programming
 
