@@ -123,7 +123,7 @@ At the end of each chapter there is a section with literature recommendations fo
 
 The Art of Computer Programming by Donald E. Knuth
 
-This book is seminal work in multiple volumes that provides comprehensive coverage of many aspects of computer science. It is the de-facto standard encyclopedia of computer science for readers that already have formal training in computer science. You may nevertheless want to consider this book for starting your own computer science library, and use it as invaluable reference.
+This book is seminal work in multiple volumes that provides comprehensive coverage of many aspects of computer science. It is the de-facto standard encyclopedia of computer science. You may want to consider this book for starting your own computer science library, and use it as invaluable reference.
 
 Gödel, Escher, Bach by Douglas Hofstadter
 
@@ -139,7 +139,7 @@ The book provides, again similar to us, an introduction to computer science for 
 
 The Elements of Computing Systems: Building a Modern Computer from First Principles by Noam Nisan and Shimon Schocken
 
-The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students. The idea is to show how a computer is essentially built from scratch including the software stack running on top of the machine. This is again quite different from our focus on elementary computer science and selfie as integrating concept but nevertheless provides an important alternative perspective.
+The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students. The idea is to show how a computer is essentially built from scratch including the software stack running on top of the machine. This is again quite different from our approach but nevertheless provides an important alternative perspective.
 
 ## Information
 
@@ -1225,7 +1225,19 @@ Everything on a digital device is encoded in bits. As a consequence, whatever we
 
 There are keyboards that encode the keys you type into bits that represent ASCII characters that form text when put together. There are digital cameras and smartphones that encode the pictures, videos, and audio recordings you take into bits. There are screens that decode text, images, and videos from bits into pixels for you to enjoy. There are speakers that decode audio from bits into sound. And then there are software tools that translate the source code you write for an app into machine code encoded in bits that your machine then decodes and executes, together with the data files in your app.
 
-We now dive into the world of the machine and its code. You will be surprised how simple it is. Well, it has to be. Otherwise, it would not work as well as it does!
+### Recommended Reading
+
+Ones and Zeros: Understanding Boolean Algebra, Digital Circuits, and the Logic of Sets by John R. Gregg
+
+We have only scratched the surface of how Boolean Algebra and digital circuits are connected. This book helps you gain a deeper understanding, including how the encoding and manipulation of integers on a digital device works.
+
+Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
+
+This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model (RISC-V) we introduce below and use throughout the book.
+
+An Introduction to Information Theory: Symbols, Signals and Noise by John R. Pierce
+
+This is a book that takes the topic of this chapter a lot further. If you are interested in the fundamentals of information and are not afraid of mathematical formulae, add it to your computer science library and reading list.
 
 ----
 
@@ -1607,6 +1619,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 ### Algorithms
 
+### Recommended Reading
+
 ## Programming
 
 ### Variable
@@ -1629,6 +1643,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 
 ### Apps
 
+### Recommended Reading
+
 ## Tools
 
 ### Scanning
@@ -1638,6 +1654,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 ### Code Generation
 
 ### Interpretation
+
+### Recommended Reading
 
 ## Computing
 
@@ -1650,6 +1668,8 @@ pc=0x10030(~1): sd a0,-8(gp): gp=0x32758,a0=206680(0x32758) |- mem[0x32750]=0 ->
 ### Computing as Utility
 
 ### Cloud Computing
+
+### Recommended Reading
 
 ## Glossary
 
