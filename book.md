@@ -117,6 +117,30 @@ Why is all this more than just a strange game played by computer science wizards
 
 The machine and its code is universal just like organic life and its DNA. This is also the reason why understanding computer science, just like life science, takes effort. You are about to learn something that is here to stay forever. What are a few months reading and understanding this book compared to that? Here is something that may help you in the process. Students who finally understood selfie often tell me how happy they were when they finally saw how everything fits together. For some it was a life changing experience that made them even change their major to computer science!
 
+### Recommended Reading
+
+At the end of each chapter there is a section with literature recommendations for exploring the topic of the chapter further. Here are our first recommendations.
+
+The Art of Computer Programming by Donald E. Knuth
+
+This book is seminal work in multiple volumes that provides comprehensive coverage of many aspects of computer science. It is the de-facto standard encyclopedia of computer science for readers that already have formal training in computer science. You may nevertheless want to consider this book for starting your own computer science library, and use it as invaluable reference.
+
+Gödel, Escher, Bach by Douglas Hofstadter
+
+This book is mostly non-technical but still seminal work on fundamental concepts in mathematics and computer science. It uses formal languages and self-reference to explore how meaning is created through seemingly meaningless building blocks. You may want to consider this book to be the second book in your computer science library, and read it during your free time.
+
+Code: The Hidden Language of Computer Hardware and Software by Charles Petzold
+
+The book provides, similar to us, an introduction to computer science for broader audiences beyond computer science students. There is a strong focus on what code is in many different forms in the first half of the book followed by a machine model and higher level concepts such as programs and operating systems in the second half of the book. This is quite different from our focus on the basic principles of computer science in general and our approach of integration through the selfie system in particular but nevertheless a valuable resource.
+
+But How Do It Know? - The Basic Principles of Computers for Everyone by J. Clark Scott
+
+The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students. There is a strong focus on how a computer works in the first three quarters of the book followed by a much shorter treatment of higher level concepts such as programs and operating systems in the last quarter of the book. This is again quite different from our focus on elementary computer science and selfie as integrating concept but an interesting read nevertheless.
+
+The Elements of Computing Systems: Building a Modern Computer from First Principles by Noam Nisan and Shimon Schocken
+
+The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students. The idea is to show how a computer is essentially built from scratch including the software stack running on top of the machine. This is again quite different from our focus on elementary computer science and selfie as integrating concept but nevertheless provides an important alternative perspective.
+
 ## Information
 
 Computer science is about the automation of everything. Think of something you would like to do but then not do it yourself but have a machine do it for you. Whether this is always possible is still being debated but not our concern here. Well, I believe that it is always possible but many people and thus companies often underestimate the enormous complexity involved in seemingly simple tasks such as driving a car. The issue is that whatever problem you are trying to solve you first need to *encode* the *information* involved in solving the problem in such a way that a machine can handle it. And then you need to tell the machine every single step of how to *manipulate* that information which is tedious even for extremely simple tasks. Finally, you need to *decode* the result back into something a human can experience.
