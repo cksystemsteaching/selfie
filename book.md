@@ -119,7 +119,7 @@ The machine and its code is universal just like organic life and its DNA. This i
 
 ### Recommended Reading
 
-At the end of each chapter there is a section with literature recommendations for exploring the topic of the chapter further. Here are our first recommendations.
+At the end of each chapter there is a section with literature recommendations for exploring the topic of the chapter further. Here are our first two recommendations.
 
 The Art of Computer Programming by Donald E. Knuth
 
@@ -128,18 +128,6 @@ This book is seminal work in multiple volumes that provides comprehensive covera
 Gödel, Escher, Bach by Douglas Hofstadter
 
 This book is mostly non-technical but still seminal work on fundamental concepts in mathematics and computer science. It uses formal languages and self-reference to explore how meaning is created through seemingly meaningless building blocks. You may want to consider this book to be the second book in your computer science library, and read it during your free time.
-
-Code: The Hidden Language of Computer Hardware and Software by Charles Petzold
-
-The book provides, similar to us, an introduction to computer science for broader audiences beyond computer science students. There is a strong focus on what code is in many different forms in the first half of the book followed by a machine model and higher level concepts such as programs and operating systems in the second half of the book. This is quite different from our focus on the basic principles of computer science in general and our approach of integration through the selfie system in particular but nevertheless a valuable resource.
-
-But How Do It Know? - The Basic Principles of Computers for Everyone by J. Clark Scott
-
-The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students. There is a strong focus on how a computer works in the first three quarters of the book followed by a much shorter treatment of higher level concepts such as programs and operating systems in the last quarter of the book. This is again quite different from our focus on elementary computer science and selfie as integrating concept but an interesting read nevertheless.
-
-The Elements of Computing Systems: Building a Modern Computer from First Principles by Noam Nisan and Shimon Schocken
-
-The book provides, again similar to us, an introduction to computer science for broader audiences beyond computer science students. The idea is to show how a computer is essentially built from scratch including the software stack running on top of the machine. This is again quite different from our approach but nevertheless provides an important alternative perspective.
 
 ## Information
 
@@ -1229,15 +1217,15 @@ There are keyboards that encode the keys you type into bits that represent ASCII
 
 Ones and Zeros: Understanding Boolean Algebra, Digital Circuits, and the Logic of Sets by John R. Gregg
 
-We have only scratched the surface of how Boolean Algebra and digital circuits are connected. This book helps you gain a deeper understanding, including how the encoding and manipulation of integers on a digital device works.
-
-Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
-
-This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model (RISC-V) we introduce below and use throughout the book.
+We have only scratched the surface of how Boolean Algebra and digital circuits are connected. This book helps you gain a deeper understanding of that.
 
 Information Theory: A Tutorial Introduction by James V. Stone
 
 This is a book that takes the topic of this chapter a lot further. If you are interested in the fundamentals of information and are not afraid of mathematical formulae, add it to your computer science library and reading list.
+
+Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. Patterson
+
+This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model (RISC-V) we introduce in the following chapter and use throughout the book.
 
 ----
 

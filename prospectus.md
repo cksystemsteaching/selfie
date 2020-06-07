@@ -41,7 +41,7 @@ Christoph Kirsch is Professor at the Department of Computer Sciences of the Univ
 
 #### Related Titles
 
-We relate our book to five others of which the first four are closely related while the last book (The Art of Computer Programming by Donald E. Knuth) is mentioned because of its importance in the field. It can probably be found on virtually any computer scientist's book shelf.
+We list books recommended by reviewers below and relate our book to five others of which the first four are closely related while the last book (The Art of Computer Programming by Donald E. Knuth) is mentioned because of its importance in the field. It can probably be found on virtually any computer scientist's book shelf.
 
 The first three books essentially share with our book the broad target audience beyond computer science students while the fourth book (An Introduction to Computer Science: A Textbook for Beginners in Informatics by Gilbert Brands) targets, unlike us, undergraduate computer students specifically.
 
@@ -66,6 +66,16 @@ This book provides an introduction to computer science for undergraduate student
 The Art of Computer Programming by Donald E. Knuth
 
 This book is seminal work in multiple volumes that provides comprehensive coverage of many aspects of computer science. Structure, presentation, content, and target audience of the book are very different from ours. The book is the de-facto standard encyclopedia of computer science for readers that already have formal training in computer science.
+
+Related books recommended by reviewer #3:
+
+1. The Pattern On The Stone: The Simple Ideas That Make Computers Work by W. Daniel Hillis
+2. Understanding the Digital World: What You Need to Know about Computers, the Internet, Privacy, and Security by Brian W. Kernighan
+3. Bits to Bitcoin: How Our Digital Stuff Works by Mark Stuart Day and C. A. Jennings
+4. Computing for Ordinary Mortals by Robert St. Amant
+5. Denning, P: Great Principles of Computing by Peter J. Denning, Craig H. Martell, et al.
+
+We agree that these books are closely related to the proposed book. By introducing selfie into the workflow and re-targeting to a narrower audience we believe that we provide significant benefit over the existing literature.
 
 #### Audience
 
