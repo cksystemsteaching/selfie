@@ -1235,7 +1235,7 @@ Computer Architecture: A Quantitative Approach by John L. Hennessy and David A. 
 
 This is seminal work on computer architecture that belongs in any computer science library. Make sure to get the latest edition that features the machine model (RISC-V) we introduce below and use throughout the book.
 
-An Introduction to Information Theory: Symbols, Signals and Noise by John R. Pierce
+Information Theory: A Tutorial Introduction by James V. Stone
 
 This is a book that takes the topic of this chapter a lot further. If you are interested in the fundamentals of information and are not afraid of mathematical formulae, add it to your computer science library and reading list.
 
