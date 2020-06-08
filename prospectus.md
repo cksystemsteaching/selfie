@@ -15,6 +15,28 @@ Professor, Department of Computer Sciences, University of Salzburg, Austria
 Email: [ck@cs.uni-salzburg.at](mailto:ck@cs.uni-salzburg.at)
 Web: [www.cs.uni-salzburg.at/~ck](http://www.cs.uni-salzburg.at/~ck)
 
+#### Changes in the 1st Revision
+
+We thank the reviewers for their valuable and insightful comments and feedback!
+
+1. Target Audience: We narrowed the target audience to senior high-school and freshman/sophomore college students and recommend the book as textbook for teachers and professors with a background in computer science.
+
+2. Methodology: We now use the selfie system more prominently as a means to interact with the machine, as formal documentation of the concepts introduced in the book, and as template for exercises that involve modifying and enhancing its source code. We plan to use the selfie autograder for this purpose.
+
+3. Presentation: We included a motivational chapter on selfie right after the introduction. The idea is to encourage readers to connect with the material through interaction with the selfie system and exposure to its source code.
+
+Details:
+
+1. We refer to selfie, wherever approriate, and explain how to interact with the system in the given context.
+
+2. We added "Recommended Readings" sections at the end of the selfie and the information chapter. We plan to include "State of the Art" sections at the end of the remaining technical chapters.
+
+3. We improved the material in general and on Boolean Algebra and negative numbers, in particular. We also added three more figures on adders.
+
+4. In the meantime we started working on the machine chapter which is still incomplete but included for your reference.
+
+5. We updated the prospectus below to reflect the first revision.
+
 #### Brief Description:
 
 This is a proposal for a book on *elementary computer science* for senior high-school and freshman/sophomore college students. The book may be used as textbook by teachers and professors with a background in computer science. The idea is to explain the absolute basics of computer science with a strong focus on *intuition* rather than formalism. The book explains, similar to related books, how a computer works in principle and how to do some basic programming, but goes beyond that by exploring the general *nature* of information and computing in the context of today's reality of ubiquitous use of digital devices. This is also different from teaching computational thinking with its focus on problem solving.
@@ -35,7 +57,7 @@ For an introduction to selfie and a work-in-progress attempt of the author to de
 
 The *focus* of the book is on elementary computer science as a whole, not just computers or programming or problem solving and so on, targeting readers with diverse backgrounds other than computer science but in need of gaining an intuitive understanding of computer science in general. We present basic principles that are simple individually and then show how to combine them towards the full capabilities of modern computing.
 
-The *theme* of the book is the integration of basic principles of computer science through self-referentiality in its various forms. Rather than avoiding an admittedly challenging concept, we developed with the selfie system a solid foundation for resolving the inherent self-referentiality in computing and leverage that to explain how meaning is created on a mindless machine.
+The *theme* of the book is the integration of basic principles of computer science through self-referentiality in its various forms. Rather than avoiding an admittedly challenging concept, we developed with the selfie system a solid foundation for resolving the inherent self-referentiality in computing and leverage that to explain how meaning is created on a mindless machine. Selfie allows us to even go beyond self-compilation and include self-referentiality in operating systems and virtualization technology in general.
 
 The *language* of the book is casual with a focus on intuition rather than formalism, even using humor, which is unusual in a technical field such as computer science and an attempt to create an emotional bond between author and reader. In the experience of the author, teaching students majoring in fields other than computer science, emotion is particularly important to reduce the infamous pain in learning about computer science. The language of the book is in fact a personal statement of the author and deliberately kept that way to transport the author's passion about computer science.
 
@@ -45,7 +67,7 @@ Christoph Kirsch is Professor at the Department of Computer Sciences of the Univ
 
 #### Related Titles
 
-We list books recommended by reviewers below and relate our book to five others of which the first four are closely related while the last book (The Art of Computer Programming by Donald E. Knuth) is mentioned because of its importance in the field. It can probably be found on virtually any computer scientist's book shelf.
+We relate our book to five others of which the first four are closely related while the last book (The Art of Computer Programming by Donald E. Knuth) is mentioned because of its importance in the field. We also list related books recommended by reviewers below.
 
 The first three books essentially share with our book the broad target audience beyond computer science students while the fourth book (An Introduction to Computer Science: A Textbook for Beginners in Informatics by Gilbert Brands) targets, unlike us, undergraduate computer students specifically.
 
@@ -83,19 +105,25 @@ We agree that these books are closely related to the proposed book. By introduci
 
 #### Audience
 
-Readers should have a background at the level of upper secondary school or above. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, equations). The prerequisites are anyway revisited in the book.
+Readers should have a background at the level of senior high-school and freshman/sophomore college students. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, equations). The prerequisites are anyway revisited in the book.
 
-On a more personal note, I understand that there is a difference in intellectual development between readers 14 to 18 years old and adults, and that it is difficult to target both. I nevertheless believe the material is still accessible to some teenagers with at least some casual interest in computer science, and it would be ill-advised to exclude them. After all the book is also an attempt to establish computer science as an elementary subject for all. I specifically use more casual language, and try to avoid academic lingua as much as possible, to keep the younger portion of the target audience motivated when going through some more technical material and, simultaneously, make it more fun for everyone else. However, I only have experience teaching students around 18 to 19 years old and above, and I am glad to consider any feedback on this issue from people with more experience teaching teenagers.
+As stated in the introduction, this book targets three groups of readers:
+
+1. Professional user: you do not plan to become a software engineer or computer scientist but you still would like to understand the machine that you are working with every day, at least in your professional life, to an extent that enables you to use computers efficiently and effectively and, most importantly, with joy!
+
+2. Software engineer: you would like to develop software professionally and are interested in more than just learning how to code. In particular, you are looking for a background in computer science that is going to serve as foundation for understanding not just the state of the art in software engineering now but also any future development technology whatever it may be.
+
+3. Computer scientist: you plan to become a computer scientist, or are already one, and would like to either gain a solid understanding or revisit your understanding of the absolute basics of computer science. Even if your focus area is not covered by this book, the material presented here may still have a profound effect on how you see and approach your own field.
 
 #### Status of the Book
 
-The introduction and the first chapter on encoding information in bits are complete. There is a preliminary outline of the remaining four chapters. There is also a preliminary glossary of the terms introduced so far.
+The introduction, the motivational chapter on selfie, and the first chapter on encoding information in bits are complete. There is also part of the machine chapter, a preliminary outline of the remaining structure, and a preliminary glossary of the terms introduced so far.
 
 We expect to finish the manuscript within around one year by Spring 2021. The author is on sabbatical from July 2020 until February 2021 which should make that timeline feasible.
 
-The current word count is at around 18,000 words. We plan the length of the book to be around 100,000 words.
+The current word count is at around 31,000 words. We plan the length of the book to be around 120,000 words.
 
-On average there will be at least one figure, table, or non-textual example per section. For example, there are 16 sections in the first chapter on information with 12 figures, 2 tables, and 6 non-textual examples.
+On average there will be at least one figure, table, or non-textual example per section. For example, there are 16 sections in the first chapter on information with 15 figures, 2 tables, and 6 non-textual examples.
 
 #### Reviewers
 

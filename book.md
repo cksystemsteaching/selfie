@@ -117,7 +117,7 @@ Why is all this more than just a strange game played by computer science wizards
 
 The machine and its code is universal just like organic life and its DNA. This is also the reason why understanding computer science, just like life science, takes effort. You are about to learn something that is here to stay forever. What are a few months reading and understanding this book compared to that? Here is something that may help you in the process. Students who finally understood selfie often tell me how happy they were when they finally saw how everything fits together. For some it was a life changing experience that made them even change their major to computer science!
 
-### Recommended Reading
+### Recommended Readings
 
 At the end of each chapter there is a section with literature recommendations for exploring the topic of the chapter further. Here are our first two recommendations.
 
@@ -1054,7 +1054,7 @@ Now, try:
 ls -la
 ```
 
-This command shows the content of the selfie folder. It does that by listing everything the file that represents the selfie folder contains. Try to explore the tree of selfie files and folders by typing, for example:
+This command shows the content of the selfie folder. It does that by listing everything in the file that represents the selfie folder. Try to explore the tree of selfie files and folders by typing, for example:
 
 ```
 cd examples
@@ -1213,7 +1213,7 @@ Everything on a digital device is encoded in bits. As a consequence, whatever we
 
 There are keyboards that encode the keys you type into bits that represent ASCII characters that form text when put together. There are digital cameras and smartphones that encode the pictures, videos, and audio recordings you take into bits. There are screens that decode text, images, and videos from bits into pixels for you to enjoy. There are speakers that decode audio from bits into sound. And then there are software tools that translate the source code you write for an app into machine code encoded in bits that your machine then decodes and executes, together with the data files in your app.
 
-### Recommended Reading
+### Recommended Readings
 
 Ones and Zeros: Understanding Boolean Algebra, Digital Circuits, and the Logic of Sets by John R. Gregg
 
