@@ -422,7 +422,7 @@ and so on. The only issue is that calculating the tens complement is not much ea
 99 - 7 = 92
 ```
 
-If a given number fits the number of supported digits, the diminished radix complement of that number can easily be calculated by subtracting *digit by digit*! Here, it is for, well, `99 - 07 = 92`:
+If a given number fits the number of supported digits, the diminished radix complement of that number can easily be calculated by subtracting *digit by digit*! Since here we support 2 digits but `7` is only 1 digit, we extend `7` to `07` and then subtract `07` from `99` digit by digit:
 
 ```
 9 - 0 = 9
