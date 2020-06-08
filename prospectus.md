@@ -1,4 +1,4 @@
-### Prospectus for MIT Press
+### Prospectus for MIT Press (1st Revision)
 
 c/o Marie L. Lee
 Executive Editor, Computer Science & Engineering
@@ -17,7 +17,7 @@ Web: [www.cs.uni-salzburg.at/~ck](http://www.cs.uni-salzburg.at/~ck)
 
 #### Changes in the 1st Revision
 
-We thank the reviewers for their valuable and insightful comments and feedback!
+We thank the reviewers for their valuable and insightful comments and feedback. We tried to address *all* concerns as follows:
 
 1. Target Audience: We narrowed the target audience to senior high-school and freshman/sophomore college students and recommend the book as textbook for teachers and professors with a background in computer science.
 
@@ -27,11 +27,11 @@ We thank the reviewers for their valuable and insightful comments and feedback!
 
 Details:
 
-1. We refer to selfie, wherever approriate, and explain how to interact with the system in the given context.
+1. We refer to selfie, whenever approriate, and explain how to interact with the system in the given context.
 
 2. We added "Recommended Readings" sections at the end of the selfie and the information chapter. We plan to include "State of the Art" sections at the end of the remaining technical chapters.
 
-3. We improved the material in general and on Boolean Algebra and negative numbers, in particular. We also added three more figures on adders.
+3. We improved the material in general and on Boolean Algebra, circuits, and negative numbers, in particular. We also added three more figures on adders.
 
 4. In the meantime we started working on the machine chapter which is still incomplete but included for your reference.
 
