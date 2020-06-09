@@ -154,13 +154,12 @@ boolector: smt
 btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file);)
 
-
-# Test validator for all C* files in sysmbolic
+# Run validator on *.c files in symbolic
 validator: selfie tools/modeler.selfie
 	$(foreach file, $(wildcard symbolic/*.c), ./tools/validator.py $(file);)
 
 # Run everything
-everything: all assemble spike qemu boolector btormc validator grader grade 
+everything: all assemble spike qemu boolector btormc validator grader grade
 
 # Clean up
 clean:
