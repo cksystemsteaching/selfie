@@ -32,15 +32,7 @@ Even the most convenient high-level programming languages are by far not enough 
 
 One of the key breakthroughs of recent years is that computation has become a utility just like electricity and water. Cloud computing and, in the near future, edge computing creates enormous potential, just like the reliable availability of power and water. There is no need anymore to operate your own machines other than client machines such as your smartphone. As long as you have a network connection, any form of computational platform is available to you. The key enabling technology is *virtualization* which is a concept whose understanding is elusive even to many computer science students. However, we developed a way to teach virtualization in simple terms accessible to anyone based on a combination of our machine model, programming language, and tool set. The idea is to demonstrate how software can create any computational platform, including the one it runs on, very efficiently. This is another form of self-referentiality that is fundamental in computer science. Seeing that enables you to grasp the full extent of the universality of computing.
 
-This book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
-
-This book targets three groups of readers:
-
-1. Professional user: you do not plan to become a software engineer or computer scientist but you still would like to understand the machine that you are working with every day, at least in your professional life, to an extent that enables you to use computers efficiently and effectively and, most importantly, with joy!
-
-2. Software engineer: you would like to develop software professionally and are interested in more than just learning how to code. In particular, you are looking for a background in computer science that is going to serve as foundation for understanding not just the state of the art in software engineering now but also any future development technology whatever it may be.
-
-3. Computer scientist: you plan to become a computer scientist, or are already one, and would like to either gain a solid understanding or revisit your understanding of the absolute basics of computer science. Even if your focus area is not covered by this book, the material presented here may still have a profound effect on how you see and approach your own field.
+This book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
 
 ## Selfie
 

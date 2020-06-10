@@ -105,15 +105,9 @@ We agree that these books are closely related to the proposed book. By introduci
 
 #### Audience
 
-Readers should have a background at the level of senior high-school and freshman/sophomore college students. The prerequisites for following the material presented here are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, equations). The prerequisites are anyway revisited in the book.
+As stated in the introduction, the proposed book presents material adequate for senior high-school and freshman/sophomore college students and may be used as textbook by teachers and professors with a background in computer science. The prerequisites for following the material are an understanding of elementary arithmetic (addition, subtraction, multiplication, and division of whole numbers), elementary geometry (one- and two-dimensional shapes), and elementary algebra (variables, algebraic equations). The prerequisites are anyway revisited in the book.
 
-As stated in the introduction, this book targets three groups of readers:
-
-1. Professional user: you do not plan to become a software engineer or computer scientist but you still would like to understand the machine that you are working with every day, at least in your professional life, to an extent that enables you to use computers efficiently and effectively and, most importantly, with joy!
-
-2. Software engineer: you would like to develop software professionally and are interested in more than just learning how to code. In particular, you are looking for a background in computer science that is going to serve as foundation for understanding not just the state of the art in software engineering now but also any future development technology whatever it may be.
-
-3. Computer scientist: you plan to become a computer scientist, or are already one, and would like to either gain a solid understanding or revisit your understanding of the absolute basics of computer science. Even if your focus area is not covered by this book, the material presented here may still have a profound effect on how you see and approach your own field.
+The primary audience are students that plan to become either software engineers or computer scientists. Secondary audiences are students majoring in fields other than computer science that nevertheless have an interest in understanding the absolute basics of computer science.
 
 #### Status of the Book
 
