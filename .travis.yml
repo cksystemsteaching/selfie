@@ -13,8 +13,8 @@ compiler:
 script: travis_wait 60 make all
 
 stages:
-  - test
-  - autograder
+  - make-all
+  - make-grade
   - docker-all
   - docker-extras
   - name: deploy
@@ -26,7 +26,7 @@ stages:
 
 jobs:
   include:
-    - stage: autograder
+    - stage: make-grade
       language: python
       python:
         - "3.7"
