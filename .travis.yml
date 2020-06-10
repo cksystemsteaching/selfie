@@ -13,7 +13,7 @@ compiler:
 script: travis_wait 60 make all
 
 stages:
-  - make-all
+  - test
   - make-grade
   - docker-all
   - docker-extras
