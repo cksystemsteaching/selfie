@@ -38,7 +38,7 @@ selfie.h: selfie.c
 	./tools/modeler.selfie -c $< - 0 --check-block-access
 
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob sat smt mon btor2 mod x86 all assemble spike qemu boolector btormc validator grader grade everything clean
+.PHONY: compile quine escape debug replay os vm min mob sat smt mon btor2 mod x86 all assemble spike qemu boolector btormc validator grader grade extras everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -158,8 +158,11 @@ btormc: btor2
 validator: selfie tools/modeler.selfie
 	$(foreach file, $(wildcard symbolic/*.c), ./tools/validator.py $(file);)
 
+# Run everything that requires non-standard tools
+extras: assemble spike qemu boolector btormc validator grader grade
+
 # Run everything
-everything: assemble spike qemu boolector btormc validator grader grade
+everything: all extras
 
 # Clean up
 clean:
