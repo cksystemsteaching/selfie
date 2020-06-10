@@ -32,7 +32,13 @@ jobs:
       os: linux
       dist: bionic
       script: make grade
-    - stage: docker
+    - stage: docker1
+      services: docker
+      os: linux
+      script:
+        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make all
+    - stage: docker2
       services: docker
       os: linux
       script:
