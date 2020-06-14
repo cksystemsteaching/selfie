@@ -146,14 +146,18 @@ void x86SaveAddress() {
 }
 
 void x86AdressFix() {
+  uint64_t binary_length_backup;
+  uint64_t x86ByteCount_backup;
   uint64_t opcode;
   uint64_t pcbackup;
   uint64_t targetAdr;
   uint64_t i;
 
   pc = ELF_ENTRY_POINT;
+  binary_length_backup = binary_length;
+  x86ByteCount_backup = x86ByteCount;
 
-  while(pc < code_length + ELF_ENTRY_POINT){
+  while(pc < code_length + ELF_ENTRY_POINT) {
     fetch();
     pc = pc + INSTRUCTIONSIZE;
 
@@ -167,41 +171,6 @@ void x86AdressFix() {
     if (opcode == TWO_BYTE_INSTRUCTION) {
       opcode = x86NextByte();
       if (opcode == X86_JE) {
-	pc = x86NextWord();
-	if (is_virtual_address_mapped(pt, pc)) {
-	  fetch();
-	  targetAdr = ir;
-	  pc = pcbackup;
-	  fetch();
-	  x86WriteWord(targetAdr - ir);
-	}
-      }
-    }
-    else if (right_shift(opcode, 4) == 4) { //some REX prefix
-      opcode = x86NextByte();
-      if (opcode == X86_LEA) {
-	i = 0;
-	while (i < 6) {
-	  opcode = x86NextByte();
-	  i = i + 1;
-	}
-	if (opcode == X86_JMPQ) {
-	  pc = x86NextWord();
-	  if (is_virtual_address_mapped(pt, pc)) {
-	    fetch();
-	    targetAdr = ir;
-	    pc = pcbackup;
-	    fetch();
-	    x86WriteWord(targetAdr - ir);
-	  }
-	}
-      }
-      else if (opcode == X86_CMP) {
-	opcode = x86NextByte();
-	opcode = x86NextByte();
-	if (opcode == TWO_BYTE_INSTRUCTION) {
-	  opcode = x86NextByte();
-	  if (opcode == X86_JE) {
 	    pc = x86NextWord();
 	    if (is_virtual_address_mapped(pt, pc)) {
 	      fetch();
@@ -210,47 +179,85 @@ void x86AdressFix() {
 	      fetch();
 	      x86WriteWord(targetAdr - ir);
 	    }
-	  }
-	}
+      }
+    }
+    else if (right_shift(opcode, 4) == 4) { //some REX prefix
+      opcode = x86NextByte();
+      if (opcode == X86_LEA) {
+        i = 0;
+        while (i < 6) {
+          opcode = x86NextByte();
+          i = i + 1;
+        }
+        if (opcode == X86_JMPQ) {
+          pc = x86NextWord();
+          if (is_virtual_address_mapped(pt, pc)) {
+            fetch();
+            targetAdr = ir;
+            pc = pcbackup;
+            fetch();
+            x86WriteWord(targetAdr - ir);
+          }
+        }
+      }
+      else if (opcode == X86_CMP) {
+        opcode = x86NextByte();
+        opcode = x86NextByte();
+        if (opcode == TWO_BYTE_INSTRUCTION) {
+          opcode = x86NextByte();
+          if (opcode == X86_JE) {
+            pc = x86NextWord();
+            if (is_virtual_address_mapped(pt, pc)) {
+              fetch();
+              targetAdr = ir;
+              pc = pcbackup;
+              fetch();
+              x86WriteWord(targetAdr - ir);
+            }
+          }
+        }
       }
       else if (right_shift(opcode, 4) == 11) { //0xb prefix
-	i = 0;
-	while (i < 10) {
-	  opcode = x86NextByte();
-	  i = i + 1;
-	}
-	if (opcode == X86_CMP) {
-	  opcode = x86NextByte();
-	  opcode = x86NextByte();
-	  if (opcode == TWO_BYTE_INSTRUCTION) {
-	    opcode = x86NextByte();
-	    if (opcode == X86_JE) {
-	      pc = x86NextWord();
-	      if (is_virtual_address_mapped(pt, pc)) {
-		fetch();
-		targetAdr = ir;
-		pc = pcbackup;
-		fetch();
-		x86WriteWord(targetAdr - ir);
+        i = 0;
+        while (i < 10) {
+          opcode = x86NextByte();
+          i = i + 1;
+        }
+        if (opcode == X86_CMP) {
+          opcode = x86NextByte();
+          opcode = x86NextByte();
+          if (opcode == TWO_BYTE_INSTRUCTION) {
+            opcode = x86NextByte();
+            if (opcode == X86_JE) {
+              pc = x86NextWord();
+              if (is_virtual_address_mapped(pt, pc)) {
+                fetch();
+                targetAdr = ir;
+                pc = pcbackup;
+                fetch();
+                x86WriteWord(targetAdr - ir);
+              }
+            }
+	        }
 	      }
-	    }
-	  }
-	}
       }
     }
     else if (opcode == X86_JMPQ) {
       pc = x86NextWord();
       if (is_virtual_address_mapped(pt, pc)) {
-	fetch();
-	targetAdr = ir;
-	pc = pcbackup;
-	fetch();
-	x86WriteWord(targetAdr - ir);
+        fetch();
+        targetAdr = ir;
+        pc = pcbackup;
+        fetch();
+        x86WriteWord(targetAdr - ir);
       }
     }
 
     pc = pcbackup;
   }
+  
+  binary_length = binary_length_backup;
+  x86ByteCount = x86ByteCount_backup;
 }
 
 void x86WriteWord(uint64_t word) {
@@ -437,15 +444,14 @@ void translate_lui() {
     if (get_opcode(ir) == OP_IMM) {
       decode_i_format();
       if (rd == REG_GP) {
-	if (binary_gp_address == 0) {
-	  value = 0;
-	  op1 = x86GetRegister(rd);
-	  //x86SaveAddress();
-	  pc =  pc + INSTRUCTIONSIZE;
-	  x86SaveAddress();
-	  pc =  pc + INSTRUCTIONSIZE;
-	  binary_gp_address = binary_length * SIZEOFUINT64 + x86ByteCount + 2; //address where later the real value needs to be filled in
-	}
+        if (binary_gp_address == 0) {
+          value = 0;
+          op1 = x86GetRegister(rd);
+          pc =  pc + INSTRUCTIONSIZE;
+          x86SaveAddress();
+          pc =  pc + INSTRUCTIONSIZE;
+          binary_gp_address = binary_length * SIZEOFUINT64 + x86ByteCount + 2; //address where later the real value needs to be filled in
+        }
       }
     }
   }
@@ -498,13 +504,13 @@ void translate_addi() {
     if (rs1 == REG_SP) {
       if (rd == REG_SP) {
 
-	pc =  pc + INSTRUCTIONSIZE;
-	fetch();
-	pc = pc - INSTRUCTIONSIZE;
+        pc =  pc + INSTRUCTIONSIZE;
+        fetch();
+        pc = pc - INSTRUCTIONSIZE;
 
-	if (get_opcode(ir) == OP_SD) {
-	  return;
-	}
+        if (get_opcode(ir) == OP_SD) {
+          return;
+        }
       }
     }
   }
@@ -826,49 +832,49 @@ void translate_ld() {
       fetch();
 
       if (get_opcode(ir) == OP_IMM) {
-      decode_i_format();
-	if (funct3 == F3_ADDI) {
-	  if (op1 > 7) {
-	    length = 2;
-	    *(instr_bytes + 0) = x86GetPrefix(op1, 0, 0);
-	    *(instr_bytes + 1) = X86_POP + x86GetModRMValue(op1, 0);
-	    x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
-	  }
-	  else {
-	    length = 1;
-	    *(instr_bytes + 0) = X86_POP + op1;
-	    x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
-	  }
-	  x86SaveAddress();
+        decode_i_format();
+        if (funct3 == F3_ADDI) {
+          if (op1 > 7) {
+            length = 2;
+            *(instr_bytes + 0) = x86GetPrefix(op1, 0, 0);
+            *(instr_bytes + 1) = X86_POP + x86GetModRMValue(op1, 0);
+            x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
+          }
+          else {
+            length = 1;
+            *(instr_bytes + 0) = X86_POP + op1;
+            x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
+          }
+          x86SaveAddress();
 
-	  x86emitInstructionBuffer(length);
+          x86emitInstructionBuffer(length);
 
-	  if (imm == 8) {
-	    return;
-	  }
+          if (imm == 8) {
+            return;
+          }
 
-	  if (imm > 8)
-	    imm = imm - 8;
+          if (imm > 8)
+            imm = imm - 8;
 
-	  op1 = x86GetRegister(rd);
-	  *(instr_bytes + 0) = x86GetPrefix(op1, 0, 1);
-	  *(instr_bytes + 1) = X86_IMM;
-	  *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, 0); //opcode extension = 0 -> addi
-	  *(instr_bytes + 3) = right_shift(left_shift(imm, 56), 56);
-	  *(instr_bytes + 4) = right_shift(left_shift(imm, 48), 56);
-	  *(instr_bytes + 5) = right_shift(left_shift(imm, 40), 56);
-	  *(instr_bytes + 6) = right_shift(left_shift(imm, 32), 56);
-	  x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
+          op1 = x86GetRegister(rd);
+          *(instr_bytes + 0) = x86GetPrefix(op1, 0, 1);
+          *(instr_bytes + 1) = X86_IMM;
+          *(instr_bytes + 2) = 192 + x86GetModRMValue(op1, 0); //opcode extension = 0 -> addi
+          *(instr_bytes + 3) = right_shift(left_shift(imm, 56), 56);
+          *(instr_bytes + 4) = right_shift(left_shift(imm, 48), 56);
+          *(instr_bytes + 5) = right_shift(left_shift(imm, 40), 56);
+          *(instr_bytes + 6) = right_shift(left_shift(imm, 32), 56);
+          x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
 
-	  x86emitInstructionBuffer(7);
+          x86emitInstructionBuffer(7);
 
-	  return;
-	}
-	else
-	  pc = pc - INSTRUCTIONSIZE;
+          return;
+        }
+	      else
+	        pc = pc - INSTRUCTIONSIZE;
       }
       else
-	pc = pc - INSTRUCTIONSIZE;
+	      pc = pc - INSTRUCTIONSIZE;
     }
   }
 
@@ -919,15 +925,15 @@ void translate_sd() {
   if (imm == 0) {
     if (rs1 == REG_SP) {
       if (op2 > 7) {
-	length = 2;
-	*(instr_bytes + 0) = x86GetPrefix(op2, 0, 0);
-	*(instr_bytes + 1) = X86_PUSH + x86GetModRMValue(op2, 0);
-	x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
+        length = 2;
+        *(instr_bytes + 0) = x86GetPrefix(op2, 0, 0);
+        *(instr_bytes + 1) = X86_PUSH + x86GetModRMValue(op2, 0);
+        x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
       }
       else {
-	length = 1;
-	*(instr_bytes + 0) = X86_PUSH + x86GetModRMValue(op2, 0);
-	x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
+        length = 1;
+        *(instr_bytes + 0) = X86_PUSH + x86GetModRMValue(op2, 0);
+        x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
       }
 
       x86emitInstructionBuffer(length);
@@ -1050,7 +1056,8 @@ void translate_jalr() {
     x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
 
     x86emitInstructionBuffer(3);
-  } else {
+  } 
+  else {
     print("jalr found with imm != 0");
     println();
   }
@@ -1181,7 +1188,8 @@ void selfie_translate() {
 
   binary_length = binary_gp_address / SIZEOFUINT64;
   x86ByteCount = binary_gp_address % SIZEOFUINT64;
-  x86WriteWord(ELF_ENTRY_POINT + x86binaryLength);
+  // now global pointer can be inserted into the code
+  x86WriteWord(ELF_ENTRY_POINT + x86binaryLength); 
 
   binary_length = x86binaryLength;
 
