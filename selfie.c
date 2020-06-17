@@ -6645,7 +6645,8 @@ void do_lui() {
       *(registers + rd) = next_rd_value;
     else
       nopc_lui = nopc_lui + 1;
-  }
+  } else
+    nopc_lui = nopc_lui + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6695,7 +6696,8 @@ void do_addi() {
       *(registers + rd) = next_rd_value;
     else
       nopc_addi = nopc_addi + 1;
-  }
+  } else
+    nopc_addi = nopc_addi + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6727,7 +6729,8 @@ void do_add() {
       *(registers + rd) = next_rd_value;
     else
       nopc_add = nopc_add + 1;
-  }
+  } else
+    nopc_add = nopc_add + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6745,7 +6748,8 @@ void do_sub() {
       *(registers + rd) = next_rd_value;
     else
       nopc_sub = nopc_sub + 1;
-  }
+  } else
+    nopc_sub = nopc_sub + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6765,7 +6769,8 @@ void do_mul() {
       *(registers + rd) = next_rd_value;
     else
       nopc_mul = nopc_mul + 1;
-  }
+  } else
+    nopc_mul = nopc_mul + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6786,7 +6791,8 @@ void do_divu() {
         *(registers + rd) = next_rd_value;
       else
         nopc_divu = nopc_divu + 1;
-    }
+    } else
+      nopc_divu = nopc_divu + 1;
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -6809,7 +6815,8 @@ void do_remu() {
         *(registers + rd) = next_rd_value;
       else
         nopc_remu = nopc_remu + 1;
-    }
+    } else
+      nopc_remu = nopc_remu + 1;
 
     pc = pc + INSTRUCTIONSIZE;
 
@@ -6834,7 +6841,8 @@ void do_sltu() {
       *(registers + rd) = next_rd_value;
     else
       nopc_sltu = nopc_sltu + 1;
-  }
+  } else
+    nopc_sltu = nopc_sltu + 1;
 
   pc = pc + INSTRUCTIONSIZE;
 
@@ -6906,7 +6914,8 @@ uint64_t do_ld() {
           *(registers + rd) = next_rd_value;
         else
           nopc_ld = nopc_ld + 1;
-      }
+      } else
+        nopc_ld = nopc_ld + 1;
 
       // keep track of instruction address for profiling loads
       a = (pc - entry_point) / INSTRUCTIONSIZE;
@@ -7112,7 +7121,8 @@ void do_jal() {
     // just jump forward
     pc = pc + imm;
 
-    nopc_jal = nopc_jal + 1;
+    if (imm == INSTRUCTIONSIZE)
+      nopc_jal = nopc_jal + 1;
   }
 
   ic_jal = ic_jal + 1;
