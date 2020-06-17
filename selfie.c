@@ -260,6 +260,8 @@ uint64_t output_fd   = 1; // 1 is file descriptor of standard output
 char*    output_buffer = (char*) 0;
 uint64_t output_cursor = 0; // cursor for output buffer
 
+char init_done = 0; // used to check for errors during initialization
+
 // ------------------------- INITIALIZATION ------------------------
 
 void init_library() {
@@ -301,6 +303,8 @@ void init_library() {
   // allocate and touch to make sure memory is mapped for read calls
   binary_buffer  = smalloc(SIZEOFUINT64);
   *binary_buffer = 0;
+
+  init_done = 1;
 }
 
 void reset_library() {
@@ -2062,6 +2066,10 @@ void put_character(uint64_t c) {
 
     output_cursor = output_cursor + 1;
   } else {
+    if (!init_done) {
+      // if error during init, character_buffer may not be set
+      exit(EXITCODE_IOERROR);
+    }
     *character_buffer = c;
 
     // assert: character_buffer is mapped
@@ -2368,7 +2376,9 @@ uint64_t* smalloc(uint64_t size) {
     // any address including null
     return memory;
   else if (memory == (uint64_t*) 0) {
-    printf1("%s: malloc out of memory\n", selfie_name);
+    if (init_done) { // cannot print error message if error during init
+      printf1("%s: malloc out of memory\n", selfie_name);
+    }
 
     exit(EXITCODE_OUTOFVIRTUALMEMORY);
   }
