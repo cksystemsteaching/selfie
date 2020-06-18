@@ -28,6 +28,7 @@ uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, c
 
 uint64_t ppn_bump;
 uint64_t kpalloc() {
+    // TODO: zero this memory beforehand or else we will have some serious problems since the 'valid' bit in pt entries could be 1 when it should be 0
     return ppn_bump++;
 }
 
