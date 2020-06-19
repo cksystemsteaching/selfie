@@ -168,6 +168,7 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
 void handle_load_page_fault(struct context* context, uint64_t stval) {
   if (stval < context->program_break)
     kmap_page(context->pt, stval, 1);
+  // TODO: check if the page-fault was caused by stack growth and map it if that's the case
   else {
     printf("segmentation fault: context %d tried to load from address 0x%x\n", context->id, stval);
     // TODO: kill this context or something like that
@@ -182,6 +183,7 @@ void handle_load_page_fault(struct context* context, uint64_t stval) {
 void handle_store_amo_page_fault(struct context* context, uint64_t stval) {
   if (stval < context->program_break)
     kmap_page(context->pt, stval, 1);
+  // TODO: check if the page-fault was caused by stack growth and map it if that's the case
   else {
     printf("segmentation fault: context %d tried to store/AMO at address 0x%x\n", context->id, stval);
     // TODO: kill this context or something like that
