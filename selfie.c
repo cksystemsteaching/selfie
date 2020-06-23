@@ -1377,6 +1377,9 @@ void reset_register_access_counters() {
   // stack and frame pointer registers are initialized by boot loader
   *(register_writes + REG_SP) = 1;
   *(register_writes + REG_S0) = 1;
+
+  // a6 register is written to by the kernel
+  *(register_writes + REG_A6) = 1;
 }
 
 void reset_nop_counters() {
