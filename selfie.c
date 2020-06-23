@@ -8304,6 +8304,9 @@ void up_load_arguments(uint64_t* context, uint64_t argc, uint64_t* argv) {
 
   // store stack pointer value in stack pointer register
   *(get_regs(context) + REG_SP) = SP;
+
+  // initialize frame pointer register for completeness (redundant)
+  *(get_regs(context) + REG_S0) = 0;
 }
 
 uint64_t handle_system_call(uint64_t* context) {
