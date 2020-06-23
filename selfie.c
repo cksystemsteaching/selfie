@@ -687,6 +687,11 @@ void init_register();
 char* get_register_name(uint64_t reg);
 void  print_register_name(uint64_t reg);
 
+uint64_t read_register(uint64_t reg);
+void     write_register(uint64_t reg);
+
+void update_register_counters();
+
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
 uint64_t NUMBEROFREGISTERS   = 32;
@@ -1151,7 +1156,7 @@ void print_data(uint64_t data);
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
 
-void translate_to_assembler();
+void print_instruction();
 
 void selfie_disassemble(uint64_t verbose);
 
@@ -1222,6 +1227,9 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max);
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max);
 void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters);
 
+void print_per_register_profile(uint64_t reg);
+void print_registers_profile();
+
 void print_profile();
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
@@ -1245,15 +1253,16 @@ uint64_t ECALL = 14;
 
 // exceptions
 
-uint64_t EXCEPTION_NOEXCEPTION        = 0;
-uint64_t EXCEPTION_PAGEFAULT          = 1;
-uint64_t EXCEPTION_SYSCALL            = 2;
-uint64_t EXCEPTION_TIMER              = 3;
-uint64_t EXCEPTION_INVALIDADDRESS     = 4;
-uint64_t EXCEPTION_DIVISIONBYZERO     = 5;
-uint64_t EXCEPTION_UNKNOWNINSTRUCTION = 6;
-uint64_t EXCEPTION_SYMBOLICMERGE      = 7; // for symbolic execution
-uint64_t EXCEPTION_SYMBOLICRECURSION  = 8; // for symbolic execution
+uint64_t EXCEPTION_NOEXCEPTION           = 0;
+uint64_t EXCEPTION_PAGEFAULT             = 1;
+uint64_t EXCEPTION_SYSCALL               = 2;
+uint64_t EXCEPTION_TIMER                 = 3;
+uint64_t EXCEPTION_INVALIDADDRESS        = 4;
+uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
+uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 6;
+uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 7;
+uint64_t EXCEPTION_SYMBOLICMERGE         = 8; // for symbolic execution
+uint64_t EXCEPTION_SYMBOLICRECURSION     = 9; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1298,6 +1307,11 @@ uint64_t* pt = (uint64_t*) 0; // page table
 uint64_t timer = 0; // counter for timer interrupt
 uint64_t trap  = 0; // flag for creating a trap
 
+// register access counters
+
+uint64_t* register_reads  = (uint64_t*) 0;
+uint64_t* register_writes = (uint64_t*) 0;
+
 // effective nop counters
 
 uint64_t nopc_lui  = 0;
@@ -1330,15 +1344,16 @@ uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores p
 void init_interpreter() {
   EXCEPTIONS = smalloc((EXCEPTION_SYMBOLICRECURSION + 1) * SIZEOFUINT64STAR);
 
-  *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)        = (uint64_t) "no exception";
-  *(EXCEPTIONS + EXCEPTION_PAGEFAULT)          = (uint64_t) "page fault";
-  *(EXCEPTIONS + EXCEPTION_SYSCALL)            = (uint64_t) "syscall";
-  *(EXCEPTIONS + EXCEPTION_TIMER)              = (uint64_t) "timer interrupt";
-  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)     = (uint64_t) "invalid address";
-  *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)     = (uint64_t) "division by zero";
-  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION) = (uint64_t) "unknown instruction";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)      = (uint64_t) "symbolic merge";
-  *(EXCEPTIONS + EXCEPTION_SYMBOLICRECURSION)  = (uint64_t) "symbolic recursion";
+  *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
+  *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
+  *(EXCEPTIONS + EXCEPTION_SYSCALL)               = (uint64_t) "syscall";
+  *(EXCEPTIONS + EXCEPTION_TIMER)                 = (uint64_t) "timer interrupt";
+  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
+  *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)        = (uint64_t) "division by zero";
+  *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
+  *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)         = (uint64_t) "symbolic merge";
+  *(EXCEPTIONS + EXCEPTION_SYMBOLICRECURSION)     = (uint64_t) "symbolic recursion";
 }
 
 void reset_interpreter() {
@@ -1353,6 +1368,15 @@ void reset_interpreter() {
   trap = 0;
 
   timer = TIMEROFF;
+}
+
+void reset_register_access_counters() {
+  register_reads  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  register_writes = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  // stack and frame pointer registers are initialized by boot loader
+  *(register_writes + REG_SP) = 1;
+  *(register_writes + REG_S0) = 1;
 }
 
 void reset_nop_counters() {
@@ -1373,6 +1397,7 @@ void reset_nop_counters() {
 
 void reset_profiler() {
   reset_instruction_counters();
+  reset_register_access_counters();
   reset_nop_counters();
 
   calls               = 0;
@@ -4962,6 +4987,36 @@ void print_register_name(uint64_t reg) {
   print(get_register_name(reg));
 }
 
+uint64_t read_register(uint64_t reg) {
+  if (reg != REG_ZR) {
+    if (*(register_writes + reg) > 0)
+      // register has been written to before
+      *(register_reads + reg) = *(register_reads + reg) + 1;
+    else {
+      print_instruction();
+      print(": reading from uninitialized register ");
+      print_register_name(reg);
+      println();
+
+      throw_exception(EXCEPTION_UNINITIALIZEDREGISTER, reg);
+
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+void write_register(uint64_t reg) {
+  *(register_writes + reg) = *(register_writes + reg) + 1;
+}
+
+void update_register_counters() {
+  if (read_register(rs1))
+    if (read_register(rs2))
+      write_register(rd);
+}
+
 // -----------------------------------------------------------------
 // ------------------------ ENCODER/DECODER ------------------------
 // -----------------------------------------------------------------
@@ -6641,6 +6696,8 @@ void do_lui() {
 
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of lui
     next_rd_value = left_shift(imm, 12);
@@ -6692,6 +6749,8 @@ void do_addi() {
 
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of addi
     next_rd_value = *(registers + rs1) + imm;
@@ -6725,6 +6784,8 @@ void print_add_sub_mul_divu_remu_sltu_before() {
 void do_add() {
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of add
     next_rd_value = *(registers + rs1) + *(registers + rs2);
@@ -6744,6 +6805,8 @@ void do_add() {
 void do_sub() {
   uint64_t next_rd_value;
 
+  update_register_counters();
+
   if (rd != REG_ZR) {
     // semantics of sub
     next_rd_value = *(registers + rs1) - *(registers + rs2);
@@ -6762,6 +6825,8 @@ void do_sub() {
 
 void do_mul() {
   uint64_t next_rd_value;
+
+  update_register_counters();
 
   if (rd != REG_ZR) {
     // semantics of mul
@@ -6787,6 +6852,8 @@ void do_divu() {
   uint64_t next_rd_value;
 
   if (*(registers + rs2) != 0) {
+    update_register_counters();
+
     if (rd != REG_ZR) {
       // semantics of divu
       next_rd_value = *(registers + rs1) / *(registers + rs2);
@@ -6811,6 +6878,8 @@ void do_remu() {
   uint64_t next_rd_value;
 
   if (*(registers + rs2) != 0) {
+    update_register_counters();
+
     if (rd != REG_ZR) {
       // semantics of remu
       next_rd_value = *(registers + rs1) % *(registers + rs2);
@@ -6833,6 +6902,8 @@ void do_sltu() {
   // set on less than unsigned
 
   uint64_t next_rd_value;
+
+  update_register_counters();
 
   if (rd != REG_ZR) {
     // semantics of sltu
@@ -6910,6 +6981,8 @@ uint64_t do_ld() {
 
   if (is_valid_virtual_address(vaddr)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
+      update_register_counters();
+
       if (rd != REG_ZR) {
         // semantics of ld
         next_rd_value = load_virtual_memory(pt, vaddr);
@@ -6995,6 +7068,8 @@ uint64_t do_sd() {
 
   if (is_valid_virtual_address(vaddr)) {
     if (is_virtual_address_mapped(pt, vaddr)) {
+      update_register_counters();
+
       // semantics of sd
       if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
         store_virtual_memory(pt, vaddr, *(registers + rs2));
@@ -7053,6 +7128,8 @@ void record_beq() {
 void do_beq() {
   // branch on equal
 
+  update_register_counters();
+
   // semantics of beq
   if (*(registers + rs1) == *(registers + rs2))
     pc = pc + imm;
@@ -7093,6 +7170,8 @@ void do_jal() {
   uint64_t a;
 
   // jump and link
+
+  update_register_counters();
 
   if (rd != REG_ZR) {
     // first link
@@ -7152,6 +7231,8 @@ void do_jalr() {
   uint64_t next_pc;
 
   // jump and link register
+
+  update_register_counters();
 
   // prepare jump rs1-relative with LSB reset
   next_pc = left_shift(right_shift(*(registers + rs1) + imm, 1), 1);
@@ -7254,7 +7335,7 @@ void print_data(uint64_t data) {
 // -------------------------- DISASSEMBLER -------------------------
 // -----------------------------------------------------------------
 
-void translate_to_assembler() {
+void print_instruction() {
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI)
     print_addi();
@@ -7321,7 +7402,7 @@ void selfie_disassemble(uint64_t verbose) {
     ir = load_instruction(pc);
 
     decode();
-    translate_to_assembler();
+    print_instruction();
     println();
 
     pc = pc + INSTRUCTIONSIZE;
@@ -7659,7 +7740,7 @@ void execute_undo() {
 }
 
 void execute_debug() {
-  translate_to_assembler();
+  print_instruction();
 
   // assert: 1 <= is <= number of RISC-U instructions
   if (is == ADDI){
@@ -7811,6 +7892,31 @@ void print_per_instruction_profile(char* message, uint64_t total, uint64_t* coun
   println();
 }
 
+void print_per_register_profile(uint64_t reg) {
+  printf1("%s: ", selfie_name);
+  print_register_name(reg);
+  printf3(":       %d,%d[%.2u]\n",
+    (char*) *(register_reads + reg),
+    (char*) *(register_writes + reg),
+    (char*) fixed_point_ratio(*(register_reads + reg), *(register_writes + reg), 2));
+}
+
+void print_registers_profile() {
+  uint64_t reg;
+
+  printf1("%s: register: reads,writes[utilization]\n", selfie_name);
+
+  reg = 1;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (*(register_reads + reg) > 0)
+      if (*(register_writes + reg) > 0)
+        print_per_register_profile(reg);
+
+    reg = reg + 1;
+  }
+}
+
 void print_profile() {
   printf5("%s: summary: %u executed instructions [%.2u%% nops] and %.2uMB(%.2u%%) mapped memory\n", selfie_name,
     (char*) get_total_number_of_instructions(),
@@ -7820,6 +7926,8 @@ void print_profile() {
 
   if (get_total_number_of_instructions() > 0) {
     print_instruction_counters();
+
+    print_registers_profile();
 
     if (code_line_number != (uint64_t*) 0)
       printf1("%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
