@@ -255,7 +255,7 @@ void x86AdressFix() {
 
     pc = pcbackup;
   }
-  
+
   binary_length = binary_length_backup;
   x86ByteCount = x86ByteCount_backup;
 }
@@ -346,7 +346,7 @@ uint64_t x86GetPrefix(uint64_t op1, uint64_t op2, uint64_t wide) {
 
 uint64_t x86GetRegister(uint64_t reg) {
   if(reg == REG_SP) return REG_RSP;
-  if(reg == REG_FP) return REG_RBP;
+  if(reg == REG_S0) return REG_RBP;
   if(reg == REG_GP) return REG_RBX;
   if(reg == REG_RA) return REG_R15;
   if(reg == REG_T0) return REG_RCX;
@@ -1056,7 +1056,7 @@ void translate_jalr() {
     x86TotalEmittedInstructions = x86TotalEmittedInstructions + 1;
 
     x86emitInstructionBuffer(3);
-  } 
+  }
   else {
     print("jalr found with imm != 0");
     println();
@@ -1189,7 +1189,7 @@ void selfie_translate() {
   binary_length = binary_gp_address / SIZEOFUINT64;
   x86ByteCount = binary_gp_address % SIZEOFUINT64;
   // now global pointer can be inserted into the code
-  x86WriteWord(ELF_ENTRY_POINT + x86binaryLength); 
+  x86WriteWord(ELF_ENTRY_POINT + x86binaryLength);
 
   binary_length = x86binaryLength;
 
