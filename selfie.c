@@ -5060,7 +5060,7 @@ uint64_t get_immediate_i_format(uint64_t instruction) {
 
 void decode_i_format() {
   funct7 = 0;
-  rs2    = 0;
+  rs2    = REG_ZR;
   rs1    = get_rs1(ir);
   funct3 = get_funct3(ir);
   rd     = get_rd(ir);
@@ -5110,7 +5110,7 @@ void decode_s_format() {
   rs2    = get_rs2(ir);
   rs1    = get_rs1(ir);
   funct3 = get_funct3(ir);
-  rd     = 0;
+  rd     = REG_ZR;
   imm    = get_immediate_s_format(ir);
 }
 
@@ -5167,7 +5167,7 @@ void decode_b_format() {
   rs2    = get_rs2(ir);
   rs1    = get_rs1(ir);
   funct3 = get_funct3(ir);
-  rd     = 0;
+  rd     = REG_ZR;
   imm    = get_immediate_b_format(ir);
 }
 
@@ -5219,8 +5219,8 @@ uint64_t get_immediate_j_format(uint64_t instruction) {
 
 void decode_j_format() {
   funct7 = 0;
-  rs2    = 0;
-  rs1    = 0;
+  rs2    = REG_ZR;
+  rs1    = REG_ZR;
   funct3 = 0;
   rd     = get_rd(ir);
   imm    = get_immediate_j_format(ir);
@@ -5253,8 +5253,8 @@ uint64_t get_immediate_u_format(uint64_t instruction) {
 
 void decode_u_format() {
   funct7 = 0;
-  rs2    = 0;
-  rs1    = 0;
+  rs2    = REG_ZR;
+  rs1    = REG_ZR;
   funct3 = 0;
   rd     = get_rd(ir);
   imm    = get_immediate_u_format(ir);
