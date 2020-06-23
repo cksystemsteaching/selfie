@@ -498,7 +498,7 @@ uint64_t report_undefined_procedures();
 // |  4 | type    | UINT64_T, UINT64STAR_T, VOID_T
 // |  5 | value   | VARIABLE: initial value
 // |  6 | address | VARIABLE, BIGINT, STRING: offset, PROCEDURE: address
-// |  7 | scope   | REG_GP, REG_FP
+// |  7 | scope   | REG_GP, REG_S0
 // +----+---------+
 
 uint64_t* allocate_symbol_table_entry() {
@@ -700,7 +700,7 @@ uint64_t REG_TP  = 4;
 uint64_t REG_T0  = 5;
 uint64_t REG_T1  = 6;
 uint64_t REG_T2  = 7;
-uint64_t REG_FP  = 8;
+uint64_t REG_S0  = 8;
 uint64_t REG_S1  = 9;
 uint64_t REG_A0  = 10;
 uint64_t REG_A1  = 11;
@@ -740,7 +740,7 @@ void init_register() {
   *(REGISTERS + REG_T0)  = (uint64_t) "t0";
   *(REGISTERS + REG_T1)  = (uint64_t) "t1";
   *(REGISTERS + REG_T2)  = (uint64_t) "t2";
-  *(REGISTERS + REG_FP)  = (uint64_t) "s0"; // used to be fp
+  *(REGISTERS + REG_S0)  = (uint64_t) "s0"; // used to be fp
   *(REGISTERS + REG_S1)  = (uint64_t) "s1";
   *(REGISTERS + REG_A0)  = (uint64_t) "a0";
   *(REGISTERS + REG_A1)  = (uint64_t) "a1";
@@ -2974,7 +2974,7 @@ void create_symbol_table_entry(uint64_t which_table, char* string, uint64_t line
     else if (class == STRING)
       number_of_strings = number_of_strings + 1;
   } else if (which_table == LOCAL_TABLE) {
-    set_scope(new_entry, REG_FP);
+    set_scope(new_entry, REG_S0);
     set_next_entry(new_entry, local_symbol_table);
     local_symbol_table = new_entry;
   } else {
@@ -3504,10 +3504,10 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes) {
   emit_addi(REG_SP, REG_SP, -REGISTERSIZE);
 
   // save caller's frame pointer
-  emit_sd(REG_SP, 0, REG_FP);
+  emit_sd(REG_SP, 0, REG_S0);
 
   // set callee's frame pointer
-  emit_addi(REG_FP, REG_SP, 0);
+  emit_addi(REG_S0, REG_SP, 0);
 
   // allocate memory for callee's local variables
   if (number_of_local_variable_bytes > 0) {
@@ -3525,10 +3525,10 @@ void procedure_prologue(uint64_t number_of_local_variable_bytes) {
 
 void procedure_epilogue(uint64_t number_of_parameter_bytes) {
   // deallocate memory for callee's frame pointer and local variables
-  emit_addi(REG_SP, REG_FP, 0);
+  emit_addi(REG_SP, REG_S0, 0);
 
   // restore caller's frame pointer
-  emit_ld(REG_FP, REG_SP, 0);
+  emit_ld(REG_S0, REG_SP, 0);
 
   // deallocate memory for caller's frame pointer
   emit_addi(REG_SP, REG_SP, REGISTERSIZE);
@@ -7420,7 +7420,7 @@ void print_register_octal(uint64_t reg) {
 uint64_t is_system_register(uint64_t reg) {
   if (reg == REG_GP)
     return 1;
-  else if (reg == REG_FP)
+  else if (reg == REG_S0)
     return 1;
   else if (reg == REG_RA)
     return 1;
