@@ -687,6 +687,11 @@ void init_register();
 char* get_register_name(uint64_t reg);
 void  print_register_name(uint64_t reg);
 
+uint64_t is_stack_register(uint64_t reg);
+uint64_t is_system_register(uint64_t reg);
+uint64_t is_argument_register(uint64_t reg);
+uint64_t is_temporary_register(uint64_t reg);
+
 uint64_t read_register(uint64_t reg);
 void     write_register(uint64_t reg);
 
@@ -1203,10 +1208,9 @@ void reset_interpreter();
 void reset_nop_counters();
 void reset_profiler();
 
-void     print_register_hexadecimal(uint64_t reg);
-void     print_register_octal(uint64_t reg);
-uint64_t is_system_register(uint64_t reg);
-void     print_register_value(uint64_t reg);
+void print_register_hexadecimal(uint64_t reg);
+void print_register_octal(uint64_t reg);
+void print_register_value(uint64_t reg);
 
 void print_exception(uint64_t exception, uint64_t faulting_page);
 void throw_exception(uint64_t exception, uint64_t faulting_page);
@@ -1227,8 +1231,10 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max);
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max);
 void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters);
 
+void print_register_profile(char* message, char* padding, uint64_t reads, uint64_t writes);
 void print_per_register_profile(uint64_t reg);
-void print_registers_profile();
+
+void print_register_memory_profile();
 
 void print_profile();
 
@@ -1309,8 +1315,17 @@ uint64_t trap  = 0; // flag for creating a trap
 
 // register access counters
 
-uint64_t* register_reads  = (uint64_t*) 0;
-uint64_t* register_writes = (uint64_t*) 0;
+uint64_t* reads_per_register  = (uint64_t*) 0;
+uint64_t* writes_per_register = (uint64_t*) 0;
+
+uint64_t stack_register_reads  = 0;
+uint64_t stack_register_writes = 0;
+
+uint64_t argument_register_reads  = 0;
+uint64_t argument_register_writes = 0;
+
+uint64_t temporary_register_reads  = 0;
+uint64_t temporary_register_writes = 0;
 
 // effective nop counters
 
@@ -1371,15 +1386,15 @@ void reset_interpreter() {
 }
 
 void reset_register_access_counters() {
-  register_reads  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  register_writes = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  reads_per_register  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  writes_per_register = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
 
   // stack and frame pointer registers are initialized by boot loader
-  *(register_writes + REG_SP) = 1;
-  *(register_writes + REG_S0) = 1;
+  *(writes_per_register + REG_SP) = 1;
+  *(writes_per_register + REG_S0) = 1;
 
   // a6 register is written to by the kernel
-  *(register_writes + REG_A6) = 1;
+  *(writes_per_register + REG_A6) = 1;
 }
 
 void reset_nop_counters() {
@@ -4990,11 +5005,49 @@ void print_register_name(uint64_t reg) {
   print(get_register_name(reg));
 }
 
+uint64_t is_stack_register(uint64_t reg) {
+  if (reg == REG_SP)
+    return 1;
+  else if (reg == REG_S0)
+    return 1;
+  else if (reg == REG_RA)
+    return 1;
+  else
+    return 0;
+}
+
+uint64_t is_system_register(uint64_t reg) {
+  if (reg == REG_GP)
+    return 1;
+  else
+    return is_stack_register(reg);
+}
+
+uint64_t is_argument_register(uint64_t reg) {
+  if (reg >= REG_A0)
+    if (reg <= REG_A7)
+      return 1;
+
+  return 0;
+}
+
+uint64_t is_temporary_register(uint64_t reg) {
+  if (reg >= REG_T0)
+    if (reg <= REG_T2)
+      return 1;
+    else if (reg >= REG_T3)
+      return 1;
+    else
+      return 0;
+  else
+    return 0;
+}
+
 uint64_t read_register(uint64_t reg) {
   if (reg != REG_ZR) {
-    if (*(register_writes + reg) > 0)
+    if (*(writes_per_register + reg) > 0)
       // register has been written to before
-      *(register_reads + reg) = *(register_reads + reg) + 1;
+      *(reads_per_register + reg) = *(reads_per_register + reg) + 1;
     else {
       print_instruction();
       print(": reading from uninitialized register ");
@@ -5011,7 +5064,7 @@ uint64_t read_register(uint64_t reg) {
 }
 
 void write_register(uint64_t reg) {
-  *(register_writes + reg) = *(register_writes + reg) + 1;
+  *(writes_per_register + reg) = *(writes_per_register + reg) + 1;
 }
 
 void update_register_counters() {
@@ -7501,19 +7554,6 @@ void print_register_octal(uint64_t reg) {
   printf2("%s=%o", get_register_name(reg), (char*) *(registers + reg));
 }
 
-uint64_t is_system_register(uint64_t reg) {
-  if (reg == REG_GP)
-    return 1;
-  else if (reg == REG_S0)
-    return 1;
-  else if (reg == REG_RA)
-    return 1;
-  else if (reg == REG_SP)
-    return 1;
-  else
-    return 0;
-}
-
 void print_register_value(uint64_t reg) {
   if (is_system_register(reg))
     print_register_hexadecimal(reg);
@@ -7890,31 +7930,73 @@ uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint6
 }
 
 void print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters) {
-  printf3("%s%s%u", selfie_name, message, (char*) total);
+  printf3("%s: %s%u", selfie_name, message, (char*) total);
   print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, print_per_instruction_counter(total, counters, UINT64_MAX)));
   println();
 }
 
-void print_per_register_profile(uint64_t reg) {
-  printf1("%s: ", selfie_name);
-  print_register_name(reg);
-  printf3(":       %d,%d[%.2u]\n",
-    (char*) *(register_reads + reg),
-    (char*) *(register_writes + reg),
-    (char*) fixed_point_ratio(*(register_reads + reg), *(register_writes + reg), 2));
+void print_register_profile(char* message, char* padding, uint64_t reads, uint64_t writes) {
+  if (reads + writes > 0)
+    printf6("%s: %s: %s%d,%d[%.2u]\n", selfie_name, message, padding, (char*) reads, (char*) writes, (char*) fixed_point_ratio(reads, writes, 2));
 }
 
-void print_registers_profile() {
-  uint64_t reg;
+void print_per_register_profile(uint64_t reg) {
+  print_register_profile(get_register_name(reg), "     ", *(reads_per_register + reg), *(writes_per_register + reg));
+}
 
-  printf1("%s: register: reads,writes[utilization]\n", selfie_name);
+void print_register_memory_profile() {
+  uint64_t reg;
 
   reg = 1;
 
   while (reg < NUMBEROFREGISTERS) {
-    if (*(register_reads + reg) > 0)
-      if (*(register_writes + reg) > 0)
-        print_per_register_profile(reg);
+    if (is_stack_register(reg)) {
+      stack_register_reads  = stack_register_reads + *(reads_per_register + reg);
+      stack_register_writes = stack_register_writes + *(writes_per_register + reg);
+    } else if (is_argument_register(reg)) {
+      argument_register_reads  = argument_register_reads + *(reads_per_register + reg);
+      argument_register_writes = argument_register_writes + *(writes_per_register + reg);
+    } else if (is_temporary_register(reg)) {
+      temporary_register_reads  = temporary_register_reads + *(reads_per_register + reg);
+      temporary_register_writes = temporary_register_writes + *(writes_per_register + reg);
+    }
+
+    reg = reg + 1;
+  }
+
+  printf1("%s: CPU:     reads,writes[utilization]\n", selfie_name);
+
+  print_per_register_profile(REG_GP);
+
+  print_register_profile("stack", "  ", stack_register_reads, stack_register_writes);
+
+  reg = 1;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (is_stack_register(reg))
+      print_per_register_profile(reg);
+
+    reg = reg + 1;
+  }
+
+  print_register_profile("args", "   ", argument_register_reads, argument_register_writes);
+
+  reg = 1;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (is_argument_register(reg))
+      print_per_register_profile(reg);
+
+    reg = reg + 1;
+  }
+
+  print_register_profile("temps", "  ", temporary_register_reads, temporary_register_writes);
+
+  reg = 1;
+
+  while (reg < NUMBEROFREGISTERS) {
+    if (is_temporary_register(reg))
+      print_per_register_profile(reg);
 
     reg = reg + 1;
   }
@@ -7930,17 +8012,17 @@ void print_profile() {
   if (get_total_number_of_instructions() > 0) {
     print_instruction_counters();
 
-    print_registers_profile();
-
     if (code_line_number != (uint64_t*) 0)
       printf1("%s: profile: total,max(ratio%%)@addr(line#),2max,3max\n", selfie_name);
     else
       printf1("%s: profile: total,max(ratio%%)@addr,2max,3max\n", selfie_name);
 
-    print_per_instruction_profile(": calls:   ", calls, calls_per_procedure);
-    print_per_instruction_profile(": loops:   ", iterations, iterations_per_loop);
-    print_per_instruction_profile(": loads:   ", ic_ld, loads_per_instruction);
-    print_per_instruction_profile(": stores:  ", ic_sd, stores_per_instruction);
+    print_per_instruction_profile("calls:   ", calls, calls_per_procedure);
+    print_per_instruction_profile("loops:   ", iterations, iterations_per_loop);
+    print_per_instruction_profile("loads:   ", ic_ld, loads_per_instruction);
+    print_per_instruction_profile("stores:  ", ic_sd, stores_per_instruction);
+
+    print_register_memory_profile();
   }
 }
 
@@ -8769,16 +8851,6 @@ uint64_t selfie_run(uint64_t machine) {
   reset_profiler();
   reset_microkernel();
 
-  if (machine == DIPSTER) {
-    debug          = 1;
-    debug_syscalls = 1;
-  } else if (machine == RIPSTER) {
-    debug  = 1;
-    record = 1;
-
-    init_replay_engine();
-  }
-
   init_memory(atoi(peek_argument(0)));
 
   current_context = create_context(MY_CONTEXT, 0);
@@ -8790,6 +8862,19 @@ uint64_t selfie_run(uint64_t machine) {
   printf3("%s: selfie executing %s with %uMB physical memory on ", selfie_name,
     binary_name,
     (char*) (page_frame_memory / MEGABYTE));
+
+  if (machine == DIPSTER) {
+    debug          = 1;
+    debug_syscalls = 1;
+  } else if (machine == RIPSTER) {
+    debug  = 1;
+    record = 1;
+
+    init_replay_engine();
+  } else if (machine == HYPSTER)
+    if (is_boot_level_zero())
+      // no hypster on boot level zero
+      machine = MIPSTER;
 
   run = 1;
 
@@ -8804,20 +8889,10 @@ uint64_t selfie_run(uint64_t machine) {
   else if (machine == MOBSTER)
     exit_code = mobster(current_context);
   else if (machine == HYPSTER)
-    if (is_boot_level_zero())
-      // no hypster on boot level zero
-      exit_code = mipster(current_context);
-    else
-      exit_code = hypster(current_context);
+    exit_code = hypster(current_context);
   else
     // change 0 to anywhere between 0% to 100% mipster
     exit_code = mixter(current_context, 0);
-
-  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
-    get_name(current_context),
-    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
-
-  print_profile();
 
   run = 0;
 
@@ -8825,6 +8900,13 @@ uint64_t selfie_run(uint64_t machine) {
 
   debug_syscalls = 0;
   debug          = 0;
+
+  printf3("%s: selfie terminating %s with exit code %d\n", selfie_name,
+    get_name(current_context),
+    (char*) sign_extend(exit_code, SYSCALL_BITWIDTH));
+
+  if (machine != HYPSTER)
+    print_profile();
 
   return exit_code;
 }
