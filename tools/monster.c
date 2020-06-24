@@ -1013,6 +1013,10 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_highest_lo_page(context, get_highest_lo_page(original));
   set_lowest_hi_page(context, get_lowest_hi_page(original));
   set_highest_hi_page(context, get_highest_hi_page(original));
+  set_code_entry(context, get_code_entry(original));
+  set_code_segment(context, get_code_segment(original));
+  set_data_segment(context, get_data_segment(original));
+  set_program_break(context, get_program_break(original));
   set_exception(context, get_exception(original));
   set_faulting_page(context, get_faulting_page(original));
   set_exit_code(context, get_exit_code(original));
