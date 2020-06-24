@@ -1261,14 +1261,15 @@ uint64_t ECALL = 14;
 
 uint64_t EXCEPTION_NOEXCEPTION           = 0;
 uint64_t EXCEPTION_PAGEFAULT             = 1;
-uint64_t EXCEPTION_SYSCALL               = 2;
-uint64_t EXCEPTION_TIMER                 = 3;
-uint64_t EXCEPTION_INVALIDADDRESS        = 4;
+uint64_t EXCEPTION_SEGMENTATIONFAULT     = 2;
+uint64_t EXCEPTION_SYSCALL               = 3;
+uint64_t EXCEPTION_TIMER                 = 4;
 uint64_t EXCEPTION_DIVISIONBYZERO        = 5;
-uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 6;
-uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 7;
-uint64_t EXCEPTION_SYMBOLICMERGE         = 8; // for symbolic execution
-uint64_t EXCEPTION_SYMBOLICRECURSION     = 9; // for symbolic execution
+uint64_t EXCEPTION_INVALIDADDRESS        = 6;
+uint64_t EXCEPTION_UNKNOWNINSTRUCTION    = 7;
+uint64_t EXCEPTION_UNINITIALIZEDREGISTER = 8;
+uint64_t EXCEPTION_SYMBOLICMERGE         = 9;  // for symbolic execution
+uint64_t EXCEPTION_SYMBOLICRECURSION     = 10; // for symbolic execution
 
 uint64_t* EXCEPTIONS; // strings representing exceptions
 
@@ -1361,10 +1362,11 @@ void init_interpreter() {
 
   *(EXCEPTIONS + EXCEPTION_NOEXCEPTION)           = (uint64_t) "no exception";
   *(EXCEPTIONS + EXCEPTION_PAGEFAULT)             = (uint64_t) "page fault";
+  *(EXCEPTIONS + EXCEPTION_SEGMENTATIONFAULT)     = (uint64_t) "segmentation fault";
   *(EXCEPTIONS + EXCEPTION_SYSCALL)               = (uint64_t) "syscall";
   *(EXCEPTIONS + EXCEPTION_TIMER)                 = (uint64_t) "timer interrupt";
-  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_DIVISIONBYZERO)        = (uint64_t) "division by zero";
+  *(EXCEPTIONS + EXCEPTION_INVALIDADDRESS)        = (uint64_t) "invalid address";
   *(EXCEPTIONS + EXCEPTION_UNKNOWNINSTRUCTION)    = (uint64_t) "unknown instruction";
   *(EXCEPTIONS + EXCEPTION_UNINITIALIZEDREGISTER) = (uint64_t) "uninitialized register";
   *(EXCEPTIONS + EXCEPTION_SYMBOLICMERGE)         = (uint64_t) "symbolic merge";
@@ -1458,20 +1460,22 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // |  6 | highest lo page | highest low unmapped page (code, data, heap)
 // |  7 | lowest hi page  | lowest high unmapped page (stack)
 // |  8 | highest hi page | highest high unmapped page (stack)
-// |  9 | original break  | original end of data segment
-// | 10 | program break   | end of data segment
-// | 11 | exception       | exception ID
-// | 12 | faulting page   | faulting page
-// | 13 | exit code       | exit code
-// | 14 | parent          | context that created this context
-// | 15 | virtual context | virtual context address
-// | 16 | name            | binary name loaded into context
+// |  9 | code entry      | start of code segment
+// | 10 | code segment    | end of code segment, start of data segment
+// | 11 | data segment    | end of data segment, original program break
+// | 12 | program break   | current program break
+// | 13 | exception       | exception ID
+// | 14 | faulting page   | faulting page
+// | 15 | exit code       | exit code
+// | 16 | parent          | context that created this context
+// | 17 | virtual context | virtual context address
+// | 18 | name            | binary name loaded into context
 // +----+-----------------+
 
 // CAUTION: contexts are extended in the symbolic execution engine!
 
 uint64_t* allocate_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 12 * SIZEOFUINT64);
 }
 
 uint64_t next_context(uint64_t* context)    { return (uint64_t) context; }
@@ -1483,14 +1487,16 @@ uint64_t lowest_lo_page(uint64_t* context)  { return (uint64_t) (context + 5); }
 uint64_t highest_lo_page(uint64_t* context) { return (uint64_t) (context + 6); }
 uint64_t lowest_hi_page(uint64_t* context)  { return (uint64_t) (context + 7); }
 uint64_t highest_hi_page(uint64_t* context) { return (uint64_t) (context + 8); }
-uint64_t original_break(uint64_t* context)  { return (uint64_t) (context + 9); }
-uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 10); }
-uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 11); }
-uint64_t faulting_page(uint64_t* context)   { return (uint64_t) (context + 12); }
-uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 13); }
-uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 14); }
-uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 15); }
-uint64_t name(uint64_t* context)            { return (uint64_t) (context + 16); }
+uint64_t code_entry(uint64_t* context)      { return (uint64_t) (context + 9); }
+uint64_t code_segment(uint64_t* context)    { return (uint64_t) (context + 10); }
+uint64_t data_segment(uint64_t* context)    { return (uint64_t) (context + 11); }
+uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 12); }
+uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 13); }
+uint64_t faulting_page(uint64_t* context)   { return (uint64_t) (context + 14); }
+uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 15); }
+uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 16); }
+uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 17); }
+uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
 uint64_t* get_prev_context(uint64_t* context)    { return (uint64_t*) *(context + 1); }
@@ -1501,14 +1507,16 @@ uint64_t  get_lowest_lo_page(uint64_t* context)  { return             *(context 
 uint64_t  get_highest_lo_page(uint64_t* context) { return             *(context + 6); }
 uint64_t  get_lowest_hi_page(uint64_t* context)  { return             *(context + 7); }
 uint64_t  get_highest_hi_page(uint64_t* context) { return             *(context + 8); }
-uint64_t  get_original_break(uint64_t* context)  { return             *(context + 9); }
-uint64_t  get_program_break(uint64_t* context)   { return             *(context + 10); }
-uint64_t  get_exception(uint64_t* context)       { return             *(context + 11); }
-uint64_t  get_faulting_page(uint64_t* context)   { return             *(context + 12); }
-uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 13); }
-uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 14); }
-uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 15); }
-char*     get_name(uint64_t* context)            { return (char*)     *(context + 16); }
+uint64_t  get_code_entry(uint64_t* context)      { return             *(context + 9); }
+uint64_t  get_code_segment(uint64_t* context)    { return             *(context + 10); }
+uint64_t  get_data_segment(uint64_t* context)    { return             *(context + 11); }
+uint64_t  get_program_break(uint64_t* context)   { return             *(context + 12); }
+uint64_t  get_exception(uint64_t* context)       { return             *(context + 13); }
+uint64_t  get_faulting_page(uint64_t* context)   { return             *(context + 14); }
+uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 15); }
+uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 16); }
+uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 17); }
+char*     get_name(uint64_t* context)            { return (char*)     *(context + 18); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
 void set_prev_context(uint64_t* context, uint64_t* prev)      { *(context + 1)  = (uint64_t) prev; }
@@ -1519,14 +1527,16 @@ void set_lowest_lo_page(uint64_t* context, uint64_t page)     { *(context + 5)  
 void set_highest_lo_page(uint64_t* context, uint64_t page)    { *(context + 6)  = page; }
 void set_lowest_hi_page(uint64_t* context, uint64_t page)     { *(context + 7)  = page; }
 void set_highest_hi_page(uint64_t* context, uint64_t page)    { *(context + 8)  = page; }
-void set_original_break(uint64_t* context, uint64_t brk)      { *(context + 9)  = brk; }
-void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 10) = brk; }
-void set_exception(uint64_t* context, uint64_t exception)     { *(context + 11) = exception; }
-void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 12) = page; }
-void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 13) = code; }
-void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 14) = (uint64_t) parent; }
-void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 15) = (uint64_t) vctxt; }
-void set_name(uint64_t* context, char* name)                  { *(context + 16) = (uint64_t) name; }
+void set_code_entry(uint64_t* context, uint64_t start)        { *(context + 9)  = start; }
+void set_code_segment(uint64_t* context, uint64_t end)        { *(context + 10) = end; }
+void set_data_segment(uint64_t* context, uint64_t end)        { *(context + 11) = end; }
+void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 12) = brk; }
+void set_exception(uint64_t* context, uint64_t exception)     { *(context + 13) = exception; }
+void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 14) = page; }
+void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 15) = code; }
+void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 16) = (uint64_t) parent; }
+void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 17) = (uint64_t) vctxt; }
+void set_name(uint64_t* context, char* name)                  { *(context + 18) = (uint64_t) name; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -1541,6 +1551,11 @@ void save_context(uint64_t* context);
 void map_page(uint64_t* context, uint64_t page, uint64_t frame);
 void restore_region(uint64_t* context, uint64_t* table, uint64_t* parent_table, uint64_t lo, uint64_t hi);
 void restore_context(uint64_t* context);
+
+uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -5904,9 +5919,9 @@ void selfie_load() {
   // make sure binary is mapped for reading into it
   binary = touch(smalloc(MAX_BINARY_LENGTH), MAX_BINARY_LENGTH);
 
+  entry_point   = 0;
   binary_length = 0;
   code_length   = 0;
-  entry_point   = 0;
 
   // no source line numbers in binaries
   code_line_number = (uint64_t*) 0;
@@ -5984,7 +5999,7 @@ void implement_exit(uint64_t* context) {
   printf4("%s: %s exiting with exit code %d and %.2uMB mallocated memory\n", selfie_name,
     get_name(context),
     (char*) sign_extend(get_exit_code(context), SYSCALL_BITWIDTH),
-    (char*) fixed_point_ratio(get_program_break(context) - get_original_break(context), MEGABYTE, 2));
+    (char*) fixed_point_ratio(get_program_break(context) - get_data_segment(context), MEGABYTE, 2));
 }
 
 void emit_read() {
@@ -7593,13 +7608,15 @@ void throw_exception(uint64_t exception, uint64_t faulting_page) {
 }
 
 void fetch() {
-  // assert: is_valid_virtual_address(pc) == 1
   // assert: is_virtual_address_mapped(pt, pc) == 1
 
-  if (pc % REGISTERSIZE == 0)
-    ir = get_low_word(load_virtual_memory(pt, pc));
+  if (is_valid_code_address(current_context, pc))
+    if (pc % REGISTERSIZE == 0)
+      ir = get_low_word(load_virtual_memory(pt, pc));
+    else
+      ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
   else
-    ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
+    throw_exception(EXCEPTION_SEGMENTATIONFAULT, pc);
 }
 
 void decode() {
@@ -8059,7 +8076,7 @@ uint64_t* new_context() {
 }
 
 void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
-  set_pc(context, 0);
+  // some fields are set in boot loader or when context switching
 
   // allocate zeroed memory for general purpose registers
   // TODO: reuse memory
@@ -8072,21 +8089,27 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   else
     set_pt(context, zalloc(VIRTUALMEMORYSIZE / PAGESIZE / NUMBER_OF_LEAF_PTES * REGISTERSIZE));
 
-  // determine range of recently mapped pages
+  // reset page table cache
   set_lowest_lo_page(context, 0);
   set_highest_lo_page(context, get_lowest_lo_page(context));
   set_lowest_hi_page(context, get_page_of_virtual_address(VIRTUALMEMORYSIZE - REGISTERSIZE));
   set_highest_hi_page(context, get_lowest_hi_page(context));
 
-  set_exception(context, EXCEPTION_NOEXCEPTION);
-  set_faulting_page(context, 0);
+  if (parent != MY_CONTEXT) {
+    set_code_entry(context, load_virtual_memory(get_pt(parent), code_entry(vctxt)));
+    set_code_segment(context, load_virtual_memory(get_pt(parent), code_segment(vctxt)));
+    set_data_segment(context, load_virtual_memory(get_pt(parent), data_segment(vctxt)));
 
-  set_exit_code(context, EXITCODE_NOERROR);
+    // TODO: cache name
+    set_name(context, (char*) 0);
+  } else {
+    set_exception(context, EXCEPTION_NOEXCEPTION);
+    set_faulting_page(context, 0);
+    set_exit_code(context, EXITCODE_NOERROR);
+  }
 
   set_parent(context, parent);
   set_virtual_context(context, vctxt);
-
-  set_name(context, 0);
 }
 
 uint64_t* find_context(uint64_t* parent, uint64_t* vctxt) {
@@ -8307,6 +8330,50 @@ void restore_context(uint64_t* context) {
   }
 }
 
+uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr) {
+  // is address in code segment?
+  if (vaddr >= get_code_entry(context))
+    if (vaddr < get_code_segment(context))
+      // code must be single-word-addressed
+      if (vaddr % INSTRUCTIONSIZE == 0)
+        return 1;
+
+  return 0;
+}
+
+uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr) {
+  // is address in data segment?
+  if (vaddr >= get_code_segment(context))
+    if (vaddr < get_data_segment(context))
+      // data must be word-addressed
+      if (vaddr % REGISTERSIZE == 0)
+        return 1;
+
+  return 0;
+}
+
+uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr) {
+  // is address in the stack
+  if (vaddr >= *(get_regs(context) + REG_SP))
+    if (vaddr < VIRTUALMEMORYSIZE)
+      // stack must be word-addressed
+      if (vaddr % REGISTERSIZE == 0)
+        return 1;
+
+  return 0;
+}
+
+uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr) {
+  // is address in the heap
+  if (vaddr >= get_data_segment(context))
+    if (vaddr < get_program_break(context))
+      // heap must be word-addressed
+      if (vaddr % REGISTERSIZE == 0)
+        return 1;
+
+  return 0;
+}
+
 // -----------------------------------------------------------------
 // ---------------------------- KERNEL -----------------------------
 // -----------------------------------------------------------------
@@ -8394,10 +8461,18 @@ void up_load_binary(uint64_t* context) {
   // assert: entry_point is multiple of PAGESIZE and REGISTERSIZE
 
   set_pc(context, entry_point);
+
+  // setting up page table cache
+
   set_lowest_lo_page(context, get_page_of_virtual_address(entry_point));
   set_highest_lo_page(context, get_lowest_lo_page(context));
-  set_original_break(context, entry_point + binary_length);
-  set_program_break(context, get_original_break(context));
+
+  // setting up memory segments
+
+  set_code_entry(context, entry_point);
+  set_code_segment(context, entry_point + code_length);
+  set_data_segment(context, entry_point + binary_length);
+  set_program_break(context, get_data_segment(context));
 
   baddr = 0;
 
