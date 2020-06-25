@@ -6259,21 +6259,21 @@ void implement_write(uint64_t* context) {
 
           size = 0;
 
-          printf2("%s: writing into virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
+          printf2("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
         }
       else {
         failed = 1;
 
         size = 0;
 
-        printf2("%s: writing into virtual address %p failed because the address is not in the heap\n", selfie_name, (char*) vbuffer);
+        printf2("%s: writing from virtual address %p failed because the address is not in the heap\n", selfie_name, (char*) vbuffer);
       }
     else {
       failed = 1;
 
       size = 0;
 
-      printf2("%s: writing into virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
+      printf2("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
     }
   }
 
