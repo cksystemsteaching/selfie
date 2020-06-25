@@ -986,7 +986,7 @@ void emit_write();
 void implement_write(uint64_t* context);
 
 void     emit_open();
-uint64_t down_load_string(uint64_t* table, uint64_t vstring, char* s);
+uint64_t down_load_string(uint64_t* context, uint64_t vstring, char* s);
 void     implement_openat(uint64_t* context);
 
 void emit_malloc();
@@ -1589,6 +1589,7 @@ uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr);
 uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr);
 uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr);
 uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr);
+uint64_t is_valid_data_stack_heap_address(uint64_t* context, uint64_t vaddr);
 
 uint64_t is_valid_segment_read(uint64_t vaddr);
 uint64_t is_valid_segment_write(uint64_t vaddr);
@@ -6110,42 +6111,46 @@ void implement_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        buffer = tlb(get_pt(context), vbuffer);
+    if (is_valid_virtual_address(vbuffer))
+      if (is_valid_heap_address(context, vbuffer))
+        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+          buffer = tlb(get_pt(context), vbuffer);
 
-        actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
+          actually_read = sign_extend(read(fd, buffer, bytes_to_read), SYSCALL_BITWIDTH);
 
-        if (actually_read == bytes_to_read) {
-          read_total = read_total + actually_read;
-
-          size = size - actually_read;
-
-          if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
-        } else {
-          if (signed_less_than(0, actually_read))
+          if (actually_read == bytes_to_read) {
             read_total = read_total + actually_read;
 
+            size = size - actually_read;
+
+            if (size > 0)
+              vbuffer = vbuffer + SIZEOFUINT64;
+          } else {
+            if (signed_less_than(0, actually_read))
+              read_total = read_total + actually_read;
+
+            size = 0;
+          }
+        } else {
+          failed = 1;
+
           size = 0;
+
+          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
         }
-      } else {
+      else {
         failed = 1;
 
         size = 0;
 
-        if (debug_read)
-          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vbuffer);
+        printf2("%s: reading into virtual address %p failed because the address is not in the heap\n", selfie_name, (char*) vbuffer);
       }
-    } else {
+    else {
       failed = 1;
 
       size = 0;
 
-      if (debug_read)
-        printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vbuffer);
+      printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
     }
   }
 
@@ -6157,9 +6162,7 @@ void implement_read(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_read)
-    printf3("%s: actually read %u bytes from file with descriptor %u\n", selfie_name,
-      (char*) read_total,
-      (char*) fd);
+    printf3("%s: actually read %u bytes from file with descriptor %u\n", selfie_name, (char*) read_total, (char*) fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -6231,42 +6234,46 @@ void implement_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        buffer = tlb(get_pt(context), vbuffer);
+    if (is_valid_virtual_address(vbuffer))
+      if (is_valid_heap_address(context, vbuffer))
+        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+          buffer = tlb(get_pt(context), vbuffer);
 
-        actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
+          actually_written = sign_extend(write(fd, buffer, bytes_to_write), SYSCALL_BITWIDTH);
 
-        if (actually_written == bytes_to_write) {
-          written_total = written_total + actually_written;
-
-          size = size - actually_written;
-
-          if (size > 0)
-            vbuffer = vbuffer + SIZEOFUINT64;
-        } else {
-          if (signed_less_than(0, actually_written))
+          if (actually_written == bytes_to_write) {
             written_total = written_total + actually_written;
 
+            size = size - actually_written;
+
+            if (size > 0)
+              vbuffer = vbuffer + SIZEOFUINT64;
+          } else {
+            if (signed_less_than(0, actually_written))
+              written_total = written_total + actually_written;
+
+            size = 0;
+          }
+        } else {
+          failed = 1;
+
           size = 0;
+
+          printf2("%s: writing into virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
         }
-      } else {
+      else {
         failed = 1;
 
         size = 0;
 
-        if (debug_write)
-          printf2("%s: writing into virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vbuffer);
+        printf2("%s: writing into virtual address %p failed because the address is not in the heap\n", selfie_name, (char*) vbuffer);
       }
-    } else {
+    else {
       failed = 1;
 
       size = 0;
 
-      if (debug_write)
-        printf2("%s: writing into virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vbuffer);
+      printf2("%s: writing into virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
     }
   }
 
@@ -6278,9 +6285,7 @@ void implement_write(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
   if (debug_write)
-    printf3("%s: actually wrote %u bytes into file with descriptor %u\n", selfie_name,
-      (char*) written_total,
-      (char*) fd);
+    printf3("%s: actually wrote %u bytes into file with descriptor %u\n", selfie_name, (char*) written_total, (char*) fd);
 
   if (debug_syscalls) {
     print(" -> ");
@@ -6311,47 +6316,51 @@ void emit_open() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t down_load_string(uint64_t* table, uint64_t vaddr, char* s) {
+uint64_t down_load_string(uint64_t* context, uint64_t vaddr, char* s) {
   uint64_t i;
   uint64_t j;
 
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_valid_virtual_address(vaddr)) {
-      if (is_virtual_address_mapped(table, vaddr))
-        *((uint64_t*) s + i) = load_virtual_memory(table, vaddr);
-      else {
-        if (debug_open)
-          printf2("%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vaddr);
+    if (is_valid_virtual_address(vaddr))
+      if (is_valid_data_stack_heap_address(context, vaddr)) {
+        if (is_virtual_address_mapped(get_pt(context), vaddr))
+          *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
+        else {
+          printf2("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, (char*) vaddr);
+
+          return 0;
+        }
+
+        j = 0;
+
+        // check if string ends in the current machine word
+        while (j < SIZEOFUINT64) {
+          if (load_character((char*) ((uint64_t*) s + i), j) == 0)
+            return 1;
+
+          j = j + 1;
+        }
+
+        // advance to the next machine word in virtual memory
+        vaddr = vaddr + SIZEOFUINT64;
+
+        // advance to the next machine word in our memory
+        i = i + 1;
+      } else {
+        printf2("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (char*) vaddr);
 
         return 0;
       }
-
-      j = 0;
-
-      // check if string ends in the current machine word
-      while (j < SIZEOFUINT64) {
-        if (load_character((char*) ((uint64_t*) s + i), j) == 0)
-          return 1;
-
-        j = j + 1;
-      }
-
-      // advance to the next machine word in virtual memory
-      vaddr = vaddr + SIZEOFUINT64;
-
-      // advance to the next machine word in our memory
-      i = i + 1;
-    } else {
-      if (debug_open)
-        printf2("%s: opening file with name at virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vaddr);
+    else {
+      printf2("%s: opening file failed because the file name address %p is invalid\n", selfie_name, (char*) vaddr);
 
       return 0;
     }
   }
+
+  printf2("%s: opening file failed because the file name is too long at address %p\n", selfie_name, (char*) vaddr);
 
   return 0;
 }
@@ -6388,7 +6397,7 @@ void implement_openat(uint64_t* context) {
   flags     = *(get_regs(context) + REG_A2);
   mode      = *(get_regs(context) + REG_A3);
 
-  if (down_load_string(get_pt(context), vfilename, filename_buffer)) {
+  if (down_load_string(context, vfilename, filename_buffer)) {
     fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
     *(get_regs(context) + REG_A0) = fd;
@@ -6399,13 +6408,8 @@ void implement_openat(uint64_t* context) {
         (char*) flags,
         (char*) mode,
         (char*) fd);
-  } else {
+  } else
     *(get_regs(context) + REG_A0) = sign_shrink(-1, SYSCALL_BITWIDTH);
-
-    if (debug_open)
-      printf2("%s: opening file with name at virtual address %p failed because the name is too long\n", selfie_name,
-        (char*) vfilename);
-  }
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 
@@ -8442,6 +8446,17 @@ uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr) {
       return 1;
 
   return 0;
+}
+
+uint64_t is_valid_data_stack_heap_address(uint64_t* context, uint64_t vaddr) {
+  if (is_valid_data_address(context, vaddr))
+    return 1;
+  else if (is_valid_stack_address(context, vaddr))
+    return 1;
+  else if (is_valid_heap_address(context, vaddr))
+    return 1;
+  else
+    return 0;
 }
 
 uint64_t is_valid_segment_read(uint64_t vaddr) {
