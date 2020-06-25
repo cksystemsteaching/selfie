@@ -164,6 +164,7 @@ void printf3(char* s, char* a1, char* a2, char* a3);
 void printf4(char* s, char* a1, char* a2, char* a3, char* a4);
 void printf5(char* s, char* a1, char* a2, char* a3, char* a4, char* a5);
 void printf6(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6);
+void printf7(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6, char* a7);
 
 void sprintf1(char* b, char* s, char* a1);
 void sprintf2(char* b, char* s, char* a1, char* a2);
@@ -1232,7 +1233,7 @@ uint64_t instruction_with_max_counter(uint64_t* counters, uint64_t max);
 uint64_t print_per_instruction_counter(uint64_t total, uint64_t* counters, uint64_t max);
 void     print_per_instruction_profile(char* message, uint64_t total, uint64_t* counters);
 
-void print_register_profile(char* message, char* padding, uint64_t reads, uint64_t writes);
+void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t writes);
 void print_per_register_profile(uint64_t reg);
 
 void print_register_memory_profile();
@@ -2403,6 +2404,10 @@ void printf5(char* s, char* a1, char* a2, char* a3, char* a4, char* a5) {
 
 void printf6(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6) {
   print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4), a5), a6));
+}
+
+void printf7(char* s, char* a1, char* a2, char* a3, char* a4, char* a5, char* a6, char* a7) {
+  print_format0(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, print_format1(s, 0, a1), a2), a3), a4), a5), a6), a7));
 }
 
 void sprintf1(char* b, char* s, char* a1) {
@@ -8013,17 +8018,30 @@ void print_per_instruction_profile(char* message, uint64_t total, uint64_t* coun
   println();
 }
 
-void print_register_profile(char* message, char* padding, uint64_t reads, uint64_t writes) {
-  if (reads + writes > 0)
-    printf6("%s: %s: %s%d,%d[%.2u]\n", selfie_name, message, padding, (char*) reads, (char*) writes, (char*) fixed_point_ratio(reads, writes, 2));
+void print_access_profile(char* message, char* padding, uint64_t reads, uint64_t writes) {
+  if (reads + writes > 0) {
+    if (writes == 0)
+      // may happen in read-only memory segments
+      writes = 1;
+
+    printf7("%s: %s%s%d,%d,%d[%.2u]\n", selfie_name, message, padding,
+      (char*) (reads + writes), (char*) reads, (char*) writes, (char*) fixed_point_ratio(reads, writes, 2));
+  }
 }
 
 void print_per_register_profile(uint64_t reg) {
-  print_register_profile(get_register_name(reg), "     ", *(reads_per_register + reg), *(writes_per_register + reg));
+  print_access_profile(get_register_name(reg), " register:   ", *(reads_per_register + reg), *(writes_per_register + reg));
 }
 
 void print_register_memory_profile() {
   uint64_t reg;
+
+  printf1("%s: CPU+memory:    reads+writes,reads,writes[reads/writes]\n", selfie_name);
+
+  print_access_profile("heap segment:  ", "", heap_reads, heap_writes);
+
+  print_per_register_profile(REG_GP);
+  print_access_profile("data segment:  ", "", data_reads, data_writes);
 
   reg = 1;
 
@@ -8031,53 +8049,45 @@ void print_register_memory_profile() {
     if (is_stack_register(reg)) {
       stack_register_reads  = stack_register_reads + *(reads_per_register + reg);
       stack_register_writes = stack_register_writes + *(writes_per_register + reg);
-    } else if (is_argument_register(reg)) {
-      argument_register_reads  = argument_register_reads + *(reads_per_register + reg);
-      argument_register_writes = argument_register_writes + *(writes_per_register + reg);
-    } else if (is_temporary_register(reg)) {
-      temporary_register_reads  = temporary_register_reads + *(reads_per_register + reg);
-      temporary_register_writes = temporary_register_writes + *(writes_per_register + reg);
+
+      print_per_register_profile(reg);
     }
 
     reg = reg + 1;
   }
 
-  printf1("%s: CPU:     reads,writes[utilization]\n", selfie_name);
-
-  print_per_register_profile(REG_GP);
-
-  print_register_profile("stack", "  ", stack_register_reads, stack_register_writes);
+  print_access_profile("stack total:   ", "", stack_register_reads, stack_register_writes);
+  print_access_profile("stack segment: ", "", stack_reads, stack_writes);
 
   reg = 1;
 
   while (reg < NUMBEROFREGISTERS) {
-    if (is_stack_register(reg))
+    if (is_argument_register(reg)) {
+      argument_register_reads  = argument_register_reads + *(reads_per_register + reg);
+      argument_register_writes = argument_register_writes + *(writes_per_register + reg);
+
       print_per_register_profile(reg);
+    }
 
     reg = reg + 1;
   }
 
-  print_register_profile("args", "   ", argument_register_reads, argument_register_writes);
+  print_access_profile("args total:    ", "", argument_register_reads, argument_register_writes);
 
   reg = 1;
 
   while (reg < NUMBEROFREGISTERS) {
-    if (is_argument_register(reg))
+    if (is_temporary_register(reg)) {
+      temporary_register_reads  = temporary_register_reads + *(reads_per_register + reg);
+      temporary_register_writes = temporary_register_writes + *(writes_per_register + reg);
+
       print_per_register_profile(reg);
+    }
 
     reg = reg + 1;
   }
 
-  print_register_profile("temps", "  ", temporary_register_reads, temporary_register_writes);
-
-  reg = 1;
-
-  while (reg < NUMBEROFREGISTERS) {
-    if (is_temporary_register(reg))
-      print_per_register_profile(reg);
-
-    reg = reg + 1;
-  }
+  print_access_profile("temps total:   ", "", temporary_register_reads, temporary_register_writes);
 }
 
 void print_profile() {
