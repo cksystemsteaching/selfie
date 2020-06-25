@@ -328,7 +328,7 @@ void implement_symbolic_read(uint64_t* context) {
       bytes_to_read = size;
 
     if (is_valid_virtual_address(vbuffer))
-      if (is_valid_heap_address(context, vbuffer))
+      if (is_valid_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
 
@@ -353,7 +353,7 @@ void implement_symbolic_read(uint64_t* context) {
 
         size = 0;
 
-        printf2("%s: reading into virtual address %p failed because the address is not in the heap\n", selfie_name, (char*) vbuffer);
+        printf2("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
       }
     else {
       failed = 1;
@@ -397,7 +397,7 @@ void implement_symbolic_write(uint64_t* context) {
       bytes_to_write = size;
 
     if (is_valid_virtual_address(vbuffer))
-      if (is_valid_heap_address(context, vbuffer))
+      if (is_valid_data_stack_heap_address(context, vbuffer))
         if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
           // TODO: What should symbolically executed code actually output?
 
@@ -419,7 +419,7 @@ void implement_symbolic_write(uint64_t* context) {
 
         size = 0;
 
-        printf2("%s: writing from virtual address %p failed because the address is not in the heap\n", selfie_name, (char*) vbuffer);
+        printf2("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
       }
     else {
       failed = 1;
