@@ -1315,20 +1315,6 @@ uint64_t* pt = (uint64_t*) 0; // page table
 uint64_t timer = 0; // counter for timer interrupt
 uint64_t trap  = 0; // flag for creating a trap
 
-// register access counters
-
-uint64_t* reads_per_register  = (uint64_t*) 0;
-uint64_t* writes_per_register = (uint64_t*) 0;
-
-uint64_t stack_register_reads  = 0;
-uint64_t stack_register_writes = 0;
-
-uint64_t argument_register_reads  = 0;
-uint64_t argument_register_writes = 0;
-
-uint64_t temporary_register_reads  = 0;
-uint64_t temporary_register_writes = 0;
-
 // effective nop counters
 
 uint64_t nopc_lui  = 0;
@@ -1355,6 +1341,31 @@ uint64_t* iterations_per_loop = (uint64_t*) 0; // number of executed iterations 
 
 uint64_t* loads_per_instruction  = (uint64_t*) 0; // number of executed loads per load instruction
 uint64_t* stores_per_instruction = (uint64_t*) 0; // number of executed stores per store instruction
+
+// register access counters
+
+uint64_t* reads_per_register  = (uint64_t*) 0;
+uint64_t* writes_per_register = (uint64_t*) 0;
+
+uint64_t stack_register_reads  = 0;
+uint64_t stack_register_writes = 0;
+
+uint64_t argument_register_reads  = 0;
+uint64_t argument_register_writes = 0;
+
+uint64_t temporary_register_reads  = 0;
+uint64_t temporary_register_writes = 0;
+
+// segments access counters
+
+uint64_t data_reads  = 0;
+uint64_t data_writes = 0;
+
+uint64_t stack_reads  = 0;
+uint64_t stack_writes = 0;
+
+uint64_t heap_reads  = 0;
+uint64_t heap_writes = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -1388,18 +1399,6 @@ void reset_interpreter() {
   timer = TIMEROFF;
 }
 
-void reset_register_access_counters() {
-  reads_per_register  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-  writes_per_register = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
-
-  // stack and frame pointer registers are initialized by boot loader
-  *(writes_per_register + REG_SP) = 1;
-  *(writes_per_register + REG_S0) = 1;
-
-  // a6 register is written to by the kernel
-  *(writes_per_register + REG_A6) = 1;
-}
-
 void reset_nop_counters() {
   nopc_lui  = 0;
   nopc_addi = 0;
@@ -1416,11 +1415,7 @@ void reset_nop_counters() {
   nopc_jalr = 0;
 }
 
-void reset_profiler() {
-  reset_instruction_counters();
-  reset_register_access_counters();
-  reset_nop_counters();
-
+void reset_source_profile() {
   calls               = 0;
   calls_per_procedure = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
 
@@ -1429,6 +1424,42 @@ void reset_profiler() {
 
   loads_per_instruction  = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
   stores_per_instruction = zalloc(code_length / INSTRUCTIONSIZE * SIZEOFUINT64);
+}
+
+void reset_register_access_counters() {
+  reads_per_register  = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+  writes_per_register = zalloc(NUMBEROFREGISTERS * REGISTERSIZE);
+
+  // stack and frame pointer registers are initialized by boot loader
+  *(writes_per_register + REG_SP) = 1;
+  *(writes_per_register + REG_S0) = 1;
+
+  // a6 register is written to by the kernel
+  *(writes_per_register + REG_A6) = 1;
+
+  stack_register_reads      = 0;
+  stack_register_writes     = 0;
+  argument_register_reads   = 0;
+  argument_register_writes  = 0;
+  temporary_register_reads  = 0;
+  temporary_register_writes = 0;
+}
+
+void reset_segments_access_counters() {
+  data_reads   = 0;
+  data_writes  = 0;
+  stack_reads  = 0;
+  stack_writes = 0;
+  heap_reads   = 0;
+  heap_writes  = 0;
+}
+
+void reset_profiler() {
+  reset_instruction_counters();
+  reset_nop_counters();
+  reset_source_profile();
+  reset_register_access_counters();
+  reset_segments_access_counters();
 }
 
 // *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~ *~*~
@@ -1557,6 +1588,9 @@ uint64_t is_valid_code_address(uint64_t* context, uint64_t vaddr);
 uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr);
 uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr);
 uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr);
+
+uint64_t is_valid_segment_read(uint64_t vaddr);
+uint64_t is_valid_segment_write(uint64_t vaddr);
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
@@ -7056,32 +7090,35 @@ uint64_t do_ld() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_valid_virtual_address(vaddr)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      update_register_counters();
+    if (is_valid_segment_read(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        update_register_counters();
 
-      if (rd != REG_ZR) {
-        // semantics of ld
-        next_rd_value = load_virtual_memory(pt, vaddr);
+        if (rd != REG_ZR) {
+          // semantics of ld
+          next_rd_value = load_virtual_memory(pt, vaddr);
 
-        if (*(registers + rd) != next_rd_value)
-          *(registers + rd) = next_rd_value;
-        else
+          if (*(registers + rd) != next_rd_value)
+            *(registers + rd) = next_rd_value;
+          else
+            nopc_ld = nopc_ld + 1;
+        } else
           nopc_ld = nopc_ld + 1;
+
+        // keep track of instruction address for profiling loads
+        a = (pc - entry_point) / INSTRUCTIONSIZE;
+
+        pc = pc + INSTRUCTIONSIZE;
+
+        // keep track of number of loads in total
+        ic_ld = ic_ld + 1;
+
+        // and individually
+        *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
       } else
-        nopc_ld = nopc_ld + 1;
-
-      // keep track of instruction address for profiling loads
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
-
-      pc = pc + INSTRUCTIONSIZE;
-
-      // keep track of number of loads in total
-      ic_ld = ic_ld + 1;
-
-      // and individually
-      *(loads_per_instruction + a) = *(loads_per_instruction + a) + 1;
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
     } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 
@@ -7143,27 +7180,30 @@ uint64_t do_sd() {
   vaddr = *(registers + rs1) + imm;
 
   if (is_valid_virtual_address(vaddr)) {
-    if (is_virtual_address_mapped(pt, vaddr)) {
-      update_register_counters();
+    if (is_valid_segment_write(vaddr)) {
+      if (is_virtual_address_mapped(pt, vaddr)) {
+        update_register_counters();
 
-      // semantics of sd
-      if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
-        store_virtual_memory(pt, vaddr, *(registers + rs2));
-      else
-        nopc_sd = nopc_sd + 1;
+        // semantics of sd
+        if (load_virtual_memory(pt, vaddr) != *(registers + rs2))
+          store_virtual_memory(pt, vaddr, *(registers + rs2));
+        else
+          nopc_sd = nopc_sd + 1;
 
-      // keep track of instruction address for profiling stores
-      a = (pc - entry_point) / INSTRUCTIONSIZE;
+        // keep track of instruction address for profiling stores
+        a = (pc - entry_point) / INSTRUCTIONSIZE;
 
-      pc = pc + INSTRUCTIONSIZE;
+        pc = pc + INSTRUCTIONSIZE;
 
-      // keep track of number of stores in total
-      ic_sd = ic_sd + 1;
+        // keep track of number of stores in total
+        ic_sd = ic_sd + 1;
 
-      // and individually
-      *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+        // and individually
+        *(stores_per_instruction + a) = *(stores_per_instruction + a) + 1;
+      } else
+        throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
     } else
-      throw_exception(EXCEPTION_PAGEFAULT, get_page_of_virtual_address(vaddr));
+      throw_exception(EXCEPTION_SEGMENTATIONFAULT, vaddr);
   } else
     throw_exception(EXCEPTION_INVALIDADDRESS, vaddr);
 
@@ -8368,33 +8408,64 @@ uint64_t is_valid_data_address(uint64_t* context, uint64_t vaddr) {
   // is address in data segment?
   if (vaddr >= get_code_segment(context))
     if (vaddr < get_data_segment(context))
-      // data must be word-addressed
-      if (vaddr % REGISTERSIZE == 0)
-        return 1;
+      // assert: is_valid_virtual_address(vaddr) == 1
+      return 1;
 
   return 0;
 }
 
 uint64_t is_valid_stack_address(uint64_t* context, uint64_t vaddr) {
-  // is address in the stack
+  // is address in the stack?
   if (vaddr >= *(get_regs(context) + REG_SP))
     if (vaddr < VIRTUALMEMORYSIZE)
-      // stack must be word-addressed
-      if (vaddr % REGISTERSIZE == 0)
-        return 1;
+      // assert: is_valid_virtual_address(vaddr) == 1
+      return 1;
 
   return 0;
 }
 
 uint64_t is_valid_heap_address(uint64_t* context, uint64_t vaddr) {
-  // is address in the heap
+  // is address in the heap?
   if (vaddr >= get_data_segment(context))
     if (vaddr < get_program_break(context))
-      // heap must be word-addressed
-      if (vaddr % REGISTERSIZE == 0)
-        return 1;
+      // assert: is_valid_virtual_address(vaddr) == 1
+      return 1;
 
   return 0;
+}
+
+uint64_t is_valid_segment_read(uint64_t vaddr) {
+  if (is_valid_data_address(current_context, vaddr)) {
+    data_reads = data_reads + 1;
+
+    return 1;
+  } else if (is_valid_stack_address(current_context, vaddr)) {
+    stack_reads = stack_reads + 1;
+
+    return 1;
+  } else if (is_valid_heap_address(current_context, vaddr)) {
+    heap_reads = heap_reads + 1;
+
+    return 1;
+  } else
+    return 0;
+}
+
+uint64_t is_valid_segment_write(uint64_t vaddr) {
+  if (is_valid_data_address(current_context, vaddr)) {
+    data_writes = data_writes + 1;
+
+    return 1;
+  } else if (is_valid_stack_address(current_context, vaddr)) {
+    stack_writes = stack_writes + 1;
+
+    return 1;
+  } else if (is_valid_heap_address(current_context, vaddr)) {
+    heap_writes = heap_writes + 1;
+
+    return 1;
+  } else
+    return 0;
 }
 
 // -----------------------------------------------------------------
