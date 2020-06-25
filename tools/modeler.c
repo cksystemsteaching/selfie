@@ -590,7 +590,7 @@ void model_syscalls() {
     (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
   printf1("%u state 2 brk\n", (char*) (current_nid + 1450));
-  printf2("%u init 2 %u 31 ; original program break is end of binary\n",
+  printf2("%u init 2 %u 31 ; initial program break is end of data segment\n",
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
@@ -1585,10 +1585,10 @@ void modeler() {
   // end of code segment for checking address validity
   printf2("30 constd 2 %u ; %x\n\n", (char*) (entry_point + code_length), (char*) (entry_point + code_length));
 
-  print("; word-aligned end of data segment in memory (original program break)\n\n");
+  print("; word-aligned end of data segment in memory (initial program break)\n\n");
 
-  // original program break (end of binary = code + data segment) for checking program break validity
-  printf2("31 constd 2 %u ; %x\n\n", (char*) get_original_break(current_context), (char*) get_original_break(current_context));
+  // end of data segment (initial program break) for checking program break validity
+  printf2("31 constd 2 %u ; %x\n\n", (char*) (entry_point + binary_length), (char*) (entry_point + binary_length));
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
@@ -1768,7 +1768,7 @@ void modeler() {
   // assert: pc == entry_point + code_length
 
   while (pc < VIRTUALMEMORYSIZE) {
-    if (pc == get_original_break(current_context)) {
+    if (pc == entry_point + binary_length) {
       // assert: stack pointer < VIRTUALMEMORYSIZE
       pc = *(registers + REG_SP);
 
