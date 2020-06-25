@@ -38,7 +38,7 @@ selfie.h: selfie.c
 	./tools/modeler.selfie -c $< - 0 --check-block-access
 
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob sat smt mon btor2 mod x86 all assemble spike qemu boolector btormc validator grader grade extras everything clean
+.PHONY: compile quine escape debug replay os vm min mob sat smt monster btor2 modeler x86 all assemble spike qemu boolector btormc validator grader grade extras everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -95,8 +95,9 @@ smts-3 := $(patsubst %.c,%.smt,$(wildcard symbolic/*-3-*.c))
 # Run monster, the symbolic execution engine
 smt: $(smts-1) $(smts-2) $(smts-3)
 
-# Run monster as RISC-U executable
-mon: selfie selfie.h
+# Run monster natively and as RISC-U executable
+monster: tools/monster.selfie selfie.h selfie
+	./tools/monster.selfie
 	./selfie -c selfie.h tools/monster.c -m 1
 
 # Gather symbolic execution example files as .btor2 files
@@ -105,8 +106,9 @@ btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
 # Run modeler, the symbolic model generator
 btor2: $(btor2s) selfie.btor2
 
-# Run modeler as RISC-U executable
-mod: selfie selfie.h
+# Run modeler natively and as RISC-U executable
+modeler: tools/modeler.selfie selfie.h selfie
+	./tools/modeler.selfie
 	./selfie -c selfie.h tools/modeler.c -m 1
 
 # Run RISC-V-to-x86 translator natively and as RISC-U executable
@@ -116,7 +118,7 @@ x86: tools/riscv-2-x86.selfie selfie.m selfie
 	# ./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
 
 # Run everything that only requires standard tools
-all: compile quine debug replay os vm min mob sat smt mon btor2 mod x86
+all: compile quine debug replay os vm min mob sat smt monster btor2 modeler x86
 
 # Test autograder
 grader: selfie
