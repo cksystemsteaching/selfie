@@ -882,7 +882,8 @@ void     store_data(uint64_t baddr, uint64_t data);
 
 void emit_instruction(uint64_t instruction);
 
-void emit_nop();
+uint64_t encode_nop();
+void     emit_nop();
 
 void emit_lui(uint64_t rd, uint64_t immediate);
 void emit_addi(uint64_t rd, uint64_t rs1, uint64_t immediate);
@@ -1212,8 +1213,8 @@ void print_register_hexadecimal(uint64_t reg);
 void print_register_octal(uint64_t reg);
 void print_register_value(uint64_t reg);
 
-void print_exception(uint64_t exception, uint64_t faulting_page);
-void throw_exception(uint64_t exception, uint64_t faulting_page);
+void print_exception(uint64_t exception, uint64_t fault);
+void throw_exception(uint64_t exception, uint64_t fault);
 
 void fetch();
 void decode();
@@ -1492,7 +1493,7 @@ uint64_t code_segment(uint64_t* context)    { return (uint64_t) (context + 10); 
 uint64_t data_segment(uint64_t* context)    { return (uint64_t) (context + 11); }
 uint64_t program_break(uint64_t* context)   { return (uint64_t) (context + 12); }
 uint64_t exception(uint64_t* context)       { return (uint64_t) (context + 13); }
-uint64_t faulting_page(uint64_t* context)   { return (uint64_t) (context + 14); }
+uint64_t fault(uint64_t* context)           { return (uint64_t) (context + 14); }
 uint64_t exit_code(uint64_t* context)       { return (uint64_t) (context + 15); }
 uint64_t parent(uint64_t* context)          { return (uint64_t) (context + 16); }
 uint64_t virtual_context(uint64_t* context) { return (uint64_t) (context + 17); }
@@ -1512,7 +1513,7 @@ uint64_t  get_code_segment(uint64_t* context)    { return             *(context 
 uint64_t  get_data_segment(uint64_t* context)    { return             *(context + 11); }
 uint64_t  get_program_break(uint64_t* context)   { return             *(context + 12); }
 uint64_t  get_exception(uint64_t* context)       { return             *(context + 13); }
-uint64_t  get_faulting_page(uint64_t* context)   { return             *(context + 14); }
+uint64_t  get_fault(uint64_t* context)           { return             *(context + 14); }
 uint64_t  get_exit_code(uint64_t* context)       { return             *(context + 15); }
 uint64_t* get_parent(uint64_t* context)          { return (uint64_t*) *(context + 16); }
 uint64_t* get_virtual_context(uint64_t* context) { return (uint64_t*) *(context + 17); }
@@ -1532,7 +1533,7 @@ void set_code_segment(uint64_t* context, uint64_t end)        { *(context + 10) 
 void set_data_segment(uint64_t* context, uint64_t end)        { *(context + 11) = end; }
 void set_program_break(uint64_t* context, uint64_t brk)       { *(context + 12) = brk; }
 void set_exception(uint64_t* context, uint64_t exception)     { *(context + 13) = exception; }
-void set_faulting_page(uint64_t* context, uint64_t page)      { *(context + 14) = page; }
+void set_fault(uint64_t* context, uint64_t page)              { *(context + 14) = page; }
 void set_exit_code(uint64_t* context, uint64_t code)          { *(context + 15) = code; }
 void set_parent(uint64_t* context, uint64_t* parent)          { *(context + 16) = (uint64_t) parent; }
 void set_virtual_context(uint64_t* context, uint64_t* vctxt)  { *(context + 17) = (uint64_t) vctxt; }
@@ -5529,8 +5530,12 @@ void emit_instruction(uint64_t instruction) {
   binary_length = binary_length + INSTRUCTIONSIZE;
 }
 
+uint64_t encode_nop() {
+  return encode_i_format(0, REG_ZR, F3_NOP, REG_ZR, OP_IMM);
+}
+
 void emit_nop() {
-  emit_instruction(encode_i_format(0, REG_ZR, F3_NOP, REG_ZR, OP_IMM));
+  emit_instruction(encode_nop());
 
   ic_addi = ic_addi + 1;
 }
@@ -6940,7 +6945,7 @@ void do_divu() {
 
     ic_divu = ic_divu + 1;
   } else
-    throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
+    throw_exception(EXCEPTION_DIVISIONBYZERO, pc);
 }
 
 void do_remu() {
@@ -6966,7 +6971,7 @@ void do_remu() {
 
     ic_remu = ic_remu + 1;
   } else
-    throw_exception(EXCEPTION_DIVISIONBYZERO, 0);
+    throw_exception(EXCEPTION_DIVISIONBYZERO, pc);
 }
 
 void do_sltu() {
@@ -7364,7 +7369,7 @@ void do_ecall() {
     }
   else
     // all system calls other than switch are handled by exception
-    throw_exception(EXCEPTION_SYSCALL, 0);
+    throw_exception(EXCEPTION_SYSCALL, *(registers + REG_A7));
 }
 
 void undo_ecall() {
@@ -7576,34 +7581,47 @@ void print_register_value(uint64_t reg) {
     printf3("%s=%d(%x)", get_register_name(reg), (char*) *(registers + reg), (char*) *(registers + reg));
 }
 
-void print_exception(uint64_t exception, uint64_t faulting_page) {
+void print_exception(uint64_t exception, uint64_t fault) {
   print((char*) *(EXCEPTIONS + exception));
 
   if (exception == EXCEPTION_PAGEFAULT)
-    printf1(" at %p", (char*) faulting_page);
+    printf1(" at page %p", (char*) fault);
+  else if (exception == EXCEPTION_SEGMENTATIONFAULT)
+    printf1(" at address %p", (char*) fault);
+  else if (exception == EXCEPTION_SYSCALL)
+    printf1(" ID %u", (char*) fault);
+  else if (exception == EXCEPTION_DIVISIONBYZERO)
+    printf1(" at address %p", (char*) fault);
+  else if (exception == EXCEPTION_INVALIDADDRESS)
+    printf1(" %p", (char*) fault);
+  else if (exception == EXCEPTION_UNKNOWNINSTRUCTION)
+    printf1(" at address %p", (char*) fault);
+  else if (exception == EXCEPTION_UNINITIALIZEDREGISTER) {
+    print(" ");print_register_name(fault);
+  }
 }
 
-void throw_exception(uint64_t exception, uint64_t faulting_page) {
+void throw_exception(uint64_t exception, uint64_t fault) {
   if (get_exception(current_context) != EXCEPTION_NOEXCEPTION)
     if (get_exception(current_context) != exception) {
-      printf2("%s: context %p throws ", selfie_name, (char*) current_context);
-      print_exception(exception, faulting_page);
-      print(" exception in presence of ");
-      print_exception(get_exception(current_context), get_faulting_page(current_context));
-      print(" exception\n");
+      printf2("%s: context %p throws exception: ", selfie_name, (char*) current_context);
+      print_exception(exception, fault);
+      print(" in presence of existing exception: ");
+      print_exception(get_exception(current_context), get_fault(current_context));
+      println();
 
       exit(EXITCODE_MULTIPLEEXCEPTIONERROR);
     }
 
   set_exception(current_context, exception);
-  set_faulting_page(current_context, faulting_page);
+  set_fault(current_context, fault);
 
   trap = 1;
 
   if (debug_exception) {
-    printf2("%s: context %p throws ", selfie_name, (char*) current_context);
-    print_exception(exception, faulting_page);
-    print(" exception\n");
+    printf2("%s: context %p throws exception: ", selfie_name, (char*) current_context);
+    print_exception(exception, fault);
+    println();
   }
 }
 
@@ -7615,8 +7633,11 @@ void fetch() {
       ir = get_low_word(load_virtual_memory(pt, pc));
     else
       ir = get_high_word(load_virtual_memory(pt, pc - INSTRUCTIONSIZE));
-  else
+  else {
+    ir = encode_nop();
+
     throw_exception(EXCEPTION_SEGMENTATIONFAULT, pc);
+  }
 }
 
 void decode() {
@@ -7686,7 +7707,7 @@ void decode() {
 
   if (is == 0) {
     if (run)
-      throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, 0);
+      throw_exception(EXCEPTION_UNKNOWNINSTRUCTION, pc);
     else {
       //report the error on the console
       output_fd = 1;
@@ -8104,7 +8125,8 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
     set_name(context, (char*) 0);
   } else {
     set_exception(context, EXCEPTION_NOEXCEPTION);
-    set_faulting_page(context, 0);
+    set_fault(context, 0);
+
     set_exit_code(context, EXITCODE_NOERROR);
   }
 
@@ -8212,7 +8234,7 @@ void save_context(uint64_t* context) {
     store_virtual_memory(parent_table, program_break(vctxt), get_program_break(context));
 
     store_virtual_memory(parent_table, exception(vctxt), get_exception(context));
-    store_virtual_memory(parent_table, faulting_page(vctxt), get_faulting_page(context));
+    store_virtual_memory(parent_table, fault(vctxt), get_fault(context));
     store_virtual_memory(parent_table, exit_code(vctxt), get_exit_code(context));
   }
 }
@@ -8307,7 +8329,8 @@ void restore_context(uint64_t* context) {
     set_program_break(context, load_virtual_memory(parent_table, program_break(vctxt)));
 
     set_exception(context, load_virtual_memory(parent_table, exception(vctxt)));
-    set_faulting_page(context, load_virtual_memory(parent_table, faulting_page(vctxt)));
+    set_fault(context, load_virtual_memory(parent_table, fault(vctxt)));
+
     set_exit_code(context, load_virtual_memory(parent_table, exit_code(vctxt)));
 
     table = (uint64_t*) load_virtual_memory(parent_table, page_table(vctxt));
@@ -8612,7 +8635,7 @@ uint64_t handle_page_fault(uint64_t* context) {
   set_exception(context, EXCEPTION_NOEXCEPTION);
 
   // TODO: use this table to unmap and reuse frames
-  map_page(context, get_faulting_page(context), (uint64_t) palloc());
+  map_page(context, get_fault(context), (uint64_t) palloc());
 
   return DONOTEXIT;
 }
@@ -8655,8 +8678,8 @@ uint64_t handle_exception(uint64_t* context) {
   else if (exception == EXCEPTION_TIMER)
     return handle_timer(context);
   else {
-    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
-    print_exception(exception, get_faulting_page(context));
+    printf2("%s: context %s threw uncaught exception: ", selfie_name, get_name(context));
+    print_exception(exception, get_fault(context));
     println();
 
     set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
@@ -8784,8 +8807,8 @@ uint64_t minmob(uint64_t* to_context) {
     } else {
       // minster and mobster do not handle page faults
       if (get_exception(from_context) == EXCEPTION_PAGEFAULT) {
-        printf2("%s: context %s throws uncaught ", selfie_name, get_name(from_context));
-        print_exception(get_exception(from_context), get_faulting_page(from_context));
+        printf2("%s: context %s threw uncaught exception: ", selfie_name, get_name(from_context));
+        print_exception(get_exception(from_context), get_fault(from_context));
         println();
 
         return EXITCODE_UNCAUGHTEXCEPTION;

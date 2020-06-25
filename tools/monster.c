@@ -1018,7 +1018,7 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_data_segment(context, get_data_segment(original));
   set_program_break(context, get_program_break(original));
   set_exception(context, get_exception(original));
-  set_faulting_page(context, get_faulting_page(original));
+  set_fault(context, get_fault(original));
   set_exit_code(context, get_exit_code(original));
   set_parent(context, get_parent(original));
   set_virtual_context(context, get_virtual_context(original));
@@ -1202,8 +1202,8 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     // the execution would be terminated by this error anyway
     return EXIT;
   } else {
-    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
-    print_exception(exception, get_faulting_page(context));
+    printf2("%s: context %s throws uncaught exception: ", selfie_name, get_name(context));
+    print_exception(exception, get_fault(context));
     println();
 
     set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
