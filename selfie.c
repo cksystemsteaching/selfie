@@ -2626,6 +2626,13 @@ uint64_t find_next_character() {
 
         get_character();
 
+        while (character == CHAR_ASTERISK) {
+          // loop over consecutive asterisks to check for "*/"
+          number_of_ignored_characters = number_of_ignored_characters + 1;
+
+          get_character();
+        }
+
         if (character == CHAR_SLASH) {
           // multi-line comments end with "*/"
           in_multi_line_comment = 0;
