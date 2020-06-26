@@ -2620,25 +2620,15 @@ uint64_t find_next_character() {
     } else if (in_multi_line_comment) {
       get_character();
 
-      if (character == CHAR_ASTERISK) {
-        // look for '*/' and here count '*' as ignored character
+      while (character == CHAR_ASTERISK) {
+        // look for "*/" and here count '*' as ignored character
         number_of_ignored_characters = number_of_ignored_characters + 1;
 
         get_character();
 
-        while (character == CHAR_ASTERISK) {
-          // loop over consecutive asterisks to check for "*/"
-          number_of_ignored_characters = number_of_ignored_characters + 1;
-
-          get_character();
-        }
-
-        if (character == CHAR_SLASH) {
+        if (character == CHAR_SLASH)
           // multi-line comments end with "*/"
           in_multi_line_comment = 0;
-
-          get_character();
-        }
       }
 
       if (in_multi_line_comment) {
@@ -2652,9 +2642,11 @@ uint64_t find_next_character() {
 
           exit(EXITCODE_SCANNERERROR);
         }
-      }
+      } else
+        // multi-line comments end with "*/"
+        get_character();
 
-      // count the characters in comments as ignored characters including '/' in '*/'
+      // count the characters in comments as ignored characters including '/' in "*/"
       number_of_ignored_characters = number_of_ignored_characters + 1;
 
     } else if (is_character_whitespace()) {
