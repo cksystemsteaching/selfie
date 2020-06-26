@@ -2605,23 +2605,22 @@ uint64_t find_next_character() {
   // that is not whitespace and does not occur in a comment, or the file ends
   while (1) {
     if (in_single_line_comment) {
-      get_character();
-
       if (is_character_new_line())
         // single-line comments end with new line
         in_single_line_comment = 0;
       else if (character == CHAR_EOF)
         // or end of file
         return character;
-      else
+      else {
         // count the characters in comments as ignored characters
         number_of_ignored_characters = number_of_ignored_characters + 1;
 
-    } else if (in_multi_line_comment) {
-      get_character();
+        get_character();
+      }
 
+    } else if (in_multi_line_comment) {
       while (character == CHAR_ASTERISK) {
-        // look for "*/" and here count '*' as ignored character
+        // look for "*/" by looping over consecutive '*' counting them as ignored characters
         number_of_ignored_characters = number_of_ignored_characters + 1;
 
         get_character();
@@ -2634,7 +2633,7 @@ uint64_t find_next_character() {
       if (in_multi_line_comment) {
         // keep track of line numbers for error reporting and code annotation
         if (character == CHAR_LF)
-          // only line feeds count, not carriage returns
+          // only line feeds count towards line numbers, not carriage returns
           line_number = line_number + 1;
         else if (character == CHAR_EOF) {
           // multi-line comment is not terminated
@@ -2642,15 +2641,17 @@ uint64_t find_next_character() {
 
           exit(EXITCODE_SCANNERERROR);
         }
-      } else
-        // multi-line comments end with "*/"
-        get_character();
+      }
 
       // count the characters in comments as ignored characters including '/' in "*/"
       number_of_ignored_characters = number_of_ignored_characters + 1;
 
+      get_character();
+
     } else if (is_character_whitespace()) {
+      // keep track of line numbers for error reporting and code annotation
       if (character == CHAR_LF)
+        // only line feeds count towards line numbers, not carriage returns
         line_number = line_number + 1;
 
       // also count line feed and carriage return as ignored characters
@@ -2669,6 +2670,9 @@ uint64_t find_next_character() {
         number_of_ignored_characters = number_of_ignored_characters + 2;
 
         number_of_comments = number_of_comments + 1;
+
+        get_character();
+
       } else if (character == CHAR_ASTERISK) {
         // "/*" begins a multi-line comment
         in_multi_line_comment = 1;
@@ -2677,6 +2681,9 @@ uint64_t find_next_character() {
         number_of_ignored_characters = number_of_ignored_characters + 2;
 
         number_of_comments = number_of_comments + 1;
+
+        get_character();
+
       } else {
         // while looking for "//" and "/*" we actually found '/'
         symbol = SYM_DIVISION;
