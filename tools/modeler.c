@@ -725,24 +725,26 @@ uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, 
 void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t from_address, uint64_t to_address, uint64_t condition_nid) {
   uint64_t* in_edge;
 
-  if (to_address < entry_point + code_length) {
-    if (validate_procedure_body(from_instruction, from_link, to_address)) {
-      in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  if (to_address % INSTRUCTIONSIZE == 0) {
+    if (to_address < entry_point + code_length) {
+      if (validate_procedure_body(from_instruction, from_link, to_address)) {
+        in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-      *in_edge       = *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE);
-      *(in_edge + 1) = from_instruction; // from which instruction
-      *(in_edge + 2) = from_address;     // at which address
-      *(in_edge + 3) = condition_nid;    // under which condition are we coming
+        *in_edge       = *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE);
+        *(in_edge + 1) = from_instruction; // from which instruction
+        *(in_edge + 2) = from_address;     // at which address
+        *(in_edge + 3) = condition_nid;    // under which condition are we coming
 
-      *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+        *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
-      return;
-    }
-  } else if (from_address == entry_point + code_length - INSTRUCTIONSIZE)
-    // from_instruction is last instruction in binary
-    if (*(control_in + (from_address - entry_point) / INSTRUCTIONSIZE) == 0)
-      // and unreachable
-      return;
+        return;
+      }
+    } else if (from_address == entry_point + code_length - INSTRUCTIONSIZE)
+      // from_instruction is last instruction in binary
+      if (*(control_in + (from_address - entry_point) / INSTRUCTIONSIZE) == 0)
+        // and unreachable
+        return;
+  }
 
   // the instruction at from_address proceeds to an instruction at an invalid to_address
 
