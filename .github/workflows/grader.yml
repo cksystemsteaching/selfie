@@ -4,6 +4,7 @@ on:
   push:
     paths:
     - '**.c'
+    - '**.yml'
 
 jobs:
   auto-grade-selfie-assignment:
