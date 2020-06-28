@@ -80,13 +80,13 @@ Note that whenever you need to update your selfie installation but your working 
 
 ### Working on an assignment
 
-Create a development branch in your selfie installation and work on your solution of an assignment (regularly committing, pushing, updating, merging):
+Create a development branch in your selfie installation and work on your solution of an `<assignment>` (regularly committing, pushing, updating, merging):
 
 1. Change directory to the root directory of your selfie installation.
 2. Make sure the master branch in your selfie installation is checked out: `git checkout master`
 3. Create the development branch off the master branch and check it out: `git checkout -b <developmentbranch>`
 4. Work on your solution and use the autograder for feedback. Do not change the autograder in any way! If you discover a bug, please report it to your teacher.
-5. Commit your changes regularly using `git add` and `git commit`.
+5. Commit your changes regularly using `git add` and `git commit` with the commit messages formatted as `"message [assignment]"` which triggers the autograder on the `<assignment>` as [GitHub Action](https://github.com/cksystemsteaching/selfie/actions) on the next push.
 6. Push your changes to your `myselfie` repository on GitHub for backup: `git push -u origin`
 7. Update your selfie installation to the latest version of the official selfie repository regularly using the above instructions.
 8. If you fetched and merged updates go back to the `<developmentbranch>`: `git checkout <developmentbranch>`
