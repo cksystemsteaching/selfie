@@ -228,9 +228,7 @@ char* filename_buffer; // buffer for opening files
 
 uint64_t* binary_buffer; // buffer for binary I/O
 
-uint64_t OS = 0; // indicates on which OS we may run
-
-uint64_t WINDOWS = 1;
+uint64_t WINDOWS = 0; // indicates if selfie runs on Windows
 
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
@@ -1728,7 +1726,7 @@ uint64_t* selfie_argv = (uint64_t*) 0;
 
 char* argument = (char*) 0;
 
-char* selfie_name = (char*) 0;
+char* selfie_name = (char*) 0; // name of running selfie executable
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -5862,19 +5860,24 @@ uint64_t open_write_only(char* name) {
   // not always work and require intervention
   uint64_t fd;
 
-  if (OS == WINDOWS)
+  if (WINDOWS == 0) {
+    // we have not yet determined if we are running on Windows or not
+    if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
+      WINDOWS = 1; // we are likely to be running on Windows
+    else
+      WINDOWS = -1; // we are probably not running on Windows
+  }
+
+  if (WINDOWS == 1)
     // use Windows flags
-    return sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
+    fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
   else {
     // try Mac flags
     fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
-    if (signed_less_than(fd, 0)) {
+    if (signed_less_than(fd, 0))
       // try Linux flags
       fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
-
-      print("Linux!\n");
-    }
   }
 
   return fd;
@@ -9207,18 +9210,10 @@ uint64_t selfie() {
 // selfie bootstraps int and char** to uint64_t and uint64_t*, respectively!
 int main(int argc, char** argv) {
   uint64_t exit_code;
-  uint64_t fd;
 
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
-
-  fd = sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH);
-
-  if (signed_less_than(fd, 0))
-    OS = WINDOWS;
-
-  printf1("fd: %d\n", (char*) open(selfie_name, 0, 0));
 
   exit_code = selfie();
 
