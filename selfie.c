@@ -228,8 +228,6 @@ char* filename_buffer; // buffer for opening files
 
 uint64_t* binary_buffer; // buffer for binary I/O
 
-uint64_t WINDOWS = 0; // indicates if selfie runs on Windows
-
 // flags for opening read-only files
 // LINUX:       0 = 0x0000 = O_RDONLY (0x0000)
 // MAC:         0 = 0x0000 = O_RDONLY (0x0000)
@@ -5860,6 +5858,7 @@ uint64_t open_write_only(char* name) {
   // not always work and require intervention
   uint64_t fd;
 
+  // try opening file with zeroed flags first which likely fails just on Windows
   fd = sign_extend(open(name, 0, 0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(fd, 0))
