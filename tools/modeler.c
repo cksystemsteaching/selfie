@@ -2181,6 +2181,8 @@ int main(int argc, char** argv) {
 
   init_library();
 
+  init_system();
+
   exit_code = selfie();
 
   if (exit_code != EXITCODE_NOARGUMENTS)
