@@ -1753,7 +1753,7 @@ void init_system() {
     BOOTLEVELZERO = 1;
 
     // try opening selfie executable with zeroed flags which likely fails but just on Windows
-    if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
+    if (signed_less_than(sign_extend(open("selfie", 0, 0), SYSCALL_BITWIDTH), 0))
       WINDOWS = 1;
   }
 }
