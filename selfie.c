@@ -5860,16 +5860,10 @@ uint64_t open_write_only(char* name) {
   // not always work and require intervention
   uint64_t fd;
 
-  if (WINDOWS == 0) {
-    // we have not yet determined if we are running on Windows or not
-    if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
-      WINDOWS = 1; // we are likely to be running on Windows
-    else
-      WINDOWS = -1; // we are probably not running on Windows
-  }
+  fd = sign_extend(open(name, 0, 0), SYSCALL_BITWIDTH);
 
-  if (WINDOWS == 1)
-    // use Windows flags
+  if (signed_less_than(fd, 0))
+    // try Windows flags
     fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
   else {
     // try Mac flags
