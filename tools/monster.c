@@ -2163,7 +2163,7 @@ uint64_t selfie_run_symbolically() {
 
       // assert: smt_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-      smt_fd = open_write_only(smt_name, S_IRUSR_IWUSR_IRGRP_IROTH);
+      smt_fd = open_write_only(smt_name);
 
       if (signed_less_than(smt_fd, 0)) {
         printf2("%s: could not create SMT-LIB output file %s\n", selfie_name, smt_name);

@@ -919,7 +919,7 @@ uint64_t* allocate_elf_header();
 uint64_t* create_elf_header(uint64_t binary_length, uint64_t code_length);
 uint64_t  validate_elf_header(uint64_t* header);
 
-uint64_t open_write_only(char* name, uint64_t mode);
+uint64_t open_write_only(char* name);
 
 void selfie_output(char* filename);
 
@@ -5875,7 +5875,7 @@ uint64_t validate_elf_header(uint64_t* header) {
   return 1;
 }
 
-uint64_t open_write_only(char* name, uint64_t mode) {
+uint64_t open_write_only(char* name) {
   // we try opening write-only files using platform-specific flags
   // to make selfie platform-independent, this may nevertheless
   // not always work and require intervention
@@ -5883,14 +5883,14 @@ uint64_t open_write_only(char* name, uint64_t mode) {
 
   if (WINDOWS)
     // use Windows flags
-    fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, mode), SYSCALL_BITWIDTH);
+    fd = sign_extend(open(name, WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
   else {
     // try Mac flags first as default
-    fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, mode), SYSCALL_BITWIDTH);
+    fd = sign_extend(open(name, MAC_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
 
     if (signed_less_than(fd, 0))
       // then try Linux flags
-      fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, mode), SYSCALL_BITWIDTH);
+      fd = sign_extend(open(name, LINUX_O_CREAT_TRUNC_WRONLY, S_IRUSR_IWUSR_IRGRP_IROTH), SYSCALL_BITWIDTH);
   }
 
   return fd;
@@ -5909,7 +5909,7 @@ void selfie_output(char* filename) {
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  fd = open_write_only(binary_name, S_IRUSR_IWUSR_IRGRP_IROTH);
+  fd = open_write_only(binary_name);
 
   if (signed_less_than(fd, 0)) {
     printf2("%s: could not create binary output file %s\n", selfie_name, binary_name);
@@ -6429,7 +6429,7 @@ void implement_openat(uint64_t* context) {
   if (down_load_string(context, vfilename, filename_buffer)) {
     if (flags == MAC_O_CREAT_TRUNC_WRONLY)
       // default for opening write-only files
-      fd = open_write_only(filename_buffer, mode);
+      fd = open_write_only(filename_buffer);
     else
       fd = sign_extend(open(filename_buffer, flags, mode), SYSCALL_BITWIDTH);
 
@@ -7538,7 +7538,7 @@ void selfie_disassemble(uint64_t verbose) {
 
   // assert: assembly_name is mapped and not longer than MAX_FILENAME_LENGTH
 
-  assembly_fd = open_write_only(assembly_name, S_IRUSR_IWUSR_IRGRP_IROTH);
+  assembly_fd = open_write_only(assembly_name);
 
   if (signed_less_than(assembly_fd, 0)) {
     printf2("%s: could not create assembly output file %s\n", selfie_name, assembly_name);
