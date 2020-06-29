@@ -9205,6 +9205,8 @@ int main(int argc, char** argv) {
 
   init_library();
 
+  printf1("fd: %d\n", (char*) open(selfie_name, 0, 0));
+
   exit_code = selfie();
 
   if (exit_code != EXITCODE_NOERROR)
