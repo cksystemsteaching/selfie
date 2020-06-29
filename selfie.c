@@ -5858,7 +5858,7 @@ uint64_t open_write_only(char* name) {
   // not always work and require intervention
   uint64_t fd;
 
-  // try opening file with zeroed flags first which likely fails just on Windows
+  // try opening file with zeroed flags first which likely fails but just on Windows
   fd = sign_extend(open(name, 0, 0), SYSCALL_BITWIDTH);
 
   if (signed_less_than(fd, 0))
