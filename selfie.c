@@ -1752,6 +1752,7 @@ void init_system() {
   if (is_boot_level_zero()) {
     BOOTLEVELZERO = 1;
 
+    // Caution: the name of the executable must not have an extension to make this work
     // try opening executable with zeroed flags which likely fails but just on Windows
     if (signed_less_than(sign_extend(open(selfie_name, 0, 0), SYSCALL_BITWIDTH), 0))
       WINDOWS = 1;
