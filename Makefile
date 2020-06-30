@@ -26,16 +26,16 @@ selfie.h: selfie.c
 
 # Translate *.c including selfie.c into SMT-LIB model
 %-35.smt: %-35.c tools/monster.selfie
-	./tools/monster.selfie -c $< - 0 35 --merge-enabled
+	tools/monster.selfie -c $< - 0 35 --merge-enabled
 %-10.smt: %-10.c tools/monster.selfie
-	./tools/monster.selfie -c $< - 0 10 --merge-enabled
+	tools/monster.selfie -c $< - 0 10 --merge-enabled
 
 # Prevent make from deleting intermediate target tools/modeler.selfie
 .SECONDARY: tools/modeler.selfie
 
 # Translate *.c including selfie.c into BTOR2 model
 %.btor2: %.c tools/modeler.selfie
-	./tools/modeler.selfie -c $< - 0 --check-block-access
+	tools/modeler.selfie -c $< - 0 --check-block-access
 
 # Consider these targets as targets, not files
 .PHONY: compile quine escape debug replay os vm min mob sat smt monster btor2 modeler x86 all assemble spike qemu boolector btormc validator grader grade extras everything clean
@@ -84,7 +84,7 @@ mob: selfie
 
 # Run SAT solver natively and as RISC-U executable
 sat: tools/babysat.selfie selfie selfie.h
-	./tools/babysat.selfie examples/rivest.cnf
+	tools/babysat.selfie examples/rivest.cnf
 	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
 
 # Gather symbolic execution example files as .smt files
@@ -97,7 +97,7 @@ smt: $(smts-1) $(smts-2) $(smts-3)
 
 # Run monster natively and as RISC-U executable
 monster: tools/monster.selfie selfie.h selfie
-	./tools/monster.selfie
+	tools/monster.selfie
 	./selfie -c selfie.h tools/monster.c -m 1
 
 # Gather symbolic execution example files as .btor2 files
@@ -108,13 +108,13 @@ btor2: $(btor2s) selfie.btor2
 
 # Run modeler natively and as RISC-U executable
 modeler: tools/modeler.selfie selfie.h selfie
-	./tools/modeler.selfie
+	tools/modeler.selfie
 	./selfie -c selfie.h tools/modeler.c -m 1
 
 # Run RISC-V-to-x86 translator natively and as RISC-U executable
 # TODO: check self-compilation
 x86: tools/riscv-2-x86.selfie selfie.m selfie
-	./tools/riscv-2-x86.selfie -c selfie.c
+	tools/riscv-2-x86.selfie -c selfie.c
 	# ./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
 
 # Run everything that only requires standard tools
@@ -158,7 +158,7 @@ btormc: btor2
 
 # Run validator on *.c files in symbolic
 validator: selfie tools/modeler.selfie
-	$(foreach file, $(wildcard symbolic/*.c), ./tools/validator.py $(file);)
+	$(foreach file, $(wildcard symbolic/*.c), tools/validator.py $(file);)
 
 # Run everything that requires non-standard tools
 extras: assemble spike qemu boolector btormc validator grader grade
