@@ -301,7 +301,7 @@ arguments.add_argument("-e", "--exitcode", dest="bad_exit_code", type=int, defau
                        help="value for non-zero exit code bad-state")
 arguments.add_argument("-s", "--selfie", dest="selfie_path", default="./selfie",
                        help="path to selfie executable")
-arguments.add_argument("-m", "--modeler", dest="modeler_path", default="./tools/modeler.selfie",
+arguments.add_argument("-m", "--modeler", dest="modeler_path", default="./modeler.selfie",
                         help="path to modeler.selfie")
 arguments.add_argument("-b", "--btormc", dest="btormc_path", default="btormc",
                        help="path to btormc executable")

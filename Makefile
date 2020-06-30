@@ -18,24 +18,24 @@ selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
 # Compile *.c with selfie.h as library into *.selfie executable
-%.selfie: %.c selfie.h
+%.selfie: tools/%.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
 
-# Prevent make from deleting intermediate target tools/monster.selfie
-.SECONDARY: tools/monster.selfie
+# Prevent make from deleting intermediate target monster.selfie
+.SECONDARY: monster.selfie
 
 # Translate *.c including selfie.c into SMT-LIB model
-%-35.smt: %-35.c tools/monster.selfie
-	tools/monster.selfie -c $< - 0 35 --merge-enabled
-%-10.smt: %-10.c tools/monster.selfie
-	tools/monster.selfie -c $< - 0 10 --merge-enabled
+%-35.smt: %-35.c monster.selfie
+	./monster.selfie -c $< - 0 35 --merge-enabled
+%-10.smt: %-10.c monster.selfie
+	./monster.selfie -c $< - 0 10 --merge-enabled
 
-# Prevent make from deleting intermediate target tools/modeler.selfie
-.SECONDARY: tools/modeler.selfie
+# Prevent make from deleting intermediate target modeler.selfie
+.SECONDARY: modeler.selfie
 
 # Translate *.c including selfie.c into BTOR2 model
-%.btor2: %.c tools/modeler.selfie
-	tools/modeler.selfie -c $< - 0 --check-block-access
+%.btor2: %.c modeler.selfie
+	./modeler.selfie -c $< - 0 --check-block-access
 
 # Consider these targets as targets, not files
 .PHONY: compile quine escape debug replay os vm min mob sat smt monster btor2 modeler x86 all assemble spike qemu boolector btormc validator grader grade extras everything clean
@@ -83,8 +83,8 @@ mob: selfie
 	./selfie -c -mob 1
 
 # Run SAT solver natively and as RISC-U executable
-sat: tools/babysat.selfie selfie selfie.h
-	tools/babysat.selfie examples/rivest.cnf
+sat: babysat.selfie selfie selfie.h
+	./babysat.selfie examples/rivest.cnf
 	./selfie -c selfie.h tools/babysat.c -m 1 examples/rivest.cnf
 
 # Gather symbolic execution example files as .smt files
@@ -96,8 +96,8 @@ smts-3 := $(patsubst %.c,%.smt,$(wildcard symbolic/*-3-*.c))
 smt: $(smts-1) $(smts-2) $(smts-3)
 
 # Run monster natively and as RISC-U executable
-monster: tools/monster.selfie selfie.h selfie
-	tools/monster.selfie
+monster: monster.selfie selfie.h selfie
+	./monster.selfie
 	./selfie -c selfie.h tools/monster.c -m 1
 
 # Gather symbolic execution example files as .btor2 files
@@ -107,14 +107,14 @@ btor2s := $(patsubst %.c,%.btor2,$(wildcard symbolic/*.c))
 btor2: $(btor2s) selfie.btor2
 
 # Run modeler natively and as RISC-U executable
-modeler: tools/modeler.selfie selfie.h selfie
-	tools/modeler.selfie
+modeler: modeler.selfie selfie.h selfie
+	./modeler.selfie
 	./selfie -c selfie.h tools/modeler.c -m 1
 
 # Run RISC-V-to-x86 translator natively and as RISC-U executable
 # TODO: check self-compilation
-x86: tools/riscv-2-x86.selfie selfie.m selfie
-	tools/riscv-2-x86.selfie -c selfie.c
+x86: riscv-2-x86.selfie selfie.m selfie
+	./riscv-2-x86.selfie -c selfie.c
 	# ./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
 
 # Run everything that only requires standard tools
@@ -157,7 +157,7 @@ btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file);)
 
 # Run validator on *.c files in symbolic
-validator: selfie tools/modeler.selfie
+validator: selfie modeler.selfie
 	$(foreach file, $(wildcard symbolic/*.c), tools/validator.py $(file);)
 
 # Run everything that requires non-standard tools
@@ -181,4 +181,3 @@ clean:
 	rm -f examples/*.s
 	rm -f symbolic/*.smt
 	rm -f symbolic/*.btor2
-	rm -f tools/*.selfie
