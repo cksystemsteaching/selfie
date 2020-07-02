@@ -66,7 +66,7 @@ def main(argv):
                         student_count += 1
                         csv_writer.writerow({
                                 'Google Apps Email': student,
-                                'Total Average': (students[student].q_total + students[student].a_total) / students[student].number_of_qas,
+                                'Total Average': (students[student].q_total + students[student].a_total) / students[student].number_of_qas / 2,
                                 'Number of Q&As': students[student].number_of_qas,
                                 'Length of Answers': students[student].a_length,
                                 'Length of Questions': students[student].q_length,
