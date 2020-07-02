@@ -33,26 +33,26 @@ def main(argv):
                     q_length_count = 0
                     a_length_count = 0
                     for row in csv_reader:
-                        qa_count     += 1
+                        qa_count       += 1
                         q_length_count += len(row['Ask Question'])
                         a_length_count += len(row['Answer Question'])
 
-                        entry = namedtuple('Entry', ['number_of_qas', 'q_average', 'q_length', 'a_average', 'a_length'])
+                        entry = namedtuple('Entry', ['number_of_qas', 'q_total', 'q_length', 'a_total', 'a_length'])
 
                         if row['Email address'] not in students:
                             students[row['Email address']] = entry(
                                     number_of_qas = 1,
-                                    q_average     = float(row['Grade Question']),
+                                    q_total       = float(row['Grade Question']),
                                     q_length      = len(row['Ask Question']),
-                                    a_average     = float(row['Grade Answer']),
+                                    a_total       = float(row['Grade Answer']),
                                     a_length      = len(row['Answer Question'])
                                 )
                         else:
                             students[row['Email address']] = entry(
                                     number_of_qas = students[row['Email address']].number_of_qas + 1,
-                                    q_average     = (students[row['Email address']].q_average + float(row['Grade Question'])) / 2,
+                                    q_total       = students[row['Email address']].q_total + float(row['Grade Question']),
                                     q_length      = students[row['Email address']].q_length + len(row['Ask Question']),
-                                    a_average     = (students[row['Email address']].a_average + float(row['Grade Answer'])) / 2,
+                                    a_total       = students[row['Email address']].a_total + float(row['Grade Answer']),
                                     a_length      = students[row['Email address']].a_length + len(row['Answer Question']),
                                 )
                     print(f'Total number of Q&As {qa_count}')
@@ -66,13 +66,13 @@ def main(argv):
                         student_count += 1
                         csv_writer.writerow({
                                 'Google Apps Email': student,
-                                'Total Average': (students[student].q_average + students[student].a_average) / 2,
+                                'Total Average': (students[student].q_total + students[student].a_total) / students[student].number_of_qas,
                                 'Number of Q&As': students[student].number_of_qas,
                                 'Length of Answers': students[student].a_length,
                                 'Length of Questions': students[student].q_length,
                                 'Totel Length of Q&As': students[student].q_length + students[student].a_length,
-                                'Question Average': students[student].q_average,
-                                'Answer Average': students[student].a_average
+                                'Question Average': students[student].q_total / students[student].number_of_qas,
+                                'Answer Average': students[student].a_total / students[student].number_of_qas
                             })
 
                     print(f'Number of students: {student_count}')
