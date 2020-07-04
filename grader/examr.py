@@ -1,10 +1,11 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import sys, getopt
 
 import csv
 
-# import textdistance
+# requires installing textdistance: pip3 install "textdistance[extras]"
+import textdistance
 
 class Student:
     def __init__(self, q_total, q_length, a_total, a_length):
@@ -78,10 +79,11 @@ def compute_similarity(text_blocks):
 
     for x in range(len(text_blocks)):
         for y in range(len(text_blocks)):
-            if text_blocks[x] == text_blocks[y]:
-                similarity[x][y] = 1
-            else:
-                similarity[x][y] = 0
+            if x != y:
+                similarity[x][y] = textdistance.cosine.normalized_similarity(text_blocks[x], text_blocks[y])
+                if (x < y and similarity[x][y] > 0.98):
+                    print(f'>>> Similarity {similarity[x][y]} at [{x},{y}]:\n{text_blocks[x]}\n===\n{text_blocks[y]}\n<<<\n')
+
     return similarity
 
 def assign_similarity(students, emails, q_similarity, a_similarity):
@@ -92,6 +94,11 @@ def assign_similarity(students, emails, q_similarity, a_similarity):
             if x != y:
                 student.q_similarity += q_similarity[x][y]
                 student.a_similarity += a_similarity[x][y]
+
+        if (len(emails) > 1):
+            # normalize again
+            student.q_similarity /= len(emails) - 1
+            student.a_similarity /= len(emails) - 1
 
 def main(argv):
     inputfile = ''
