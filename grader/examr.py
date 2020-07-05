@@ -74,15 +74,15 @@ def generate_csv(students, csv_file):
             'Answer Average': student[1].a_total / student[1].number_of_qas
         })
 
-def compute_similarity(text_blocks):
+def compute_similarity(message, text_blocks, emails):
     similarity = [ [0] * len(text_blocks) for i in range(len(text_blocks)) ]
 
     for x in range(len(text_blocks)):
         for y in range(len(text_blocks)):
             if x != y:
                 similarity[x][y] = textdistance.cosine.normalized_similarity(text_blocks[x], text_blocks[y])
-                if (x < y and similarity[x][y] > 0.98):
-                    print(f'>>> Similarity {similarity[x][y]} at [{x},{y}]:\n{text_blocks[x]}\n===\n{text_blocks[y]}\n<<<\n')
+                if (x < y and similarity[x][y] > 0.92):
+                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:\n{emails[x]}\n{emails[y]}\n<<<\n{text_blocks[x]}\n---\n{text_blocks[y]}\n>>>\n')
 
     return similarity
 
@@ -122,8 +122,8 @@ def main(argv):
                 with open(outputfile, mode='w') as csv_output_file:
                     students, emails, questions, answers, q_total_length, a_total_length = process_qas(csv_input_file)
 
-                    q_similarity = compute_similarity(questions)
-                    a_similarity = compute_similarity(answers)
+                    q_similarity = compute_similarity("Question", questions, emails)
+                    a_similarity = compute_similarity("Answer", answers, emails)
 
                     assign_similarity(students, emails, q_similarity, a_similarity)
 
