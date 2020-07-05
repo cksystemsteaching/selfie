@@ -4,18 +4,71 @@ import sys, getopt
 
 import csv
 
+import re
+
 # requires installing textdistance: pip3 install "textdistance[extras]"
 import textdistance
 
 class Student:
-    def __init__(self, q_total, q_length, a_total, a_length):
+    def __init__(self, q_total, q_length, q_formality, a_total, a_length, a_formality):
         self.number_of_qas = 1
         self.q_total       = q_total
         self.q_length      = q_length
+        self.q_formality   = q_formality
         self.q_similarity  = 0
         self.a_total       = a_total
         self.a_length      = a_length
+        self.a_formality   = a_formality
         self.a_similarity  = 0
+
+def formality(text):
+    return (
+        text.count("\n") +
+        text.count("\r") +
+        text.count("=") +
+        text.count("+") +
+        text.count("-") +
+        text.count("*") +
+        text.count("/") +
+        text.count("%") +
+        text.count("!") +
+        text.count("<") +
+        text.count(">") +
+        text.count("(") +
+        text.count(")") +
+        text.count("{") +
+        text.count("}") +
+        text.count("[") +
+        text.count("]") +
+        text.count("|") +
+        text.count("\"") +
+        text.count("_") +
+        len(re.findall(" \
+            uint64_t | \
+            uint64_t\* | \
+            lui | \
+            addi | \
+            ld | \
+            sd | \
+            divu | \
+            remu | \
+            sltu | \
+            beq | \
+            jal | \
+            jalr | \
+            ecall | \
+            LUI | \
+            ADDI | \
+            LD | \
+            SD | \
+            DIVU | \
+            REMU | \
+            SLTU | \
+            BEQ | \
+            JAL | \
+            JALR | \
+            ECALL", text))
+    )
 
 def process_qas(csv_file):
     csv_reader = csv.DictReader(csv_file)
@@ -27,34 +80,44 @@ def process_qas(csv_file):
     questions = []
     answers   = []
 
-    q_total_length = 0
-    a_total_length = 0
+    q_length    = 0
+    q_formality = 0
+
+    a_length    = 0
+    a_formality = 0
 
     for row in csv_reader:
         emails.append(row['Email address'])
 
         questions.append(row['Ask Question'])
-        q_total_length += len(row['Ask Question'])
+        q_length     += len(row['Ask Question'])
+        q_formality += formality(row['Ask Question'])
+
         answers.append(row['Answer Question'])
-        a_total_length += len(row['Answer Question'])
+        a_length     += len(row['Answer Question'])
+        a_formality += formality(row['Answer Question'])
 
         if row['Email address'] not in students:
             students[row['Email address']] = Student(
                 float(row['Grade Question']),
                 len(row['Ask Question']),
+                formality(row['Ask Question']),
                 float(row['Grade Answer']),
-                len(row['Answer Question']))
+                len(row['Answer Question']),
+                formality(row['Answer Question']))
         else:
             students[row['Email address']].number_of_qas += 1
             students[row['Email address']].q_total       += float(row['Grade Question'])
             students[row['Email address']].q_length      += len(row['Ask Question'])
+            students[row['Email address']].q_formality   += formality(row['Ask Question'])
             students[row['Email address']].a_total       += float(row['Grade Answer'])
             students[row['Email address']].a_length      += len(row['Answer Question'])
+            students[row['Email address']].a_formality   += formality(row['Answer Question'])
 
-    return students, emails, questions, answers, q_total_length, a_total_length
+    return students, emails, questions, answers, q_length, q_formality, a_length, a_formality
 
 def generate_csv(students, csv_file):
-    fieldnames = 'Google Apps Email', 'PLUS Email', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Similarity of Answers', 'Length of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
+    fieldnames = 'Google Apps Email', 'PLUS Email', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
 
     csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
@@ -66,8 +129,10 @@ def generate_csv(students, csv_file):
             'Total Average': (student[1].q_total + student[1].a_total) / student[1].number_of_qas / 2,
             'Number of Q&As': student[1].number_of_qas,
             'Length of Answers': student[1].a_length,
+            'Formality of Answers': student[1].a_formality,
             'Similarity of Answers': student[1].a_similarity,
             'Length of Questions': student[1].q_length,
+            'Formality of Questions': student[1].q_formality,
             'Similarity of Questions': student[1].q_similarity,
             'Totel Length of Q&As': student[1].q_length + student[1].a_length,
             'Question Average': student[1].q_total / student[1].number_of_qas,
@@ -120,7 +185,7 @@ def main(argv):
         with open(inputfile, mode='r') as csv_input_file:
             if outputfile != '':
                 with open(outputfile, mode='w') as csv_output_file:
-                    students, emails, questions, answers, q_total_length, a_total_length = process_qas(csv_input_file)
+                    students, emails, questions, answers, q_length, q_formality, a_length, a_formality = process_qas(csv_input_file)
 
                     q_similarity = compute_similarity("Question", questions, emails)
                     a_similarity = compute_similarity("Answer", answers, emails)
@@ -132,9 +197,11 @@ def main(argv):
                     print(f'Number of students: {len(students)}')
                     print(f'Total number of Q&As {len(questions)}')
                     print(f'Average number of Q&As per student: {len(questions) / len(students)}')
-                    print(f'Average length of answers per student: {a_total_length / len(students)}')
-                    print(f'Average length of questions per student: {q_total_length / len(students)}')
-                    print(f'Average length of Q&As per student: {(q_total_length + a_total_length) / len(students)}')
+                    print(f'Average length of answers per student: {a_length / len(students)}')
+                    print(f'Average formality of answers per student: {a_formality / len(students)}')
+                    print(f'Average length of questions per student: {q_length / len(students)}')
+                    print(f'Average formality of questions per student: {q_formality / len(students)}')
+                    print(f'Average length of Q&As per student: {(q_length + a_length) / len(students)}')
 
 if __name__ == "__main__":
     main(sys.argv[1:])
