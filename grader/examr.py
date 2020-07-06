@@ -22,55 +22,11 @@ class Student:
         self.a_similarity  = 0
 
 def formality(text):
-    return (
-        text.count("\n") +
-        text.count("\r") +
-        text.count("=") +
-        text.count("+") +
-        text.count("-") +
-        text.count("*") +
-        text.count("/") +
-        text.count("%") +
-        text.count("!") +
-        text.count("<") +
-        text.count(">") +
-        text.count("(") +
-        text.count(")") +
-        text.count("{") +
-        text.count("}") +
-        text.count("[") +
-        text.count("]") +
-        text.count("|") +
-        text.count("\"") +
-        text.count("_") +
-        len(re.findall(" \
-            uint64_t | \
-            uint64_t\* | \
-            lui | \
-            addi | \
-            ld | \
-            sd | \
-            divu | \
-            remu | \
-            sltu | \
-            beq | \
-            jal | \
-            jalr | \
-            ecall | \
-            LUI | \
-            ADDI | \
-            LD | \
-            SD | \
-            DIVU | \
-            REMU | \
-            SLTU | \
-            BEQ | \
-            JAL | \
-            JALR | \
-            ECALL", text))
-    )
+    # list more restrictive patterns first
+    formal = "(uint64_t\*?)|(_?[a-z]+(_[a-z]+)+)|('.')|(\d)|(\+)|(\-)|(\*)|(\/)|(%)|(\|)|(==)|(!=)|(<=)|(<)|(>=)|(>)|(=)|(lui)|(addi)|(ld)|(sd)|(add)|(sub)|(mul)|(divu)|(remu)|(sltu)|(beq)|(jalr)|(jal)|(ecall)"
+    return len(re.findall(formal, text, re.IGNORECASE))
 
-def process_qas(csv_file):
+def read_qas(csv_file):
     csv_reader = csv.DictReader(csv_file)
 
     students = dict()
@@ -90,11 +46,11 @@ def process_qas(csv_file):
         emails.append(row['Email address'])
 
         questions.append(row['Ask Question'])
-        q_length     += len(row['Ask Question'])
+        q_length    += len(row['Ask Question'])
         q_formality += formality(row['Ask Question'])
 
         answers.append(row['Answer Question'])
-        a_length     += len(row['Answer Question'])
+        a_length    += len(row['Answer Question'])
         a_formality += formality(row['Answer Question'])
 
         if row['Email address'] not in students:
@@ -116,7 +72,7 @@ def process_qas(csv_file):
 
     return students, emails, questions, answers, q_length, q_formality, a_length, a_formality
 
-def generate_csv(students, csv_file):
+def write_results(students, csv_file):
     fieldnames = 'Google Apps Email', 'PLUS Email', 'Total Average', 'Number of Q&As', 'Length of Answers', 'Formality of Answers', 'Similarity of Answers', 'Length of Questions', 'Formality of Questions', 'Similarity of Questions', 'Totel Length of Q&As', 'Question Average', 'Answer Average'
 
     csv_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -185,14 +141,14 @@ def main(argv):
         with open(inputfile, mode='r') as csv_input_file:
             if outputfile != '':
                 with open(outputfile, mode='w') as csv_output_file:
-                    students, emails, questions, answers, q_length, q_formality, a_length, a_formality = process_qas(csv_input_file)
+                    students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(csv_input_file)
 
                     q_similarity = compute_similarity("Question", questions, emails)
                     a_similarity = compute_similarity("Answer", answers, emails)
 
                     assign_similarity(students, emails, q_similarity, a_similarity)
 
-                    generate_csv(students, csv_output_file)
+                    write_results(students, csv_output_file)
 
                     print(f'Number of students: {len(students)}')
                     print(f'Total number of Q&As {len(questions)}')
