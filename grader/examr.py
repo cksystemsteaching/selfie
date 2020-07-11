@@ -4,8 +4,6 @@ import sys, getopt
 
 import csv
 
-import re
-
 # requires: pip3 install "textdistance[extras]"
 
 import textdistance
@@ -13,21 +11,23 @@ import textdistance
 def get_cosine_similarity(string1, string2):
     return textdistance.cosine.normalized_similarity(string1, string2)
 
-# requires: pip3 install laserembeddings langid sklearn
-# and: python3 -m laserembeddings download-models
+# requires: pip3 install laserembeddings langid
+# and also: python3 -m laserembeddings download-models
 
 from laserembeddings import Laser
 from langid import classify
-from sklearn.metrics.pairwise import cosine_similarity
 
 def get_vector(string):
-    lang  = classify(string)[0]
-    laser = Laser()
+    return Laser().embed_sentences(string, lang=classify(string)[0])
 
-    return laser.embed_sentences(string, lang=lang)
+# requires: pip3 install sklearn
 
-def get_lasered_cosine_similarity(string1, string2):
-    return cosine_similarity(get_vector(string1), get_vector(string2))[0][0]
+from sklearn.metrics.pairwise import cosine_similarity
+
+def get_lasered_cosine_similarity(vector1, vector2):
+    return cosine_similarity(vector1, vector2)[0][0]
+
+import re
 
 def formality(text):
     # list more restrictive patterns first
@@ -115,16 +115,21 @@ def write_results(students, csv_file):
             'Answer Average': student[1].a_total / student[1].number_of_qas
         })
 
-def compute_similarity(message, text_blocks, emails):
-    similarity = [ [0] * len(text_blocks) for i in range(len(text_blocks)) ]
+def compute_similarity(message, strings, emails):
+    # vectors = [0] * len(strings)
+    # for x in range(len(strings)):
+    #     vectors[x] = get_vector(strings[x])
 
-    for x in range(len(text_blocks)):
-        for y in range(len(text_blocks)):
+    similarity = [ [0] * len(strings) for i in range(len(strings)) ]
+
+    for x in range(len(strings)):
+        for y in range(len(strings)):
             if x < y:
-                similarity[x][y] = get_cosine_similarity(text_blocks[x], text_blocks[y])
+                similarity[x][y] = get_cosine_similarity(strings[x], strings[y])
+                # similarity[x][y] = get_lasered_cosine_similarity(vectors[x], vectors[y])
 
                 if similarity[x][y] > 0.92:
-                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:\n{emails[x]}\n{emails[y]}\n<<<\n{text_blocks[x]}\n---\n{text_blocks[y]}\n>>>\n')
+                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:\n{emails[x]}\n{emails[y]}\n<<<\n{strings[x]}\n---\n{strings[y]}\n>>>\n')
             elif x > y:
                 similarity[x][y] = similarity[y][x]
             else:
