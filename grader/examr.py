@@ -6,8 +6,33 @@ import csv
 
 import re
 
-# requires installing textdistance: pip3 install "textdistance[extras]"
+# requires: pip3 install "textdistance[extras]"
+
 import textdistance
+
+def get_cosine_similarity(string1, string2):
+    return textdistance.cosine.normalized_similarity(string1, string2)
+
+# requires: pip3 install laserembeddings langid sklearn
+# and: python3 -m laserembeddings download-models
+
+from laserembeddings import Laser
+from langid import classify
+from sklearn.metrics.pairwise import cosine_similarity
+
+def get_vector(string):
+    lang  = classify(string)[0]
+    laser = Laser()
+
+    return laser.embed_sentences(string, lang=lang)
+
+def get_lasered_cosine_similarity(string1, string2):
+    return cosine_similarity(get_vector(string1), get_vector(string2))[0][0]
+
+def formality(text):
+    # list more restrictive patterns first
+    formal = "(uint64_t\*?)|(_?[a-z]+(_[a-z]+)+)|('.')|(\d)|(\+)|(\-)|(\*)|(\/)|(%)|(\|)|(==)|(!=)|(<=)|(<)|(>=)|(>)|(=)|(lui)|(addi)|(ld)|(sd)|(add)|(sub)|(mul)|(divu)|(remu)|(sltu)|(beq)|(jalr)|(jal)|(ecall)"
+    return len(re.findall(formal, text, re.IGNORECASE))
 
 class Student:
     def __init__(self, q_total, q_length, q_formality, a_total, a_length, a_formality):
@@ -20,11 +45,6 @@ class Student:
         self.a_length      = a_length
         self.a_formality   = a_formality
         self.a_similarity  = 0
-
-def formality(text):
-    # list more restrictive patterns first
-    formal = "(uint64_t\*?)|(_?[a-z]+(_[a-z]+)+)|('.')|(\d)|(\+)|(\-)|(\*)|(\/)|(%)|(\|)|(==)|(!=)|(<=)|(<)|(>=)|(>)|(=)|(lui)|(addi)|(ld)|(sd)|(add)|(sub)|(mul)|(divu)|(remu)|(sltu)|(beq)|(jalr)|(jal)|(ecall)"
-    return len(re.findall(formal, text, re.IGNORECASE))
 
 def read_qas(csv_file):
     csv_reader = csv.DictReader(csv_file)
