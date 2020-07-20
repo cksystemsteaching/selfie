@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS := -g -Wall -Wextra -m64 -D'uint64_t=unsigned long long'
+CFLAGS := -Wall -Wextra -m64 -D'uint64_t=unsigned long long'
 
 # Bootstrap selfie.c into selfie executable
 selfie: selfie.c
