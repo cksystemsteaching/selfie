@@ -56,7 +56,7 @@ void implement_symbolic_exit(uint64_t* context);
 void implement_symbolic_read(uint64_t* context);
 void implement_symbolic_write(uint64_t* context);
 
-uint64_t down_load_concrete_string(uint64_t* table, uint64_t vstring, char* s);
+uint64_t down_load_concrete_string(uint64_t* context, uint64_t vstring, char* s);
 void     implement_symbolic_openat(uint64_t* context);
 
 // -----------------------------------------------------------------
@@ -151,37 +151,37 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
 
 // symbolic context extension:
 // +----+-----------------+
-// | 17 | execution depth | number of executed instructions
-// | 18 | path condition  | pointer to path condition
-// | 19 | symbolic memory | pointer to symbolic memory
-// | 20 | symbolic regs   | pointer to symbolic registers
-// | 21 | beq counter     | number of executed symbolic beq instructions
-// | 22 | merge location  | program location at which the context can possibly be merged (later)
-// | 23 | merge partner   | pointer to the context from which this context was created
-// | 24 | call stack      | pointer to a list containing the addresses of the procedures on the call stack
+// | 19 | execution depth | number of executed instructions
+// | 20 | path condition  | pointer to path condition
+// | 21 | symbolic memory | pointer to symbolic memory
+// | 22 | symbolic regs   | pointer to symbolic registers
+// | 23 | beq counter     | number of executed symbolic beq instructions
+// | 24 | merge location  | program location at which the context can possibly be merged (later)
+// | 25 | merge partner   | pointer to the context from which this context was created
+// | 26 | call stack      | pointer to a list containing the addresses of the procedures on the call stack
 // +----+-----------------+
 
 uint64_t* allocate_symbolic_context() {
-  return smalloc(7 * SIZEOFUINT64STAR + 10 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  return smalloc(7 * SIZEOFUINT64STAR + 12 * SIZEOFUINT64 + 5 * SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 }
 
-uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 17); }
-char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 18); }
-uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 19); }
-uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 20); }
-uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 21); }
-uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 22); }
-uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 23); }
-uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 24); }
+uint64_t  get_execution_depth(uint64_t* context) { return             *(context + 19); }
+char*     get_path_condition(uint64_t* context)  { return (char*)     *(context + 20); }
+uint64_t* get_symbolic_memory(uint64_t* context) { return (uint64_t*) *(context + 21); }
+uint64_t* get_symbolic_regs(uint64_t* context)   { return (uint64_t*) *(context + 22); }
+uint64_t  get_beq_counter(uint64_t* context)     { return             *(context + 23); }
+uint64_t  get_merge_location(uint64_t* context)  { return             *(context + 24); }
+uint64_t* get_merge_partner(uint64_t* context)   { return (uint64_t*) *(context + 25); }
+uint64_t* get_call_stack(uint64_t* context)      { return (uint64_t*) *(context + 26); }
 
-void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 17) =            depth; }
-void set_path_condition(uint64_t* context, char* path)        { *(context + 18) = (uint64_t) path; }
-void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 19) = (uint64_t) memory; }
-void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 20) = (uint64_t) regs; }
-void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 21) =            counter; }
-void set_merge_location(uint64_t* context, uint64_t location) { *(context + 22) =            location; }
-void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 23) = (uint64_t) partner; }
-void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 24) = (uint64_t) stack; }
+void set_execution_depth(uint64_t* context, uint64_t depth)   { *(context + 19) =            depth; }
+void set_path_condition(uint64_t* context, char* path)        { *(context + 20) = (uint64_t) path; }
+void set_symbolic_memory(uint64_t* context, uint64_t* memory) { *(context + 21) = (uint64_t) memory; }
+void set_symbolic_regs(uint64_t* context, uint64_t* regs)     { *(context + 22) = (uint64_t) regs; }
+void set_beq_counter(uint64_t* context, uint64_t counter)     { *(context + 23) =            counter; }
+void set_merge_location(uint64_t* context, uint64_t location) { *(context + 24) =            location; }
+void set_merge_partner(uint64_t* context, uint64_t* partner)  { *(context + 25) = (uint64_t) partner; }
+void set_call_stack(uint64_t* context, uint64_t* stack)       { *(context + 26) = (uint64_t) stack; }
 
 // -----------------------------------------------------------------
 // -------------------------- MICROKERNEL --------------------------
@@ -327,36 +327,40 @@ void implement_symbolic_read(uint64_t* context) {
     if (size < bytes_to_read)
       bytes_to_read = size;
 
-    if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
+    if (is_valid_virtual_address(vbuffer))
+      if (is_valid_data_stack_heap_address(context, vbuffer))
+        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+          store_symbolic_memory(vbuffer, 0, 0, smt_variable("i", bytes_to_read * 8), bytes_to_read * 8);
 
-        // save symbolic memory here since context switching has already happened
-        set_symbolic_memory(context, symbolic_memory);
+          // save symbolic memory here since context switching has already happened
+          set_symbolic_memory(context, symbolic_memory);
 
-        read_total = read_total + bytes_to_read;
+          read_total = read_total + bytes_to_read;
 
-        size = size - bytes_to_read;
+          size = size - bytes_to_read;
 
-        if (size > 0)
-          vbuffer = vbuffer + SIZEOFUINT64;
-      } else {
+          if (size > 0)
+            vbuffer = vbuffer + SIZEOFUINT64;
+        } else {
+          failed = 1;
+
+          size = 0;
+
+          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
+        }
+      else {
         failed = 1;
 
         size = 0;
 
-        if (debug_read)
-          printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vbuffer);
+        printf2("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
       }
-    } else {
+    else {
       failed = 1;
 
       size = 0;
 
-      if (debug_read)
-        printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vbuffer);
+      printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
     }
   }
 
@@ -392,33 +396,37 @@ void implement_symbolic_write(uint64_t* context) {
     if (size < bytes_to_write)
       bytes_to_write = size;
 
-    if (is_valid_virtual_address(vbuffer)) {
-      if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
-        // TODO: What should symbolically executed code actually output?
+    if (is_valid_virtual_address(vbuffer))
+      if (is_valid_data_stack_heap_address(context, vbuffer))
+        if (is_virtual_address_mapped(get_pt(context), vbuffer)) {
+          // TODO: What should symbolically executed code actually output?
 
-        written_total = written_total + bytes_to_write;
+          written_total = written_total + bytes_to_write;
 
-        size = size - bytes_to_write;
+          size = size - bytes_to_write;
 
-        if (size > 0)
-          vbuffer = vbuffer + SIZEOFUINT64;
-      } else {
+          if (size > 0)
+            vbuffer = vbuffer + SIZEOFUINT64;
+        } else {
+          failed = 1;
+
+          size = 0;
+
+          printf2("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
+        }
+      else {
         failed = 1;
 
         size = 0;
 
-        if (debug_write)
-          printf2("%s: writing into virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vbuffer);
+        printf2("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
       }
-    } else {
+    else {
       failed = 1;
 
       size = 0;
 
-      if (debug_write)
-        printf2("%s: writing into virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vbuffer);
+      printf2("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
     }
   }
 
@@ -430,7 +438,7 @@ void implement_symbolic_write(uint64_t* context) {
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
 }
 
-uint64_t down_load_concrete_string(uint64_t* table, uint64_t vaddr, char* s) {
+uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
   uint64_t i;
   uint64_t* sword;
   uint64_t j;
@@ -438,55 +446,59 @@ uint64_t down_load_concrete_string(uint64_t* table, uint64_t vaddr, char* s) {
   i = 0;
 
   while (i < MAX_FILENAME_LENGTH / SIZEOFUINT64) {
-    if (is_valid_virtual_address(vaddr)) {
-      if (is_virtual_address_mapped(table, vaddr)) {
-        sword = load_symbolic_memory(vaddr);
+    if (is_valid_virtual_address(vaddr))
+      if (is_valid_data_stack_heap_address(context, vaddr)) {
+        if (is_virtual_address_mapped(get_pt(context), vaddr)) {
+          sword = load_symbolic_memory(vaddr);
 
-        if (sword) {
-          if (is_symbolic_value(sword)) {
-            printf1("%s: detected symbolic value ", selfie_name);
-            print_symbolic_memory(sword);
-            print(" in filename of open call\n");
+          if (sword) {
+            if (is_symbolic_value(sword)) {
+              printf1("%s: detected symbolic value ", selfie_name);
+              print_symbolic_memory(sword);
+              print(" in filename of open call\n");
 
-            exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+              exit(EXITCODE_SYMBOLICEXECUTIONERROR);
+            } else
+              // CAUTION: at boot levels higher than zero, s is only accessible
+              // in C* at machine word granularity, not individual characters
+              *((uint64_t*) s + i) = get_word_value(sword);
           } else
-            // CAUTION: at boot levels higher than zero, s is only accessible
-            // in C* at machine word granularity, not individual characters
-            *((uint64_t*) s + i) = get_word_value(sword);
-        } else
-          // assert: vaddr is mapped
-          *((uint64_t*) s + i) = load_virtual_memory(table, vaddr);
+            // assert: vaddr is mapped
+            *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
+        } else {
+          printf2("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, (char*) vaddr);
+
+          return 0;
+        }
+
+        j = 0;
+
+        // check if string ends in the current machine word
+        while (j < SIZEOFUINT64) {
+          if (load_character((char*) ((uint64_t*) s + i), j) == 0)
+            return 1;
+
+          j = j + 1;
+        }
+
+        // advance to the next machine word in virtual memory
+        vaddr = vaddr + SIZEOFUINT64;
+
+        // advance to the next machine word in our memory
+        i = i + 1;
       } else {
-        if (debug_open)
-          printf2("%s: opening file with name at virtual address %p failed because the address is unmapped\n", selfie_name,
-            (char*) vaddr);
+        printf2("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (char*) vaddr);
 
         return 0;
       }
-
-      j = 0;
-
-      // check if string ends in the current machine word
-      while (j < SIZEOFUINT64) {
-        if (load_character((char*) ((uint64_t*) s + i), j) == 0)
-          return 1;
-
-        j = j + 1;
-      }
-
-      // advance to the next machine word in virtual memory
-      vaddr = vaddr + SIZEOFUINT64;
-
-      // advance to the next machine word in our memory
-      i = i + 1;
-    } else {
-      if (debug_open)
-        printf2("%s: opening file with name at virtual address %p failed because the address is invalid\n", selfie_name,
-          (char*) vaddr);
+    else {
+      printf2("%s: opening file failed because the file name address %p is invalid\n", selfie_name, (char*) vaddr);
 
       return 0;
     }
   }
+
+  printf2("%s: opening file failed because the file name is too long at address %p\n", selfie_name, (char*) vaddr);
 
   return 0;
 }
@@ -499,7 +511,7 @@ void implement_symbolic_openat(uint64_t* context) {
 
   vfilename = *(get_regs(context) + REG_A1);
 
-  if (down_load_concrete_string(get_pt(context), vfilename, filename_buffer))
+  if (down_load_concrete_string(context, vfilename, filename_buffer))
     // TODO: check if opening vfilename has been attempted before
     *(get_regs(context) + REG_A0) = 0; // file descriptor 0
   else
@@ -1013,8 +1025,12 @@ uint64_t* copy_symbolic_context(uint64_t* original, uint64_t location, char* con
   set_highest_lo_page(context, get_highest_lo_page(original));
   set_lowest_hi_page(context, get_lowest_hi_page(original));
   set_highest_hi_page(context, get_highest_hi_page(original));
+  set_code_entry(context, get_code_entry(original));
+  set_code_segment(context, get_code_segment(original));
+  set_data_segment(context, get_data_segment(original));
+  set_program_break(context, get_program_break(original));
   set_exception(context, get_exception(original));
-  set_faulting_page(context, get_faulting_page(original));
+  set_fault(context, get_fault(original));
   set_exit_code(context, get_exit_code(original));
   set_parent(context, get_parent(original));
   set_virtual_context(context, get_virtual_context(original));
@@ -1198,8 +1214,8 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     // the execution would be terminated by this error anyway
     return EXIT;
   } else {
-    printf2("%s: context %s throws uncaught ", selfie_name, get_name(context));
-    print_exception(exception, get_faulting_page(context));
+    printf2("%s: context %s throws uncaught exception: ", selfie_name, get_name(context));
+    print_exception(exception, get_fault(context));
     println();
 
     set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
@@ -2210,6 +2226,10 @@ int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
+
+  init_system();
+
+  printf2("%u %u\n", (char*) BOOTLEVELZERO, (char*) WINDOWS);
 
   exit_code = selfie();
 
