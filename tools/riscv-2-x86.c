@@ -1,3 +1,4 @@
+
 /*
 Copyright (c) 2015-2020, the Selfie Project authors. All rights reserved.
 Please see the AUTHORS file for details. Use of this source code is
@@ -76,6 +77,10 @@ uint64_t  binary_gp_address = 0;
 uint64_t x86TotalEmittedInstructions = 0;
 // holds data segment size of x86 binary
 uint64_t x86DataLength = 0;
+//stores the offsets to every x86 instruction
+uint64_t* x86_address_fixup_table;
+//own program counter for the translator
+uint64_t pc_translator;
 
 // -----------------------------------------------------------------
 // -------------------------- x86 HANDLING -------------------------
@@ -125,135 +130,118 @@ void selfie_translate();
 // -------------------------- x86 HANDLING -------------------------
 // -----------------------------------------------------------------
 
+void fetch_translator() {
+  // assert: is_valid_virtual_address(pc) == 1
+  // assert: is_virtual_address_mapped(pt, pc) == 1
+
+  if (pc_translator % REGISTERSIZE == 0)
+    ir = get_low_word(load_virtual_memory(pt, pc_translator));
+  else
+    ir = get_high_word(load_virtual_memory(pt, pc_translator - INSTRUCTIONSIZE));
+}
+
 void x86SaveAddress() {
-  uint64_t temp;
   uint64_t offset;
-
-  offset = binary_length * SIZEOFUINT64 + x86ByteCount; //FIXME
-
-  if (pc % REGISTERSIZE == 0) {
-    // replace low word
-    temp = load_virtual_memory(pt, pc);
-    temp = left_shift(get_high_word(temp), WORDSIZEINBITS) + offset;
-    store_virtual_memory(pt, pc, temp);
-  }
-  else {
-    // replace high word
-    temp = load_virtual_memory(pt, pc - INSTRUCTIONSIZE);
-    temp = left_shift(offset, WORDSIZEINBITS) + get_low_word(temp);
-    store_virtual_memory(pt, pc - INSTRUCTIONSIZE, temp);
-  }
+  
+  offset = binary_length * SIZEOFUINT64 + x86ByteCount;
+  
+  *(x86_address_fixup_table + ((pc_translator - ELF_ENTRY_POINT) / INSTRUCTIONSIZE)) = offset;
 }
 
 void x86AdressFix() {
   uint64_t binary_length_backup;
   uint64_t x86ByteCount_backup;
   uint64_t opcode;
-  uint64_t pcbackup;
-  uint64_t targetAdr;
+  uint64_t target_address_x86;
+  uint64_t x86_offset;
+  uint64_t jump_target_r5;
+  uint64_t x86_current_instruction_address;
   uint64_t i;
 
-  pc = ELF_ENTRY_POINT;
+  pc_translator = ELF_ENTRY_POINT;
+  x86_offset = 0;
   binary_length_backup = binary_length;
   x86ByteCount_backup = x86ByteCount;
 
-  while(pc < code_length + ELF_ENTRY_POINT) {
-    fetch();
-    pc = pc + INSTRUCTIONSIZE;
+  while(pc_translator < code_length + ELF_ENTRY_POINT) {
+    
+    pc_translator = pc_translator + INSTRUCTIONSIZE;
 
-    binary_length = ir / SIZEOFUINT64;
-    x86ByteCount = ir % SIZEOFUINT64;
-
-    pcbackup = pc;
-
+    x86_current_instruction_address = *(x86_address_fixup_table + x86_offset);
+    binary_length = x86_current_instruction_address / SIZEOFUINT64;
+    x86ByteCount = x86_current_instruction_address % SIZEOFUINT64;
+    
     opcode = x86NextByte();
 
     if (opcode == TWO_BYTE_INSTRUCTION) {
       opcode = x86NextByte();
       if (opcode == X86_JE) {
-	    pc = x86NextWord();
-	    if (is_virtual_address_mapped(pt, pc)) {
-	      fetch();
-	      targetAdr = ir;
-	      pc = pcbackup;
-	      fetch();
-	      x86WriteWord(targetAdr - ir);
-	    }
+        x86_current_instruction_address = *(x86_address_fixup_table + x86_offset + 1);
+        jump_target_r5 = x86NextWord();
+        target_address_x86 = *(x86_address_fixup_table + ((jump_target_r5 - ELF_ENTRY_POINT) / INSTRUCTIONSIZE));
+        //replace jump offset with translated x86 jump offset
+        x86WriteWord(target_address_x86 - x86_current_instruction_address);
       }
     }
     else if (right_shift(opcode, 4) == 4) { //some REX prefix
       opcode = x86NextByte();
       if (opcode == X86_LEA) {
         i = 0;
-        while (i < 6) {
+        while (i < 6) { //skip lea instruction
           opcode = x86NextByte();
           i = i + 1;
         }
         if (opcode == X86_JMPQ) {
-          pc = x86NextWord();
-          if (is_virtual_address_mapped(pt, pc)) {
-            fetch();
-            targetAdr = ir;
-            pc = pcbackup;
-            fetch();
-            x86WriteWord(targetAdr - ir);
-          }
+          x86_current_instruction_address = *(x86_address_fixup_table + x86_offset + 1);
+          jump_target_r5 = x86NextWord();
+          target_address_x86 = *(x86_address_fixup_table + ((jump_target_r5 - ELF_ENTRY_POINT) / INSTRUCTIONSIZE));
+          x86WriteWord(target_address_x86 - x86_current_instruction_address);
         }
       }
       else if (opcode == X86_CMP) {
+        //skip cmp instruction
         opcode = x86NextByte();
         opcode = x86NextByte();
         if (opcode == TWO_BYTE_INSTRUCTION) {
           opcode = x86NextByte();
           if (opcode == X86_JE) {
-            pc = x86NextWord();
-            if (is_virtual_address_mapped(pt, pc)) {
-              fetch();
-              targetAdr = ir;
-              pc = pcbackup;
-              fetch();
-              x86WriteWord(targetAdr - ir);
-            }
+            x86_current_instruction_address = *(x86_address_fixup_table + x86_offset + 1);
+            jump_target_r5 = x86NextWord();
+            target_address_x86 = *(x86_address_fixup_table + ((jump_target_r5 - ELF_ENTRY_POINT) / INSTRUCTIONSIZE));
+            x86WriteWord(target_address_x86 - x86_current_instruction_address);
           }
         }
       }
       else if (right_shift(opcode, 4) == 11) { //0xb prefix
         i = 0;
-        while (i < 10) {
+        while (i < 10) { //skip mov instruction
           opcode = x86NextByte();
           i = i + 1;
         }
         if (opcode == X86_CMP) {
+          //skip cmp instruction
           opcode = x86NextByte();
           opcode = x86NextByte();
           if (opcode == TWO_BYTE_INSTRUCTION) {
             opcode = x86NextByte();
             if (opcode == X86_JE) {
-              pc = x86NextWord();
-              if (is_virtual_address_mapped(pt, pc)) {
-                fetch();
-                targetAdr = ir;
-                pc = pcbackup;
-                fetch();
-                x86WriteWord(targetAdr - ir);
-              }
+              x86_current_instruction_address = *(x86_address_fixup_table + x86_offset + 1);
+              jump_target_r5 = x86NextWord();
+              target_address_x86 = *(x86_address_fixup_table + ((jump_target_r5 - ELF_ENTRY_POINT) / INSTRUCTIONSIZE));
+              x86WriteWord(target_address_x86 - x86_current_instruction_address);
             }
-	        }
-	      }
+          }
+        }
       }
     }
     else if (opcode == X86_JMPQ) {
-      pc = x86NextWord();
-      if (is_virtual_address_mapped(pt, pc)) {
-        fetch();
-        targetAdr = ir;
-        pc = pcbackup;
-        fetch();
-        x86WriteWord(targetAdr - ir);
-      }
+      x86_current_instruction_address = *(x86_address_fixup_table + x86_offset + 1);
+      jump_target_r5 = x86NextWord();
+      target_address_x86 = *(x86_address_fixup_table + ((jump_target_r5 - ELF_ENTRY_POINT)/ INSTRUCTIONSIZE));
+      x86WriteWord(target_address_x86 - x86_current_instruction_address);
     }
 
-    pc = pcbackup;
+    x86_offset = x86_offset + 1;
   }
 
   binary_length = binary_length_backup;
@@ -277,7 +265,7 @@ void x86WriteByte(uint64_t byte) {
 
   //set targetbyte to 0
   tmp = *(binary + binary_length) - left_shift(right_shift(left_shift(*(binary + binary_length),
-								  (8 - x86ByteCount - 1) * 8), 56), x86ByteCount * 8);
+                                                                      (8 - x86ByteCount - 1) * 8), 56), x86ByteCount * 8);
 
   *(binary + binary_length) = tmp + left_shift(byte, x86ByteCount * 8);
 
@@ -434,22 +422,22 @@ void translate_lui() {
   op1 = x86GetRegister(rd);
 
   // look forward to check if we are calculating global pointer
-  pc =  pc + INSTRUCTIONSIZE;
-  fetch();
-  pc =  pc - INSTRUCTIONSIZE;
+  pc_translator = pc_translator + INSTRUCTIONSIZE;
+  fetch_translator();
+  pc_translator = pc_translator - INSTRUCTIONSIZE;
   if (get_opcode(ir) == OP_IMM) {
-    pc =  pc + 2 * INSTRUCTIONSIZE;
-    fetch();
-    pc =  pc - 2 * INSTRUCTIONSIZE;
+    pc_translator = pc_translator + 2 * INSTRUCTIONSIZE;
+    fetch_translator();
+    pc_translator = pc_translator - 2 * INSTRUCTIONSIZE;
     if (get_opcode(ir) == OP_IMM) {
       decode_i_format();
       if (rd == REG_GP) {
         if (binary_gp_address == 0) {
           value = 0;
           op1 = x86GetRegister(rd);
-          pc =  pc + INSTRUCTIONSIZE;
+          pc_translator = pc_translator + INSTRUCTIONSIZE;
           x86SaveAddress();
-          pc =  pc + INSTRUCTIONSIZE;
+          pc_translator = pc_translator + INSTRUCTIONSIZE;
           binary_gp_address = binary_length * SIZEOFUINT64 + x86ByteCount + 2; //address where later the real value needs to be filled in
         }
       }
@@ -491,9 +479,9 @@ void translate_addi() {
   //if syscall number is set here then change syscall number for x86-64 platform
   if (rd == REG_A7) {
 
-    pc =  pc + INSTRUCTIONSIZE;
-    fetch();
-    pc = pc - INSTRUCTIONSIZE;
+    pc_translator = pc_translator + INSTRUCTIONSIZE;
+    fetch_translator();
+    pc_translator = pc_translator - INSTRUCTIONSIZE;
 
     if (ir == 115) //ecall
       imm = x86GetSyscallNumber(imm);
@@ -504,9 +492,9 @@ void translate_addi() {
     if (rs1 == REG_SP) {
       if (rd == REG_SP) {
 
-        pc =  pc + INSTRUCTIONSIZE;
-        fetch();
-        pc = pc - INSTRUCTIONSIZE;
+        pc_translator = pc_translator + INSTRUCTIONSIZE;
+        fetch_translator();
+        pc_translator = pc_translator - INSTRUCTIONSIZE;
 
         if (get_opcode(ir) == OP_SD) {
           return;
@@ -828,8 +816,8 @@ void translate_ld() {
   if (imm == 0) {
     if (rs1 == REG_SP) {
 
-      pc = pc + INSTRUCTIONSIZE;
-      fetch();
+      pc_translator = pc_translator + INSTRUCTIONSIZE;
+      fetch_translator();
 
       if (get_opcode(ir) == OP_IMM) {
         decode_i_format();
@@ -870,11 +858,11 @@ void translate_ld() {
 
           return;
         }
-	      else
-	        pc = pc - INSTRUCTIONSIZE;
+        else
+          pc_translator = pc_translator - INSTRUCTIONSIZE;
       }
       else
-	      pc = pc - INSTRUCTIONSIZE;
+        pc_translator = pc_translator - INSTRUCTIONSIZE;
     }
   }
 
@@ -1002,7 +990,7 @@ void translate_beq() {
   *(instr_bytes + 1) = X86_CMP;
   *(instr_bytes + 2) = 192 + x86GetModRMValue(op2, op3);
 
-  offset = pc + imm;
+  offset = pc_translator + imm;
 
   *(instr_bytes + 3)  = TWO_BYTE_INSTRUCTION;
   *(instr_bytes + 4)  = X86_JE;
@@ -1021,7 +1009,7 @@ void translate_jal() {
   uint64_t op1;
 
   length = 0;
-  address = pc + imm;
+  address = pc_translator + imm;
 
   if (rd != REG_ZR) {
     length = 7;
@@ -1154,32 +1142,34 @@ void selfie_translate() {
   while (i < MAX_BINARY_LENGTH / SIZEOFUINT64) {
     *(binary + i) = 0;
 
-     i = i + 1;
+    i = i + 1;
   }
 
   printf1("%s: translating RISC-V binary to x86-64\n", selfie_name);
 
   size = 30;
+  pc_translator = ELF_ENTRY_POINT;
   instr_bytes = malloc(size * SIZEOFUINT64);
+  x86_address_fixup_table = smalloc(MAX_BINARY_LENGTH);
 
-  while(pc < code_length + ELF_ENTRY_POINT) {
-    fetch();
+  while(pc_translator < code_length + ELF_ENTRY_POINT) {
+    fetch_translator();
     x86SaveAddress();
     decode();
     translate_to_x86_binary();
-    pc = pc + INSTRUCTIONSIZE;
+    pc_translator = pc_translator + INSTRUCTIONSIZE;
   }
 
   x86AdressFix();
 
   // copy data segment of binary
-  while (pc < code_length + x86DataLength + ELF_ENTRY_POINT) {
-    fetch();
+  while (pc_translator  < code_length + x86DataLength + ELF_ENTRY_POINT) {
+    fetch_translator();
     *(instr_bytes + 0) = right_shift(left_shift(ir, 56), 56);
     *(instr_bytes + 1) = right_shift(left_shift(ir, 48), 56);
     *(instr_bytes + 2) = right_shift(left_shift(ir, 40), 56);
     *(instr_bytes + 3) = right_shift(left_shift(ir, 32), 56);
-    pc = pc + INSTRUCTIONSIZE;
+    pc_translator = pc_translator + INSTRUCTIONSIZE;
 
     x86emitInstructionBuffer(4);
   }

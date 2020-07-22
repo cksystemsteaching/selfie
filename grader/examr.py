@@ -6,8 +6,42 @@ import csv
 
 import re
 
-# requires installing textdistance: pip3 install "textdistance[extras]"
+# requires: pip3 install "textdistance[extras]"
+
 import textdistance
+
+def get_cosine_similarity(string1, string2):
+    return textdistance.cosine.normalized_similarity(string1, string2)
+
+# requires: pip3 install langid laserembeddings
+# and also: python3 -m laserembeddings download-models
+
+from langid import classify
+from laserembeddings import Laser
+
+def get_vectors(strings):
+    languages = []
+
+    for string in strings:
+        languages.append(classify(string)[0])
+
+    corpus = [string.lower() for string in strings]
+    corpus = [" ".join(string.splitlines()) for string in corpus]
+    corpus = [re.sub(r'\W+', ' ', string) for string in corpus]
+
+    return Laser().embed_sentences(corpus, lang=languages)
+
+# requires: pip3 install sklearn
+
+from sklearn.metrics.pairwise import cosine_similarity
+
+def get_lasered_cosine_similarity(vector1, vector2):
+    return cosine_similarity([vector1], [vector2])[0][0]
+
+def formality(text):
+    # list more restrictive patterns first
+    formal = "(uint64_t\*?)|(_?[a-z]+(_[a-z]+)+)|('.')|(\d)|(\+)|(\-)|(\*)|(\/)|(%)|(\|)|(==)|(!=)|(<=)|(<)|(>=)|(>)|(=)|(lui)|(addi)|(ld)|(sd)|(add)|(sub)|(mul)|(divu)|(remu)|(sltu)|(beq)|(jalr)|(jal)|(ecall)"
+    return len(re.findall(formal, text, re.IGNORECASE))
 
 class Student:
     def __init__(self, q_total, q_length, q_formality, a_total, a_length, a_formality):
@@ -20,11 +54,6 @@ class Student:
         self.a_length      = a_length
         self.a_formality   = a_formality
         self.a_similarity  = 0
-
-def formality(text):
-    # list more restrictive patterns first
-    formal = "(uint64_t\*?)|(_?[a-z]+(_[a-z]+)+)|('.')|(\d)|(\+)|(\-)|(\*)|(\/)|(%)|(\|)|(==)|(!=)|(<=)|(<)|(>=)|(>)|(=)|(lui)|(addi)|(ld)|(sd)|(add)|(sub)|(mul)|(divu)|(remu)|(sltu)|(beq)|(jalr)|(jal)|(ecall)"
-    return len(re.findall(formal, text, re.IGNORECASE))
 
 def read_qas(csv_file):
     csv_reader = csv.DictReader(csv_file)
@@ -95,15 +124,23 @@ def write_results(students, csv_file):
             'Answer Average': student[1].a_total / student[1].number_of_qas
         })
 
-def compute_similarity(message, text_blocks, emails):
-    similarity = [ [0] * len(text_blocks) for i in range(len(text_blocks)) ]
+def compute_similarity(message, strings, emails):
+    vectors = get_vectors(strings)
 
-    for x in range(len(text_blocks)):
-        for y in range(len(text_blocks)):
-            if x != y:
-                similarity[x][y] = textdistance.cosine.normalized_similarity(text_blocks[x], text_blocks[y])
-                if (x < y and similarity[x][y] > 0.92):
-                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:\n{emails[x]}\n{emails[y]}\n<<<\n{text_blocks[x]}\n---\n{text_blocks[y]}\n>>>\n')
+    similarity = [ [0] * len(strings) for i in range(len(strings)) ]
+
+    for x in range(len(strings)):
+        for y in range(len(strings)):
+            if x < y:
+                # similarity[x][y] = get_cosine_similarity(strings[x], strings[y])
+                similarity[x][y] = get_lasered_cosine_similarity(vectors[x], vectors[y])
+
+                if similarity[x][y] > 0.95:
+                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:\n{emails[x]}\n{emails[y]}\n<<<\n{strings[x]}\n---\n{strings[y]}\n>>>\n')
+            elif x > y:
+                similarity[x][y] = similarity[y][x]
+            else:
+                similarity[x][y] = 1
 
     return similarity
 
