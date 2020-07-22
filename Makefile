@@ -163,7 +163,7 @@ x86: selfie-2-x86 selfie.m selfie.s selfie.h
 	chmod +x selfie.x86
 	./selfie.x86 -c selfie.c -o selfie7.m -s selfie7.s
 	diff -q selfie.m selfie7.m
-	diff -q selfie.s selfie7.s 
+	diff -q selfie.s selfie7.s
 	./selfie.x86 -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie7.m
 	diff -q selfie.x86 selfie7.x86
 
@@ -177,15 +177,8 @@ boolector: smt
 btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file) &&) true
 
-# files where validator returns an error (e.g. timeout)
-errorFiles := \
-	symbolic/invalid-memory-access-2-35.c \
-	symbolic/memory-access-1-35.c \
-	symbolic/nested-recursion-1-35.c \
-	symbolic/recursive-factorial-1-35.c \
-	symbolic/recursive-fibonacci-1-10.c \
-	symbolic/three-level-nested-loop-1-35.c
-
+# files where validator returns an error (e.g. timeout) and no error
+errorFiles := $(wildcard symbolic/*-error.c)
 validFiles := $(filter-out $(errorFiles),$(wildcard symbolic/*.c))
 
 # Run validator on *.c files in symbolic
