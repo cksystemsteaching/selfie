@@ -235,6 +235,9 @@ void      push_onto_call_stack(uint64_t* context, uint64_t address);
 uint64_t  pop_off_call_stack(uint64_t* context);
 uint64_t  compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_context);
 
+void use_stdout();
+void use_file();
+
 void monster(uint64_t* to_context);
 
 uint64_t selfie_run_symbolically();
@@ -346,21 +349,27 @@ void implement_symbolic_read(uint64_t* context) {
 
           size = 0;
 
+          use_stdout();
           printf2("%s: reading into virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
+          use_file();
         }
       else {
         failed = 1;
 
         size = 0;
 
+        use_stdout();
         printf2("%s: reading into virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
+        use_file();
       }
     else {
       failed = 1;
 
       size = 0;
 
+      use_stdout();
       printf2("%s: reading into virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
+      use_file();
     }
   }
 
@@ -412,21 +421,27 @@ void implement_symbolic_write(uint64_t* context) {
 
           size = 0;
 
+          use_stdout();
           printf2("%s: writing from virtual address %p failed because the address is unmapped\n", selfie_name, (char*) vbuffer);
+          use_file();
         }
       else {
         failed = 1;
 
         size = 0;
 
+        use_stdout();
         printf2("%s: writing from virtual address %p failed because the address is in an invalid segment\n", selfie_name, (char*) vbuffer);
+        use_file();
       }
     else {
       failed = 1;
 
       size = 0;
 
+      use_stdout();
       printf2("%s: writing from virtual address %p failed because the address is invalid\n", selfie_name, (char*) vbuffer);
+      use_file();
     }
   }
 
@@ -453,6 +468,8 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
 
           if (sword) {
             if (is_symbolic_value(sword)) {
+              use_stdout();
+
               printf1("%s: detected symbolic value ", selfie_name);
               print_symbolic_memory(sword);
               print(" in filename of open call\n");
@@ -466,7 +483,9 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
             // assert: vaddr is mapped
             *((uint64_t*) s + i) = load_virtual_memory(get_pt(context), vaddr);
         } else {
+          use_stdout();
           printf2("%s: opening file failed because the file name address %p is unmapped\n", selfie_name, (char*) vaddr);
+          use_file();
 
           return 0;
         }
@@ -487,18 +506,24 @@ uint64_t down_load_concrete_string(uint64_t* context, uint64_t vaddr, char* s) {
         // advance to the next machine word in our memory
         i = i + 1;
       } else {
+        use_stdout();
         printf2("%s: opening file failed because the file name address %p is in an invalid segment\n", selfie_name, (char*) vaddr);
+        use_file();
 
         return 0;
       }
     else {
+      use_stdout();
       printf2("%s: opening file failed because the file name address %p is invalid\n", selfie_name, (char*) vaddr);
+      use_file();
 
       return 0;
     }
   }
 
+  use_stdout();
   printf2("%s: opening file failed because the file name is too long at address %p\n", selfie_name, (char*) vaddr);
+  use_file();
 
   return 0;
 }
@@ -703,6 +728,8 @@ void constrain_ld() {
   // load double word
 
   if (*(reg_sym + rs1)) {
+    use_stdout();
+
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in ld instruction at %x", selfie_name, (char*) pc);
     print_code_line_number_for_instruction(pc, entry_point);
@@ -754,6 +781,8 @@ void constrain_sd() {
   // store double word
 
   if (*(reg_sym + rs1)) {
+    use_stdout();
+
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in sd instruction at %x", selfie_name, (char*) pc);
     print_code_line_number_for_instruction(pc, entry_point);
@@ -858,6 +887,8 @@ void constrain_beq() {
 
 void constrain_jalr() {
   if (*(reg_sym + rs1)) {
+    use_stdout();
+
     // symbolic memory addresses not yet supported
     printf2("%s: symbolic memory address in jalr instruction at %x", selfie_name, (char*) pc);
     print_code_line_number_for_instruction(pc, entry_point);
@@ -1132,7 +1163,9 @@ uint64_t handle_symbolic_system_call(uint64_t* context) {
     // TODO: exit only if all contexts have exited
     return EXIT;
   } else {
+    use_stdout();
     printf2("%s: unknown system call %u\n", selfie_name, (char*) a7);
+    use_file();
 
     set_exit_code(context, EXITCODE_UNKNOWNSYSCALL);
 
@@ -1214,9 +1247,13 @@ uint64_t handle_symbolic_exception(uint64_t* context) {
     // the execution would be terminated by this error anyway
     return EXIT;
   } else {
+    use_stdout();
+
     printf2("%s: context %s throws uncaught exception: ", selfie_name, get_name(context));
     print_exception(exception, get_fault(context));
     println();
+
+    use_file();
 
     set_exit_code(context, EXITCODE_UNCAUGHTEXCEPTION);
 
@@ -2028,6 +2065,16 @@ uint64_t compare_call_stacks(uint64_t* active_context, uint64_t* mergeable_conte
   }
 }
 
+void use_stdout() {
+  output_name = (char*) 0;
+  output_fd   = 1;
+} 
+
+void use_file() {
+  output_name = smt_name;
+  output_fd   = smt_fd;
+}
+
 void monster(uint64_t* to_context) {
   uint64_t  timeout;
   uint64_t* from_context;
@@ -2187,8 +2234,7 @@ uint64_t selfie_run_symbolically() {
         binary_name,
         (char*) (page_frame_memory / MEGABYTE));
 
-      output_name = smt_name;
-      output_fd   = smt_fd;
+      use_file();
 
       run      = 1;
       symbolic = 1;
@@ -2198,8 +2244,7 @@ uint64_t selfie_run_symbolically() {
       symbolic = 0;
       run      = 0;
 
-      output_name = (char*) 0;
-      output_fd   = 1;
+      use_stdout();
 
       printf2("%s: monster terminating %s\n", selfie_name, get_name(current_context));
 
