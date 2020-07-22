@@ -177,14 +177,14 @@ boolector: smt
 btormc: btor2
 	$(foreach file, $(btor2s), btormc $(file) &&) true
 
-# files where validator returns an error (e.g. timeout) and no error
-errorFiles := $(wildcard symbolic/*-error.c)
-validFiles := $(filter-out $(errorFiles),$(wildcard symbolic/*.c))
+# files where validator fails (e.g. timeout) and succeeds
+failingFiles := $(wildcard symbolic/*-fail-*.c)
+succeedFiles := $(filter-out $(failingFiles),$(wildcard symbolic/*.c))
 
 # Run validator on *.c files in symbolic
 validator: selfie modeler
-	$(foreach file, $(validFiles), tools/validator.py $(file) &&) true
-	$(foreach file, $(errorFiles), ! tools/validator.py $(file) &&) true
+	$(foreach file, $(succeedFiles), tools/validator.py $(file) &&) true
+	$(foreach file, $(failingFiles), ! tools/validator.py $(file) &&) true
 
 # Run everything that requires non-standard tools
 extras: assemble spike qemu x86 boolector btormc validator grader grade
