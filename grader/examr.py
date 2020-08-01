@@ -159,33 +159,47 @@ def assign_similarity(students, emails, q_similarity, a_similarity):
             student.a_similarity /= len(emails) - 1
 
 def main(argv):
-    inputfile = ''
-    outputfile = ''
+    oldresponsesfiles = []
+    responsesfile     = ''
+    analysisfile      = ''
+
     try:
-        opts, args = getopt.getopt(argv,"hi:o:",["ifile=","ofile="])
+        opts, args = getopt.getopt(argv,"ho:r:a:",["ofile=","rfile=","afile="])
     except getopt.GetoptError:
-        print ('examr.py -i <inputfile> -o <outputfile>')
+        print ('examr.py { -o <oldresponsesfile> } -r <responsesfile> -a <analysisfile>')
         sys.exit(2)
+
     for opt, arg in opts:
         if opt == '-h':
-            print ('examr.py -i <inputfile> -o <outputfile>')
+            print ('examr.py { -o <oldresponsesfile> } -r <responsesfile> -a <analysisfile>')
             sys.exit()
-        elif opt in ("-i", "--ifile"):
-            inputfile = arg
         elif opt in ("-o", "--ofile"):
-            outputfile = arg
-    if inputfile != '':
-        with open(inputfile, mode='r') as csv_input_file:
-            if outputfile != '':
-                with open(outputfile, mode='w') as csv_output_file:
-                    students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(csv_input_file)
+            oldresponsesfiles.append(arg)
+        elif opt in ("-r", "--rfile"):
+            responsesfile = arg
+        elif opt in ("-a", "--afile"):
+            analysisfile = arg
+
+    csv_old_responses_files = []
+
+    for oldresponsesfile in oldresponsesfiles:
+        try:
+            csv_old_responses_files.append(open(oldresponsesfile, mode='r'))
+        except OSError as e:
+            print(e)
+
+    if responsesfile != '':
+        with open(responsesfile, mode='r') as csv_responses_file:
+            if analysisfile != '':
+                with open(analysisfile, mode='w') as csv_analysis_file:
+                    students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(csv_responses_file)
 
                     q_similarity = compute_similarity("Question", questions, emails)
                     a_similarity = compute_similarity("Answer", answers, emails)
 
                     assign_similarity(students, emails, q_similarity, a_similarity)
 
-                    write_results(students, csv_output_file)
+                    write_results(students, csv_analysis_file)
 
                     print(f'Number of students: {len(students)}')
                     print(f'Total number of Q&As {len(questions)}')
