@@ -49,11 +49,11 @@ class Student:
         self.q_total       = q_total
         self.q_length      = q_length
         self.q_formality   = q_formality
-        self.q_similarity  = 0
+        self.q_similarity  = float(0)
         self.a_total       = a_total
         self.a_length      = a_length
         self.a_formality   = a_formality
-        self.a_similarity  = 0
+        self.a_similarity  = float(0)
 
 def read_old_qas(responsefiles):
     emails    = []
@@ -146,7 +146,7 @@ def compute_similarity(message, strings, emails, old_strings, old_emails):
 
     vectors = get_vectors(all_strings)
 
-    similarity = [ [0] * len(all_strings) for i in range(len(strings)) ]
+    similarity = [ [float(0)] * len(all_strings) for i in range(len(strings)) ]
 
     for x in range(len(strings)):
         for y in range(len(all_strings)):
@@ -159,7 +159,7 @@ def compute_similarity(message, strings, emails, old_strings, old_emails):
             elif x > y:
                 similarity[x][y] = similarity[y][x]
             else:
-                similarity[x][y] = 1
+                similarity[x][y] = 1.0
 
     return similarity
 
@@ -174,10 +174,10 @@ def assign_similarity(students, emails, old_emails, q_similarity, a_similarity):
                 student.q_similarity += q_similarity[x][y]
                 student.a_similarity += a_similarity[x][y]
 
-        if (len(emails) > 1):
+        if (len(all_emails) > 1):
             # normalize again
-            student.q_similarity /= len(emails) - 1
-            student.a_similarity /= len(emails) - 1
+            student.q_similarity /= len(all_emails) - 1
+            student.a_similarity /= len(all_emails) - 1
 
 def main(argv):
     oldresponsefiles = []
