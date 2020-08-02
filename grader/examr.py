@@ -140,19 +140,22 @@ def write_results(students, csv_file):
             'Answer Average': student[1].a_total / student[1].number_of_qas
         })
 
-def compute_similarity(message, strings, emails):
-    vectors = get_vectors(strings)
+def compute_similarity(message, strings, emails, old_strings, old_emails):
+    all_strings = strings + old_strings
+    all_emails  = emails + old_emails
 
-    similarity = [ [0] * len(strings) for i in range(len(strings)) ]
+    vectors = get_vectors(all_strings)
+
+    similarity = [ [0] * len(all_strings) for i in range(len(strings)) ]
 
     for x in range(len(strings)):
-        for y in range(len(strings)):
+        for y in range(len(all_strings)):
             if x < y:
-                # similarity[x][y] = get_cosine_similarity(strings[x], strings[y])
+                # similarity[x][y] = get_cosine_similarity(strings[x], all_strings[y])
                 similarity[x][y] = get_lasered_cosine_similarity(vectors[x], vectors[y])
 
                 if similarity[x][y] > 0.95:
-                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:\n{emails[x]}\n{emails[y]}\n<<<\n{strings[x]}\n---\n{strings[y]}\n>>>\n')
+                    print(f'{message} similarity {similarity[x][y]} at [{x},{y}]:\n{emails[x]}\n{all_emails[y]}{" (old)" if y>len(strings) else ""}\n<<<\n{strings[x]}\n---\n{all_strings[y]}\n>>>\n')
             elif x > y:
                 similarity[x][y] = similarity[y][x]
             else:
@@ -160,11 +163,13 @@ def compute_similarity(message, strings, emails):
 
     return similarity
 
-def assign_similarity(students, emails, q_similarity, a_similarity):
+def assign_similarity(students, emails, old_emails, q_similarity, a_similarity):
+    all_emails = emails + old_emails
+
     for x in range(len(emails)):
         student = students[emails[x]]
 
-        for y in range(len(emails)):
+        for y in range(len(all_emails)):
             if x != y:
                 student.q_similarity += q_similarity[x][y]
                 student.a_similarity += a_similarity[x][y]
@@ -204,10 +209,10 @@ def main(argv):
 
                     students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(csv_responses_file)
 
-                    q_similarity = compute_similarity("Question", questions, emails)
-                    a_similarity = compute_similarity("Answer", answers, emails)
+                    q_similarity = compute_similarity("Question", questions, emails, old_questions, old_emails)
+                    a_similarity = compute_similarity("Answer", answers, emails, old_answers, old_emails)
 
-                    assign_similarity(students, emails, q_similarity, a_similarity)
+                    assign_similarity(students, emails, old_emails, q_similarity, a_similarity)
 
                     write_results(students, csv_analysis_file)
 
