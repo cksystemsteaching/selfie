@@ -55,6 +55,22 @@ class Student:
         self.a_formality   = a_formality
         self.a_similarity  = 0
 
+def read_old_qas(responsefiles):
+    emails    = []
+    questions = []
+    answers   = []
+
+    for responsefile in responsefiles:
+        with open(responsefile, mode='r') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+
+            for row in csv_reader:
+                emails.append(row['Email address'])
+                questions.append(row['Ask Question'])
+                answers.append(row['Answer Question'])
+
+    return emails, questions, answers
+
 def read_qas(csv_file):
     csv_reader = csv.DictReader(csv_file)
 
@@ -159,39 +175,33 @@ def assign_similarity(students, emails, q_similarity, a_similarity):
             student.a_similarity /= len(emails) - 1
 
 def main(argv):
-    oldresponsesfiles = []
-    responsesfile     = ''
-    analysisfile      = ''
+    oldresponsefiles = []
+    responsefile     = ''
+    analysisfile     = ''
 
     try:
         opts, args = getopt.getopt(argv,"ho:r:a:",["ofile=","rfile=","afile="])
     except getopt.GetoptError:
-        print ('examr.py { -o <oldresponsesfile> } -r <responsesfile> -a <analysisfile>')
+        print ('examr.py { -o <oldresponsesfile> } -r <responsefile> -a <analysisfile>')
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print ('examr.py { -o <oldresponsesfile> } -r <responsesfile> -a <analysisfile>')
+            print ('examr.py { -o <oldresponsesfile> } -r <responsefile> -a <analysisfile>')
             sys.exit()
         elif opt in ("-o", "--ofile"):
-            oldresponsesfiles.append(arg)
+            oldresponsefiles.append(arg)
         elif opt in ("-r", "--rfile"):
-            responsesfile = arg
+            responsefile = arg
         elif opt in ("-a", "--afile"):
             analysisfile = arg
 
-    csv_old_responses_files = []
-
-    for oldresponsesfile in oldresponsesfiles:
-        try:
-            csv_old_responses_files.append(open(oldresponsesfile, mode='r'))
-        except OSError as e:
-            print(e)
-
-    if responsesfile != '':
-        with open(responsesfile, mode='r') as csv_responses_file:
+    if responsefile != '':
+        with open(responsefile, mode='r') as csv_responses_file:
             if analysisfile != '':
                 with open(analysisfile, mode='w') as csv_analysis_file:
+                    old_emails, old_questions, old_answers = read_old_qas(oldresponsefiles)
+
                     students, emails, questions, answers, q_length, q_formality, a_length, a_formality = read_qas(csv_responses_file)
 
                     q_similarity = compute_similarity("Question", questions, emails)
