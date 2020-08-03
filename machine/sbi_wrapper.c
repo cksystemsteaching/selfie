@@ -19,6 +19,7 @@ void bootstrap() {
     puts("Setting up kernel page table...");
     // No need to clear the page table - the BSS section is cleared automagically
     kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
+    kdump_pt(kernel_pt);
 
     puts("Setting up trap handlers...");
     setup_smode_trap_handler(trap_handler_trampoline);

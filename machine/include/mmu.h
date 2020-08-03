@@ -49,5 +49,6 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
  */
 void kidentity_map_range(struct pt_entry* table, void* from, void* to);
 
+void kdump_pt(struct pt_entry* table);
 
 #endif /* KERN_MMU */

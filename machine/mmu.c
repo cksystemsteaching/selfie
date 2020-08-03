@@ -1,5 +1,6 @@
 #include "mmu.h"
 #include "tinycstd.h"
+#include <stdint.h>
 
 #define VPN_2_BITMASK 0x7FC0000000ULL
 #define VPN_1_BITMASK 0x3FE00000
@@ -73,6 +74,41 @@ void kidentity_map_range(struct pt_entry* table, void* from, void* to) {
 
         ppn++;
     };
+}
+
+void kdump_pt(struct pt_entry* table) {
+    printf("Page Table:\n");
+
+    for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
+        if (!table[vpn_2].v)
+            continue;
+
+        struct pt_entry* mid_pt = retrieve_pt_entry_from_table(kernel_pt, vpn_2);
+        uint64_t mid_vaddr = (vpn_2 << 30);
+        uint64_t mid_vaddr_end = ((vpn_2+1) << 30);
+        printf("|-Gigapage (VPN %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
+
+        for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
+            if (!mid_pt[vpn_1].v)
+                continue;
+
+            struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
+            uint64_t leaf_vaddr = mid_vaddr | (vpn_1 << 21);
+            uint64_t leaf_vaddr_end = mid_vaddr | ((vpn_1+1) << 21);
+            printf("| |-Megapage (VPN %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
+
+            for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
+                if (!leaf_pt[vpn_0].v)
+                    continue;
+
+                uint64_t vaddr = leaf_vaddr | (vpn_0 << 12);
+                uint64_t vaddr_end = leaf_vaddr | ((vpn_0+1) << 12);
+                uint64_t paddr = leaf_pt[vpn_0].ppn << 12;
+
+                printf("| | |-Page (VPN %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
+            }
+        }
+    }
 }
 
 __attribute__((aligned(4096)))
