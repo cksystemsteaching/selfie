@@ -10,3 +10,6 @@ tui enable
 
 echo "Resetting emulation..."
 monitor system_reset
+
+echo "Setting output radix to hex..."
+set output-radix 16
