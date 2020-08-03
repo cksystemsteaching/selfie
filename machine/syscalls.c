@@ -1,6 +1,7 @@
 #include "syscall.h"
 #include "console.h"
 #include "sbi_files.h"
+#include "tinycstd.h"
 
 #define NUM_FDS 32
 
@@ -40,7 +41,7 @@ intmax_t write(int fd, const char* buf, size_t count) {
 }
 
 void exit(int status) {
-    write(1, ">EXIT called<\n", 14);
+    printf(">EXIT called with exit code %x<\n", status);
     while (1)
         ;
 }
@@ -77,7 +78,7 @@ int open(const char* filename, int flags) {
 }
 
 
-static void* heap_head = (void*)0x80300000;
+void* heap_head;
 void* malloc(unsigned long long size) {
     void* return_ptr;
 
