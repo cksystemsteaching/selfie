@@ -66,7 +66,7 @@ void kidentity_map_range(struct pt_entry* table, void* from, void* to) {
 
     uint64_t ppn = ppn_from;
 
-    while (ppn <= ppn_to) {
+    while (ppn < ppn_to) {
         uint64_t page_vaddr = ppn_from << 12;
 
         kmap_page_by_ppn(table, page_vaddr, ppn, false);

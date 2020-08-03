@@ -37,7 +37,7 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
  * @brief Performs an identity mapping in a page table for a given range.
  *
  * Maps all pages that host the content for the given memory range
- * from and to (inclusive) to the given table. An identity mapping is performed,
+ * from and to (exclusive) to the given table. An identity mapping is performed,
  * i.e. the virtual address resolves to an equal physical address.
  *
  * As it is not possible to partially mount pages, the start address is rounded
@@ -45,7 +45,7 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
  *
  * @param table The page table where the pages shall be attached to
  * @param from The start of the memory range to attach (inclusive).
- * @param to The end of the memory range to attach (inclusive).
+ * @param to The end of the memory range to attach (exclusive).
  */
 void kidentity_map_range(struct pt_entry* table, void* from, void* to);
 
