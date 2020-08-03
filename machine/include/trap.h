@@ -25,6 +25,7 @@ void enable_smode_interrupts();
 void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);
 
+extern void trap_handler_trampoline();
 extern void trap_handler_wrapper();
 void trap_handler();
 

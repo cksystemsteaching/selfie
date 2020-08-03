@@ -15,7 +15,7 @@ void bootstrap() {
     console_init();
 
     puts("Setting up trap handlers...");
-    setup_smode_trap_handler(trap_handler_wrapper);
+    setup_smode_trap_handler(trap_handler_trampoline);
     enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
                                  (1 << CSR_SIE_SOFTWARE_INTS) |
                                  (1 << CSR_UIE_SOFTWARE_INTS));
