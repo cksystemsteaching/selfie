@@ -146,13 +146,26 @@ void implement_syscall_brk(struct context* context) {
   // TODO
 }
 
+char is_legal_memory_access(struct memory_boundaries* legal_memory_boundaries, uint64_t address) {
+    uint64_t page_number = address >> 12;
+
+    if ((legal_memory_boundaries->lowest_lo_page <= page_number && page_number <= legal_memory_boundaries->highest_lo_page)
+            || (legal_memory_boundaries->lowest_mid_page <= page_number && page_number <= legal_memory_boundaries->highest_mid_page)
+            || (legal_memory_boundaries->lowest_hi_page <= page_number && page_number <= legal_memory_boundaries->highest_hi_page))
+        return 1;
+    else
+        return 0;
+}
+
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval) {
-  if (stval < context->program_break) {
+  if (is_legal_memory_access(context->legal_memory_boundaries, stval)) {
     // TODO: handling faults like that is probably necessary for native hypster support
-  } else
+  } else {
     // at the moment we raise a segfault here since we map the entire code
     // segment when loading a binary
     printf("segmentation fault: context %d tried to execute the instruction at 0x%x and faulted at 0x%x\n", context->id, sepc, stval);
+    // TODO: kill this context
+  }
 
 #ifdef DEBUG
   printf("received instruction page fault caused by context %d\n", context->id);
@@ -162,10 +175,10 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
 }
 
 void handle_load_page_fault(struct context* context, uint64_t stval) {
-  if (stval < context->program_break)
+  if (is_legal_memory_access(context->legal_memory_boundaries, stval)
+          // stack has grown but the page isnt mapped yet
+          || (context->saved_regs->sp <= stval && stval <= context->legal_memory_boundaries->lowest_mid_page))
     kmap_page(context->pt, stval, 1);
-    // TODO: also check if the address is higher than the lowest mapped page so that for example null-pointer dereferencing still causes segfaults
-  // TODO: check if the page-fault was caused by stack growth and map it if that's the case
   else {
     printf("segmentation fault: context %d tried to load from address 0x%x\n", context->id, stval);
     // TODO: kill this context or something like that
@@ -178,10 +191,10 @@ void handle_load_page_fault(struct context* context, uint64_t stval) {
 }
 
 void handle_store_amo_page_fault(struct context* context, uint64_t stval) {
-  if (stval < context->program_break)
+  if (is_legal_memory_access(context->legal_memory_boundaries, stval)
+          // stack has grown but the page isnt mapped yet
+          || (context->saved_regs->sp <= stval && stval <= context->legal_memory_boundaries->lowest_mid_page))
     kmap_page(context->pt, stval, 1);
-    // TODO: also check if the address is higher than the lowest mapped page so that for example storing sth at null still causes segfaults
-  // TODO: check if the page-fault was caused by stack growth and map it if that's the case
   else {
     printf("segmentation fault: context %d tried to store/AMO at address 0x%x\n", context->id, stval);
     // TODO: kill this context or something like that
