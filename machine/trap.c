@@ -103,14 +103,10 @@ void handle_ecall(struct context* context) {
   uint64_t syscall_param_1;
   uint64_t syscall_param_2;
 
-  asm volatile(
-    "mv %[syscall_id], a7;"
-    "mv %[syscall_param_0], a0;"
-    "mv %[syscall_param_1], a1;"
-    "mv %[syscall_param_2], a2;"
-    : [syscall_id] "=r" (syscall_id), [syscall_param_0] "=r" (syscall_param_0)
-      , [syscall_param_1] "=r" (syscall_param_1), [syscall_param_2] "=r" (syscall_param_2)
-  );
+  syscall_id = context->saved_regs->a7;
+  syscall_param_0 = context->saved_regs->a0;
+  syscall_param_1 = context->saved_regs->a1;
+  syscall_param_2 = context->saved_regs->a2;
 
   switch (syscall_id) {
     case SYSCALL_EXIT:
