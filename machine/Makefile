@@ -80,7 +80,7 @@ $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
 .PHONY: clean
 clean:
 	rm -rf opensbi
-	rm -f *.o
+	rm -f *.o asm/*.o
 	rm -f *.elf
 	rm -f *.bin
 	rm -f sbi_files.c
