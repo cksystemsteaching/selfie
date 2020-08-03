@@ -4,6 +4,8 @@
 #include "trap.h"
 #include "mmu.h"
 
+#include "linker-syms.h"
+
 
 int main(int argc, char** argv);
 void usermode_test();
@@ -13,6 +15,10 @@ void bootstrap() {
     uint64_t val = 0xF00DBEEF;
 
     console_init();
+
+    puts("Setting up kernel page table...");
+    // No need to clear the page table - the BSS section is cleared automagically
+    kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
 
     puts("Setting up trap handlers...");
     setup_smode_trap_handler(trap_handler_trampoline);

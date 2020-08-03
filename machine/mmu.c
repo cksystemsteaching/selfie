@@ -37,6 +37,9 @@ struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t i
 }
 
 void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
+    kmap_page_by_ppn(table, vaddr, kpalloc(), u_mode_accessible);
+}
+void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
   uint64_t vpn_2 = vaddr & VPN_2_BITMASK;
   uint64_t vpn_1 = vaddr & VPN_1_BITMASK;
   uint64_t vpn_0 = vaddr & VPN_0_BITMASK;
@@ -53,8 +56,24 @@ void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
   if (!leaf_pt->v)
     leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, kpalloc(), 1, 0);
 
-  create_pt_entry(leaf_pt, vpn_0, kpalloc(), 0, u_mode_accessible);
+  create_pt_entry(leaf_pt, vpn_0, ppn, 0, u_mode_accessible);
+}
+
+void kidentity_map_range(struct pt_entry* table, void* from, void* to) {
+    // By obtaining the PPNs, there's no need to do any rounding
+    uint64_t ppn_from = ((uint64_t) from) >> 12;
+    uint64_t ppn_to = ((uint64_t) to) >> 12;
+
+    uint64_t ppn = ppn_from;
+
+    while (ppn <= ppn_to) {
+        uint64_t page_vaddr = ppn_from << 12;
+
+        kmap_page_by_ppn(table, page_vaddr, ppn, false);
+
+        ppn++;
+    };
 }
 
 __attribute__((aligned(4096)))
-struct pt_entry root_table[512];
+struct pt_entry kernel_pt[512];
