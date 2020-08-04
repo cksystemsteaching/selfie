@@ -1,3 +1,5 @@
+HOSTCC:=$(CC)
+
 PREFIX=riscv64-linux-gnu-
 CC=$(PREFIX)gcc
 LD=$(PREFIX)ld
@@ -16,6 +18,7 @@ OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
 SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o console.o heap.o mmu.o selfie.o sbi_files.o syscalls.o trap.o asm/crt.o asm/trampoline.o asm/trap.o
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c
+ASM_STRUCT_HEADERS = include/context.h
 
 include defines.mk
 
@@ -72,6 +75,15 @@ sbi_files.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	@echo "};" >>$@;
 	@echo "const FILE* files = file_defs;" >>$@;
 
+include/asm_offsets.h: $(ASM_STRUCT_HEADERS)
+	$(HOSTCC) -I. tools/asm_struct_macro_generator.c -o tools/asm_struct_macro_generator
+	tools/asm_struct_macro_generator > "$@"
+
+# Make requires a static pattern rule to add prerequisites
+# https://stackoverflow.com/a/46946731
+$(SBI_WRAPPER_OBJS): %.o: | include/asm_offsets.h
+
+
 $(SELFIE_PATH)/selfie.m: $(SELFIE_PATH)/selfie.c
 	$(MAKE) -C$(SELFIE_PATH) selfie.m
 
@@ -84,6 +96,7 @@ clean:
 	rm -f *.elf
 	rm -f *.bin
 	rm -f sbi_files.c
+	rm -f include/asm_offsets.h
 
 
 # OpenSBI fetch target
