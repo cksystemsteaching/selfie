@@ -124,6 +124,15 @@ int printf(const char* format, ...) {
                     format++;
                     break;
                 }
+                case 'u':
+                {
+                    uintmax_t i = va_arg(va, uintmax_t);
+                    char* buf = itoa_ext(i, 10, sizeof(uintmax_t)*8, false);
+                    puts(buf);
+                    written += strlen(buf);
+                    format++;
+                    break;
+                }
                 case 'x':
                 case 'X':
                 {
