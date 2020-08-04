@@ -33,6 +33,8 @@ uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, c
 void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);
 void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible);
 
+uint64_t paddr_to_ppn(const void* address);
+
 /**
  * @brief Performs an identity mapping in a page table for a given range.
  *

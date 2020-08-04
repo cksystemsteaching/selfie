@@ -60,6 +60,10 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
   create_pt_entry(leaf_pt, vpn_0, ppn, 0, u_mode_accessible);
 }
 
+uint64_t paddr_to_ppn(const void* address) {
+    return ((uint64_t)address) >> 12;
+}
+
 void kidentity_map_range(struct pt_entry* table, void* from, void* to) {
     // By obtaining the PPNs, there's no need to do any rounding
     uint64_t ppn_from = ((uint64_t) from) >> 12;
@@ -93,16 +97,16 @@ void kdump_pt(struct pt_entry* table) {
                 continue;
 
             struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
-            uint64_t leaf_vaddr = mid_vaddr | (vpn_1 << 21);
-            uint64_t leaf_vaddr_end = mid_vaddr | ((vpn_1+1) << 21);
+            uint64_t leaf_vaddr = mid_vaddr + (vpn_1 << 21);
+            uint64_t leaf_vaddr_end = mid_vaddr + ((vpn_1+1) << 21);
             printf("| |-Megapage (VPN %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
 
             for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
                 if (!leaf_pt[vpn_0].v)
                     continue;
 
-                uint64_t vaddr = leaf_vaddr | (vpn_0 << 12);
-                uint64_t vaddr_end = leaf_vaddr | ((vpn_0+1) << 12);
+                uint64_t vaddr = leaf_vaddr + (vpn_0 << 12);
+                uint64_t vaddr_end = leaf_vaddr + ((vpn_0+1) << 12);
                 uint64_t paddr = leaf_pt[vpn_0].ppn << 12;
 
                 printf("| | |-Page (VPN %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
