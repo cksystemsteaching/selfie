@@ -34,6 +34,7 @@ void disable_smode_interrupt_types(uint64_t bitmask);
 
 extern void trap_handler_trampoline();
 extern void trap_handler_wrapper();
+void store_saved_registers_in_context(struct context* context);
 void trap_handler();
 
 void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code, uint64_t stval, uint64_t sepc);
