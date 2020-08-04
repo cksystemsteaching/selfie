@@ -67,7 +67,7 @@ void trap_handler() {
 
   if (interrupt_bit)
     // TODO: timer interrupts etc
-    print_unhandled_trap(context, interrupt_bit, exception_code);
+    print_unhandled_trap(context, interrupt_bit, exception_code, stval);
   else
     switch (exception_code) {
       case SCAUSE_EXCEPTION_CODE_ECALL:
@@ -83,7 +83,7 @@ void trap_handler() {
         handle_store_amo_page_fault(context, stval);
         break;
       default:
-        print_unhandled_trap(context, interrupt_bit, exception_code);
+        print_unhandled_trap(context, interrupt_bit, exception_code, stval);
     }
 
 #ifdef DEBUG
@@ -93,10 +93,11 @@ void trap_handler() {
 #endif /* DEBUG */
 }
 
-void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code) {
+void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code, uint64_t stval) {
   printf("unhandled trap (caused by context %u)\n", context->id);
   printf("  interrupt bit:  %d\n", interrupt_bit);
   printf("  exception code: %d\n", exception_code);
+  printf("  stval:          0x%x\n", stval);
 }
 
 void handle_ecall(struct context* context) {

@@ -36,7 +36,7 @@ extern void trap_handler_trampoline();
 extern void trap_handler_wrapper();
 void trap_handler();
 
-void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code);
+void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code, uint64_t stval);
 
 void handle_ecall(struct context* context);
 void implement_syscall_exit(struct context* context);
