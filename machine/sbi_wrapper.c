@@ -16,9 +16,12 @@ void bootstrap() {
 
     console_init();
 
+    // TODO: Assert trampoline positioning on page boundary
+
     puts("Setting up kernel page table...");
     // No need to clear the page table - the BSS section is cleared automagically
     kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
+    kmap_page_by_ppn(kernel_pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_trampoline), false);
     kdump_pt(kernel_pt);
 
     puts("Setting up trap handlers...");
