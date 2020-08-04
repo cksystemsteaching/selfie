@@ -47,6 +47,40 @@ void disable_smode_interrupt_types(uint64_t bitmask) {
 
 }
 
+void store_saved_registers_in_context(struct context* context) {
+    context->saved_regs->ra  = temp_saved_regs.ra;
+    context->saved_regs->sp  = temp_saved_regs.sp;
+    context->saved_regs->gp  = temp_saved_regs.gp;
+    context->saved_regs->tp  = temp_saved_regs.tp;
+    context->saved_regs->t0  = temp_saved_regs.t0;
+    context->saved_regs->t1  = temp_saved_regs.t1;
+    context->saved_regs->t2  = temp_saved_regs.t2;
+    context->saved_regs->s0  = temp_saved_regs.s0;
+    context->saved_regs->s1  = temp_saved_regs.s1;
+    context->saved_regs->a0  = temp_saved_regs.a0;
+    context->saved_regs->a1  = temp_saved_regs.a1;
+    context->saved_regs->a2  = temp_saved_regs.a2;
+    context->saved_regs->a3  = temp_saved_regs.a3;
+    context->saved_regs->a4  = temp_saved_regs.a4;
+    context->saved_regs->a5  = temp_saved_regs.a5;
+    context->saved_regs->a6  = temp_saved_regs.a6;
+    context->saved_regs->a7  = temp_saved_regs.a7;
+    context->saved_regs->s2  = temp_saved_regs.s2;
+    context->saved_regs->s3  = temp_saved_regs.s3;
+    context->saved_regs->s4  = temp_saved_regs.s4;
+    context->saved_regs->s5  = temp_saved_regs.s5;
+    context->saved_regs->s6  = temp_saved_regs.s6;
+    context->saved_regs->s7  = temp_saved_regs.s7;
+    context->saved_regs->s8  = temp_saved_regs.s8;
+    context->saved_regs->s9  = temp_saved_regs.s9;
+    context->saved_regs->s10 = temp_saved_regs.s10;
+    context->saved_regs->s11 = temp_saved_regs.s11;
+    context->saved_regs->t3  = temp_saved_regs.t3;
+    context->saved_regs->t4  = temp_saved_regs.t4;
+    context->saved_regs->t5  = temp_saved_regs.t5;
+    context->saved_regs->t6  = temp_saved_regs.t6;
+}
+
 void trap_handler() {
   uint64_t scause;
   uint64_t stval; // address where page fault occured
@@ -64,6 +98,8 @@ void trap_handler() {
 
   interrupt_bit = scause & SCAUSE_INTERRUPT_BIT_MASK;
   exception_code = scause & SCAUSE_EXCEPTION_CODE_MASK;
+
+  //store_saved_registers_in_context(context); // TODO: uncomment as soon as we have proper contexts
 
   if (interrupt_bit)
     // TODO: timer interrupts etc
