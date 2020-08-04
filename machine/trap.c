@@ -85,14 +85,14 @@ void trap_handler() {
     }
 
 #ifdef DEBUG
-  printf("trap handler has been executed (caused context %d)\n", context->id);
+  printf("trap handler has been executed (caused context %u)\n", context->id);
   printf("  scause:         0x%x\n", scause);
   printf("  syscall number: 0x%x\n", syscall_number);
 #endif /* DEBUG */
 }
 
 void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code) {
-  printf("unhandled trap (caused by context %d)\n", context->id);
+  printf("unhandled trap (caused by context %u)\n", context->id);
   printf("  interrupt bit:  %d\n", interrupt_bit);
   printf("  exception code: %d\n", exception_code);
 }
@@ -120,7 +120,7 @@ void handle_ecall(struct context* context) {
     case SYSCALL_BRK:
 
     default:
-      printf("received unknown syscall '0x%x' from context %d\n", syscall_id, context->id);
+      printf("received unknown syscall '0x%x' from context %u\n", syscall_id, context->id);
   }
 
   // TODO
@@ -163,12 +163,12 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
   } else {
     // at the moment we raise a segfault here since we map the entire code
     // segment when loading a binary
-    printf("segmentation fault: context %d tried to execute the instruction at 0x%x and faulted at 0x%x\n", context->id, sepc, stval);
+    printf("segmentation fault: context %u tried to execute the instruction at 0x%x and faulted at 0x%x\n", context->id, sepc, stval);
     // TODO: kill this context
   }
 
 #ifdef DEBUG
-  printf("received instruction page fault caused by context %d\n", context->id);
+  printf("received instruction page fault caused by context %u\n", context->id);
   printf("  address of instruction:         0x%x\n", sepc);
   printf("  address that caused page fault: 0x%x\n", stval);
 #endif /* DEBUG */
@@ -180,12 +180,12 @@ void handle_load_page_fault(struct context* context, uint64_t stval) {
           || (context->saved_regs->sp <= stval && stval <= context->legal_memory_boundaries->lowest_mid_page))
     kmap_page(context->pt, stval, 1);
   else {
-    printf("segmentation fault: context %d tried to load from address 0x%x\n", context->id, stval);
+    printf("segmentation fault: context %u tried to load from address 0x%x\n", context->id, stval);
     // TODO: kill this context or something like that
   }
 
 #ifdef DEBUG
-  printf("received load page fault caused by context %d\n", context->id);
+  printf("received load page fault caused by context %u\n", context->id);
   printf("  address that caused page fault: 0x%x\n", stval);
 #endif /* DEBUG */
 }
@@ -196,12 +196,12 @@ void handle_store_amo_page_fault(struct context* context, uint64_t stval) {
           || (context->saved_regs->sp <= stval && stval <= context->legal_memory_boundaries->lowest_mid_page))
     kmap_page(context->pt, stval, 1);
   else {
-    printf("segmentation fault: context %d tried to store/AMO at address 0x%x\n", context->id, stval);
+    printf("segmentation fault: context %u tried to store/AMO at address 0x%x\n", context->id, stval);
     // TODO: kill this context or something like that
   }
 
 #ifdef DEBUG
-  printf("received store/AMO page fault caused by context %d\n", context->id);
+  printf("received store/AMO page fault caused by context %u\n", context->id);
   printf("  address that caused page fault: 0x%x\n", stval);
 #endif /* DEBUG */
 }
