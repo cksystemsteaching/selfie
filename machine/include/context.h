@@ -13,6 +13,7 @@ struct __attribute__((packed)) context {
 };
 
 struct __attribute__((packed)) registers {
+  // obviously no need to save the zero register
   uint64_t ra;
   uint64_t sp;
   uint64_t gp;
