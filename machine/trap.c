@@ -17,6 +17,8 @@
 #define SYSCALL_OPENAT 56
 #define SYSCALL_BRK    214
 
+struct registers temp_saved_regs;
+
 void disable_smode_interrupts() {
     uint64_t bitmask = (1 << CSR_STATUS_SIE);
 
