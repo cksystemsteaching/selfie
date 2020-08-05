@@ -3,18 +3,24 @@
 
 #include <stdint.h>
 
+#define PAGESIZE 4096
+
+#define SATP_MODE_SV39 (8UL << 60)
+#define SATP_MODE_SV48 (9UL << 60)
+#define SATP_PPN_BITMASK 0x00000FFFFFFFFFFF
+
 struct __attribute__((packed)) pt_entry {
-  uint64_t reserved :10; // reserved for future use
-  uint64_t ppn      :44; // physical page number
-  uint64_t rsw      : 2; // bits can be used freely by a supervisor
-  uint64_t d        : 1; // dirty flag
-  uint64_t a        : 1; // accessed flag
-  uint64_t g        : 1; // global mapping flag
-  uint64_t u        : 1; // U-mode accessible flag
-  uint64_t x        : 1; // execute flag
-  uint64_t w        : 1; // write flag
-  uint64_t r        : 1; // read flag
   uint64_t v        : 1; // valid flag
+  uint64_t r        : 1; // read flag
+  uint64_t w        : 1; // write flag
+  uint64_t x        : 1; // execute flag
+  uint64_t u        : 1; // U-mode accessible flag
+  uint64_t g        : 1; // global mapping flag
+  uint64_t a        : 1; // accessed flag
+  uint64_t d        : 1; // dirty flag
+  uint64_t rsw      : 2; // bits can be used freely by a supervisor
+  uint64_t ppn      :44; // physical page number
+  uint64_t reserved :10; // reserved for future use
 };
 
 extern struct pt_entry kernel_pt[512];
@@ -26,6 +32,14 @@ extern struct pt_entry kernel_pt[512];
  * @return The physical page number (paddr / 2^12) of the next free page
  */
 uint64_t kpalloc();
+/**
+ * @brief Attaches an empty page to the kernel space, zeroes it out and returns the PPN of it
+ *
+ * @return  The physical page number (paddr / 2^12) of the next free page
+ */
+uint64_t kzalloc();
+
+void kzero_page(uint64_t ppn);
 
 // both table and (pt_at_ppn << 12) have to be valid page-aligned pointers
 uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, char pt_at_ppn_addr, char u_mode_accessible);
@@ -34,6 +48,7 @@ void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);
 void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible);
 
 uint64_t paddr_to_ppn(const void* address);
+const void* ppn_to_paddr(uint64_t ppn);
 
 /**
  * @brief Performs an identity mapping in a page table for a given range.
@@ -52,5 +67,8 @@ uint64_t paddr_to_ppn(const void* address);
 void kidentity_map_range(struct pt_entry* table, void* from, void* to);
 
 void kdump_pt(struct pt_entry* table);
+
+
+void kswitch_active_pt(struct pt_entry* table);
 
 #endif /* KERN_MMU */

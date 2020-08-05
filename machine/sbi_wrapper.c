@@ -1,3 +1,4 @@
+#include "config.h"
 #include "console.h"
 #include "heap.h"
 #include "tinycstd.h"
@@ -20,7 +21,9 @@ void bootstrap() {
 
     puts("Setting up kernel page table...");
     // No need to clear the page table - the BSS section is cleared automagically
+    uint64_t stackEnd = ((uint64_t)&_payload_end) + PAGESIZE*NUM_STACK_PAGES;
     kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
+    kidentity_map_range(kernel_pt, &_payload_end, (void*)stackEnd);
     kmap_page_by_ppn(kernel_pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_trampoline), false);
     kdump_pt(kernel_pt);
 
@@ -29,6 +32,10 @@ void bootstrap() {
     enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
                                  (1 << CSR_SIE_SOFTWARE_INTS) |
                                  (1 << CSR_UIE_SOFTWARE_INTS));
+    puts("done!\n");
+
+    puts("Enabling paging...");
+    kswitch_active_pt(kernel_pt);
     puts("done!\n");
 
     char* args[] = {

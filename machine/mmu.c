@@ -1,4 +1,5 @@
 #include "mmu.h"
+#include "context.h"
 #include "tinycstd.h"
 #include <stdint.h>
 
@@ -29,8 +30,24 @@ uint64_t create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, c
 
 uint64_t ppn_bump;
 uint64_t kpalloc() {
-    // TODO: zero this memory beforehand or else we will have some serious problems since the 'valid' bit in pt entries could be 1 when it should be 0
+    uint64_t* vaddr = (uint64_t*)(ppn_bump << 12);
+
     return ppn_bump++;
+}
+uint64_t kzalloc() {
+    uint64_t ppn = kpalloc();
+
+    kmap_page_by_ppn(kernel_pt, (uint64_t)ppn_to_paddr(ppn), ppn, false);
+    kzero_page(ppn);
+
+    return ppn;
+}
+
+void kzero_page(uint64_t ppn) {
+    uint64_t* page_addr = (uint64_t*) ppn_to_paddr(ppn);
+
+    for (size_t i = 0; i < PAGESIZE/sizeof(uint64_t); i++)
+        page_addr[i] = 0;
 }
 
 struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t index) {
@@ -38,7 +55,7 @@ struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t i
 }
 
 void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
-    kmap_page_by_ppn(table, vaddr, kpalloc(), u_mode_accessible);
+    kmap_page_by_ppn(table, vaddr, kzalloc(), u_mode_accessible);
 }
 void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
@@ -47,13 +64,19 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
   struct pt_entry* mid_pt;
   struct pt_entry* leaf_pt;
 
-  if (!table[vpn_2].v)
-    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, kpalloc(), 1, 0);
+  if (!table[vpn_2].v) {
+    uint64_t ppn = kpalloc();
+    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, ppn, 1, 0);
+    kzero_page(ppn);
+  }
   else
     mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
   
-  if (!mid_pt[vpn_1].v)
-    leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, kpalloc(), 1, 0);
+  if (!mid_pt[vpn_1].v) {
+    uint64_t ppn = kpalloc();
+    leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
+    kzero_page(ppn);
+  }
   else
     leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
@@ -62,6 +85,9 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
 
 uint64_t paddr_to_ppn(const void* address) {
     return ((uint64_t)address) >> 12;
+}
+const void* ppn_to_paddr(uint64_t ppn) {
+    return (const void*)(ppn << 12);
 }
 
 void kidentity_map_range(struct pt_entry* table, void* from, void* to) {
@@ -113,6 +139,20 @@ void kdump_pt(struct pt_entry* table) {
             }
         }
     }
+}
+
+void kswitch_active_pt(struct pt_entry* table) {
+    uint64_t table_ppn = paddr_to_ppn(table);
+    uint64_t satpValue = SATP_MODE_SV39 | (table_ppn & SATP_PPN_BITMASK);
+
+    // TODO: Flush TLB using VMA.SFENCE
+    asm volatile(
+        "csrw satp, %[value];"
+        "csrw sscratch, %[value];"
+        "sfence.vma x0, x0"
+        :
+        : [value] "r" (satpValue)
+    );
 }
 
 __attribute__((aligned(4096)))
