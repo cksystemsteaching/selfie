@@ -35,14 +35,20 @@ uint64_t kpalloc() {
 uint64_t kzalloc() {
     uint64_t ppn = kpalloc();
 
-    kmap_page_by_ppn(kernel_pt, (uint64_t)ppn_to_paddr(ppn), ppn, false);
-    kzero_page(ppn);
+    // Map pages to zero out at 0x1000
+    // With paging enabled, if we were trying to identity-map the provided
+    // page, and there were nodes missing in the radix tree, we could not
+    // proceed easily.
+    // By mapping the page to a fixed VPN, we can assure that all nodes are
+    // present
+    kmap_page_by_ppn(kernel_pt, 0x1000, ppn, false);
+    kzero_page(0x1000);
 
     return ppn;
 }
 
-void kzero_page(uint64_t ppn) {
-    uint64_t* page_addr = (uint64_t*) ppn_to_paddr(ppn);
+void kzero_page(uint64_t vpn) {
+    uint64_t* page_addr = (uint64_t*) ppn_to_paddr(vpn);
 
     for (size_t i = 0; i < PAGESIZE/sizeof(uint64_t); i++)
         page_addr[i] = 0;

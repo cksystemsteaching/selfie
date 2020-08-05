@@ -39,7 +39,7 @@ uint64_t kpalloc();
  */
 uint64_t kzalloc();
 
-void kzero_page(uint64_t ppn);
+void kzero_page(uint64_t vpn);
 
 // both table and (pt_at_ppn << 12) have to be valid page-aligned pointers
 uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, char pt_at_ppn_addr, char u_mode_accessible);
