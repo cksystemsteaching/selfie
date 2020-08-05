@@ -8,6 +8,7 @@
 #define SATP_MODE_SV39 (8UL << 60)
 #define SATP_MODE_SV48 (9UL << 60)
 #define SATP_PPN_BITMASK 0x00000FFFFFFFFFFF
+#define SATP_ASID_POS 44
 
 struct __attribute__((packed)) pt_entry {
   uint64_t v        : 1; // valid flag
@@ -69,6 +70,6 @@ void kidentity_map_range(struct pt_entry* table, void* from, void* to);
 void kdump_pt(struct pt_entry* table);
 
 
-void kswitch_active_pt(struct pt_entry* table);
+void kswitch_active_pt(struct pt_entry* table, uint64_t asid);
 
 #endif /* KERN_MMU */

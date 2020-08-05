@@ -35,7 +35,7 @@ void bootstrap() {
     puts("done!\n");
 
     puts("Enabling paging...");
-    kswitch_active_pt(kernel_pt);
+    kswitch_active_pt(kernel_pt, 0);
     puts("done!\n");
 
     char* args[] = {
