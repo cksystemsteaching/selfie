@@ -48,37 +48,37 @@ void disable_smode_interrupt_types(uint64_t bitmask) {
 }
 
 void store_saved_registers_in_context(struct context* context) {
-    context->saved_regs->ra  = temp_saved_regs.ra;
-    context->saved_regs->sp  = temp_saved_regs.sp;
-    context->saved_regs->gp  = temp_saved_regs.gp;
-    context->saved_regs->tp  = temp_saved_regs.tp;
-    context->saved_regs->t0  = temp_saved_regs.t0;
-    context->saved_regs->t1  = temp_saved_regs.t1;
-    context->saved_regs->t2  = temp_saved_regs.t2;
-    context->saved_regs->s0  = temp_saved_regs.s0;
-    context->saved_regs->s1  = temp_saved_regs.s1;
-    context->saved_regs->a0  = temp_saved_regs.a0;
-    context->saved_regs->a1  = temp_saved_regs.a1;
-    context->saved_regs->a2  = temp_saved_regs.a2;
-    context->saved_regs->a3  = temp_saved_regs.a3;
-    context->saved_regs->a4  = temp_saved_regs.a4;
-    context->saved_regs->a5  = temp_saved_regs.a5;
-    context->saved_regs->a6  = temp_saved_regs.a6;
-    context->saved_regs->a7  = temp_saved_regs.a7;
-    context->saved_regs->s2  = temp_saved_regs.s2;
-    context->saved_regs->s3  = temp_saved_regs.s3;
-    context->saved_regs->s4  = temp_saved_regs.s4;
-    context->saved_regs->s5  = temp_saved_regs.s5;
-    context->saved_regs->s6  = temp_saved_regs.s6;
-    context->saved_regs->s7  = temp_saved_regs.s7;
-    context->saved_regs->s8  = temp_saved_regs.s8;
-    context->saved_regs->s9  = temp_saved_regs.s9;
-    context->saved_regs->s10 = temp_saved_regs.s10;
-    context->saved_regs->s11 = temp_saved_regs.s11;
-    context->saved_regs->t3  = temp_saved_regs.t3;
-    context->saved_regs->t4  = temp_saved_regs.t4;
-    context->saved_regs->t5  = temp_saved_regs.t5;
-    context->saved_regs->t6  = temp_saved_regs.t6;
+    context->saved_regs.ra  = temp_saved_regs.ra;
+    context->saved_regs.sp  = temp_saved_regs.sp;
+    context->saved_regs.gp  = temp_saved_regs.gp;
+    context->saved_regs.tp  = temp_saved_regs.tp;
+    context->saved_regs.t0  = temp_saved_regs.t0;
+    context->saved_regs.t1  = temp_saved_regs.t1;
+    context->saved_regs.t2  = temp_saved_regs.t2;
+    context->saved_regs.s0  = temp_saved_regs.s0;
+    context->saved_regs.s1  = temp_saved_regs.s1;
+    context->saved_regs.a0  = temp_saved_regs.a0;
+    context->saved_regs.a1  = temp_saved_regs.a1;
+    context->saved_regs.a2  = temp_saved_regs.a2;
+    context->saved_regs.a3  = temp_saved_regs.a3;
+    context->saved_regs.a4  = temp_saved_regs.a4;
+    context->saved_regs.a5  = temp_saved_regs.a5;
+    context->saved_regs.a6  = temp_saved_regs.a6;
+    context->saved_regs.a7  = temp_saved_regs.a7;
+    context->saved_regs.s2  = temp_saved_regs.s2;
+    context->saved_regs.s3  = temp_saved_regs.s3;
+    context->saved_regs.s4  = temp_saved_regs.s4;
+    context->saved_regs.s5  = temp_saved_regs.s5;
+    context->saved_regs.s6  = temp_saved_regs.s6;
+    context->saved_regs.s7  = temp_saved_regs.s7;
+    context->saved_regs.s8  = temp_saved_regs.s8;
+    context->saved_regs.s9  = temp_saved_regs.s9;
+    context->saved_regs.s10 = temp_saved_regs.s10;
+    context->saved_regs.s11 = temp_saved_regs.s11;
+    context->saved_regs.t3  = temp_saved_regs.t3;
+    context->saved_regs.t4  = temp_saved_regs.t4;
+    context->saved_regs.t5  = temp_saved_regs.t5;
+    context->saved_regs.t6  = temp_saved_regs.t6;
 }
 
 void trap_handler() {
@@ -144,10 +144,10 @@ void handle_ecall(struct context* context) {
   uint64_t syscall_param_2;
 
   // TODO: this currently can't be read since we dont have really contexts yet
-  /*syscall_id = context->saved_regs->a7;
-  syscall_param_0 = context->saved_regs->a0;
-  syscall_param_1 = context->saved_regs->a1;
-  syscall_param_2 = context->saved_regs->a2;*/
+  /*syscall_id = context->saved_regs.a7;
+  syscall_param_0 = context->saved_regs.a0;
+  syscall_param_1 = context->saved_regs.a1;
+  syscall_param_2 = context->saved_regs.a2;*/
 
   switch (syscall_id) {
     case SYSCALL_EXIT:
@@ -199,7 +199,7 @@ char is_legal_memory_access(struct memory_boundaries* legal_memory_boundaries, u
 }
 
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval) {
-  if (is_legal_memory_access(context->legal_memory_boundaries, stval)) {
+  if (is_legal_memory_access(&(context->legal_memory_boundaries), stval)) {
     // TODO: handling faults like that is probably necessary for native hypster support
   } else {
     // at the moment we raise a segfault here since we map the entire code
@@ -216,9 +216,9 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
 }
 
 void handle_load_page_fault(struct context* context, uint64_t stval) {
-  if (is_legal_memory_access(context->legal_memory_boundaries, stval)
+  if (is_legal_memory_access(&(context->legal_memory_boundaries), stval)
           // stack has grown but the page isnt mapped yet
-          || (context->saved_regs->sp <= stval && stval <= context->legal_memory_boundaries->lowest_mid_page))
+          || (context->saved_regs.sp <= stval && stval <= context->legal_memory_boundaries.lowest_mid_page))
     kmap_page(context->pt, stval, 1);
   else {
     printf("segmentation fault: context %u tried to load from address 0x%x\n", context->id, stval);
@@ -232,9 +232,9 @@ void handle_load_page_fault(struct context* context, uint64_t stval) {
 }
 
 void handle_store_amo_page_fault(struct context* context, uint64_t stval) {
-  if (is_legal_memory_access(context->legal_memory_boundaries, stval)
+  if (is_legal_memory_access(&(context->legal_memory_boundaries), stval)
           // stack has grown but the page isnt mapped yet
-          || (context->saved_regs->sp <= stval && stval <= context->legal_memory_boundaries->lowest_mid_page))
+          || (context->saved_regs.sp <= stval && stval <= context->legal_memory_boundaries.lowest_mid_page))
     kmap_page(context->pt, stval, 1);
   else {
     printf("segmentation fault: context %u tried to store/AMO at address 0x%x\n", context->id, stval);

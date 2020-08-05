@@ -3,15 +3,6 @@
 
 #include <stdint.h>
 
-struct __attribute__((packed)) context {
-  uint64_t id;
-  struct pt_entry* pt;
-  uint64_t program_break;
-  struct registers* saved_regs;
-  struct memory_boundaries* legal_memory_boundaries;
-  // TODO: all the other stuff
-};
-
 struct __attribute__((packed)) registers {
   // obviously no need to save the zero register
   uint64_t ra;
@@ -59,6 +50,16 @@ struct __attribute__((packed)) memory_boundaries {
     // trap handler code
     uint64_t lowest_hi_page;
     uint64_t highest_hi_page;
+};
+
+struct __attribute__((packed)) context {
+  // the id is only set in kallocate_context() so that the lookup in kfree_context() is faster
+  uint64_t id;
+  struct pt_entry* pt;
+  uint64_t program_break;
+  struct registers saved_regs;
+  struct memory_boundaries legal_memory_boundaries;
+  // TODO: all the other stuff
 };
 
 #endif /* KERN_CONTEXT */
