@@ -23,6 +23,8 @@
 #define REG_L		__REG_SEL(ld, lw)
 #define REG_S		__REG_SEL(sd, sw)
 
+#include "config.h"
+
     .section .entry, "ax", %progbits
     .align 3
     .globl _start
@@ -68,12 +70,13 @@ _start_warm:
     /* An increment of one is necessary due to the pre-allocated stack page */
     la a3, _payload_end
     srli a3, a3, 12
-    addi a3, a3, 2
+    addi a3, a3, NUM_STACK_PAGES
     sd a3, ppn_bump, a4
 
     /* Setup stack */
     la	a3, _payload_end
-    li	a4, 0x2000
+    li	a4, NUM_STACK_PAGES
+    slli a4, a4, 12
     add	sp, a3, a4
 
     /*
