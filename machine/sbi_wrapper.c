@@ -19,12 +19,17 @@ void bootstrap() {
 
     // TODO: Assert trampoline positioning on page boundary
 
-    puts("Setting up kernel page table...");
+    puts("Setting up kernel page table...\n");
     // No need to clear the page table - the BSS section is cleared automagically
     uint64_t stackEnd = ((uint64_t)&_payload_end) + PAGESIZE*NUM_STACK_PAGES;
     kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
     kidentity_map_range(kernel_pt, &_payload_end, (void*)stackEnd);
     kmap_page_by_ppn(kernel_pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_trampoline), false);
+
+    // Assure that the pt radix tree nodes are present for the kzalloc scratch vaddr
+    // by performing an identity-mapping
+    kmap_page_by_ppn(kernel_pt, KZALLOC_SCRATCH_VADDR, paddr_to_ppn((void*)KZALLOC_SCRATCH_VADDR), false);
+
     kdump_pt(kernel_pt);
 
     puts("Setting up trap handlers...");

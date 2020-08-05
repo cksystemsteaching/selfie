@@ -41,6 +41,8 @@ uint64_t kzalloc() {
     // proceed easily.
     // By mapping the page to a fixed VPN, we can assure that all nodes are
     // present
+    // The bootstrapping process ensures that the pages are acutally present
+    // before turning paging on
     kmap_page_by_ppn(kernel_pt, 0x1000, ppn, false);
     kzero_page(0x1000);
 
