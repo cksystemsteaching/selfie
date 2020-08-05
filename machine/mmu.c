@@ -30,8 +30,6 @@ uint64_t create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, c
 
 uint64_t ppn_bump;
 uint64_t kpalloc() {
-    uint64_t* vaddr = (uint64_t*)(ppn_bump << 12);
-
     return ppn_bump++;
 }
 uint64_t kzalloc() {
