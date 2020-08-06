@@ -52,6 +52,7 @@ uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, c
 
 uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);
 void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible);
+uint64_t kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr);
 
 uint64_t paddr_to_ppn(const void* address);
 const void* ppn_to_paddr(uint64_t ppn);

@@ -187,20 +187,31 @@ void implement_syscall_brk(struct context* context) {
   // TODO
 }
 
-char is_legal_memory_access(struct memory_boundaries* legal_memory_boundaries, uint64_t address) {
+enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t address) {
     uint64_t page_number = address >> 12;
 
-    if ((legal_memory_boundaries->lowest_lo_page <= page_number && page_number <= legal_memory_boundaries->highest_lo_page)
-            || (legal_memory_boundaries->lowest_mid_page <= page_number && page_number <= legal_memory_boundaries->highest_mid_page)
-            || (legal_memory_boundaries->lowest_hi_page <= page_number && page_number <= legal_memory_boundaries->highest_hi_page))
-        return 1;
+    if (legal_memory_boundaries->lowest_lo_page <= page_number && page_number <= legal_memory_boundaries->highest_lo_page)
+        return memory_access_type_lo;
+    else if (legal_memory_boundaries->lowest_mid_page <= page_number && page_number <= legal_memory_boundaries->highest_mid_page)
+        return memory_access_type_mid;
+    else if (legal_memory_boundaries->lowest_hi_page <= page_number && page_number <= legal_memory_boundaries->highest_hi_page)
+        return memory_access_type_hi;
     else
-        return 0;
+        return memory_access_type_unknown;
 }
 
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval) {
-  if (is_legal_memory_access(&(context->legal_memory_boundaries), stval)) {
+  enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
+
+  if (memory_access_type) {
     // TODO: handling faults like that is probably necessary for native hypster support
+#ifdef DEBUG
+    // this should never happen since we map the binary when loading it
+    printf("context %u raised an instruction page fault for a legally accessible page\n");
+    printf("  sepc:  0x%x\n", sepc);
+    printf("  stval: 0x%x\n", stval);
+#endif /* DEBUG */
+    // TODO: kill this context.
   } else {
     // at the moment we raise a segfault here since we map the entire code
     // segment when loading a binary
@@ -215,31 +226,65 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
 #endif /* DEBUG */
 }
 
-void handle_load_page_fault(struct context* context, uint64_t stval) {
-  if (is_legal_memory_access(&(context->legal_memory_boundaries), stval)
-          // stack has grown but the page isnt mapped yet
-          || (context->saved_regs.sp <= stval && stval <= context->legal_memory_boundaries.lowest_mid_page))
-    kmap_page(context->pt, stval, 1);
-  else {
-    printf("segmentation fault: context %u tried to load from address 0x%x\n", context->id, stval);
-    // TODO: kill this context or something like that
+char is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
+    return (stval < program_break && lowest_lo_page <= stval >> 12);
+}
+
+char has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
+    return (sp <= stval && stval >> 12 <= lowest_mid_page);
+}
+
+void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
+  enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
+  uint64_t vpn = stval >> 12;
+  uint64_t new_memory_bound_page_number;
+
+  // TODO: check if there's memory left on the machine and kill the context if this isn't the case
+
+  switch (memory_access_type) {
+      case memory_access_type_lo:
+          kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+          break;
+      case memory_access_type_mid:
+          kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+          break;
+      case memory_access_type_hi:
+#ifdef DEBUG
+          // that'd be a bug
+          printf("context %u raised a page fault in its hi part\n", context->id);
+          printf("  lowest hi page:  %u", context->legal_memory_boundaries.lowest_hi_page);
+          printf("  highest hi page: %u", context->legal_memory_boundaries.highest_hi_page);
+#endif /* DEBUG */
+          break;
+      case memory_access_type_unknown:
+          if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
+            new_memory_bound_page_number = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+            context->legal_memory_boundaries.highest_lo_page = new_memory_bound_page_number;
+          } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
+            // stack has grown but the page isnt mapped yet
+            new_memory_bound_page_number = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+            context->legal_memory_boundaries.lowest_mid_page = new_memory_bound_page_number;
+          } else {
+            printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
+            // TODO: kill this context or something like that
+          }
+          break;
   }
+}
+
+void handle_load_page_fault(struct context* context, uint64_t stval) {
+  handle_load_or_store_amo_page_fault(context, stval);
 
 #ifdef DEBUG
   printf("received load page fault caused by context %u\n", context->id);
   printf("  address that caused page fault: 0x%x\n", stval);
+  if (context == &kernel_context)
+    printf("  FATAL BUG: KERNEL CAUSED A PAGE FAULT\n");
 #endif /* DEBUG */
 }
 
 void handle_store_amo_page_fault(struct context* context, uint64_t stval) {
-  if (is_legal_memory_access(&(context->legal_memory_boundaries), stval)
-          // stack has grown but the page isnt mapped yet
-          || (context->saved_regs.sp <= stval && stval <= context->legal_memory_boundaries.lowest_mid_page))
-    kmap_page(context->pt, stval, 1);
-  else {
-    printf("segmentation fault: context %u tried to store/AMO at address 0x%x\n", context->id, stval);
-    // TODO: kill this context or something like that
-  }
+  handle_load_or_store_amo_page_fault(context, stval);
 
 #ifdef DEBUG
   printf("received store/AMO page fault caused by context %u\n", context->id);

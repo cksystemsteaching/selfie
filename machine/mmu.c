@@ -96,6 +96,10 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
   create_pt_entry(leaf_pt, vpn_0, ppn, 0, u_mode_accessible);
 }
 
+uint64_t kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr) {
+    // TODO
+}
+
 uint64_t paddr_to_ppn(const void* address) {
     return ((uint64_t)address) >> 12;
 }
