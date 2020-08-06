@@ -13,6 +13,8 @@
 #define SATP_PPN_BITMASK 0x00000FFFFFFFFFFF
 #define SATP_ASID_POS 44
 
+#define SV39_PAGE_COUNT (1UL << (40 - 12))
+
 struct __attribute__((packed)) pt_entry {
   uint64_t v        : 1; // valid flag
   uint64_t r        : 1; // read flag
