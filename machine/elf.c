@@ -111,6 +111,9 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
             uint64_t ppn = kmap_page(context->pt, vaddr, true);
             kidentity_map_ppn(kernel_pt, ppn, false);
         }
+
+        if (context->program_break < pheader[i].vaddr + pheader[i].memSize)
+            context->program_break = pheader[i].vaddr + pheader[i].memSize;
     }
 
     context->saved_regs.pc = header->entryPoint;
