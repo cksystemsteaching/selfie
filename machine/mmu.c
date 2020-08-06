@@ -64,8 +64,11 @@ struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t i
   return (struct pt_entry*) ((table + index)->ppn << 12);
 }
 
-void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
-    kmap_page_by_ppn(table, vaddr, kzalloc(), u_mode_accessible);
+uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
+    uint64_t ppn = kzalloc();
+    kmap_page_by_ppn(table, vaddr, ppn, u_mode_accessible);
+
+    return ppn;
 }
 void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
@@ -114,6 +117,9 @@ void kidentity_map_range(struct pt_entry* table, void* from, void* to) {
 
         ppn++;
     };
+}
+void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible) {
+    kmap_page_by_ppn(table, ppn_to_paddr(ppn), ppn, u_mode_accessible);
 }
 
 void kdump_pt(struct pt_entry* table) {

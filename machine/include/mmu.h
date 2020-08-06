@@ -1,7 +1,8 @@
 #ifndef KERN_MMU
 #define KERN_MMU
 
-#include <stdint.h>
+#include "sbi/sbi_types.h"
+#include <stdbool.h>
 
 #define KZALLOC_SCRATCH_VADDR 0x1000UL
 
@@ -47,7 +48,7 @@ void kzero_page(uint64_t vpn);
 // both table and (pt_at_ppn << 12) have to be valid page-aligned pointers
 uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, char pt_at_ppn_addr, char u_mode_accessible);
 
-void kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);
+uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);
 void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible);
 
 uint64_t paddr_to_ppn(const void* address);
@@ -68,6 +69,7 @@ const void* ppn_to_paddr(uint64_t ppn);
  * @param to The end of the memory range to attach (exclusive).
  */
 void kidentity_map_range(struct pt_entry* table, void* from, void* to);
+void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible);
 
 void kdump_pt(struct pt_entry* table);
 
