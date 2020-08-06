@@ -1,7 +1,7 @@
 #ifndef KERN_MMU
 #define KERN_MMU
 
-#include "sbi/sbi_types.h"
+#include <stdint.h>
 #include <stdbool.h>
 
 #define KZALLOC_SCRATCH_VADDR 0x1000UL
