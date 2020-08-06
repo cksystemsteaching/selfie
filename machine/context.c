@@ -87,7 +87,7 @@ void kinit_context(struct context* context) {
 
     context->legal_memory_boundaries.lowest_lo_page = 0;
     context->legal_memory_boundaries.highest_lo_page = 0;
-    context->legal_memory_boundaries.lowest_mid_page = 0;
+    context->legal_memory_boundaries.lowest_mid_page = SV39_PAGE_COUNT - 2;
     context->legal_memory_boundaries.highest_mid_page = SV39_PAGE_COUNT - 2;
     context->legal_memory_boundaries.lowest_hi_page = SV39_PAGE_COUNT - 1;
     context->legal_memory_boundaries.highest_hi_page = SV39_PAGE_COUNT - 1;
