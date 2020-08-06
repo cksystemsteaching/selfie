@@ -30,6 +30,10 @@ uint64_t create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, c
 
 uint64_t ppn_bump;
 uint64_t kpalloc() {
+    // page allocation is the only form of dynamic memory allocation in this kernel
+    kernel_context.program_break = ppn_bump;
+    kernel_context.legal_memory_boundaries.highest_lo_page = ppn_bump;
+
     return ppn_bump++;
 }
 uint64_t kzalloc() {
