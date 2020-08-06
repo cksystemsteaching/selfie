@@ -62,4 +62,12 @@ struct __attribute__((packed)) context {
   // TODO: all the other stuff
 };
 
+extern struct context kernel_context;
+
+struct context* kallocate_context(); // returns NULL if there are no free slots left atm
+void kfree_context(uint64_t context_id);
+
+struct context* get_currently_active_context();
+struct context* schedule_next_context();
+
 #endif /* KERN_CONTEXT */
