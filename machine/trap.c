@@ -79,6 +79,8 @@ void store_saved_registers_in_context(struct context* context) {
     context->saved_regs.t4  = temp_saved_regs.t4;
     context->saved_regs.t5  = temp_saved_regs.t5;
     context->saved_regs.t6  = temp_saved_regs.t6;
+
+    context->saved_regs.pc = temp_saved_regs.pc;
 }
 
 void trap_handler() {
