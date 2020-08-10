@@ -129,8 +129,9 @@ void trap_handler() {
 
 #ifdef DEBUG
   printf("trap handler has been executed (caused context %u)\n", context->id);
-  printf("  scause:         0x%x\n", scause);
-  printf("  syscall number: 0x%x\n", syscall_number);
+  printf("  scause: 0x%x\n", scause);
+  printf("  stval:  0x%x\n", stval);
+  printf("  sepc:   0x%x\n", sepc);
 #endif /* DEBUG */
 }
 
