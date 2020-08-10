@@ -1,3 +1,5 @@
+
+#include <stdio.h>
 #include "include/context.h"
 
 #define PRINT_OFFSET_DEF(prefix, name, stru, memb) printf("#define %s%s %d\n", #prefix, #name, offsetof(stru, memb))

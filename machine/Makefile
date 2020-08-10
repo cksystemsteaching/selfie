@@ -63,7 +63,7 @@ sbi_files.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	done;
 
 	@# Create a mapping to all packaged files
-	@echo "static const FILE file_defs[] = {" >>$@;
+	@echo "static const KFILE file_defs[] = {" >>$@;
 	@for file in $^;\
 	do \
 		BASENAME=`basename $$file` ;\
@@ -73,7 +73,7 @@ sbi_files.c: $(SBI_WRAPPER_FILES_PACKAGE)
 	done;
 	@echo "  {\"\", (const char*)NULL, 0}," >>$@;
 	@echo "};" >>$@;
-	@echo "const FILE* files = file_defs;" >>$@;
+	@echo "const KFILE* files = file_defs;" >>$@;
 
 include/asm_offsets.h: $(ASM_STRUCT_HEADERS)
 	$(HOSTCC) -I. tools/asm_struct_macro_generator.c -o tools/asm_struct_macro_generator

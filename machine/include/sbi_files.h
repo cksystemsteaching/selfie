@@ -3,17 +3,17 @@
 
 #include <stddef.h>
 
-typedef struct FILE {
+typedef struct KFILE {
     const char name[512];
     const char* data;
     size_t length;
-} FILE;
+} KFILE;
 
 typedef struct FILEDESC {
-    const FILE* file;
+    const KFILE* file;
     size_t pos;
 } FILEDESC;
 
-extern const FILE* files;
+extern const KFILE* files;
 
 #endif /* SBI_FILES_BASE */
