@@ -151,11 +151,7 @@ void handle_ecall(struct context* context) {
   uint64_t syscall_param_1;
   uint64_t syscall_param_2;
 
-  // TODO: this currently can't be read since we dont have really contexts yet
-  /*syscall_id = context->saved_regs.a7;
-  syscall_param_0 = context->saved_regs.a0;
-  syscall_param_1 = context->saved_regs.a1;
-  syscall_param_2 = context->saved_regs.a2;*/
+  syscall_id = context->saved_regs.a7;
 
   switch (syscall_id) {
     case SYSCALL_EXIT:
