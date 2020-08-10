@@ -1,8 +1,8 @@
+#include "config.h"
 #include "sbi_files.h"
 #include "syscall.h"
 #include <stdint.h>
 
-#define NUM_FDS 32
 
 static FILEDESC open_files[NUM_FDS];
 void* heap_head;
