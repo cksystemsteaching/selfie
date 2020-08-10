@@ -157,7 +157,8 @@ void handle_ecall(struct context* context) {
 
   switch (syscall_id) {
     case SYSCALL_EXIT:
-
+      implement_syscall_exit(context);
+      break;
     case SYSCALL_READ:
       implement_syscall_read(context);
       break;
@@ -168,9 +169,11 @@ void handle_ecall(struct context* context) {
       implement_syscall_openat(context);
       break;
     case SYSCALL_BRK:
-
+      implement_syscall_brk(context);
+      break;
     default:
       printf("received unknown syscall '0x%x' from context %u\n", syscall_id, context->id);
+      // TODO: kill context
   }
 
   context->saved_regs.pc = context->saved_regs.pc + SIZE_OF_ECALL_INSTRUCTION;
