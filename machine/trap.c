@@ -179,7 +179,13 @@ void handle_ecall(struct context* context) {
 }
 
 void implement_syscall_exit(struct context* context) {
-  // TODO
+  int64_t exit_code;
+
+  exit_code = context->saved_regs.a0;
+
+  printf("context %u exited with exit code %d\n", context->id, exit_code);
+
+  kfree_context(context->id);
 }
 
 void implement_syscall_read(struct context* context) {
