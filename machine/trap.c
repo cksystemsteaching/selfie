@@ -215,7 +215,29 @@ void implement_syscall_openat(struct context* context) {
 }
 
 void implement_syscall_brk(struct context* context) {
-  // TODO
+  // syscall parameter
+  uint64_t program_break;
+
+  // local variables
+  uint64_t previous_program_break;
+  bool valid = false;
+
+  program_break = context->saved_regs.a0;
+
+  previous_program_break = context->program_break;
+
+  valid = (program_break >= previous_program_break && program_break < context->saved_regs.sp); // TODO: selfie also checks here if the new program break is 64bit-aligned but we're more independent of selfie if we don't do this
+
+  if (valid)
+    context->program_break = program_break;
+  else
+    program_break = previous_program_break;
+
+  context->saved_regs.a0 = program_break;
+
+#ifdef DEBUG
+  printf("context %u changed program break from %x to %x\n", context->id, previous_program_break, program_break);
+#endif /* DEBUG */
 }
 
 enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t address) {
