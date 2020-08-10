@@ -190,24 +190,27 @@ void implement_syscall_exit(struct context* context) {
 }
 
 void implement_syscall_read(struct context* context) {
+  // TODO: Check if buf is a valid vaddr (!nullptr)
   int fd = context->saved_regs.a0;
   char* buf = (char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
   size_t count = context->saved_regs.a2;
   intmax_t read = kread(fd, buf, count, context->open_files, NUM_FDS);
-  context->saved_regs.a0 = fd;
+  context->saved_regs.a0 = read;
 }
 
 void implement_syscall_write(struct context* context) {
+  // TODO: Check if buf is a valid vaddr (!nullptr)
   int fd = context->saved_regs.a0;
   const char* buf = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
   size_t count = context->saved_regs.a2;
   intmax_t written = kwrite(fd, buf, count, context->open_files, NUM_FDS);
-  context->saved_regs.a0 = fd;
+  context->saved_regs.a0 = written;
 }
 
 void implement_syscall_openat(struct context* context) {
   // TODO: Unsafe directly used userspace string
   // Use strncpy instead
+  // TODO: Check if path is a valid vaddr (!nullptr)
   const char* path = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
   int flags = context->saved_regs.a2;
   uint64_t mode = context->saved_regs.a3;
