@@ -239,7 +239,6 @@ char has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
 void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
   enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
   uint64_t vpn = stval >> 12;
-  uint64_t new_memory_bound_page_number;
 
   // TODO: check if there's memory left on the machine and kill the context if this isn't the case
 
@@ -260,12 +259,12 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
           break;
       case memory_access_type_unknown:
           if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
-            new_memory_bound_page_number = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
-            context->legal_memory_boundaries.highest_lo_page = new_memory_bound_page_number;
+            kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+            context->legal_memory_boundaries.highest_lo_page = vaddr_to_vpn(stval);
           } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
             // stack has grown but the page isnt mapped yet
-            new_memory_bound_page_number = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
-            context->legal_memory_boundaries.lowest_mid_page = new_memory_bound_page_number;
+            kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+            context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
           } else {
             printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
             // TODO: kill this context or something like that
