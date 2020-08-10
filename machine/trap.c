@@ -280,6 +280,7 @@ void handle_load_page_fault(struct context* context, uint64_t stval) {
 #ifdef DEBUG
   printf("received load page fault caused by context %u\n", context->id);
   printf("  address that caused page fault: 0x%x\n", stval);
+
   if (context == &kernel_context)
     printf("  FATAL BUG: KERNEL CAUSED A PAGE FAULT\n");
 #endif /* DEBUG */
@@ -291,6 +292,9 @@ void handle_store_amo_page_fault(struct context* context, uint64_t stval) {
 #ifdef DEBUG
   printf("received store/AMO page fault caused by context %u\n", context->id);
   printf("  address that caused page fault: 0x%x\n", stval);
+
+  if (context == &kernel_context)
+    printf("  FATAL BUG: KERNEL CAUSED A PAGE FAULT\n");
 #endif /* DEBUG */
 }
 
