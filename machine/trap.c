@@ -133,6 +133,8 @@ void trap_handler() {
   printf("  stval:  0x%x\n", stval);
   printf("  sepc:   0x%x\n", sepc);
 #endif /* DEBUG */
+
+  // TODO: schedule context, set timer interrupt and switch to the context
 }
 
 void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code, uint64_t stval, uint64_t sepc) {
