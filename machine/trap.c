@@ -146,6 +146,8 @@ void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t 
 }
 
 void handle_ecall(struct context* context) {
+  const char SIZE_OF_ECALL_INSTRUCTION = 4;
+
   uint64_t syscall_id;
   uint64_t syscall_param_0;
   uint64_t syscall_param_1;
@@ -171,7 +173,7 @@ void handle_ecall(struct context* context) {
       printf("received unknown syscall '0x%x' from context %u\n", syscall_id, context->id);
   }
 
-  // TODO
+  context->saved_regs.pc = context->saved_regs.pc + SIZE_OF_ECALL_INSTRUCTION;
 }
 
 void implement_syscall_exit(struct context* context) {
