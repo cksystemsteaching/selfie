@@ -178,7 +178,7 @@ void kswitch_active_pt(struct pt_entry* table, uint64_t asid) {
     asm volatile(
         "csrw satp, %[value];"
         "csrw sscratch, %[value];"
-        "sfence.vma x0, %[asid]" // RISC-V Priviled
+        "sfence.vma zero, %[asid]" // RISC-V Priviled
         :
         : [value] "r" (satpValue), [asid] "r" (asid)
     );
