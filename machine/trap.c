@@ -190,17 +190,17 @@ void implement_syscall_exit(struct context* context) {
 }
 
 void implement_syscall_read(struct context* context) {
-  int fd = context->saved_regs.a1;
-  char* buf = (char*) vaddr_to_paddr(context->pt, context->saved_regs.a2);
-  size_t count = context->saved_regs.a3;
+  int fd = context->saved_regs.a0;
+  char* buf = (char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
+  size_t count = context->saved_regs.a2;
   intmax_t read = kread(fd, buf, count, context->open_files, NUM_FDS);
   context->saved_regs.a0 = fd;
 }
 
 void implement_syscall_write(struct context* context) {
-  int fd = context->saved_regs.a1;
-  const char* buf = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a2);
-  size_t count = context->saved_regs.a3;
+  int fd = context->saved_regs.a0;
+  const char* buf = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
+  size_t count = context->saved_regs.a2;
   intmax_t written = kwrite(fd, buf, count, context->open_files, NUM_FDS);
   context->saved_regs.a0 = fd;
 }
