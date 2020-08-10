@@ -106,6 +106,10 @@ void kfree_context(uint64_t context_id) {
     context_manager->is_used = 0;
     --num_of_used_contexts;
 
+#ifdef DEBUG
+    printf("freed context %u\n", context_id);
+#endif /* DEBUG */
+
     if (num_of_used_contexts == 0) {
         printf("KERNEL PANIC: all processes are dead. starting to hang...\n");
         _start_hang(); // TODO: maybe change something here
