@@ -50,7 +50,7 @@ void disable_smode_interrupt_types(uint64_t bitmask) {
 
 }
 
-void store_saved_registers_in_context(struct context* context) {
+void store_saved_registers_from_buffer_into_context(struct context* context) {
     context->saved_regs.ra  = temp_saved_regs.ra;
     context->saved_regs.sp  = temp_saved_regs.sp;
     context->saved_regs.gp  = temp_saved_regs.gp;
@@ -86,13 +86,50 @@ void store_saved_registers_in_context(struct context* context) {
     context->saved_regs.pc = temp_saved_regs.pc;
 }
 
+void load_saved_registers_from_context_into_buffer(struct context* context) {
+    temp_saved_regs.ra  = context->saved_regs.ra;
+    temp_saved_regs.sp  = context->saved_regs.sp;
+    temp_saved_regs.gp  = context->saved_regs.gp;
+    temp_saved_regs.tp  = context->saved_regs.tp;
+    temp_saved_regs.t0  = context->saved_regs.t0;
+    temp_saved_regs.t1  = context->saved_regs.t1;
+    temp_saved_regs.t2  = context->saved_regs.t2;
+    temp_saved_regs.s0  = context->saved_regs.s0;
+    temp_saved_regs.s1  = context->saved_regs.s1;
+    temp_saved_regs.a0  = context->saved_regs.a0;
+    temp_saved_regs.a1  = context->saved_regs.a1;
+    temp_saved_regs.a2  = context->saved_regs.a2;
+    temp_saved_regs.a3  = context->saved_regs.a3;
+    temp_saved_regs.a4  = context->saved_regs.a4;
+    temp_saved_regs.a5  = context->saved_regs.a5;
+    temp_saved_regs.a6  = context->saved_regs.a6;
+    temp_saved_regs.a7  = context->saved_regs.a7;
+    temp_saved_regs.s2  = context->saved_regs.s2;
+    temp_saved_regs.s3  = context->saved_regs.s3;
+    temp_saved_regs.s4  = context->saved_regs.s4;
+    temp_saved_regs.s5  = context->saved_regs.s5;
+    temp_saved_regs.s6  = context->saved_regs.s6;
+    temp_saved_regs.s7  = context->saved_regs.s7;
+    temp_saved_regs.s8  = context->saved_regs.s8;
+    temp_saved_regs.s9  = context->saved_regs.s9;
+    temp_saved_regs.s10 = context->saved_regs.s10;
+    temp_saved_regs.s11 = context->saved_regs.s11;
+    temp_saved_regs.t3  = context->saved_regs.t3;
+    temp_saved_regs.t4  = context->saved_regs.t4;
+    temp_saved_regs.t5  = context->saved_regs.t5;
+    temp_saved_regs.t6  = context->saved_regs.t6;
+
+    temp_saved_regs.pc = context->saved_regs.pc;
+}
+
 void trap_handler() {
   uint64_t scause;
   uint64_t stval; // address where page fault occured
   uint64_t sepc;  // pc where the exception occured
   char interrupt_bit;
   uint64_t exception_code;
-  struct context* context; // TODO: get this from somewhere
+  struct context* context = get_currently_active_context();
+  struct context* next_context;
 
   asm volatile(
     "csrr %[scause], scause;"
@@ -104,7 +141,7 @@ void trap_handler() {
   interrupt_bit = scause & SCAUSE_INTERRUPT_BIT_MASK;
   exception_code = scause & SCAUSE_EXCEPTION_CODE_MASK;
 
-  //store_saved_registers_in_context(context); // TODO: uncomment as soon as we have proper contexts
+  store_saved_registers_from_buffer_into_context(context);
 
   if (interrupt_bit)
     // TODO: timer interrupts etc
@@ -134,7 +171,10 @@ void trap_handler() {
   printf("  sepc:   0x%x\n", sepc);
 #endif /* DEBUG */
 
-  // TODO: schedule context, set timer interrupt and switch to the context
+  next_context = schedule_next_context();
+  load_saved_registers_from_context_into_buffer(next_context);
+  // TODO: set timer interrupt
+  // jumps back into restore_regs in trap.S now
 }
 
 void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t exception_code, uint64_t stval, uint64_t sepc) {
