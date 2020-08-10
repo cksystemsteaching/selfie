@@ -1,6 +1,9 @@
 #include "trap.h"
+#include "config.h"
+#include "syscall.h"
 #include "tinycstd.h"
 #include "mmu.h"
+#include <stdint.h>
 
 #define SCAUSE_INTERRUPT_BIT_MASK 0x8000000000000000
 #define SCAUSE_EXCEPTION_CODE_MASK 0x7FFFFFFFFFFFFFFF
@@ -155,11 +158,14 @@ void handle_ecall(struct context* context) {
     case SYSCALL_EXIT:
 
     case SYSCALL_READ:
-
+      implement_syscall_read(context);
+      break;
     case SYSCALL_WRITE:
-
+      implement_syscall_write(context);
+      break;
     case SYSCALL_OPENAT:
-
+      implement_syscall_openat(context);
+      break;
     case SYSCALL_BRK:
 
     default:
@@ -174,15 +180,29 @@ void implement_syscall_exit(struct context* context) {
 }
 
 void implement_syscall_read(struct context* context) {
-  // TODO
+  int fd = context->saved_regs.a1;
+  char* buf = (char*) vaddr_to_paddr(context->pt, context->saved_regs.a2);
+  size_t count = context->saved_regs.a3;
+  intmax_t read = kread(fd, buf, count, context->open_files, NUM_FDS);
+  context->saved_regs.a0 = fd;
 }
 
 void implement_syscall_write(struct context* context) {
-  // TODO
+  int fd = context->saved_regs.a1;
+  const char* buf = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a2);
+  size_t count = context->saved_regs.a3;
+  intmax_t written = kwrite(fd, buf, count, context->open_files, NUM_FDS);
+  context->saved_regs.a0 = fd;
 }
 
 void implement_syscall_openat(struct context* context) {
-  // TODO
+  // TODO: Unsafe directly used userspace string
+  // Use strncpy instead
+  const char* path = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
+  int flags = context->saved_regs.a2;
+  uint64_t mode = context->saved_regs.a3;
+  int fd = kopen(path, flags, context->open_files, NUM_FDS);
+  context->saved_regs.a0 = fd;
 }
 
 void implement_syscall_brk(struct context* context) {

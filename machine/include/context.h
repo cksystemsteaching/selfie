@@ -1,6 +1,8 @@
 #ifndef KERN_CONTEXT
 #define KERN_CONTEXT
 
+#include "config.h"
+#include "sbi_files.h"
 #include <stdint.h>
 
 struct __attribute__((packed)) registers {
@@ -40,7 +42,7 @@ struct __attribute__((packed)) registers {
   uint64_t pc;
 };
 
-struct __attribute__((packed)) memory_boundaries {
+struct memory_boundaries {
     // code, data and heap
     uint64_t lowest_lo_page;
     uint64_t highest_lo_page;
@@ -52,13 +54,14 @@ struct __attribute__((packed)) memory_boundaries {
     uint64_t highest_hi_page;
 };
 
-struct __attribute__((packed)) context {
+struct context {
   // the id is only set in kallocate_context() so that the lookup in kfree_context() is faster
   uint64_t id;
   struct pt_entry* pt;
   uint64_t program_break;
   struct registers saved_regs;
   struct memory_boundaries legal_memory_boundaries;
+  FILEDESC open_files[32];
   // TODO: all the other stuff
 };
 
