@@ -1,13 +1,13 @@
 #ifndef KERN_SYSCALL
 #define KERN_SYSCALL
 
+#include "sbi_files.h"
 #include "tinycstd.h"
 
-ssize_t read(int fd, char* buf, size_t count);
-ssize_t write(int fd, const char* buf, size_t count);
-void exit(int status);
-int open(const char* filename, int flags);
-void* malloc(unsigned long long size); /* TODO: Not a syscall */
+ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_fds);
+ssize_t kwrite(int fd, const char* buf, size_t count, FILEDESC* open_files, size_t num_fds);
+int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds);
+void* kmalloc(unsigned long long size, void** heap_head); /* TODO: Not a syscall */
 
 
 #endif /* KERN_SYSCALL */

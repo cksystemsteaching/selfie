@@ -93,6 +93,9 @@ void kinit_context(struct context* context) {
     context->legal_memory_boundaries.highest_hi_page = SV39_PAGE_COUNT - 1;
 
     context->program_break = 0;
+
+    // TODO: Map kernel trampoline
+    // TODO: Map single stack page and set up SP
 }
 
 extern void _start_hang();

@@ -1,14 +1,10 @@
+#include "sbi_files.h"
 #include "syscall.h"
 #include "console.h"
-#include "sbi_files.h"
 #include "tinycstd.h"
 
-#define NUM_FDS 32
-
-static FILEDESC open_files[NUM_FDS];
-
-ssize_t read(int fd, char* buf, size_t count) {
-    if (fd >= NUM_FDS+1) {
+ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_fds) {
+    if (fd >= num_fds+1) {
         return -1;
     } else {
         FILEDESC* desc = (open_files+fd);
@@ -28,7 +24,7 @@ ssize_t read(int fd, char* buf, size_t count) {
     }
 }
 
-intmax_t write(int fd, const char* buf, size_t count) {
+intmax_t kwrite(int fd, const char* buf, size_t count, FILEDESC* open_files, size_t num_fds) {
     // No file descriptor support yet for write - write to console instead
 
     if (fd != 1)
@@ -40,13 +36,7 @@ intmax_t write(int fd, const char* buf, size_t count) {
     return console_puts(buf, count);
 }
 
-void exit(int status) {
-    printf(">EXIT called with exit code %x<\n", status);
-    while (1)
-        ;
-}
-
-int open(const char* filename, int flags) {
+int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds) {
     const FILE* file = files;
 
     while (file->data != NULL) {
@@ -62,13 +52,13 @@ int open(const char* filename, int flags) {
     // Use 2 even though it is usually used for stderr
     // TODO: Introduce a next_fd variable for a high probability O(1) fd slot allocation.
     int fd_slot = 2;
-    while (fd_slot < NUM_FDS) {
+    while (fd_slot < num_fds) {
         if (open_files[fd_slot].file == NULL)
             break;
         fd_slot++;
     }
 
-    if (fd_slot == NUM_FDS)
+    if (fd_slot == num_fds)
         return -1;
 
     open_files[fd_slot].pos = 0;
@@ -78,14 +68,13 @@ int open(const char* filename, int flags) {
 }
 
 
-void* heap_head;
-void* malloc(unsigned long long size) {
+void* kmalloc(unsigned long long size, void** heap_head) {
     void* return_ptr;
 
-    return_ptr = heap_head;
-    heap_head += size;
+    return_ptr = *heap_head;
+    *heap_head += size;
 
-    printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, heap_head);
+    printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, *heap_head);
 
     return return_ptr;
 }
