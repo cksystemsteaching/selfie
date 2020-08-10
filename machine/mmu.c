@@ -106,6 +106,27 @@ void kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
     return (vaddr >> 12);
 }
+uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr) {
+  uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
+  uint64_t vpn_1 = (vaddr & VPN_1_BITMASK) >> 21;
+  uint64_t vpn_0 = (vaddr & VPN_0_BITMASK) >> 12;
+  uint64_t offset = vaddr & 0x0FFF;
+  struct pt_entry* mid_pt;
+  struct pt_entry* leaf_pt;
+
+  if (!table[vpn_2].v)
+    return 0x00;
+  mid_pt = (struct pt_entry*) ppn_to_paddr(table[vpn_2].ppn);
+
+  if (!mid_pt[vpn_1].v)
+    return 0x00;
+  leaf_pt = (struct pt_entry*) ppn_to_paddr(mid_pt[vpn_1].ppn);
+
+  if (!leaf_pt[vpn_0].v)
+    return 0x00;
+
+  return ((uint64_t)ppn_to_paddr(leaf_pt[vpn_0].ppn)) | offset;
+}
 
 uint64_t paddr_to_ppn(const void* address) {
     return ((uint64_t)address) >> 12;
