@@ -161,7 +161,7 @@ void kdump_pt(struct pt_entry* table) {
         if (!table[vpn_2].v)
             continue;
 
-        struct pt_entry* mid_pt = retrieve_pt_entry_from_table(kernel_pt, vpn_2);
+        struct pt_entry* mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
         uint64_t mid_vaddr = (vpn_2 << 30);
         uint64_t mid_vaddr_end = ((vpn_2+1) << 30);
         printf("|-Gigapage (VPN %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
