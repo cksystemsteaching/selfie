@@ -173,6 +173,14 @@ void trap_handler() {
 
   next_context = schedule_next_context();
   load_saved_registers_from_context_into_buffer(next_context);
+
+  // load the user process's satp value into sscratch
+  asm volatile(
+    "csrw sscratch, %[user_satp_value]"
+    :
+    : [user_satp_value] "r" (assemble_satp_value(next_context->pt, 0))
+  );
+
   // TODO: set timer interrupt
   // jumps back into restore_regs in trap.S now
 }

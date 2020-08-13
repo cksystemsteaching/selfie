@@ -43,7 +43,7 @@ void bootstrap() {
             , stack_end >> 12, TRAMPOLINE_VADDR >> 12, TRAMPOLINE_VADDR >> 12);
     kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
     kidentity_map_range(kernel_pt, &_payload_end, (void*)stack_end);
-    kmap_page_by_ppn(kernel_pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_trampoline), false);
+    kmap_page_by_ppn(kernel_pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
 
     // Assure that the pt radix tree nodes are present for the kzalloc scratch vaddr
     // by performing an identity-mapping

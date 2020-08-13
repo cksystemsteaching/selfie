@@ -5,16 +5,24 @@
 .text
   .global trap_handler_wrapper
 
-.balign 4
+.p2align 12
 trap_handler_wrapper:
-temp_free_t6:
-  // temporarily store t6 below the stack pointer so that
-  // we have a free register for temp_saved_regs' address.
-  sd t6, -8(sp)
+switch_to_kernel_pt:
+  // at the moment sscratch stores what should be in
+  // satp when we want to use the kernel's page table
+  csrrw t6, sscratch, t6
+  csrw satp, t6
+  // flush TLB
+  sfence.vma zero, zero
+
+load_temp_saved_regs_address:
+  // t6 can be used here since its value is still
+  // saved in sscratch
   la t6, temp_saved_regs
 
 save_regs:
   sd ra,  REGISTERS_OFFSET_RA(t6)
+  sd sp,  REGISTERS_OFFSET_SP(t6)
   sd gp,  REGISTERS_OFFSET_GP(t6)
   sd tp,  REGISTERS_OFFSET_TP(t6)
   sd t0,  REGISTERS_OFFSET_T0(t6)
@@ -50,11 +58,12 @@ save_regs:
 
   // retrieve t6's content and save it
   add t0, zero, t6
-  ld t6, -8(sp)
+  csrr t6, sscratch
   sd t6, REGISTERS_OFFSET_T6(t0)
 
 call_trap_handler:
   call trap_handler
+  // sscratch now stores the user process's satp value
 
 restore_regs:
   la t6, temp_saved_regs
@@ -64,6 +73,7 @@ restore_regs:
   csrw sepc, t0
 
   ld ra,  REGISTERS_OFFSET_RA(t6)
+  ld sp,  REGISTERS_OFFSET_SP(t6)
   ld gp,  REGISTERS_OFFSET_GP(t6)
   ld tp,  REGISTERS_OFFSET_TP(t6)
   ld t0,  REGISTERS_OFFSET_T0(t6)
@@ -93,6 +103,18 @@ restore_regs:
   ld t4,  REGISTERS_OFFSET_T4(t6)
   ld t5,  REGISTERS_OFFSET_T5(t6)
   ld t6,  REGISTERS_OFFSET_T6(t6)
+
+switch_to_user_pt:
+  // perform some trickery to swap the values of
+  // sscratch and satp without losing t6's value
+  csrrw t6, sscratch, t6
+  csrrw t6, satp, t6
+  csrrw t6, sscratch, t6
+  // now we are in the user process's vaddr space
+  // and sscratch contains the kernel's satp value
+
+  // flush TLB
+  sfence.vma zero, zero
 
 return_to_umode:
   sret

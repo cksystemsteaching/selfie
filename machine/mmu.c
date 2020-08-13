@@ -189,9 +189,14 @@ void kdump_pt(struct pt_entry* table) {
     }
 }
 
-void kswitch_active_pt(struct pt_entry* table, uint64_t asid) {
+uint64_t assemble_satp_value(struct pt_entry* table, uint16_t asid) {
     uint64_t table_ppn = paddr_to_ppn(table);
-    uint64_t satpValue = SATP_MODE_SV39 | (asid << SATP_ASID_POS) | (table_ppn & SATP_PPN_BITMASK);
+
+    return (SATP_MODE_SV39 | ((uint64_t) asid << SATP_ASID_POS) | (table_ppn & SATP_PPN_BITMASK));
+}
+
+void kswitch_active_pt(struct pt_entry* table, uint16_t asid) {
+    uint64_t satpValue = assemble_satp_value(table, asid);
 
     // Set the SATP and SSCRATCH value (for easier kernel pt switching)
     // Also, perform a cache flush by specifying the ASID

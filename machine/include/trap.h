@@ -27,7 +27,6 @@ void enable_smode_interrupts();
 void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);
 
-extern void trap_handler_trampoline();
 extern void trap_handler_wrapper();
 void store_saved_registers_from_buffer_into_context_in_context(struct context* context);
 void load_saved_registers_from_context_into_buffer(struct context* context);
