@@ -1,9 +1,8 @@
-#include <stddef.h>
-
 #include "context.h"
 #include "config.h"
 #include "mmu.h"
 #include "tinycstd.h"
+#include "trap.h"
 
 struct context kernel_context;
 
@@ -54,7 +53,7 @@ void kinit_context(struct context* context) {
     // TODO: Check whether a page table has already been allocated
     context->pt = (struct pt_entry*)ppn_to_paddr(kzalloc());
     context->saved_regs.ra  = 0;
-    context->saved_regs.sp  = 0;
+    context->saved_regs.sp  = USERSPACE_STACK_START;
     context->saved_regs.gp  = 0;
     context->saved_regs.tp  = 0;
     context->saved_regs.t0  = 0;
@@ -94,8 +93,8 @@ void kinit_context(struct context* context) {
 
     context->program_break = 0;
 
-    // TODO: Map kernel trampoline
-    // TODO: Map single stack page and set up SP
+    kmap_page_by_ppn(context->pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_trampoline), false);
+    kmap_page(context->pt, USERSPACE_STACK_START - PAGESIZE, true);
 }
 
 extern void _start_hang();
