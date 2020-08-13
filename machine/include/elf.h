@@ -33,4 +33,6 @@
 
 int load_elf(struct context* context, const char* elf, uint64_t len);
 
+const char* elf_strerror(int errno);
+
 #endif /* KERN_ELF */

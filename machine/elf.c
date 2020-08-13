@@ -120,3 +120,24 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
 
     return 0;
 }
+
+const char* elf_strerror(int errno) {
+    switch (errno) {
+        case 0x0:
+            return "No error";
+        case ENOELF:
+            return "Not an ELF file";
+        case EOOB:
+            return "ELF offset out-of-bounds";
+        case EINVMACHINE:
+            return "Executable is not RISC-V";
+        case EINVCLASS:
+            return "Executable is not 64 bits";
+        case EINVTYPE:
+            return "ELF file is not an executable";
+        case EUNSUPPORTED:
+            return "ELF file contains features unsupported by the loader";
+        default:
+            return "Unknown error";
+    }
+}
