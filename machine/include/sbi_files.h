@@ -16,4 +16,6 @@ typedef struct FILEDESC {
 
 extern const KFILE* files;
 
+const KFILE* find_file(const char* filename);
+
 #endif /* SBI_FILES_BASE */

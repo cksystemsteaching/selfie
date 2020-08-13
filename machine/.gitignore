@@ -5,7 +5,7 @@ opensbi
 *.o
 *.bin
 *.elf
-sbi_files.c
+files_package.c
 tools/asm_struct_macro_generator
 
 # Generated linker scripts (except for template script)
