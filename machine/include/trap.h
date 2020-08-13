@@ -20,9 +20,9 @@
 
 // The trampoline must be mapped at the same vaddr for both the kernel and
 // the userspace processes. The page is mapped to the last VPN slot available
-// Sv39 has 39bit adresses: 2^40 - PAGESIZE = 0x100'0000'0000 - 0x100 = 0xFF'FFFF'F000
+// Sv39 has 39bit adresses: 2^39 - PAGESIZE = 0x80'0000'0000 - 0x100 = 0x80'0000'0000
 // It will be mapped twice in the kernel address space
-#define TRAMPOLINE_VADDR 0xFFFFFFF000
+#define TRAMPOLINE_VADDR 0x7FFFFFFF00
 
 typedef void (*trap_handler_t)(/* TODO: Context struct */);
 
