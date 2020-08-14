@@ -105,7 +105,11 @@ void kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_
 }
 
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
-    return (vaddr >> 12);
+    const uint64_t LOWEST_39_BITS = 0x7FFFFFFFFF;
+
+    // RISC-V requires that for virtual addresses
+    // bites 39 to 64 have the value of bit 38
+    return ((vaddr & LOWEST_39_BITS) >> 12);
 }
 uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
