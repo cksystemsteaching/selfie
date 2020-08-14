@@ -2,9 +2,12 @@
 #include <stdio.h>
 #include "include/context.h"
 
+#define PRINT_SIZE_DEF(prefix, name, stru) printf("#define %s%s %d\n", #prefix, #name, sizeof(stru))
 #define PRINT_OFFSET_DEF(prefix, name, stru, memb) printf("#define %s%s %d\n", #prefix, #name, offsetof(stru, memb))
 
 int main() {
+   PRINT_SIZE_DEF(SIZEOF_, REGISTERS_STRUCT, struct registers);
+
    PRINT_OFFSET_DEF(REGISTERS_OFFSET_, RA, struct registers, ra);
    PRINT_OFFSET_DEF(REGISTERS_OFFSET_, SP, struct registers, sp);
    PRINT_OFFSET_DEF(REGISTERS_OFFSET_, GP, struct registers, gp);
