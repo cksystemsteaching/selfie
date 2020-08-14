@@ -12,7 +12,7 @@
 // According to the Sv39 documentation, the vaddr "must have bits 63–39 all equal to bit 38, or else a page-fault
 // exception will occur", thus the actual vaddr is 0xFFFF'FFFF'FFFF'F000
 // It will be mapped twice in the kernel address space
-#define TRAMPOLINE_VADDR 0xFFFFFFFFFFFFF000UL
+#define TRAMPOLINE_VADDR 0xFFFFFFFFFFFFF000ULL
 
 // The kernel's stack is mapped into virtual address space's higher half in its own address space
 // as well as all userspace processes (but not accessible to those)
@@ -26,6 +26,6 @@
 // Thus, USERSPACE_STACK_START shall be positioned one above the actual first stack slot.
 // To have a clean separation between userspace and kernel-in-userspace pages, userspace pages
 // will be placed in the lower 256 GiB range (bit 38 always cleared).
-#define USERSPACE_STACK_START 0x4000000000UL
+#define USERSPACE_STACK_START 0x4000000000ULL
 
 #endif

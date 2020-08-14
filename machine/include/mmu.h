@@ -4,16 +4,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define KZALLOC_SCRATCH_VADDR 0x1000UL
+#define KZALLOC_SCRATCH_VADDR 0x1000ULL
 
 #define PAGESIZE 4096
 
-#define SATP_MODE_SV39 (8UL << 60)
-#define SATP_MODE_SV48 (9UL << 60)
+#define SATP_MODE_SV39 (8ULL << 60)
+#define SATP_MODE_SV48 (9ULL << 60)
 #define SATP_PPN_BITMASK 0x00000FFFFFFFFFFF
 #define SATP_ASID_POS 44
 
-#define SV39_PAGE_COUNT (1UL << (40 - 12))
+#define SV39_PAGE_COUNT (1ULL << (40 - 12))
 
 struct __attribute__((packed)) pt_entry {
   uint64_t v        : 1; // valid flag
