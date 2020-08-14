@@ -74,10 +74,8 @@ _start_warm:
     sd a3, ppn_bump, a4
 
     /* Setup stack */
-    la	a3, _payload_end
-    li	a4, NUM_STACK_PAGES
-    slli a4, a4, 12
-    add	sp, a3, a4
+    jal initial_stack_start
+    add	sp, x0, a0
 
     /*
      * Setup heap bump pointer at the end of the preliminary stack
@@ -114,6 +112,16 @@ loop_print_a:
 _start_hang:
     wfi
     j	_start_hang
+
+
+initial_stack_start:
+    la	t0, _payload_end
+    li	a0, NUM_STACK_PAGES
+    slli a0, a0, 12
+
+    add a0, a0, t0
+    ret
+
 
     .section .entry, "ax", %progbits
     .align	3
