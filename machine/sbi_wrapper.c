@@ -1,6 +1,5 @@
 #include "config.h"
 #include "console.h"
-#include "sbi/sbi_types.h"
 #include "tinycstd.h"
 #include "trap.h"
 #include "mmu.h"
