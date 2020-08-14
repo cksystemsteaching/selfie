@@ -166,7 +166,7 @@ perform_initial_ctxt_switch:
   // t3 is the data to copy
   mv t0, a1
   mv t1, a1
-  addi t1, SIZEOF_REGISTERS_STRUCT
+  addi t1, t1, SIZEOF_REGISTERS_STRUCT
   mv t2, sp
 
 copy_reg_loop:
