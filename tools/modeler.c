@@ -590,7 +590,7 @@ void model_syscalls() {
     (char*) (current_nid + 14));  // nid of $a7 == SYSCALL_BRK
 
   printf1("%u state 2 brk\n", (char*) (current_nid + 1450));
-  printf2("%u init 2 %u 31 ; original program break is end of binary\n",
+  printf2("%u init 2 %u 31 ; initial program break is end of data segment\n",
     (char*) (current_nid + 1451),  // nid of this line
     (char*) (current_nid + 1450)); // nid of brk
 
@@ -725,24 +725,26 @@ uint64_t validate_procedure_body(uint64_t from_instruction, uint64_t from_link, 
 void go_to_instruction(uint64_t from_instruction, uint64_t from_link, uint64_t from_address, uint64_t to_address, uint64_t condition_nid) {
   uint64_t* in_edge;
 
-  if (to_address < entry_point + code_length) {
-    if (validate_procedure_body(from_instruction, from_link, to_address)) {
-      in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
+  if (to_address % INSTRUCTIONSIZE == 0) {
+    if (to_address < entry_point + code_length) {
+      if (validate_procedure_body(from_instruction, from_link, to_address)) {
+        in_edge = smalloc(SIZEOFUINT64STAR + 3 * SIZEOFUINT64);
 
-      *in_edge       = *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE);
-      *(in_edge + 1) = from_instruction; // from which instruction
-      *(in_edge + 2) = from_address;     // at which address
-      *(in_edge + 3) = condition_nid;    // under which condition are we coming
+        *in_edge       = *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE);
+        *(in_edge + 1) = from_instruction; // from which instruction
+        *(in_edge + 2) = from_address;     // at which address
+        *(in_edge + 3) = condition_nid;    // under which condition are we coming
 
-      *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
+        *(control_in + (to_address - entry_point) / INSTRUCTIONSIZE) = (uint64_t) in_edge;
 
-      return;
-    }
-  } else if (from_address == entry_point + code_length - INSTRUCTIONSIZE)
-    // from_instruction is last instruction in binary
-    if (*(control_in + (from_address - entry_point) / INSTRUCTIONSIZE) == 0)
-      // and unreachable
-      return;
+        return;
+      }
+    } else if (from_address == entry_point + code_length - INSTRUCTIONSIZE)
+      // from_instruction is last instruction in binary
+      if (*(control_in + (from_address - entry_point) / INSTRUCTIONSIZE) == 0)
+        // and unreachable
+        return;
+  }
 
   // the instruction at from_address proceeds to an instruction at an invalid to_address
 
@@ -1585,10 +1587,10 @@ void modeler() {
   // end of code segment for checking address validity
   printf2("30 constd 2 %u ; %x\n\n", (char*) (entry_point + code_length), (char*) (entry_point + code_length));
 
-  print("; word-aligned end of data segment in memory (original program break)\n\n");
+  print("; word-aligned end of data segment in memory (initial program break)\n\n");
 
-  // original program break (end of binary = code + data segment) for checking program break validity
-  printf2("31 constd 2 %u ; %x\n\n", (char*) get_original_break(current_context), (char*) get_original_break(current_context));
+  // end of data segment (initial program break) for checking program break validity
+  printf2("31 constd 2 %u ; %x\n\n", (char*) (entry_point + binary_length), (char*) (entry_point + binary_length));
 
   print("; word-aligned initial $sp (stack pointer) value from boot loader\n\n");
 
@@ -1768,7 +1770,7 @@ void modeler() {
   // assert: pc == entry_point + code_length
 
   while (pc < VIRTUALMEMORYSIZE) {
-    if (pc == get_original_break(current_context)) {
+    if (pc == entry_point + binary_length) {
       // assert: stack pointer < VIRTUALMEMORYSIZE
       pc = *(registers + REG_SP);
 
@@ -2178,6 +2180,8 @@ int main(int argc, char** argv) {
   init_selfie((uint64_t) argc, (uint64_t*) argv);
 
   init_library();
+
+  init_system();
 
   exit_code = selfie();
 

@@ -14,8 +14,9 @@ script: travis_wait 60 make all
 
 stages:
   - test
-  - autograder
-  - docker
+  - make-grade
+  - docker-all
+  - docker-extras
   - name: deploy
     # disabling deploy, see github docker workflow
     if: false AND branch = master AND type = push AND fork = false
@@ -25,19 +26,25 @@ stages:
 
 jobs:
   include:
-    - stage: autograder
+    - stage: make-grade
       language: python
       python:
         - "3.7"
       os: linux
       dist: bionic
       script: make grade
-    - stage: docker
+    - stage: docker-all
       services: docker
       os: linux
       script:
         - docker build -f Dockerselfie -t cksystemsteaching/selfie .
-        - docker run cksystemsteaching/selfie make everything
+        - docker run cksystemsteaching/selfie make all
+    - stage: docker-extras
+      services: docker
+      os: linux
+      script:
+        - docker build -f Dockerselfie -t cksystemsteaching/selfie .
+        - docker run cksystemsteaching/selfie make extras
     - stage: deploy
       services: docker
       os: linux

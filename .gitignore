@@ -4,7 +4,10 @@
 *.smt
 *.btor2
 *.h
-*.selfie
 *.x86
 selfie
 selfie.exe
+babysat
+monster
+modeler
+riscv-2-x86

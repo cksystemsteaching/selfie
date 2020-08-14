@@ -15,8 +15,8 @@ uint64_t main() {
   a = 40;
   x = malloc(8);
 
-  read(1, x, 1);
-  
+  read(0, x, 1);
+
   if (*x > 48) {
     *x = *x - 47;
 
