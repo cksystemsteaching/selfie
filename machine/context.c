@@ -93,8 +93,9 @@ void kinit_context(struct context* context) {
 
     context->program_break = 0;
 
-    kmap_page_by_ppn(context->pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
     kmap_page(context->pt, USERSPACE_STACK_START - PAGESIZE, true);
+
+    kmap_kernel_upper_half(context->pt);
 }
 
 extern void _start_hang();
