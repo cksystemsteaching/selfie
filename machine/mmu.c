@@ -1,6 +1,7 @@
 #include "mmu.h"
 #include "context.h"
 #include "tinycstd.h"
+#include "trap.h"
 #include <stdint.h>
 
 #define VPN_2_BITMASK 0x7FC0000000ULL
@@ -186,6 +187,22 @@ void kdump_pt(struct pt_entry* table) {
                 printf("| | |-Page (VPN %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
             }
         }
+    }
+}
+
+void kmap_kernel_upper_half(struct pt_entry* table) {
+    // Map upper-half vspace pages
+    // These pages are present in both user and kernel vspace
+    // Trap handler trampoline
+    kmap_page_by_ppn(table, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
+    // Kernel stack
+    uint64_t vaddr = STACK_VADDR - PAGESIZE;
+    uint64_t ppn = paddr_to_ppn(initial_stack_start());
+    for (uint64_t i = 0; i < NUM_STACK_PAGES; i++) {
+        kmap_page_by_ppn(table, vaddr, ppn, false);
+
+        vaddr -= PAGESIZE;
+        ppn--;
     }
 }
 

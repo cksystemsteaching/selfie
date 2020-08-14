@@ -1,14 +1,18 @@
 #include "config.h"
 #include "console.h"
+#include "sbi/sbi_types.h"
 #include "tinycstd.h"
 #include "trap.h"
 #include "mmu.h"
 
 #include "linker-syms.h"
+#include <stdint.h>
 
 
 int main(int argc, char** argv);
 void usermode_test();
+
+extern void* initial_stack_start();
 
 
 void setup_kernel_context(uint64_t lowest_lo_page, uint64_t highest_lo_page, uint64_t lowest_mid_page
@@ -43,7 +47,9 @@ void bootstrap() {
             , stack_end >> 12, TRAMPOLINE_VADDR >> 12, TRAMPOLINE_VADDR >> 12);
     kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
     kidentity_map_range(kernel_pt, &_payload_end, (void*)stack_end);
-    kmap_page_by_ppn(kernel_pt, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
+
+    // Map kernel upper half to its own vspace
+    kmap_kernel_upper_half(kernel_pt);
 
     // Assure that the pt radix tree nodes are present for the kzalloc scratch vaddr
     // by performing an identity-mapping
@@ -61,6 +67,17 @@ void bootstrap() {
     puts("Enabling paging...");
     kswitch_active_pt(kernel_pt, 0);
     puts("done!\n");
+
+    // Switch to the upper half stack but keep the offset alive
+    asm volatile (
+        "jal initial_stack_start\n"
+        "sub a0, a0, sp\n"
+        "mv sp, %[stack_addr]\n"
+        "sub sp, sp, a0"
+        :
+        : [stack_addr] "r" (STACK_VADDR)
+        : "a0", "ra"
+    );
 
     char* args[] = {
         "./selfie",

@@ -113,7 +113,7 @@ _start_hang:
     wfi
     j	_start_hang
 
-
+.globl initial_stack_start
 initial_stack_start:
     la	t0, _payload_end
     li	a0, NUM_STACK_PAGES
