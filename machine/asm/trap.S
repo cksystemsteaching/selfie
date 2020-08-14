@@ -129,3 +129,52 @@ restore_regs:
 
 return_to_umode:
   sret
+
+// [[noreturn]] void perform_initial_ctxt_switch(uint64_t satp, struct registers* regs)
+// Performs the initial context switch by setting up the stack in a way switch_to_user_pt
+// expects it to be
+// ┊                      ┊
+// ├──────────────────────┤
+// │ trap_handler address │ -24
+// │  kernel global ptr   │ -16
+// │     kernel satp      │ -8
+// │     [reserved]       │     <- s0
+// ├──────────────────────┤
+// │         t6           │
+// ┊          ┊           ┊
+// │         ra           │     <- sp
+// ├──────────────────────┤
+// ┊                      ┊
+.globl perform_initial_ctxt_switch
+perform_initial_ctxt_switch:
+  // Reserve space for kernel data
+
+  add s0, sp, -(4*8)
+  addi sp, s0, -SIZEOF_REGISTERS_STRUCT
+
+  csrr t0, satp
+  la t1, trap_handler
+
+  sd t0, 8(s0)  // satp
+  sd gp, 16(s0) // gp
+  sd t1, 24(s0) // trap_handler
+
+  // Copy all registers (for now, use references later)
+  // t0 is the source address (byte-wise, thus +8 for uint64_t)
+  // t1 is the source address' last position (exit condition)
+  // t2 is the destination address
+  // t3 is the data to copy
+  mv t0, a1
+  mv t1, a1
+  addi t1, SIZEOF_REGISTERS_STRUCT
+  mv t2, sp
+
+copy_reg_loop:
+  ld t3, (t0)
+  sd t3, (t2)
+
+  addi t0, t0, 8
+  addi t2, t2, 8
+  blt t0, t1, copy_reg_loop
+
+  j switch_to_user_pt
