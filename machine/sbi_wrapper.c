@@ -11,7 +11,6 @@
 int main(int argc, char** argv);
 void usermode_test();
 
-extern void* initial_stack_start();
 
 
 void setup_kernel_context(uint64_t lowest_lo_page, uint64_t highest_lo_page, uint64_t lowest_mid_page

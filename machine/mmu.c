@@ -2,7 +2,6 @@
 #include "context.h"
 #include "tinycstd.h"
 #include "trap.h"
-#include <stdint.h>
 
 #define VPN_2_BITMASK 0x7FC0000000ULL
 #define VPN_1_BITMASK 0x3FE00000

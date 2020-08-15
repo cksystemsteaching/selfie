@@ -31,6 +31,7 @@ struct __attribute__((packed)) pt_entry {
 
 extern struct pt_entry kernel_pt[512];
 
+extern void* initial_stack_start();
 
 /**
  * @brief Returns the PPN of the next free page
