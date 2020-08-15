@@ -1,5 +1,6 @@
 #include "asm_offsets.h"
 #include "asm_context_switch_offsets.h"
+#include "config.h"
 
 .text
   .global trap_handler_wrapper
@@ -178,4 +179,16 @@ copy_reg_loop:
   addi t2, t2, 8
   blt t0, t1, copy_reg_loop
 
-  j switch_to_user_pt
+switch_to_upper_half:
+  // At first, calculate the offset of switch_to_user_pt relative to the trap handler page,
+  // starting at trap_handler_wrapper
+  la t0, trap_handler_wrapper
+  la t1, switch_to_user_pt
+  sub t0, t1, t0
+
+  // Then, calculate the virtual address of the upper half mirror of switch_to_user_pt
+  li t1, TRAMPOLINE_VADDR
+  add t0, t0, t1
+
+  // Do the jump
+  jr t0
