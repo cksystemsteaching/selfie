@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define KZALLOC_SCRATCH_VADDR 0x1000ULL
-
 #define PAGESIZE 4096
 
 #define SATP_MODE_SV39 (8ULL << 60)

@@ -39,18 +39,7 @@ uint64_t kpalloc() {
 }
 uint64_t kzalloc() {
     uint64_t ppn = kpalloc();
-
-    // Map pages to zero out at 0x1000
-    // With paging enabled, if we were trying to identity-map the provided
-    // page, and there were nodes missing in the radix tree, we could not
-    // proceed easily.
-    // By mapping the page to a fixed VPN, we can assure that all nodes are
-    // present
-    // The bootstrapping process ensures that the pages are acutally present
-    // before turning paging on
-    kmap_page_by_ppn(kernel_pt, 0x1000, ppn, false);
-    kzero_page(0x1); // VPN of 0x1000 is 0x1
-
+    kzero_page(ppn);
     return ppn;
 }
 

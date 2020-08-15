@@ -41,18 +41,13 @@ void bootstrap() {
     puts("Setting up kernel page table...\n");
     // No need to clear the page table - the BSS section is cleared automagically
     uint64_t stack_end = ((uint64_t)&_payload_end) + PAGESIZE * NUM_STACK_PAGES;
-    setup_kernel_context(KZALLOC_SCRATCH_VADDR >> 12, ((uint64_t) &_payload_end) >> 12, stack_end >> 12
+    setup_kernel_context(((uint64_t)&_payload_start) >> 12, ((uint64_t) &_payload_end) >> 12, stack_end >> 12
             , stack_end >> 12, TRAMPOLINE_VADDR >> 12, TRAMPOLINE_VADDR >> 12);
     kidentity_map_range(kernel_pt, &_payload_start, &_payload_end);
     kidentity_map_range(kernel_pt, &_payload_end, (void*)stack_end);
 
     // Map kernel upper half to its own vspace
     kmap_kernel_upper_half(kernel_pt);
-
-    // Assure that the pt radix tree nodes are present for the kzalloc scratch vaddr
-    // by performing an identity-mapping
-    kmap_page_by_ppn(kernel_pt, KZALLOC_SCRATCH_VADDR, paddr_to_ppn((void*)KZALLOC_SCRATCH_VADDR), false);
-
 
     uint64_t oldPpn = ppn_bump;
     kidentity_map_range(kernel_pt, &_payload_end, (void*)ppn_to_paddr(ppn_bump));
