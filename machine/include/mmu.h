@@ -75,7 +75,7 @@ const void* ppn_to_paddr(uint64_t ppn);
  * @param from The start of the memory range to attach (inclusive).
  * @param to The end of the memory range to attach (exclusive).
  */
-void kidentity_map_range(struct pt_entry* table, void* from, void* to);
+void kidentity_map_range(struct pt_entry* table, const void* from, const void* to);
 void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible);
 
 void kdump_pt(struct pt_entry* table);

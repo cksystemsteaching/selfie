@@ -151,15 +151,15 @@ const void* ppn_to_paddr(uint64_t ppn) {
     return (const void*)(ppn << 12);
 }
 
-void kidentity_map_range(struct pt_entry* table, void* from, void* to) {
+void kidentity_map_range(struct pt_entry* table, const void* from, const void* to) {
     // By obtaining the PPNs, there's no need to do any rounding
-    uint64_t ppn_from = ((uint64_t) from) >> 12;
-    uint64_t ppn_to = ((uint64_t) to) >> 12;
+    uint64_t ppn_from = paddr_to_ppn(from);
+    uint64_t ppn_to = paddr_to_ppn(to);
 
     uint64_t ppn = ppn_from;
 
     while (ppn < ppn_to) {
-        uint64_t page_vaddr = ppn << 12;
+        uint64_t page_vaddr = vpn_to_vaddr(ppn);
 
         kmap_page_by_ppn(table, page_vaddr, ppn, false);
 
