@@ -54,6 +54,16 @@ void bootstrap() {
     // by performing an identity-mapping
     kmap_page_by_ppn(kernel_pt, KZALLOC_SCRATCH_VADDR, paddr_to_ppn((void*)KZALLOC_SCRATCH_VADDR), false);
 
+
+    uint64_t oldPpn = ppn_bump;
+    kidentity_map_range(kernel_pt, &_payload_end, (void*)ppn_to_paddr(ppn_bump));
+    while (oldPpn != ppn_bump) {
+      uint64_t initial = oldPpn;
+      oldPpn = ppn_bump;
+      kidentity_map_range(kernel_pt, (void*)ppn_to_paddr(initial), (void*)ppn_to_paddr(ppn_bump));
+    }
+
+
     kdump_pt(kernel_pt);
 
     puts("Setting up trap handlers...");

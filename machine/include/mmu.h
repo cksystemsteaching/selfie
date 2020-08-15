@@ -83,4 +83,7 @@ void kmap_kernel_upper_half(struct pt_entry* table);
 uint64_t assemble_satp_value(struct pt_entry* table, uint16_t asid);
 void kswitch_active_pt(struct pt_entry* table, uint16_t asid);
 
+
+extern uint64_t ppn_bump;
+
 #endif /* KERN_MMU */
