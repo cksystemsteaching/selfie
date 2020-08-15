@@ -208,7 +208,7 @@ void kmap_kernel_upper_half(struct pt_entry* table) {
     kmap_page_by_ppn(table, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
     // Kernel stack
     uint64_t vaddr = STACK_VADDR - PAGESIZE;
-    uint64_t ppn = paddr_to_ppn(initial_stack_start());
+    uint64_t ppn = paddr_to_ppn(initial_stack_start() - 1); // -1 due to full stack semantics + pointer arithmetics
     for (uint64_t i = 0; i < NUM_STACK_PAGES; i++) {
         kmap_page_by_ppn(table, vaddr, ppn, false);
 
