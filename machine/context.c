@@ -5,11 +5,6 @@
 #include "trap.h"
 #include "diag.h"
 
-struct context kernel_context;
-
-uint64_t num_of_used_contexts = 0;
-struct context_manager* currently_active_context;
-
 struct context_manager {
     struct context context;
     char is_used;
@@ -18,6 +13,11 @@ struct context_manager {
 };
 
 struct context_manager all_contexts[MAX_AMOUNT_OF_CONTEXTS];
+
+struct context kernel_context;
+
+uint64_t num_of_used_contexts = 0;
+struct context_manager* currently_active_context = &(all_contexts[0]);
 
 struct context* kallocate_context() {
     struct context_manager* context_manager;
