@@ -38,7 +38,12 @@ intmax_t kwrite(int fd, const char* buf, size_t count, FILEDESC* open_files, siz
 }
 
 int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds) {
+    const int O_RDONLY = 0x0;
+    const int _O_BINARY = 0x8000;
     const KFILE* file = files;
+
+    if (flags != O_RDONLY && flags != (_O_BINARY | O_RDONLY))
+        return -1;
 
     while (file->data != NULL) {
         if (strncmp(filename, file->name, 511) == 0)
@@ -49,10 +54,9 @@ int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds)
     if (file->data == NULL)
         return -1;
 
-    // Assume 0 and 1 are used for stdin and stdout
-    // Use 2 even though it is usually used for stderr
+    // Assume 0, 1 and 2 are used for stdin, stdout and stderr respectively
     // TODO: Introduce a next_fd variable for a high probability O(1) fd slot allocation.
-    int fd_slot = 2;
+    int fd_slot = 3;
     while (fd_slot < num_fds) {
         if (open_files[fd_slot].file == NULL)
             break;
