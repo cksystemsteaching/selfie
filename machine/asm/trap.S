@@ -133,7 +133,7 @@ return_to_umode:
 // [[noreturn]] void perform_initial_ctxt_switch(uint64_t satp, struct registers* regs)
 // Performs the initial context switch by setting up the stack in a way switch_to_user_pt
 // expects it to be
-// ┊                      ┊
+// :                      :
 // ├──────────────────────┤
 // │ trap_handler address │ -24
 // │  kernel global ptr   │ -16
@@ -141,23 +141,23 @@ return_to_umode:
 // │     [reserved]       │     <- s0
 // ├──────────────────────┤
 // │         t6           │
-// ┊          ┊           ┊
+// :          :           :
 // │         ra           │     <- sp
 // ├──────────────────────┤
-// ┊                      ┊
+// :                      :
 .globl perform_initial_ctxt_switch
 perform_initial_ctxt_switch:
   // Reserve space for kernel data
 
-  add s0, sp, -(4*8)
+  addi s0, sp, -CONTEXT_SWITCH_STACK_SPACE_ALLOCATION
   addi sp, s0, -SIZEOF_REGISTERS_STRUCT
 
   csrr t0, satp
   la t1, trap_handler
 
-  sd t0, 8(s0)  // satp
-  sd gp, 16(s0) // gp
-  sd t1, 24(s0) // trap_handler
+  sd t0, CONTEXT_SWITCH_STACK_KERNEL_SATP_OFFSET(s0)
+  sd gp, CONTEXT_SWITCH_STACK_KERNEL_GP_OFFSET(s0)
+  sd t1, CONTEXT_SWITCH_STACK_TRAP_HANDLER_ADDRESS_OFFSET(s0)
 
   // Copy all registers (for now, use references later)
   // t0 is the source address (byte-wise, thus +8 for uint64_t)
