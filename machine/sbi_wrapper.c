@@ -1,16 +1,20 @@
 #include "config.h"
 #include "console.h"
+#include "context.h"
+#include "sbi_files.h"
 #include "tinycstd.h"
 #include "trap.h"
 #include "mmu.h"
+#include "elf.h"
 
 #include "linker-syms.h"
 #include <stdint.h>
 
-
 int main(int argc, char** argv);
 void usermode_test();
 
+extern void perform_initial_ctxt_switch(uint64_t satp, struct registers* regs);
+extern void _start_hang();
 
 
 void setup_kernel_context(uint64_t lowest_lo_page, uint64_t highest_lo_page, uint64_t lowest_mid_page
@@ -107,12 +111,22 @@ void bootstrap() {
     }
     printf("    <END>\n\n");
 
-    asm volatile (
-        "csrw sepc, %[umode];\n"
-        "sret"
-        :
-        : [umode] "r" (usermode_test)
-    );
+
+    const KFILE* file = find_file(INIT_FILE_PATH);
+    if (!file) {
+      printf("ERROR: Could not find init file: " INIT_FILE_PATH);
+      _start_hang();
+    }
+
+    struct context* init = kallocate_context();
+    kinit_context(init);
+    int err = load_elf(init, file->data, file->length);
+    if (err) {
+      printf("ERROR: Could not load init file: %s", elf_strerror(err));
+      _start_hang();
+    }
+
+    perform_initial_ctxt_switch(assemble_satp_value(init->pt, 0), &init->saved_regs);
 
     // i contains the count of command line arguments
     //int exit = main(i, args);
