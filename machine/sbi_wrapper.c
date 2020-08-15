@@ -62,6 +62,7 @@ void bootstrap() {
       kidentity_map_range(kernel_pt, (void*)ppn_to_paddr(initial), (void*)ppn_to_paddr(ppn_bump));
     }
 
+    kinit_page_pool();
 
     kdump_pt(kernel_pt);
 

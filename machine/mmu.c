@@ -1,4 +1,5 @@
 #include "mmu.h"
+#include "config.h"
 #include "context.h"
 #include "tinycstd.h"
 #include "trap.h"
@@ -248,6 +249,25 @@ void kswitch_active_pt(struct pt_entry* table, uint16_t asid) {
         :
         : [value] "r" (satpValue), [asid] "r" (asid)
     );
+}
+
+void kinit_page_pool() {
+  uint64_t pagesAllocated = 0;
+  uint64_t oldPpn = ppn_bump;
+
+  while (pagesAllocated < PAGE_POOL_NUM_PAGES) {
+    uint64_t toAllocate = PAGE_POOL_NUM_PAGES - pagesAllocated;
+
+    // Try to map the whole range of pages inside
+    kidentity_map_range(kernel_pt, ppn_to_paddr(oldPpn), ppn_to_paddr(oldPpn + toAllocate));
+    // If the mapping process required to allocate new page table nodes, ppn_bump would be increased
+    // We have to ignore the amount of PT nodes in our amount of free page pool pages because they
+    // are already in use.
+    uint64_t deltaAllocated = ppn_bump - oldPpn;
+    pagesAllocated += toAllocate - deltaAllocated;
+
+    oldPpn = ppn_bump;
+  }
 }
 
 __attribute__((aligned(4096)))

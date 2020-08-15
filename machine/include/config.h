@@ -6,6 +6,14 @@
 
 #define NUM_FDS 32
 
+// The maximum number of pages that may be allocated.
+// Before paging is enabled, the kernel will assure there are PAGE_POOL_NUM_PAGES free pages
+// mapped to its virtual address space. This is done to simplify management of page table nodes
+// (if you want to add a node to the page table tree, it must already be mapped so that it can be
+// modified) without having to manage a free page pool.
+// For now, 2MiB, i.e. 512 4k-pages, shall be enough
+#define PAGE_POOL_NUM_PAGES 0x200
+
 // The trampoline must be mapped at the same vaddr for both the kernel and
 // the userspace processes. The page is mapped to the last VPN slot available
 // Sv39 has 39bit adresses: 2^39 - PAGESIZE = 0x80'0000'0000 - 0x1000 = 0x7F'FFFF'F000
