@@ -76,6 +76,7 @@ restore_kernel_gp:
 
 call_trap_handler:
   ld t0, CONTEXT_SWITCH_STACK_TRAP_HANDLER_ADDRESS_OFFSET(s0)
+  mv a0, sp
   jalr t0
 
 switch_to_user_pt:
