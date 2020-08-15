@@ -48,7 +48,7 @@ uint64_t kzalloc() {
     // The bootstrapping process ensures that the pages are acutally present
     // before turning paging on
     kmap_page_by_ppn(kernel_pt, 0x1000, ppn, false);
-    kzero_page(0x1000);
+    kzero_page(0x1); // VPN of 0x1000 is 0x1
 
     return ppn;
 }
