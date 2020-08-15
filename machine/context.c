@@ -3,6 +3,7 @@
 #include "mmu.h"
 #include "tinycstd.h"
 #include "trap.h"
+#include "diag.h"
 
 struct context kernel_context;
 
@@ -111,8 +112,7 @@ void kfree_context(uint64_t context_id) {
 #endif /* DEBUG */
 
     if (num_of_used_contexts == 0) {
-        printf("KERNEL PANIC: all processes are dead. starting to hang...\n");
-        _start_hang(); // TODO: maybe change something here
+        panic("all processes are dead");
     }
 
     context_manager->prev_scheduled->next_scheduled = context_manager->next_scheduled;
