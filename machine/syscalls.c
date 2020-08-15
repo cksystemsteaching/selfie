@@ -27,7 +27,8 @@ ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_
 intmax_t kwrite(int fd, const char* buf, size_t count, FILEDESC* open_files, size_t num_fds) {
     // No file descriptor support yet for write - write to console instead
 
-    if (fd != 1)
+    // only allow writes to stdin (0), stdout (1) or stderr (2)
+    if (fd < 0 || fd > 2)
         return -1;
 
     size_t i = 0;
