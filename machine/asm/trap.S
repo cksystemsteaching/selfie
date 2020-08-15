@@ -134,16 +134,17 @@ return_to_umode:
 // Performs the initial context switch by setting up the stack in a way switch_to_user_pt
 // expects it to be
 // :                      :
-// ├──────────────────────┤
-// │ trap_handler address │ -24
-// │  kernel global ptr   │ -16
-// │     kernel satp      │ -8
-// │     [reserved]       │     <- s0
-// ├──────────────────────┤
-// │         t6           │
+// +----------------------+
+// | trap_handler address | -24
+// |      kernel gp       | -16
+// |     kernel satp      | -8
+// |     [reserved]       |     <- s0
+// +----------------------+
+// |         t6           |
 // :          :           :
-// │         ra           │     <- sp
-// ├──────────────────────┤
+// :          :           :
+// |         ra           |     <- sp
+// +----------------------+
 // :                      :
 .globl perform_initial_ctxt_switch
 perform_initial_ctxt_switch:
