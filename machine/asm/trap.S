@@ -23,7 +23,7 @@ setup_frame:
   add s0, zero, sp
 
 allocate_registers_struct_space:
-  addi sp, sp, SIZEOF_REGISTERS_STRUCT
+  addi sp, sp, -SIZEOF_REGISTERS_STRUCT
 
 save_regs:
   sd ra,  REGISTERS_OFFSET_RA(sp)
