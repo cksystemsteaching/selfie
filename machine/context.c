@@ -128,3 +128,13 @@ struct context* schedule_next_context() {
 
     return &currently_active_context->context;
 }
+
+const char* KILL_CONTEXT_MSG[] = {"context exited", "segfault", "unknown syscall", "unhandled trap"};
+void kill_context(uint64_t context_id, enum KILL_CONTEXT_REASON kill_context_reason) {
+    kfree_context(context_id);
+
+#ifdef DEBUG
+        printf("context %u has been killed\n", context_id);
+        printf("  reason: %s\n", KILL_CONTEXT_MSG[kill_context_reason]);
+#endif /* DEBUG */
+}

@@ -74,4 +74,14 @@ void kfree_context(uint64_t context_id);
 struct context* get_currently_active_context();
 struct context* schedule_next_context();
 
+enum KILL_CONTEXT_REASON {
+    KILL_CONTEXT_REASON_EXIT,
+    KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS,
+    KILL_CONTEXT_REASON_UNKNOWN_SYSCALL,
+    KILL_CONTEXT_REASON_UNHANDLED_TRAP
+    // always add appropriate message to KILL_CONTEXT_MSG in context.c!
+};
+extern const char* KILL_CONTEXT_MSG[];
+void kill_context(uint64_t context_id, enum KILL_CONTEXT_REASON kill_context_reason);
+
 #endif /* KERN_CONTEXT */

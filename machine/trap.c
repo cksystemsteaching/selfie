@@ -160,6 +160,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
         break;
       default:
         print_unhandled_trap(context, interrupt_bit, exception_code, stval, sepc);
+        kill_context(context->id, KILL_CONTEXT_REASON_UNHANDLED_TRAP);
     }
 
 #ifdef DEBUG
@@ -214,7 +215,7 @@ void handle_ecall(struct context* context) {
       break;
     default:
       printf("received unknown syscall '0x%x' from context %u\n", syscall_id, context->id);
-      // TODO: kill context
+      kill_context(context->id, KILL_CONTEXT_REASON_UNKNOWN_SYSCALL);
   }
 
   context->saved_regs.pc = context->saved_regs.pc + SIZE_OF_ECALL_INSTRUCTION;
@@ -227,7 +228,7 @@ void implement_syscall_exit(struct context* context) {
 
   printf("context %u exited with exit code %d\n", context->id, exit_code);
 
-  kfree_context(context->id);
+  kill_context(context->id, KILL_CONTEXT_REASON_EXIT);
 }
 
 void implement_syscall_read(struct context* context) {
@@ -309,12 +310,12 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
     printf("  sepc:  0x%x\n", sepc);
     printf("  stval: 0x%x\n", stval);
 #endif /* DEBUG */
-    // TODO: kill this context.
+    kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
   } else {
     // at the moment we raise a segfault here since we map the entire code
     // segment when loading a binary
     printf("segmentation fault: context %u tried to execute the instruction at 0x%x and faulted at 0x%x\n", context->id, sepc, stval);
-    // TODO: kill this context
+    kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
   }
 
 #ifdef DEBUG
@@ -363,7 +364,7 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
             context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
           } else {
             printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
-            // TODO: kill this context or something like that
+            kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
           }
           break;
   }
