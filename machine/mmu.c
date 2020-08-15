@@ -110,6 +110,18 @@ uint64_t vaddr_to_vpn(uint64_t vaddr) {
     // bites 39 to 64 have the value of bit 38
     return ((vaddr & LOWEST_39_BITS) >> 12);
 }
+uint64_t vpn_to_vaddr(uint64_t vpn) {
+  // Sv39 requires virtual addresses to sign-extend bit 38
+  // The bitmask to OR to this is (2^64 - 1) - (2^39 - 1) = 0xFFFFFF8000000000
+  const uint64_t SIGN_EXTEND_BIT38 = 0xFFFFFF8000000000;
+
+  uint64_t vaddr = vpn << 12;
+
+  if (vaddr & (1ULL << 38))
+    vaddr |= SIGN_EXTEND_BIT38;
+
+  return vaddr;
+}
 uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
   uint64_t vpn_1 = (vaddr & VPN_1_BITMASK) >> 21;
