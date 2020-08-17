@@ -39,6 +39,6 @@
 #define MAX_ARGV_LENGTH 24
 
 
-#define INIT_FILE_PATH "hello-world.m"
+#define INIT_FILE_PATH "selfie.m"
 
 #endif
