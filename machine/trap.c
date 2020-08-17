@@ -163,6 +163,7 @@ void set_timer_interrupt(uint64_t interrupt_at) {
         "ecall"
         :
         : [interrupt_at] "r" (interrupt_at)
+        : "a7", "a6", "a0"
     );
 }
 

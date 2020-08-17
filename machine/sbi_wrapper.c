@@ -139,6 +139,9 @@ void usermode_test() {
         asm volatile(
             "li a7, 0x101;"
             "ecall"
+            :
+            :
+            : "a7"
         );
     }
 }
