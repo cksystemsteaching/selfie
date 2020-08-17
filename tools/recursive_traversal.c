@@ -216,7 +216,7 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
 
     if (debug) {
       printf1("%d: ", (char *) depth);
-      translate_to_assembler();
+      print_instruction();
       printf1(" (%d):", (char *) pc);
       i = 1;
       while (i < NUMBEROFREGISTERS) {
