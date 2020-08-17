@@ -231,12 +231,19 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     prev_pc = pc;
 
     if (is == BEQ) {
+      // explore branch in recursive call and continue executing non-branch path in current call
       traverse_recursive(pc + imm, pc, current_ra);
       // last loaded instruction from recursive call remains
       // so we need to "refresh" the actual last instruction for the case where the branch isn't taken
       // (the loaded instruction ends up being the beq itself, which has no effect)
       ir = load_instruction(pc);
       decode();
+      // if the source registers are equal: the branch must be taken!
+      // therefore, we do not have to explore the other path and we can return early
+      if (!is_reg_unknown(state, rs1))
+        if (!is_reg_unknown(state, rs2))
+          if (get_reg(state, rs1) == get_reg(state, rs2))
+            return;
     } else if (is == JAL) {
       if (rd == REG_RA) { // procedure call
         traverse_recursive(pc + imm, pc, pc + INSTRUCTIONSIZE);
