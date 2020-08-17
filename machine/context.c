@@ -163,7 +163,7 @@ struct context* schedule_next_context() {
     return &currently_active_context->context;
 }
 
-const char* KILL_CONTEXT_MSG[] = {"context exited", "segfault", "unknown syscall", "unhandled trap"};
+const char* KILL_CONTEXT_MSG[] = {"context exited", "segfault", "unknown syscall", "unhandled trap", "out of memory"};
 void kill_context(uint64_t context_id, enum KILL_CONTEXT_REASON kill_context_reason) {
     kfree_context(context_id);
 

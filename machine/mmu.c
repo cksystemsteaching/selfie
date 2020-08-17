@@ -30,16 +30,24 @@ uint64_t create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, c
 }
 
 uint64_t ppn_bump;
+uint64_t used_pages = 0;
 uint64_t kpalloc() {
     // page allocation is the only form of dynamic memory allocation in this kernel
+
+    // Check for free pages in the page pool
+    if (used_pages >= PAGE_POOL_NUM_PAGES)
+      return 0;
+
     kernel_context.program_break = ppn_bump;
     kernel_context.legal_memory_boundaries.highest_lo_page = ppn_bump;
 
+    used_pages++;
     return ppn_bump++;
 }
 uint64_t kzalloc() {
     uint64_t ppn = kpalloc();
-    kzero_page(ppn);
+    if (ppn != 0)
+      kzero_page(ppn);
     return ppn;
 }
 
@@ -56,11 +64,15 @@ struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t i
 
 uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
     uint64_t ppn = kzalloc();
-    kmap_page_by_ppn(table, vaddr, ppn, u_mode_accessible);
+    if (ppn == 0)
+      return 0;
 
-    return ppn;
+    if (kmap_page_by_ppn(table, vaddr, ppn, u_mode_accessible))
+      return ppn;
+    else
+      return 0;
 }
-void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
+bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
   uint64_t vpn_1 = (vaddr & VPN_1_BITMASK) >> 21;
   uint64_t vpn_0 = (vaddr & VPN_0_BITMASK) >> 12;
@@ -69,6 +81,9 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
 
   if (!table[vpn_2].v) {
     uint64_t ppn = kpalloc();
+    if (ppn == 0)
+      return false;
+
     mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, ppn, 1, 0);
     kzero_page(ppn);
   }
@@ -77,6 +92,9 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
   
   if (!mid_pt[vpn_1].v) {
     uint64_t ppn = kpalloc();
+    if (ppn == 0)
+      return false;
+
     leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
     kzero_page(ppn);
   }
@@ -84,13 +102,18 @@ void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
     leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
 
   create_pt_entry(leaf_pt, vpn_0, ppn, 0, u_mode_accessible);
+  return true;
 }
 
-void kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr) {
+bool kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr) {
     uint64_t ppn;
 
     ppn = kmap_page(table, vaddr, true);
+    if (ppn == 0)
+      return false;
+
     kidentity_map_ppn(kernel_context.pt, ppn, false);
+    return true;
 }
 
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
@@ -244,6 +267,8 @@ void kinit_page_pool() {
   uint64_t pagesAllocated = 0;
   uint64_t oldPpn = ppn_bump;
 
+  // assert: PAGE_POOL_NUM_PAGES is large enough to host all nodes in the page table, as kpalloc in kmap_page_by_ppn would return PPN 0 otherwise
+  //         Thus, PAGE_POOL_NUM_PAGES shall have at least approx. 6 pages
   while (pagesAllocated < PAGE_POOL_NUM_PAGES) {
     uint64_t toAllocate = PAGE_POOL_NUM_PAGES - pagesAllocated;
 
@@ -257,6 +282,9 @@ void kinit_page_pool() {
 
     oldPpn = ppn_bump;
   }
+
+  // Reset the used pages counter
+  used_pages = 0;
 }
 
 __attribute__((aligned(4096)))

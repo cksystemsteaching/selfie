@@ -50,8 +50,8 @@ void kzero_page(uint64_t vpn);
 uint64_t create_pt_entry(struct pt_entry* table, uint64_t index, uint64_t ppn, char pt_at_ppn_addr, char u_mode_accessible);
 
 uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible);
-void kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible);
-void kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr);
+bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible);
+bool kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr);
 
 uint64_t vaddr_to_vpn(uint64_t vaddr);
 uint64_t vpn_to_vaddr(uint64_t vaddr);

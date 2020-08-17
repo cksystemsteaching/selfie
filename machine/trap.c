@@ -386,35 +386,45 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
   uint64_t vpn = stval >> 12;
 
   // TODO: check if there's memory left on the machine and kill the context if this isn't the case
+  bool map_successful = false;
 
   switch (memory_access_type) {
       case memory_access_type_lo:
-          kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+          map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
           break;
       case memory_access_type_mid:
-          kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+          map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
           break;
       case memory_access_type_hi:
 #ifdef DEBUG
           // that'd be a bug
           printf("context %u raised a page fault in its hi part\n", context->id);
-          printf("  lowest hi page:  %u", context->legal_memory_boundaries.lowest_hi_page);
-          printf("  highest hi page: %u", context->legal_memory_boundaries.highest_hi_page);
+          printf("  lowest hi page:  %x\n", context->legal_memory_boundaries.lowest_hi_page);
+          printf("  highest hi page: %x\n", context->legal_memory_boundaries.highest_hi_page);
 #endif /* DEBUG */
           break;
       case memory_access_type_unknown:
           if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
-            kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+            map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
             context->legal_memory_boundaries.highest_lo_page = vaddr_to_vpn(stval);
           } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
             // stack has grown but the page isnt mapped yet
-            kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+            map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
             context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
           } else {
             printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
             kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
           }
           break;
+  }
+
+  if (!map_successful) {
+    printf("could not map free page into user vspace: out-of-memory!\n");
+    printf("  lowest  lo page : %x\n", context->legal_memory_boundaries.lowest_lo_page);
+    printf("  highest lo page : %x\n", context->legal_memory_boundaries.highest_lo_page);
+    printf("  lowest  mid page: %x\n", context->legal_memory_boundaries.lowest_mid_page);
+    printf("  highest mid page: %x\n", context->legal_memory_boundaries.highest_mid_page);
+    kill_context(context->id, KILL_CONTEXT_REASON_OOM);
   }
 }
 
