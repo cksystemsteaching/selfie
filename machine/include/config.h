@@ -11,8 +11,8 @@
 // mapped to its virtual address space. This is done to simplify management of page table nodes
 // (if you want to add a node to the page table tree, it must already be mapped so that it can be
 // modified) without having to manage a free page pool.
-// For now, 2MiB, i.e. 512 4k-pages, shall be enough
-#define PAGE_POOL_NUM_PAGES 0x200
+// For now, 4MiB, i.e. 1024 4k-pages, shall be enough
+#define PAGE_POOL_NUM_PAGES 0x400
 
 // The trampoline must be mapped at the same vaddr for both the kernel and
 // the userspace processes. The page is mapped to the last VPN slot available
