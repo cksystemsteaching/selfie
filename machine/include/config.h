@@ -36,6 +36,8 @@
 // will be placed in the lower 256 GiB range (bit 38 always cleared).
 #define USERSPACE_STACK_START 0x4000000000ULL
 
+#define MAX_ARGV_LENGTH 24
+
 
 #define INIT_FILE_PATH "hello-world.m"
 

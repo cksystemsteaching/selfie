@@ -101,13 +101,13 @@ void bootstrap() {
         "hello-world.c",
         (char*)0,
     };
-    int i = 0;
+    int argc = 0;
 
     puts("Booting selfie with args: \n");
 
-    while (args[i] != (char*)0) {
-        printf("    %s\n", args[i]);
-        i++;
+    while (args[argc] != (char *)0) {
+      printf("    %s\n", args[argc]);
+      argc++;
     }
     printf("    <END>\n\n");
 
@@ -125,6 +125,7 @@ void bootstrap() {
       printf("ERROR: Could not load init file: %s", elf_strerror(err));
       _start_hang();
     }
+    kupload_argv(init, argc, args);
 
     perform_initial_ctxt_switch(assemble_satp_value(init->pt, 0), &init->saved_regs);
 
