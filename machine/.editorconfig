@@ -3,7 +3,7 @@ root = true
 [*]
 end_of_line = lf
 
-[*.{c,S}]
+[*.{c,h,S}]
 indent_style = space
 indent_size = 2
 
