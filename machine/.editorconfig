@@ -1,0 +1,11 @@
+root = true
+
+[*]
+end_of_line = lf
+
+[*.{c,S}]
+indent_style = space
+indent_size = 2
+
+[{Makefile,*.mk}]
+indent_style = tabs
