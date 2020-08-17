@@ -41,4 +41,10 @@
 
 #define INIT_FILE_PATH "selfie.m"
 
+// The time delta that will be set at the end of the trap handler before jumping back into
+// the trap handler's wrapper code. This value doesn't have a fixed unit since the execution
+// environment only "should provide a means of determining the period of the real-time counter
+// (seconds/tick)" (RISC-V Spec. 20191213 Chapter 10.1) but isn't actually obligated to do so.
+#define TIMESLICE 10000
+
 #endif

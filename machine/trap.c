@@ -14,6 +14,9 @@
 #define SCAUSE_EXCEPTION_CODE_LOAD_PAGE_FAULT 13
 #define SCAUSE_EXCEPTION_CODE_STORE_AMO_PAGE_FAULT 15
 
+// if interrupt bit is 1
+#define SCAUSE_EXCEPTION_CODE_SUPERVISOR_TIMER_INTERRUPT 5
+
 #define SYSCALL_EXIT   93
 #define SYSCALL_READ   63
 #define SYSCALL_WRITE  64
@@ -41,11 +44,26 @@ void enable_smode_interrupts() {
 }
 
 void enable_smode_interrupt_types(uint64_t bitmask) {
-
+    asm volatile(
+        "csrr t0, sie;"
+        "or t0, t0, %[bitmask];"
+        "csrw sie, t0"
+        :
+        : [bitmask] "r" (bitmask)
+        : "t0"
+    );
 }
 
 void disable_smode_interrupt_types(uint64_t bitmask) {
-
+    asm volatile(
+        "csrr t0, sie;"
+        "not t1, %[bitmask];"
+        "and t0, t0, t1;"
+        "csrw sie, t0"
+        :
+        : [bitmask] "r" (bitmask)
+        : "t0", "t1"
+    );
 }
 
 void store_saved_registers_from_buffer_into_context(struct context* context, struct registers* registers_buffer) {
@@ -120,6 +138,34 @@ void load_saved_registers_from_context_into_buffer(struct context* context, stru
     registers_buffer->pc = context->saved_regs.pc;
 }
 
+uint64_t get_current_cpu_time() {
+    uint64_t current_cpu_time;
+
+    asm volatile(
+        "rdtime %[current_cpu_time]"
+        : [current_cpu_time] "=r" (current_cpu_time)
+    );
+
+    return current_cpu_time;
+}
+
+void set_timer_interrupt_delta(uint64_t delta) {
+    set_timer_interrupt(get_current_cpu_time() + delta);
+}
+
+void set_timer_interrupt(uint64_t interrupt_at) {
+    // call into the SBI to set the timer since
+    // mtimecmp can only be modified from M-mode
+    asm volatile(
+        "li a7, 0x54494D45;"
+        "li a6, 0;"
+        "mv a0, %[interrupt_at];"
+        "ecall"
+        :
+        : [interrupt_at] "r" (interrupt_at)
+    );
+}
+
 uint64_t trap_handler(struct registers registers_buffer) {
   uint64_t scause;
   uint64_t stval; // address where page fault occured
@@ -142,8 +188,15 @@ uint64_t trap_handler(struct registers registers_buffer) {
   store_saved_registers_from_buffer_into_context(context, &registers_buffer);
 
   if (interrupt_bit)
-    // TODO: timer interrupts etc
-    print_unhandled_trap(context, interrupt_bit, exception_code, stval, sepc);
+    switch (exception_code) {
+      case SCAUSE_EXCEPTION_CODE_SUPERVISOR_TIMER_INTERRUPT:
+#ifdef DEBUG
+        printf("context %u caused a timer interrupt\n", context->id);
+#endif
+        break;
+      default:
+        print_unhandled_trap(context, interrupt_bit, exception_code, stval, sepc);
+    }
   else
     switch (exception_code) {
       case SCAUSE_EXCEPTION_CODE_ECALL:
@@ -164,16 +217,17 @@ uint64_t trap_handler(struct registers registers_buffer) {
     }
 
 #ifdef DEBUG
-  printf("trap handler has been executed (caused context %u)\n", context->id);
+  printf("trap handler has been executed (caused by context %u)\n", context->id);
   printf("  scause: 0x%x\n", scause);
   printf("  stval:  0x%x\n", stval);
   printf("  sepc:   0x%x\n", sepc);
+  printf("  time:   %u\n", get_current_cpu_time());
 #endif /* DEBUG */
 
   next_context = schedule_next_context();
   load_saved_registers_from_context_into_buffer(next_context, &registers_buffer);
 
-  // TODO: set timer interrupt
+  set_timer_interrupt_delta(TIMESLICE);
 
   // jumps back into trap.S now
   return assemble_satp_value(next_context->pt, 0);
