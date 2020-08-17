@@ -45,24 +45,17 @@ void enable_smode_interrupts() {
 
 void enable_smode_interrupt_types(uint64_t bitmask) {
     asm volatile(
-        "csrr t0, sie;"
-        "or t0, t0, %[bitmask];"
-        "csrw sie, t0"
+        "csrs sie, %[bitmask]"
         :
         : [bitmask] "r" (bitmask)
-        : "t0"
     );
 }
 
 void disable_smode_interrupt_types(uint64_t bitmask) {
     asm volatile(
-        "csrr t0, sie;"
-        "not t1, %[bitmask];"
-        "and t0, t0, t1;"
-        "csrw sie, t0"
+        "csrc sie, %[bitmask]"
         :
         : [bitmask] "r" (bitmask)
-        : "t0", "t1"
     );
 }
 
