@@ -273,7 +273,8 @@ void kinit_page_pool() {
     uint64_t toAllocate = PAGE_POOL_NUM_PAGES - pagesAllocated;
 
     // Try to map the whole range of pages inside
-    kidentity_map_range(kernel_pt, ppn_to_paddr(oldPpn), ppn_to_paddr(oldPpn + toAllocate));
+    // Add +1 to upper bound ppn because kidentity_map_range is exclusive
+    kidentity_map_range(kernel_pt, ppn_to_paddr(oldPpn), ppn_to_paddr(oldPpn + toAllocate + 1));
     // If the mapping process required to allocate new page table nodes, ppn_bump would be increased
     // We have to ignore the amount of PT nodes in our amount of free page pool pages because they
     // are already in use.
