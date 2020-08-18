@@ -6,7 +6,7 @@ LD=$(PREFIX)ld
 OBJCOPY=$(PREFIX)objcopy
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none
+CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none -Wall -Wextra
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
 
