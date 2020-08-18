@@ -273,8 +273,6 @@ uint64_t output_fd   = 1; // 1 is file descriptor of standard output
 char*    output_buffer = (char*) 0;
 uint64_t output_cursor = 0; // cursor for output buffer
 
-uint64_t use_garbage_collector = 0;
-
 uint64_t gc_original_program_break = 0;
 
 // ------------------------- INITIALIZATION ------------------------
@@ -1040,7 +1038,7 @@ uint64_t SYSCALL_WRITE  = 64;
 uint64_t SYSCALL_OPENAT = 56;
 uint64_t SYSCALL_BRK    = 214;
 
-// Garbage collector syscalls
+// Garbage Collector syscalls
 uint64_t SYSCALL_MALLOC  = 249;
 uint64_t SYSCALL_FREE    = 250;
 uint64_t SYSCALL_COLLECT = 251;
@@ -1226,6 +1224,8 @@ uint64_t non_gc_heap_bump  = 0;
 
 uint64_t gc_heap_break = 0;
 uint64_t gc_heap_bump  = 0;
+
+uint64_t use_garbage_collector = 0; // which variant of gc is used
 
 uint64_t gc_library_enabled = 0; // control flag used by library variant to check if gc has been initialised yet
 
