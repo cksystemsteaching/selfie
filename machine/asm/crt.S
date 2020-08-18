@@ -37,18 +37,6 @@ _start:
 
     .option pop
 
-    /* Pick one hart to run the main boot sequence */
-    la	a3, _hart_lottery
-    li	a2, 1
-    amoadd.w a3, a2, (a3)
-    bnez	a3, _start_hang
-
-    /* Save a0 and a1 */
-    la	a3, _boot_a0
-    REG_S	a0, 0(a3)
-    la	a3, _boot_a1
-    REG_S	a1, 0(a3)
-
     /* Zero-out BSS */
     la a4, _bss_start
     la a5, _bss_end
@@ -106,9 +94,3 @@ initial_stack_start:
 
     add a0, a0, t0
     ret
-
-
-    .section .entry, "ax", %progbits
-    .align	3
-_hart_lottery:
-    RISCV_PTR	0
