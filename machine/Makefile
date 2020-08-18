@@ -95,12 +95,14 @@ $(SELFIE_PATH)/hello-world.m: $(SELFIE_PATH)/examples/hello-world.c
 # Clean-up
 .PHONY: clean
 clean:
-	rm -rf opensbi
 	rm -f *.o asm/*.o
 	rm -f *.elf
 	rm -f *.bin
 	rm -f files_package.c
 	rm -f include/asm_offsets.h
+.PHONY: distclean
+distclean: clean
+	rm -rf opensbi
 
 
 # OpenSBI fetch target
