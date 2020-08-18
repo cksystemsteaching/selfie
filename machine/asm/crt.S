@@ -86,25 +86,10 @@ _start_warm:
 
 
     /* Jump to C main */
-    la	a3, _boot_a0
-    REG_L	a0, 0(a3)
-    la	a3, _boot_a1
-    REG_L	a1, 0(a3)
     call	bootstrap
 
     /* We don't expect to reach here hence just hang */
     j	_start_hang
-
-.globl loop_print_a
-loop_print_a:
-    li a7, 0x01
-    li a6, 0x00
-    li a0, 'c'
-
-    ecall
-
-    j loop_print_a
-
 
     .section .entry, "ax", %progbits
     .align 3
@@ -126,8 +111,4 @@ initial_stack_start:
     .section .entry, "ax", %progbits
     .align	3
 _hart_lottery:
-    RISCV_PTR	0
-_boot_a0:
-    RISCV_PTR	0
-_boot_a1:
     RISCV_PTR	0
