@@ -100,7 +100,6 @@ void* malloc(unsigned long);
 // Bootstrapped to actual functions during compilation, not available on bootslevel 0 - only for compilation
 uint64_t fetch_stackpointer()     { return 0; }
 uint64_t fetch_datasegment_size() { return 0; }
-void     gc_init();
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -2653,6 +2652,8 @@ uint64_t* smalloc_implementation(uint64_t size, uint64_t allocator) {
   // this procedure ensures a defined program exit,
   // if no memory can be allocated
   uint64_t* memory;
+
+  memory = (uint64_t*)0; // to avoid gcc warning
 
   if (allocator == ALLOCATORSYSTEM)
     memory = malloc(size);
