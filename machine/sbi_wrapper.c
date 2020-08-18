@@ -36,8 +36,6 @@ void setup_kernel_context(uint64_t lowest_lo_page, uint64_t highest_lo_page, uin
 }
 
 void bootstrap() {
-    uint64_t val = 0xF00DBEEF;
-
     console_init();
 
     // TODO: Assert trampoline positioning on page boundary
