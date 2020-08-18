@@ -16,7 +16,7 @@ OPENSBI_SOURCE_URL=https://github.com/riscv/opensbi/archive/$(OPENSBI_RELEASE).t
 OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
-SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o console.o mmu.o selfie.o sbi_files.o files_package.o syscalls.o context.o trap.o elf.o asm/crt.o asm/trampoline.o asm/trap.o glue_libraryos.o diag.o
+SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o console.o mmu.o selfie.o sbi_files.o files_package.o syscalls.o context.o trap.o elf.o asm/crt.o asm/trap.o glue_libraryos.o diag.o
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
 ASM_STRUCT_HEADERS = include/context.h
 
