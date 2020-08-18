@@ -11,6 +11,7 @@
 #define CSR_STATUS_MIE 3
 #define CSR_STATUS_SIE 1
 #define CSR_STATUS_UIE 0
+#define CSR_STATUS_SPIE 5
 
 #define CSR_SIE_EXTERNAL_INTS   9
 #define CSR_UIE_EXTERNAL_INTS   8
@@ -23,6 +24,7 @@ typedef void (*trap_handler_t)(/* TODO: Context struct */);
 
 void disable_smode_interrupts();
 void enable_smode_interrupts();
+void enable_smode_interrupts_after_sret();
 
 void enable_smode_interrupt_types(uint64_t bitmask);
 void disable_smode_interrupt_types(uint64_t bitmask);

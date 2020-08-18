@@ -67,9 +67,9 @@ void bootstrap() {
 
     puts("Setting up trap handlers...");
     setup_smode_trap_handler((trap_handler_t)TRAMPOLINE_VADDR);
-    enable_smode_interrupt_types(//(1 << CSR_SIE_TIMER_INTS) | // TODO
-                                 (1 << CSR_SIE_SOFTWARE_INTS) |
-                                 (1 << CSR_UIE_SOFTWARE_INTS));
+    enable_smode_interrupts_after_sret();
+    enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
+                                 (1 << CSR_SIE_SOFTWARE_INTS));
     puts("done!\n");
 
     puts("Enabling paging...");
@@ -127,6 +127,7 @@ void bootstrap() {
     }
     kupload_argv(init, argc, args);
 
+    set_timer_interrupt_delta(TIMESLICE);
     perform_initial_ctxt_switch(assemble_satp_value(init->pt, 0), &init->saved_regs);
 
     // i contains the count of command line arguments

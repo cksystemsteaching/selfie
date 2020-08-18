@@ -43,6 +43,18 @@ void enable_smode_interrupts() {
     );
 }
 
+void enable_smode_interrupts_after_sret() {
+  uint64_t enable_bitmask = (1 << CSR_STATUS_SPIE);
+  uint64_t disable_bitmask = (1 << CSR_STATUS_SIE);
+
+  asm volatile(
+    "csrs sstatus, %[enable_bitmask];"
+    "csrc sstatus, %[disable_bitmask]"
+    :
+    : [enable_bitmask] "r" (enable_bitmask), [disable_bitmask] "r" (disable_bitmask)
+  );
+}
+
 void enable_smode_interrupt_types(uint64_t bitmask) {
     asm volatile(
         "csrs sie, %[bitmask]"
@@ -185,7 +197,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
     switch (exception_code) {
       case SCAUSE_EXCEPTION_CODE_SUPERVISOR_TIMER_INTERRUPT:
 #ifdef DEBUG
-        printf("context %u caused a timer interrupt\n", context->id);
+        printf("received timer interrupt while context %u was running. current time: %u\n", context->id, get_current_cpu_time());
 #endif
         break;
       default:
