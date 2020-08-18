@@ -259,11 +259,6 @@ uint64_t WINDOWS_O_BINARY_CREAT_TRUNC_WRONLY = 33537;
 // these flags seem to be working for LINUX, MAC, and WINDOWS
 uint64_t S_IRUSR_IWUSR_IRGRP_IROTH = 420;
 
-// Garbage Collector modes
-uint64_t GCDISABLED = 0;
-uint64_t GCSYSCALL  = 1;
-uint64_t GCLIBRARY  = 2;
-
 // Allocator Types
 uint64_t ALLOCATORSYSTEM = 0;
 uint64_t ALLOCATORGC     = 1;
@@ -1214,7 +1209,12 @@ void gc_collect() {
 
 // ------------------------ GLOBAL CONSTANTS -----------------------
 
-uint64_t NONGCHEAPSIZE = 65536000; // 2^16 bytes of non-garbage collected memory
+uint64_t NONGCHEAPSIZE = 65536000; // 1000 * 2^16 bytes of non-garbage collected memory
+
+// Garbage Collector modes
+uint64_t GCDISABLED = 0;
+uint64_t GCSYSCALL  = 1;
+uint64_t GCLIBRARY  = 2;
 
 // ------------------------ GLOBAL VARIABLES -----------------------
 
