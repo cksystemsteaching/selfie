@@ -7,22 +7,6 @@
  *   Anup Patel <anup.patel@wdc.com>
  */
 
-#include <sbi/riscv_encoding.h>
-#define __ASM_STR(x)	x
-
-#if __riscv_xlen == 64
-#define __REG_SEL(a, b)		__ASM_STR(a)
-#define RISCV_PTR		.dword
-#elif __riscv_xlen == 32
-#define __REG_SEL(a, b)		__ASM_STR(b)
-#define RISCV_PTR		.word
-#else
-#error "Unexpected __riscv_xlen"
-#endif
-
-#define REG_L		__REG_SEL(ld, lw)
-#define REG_S		__REG_SEL(sd, sw)
-
 #include "config.h"
 
     .section .entry, "ax", %progbits
@@ -41,18 +25,18 @@ _start:
     la a4, _bss_start
     la a5, _bss_end
 _bss_zero:
-    REG_S zero, (a4)
+    sd  zero, (a4)
     add a4, a4, __SIZEOF_POINTER__
     blt a4, a5, _bss_zero
 
 _start_warm:
     /* Disable and clear all interrupts */
-    csrw	CSR_SIE, zero
-    csrw	CSR_SIP, zero
+    csrw	sie, zero
+    csrw	sip, zero
 
     /* Setup exception vectors */
     la	a3, _start_hang
-    csrw	CSR_STVEC, a3
+    csrw	stvec, a3
 
     /* Setup early bump pointer for page allocator */
     /* An increment of one is necessary due to the pre-allocated stack page */
@@ -63,7 +47,7 @@ _start_warm:
 
     /* Setup stack */
     jal initial_stack_start
-    add	sp, x0, a0
+    add	sp, zero, a0
 
     /*
      * Setup heap bump pointer at the end of the preliminary stack
