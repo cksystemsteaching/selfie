@@ -213,3 +213,5 @@ clean:
 	rm -f examples/*.s
 	rm -f symbolic/*.smt
 	rm -f symbolic/*.btor2
+	rm -f selfie.gc
+	rm -f selfie.gch
