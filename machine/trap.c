@@ -5,8 +5,8 @@
 #include "mmu.h"
 #include <stdint.h>
 
-#define SCAUSE_INTERRUPT_BIT_MASK 0x8000000000000000
-#define SCAUSE_EXCEPTION_CODE_MASK 0x7FFFFFFFFFFFFFFF
+#define SCAUSE_INTERRUPT_BIT_MASK (1ULL << 63)
+#define SCAUSE_EXCEPTION_CODE_MASK (UINT64_MAX ^ SCAUSE_INTERRUPT_BIT_MASK)
 
 // if interrupt bit is 0
 #define SCAUSE_EXCEPTION_CODE_ECALL 8
@@ -164,7 +164,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
   uint64_t scause;
   uint64_t stval; // address where page fault occured
   uint64_t sepc;  // pc where the exception occured
-  char interrupt_bit;
+  uint64_t interrupt_bit;
   uint64_t exception_code;
   struct context* context = get_currently_active_context();
   struct context* next_context;
