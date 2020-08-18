@@ -38,24 +38,9 @@ _start_warm:
     la	a3, _start_hang
     csrw	stvec, a3
 
-    /* Setup early bump pointer for page allocator */
-    /* An increment of one is necessary due to the pre-allocated stack page */
-    la a3, _payload_end
-    srli a3, a3, 12
-    addi a3, a3, NUM_STACK_PAGES
-    sd a3, ppn_bump, a4
-
     /* Setup stack */
     jal initial_stack_start
     add	sp, zero, a0
-
-    /*
-     * Setup heap bump pointer at the end of the preliminary stack
-     * RISC-V uses full-stack semantics - sp points to the last pushed element
-     */
-    mv a3, sp
-    sw a3, heap_head, a4
-
 
     /* Jump to C main */
     call	bootstrap

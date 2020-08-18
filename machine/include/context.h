@@ -87,4 +87,7 @@ enum KILL_CONTEXT_REASON {
 extern const char* KILL_CONTEXT_MSG[];
 void kill_context(uint64_t context_id, enum KILL_CONTEXT_REASON kill_context_reason);
 
+// defined in trap.S
+extern void perform_initial_ctxt_switch(uint64_t satp, struct registers* regs);
+
 #endif /* KERN_CONTEXT */

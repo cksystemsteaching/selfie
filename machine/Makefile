@@ -6,7 +6,7 @@ LD=$(PREFIX)ld
 OBJCOPY=$(PREFIX)objcopy
 
 # Our ABI, architecture and memory model must match with OpenSBI
-CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none -Wall -Wextra
+CFLAGS=-g3 -mabi=lp64 -march=rv64imafdc -mcmodel=medany -ffreestanding -nostdlib -Iinclude -Iopensbi/include -Wl,--build-id=none -Wall -Wextra -DKERN_TYPE=$(KERN_TYPE)
 ASFLAGS=$(CFLAGS)
 LDFLAGS=-r -b elf64-littleriscv -m elf64lriscv
 
@@ -16,11 +16,27 @@ OPENSBI_SOURCE_URL=https://github.com/riscv/opensbi/archive/$(OPENSBI_RELEASE).t
 OPENSBI_RELEASE=v0.7
 OPENSBI_VERSION_FILE=opensbi/opensbi_version
 
-SBI_WRAPPER_OBJS = sbi_wrapper.o tinycstd.o console.o mmu.o selfie.o sbi_files.o files_package.o syscalls.o context.o trap.o elf.o asm/crt.o asm/trap.o glue_libraryos.o diag.o
+SBI_WRAPPER_OBJS_COMMON = sbi_wrapper.o tinycstd.o console.o sbi_files.o files_package.o syscalls.o asm/crt.o diag.o
+SBI_WRAPPER_OBJS_LIBRARY = bootstrap_library.o selfie.o glue_libraryos.o
+SBI_WRAPPER_OBJS_KERNEL =  bootstrap_kernel.o mmu.o context.o trap.o elf.o asm/trap.o
+
+SBI_WRAPPER_OBJS = $(SBI_WRAPPER_OBJS_COMMON)
+KERN_TYPE = unknown
+
 SBI_WRAPPER_FILES_PACKAGE = $(SELFIE_PATH)/selfie.m $(SELFIE_PATH)/selfie.c $(SELFIE_PATH)/examples/hello-world.c $(SELFIE_PATH)/hello-world.m
 ASM_STRUCT_HEADERS = include/context.h
 
 include defines.mk
+
+ifeq ($(KERN_TYPE), library)
+$(eval SBI_WRAPPER_OBJS += $(SBI_WRAPPER_OBJS_LIBRARY))
+else ifeq ($(KERN_TYPE), kernel)
+$(eval SBI_WRAPPER_OBJS += $(SBI_WRAPPER_OBJS_KERNEL))
+else
+$(error No build type specified! Please specify either KERN_TYPE=kernel or KERN_TYPE=library when invoking make)
+endif
+
+# ==============================================================================
 
 all: selfie-qemu selfie-fu540 selfie-k210
 
