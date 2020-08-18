@@ -71,7 +71,7 @@ struct context* kallocate_context(); // returns NULL if there are no free slots 
 void kinit_context(struct context* context);
 void kfree_context(uint64_t context_id);
 
-void kupload_argv(struct context* context, uint64_t argc, char** argv);
+void kupload_argv(struct context* context, uint64_t argc, const char** argv);
 
 struct context* get_currently_active_context();
 struct context* schedule_next_context();
