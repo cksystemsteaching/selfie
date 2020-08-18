@@ -29,7 +29,7 @@ endef
 # $(eval $(call generate_selfie_sbi_rules,board,sbi_plat,sbi_start,offset)
 #
 define generate_selfie_sbi_rule
-selfie-$(1).elf: payload-$(1).bin
+selfie-$(1).elf: payload-$(1).bin opensbi
 	$$(MAKE) -C opensbi CROSS_COMPILE=$$(PREFIX) PLATFORM_RISCV_XLEN=64 PLATFORM=$(2) O=build/ FW_PAYLOAD=y FW_PAYLOAD_PATH=$$(realpath $$<) FW_TEXT_START=$(3) FW_PAYLOAD_OFFSET=$(4)
 	mv opensbi/build/platform/$(2)/firmware/fw_payload.elf $$@
 endef
