@@ -81,11 +81,17 @@ const char* strchr(const char* str, int c) {
 
 char* itoa_ext(uintmax_t value, uint8_t base, uint8_t bits, bool sign);
 int printf(const char* format, ...) {
-    va_list va;
+  va_list args;
+  va_start(args, format);
+
+  va_printf(format, args);
+
+  va_end(args);
+
+}
+int va_printf(const char* format, va_list args) {
     int written = 0;
     const char* fmtPos;
-
-    va_start(va, format);
 
     while (1) {
         fmtPos = strchr(format, '%');
@@ -93,7 +99,6 @@ int printf(const char* format, ...) {
         if (fmtPos == NULL) {
             // Found no format specifier - print rest and return
             puts(format);
-            va_end(va);
             return written + strlen(format);
         } else {
             // Found format specifier - print everything before it and handle specifier
@@ -108,7 +113,7 @@ int printf(const char* format, ...) {
                     break;
                 case 'c':
                 {
-                    char c = va_arg(va, int); // char is "promoted" to int by variable args
+                    char c = va_arg(args, int); // char is "promoted" to int by variable args
                     putc(c);
                     written++;
                     format++;
@@ -117,7 +122,7 @@ int printf(const char* format, ...) {
                 case 'd':
                 case 'i':
                 {
-                    int i = va_arg(va, int);
+                    int i = va_arg(args, int);
                     char* buf = itoa_ext(i, 10, sizeof(int)*8, true);
                     puts(buf);
                     written += strlen(buf);
@@ -126,7 +131,7 @@ int printf(const char* format, ...) {
                 }
                 case 'u':
                 {
-                    uintmax_t i = va_arg(va, uintmax_t);
+                    uintmax_t i = va_arg(args, uintmax_t);
                     char* buf = itoa_ext(i, 10, sizeof(uintmax_t)*8, false);
                     puts(buf);
                     written += strlen(buf);
@@ -136,7 +141,7 @@ int printf(const char* format, ...) {
                 case 'x':
                 case 'X':
                 {
-                    uintmax_t i = va_arg(va, uintmax_t);
+                    uintmax_t i = va_arg(args, uintmax_t);
                     char* buf = itoa_ext(i, 16, sizeof(uintmax_t)*8, false);
                     puts(buf);
                     written += strlen(buf);
@@ -145,7 +150,7 @@ int printf(const char* format, ...) {
                 }
                 case 'p':
                 {
-                    void* i = va_arg(va, void*);
+                    void* i = va_arg(args, void*);
                     char* buf = itoa_ext((uintmax_t)i, 16, sizeof(void*)*8, false);
                     // Fill missing bytes with zeros
                     // One hex number is a nibble (4 bits) -> two represent one byte
@@ -162,7 +167,7 @@ int printf(const char* format, ...) {
                 }
                 case 's':
                 {
-                    const char* s = va_arg(va, const char*);
+                    const char* s = va_arg(args, const char*);
                     puts(s);
                     written += strlen(s);
                     format++;
