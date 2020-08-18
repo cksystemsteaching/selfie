@@ -3,13 +3,15 @@
 #include "console.h"
 #include "tinycstd.h"
 
+#include "compiler-utils.h"
+
 #define OPEN_FILE_FD_OFFSET 3
 
 bool fd_is_stdio(int fd) {
   return (fd >= 0) && (fd <= 2);
 }
 bool fd_is_valid(int fd, size_t num_fds) {
-  return (fd >= 0) && (fd < num_fds + OPEN_FILE_FD_OFFSET);
+  return (fd >= 0) && ((uint32_t)fd < num_fds + OPEN_FILE_FD_OFFSET);
 }
 FILEDESC* get_fd_entry(int fd, FILEDESC* open_files, size_t num_fds) {
   if (!fd_is_valid(fd, num_fds))
@@ -62,16 +64,15 @@ ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_
 }
 
 intmax_t kwrite(int fd, const char* buf, size_t count, FILEDESC* open_files, size_t num_fds) {
-    // No file descriptor support yet for write - write to console instead
+  UNUSED_VAR(open_files);
+  UNUSED_VAR(num_fds);
+  // No file descriptor support yet for write - write to console instead
 
-    // only allow writes to stdin (0), stdout (1) or stderr (2)
-    if (!fd_is_stdio(fd))
-      return -1;
+  // only allow writes to stdin (0), stdout (1) or stderr (2)
+  if (!fd_is_stdio(fd))
+    return -1;
 
-    size_t i = 0;
-    const char* charBuf = (const char*) buf;
-
-    return console_puts(buf, count);
+  return console_puts(buf, count);
 }
 
 int last_allocated_fd = OPEN_FILE_FD_OFFSET-1;
@@ -87,7 +88,7 @@ int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds)
     if (strncmp(filename, file->name, 511) == 0)
       break;
 
-      file++;
+    file++;
   }
   if (file->data == NULL)
     return -1;
@@ -117,12 +118,12 @@ int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds)
 
 
 void* kmalloc(unsigned long long size, void** heap_head) {
-    void* return_ptr;
+  void* return_ptr;
 
-    return_ptr = *heap_head;
-    *heap_head += size;
+  return_ptr = *heap_head;
+  *heap_head += size;
 
-    printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, *heap_head);
+  printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, *heap_head);
 
-    return return_ptr;
+  return return_ptr;
 }
