@@ -59,7 +59,7 @@ void kzero_page(uint64_t vpn) {
 }
 
 struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t index) {
-  return (struct pt_entry*) ((table + index)->ppn << 12);
+  return (struct pt_entry*) ((uint64_t)(table + index)->ppn << 12);
 }
 
 uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
@@ -180,7 +180,7 @@ void kidentity_map_range(struct pt_entry* table, const void* from, const void* t
     };
 }
 void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible) {
-    kmap_page_by_ppn(table, ppn_to_paddr(ppn), ppn, u_mode_accessible);
+    kmap_page_by_ppn(table, (uint64_t)ppn_to_paddr(ppn), ppn, u_mode_accessible);
 }
 
 void kdump_pt(struct pt_entry* table) {
