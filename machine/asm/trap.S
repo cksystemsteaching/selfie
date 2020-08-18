@@ -5,6 +5,16 @@
 .text
   .global trap_handler_wrapper
 
+
+// trap_handler_wrapper expects the kernel stack to be set up
+// like this. The kernel's stack pointer is saved in sscratch.
+// :                      :
+// +----------------------+
+// | trap_handler address | -24
+// |      kernel gp       | -16
+// |     kernel satp      | -8
+// |     [reserved]       |     <- kernel sp
+// +----------------------+
 .p2align 12
 trap_handler_wrapper:
 switch_to_kernel_stack:
@@ -20,7 +30,7 @@ switch_to_kernel_pt:
   // flush TLB
   sfence.vma
 
-setup_frame:
+set_up_frame:
   add s0, zero, sp
 
 allocate_registers_struct_space:
@@ -80,7 +90,7 @@ call_trap_handler:
   jalr t0
 
 switch_to_user_pt:
-  // the trap handler returns the satp value of the next context in a0
+  // trap_handler returns the satp value of the next context in a0
   csrw satp, a0
   sfence.vma
 
