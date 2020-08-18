@@ -17,6 +17,14 @@ selfie: selfie.c
 selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
+# Generate selfie using it's garbage collector as memory allocator
+# 2 ... GCLIBRARY (constant indicating to use the library version of the garbage collector)
+selfie.gc: selfie.c
+	sed 's/uint64_t use_garbage_collector = 0/uint64_t use_garbage_collector = 2/' selfie.c > selfie.gc
+
+selfie.gch: selfie.h
+	sed 's/uint64_t use_garbage_collector = 0/uint64_t use_garbage_collector = 2/' selfie.h > selfie.gch
+
 # Consider these targets as targets, not files
 .PHONY: compile quine escape debug replay os vm min mob sat mon smt mod btor2 selfie-2-x86 all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
 
