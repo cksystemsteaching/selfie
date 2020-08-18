@@ -1,3 +1,4 @@
+#include "compiler-utils.h"
 #include "trap.h"
 #include "config.h"
 #include "syscall.h"
@@ -251,9 +252,6 @@ void handle_ecall(struct context* context) {
   const char SIZE_OF_ECALL_INSTRUCTION = 4;
 
   uint64_t syscall_id;
-  uint64_t syscall_param_0;
-  uint64_t syscall_param_1;
-  uint64_t syscall_param_2;
 
   syscall_id = context->saved_regs.a7;
 
@@ -310,12 +308,15 @@ void implement_syscall_write(struct context* context) {
 }
 
 void implement_syscall_openat(struct context* context) {
+  int dirfd = context->saved_regs.a0;
+  UNUSED_VAR(dirfd);
   // TODO: Unsafe directly used userspace string
   // Use strncpy instead
   // TODO: Check if path is a valid vaddr (!nullptr)
   const char* path = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
   int flags = context->saved_regs.a2;
   uint64_t mode = context->saved_regs.a3;
+  UNUSED_VAR(mode);
   int fd = kopen(path, flags, context->open_files, NUM_FDS);
   context->saved_regs.a0 = fd;
 }
@@ -395,7 +396,6 @@ char has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
 
 void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
   enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
-  uint64_t vpn = stval >> 12;
 
   // TODO: check if there's memory left on the machine and kill the context if this isn't the case
   bool map_successful = false;
