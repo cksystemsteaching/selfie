@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include "context.h"
+#include "tinycstd.h"
 
 // 3.1.7 mstatus - Machine status register
 // MIE, SIE and UIE enable interrupts for M-Mode, S-Mode and U-Mode, respectively
@@ -41,6 +42,7 @@ void print_unhandled_trap(struct context* context, char interrupt_bit, uint64_t 
 
 void handle_ecall(struct context* context);
 void implement_syscall_exit(struct context* context);
+void implement_syscalls_read_and_write(struct context* context, ssize_t (*kernel_func)(int, char*, size_t, FILEDESC*, size_t));
 void implement_syscall_read(struct context* context);
 void implement_syscall_write(struct context* context);
 void implement_syscall_openat(struct context* context);

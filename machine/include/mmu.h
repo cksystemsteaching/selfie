@@ -59,6 +59,11 @@ uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr);
 uint64_t paddr_to_ppn(const void* address);
 const void* ppn_to_paddr(uint64_t ppn);
 
+bool is_valid_sv39_vaddr(uint64_t vaddr);
+
+bool is_entire_buffer_valid_sv39_vaddr(uint64_t buf_vaddr, uint64_t buf_len);
+bool is_entire_buffer_mapped(struct pt_entry* table, uint64_t buf_vaddr, uint64_t buf_len);
+
 /**
  * @brief Performs an identity mapping in a page table for a given range.
  *

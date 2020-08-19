@@ -4,6 +4,13 @@
 #include "tinycstd.h"
 #include "trap.h"
 
+// Since bits 39 to 63 have to have the same value as bit 38, a vaddr is
+// invalid if 2^38 <= vaddr <= 2^64 - 2^39 - 1 = UINT64_MAX - 2^39.
+#define SV39_MIN_INVALID_VADDR (1ULL << 38)
+#define SV39_MAX_INVALID_VADDR (UINT64_MAX - (1ULL << 39))
+
+#define LOWEST_39_BITS 0x7FFFFFFFFFULL
+
 #define VPN_2_BITMASK 0x7FC0000000ULL
 #define VPN_1_BITMASK 0x3FE00000
 #define VPN_0_BITMASK 0x1FF000
@@ -117,10 +124,8 @@ bool kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_
 }
 
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
-    const uint64_t LOWEST_39_BITS = 0x7FFFFFFFFF;
-
     // RISC-V requires that for virtual addresses
-    // bites 39 to 64 have the value of bit 38
+    // bits 39 to 64 have the value of bit 38
     return ((vaddr & LOWEST_39_BITS) >> 12);
 }
 uint64_t vpn_to_vaddr(uint64_t vpn) {
@@ -162,6 +167,10 @@ uint64_t paddr_to_ppn(const void* address) {
 }
 const void* ppn_to_paddr(uint64_t ppn) {
     return (const void*)(ppn << 12);
+}
+
+bool is_valid_sv39_vaddr(uint64_t vaddr) {
+  return !(SV39_MIN_INVALID_VADDR <= vaddr && vaddr <= SV39_MAX_INVALID_VADDR);
 }
 
 void kidentity_map_range(struct pt_entry* table, const void* from, const void* to) {

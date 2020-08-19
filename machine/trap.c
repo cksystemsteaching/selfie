@@ -289,22 +289,67 @@ void implement_syscall_exit(struct context* context) {
   kill_context(context->id, KILL_CONTEXT_REASON_EXIT);
 }
 
-void implement_syscall_read(struct context* context) {
-  // TODO: Check if buf is a valid vaddr (!nullptr)
+void implement_syscalls_read_and_write(struct context* context, ssize_t (*kernel_func)(int, char*, size_t, FILEDESC*, size_t)) {
+  // Here we can use a modified version of selfie's algorithm.
+
+  // parameters
   int fd = context->saved_regs.a0;
-  char* buf = (char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
-  size_t count = context->saved_regs.a2;
-  intmax_t read = kread(fd, buf, count, context->open_files, NUM_FDS);
-  context->saved_regs.a0 = read;
+  uint64_t vbuffer = context->saved_regs.a1;
+  size_t size = context->saved_regs.a2;
+
+  // local variables
+  ssize_t read_or_written_total = 0;
+  size_t bytes_to_read_or_write = sizeof(uint64_t);
+  bool failed = false;
+  char* buffer;
+  ssize_t actually_read_or_written;
+
+  while (size > 0) {
+    if (size < bytes_to_read_or_write)
+      bytes_to_read_or_write = size;
+
+    if (is_valid_sv39_vaddr(vbuffer)
+        && (determine_memory_access_type(&context->legal_memory_boundaries, vbuffer) == memory_access_type_lo
+          || determine_memory_access_type(&context->legal_memory_boundaries, vbuffer) == memory_access_type_mid)) {
+      buffer = (char*) vaddr_to_paddr(context->pt, vbuffer);
+
+      actually_read_or_written = kernel_func(fd, buffer, bytes_to_read_or_write, context->open_files, NUM_FDS);
+
+      // Despite both of them having a different signedness, it is ok to compare
+      // the two variables since bytes_to_read always is sizeof(uint64_t) or less.
+      if ((size_t) actually_read_or_written == bytes_to_read_or_write) {
+        read_or_written_total += actually_read_or_written;
+
+        size -= actually_read_or_written;
+
+        if (size > 0)
+          vbuffer += sizeof(uint64_t);
+      } else {
+        if (0 < actually_read_or_written)
+          read_or_written_total += actually_read_or_written;
+
+        size = 0;
+      }
+    } else {
+      failed = true;
+
+      break;
+    }
+  }
+
+  if (failed)
+    context->saved_regs.a0 = -1;
+  else
+    context->saved_regs.a0 = read_or_written_total;
+}
+
+void implement_syscall_read(struct context* context) {
+  implement_syscalls_read_and_write(context, &kread);
 }
 
 void implement_syscall_write(struct context* context) {
-  // TODO: Check if buf is a valid vaddr (!nullptr)
-  int fd = context->saved_regs.a0;
-  const char* buf = (const char*) vaddr_to_paddr(context->pt, context->saved_regs.a1);
-  size_t count = context->saved_regs.a2;
-  intmax_t written = kwrite(fd, buf, count, context->open_files, NUM_FDS);
-  context->saved_regs.a0 = written;
+  // Sadly we have to decide between a compiler warning and duplicating 50 LOC. :(
+  implement_syscalls_read_and_write(context, &kwrite);
 }
 
 void implement_syscall_openat(struct context* context) {
