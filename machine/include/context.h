@@ -61,8 +61,7 @@ struct context {
   uint64_t program_break;
   struct registers saved_regs;
   struct memory_boundaries legal_memory_boundaries;
-  FILEDESC open_files[32];
-  // TODO: all the other stuff
+  FILEDESC open_files[NUM_FDS];
 };
 
 extern struct context kernel_context;
