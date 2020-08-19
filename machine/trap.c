@@ -380,7 +380,7 @@ void implement_syscall_brk(struct context* context) {
 
   previous_program_break = context->program_break;
 
-  valid = (program_break >= previous_program_break && program_break < context->saved_regs.sp); // TODO: selfie also checks here if the new program break is 64bit-aligned but we're more independent of selfie if we don't do this
+  valid = (program_break >= previous_program_break && program_break < context->saved_regs.sp); // selfie also checks here if the new program break is 64bit-aligned but we're more independent of selfie if we don't do this
 
   if (valid)
     context->program_break = program_break;
