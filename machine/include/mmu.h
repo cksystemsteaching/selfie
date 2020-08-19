@@ -103,6 +103,9 @@ void kswitch_active_pt(struct pt_entry* table, uint16_t asid);
 
 void kinit_page_pool();
 
+
+void kfree_page_table(struct pt_entry* root);
+
 extern uint64_t ppn_bump;
 
 #endif /* KERN_MMU */

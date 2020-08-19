@@ -314,5 +314,37 @@ void kinit_page_pool() {
   used_pages = 0;
 }
 
+// kfree_page_table is intentionally not a recursive function
+void kfree_page_table(struct pt_entry* root) {
+  // Free attached pages and tree nodes
+  for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
+    if (!root[vpn_2].v)
+      continue;
+
+    struct pt_entry* mid_pt = retrieve_pt_entry_from_table(root, vpn_2);
+
+    for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
+      if (!mid_pt[vpn_1].v)
+        continue;
+
+      struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
+
+      for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
+        if (!leaf_pt[vpn_0].v)
+          continue;
+
+        kpfree(leaf_pt[vpn_0].ppn);
+      }
+
+      kpfree(paddr_to_ppn(leaf_pt));
+    }
+
+    kpfree(paddr_to_ppn(mid_pt));
+  }
+
+  // Free page table itself
+  kpfree(paddr_to_ppn(root));
+}
+
 __attribute__((aligned(4096)))
 struct pt_entry kernel_pt[512];
