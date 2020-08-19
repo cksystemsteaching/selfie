@@ -280,7 +280,7 @@ void handle_ecall(struct context* context) {
 }
 
 void implement_syscall_exit(struct context* context) {
-  int64_t exit_code;
+  int exit_code;
 
   exit_code = context->saved_regs.a0;
 
