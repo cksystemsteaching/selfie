@@ -115,15 +115,3 @@ int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds)
 
   return fd;
 }
-
-
-void* kmalloc(unsigned long long size, void** heap_head) {
-  void* return_ptr;
-
-  return_ptr = *heap_head;
-  *heap_head += size;
-
-  printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, *heap_head);
-
-  return return_ptr;
-}

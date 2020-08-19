@@ -21,8 +21,17 @@ uint64_t open(char* filename, uint64_t flags, uint64_t mode) {
   return kopen(filename, flags, open_files, NUM_FDS);
 }
 
+
+
 void* malloc(unsigned long long size) {
-  return kmalloc(size, &heap_head);    
+  void* return_ptr;
+
+  return_ptr = heap_head;
+  heap_head += size;
+
+  printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, heap_head);
+
+  return return_ptr;
 }
 
 extern void _start_hang();

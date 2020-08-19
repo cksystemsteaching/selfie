@@ -7,7 +7,6 @@
 ssize_t kread(int fd, char* buf, size_t count, FILEDESC* open_files, size_t num_fds);
 ssize_t kwrite(int fd, const char* buf, size_t count, FILEDESC* open_files, size_t num_fds);
 int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds);
-void* kmalloc(unsigned long long size, void** heap_head); /* TODO: Not a syscall */
 
 
 #endif /* KERN_SYSCALL */
