@@ -84,10 +84,11 @@ int printf(const char* format, ...) {
   va_list args;
   va_start(args, format);
 
-  va_printf(format, args);
+  int result = va_printf(format, args);
 
   va_end(args);
 
+  return result;
 }
 int va_printf(const char* format, va_list args) {
     int written = 0;
