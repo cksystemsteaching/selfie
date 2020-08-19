@@ -43,6 +43,19 @@ uint64_t kpalloc();
  * @return  The physical page number (paddr / 2^12) of the next free page
  */
 uint64_t kzalloc();
+/**
+ * @brief Frees a PPN, to be reused
+ *
+ * Tells the memory manager that a page is not in use anymore and may be reallocated again
+ * on a call to kpalloc. The page is attached to a free page linked list as head, with the
+ * first dword pointing to the previous linked list head (->next).
+ *
+ * @warning Make absolutely sure to not have any referenced to the page anymore.
+ * @warning Especially writing to the first dword will break the mechanism.
+ *
+ * @param ppn The PPN to free
+ */
+void kpfree(uint64_t ppn);
 
 void kzero_page(uint64_t vpn);
 

@@ -3,6 +3,7 @@
 #include "context.h"
 #include "tinycstd.h"
 #include "trap.h"
+#include <stdint.h>
 
 // Since bits 39 to 63 have to have the same value as bit 38, a vaddr is
 // invalid if 2^38 <= vaddr <= 2^64 - 2^39 - 1 = UINT64_MAX - 2^39.
@@ -38,24 +39,40 @@ uint64_t create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, c
 
 uint64_t ppn_bump;
 uint64_t used_pages = 0;
+uint64_t free_list_head = 0;
 uint64_t kpalloc() {
-    // page allocation is the only form of dynamic memory allocation in this kernel
+  // page allocation is the only form of dynamic memory allocation in this kernel
 
-    // Check for free pages in the page pool
-    if (used_pages >= PAGE_POOL_NUM_PAGES)
-      return 0;
+  // At first check for freed pages in the free pages linked list
+  if (free_list_head != 0) {
+    // We got a freed page to reallocate
+    uint64_t ppn = free_list_head;
+    uint64_t* next = (uint64_t*)ppn_to_paddr(ppn);
+    free_list_head = *next;
 
-    kernel_context.program_break = ppn_bump;
-    kernel_context.legal_memory_boundaries.highest_lo_page = ppn_bump;
+    return ppn;
+  }
 
-    used_pages++;
-    return ppn_bump++;
+  // Check for free pages in the page pool
+  if (used_pages >= PAGE_POOL_NUM_PAGES)
+    return 0;
+
+  kernel_context.program_break = ppn_bump;
+  kernel_context.legal_memory_boundaries.highest_lo_page = ppn_bump;
+
+  used_pages++;
+  return ppn_bump++;
 }
 uint64_t kzalloc() {
     uint64_t ppn = kpalloc();
     if (ppn != 0)
       kzero_page(ppn);
     return ppn;
+}
+void kpfree(uint64_t ppn) {
+  uint64_t* next = (uint64_t*)ppn_to_paddr(ppn);
+  *next = free_list_head;
+  free_list_head = ppn;
 }
 
 void kzero_page(uint64_t vpn) {
