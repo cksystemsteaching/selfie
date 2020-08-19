@@ -1,9 +1,9 @@
+#include "diag.h"
 #include "mmu.h"
 #include "config.h"
 #include "context.h"
 #include "tinycstd.h"
 #include "trap.h"
-#include <stdint.h>
 
 // Since bits 39 to 63 have to have the same value as bit 38, a vaddr is
 // invalid if 2^38 <= vaddr <= 2^64 - 2^39 - 1 = UINT64_MAX - 2^39.
@@ -316,6 +316,9 @@ void kinit_page_pool() {
 
 // kfree_page_table is intentionally not a recursive function
 void kfree_page_table(struct pt_entry* root) {
+  assert(root != kernel_pt);
+  assert(root != NULL);
+
   // Free attached pages and tree nodes
   for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
     if (!root[vpn_2].v)
