@@ -21,7 +21,7 @@
 #define CSR_SIE_SOFTWARE_INTS   1
 #define CSR_UIE_SOFTWARE_INTS   0
 
-typedef void (*trap_handler_t)(/* TODO: Context struct */);
+typedef void (*trap_handler_t)();
 
 void disable_smode_interrupts();
 void enable_smode_interrupts();
