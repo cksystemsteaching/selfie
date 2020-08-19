@@ -6,6 +6,7 @@
 #include "elf.h"
 #include "linker-syms.h"
 #include "mmu.h"
+#include "numeric-utils.h"
 #include "tinycstd.h"
 #include "trap.h"
 
@@ -17,6 +18,7 @@ void early_init() {
 
 // =============================================================================
 
+void assert_state();
 void setup_kernel_context(uint64_t lowest_lo_page,  uint64_t highest_lo_page,
                           uint64_t lowest_mid_page, uint64_t highest_mid_page,
                           uint64_t lowest_hi_page,  uint64_t highest_hi_page);
@@ -24,8 +26,10 @@ void setup_kernel_pt();
 void setup_trap_handler();
 void move_sp_to_upper_half();
 void kernel_environ_init() {
-  // TODO: Assert trampoline positioning on page boundary
+  // Perform initial assertions to ensure a well-defined entry state
+  assert_state();
 
+  // Begin the actual set-up procedure
   puts("Setting up kernel page table...\n");
   uint64_t kern_start = paddr_to_ppn(&_payload_start);
   uint64_t kern_end = paddr_to_ppn(&_payload_end);
@@ -67,6 +71,18 @@ int start_init_process(uint64_t argc, const char** argv) {
 }
 
 // =============================================================================
+
+void assert_state() {
+  // Assert alignment of trap function (physical) and trampoline address (virtual)
+  // According to the priviledged architecture manual, 3.1.7 mtvec, the BASE field
+  // must be aligned on a 4-byte boundary because the lower two bits represent the
+  // trap vector mode.
+  assert(IS_ALIGNED(TRAMPOLINE_VADDR, 2));
+  assert(IS_ALIGNED((uint64_t)trap_handler_wrapper, 2));
+
+  // Kernel page table must be page-aligned (4KiB -> 2^12)
+  assert(IS_ALIGNED((uint64_t)kernel_pt, 12));
+}
 
 void setup_kernel_context(uint64_t lowest_lo_page,  uint64_t highest_lo_page,
                           uint64_t lowest_mid_page, uint64_t highest_mid_page,
