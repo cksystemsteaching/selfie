@@ -444,7 +444,6 @@ char has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
 void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
   enum memory_access_type memory_access_type = determine_memory_access_type(&context->legal_memory_boundaries, stval);
 
-  // TODO: check if there's memory left on the machine and kill the context if this isn't the case
   bool map_successful = false;
 
   switch (memory_access_type) {
