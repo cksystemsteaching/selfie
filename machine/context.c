@@ -52,7 +52,6 @@ struct context* kallocate_context() {
 }
 
 void kinit_context(struct context* context) {
-  // TODO: Check whether a page table has already been allocated
   context->pt = (struct pt_entry*)ppn_to_paddr(kzalloc());
   context->saved_regs.ra  = 0;
   context->saved_regs.sp  = USERSPACE_STACK_START;
@@ -142,13 +141,15 @@ void kfree_context(uint64_t context_id) {
   context_manager->is_used = 0;
   --num_of_used_contexts;
 
+  kfree_page_table(context_manager->context.pt);
+  context_manager->context.pt = NULL;
+
 #ifdef DEBUG
   printf("freed context %u\n", context_id);
 #endif /* DEBUG */
 
-  if (num_of_used_contexts == 0) {
+  if (num_of_used_contexts == 0)
     panic("all processes are dead");
-  }
 
   context_manager->prev_scheduled->next_scheduled = context_manager->next_scheduled;
   context_manager->next_scheduled->prev_scheduled = context_manager->prev_scheduled;
