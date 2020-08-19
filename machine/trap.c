@@ -308,9 +308,7 @@ void implement_syscalls_read_and_write(struct context* context, ssize_t (*kernel
     if (size < bytes_to_read_or_write)
       bytes_to_read_or_write = size;
 
-    if (is_valid_sv39_vaddr(vbuffer)
-        && (determine_memory_access_type(&context->legal_memory_boundaries, vbuffer) == memory_access_type_lo
-          || determine_memory_access_type(&context->legal_memory_boundaries, vbuffer) == memory_access_type_mid)) {
+    if (is_valid_sv39_vaddr(vbuffer) && is_vaddr_mapped(context->pt, vbuffer)) {
       buffer = (char*) vaddr_to_paddr(context->pt, vbuffer);
 
       actually_read_or_written = kernel_func(fd, buffer, bytes_to_read_or_write, context->open_files, NUM_FDS);
