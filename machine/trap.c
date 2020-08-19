@@ -367,6 +367,8 @@ void implement_syscall_openat(struct context* context) {
 }
 
 void implement_syscall_brk(struct context* context) {
+  // basically selfie's algorithm
+
   // syscall parameter
   uint64_t program_break;
 
