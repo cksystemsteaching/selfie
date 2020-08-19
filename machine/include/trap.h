@@ -52,7 +52,7 @@ enum memory_access_type {
     memory_access_type_mid,
     memory_access_type_hi
 };
-enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t address);
+enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t vaddr);
 
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval);
 void handle_load_page_fault(struct context* context, uint64_t stval);

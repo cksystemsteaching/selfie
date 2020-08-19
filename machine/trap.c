@@ -347,8 +347,8 @@ void implement_syscall_brk(struct context* context) {
 #endif /* DEBUG */
 }
 
-enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t address) {
-    uint64_t page_number = address >> 12;
+enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t vaddr) {
+    uint64_t page_number = vaddr_to_vpn(vaddr);
 
     if (legal_memory_boundaries->lowest_lo_page <= page_number && page_number <= legal_memory_boundaries->highest_lo_page)
         return memory_access_type_lo;
