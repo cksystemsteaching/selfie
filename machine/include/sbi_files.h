@@ -1,10 +1,12 @@
 #ifndef SBI_FILES_BASE
 #define SBI_FILES_BASE
 
+#include "config.h"
+
 #include <stddef.h>
 
 typedef struct KFILE {
-    const char name[512];
+    const char name[PATH_MAX_LEN];
     const char* data;
     size_t length;
 } KFILE;
