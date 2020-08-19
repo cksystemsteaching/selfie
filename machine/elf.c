@@ -1,5 +1,7 @@
+#include "diag.h"
 #include "elf.h"
 #include "mmu.h"
+#include "numeric-utils.h"
 #include "tinycstd.h"
 
 // https://refspecs.linuxbase.org/elf/elf.pdf
@@ -86,7 +88,8 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
         if (segmentEnd > len)
             return EOOB;
 
-        // TODO: Check alignment
+        // Check alignment on page boundaries
+        assert(IS_ALIGNED(pheader[i].vaddr, 12));
 
         // Copy segment page-wise
         // Add PAGESIZE-1 for rounding up without using floating points.
