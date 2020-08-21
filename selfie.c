@@ -97,9 +97,9 @@ uint64_t open(char* filename, uint64_t flags, uint64_t mode);
 // selfie bootstraps void* to uint64_t* and unsigned to uint64_t!
 void* malloc(unsigned long);
 
-// Bootstrapped to actual functions during compilation, not available on bootslevel 0 - only for compilation
-uint64_t fetch_stackpointer()     { return 0; }
-uint64_t fetch_datasegment_size() { return 0; }
+// Bootstrapped to actual functions during compilation, not available on bootlevel 0 - only for compilation
+uint64_t fetch_stack_pointer()     { return 0; }
+uint64_t fetch_data_segment_size() { return 0; }
 
 // -----------------------------------------------------------------
 // ----------------------- LIBRARY PROCEDURES ----------------------
@@ -272,7 +272,7 @@ uint64_t output_fd   = 1; // 1 is file descriptor of standard output
 char*    output_buffer = (char*) 0;
 uint64_t output_cursor = 0; // cursor for output buffer
 
-uint64_t gc_original_program_break = 0;
+uint64_t gc_library_program_break = 0;
 
 // ------------------------- INITIALIZATION ------------------------
 
@@ -280,7 +280,7 @@ void init_library() {
   uint64_t i;
 
   // Save original program break (used by garbage collector library)
-  gc_original_program_break = (uint64_t)smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
+  gc_library_program_break = (uint64_t)smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
 
   SELFIE_URL = "http://selfie.cs.uni-salzburg.at";
 
@@ -687,8 +687,8 @@ void emit_program_entry();
 void emit_bootstrapping();
 
 // Garbage Collector Bounds Fetcher
-void      emit_fetch_stackpointer();
-uint64_t* emit_fetch_datasegment_size();
+void      emit_fetch_stack_pointer();
+uint64_t* emit_fetch_data_segment_size();
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -1137,6 +1137,14 @@ void init_memory(uint64_t megabytes) {
 uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context);
 uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context);
 
+// Library ... 1, Syscall ... 0
+uint64_t gc_is_library_or_syscall(uint64_t* context) {
+  if(context == (uint64_t*) 0)
+    return 1;
+  else
+    return 0;
+}
+
 // metadata entry:
 // +----+---------+
 // |  0 | next    | pointer to next entry
@@ -1168,7 +1176,7 @@ uint64_t* free_list_extract(uint64_t* free_list_head_pointer, uint64_t* used_lis
 
 uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address);
 
-uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_t heap_break, uint64_t heap_bump);
+uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_t heap_start, uint64_t heap_end);
 
 void prepare_mark(uint64_t* used_list_head);
 
@@ -1176,7 +1184,24 @@ void prepare_mark(uint64_t* used_list_head);
 void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context);
 uint64_t gc_load_memory(uint64_t address, uint64_t* pt);
 
-void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_break, uint64_t heap_bump);
+// Get functions for properties with different access in lib/syscall
+uint64_t* get_used_list_head_gc(uint64_t* context);
+uint64_t* get_free_list_head_gc(uint64_t* context);
+uint64_t* get_pt_gc(uint64_t* context);
+uint64_t  get_stack_start(uint64_t* context);
+uint64_t  get_ds_start(uint64_t* context);
+uint64_t  get_ds_end(uint64_t* context);
+uint64_t  get_heap_start_gc(uint64_t* context); // ..._gc name subject to be changed
+uint64_t  get_heap_end_gc(uint64_t* context);
+uint64_t  get_gc_enabled_gc(uint64_t* context);
+
+void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
+void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
+void set_heap_start_gc(uint64_t* context, uint64_t heap_start); // todog: those might be unnecessary
+void set_heap_end_gc(uint64_t* context, uint64_t heap_end);
+void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
+
+void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end);
 void mark(uint64_t* context);
 
 // Note: assuming object is put on top of stack; free_list_head_pointer is pointer to pointer to first free list entry
@@ -1218,11 +1243,11 @@ uint64_t GCLIBRARY  = 2;
 uint64_t* gc_used_list = (uint64_t*)0; // pointer to pointer to used list head
 uint64_t* gc_free_list = (uint64_t*)0; // pointer to pointer to free list head
 
-uint64_t non_gc_heap_break = 0;
+uint64_t non_gc_heap_start = 0;
 uint64_t non_gc_heap_bump  = 0;
 
-uint64_t gc_heap_break = 0;
-uint64_t gc_heap_bump  = 0;
+uint64_t gc_heap_start = 0;
+uint64_t gc_heap_end  = 0;
 
 uint64_t use_garbage_collector = 0; // which variant of gc is used
 
@@ -1641,8 +1666,8 @@ uint64_t* delete_context(uint64_t* context, uint64_t* from);
 // | 18 | name            | binary name loaded into context
 // | 19 | used list head  | pointer to pointer to the head of the used list
 // | 20 | free list head  | pointer to pointer to the head of the free list
-// | 21 | heap break      | lower bound of gc managed heap
-// | 22 | heap bump       | upper bound of gc managed heap
+// | 21 | heap start      | lower bound of gc managed heap
+// | 22 | heap end        | upper bound of gc managed heap
 // | 23 | gc enabled      | flag indicating whether to use gc or not
 // +----+-----------------+
 
@@ -1674,8 +1699,8 @@ uint64_t name(uint64_t* context)            { return (uint64_t) (context + 18); 
 
 uint64_t used_list_head(uint64_t* context)  { return (uint64_t) (context + 19); }
 uint64_t free_list_head(uint64_t* context)  { return (uint64_t) (context + 20); }
-uint64_t heap_break(uint64_t* context)      { return (uint64_t) (context + 21); }
-uint64_t heap_bump(uint64_t* context)       { return (uint64_t) (context + 22); }
+uint64_t heap_start(uint64_t* context)      { return (uint64_t) (context + 21); }
+uint64_t heap_end(uint64_t* context)       { return (uint64_t) (context + 22); }
 uint64_t gc_enabled(uint64_t* context)      { return (uint64_t) (context + 23); }
 
 uint64_t* get_next_context(uint64_t* context)    { return (uint64_t*) *context; }
@@ -1700,8 +1725,8 @@ char*     get_name(uint64_t* context)            { return (char*)     *(context 
 
 uint64_t* get_used_list_head(uint64_t* context)  { return (uint64_t*) *(context + 19); }
 uint64_t* get_free_list_head(uint64_t* context)  { return (uint64_t*) *(context + 20); }
-uint64_t  get_heap_break(uint64_t* context)      { return             *(context + 21); }
-uint64_t  get_heap_bump(uint64_t* context)       { return             *(context + 22); }
+uint64_t  get_heap_start(uint64_t* context)      { return             *(context + 21); }
+uint64_t  get_heap_end(uint64_t* context)       { return             *(context + 22); }
 uint64_t  get_gc_enabled(uint64_t* context)      { return             *(context + 23); }
 
 void set_next_context(uint64_t* context, uint64_t* next)      { *context        = (uint64_t) next; }
@@ -1726,8 +1751,8 @@ void set_name(uint64_t* context, char* name)                  { *(context + 18) 
 
 void set_used_list_head(uint64_t* context, uint64_t* used_list_head) { *(context + 19) = (uint64_t)used_list_head; }
 void set_free_list_head(uint64_t* context, uint64_t* free_list_head) { *(context + 20) = (uint64_t)free_list_head; }
-void set_heap_break(uint64_t* context, uint64_t heap_break)          { *(context + 21) = heap_break; }
-void set_heap_bump(uint64_t* context, uint64_t heap_bump)            { *(context + 22) = heap_bump; }
+void set_heap_start(uint64_t* context, uint64_t heap_start)          { *(context + 21) = heap_start; }
+void set_heap_end(uint64_t* context, uint64_t heap_end)            { *(context + 22) = heap_end; }
 void set_gc_enabled(uint64_t* context, uint64_t gc_enabled)          { *(context + 23) = gc_enabled; }
 
 // -----------------------------------------------------------------
@@ -5131,15 +5156,15 @@ void emit_bootstrapping() {
   binary_length = code_length;
 }
 
-void emit_fetch_stackpointer() {
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stackpointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
+void emit_fetch_stack_pointer() {
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_stack_pointer", 0, PROCEDURE, UINT64_T, 0, binary_length);
 
   emit_add(REG_A0, REG_ZR, REG_SP);
 
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t* emit_fetch_datasegment_size() {
+uint64_t* emit_fetch_data_segment_size() {
   uint64_t* entry;
   uint64_t offset;
   uint64_t lower;
@@ -5150,7 +5175,7 @@ uint64_t* emit_fetch_datasegment_size() {
   number_of_global_variables = number_of_global_variables - 1;
   entry = search_global_symbol_table(string_copy("_dslen"), VARIABLE);
 
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_datasegment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
   offset = get_address(entry);
 
   if (is_signed_integer(offset, 12))
@@ -5222,8 +5247,8 @@ void selfie_compile() {
   } else
     emit_malloc();
 
-  emit_fetch_stackpointer();
-  entry = emit_fetch_datasegment_size();
+  emit_fetch_stack_pointer();
+  entry = emit_fetch_data_segment_size();
 
   emit_switch();
 
@@ -6879,7 +6904,7 @@ void implement_gc_free(uint64_t* context) {
   if (metadata_of_pointer == used_list_head)
     *(get_used_list_head(context)) = (uint64_t)get_metadata_next(metadata_of_pointer);
 
-  if (is_valid_gc_pointer(used_list_head, ptr, get_heap_break(context), get_heap_bump(context)))
+  if (is_valid_gc_pointer(used_list_head, ptr, get_heap_start(context), get_heap_end(context)))
     free_and_zero_object(metadata_of_pointer, get_free_list_head(context), context);
 
   set_pc(context, get_pc(context) + INSTRUCTIONSIZE);
@@ -7185,7 +7210,7 @@ uint64_t* get_pointer_of_address(uint64_t* used_list_head, uint64_t address) {
   return (uint64_t*)0;
 }
 
-uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_t heap_break, uint64_t heap_bump) {
+uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_t heap_start, uint64_t heap_end) {
   uint64_t* pointer_of_address;
 
   // only a multiple of 8 is a valid address
@@ -7193,11 +7218,11 @@ uint64_t is_valid_gc_pointer(uint64_t* used_list_head, uint64_t address, uint64_
     return 0;
 
   // pointer below bounds
-  if (address < heap_break)
+  if (address < heap_start)
     return 0;
 
   // pointer above bounds
-  if (address >= heap_bump)
+  if (address >= heap_end)
     return 0;
 
   pointer_of_address = get_pointer_of_address(used_list_head, address);
@@ -7219,7 +7244,7 @@ void prepare_mark(uint64_t* used_list_head) {
 }
 
 void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
-  if (context == (uint64_t*)0)
+  if (gc_is_library_or_syscall(context))
     *((uint64_t*)address) = value;
   else
     store_virtual_memory(get_pt(context), address, value);
@@ -7236,11 +7261,11 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
   uint64_t bump;
   uint64_t saved_a0;
 
-  if (context == (uint64_t*)0) {
+  if (gc_is_library_or_syscall(context)) {
     bump = (uint64_t)smalloc_implementation(size, ALLOCATORSYSTEM);
 
     if (bump != 0)
-      gc_heap_bump = bump + size; 
+      gc_heap_end = bump + size; 
 
     return (uint64_t*)bump;
   } else {
@@ -7260,15 +7285,15 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
       if (size != 0)
         bump = 0;
       else
-        set_heap_bump(context, get_heap_bump(context) + size);
+        set_heap_end(context, get_heap_end(context) + size);
     } else
-      set_heap_bump(context, get_heap_bump(context) + size);
+      set_heap_end(context, get_heap_end(context) + size);
 
     // Restore A0
     *(get_regs(context) + REG_A0) = saved_a0;
 
     // Touch and zero memory. Note: This emulates selfie's behaviour of allocating pages and
-    // setting their content to zero on bootslevel 1 and above. This can be done by map_and_store'ing
+    // setting their content to zero on bootlevel 1 and above. This can be done by map_and_store'ing
     // the first address of each newly allocated page
     if (bump != 0) {
       // assert: previous page already touched
@@ -7305,13 +7330,108 @@ uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
   }
 }
 
-void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_break, uint64_t heap_bump) {
+uint64_t* get_used_list_head_gc(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return gc_used_list;
+  else
+    return get_used_list_head(context);
+}
+
+uint64_t* get_free_list_head_gc(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return gc_free_list;
+  else
+    return get_free_list_head(context);
+}
+
+uint64_t* get_pt_gc(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return (uint64_t*)0;
+  else
+    return get_pt(context);
+}
+
+uint64_t get_stack_start(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return fetch_stack_pointer();
+  else
+    return *(get_regs(context) + REG_SP);
+}
+
+uint64_t get_ds_start(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return gc_library_program_break - fetch_data_segment_size();
+  else
+    return get_data_segment(context) - gc_load_memory(get_ds_end(context), get_pt(context));
+}
+
+uint64_t get_ds_end(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return gc_library_program_break - SIZEOFUINT64;
+  else
+    return get_data_segment(context) - SIZEOFUINT64;
+}
+
+uint64_t get_heap_start_gc(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return gc_heap_start;
+  else
+    return get_heap_start(context);
+}
+
+uint64_t get_heap_end_gc(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return gc_heap_end;
+  else
+    return get_heap_end(context);
+}
+
+uint64_t get_gc_enabled_gc(uint64_t* context) {
+  if (gc_is_library_or_syscall(context))
+    return gc_library_enabled;
+  else
+    return get_gc_enabled(context);
+}
+
+void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head) {
+  if (gc_is_library_or_syscall(context))
+    gc_used_list = used_list_head;
+  else
+    set_used_list_head(context, used_list_head);
+}
+void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head) {
+  if (gc_is_library_or_syscall(context))
+    gc_free_list = free_list_head;
+  else
+    set_free_list_head(context, free_list_head);
+}
+void set_heap_start_gc(uint64_t* context, uint64_t heap_start) {
+  if (gc_is_library_or_syscall(context))
+    gc_heap_start = heap_start;
+  else
+    set_heap_start(context, heap_start);
+}
+void set_heap_end_gc(uint64_t* context, uint64_t heap_end) {
+  if (gc_is_library_or_syscall(context))
+    gc_heap_end = heap_end;
+  else
+    set_heap_end(context, heap_end);
+}
+
+void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled) {
+  if (gc_is_library_or_syscall(context))
+    gc_library_enabled = gc_enabled;
+  else
+    set_gc_enabled(context, gc_enabled);
+}
+
+void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end) {
   uint64_t current_word;
 
   while (segment_beg < segment_end) {
     current_word = gc_load_memory(segment_beg, pt);
 
-    if (is_valid_gc_pointer(used_list_head, current_word, heap_break, heap_bump) == 1)
+    if (is_valid_gc_pointer(used_list_head, current_word, heap_start, heap_end) == 1)
       set_metadata_markbit(get_pointer_of_address(used_list_head, current_word), 1);
 
     segment_beg = segment_beg + SIZEOFUINT64;
@@ -7321,37 +7441,21 @@ void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint
 void mark(uint64_t* context) {
   uint64_t* used_list_head;
   uint64_t* pt;
-  uint64_t stack_bump; // stack pointer
-  uint64_t stack_break; // actually upper bound of memory, since stack grows downwards
-  uint64_t heap_break;
-  uint64_t heap_bump;
-  uint64_t ds_break;
-  uint64_t ds_bump; // Since the last entry in the datasegment is always the datasegment size, their address is actually the bump.
+  uint64_t stack_start;
+  uint64_t stack_end;
+  uint64_t heap_start;
+  uint64_t heap_end;
+  uint64_t ds_start;
+  uint64_t ds_end;
 
-  stack_break = VIRTUALMEMORYSIZE; // constant for now
-  if (context == (uint64_t*)0) {
-    used_list_head = gc_used_list;
-    pt = (uint64_t*)0;
-
-    stack_bump = fetch_stackpointer();
-
-    heap_break = gc_heap_break;
-    heap_bump = gc_heap_bump;
-
-    ds_bump = gc_original_program_break - SIZEOFUINT64;
-    ds_break = gc_original_program_break - fetch_datasegment_size();
-  } else {
-    used_list_head = get_used_list_head(context);
-    pt = get_pt(context);
-
-    stack_bump = *(get_regs(context) + REG_SP);
-
-    heap_break = get_heap_break(context);
-    heap_bump = get_heap_bump(context);
-
-    ds_bump = get_data_segment(context) - SIZEOFUINT64;
-    ds_break = get_data_segment(context) - gc_load_memory(ds_bump, get_pt(context));
-  }
+  used_list_head = get_used_list_head_gc(context);
+  pt = get_pt_gc(context);
+  stack_start = get_stack_start(context);
+  stack_end = VIRTUALMEMORYSIZE; // constant for now
+  heap_start = get_heap_start_gc(context);
+  heap_end = get_heap_end_gc(context);
+  ds_start = get_ds_start(context);
+  ds_end = get_ds_end(context);
 
   if (used_list_head != (uint64_t*)0)
     used_list_head = (uint64_t*)*(used_list_head);
@@ -7365,13 +7469,13 @@ void mark(uint64_t* context) {
   //         This can be assumed, since selfie saves all relevant temporary register on stack as a part of procedure_prologue().
 
   // Traverse Call Stack
-  mark_segment(stack_bump, stack_break, pt, used_list_head, heap_break, heap_bump);
+  mark_segment(stack_start, stack_end, pt, used_list_head, heap_start, heap_end);
 
   // Traverse Heap
-  mark_segment(heap_break, heap_bump, pt, used_list_head, heap_break, heap_bump);
+  mark_segment(heap_start, heap_end, pt, used_list_head, heap_start, heap_end);
 
   // Traverse Data Segment
-  mark_segment(ds_break, ds_bump, pt, used_list_head, heap_break, heap_bump);
+  mark_segment(ds_start, ds_end, pt, used_list_head, heap_start, heap_end);
 }
 
 void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_pointer, uint64_t* context) {
@@ -7419,36 +7523,27 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
 void gc_init_implementation(uint64_t* context) {
   uint64_t program_break;
 
-  if (context == (uint64_t*)0) {
-    // assert: required libraries have been initialised
+  set_used_list_head_gc(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
+  zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
 
-    gc_used_list = smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
-    zero_memory(gc_used_list, SIZEOFUINT64);
-
-    gc_free_list = smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
-    zero_memory(gc_free_list, SIZEOFUINT64);
-
-    non_gc_heap_break = (uint64_t)smalloc_implementation(NONGCHEAPSIZE, ALLOCATORSYSTEM);
+  set_free_list_head_gc(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
+  zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
+  
+  if (gc_is_library_or_syscall(context)) {
+    non_gc_heap_start = (uint64_t)smalloc_implementation(NONGCHEAPSIZE, ALLOCATORSYSTEM);
     zero_memory((uint64_t*)gc_used_list, SIZEOFUINT64);
 
-    non_gc_heap_bump = non_gc_heap_break;
+    non_gc_heap_bump = non_gc_heap_start;
 
-    // assert: NONGCHEAPSIZE is a multiple of 8 and not 0
-
-    gc_heap_break = non_gc_heap_break + NONGCHEAPSIZE;
-    gc_heap_bump = gc_heap_break;
-
-    gc_library_enabled = 1;
+    gc_heap_start = non_gc_heap_start + NONGCHEAPSIZE;
+    gc_heap_end = gc_heap_start;
   } else {
-    set_used_list_head(context, zalloc(SIZEOFUINT64));
-    set_free_list_head(context, zalloc(SIZEOFUINT64));
-
     program_break = get_program_break(context);
-    set_heap_break(context, program_break);
-    set_heap_bump(context, program_break);
-
-    set_gc_enabled(context, 1);
+    set_heap_start(context, program_break);
+    set_heap_end(context, program_break);
   }
+
+  set_gc_enabled_gc(context, 1);
 }
 
 uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
@@ -7457,16 +7552,11 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   uint64_t* used_list_head_ptr;
 
   // Allocator automatically checks if it has been initialised
-  if (context == (uint64_t*)0) {
-    if (gc_library_enabled == 0)
-      gc_init();
-  } else {
-    if (get_gc_enabled(context) == 0)
-      gc_init_implementation(context);
-  }
+  if(get_gc_enabled_gc(context) == 0)
+    gc_init_implementation(context);
 
   // Check if memory is in free list
-  if (context == (uint64_t*)0)
+  if (gc_is_library_or_syscall(context))
     ret = free_list_extract(gc_free_list, gc_used_list, size);
   else
     ret = free_list_extract(get_free_list_head(context), get_used_list_head(context), size);
@@ -7475,10 +7565,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
     return get_metadata_pointer(ret);
 
   // Try collecting and recheck
-  if (context == (uint64_t*)0)
-    gc_collect_implementation((uint64_t*)0);
-  else
-    gc_collect_implementation(context);
+  gc_collect_implementation(context);
 
   if (ret != (uint64_t*)0)
     return get_metadata_pointer(ret);
@@ -7487,10 +7574,7 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   ret = gc_alloc_memory(size, context);
   metadata = allocate_metadata_entry(context);
 
-  if (context == (uint64_t*)0)
-    used_list_head_ptr = gc_used_list;
-  else
-    used_list_head_ptr = get_used_list_head(context);
+  used_list_head_ptr = get_used_list_head_gc(context);
 
   if (*used_list_head_ptr != 0)
     set_metadata_prev((uint64_t*)*used_list_head_ptr, metadata);
@@ -7506,13 +7590,8 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
 }
 
 void gc_collect_implementation(uint64_t* context) {
-  if (context == (uint64_t*)0) {
-    mark((uint64_t*)0);
-    sweep(gc_used_list, gc_free_list, (uint64_t*)0);
-  } else {
-    mark(context);
-    sweep(get_used_list_head(context), get_free_list_head(context), context);
-  }
+  mark(context);
+  sweep(get_used_list_head_gc(context), get_free_list_head_gc(context), context);
 }
 
 void gc_free(uint64_t* pointer) {
@@ -7525,7 +7604,7 @@ void gc_free(uint64_t* pointer) {
   if (metadata_of_pointer == used_list_head)
     *gc_used_list = (uint64_t)get_metadata_next(metadata_of_pointer);
 
-  if (is_valid_gc_pointer(used_list_head, (uint64_t)pointer, gc_heap_break, gc_heap_bump))
+  if (is_valid_gc_pointer(used_list_head, (uint64_t)pointer, gc_heap_start, gc_heap_end))
     free_and_zero_object(metadata_of_pointer, gc_free_list, (uint64_t*)0);
 }
 
@@ -8642,7 +8721,7 @@ void execute_debug() {
   print_instruction();
 
   // assert: 1 <= is <= number of RISC-U instructions
-  if (is == ADDI){
+  if (is == ADDI) {
     print_addi_before();
     do_addi();
     print_addi_add_sub_mul_divu_remu_sltu_after();
@@ -8959,8 +9038,8 @@ void init_context(uint64_t* context, uint64_t* parent, uint64_t* vctxt) {
   // Garbage collector
   set_used_list_head(context, (uint64_t*)0);
   set_free_list_head(context, (uint64_t*)0);
-  set_heap_break(context, 0);
-  set_heap_bump(context, 0);
+  set_heap_start(context, 0);
+  set_heap_end(context, 0);
   set_gc_enabled(context, 0);
 }
 

@@ -17,16 +17,8 @@ selfie: selfie.c
 selfie.h: selfie.c
 	sed 's/main(/selfie_main(/' selfie.c > selfie.h
 
-# Generate selfie using it's garbage collector as memory allocator
-# 2 ... GCLIBRARY (constant indicating to use the library version of the garbage collector)
-selfie.gc: selfie.c
-	sed 's/uint64_t use_garbage_collector = 0/uint64_t use_garbage_collector = 2/' selfie.c > selfie.gc
-
-selfie.gch: selfie.h
-	sed 's/uint64_t use_garbage_collector = 0/uint64_t use_garbage_collector = 2/' selfie.h > selfie.gch
-
 # Consider these targets as targets, not files
-.PHONY: compile quine escape debug replay os vm min mob sat mon smt mod btor2 selfie-2-x86 all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
+.PHONY: compile quine escape debug replay os vm min mob sat mon smt mod btor2 selfie-2-x86 garbage-collector all assemble spike qemu x86 boolector btormc validator grader grade extras everything clean
 
 # Self-contained fixed-point of self-compilation
 compile: selfie
@@ -138,6 +130,9 @@ selfie-2-x86: riscv-2-x86 selfie selfie.h selfie.m
 	./selfie -c selfie.h tools/riscv-2-x86.c -m 1 -l selfie.m
 	diff -q selfie.x86 selfie1.x86
 
+garbage-collector: selfie selfie.h
+	./selfie -c selfie.h tools/gcd_selfie.c -m 128 -c selfie.h tools/gcd_selfie.c
+
 # Run everything that only requires standard tools
 all: compile quine debug replay os vm min mob sat mon smt mod btor2 selfie-2-x86
 
@@ -213,5 +208,3 @@ clean:
 	rm -f examples/*.s
 	rm -f symbolic/*.smt
 	rm -f symbolic/*.btor2
-	rm -f selfie.gc
-	rm -f selfie.gch
