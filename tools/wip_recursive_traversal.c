@@ -14,6 +14,11 @@ void set_unknown_regs(uint64_t *state, uint64_t *unknown_regs) { *state = (uint6
 void set_reg_values(uint64_t *state, uint64_t *reg_values) { *(state + 1) = (uint64_t) reg_values; }
 
 uint64_t *get_state(uint64_t pc) {
+  if (machine_states == (uint64_t*) 0) {
+    print("Machine states aren't initialized yet!");
+    exit(1);
+  }
+
   return (uint64_t *) *(machine_states + pc / INSTRUCTIONSIZE);
 }
 
@@ -145,19 +150,24 @@ uint64_t merge_states(uint64_t *source, uint64_t *dest) {
 }
 
 // apply effects of current instruction to machine state
-void apply_effects(uint64_t *state) {
+// Return 1 iff the instruction had a quantifiable effect
+uint64_t apply_effects(uint64_t *state) {
   uint64_t *registers;
+  uint64_t ret;
+  ret = 0;
 
   registers = get_reg_values(state);
 
   if (is == ADDI) {
     if (!is_reg_unknown(state, rs1)) { // if the register's contents are not unknown
       set_reg(state, rd, *(registers + rs1) + imm); // do the addi
+      ret = 1;
     } else { // else rd is now unknown too
       set_reg_unknown(state, rd);
     }
   } else if (is == LUI) {
     set_reg(state, rd, left_shift(imm, 12));
+    ret = 1;
   }
 
   // handle "weird" instructions
@@ -199,8 +209,11 @@ void apply_effects(uint64_t *state) {
         else
           set_reg(state, rd, 0);
       }
+      ret = 1;
     }
   }
+
+  return ret;
 }
 
 uint64_t depth = 0;
@@ -353,11 +366,60 @@ void print_states() {
   }
 }
 
+// Return first pc after from_pc that is an effective nop, or -1
+uint64_t find_next_enop(uint64_t from_pc) {
+  uint64_t i;
+  uint64_t* state;
+
+  i = from_pc + INSTRUCTIONSIZE; // will miss if first instruction is literally a nop, but doesn't matter
+  state = new_machine_state();
+
+  while (i < code_length) {
+    if (get_state(i) != 0) {
+      copy_state(get_state(i), state);
+
+      ir = load_instruction(i);
+      decode();
+
+      //print("before\n");
+      //print_state(get_state(i));
+      //print("after\n");
+      if (apply_effects(state) == 1) {
+        if (test_states_equal(get_state(i), state)) {
+          //print_state(state);
+          return i;
+        }
+      }
+      //print_state(state);
+      //print("---\n");
+    }
+
+    i = i + INSTRUCTIONSIZE;
+  }
+
+  return -1;
+}
+
+void print_enops() {
+  uint64_t last_enop;
+  last_enop = find_next_enop(0);
+
+  while (last_enop != -1) {
+    printf1("enop at: %x\n", (char*) last_enop);
+    print_state(get_state(last_enop));
+    print_instruction();
+    print("\n\n");
+    last_enop = find_next_enop(last_enop);
+  }
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
 
 int main(int argc, char **argv) {
+  uint64_t enop;
+
   init_selfie((uint64_t) argc, (uint64_t *) argv);
 
   init_library();
@@ -371,21 +433,23 @@ int main(int argc, char **argv) {
   debug = 0;
   selfie_traverse();
 
-  print_states();
   // This is testing code, remove later
-  printf1("1==1: %d\n", (char*) test_states_equal(machine_states, machine_states));
-  print("109\n");
-  print_state((uint64_t *) *(machine_states + 109));
-  print("110\n");
-  print_state((uint64_t *) *(machine_states + 110));
-  print("111\n");
-  print_state((uint64_t *) *(machine_states + 111));
-  print("114\n");
-  print_state((uint64_t *) *(machine_states + 114));
-  printf1("109==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 109), (uint64_t*) *(machine_states + 110)));
-  printf1("110==111: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 111)));
-  printf1("110==114: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 114)));
-  printf1("110==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 110)));
+  // print_states();
+  // printf1("1==1: %d\n", (char*) test_states_equal(machine_states, machine_states));
+  // print("109\n");
+  // print_state((uint64_t *) *(machine_states + 109));
+  // print("110\n");
+  // print_state((uint64_t *) *(machine_states + 110));
+  // print("111\n");
+  // print_state((uint64_t *) *(machine_states + 111));
+  // print("114\n");
+  // print_state((uint64_t *) *(machine_states + 114));
+  // printf1("109==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 109), (uint64_t*) *(machine_states + 110)));
+  // printf1("110==111: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 111)));
+  // printf1("110==114: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 114)));
+  // printf1("110==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 110)));
+
+  print_enops();
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 
