@@ -1,3 +1,6 @@
+#include "../selfie.h"
+#define uint64_t unsigned long long
+
 uint64_t *machine_states = (uint64_t *) 0;
 
 uint64_t *tmp_state = (uint64_t *) 0; // re-use this to avoid unnecessary allocations (since we can't free memory)
@@ -68,8 +71,7 @@ uint64_t get_reg(uint64_t *state, uint64_t reg) {
 }
 
 void copy_state(uint64_t *source, uint64_t *dest) {
-  uint64_t i;
-  i = 1;
+  uint64_t i = 1;
 
   while (i < NUMBEROFREGISTERS) {
     if (is_reg_unknown(source, i)) {
@@ -79,6 +81,36 @@ void copy_state(uint64_t *source, uint64_t *dest) {
     }
     i = i + 1;
   }
+}
+
+// Return 1 iff machine states a and b are equal
+uint64_t test_states_equal(uint64_t *a, uint64_t *b) {
+  uint64_t i;
+  i = 0;
+  
+  while (i < NUMBEROFREGISTERS) {
+    if (is_reg_unknown(a, i) != 1) { // If a is known
+      if (is_reg_unknown(b, i) != 1) { // If b is known
+        if (get_reg(a, i) != get_reg(b, i)) { // Check that states are same
+          return 0;
+        }
+
+      // If we're here, a is known but b isn't
+      } else {
+        return 0;
+      }
+
+    // Here, a is unknown, we need to check that b is too.
+    } else {
+      if (is_reg_unknown(b, i) != 1) { 
+        return 0;
+      }
+    }
+
+    i = i + 1;
+  }
+
+  return 1;
 }
 
 // merge source state into dest state
@@ -232,19 +264,12 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
     prev_pc = pc;
 
     if (is == BEQ) {
-      // explore branch in recursive call and continue executing non-branch path in current call
       traverse_recursive(pc + imm, pc, current_ra);
       // last loaded instruction from recursive call remains
       // so we need to "refresh" the actual last instruction for the case where the branch isn't taken
       // (the loaded instruction ends up being the beq itself, which has no effect)
       ir = load_instruction(pc);
       decode();
-      // if the source registers are equal: the branch must be taken!
-      // therefore, we do not have to explore the other path and we can return early
-      if (!is_reg_unknown(state, rs1))
-        if (!is_reg_unknown(state, rs2))
-          if (get_reg(state, rs1) == get_reg(state, rs2))
-            return;
     } else if (is == JAL) {
       if (rd == REG_RA) { // procedure call
         traverse_recursive(pc + imm, pc, pc + INSTRUCTIONSIZE);
@@ -301,6 +326,33 @@ void selfie_traverse() {
   traverse_recursive(0, (uint64_t) -1, (uint64_t) -1);
 }
 
+void print_state(uint64_t* machine_state) {
+  uint64_t i;
+
+  if (machine_state == 0)
+    return;
+
+  i = 0;
+  while (i < NUMBEROFREGISTERS) {
+    if (!is_reg_unknown(machine_state, i)) {
+      printf2("\t%s:\t%d\n", (char *) *(REGISTERS + i), (char *) get_reg(machine_state, i));
+    }
+
+    i = i + 1;
+  }
+}
+
+void print_states() {
+  uint64_t i;
+
+  i = 0;
+  while (i < code_length / INSTRUCTIONSIZE) {
+    printf2("%d (at %p)\n", (char *) (i * INSTRUCTIONSIZE), (char *) *(machine_states + i));
+    print_state((uint64_t *) *(machine_states + i));
+    i = i + 1;
+  }
+}
+
 // -----------------------------------------------------------------
 // ----------------------------- MAIN ------------------------------
 // -----------------------------------------------------------------
@@ -316,8 +368,24 @@ int main(int argc, char **argv) {
 
   selfie_load();
 
-  debug = 1;
+  debug = 0;
   selfie_traverse();
+
+  print_states();
+  // This is testing code, remove later
+  printf1("1==1: %d\n", (char*) test_states_equal(machine_states, machine_states));
+  print("109\n");
+  print_state((uint64_t *) *(machine_states + 109));
+  print("110\n");
+  print_state((uint64_t *) *(machine_states + 110));
+  print("111\n");
+  print_state((uint64_t *) *(machine_states + 111));
+  print("114\n");
+  print_state((uint64_t *) *(machine_states + 114));
+  printf1("109==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 109), (uint64_t*) *(machine_states + 110)));
+  printf1("110==111: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 111)));
+  printf1("110==114: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 114)));
+  printf1("110==110: %d\n", (char*) test_states_equal((uint64_t*) *(machine_states + 110), (uint64_t*) *(machine_states + 110)));
 
   // assert: binary_name is mapped and not longer than MAX_FILENAME_LENGTH
 

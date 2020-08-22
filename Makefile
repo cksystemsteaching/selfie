@@ -62,6 +62,11 @@ min: selfie.m selfie.s
 mob: selfie
 	./selfie -c -mob 1
 
+wipopt: tools/wip_recursive_traversal.c selfie.h
+	$(CC) -Wall -Wextra -O0 -g -m64 -D'uint64_t=unsigned long long' $< -o $@
+opt: tools/recursive_traversal.c selfie.h
+	$(CC) $(CFLAGS) --include selfie.h $< -o $@
+
 # Compile babysat.c with selfie.h as library into babysat executable
 babysat: tools/babysat.c selfie.h
 	$(CC) $(CFLAGS) --include selfie.h $< -o $@
