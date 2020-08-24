@@ -1129,6 +1129,7 @@ uint64_t* create_symbolic_context(uint64_t* parent, uint64_t* vctxt) {
   set_beq_counter(context, 0);
   set_merge_location(context, -1);
   set_merge_partner(context, (uint64_t*) 0);
+  set_call_stack(context, (uint64_t*) 0);
 
   if (debug_create)
     printf3("%s: parent context %p created child context %p\n", selfie_name,
