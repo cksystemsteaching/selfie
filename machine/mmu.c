@@ -77,10 +77,10 @@ void kpfree(uint64_t ppn) {
 }
 
 void kzero_page(uint64_t vpn) {
-    uint64_t* page_addr = (uint64_t*) ppn_to_paddr(vpn);
+  uint64_t* page_addr = (uint64_t*) ppn_to_paddr(vpn);
 
-    for (size_t i = 0; i < PAGESIZE/sizeof(uint64_t); i++)
-        page_addr[i] = 0;
+  for (size_t i = 0; i < PAGESIZE/sizeof(uint64_t); i++)
+    page_addr[i] = 0;
 }
 
 struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t index) {
@@ -88,14 +88,14 @@ struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t i
 }
 
 uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
-    uint64_t ppn = kzalloc();
-    if (ppn == 0)
-      return 0;
+  uint64_t ppn = kzalloc();
+  if (ppn == 0)
+    return 0;
 
-    if (kmap_page_by_ppn(table, vaddr, ppn, u_mode_accessible))
-      return ppn;
-    else
-      return 0;
+  if (kmap_page_by_ppn(table, vaddr, ppn, u_mode_accessible))
+    return ppn;
+  else
+    return 0;
 }
 bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char u_mode_accessible) {
   uint64_t vpn_2 = (vaddr & VPN_2_BITMASK) >> 30;
@@ -131,20 +131,20 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
 }
 
 bool kmap_user_page_and_identity_map_into_kernel(struct pt_entry* table, uint64_t vaddr) {
-    uint64_t ppn;
+  uint64_t ppn;
 
-    ppn = kmap_page(table, vaddr, true);
-    if (ppn == 0)
-      return false;
+  ppn = kmap_page(table, vaddr, true);
+  if (ppn == 0)
+    return false;
 
-    kidentity_map_ppn(kernel_context.pt, ppn, false);
-    return true;
+  kidentity_map_ppn(kernel_context.pt, ppn, false);
+  return true;
 }
 
 uint64_t vaddr_to_vpn(uint64_t vaddr) {
-    // RISC-V requires that for virtual addresses
-    // bits 39 to 64 have the value of bit 38
-    return ((vaddr & LOWEST_39_BITS) >> 12);
+  // RISC-V requires that for virtual addresses
+  // bits 39 to 64 have the value of bit 38
+  return ((vaddr & LOWEST_39_BITS) >> 12);
 }
 uint64_t vpn_to_vaddr(uint64_t vpn) {
   // Sv39 requires virtual addresses to sign-extend bit 38
@@ -181,10 +181,10 @@ uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr) {
 }
 
 uint64_t paddr_to_ppn(const void* address) {
-    return ((uint64_t)address) >> 12;
+  return ((uint64_t)address) >> 12;
 }
 const void* ppn_to_paddr(uint64_t ppn) {
-    return (const void*)(ppn << 12);
+  return (const void*)(ppn << 12);
 }
 
 bool is_valid_sv39_vaddr(uint64_t vaddr) {
@@ -196,102 +196,102 @@ bool is_vaddr_mapped(struct pt_entry* table, uint64_t vaddr) {
 }
 
 void kidentity_map_range(struct pt_entry* table, const void* from, const void* to) {
-    // By obtaining the PPNs, there's no need to do any rounding
-    uint64_t ppn_from = paddr_to_ppn(from);
-    uint64_t ppn_to = paddr_to_ppn(to);
+  // By obtaining the PPNs, there's no need to do any rounding
+  uint64_t ppn_from = paddr_to_ppn(from);
+  uint64_t ppn_to = paddr_to_ppn(to);
 
-    uint64_t ppn = ppn_from;
+  uint64_t ppn = ppn_from;
 
-    while (ppn < ppn_to) {
-        uint64_t page_vaddr = vpn_to_vaddr(ppn);
+  while (ppn < ppn_to) {
+    uint64_t page_vaddr = vpn_to_vaddr(ppn);
 
-        kmap_page_by_ppn(table, page_vaddr, ppn, false);
+    kmap_page_by_ppn(table, page_vaddr, ppn, false);
 
-        ppn++;
-    };
+    ppn++;
+  };
 }
 void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible) {
-    kmap_page_by_ppn(table, (uint64_t)ppn_to_paddr(ppn), ppn, u_mode_accessible);
+  kmap_page_by_ppn(table, (uint64_t)ppn_to_paddr(ppn), ppn, u_mode_accessible);
 }
 
 void kdump_pt(struct pt_entry* table) {
-    printf("Page Table:\n");
+  printf("Page Table:\n");
 
-    for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
-        if (!table[vpn_2].v)
-            continue;
+  for (uint64_t vpn_2 = 0; vpn_2 < 512; vpn_2++) {
+    if (!table[vpn_2].v)
+      continue;
 
-        struct pt_entry* mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
-        uint64_t mid_vaddr = (vpn_2 << 30);
-        uint64_t mid_vaddr_end = ((vpn_2+1) << 30);
-        printf("|-Gigapage (VPN %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
+    struct pt_entry* mid_pt = retrieve_pt_entry_from_table(table, vpn_2);
+    uint64_t mid_vaddr = (vpn_2 << 30);
+    uint64_t mid_vaddr_end = ((vpn_2+1) << 30);
+    printf("|-Gigapage (VPN %x): %p-%p\n", vpn_2, mid_vaddr, mid_vaddr_end);
 
-        if (mid_pt == NULL) {
-            printf("  <invalid>\n");
+    if (mid_pt == NULL) {
+      printf("  <invalid>\n");
+    } else {
+      for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
+        if (!mid_pt[vpn_1].v)
+          continue;
+
+        struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
+        uint64_t leaf_vaddr = mid_vaddr + (vpn_1 << 21);
+        uint64_t leaf_vaddr_end = mid_vaddr + ((vpn_1+1) << 21);
+        printf("| |-Megapage (VPN %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
+
+        if (leaf_pt == NULL) {
+          printf("    <invalid>\n");
         } else {
-            for (uint64_t vpn_1 = 0; vpn_1 < 512; vpn_1++) {
-                if (!mid_pt[vpn_1].v)
-                    continue;
+          for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
+            if (!leaf_pt[vpn_0].v)
+              continue;
 
-                struct pt_entry* leaf_pt = retrieve_pt_entry_from_table(mid_pt, vpn_1);
-                uint64_t leaf_vaddr = mid_vaddr + (vpn_1 << 21);
-                uint64_t leaf_vaddr_end = mid_vaddr + ((vpn_1+1) << 21);
-                printf("| |-Megapage (VPN %x): %p-%p\n", vpn_1, leaf_vaddr, leaf_vaddr_end);
+            uint64_t vaddr = leaf_vaddr + (vpn_0 << 12);
+            uint64_t vaddr_end = leaf_vaddr + ((vpn_0+1) << 12);
+            uint64_t paddr = leaf_pt[vpn_0].ppn << 12;
 
-                if (leaf_pt == NULL) {
-                    printf("    <invalid>\n");
-                } else {
-                    for (uint64_t vpn_0 = 0; vpn_0 < 512; vpn_0++) {
-                        if (!leaf_pt[vpn_0].v)
-                            continue;
-
-                        uint64_t vaddr = leaf_vaddr + (vpn_0 << 12);
-                        uint64_t vaddr_end = leaf_vaddr + ((vpn_0+1) << 12);
-                        uint64_t paddr = leaf_pt[vpn_0].ppn << 12;
-
-                        printf("| | |-Page (VPN %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
-                    }
-                }
-            }
+            printf("| | |-Page (VPN %x): %p-%p: mapped to paddr %p\n", vpn_0, vaddr, vaddr_end, paddr);
+          }
         }
+      }
     }
+  }
 }
 
 void kmap_kernel_upper_half(struct pt_entry* table) {
-    // Map upper-half vspace pages
-    // These pages are present in both user and kernel vspace
-    // Trap handler trampoline
-    kmap_page_by_ppn(table, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
-    // Kernel stack
-    uint64_t vaddr = STACK_VADDR - PAGESIZE;
-    uint64_t ppn = paddr_to_ppn(initial_stack_start() - 1); // -1 due to full stack semantics + pointer arithmetics
-    for (uint64_t i = 0; i < NUM_STACK_PAGES; i++) {
-        kmap_page_by_ppn(table, vaddr, ppn, false);
+  // Map upper-half vspace pages
+  // These pages are present in both user and kernel vspace
+  // Trap handler trampoline
+  kmap_page_by_ppn(table, TRAMPOLINE_VADDR, paddr_to_ppn(trap_handler_wrapper), false);
+  // Kernel stack
+  uint64_t vaddr = STACK_VADDR - PAGESIZE;
+  uint64_t ppn = paddr_to_ppn(initial_stack_start() - 1); // -1 due to full stack semantics + pointer arithmetics
+  for (uint64_t i = 0; i < NUM_STACK_PAGES; i++) {
+    kmap_page_by_ppn(table, vaddr, ppn, false);
 
-        vaddr -= PAGESIZE;
-        ppn--;
-    }
+    vaddr -= PAGESIZE;
+    ppn--;
+  }
 }
 
 uint64_t assemble_satp_value(struct pt_entry* table, uint16_t asid) {
-    uint64_t table_ppn = paddr_to_ppn(table);
+  uint64_t table_ppn = paddr_to_ppn(table);
 
-    return (SATP_MODE_SV39 | ((uint64_t) asid << SATP_ASID_POS) | (table_ppn & SATP_PPN_BITMASK));
+  return (SATP_MODE_SV39 | ((uint64_t) asid << SATP_ASID_POS) | (table_ppn & SATP_PPN_BITMASK));
 }
 
 void kswitch_active_pt(struct pt_entry* table, uint16_t asid) {
-    uint64_t satpValue = assemble_satp_value(table, asid);
+  uint64_t satpValue = assemble_satp_value(table, asid);
 
-    // Set the SATP and SSCRATCH value (for easier kernel pt switching)
-    // Also, perform a cache flush by specifying the ASID
-    // We do not use global mappings -> rs1 = x0
-    asm volatile(
-        "csrw satp, %[value];"
-        "csrw sscratch, %[value];"
-        "sfence.vma zero, %[asid]" // RISC-V Priviled
-        :
-        : [value] "r" (satpValue), [asid] "r" (asid)
-    );
+  // Set the SATP and SSCRATCH value (for easier kernel pt switching)
+  // Also, perform a cache flush by specifying the ASID
+  // We do not use global mappings -> rs1 = x0
+  asm volatile(
+      "csrw satp, %[value];"
+      "csrw sscratch, %[value];"
+      "sfence.vma zero, %[asid]" // RISC-V Priviled
+      :
+      : [value] "r" (satpValue), [asid] "r" (asid)
+  );
 }
 
 void kinit_page_pool() {

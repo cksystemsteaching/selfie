@@ -25,23 +25,23 @@
 #define SYSCALL_BRK    214
 
 void disable_smode_interrupts() {
-    uint64_t bitmask = (1 << CSR_STATUS_SIE);
+  uint64_t bitmask = (1 << CSR_STATUS_SIE);
 
-    asm volatile (
-        "csrc sstatus, %[bitmask]"
-        :
-        : [bitmask] "r" (bitmask)
-    );
+  asm volatile (
+    "csrc sstatus, %[bitmask]"
+    :
+    : [bitmask] "r" (bitmask)
+  );
 }
 
 void enable_smode_interrupts() {
-    uint64_t bitmask = (1 << CSR_STATUS_SIE);
+  uint64_t bitmask = (1 << CSR_STATUS_SIE);
 
-    asm volatile (
-        "csrs sstatus, %[bitmask]"
-        :
-        : [bitmask] "r" (bitmask)
-    );
+  asm volatile (
+    "csrs sstatus, %[bitmask]"
+    :
+    : [bitmask] "r" (bitmask)
+  );
 }
 
 void enable_smode_interrupts_after_sret() {
@@ -57,120 +57,120 @@ void enable_smode_interrupts_after_sret() {
 }
 
 void enable_smode_interrupt_types(uint64_t bitmask) {
-    asm volatile(
-        "csrs sie, %[bitmask]"
-        :
-        : [bitmask] "r" (bitmask)
-    );
+  asm volatile(
+    "csrs sie, %[bitmask]"
+    :
+    : [bitmask] "r" (bitmask)
+  );
 }
 
 void disable_smode_interrupt_types(uint64_t bitmask) {
-    asm volatile(
-        "csrc sie, %[bitmask]"
-        :
-        : [bitmask] "r" (bitmask)
-    );
+  asm volatile(
+    "csrc sie, %[bitmask]"
+    :
+    : [bitmask] "r" (bitmask)
+  );
 }
 
 void store_saved_registers_from_buffer_into_context(struct context* context, struct registers* registers_buffer) {
-    context->saved_regs.ra  = registers_buffer->ra;
-    context->saved_regs.sp  = registers_buffer->sp;
-    context->saved_regs.gp  = registers_buffer->gp;
-    context->saved_regs.tp  = registers_buffer->tp;
-    context->saved_regs.t0  = registers_buffer->t0;
-    context->saved_regs.t1  = registers_buffer->t1;
-    context->saved_regs.t2  = registers_buffer->t2;
-    context->saved_regs.s0  = registers_buffer->s0;
-    context->saved_regs.s1  = registers_buffer->s1;
-    context->saved_regs.a0  = registers_buffer->a0;
-    context->saved_regs.a1  = registers_buffer->a1;
-    context->saved_regs.a2  = registers_buffer->a2;
-    context->saved_regs.a3  = registers_buffer->a3;
-    context->saved_regs.a4  = registers_buffer->a4;
-    context->saved_regs.a5  = registers_buffer->a5;
-    context->saved_regs.a6  = registers_buffer->a6;
-    context->saved_regs.a7  = registers_buffer->a7;
-    context->saved_regs.s2  = registers_buffer->s2;
-    context->saved_regs.s3  = registers_buffer->s3;
-    context->saved_regs.s4  = registers_buffer->s4;
-    context->saved_regs.s5  = registers_buffer->s5;
-    context->saved_regs.s6  = registers_buffer->s6;
-    context->saved_regs.s7  = registers_buffer->s7;
-    context->saved_regs.s8  = registers_buffer->s8;
-    context->saved_regs.s9  = registers_buffer->s9;
-    context->saved_regs.s10 = registers_buffer->s10;
-    context->saved_regs.s11 = registers_buffer->s11;
-    context->saved_regs.t3  = registers_buffer->t3;
-    context->saved_regs.t4  = registers_buffer->t4;
-    context->saved_regs.t5  = registers_buffer->t5;
-    context->saved_regs.t6  = registers_buffer->t6;
+  context->saved_regs.ra  = registers_buffer->ra;
+  context->saved_regs.sp  = registers_buffer->sp;
+  context->saved_regs.gp  = registers_buffer->gp;
+  context->saved_regs.tp  = registers_buffer->tp;
+  context->saved_regs.t0  = registers_buffer->t0;
+  context->saved_regs.t1  = registers_buffer->t1;
+  context->saved_regs.t2  = registers_buffer->t2;
+  context->saved_regs.s0  = registers_buffer->s0;
+  context->saved_regs.s1  = registers_buffer->s1;
+  context->saved_regs.a0  = registers_buffer->a0;
+  context->saved_regs.a1  = registers_buffer->a1;
+  context->saved_regs.a2  = registers_buffer->a2;
+  context->saved_regs.a3  = registers_buffer->a3;
+  context->saved_regs.a4  = registers_buffer->a4;
+  context->saved_regs.a5  = registers_buffer->a5;
+  context->saved_regs.a6  = registers_buffer->a6;
+  context->saved_regs.a7  = registers_buffer->a7;
+  context->saved_regs.s2  = registers_buffer->s2;
+  context->saved_regs.s3  = registers_buffer->s3;
+  context->saved_regs.s4  = registers_buffer->s4;
+  context->saved_regs.s5  = registers_buffer->s5;
+  context->saved_regs.s6  = registers_buffer->s6;
+  context->saved_regs.s7  = registers_buffer->s7;
+  context->saved_regs.s8  = registers_buffer->s8;
+  context->saved_regs.s9  = registers_buffer->s9;
+  context->saved_regs.s10 = registers_buffer->s10;
+  context->saved_regs.s11 = registers_buffer->s11;
+  context->saved_regs.t3  = registers_buffer->t3;
+  context->saved_regs.t4  = registers_buffer->t4;
+  context->saved_regs.t5  = registers_buffer->t5;
+  context->saved_regs.t6  = registers_buffer->t6;
 
-    context->saved_regs.pc = registers_buffer->pc;
+  context->saved_regs.pc = registers_buffer->pc;
 }
 
 void load_saved_registers_from_context_into_buffer(struct context* context, struct registers* registers_buffer) {
-    registers_buffer->ra  = context->saved_regs.ra;
-    registers_buffer->sp  = context->saved_regs.sp;
-    registers_buffer->gp  = context->saved_regs.gp;
-    registers_buffer->tp  = context->saved_regs.tp;
-    registers_buffer->t0  = context->saved_regs.t0;
-    registers_buffer->t1  = context->saved_regs.t1;
-    registers_buffer->t2  = context->saved_regs.t2;
-    registers_buffer->s0  = context->saved_regs.s0;
-    registers_buffer->s1  = context->saved_regs.s1;
-    registers_buffer->a0  = context->saved_regs.a0;
-    registers_buffer->a1  = context->saved_regs.a1;
-    registers_buffer->a2  = context->saved_regs.a2;
-    registers_buffer->a3  = context->saved_regs.a3;
-    registers_buffer->a4  = context->saved_regs.a4;
-    registers_buffer->a5  = context->saved_regs.a5;
-    registers_buffer->a6  = context->saved_regs.a6;
-    registers_buffer->a7  = context->saved_regs.a7;
-    registers_buffer->s2  = context->saved_regs.s2;
-    registers_buffer->s3  = context->saved_regs.s3;
-    registers_buffer->s4  = context->saved_regs.s4;
-    registers_buffer->s5  = context->saved_regs.s5;
-    registers_buffer->s6  = context->saved_regs.s6;
-    registers_buffer->s7  = context->saved_regs.s7;
-    registers_buffer->s8  = context->saved_regs.s8;
-    registers_buffer->s9  = context->saved_regs.s9;
-    registers_buffer->s10 = context->saved_regs.s10;
-    registers_buffer->s11 = context->saved_regs.s11;
-    registers_buffer->t3  = context->saved_regs.t3;
-    registers_buffer->t4  = context->saved_regs.t4;
-    registers_buffer->t5  = context->saved_regs.t5;
-    registers_buffer->t6  = context->saved_regs.t6;
+  registers_buffer->ra  = context->saved_regs.ra;
+  registers_buffer->sp  = context->saved_regs.sp;
+  registers_buffer->gp  = context->saved_regs.gp;
+  registers_buffer->tp  = context->saved_regs.tp;
+  registers_buffer->t0  = context->saved_regs.t0;
+  registers_buffer->t1  = context->saved_regs.t1;
+  registers_buffer->t2  = context->saved_regs.t2;
+  registers_buffer->s0  = context->saved_regs.s0;
+  registers_buffer->s1  = context->saved_regs.s1;
+  registers_buffer->a0  = context->saved_regs.a0;
+  registers_buffer->a1  = context->saved_regs.a1;
+  registers_buffer->a2  = context->saved_regs.a2;
+  registers_buffer->a3  = context->saved_regs.a3;
+  registers_buffer->a4  = context->saved_regs.a4;
+  registers_buffer->a5  = context->saved_regs.a5;
+  registers_buffer->a6  = context->saved_regs.a6;
+  registers_buffer->a7  = context->saved_regs.a7;
+  registers_buffer->s2  = context->saved_regs.s2;
+  registers_buffer->s3  = context->saved_regs.s3;
+  registers_buffer->s4  = context->saved_regs.s4;
+  registers_buffer->s5  = context->saved_regs.s5;
+  registers_buffer->s6  = context->saved_regs.s6;
+  registers_buffer->s7  = context->saved_regs.s7;
+  registers_buffer->s8  = context->saved_regs.s8;
+  registers_buffer->s9  = context->saved_regs.s9;
+  registers_buffer->s10 = context->saved_regs.s10;
+  registers_buffer->s11 = context->saved_regs.s11;
+  registers_buffer->t3  = context->saved_regs.t3;
+  registers_buffer->t4  = context->saved_regs.t4;
+  registers_buffer->t5  = context->saved_regs.t5;
+  registers_buffer->t6  = context->saved_regs.t6;
 
-    registers_buffer->pc = context->saved_regs.pc;
+  registers_buffer->pc = context->saved_regs.pc;
 }
 
 uint64_t get_current_cpu_time() {
-    uint64_t current_cpu_time;
+  uint64_t current_cpu_time;
 
-    asm volatile(
-        "rdtime %[current_cpu_time]"
-        : [current_cpu_time] "=r" (current_cpu_time)
-    );
+  asm volatile(
+    "rdtime %[current_cpu_time]"
+    : [current_cpu_time] "=r" (current_cpu_time)
+  );
 
-    return current_cpu_time;
+  return current_cpu_time;
 }
 
 void set_timer_interrupt_delta(uint64_t delta) {
-    set_timer_interrupt(get_current_cpu_time() + delta);
+  set_timer_interrupt(get_current_cpu_time() + delta);
 }
 
 void set_timer_interrupt(uint64_t interrupt_at) {
-    // call into the SBI to set the timer since
-    // mtimecmp can only be modified from M-mode
-    asm volatile(
-        "li a7, 0x54494D45;"
-        "li a6, 0;"
-        "mv a0, %[interrupt_at];"
-        "ecall"
-        :
-        : [interrupt_at] "r" (interrupt_at)
-        : "a7", "a6", "a0"
-    );
+  // call into the SBI to set the timer since
+  // mtimecmp can only be modified from M-mode
+  asm volatile(
+    "li a7, 0x54494D45;"
+    "li a6, 0;"
+    "mv a0, %[interrupt_at];"
+    "ecall"
+    :
+    : [interrupt_at] "r" (interrupt_at)
+    : "a7", "a6", "a0"
+  );
 }
 
 uint64_t trap_handler(struct registers registers_buffer) {
@@ -397,16 +397,16 @@ void implement_syscall_brk(struct context* context) {
 }
 
 enum memory_access_type determine_memory_access_type(struct memory_boundaries* legal_memory_boundaries, uint64_t vaddr) {
-    uint64_t page_number = vaddr_to_vpn(vaddr);
+  uint64_t page_number = vaddr_to_vpn(vaddr);
 
-    if (legal_memory_boundaries->lowest_lo_page <= page_number && page_number <= legal_memory_boundaries->highest_lo_page)
-        return memory_access_type_lo;
-    else if (legal_memory_boundaries->lowest_mid_page <= page_number && page_number <= legal_memory_boundaries->highest_mid_page)
-        return memory_access_type_mid;
-    else if (legal_memory_boundaries->lowest_hi_page <= page_number && page_number <= legal_memory_boundaries->highest_hi_page)
-        return memory_access_type_hi;
-    else
-        return memory_access_type_unknown;
+  if (legal_memory_boundaries->lowest_lo_page <= page_number && page_number <= legal_memory_boundaries->highest_lo_page)
+    return memory_access_type_lo;
+  else if (legal_memory_boundaries->lowest_mid_page <= page_number && page_number <= legal_memory_boundaries->highest_mid_page)
+    return memory_access_type_mid;
+  else if (legal_memory_boundaries->lowest_hi_page <= page_number && page_number <= legal_memory_boundaries->highest_hi_page)
+    return memory_access_type_hi;
+  else
+    return memory_access_type_unknown;
 }
 
 void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint64_t stval) {
@@ -436,11 +436,11 @@ void handle_instruction_page_fault(struct context* context, uint64_t sepc, uint6
 }
 
 char is_legal_heap_growth(uint64_t program_break, uint64_t lowest_lo_page, uint64_t stval) {
-    return (stval < program_break && lowest_lo_page <= vaddr_to_vpn(stval));
+  return (stval < program_break && lowest_lo_page <= vaddr_to_vpn(stval));
 }
 
 char has_stack_grown(uint64_t sp, uint64_t lowest_mid_page, uint64_t stval) {
-    return (sp <= stval && vaddr_to_vpn(stval) <= lowest_mid_page);
+  return (sp <= stval && vaddr_to_vpn(stval) <= lowest_mid_page);
 }
 
 void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval) {
@@ -449,33 +449,33 @@ void handle_load_or_store_amo_page_fault(struct context* context, uint64_t stval
   bool map_successful = false;
 
   switch (memory_access_type) {
-      case memory_access_type_lo:
-          map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
-          break;
-      case memory_access_type_mid:
-          map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
-          break;
-      case memory_access_type_hi:
+    case memory_access_type_lo:
+      map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+      break;
+    case memory_access_type_mid:
+      map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+      break;
+    case memory_access_type_hi:
 #ifdef DEBUG
-          // that'd be a bug
-          printf("context %u raised a page fault in its hi part\n", context->id);
-          printf("  lowest hi page:  %x\n", context->legal_memory_boundaries.lowest_hi_page);
-          printf("  highest hi page: %x\n", context->legal_memory_boundaries.highest_hi_page);
+      // that'd be a bug
+      printf("context %u raised a page fault in its hi part\n", context->id);
+      printf("  lowest hi page:  %x\n", context->legal_memory_boundaries.lowest_hi_page);
+      printf("  highest hi page: %x\n", context->legal_memory_boundaries.highest_hi_page);
 #endif /* DEBUG */
-          break;
-      case memory_access_type_unknown:
-          if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
-            map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
-            context->legal_memory_boundaries.highest_lo_page = vaddr_to_vpn(stval);
-          } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
-            // stack has grown but the page isnt mapped yet
-            map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
-            context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
-          } else {
-            printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
-            kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
-          }
-          break;
+      break;
+    case memory_access_type_unknown:
+      if (is_legal_heap_growth(context->program_break, context->legal_memory_boundaries.lowest_lo_page, stval)) {
+        map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+        context->legal_memory_boundaries.highest_lo_page = vaddr_to_vpn(stval);
+      } else if (has_stack_grown(context->saved_regs.sp, context->legal_memory_boundaries.lowest_mid_page, stval)) {
+        // stack has grown but the page isnt mapped yet
+        map_successful = kmap_user_page_and_identity_map_into_kernel(context->pt, stval);
+        context->legal_memory_boundaries.lowest_mid_page = vaddr_to_vpn(stval);
+      } else {
+        printf("segmentation fault: context %u tried to access address 0x%x\n", context->id, stval);
+        kill_context(context->id, KILL_CONTEXT_REASON_ILLEGAL_MEMORY_ACCESS);
+      }
+      break;
   }
 
   if (!map_successful) {
@@ -513,22 +513,22 @@ void handle_store_amo_page_fault(struct context* context, uint64_t stval) {
 }
 
 void setup_smode_trap_handler(trap_handler_t handler) {
-    disable_smode_interrupts();
+  disable_smode_interrupts();
 
-    // 4.1.4 stvec - handler functions must be aligned on a 4 byte boundary
-    if (((uint64_t)handler) & 0x03) {
-        puts("setup_trap_handler: Cannot apply unaligned trap handler!\n");
-        return;
-    }
+  // 4.1.4 stvec - handler functions must be aligned on a 4 byte boundary
+  if (((uint64_t)handler) & 0x03) {
+    puts("setup_trap_handler: Cannot apply unaligned trap handler!\n");
+    return;
+  }
 
-    // mtvec has both the base address and the vectoring mode (2 bits)
-    // Use direct mode (0x00)
-    uint64_t stvec = (((uint64_t)handler) & ~(0x03ULL));
-    asm volatile (
-        "csrw stvec, %[regValue];"
-        :
-        : [regValue] "r" (stvec)
-    );
+  // mtvec has both the base address and the vectoring mode (2 bits)
+  // Use direct mode (0x00)
+  uint64_t stvec = (((uint64_t)handler) & ~(0x03ULL));
+  asm volatile (
+    "csrw stvec, %[regValue];"
+    :
+    : [regValue] "r" (stvec)
+  );
 
-    enable_smode_interrupts();
+  enable_smode_interrupts();
 }

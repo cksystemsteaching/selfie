@@ -9,57 +9,57 @@
 
 #include "config.h"
 
-    .section .entry, "ax", %progbits
-    .align 3
-    .globl _start
+  .section .entry, "ax", %progbits
+  .align 3
+  .globl _start
 _start:
-    /* Set up the Global Pointer */
-    .option push
-    .option norelax
+  /* Set up the Global Pointer */
+  .option push
+  .option norelax
 
-    la gp, __SDATA_BEGIN__
+  la gp, __SDATA_BEGIN__
 
-    .option pop
+  .option pop
 
-    /* Zero-out BSS */
-    la a4, _bss_start
-    la a5, _bss_end
+  /* Zero-out BSS */
+  la a4, _bss_start
+  la a5, _bss_end
 _bss_zero:
-    sd  zero, (a4)
-    add a4, a4, __SIZEOF_POINTER__
-    blt a4, a5, _bss_zero
+  sd  zero, (a4)
+  add a4, a4, __SIZEOF_POINTER__
+  blt a4, a5, _bss_zero
 
 _start_warm:
-    /* Disable and clear all interrupts */
-    csrw	sie, zero
-    csrw	sip, zero
+  /* Disable and clear all interrupts */
+  csrw	sie, zero
+  csrw	sip, zero
 
-    /* Setup exception vectors */
-    la	a3, _start_hang
-    csrw	stvec, a3
+  /* Setup exception vectors */
+  la	a3, _start_hang
+  csrw	stvec, a3
 
-    /* Setup stack */
-    jal initial_stack_start
-    add	sp, zero, a0
+  /* Setup stack */
+  jal initial_stack_start
+  add	sp, zero, a0
 
-    /* Jump to C main */
-    call	bootstrap
+  /* Jump to C main */
+  call	bootstrap
 
-    /* We don't expect to reach here hence just hang */
-    j	_start_hang
+  /* We don't expect to reach here hence just hang */
+  j	_start_hang
 
-    .section .entry, "ax", %progbits
-    .align 3
-    .globl _start_hang
+  .section .entry, "ax", %progbits
+  .align 3
+  .globl _start_hang
 _start_hang:
-    wfi
-    j	_start_hang
+  wfi
+  j	_start_hang
 
 .globl initial_stack_start
 initial_stack_start:
-    la	t0, _payload_end
-    li	a0, NUM_STACK_PAGES
-    slli a0, a0, 12
+  la	t0, _payload_end
+  li	a0, NUM_STACK_PAGES
+  slli a0, a0, 12
 
-    add a0, a0, t0
-    ret
+  add a0, a0, t0
+  ret
