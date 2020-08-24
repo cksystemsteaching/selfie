@@ -258,6 +258,13 @@ void traverse_recursive(uint64_t pc, uint64_t prev_pc, uint64_t current_ra) {
         // but we still need to follow that path as the following machine states haven't been updated yet
         force_continue = 1;
       }
+      else if (rd == REG_ZR) { // "normal" jump
+        pc = pc + imm - INSTRUCTIONSIZE; // subtract INSTRUCTIONSIZE because it gets added again at the end of the loop
+      }
+      else { // other
+        print("Error: jal doesn't seem to be return from procedure or \"normal\" jump!");
+        exit(1);
+      }
     } else if (is == JALR) {
       // for now: assume that every jalr returns from a function
       if (rd == REG_ZR) {
