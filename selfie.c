@@ -687,8 +687,9 @@ void emit_program_entry();
 void emit_bootstrapping();
 
 // Garbage Collector Bounds Fetcher
-void      emit_fetch_stack_pointer();
-uint64_t* emit_fetch_data_segment_size();
+void     emit_fetch_stack_pointer();
+uint64_t emit_fetch_data_segment_size();
+void     fixup_fetch_data_segment_size(uint64_t location, uint64_t data_segment_size);
 
 // -----------------------------------------------------------------
 // --------------------------- COMPILER ----------------------------
@@ -5144,39 +5145,44 @@ void emit_fetch_stack_pointer() {
   emit_jalr(REG_ZR, REG_RA, 0);
 }
 
-uint64_t* emit_fetch_data_segment_size() {
-  uint64_t* entry;
-  uint64_t offset;
+uint64_t emit_fetch_data_segment_size() {
+  uint64_t ret;
+
+  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
+
+  ret = binary_length;
+
+  // We need to emit library function before code generation but we do not know the actual size of the data segment
+  // at that point. Therefore we emit two nops which are then fixed up later.
+  emit_nop();
+  emit_nop();
+
+  emit_jalr(REG_ZR, REG_RA, 0);
+
+  return ret;
+}
+
+void fixup_fetch_data_segment_size(uint64_t location, uint64_t data_segment_size) {
   uint64_t lower;
   uint64_t upper;
 
-  allocated_memory = allocated_memory + REGISTERSIZE;
-  create_symbol_table_entry(GLOBAL_TABLE, string_copy("_dslen"), 0, VARIABLE, UINT64_T, 0, -allocated_memory);
-  number_of_global_variables = number_of_global_variables - 1;
-  entry = search_global_symbol_table(string_copy("_dslen"), VARIABLE);
+  if (is_signed_integer(data_segment_size, 12)) {
+    store_instruction(location + INSTRUCTIONSIZE, encode_i_format(data_segment_size, REG_ZR, F3_ADDI, REG_A0, OP_IMM));
 
-  create_symbol_table_entry(LIBRARY_TABLE, "fetch_data_segment_size", 0, PROCEDURE, UINT64_T, 0, binary_length);
-  offset = get_address(entry);
-
-  if (is_signed_integer(offset, 12))
-    emit_ld(REG_A0, get_scope(entry), offset);
-  else {
-    lower = get_bits(get_address(entry), 0, 12);
-    upper = get_bits(get_address(entry), 12, 20);
+    ic_addi = ic_addi + 1;
+  } else {
+    lower = get_bits(data_segment_size, 0, 12);
+    upper = get_bits(data_segment_size, 12, 20);
 
     if (lower >= two_to_the_power_of(11))
       upper = upper + 1;
 
-    // calculate upper part of base address relative to global or frame pointer
-    emit_lui(REG_A0, sign_extend(upper, 20));
-    emit_add(REG_A0, get_scope(entry), REG_A0);
+    store_instruction(location, encode_u_format(upper, REG_A0, OP_LUI));
+    store_instruction(location + INSTRUCTIONSIZE, encode_i_format(sign_extend(lower, 12), REG_A0, F3_ADDI, REG_A0, OP_IMM));
 
-    emit_ld(REG_A0, REG_A0, sign_extend(get_bits(offset, 0, 12), 12));
+    ic_addi = ic_addi + 1;
+    ic_lui = ic_lui + 1;
   }
-
-  emit_jalr(REG_ZR, REG_RA, 0);
-
-  return entry;
 }
 
 // -----------------------------------------------------------------
@@ -5186,7 +5192,7 @@ uint64_t* emit_fetch_data_segment_size() {
 void selfie_compile() {
   uint64_t link;
   uint64_t number_of_source_files;
-  uint64_t* entry;
+  uint64_t fetch_ds_loc;
 
   // link until next console option
   link = 1;
@@ -5223,7 +5229,8 @@ void selfie_compile() {
   emit_malloc();
 
   emit_fetch_stack_pointer();
-  entry = emit_fetch_data_segment_size();
+
+  fetch_ds_loc = emit_fetch_data_segment_size();
 
   emit_switch();
 
@@ -5285,9 +5292,9 @@ void selfie_compile() {
   if (number_of_source_files == 0)
     printf1("%s: nothing to compile, only library generated\n", selfie_name);
 
-  emit_bootstrapping();
+  fixup_fetch_data_segment_size(fetch_ds_loc, allocated_memory);
 
-  set_value(entry, allocated_memory);
+  emit_bootstrapping();
 
   emit_data_segment();
 
@@ -7258,14 +7265,14 @@ uint64_t get_ds_start(uint64_t* context) {
   if (gc_is_library_or_syscall(context))
     return gc_library_program_break - fetch_data_segment_size();
   else
-    return get_data_segment(context) - gc_load_memory(get_ds_end(context), get_pt(context));
+    return get_code_segment(context);
 }
 
 uint64_t get_ds_end(uint64_t* context) {
   if (gc_is_library_or_syscall(context))
-    return gc_library_program_break - 2 * SIZEOFUINT64;
+    return gc_library_program_break - SIZEOFUINT64;
   else
-    return get_data_segment(context) - 2 * SIZEOFUINT64; // _dslen is located just below _bump
+    return get_data_segment(context) - SIZEOFUINT64;
 }
 
 uint64_t get_heap_start_gc(uint64_t* context) {
