@@ -7227,9 +7227,7 @@ uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
   uint64_t* ret;
 
   // Bootstrap non_gc_alloc_memory to machine's malloc when using syscall
-  if (context != (uint64_t*) 0)
-    return zalloc(size);
-  else {
+  if (gc_is_library_or_syscall(context)) {
     if (size == 0)
       return (uint64_t*) 0;
 
@@ -7240,6 +7238,8 @@ uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
     non_gc_heap_bump = non_gc_heap_bump + size;
 
     return ret;
+  } else {
+    return zalloc(size);
   }
 }
 
