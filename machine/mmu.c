@@ -17,7 +17,7 @@
 #define VPN_1_BITMASK 0x3FE00000
 #define VPN_0_BITMASK 0x1FF000
 
-uint64_t create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, char is_pt_node, char u_mode_accessible) {
+struct pt_entry* create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, char is_pt_node, char u_mode_accessible) {
   struct pt_entry* entry = (table + index);
 
   entry->ppn = ppn;
@@ -35,7 +35,7 @@ uint64_t create_pt_entry(struct pt_entry *table, uint64_t index, uint64_t ppn, c
 
   entry->v = 1;
 
-  return ppn << 12;
+  return (struct pt_entry*) ppn_to_paddr(ppn);
 }
 
 uint64_t ppn_bump;
@@ -109,7 +109,7 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
     if (ppn == 0)
       return false;
 
-    mid_pt = (struct pt_entry*) create_pt_entry(table, vpn_2, ppn, 1, 0);
+    mid_pt = create_pt_entry(table, vpn_2, ppn, 1, 0);
     kzero_page(ppn);
   }
   else
@@ -120,7 +120,7 @@ bool kmap_page_by_ppn(struct pt_entry* table, uint64_t vaddr, uint64_t ppn, char
     if (ppn == 0)
       return false;
 
-    leaf_pt = (struct pt_entry*) create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
+    leaf_pt = create_pt_entry(mid_pt, vpn_1, ppn, 1, 0);
     kzero_page(ppn);
   }
   else
