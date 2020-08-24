@@ -91,7 +91,7 @@ void setup_kernel_context(uint64_t lowest_lo_page,  uint64_t highest_lo_page,
 
   kernel_context.pt = kernel_pt;
 
-  kernel_context.program_break = highest_mid_page;
+  kernel_context.program_break = highest_mid_page + PAGESIZE;
 
   // no need to ever save the kernel's registers
 
