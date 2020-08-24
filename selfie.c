@@ -1182,10 +1182,7 @@ uint64_t  get_heap_start_gc(uint64_t* context); // ..._gc name subject to be cha
 uint64_t  get_heap_end_gc(uint64_t* context);
 uint64_t  get_gc_enabled_gc(uint64_t* context);
 
-void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head);
-void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head);
-void set_heap_start_gc(uint64_t* context, uint64_t heap_start); // todog: those might be unnecessary
-void set_heap_end_gc(uint64_t* context, uint64_t heap_end);
+void set_used_and_free_list_head(uint64_t* context, uint64_t* used_list_head, uint64_t* free_list_head);
 void set_gc_enabled_gc(uint64_t* context, uint64_t gc_enabled);
 
 void mark_segment(uint64_t segment_beg, uint64_t segment_end, uint64_t* pt, uint64_t* used_list_head, uint64_t heap_start, uint64_t heap_end);
@@ -7292,18 +7289,16 @@ uint64_t get_gc_enabled_gc(uint64_t* context) {
     return get_gc_enabled(context);
 }
 
-void set_used_list_head_gc(uint64_t* context, uint64_t* used_list_head) {
-  if (gc_is_library_or_syscall(context))
+void set_used_and_free_list_head(uint64_t* context, uint64_t* used_list_head, uint64_t* free_list_head) {
+  if (gc_is_library_or_syscall(context)) {
     gc_used_list = used_list_head;
-  else
-    set_used_list_head(context, used_list_head);
-}
-void set_free_list_head_gc(uint64_t* context, uint64_t* free_list_head) {
-  if (gc_is_library_or_syscall(context))
     gc_free_list = free_list_head;
-  else
+  } else {
+    set_used_list_head(context, used_list_head);
     set_free_list_head(context, free_list_head);
+  }
 }
+
 void set_heap_start_gc(uint64_t* context, uint64_t heap_start) {
   if (gc_is_library_or_syscall(context))
     gc_heap_start = heap_start;
@@ -7422,10 +7417,8 @@ void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, u
 void gc_init(uint64_t* context) {
   uint64_t program_break;
 
-  set_used_list_head_gc(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
+  set_used_and_free_list_head(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM), smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
   zero_memory(get_used_list_head_gc(context), SIZEOFUINT64);
-
-  set_free_list_head_gc(context, smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM));
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
   
   if (gc_is_library_or_syscall(context)) {
