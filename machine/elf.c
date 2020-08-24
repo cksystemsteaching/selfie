@@ -6,7 +6,7 @@
 
 // https://refspecs.linuxbase.org/elf/elf.pdf
 // https://uclibc.org/docs/elf-64-gen.pdf
-struct ElfHeader {
+struct elf_header {
   struct {
     char magic[4];
     uint8_t class;
@@ -19,29 +19,29 @@ struct ElfHeader {
   uint16_t machine;
   uint32_t version;
 
-  uint64_t entryPoint;
+  uint64_t entry_point;
 
-  uint64_t programHeaderOffset;
-  uint64_t sectionHeaderOffset;
+  uint64_t program_header_offset;
+  uint64_t section_header_offset;
 
   uint32_t flags;
 
-  uint16_t headerSize;
-  uint16_t programHeaderEntrySize;
-  uint16_t programHeaderEntries;
-  uint16_t sectionHeaderEntrySize;
-  uint16_t sectionHeaderEntries;
-  uint16_t sectionHeaderStringTableIndex;
+  uint16_t header_size;
+  uint16_t program_header_entry_size;
+  uint16_t program_header_entries;
+  uint16_t section_header_entry_size;
+  uint16_t section_header_entries;
+  uint16_t section_header_string_table_index;
 } __attribute__((packed));
 
-struct ElfProgramHeader {
+struct elf_program_header {
   uint32_t type;
   uint32_t flags;
   uint64_t offset;
   uint64_t vaddr;
   uint64_t paddr;
-  uint64_t fileSize;
-  uint64_t memSize;
+  uint64_t file_size;
+  uint64_t mem_size;
   uint64_t alignment;
 } __attribute__((packed));
 
@@ -49,10 +49,10 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
   uint64_t lowest_lo_page = SV39_MAX_VPN;
   uint64_t highest_lo_page = 0;
 
-  if (len < sizeof(struct ElfHeader))
+  if (len < sizeof(struct elf_header))
     return EOOB;
 
-  struct ElfHeader* header = (struct ElfHeader*) elf;
+  struct elf_header* header = (struct elf_header*) elf;
 
   // Check whether this is a valid ELF file
   if (strncmp(ELF_MAGIC, header->ident.magic, sizeof(ELF_MAGIC) - 1))
@@ -70,25 +70,25 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
 
   // Support selfie's binaries for now
   // This means we don't require section header support
-  if (header->sectionHeaderOffset != 0x00
-      || header->sectionHeaderEntrySize != 0x00
-      || header->sectionHeaderEntries != 0x00) {
+  if (header->section_header_offset != 0x00
+      || header->section_header_entry_size != 0x00
+      || header->section_header_entries != 0x00) {
     return EUNSUPPORTED;
   }
 
   // Check if program header is in-bounds
-  uint64_t phEnd = header->programHeaderOffset + (header->programHeaderEntries * header->programHeaderEntrySize);
-  if (phEnd > len)
+  uint64_t ph_end = header->program_header_offset + (header->program_header_entries * header->program_header_entry_size);
+  if (ph_end > len)
     return EOOB;
 
 
-  struct ElfProgramHeader* pheader = (struct ElfProgramHeader*)(elf + header->programHeaderOffset);
-  for (uint64_t i = 0; i < header->programHeaderEntries; i++) {
+  struct elf_program_header* pheader = (struct elf_program_header*)(elf + header->program_header_offset);
+  for (uint64_t i = 0; i < header->program_header_entries; i++) {
     if (pheader[i].type != ELF_PH_TYPE_LOAD)
       return EUNSUPPORTED;
 
-    uint64_t segmentEnd = pheader[i].offset + pheader[i].fileSize;
-    if (segmentEnd > len)
+    uint64_t segment_end = pheader[i].offset + pheader[i].file_size;
+    if (segment_end > len)
       return EOOB;
 
     // Check alignment on page boundaries
@@ -96,11 +96,11 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
 
     // Copy segment page-wise
     // Add PAGESIZE-1 for rounding up without using floating points.
-    // So if fileSize is page-aligned, we do not wastefully map an empty page (integer div)
-    // (e.g. fileSize=4096 (1 page) -> 1 but fileSize=4097 (1 page + 1 byte) -> 2 pages)
-    uint64_t segmentFilePages = (pheader[i].fileSize + (PAGESIZE - 1)) / PAGESIZE;
+    // So if file_size is page-aligned, we do not wastefully map an empty page (integer div)
+    // (e.g. file_size=4096 (1 page) -> 1 but file_size=4097 (1 page + 1 byte) -> 2 pages)
+    uint64_t segment_file_pages = (pheader[i].file_size + (PAGESIZE - 1)) / PAGESIZE;
 
-    for (uint64_t page = 0; page < segmentFilePages; page++) {
+    for (uint64_t page = 0; page < segment_file_pages; page++) {
       uint64_t vaddr = pheader[i].vaddr + (PAGESIZE * page);
       uint64_t faddr = pheader[i].offset + (PAGESIZE * page);
       uint64_t ppn = kmap_page(context->pt, vaddr, true);
@@ -112,11 +112,11 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
       memcpy((void *)ppn_to_paddr(ppn), (void *)(elf + faddr), PAGESIZE);
     }
 
-    uint64_t segmentMemPages = (pheader[i].memSize + (PAGESIZE - 1)) / PAGESIZE;
-    uint64_t pageDelta = segmentMemPages - segmentFilePages;
+    uint64_t segment_mem_pages = (pheader[i].mem_size + (PAGESIZE - 1)) / PAGESIZE;
+    uint64_t page_delta = segment_mem_pages - segment_file_pages;
 
-    for (uint64_t page = 0; page < pageDelta; page++) {
-      uint64_t vaddr = pheader[i].vaddr + (page+segmentFilePages)*PAGESIZE;
+    for (uint64_t page = 0; page < page_delta; page++) {
+      uint64_t vaddr = pheader[i].vaddr + (page+segment_file_pages)*PAGESIZE;
       uint64_t ppn = kmap_page(context->pt, vaddr, true);
 
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));
@@ -125,14 +125,14 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
       kidentity_map_ppn(kernel_pt, ppn, false);
     }
 
-    if (context->program_break < pheader[i].vaddr + pheader[i].memSize)
-      context->program_break = pheader[i].vaddr + pheader[i].memSize;
+    if (context->program_break < pheader[i].vaddr + pheader[i].mem_size)
+      context->program_break = pheader[i].vaddr + pheader[i].mem_size;
   }
 
   context->legal_memory_boundaries.lowest_lo_page = lowest_lo_page;
   context->legal_memory_boundaries.highest_lo_page = highest_lo_page;
 
-  context->saved_regs.pc = header->entryPoint;
+  context->saved_regs.pc = header->entry_point;
 
   return 0;
 }

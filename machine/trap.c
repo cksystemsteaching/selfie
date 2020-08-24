@@ -525,9 +525,9 @@ void setup_smode_trap_handler(trap_handler_t handler) {
   // Use direct mode (0x00)
   uint64_t stvec = (((uint64_t)handler) & ~(0x03ULL));
   asm volatile (
-    "csrw stvec, %[regValue];"
+    "csrw stvec, %[reg_value];"
     :
-    : [regValue] "r" (stvec)
+    : [reg_value] "r" (stvec)
   );
 
   enable_smode_interrupts();

@@ -99,7 +99,7 @@ void kinit_context(struct context* context) {
   kmap_kernel_upper_half(context->pt);
 }
 
-uint64_t roundUp(uint64_t addr, uint64_t align) {
+uint64_t round_up(uint64_t addr, uint64_t align) {
   uint64_t delta = addr % align;
   if (delta > 0)
     addr = addr + (align - delta);
@@ -107,17 +107,17 @@ uint64_t roundUp(uint64_t addr, uint64_t align) {
   return addr;
 }
 void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
-  uint64_t argvStrings[MAX_ARGV_LENGTH];
+  uint64_t argv_strings[MAX_ARGV_LENGTH];
 
   for (uint64_t i = 0; i < argc; i++) {
-    uint64_t stringSize = roundUp(strlen(argv[i]) + 1, 8); // 64bit-aligned
+    uint64_t string_size = round_up(strlen(argv[i]) + 1, 8); // 64bit-aligned
 
     // Reserve space on the stack
-    context->saved_regs.sp -= stringSize;
-    uint64_t uploadPaddr = vaddr_to_paddr(context->pt, context->saved_regs.sp);
+    context->saved_regs.sp -= string_size;
+    uint64_t upload_paddr = vaddr_to_paddr(context->pt, context->saved_regs.sp);
 
-    memcpy((void*)uploadPaddr, argv[i], stringSize);
-    argvStrings[i] = context->saved_regs.sp;
+    memcpy((void*)upload_paddr, argv[i], string_size);
+    argv_strings[i] = context->saved_regs.sp;
   }
 
   // At the end of argv, put nullptr
@@ -126,7 +126,7 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
 
   // copy argv pointer array to stack
   context->saved_regs.sp -= 8*argc;
-  memcpy((void*)vaddr_to_paddr(context->pt, context->saved_regs.sp), argvStrings, 8*argc);
+  memcpy((void*)vaddr_to_paddr(context->pt, context->saved_regs.sp), argv_strings, 8*argc);
 
   // Copy argc to stack
   context->saved_regs.sp -= 8;

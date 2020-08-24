@@ -22,12 +22,12 @@ void* memcpy (void* destination, const void* source, size_t num) {
   return memmove(destination, source, num);
 }
 void* memset(void* ptr, int value, size_t num) {
-  uint8_t* charPtr = (uint8_t*) ptr;
+  uint8_t* char_ptr = (uint8_t*) ptr;
 
   while (num > 0) {
-    *charPtr = (uint8_t) value;
+    *char_ptr = (uint8_t) value;
 
-    charPtr++;
+    char_ptr++;
     num--;
   }
 
@@ -106,20 +106,20 @@ int printf(const char* format, ...) {
 }
 int va_printf(const char* format, va_list args) {
   int written = 0;
-  const char* fmtPos;
+  const char* fmt_pos;
 
   while (1) {
-    fmtPos = strchr(format, '%');
+    fmt_pos = strchr(format, '%');
 
-    if (fmtPos == NULL) {
+    if (fmt_pos == NULL) {
       // Found no format specifier - print rest and return
       puts(format);
       return written + strlen(format);
     } else {
       // Found format specifier - print everything before it and handle specifier
-      console_puts(format, fmtPos - format);
-      written += (fmtPos - format);
-      format = fmtPos+1;
+      console_puts(format, fmt_pos - format);
+      written += (fmt_pos - format);
+      format = fmt_pos+1;
       switch (*format) {
         case '%':
           putc('%');

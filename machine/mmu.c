@@ -280,7 +280,7 @@ uint64_t assemble_satp_value(struct pt_entry* table, uint16_t asid) {
 }
 
 void kswitch_active_pt(struct pt_entry* table, uint16_t asid) {
-  uint64_t satpValue = assemble_satp_value(table, asid);
+  uint64_t satp_value = assemble_satp_value(table, asid);
 
   // Set the SATP and SSCRATCH value (for easier kernel pt switching)
   // Also, perform a cache flush by specifying the ASID
@@ -290,29 +290,29 @@ void kswitch_active_pt(struct pt_entry* table, uint16_t asid) {
       "csrw sscratch, %[value];"
       "sfence.vma zero, %[asid]" // RISC-V Priviled
       :
-      : [value] "r" (satpValue), [asid] "r" (asid)
+      : [value] "r" (satp_value), [asid] "r" (asid)
   );
 }
 
 void kinit_page_pool() {
-  uint64_t pagesAllocated = 0;
-  uint64_t oldPpn = ppn_bump;
+  uint64_t pages_allocated = 0;
+  uint64_t old_ppn = ppn_bump;
 
   // assert: PAGE_POOL_NUM_PAGES is large enough to host all nodes in the page table, as kpalloc in kmap_page_by_ppn would return PPN 0 otherwise
   //         Thus, PAGE_POOL_NUM_PAGES shall have at least approx. 6 pages
-  while (pagesAllocated < PAGE_POOL_NUM_PAGES) {
-    uint64_t toAllocate = PAGE_POOL_NUM_PAGES - pagesAllocated;
+  while (pages_allocated < PAGE_POOL_NUM_PAGES) {
+    uint64_t to_allocate = PAGE_POOL_NUM_PAGES - pages_allocated;
 
     // Try to map the whole range of pages inside
     // Add +1 to upper bound ppn because kidentity_map_range is exclusive
-    kidentity_map_range(kernel_pt, ppn_to_paddr(oldPpn), ppn_to_paddr(oldPpn + toAllocate + 1));
+    kidentity_map_range(kernel_pt, ppn_to_paddr(old_ppn), ppn_to_paddr(old_ppn + to_allocate + 1));
     // If the mapping process required to allocate new page table nodes, ppn_bump would be increased
     // We have to ignore the amount of PT nodes in our amount of free page pool pages because they
     // are already in use.
-    uint64_t deltaAllocated = ppn_bump - oldPpn;
-    pagesAllocated += toAllocate - deltaAllocated;
+    uint64_t delta_allocated = ppn_bump - old_ppn;
+    pages_allocated += to_allocate - delta_allocated;
 
-    oldPpn = ppn_bump;
+    old_ppn = ppn_bump;
   }
 
   // Reset the used pages counter
@@ -336,12 +336,12 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
     // However, do not read more than requested
     // E.g. src_vaddr = 8:  8 - ( 8 % 8) = 8 - 0 = 8 ->  8+8 % 8 = 0
     //      src_vaddr = 10: 8 - (10 % 8) = 8 - 2 = 6 -> 10+6 % 8 = 16 % 8 = 0
-    uint64_t readSize = 8 - (src_vaddr % 8);
-    readSize = MIN(readSize, n - 1 - read);
+    uint64_t read_size = 8 - (src_vaddr % 8);
+    read_size = MIN(read_size, n - 1 - read);
     uint64_t src_kaddr = vaddr_to_paddr(table, src_vaddr);
 
     // Perform the actual copy (1..8 bytes)
-    uint64_t copied = strlcpy(dest_kaddr, src_kaddr, readSize+1); // +1 due to \0
+    uint64_t copied = strlcpy(dest_kaddr, src_kaddr, read_size+1); // +1 due to \0
     read += copied;
 
     // Advancing the dest and src pointers by copied
@@ -351,7 +351,7 @@ uint64_t kstrlcpy_from_vspace(char* dest_kaddr, uint64_t src_vaddr, uint64_t n, 
     src_vaddr += copied;
 
     // If we copied less than anticipated, we probably hit a string terminator
-    if (copied != readSize)
+    if (copied != read_size)
       break;
   }
   *dest_kaddr = '\0';

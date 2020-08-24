@@ -112,11 +112,11 @@ void setup_kernel_pt() {
   // Map kernel upper half to its own vspace
   kmap_kernel_upper_half(kernel_pt);
 
-  uint64_t oldPpn = ppn_bump;
+  uint64_t old_ppn = ppn_bump;
   kidentity_map_range(kernel_pt, &_payload_end, (void*)ppn_to_paddr(ppn_bump));
-  while (oldPpn != ppn_bump) {
-    uint64_t initial = oldPpn;
-    oldPpn = ppn_bump;
+  while (old_ppn != ppn_bump) {
+    uint64_t initial = old_ppn;
+    old_ppn = ppn_bump;
     kidentity_map_range(kernel_pt, (void*)ppn_to_paddr(initial), (void*)ppn_to_paddr(ppn_bump));
   }
 
