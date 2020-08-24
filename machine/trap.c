@@ -1,4 +1,5 @@
 #include "compiler-utils.h"
+#include "diag.h"
 #include "trap.h"
 #include "config.h"
 #include "syscall.h"
@@ -155,22 +156,27 @@ uint64_t get_current_cpu_time() {
   return current_cpu_time;
 }
 
-void set_timer_interrupt_delta(uint64_t delta) {
-  set_timer_interrupt(get_current_cpu_time() + delta);
+bool set_timer_interrupt_delta(uint64_t delta) {
+  return set_timer_interrupt(get_current_cpu_time() + delta);
 }
 
-void set_timer_interrupt(uint64_t interrupt_at) {
+bool set_timer_interrupt(uint64_t interrupt_at) {
+  long error;
+
   // call into the SBI to set the timer since
   // mtimecmp can only be modified from M-mode
   asm volatile(
     "li a7, 0x54494D45;"
     "li a6, 0;"
     "mv a0, %[interrupt_at];"
-    "ecall"
-    :
+    "ecall;"
+    "mv %[error], a1"
+    : [error] "=r" (error)
     : [interrupt_at] "r" (interrupt_at)
-    : "a7", "a6", "a0"
+    : "a7", "a6", "a1", "a0" // a1 because the SBI returns an error code in there
   );
+
+  return (error == 0);
 }
 
 uint64_t trap_handler(struct registers registers_buffer) {
@@ -181,6 +187,7 @@ uint64_t trap_handler(struct registers registers_buffer) {
   uint64_t exception_code;
   struct context* context = get_currently_active_context();
   struct context* next_context;
+  bool timer_interrupt_success;
 
   asm volatile(
     "csrr %[scause], scause;"
@@ -234,7 +241,9 @@ uint64_t trap_handler(struct registers registers_buffer) {
   next_context = schedule_next_context();
   load_saved_registers_from_context_into_buffer(next_context, &registers_buffer);
 
-  set_timer_interrupt_delta(TIMESLICE);
+  timer_interrupt_success = set_timer_interrupt_delta(TIMESLICE);
+  if (!timer_interrupt_success)
+    panic("setting a new timer interrupt was unsuccessful");
 
   // jumps back into trap.S now
   return assemble_satp_value(next_context->pt, 0);

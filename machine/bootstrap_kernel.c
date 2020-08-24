@@ -51,7 +51,9 @@ void kernel_environ_init() {
 // =============================================================================
 
 int start_init_process(uint64_t argc, const char** argv) {
+  bool timer_interrupt_success;
   const KFILE* file = find_file(INIT_FILE_PATH);
+
   if (!file) {
     panic("ERROR: Could not find init file: " INIT_FILE_PATH);
   }
@@ -64,7 +66,10 @@ int start_init_process(uint64_t argc, const char** argv) {
   }
   kupload_argv(init, argc, argv);
 
-  set_timer_interrupt_delta(TIMESLICE);
+  timer_interrupt_success = set_timer_interrupt_delta(TIMESLICE);
+  if (!timer_interrupt_success)
+    panic("couldn't set a timer interrupt for the init context");
+
   perform_initial_ctxt_switch(assemble_satp_value(init->pt, 0), &init->saved_regs);
 
   return 0;
