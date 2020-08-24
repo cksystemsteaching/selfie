@@ -29,7 +29,9 @@ void* malloc(unsigned long long size) {
   return_ptr = heap_head;
   heap_head += size;
 
+#ifdef DEBUG
   printf("-- malloc: allocated 0x%x bytes at addr %p-%p\n", size, return_ptr, heap_head);
+#endif /* DEBUG */
 
   return return_ptr;
 }
