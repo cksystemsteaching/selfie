@@ -312,11 +312,11 @@ void init_library() {
 
   // accommodate at least CPUBITWIDTH numbers for itoa, no mapping needed
   integer_buffer = (char*)smalloc_implementation((CPUBITWIDTH + 1), ALLOCATORSYSTEM);
-  zero_memory((uint64_t*)integer_buffer, (CPUBITWIDTH + 1));
+  zero_memory((uint64_t*) integer_buffer, (CPUBITWIDTH + 1));
 
   // does not need to be mapped
   filename_buffer = (char*)smalloc_implementation((MAX_FILENAME_LENGTH + 1), ALLOCATORSYSTEM);
-  zero_memory((uint64_t*)filename_buffer, (MAX_FILENAME_LENGTH + 1));
+  zero_memory((uint64_t*) filename_buffer, (MAX_FILENAME_LENGTH + 1));
 
   // allocate and touch to make sure memory is mapped for read calls
   binary_buffer  = smalloc_implementation(SIZEOFUINT64, ALLOCATORSYSTEM);
@@ -7146,14 +7146,14 @@ void prepare_mark(uint64_t* used_list_head) {
 
 void gc_store_memory(uint64_t address, uint64_t value, uint64_t* context) {
   if (gc_is_library_or_syscall(context))
-    *((uint64_t*)address) = value;
+    *((uint64_t*) address) = value;
   else
     store_virtual_memory(get_pt(context), address, value);
 }
 
 uint64_t gc_load_memory(uint64_t address, uint64_t* pt) {
   if (pt == (uint64_t*) 0)
-    return *((uint64_t*)address);
+    return *((uint64_t*) address);
   else
     return load_virtual_memory(pt, address);
 }
@@ -7205,7 +7205,7 @@ uint64_t* gc_alloc_memory(uint64_t size, uint64_t* context) {
       }
     }
 
-    return (uint64_t*)bump;
+    return (uint64_t*) bump;
   }
 }
 
@@ -7221,7 +7221,7 @@ uint64_t* non_gc_alloc_memory(uint64_t size, uint64_t* context) {
 
     size = round_up(size, SIZEOFUINT64);
 
-    ret = (uint64_t*)non_gc_heap_bump;
+    ret = (uint64_t*) non_gc_heap_bump;
 
     non_gc_heap_bump = non_gc_heap_bump + size;
 
@@ -7382,7 +7382,7 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
   uint64_t object_size;
 
   // 1. Zero object memory
-  object_beg = (uint64_t)get_metadata_memory(metadata_entry);
+  object_beg = (uint64_t) get_metadata_memory(metadata_entry);
   object_size = object_beg + get_metadata_size(metadata_entry);
   while (object_beg < object_size) {
     gc_store_memory(object_beg, 0, context);
@@ -7393,7 +7393,7 @@ void free_and_zero_object(uint64_t* metadata_entry, uint64_t* free_list_head_poi
   // 2. Move entry from used to free list
   relink_metadata(metadata_entry, (uint64_t*) *free_list_head_pointer);
 
-  *free_list_head_pointer = (uint64_t)metadata_entry;
+  *free_list_head_pointer = (uint64_t) metadata_entry;
 }
 
 void sweep(uint64_t* used_list_head_pointer, uint64_t* free_list_head_pointer, uint64_t* context) {
@@ -7429,8 +7429,8 @@ void gc_init(uint64_t* context) {
   zero_memory(get_free_list_head_gc(context), SIZEOFUINT64);
   
   if (gc_is_library_or_syscall(context)) {
-    non_gc_heap_start = (uint64_t)smalloc_implementation(NONGCHEAPSIZE, ALLOCATORSYSTEM);
-    zero_memory((uint64_t*)gc_used_list, SIZEOFUINT64);
+    non_gc_heap_start = (uint64_t) smalloc_implementation(NONGCHEAPSIZE, ALLOCATORSYSTEM);
+    zero_memory((uint64_t*) gc_used_list, SIZEOFUINT64);
 
     non_gc_heap_bump = non_gc_heap_start;
 
@@ -7484,9 +7484,9 @@ uint64_t* gc_malloc_implementation(uint64_t size, uint64_t* context) {
   used_list_head_ptr = get_used_list_head_gc(context);
 
   if (*used_list_head_ptr != 0)
-    set_metadata_prev((uint64_t*)*used_list_head_ptr, metadata);
-  set_metadata_next(metadata, (uint64_t*)*used_list_head_ptr);
-  *used_list_head_ptr = (uint64_t)metadata;
+    set_metadata_prev((uint64_t*) *used_list_head_ptr, metadata);
+  set_metadata_next(metadata, (uint64_t*) *used_list_head_ptr);
+  *used_list_head_ptr = (uint64_t) metadata;
 
   set_metadata_prev(metadata, (uint64_t*) 0);
   set_metadata_size(metadata, size);
