@@ -8000,7 +8000,7 @@ void run_until_exception() {
     fetch();
     decode();
     execute();
-    print_current_state(); // TODO DEBUGGING
+    //print_current_state(); // TODO DEBUGGING
 
     interrupt();
   }

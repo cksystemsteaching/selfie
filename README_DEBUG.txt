@@ -1,5 +1,5 @@
 selfie.c
-  mipster printed jetzt alle register vor jeder instruction
+  mipster printed alle register vor jeder instruction - comment/uncomment line 8003
 wipopt
   optimizer binary (x86)
 enops.txt
