@@ -11,7 +11,7 @@ bool fd_is_stdio(int fd) {
   return (fd >= 0) && (fd <= 2);
 }
 bool fd_is_valid(int fd, size_t num_fds) {
-  return (fd >= 0) && ((uint32_t)fd < num_fds + OPEN_FILE_FD_OFFSET);
+  return (fd >= 0) && (((uint32_t) fd) < num_fds + OPEN_FILE_FD_OFFSET);
 }
 FILEDESC* get_fd_entry(int fd, FILEDESC* open_files, size_t num_fds) {
   if (!fd_is_valid(fd, num_fds))

@@ -68,7 +68,7 @@ ssize_t strncmp(const char* first, const char* second, size_t n) {
 }
 const char* strchr(const char* str, int c) {
   while (*str != '\0') {
-    if (*str == ((char)c))
+    if (*str == ((char) c))
       return str;
     str++;
   }

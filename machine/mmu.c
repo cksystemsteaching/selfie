@@ -48,7 +48,7 @@ uint64_t kpalloc() {
   if (free_list_head != 0) {
     // We got a freed page to reallocate
     uint64_t ppn = free_list_head;
-    uint64_t* next = (uint64_t*)ppn_to_paddr(ppn);
+    uint64_t* next = (uint64_t*) ppn_to_paddr(ppn);
     free_list_head = *next;
 
     return ppn;
@@ -71,7 +71,7 @@ uint64_t kzalloc() {
     return ppn;
 }
 void kpfree(uint64_t ppn) {
-  uint64_t* next = (uint64_t*)ppn_to_paddr(ppn);
+  uint64_t* next = (uint64_t*) ppn_to_paddr(ppn);
   *next = free_list_head;
   free_list_head = ppn;
 }
@@ -84,7 +84,7 @@ void kzero_page(uint64_t vpn) {
 }
 
 struct pt_entry* retrieve_pt_entry_from_table(struct pt_entry* table, uint64_t index) {
-  return (struct pt_entry*) ((uint64_t)(table + index)->ppn << 12);
+  return (struct pt_entry*) ppn_to_paddr((table + index)->ppn);
 }
 
 uint64_t kmap_page(struct pt_entry* table, uint64_t vaddr, char u_mode_accessible) {
@@ -177,14 +177,14 @@ uint64_t vaddr_to_paddr(struct pt_entry* table, uint64_t vaddr) {
   if (!leaf_pt[vpn_0].v)
     return 0x00;
 
-  return ((uint64_t)ppn_to_paddr(leaf_pt[vpn_0].ppn)) | offset;
+  return ((uint64_t) ppn_to_paddr(leaf_pt[vpn_0].ppn)) | offset;
 }
 
 uint64_t paddr_to_ppn(const void* address) {
-  return ((uint64_t)address) >> 12;
+  return ((uint64_t) address) >> 12;
 }
 const void* ppn_to_paddr(uint64_t ppn) {
-  return (const void*)(ppn << 12);
+  return (const void*) (ppn << 12);
 }
 
 bool is_valid_sv39_vaddr(uint64_t vaddr) {
@@ -211,7 +211,7 @@ void kidentity_map_range(struct pt_entry* table, const void* from, const void* t
   };
 }
 void kidentity_map_ppn(struct pt_entry* table, uint64_t ppn, bool u_mode_accessible) {
-  kmap_page_by_ppn(table, (uint64_t)ppn_to_paddr(ppn), ppn, u_mode_accessible);
+  kmap_page_by_ppn(table, (uint64_t) ppn_to_paddr(ppn), ppn, u_mode_accessible);
 }
 
 void kdump_pt(struct pt_entry* table) {

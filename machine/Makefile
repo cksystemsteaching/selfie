@@ -86,7 +86,7 @@ files_package.c: $(SBI_WRAPPER_FILES_PACKAGE)
 		FILESIZE=`wc -c "$$file" | awk '{print $$1}'`; \
 		echo "  {\"$$BASENAME\", $$VARIABLENAME, $$FILESIZE}," >>$@; \
 	done;
-	@echo "  {\"\", (const char*)NULL, 0}," >>$@;
+	@echo "  {\"\", (const char*) NULL, 0}," >>$@;
 	@echo "};" >>$@;
 	@echo "const KFILE* files = file_defs;" >>$@;
 

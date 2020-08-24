@@ -34,7 +34,7 @@ void kernel_environ_init() {
   uint64_t kern_start = paddr_to_ppn(&_payload_start);
   uint64_t kern_end = paddr_to_ppn(&_payload_end);
   uint64_t stack_end_ppn = paddr_to_ppn(initial_stack_start());
-  uint64_t trampoline_ppn = paddr_to_ppn((void*)TRAMPOLINE_VADDR);
+  uint64_t trampoline_ppn = paddr_to_ppn((void*) TRAMPOLINE_VADDR);
   setup_kernel_context(kern_start, kern_end, stack_end_ppn, stack_end_ppn, trampoline_ppn, trampoline_ppn);
   setup_kernel_pt();
 
@@ -78,10 +78,10 @@ void assert_state() {
   // must be aligned on a 4-byte boundary because the lower two bits represent the
   // trap vector mode.
   assert(IS_ALIGNED(TRAMPOLINE_VADDR, 2));
-  assert(IS_ALIGNED((uint64_t)trap_handler_wrapper, 2));
+  assert(IS_ALIGNED((uint64_t) trap_handler_wrapper, 2));
 
   // Kernel page table must be page-aligned (4KiB -> 2^12)
-  assert(IS_ALIGNED((uint64_t)kernel_pt, 12));
+  assert(IS_ALIGNED((uint64_t) kernel_pt, 12));
 }
 
 void setup_kernel_context(uint64_t lowest_lo_page,  uint64_t highest_lo_page,
@@ -113,11 +113,11 @@ void setup_kernel_pt() {
   kmap_kernel_upper_half(kernel_pt);
 
   uint64_t old_ppn = ppn_bump;
-  kidentity_map_range(kernel_pt, &_payload_end, (void*)ppn_to_paddr(ppn_bump));
+  kidentity_map_range(kernel_pt, &_payload_end, (void*) ppn_to_paddr(ppn_bump));
   while (old_ppn != ppn_bump) {
     uint64_t initial = old_ppn;
     old_ppn = ppn_bump;
-    kidentity_map_range(kernel_pt, (void*)ppn_to_paddr(initial), (void*)ppn_to_paddr(ppn_bump));
+    kidentity_map_range(kernel_pt, (void*) ppn_to_paddr(initial), (void*) ppn_to_paddr(ppn_bump));
   }
 
   kinit_page_pool();
@@ -127,7 +127,7 @@ void setup_kernel_pt() {
 #endif /* DEBUG */
 }
 void setup_trap_handler() {
-  setup_smode_trap_handler((trap_handler_t)TRAMPOLINE_VADDR);
+  setup_smode_trap_handler((trap_handler_t) TRAMPOLINE_VADDR);
   enable_smode_interrupts_after_sret();
   enable_smode_interrupt_types((1 << CSR_SIE_TIMER_INTS) |
                                (1 << CSR_SIE_SOFTWARE_INTS));

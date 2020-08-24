@@ -516,14 +516,14 @@ void setup_smode_trap_handler(trap_handler_t handler) {
   disable_smode_interrupts();
 
   // 4.1.4 stvec - handler functions must be aligned on a 4 byte boundary
-  if (((uint64_t)handler) & 0x03) {
+  if (((uint64_t) handler) & 0x03) {
     puts("setup_trap_handler: Cannot apply unaligned trap handler!\n");
     return;
   }
 
   // mtvec has both the base address and the vectoring mode (2 bits)
   // Use direct mode (0x00)
-  uint64_t stvec = (((uint64_t)handler) & ~(0x03ULL));
+  uint64_t stvec = (((uint64_t) handler) & ~(0x03ULL));
   asm volatile (
     "csrw stvec, %[reg_value];"
     :

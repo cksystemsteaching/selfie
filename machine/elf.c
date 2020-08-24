@@ -82,7 +82,7 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     return EOOB;
 
 
-  struct elf_program_header* pheader = (struct elf_program_header*)(elf + header->program_header_offset);
+  struct elf_program_header* pheader = (struct elf_program_header*) (elf + header->program_header_offset);
   for (uint64_t i = 0; i < header->program_header_entries; i++) {
     if (pheader[i].type != ELF_PH_TYPE_LOAD)
       return EUNSUPPORTED;
@@ -109,7 +109,7 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
       highest_lo_page = MAX(highest_lo_page, vaddr_to_vpn(vaddr));
 
       kidentity_map_ppn(kernel_pt, ppn, false);
-      memcpy((void *)ppn_to_paddr(ppn), (void *)(elf + faddr), PAGESIZE);
+      memcpy((void *) ppn_to_paddr(ppn), (void *) (elf + faddr), PAGESIZE);
     }
 
     uint64_t segment_mem_pages = (pheader[i].mem_size + (PAGESIZE - 1)) / PAGESIZE;

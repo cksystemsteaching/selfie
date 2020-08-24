@@ -52,7 +52,7 @@ struct context* kallocate_context() {
 }
 
 void kinit_context(struct context* context) {
-  context->pt = (struct pt_entry*)ppn_to_paddr(kzalloc());
+  context->pt = (struct pt_entry*) ppn_to_paddr(kzalloc());
   context->saved_regs.ra  = 0;
   context->saved_regs.sp  = USERSPACE_STACK_START;
   context->saved_regs.gp  = 0;
@@ -116,21 +116,21 @@ void kupload_argv(struct context* context, uint64_t argc, const char** argv) {
     context->saved_regs.sp -= string_size;
     uint64_t upload_paddr = vaddr_to_paddr(context->pt, context->saved_regs.sp);
 
-    memcpy((void*)upload_paddr, argv[i], string_size);
+    memcpy((void*) upload_paddr, argv[i], string_size);
     argv_strings[i] = context->saved_regs.sp;
   }
 
   // At the end of argv, put nullptr
   context->saved_regs.sp -= sizeof(uint64_t);
-  *((uint64_t*)vaddr_to_paddr(context->pt, context->saved_regs.sp)) = 0;
+  *((uint64_t*) vaddr_to_paddr(context->pt, context->saved_regs.sp)) = 0;
 
   // copy argv pointer array to stack
   context->saved_regs.sp -= sizeof(uint64_t) * argc;
-  memcpy((void*)vaddr_to_paddr(context->pt, context->saved_regs.sp), argv_strings, sizeof(uint64_t) * argc);
+  memcpy((void*) vaddr_to_paddr(context->pt, context->saved_regs.sp), argv_strings, sizeof(uint64_t) * argc);
 
   // Copy argc to stack
   context->saved_regs.sp -= sizeof(uint64_t);
-  *((uint64_t*)vaddr_to_paddr(context->pt, context->saved_regs.sp)) = argc;
+  *((uint64_t*) vaddr_to_paddr(context->pt, context->saved_regs.sp)) = argc;
 }
 
 extern void _start_hang();
