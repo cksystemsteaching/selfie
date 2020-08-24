@@ -79,7 +79,7 @@ void kpfree(uint64_t ppn) {
 void kzero_page(uint64_t vpn) {
   uint64_t* page_addr = (uint64_t*) ppn_to_paddr(vpn);
 
-  for (size_t i = 0; i < PAGESIZE/sizeof(uint64_t); i++)
+  for (size_t i = 0; i < PAGESIZE / sizeof(uint64_t); i++)
     page_addr[i] = 0;
 }
 

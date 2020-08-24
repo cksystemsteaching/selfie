@@ -95,9 +95,9 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     assert(IS_ALIGNED(pheader[i].vaddr, 12));
 
     // Copy segment page-wise
-    // Add PAGESIZE-1 for rounding up without using floating points.
+    // Add PAGESIZE - 1 for rounding up without using floating points.
     // So if file_size is page-aligned, we do not wastefully map an empty page (integer div)
-    // (e.g. file_size=4096 (1 page) -> 1 but file_size=4097 (1 page + 1 byte) -> 2 pages)
+    // (e.g. file_size = 4096 (1 page) -> 1 but file_size = 4097 (1 page + 1 byte) -> 2 pages)
     uint64_t segment_file_pages = (pheader[i].file_size + (PAGESIZE - 1)) / PAGESIZE;
 
     for (uint64_t page = 0; page < segment_file_pages; page++) {
@@ -116,7 +116,7 @@ int load_elf(struct context* context, const char* elf, uint64_t len) {
     uint64_t page_delta = segment_mem_pages - segment_file_pages;
 
     for (uint64_t page = 0; page < page_delta; page++) {
-      uint64_t vaddr = pheader[i].vaddr + (page + segment_file_pages)*PAGESIZE;
+      uint64_t vaddr = pheader[i].vaddr + (page + segment_file_pages) * PAGESIZE;
       uint64_t ppn = kmap_page(context->pt, vaddr, true);
 
       lowest_lo_page = MIN(lowest_lo_page, vaddr_to_vpn(vaddr));

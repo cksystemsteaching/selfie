@@ -21,7 +21,7 @@ FILEDESC* get_fd_entry(int fd, FILEDESC* open_files, size_t num_fds) {
   if (fd_is_stdio(fd))
     return NULL;
 
-  return open_files + (fd-OPEN_FILE_FD_OFFSET);
+  return open_files + (fd - OPEN_FILE_FD_OFFSET);
 }
 bool fd_entry_is_opened(FILEDESC* entry) {
   return (entry != NULL) && (entry->file != NULL);
@@ -75,7 +75,7 @@ intmax_t kwrite(int fd, const char* buf, size_t count, FILEDESC* open_files, siz
   return console_puts(buf, count);
 }
 
-int last_allocated_fd = OPEN_FILE_FD_OFFSET-1;
+int last_allocated_fd = OPEN_FILE_FD_OFFSET - 1;
 int kopen(const char* filename, int flags, FILEDESC* open_files, size_t num_fds) {
   const int O_RDONLY = 0x0;
   const int _O_BINARY = 0x8000;
